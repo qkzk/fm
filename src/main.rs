@@ -56,11 +56,12 @@ fn main() {
             },
             // Event::Key(Key::Right) => col = min(col + 1, width - 1),
             Event::Key(Key::Right) => {
-                // if path_content.files[path_content.selected].is_dir {
-                //     let mut p = path_content.path.clone().to_path_buf();
-                //     p.push(path_content.files[path_content.selected].filename.clone());
-                //     path_content = PathContent::new(p.as_path());
-                // }
+                if path_content.files[path_content.selected].is_dir {
+                    // let mut pb = path_content.path.to_path_buf();
+                    // pb.push(path_content.files[path_content.selected].filename.clone());
+                    // path_content = PathContent::new(pb.as_path());
+                    // TODO: pb does not live long enough
+                }
             }
             _ => {}
         }
