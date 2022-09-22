@@ -1,9 +1,8 @@
 use chrono::offset::Local;
 use chrono::DateTime;
-use std::cmp::{max, min};
 use std::fs::{canonicalize, metadata, read_dir, DirEntry};
 use std::os::unix::fs::MetadataExt;
-use std::os::unix::fs::PermissionsExt;
+// use std::os::unix::fs::PermissionsExt;
 use std::path;
 
 use users::get_user_by_uid;
@@ -27,10 +26,10 @@ impl FileInfo {
         let dir_symbol = extract_dir_symbol(&direntry);
         let permissions = extract_permissions_string(&direntry);
         let owner = extract_username(&direntry);
+        let system_time = extract_datetime(&direntry);
         let is_selected = false;
         let is_dir = direntry.path().is_dir();
 
-        let system_time = extract_datetime(&direntry);
         Ok(FileInfo {
             filename,
             file_size,
@@ -115,6 +114,22 @@ impl<'a> PathContent<'a> {
             self.files[self.selected].select();
         }
     }
+
+    // pub fn child(&self) -> Self {
+    //     let mut pb = self.path.to_path_buf();
+    //     pb.push(self.files[self.selected].filename);
+    //     let p = pb.as_path();
+    //     // let mut files: Vec<FileInfo> = read_dir(p)
+    //     //     .expect(&format!("Couldn't traverse path {:?}", p))
+    //     //     .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
+    //     //     .collect();
+    //     // let selected: usize = 0;
+    //     PathContent::new(p)
+    //     // files[selected].select();
+    //     // // self.path = p;
+    //     // self.files = files;
+    //     // self.selected = selected;
+    // }
 }
 
 fn extract_datetime(direntry: &DirEntry) -> String {
@@ -150,11 +165,6 @@ fn extract_permissions_string(direntry: &DirEntry) -> String {
 //
 //     Ok(entries)
 // }
-
-fn f<'a>(mode: u32) -> &'a str {
-    let rwx = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
-    rwx[(mode & 7 as u32) as usize]
-}
 
 fn convert_octal_mode(mode: u32) -> String {
     let rwx = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];

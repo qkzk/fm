@@ -56,12 +56,19 @@ fn main() {
             },
             // Event::Key(Key::Right) => col = min(col + 1, width - 1),
             Event::Key(Key::Right) => {
-                if path_content.files[path_content.selected].is_dir {
-                    // let mut pb = path_content.path.to_path_buf();
-                    // pb.push(path_content.files[path_content.selected].filename.clone());
-                    // path_content = PathContent::new(pb.as_path());
-                    // TODO: pb does not live long enough
-                }
+                // let filechild = path_content.files[path_content.selected].filename.clone();
+                // if path_content.files[path_content.selected].is_dir {
+                //     path_content =
+                //         PathContent::new(path_content.path.to_path_buf().join(filechild).as_path());
+
+                // path_content.child();
+                // let mut pb = path_content.path.to_path_buf();
+                // pb.push(path_content.files[path_content.selected].filename.clone());
+                // path_content = PathContent::new(pb.as_path());
+                // path_content.path = pb.as_path();
+                // TODO: pb does not live long enough
+                // https://users.rust-lang.org/t/how-to-resolve-error-e0515-cannot-return-value-referencing-temporary-value-without-owned-value/43132
+                // }
             }
             _ => {}
         }
