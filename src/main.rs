@@ -23,9 +23,9 @@ fn main1() {
 
 fn main() {
     let path = expand(path::Path::new(".")).unwrap();
-    let mut path_content = PathContent::new(&path);
+    let mut path_content = PathContent::new(path);
 
-    let text = path_content.path.to_str().unwrap();
+    let mut text = path_content.path.to_str().unwrap();
     let term: Term<()> = Term::with_height(TermHeight::Percent(30)).unwrap();
     let mut row = 1;
     let mut col = 0;
@@ -34,9 +34,15 @@ fn main() {
     let _ = term.present();
 
     while let Ok(ev) = term.poll_event() {
-        let text = path_content.path.to_str().unwrap();
+        text = path_content.path.to_str().unwrap();
         let _ = term.clear();
         let _ = term.print(0, 0, text);
+        let childpathbuf = path_content.childpath.clone();
+        let childpath = childpathbuf.as_path();
+
+        // let filechild = path_content.files[path_content.selected].filename.clone();
+        // let pathbufchild = path_content.path.to_path_buf().join(&filechild);
+        // let pathchild = pathbufchild.as_path();
 
         let (width, height) = term.term_size().unwrap();
         match ev {
@@ -51,24 +57,24 @@ fn main() {
             }
             // Event::Key(Key::Left) => col = max(col, 1) - 1,
             Event::Key(Key::Left) => match path_content.path.parent() {
-                Some(parent) => path_content = PathContent::new(parent),
+                Some(parent) => path_content = PathContent::new(path::PathBuf::from(parent)),
                 None => (),
             },
             // Event::Key(Key::Right) => col = min(col + 1, width - 1),
             Event::Key(Key::Right) => {
-                // let filechild = path_content.files[path_content.selected].filename.clone();
-                // if path_content.files[path_content.selected].is_dir {
-                //     path_content =
-                //         PathContent::new(path_content.path.to_path_buf().join(filechild).as_path());
+                if path_content.files[path_content.selected].is_dir {
+                    //     // path_content = PathContent::new(pathchild);
+                    //     path_content = PathContent::new(childpath);
+                    // }
 
-                // path_content.child();
-                // let mut pb = path_content.path.to_path_buf();
-                // pb.push(path_content.files[path_content.selected].filename.clone());
-                // path_content = PathContent::new(pb.as_path());
-                // path_content.path = pb.as_path();
-                // TODO: pb does not live long enough
-                // https://users.rust-lang.org/t/how-to-resolve-error-e0515-cannot-return-value-referencing-temporary-value-without-owned-value/43132
-                // }
+                    // path_content.child();
+                    let mut pb = path_content.path.to_path_buf();
+                    pb.push(path_content.files[path_content.selected].filename.clone());
+                    path_content = PathContent::new(pb);
+                    // path_content.path = pb.as_path();
+                    // TODO: pb does not live long enough
+                    // https://users.rust-lang.org/t/how-to-resolve-error-e0515-cannot-return-value-referencing-temporary-value-without-owned-value/43132
+                }
             }
             _ => {}
         }

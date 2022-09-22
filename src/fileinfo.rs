@@ -9,6 +9,7 @@ use users::get_user_by_uid;
 
 #[derive(Clone)]
 pub struct FileInfo {
+    pub path: path::PathBuf,
     pub filename: String,
     pub file_size: String,
     pub dir_symbol: String,
@@ -20,7 +21,7 @@ pub struct FileInfo {
 }
 
 impl FileInfo {
-    pub fn new(direntry: &DirEntry) -> Result<FileInfo, &'static str> {
+    pub fn new(direntry: &DirEntry, path: path::PathBuf) -> Result<FileInfo, &'static str> {
         let filename = extract_filename(&direntry);
         let file_size = human_size(extract_file_size(&direntry));
         let dir_symbol = extract_dir_symbol(&direntry);
@@ -29,8 +30,10 @@ impl FileInfo {
         let system_time = extract_datetime(&direntry);
         let is_selected = false;
         let is_dir = direntry.path().is_dir();
+        let own_path = path.join(filename.clone());
 
         Ok(FileInfo {
+            path: own_path,
             filename,
             file_size,
             dir_symbol,
@@ -58,34 +61,38 @@ pub fn expand(path: &path::Path) -> Result<path::PathBuf, std::io::Error> {
 }
 
 #[derive(Clone)]
-pub struct PathContent<'a> {
-    pub path: &'a path::Path,
+pub struct PathContent {
+    pub path: path::PathBuf,
     pub files: Vec<FileInfo>,
     pub selected: usize,
+    pub childpath: path::PathBuf,
 }
 
-impl<'a> PathContent<'a> {
-    pub fn new(path: &'a path::Path) -> Self {
-        let mut files: Vec<FileInfo> = read_dir(path)
-            .expect(&format!("Couldn't traverse path {:?}", path))
-            .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
+impl<'a> PathContent {
+    pub fn new(path: path::PathBuf) -> Self {
+        let mut files: Vec<FileInfo> = read_dir(&path)
+            .expect(&format!("Couldn't traverse path {:?}", &path))
+            .map(|direntry| FileInfo::new(&direntry.unwrap(), path.to_path_buf().clone()).unwrap())
             .collect();
         let selected: usize = 0;
         files[selected].select();
+        let childpath = files[selected].path.clone();
 
         Self {
             path,
             files,
             selected,
+            childpath,
         }
     }
 
     pub fn strings(&self) -> Vec<String> {
         let content =
-            read_dir(self.path).expect(&format!("Couldn't traverse path {:?}", &self.path));
+            read_dir(&self.path).expect(&format!("Couldn't traverse path {:?}", &self.path));
         content
             .map(|direntry| {
-                let fileinfo = FileInfo::new(&direntry.unwrap()).unwrap();
+                let fileinfo =
+                    FileInfo::new(&direntry.unwrap(), self.path.to_path_buf().clone()).unwrap();
                 format!(
                     "{}{} {} {} {} {}",
                     fileinfo.dir_symbol,
