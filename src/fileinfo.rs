@@ -2,14 +2,10 @@ use chrono::offset::Local;
 use chrono::DateTime;
 use std::fs::{canonicalize, metadata, read_dir, DirEntry};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
-// use std::os::unix::fs::PermissionsExt;
 use std::path;
 
 use users::get_user_by_uid;
 
-// TODO: filetype
-// https://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html
-// identifier les filetype lors du parcours
 #[derive(Clone)]
 pub struct FileInfo {
     pub filename: String,
@@ -28,12 +24,12 @@ pub struct FileInfo {
 
 impl FileInfo {
     pub fn new(direntry: &DirEntry) -> Result<FileInfo, &'static str> {
-        let filename = extract_filename(&direntry);
-        let file_size = human_size(extract_file_size(&direntry));
-        let dir_symbol = extract_dir_symbol(&direntry);
-        let permissions = extract_permissions_string(&direntry);
-        let owner = extract_username(&direntry);
-        let system_time = extract_datetime(&direntry);
+        let filename = extract_filename(direntry);
+        let file_size = human_size(extract_file_size(direntry));
+        let dir_symbol = extract_dir_symbol(direntry);
+        let permissions = extract_permissions_string(direntry);
+        let owner = extract_username(direntry);
+        let system_time = extract_datetime(direntry);
         let is_selected = false;
         let is_dir = direntry.path().is_dir();
 
@@ -42,14 +38,11 @@ impl FileInfo {
         let mut is_char: bool = false;
         let mut is_fifo: bool = false;
 
-        match direntry.metadata() {
-            Ok(meta) => {
-                is_block = meta.file_type().is_block_device();
-                is_socket = meta.file_type().is_socket();
-                is_char = meta.file_type().is_char_device();
-                is_fifo = meta.file_type().is_fifo();
-            }
-            Err(_) => (),
+        if let Ok(meta) = direntry.metadata() {
+            is_block = meta.file_type().is_block_device();
+            is_socket = meta.file_type().is_socket();
+            is_char = meta.file_type().is_char_device();
+            is_fifo = meta.file_type().is_fifo();
         }
 
         Ok(FileInfo {
@@ -61,11 +54,23 @@ impl FileInfo {
             system_time,
             is_selected,
             is_dir,
-            is_block: false,
-            is_char: false,
-            is_fifo: false,
-            is_socket: false,
+            is_block,
+            is_char,
+            is_fifo,
+            is_socket,
         })
+    }
+
+    fn format(&self) -> String {
+        format!(
+            "{}{} {} {} {} {}",
+            self.dir_symbol,
+            self.permissions,
+            self.file_size,
+            self.owner,
+            self.system_time,
+            self.filename,
+        )
     }
 }
 
@@ -79,10 +84,6 @@ impl FileInfo {
     }
 }
 
-pub fn expand(path: &path::Path) -> Result<path::PathBuf, std::io::Error> {
-    canonicalize(path)
-}
-
 #[derive(Clone)]
 pub struct PathContent {
     pub path: path::PathBuf,
@@ -90,12 +91,13 @@ pub struct PathContent {
     pub selected: usize,
 }
 
-impl<'a> PathContent {
+impl PathContent {
     pub fn new(path: path::PathBuf) -> Self {
         let mut files: Vec<FileInfo> = read_dir(&path)
-            .expect(&format!("Couldn't traverse path {:?}", &path))
+            .unwrap_or_else(|_| panic!("Couldn't traverse path {:?}", &path))
             .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
             .collect();
+        files.sort_by_key(|file| file.filename.clone());
         let selected: usize = 0;
         files[selected].select();
 
@@ -107,21 +109,9 @@ impl<'a> PathContent {
     }
 
     pub fn strings(&self) -> Vec<String> {
-        let content =
-            read_dir(&self.path).expect(&format!("Couldn't traverse path {:?}", &self.path));
-        content
-            .map(|direntry| {
-                let fileinfo = FileInfo::new(&direntry.unwrap()).unwrap();
-                format!(
-                    "{}{} {} {} {} {}",
-                    fileinfo.dir_symbol,
-                    fileinfo.permissions,
-                    fileinfo.file_size,
-                    fileinfo.owner,
-                    fileinfo.system_time,
-                    fileinfo.filename,
-                )
-            })
+        self.files
+            .iter()
+            .map(|fileinfo| fileinfo.format())
             .collect()
     }
 
@@ -140,22 +130,6 @@ impl<'a> PathContent {
             self.files[self.selected].select();
         }
     }
-
-    // pub fn child(&self) -> Self {
-    //     let mut pb = self.path.to_path_buf();
-    //     pb.push(self.files[self.selected].filename);
-    //     let p = pb.as_path();
-    //     // let mut files: Vec<FileInfo> = read_dir(p)
-    //     //     .expect(&format!("Couldn't traverse path {:?}", p))
-    //     //     .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
-    //     //     .collect();
-    //     // let selected: usize = 0;
-    //     PathContent::new(p)
-    //     // files[selected].select();
-    //     // // self.path = p;
-    //     // self.files = files;
-    //     // self.selected = selected;
-    // }
 }
 
 fn extract_datetime(direntry: &DirEntry) -> String {
@@ -181,20 +155,10 @@ fn extract_permissions_string(direntry: &DirEntry) -> String {
         Err(_) => String::from("---"),
     }
 }
-//
-// fn get_path_content(path: &path::Path) -> Result<Vec<path::PathBuf>, Box<dyn Error>> {
-//     let mut entries = read_dir(&path)?
-//         .map(|res| res.map(|e| e.path()))
-//         .collect::<Result<Vec<_>, io::Error>>()?;
-//
-//     entries.sort();
-//
-//     Ok(entries)
-// }
 
 fn convert_octal_mode(mode: u32) -> String {
     let rwx = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
-    String::from(rwx[(mode & 7 as u32) as usize])
+    String::from(rwx[(mode & 7_u32) as usize])
 }
 
 fn extract_username(direntry: &DirEntry) -> String {
@@ -208,10 +172,6 @@ fn extract_username(direntry: &DirEntry) -> String {
         ),
         Err(_) => String::from(""),
     }
-    // let meta = metadata(direntry.path());
-    // let owner_id: u32 = meta.unwrap().uid();
-    // let user = get_user_by_uid(owner_id).unwrap();
-    // String::from(user.name().to_str().unwrap())
 }
 
 fn extract_dir_symbol(direntry: &DirEntry) -> String {
@@ -230,10 +190,10 @@ fn extract_file_size(direntry: &DirEntry) -> u64 {
 
 fn human_size(bytes: u64) -> String {
     let size = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"];
-    let factor = (bytes.to_string().chars().count() as u64 - 1) / 3 as u64;
+    let factor = (bytes.to_string().chars().count() as u64 - 1) / 3_u64;
     let human_size = format!(
         "{:>3}{:<1}",
-        bytes / (1024 as u64).pow(factor as u32),
+        bytes / (1024_u64).pow(factor as u32),
         size[factor as usize]
     );
     human_size

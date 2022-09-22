@@ -1,10 +1,11 @@
-use std::cmp::{max, min};
+use std::cmp::min;
 use std::path;
+
 use tuikit::attr::*;
 use tuikit::event::{Event, Key};
 use tuikit::term::{Term, TermHeight};
 
-use fm::fileinfo::{expand, FileInfo, PathContent};
+use fm::fileinfo::{FileInfo, PathContent};
 
 pub mod fileinfo;
 
@@ -24,6 +25,8 @@ pub mod fileinfo;
 const PERM_COL: usize = 0;
 const OWNE_COL: usize = 16;
 const NAME_COL: usize = 44;
+const WINDOW_PADDING: usize = 4;
+const WINDOW_MARGIN_TOP: usize = 1;
 
 struct Col {
     col: usize,
@@ -53,6 +56,54 @@ impl Col {
     }
 }
 
+struct FilesWindow {
+    top: usize,
+    bottom: usize,
+    len: usize,
+    height: usize,
+}
+
+impl FilesWindow {
+    fn new(len: usize, height: usize) -> Self {
+        FilesWindow {
+            top: 0,
+            bottom: min(len, height),
+            len,
+            height,
+        }
+    }
+
+    fn move_down(&mut self) {
+        self.top += 1;
+        self.bottom += 1
+    }
+
+    fn move_up(&mut self) {
+        self.top -= 1;
+        self.bottom -= 1;
+    }
+
+    fn scroll_up_to(&mut self, row: usize) {
+        if row < self.top + WINDOW_PADDING && self.top > 0 {
+            self.move_up();
+        }
+    }
+    fn scroll_down_to(&mut self, row: usize) {
+        if self.len < self.height {
+            return;
+        }
+        if row > self.bottom - WINDOW_PADDING && self.bottom < self.len - WINDOW_MARGIN_TOP {
+            self.move_down();
+        }
+    }
+
+    fn reset(&mut self, len: usize) {
+        self.len = len;
+        self.top = 0;
+        self.bottom = min(len, self.height);
+    }
+}
+
 impl Default for Col {
     fn default() -> Self {
         Self::new()
@@ -75,8 +126,6 @@ fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
         attr.fg = Color::BLUE;
     } else if fileinfo.is_socket {
         attr.fg = Color::CYAN;
-    } else if fileinfo.is_block {
-        attr.fg = Color::GREEN;
     }
     if fileinfo.is_selected {
         attr.effect = Effect::REVERSE;
@@ -85,44 +134,43 @@ fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
 }
 
 fn main() {
-    let path = expand(path::Path::new(".")).unwrap();
+    let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
+    let (_, height) = term.term_size().unwrap();
+
+    let path = std::fs::canonicalize(path::Path::new(".")).unwrap();
     let mut path_content = PathContent::new(path);
-
-    let mut text = path_content.path.to_str().unwrap();
-    let term: Term<()> = Term::with_height(TermHeight::Percent(30)).unwrap();
-    let mut row = 1;
+    let mut path_text: &str;
+    let mut file_index = 0;
     let mut col = Col::default();
-
-    let _ = term.print(0, 0, text);
-    let _ = term.present();
+    let mut window = FilesWindow::new(path_content.files.len(), height);
 
     while let Ok(ev) = term.poll_event() {
-        text = path_content.path.to_str().unwrap();
         let _ = term.clear();
-        let _ = term.print(0, 0, text);
-
-        // let filechild = path_content.files[path_content.selected].filename.clone();
-        // let pathbufchild = path_content.path.to_path_buf().join(&filechild);
-        // let pathchild = pathbufchild.as_path();
-
-        let (width, height) = term.term_size().unwrap();
+        let (_width, height) = term.term_size().unwrap();
+        window.height = height;
         match ev {
             Event::Key(Key::ESC) | Event::Key(Key::Char('q')) => break,
             Event::Key(Key::Up) => {
-                row = max(row - 1, 1);
+                if file_index > 0 {
+                    file_index -= 1;
+                }
                 path_content.select_prev();
+                window.scroll_up_to(file_index);
             }
             Event::Key(Key::Down) => {
-                row = min(row + 1, min(height - 1, path_content.files.len()));
+                if file_index < path_content.files.len() - WINDOW_MARGIN_TOP {
+                    file_index += 1;
+                }
                 path_content.select_next();
+                window.scroll_down_to(file_index);
             }
             Event::Key(Key::CtrlLeft) => col.prev(),
             Event::Key(Key::CtrlRight) => col.next(),
             Event::Key(Key::Left) => match path_content.path.parent() {
                 Some(parent) => {
                     path_content = PathContent::new(path::PathBuf::from(parent));
-                    row = 1;
                     col = Col::default();
+                    window.reset(path_content.files.len());
                 }
                 None => (),
             },
@@ -131,17 +179,39 @@ fn main() {
                     let mut pb = path_content.path.to_path_buf();
                     pb.push(path_content.files[path_content.selected].filename.clone());
                     path_content = PathContent::new(pb);
-                    row = 1;
                     col = Col::default();
+                    window.reset(path_content.files.len());
                 }
             }
             _ => {}
         }
-
-        for (i, string) in path_content.strings().into_iter().enumerate() {
-            let _ = term.print_with_attr(i + 1, 0, &string, fileinfo_attr(&path_content.files[i]));
+        path_text = path_content.path.to_str().unwrap();
+        let _ = term.print(
+            0,
+            0,
+            &format!(
+                "h: {}, s: {} wt: {} wb: {} - {}",
+                height,
+                path_content.files.len(),
+                window.top,
+                window.bottom,
+                path_text
+            ),
+        );
+        let strings = path_content.strings();
+        for (i, string) in strings
+            .iter()
+            .enumerate()
+            .take(min(strings.len(), window.bottom))
+            .skip(window.top)
+        {
+            let row = i + WINDOW_MARGIN_TOP - window.top;
+            let _ = term.print_with_attr(row, 0, string, fileinfo_attr(&path_content.files[i]));
+            if path_content.files[i].is_selected {
+                let _ = term.set_cursor(row, col.col);
+            }
         }
-        let _ = term.set_cursor(row, col.col);
+
         let _ = term.present();
     }
 }
