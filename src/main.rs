@@ -4,7 +4,7 @@ use tuikit::attr::*;
 use tuikit::event::{Event, Key};
 use tuikit::term::{Term, TermHeight};
 
-use fm::fileinfo::{expand, PathContent};
+use fm::fileinfo::{expand, FileInfo, PathContent};
 
 pub mod fileinfo;
 
@@ -57,6 +57,33 @@ impl Default for Col {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
+    let bg = Color::BLACK;
+    let effect = Effect::empty();
+    let mut attr = Attr {
+        fg: Color::RED,
+        bg,
+        effect,
+    };
+    if fileinfo.is_dir {
+        attr.fg = Color::LIGHT_CYAN;
+    } else if fileinfo.is_block {
+        attr.fg = Color::YELLOW;
+    } else if fileinfo.is_char {
+        attr.fg = Color::MAGENTA;
+    } else if fileinfo.is_fifo {
+        attr.fg = Color::BLUE;
+    } else if fileinfo.is_socket {
+        attr.fg = Color::RED;
+    } else if fileinfo.is_block {
+        attr.fg = Color::GREEN;
+    }
+    if fileinfo.is_selected {
+        attr.effect = Effect::REVERSE;
+    }
+    attr
 }
 
 fn main() {
@@ -114,25 +141,9 @@ fn main() {
         }
 
         // TODO: colorier selon filetype, reverse la ligne courante
-        let attr_unselected = Attr {
-            fg: Color::LIGHT_CYAN,
-            ..Attr::default()
-        };
-        let attr_selected = Attr {
-            fg: Color::RED,
-            ..Attr::default()
-        };
+
         for (i, string) in path_content.strings().into_iter().enumerate() {
-            let _ = term.print_with_attr(
-                i + 1,
-                0,
-                &string,
-                if path_content.files[i].is_selected {
-                    attr_selected
-                } else {
-                    attr_unselected
-                },
-            );
+            let _ = term.print_with_attr(i + 1, 0, &string, fileinfo_attr(&path_content.files[i]));
         }
         let _ = term.set_cursor(row, col.col);
         let _ = term.present();

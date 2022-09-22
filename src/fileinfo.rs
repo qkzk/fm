@@ -1,7 +1,7 @@
 use chrono::offset::Local;
 use chrono::DateTime;
 use std::fs::{canonicalize, metadata, read_dir, DirEntry};
-use std::os::unix::fs::MetadataExt;
+use std::os::unix::fs::{FileTypeExt, MetadataExt};
 // use std::os::unix::fs::PermissionsExt;
 use std::path;
 
@@ -20,6 +20,10 @@ pub struct FileInfo {
     pub system_time: String,
     pub is_selected: bool,
     pub is_dir: bool,
+    pub is_block: bool,
+    pub is_char: bool,
+    pub is_fifo: bool,
+    pub is_socket: bool,
 }
 
 impl FileInfo {
@@ -33,6 +37,21 @@ impl FileInfo {
         let is_selected = false;
         let is_dir = direntry.path().is_dir();
 
+        let mut is_block: bool = false;
+        let mut is_socket: bool = false;
+        let mut is_char: bool = false;
+        let mut is_fifo: bool = false;
+
+        match direntry.metadata() {
+            Ok(meta) => {
+                is_block = meta.file_type().is_block_device();
+                is_socket = meta.file_type().is_socket();
+                is_char = meta.file_type().is_char_device();
+                is_fifo = meta.file_type().is_fifo();
+            }
+            Err(_) => (),
+        }
+
         Ok(FileInfo {
             filename,
             file_size,
@@ -42,6 +61,10 @@ impl FileInfo {
             system_time,
             is_selected,
             is_dir,
+            is_block: false,
+            is_char: false,
+            is_fifo: false,
+            is_socket: false,
         })
     }
 }
