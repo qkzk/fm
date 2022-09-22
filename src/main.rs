@@ -113,6 +113,7 @@ fn main() {
             _ => {}
         }
 
+        // TODO: colorier selon filetype, reverse la ligne courante
         let attr_unselected = Attr {
             fg: Color::LIGHT_CYAN,
             ..Attr::default()

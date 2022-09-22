@@ -7,6 +7,9 @@ use std::path;
 
 use users::get_user_by_uid;
 
+// TODO: filetype
+// https://doc.rust-lang.org/nightly/std/os/unix/fs/trait.FileTypeExt.html
+// identifier les filetype lors du parcours
 #[derive(Clone)]
 pub struct FileInfo {
     pub filename: String,
