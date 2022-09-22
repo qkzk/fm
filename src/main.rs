@@ -138,8 +138,6 @@ fn main() {
             _ => {}
         }
 
-        // TODO: colorier selon filetype, reverse la ligne courante
-
         for (i, string) in path_content.strings().into_iter().enumerate() {
             let _ = term.print_with_attr(i + 1, 0, &string, fileinfo_attr(&path_content.files[i]));
         }
