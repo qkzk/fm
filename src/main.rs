@@ -15,10 +15,48 @@ pub mod fileinfo;
 //     Ok(())
 // }
 
-fn main1() {
-    let path = expand(path::Path::new(".")).unwrap();
-    let parent = path.parent();
-    println!("{:?}, {:?}", path, parent);
+// fn main1() {
+//     let path = expand(path::Path::new(".")).unwrap();
+//     let parent = path.parent();
+//     println!("{:?}, {:?}", path, parent);
+// }
+
+const PERM_COL: usize = 0;
+const OWNE_COL: usize = 16;
+const NAME_COL: usize = 44;
+
+struct Col {
+    col: usize,
+}
+
+impl Col {
+    pub fn new() -> Self {
+        Self { col: NAME_COL }
+    }
+
+    pub fn prev(&mut self) {
+        match self.col {
+            PERM_COL => self.col = NAME_COL,
+            OWNE_COL => self.col = PERM_COL,
+            NAME_COL => self.col = OWNE_COL,
+            _ => (),
+        }
+    }
+
+    pub fn next(&mut self) {
+        match self.col {
+            PERM_COL => self.col = OWNE_COL,
+            OWNE_COL => self.col = NAME_COL,
+            NAME_COL => self.col = PERM_COL,
+            _ => (),
+        }
+    }
+}
+
+impl Default for Col {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 fn main() {
@@ -28,7 +66,7 @@ fn main() {
     let mut text = path_content.path.to_str().unwrap();
     let term: Term<()> = Term::with_height(TermHeight::Percent(30)).unwrap();
     let mut row = 1;
-    let mut col = 0;
+    let mut col = Col::default();
 
     let _ = term.print(0, 0, text);
     let _ = term.present();
@@ -37,8 +75,6 @@ fn main() {
         text = path_content.path.to_str().unwrap();
         let _ = term.clear();
         let _ = term.print(0, 0, text);
-        let childpathbuf = path_content.childpath.clone();
-        let childpath = childpathbuf.as_path();
 
         // let filechild = path_content.files[path_content.selected].filename.clone();
         // let pathbufchild = path_content.path.to_path_buf().join(&filechild);
@@ -55,25 +91,23 @@ fn main() {
                 row = min(row + 1, min(height - 1, path_content.files.len()));
                 path_content.select_next();
             }
-            // Event::Key(Key::Left) => col = max(col, 1) - 1,
+            Event::Key(Key::CtrlLeft) => col.prev(),
+            Event::Key(Key::CtrlRight) => col.next(),
             Event::Key(Key::Left) => match path_content.path.parent() {
-                Some(parent) => path_content = PathContent::new(path::PathBuf::from(parent)),
+                Some(parent) => {
+                    path_content = PathContent::new(path::PathBuf::from(parent));
+                    row = 1;
+                    col = Col::default();
+                }
                 None => (),
             },
-            // Event::Key(Key::Right) => col = min(col + 1, width - 1),
             Event::Key(Key::Right) => {
                 if path_content.files[path_content.selected].is_dir {
-                    //     // path_content = PathContent::new(pathchild);
-                    //     path_content = PathContent::new(childpath);
-                    // }
-
-                    // path_content.child();
                     let mut pb = path_content.path.to_path_buf();
                     pb.push(path_content.files[path_content.selected].filename.clone());
                     path_content = PathContent::new(pb);
-                    // path_content.path = pb.as_path();
-                    // TODO: pb does not live long enough
-                    // https://users.rust-lang.org/t/how-to-resolve-error-e0515-cannot-return-value-referencing-temporary-value-without-owned-value/43132
+                    row = 1;
+                    col = Col::default();
                 }
             }
             _ => {}
@@ -99,7 +133,7 @@ fn main() {
                 },
             );
         }
-        let _ = term.set_cursor(row, col);
+        let _ = term.set_cursor(row, col.col);
         let _ = term.present();
     }
 }
