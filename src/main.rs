@@ -60,15 +60,13 @@ impl Default for Col {
 }
 
 fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
-    let bg = Color::BLACK;
-    let effect = Effect::empty();
     let mut attr = Attr {
-        fg: Color::RED,
-        bg,
-        effect,
+        fg: Color::WHITE,
+        bg: Color::default(),
+        effect: Effect::empty(),
     };
     if fileinfo.is_dir {
-        attr.fg = Color::LIGHT_CYAN;
+        attr.fg = Color::RED;
     } else if fileinfo.is_block {
         attr.fg = Color::YELLOW;
     } else if fileinfo.is_char {
@@ -76,7 +74,7 @@ fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
     } else if fileinfo.is_fifo {
         attr.fg = Color::BLUE;
     } else if fileinfo.is_socket {
-        attr.fg = Color::RED;
+        attr.fg = Color::CYAN;
     } else if fileinfo.is_block {
         attr.fg = Color::GREEN;
     }
