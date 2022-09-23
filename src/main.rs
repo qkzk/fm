@@ -205,14 +205,16 @@ fn main() {
                 path_content.show_hidden = !path_content.show_hidden;
                 path_content.reset_files();
             }
-            Event::Key(Key::Ctrl('r')) => {
-                mode = Mode::Rename;
-                let oldname = path_content.files[path_content.selected].filename.clone();
-                oldpath = path_content.path.to_path_buf();
-                oldpath.push(oldname);
-
-                path_content.files[path_content.selected].filename = "".to_string();
-            }
+            Event::Key(Key::Ctrl('r')) => match mode {
+                Mode::Normal => {
+                    mode = Mode::Rename;
+                    let oldname = path_content.files[path_content.selected].filename.clone();
+                    oldpath = path_content.path.to_path_buf();
+                    oldpath.push(oldname);
+                    path_content.files[path_content.selected].filename = "".to_string();
+                }
+                _ => (),
+            },
             Event::Key(Key::Char(c)) => match mode {
                 Mode::Rename => {
                     path_content.files[path_content.selected].filename.push(c);
