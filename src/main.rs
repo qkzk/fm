@@ -135,6 +135,7 @@ fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
     attr
 }
 
+#[derive(Debug)]
 enum Mode {
     Normal,
     Rename,
@@ -236,11 +237,12 @@ fn main() {
             0,
             0,
             &format!(
-                "h: {}, s: {} wt: {} wb: {} - c: {:?} - {}",
+                "h: {}, s: {} wt: {} wb: {}  m: {:?} - c: {:?} - {}",
                 height,
                 path_content.files.len(),
                 window.top,
                 window.bottom,
+                mode,
                 config,
                 path_text
             ),
