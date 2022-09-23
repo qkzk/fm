@@ -1,6 +1,8 @@
 use std::cmp::min;
 use std::collections::HashSet;
+use std::fmt;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::{env, path, process};
 
 use tuikit::attr::*;
@@ -12,52 +14,9 @@ use fm::fileinfo::{FileInfo, PathContent};
 
 pub mod fileinfo;
 
-// fn main2() -> Result<(), io::Error> {
-//     let stdout = io::stdout();
-//     let backend = CrosstermBackend::new(stdout);
-//     let mut terminal = Terminal::new(backend)?;
-//     Ok(())
-// }
-
-// fn main1() {
-//     let path = expand(path::Path::new(".")).unwrap();
-//     let parent = path.parent();
-//     println!("{:?}, {:?}", path, parent);
-// }
-
-const PERM_COL: usize = 0;
-const OWNE_COL: usize = 16;
-const NAME_COL: usize = 44;
 const WINDOW_PADDING: usize = 4;
 const WINDOW_MARGIN_TOP: usize = 1;
-
-struct Col {
-    col: usize,
-}
-
-impl Col {
-    pub fn new() -> Self {
-        Self { col: NAME_COL }
-    }
-
-    pub fn prev(&mut self) {
-        match self.col {
-            PERM_COL => self.col = NAME_COL,
-            OWNE_COL => self.col = PERM_COL,
-            NAME_COL => self.col = OWNE_COL,
-            _ => (),
-        }
-    }
-
-    pub fn next(&mut self) {
-        match self.col {
-            PERM_COL => self.col = OWNE_COL,
-            OWNE_COL => self.col = NAME_COL,
-            NAME_COL => self.col = PERM_COL,
-            _ => (),
-        }
-    }
-}
+const EDIT_BOX_OFFSET: usize = 10;
 
 struct FilesWindow {
     top: usize,
@@ -100,12 +59,6 @@ impl FilesWindow {
     }
 }
 
-impl Default for Col {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
     let mut attr = Attr {
         fg: Color::WHITE,
@@ -129,15 +82,26 @@ fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
     attr
 }
 
-#[derive(Debug)]
+#[derive(Clone)]
 enum Mode {
     Normal,
     Rename,
-    // Chmod,
+    Chmod,
     Newfile,
-    // Newdir,
+    Newdir,
 }
 
+impl fmt::Debug for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Mode::Normal => write!(f, "Normal:  "),
+            Mode::Rename => write!(f, "Rename:  "),
+            Mode::Chmod => write!(f, "Chmod:   "),
+            Mode::Newfile => write!(f, "Newfile: "),
+            Mode::Newdir => write!(f, "Newdir:  "),
+        }
+    }
+}
 fn main() {
     let mut config = Config::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
@@ -149,76 +113,93 @@ fn main() {
 
     let path = std::fs::canonicalize(path::Path::new(&config.path)).unwrap();
     let mut path_content = PathContent::new(path, config.hidden);
-    let mut path_text: &str;
     let mut file_index = 0;
-    let mut col = Col::default();
     let mut window = FilesWindow::new(path_content.files.len(), height);
     let mut oldpath: path::PathBuf = path::PathBuf::new();
     let mut flagged = HashSet::new();
-    let mut new_filename = "".to_string();
+    let mut input_string = "".to_string();
+    let mut col = 0_usize;
 
     while let Ok(ev) = term.poll_event() {
         let _ = term.clear();
         let (_width, height) = term.term_size().unwrap();
         window.height = height;
         match ev {
-            Event::Key(Key::ESC | Key::Ctrl('q')) => break,
+            Event::Key(Key::ESC) => {
+                input_string.clear();
+                path_content.reset_files();
+                window.reset(path_content.files.len());
+                mode = Mode::Normal;
+                col = 0;
+            }
             Event::Key(Key::Up) => {
-                if file_index > 0 {
-                    file_index -= 1;
+                if let Mode::Normal = mode {
+                    if file_index > 0 {
+                        file_index -= 1;
+                    }
+                    path_content.select_prev();
+                    window.scroll_up_to(file_index);
                 }
-                path_content.select_prev();
-                window.scroll_up_to(file_index);
             }
             Event::Key(Key::Down) => {
-                if file_index < path_content.files.len() - WINDOW_MARGIN_TOP {
-                    file_index += 1;
-                }
-                path_content.select_next();
-                window.scroll_down_to(file_index);
-            }
-            Event::Key(Key::CtrlLeft) => col.prev(),
-            Event::Key(Key::CtrlRight) => col.next(),
-            Event::Key(Key::Left) => match path_content.path.parent() {
-                Some(parent) => {
-                    path_content = PathContent::new(path::PathBuf::from(parent), config.hidden);
-                    col = Col::default();
-                    window.reset(path_content.files.len());
-                    flagged.clear();
-                }
-                None => (),
-            },
-            Event::Key(Key::Right) => {
-                if path_content.files[path_content.selected].is_dir {
-                    path_content = PathContent::new(
-                        path_content.files[path_content.selected].path.clone(),
-                        config.hidden,
-                    );
-                    col = Col::default();
-                    window.reset(path_content.files.len());
-                    flagged.clear();
-                }
-            }
-            Event::Key(Key::Ctrl('a')) => {
-                config.hidden = !config.hidden;
-                path_content.show_hidden = !path_content.show_hidden;
-                path_content.reset_files();
-            }
-            Event::Key(Key::Ctrl('r')) => {
                 if let Mode::Normal = mode {
-                    mode = Mode::Rename;
-                    let oldname = path_content.files[path_content.selected].filename.clone();
-                    oldpath = path_content.path.to_path_buf();
-                    oldpath.push(oldname);
-                    path_content.files[path_content.selected].filename = "".to_string();
+                    if file_index < path_content.files.len() - WINDOW_MARGIN_TOP {
+                        file_index += 1;
+                    }
+                    path_content.select_next();
+                    window.scroll_down_to(file_index);
                 }
             }
-            Event::Key(Key::Char(c)) => match mode {
-                Mode::Rename => {
-                    path_content.files[path_content.selected].filename.push(c);
+            Event::Key(Key::Left) => match mode {
+                Mode::Normal => match path_content.path.parent() {
+                    Some(parent) => {
+                        path_content = PathContent::new(path::PathBuf::from(parent), config.hidden);
+                        window.reset(path_content.files.len());
+                        flagged.clear();
+                        file_index = 0;
+                        col = 0;
+                    }
+                    None => (),
+                },
+                Mode::Rename | Mode::Chmod | Mode::Newdir | Mode::Newfile => {
+                    if col > 0 {
+                        col -= 1
+                    }
                 }
-                Mode::Newfile => {
-                    new_filename.push(c);
+            },
+
+            Event::Key(Key::Right) => match mode {
+                Mode::Normal => {
+                    if path_content.files[path_content.selected].is_dir {
+                        path_content = PathContent::new(
+                            path_content.files[path_content.selected].path.clone(),
+                            config.hidden,
+                        );
+                        window.reset(path_content.files.len());
+                        flagged.clear();
+                        file_index = 0;
+                        col = 0;
+                    }
+                }
+                Mode::Rename | Mode::Chmod | Mode::Newdir | Mode::Newfile => {
+                    if col < input_string.len() {
+                        col += 1
+                    }
+                }
+            },
+            Event::Key(Key::Backspace) => match mode {
+                Mode::Rename | Mode::Newdir | Mode::Chmod | Mode::Newfile => {
+                    if col > 0 && !input_string.is_empty() {
+                        input_string.remove(col - 1);
+                        col -= 1;
+                    }
+                }
+                Mode::Normal => (),
+            },
+            Event::Key(Key::Char(c)) => match mode {
+                Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename => {
+                    input_string.insert(col, c);
+                    col += 1;
                 }
                 Mode::Normal => match c {
                     ' ' => {
@@ -233,18 +214,33 @@ fn main() {
                         path_content.select_next();
                         window.scroll_down_to(file_index);
                     }
-                    'n' => {
-                        mode = Mode::Newfile;
+                    'a' => {
+                        config.hidden = !config.hidden;
+                        path_content.show_hidden = !path_content.show_hidden;
+                        path_content.reset_files();
+                        window.reset(path_content.files.len())
                     }
-                    'u' => {
-                        flagged.clear();
+                    'd' => mode = Mode::Newdir,
+                    'm' => mode = Mode::Chmod,
+                    'n' => mode = Mode::Newfile,
+                    'r' => {
+                        mode = Mode::Rename;
+                        let oldname = path_content.files[path_content.selected].filename.clone();
+                        oldpath = path_content.path.to_path_buf();
+                        oldpath.push(oldname);
                     }
+                    'q' => break,
+                    'u' => flagged.clear(),
                     'x' => {
                         flagged.iter().for_each(|pathbuf| {
-                            fs::remove_file(pathbuf).expect("Couldn't remove file");
+                            if pathbuf.is_dir() {
+                                fs::remove_dir_all(pathbuf).unwrap_or(());
+                            } else {
+                                fs::remove_file(pathbuf).unwrap_or(());
+                            }
                         });
                         flagged.clear();
-                        path_content = PathContent::new(path_content.path, config.hidden);
+                        path_content.reset_files();
                         window.reset(path_content.files.len());
                     }
                     _ => (),
@@ -252,40 +248,59 @@ fn main() {
             },
             Event::Key(Key::Enter) => {
                 if let Mode::Rename = mode {
-                    let mut newpath = path_content.path.to_path_buf();
-                    newpath.push(path_content.files[path_content.selected].filename.clone());
-                    fs::rename(oldpath.clone(), newpath).expect("Couldn't rename the file");
-                } else if let Mode::Newfile = mode {
-                    fs::File::create(path_content.path.join(new_filename.clone()))
-                        .expect("Couldn't create file");
-                    new_filename.clear();
+                    fs::rename(
+                        oldpath.clone(),
+                        path_content.path.to_path_buf().join(&input_string),
+                    )
+                    .unwrap_or(());
+                    input_string.clear();
                     path_content = PathContent::new(path_content.path, config.hidden);
                     window.reset(path_content.files.len());
+                } else if let Mode::Newfile = mode {
+                    if fs::File::create(path_content.path.join(input_string.clone())).is_ok() {}
+                    input_string.clear();
+                    path_content = PathContent::new(path_content.path, config.hidden);
+                    window.reset(path_content.files.len());
+                } else if let Mode::Newdir = mode {
+                    fs::create_dir(path_content.path.join(input_string.clone())).unwrap_or(());
+                    input_string.clear();
+                    path_content = PathContent::new(path_content.path, config.hidden);
+                    window.reset(path_content.files.len());
+                } else if let Mode::Chmod = mode {
+                    let permissions: u32 = u32::from_str_radix(&input_string, 8).unwrap_or(0_u32);
+                    if permissions <= 0o777 {
+                        fs::set_permissions(
+                            path_content.files[file_index].path.clone(),
+                            fs::Permissions::from_mode(permissions),
+                        )
+                        .unwrap_or(());
+                    }
+                    input_string.clear();
+                    path_content = PathContent::new(path_content.path, config.hidden);
                 }
+                col = 0;
                 mode = Mode::Normal;
             }
             _ => {}
         }
-        path_text = path_content.path.to_str().unwrap();
-        let normal_first_row = format!(
-            "h: {}, s: {} wt: {} wb: {}  m: {:?} - c: {:?} - {}",
-            height,
-            path_content.files.len(),
-            window.top,
-            window.bottom,
-            mode,
-            config,
-            path_text
-        );
-        let new_file_first_row = format!("New file: {}", new_filename);
-        let _ = term.print(
-            0,
-            0,
-            match mode {
-                Mode::Newfile => &new_file_first_row,
-                _ => &normal_first_row,
-            },
-        );
+        let first_row: String = match mode {
+            Mode::Normal => {
+                format!(
+                    "h: {}, s: {} wt: {} wb: {}  m: {:?} - c: {:?} - {}",
+                    height,
+                    path_content.files.len(),
+                    window.top,
+                    window.bottom,
+                    mode,
+                    config,
+                    path_content.path.to_str().unwrap()
+                )
+            }
+            _ => {
+                format!("{:?} {}", mode.clone(), input_string.clone())
+            }
+        };
+        let _ = term.print(0, 0, &first_row);
         let strings = path_content.strings();
         for (i, string) in strings
             .iter()
@@ -299,9 +314,11 @@ fn main() {
                 attr.effect |= Effect::UNDERLINE;
             }
             let _ = term.print_with_attr(row, 0, string, attr);
-            if path_content.files[i].is_selected {
-                let _ = term.set_cursor(row, col.col);
-            }
+        }
+        if let Mode::Normal = mode {
+            let _ = term.set_cursor(0, 0);
+        } else {
+            let _ = term.set_cursor(0, col + EDIT_BOX_OFFSET);
         }
 
         let _ = term.present();
