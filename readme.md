@@ -8,12 +8,12 @@
 - [x] scroll
     <!-- TODO: bug quand on a trop de fichiers, on peut scroll jusqu'en bas -->
 - [x] load from anywhere
-- [x] args : dirpath
+- [x] args : dirpath & show hidden (-a)
+- [x] toggle hidden
 
 
 ## TODO
 
-- [ ] toggle hidden
 - [ ] manipuler :
   - [ ] supprimer
   - [ ] insérer fichier / dossier
