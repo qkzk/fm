@@ -70,33 +70,26 @@ impl FilesWindow {
     fn new(len: usize, height: usize) -> Self {
         FilesWindow {
             top: 0,
-            bottom: min(len, height),
+            bottom: min(len, height - 3),
             len,
-            height,
+            height: height - 3,
         }
-    }
-
-    fn move_down(&mut self) {
-        self.top += 1;
-        self.bottom += 1
-    }
-
-    fn move_up(&mut self) {
-        self.top -= 1;
-        self.bottom -= 1;
     }
 
     fn scroll_up_to(&mut self, row: usize) {
         if row < self.top + WINDOW_PADDING && self.top > 0 {
-            self.move_up();
+            self.top -= 1;
+            self.bottom -= 1;
         }
     }
+
     fn scroll_down_to(&mut self, row: usize) {
         if self.len < self.height {
             return;
         }
         if row > self.bottom - WINDOW_PADDING && self.bottom < self.len - WINDOW_MARGIN_TOP {
-            self.move_down();
+            self.top += 1;
+            self.bottom += 1;
         }
     }
 
@@ -141,7 +134,7 @@ enum Mode {
     Normal,
     Rename,
     // Chmod,
-    // Newfile,
+    Newfile,
     // Newdir,
 }
 
@@ -162,6 +155,7 @@ fn main() {
     let mut window = FilesWindow::new(path_content.files.len(), height);
     let mut oldpath: path::PathBuf = path::PathBuf::new();
     let mut flagged = HashSet::new();
+    let mut new_filename = "".to_string();
 
     while let Ok(ev) = term.poll_event() {
         let _ = term.clear();
@@ -223,6 +217,9 @@ fn main() {
                 Mode::Rename => {
                     path_content.files[path_content.selected].filename.push(c);
                 }
+                Mode::Newfile => {
+                    new_filename.push(c);
+                }
                 Mode::Normal => match c {
                     ' ' => {
                         if flagged.contains(&path_content.files[file_index].path) {
@@ -236,6 +233,9 @@ fn main() {
                         path_content.select_next();
                         window.scroll_down_to(file_index);
                     }
+                    'n' => {
+                        mode = Mode::Newfile;
+                    }
                     'u' => {
                         flagged.clear();
                     }
@@ -245,6 +245,7 @@ fn main() {
                         });
                         flagged.clear();
                         path_content = PathContent::new(path_content.path, config.hidden);
+                        window.reset(path_content.files.len());
                     }
                     _ => (),
                 },
@@ -254,25 +255,36 @@ fn main() {
                     let mut newpath = path_content.path.to_path_buf();
                     newpath.push(path_content.files[path_content.selected].filename.clone());
                     fs::rename(oldpath.clone(), newpath).expect("Couldn't rename the file");
+                } else if let Mode::Newfile = mode {
+                    fs::File::create(path_content.path.join(new_filename.clone()))
+                        .expect("Couldn't create file");
+                    new_filename.clear();
+                    path_content = PathContent::new(path_content.path, config.hidden);
+                    window.reset(path_content.files.len());
                 }
                 mode = Mode::Normal;
             }
             _ => {}
         }
         path_text = path_content.path.to_str().unwrap();
+        let normal_first_row = format!(
+            "h: {}, s: {} wt: {} wb: {}  m: {:?} - c: {:?} - {}",
+            height,
+            path_content.files.len(),
+            window.top,
+            window.bottom,
+            mode,
+            config,
+            path_text
+        );
+        let new_file_first_row = format!("New file: {}", new_filename);
         let _ = term.print(
             0,
             0,
-            &format!(
-                "h: {}, s: {} wt: {} wb: {}  m: {:?} - c: {:?} - {}",
-                height,
-                path_content.files.len(),
-                window.top,
-                window.bottom,
-                mode,
-                config,
-                path_text
-            ),
+            match mode {
+                Mode::Newfile => &new_file_first_row,
+                _ => &normal_first_row,
+            },
         );
         let strings = path_content.strings();
         for (i, string) in strings
