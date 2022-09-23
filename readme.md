@@ -17,11 +17,12 @@
 - [ ] manipuler :
 
   [fuzzy finder in tuiki](https://github.com/lotabout/skim/blob/master/src/input.rs)
+  - [x] flagged
+  - [x] rename
+
   - [ ] supprimer
   - [ ] insérer fichier / dossier
   - [ ] cut copy paste
-  - [ ] mark
-  - [x] rename
   - [ ] chmod
       - saisir un truc une ligne en dessous du texte ou en bas... parse en octal directement
       - shortcut et edit directement... ?

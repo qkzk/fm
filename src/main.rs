@@ -1,4 +1,5 @@
 use std::cmp::min;
+use std::collections::HashSet;
 use std::fs;
 use std::{env, path, process};
 
@@ -160,6 +161,7 @@ fn main() {
     let mut col = Col::default();
     let mut window = FilesWindow::new(path_content.files.len(), height);
     let mut oldpath: path::PathBuf = path::PathBuf::new();
+    let mut flagged = HashSet::new();
 
     while let Ok(ev) = term.poll_event() {
         let _ = term.clear();
@@ -219,6 +221,24 @@ fn main() {
                 Mode::Rename => {
                     path_content.files[path_content.selected].filename.push(c);
                 }
+                Mode::Normal => match c {
+                    ' ' => {
+                        flagged.insert(file_index);
+                    }
+                    'u' => {
+                        flagged.remove(&file_index);
+                    }
+                    'x' => {
+                        let abs_path = path_content.path.to_path_buf();
+
+                        flagged.into_iter().for_each(|file_index| {
+                            let mut fp = abs_path.clone();
+                            fp.push(path_content.files[file_index]);
+                            fs::remove_file(fp);
+                        });
+                    }
+                    _ => (),
+                },
                 _ => (),
             },
             Event::Key(Key::Enter) => {
@@ -257,7 +277,11 @@ fn main() {
             .skip(window.top)
         {
             let row = i + WINDOW_MARGIN_TOP - window.top;
-            let _ = term.print_with_attr(row, 0, string, fileinfo_attr(&path_content.files[i]));
+            let mut attr = fileinfo_attr(&path_content.files[i]);
+            if flagged.contains(&i) {
+                attr.effect |= Effect::BOLD;
+            }
+            let _ = term.print_with_attr(row, 0, string, attr);
             if path_content.files[i].is_selected {
                 let _ = term.set_cursor(row, col.col);
             }
