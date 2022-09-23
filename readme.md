@@ -21,5 +21,7 @@
   - [ ] insérer fichier / dossier
   - [ ] cut copy paste
   - [ ] mark
-  - [ ] rename
+  - [x] rename
   - [ ] chmod
+      - saisir un truc une ligne en dessous du texte ou en bas... parse en octal directement
+      - shortcut et edit directement... ?
