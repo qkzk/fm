@@ -140,9 +140,9 @@ fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
 enum Mode {
     Normal,
     Rename,
-    Chmod,
-    Newfile,
-    Newdir,
+    // Chmod,
+    // Newfile,
+    // Newdir,
 }
 
 fn main() {
@@ -190,16 +190,19 @@ fn main() {
                     path_content = PathContent::new(path::PathBuf::from(parent), config.hidden);
                     col = Col::default();
                     window.reset(path_content.files.len());
+                    flagged.clear();
                 }
                 None => (),
             },
             Event::Key(Key::Right) => {
                 if path_content.files[path_content.selected].is_dir {
-                    let mut pb = path_content.path.to_path_buf();
-                    pb.push(path_content.files[path_content.selected].filename.clone());
-                    path_content = PathContent::new(pb, config.hidden);
+                    path_content = PathContent::new(
+                        path_content.files[path_content.selected].path.clone(),
+                        config.hidden,
+                    );
                     col = Col::default();
                     window.reset(path_content.files.len());
+                    flagged.clear();
                 }
             }
             Event::Key(Key::Ctrl('a')) => {
@@ -207,48 +210,50 @@ fn main() {
                 path_content.show_hidden = !path_content.show_hidden;
                 path_content.reset_files();
             }
-            Event::Key(Key::Ctrl('r')) => match mode {
-                Mode::Normal => {
+            Event::Key(Key::Ctrl('r')) => {
+                if let Mode::Normal = mode {
                     mode = Mode::Rename;
                     let oldname = path_content.files[path_content.selected].filename.clone();
                     oldpath = path_content.path.to_path_buf();
                     oldpath.push(oldname);
                     path_content.files[path_content.selected].filename = "".to_string();
                 }
-                _ => (),
-            },
+            }
             Event::Key(Key::Char(c)) => match mode {
                 Mode::Rename => {
                     path_content.files[path_content.selected].filename.push(c);
                 }
                 Mode::Normal => match c {
                     ' ' => {
-                        flagged.insert(file_index);
+                        if flagged.contains(&path_content.files[file_index].path) {
+                            flagged.remove(&path_content.files[file_index].path);
+                        } else {
+                            flagged.insert(path_content.files[file_index].path.clone());
+                        }
+                        if file_index < path_content.files.len() - WINDOW_MARGIN_TOP {
+                            file_index += 1;
+                        }
+                        path_content.select_next();
+                        window.scroll_down_to(file_index);
                     }
                     'u' => {
-                        flagged.remove(&file_index);
+                        flagged.clear();
                     }
                     'x' => {
-                        let abs_path = path_content.path.to_path_buf();
-
-                        flagged.into_iter().for_each(|file_index| {
-                            let mut fp = abs_path.clone();
-                            fp.push(path_content.files[file_index]);
-                            fs::remove_file(fp);
+                        flagged.iter().for_each(|pathbuf| {
+                            fs::remove_file(pathbuf).expect("Couldn't remove file");
                         });
+                        flagged.clear();
+                        path_content = PathContent::new(path_content.path, config.hidden);
                     }
                     _ => (),
                 },
-                _ => (),
             },
             Event::Key(Key::Enter) => {
-                match mode {
-                    Mode::Rename => {
-                        let mut newpath = path_content.path.to_path_buf();
-                        newpath.push(path_content.files[path_content.selected].filename.clone());
-                        fs::rename(oldpath.clone(), newpath).expect("Couldn't rename the file");
-                    }
-                    _ => (),
+                if let Mode::Rename = mode {
+                    let mut newpath = path_content.path.to_path_buf();
+                    newpath.push(path_content.files[path_content.selected].filename.clone());
+                    fs::rename(oldpath.clone(), newpath).expect("Couldn't rename the file");
                 }
                 mode = Mode::Normal;
             }
@@ -278,8 +283,8 @@ fn main() {
         {
             let row = i + WINDOW_MARGIN_TOP - window.top;
             let mut attr = fileinfo_attr(&path_content.files[i]);
-            if flagged.contains(&i) {
-                attr.effect |= Effect::BOLD;
+            if flagged.contains(&path_content.files[i].path) {
+                attr.effect |= Effect::UNDERLINE;
             }
             let _ = term.print_with_attr(row, 0, string, attr);
             if path_content.files[i].is_selected {

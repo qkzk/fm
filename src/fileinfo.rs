@@ -8,6 +8,7 @@ use users::get_user_by_uid;
 
 #[derive(Clone)]
 pub struct FileInfo {
+    pub path: path::PathBuf,
     pub filename: String,
     pub file_size: String,
     pub dir_symbol: String,
@@ -24,6 +25,7 @@ pub struct FileInfo {
 
 impl FileInfo {
     pub fn new(direntry: &DirEntry) -> Result<FileInfo, &'static str> {
+        let path = direntry.path();
         let filename = extract_filename(direntry);
         let file_size = human_size(extract_file_size(direntry));
         let dir_symbol = extract_dir_symbol(direntry);
@@ -46,6 +48,7 @@ impl FileInfo {
         }
 
         Ok(FileInfo {
+            path,
             filename,
             file_size,
             dir_symbol,
