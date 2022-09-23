@@ -89,10 +89,11 @@ pub struct PathContent {
     pub path: path::PathBuf,
     pub files: Vec<FileInfo>,
     pub selected: usize,
+    pub show_hidden: bool,
 }
 
 impl PathContent {
-    pub fn new(path: path::PathBuf) -> Self {
+    pub fn new(path: path::PathBuf, show_hidden: bool) -> Self {
         let mut files: Vec<FileInfo> = read_dir(&path)
             .unwrap_or_else(|_| panic!("Couldn't traverse path {:?}", &path))
             .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
@@ -105,6 +106,7 @@ impl PathContent {
             path,
             files,
             selected,
+            show_hidden,
         }
     }
 

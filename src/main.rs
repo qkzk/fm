@@ -139,15 +139,11 @@ fn main() {
         eprintln!("Problem parsing arguments: {}", err);
         process::exit(1);
     });
-    // if let Err(e) = run(config) {
-    //     eprintln!("Application error {}", e);
-    //     process::exit(1);
-    // }
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
     let (_, height) = term.term_size().unwrap();
 
     let path = std::fs::canonicalize(path::Path::new(&config.path)).unwrap();
-    let mut path_content = PathContent::new(path);
+    let mut path_content = PathContent::new(path, config.hidden);
     let mut path_text: &str;
     let mut file_index = 0;
     let mut col = Col::default();
@@ -177,7 +173,7 @@ fn main() {
             Event::Key(Key::CtrlRight) => col.next(),
             Event::Key(Key::Left) => match path_content.path.parent() {
                 Some(parent) => {
-                    path_content = PathContent::new(path::PathBuf::from(parent));
+                    path_content = PathContent::new(path::PathBuf::from(parent), config.hidden);
                     col = Col::default();
                     window.reset(path_content.files.len());
                 }
@@ -187,7 +183,7 @@ fn main() {
                 if path_content.files[path_content.selected].is_dir {
                     let mut pb = path_content.path.to_path_buf();
                     pb.push(path_content.files[path_content.selected].filename.clone());
-                    path_content = PathContent::new(pb);
+                    path_content = PathContent::new(pb, config.hidden);
                     col = Col::default();
                     window.reset(path_content.files.len());
                 }
