@@ -1,6 +1,6 @@
 use chrono::offset::Local;
 use chrono::DateTime;
-use std::fs::{canonicalize, metadata, read_dir, DirEntry};
+use std::fs::{metadata, read_dir, DirEntry};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
 

@@ -1,10 +1,11 @@
 use std::cmp::min;
-use std::path;
+use std::{env, path, process};
 
 use tuikit::attr::*;
 use tuikit::event::{Event, Key};
 use tuikit::term::{Term, TermHeight};
 
+use fm::config::Config;
 use fm::fileinfo::{FileInfo, PathContent};
 
 pub mod fileinfo;
@@ -134,10 +135,18 @@ fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
 }
 
 fn main() {
+    let config = Config::new(env::args()).unwrap_or_else(|err| {
+        eprintln!("Problem parsing arguments: {}", err);
+        process::exit(1);
+    });
+    // if let Err(e) = run(config) {
+    //     eprintln!("Application error {}", e);
+    //     process::exit(1);
+    // }
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
     let (_, height) = term.term_size().unwrap();
 
-    let path = std::fs::canonicalize(path::Path::new(".")).unwrap();
+    let path = std::fs::canonicalize(path::Path::new(&config.path)).unwrap();
     let mut path_content = PathContent::new(path);
     let mut path_text: &str;
     let mut file_index = 0;
@@ -190,11 +199,12 @@ fn main() {
             0,
             0,
             &format!(
-                "h: {}, s: {} wt: {} wb: {} - {}",
+                "h: {}, s: {} wt: {} wb: {} - c: {:?} - {}",
                 height,
                 path_content.files.len(),
                 window.top,
                 window.bottom,
+                config,
                 path_text
             ),
         );
