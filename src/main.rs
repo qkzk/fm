@@ -1,4 +1,5 @@
 use std::cmp::min;
+use std::fs;
 use std::{env, path, process};
 
 use tuikit::attr::*;
@@ -134,11 +135,20 @@ fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
     attr
 }
 
+enum Mode {
+    Normal,
+    Rename,
+    Chmod,
+    Newfile,
+    Newdir,
+}
+
 fn main() {
     let mut config = Config::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
         process::exit(1);
     });
+    let mut mode = Mode::Normal;
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
     let (_, height) = term.term_size().unwrap();
 
@@ -148,13 +158,14 @@ fn main() {
     let mut file_index = 0;
     let mut col = Col::default();
     let mut window = FilesWindow::new(path_content.files.len(), height);
+    let mut oldpath: path::PathBuf = path::PathBuf::new();
 
     while let Ok(ev) = term.poll_event() {
         let _ = term.clear();
         let (_width, height) = term.term_size().unwrap();
         window.height = height;
         match ev {
-            Event::Key(Key::ESC) | Event::Key(Key::Char('q')) => break,
+            Event::Key(Key::ESC | Key::Ctrl('q')) => break,
             Event::Key(Key::Up) => {
                 if file_index > 0 {
                     file_index -= 1;
@@ -188,10 +199,35 @@ fn main() {
                     window.reset(path_content.files.len());
                 }
             }
-            Event::Key(Key::Char('a')) => {
+            Event::Key(Key::Ctrl('a')) => {
                 config.hidden = !config.hidden;
                 path_content.show_hidden = !path_content.show_hidden;
                 path_content.reset_files();
+            }
+            Event::Key(Key::Ctrl('r')) => {
+                mode = Mode::Rename;
+                let oldname = path_content.files[path_content.selected].filename.clone();
+                oldpath = path_content.path.to_path_buf();
+                oldpath.push(oldname);
+
+                path_content.files[path_content.selected].filename = "".to_string();
+            }
+            Event::Key(Key::Char(c)) => match mode {
+                Mode::Rename => {
+                    path_content.files[path_content.selected].filename.push(c);
+                }
+                _ => (),
+            },
+            Event::Key(Key::Enter) => {
+                match mode {
+                    Mode::Rename => {
+                        let mut newpath = path_content.path.to_path_buf();
+                        newpath.push(path_content.files[path_content.selected].filename.clone());
+                        fs::rename(oldpath.clone(), newpath).expect("Couldn't rename the file");
+                    }
+                    _ => (),
+                }
+                mode = Mode::Normal;
             }
             _ => {}
         }
