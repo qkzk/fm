@@ -15,6 +15,8 @@
 ## TODO
 
 - [ ] manipuler :
+
+  [fuzzy finder in tuiki](https://github.com/lotabout/skim/blob/master/src/input.rs)
   - [ ] supprimer
   - [ ] insérer fichier / dossier
   - [ ] cut copy paste
