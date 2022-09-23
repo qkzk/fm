@@ -1,10 +1,11 @@
 use std::cmp::min;
-use std::path;
+use std::{env, path, process};
 
 use tuikit::attr::*;
 use tuikit::event::{Event, Key};
 use tuikit::term::{Term, TermHeight};
 
+use fm::config::Config;
 use fm::fileinfo::{FileInfo, PathContent};
 
 pub mod fileinfo;
@@ -134,11 +135,15 @@ fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
 }
 
 fn main() {
+    let mut config = Config::new(env::args()).unwrap_or_else(|err| {
+        eprintln!("Problem parsing arguments: {}", err);
+        process::exit(1);
+    });
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
     let (_, height) = term.term_size().unwrap();
 
-    let path = std::fs::canonicalize(path::Path::new(".")).unwrap();
-    let mut path_content = PathContent::new(path);
+    let path = std::fs::canonicalize(path::Path::new(&config.path)).unwrap();
+    let mut path_content = PathContent::new(path, config.hidden);
     let mut path_text: &str;
     let mut file_index = 0;
     let mut col = Col::default();
@@ -168,7 +173,7 @@ fn main() {
             Event::Key(Key::CtrlRight) => col.next(),
             Event::Key(Key::Left) => match path_content.path.parent() {
                 Some(parent) => {
-                    path_content = PathContent::new(path::PathBuf::from(parent));
+                    path_content = PathContent::new(path::PathBuf::from(parent), config.hidden);
                     col = Col::default();
                     window.reset(path_content.files.len());
                 }
@@ -178,10 +183,15 @@ fn main() {
                 if path_content.files[path_content.selected].is_dir {
                     let mut pb = path_content.path.to_path_buf();
                     pb.push(path_content.files[path_content.selected].filename.clone());
-                    path_content = PathContent::new(pb);
+                    path_content = PathContent::new(pb, config.hidden);
                     col = Col::default();
                     window.reset(path_content.files.len());
                 }
+            }
+            Event::Key(Key::Char('a')) => {
+                config.hidden = !config.hidden;
+                path_content.show_hidden = !path_content.show_hidden;
+                path_content.reset_files();
             }
             _ => {}
         }
@@ -190,11 +200,12 @@ fn main() {
             0,
             0,
             &format!(
-                "h: {}, s: {} wt: {} wb: {} - {}",
+                "h: {}, s: {} wt: {} wb: {} - c: {:?} - {}",
                 height,
                 path_content.files.len(),
                 window.top,
                 window.bottom,
+                config,
                 path_text
             ),
         );

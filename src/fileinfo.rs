@@ -1,6 +1,6 @@
 use chrono::offset::Local;
 use chrono::DateTime;
-use std::fs::{canonicalize, metadata, read_dir, DirEntry};
+use std::fs::{metadata, read_dir, DirEntry};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
 
@@ -89,12 +89,20 @@ pub struct PathContent {
     pub path: path::PathBuf,
     pub files: Vec<FileInfo>,
     pub selected: usize,
+    pub show_hidden: bool,
 }
 
 impl PathContent {
-    pub fn new(path: path::PathBuf) -> Self {
+    pub fn new(path: path::PathBuf, show_hidden: bool) -> Self {
         let mut files: Vec<FileInfo> = read_dir(&path)
             .unwrap_or_else(|_| panic!("Couldn't traverse path {:?}", &path))
+            .filter(|r| {
+                show_hidden
+                    || match r {
+                        Ok(e) => is_not_hidden(e),
+                        Err(_) => false,
+                    }
+            })
             .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
             .collect();
         files.sort_by_key(|file| file.filename.clone());
@@ -105,6 +113,7 @@ impl PathContent {
             path,
             files,
             selected,
+            show_hidden,
         }
     }
 
@@ -130,8 +139,31 @@ impl PathContent {
             self.files[self.selected].select();
         }
     }
+
+    pub fn reset_files(&mut self) {
+        self.files = read_dir(&self.path)
+            .unwrap_or_else(|_| panic!("Couldn't traverse path {:?}", &self.path))
+            .filter(|r| {
+                self.show_hidden
+                    || match r {
+                        Ok(e) => is_not_hidden(e),
+                        Err(_) => false,
+                    }
+            })
+            .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
+            .collect();
+        self.files.sort_by_key(|file| file.filename.clone());
+        self.files[0].select();
+    }
 }
 
+fn is_not_hidden(entry: &DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| !s.starts_with('.'))
+        .unwrap_or(false)
+}
 fn extract_datetime(direntry: &DirEntry) -> String {
     let system_time = direntry.metadata().unwrap().modified();
     let datetime: DateTime<Local> = system_time.unwrap().into();
