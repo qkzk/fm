@@ -172,6 +172,42 @@ fn help() {
     print!("{}", HELP_LINES);
 }
 
+struct Status {
+    term: Term<()>,
+    mode: Mode,
+    file_index: usize,
+    window: FilesWindow,
+    oldpath: path::PathBuf,
+    flagged: HashSet<path::PathBuf>,
+    input_string: String,
+    col: usize,
+    path_content: PathContent,
+}
+
+impl Status {
+    fn new(term: Term<()>, path_content: PathContent) -> Self {
+        let mode = Mode::Normal;
+        let (_, height) = term.term_size().unwrap();
+        let file_index = 0;
+        let window = FilesWindow::new(path_content.files.len(), height);
+        let oldpath: path::PathBuf = path::PathBuf::new();
+        let flagged = HashSet::new();
+        let input_string = "".to_string();
+        let col = 0;
+        Self {
+            term,
+            mode,
+            file_index,
+            window,
+            oldpath,
+            flagged,
+            input_string,
+            col,
+            path_content,
+        }
+    }
+}
+
 fn main() {
     let mut args = Config::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
@@ -186,9 +222,8 @@ fn main() {
         eprintln!("File does not exists {}", args.path);
         std::process::exit(2)
     });
-    let mut path_content = PathContent::new(path, args.hidden);
+    let path_content = PathContent::new(path, args.hidden);
 
-    let mut mode = Mode::Normal;
     let config_file = load_file(CONFIG_FILE);
     let colors = Colors::from_config(&config_file["colors"]);
     let terminal = config_file["terminal"]
@@ -200,53 +235,57 @@ fn main() {
         .map(|s| s.to_string())
         .expect("Couldn't parse config file");
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
-    let (_, height) = term.term_size().unwrap();
+    // let (_, height) = term.term_size().unwrap();
+    //
+    // let mut mode = Mode::Normal;
+    // let mut file_index = 0;
+    // let mut window = FilesWindow::new(path_content.files.len(), height);
+    // let mut oldpath: path::PathBuf = path::PathBuf::new();
+    // let mut flagged = HashSet::new();
+    // let mut input_string = "".to_string();
+    // let mut col = 0_usize;
 
-    let mut file_index = 0;
-    let mut window = FilesWindow::new(path_content.files.len(), height);
-    let mut oldpath: path::PathBuf = path::PathBuf::new();
-    let mut flagged = HashSet::new();
-    let mut input_string = "".to_string();
-    let mut col = 0_usize;
+    let mut status = Status::new(term, path_content);
 
-    while let Ok(ev) = term.poll_event() {
-        let _ = term.clear();
-        let (_width, height) = term.term_size().unwrap();
-        window.height = height;
+    while let Ok(ev) = status.term.poll_event() {
+        let _ = status.term.clear();
+        let (_width, height) = status.term.term_size().unwrap();
+        status.window.height = height;
         match ev {
             Event::Key(Key::ESC) => {
-                input_string.clear();
-                path_content.reset_files();
-                window.reset(path_content.files.len());
-                mode = Mode::Normal;
-                col = 0;
+                status.input_string.clear();
+                status.path_content.reset_files();
+                status.window.reset(status.path_content.files.len());
+                status.mode = Mode::Normal;
+                status.col = 0;
             }
             Event::Key(Key::Up) => {
-                if let Mode::Normal = mode {
-                    if file_index > 0 {
-                        file_index -= 1;
+                if let Mode::Normal = status.mode {
+                    if status.file_index > 0 {
+                        status.file_index -= 1;
                     }
-                    path_content.select_prev();
-                    window.scroll_up_one(file_index);
+                    status.path_content.select_prev();
+                    status.window.scroll_up_one(status.file_index);
                 }
             }
             Event::Key(Key::Down) => {
-                if let Mode::Normal = mode {
-                    if file_index < path_content.files.len() - WINDOW_MARGIN_TOP {
-                        file_index += 1;
+                if let Mode::Normal = status.mode {
+                    if status.file_index < status.path_content.files.len() - WINDOW_MARGIN_TOP {
+                        status.file_index += 1;
                     }
-                    path_content.select_next();
-                    window.scroll_down_one(file_index);
+                    status.path_content.select_next();
+                    status.window.scroll_down_one(status.file_index);
                 }
             }
-            Event::Key(Key::Left) => match mode {
-                Mode::Normal => match path_content.path.parent() {
+            Event::Key(Key::Left) => match status.mode {
+                Mode::Normal => match status.path_content.path.parent() {
                     Some(parent) => {
-                        path_content = PathContent::new(path::PathBuf::from(parent), args.hidden);
-                        window.reset(path_content.files.len());
+                        status.path_content =
+                            PathContent::new(path::PathBuf::from(parent), args.hidden);
+                        status.window.reset(status.path_content.files.len());
                         // flagged.clear();
-                        file_index = 0;
-                        col = 0;
+                        status.file_index = 0;
+                        status.col = 0;
                     }
                     None => (),
                 },
@@ -256,24 +295,26 @@ fn main() {
                 | Mode::Newfile
                 | Mode::Exec
                 | Mode::Search => {
-                    if col > 0 {
-                        col -= 1
+                    if status.col > 0 {
+                        status.col -= 1
                     }
                 }
                 _ => (),
             },
 
-            Event::Key(Key::Right) => match mode {
+            Event::Key(Key::Right) => match status.mode {
                 Mode::Normal => {
-                    if path_content.files[path_content.selected].is_dir {
-                        path_content = PathContent::new(
-                            path_content.files[path_content.selected].path.clone(),
+                    if status.path_content.files[status.path_content.selected].is_dir {
+                        status.path_content = PathContent::new(
+                            status.path_content.files[status.path_content.selected]
+                                .path
+                                .clone(),
                             args.hidden,
                         );
-                        window.reset(path_content.files.len());
+                        status.window.reset(status.path_content.files.len());
                         // flagged.clear();
-                        file_index = 0;
-                        col = 0;
+                        status.file_index = 0;
+                        status.col = 0;
                     }
                 }
                 Mode::Rename
@@ -282,273 +323,303 @@ fn main() {
                 | Mode::Newfile
                 | Mode::Exec
                 | Mode::Search => {
-                    if col < input_string.len() {
-                        col += 1
+                    if status.col < status.input_string.len() {
+                        status.col += 1
                     }
                 }
                 _ => (),
             },
-            Event::Key(Key::Backspace) => match mode {
+            Event::Key(Key::Backspace) => match status.mode {
                 Mode::Rename
                 | Mode::Newdir
                 | Mode::Chmod
                 | Mode::Newfile
                 | Mode::Exec
                 | Mode::Search => {
-                    if col > 0 && !input_string.is_empty() {
-                        input_string.remove(col - 1);
-                        col -= 1;
+                    if status.col > 0 && !status.input_string.is_empty() {
+                        status.input_string.remove(status.col - 1);
+                        status.col -= 1;
                     }
                 }
                 Mode::Normal => (),
                 _ => (),
             },
-            Event::Key(Key::Char(c)) => match mode {
+            Event::Key(Key::Char(c)) => match status.mode {
                 Mode::Newfile
                 | Mode::Newdir
                 | Mode::Chmod
                 | Mode::Rename
                 | Mode::Exec
                 | Mode::Search => {
-                    input_string.insert(col, c);
-                    col += 1;
+                    status.input_string.insert(status.col, c);
+                    status.col += 1;
                 }
                 Mode::Normal => match c {
                     ' ' => {
-                        if flagged.contains(&path_content.files[file_index].path) {
-                            flagged.remove(&path_content.files[file_index].path);
+                        if status
+                            .flagged
+                            .contains(&status.path_content.files[status.file_index].path)
+                        {
+                            status
+                                .flagged
+                                .remove(&status.path_content.files[status.file_index].path);
                         } else {
-                            flagged.insert(path_content.files[file_index].path.clone());
+                            status
+                                .flagged
+                                .insert(status.path_content.files[status.file_index].path.clone());
                         }
-                        if file_index < path_content.files.len() - WINDOW_MARGIN_TOP {
-                            file_index += 1;
+                        if status.file_index < status.path_content.files.len() - WINDOW_MARGIN_TOP {
+                            status.file_index += 1;
                         }
-                        path_content.select_next();
-                        window.scroll_down_one(file_index);
+                        status.path_content.select_next();
+                        status.window.scroll_down_one(status.file_index);
                     }
                     'a' => {
                         args.hidden = !args.hidden;
-                        path_content.show_hidden = !path_content.show_hidden;
-                        path_content.reset_files();
-                        window.reset(path_content.files.len())
+                        status.path_content.show_hidden = !status.path_content.show_hidden;
+                        status.path_content.reset_files();
+                        status.window.reset(status.path_content.files.len())
                     }
                     'c' => {
-                        flagged.iter().for_each(|oldpath| {
-                            let newpath = path_content
+                        status.flagged.iter().for_each(|oldpath| {
+                            let newpath = status
+                                .path_content
                                 .path
                                 .clone()
                                 .join(oldpath.as_path().file_name().unwrap());
                             fs::copy(oldpath, newpath).unwrap_or(0);
                         });
-                        flagged.clear();
-                        path_content.reset_files();
-                        window.reset(path_content.files.len());
+                        status.flagged.clear();
+                        status.path_content.reset_files();
+                        status.window.reset(status.path_content.files.len());
                     }
-                    'd' => mode = Mode::Newdir,
-                    'e' => mode = Mode::Exec,
-                    'm' => mode = Mode::Chmod,
-                    'n' => mode = Mode::Newfile,
+                    'd' => status.mode = Mode::Newdir,
+                    'e' => status.mode = Mode::Exec,
+                    'm' => status.mode = Mode::Chmod,
+                    'n' => status.mode = Mode::Newfile,
                     'o' => {
                         execute_in_child(
                             &opener,
-                            &vec![path_content.files[path_content.selected]
+                            &vec![status.path_content.files[status.path_content.selected]
                                 .path
                                 .to_str()
                                 .unwrap()],
                         );
                     }
                     'p' => {
-                        flagged.iter().for_each(|oldpath| {
-                            let newpath = path_content
+                        status.flagged.iter().for_each(|oldpath| {
+                            let newpath = status
+                                .path_content
                                 .path
                                 .clone()
                                 .join(oldpath.as_path().file_name().unwrap());
                             fs::rename(oldpath, newpath).unwrap_or(());
                         });
-                        flagged.clear();
-                        path_content.reset_files();
-                        window.reset(path_content.files.len());
+                        status.flagged.clear();
+                        status.path_content.reset_files();
+                        status.window.reset(status.path_content.files.len());
                     }
                     'r' => {
-                        mode = Mode::Rename;
-                        let oldname = path_content.files[path_content.selected].filename.clone();
-                        oldpath = path_content.path.to_path_buf();
-                        oldpath.push(oldname);
+                        status.mode = Mode::Rename;
+                        let oldname = status.path_content.files[status.path_content.selected]
+                            .filename
+                            .clone();
+                        status.oldpath = status.path_content.path.to_path_buf();
+                        status.oldpath.push(oldname);
                     }
                     'q' => break,
                     's' => {
                         execute_in_child(
                             &terminal,
-                            &vec!["-d", path_content.path.to_str().unwrap()],
+                            &vec!["-d", status.path_content.path.to_str().unwrap()],
                         );
                     }
-                    'u' => flagged.clear(),
+                    'u' => status.flagged.clear(),
                     'x' => {
-                        flagged.iter().for_each(|pathbuf| {
+                        status.flagged.iter().for_each(|pathbuf| {
                             if pathbuf.is_dir() {
                                 fs::remove_dir_all(pathbuf).unwrap_or(());
                             } else {
                                 fs::remove_file(pathbuf).unwrap_or(());
                             }
                         });
-                        flagged.clear();
-                        path_content.reset_files();
-                        window.reset(path_content.files.len());
+                        status.flagged.clear();
+                        status.path_content.reset_files();
+                        status.window.reset(status.path_content.files.len());
                     }
-                    '?' => mode = Mode::Help,
-                    '/' => mode = Mode::Search,
+                    '?' => status.mode = Mode::Help,
+                    '/' => status.mode = Mode::Search,
                     _ => (),
                 },
                 Mode::Help => {
                     if c == '?' {
-                        mode = Mode::Normal
+                        status.mode = Mode::Normal
                     } else if c == 'q' {
                         break;
                     }
                 }
             },
             Event::Key(Key::Home) => {
-                if let Mode::Normal = mode {
-                    path_content.select_index(0);
-                    file_index = 0;
-                    window.scroll_to(0);
+                if let Mode::Normal = status.mode {
+                    status.path_content.select_index(0);
+                    status.file_index = 0;
+                    status.window.scroll_to(0);
                 }
             }
             Event::Key(Key::End) => {
-                if let Mode::Normal = mode {
-                    let last_index = path_content.files.len() - 1;
-                    path_content.select_index(last_index);
-                    file_index = last_index;
-                    window.scroll_to(last_index);
+                if let Mode::Normal = status.mode {
+                    let last_index = status.path_content.files.len() - 1;
+                    status.path_content.select_index(last_index);
+                    status.file_index = last_index;
+                    status.window.scroll_to(last_index);
                 }
             }
             Event::Key(Key::PageDown) => {
-                if let Mode::Normal = mode {
-                    let down_index = min(path_content.files.len() - 1, file_index + 10);
-                    path_content.select_index(down_index);
-                    file_index = down_index;
-                    window.scroll_to(down_index);
+                if let Mode::Normal = status.mode {
+                    let down_index =
+                        min(status.path_content.files.len() - 1, status.file_index + 10);
+                    status.path_content.select_index(down_index);
+                    status.file_index = down_index;
+                    status.window.scroll_to(down_index);
                 }
             }
             Event::Key(Key::PageUp) => {
-                if let Mode::Normal = mode {
-                    let up_index = if file_index > 10 { file_index - 10 } else { 0 };
-                    path_content.select_index(up_index);
-                    file_index = up_index;
-                    window.scroll_to(up_index);
+                if let Mode::Normal = status.mode {
+                    let up_index = if status.file_index > 10 {
+                        status.file_index - 10
+                    } else {
+                        0
+                    };
+                    status.path_content.select_index(up_index);
+                    status.file_index = up_index;
+                    status.window.scroll_to(up_index);
                 }
             }
 
             Event::Key(Key::Enter) => {
-                if let Mode::Rename = mode {
+                if let Mode::Rename = status.mode {
                     fs::rename(
-                        oldpath.clone(),
-                        path_content.path.to_path_buf().join(&input_string),
+                        status.oldpath.clone(),
+                        status
+                            .path_content
+                            .path
+                            .to_path_buf()
+                            .join(&status.input_string),
                     )
                     .unwrap_or(());
-                    input_string.clear();
-                    path_content = PathContent::new(path_content.path, args.hidden);
-                    window.reset(path_content.files.len());
-                } else if let Mode::Newfile = mode {
-                    if fs::File::create(path_content.path.join(input_string.clone())).is_ok() {}
-                    input_string.clear();
-                    path_content = PathContent::new(path_content.path, args.hidden);
-                    window.reset(path_content.files.len());
-                } else if let Mode::Newdir = mode {
-                    fs::create_dir(path_content.path.join(input_string.clone())).unwrap_or(());
-                    input_string.clear();
-                    path_content = PathContent::new(path_content.path, args.hidden);
-                    window.reset(path_content.files.len());
-                } else if let Mode::Chmod = mode {
-                    let permissions: u32 = u32::from_str_radix(&input_string, 8).unwrap_or(0_u32);
+                    status.input_string.clear();
+                    status.path_content = PathContent::new(status.path_content.path, args.hidden);
+                    status.window.reset(status.path_content.files.len());
+                } else if let Mode::Newfile = status.mode {
+                    if fs::File::create(status.path_content.path.join(status.input_string.clone()))
+                        .is_ok()
+                    {}
+                    status.input_string.clear();
+                    status.path_content = PathContent::new(status.path_content.path, args.hidden);
+                    status.window.reset(status.path_content.files.len());
+                } else if let Mode::Newdir = status.mode {
+                    fs::create_dir(status.path_content.path.join(status.input_string.clone()))
+                        .unwrap_or(());
+                    status.input_string.clear();
+                    status.path_content = PathContent::new(status.path_content.path, args.hidden);
+                    status.window.reset(status.path_content.files.len());
+                } else if let Mode::Chmod = status.mode {
+                    let permissions: u32 =
+                        u32::from_str_radix(&status.input_string, 8).unwrap_or(0_u32);
                     if permissions <= 0o777 {
                         fs::set_permissions(
-                            path_content.files[file_index].path.clone(),
+                            status.path_content.files[status.file_index].path.clone(),
                             fs::Permissions::from_mode(permissions),
                         )
                         .unwrap_or(());
                     }
-                    input_string.clear();
-                    path_content = PathContent::new(path_content.path, args.hidden);
-                } else if let Mode::Exec = mode {
-                    let exec_command = input_string.clone();
+                    status.input_string.clear();
+                    status.path_content = PathContent::new(status.path_content.path, args.hidden);
+                } else if let Mode::Exec = status.mode {
+                    let exec_command = status.input_string.clone();
                     let mut args: Vec<&str> = exec_command.split(' ').collect();
                     let command = args.remove(0);
                     args.push(
-                        path_content.files[path_content.selected]
+                        status.path_content.files[status.path_content.selected]
                             .path
                             .to_str()
                             .unwrap(),
                     );
-                    input_string.clear();
+                    status.input_string.clear();
                     execute_in_child(command, &args);
-                } else if let Mode::Search = mode {
-                    let searched_term = input_string.clone();
-                    let mut next_index = file_index;
-                    for (index, file) in path_content.files.iter().enumerate().skip(next_index) {
+                } else if let Mode::Search = status.mode {
+                    let searched_term = status.input_string.clone();
+                    let mut next_index = status.file_index;
+                    for (index, file) in status
+                        .path_content
+                        .files
+                        .iter()
+                        .enumerate()
+                        .skip(next_index)
+                    {
                         if file.filename.contains(&searched_term) {
                             next_index = index;
                             break;
                         };
                     }
-                    input_string.clear();
-                    path_content.select_index(next_index);
-                    file_index = next_index;
-                    window.scroll_to(file_index);
+                    status.input_string.clear();
+                    status.path_content.select_index(next_index);
+                    status.file_index = next_index;
+                    status.window.scroll_to(status.file_index);
                 }
 
-                col = 0;
-                mode = Mode::Normal;
+                status.col = 0;
+                status.mode = Mode::Normal;
             }
             _ => {}
         }
-        let first_row: String = match mode {
+        let first_row: String = match status.mode {
             Mode::Normal => {
                 format!(
                     "h: {}, s: {} wt: {} wb: {}  m: {:?} - c: {:?} - {}",
                     height,
-                    path_content.files.len(),
-                    window.top,
-                    window.bottom,
-                    mode,
+                    status.path_content.files.len(),
+                    status.window.top,
+                    status.window.bottom,
+                    status.mode,
                     args,
-                    path_content.path.to_str().unwrap()
+                    status.path_content.path.to_str().unwrap()
                 )
             }
             _ => {
-                format!("{:?} {}", mode.clone(), input_string.clone())
+                format!("{:?} {}", status.mode.clone(), status.input_string.clone())
             }
         };
-        let _ = term.print(0, 0, &first_row);
-        let strings = path_content.strings();
+        let _ = status.term.print(0, 0, &first_row);
+        let strings = status.path_content.strings();
         for (i, string) in strings
             .iter()
             .enumerate()
-            .take(min(strings.len(), window.bottom))
-            .skip(window.top)
+            .take(min(strings.len(), status.window.bottom))
+            .skip(status.window.top)
         {
-            let row = i + WINDOW_MARGIN_TOP - window.top;
-            let mut attr = fileinfo_attr(&path_content.files[i], &colors);
-            if flagged.contains(&path_content.files[i].path) {
+            let row = i + WINDOW_MARGIN_TOP - status.window.top;
+            let mut attr = fileinfo_attr(&status.path_content.files[i], &colors);
+            if status.flagged.contains(&status.path_content.files[i].path) {
                 attr.effect |= Effect::UNDERLINE;
             }
-            let _ = term.print_with_attr(row, 0, string, attr);
+            let _ = status.term.print_with_attr(row, 0, string, attr);
         }
-        match mode {
+        match status.mode {
             Mode::Normal => {
-                let _ = term.set_cursor(0, 0);
+                let _ = status.term.set_cursor(0, 0);
             }
             Mode::Help => {
-                let _ = term.clear();
+                let _ = status.term.clear();
                 for (row, line) in HELP_LINES.split('\n').enumerate() {
-                    let _ = term.print(row, 0, line);
+                    let _ = status.term.print(row, 0, line);
                 }
             }
             _ => {
-                let _ = term.set_cursor(0, col + EDIT_BOX_OFFSET);
+                let _ = status.term.set_cursor(0, status.col + EDIT_BOX_OFFSET);
             }
         }
 
-        let _ = term.present();
+        let _ = status.term.present();
     }
 }
