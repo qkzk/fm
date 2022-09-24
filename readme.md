@@ -1,4 +1,4 @@
-# FM : Dired file File Manager
+# FM : Dired like File Manager
 
 ## DONE
 
@@ -27,10 +27,10 @@
 
 - [x] usage
 - [x] help menu
+- [x] custom config file
 
 ## TODO
 
 - [ ] modes on flagged files ??? is it desired ???
 - [ ] listen to stdin (rcv etc.)
 - [ ] nvim plugin
-- [ ] custom config file
