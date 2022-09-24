@@ -19,6 +19,7 @@ pub mod fileinfo;
 const WINDOW_PADDING: usize = 4;
 const WINDOW_MARGIN_TOP: usize = 1;
 const EDIT_BOX_OFFSET: usize = 10;
+const MAX_PERMISSIONS: u32 = 0o777;
 static CONFIG_FILE: &str = "/home/quentin/gclem/dev/rust/fm/config.yaml";
 static USAGE: &str = "
 FM: dired inspired File Manager
@@ -499,68 +500,88 @@ impl Status {
     }
 
     fn event_enter(&mut self) {
-        if let Mode::Rename = self.mode {
-            fs::rename(
-                self.oldpath.clone(),
-                self.path_content
-                    .path
-                    .to_path_buf()
-                    .join(&self.input_string),
-            )
-            .unwrap_or(());
-            self.input_string.clear();
-            self.path_content = PathContent::new(self.path_content.path.clone(), self.args.hidden);
-            self.window.reset(self.path_content.files.len());
-        } else if let Mode::Newfile = self.mode {
-            if fs::File::create(self.path_content.path.join(self.input_string.clone())).is_ok() {}
-            self.input_string.clear();
-            self.path_content = PathContent::new(self.path_content.path.clone(), self.args.hidden);
-            self.window.reset(self.path_content.files.len());
-        } else if let Mode::Newdir = self.mode {
-            fs::create_dir(self.path_content.path.join(self.input_string.clone())).unwrap_or(());
-            self.input_string.clear();
-            self.path_content = PathContent::new(self.path_content.path.clone(), self.args.hidden);
-            self.window.reset(self.path_content.files.len());
-        } else if let Mode::Chmod = self.mode {
-            let permissions: u32 = u32::from_str_radix(&self.input_string, 8).unwrap_or(0_u32);
-            if permissions <= 0o777 {
-                fs::set_permissions(
-                    self.path_content.files[self.file_index].path.clone(),
-                    fs::Permissions::from_mode(permissions),
-                )
-                .unwrap_or(());
-            }
-            self.input_string.clear();
-            self.path_content = PathContent::new(self.path_content.path.clone(), self.args.hidden);
-        } else if let Mode::Exec = self.mode {
-            let exec_command = self.input_string.clone();
-            let mut args: Vec<&str> = exec_command.split(' ').collect();
-            let command = args.remove(0);
-            args.push(
-                self.path_content.files[self.path_content.selected]
-                    .path
-                    .to_str()
-                    .unwrap(),
-            );
-            self.input_string.clear();
-            execute_in_child(command, &args);
-        } else if let Mode::Search = self.mode {
-            let searched_term = self.input_string.clone();
-            let mut next_index = self.file_index;
-            for (index, file) in self.path_content.files.iter().enumerate().skip(next_index) {
-                if file.filename.contains(&searched_term) {
-                    next_index = index;
-                    break;
-                };
-            }
-            self.input_string.clear();
-            self.path_content.select_index(next_index);
-            self.file_index = next_index;
-            self.window.scroll_to(self.file_index);
+        match self.mode {
+            Mode::Rename => self.event_rename(),
+            Mode::Newfile => self.event_newfile(),
+            Mode::Newdir => self.event_newdir(),
+            Mode::Chmod => self.event_chmod(),
+            Mode::Exec => self.event_exec(),
+            Mode::Search => self.event_search(),
+            _ => (),
         }
 
         self.col = 0;
         self.mode = Mode::Normal;
+    }
+
+    fn refresh_view(&mut self) {
+        self.input_string.clear();
+        self.path_content.reset_files();
+        self.window.reset(self.path_content.files.len());
+    }
+
+    fn event_rename(&mut self) {
+        fs::rename(
+            self.oldpath.clone(),
+            self.path_content
+                .path
+                .to_path_buf()
+                .join(&self.input_string),
+        )
+        .unwrap_or(());
+        self.refresh_view()
+    }
+
+    fn event_newfile(&mut self) {
+        if fs::File::create(self.path_content.path.join(self.input_string.clone())).is_ok() {}
+        self.refresh_view()
+    }
+
+    fn event_newdir(&mut self) {
+        fs::create_dir(self.path_content.path.join(self.input_string.clone())).unwrap_or(());
+        self.refresh_view()
+    }
+
+    fn event_chmod(&mut self) {
+        let permissions: u32 = u32::from_str_radix(&self.input_string, 8).unwrap_or(0_u32);
+        if permissions <= MAX_PERMISSIONS {
+            fs::set_permissions(
+                self.path_content.files[self.file_index].path.clone(),
+                fs::Permissions::from_mode(permissions),
+            )
+            .unwrap_or(());
+        }
+        self.input_string.clear();
+        self.path_content = PathContent::new(self.path_content.path.clone(), self.args.hidden);
+    }
+
+    fn event_exec(&mut self) {
+        let exec_command = self.input_string.clone();
+        let mut args: Vec<&str> = exec_command.split(' ').collect();
+        let command = args.remove(0);
+        args.push(
+            self.path_content.files[self.path_content.selected]
+                .path
+                .to_str()
+                .unwrap(),
+        );
+        self.input_string.clear();
+        execute_in_child(command, &args);
+    }
+
+    fn event_search(&mut self) {
+        let searched_term = self.input_string.clone();
+        let mut next_index = self.file_index;
+        for (index, file) in self.path_content.files.iter().enumerate().skip(next_index) {
+            if file.filename.contains(&searched_term) {
+                next_index = index;
+                break;
+            };
+        }
+        self.input_string.clear();
+        self.path_content.select_index(next_index);
+        self.file_index = next_index;
+        self.window.scroll_to(self.file_index);
     }
 
     fn display_first_line(&mut self) {
@@ -619,7 +640,7 @@ impl Status {
     }
 }
 
-fn main() {
+fn init_status() -> Status {
     let args = Config::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
         help();
@@ -646,8 +667,11 @@ fn main() {
         .map(|s| s.to_string())
         .expect("Couldn't parse config file");
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
-    let mut status = Status::new(term, path_content, args, colors, terminal, opener);
+    Status::new(term, path_content, args, colors, terminal, opener)
+}
 
+fn main() {
+    let mut status = init_status();
     while let Ok(ev) = status.term.poll_event() {
         let _ = status.term.clear();
         let (_width, height) = status.term.term_size().unwrap();
