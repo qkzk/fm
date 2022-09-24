@@ -11,6 +11,7 @@ use tuikit::event::{Event, Key};
 use tuikit::term::{Term, TermHeight};
 
 use fm::config::Config;
+use fm::config_file::{load_file, str_to_tuikit, Colors};
 use fm::fileinfo::{FileInfo, PathContent};
 
 pub mod fileinfo;
@@ -18,6 +19,7 @@ pub mod fileinfo;
 const WINDOW_PADDING: usize = 4;
 const WINDOW_MARGIN_TOP: usize = 1;
 const EDIT_BOX_OFFSET: usize = 10;
+static CONFIG_FILE: &str = "/home/quentin/gclem/dev/rust/fm/config.yaml";
 static HELP_LINES: &str = "FM: dired inspired File Manager
 
 q:      quit
@@ -101,22 +103,22 @@ impl FilesWindow {
     }
 }
 
-fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
+fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
     let mut attr = Attr {
-        fg: Color::WHITE,
+        fg: str_to_tuikit(&colors.file),
         bg: Color::default(),
         effect: Effect::empty(),
     };
     if fileinfo.is_dir {
-        attr.fg = Color::RED;
+        attr.fg = str_to_tuikit(&colors.directory);
     } else if fileinfo.is_block {
-        attr.fg = Color::YELLOW;
+        attr.fg = str_to_tuikit(&colors.block);
     } else if fileinfo.is_char {
-        attr.fg = Color::MAGENTA;
+        attr.fg = str_to_tuikit(&colors.char)
     } else if fileinfo.is_fifo {
-        attr.fg = Color::BLUE;
+        attr.fg = str_to_tuikit(&colors.fifo);
     } else if fileinfo.is_socket {
-        attr.fg = Color::CYAN;
+        attr.fg = str_to_tuikit(&colors.socket);
     }
     if fileinfo.is_selected {
         attr.effect = Effect::REVERSE;
@@ -161,6 +163,16 @@ fn main() {
         process::exit(1);
     });
     let mut mode = Mode::Normal;
+    let config_file = load_file(CONFIG_FILE);
+    let colors = Colors::from_config(&config_file["colors"]);
+    let terminal = config_file["terminal"]
+        .as_str()
+        .map(|s| s.to_string())
+        .expect("Couldn't parse config file");
+    let opener = config_file["opener"]
+        .as_str()
+        .map(|s| s.to_string())
+        .expect("Couldn't parse config file");
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
     let (_, height) = term.term_size().unwrap();
 
@@ -314,7 +326,7 @@ fn main() {
                     'n' => mode = Mode::Newfile,
                     'o' => {
                         execute_in_child(
-                            "xdg-open",
+                            &opener,
                             &vec![path_content.files[path_content.selected]
                                 .path
                                 .to_str()
@@ -341,7 +353,10 @@ fn main() {
                     }
                     'q' => break,
                     's' => {
-                        execute_in_child("st", &vec!["-d", path_content.path.to_str().unwrap()]);
+                        execute_in_child(
+                            &terminal,
+                            &vec!["-d", path_content.path.to_str().unwrap()],
+                        );
                     }
                     'u' => flagged.clear(),
                     'x' => {
@@ -489,7 +504,7 @@ fn main() {
             .skip(window.top)
         {
             let row = i + WINDOW_MARGIN_TOP - window.top;
-            let mut attr = fileinfo_attr(&path_content.files[i]);
+            let mut attr = fileinfo_attr(&path_content.files[i], &colors);
             if flagged.contains(&path_content.files[i].path) {
                 attr.effect |= Effect::UNDERLINE;
             }

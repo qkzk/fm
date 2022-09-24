@@ -1,0 +1,9 @@
+colors:
+  file: white
+  directory: red
+  block: yellow
+  char: magenta
+  fifo: blue
+  socket: cyan
+terminal: st
+opener: xdg-open
