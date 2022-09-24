@@ -20,7 +20,16 @@ const WINDOW_PADDING: usize = 4;
 const WINDOW_MARGIN_TOP: usize = 1;
 const EDIT_BOX_OFFSET: usize = 10;
 static CONFIG_FILE: &str = "/home/quentin/gclem/dev/rust/fm/config.yaml";
-static HELP_LINES: &str = "FM: dired inspired File Manager
+static USAGE: &str = "
+FM: dired inspired File Manager
+
+dired [flags] [path]
+flags:
+-a display hidden files
+-h show help and exit
+";
+static HELP_LINES: &str = "
+Default key bindings:
 
 q:      quit
 ?:      help
@@ -53,7 +62,8 @@ o:      xdg-open this file
     n:      NEWFILE
     r:      RENAME
     Enter:  Execute mode then NORMAL
-    Esc:    NORMAL";
+    Esc:    NORMAL
+";
 
 struct FilesWindow {
     top: usize,
@@ -157,11 +167,27 @@ pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
     Command::new(exe).args(args).spawn().unwrap()
 }
 
+fn help() {
+    print!("{}", USAGE);
+    print!("{}", HELP_LINES);
+}
+
 fn main() {
-    let mut config = Config::new(env::args()).unwrap_or_else(|err| {
+    let mut args = Config::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
+        help();
         process::exit(1);
     });
+    if args.help {
+        help();
+        process::exit(0);
+    }
+    let path = std::fs::canonicalize(path::Path::new(&args.path)).unwrap_or_else(|_| {
+        eprintln!("File does not exists {}", args.path);
+        std::process::exit(2)
+    });
+    let mut path_content = PathContent::new(path, args.hidden);
+
     let mut mode = Mode::Normal;
     let config_file = load_file(CONFIG_FILE);
     let colors = Colors::from_config(&config_file["colors"]);
@@ -176,8 +202,6 @@ fn main() {
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
     let (_, height) = term.term_size().unwrap();
 
-    let path = std::fs::canonicalize(path::Path::new(&config.path)).unwrap();
-    let mut path_content = PathContent::new(path, config.hidden);
     let mut file_index = 0;
     let mut window = FilesWindow::new(path_content.files.len(), height);
     let mut oldpath: path::PathBuf = path::PathBuf::new();
@@ -218,7 +242,7 @@ fn main() {
             Event::Key(Key::Left) => match mode {
                 Mode::Normal => match path_content.path.parent() {
                     Some(parent) => {
-                        path_content = PathContent::new(path::PathBuf::from(parent), config.hidden);
+                        path_content = PathContent::new(path::PathBuf::from(parent), args.hidden);
                         window.reset(path_content.files.len());
                         // flagged.clear();
                         file_index = 0;
@@ -244,7 +268,7 @@ fn main() {
                     if path_content.files[path_content.selected].is_dir {
                         path_content = PathContent::new(
                             path_content.files[path_content.selected].path.clone(),
-                            config.hidden,
+                            args.hidden,
                         );
                         window.reset(path_content.files.len());
                         // flagged.clear();
@@ -303,7 +327,7 @@ fn main() {
                         window.scroll_down_one(file_index);
                     }
                     'a' => {
-                        config.hidden = !config.hidden;
+                        args.hidden = !args.hidden;
                         path_content.show_hidden = !path_content.show_hidden;
                         path_content.reset_files();
                         window.reset(path_content.files.len())
@@ -423,17 +447,17 @@ fn main() {
                     )
                     .unwrap_or(());
                     input_string.clear();
-                    path_content = PathContent::new(path_content.path, config.hidden);
+                    path_content = PathContent::new(path_content.path, args.hidden);
                     window.reset(path_content.files.len());
                 } else if let Mode::Newfile = mode {
                     if fs::File::create(path_content.path.join(input_string.clone())).is_ok() {}
                     input_string.clear();
-                    path_content = PathContent::new(path_content.path, config.hidden);
+                    path_content = PathContent::new(path_content.path, args.hidden);
                     window.reset(path_content.files.len());
                 } else if let Mode::Newdir = mode {
                     fs::create_dir(path_content.path.join(input_string.clone())).unwrap_or(());
                     input_string.clear();
-                    path_content = PathContent::new(path_content.path, config.hidden);
+                    path_content = PathContent::new(path_content.path, args.hidden);
                     window.reset(path_content.files.len());
                 } else if let Mode::Chmod = mode {
                     let permissions: u32 = u32::from_str_radix(&input_string, 8).unwrap_or(0_u32);
@@ -445,7 +469,7 @@ fn main() {
                         .unwrap_or(());
                     }
                     input_string.clear();
-                    path_content = PathContent::new(path_content.path, config.hidden);
+                    path_content = PathContent::new(path_content.path, args.hidden);
                 } else if let Mode::Exec = mode {
                     let exec_command = input_string.clone();
                     let mut args: Vec<&str> = exec_command.split(' ').collect();
@@ -487,7 +511,7 @@ fn main() {
                     window.top,
                     window.bottom,
                     mode,
-                    config,
+                    args,
                     path_content.path.to_str().unwrap()
                 )
             }

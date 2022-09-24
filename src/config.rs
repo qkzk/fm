@@ -5,12 +5,14 @@ use std::env;
 pub struct Config {
     pub hidden: bool, // "-a"
     pub path: String, // "/usr/bin"
+    pub help: bool,
 }
 impl Default for Config {
     fn default() -> Self {
         Config {
             hidden: false,
             path: String::from("."),
+            help: false,
         }
     }
 }
@@ -26,14 +28,15 @@ impl Config {
                 Ok(Config {
                     hidden: map_options[&String::from("a")],
                     path,
+                    help: map_options[&String::from("h")],
                 })
             }
         }
     }
 }
 
-pub fn default_map_options() -> ([String; 1], HashMap<String, bool>) {
-    let arr_options: [String; 1] = [String::from("a")];
+pub fn default_map_options() -> ([String; 2], HashMap<String, bool>) {
+    let arr_options: [String; 2] = [String::from("a"), String::from("h")];
     let mut map_options = HashMap::new();
     for opt in arr_options.iter() {
         map_options.insert(String::from(opt), false);

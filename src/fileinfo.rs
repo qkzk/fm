@@ -98,7 +98,13 @@ pub struct PathContent {
 impl PathContent {
     pub fn new(path: path::PathBuf, show_hidden: bool) -> Self {
         let mut files: Vec<FileInfo> = read_dir(&path)
-            .unwrap_or_else(|_| panic!("Couldn't traverse path {:?}", &path))
+            .unwrap_or_else(|_| {
+                eprintln!(
+                    "File does not exists {}",
+                    path.to_str().unwrap_or("unreadable path")
+                );
+                std::process::exit(2)
+            })
             .filter(|r| {
                 show_hidden
                     || match r {
