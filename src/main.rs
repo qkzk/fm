@@ -90,6 +90,7 @@ enum Mode {
     Chmod,
     Newfile,
     Newdir,
+    Exec,
 }
 
 impl fmt::Debug for Mode {
@@ -100,26 +101,12 @@ impl fmt::Debug for Mode {
             Mode::Chmod => write!(f, "Chmod:   "),
             Mode::Newfile => write!(f, "Newfile: "),
             Mode::Newdir => write!(f, "Newdir:  "),
+            Mode::Exec => write!(f, "Exec:    "),
         }
     }
 }
-// use fork::{daemon, Fork};
-// use std::io::Result;
 
-// fn run<I, S>(cmd: String, args: I)
-// where
-//     I: IntoIterator<Item = S>,
-//     S: AsRef<std::ffi::OsStr>,
-// {
-//     if let Ok(Fork::Child) = daemon(false, false) {
-//         Command::new(&cmd)
-//             .args(args)
-//             .output()
-//             .expect("failed to execute process");
-//     }
-// }
-
-pub fn execute_in_child(exe: &str, args: &[&str]) -> std::process::Child {
+pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
     Command::new(exe).args(args).spawn().unwrap()
 }
 
@@ -182,7 +169,7 @@ fn main() {
                     }
                     None => (),
                 },
-                Mode::Rename | Mode::Chmod | Mode::Newdir | Mode::Newfile => {
+                Mode::Rename | Mode::Chmod | Mode::Newdir | Mode::Newfile | Mode::Exec => {
                     if col > 0 {
                         col -= 1
                     }
@@ -203,21 +190,21 @@ fn main() {
                     } else {
                         execute_in_child(
                             "xdg-open",
-                            &[path_content.files[path_content.selected]
+                            &vec![path_content.files[path_content.selected]
                                 .path
                                 .to_str()
                                 .unwrap()],
                         );
                     }
                 }
-                Mode::Rename | Mode::Chmod | Mode::Newdir | Mode::Newfile => {
+                Mode::Rename | Mode::Chmod | Mode::Newdir | Mode::Newfile | Mode::Exec => {
                     if col < input_string.len() {
                         col += 1
                     }
                 }
             },
             Event::Key(Key::Backspace) => match mode {
-                Mode::Rename | Mode::Newdir | Mode::Chmod | Mode::Newfile => {
+                Mode::Rename | Mode::Newdir | Mode::Chmod | Mode::Newfile | Mode::Exec => {
                     if col > 0 && !input_string.is_empty() {
                         input_string.remove(col - 1);
                         col -= 1;
@@ -226,7 +213,7 @@ fn main() {
                 Mode::Normal => (),
             },
             Event::Key(Key::Char(c)) => match mode {
-                Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename => {
+                Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::Exec => {
                     input_string.insert(col, c);
                     col += 1;
                 }
@@ -262,6 +249,7 @@ fn main() {
                         window.reset(path_content.files.len());
                     }
                     'd' => mode = Mode::Newdir,
+                    'e' => mode = Mode::Exec,
                     'm' => mode = Mode::Chmod,
                     'n' => mode = Mode::Newfile,
                     'p' => {
@@ -284,7 +272,7 @@ fn main() {
                     }
                     'q' => break,
                     's' => {
-                        execute_in_child("st", &["-d", path_content.path.to_str().unwrap()]);
+                        execute_in_child("st", &vec!["-d", path_content.path.to_str().unwrap()]);
                     }
                     'u' => flagged.clear(),
                     'x' => {
@@ -333,6 +321,17 @@ fn main() {
                     }
                     input_string.clear();
                     path_content = PathContent::new(path_content.path, config.hidden);
+                } else if let Mode::Exec = mode {
+                    let fullargs: Vec<&str> = input_string.split(' ').collect();
+                    let command = fullargs[0];
+                    let mut args = fullargs.iter().copied().skip(1).collect::<Vec<&str>>();
+                    args.push(
+                        path_content.files[path_content.selected]
+                            .path
+                            .to_str()
+                            .unwrap(),
+                    );
+                    execute_in_child(command, &args);
                 }
                 col = 0;
                 mode = Mode::Normal;

@@ -11,10 +11,7 @@
 - [x] args : dirpath & show hidden (-a)
 - [x] toggle hidden
 - [x] spawn a shell, open with xdg-open
-
-## TODO
-
-- [ ] manipuler :
+- [x] manipuler :
 
   [fuzzy finder in tuiki](https://github.com/lotabout/skim/blob/master/src/input.rs)
 
@@ -30,3 +27,9 @@
   - [x] cut copy paste
   - [x] spawn shell in dir
   - [x] open file with xdg-open
+  - [x] open file with custom command
+
+## TODO
+
+- [ ] usage
+- [ ] help menu
