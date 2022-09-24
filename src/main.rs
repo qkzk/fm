@@ -332,101 +332,22 @@ impl Status {
             | Mode::Chmod
             | Mode::Rename
             | Mode::Exec
-            | Mode::Search => {
-                self.input_string.insert(self.col, c);
-                self.col += 1;
-            }
+            | Mode::Search => self.event_text_insertion(c),
             Mode::Normal => match c {
-                ' ' => {
-                    if self
-                        .flagged
-                        .contains(&self.path_content.files[self.file_index].path)
-                    {
-                        self.flagged
-                            .remove(&self.path_content.files[self.file_index].path);
-                    } else {
-                        self.flagged
-                            .insert(self.path_content.files[self.file_index].path.clone());
-                    }
-                    if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
-                        self.file_index += 1;
-                    }
-                    self.path_content.select_next();
-                    self.window.scroll_down_one(self.file_index);
-                }
-                'a' => {
-                    self.args.hidden = !self.args.hidden;
-                    self.path_content.show_hidden = !self.path_content.show_hidden;
-                    self.path_content.reset_files();
-                    self.window.reset(self.path_content.files.len())
-                }
-                'c' => {
-                    self.flagged.iter().for_each(|oldpath| {
-                        let newpath = self
-                            .path_content
-                            .path
-                            .clone()
-                            .join(oldpath.as_path().file_name().unwrap());
-                        fs::copy(oldpath, newpath).unwrap_or(0);
-                    });
-                    self.flagged.clear();
-                    self.path_content.reset_files();
-                    self.window.reset(self.path_content.files.len());
-                }
+                ' ' => self.event_space(),
+                'a' => self.event_a(),
+                'c' => self.event_c(),
                 'd' => self.mode = Mode::Newdir,
                 'e' => self.mode = Mode::Exec,
                 'm' => self.mode = Mode::Chmod,
                 'n' => self.mode = Mode::Newfile,
-                'o' => {
-                    execute_in_child(
-                        &self.opener,
-                        &vec![self.path_content.files[self.path_content.selected]
-                            .path
-                            .to_str()
-                            .unwrap()],
-                    );
-                }
-                'p' => {
-                    self.flagged.iter().for_each(|oldpath| {
-                        let newpath = self
-                            .path_content
-                            .path
-                            .clone()
-                            .join(oldpath.as_path().file_name().unwrap());
-                        fs::rename(oldpath, newpath).unwrap_or(());
-                    });
-                    self.flagged.clear();
-                    self.path_content.reset_files();
-                    self.window.reset(self.path_content.files.len());
-                }
-                'r' => {
-                    self.mode = Mode::Rename;
-                    let oldname = self.path_content.files[self.path_content.selected]
-                        .filename
-                        .clone();
-                    self.oldpath = self.path_content.path.to_path_buf();
-                    self.oldpath.push(oldname);
-                }
+                'o' => self.event_o(),
+                'p' => self.event_p(),
+                'r' => self.event_r(),
                 'q' => std::process::exit(0),
-                's' => {
-                    execute_in_child(
-                        &self.terminal,
-                        &vec!["-d", self.path_content.path.to_str().unwrap()],
-                    );
-                }
+                's' => self.event_s(),
                 'u' => self.flagged.clear(),
-                'x' => {
-                    self.flagged.iter().for_each(|pathbuf| {
-                        if pathbuf.is_dir() {
-                            fs::remove_dir_all(pathbuf).unwrap_or(());
-                        } else {
-                            fs::remove_file(pathbuf).unwrap_or(());
-                        }
-                    });
-                    self.flagged.clear();
-                    self.path_content.reset_files();
-                    self.window.reset(self.path_content.files.len());
-                }
+                'x' => self.event_x(),
                 '?' => self.mode = Mode::Help,
                 '/' => self.mode = Mode::Search,
                 _ => (),
@@ -439,6 +360,103 @@ impl Status {
                 }
             }
         }
+    }
+
+    fn event_text_insertion(&mut self, c: char) {
+        self.input_string.insert(self.col, c);
+        self.col += 1;
+    }
+
+    fn event_space(&mut self) {
+        if self
+            .flagged
+            .contains(&self.path_content.files[self.file_index].path)
+        {
+            self.flagged
+                .remove(&self.path_content.files[self.file_index].path);
+        } else {
+            self.flagged
+                .insert(self.path_content.files[self.file_index].path.clone());
+        }
+        if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
+            self.file_index += 1;
+        }
+        self.path_content.select_next();
+        self.window.scroll_down_one(self.file_index);
+    }
+
+    fn event_a(&mut self) {
+        self.args.hidden = !self.args.hidden;
+        self.path_content.show_hidden = !self.path_content.show_hidden;
+        self.path_content.reset_files();
+        self.window.reset(self.path_content.files.len())
+    }
+
+    fn event_c(&mut self) {
+        self.flagged.iter().for_each(|oldpath| {
+            let newpath = self
+                .path_content
+                .path
+                .clone()
+                .join(oldpath.as_path().file_name().unwrap());
+            fs::copy(oldpath, newpath).unwrap_or(0);
+        });
+        self.flagged.clear();
+        self.path_content.reset_files();
+        self.window.reset(self.path_content.files.len());
+    }
+
+    fn event_o(&mut self) {
+        execute_in_child(
+            &self.opener,
+            &vec![self.path_content.files[self.path_content.selected]
+                .path
+                .to_str()
+                .unwrap()],
+        );
+    }
+
+    fn event_p(&mut self) {
+        self.flagged.iter().for_each(|oldpath| {
+            let newpath = self
+                .path_content
+                .path
+                .clone()
+                .join(oldpath.as_path().file_name().unwrap());
+            fs::rename(oldpath, newpath).unwrap_or(());
+        });
+        self.flagged.clear();
+        self.path_content.reset_files();
+        self.window.reset(self.path_content.files.len());
+    }
+
+    fn event_r(&mut self) {
+        self.mode = Mode::Rename;
+        let oldname = self.path_content.files[self.path_content.selected]
+            .filename
+            .clone();
+        self.oldpath = self.path_content.path.to_path_buf();
+        self.oldpath.push(oldname);
+    }
+
+    fn event_s(&mut self) {
+        execute_in_child(
+            &self.terminal,
+            &vec!["-d", self.path_content.path.to_str().unwrap()],
+        );
+    }
+
+    fn event_x(&mut self) {
+        self.flagged.iter().for_each(|pathbuf| {
+            if pathbuf.is_dir() {
+                fs::remove_dir_all(pathbuf).unwrap_or(());
+            } else {
+                fs::remove_file(pathbuf).unwrap_or(());
+            }
+        });
+        self.flagged.clear();
+        self.path_content.reset_files();
+        self.window.reset(self.path_content.files.len());
     }
 
     fn event_home(&mut self) {
