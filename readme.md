@@ -19,17 +19,18 @@
   - [x] rename
   - [x] supprimer
   - [x] insérer fichier / dossier
-  - [x] chmod
-
-    - saisir un truc une ligne en dessous du texte ou en bas... parse en octal directement
-    - shortcut et edit directement... ?
-
+  - [x] chmod parsed from octal
   - [x] cut copy paste
   - [x] spawn shell in dir
   - [x] open file with xdg-open
   - [x] open file with custom command
 
+- [x] usage
+- [x] help menu
+
 ## TODO
 
-- [ ] usage
-- [ ] help menu
+- [ ] modes on flagged files ??? is it desired ???
+- [ ] listen to stdin (rcv etc.)
+- [ ] nvim plugin
+- [ ] custom config file
