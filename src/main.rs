@@ -182,10 +182,13 @@ struct Status {
     input_string: String,
     col: usize,
     path_content: PathContent,
+    height: usize,
+    args: Config,
+    colors: Colors,
 }
 
 impl Status {
-    fn new(term: Term<()>, path_content: PathContent) -> Self {
+    fn new(term: Term<()>, path_content: PathContent, args: Config, colors: Colors) -> Self {
         let mode = Mode::Normal;
         let (_, height) = term.term_size().unwrap();
         let file_index = 0;
@@ -204,12 +207,70 @@ impl Status {
             input_string,
             col,
             path_content,
+            height,
+            args,
+            colors,
+        }
+    }
+
+    fn display_first_line(&mut self) {
+        let first_row: String = match self.mode {
+            Mode::Normal => {
+                format!(
+                    "h: {}, s: {} wt: {} wb: {}  m: {:?} - c: {:?} - {}",
+                    self.height,
+                    self.path_content.files.len(),
+                    self.window.top,
+                    self.window.bottom,
+                    self.mode,
+                    self.args,
+                    self.path_content.path.to_str().unwrap()
+                )
+            }
+            _ => {
+                format!("{:?} {}", self.mode.clone(), self.input_string.clone())
+            }
+        };
+        let _ = self.term.print(0, 0, &first_row);
+    }
+
+    fn display_files(&mut self) {
+        let strings = self.path_content.strings();
+        for (i, string) in strings
+            .iter()
+            .enumerate()
+            .take(min(strings.len(), self.window.bottom))
+            .skip(self.window.top)
+        {
+            let row = i + WINDOW_MARGIN_TOP - self.window.top;
+            let mut attr = fileinfo_attr(&self.path_content.files[i], &self.colors);
+            if self.flagged.contains(&self.path_content.files[i].path) {
+                attr.effect |= Effect::UNDERLINE;
+            }
+            let _ = self.term.print_with_attr(row, 0, string, attr);
+        }
+    }
+
+    fn display_help_or_cursor(&mut self) {
+        match self.mode {
+            Mode::Normal => {
+                let _ = self.term.set_cursor(0, 0);
+            }
+            Mode::Help => {
+                let _ = self.term.clear();
+                for (row, line) in HELP_LINES.split('\n').enumerate() {
+                    let _ = self.term.print(row, 0, line);
+                }
+            }
+            _ => {
+                let _ = self.term.set_cursor(0, self.col + EDIT_BOX_OFFSET);
+            }
         }
     }
 }
 
 fn main() {
-    let mut args = Config::new(env::args()).unwrap_or_else(|err| {
+    let args = Config::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
         help();
         process::exit(1);
@@ -235,17 +296,7 @@ fn main() {
         .map(|s| s.to_string())
         .expect("Couldn't parse config file");
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
-    // let (_, height) = term.term_size().unwrap();
-    //
-    // let mut mode = Mode::Normal;
-    // let mut file_index = 0;
-    // let mut window = FilesWindow::new(path_content.files.len(), height);
-    // let mut oldpath: path::PathBuf = path::PathBuf::new();
-    // let mut flagged = HashSet::new();
-    // let mut input_string = "".to_string();
-    // let mut col = 0_usize;
-
-    let mut status = Status::new(term, path_content);
+    let mut status = Status::new(term, path_content, args, colors);
 
     while let Ok(ev) = status.term.poll_event() {
         let _ = status.term.clear();
@@ -281,9 +332,8 @@ fn main() {
                 Mode::Normal => match status.path_content.path.parent() {
                     Some(parent) => {
                         status.path_content =
-                            PathContent::new(path::PathBuf::from(parent), args.hidden);
+                            PathContent::new(path::PathBuf::from(parent), status.args.hidden);
                         status.window.reset(status.path_content.files.len());
-                        // flagged.clear();
                         status.file_index = 0;
                         status.col = 0;
                     }
@@ -309,10 +359,9 @@ fn main() {
                             status.path_content.files[status.path_content.selected]
                                 .path
                                 .clone(),
-                            args.hidden,
+                            status.args.hidden,
                         );
                         status.window.reset(status.path_content.files.len());
-                        // flagged.clear();
                         status.file_index = 0;
                         status.col = 0;
                     }
@@ -375,7 +424,7 @@ fn main() {
                         status.window.scroll_down_one(status.file_index);
                     }
                     'a' => {
-                        args.hidden = !args.hidden;
+                        status.args.hidden = !status.args.hidden;
                         status.path_content.show_hidden = !status.path_content.show_hidden;
                         status.path_content.reset_files();
                         status.window.reset(status.path_content.files.len())
@@ -508,20 +557,23 @@ fn main() {
                     )
                     .unwrap_or(());
                     status.input_string.clear();
-                    status.path_content = PathContent::new(status.path_content.path, args.hidden);
+                    status.path_content =
+                        PathContent::new(status.path_content.path, status.args.hidden);
                     status.window.reset(status.path_content.files.len());
                 } else if let Mode::Newfile = status.mode {
                     if fs::File::create(status.path_content.path.join(status.input_string.clone()))
                         .is_ok()
                     {}
                     status.input_string.clear();
-                    status.path_content = PathContent::new(status.path_content.path, args.hidden);
+                    status.path_content =
+                        PathContent::new(status.path_content.path, status.args.hidden);
                     status.window.reset(status.path_content.files.len());
                 } else if let Mode::Newdir = status.mode {
                     fs::create_dir(status.path_content.path.join(status.input_string.clone()))
                         .unwrap_or(());
                     status.input_string.clear();
-                    status.path_content = PathContent::new(status.path_content.path, args.hidden);
+                    status.path_content =
+                        PathContent::new(status.path_content.path, status.args.hidden);
                     status.window.reset(status.path_content.files.len());
                 } else if let Mode::Chmod = status.mode {
                     let permissions: u32 =
@@ -534,7 +586,8 @@ fn main() {
                         .unwrap_or(());
                     }
                     status.input_string.clear();
-                    status.path_content = PathContent::new(status.path_content.path, args.hidden);
+                    status.path_content =
+                        PathContent::new(status.path_content.path, status.args.hidden);
                 } else if let Mode::Exec = status.mode {
                     let exec_command = status.input_string.clone();
                     let mut args: Vec<&str> = exec_command.split(' ').collect();
@@ -573,52 +626,10 @@ fn main() {
             }
             _ => {}
         }
-        let first_row: String = match status.mode {
-            Mode::Normal => {
-                format!(
-                    "h: {}, s: {} wt: {} wb: {}  m: {:?} - c: {:?} - {}",
-                    height,
-                    status.path_content.files.len(),
-                    status.window.top,
-                    status.window.bottom,
-                    status.mode,
-                    args,
-                    status.path_content.path.to_str().unwrap()
-                )
-            }
-            _ => {
-                format!("{:?} {}", status.mode.clone(), status.input_string.clone())
-            }
-        };
-        let _ = status.term.print(0, 0, &first_row);
-        let strings = status.path_content.strings();
-        for (i, string) in strings
-            .iter()
-            .enumerate()
-            .take(min(strings.len(), status.window.bottom))
-            .skip(status.window.top)
-        {
-            let row = i + WINDOW_MARGIN_TOP - status.window.top;
-            let mut attr = fileinfo_attr(&status.path_content.files[i], &colors);
-            if status.flagged.contains(&status.path_content.files[i].path) {
-                attr.effect |= Effect::UNDERLINE;
-            }
-            let _ = status.term.print_with_attr(row, 0, string, attr);
-        }
-        match status.mode {
-            Mode::Normal => {
-                let _ = status.term.set_cursor(0, 0);
-            }
-            Mode::Help => {
-                let _ = status.term.clear();
-                for (row, line) in HELP_LINES.split('\n').enumerate() {
-                    let _ = status.term.print(row, 0, line);
-                }
-            }
-            _ => {
-                let _ = status.term.set_cursor(0, status.col + EDIT_BOX_OFFSET);
-            }
-        }
+
+        status.display_first_line();
+        status.display_files();
+        status.display_help_or_cursor();
 
         let _ = status.term.present();
     }
