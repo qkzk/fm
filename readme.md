@@ -27,4 +27,6 @@
     - saisir un truc une ligne en dessous du texte ou en bas... parse en octal directement
     - shortcut et edit directement... ?
 
-  - [ ] cut copy paste
+  - [x] cut copy paste
+  - [x] spawn shell in dir
+  - [x] open file with xdg-open

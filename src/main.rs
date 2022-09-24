@@ -176,7 +176,7 @@ fn main() {
                     Some(parent) => {
                         path_content = PathContent::new(path::PathBuf::from(parent), config.hidden);
                         window.reset(path_content.files.len());
-                        flagged.clear();
+                        // flagged.clear();
                         file_index = 0;
                         col = 0;
                     }
@@ -197,7 +197,7 @@ fn main() {
                             config.hidden,
                         );
                         window.reset(path_content.files.len());
-                        flagged.clear();
+                        // flagged.clear();
                         file_index = 0;
                         col = 0;
                     } else {
@@ -249,9 +249,33 @@ fn main() {
                         path_content.reset_files();
                         window.reset(path_content.files.len())
                     }
+                    'c' => {
+                        flagged.iter().for_each(|oldpath| {
+                            let newpath = path_content
+                                .path
+                                .clone()
+                                .join(oldpath.as_path().file_name().unwrap());
+                            fs::copy(oldpath, newpath).unwrap_or(0);
+                        });
+                        flagged.clear();
+                        path_content.reset_files();
+                        window.reset(path_content.files.len());
+                    }
                     'd' => mode = Mode::Newdir,
                     'm' => mode = Mode::Chmod,
                     'n' => mode = Mode::Newfile,
+                    'p' => {
+                        flagged.iter().for_each(|oldpath| {
+                            let newpath = path_content
+                                .path
+                                .clone()
+                                .join(oldpath.as_path().file_name().unwrap());
+                            fs::rename(oldpath, newpath).unwrap_or(());
+                        });
+                        flagged.clear();
+                        path_content.reset_files();
+                        window.reset(path_content.files.len());
+                    }
                     'r' => {
                         mode = Mode::Rename;
                         let oldname = path_content.files[path_content.selected].filename.clone();
