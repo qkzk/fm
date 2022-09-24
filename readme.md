@@ -10,6 +10,7 @@
 - [x] load from anywhere
 - [x] args : dirpath & show hidden (-a)
 - [x] toggle hidden
+- [x] spawn a shell, open with xdg-open
 
 ## TODO
 

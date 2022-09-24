@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::fmt;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
+use std::process::Command;
 use std::{env, path, process};
 
 use tuikit::attr::*;
@@ -102,6 +103,26 @@ impl fmt::Debug for Mode {
         }
     }
 }
+// use fork::{daemon, Fork};
+// use std::io::Result;
+
+// fn run<I, S>(cmd: String, args: I)
+// where
+//     I: IntoIterator<Item = S>,
+//     S: AsRef<std::ffi::OsStr>,
+// {
+//     if let Ok(Fork::Child) = daemon(false, false) {
+//         Command::new(&cmd)
+//             .args(args)
+//             .output()
+//             .expect("failed to execute process");
+//     }
+// }
+
+pub fn execute_in_child(exe: &str, args: &[&str]) -> std::process::Child {
+    Command::new(exe).args(args).spawn().unwrap()
+}
+
 fn main() {
     let mut config = Config::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
@@ -179,6 +200,14 @@ fn main() {
                         flagged.clear();
                         file_index = 0;
                         col = 0;
+                    } else {
+                        execute_in_child(
+                            "xdg-open",
+                            &[path_content.files[path_content.selected]
+                                .path
+                                .to_str()
+                                .unwrap()],
+                        );
                     }
                 }
                 Mode::Rename | Mode::Chmod | Mode::Newdir | Mode::Newfile => {
@@ -230,6 +259,9 @@ fn main() {
                         oldpath.push(oldname);
                     }
                     'q' => break,
+                    's' => {
+                        execute_in_child("st", &["-d", path_content.path.to_str().unwrap()]);
+                    }
                     'u' => flagged.clear(),
                     'x' => {
                         flagged.iter().for_each(|pathbuf| {
