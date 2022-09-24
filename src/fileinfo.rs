@@ -143,6 +143,12 @@ impl PathContent {
         }
     }
 
+    pub fn select_index(&mut self, index: usize) {
+        self.files[self.selected].unselect();
+        self.files[index].select();
+        self.selected = index;
+    }
+
     pub fn reset_files(&mut self) {
         self.files = read_dir(&self.path)
             .unwrap_or_else(|_| panic!("Couldn't traverse path {:?}", &self.path))

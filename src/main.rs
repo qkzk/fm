@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp::{max, min};
 use std::collections::HashSet;
 use std::fmt;
 use std::fs;
@@ -18,6 +18,40 @@ pub mod fileinfo;
 const WINDOW_PADDING: usize = 4;
 const WINDOW_MARGIN_TOP: usize = 1;
 const EDIT_BOX_OFFSET: usize = 10;
+static HELP_LINES: &str = "FM: dired inspired File Manager
+
+q:      quit
+?:      help
+
+- Navigation -
+←:      cd to parent directory 
+→:      cd to child directory
+↑:      one line up  
+↓:      one line down
+Home:   go to first line
+End:    go to last line
+PgUp:   10 lines up
+PgDown: 10 lines down
+
+a:      toggle hidden
+s:      shell in current directory
+o:      xdg-open this file
+
+- Action on flagged files - 
+    space:  toggle flag on a file 
+    u:      clear flags
+    c:      copy to current dir
+    p:      move to current dir
+    x:      delete flagged files
+
+- MODES - 
+    m:      CHMOD 
+    e:      EXEC 
+    d:      NEWDIR 
+    n:      NEWFILE
+    r:      RENAME
+    Enter:  Execute mode then NORMAL
+    Esc:    NORMAL";
 
 struct FilesWindow {
     top: usize,
@@ -36,18 +70,18 @@ impl FilesWindow {
         }
     }
 
-    fn scroll_up_to(&mut self, row: usize) {
-        if row < self.top + WINDOW_PADDING && self.top > 0 {
+    fn scroll_up_one(&mut self, index: usize) {
+        if index < self.top + WINDOW_PADDING && self.top > 0 {
             self.top -= 1;
             self.bottom -= 1;
         }
     }
 
-    fn scroll_down_to(&mut self, row: usize) {
+    fn scroll_down_one(&mut self, index: usize) {
         if self.len < self.height {
             return;
         }
-        if row > self.bottom - WINDOW_PADDING && self.bottom < self.len - WINDOW_MARGIN_TOP {
+        if index > self.bottom - WINDOW_PADDING && self.bottom < self.len - WINDOW_MARGIN_TOP {
             self.top += 1;
             self.bottom += 1;
         }
@@ -57,6 +91,13 @@ impl FilesWindow {
         self.len = len;
         self.top = 0;
         self.bottom = min(len, self.height);
+    }
+
+    fn scroll_to(&mut self, index: usize) {
+        if index < self.top || index > self.bottom {
+            self.top = max(index, WINDOW_PADDING) - WINDOW_PADDING;
+            self.bottom = self.top + min(self.len, self.height - 3);
+        }
     }
 }
 
@@ -91,6 +132,8 @@ enum Mode {
     Newfile,
     Newdir,
     Exec,
+    Help,
+    Search,
 }
 
 impl fmt::Debug for Mode {
@@ -102,6 +145,8 @@ impl fmt::Debug for Mode {
             Mode::Newfile => write!(f, "Newfile: "),
             Mode::Newdir => write!(f, "Newdir:  "),
             Mode::Exec => write!(f, "Exec:    "),
+            Mode::Help => write!(f, ""),
+            Mode::Search => write!(f, "Search:  "),
         }
     }
 }
@@ -146,7 +191,7 @@ fn main() {
                         file_index -= 1;
                     }
                     path_content.select_prev();
-                    window.scroll_up_to(file_index);
+                    window.scroll_up_one(file_index);
                 }
             }
             Event::Key(Key::Down) => {
@@ -155,7 +200,7 @@ fn main() {
                         file_index += 1;
                     }
                     path_content.select_next();
-                    window.scroll_down_to(file_index);
+                    window.scroll_down_one(file_index);
                 }
             }
             Event::Key(Key::Left) => match mode {
@@ -169,11 +214,17 @@ fn main() {
                     }
                     None => (),
                 },
-                Mode::Rename | Mode::Chmod | Mode::Newdir | Mode::Newfile | Mode::Exec => {
+                Mode::Rename
+                | Mode::Chmod
+                | Mode::Newdir
+                | Mode::Newfile
+                | Mode::Exec
+                | Mode::Search => {
                     if col > 0 {
                         col -= 1
                     }
                 }
+                _ => (),
             },
 
             Event::Key(Key::Right) => match mode {
@@ -187,33 +238,42 @@ fn main() {
                         // flagged.clear();
                         file_index = 0;
                         col = 0;
-                    } else {
-                        execute_in_child(
-                            "xdg-open",
-                            &vec![path_content.files[path_content.selected]
-                                .path
-                                .to_str()
-                                .unwrap()],
-                        );
                     }
                 }
-                Mode::Rename | Mode::Chmod | Mode::Newdir | Mode::Newfile | Mode::Exec => {
+                Mode::Rename
+                | Mode::Chmod
+                | Mode::Newdir
+                | Mode::Newfile
+                | Mode::Exec
+                | Mode::Search => {
                     if col < input_string.len() {
                         col += 1
                     }
                 }
+                _ => (),
             },
             Event::Key(Key::Backspace) => match mode {
-                Mode::Rename | Mode::Newdir | Mode::Chmod | Mode::Newfile | Mode::Exec => {
+                Mode::Rename
+                | Mode::Newdir
+                | Mode::Chmod
+                | Mode::Newfile
+                | Mode::Exec
+                | Mode::Search => {
                     if col > 0 && !input_string.is_empty() {
                         input_string.remove(col - 1);
                         col -= 1;
                     }
                 }
                 Mode::Normal => (),
+                _ => (),
             },
             Event::Key(Key::Char(c)) => match mode {
-                Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::Exec => {
+                Mode::Newfile
+                | Mode::Newdir
+                | Mode::Chmod
+                | Mode::Rename
+                | Mode::Exec
+                | Mode::Search => {
                     input_string.insert(col, c);
                     col += 1;
                 }
@@ -228,7 +288,7 @@ fn main() {
                             file_index += 1;
                         }
                         path_content.select_next();
-                        window.scroll_down_to(file_index);
+                        window.scroll_down_one(file_index);
                     }
                     'a' => {
                         config.hidden = !config.hidden;
@@ -252,6 +312,15 @@ fn main() {
                     'e' => mode = Mode::Exec,
                     'm' => mode = Mode::Chmod,
                     'n' => mode = Mode::Newfile,
+                    'o' => {
+                        execute_in_child(
+                            "xdg-open",
+                            &vec![path_content.files[path_content.selected]
+                                .path
+                                .to_str()
+                                .unwrap()],
+                        );
+                    }
                     'p' => {
                         flagged.iter().for_each(|oldpath| {
                             let newpath = path_content
@@ -287,9 +356,50 @@ fn main() {
                         path_content.reset_files();
                         window.reset(path_content.files.len());
                     }
+                    '?' => mode = Mode::Help,
+                    '/' => mode = Mode::Search,
                     _ => (),
                 },
+                Mode::Help => {
+                    if c == '?' {
+                        mode = Mode::Normal
+                    } else if c == 'q' {
+                        break;
+                    }
+                }
             },
+            Event::Key(Key::Home) => {
+                if let Mode::Normal = mode {
+                    path_content.select_index(0);
+                    file_index = 0;
+                    window.scroll_to(0);
+                }
+            }
+            Event::Key(Key::End) => {
+                if let Mode::Normal = mode {
+                    let last_index = path_content.files.len() - 1;
+                    path_content.select_index(last_index);
+                    file_index = last_index;
+                    window.scroll_to(last_index);
+                }
+            }
+            Event::Key(Key::PageDown) => {
+                if let Mode::Normal = mode {
+                    let down_index = min(path_content.files.len() - 1, file_index + 10);
+                    path_content.select_index(down_index);
+                    file_index = down_index;
+                    window.scroll_to(down_index);
+                }
+            }
+            Event::Key(Key::PageUp) => {
+                if let Mode::Normal = mode {
+                    let up_index = if file_index > 10 { file_index - 10 } else { 0 };
+                    path_content.select_index(up_index);
+                    file_index = up_index;
+                    window.scroll_to(up_index);
+                }
+            }
+
             Event::Key(Key::Enter) => {
                 if let Mode::Rename = mode {
                     fs::rename(
@@ -322,17 +432,32 @@ fn main() {
                     input_string.clear();
                     path_content = PathContent::new(path_content.path, config.hidden);
                 } else if let Mode::Exec = mode {
-                    let fullargs: Vec<&str> = input_string.split(' ').collect();
-                    let command = fullargs[0];
-                    let mut args = fullargs.iter().copied().skip(1).collect::<Vec<&str>>();
+                    let exec_command = input_string.clone();
+                    let mut args: Vec<&str> = exec_command.split(' ').collect();
+                    let command = args.remove(0);
                     args.push(
                         path_content.files[path_content.selected]
                             .path
                             .to_str()
                             .unwrap(),
                     );
+                    input_string.clear();
                     execute_in_child(command, &args);
+                } else if let Mode::Search = mode {
+                    let searched_term = input_string.clone();
+                    let mut next_index = file_index;
+                    for (index, file) in path_content.files.iter().enumerate().skip(next_index) {
+                        if file.filename.contains(&searched_term) {
+                            next_index = index;
+                            break;
+                        };
+                    }
+                    input_string.clear();
+                    path_content.select_index(next_index);
+                    file_index = next_index;
+                    window.scroll_to(file_index);
                 }
+
                 col = 0;
                 mode = Mode::Normal;
             }
@@ -370,10 +495,19 @@ fn main() {
             }
             let _ = term.print_with_attr(row, 0, string, attr);
         }
-        if let Mode::Normal = mode {
-            let _ = term.set_cursor(0, 0);
-        } else {
-            let _ = term.set_cursor(0, col + EDIT_BOX_OFFSET);
+        match mode {
+            Mode::Normal => {
+                let _ = term.set_cursor(0, 0);
+            }
+            Mode::Help => {
+                let _ = term.clear();
+                for (row, line) in HELP_LINES.split('\n').enumerate() {
+                    let _ = term.print(row, 0, line);
+                }
+            }
+            _ => {
+                let _ = term.set_cursor(0, col + EDIT_BOX_OFFSET);
+            }
         }
 
         let _ = term.present();
