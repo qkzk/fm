@@ -31,11 +31,15 @@
 - [x] custom keybindings
 - [x] GOTO mode
 - [x] batch chmod
+- [x] mouse support
+  - [x] left move index to this file
+  - [x] right on dir enter
+  - [x] right on file open
+  - [x] up / down
 
 ## TODO
 
 - [ ] resize (i guess it's an event like in curse) seems to work already
-- [ ] mouse support
 - [ ] links ???
 - [ ] remote control
   - [ ] listen to stdin (rcv etc.)
