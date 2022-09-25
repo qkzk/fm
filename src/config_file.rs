@@ -68,6 +68,7 @@ pub struct Keybindings {
     pub help: char,
     pub search: char,
     pub quit: char,
+    pub goto: char,
 }
 
 impl Keybindings {
@@ -184,6 +185,13 @@ impl Keybindings {
             .chars()
             .next()
             .unwrap_or('q');
+        let goto = yaml["goto"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "g".to_string())
+            .chars()
+            .next()
+            .unwrap_or('g');
         Self {
             toggle_hidden,
             copy_paste,
@@ -201,6 +209,7 @@ impl Keybindings {
             help,
             search,
             quit,
+            goto,
         }
     }
 }

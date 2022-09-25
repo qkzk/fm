@@ -32,6 +32,9 @@
 
 ## TODO
 
+- [ ] links ???
+- [ ] mouse support
+- [ ] GOTO mode
 - [ ] modes on flagged files ??? is it desired ???
 - [ ] listen to stdin (rcv etc.)
 - [ ] nvim plugin

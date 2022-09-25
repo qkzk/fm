@@ -62,6 +62,7 @@ o:      xdg-open this file
     d:      NEWDIR 
     n:      NEWFILE
     r:      RENAME
+    g:      GOTO
     Enter:  Execute mode then NORMAL
     Esc:    NORMAL
 ";
@@ -147,6 +148,7 @@ enum Mode {
     Exec,
     Help,
     Search,
+    Goto,
 }
 
 impl fmt::Debug for Mode {
@@ -160,6 +162,7 @@ impl fmt::Debug for Mode {
             Mode::Exec => write!(f, "Exec:    "),
             Mode::Help => write!(f, ""),
             Mode::Search => write!(f, "Search:  "),
+            Mode::Goto => write!(f, "Goto  :  "),
         }
     }
 }
@@ -324,7 +327,8 @@ impl Status {
             | Mode::Chmod
             | Mode::Newfile
             | Mode::Exec
-            | Mode::Search => {
+            | Mode::Search
+            | Mode::Goto => {
                 if self.col > 0 && !self.input_string.is_empty() {
                     self.input_string.remove(self.col - 1);
                     self.col -= 1;
@@ -342,7 +346,8 @@ impl Status {
             | Mode::Chmod
             | Mode::Rename
             | Mode::Exec
-            | Mode::Search => self.event_text_insertion(c),
+            | Mode::Search
+            | Mode::Goto => self.event_text_insertion(c),
             Mode::Normal => {
                 if c == self.keybindings.toggle_hidden {
                     self.event_toggle_hidden()
@@ -358,6 +363,8 @@ impl Status {
                     self.mode = Mode::Chmod
                 } else if c == self.keybindings.exec {
                     self.mode = Mode::Exec
+                } else if c == self.keybindings.goto {
+                    self.mode = Mode::Goto
                 } else if c == self.keybindings.rename {
                     self.event_rename()
                 } else if c == self.keybindings.clear_flags {
@@ -532,6 +539,7 @@ impl Status {
             Mode::Chmod => self.exec_chmod(),
             Mode::Exec => self.exec_exec(),
             Mode::Search => self.exec_search(),
+            Mode::Goto => self.exec_goto(),
             _ => (),
         }
 
@@ -607,6 +615,18 @@ impl Status {
         self.path_content.select_index(next_index);
         self.file_index = next_index;
         self.window.scroll_to(self.file_index);
+    }
+
+    fn exec_goto(&mut self) {
+        let target = self.input_string.clone();
+        self.input_string.clear();
+        match std::fs::canonicalize(path::Path::new(&target)) {
+            Ok(path) => {
+                self.path_content = PathContent::new(path, self.args.hidden);
+                self.window.reset(self.path_content.files.len());
+            }
+            Err(_) => (),
+        }
     }
 
     fn set_height(&mut self, height: usize) {

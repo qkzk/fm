@@ -29,3 +29,4 @@ keybindings:
   help: h
   search: '/'
   quit: q
+  goto: g
