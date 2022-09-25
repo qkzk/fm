@@ -28,6 +28,7 @@
 - [x] usage
 - [x] help menu
 - [x] custom config file
+- [x] custom keybindings
 
 ## TODO
 

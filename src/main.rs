@@ -610,6 +610,11 @@ impl Status {
         self.file_index = next_index;
         self.window.scroll_to(self.file_index);
     }
+
+    fn set_height(&mut self, height: usize) {
+        self.window.height = height;
+        self.height = height;
+    }
 }
 
 struct Display {
@@ -698,8 +703,7 @@ fn main() {
     while let Ok(ev) = display.term.poll_event() {
         let _ = display.term.clear();
         let (_width, height) = display.term.term_size().unwrap();
-        status.window.height = height;
-        status.height = height;
+        status.set_height(height);
         match ev {
             Event::Key(Key::ESC) => status.event_esc(),
             Event::Key(Key::Up) => status.event_up(),
