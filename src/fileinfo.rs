@@ -117,7 +117,9 @@ impl PathContent {
             .collect();
         files.sort_by_key(|file| file.filename.clone());
         let selected: usize = 0;
-        files[selected].select();
+        if !files.is_empty() {
+            files[selected].select();
+        }
 
         Self {
             path,
@@ -178,7 +180,10 @@ impl PathContent {
             .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
             .collect();
         self.files.sort_by_key(|file| file.filename.clone());
-        self.files[0].select();
+        self.selected = 0;
+        if !self.files.is_empty() {
+            self.files[0].select();
+        }
     }
 }
 
