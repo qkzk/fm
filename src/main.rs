@@ -578,14 +578,17 @@ impl Status {
     fn exec_chmod(&mut self) {
         let permissions: u32 = u32::from_str_radix(&self.input_string, 8).unwrap_or(0_u32);
         if permissions <= MAX_PERMISSIONS {
-            fs::set_permissions(
-                self.path_content.files[self.file_index].path.clone(),
-                fs::Permissions::from_mode(permissions),
-            )
-            .unwrap_or(());
+            for path in self.flagged.iter() {
+                Self::set_permissions(path.clone(), permissions).unwrap_or(())
+            }
+            self.flagged.clear()
         }
         self.input_string.clear();
-        self.path_content = PathContent::new(self.path_content.path.clone(), self.args.hidden);
+        self.refresh_view()
+    }
+
+    fn set_permissions(path: path::PathBuf, permissions: u32) -> Result<(), std::io::Error> {
+        fs::set_permissions(path, fs::Permissions::from_mode(permissions))
     }
 
     fn exec_exec(&mut self) {

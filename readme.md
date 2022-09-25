@@ -29,13 +29,17 @@
 - [x] help menu
 - [x] custom config file
 - [x] custom keybindings
+- [x] GOTO mode
+- [x] batch chmod
 
 ## TODO
 
-- [ ] links ???
+- [ ] resize (i guess it's an event like in curse) seems to work already
 - [ ] mouse support
-- [ ] GOTO mode
-- [ ] modes on flagged files ??? is it desired ???
-- [ ] listen to stdin (rcv etc.)
-- [ ] nvim plugin
-- [ ] resize (i guess it's an event like in curse)
+- [ ] links ???
+- [ ] remote control
+  - [ ] listen to stdin (rcv etc.)
+  - [ ] nvim plugin
+- [ ] regex
+  - [ ] search
+  - [ ] mark multiple files
