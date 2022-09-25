@@ -174,7 +174,6 @@ fn help() {
 }
 
 struct Status {
-    term: Term<()>,
     mode: Mode,
     file_index: usize,
     window: FilesWindow,
@@ -192,15 +191,14 @@ struct Status {
 
 impl Status {
     fn new(
-        term: Term<()>,
         path_content: PathContent,
         args: Config,
         colors: Colors,
         terminal: String,
         opener: String,
+        height: usize,
     ) -> Self {
         let mode = Mode::Normal;
-        let (_, height) = term.term_size().unwrap();
         let file_index = 0;
         let window = FilesWindow::new(path_content.files.len(), height);
         let oldpath: path::PathBuf = path::PathBuf::new();
@@ -208,7 +206,6 @@ impl Status {
         let input_string = "".to_string();
         let col = 0;
         Self {
-            term,
             mode,
             file_index,
             window,
@@ -583,47 +580,56 @@ impl Status {
         self.file_index = next_index;
         self.window.scroll_to(self.file_index);
     }
+}
 
-    fn display_first_line(&mut self) {
-        let first_row: String = match self.mode {
+struct Display {
+    term: Term,
+}
+
+impl Display {
+    fn new(term: Term) -> Self {
+        Self { term }
+    }
+    fn display_first_line(&mut self, status: &Status) {
+        let first_row: String = match status.mode {
             Mode::Normal => {
                 format!(
                     "h: {}, s: {} wt: {} wb: {}  m: {:?} - c: {:?} - {}",
-                    self.height,
-                    self.path_content.files.len(),
-                    self.window.top,
-                    self.window.bottom,
-                    self.mode,
-                    self.args,
-                    self.path_content.path.to_str().unwrap()
+                    status.height,
+                    status.path_content.files.len(),
+                    status.window.top,
+                    status.window.bottom,
+                    status.mode,
+                    status.args,
+                    status.path_content.path.to_str().unwrap()
                 )
             }
             _ => {
-                format!("{:?} {}", self.mode.clone(), self.input_string.clone())
+                format!("{:?} {}", status.mode.clone(), status.input_string.clone())
             }
         };
         let _ = self.term.print(0, 0, &first_row);
     }
 
-    fn display_files(&mut self) {
-        let strings = self.path_content.strings();
+    fn display_files(&mut self, status: &Status) {
+        let strings = status.path_content.strings();
         for (i, string) in strings
             .iter()
             .enumerate()
-            .take(min(strings.len(), self.window.bottom))
-            .skip(self.window.top)
+            .take(min(strings.len(), status.window.bottom))
+            .skip(status.window.top)
         {
-            let row = i + WINDOW_MARGIN_TOP - self.window.top;
-            let mut attr = fileinfo_attr(&self.path_content.files[i], &self.colors);
-            if self.flagged.contains(&self.path_content.files[i].path) {
+            let row = i + WINDOW_MARGIN_TOP - status.window.top;
+            let mut attr = fileinfo_attr(&status.path_content.files[i], &status.colors);
+            if status.flagged.contains(&status.path_content.files[i].path) {
                 attr.effect |= Effect::UNDERLINE;
             }
             let _ = self.term.print_with_attr(row, 0, string, attr);
         }
     }
 
-    fn display_help_or_cursor(&mut self) {
-        match self.mode {
+    fn display_help_or_cursor(&mut self, status: &Status) {
+        match status.mode {
             Mode::Normal => {
                 let _ = self.term.set_cursor(0, 0);
             }
@@ -634,13 +640,13 @@ impl Status {
                 }
             }
             _ => {
-                let _ = self.term.set_cursor(0, self.col + EDIT_BOX_OFFSET);
+                let _ = self.term.set_cursor(0, status.col + EDIT_BOX_OFFSET);
             }
         }
     }
 }
 
-fn init_status() -> Status {
+fn init_status(height: usize) -> Status {
     let args = Config::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
         help();
@@ -666,15 +672,17 @@ fn init_status() -> Status {
         .as_str()
         .map(|s| s.to_string())
         .expect("Couldn't parse config file");
-    let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
-    Status::new(term, path_content, args, colors, terminal, opener)
+    Status::new(path_content, args, colors, terminal, opener, height)
 }
 
 fn main() {
-    let mut status = init_status();
-    while let Ok(ev) = status.term.poll_event() {
-        let _ = status.term.clear();
-        let (_width, height) = status.term.term_size().unwrap();
+    let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
+    let (_, height) = term.term_size().unwrap();
+    let mut status = init_status(height);
+    let mut display = Display::new(term);
+    while let Ok(ev) = display.term.poll_event() {
+        let _ = display.term.clear();
+        let (_width, height) = display.term.term_size().unwrap();
         status.window.height = height;
         match ev {
             Event::Key(Key::ESC) => status.event_esc(),
@@ -692,10 +700,10 @@ fn main() {
             _ => {}
         }
 
-        status.display_first_line();
-        status.display_files();
-        status.display_help_or_cursor();
+        display.display_first_line(&status);
+        display.display_files(&status);
+        display.display_help_or_cursor(&status);
 
-        let _ = status.term.present();
+        let _ = display.term.present();
     }
 }

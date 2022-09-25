@@ -1,0 +1,11 @@
+warning: unused variable: `path_text`
+   --> src/main.rs:116:13
+    |
+116 |     let mut path_text: &str;
+    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_path_text`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: `fm` (bin "fm") generated 1 warning
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `/home/quentin/gclem/dev/rust/fm/target/debug/fm`

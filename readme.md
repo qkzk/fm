@@ -34,3 +34,4 @@
 - [ ] modes on flagged files ??? is it desired ???
 - [ ] listen to stdin (rcv etc.)
 - [ ] nvim plugin
+- [ ] resize (i guess it's an event like in curse)
