@@ -64,15 +64,16 @@ impl FileInfo {
         })
     }
 
-    fn format(&self) -> String {
+    fn format(&self, owner_col_width: usize) -> String {
         format!(
-            "{}{} {} {} {} {}",
-            self.dir_symbol,
-            self.permissions,
-            self.file_size,
-            self.owner,
-            self.system_time,
-            self.filename,
+            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {system_time} {filename}",
+            dir_symbol = self.dir_symbol,
+            permissions = self.permissions,
+            file_size = self.file_size,
+            owner = self.owner,
+            owner_col_width = owner_col_width,
+            system_time = self.system_time,
+            filename = self.filename,
         )
     }
 }
@@ -126,10 +127,24 @@ impl PathContent {
         }
     }
 
+    fn owner_column_width(&self) -> usize {
+        let mut owner_size_btreeset = std::collections::BTreeSet::new();
+        for file in self.files.iter() {
+            owner_size_btreeset.insert(file.owner.len());
+        }
+        let owner_size = owner_size_btreeset
+            .iter()
+            .next_back()
+            .unwrap_or(&1_usize)
+            .clone();
+        owner_size
+    }
+
     pub fn strings(&self) -> Vec<String> {
+        let owner_size = self.owner_column_width();
         self.files
             .iter()
-            .map(|fileinfo| fileinfo.format())
+            .map(|fileinfo| fileinfo.format(owner_size))
             .collect()
     }
 
