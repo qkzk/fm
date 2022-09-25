@@ -8,9 +8,10 @@ colors:
   file: white
   directory: red
   block: yellow
-  char: magenta
+  char: green
   fifo: blue
   socket: cyan
+  symlink: magenta
 keybindings:
   # only ASCII char keys are allowed
   toggle_hidden: a

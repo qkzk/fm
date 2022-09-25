@@ -11,6 +11,7 @@ pub struct Colors {
     pub char: String,
     pub fifo: String,
     pub socket: String,
+    pub symlink: String,
 }
 
 impl Colors {
@@ -39,6 +40,10 @@ impl Colors {
             .as_str()
             .map(|s| s.to_string())
             .expect("Couldn't parse config file");
+        let symlink = yaml["symlink"]
+            .as_str()
+            .map(|s| s.to_string())
+            .expect("Couldn't parse config file");
         Self {
             file,
             directory,
@@ -46,6 +51,7 @@ impl Colors {
             char,
             fifo,
             socket,
+            symlink,
         }
     }
 }

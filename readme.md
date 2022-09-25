@@ -51,6 +51,8 @@
 - [ ] regex
   - [ ] search
   - [ ] mark multiple files
+- [ ] dirsymbol for sockets and whatever
+- [ ] refactor FileInfo, use an enum for FileType and basta
 
 ## BUGS
 

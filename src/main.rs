@@ -132,6 +132,8 @@ fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
         attr.fg = str_to_tuikit(&colors.fifo);
     } else if fileinfo.is_socket {
         attr.fg = str_to_tuikit(&colors.socket);
+    } else if fileinfo.is_symlink {
+        attr.fg = str_to_tuikit(&colors.symlink);
     }
     if fileinfo.is_selected {
         attr.effect = Effect::REVERSE;

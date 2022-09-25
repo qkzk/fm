@@ -21,6 +21,7 @@ pub struct FileInfo {
     pub is_char: bool,
     pub is_fifo: bool,
     pub is_socket: bool,
+    pub is_symlink: bool,
 }
 
 impl FileInfo {
@@ -39,12 +40,14 @@ impl FileInfo {
         let mut is_socket: bool = false;
         let mut is_char: bool = false;
         let mut is_fifo: bool = false;
+        let mut is_symlink: bool = false;
 
         if let Ok(meta) = direntry.metadata() {
             is_block = meta.file_type().is_block_device();
             is_socket = meta.file_type().is_socket();
             is_char = meta.file_type().is_char_device();
             is_fifo = meta.file_type().is_fifo();
+            is_symlink = meta.file_type().is_symlink();
         }
 
         Ok(FileInfo {
@@ -61,6 +64,7 @@ impl FileInfo {
             is_char,
             is_fifo,
             is_socket,
+            is_symlink,
         })
     }
 
@@ -237,10 +241,48 @@ fn extract_username(direntry: &DirEntry) -> String {
 }
 
 fn extract_dir_symbol(direntry: &DirEntry) -> String {
-    match metadata(direntry.path()) {
-        Ok(path) => String::from(if path.is_dir() { "d" } else { "." }),
-        Err(_) => String::from("."),
+    match direntry.metadata() {
+        Ok(metadata) => {
+            let file_type = metadata.file_type();
+            if file_type.is_dir() {
+                "d".into()
+            } else if file_type.is_file() {
+                ".".into()
+            } else if file_type.is_symlink() {
+                "l".into()
+            } else if file_type.is_block_device() {
+                "b".into()
+            } else if file_type.is_fifo() {
+                "p".into()
+            } else if file_type.is_socket() {
+                "s".into()
+            } else if file_type.is_char_device() {
+                "c".into()
+            } else {
+                ".".into()
+            }
+        }
+        Err(_) => ".".into(),
     }
+    // match metadata(direntry.path()) {
+    //     Ok(path) => {
+    //         if path.is_dir() {
+    //             "d".into()
+    //         } else if path.is_symlink() {
+    //             "l".into()
+    //         } else if path.is_fifo() {
+    //             "p".into()
+    //         } else if path.is_block() {
+    //             "b".into()
+    //         } else if path.is_socket() {
+    //             "s".into()
+    //         } else {
+    //             ".".into()
+    //         }
+    //     }
+    //     // String::from(if path.is_dir() { "d" } else { "." }),
+    //     Err(_) => String::from("."),
+    // }
 }
 
 fn extract_file_size(direntry: &DirEntry) -> u64 {
