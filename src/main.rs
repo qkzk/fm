@@ -8,6 +8,7 @@ use std::{env, path, process};
 
 use tuikit::attr::*;
 use tuikit::event::{Event, Key};
+use tuikit::key::MouseButton;
 use tuikit::term::{Term, TermHeight};
 
 use fm::config::Config;
@@ -616,6 +617,26 @@ impl Status {
         execute_in_child(command, &args);
     }
 
+    fn event_left_click(&mut self, row: u16) {
+        if let Mode::Normal = self.mode {
+            self.file_index = (row - 1).into();
+            self.path_content.select_index(self.file_index);
+            self.window.scroll_to(self.file_index)
+        }
+    }
+    fn event_right_click(&mut self, row: u16) {
+        if let Mode::Normal = self.mode {
+            self.file_index = (row - 1).into();
+            self.path_content.select_index(self.file_index);
+            self.window.scroll_to(self.file_index)
+        }
+        if self.path_content.files[self.file_index].is_dir {
+            self.event_right()
+        } else {
+            self.event_open_file()
+        }
+    }
+
     fn exec_search(&mut self) {
         let searched_term = self.input_string.clone();
         let mut next_index = self.file_index;
@@ -729,6 +750,7 @@ fn read_args() -> Config {
 fn main() {
     let args = read_args();
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
+    let _ = term.enable_mouse_support();
     let (_, height) = term.term_size().unwrap();
     let mut status = Status::new(args, height);
     let mut display = Display::new(term);
@@ -749,6 +771,12 @@ fn main() {
             Event::Key(Key::PageDown) => status.event_page_down(),
             Event::Key(Key::PageUp) => status.event_page_up(),
             Event::Key(Key::Enter) => status.event_enter(),
+            Event::Key(Key::WheelUp(_, _, _)) => status.event_up(),
+            Event::Key(Key::WheelDown(_, _, _)) => status.event_down(),
+            Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => status.event_left_click(row),
+            Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => {
+                status.event_right_click(row)
+            }
             _ => {}
         }
 
