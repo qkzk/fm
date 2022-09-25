@@ -360,7 +360,7 @@ impl Status {
                 } else if c == self.keybindings.newfile {
                     self.mode = Mode::Newfile
                 } else if c == self.keybindings.chmod {
-                    self.mode = Mode::Chmod
+                    self.event_chmod()
                 } else if c == self.keybindings.exec {
                     self.mode = Mode::Exec
                 } else if c == self.keybindings.goto {
@@ -470,6 +470,17 @@ impl Status {
             .clone();
         self.oldpath = self.path_content.path.to_path_buf();
         self.oldpath.push(oldname);
+    }
+
+    fn event_chmod(&mut self) {
+        self.mode = Mode::Chmod;
+        if self.flagged.is_empty() {
+            self.flagged.insert(
+                self.path_content.files[self.path_content.selected]
+                    .path
+                    .clone(),
+            );
+        }
     }
 
     fn event_shell(&mut self) {
