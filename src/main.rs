@@ -190,7 +190,7 @@ struct Status {
 }
 
 impl Status {
-    fn new(
+    fn create(
         path_content: PathContent,
         args: Config,
         colors: Colors,
@@ -220,6 +220,26 @@ impl Status {
             terminal,
             opener,
         }
+    }
+
+    fn new(args: Config, height: usize) -> Self {
+        let path = std::fs::canonicalize(path::Path::new(&args.path)).unwrap_or_else(|_| {
+            eprintln!("File does not exists {}", args.path);
+            std::process::exit(2)
+        });
+        let path_content = PathContent::new(path, args.hidden);
+
+        let config_file = load_file(CONFIG_FILE);
+        let colors = Colors::from_config(&config_file["colors"]);
+        let terminal = config_file["terminal"]
+            .as_str()
+            .map(|s| s.to_string())
+            .expect("Couldn't parse config file");
+        let opener = config_file["opener"]
+            .as_str()
+            .map(|s| s.to_string())
+            .expect("Couldn't parse config file");
+        Self::create(path_content, args, colors, terminal, opener, height)
     }
 
     fn event_esc(&mut self) {
@@ -590,7 +610,7 @@ impl Display {
     fn new(term: Term) -> Self {
         Self { term }
     }
-    fn display_first_line(&mut self, status: &Status) {
+    fn first_line(&mut self, status: &Status) {
         let first_row: String = match status.mode {
             Mode::Normal => {
                 format!(
@@ -611,7 +631,7 @@ impl Display {
         let _ = self.term.print(0, 0, &first_row);
     }
 
-    fn display_files(&mut self, status: &Status) {
+    fn files(&mut self, status: &Status) {
         let strings = status.path_content.strings();
         for (i, string) in strings
             .iter()
@@ -628,7 +648,7 @@ impl Display {
         }
     }
 
-    fn display_help_or_cursor(&mut self, status: &Status) {
+    fn help_or_cursor(&mut self, status: &Status) {
         match status.mode {
             Mode::Normal => {
                 let _ = self.term.set_cursor(0, 0);
@@ -646,7 +666,7 @@ impl Display {
     }
 }
 
-fn init_status(height: usize) -> Status {
+fn read_args() -> Config {
     let args = Config::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
         help();
@@ -656,29 +676,14 @@ fn init_status(height: usize) -> Status {
         help();
         process::exit(0);
     }
-    let path = std::fs::canonicalize(path::Path::new(&args.path)).unwrap_or_else(|_| {
-        eprintln!("File does not exists {}", args.path);
-        std::process::exit(2)
-    });
-    let path_content = PathContent::new(path, args.hidden);
-
-    let config_file = load_file(CONFIG_FILE);
-    let colors = Colors::from_config(&config_file["colors"]);
-    let terminal = config_file["terminal"]
-        .as_str()
-        .map(|s| s.to_string())
-        .expect("Couldn't parse config file");
-    let opener = config_file["opener"]
-        .as_str()
-        .map(|s| s.to_string())
-        .expect("Couldn't parse config file");
-    Status::new(path_content, args, colors, terminal, opener, height)
+    args
 }
 
 fn main() {
+    let args = read_args();
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
     let (_, height) = term.term_size().unwrap();
-    let mut status = init_status(height);
+    let mut status = Status::new(args, height);
     let mut display = Display::new(term);
     while let Ok(ev) = display.term.poll_event() {
         let _ = display.term.clear();
@@ -700,9 +705,9 @@ fn main() {
             _ => {}
         }
 
-        display.display_first_line(&status);
-        display.display_files(&status);
-        display.display_help_or_cursor(&status);
+        display.first_line(&status);
+        display.files(&status);
+        display.help_or_cursor(&status);
 
         let _ = display.term.present();
     }
