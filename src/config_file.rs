@@ -50,6 +50,161 @@ impl Colors {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Keybindings {
+    pub toggle_hidden: char,
+    pub copy_paste: char,
+    pub cut_paste: char,
+    pub delete: char,
+    pub chmod: char,
+    pub exec: char,
+    pub newdir: char,
+    pub newfile: char,
+    pub rename: char,
+    pub clear_flags: char,
+    pub toggle_flag: char,
+    pub shell: char,
+    pub open_file: char,
+    pub help: char,
+    pub search: char,
+    pub quit: char,
+}
+
+impl Keybindings {
+    pub fn new(yaml: &serde_yaml::value::Value) -> Self {
+        let toggle_hidden = yaml["toggle_hidden"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("a".to_string())
+            .chars()
+            .next()
+            .unwrap_or('a');
+        let copy_paste = yaml["copy_paste"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("c".to_string())
+            .chars()
+            .next()
+            .unwrap_or('c');
+        let cut_paste = yaml["cut_paste"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("p".to_string())
+            .chars()
+            .next()
+            .unwrap_or('p');
+        let delete = yaml["delete"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("x".to_string())
+            .chars()
+            .next()
+            .unwrap_or('x');
+        let chmod = yaml["chmod"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("m".to_string())
+            .chars()
+            .next()
+            .unwrap_or('m');
+        let exec = yaml["exec"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("e".to_string())
+            .chars()
+            .next()
+            .unwrap_or('e');
+        let newdir = yaml["newdir"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("d".to_string())
+            .chars()
+            .next()
+            .unwrap_or('d');
+        let newfile = yaml["newfile"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("n".to_string())
+            .chars()
+            .next()
+            .unwrap_or('n');
+        let rename = yaml["rename"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("r".to_string())
+            .chars()
+            .next()
+            .unwrap_or('r');
+        let clear_flags = yaml["clear_flags"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("u".to_string())
+            .chars()
+            .next()
+            .unwrap_or('u');
+        let toggle_flag = yaml["toggle_flag"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or(" ".to_string())
+            .chars()
+            .next()
+            .unwrap_or(' ');
+        let shell = yaml["shell"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("s".to_string())
+            .chars()
+            .next()
+            .unwrap_or('s');
+        let open_file = yaml["open_file"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("o".to_string())
+            .chars()
+            .next()
+            .unwrap_or('o');
+        let help = yaml["help"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("h".to_string())
+            .chars()
+            .next()
+            .unwrap_or('h');
+        let search = yaml["search"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("/".to_string())
+            .chars()
+            .next()
+            .unwrap_or('/');
+        let quit = yaml["quit"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or("q".to_string())
+            .chars()
+            .next()
+            .unwrap_or('q');
+        Self {
+            toggle_hidden,
+            copy_paste,
+            cut_paste,
+            delete,
+            chmod,
+            exec,
+            newdir,
+            newfile,
+            rename,
+            clear_flags,
+            toggle_flag,
+            shell,
+            open_file,
+            help,
+            search,
+            quit,
+        }
+    }
+}
+
 pub fn str_to_tuikit(color: &str) -> Color {
     match color {
         "white" => Color::WHITE,

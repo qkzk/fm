@@ -11,7 +11,7 @@ use tuikit::event::{Event, Key};
 use tuikit::term::{Term, TermHeight};
 
 use fm::config::Config;
-use fm::config_file::{load_file, str_to_tuikit, Colors};
+use fm::config_file::{load_file, str_to_tuikit, Colors, Keybindings};
 use fm::fileinfo::{FileInfo, PathContent};
 
 pub mod fileinfo;
@@ -187,41 +187,10 @@ struct Status {
     colors: Colors,
     terminal: String,
     opener: String,
+    keybindings: Keybindings,
 }
 
 impl Status {
-    fn create(
-        path_content: PathContent,
-        args: Config,
-        colors: Colors,
-        terminal: String,
-        opener: String,
-        height: usize,
-    ) -> Self {
-        let mode = Mode::Normal;
-        let file_index = 0;
-        let window = FilesWindow::new(path_content.files.len(), height);
-        let oldpath: path::PathBuf = path::PathBuf::new();
-        let flagged = HashSet::new();
-        let input_string = "".to_string();
-        let col = 0;
-        Self {
-            mode,
-            file_index,
-            window,
-            oldpath,
-            flagged,
-            input_string,
-            col,
-            path_content,
-            height,
-            args,
-            colors,
-            terminal,
-            opener,
-        }
-    }
-
     fn new(args: Config, height: usize) -> Self {
         let path = std::fs::canonicalize(path::Path::new(&args.path)).unwrap_or_else(|_| {
             eprintln!("File does not exists {}", args.path);
@@ -239,7 +208,30 @@ impl Status {
             .as_str()
             .map(|s| s.to_string())
             .expect("Couldn't parse config file");
-        Self::create(path_content, args, colors, terminal, opener, height)
+        let mode = Mode::Normal;
+        let file_index = 0;
+        let window = FilesWindow::new(path_content.files.len(), height);
+        let oldpath: path::PathBuf = path::PathBuf::new();
+        let flagged = HashSet::new();
+        let input_string = "".to_string();
+        let col = 0;
+        let keybindings = Keybindings::new(&config_file["keybindings"]);
+        Self {
+            mode,
+            file_index,
+            window,
+            oldpath,
+            flagged,
+            input_string,
+            col,
+            path_content,
+            height,
+            args,
+            colors,
+            terminal,
+            opener,
+            keybindings,
+        }
     }
 
     fn event_esc(&mut self) {
@@ -351,29 +343,47 @@ impl Status {
             | Mode::Rename
             | Mode::Exec
             | Mode::Search => self.event_text_insertion(c),
-            Mode::Normal => match c {
-                ' ' => self.event_space(),
-                'a' => self.event_a(),
-                'c' => self.event_c(),
-                'd' => self.mode = Mode::Newdir,
-                'e' => self.mode = Mode::Exec,
-                'm' => self.mode = Mode::Chmod,
-                'n' => self.mode = Mode::Newfile,
-                'o' => self.event_o(),
-                'p' => self.event_p(),
-                'r' => self.event_r(),
-                'q' => std::process::exit(0),
-                's' => self.event_s(),
-                'u' => self.flagged.clear(),
-                'x' => self.event_x(),
-                '?' => self.mode = Mode::Help,
-                '/' => self.mode = Mode::Search,
-                _ => (),
-            },
+            Mode::Normal => {
+                if c == self.keybindings.toggle_flag {
+                    self.event_toggle_flag()
+                } else if c == self.keybindings.toggle_hidden {
+                    self.event_toggle_hidden()
+                } else if c == self.keybindings.copy_paste {
+                    self.event_copy_paste()
+                } else if c == self.keybindings.cut_paste {
+                    self.event_cut_paste()
+                } else if c == self.keybindings.newdir {
+                    self.mode = Mode::Newdir
+                } else if c == self.keybindings.newfile {
+                    self.mode = Mode::Newfile
+                } else if c == self.keybindings.chmod {
+                    self.mode = Mode::Chmod
+                } else if c == self.keybindings.exec {
+                    self.mode = Mode::Exec
+                } else if c == self.keybindings.rename {
+                    self.event_rename()
+                } else if c == self.keybindings.clear_flags {
+                    self.flagged.clear()
+                } else if c == self.keybindings.toggle_flag {
+                    self.event_toggle_flag()
+                } else if c == self.keybindings.shell {
+                    self.event_shell()
+                } else if c == self.keybindings.delete {
+                    self.event_delete()
+                } else if c == self.keybindings.open_file {
+                    self.event_open_file()
+                } else if c == self.keybindings.help {
+                    self.mode = Mode::Help
+                } else if c == self.keybindings.search {
+                    self.mode = Mode::Search
+                } else if c == self.keybindings.quit {
+                    std::process::exit(0)
+                }
+            }
             Mode::Help => {
-                if c == '?' {
+                if c == self.keybindings.help {
                     self.mode = Mode::Normal
-                } else if c == 'q' {
+                } else if c == self.keybindings.quit {
                     std::process::exit(0);
                 }
             }
@@ -385,7 +395,7 @@ impl Status {
         self.col += 1;
     }
 
-    fn event_space(&mut self) {
+    fn event_toggle_flag(&mut self) {
         if self
             .flagged
             .contains(&self.path_content.files[self.file_index].path)
@@ -403,14 +413,14 @@ impl Status {
         self.window.scroll_down_one(self.file_index);
     }
 
-    fn event_a(&mut self) {
+    fn event_toggle_hidden(&mut self) {
         self.args.hidden = !self.args.hidden;
         self.path_content.show_hidden = !self.path_content.show_hidden;
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len())
     }
 
-    fn event_c(&mut self) {
+    fn event_copy_paste(&mut self) {
         self.flagged.iter().for_each(|oldpath| {
             let newpath = self
                 .path_content
@@ -424,7 +434,7 @@ impl Status {
         self.window.reset(self.path_content.files.len());
     }
 
-    fn event_o(&mut self) {
+    fn event_open_file(&mut self) {
         execute_in_child(
             &self.opener,
             &vec![self.path_content.files[self.path_content.selected]
@@ -434,7 +444,7 @@ impl Status {
         );
     }
 
-    fn event_p(&mut self) {
+    fn event_cut_paste(&mut self) {
         self.flagged.iter().for_each(|oldpath| {
             let newpath = self
                 .path_content
@@ -448,7 +458,7 @@ impl Status {
         self.window.reset(self.path_content.files.len());
     }
 
-    fn event_r(&mut self) {
+    fn event_rename(&mut self) {
         self.mode = Mode::Rename;
         let oldname = self.path_content.files[self.path_content.selected]
             .filename
@@ -457,14 +467,14 @@ impl Status {
         self.oldpath.push(oldname);
     }
 
-    fn event_s(&mut self) {
+    fn event_shell(&mut self) {
         execute_in_child(
             &self.terminal,
             &vec!["-d", self.path_content.path.to_str().unwrap()],
         );
     }
 
-    fn event_x(&mut self) {
+    fn event_delete(&mut self) {
         self.flagged.iter().for_each(|pathbuf| {
             if pathbuf.is_dir() {
                 fs::remove_dir_all(pathbuf).unwrap_or(());
@@ -518,12 +528,12 @@ impl Status {
 
     fn event_enter(&mut self) {
         match self.mode {
-            Mode::Rename => self.event_rename(),
-            Mode::Newfile => self.event_newfile(),
-            Mode::Newdir => self.event_newdir(),
-            Mode::Chmod => self.event_chmod(),
-            Mode::Exec => self.event_exec(),
-            Mode::Search => self.event_search(),
+            Mode::Rename => self.exec_rename(),
+            Mode::Newfile => self.exec_newfile(),
+            Mode::Newdir => self.exec_newdir(),
+            Mode::Chmod => self.exec_chmod(),
+            Mode::Exec => self.exec_exec(),
+            Mode::Search => self.exec_search(),
             _ => (),
         }
 
@@ -537,7 +547,7 @@ impl Status {
         self.window.reset(self.path_content.files.len());
     }
 
-    fn event_rename(&mut self) {
+    fn exec_rename(&mut self) {
         fs::rename(
             self.oldpath.clone(),
             self.path_content
@@ -549,17 +559,17 @@ impl Status {
         self.refresh_view()
     }
 
-    fn event_newfile(&mut self) {
+    fn exec_newfile(&mut self) {
         if fs::File::create(self.path_content.path.join(self.input_string.clone())).is_ok() {}
         self.refresh_view()
     }
 
-    fn event_newdir(&mut self) {
+    fn exec_newdir(&mut self) {
         fs::create_dir(self.path_content.path.join(self.input_string.clone())).unwrap_or(());
         self.refresh_view()
     }
 
-    fn event_chmod(&mut self) {
+    fn exec_chmod(&mut self) {
         let permissions: u32 = u32::from_str_radix(&self.input_string, 8).unwrap_or(0_u32);
         if permissions <= MAX_PERMISSIONS {
             fs::set_permissions(
@@ -572,7 +582,7 @@ impl Status {
         self.path_content = PathContent::new(self.path_content.path.clone(), self.args.hidden);
     }
 
-    fn event_exec(&mut self) {
+    fn exec_exec(&mut self) {
         let exec_command = self.input_string.clone();
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
@@ -586,7 +596,7 @@ impl Status {
         execute_in_child(command, &args);
     }
 
-    fn event_search(&mut self) {
+    fn exec_search(&mut self) {
         let searched_term = self.input_string.clone();
         let mut next_index = self.file_index;
         for (index, file) in self.path_content.files.iter().enumerate().skip(next_index) {
@@ -689,6 +699,7 @@ fn main() {
         let _ = display.term.clear();
         let (_width, height) = display.term.term_size().unwrap();
         status.window.height = height;
+        status.height = height;
         match ev {
             Event::Key(Key::ESC) => status.event_esc(),
             Event::Key(Key::Up) => status.event_up(),

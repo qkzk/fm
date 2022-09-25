@@ -1,9 +1,31 @@
+# the terminal must be installed
+terminal: st
+# the opener must be installed
+opener: xdg-open
 colors:
+  # white, black, red, green, blue, yellow, cyan, magenta 
+  # light_white, light_black, light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
   file: white
   directory: red
   block: yellow
   char: magenta
   fifo: blue
   socket: cyan
-terminal: st
-opener: xdg-open
+keybindings:
+  # only ASCII char keys are allowed
+  toggle_hidden: a
+  copy_paste: c
+  cut_paste: p
+  delete: x
+  chmod: m
+  exec: e
+  newdir: d
+  newfile: n
+  rename: r
+  clear_flags: u
+  toggle_flag: ' '
+  shell: s
+  open_file: o
+  help: h
+  search: '/'
+  quit: q
