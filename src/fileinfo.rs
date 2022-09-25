@@ -132,7 +132,7 @@ impl PathContent {
         for file in self.files.iter() {
             owner_size_btreeset.insert(file.owner.len());
         }
-        owner_size_btreeset.iter().next_back().unwrap_or(&1).clone()
+        *owner_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
     pub fn strings(&self) -> Vec<String> {

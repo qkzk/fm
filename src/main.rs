@@ -344,9 +344,7 @@ impl Status {
             | Mode::Exec
             | Mode::Search => self.event_text_insertion(c),
             Mode::Normal => {
-                if c == self.keybindings.toggle_flag {
-                    self.event_toggle_flag()
-                } else if c == self.keybindings.toggle_hidden {
+                if c == self.keybindings.toggle_hidden {
                     self.event_toggle_hidden()
                 } else if c == self.keybindings.copy_paste {
                     self.event_copy_paste()
