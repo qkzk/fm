@@ -36,14 +36,24 @@
   - [x] right on dir enter
   - [x] right on file open
   - [x] up / down
+- [x] links are followed
+- [x] resize (i guess it's an event like in curse) seems to work already
 
 ## TODO
 
-- [ ] resize (i guess it's an event like in curse) seems to work already
-- [ ] links ???
 - [ ] remote control
   - [ ] listen to stdin (rcv etc.)
   - [ ] nvim plugin
+  - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
+  - https://neovim.io/doc/user/api.html
+- [ ] - flag all
+- [ ] v reverse flags
 - [ ] regex
   - [ ] search
   - [ ] mark multiple files
+
+## BUGS
+
+- [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
+- [ ] can navigate outside file list
+- [ ] strange behavior after leaving a mode, wrong files are flagged
