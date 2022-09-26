@@ -78,6 +78,7 @@ pub struct Keybindings {
     pub flag_all: char,
     pub reverse_flags: char,
     pub regex_match: char,
+    pub jump: char,
 }
 
 impl Keybindings {
@@ -222,6 +223,13 @@ impl Keybindings {
             .chars()
             .next()
             .unwrap_or('w');
+        let jump = yaml["jump"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "j".to_string())
+            .chars()
+            .next()
+            .unwrap_or('j');
         Self {
             toggle_hidden,
             copy_paste,
@@ -243,6 +251,7 @@ impl Keybindings {
             flag_all,
             reverse_flags,
             regex_match,
+            jump,
         }
     }
 }
