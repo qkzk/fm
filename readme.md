@@ -56,7 +56,10 @@
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 - [ ] installed config file, user config file
-- [ ] completion in goto mode, exec mode, searchmode (???)
+- [ ] completion
+  - [x] in goto mode,
+  - [ ] exec mode,
+  - [ ] searchmode (???)
 - [ ] confirmation for cut/paste, copy/paste, delete
 
 ## BUGS
