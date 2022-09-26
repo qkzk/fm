@@ -596,6 +596,7 @@ impl Status {
 
     fn event_jump(&mut self) {
         if !self.flagged.is_empty() {
+            self.jump_index = 0;
             self.mode = Mode::Jump
         }
     }
