@@ -38,6 +38,7 @@
   - [x] up / down
 - [x] links are followed
 - [x] resize (i guess it's an event like in curse) seems to work already
+- [x] refactor FileInfo, use an enum
 
 ## TODO
 
@@ -52,7 +53,6 @@
   - [ ] search
   - [ ] mark multiple files
 - [ ] dirsymbol for sockets and whatever
-- [ ] refactor FileInfo, use an enum for FileType and basta
 
 ## BUGS
 
