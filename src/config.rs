@@ -77,6 +77,7 @@ pub struct Keybindings {
     pub goto: char,
     pub flag_all: char,
     pub reverse_flags: char,
+    pub regex_match: char,
 }
 
 impl Keybindings {
@@ -214,6 +215,13 @@ impl Keybindings {
             .chars()
             .next()
             .unwrap_or('v');
+        let regex_match = yaml["regex_match"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "w".to_string())
+            .chars()
+            .next()
+            .unwrap_or('w');
         Self {
             toggle_hidden,
             copy_paste,
@@ -234,6 +242,7 @@ impl Keybindings {
             goto,
             flag_all,
             reverse_flags,
+            regex_match,
         }
     }
 }

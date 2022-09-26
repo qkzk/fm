@@ -7,6 +7,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 use std::{env, path, process};
 
+use regex::Regex;
 use tuikit::attr::*;
 use tuikit::event::{Event, Key};
 use tuikit::key::MouseButton;
@@ -68,6 +69,7 @@ o:      xdg-open this file
     n:      NEWFILE
     r:      RENAME
     g:      GOTO
+    w:      REGEXMATCH
     Enter:  Execute mode then NORMAL
     Esc:    NORMAL
 ";
@@ -155,6 +157,7 @@ enum Mode {
     Help,
     Search,
     Goto,
+    RegexMatch,
 }
 
 impl fmt::Debug for Mode {
@@ -169,6 +172,7 @@ impl fmt::Debug for Mode {
             Mode::Help => write!(f, ""),
             Mode::Search => write!(f, "Search:  "),
             Mode::Goto => write!(f, "Goto  :  "),
+            Mode::RegexMatch => write!(f, "Regex :  "),
         }
     }
 }
@@ -355,7 +359,8 @@ impl Status {
             | Mode::Rename
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => self.event_text_insertion(c),
+            | Mode::Goto
+            | Mode::RegexMatch => self.event_text_insertion(c),
             Mode::Normal => {
                 if c == self.keybindings.toggle_hidden {
                     self.event_toggle_hidden()
@@ -389,6 +394,8 @@ impl Status {
                     self.mode = Mode::Help
                 } else if c == self.keybindings.search {
                     self.mode = Mode::Search
+                } else if c == self.keybindings.regex_match {
+                    self.mode = Mode::RegexMatch
                 } else if c == self.keybindings.quit {
                     std::process::exit(0)
                 } else if c == self.keybindings.flag_all {
@@ -579,7 +586,8 @@ impl Status {
             Mode::Exec => self.exec_exec(),
             Mode::Search => self.exec_search(),
             Mode::Goto => self.exec_goto(),
-            _ => (),
+            Mode::RegexMatch => self.exec_regex(),
+            Mode::Normal | Mode::Help => (),
         }
 
         self.col = 0;
@@ -688,6 +696,19 @@ impl Status {
             self.path_content = PathContent::new(path, self.args.hidden);
             self.window.reset(self.path_content.files.len());
         }
+    }
+
+    fn exec_regex(&mut self) {
+        let re = Regex::new(&self.input_string).unwrap();
+        if !self.input_string.is_empty() {
+            self.flagged.clear();
+            for file in self.path_content.files.iter() {
+                if re.is_match(file.path.to_str().unwrap()) {
+                    self.flagged.insert(file.path.clone());
+                }
+            }
+        }
+        self.input_string.clear();
     }
 
     fn set_height(&mut self, height: usize) {
