@@ -57,6 +57,7 @@
 - [ ] installed config file, user config file
 - [ ] completion in goto mode, exec mode, searchmode (???)
 - [ ] confirmation for cut/paste, copy/paste, delete
+- [ ] jump pour next flagged file
 
 ## BUGS
 
