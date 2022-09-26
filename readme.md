@@ -43,6 +43,9 @@
 - [x] '\*' flag all
 - [x] v reverse flags
 - [x] allow '~' in GOTO mode
+- [x] regex
+  - [x] search
+  - [x] mark multiple files
 
 ## TODO
 
@@ -51,11 +54,9 @@
   - [ ] nvim plugin
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
-- [ ] regex
-  - [ ] search
-  - [ ] mark multiple files
 - [ ] installed config file, user config file
 - [ ] completion in goto mode, exec mode, searchmode (???)
+- [ ] confirmation for cut/paste, copy/paste, delete
 
 ## BUGS
 
