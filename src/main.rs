@@ -15,6 +15,7 @@ use fm::args::Args;
 use fm::config::{load_file, str_to_tuikit, Colors, Keybindings};
 use fm::fileinfo::{FileInfo, FileKind, PathContent};
 
+extern crate shellexpand; // 1.0.0
 pub mod fileinfo;
 
 const WINDOW_PADDING: usize = 4;
@@ -678,9 +679,12 @@ impl Status {
     }
 
     fn exec_goto(&mut self) {
-        let target = self.input_string.clone();
+        use std::borrow::Borrow;
+        let target_string = self.input_string.clone();
+        let expanded_cow_path = shellexpand::tilde(&target_string);
+        let expanded_target: &str = expanded_cow_path.borrow();
         self.input_string.clear();
-        if let Ok(path) = std::fs::canonicalize(path::Path::new(&target)) {
+        if let Ok(path) = std::fs::canonicalize(expanded_target) {
             self.path_content = PathContent::new(path, self.args.hidden);
             self.window.reset(self.path_content.files.len());
         }
