@@ -41,6 +41,7 @@
 - [x] dirsymbol for sockets and whatever
 - [x] refactor FileInfo, use an enum
 - [x] '\*' flag all
+- [x] v reverse flags
 
 ## TODO
 
@@ -49,7 +50,6 @@
   - [ ] nvim plugin
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
-- [ ] v reverse flags
 - [ ] regex
   - [ ] search
   - [ ] mark multiple files
