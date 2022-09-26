@@ -658,12 +658,9 @@ impl Status {
     fn exec_goto(&mut self) {
         let target = self.input_string.clone();
         self.input_string.clear();
-        match std::fs::canonicalize(path::Path::new(&target)) {
-            Ok(path) => {
-                self.path_content = PathContent::new(path, self.args.hidden);
-                self.window.reset(self.path_content.files.len());
-            }
-            Err(_) => (),
+        if let Ok(path) = std::fs::canonicalize(path::Path::new(&target)) {
+            self.path_content = PathContent::new(path, self.args.hidden);
+            self.window.reset(self.path_content.files.len());
         }
     }
 
