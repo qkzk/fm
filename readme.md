@@ -42,6 +42,7 @@
 - [x] refactor FileInfo, use an enum
 - [x] '\*' flag all
 - [x] v reverse flags
+- [x] allow '~' in GOTO mode
 
 ## TODO
 
@@ -53,6 +54,8 @@
 - [ ] regex
   - [ ] search
   - [ ] mark multiple files
+- [ ] installed config file, user config file
+- [ ] completion in goto mode, exec mode, searchmode (???)
 
 ## BUGS
 
