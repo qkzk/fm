@@ -11,8 +11,8 @@ use tuikit::event::{Event, Key};
 use tuikit::key::MouseButton;
 use tuikit::term::{Term, TermHeight};
 
-use fm::config::Config;
-use fm::config_file::{load_file, str_to_tuikit, Colors, Keybindings};
+use fm::args::Args;
+use fm::config::{load_file, str_to_tuikit, Colors, Keybindings};
 use fm::fileinfo::{FileInfo, PathContent};
 
 pub mod fileinfo;
@@ -189,7 +189,7 @@ struct Status {
     col: usize,
     path_content: PathContent,
     height: usize,
-    args: Config,
+    args: Args,
     colors: Colors,
     terminal: String,
     opener: String,
@@ -197,7 +197,7 @@ struct Status {
 }
 
 impl Status {
-    fn new(args: Config, height: usize) -> Self {
+    fn new(args: Args, height: usize) -> Self {
         let path = std::fs::canonicalize(path::Path::new(&args.path)).unwrap_or_else(|_| {
             eprintln!("File does not exists {}", args.path);
             std::process::exit(2)
@@ -736,8 +736,8 @@ impl Display {
     }
 }
 
-fn read_args() -> Config {
-    let args = Config::new(env::args()).unwrap_or_else(|err| {
+fn read_args() -> Args {
+    let args = Args::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
         help();
         process::exit(1);
