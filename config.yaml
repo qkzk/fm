@@ -31,3 +31,5 @@ keybindings:
   search: '/'
   quit: q
   goto: g
+  flag_all: '*'
+  reverse_flags: v
