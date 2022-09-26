@@ -6,6 +6,52 @@ use std::path;
 
 use users::get_user_by_uid;
 
+#[derive(Debug, Clone, Copy)]
+pub enum FileKind {
+    NormalFile,
+    Directory,
+    BlockDevice,
+    CharDevice,
+    Fifo,
+    Socket,
+    SymbolicLink,
+}
+
+impl FileKind {
+    pub fn new(direntry: &DirEntry) -> Self {
+        if let Ok(meta) = direntry.metadata() {
+            if meta.file_type().is_dir() {
+                Self::Directory
+            } else if meta.file_type().is_block_device() {
+                Self::BlockDevice
+            } else if meta.file_type().is_socket() {
+                Self::Socket
+            } else if meta.file_type().is_char_device() {
+                Self::CharDevice
+            } else if meta.file_type().is_fifo() {
+                Self::Fifo
+            } else if meta.file_type().is_symlink() {
+                Self::SymbolicLink
+            } else {
+                Self::NormalFile
+            }
+        } else {
+            Self::NormalFile
+        }
+    }
+    fn extract_dir_symbol(&self) -> String {
+        match self {
+            FileKind::Fifo => "p".into(),
+            FileKind::Socket => "s".into(),
+            FileKind::Directory => "d".into(),
+            FileKind::NormalFile => ".".into(),
+            FileKind::CharDevice => "c".into(),
+            FileKind::BlockDevice => "b".into(),
+            FileKind::SymbolicLink => "l".into(),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct FileInfo {
     pub path: path::PathBuf,
@@ -16,12 +62,7 @@ pub struct FileInfo {
     pub owner: String,
     pub system_time: String,
     pub is_selected: bool,
-    pub is_dir: bool,
-    pub is_block: bool,
-    pub is_char: bool,
-    pub is_fifo: bool,
-    pub is_socket: bool,
-    pub is_symlink: bool,
+    pub file_kind: FileKind,
 }
 
 impl FileInfo {
@@ -29,26 +70,13 @@ impl FileInfo {
         let path = direntry.path();
         let filename = extract_filename(direntry);
         let file_size = human_size(extract_file_size(direntry));
-        let dir_symbol = extract_dir_symbol(direntry);
         let permissions = extract_permissions_string(direntry);
-        let owner = extract_username(direntry);
+        let owner = extract_owner(direntry);
         let system_time = extract_datetime(direntry);
         let is_selected = false;
-        let is_dir = direntry.path().is_dir();
 
-        let mut is_block: bool = false;
-        let mut is_socket: bool = false;
-        let mut is_char: bool = false;
-        let mut is_fifo: bool = false;
-        let mut is_symlink: bool = false;
-
-        if let Ok(meta) = direntry.metadata() {
-            is_block = meta.file_type().is_block_device();
-            is_socket = meta.file_type().is_socket();
-            is_char = meta.file_type().is_char_device();
-            is_fifo = meta.file_type().is_fifo();
-            is_symlink = meta.file_type().is_symlink();
-        }
+        let file_kind = FileKind::new(direntry);
+        let dir_symbol = file_kind.extract_dir_symbol();
 
         Ok(FileInfo {
             path,
@@ -59,12 +87,7 @@ impl FileInfo {
             owner,
             system_time,
             is_selected,
-            is_dir,
-            is_block,
-            is_char,
-            is_fifo,
-            is_socket,
-            is_symlink,
+            file_kind,
         })
     }
 
@@ -227,7 +250,7 @@ fn convert_octal_mode(mode: u32) -> String {
     String::from(rwx[(mode & 7_u32) as usize])
 }
 
-fn extract_username(direntry: &DirEntry) -> String {
+fn extract_owner(direntry: &DirEntry) -> String {
     match metadata(direntry.path()) {
         Ok(metadata) => String::from(
             get_user_by_uid(metadata.uid())
@@ -238,51 +261,6 @@ fn extract_username(direntry: &DirEntry) -> String {
         ),
         Err(_) => String::from(""),
     }
-}
-
-fn extract_dir_symbol(direntry: &DirEntry) -> String {
-    match direntry.metadata() {
-        Ok(metadata) => {
-            let file_type = metadata.file_type();
-            if file_type.is_dir() {
-                "d".into()
-            } else if file_type.is_file() {
-                ".".into()
-            } else if file_type.is_symlink() {
-                "l".into()
-            } else if file_type.is_block_device() {
-                "b".into()
-            } else if file_type.is_fifo() {
-                "p".into()
-            } else if file_type.is_socket() {
-                "s".into()
-            } else if file_type.is_char_device() {
-                "c".into()
-            } else {
-                ".".into()
-            }
-        }
-        Err(_) => ".".into(),
-    }
-    // match metadata(direntry.path()) {
-    //     Ok(path) => {
-    //         if path.is_dir() {
-    //             "d".into()
-    //         } else if path.is_symlink() {
-    //             "l".into()
-    //         } else if path.is_fifo() {
-    //             "p".into()
-    //         } else if path.is_block() {
-    //             "b".into()
-    //         } else if path.is_socket() {
-    //             "s".into()
-    //         } else {
-    //             ".".into()
-    //         }
-    //     }
-    //     // String::from(if path.is_dir() { "d" } else { "." }),
-    //     Err(_) => String::from("."),
-    // }
 }
 
 fn extract_file_size(direntry: &DirEntry) -> u64 {
