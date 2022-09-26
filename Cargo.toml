@@ -13,8 +13,9 @@ name = "fm"
 path = "src/lib.rs"
 
 [dependencies]
-users = "0.11.0"
-tuikit = "*"
 chrono = "*"
+regex = "1"
 serde_yaml = "0.9.13"
 shellexpand = "2.1.2"
+tuikit = "*"
+users = "0.11.0"

@@ -7,6 +7,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 use std::{env, path, process};
 
+use regex::Regex;
 use tuikit::attr::*;
 use tuikit::event::{Event, Key};
 use tuikit::key::MouseButton;
@@ -68,6 +69,8 @@ o:      xdg-open this file
     n:      NEWFILE
     r:      RENAME
     g:      GOTO
+    w:      REGEXMATCH
+    j:      JUMP
     Enter:  Execute mode then NORMAL
     Esc:    NORMAL
 ";
@@ -155,6 +158,8 @@ enum Mode {
     Help,
     Search,
     Goto,
+    RegexMatch,
+    Jump,
 }
 
 impl fmt::Debug for Mode {
@@ -169,6 +174,8 @@ impl fmt::Debug for Mode {
             Mode::Help => write!(f, ""),
             Mode::Search => write!(f, "Search:  "),
             Mode::Goto => write!(f, "Goto  :  "),
+            Mode::RegexMatch => write!(f, "Regex :  "),
+            Mode::Jump => write!(f, "Jump  :  "),
         }
     }
 }
@@ -197,6 +204,7 @@ struct Status {
     terminal: String,
     opener: String,
     keybindings: Keybindings,
+    jump_index: usize,
 }
 
 impl Status {
@@ -225,6 +233,7 @@ impl Status {
         let input_string = "".to_string();
         let col = 0;
         let keybindings = Keybindings::new(&config_file["keybindings"]);
+        let jump_index = 0;
         Self {
             mode,
             file_index,
@@ -240,6 +249,7 @@ impl Status {
             terminal,
             opener,
             keybindings,
+            jump_index,
         }
     }
 
@@ -258,6 +268,10 @@ impl Status {
             }
             self.path_content.select_prev();
             self.window.scroll_up_one(self.file_index);
+        } else if let Mode::Jump = self.mode {
+            if self.jump_index > 0 {
+                self.jump_index -= 1;
+            }
         }
     }
 
@@ -268,6 +282,10 @@ impl Status {
             }
             self.path_content.select_next();
             self.window.scroll_down_one(self.file_index);
+        } else if let Mode::Jump = self.mode {
+            if self.jump_index < self.flagged.len() {
+                self.jump_index += 1;
+            }
         }
     }
 
@@ -355,7 +373,8 @@ impl Status {
             | Mode::Rename
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => self.event_text_insertion(c),
+            | Mode::Goto
+            | Mode::RegexMatch => self.event_text_insertion(c),
             Mode::Normal => {
                 if c == self.keybindings.toggle_hidden {
                     self.event_toggle_hidden()
@@ -389,12 +408,16 @@ impl Status {
                     self.mode = Mode::Help
                 } else if c == self.keybindings.search {
                     self.mode = Mode::Search
+                } else if c == self.keybindings.regex_match {
+                    self.mode = Mode::RegexMatch
                 } else if c == self.keybindings.quit {
                     std::process::exit(0)
                 } else if c == self.keybindings.flag_all {
                     self.event_flag_all();
                 } else if c == self.keybindings.reverse_flags {
                     self.event_reverse_flags();
+                } else if c == self.keybindings.jump {
+                    self.event_jump();
                 }
             }
             Mode::Help => {
@@ -404,6 +427,7 @@ impl Status {
                     std::process::exit(0);
                 }
             }
+            Mode::Jump => (),
         }
     }
 
@@ -570,6 +594,12 @@ impl Status {
         }
     }
 
+    fn event_jump(&mut self) {
+        if !self.flagged.is_empty() {
+            self.mode = Mode::Jump
+        }
+    }
+
     fn event_enter(&mut self) {
         match self.mode {
             Mode::Rename => self.exec_rename(),
@@ -579,7 +609,9 @@ impl Status {
             Mode::Exec => self.exec_exec(),
             Mode::Search => self.exec_search(),
             Mode::Goto => self.exec_goto(),
-            _ => (),
+            Mode::RegexMatch => self.exec_regex(),
+            Mode::Jump => self.exec_jump(),
+            Mode::Normal | Mode::Help => (),
         }
 
         self.col = 0;
@@ -681,13 +713,46 @@ impl Status {
 
     fn exec_goto(&mut self) {
         let target_string = self.input_string.clone();
+        self.input_string.clear();
         let expanded_cow_path = shellexpand::tilde(&target_string);
         let expanded_target: &str = expanded_cow_path.borrow();
-        self.input_string.clear();
         if let Ok(path) = std::fs::canonicalize(expanded_target) {
             self.path_content = PathContent::new(path, self.args.hidden);
             self.window.reset(self.path_content.files.len());
         }
+    }
+
+    fn exec_jump(&mut self) {
+        self.input_string.clear();
+        let jump_list: Vec<&path::PathBuf> = self.flagged.iter().collect();
+        let jump_target = jump_list[self.jump_index].clone();
+        let target_dir = match jump_target.parent() {
+            Some(parent) => parent.to_path_buf(),
+            None => jump_target.clone(),
+        };
+        self.path_content = PathContent::new(target_dir, self.args.hidden);
+        self.file_index = self
+            .path_content
+            .files
+            .iter()
+            .position(|file| file.path == jump_target.clone())
+            .unwrap_or(0);
+        self.path_content.select_index(self.file_index);
+        self.window.reset(self.path_content.files.len());
+        self.window.scroll_to(self.file_index);
+    }
+
+    fn exec_regex(&mut self) {
+        let re = Regex::new(&self.input_string).unwrap();
+        if !self.input_string.is_empty() {
+            self.flagged.clear();
+            for file in self.path_content.files.iter() {
+                if re.is_match(file.path.to_str().unwrap()) {
+                    self.flagged.insert(file.path.clone());
+                }
+            }
+        }
+        self.input_string.clear();
     }
 
     fn set_height(&mut self, height: usize) {
@@ -758,6 +823,22 @@ impl Display {
             }
         }
     }
+
+    fn jump_list(&mut self, status: &Status) {
+        if let Mode::Jump = status.mode {
+            let _ = self.term.clear();
+            let _ = self.term.print(0, 0, "Jump to...");
+            for (row, path) in status.flagged.iter().enumerate() {
+                let mut attr = Attr::default();
+                if row == status.jump_index {
+                    attr.effect |= Effect::REVERSE;
+                }
+                let _ = self
+                    .term
+                    .print_with_attr(row + 1, 4, path.to_str().unwrap(), attr);
+            }
+        }
+    }
 }
 
 fn read_args() -> Args {
@@ -809,6 +890,7 @@ fn main() {
         display.first_line(&status);
         display.files(&status);
         display.help_or_cursor(&status);
+        display.jump_list(&status);
 
         let _ = display.term.present();
     }

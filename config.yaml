@@ -35,3 +35,5 @@ keybindings:
   goto: g
   flag_all: '*'
   reverse_flags: v
+  regex_match: w
+  jump: j
