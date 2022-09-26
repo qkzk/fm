@@ -1,3 +1,5 @@
+extern crate shellexpand;
+
 use std::borrow::Borrow;
 use std::cmp::{max, min};
 use std::collections::HashSet;
@@ -17,7 +19,6 @@ use fm::args::Args;
 use fm::config::{load_file, str_to_tuikit, Colors, Keybindings};
 use fm::fileinfo::{FileInfo, FileKind, PathContent};
 
-extern crate shellexpand; // 1.0.0
 pub mod fileinfo;
 
 const WINDOW_PADDING: usize = 4;
@@ -196,7 +197,7 @@ struct Status {
     oldpath: path::PathBuf,
     flagged: HashSet<path::PathBuf>,
     input_string: String,
-    col: usize,
+    input_string_cursor_index: usize,
     path_content: PathContent,
     height: usize,
     args: Args,
@@ -241,7 +242,7 @@ impl Status {
             oldpath,
             flagged,
             input_string,
-            col,
+            input_string_cursor_index: col,
             path_content,
             height,
             args,
@@ -258,7 +259,7 @@ impl Status {
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
         self.mode = Mode::Normal;
-        self.col = 0;
+        self.input_string_cursor_index = 0;
     }
 
     fn event_up(&mut self) {
@@ -297,7 +298,7 @@ impl Status {
                         PathContent::new(path::PathBuf::from(parent), self.args.hidden);
                     self.window.reset(self.path_content.files.len());
                     self.file_index = 0;
-                    self.col = 0;
+                    self.input_string_cursor_index = 0;
                 }
                 None => (),
             },
@@ -306,9 +307,10 @@ impl Status {
             | Mode::Newdir
             | Mode::Newfile
             | Mode::Exec
-            | Mode::Search => {
-                if self.col > 0 {
-                    self.col -= 1
+            | Mode::Search
+            | Mode::Goto => {
+                if self.input_string_cursor_index > 0 {
+                    self.input_string_cursor_index -= 1
                 }
             }
             _ => (),
@@ -329,7 +331,7 @@ impl Status {
                     );
                     self.window.reset(self.path_content.files.len());
                     self.file_index = 0;
-                    self.col = 0;
+                    self.input_string_cursor_index = 0;
                 }
             }
             Mode::Rename
@@ -337,9 +339,10 @@ impl Status {
             | Mode::Newdir
             | Mode::Newfile
             | Mode::Exec
-            | Mode::Search => {
-                if self.col < self.input_string.len() {
-                    self.col += 1
+            | Mode::Search
+            | Mode::Goto => {
+                if self.input_string_cursor_index < self.input_string.len() {
+                    self.input_string_cursor_index += 1
                 }
             }
             _ => (),
@@ -355,10 +358,32 @@ impl Status {
             | Mode::Exec
             | Mode::Search
             | Mode::Goto => {
-                if self.col > 0 && !self.input_string.is_empty() {
-                    self.input_string.remove(self.col - 1);
-                    self.col -= 1;
+                if self.input_string_cursor_index > 0 && !self.input_string.is_empty() {
+                    self.input_string.remove(self.input_string_cursor_index - 1);
+                    self.input_string_cursor_index -= 1;
                 }
+            }
+            Mode::Normal => (),
+            _ => (),
+        }
+    }
+
+    fn event_delete_char(&mut self) {
+        match self.mode {
+            Mode::Rename
+            | Mode::Newdir
+            | Mode::Chmod
+            | Mode::Newfile
+            | Mode::Exec
+            | Mode::Search
+            | Mode::Goto => {
+                eprintln!("Delete");
+                self.input_string = self
+                    .input_string
+                    .chars()
+                    .into_iter()
+                    .take(self.input_string_cursor_index)
+                    .collect();
             }
             Mode::Normal => (),
             _ => (),
@@ -432,8 +457,8 @@ impl Status {
     }
 
     fn event_text_insertion(&mut self, c: char) {
-        self.input_string.insert(self.col, c);
-        self.col += 1;
+        self.input_string.insert(self.input_string_cursor_index, c);
+        self.input_string_cursor_index += 1;
     }
 
     fn event_toggle_flag(&mut self) {
@@ -560,6 +585,8 @@ impl Status {
             self.path_content.select_index(0);
             self.file_index = 0;
             self.window.scroll_to(0);
+        } else {
+            self.input_string_cursor_index = 0;
         }
     }
 
@@ -569,6 +596,8 @@ impl Status {
             self.path_content.select_index(last_index);
             self.file_index = last_index;
             self.window.scroll_to(last_index);
+        } else {
+            self.input_string_cursor_index = self.input_string.len();
         }
     }
 
@@ -615,7 +644,7 @@ impl Status {
             Mode::Normal | Mode::Help => (),
         }
 
-        self.col = 0;
+        self.input_string_cursor_index = 0;
         self.mode = Mode::Normal;
     }
 
@@ -710,6 +739,53 @@ impl Status {
         self.path_content.select_index(next_index);
         self.file_index = next_index;
         self.window.scroll_to(self.file_index);
+    }
+
+    fn event_completion(&mut self) {
+        if let Mode::Goto = self.mode {
+            let (parent, last_name) = self.split_input_string();
+            if last_name.is_empty() {
+                return;
+            }
+            if let Ok(path) = std::fs::canonicalize(parent) {
+                if let Some(completion) = match fs::read_dir(path) {
+                    Ok(entries) => entries
+                        .filter_map(|e| e.ok())
+                        .filter(|e| {
+                            e.file_type().unwrap().is_dir()
+                                && e.file_name()
+                                    .to_string_lossy()
+                                    .into_owned()
+                                    .starts_with(&last_name)
+                        })
+                        .take(1)
+                        .map(|e| e.path().to_string_lossy().into_owned())
+                        .next(),
+
+                    Err(_) => None,
+                } {
+                    self.input_string = completion;
+                }
+            }
+        }
+    }
+
+    fn split_input_string(&self) -> (String, String) {
+        let steps = self.input_string.split('/');
+        let mut vec_steps: Vec<&str> = steps.collect();
+        let last_name = vec_steps.pop().unwrap_or("").to_owned();
+        let parent = self.create_parent(vec_steps);
+        (parent, last_name)
+    }
+
+    fn create_parent(&self, vec_steps: Vec<&str>) -> String {
+        let mut parent = if vec_steps.is_empty() || vec_steps.len() == 1 && vec_steps[0] != "~" {
+            "/".to_owned()
+        } else {
+            "".to_owned()
+        };
+        parent.push_str(&vec_steps.join("/"));
+        shellexpand::tilde(&parent).to_string()
     }
 
     fn exec_goto(&mut self) {
@@ -820,7 +896,9 @@ impl Display {
                 }
             }
             _ => {
-                let _ = self.term.set_cursor(0, status.col + EDIT_BOX_OFFSET);
+                let _ = self
+                    .term
+                    .set_cursor(0, status.input_string_cursor_index + EDIT_BOX_OFFSET);
             }
         }
     }
@@ -866,6 +944,7 @@ fn main() {
         let _ = display.term.clear();
         let (_width, height) = display.term.term_size().unwrap();
         status.set_height(height);
+        eprintln!("{:?}", ev);
         match ev {
             Event::Key(Key::ESC) => status.event_esc(),
             Event::Key(Key::Up) => status.event_up(),
@@ -873,12 +952,15 @@ fn main() {
             Event::Key(Key::Left) => status.event_left(),
             Event::Key(Key::Right) => status.event_right(),
             Event::Key(Key::Backspace) => status.event_backspace(),
+            Event::Key(Key::Ctrl('d')) => status.event_delete_char(),
+            Event::Key(Key::Delete) => status.event_delete_char(),
             Event::Key(Key::Char(c)) => status.event_char(c),
             Event::Key(Key::Home) => status.event_home(),
             Event::Key(Key::End) => status.event_end(),
             Event::Key(Key::PageDown) => status.event_page_down(),
             Event::Key(Key::PageUp) => status.event_page_up(),
             Event::Key(Key::Enter) => status.event_enter(),
+            Event::Key(Key::Tab) => status.event_completion(),
             Event::Key(Key::WheelUp(_, _, _)) => status.event_up(),
             Event::Key(Key::WheelDown(_, _, _)) => status.event_down(),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => status.event_left_click(row),
