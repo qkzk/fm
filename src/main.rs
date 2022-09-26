@@ -13,7 +13,7 @@ use tuikit::term::{Term, TermHeight};
 
 use fm::args::Args;
 use fm::config::{load_file, str_to_tuikit, Colors, Keybindings};
-use fm::fileinfo::{FileInfo, PathContent};
+use fm::fileinfo::{FileInfo, FileKind, PathContent};
 
 pub mod fileinfo;
 
@@ -117,28 +117,27 @@ impl FilesWindow {
 }
 
 fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
-    let mut attr = Attr {
-        fg: str_to_tuikit(&colors.file),
-        bg: Color::default(),
-        effect: Effect::empty(),
+    let fg = match fileinfo.file_kind {
+        FileKind::Directory => str_to_tuikit(&colors.directory),
+        FileKind::BlockDevice => str_to_tuikit(&colors.block),
+        FileKind::CharDevice => str_to_tuikit(&colors.char),
+        FileKind::Fifo => str_to_tuikit(&colors.fifo),
+        FileKind::Socket => str_to_tuikit(&colors.socket),
+        FileKind::SymbolicLink => str_to_tuikit(&colors.symlink),
+        _ => str_to_tuikit(&colors.file),
     };
-    if fileinfo.is_dir {
-        attr.fg = str_to_tuikit(&colors.directory);
-    } else if fileinfo.is_block {
-        attr.fg = str_to_tuikit(&colors.block);
-    } else if fileinfo.is_char {
-        attr.fg = str_to_tuikit(&colors.char)
-    } else if fileinfo.is_fifo {
-        attr.fg = str_to_tuikit(&colors.fifo);
-    } else if fileinfo.is_socket {
-        attr.fg = str_to_tuikit(&colors.socket);
-    } else if fileinfo.is_symlink {
-        attr.fg = str_to_tuikit(&colors.symlink);
+
+    let effect = if fileinfo.is_selected {
+        Effect::REVERSE
+    } else {
+        Effect::empty()
+    };
+
+    Attr {
+        fg,
+        bg: Color::default(),
+        effect,
     }
-    if fileinfo.is_selected {
-        attr.effect = Effect::REVERSE;
-    }
-    attr
 }
 
 #[derive(Clone)]
@@ -297,7 +296,9 @@ impl Status {
     fn event_right(&mut self) {
         match self.mode {
             Mode::Normal => {
-                if self.path_content.files[self.path_content.selected].is_dir {
+                if let FileKind::Directory =
+                    self.path_content.files[self.path_content.selected].file_kind
+                {
                     self.path_content = PathContent::new(
                         self.path_content.files[self.path_content.selected]
                             .path
@@ -632,7 +633,7 @@ impl Status {
             self.path_content.select_index(self.file_index);
             self.window.scroll_to(self.file_index)
         }
-        if self.path_content.files[self.file_index].is_dir {
+        if let FileKind::Directory = self.path_content.files[self.file_index].file_kind {
             self.event_right()
         } else {
             self.event_open_file()
