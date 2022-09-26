@@ -75,6 +75,8 @@ pub struct Keybindings {
     pub search: char,
     pub quit: char,
     pub goto: char,
+    pub flag_all: char,
+    pub reverse_flags: char,
 }
 
 impl Keybindings {
@@ -198,6 +200,20 @@ impl Keybindings {
             .chars()
             .next()
             .unwrap_or('g');
+        let flag_all = yaml["flag_all"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "*".to_string())
+            .chars()
+            .next()
+            .unwrap_or('*');
+        let reverse_flags = yaml["reverse_flags"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "v".to_string())
+            .chars()
+            .next()
+            .unwrap_or('v');
         Self {
             toggle_hidden,
             copy_paste,
@@ -216,6 +232,8 @@ impl Keybindings {
             search,
             quit,
             goto,
+            flag_all,
+            reverse_flags,
         }
     }
 }

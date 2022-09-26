@@ -52,7 +52,9 @@ o:      xdg-open this file
 
 - Action on flagged files - 
     space:  toggle flag on a file 
+    *:      flag all
     u:      clear flags
+    v:      reverse flags
     c:      copy to current dir
     p:      move to current dir
     x:      delete flagged files
@@ -387,6 +389,10 @@ impl Status {
                     self.mode = Mode::Search
                 } else if c == self.keybindings.quit {
                     std::process::exit(0)
+                } else if c == self.keybindings.flag_all {
+                    self.event_flag_all();
+                } else if c == self.keybindings.reverse_flags {
+                    self.event_reverse_flags();
                 }
             }
             Mode::Help => {
@@ -405,21 +411,37 @@ impl Status {
     }
 
     fn event_toggle_flag(&mut self) {
-        if self
-            .flagged
-            .contains(&self.path_content.files[self.file_index].path)
-        {
-            self.flagged
-                .remove(&self.path_content.files[self.file_index].path);
-        } else {
-            self.flagged
-                .insert(self.path_content.files[self.file_index].path.clone());
-        }
+        self.toggle_flag_on_path(self.path_content.files[self.file_index].path.clone());
         if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
             self.file_index += 1;
         }
         self.path_content.select_next();
         self.window.scroll_down_one(self.file_index);
+    }
+
+    fn event_flag_all(&mut self) {
+        self.path_content.files.iter().for_each(|file| {
+            self.flagged.insert(file.path.clone());
+        });
+    }
+
+    fn toggle_flag_on_path(&mut self, path: path::PathBuf) {
+        if self.flagged.contains(&path) {
+            self.flagged.remove(&path);
+        } else {
+            self.flagged.insert(path);
+        }
+    }
+
+    fn event_reverse_flags(&mut self) {
+        // TODO: is there a way to use `toggle_flag_on_path` ? 2 mutable borrows...
+        self.path_content.files.iter().for_each(|file| {
+            if self.flagged.contains(&file.path.clone()) {
+                self.flagged.remove(&file.path.clone());
+            } else {
+                self.flagged.insert(file.path.clone());
+            }
+        });
     }
 
     fn event_toggle_hidden(&mut self) {

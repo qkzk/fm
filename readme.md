@@ -40,6 +40,7 @@
 - [x] resize (i guess it's an event like in curse) seems to work already
 - [x] dirsymbol for sockets and whatever
 - [x] refactor FileInfo, use an enum
+- [x] '\*' flag all
 
 ## TODO
 
@@ -48,7 +49,6 @@
   - [ ] nvim plugin
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
-- [ ] - flag all
 - [ ] v reverse flags
 - [ ] regex
   - [ ] search
