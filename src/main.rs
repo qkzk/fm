@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::cmp::{max, min};
 use std::collections::HashSet;
 use std::fmt;
@@ -679,7 +680,6 @@ impl Status {
     }
 
     fn exec_goto(&mut self) {
-        use std::borrow::Borrow;
         let target_string = self.input_string.clone();
         let expanded_cow_path = shellexpand::tilde(&target_string);
         let expanded_target: &str = expanded_cow_path.borrow();
