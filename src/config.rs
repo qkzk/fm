@@ -303,10 +303,26 @@ pub fn search_config() -> serde_yaml::Value {
     let mut etc_config_path = path::PathBuf::new();
     etc_config_path.push(etc_config_string);
 
-    let cur_path = get_current_working_dir().unwrap();
+    let dev_config = std::env::var("CONFIG_FILE").unwrap_or("".into());
+    let mut dev_path = path::PathBuf::new();
+    dev_path.push(dev_config);
 
-    for mut path in [user_path, etc_config_path, cur_path] {
+    // let cur_path = get_current_working_dir().unwrap();
+    let cur_path = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    eprintln!("current exe in {:?}", cur_path);
+
+    for mut path in [dev_path] {
+        // for mut path in [user_path, etc_config_path, dev_path, cur_path] {
         path.push(CONFIG_NAME);
+        eprintln!("trying {:?}", &path);
         if let Ok(file) = File::open(path) {
             if let Ok(config) = serde_yaml::from_reader(file) {
                 return config;
