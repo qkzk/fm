@@ -1,7 +1,14 @@
-use std::fs::File;
+extern crate shellexpand;
+
+use std::{fs::File, path};
 
 use serde_yaml;
 use tuikit::attr::Color;
+
+static HOME_CONFIG_DIR: &str = "~/.config/fm";
+static ETC_CONFIG_DIR: &str = "/etc/fm";
+// pub static CONFIG_FILE: &str = "/home/quentin/gclem/dev/rust/fm/config.yaml";
+pub static CONFIG_NAME: &str = "config.yaml";
 
 #[derive(Debug, Clone)]
 pub struct Colors {
@@ -279,6 +286,32 @@ pub fn str_to_tuikit(color: &str) -> Color {
 }
 
 pub fn load_file(file: &str) -> serde_yaml::Value {
-    let file = File::open(file).expect("Unable to open file");
-    serde_yaml::from_reader(file).expect("Couldn't read yaml file")
+    let file = File::open(file).unwrap();
+    serde_yaml::from_reader(file).unwrap()
+}
+
+fn get_current_working_dir() -> std::io::Result<std::path::PathBuf> {
+    std::env::current_dir()
+}
+
+pub fn search_config() -> serde_yaml::Value {
+    let user_string = shellexpand::tilde(&HOME_CONFIG_DIR).to_string();
+    let mut user_path = path::PathBuf::new();
+    user_path.push(user_string);
+
+    let etc_config_string = shellexpand::tilde(&ETC_CONFIG_DIR).to_string();
+    let mut etc_config_path = path::PathBuf::new();
+    etc_config_path.push(etc_config_string);
+
+    let cur_path = get_current_working_dir().unwrap();
+
+    for mut path in [user_path, etc_config_path, cur_path] {
+        path.push(CONFIG_NAME);
+        if let Ok(file) = File::open(path) {
+            if let Ok(config) = serde_yaml::from_reader(file) {
+                return config;
+            }
+        }
+    }
+    std::process::exit(2);
 }

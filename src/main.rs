@@ -16,7 +16,7 @@ use tuikit::key::MouseButton;
 use tuikit::term::{Term, TermHeight};
 
 use fm::args::Args;
-use fm::config::{load_file, str_to_tuikit, Colors, Keybindings};
+use fm::config::{search_config, str_to_tuikit, Colors, Keybindings};
 use fm::fileinfo::{FileInfo, FileKind, PathContent};
 
 pub mod fileinfo;
@@ -25,7 +25,6 @@ const WINDOW_PADDING: usize = 4;
 const WINDOW_MARGIN_TOP: usize = 1;
 const EDIT_BOX_OFFSET: usize = 10;
 const MAX_PERMISSIONS: u32 = 0o777;
-static CONFIG_FILE: &str = "/home/quentin/gclem/dev/rust/fm/config.yaml";
 static USAGE: &str = "
 FM: dired inspired File Manager
 
@@ -216,7 +215,7 @@ impl Status {
         });
         let path_content = PathContent::new(path, args.hidden);
 
-        let config_file = load_file(CONFIG_FILE);
+        let config_file = search_config();
         let colors = Colors::from_config(&config_file["colors"]);
         let terminal = config_file["terminal"]
             .as_str()
