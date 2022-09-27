@@ -16,7 +16,7 @@ use tuikit::key::MouseButton;
 use tuikit::term::{Term, TermHeight};
 
 use fm::args::Args;
-use fm::config::{search_config, str_to_tuikit, Colors, Keybindings};
+use fm::config::{read_config, str_to_tuikit, string_to_char, OColors, OConfig};
 use fm::fileinfo::{FileInfo, FileKind, PathContent};
 
 pub mod fileinfo;
@@ -123,15 +123,15 @@ impl FilesWindow {
     }
 }
 
-fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
+fn fileinfo_attr(fileinfo: &FileInfo, colors: &OColors) -> Attr {
     let fg = match fileinfo.file_kind {
-        FileKind::Directory => str_to_tuikit(&colors.directory),
-        FileKind::BlockDevice => str_to_tuikit(&colors.block),
-        FileKind::CharDevice => str_to_tuikit(&colors.char),
-        FileKind::Fifo => str_to_tuikit(&colors.fifo),
-        FileKind::Socket => str_to_tuikit(&colors.socket),
-        FileKind::SymbolicLink => str_to_tuikit(&colors.symlink),
-        _ => str_to_tuikit(&colors.file),
+        FileKind::Directory => str_to_tuikit(&colors.directory.clone().unwrap()),
+        FileKind::BlockDevice => str_to_tuikit(&colors.block.clone().unwrap()),
+        FileKind::CharDevice => str_to_tuikit(&colors.char.clone().unwrap()),
+        FileKind::Fifo => str_to_tuikit(&colors.fifo.clone().unwrap()),
+        FileKind::Socket => str_to_tuikit(&colors.socket.clone().unwrap()),
+        FileKind::SymbolicLink => str_to_tuikit(&colors.symlink.clone().unwrap()),
+        _ => str_to_tuikit(&colors.file.clone().unwrap()),
     };
 
     let effect = if fileinfo.is_selected {
@@ -200,10 +200,7 @@ struct Status {
     path_content: PathContent,
     height: usize,
     args: Args,
-    colors: Colors,
-    terminal: String,
-    opener: String,
-    keybindings: Keybindings,
+    config: OConfig,
     jump_index: usize,
 }
 
@@ -215,16 +212,7 @@ impl Status {
         });
         let path_content = PathContent::new(path, args.hidden);
 
-        let config_file = search_config();
-        let colors = Colors::from_config(&config_file["colors"]);
-        let terminal = config_file["terminal"]
-            .as_str()
-            .map(|s| s.to_string())
-            .expect("Couldn't parse config file");
-        let opener = config_file["opener"]
-            .as_str()
-            .map(|s| s.to_string())
-            .expect("Couldn't parse config file");
+        let config = read_config();
         let mode = Mode::Normal;
         let file_index = 0;
         let window = FilesWindow::new(path_content.files.len(), height);
@@ -232,7 +220,6 @@ impl Status {
         let flagged = HashSet::new();
         let input_string = "".to_string();
         let col = 0;
-        let keybindings = Keybindings::new(&config_file["keybindings"]);
         let jump_index = 0;
         Self {
             mode,
@@ -245,10 +232,7 @@ impl Status {
             path_content,
             height,
             args,
-            colors,
-            terminal,
-            opener,
-            keybindings,
+            config,
             jump_index,
         }
     }
@@ -400,54 +384,59 @@ impl Status {
             | Mode::Goto
             | Mode::RegexMatch => self.event_text_insertion(c),
             Mode::Normal => {
-                if c == self.keybindings.toggle_hidden {
+                if c == string_to_char(self.config.keybindings.toggle_hidden.clone().unwrap()) {
                     self.event_toggle_hidden()
-                } else if c == self.keybindings.copy_paste {
+                } else if c == string_to_char(self.config.keybindings.copy_paste.clone().unwrap()) {
                     self.event_copy_paste()
-                } else if c == self.keybindings.cut_paste {
+                } else if c == string_to_char(self.config.keybindings.cut_paste.clone().unwrap()) {
                     self.event_cut_paste()
-                } else if c == self.keybindings.newdir {
+                } else if c == string_to_char(self.config.keybindings.newdir.clone().unwrap()) {
                     self.mode = Mode::Newdir
-                } else if c == self.keybindings.newfile {
+                } else if c == string_to_char(self.config.keybindings.newfile.clone().unwrap()) {
                     self.mode = Mode::Newfile
-                } else if c == self.keybindings.chmod {
+                } else if c == string_to_char(self.config.keybindings.chmod.clone().unwrap()) {
                     self.event_chmod()
-                } else if c == self.keybindings.exec {
+                } else if c == string_to_char(self.config.keybindings.exec.clone().unwrap()) {
                     self.mode = Mode::Exec
-                } else if c == self.keybindings.goto {
+                } else if c == string_to_char(self.config.keybindings.goto.clone().unwrap()) {
                     self.mode = Mode::Goto
-                } else if c == self.keybindings.rename {
+                } else if c == string_to_char(self.config.keybindings.rename.clone().unwrap()) {
                     self.event_rename()
-                } else if c == self.keybindings.clear_flags {
+                } else if c == string_to_char(self.config.keybindings.clear_flags.clone().unwrap())
+                {
                     self.flagged.clear()
-                } else if c == self.keybindings.toggle_flag {
+                } else if c == string_to_char(self.config.keybindings.toggle_flag.clone().unwrap())
+                {
                     self.event_toggle_flag()
-                } else if c == self.keybindings.shell {
+                } else if c == string_to_char(self.config.keybindings.shell.clone().unwrap()) {
                     self.event_shell()
-                } else if c == self.keybindings.delete {
+                } else if c == string_to_char(self.config.keybindings.delete.clone().unwrap()) {
                     self.event_delete()
-                } else if c == self.keybindings.open_file {
+                } else if c == string_to_char(self.config.keybindings.open_file.clone().unwrap()) {
                     self.event_open_file()
-                } else if c == self.keybindings.help {
+                } else if c == string_to_char(self.config.keybindings.help.clone().unwrap()) {
                     self.mode = Mode::Help
-                } else if c == self.keybindings.search {
+                } else if c == string_to_char(self.config.keybindings.search.clone().unwrap()) {
                     self.mode = Mode::Search
-                } else if c == self.keybindings.regex_match {
+                } else if c == string_to_char(self.config.keybindings.regex_match.clone().unwrap())
+                {
                     self.mode = Mode::RegexMatch
-                } else if c == self.keybindings.quit {
+                } else if c == string_to_char(self.config.keybindings.quit.clone().unwrap()) {
                     std::process::exit(0)
-                } else if c == self.keybindings.flag_all {
+                } else if c == string_to_char(self.config.keybindings.flag_all.clone().unwrap()) {
                     self.event_flag_all();
-                } else if c == self.keybindings.reverse_flags {
+                } else if c
+                    == string_to_char(self.config.keybindings.reverse_flags.clone().unwrap())
+                {
                     self.event_reverse_flags();
-                } else if c == self.keybindings.jump {
+                } else if c == string_to_char(self.config.keybindings.jump.clone().unwrap()) {
                     self.event_jump();
                 }
             }
             Mode::Help => {
-                if c == self.keybindings.help {
+                if c == string_to_char(self.config.keybindings.help.clone().unwrap()) {
                     self.mode = Mode::Normal
-                } else if c == self.keybindings.quit {
+                } else if c == string_to_char(self.config.keybindings.quit.clone().unwrap()) {
                     std::process::exit(0);
                 }
             }
@@ -517,7 +506,7 @@ impl Status {
 
     fn event_open_file(&mut self) {
         execute_in_child(
-            &self.opener,
+            &self.config.opener.clone().unwrap(),
             &vec![self.path_content.files[self.path_content.selected]
                 .path
                 .to_str()
@@ -561,7 +550,7 @@ impl Status {
 
     fn event_shell(&mut self) {
         execute_in_child(
-            &self.terminal,
+            &self.config.terminal.clone().unwrap(),
             &vec!["-d", self.path_content.path.to_str().unwrap()],
         );
     }
@@ -875,7 +864,7 @@ impl Display {
             .skip(status.window.top)
         {
             let row = i + WINDOW_MARGIN_TOP - status.window.top;
-            let mut attr = fileinfo_attr(&status.path_content.files[i], &status.colors);
+            let mut attr = fileinfo_attr(&status.path_content.files[i], &status.config.colors);
             if status.flagged.contains(&status.path_content.files[i].path) {
                 attr.effect |= Effect::UNDERLINE;
             }
