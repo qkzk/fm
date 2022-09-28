@@ -67,3 +67,26 @@
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
 - [ ] can navigate outside file list
 - [ ] strange behavior after leaving a mode, wrong files are flagged
+
+## Configuration sources & ideas
+
+
+1. struct without option and default hardcoded values
+2. look for config file in $HOME/.config/fm
+4. don't update, replace
+
+## Sources
+
+### Configuration
+
+- [rust cli book](https://rust-cli.github.io/book/in-depth/config-files.html)
+- [crate confy](https://docs.rs/confy/latest/confy/fn.get_configuration_file_path.html)
+- [crate configure](https://docs.rs/configure/0.1.1/configure/)
+
+### CLI
+
+- [CLI crates](https://lib.rs/command-line-interface)
+
+### filepicker in vim
+
+- [fff](https://github.com/dylanaraps/fff)
