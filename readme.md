@@ -78,7 +78,7 @@
 
 ## completion
 
-workflow in #10
+workflow in [#10](https://github.com/qkzk/fm/issues/10)
 
 ## Sources
 
