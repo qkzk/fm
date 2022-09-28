@@ -53,6 +53,7 @@
   - [x] in goto mode,
   - [x] exec mode,
   - [x] searchmode
+- [x] confirmation for cut/paste, copy/paste, delete
 
 ## TODO
 
@@ -61,7 +62,6 @@
   - [ ] nvim plugin
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
-- [ ] confirmation for cut/paste, copy/paste, delete
 
 ## BUGS
 
