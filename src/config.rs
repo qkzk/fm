@@ -1,7 +1,43 @@
-use std::fs::File;
+use std::{fs::File, path};
 
 use serde_yaml;
 use tuikit::attr::Color;
+
+#[derive(Debug, Clone)]
+pub struct Config {
+    pub colors: Colors,
+    pub keybindings: Keybindings,
+    pub terminal: String,
+    pub opener: String,
+}
+
+impl Config {
+    pub fn new() -> Self {
+        Self {
+            colors: Colors::default(),
+            keybindings: Keybindings::default(),
+            terminal: "st".to_owned(),
+            opener: "xdg-open".to_owned(),
+        }
+    }
+
+    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+        self.colors.update_from_config(&yaml["colors"]);
+        self.keybindings.update_from_config(&yaml["keybindings"]);
+        if let Some(terminal) = yaml["terminal"].as_str().map(|s| s.to_string()) {
+            self.terminal = terminal;
+        }
+        if let Some(opener) = yaml["opener"].as_str().map(|s| s.to_string()) {
+            self.opener = opener;
+        }
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Colors {
@@ -15,44 +51,46 @@ pub struct Colors {
 }
 
 impl Colors {
-    pub fn from_config(yaml: &serde_yaml::value::Value) -> Self {
-        let file = yaml["file"]
-            .as_str()
-            .map(|s| s.to_string())
-            .expect("Couldn't parse config file");
-        let directory = yaml["directory"]
-            .as_str()
-            .map(|s| s.to_string())
-            .expect("Couldn't parse config file");
-        let block = yaml["block"]
-            .as_str()
-            .map(|s| s.to_string())
-            .expect("Couldn't parse config file");
-        let char = yaml["char"]
-            .as_str()
-            .map(|s| s.to_string())
-            .expect("Couldn't parse config file");
-        let fifo = yaml["fifo"]
-            .as_str()
-            .map(|s| s.to_string())
-            .expect("Couldn't parse config file");
-        let socket = yaml["socket"]
-            .as_str()
-            .map(|s| s.to_string())
-            .expect("Couldn't parse config file");
-        let symlink = yaml["symlink"]
-            .as_str()
-            .map(|s| s.to_string())
-            .expect("Couldn't parse config file");
-        Self {
-            file,
-            directory,
-            block,
-            char,
-            fifo,
-            socket,
-            symlink,
+    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+        if let Some(file) = yaml["file"].as_str().map(|s| s.to_string()) {
+            self.file = file;
         }
+        if let Some(directory) = yaml["directory"].as_str().map(|s| s.to_string()) {
+            self.directory = directory;
+        }
+        if let Some(block) = yaml["block"].as_str().map(|s| s.to_string()) {
+            self.block = block;
+        }
+        if let Some(char) = yaml["char"].as_str().map(|s| s.to_string()) {
+            self.char = char;
+        }
+        if let Some(fifo) = yaml["fifo"].as_str().map(|s| s.to_string()) {
+            self.fifo = fifo;
+        }
+        if let Some(socket) = yaml["socket"].as_str().map(|s| s.to_string()) {
+            self.socket = socket;
+        }
+        if let Some(symlink) = yaml["symlink"].as_str().map(|s| s.to_string()) {
+            self.symlink = symlink;
+        }
+    }
+
+    pub fn new() -> Self {
+        Self {
+            file: "white".to_owned(),
+            directory: "red".to_owned(),
+            block: "yellow".to_owned(),
+            char: "green".to_owned(),
+            fifo: "blue".to_owned(),
+            socket: "cyan".to_owned(),
+            symlink: "magenta".to_owned(),
+        }
+    }
+}
+
+impl Default for Colors {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -82,177 +120,102 @@ pub struct Keybindings {
 }
 
 impl Keybindings {
-    pub fn new(yaml: &serde_yaml::value::Value) -> Self {
-        let toggle_hidden = yaml["toggle_hidden"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "a".to_string())
-            .chars()
-            .next()
-            .unwrap_or('a');
-        let copy_paste = yaml["copy_paste"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "c".to_string())
-            .chars()
-            .next()
-            .unwrap_or('c');
-        let cut_paste = yaml["cut_paste"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "p".to_string())
-            .chars()
-            .next()
-            .unwrap_or('p');
-        let delete = yaml["delete"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "x".to_string())
-            .chars()
-            .next()
-            .unwrap_or('x');
-        let chmod = yaml["chmod"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "m".to_string())
-            .chars()
-            .next()
-            .unwrap_or('m');
-        let exec = yaml["exec"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "e".to_string())
-            .chars()
-            .next()
-            .unwrap_or('e');
-        let newdir = yaml["newdir"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "d".to_string())
-            .chars()
-            .next()
-            .unwrap_or('d');
-        let newfile = yaml["newfile"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "n".to_string())
-            .chars()
-            .next()
-            .unwrap_or('n');
-        let rename = yaml["rename"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "r".to_string())
-            .chars()
-            .next()
-            .unwrap_or('r');
-        let clear_flags = yaml["clear_flags"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "u".to_string())
-            .chars()
-            .next()
-            .unwrap_or('u');
-        let toggle_flag = yaml["toggle_flag"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| " ".to_string())
-            .chars()
-            .next()
-            .unwrap_or(' ');
-        let shell = yaml["shell"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "s".to_string())
-            .chars()
-            .next()
-            .unwrap_or('s');
-        let open_file = yaml["open_file"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "o".to_string())
-            .chars()
-            .next()
-            .unwrap_or('o');
-        let help = yaml["help"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "h".to_string())
-            .chars()
-            .next()
-            .unwrap_or('h');
-        let search = yaml["search"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "/".to_string())
-            .chars()
-            .next()
-            .unwrap_or('/');
-        let quit = yaml["quit"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "q".to_string())
-            .chars()
-            .next()
-            .unwrap_or('q');
-        let goto = yaml["goto"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "g".to_string())
-            .chars()
-            .next()
-            .unwrap_or('g');
-        let flag_all = yaml["flag_all"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "*".to_string())
-            .chars()
-            .next()
-            .unwrap_or('*');
-        let reverse_flags = yaml["reverse_flags"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "v".to_string())
-            .chars()
-            .next()
-            .unwrap_or('v');
-        let regex_match = yaml["regex_match"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "w".to_string())
-            .chars()
-            .next()
-            .unwrap_or('w');
-        let jump = yaml["jump"]
-            .as_str()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "j".to_string())
-            .chars()
-            .next()
-            .unwrap_or('j');
-        Self {
-            toggle_hidden,
-            copy_paste,
-            cut_paste,
-            delete,
-            chmod,
-            exec,
-            newdir,
-            newfile,
-            rename,
-            clear_flags,
-            toggle_flag,
-            shell,
-            open_file,
-            help,
-            search,
-            quit,
-            goto,
-            flag_all,
-            reverse_flags,
-            regex_match,
-            jump,
+    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+        if let Some(toggle_hidden) = yaml["toggle_hidden"].as_str().map(|s| s.to_string()) {
+            self.toggle_hidden = toggle_hidden.chars().next().unwrap_or('a');
         }
+        if let Some(copy_paste) = yaml["copy_paste"].as_str().map(|s| s.to_string()) {
+            self.copy_paste = copy_paste.chars().next().unwrap_or('c');
+        }
+        if let Some(cut_paste) = yaml["cut_paste"].as_str().map(|s| s.to_string()) {
+            self.cut_paste = cut_paste.chars().next().unwrap_or('p');
+        }
+        if let Some(delete) = yaml["delete"].as_str().map(|s| s.to_string()) {
+            self.delete = delete.chars().next().unwrap_or('x');
+        }
+        if let Some(chmod) = yaml["chmod"].as_str().map(|s| s.to_string()) {
+            self.chmod = chmod.chars().next().unwrap_or('m');
+        }
+        if let Some(exec) = yaml["exec"].as_str().map(|s| s.to_string()) {
+            self.exec = exec.chars().next().unwrap_or('e');
+        }
+        if let Some(newdir) = yaml["newdir"].as_str().map(|s| s.to_string()) {
+            self.newdir = newdir.chars().next().unwrap_or('d');
+        }
+        if let Some(newfile) = yaml["newfile"].as_str().map(|s| s.to_string()) {
+            self.newfile = newfile.chars().next().unwrap_or('n');
+        }
+        if let Some(rename) = yaml["rename"].as_str().map(|s| s.to_string()) {
+            self.rename = rename.chars().next().unwrap_or('r');
+        }
+        if let Some(clear_flags) = yaml["clear_flags"].as_str().map(|s| s.to_string()) {
+            self.clear_flags = clear_flags.chars().next().unwrap_or('u');
+        }
+        if let Some(toggle_flag) = yaml["toggle_flag"].as_str().map(|s| s.to_string()) {
+            self.toggle_flag = toggle_flag.chars().next().unwrap_or(' ');
+        }
+        if let Some(shell) = yaml["shell"].as_str().map(|s| s.to_string()) {
+            self.shell = shell.chars().next().unwrap_or('s');
+        }
+        if let Some(open_file) = yaml["open_file"].as_str().map(|s| s.to_string()) {
+            self.open_file = open_file.chars().next().unwrap_or('o');
+        }
+        if let Some(help) = yaml["help"].as_str().map(|s| s.to_string()) {
+            self.help = help.chars().next().unwrap_or('h');
+        }
+        if let Some(search) = yaml["search"].as_str().map(|s| s.to_string()) {
+            self.search = search.chars().next().unwrap_or('/');
+        }
+        if let Some(quit) = yaml["quit"].as_str().map(|s| s.to_string()) {
+            self.quit = quit.chars().next().unwrap_or('q');
+        }
+        if let Some(goto) = yaml["goto"].as_str().map(|s| s.to_string()) {
+            self.goto = goto.chars().next().unwrap_or('g');
+        }
+        if let Some(flag_all) = yaml["flag_all"].as_str().map(|s| s.to_string()) {
+            self.flag_all = flag_all.chars().next().unwrap_or('*');
+        }
+        if let Some(reverse_flags) = yaml["reverse_flags"].as_str().map(|s| s.to_string()) {
+            self.reverse_flags = reverse_flags.chars().next().unwrap_or('v');
+        }
+        if let Some(regex_match) = yaml["regex_match"].as_str().map(|s| s.to_string()) {
+            self.regex_match = regex_match.chars().next().unwrap_or('w');
+        }
+        if let Some(jump) = yaml["jump"].as_str().map(|s| s.to_string()) {
+            self.jump = jump.chars().next().unwrap_or('j');
+        }
+    }
+
+    pub fn new() -> Self {
+        Self {
+            toggle_hidden: 'a',
+            copy_paste: 'c',
+            cut_paste: 'p',
+            delete: 'x',
+            chmod: 'm',
+            exec: 'e',
+            newdir: 'd',
+            newfile: 'n',
+            rename: 'r',
+            clear_flags: 'u',
+            toggle_flag: ' ',
+            shell: 's',
+            open_file: 'o',
+            help: 'h',
+            search: '/',
+            quit: 'q',
+            goto: 'g',
+            flag_all: '*',
+            reverse_flags: 'v',
+            regex_match: 'w',
+            jump: 'j',
+        }
+    }
+}
+
+impl Default for Keybindings {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -278,7 +241,14 @@ pub fn str_to_tuikit(color: &str) -> Color {
     }
 }
 
-pub fn load_file(file: &str) -> serde_yaml::Value {
-    let file = File::open(file).expect("Unable to open file");
-    serde_yaml::from_reader(file).expect("Couldn't read yaml file")
+pub fn load_config(path: &str) -> Config {
+    let mut config = Config::default();
+
+    if let Ok(file) = File::open(path::Path::new(&shellexpand::tilde(path).to_string())) {
+        if let Ok(yaml) = serde_yaml::from_reader(file) {
+            config.update_from_config(&yaml);
+        }
+    }
+
+    config
 }
