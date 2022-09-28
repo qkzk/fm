@@ -162,6 +162,7 @@ enum Mode {
     Goto,
     RegexMatch,
     Jump,
+    NeedConfirmation,
 }
 
 impl fmt::Debug for Mode {
@@ -178,6 +179,7 @@ impl fmt::Debug for Mode {
             Mode::Goto => write!(f, "Goto  :  "),
             Mode::RegexMatch => write!(f, "Regex :  "),
             Mode::Jump => write!(f, "Jump  :  "),
+            Mode::NeedConfirmation => write!(f, "Y/N   :"),
         }
     }
 }
@@ -246,6 +248,36 @@ fn help() {
     print!("{}", HELP_LINES);
 }
 
+#[derive(Debug)]
+enum LastEdition {
+    Nothing,
+    Delete,
+    CutPaste,
+    CopyPaste,
+}
+
+impl LastEdition {
+    fn offset(&self) -> usize {
+        match *self {
+            Self::Nothing => 0,
+            Self::CopyPaste => 37,
+            Self::Delete => 31,
+            Self::CutPaste => 29,
+        }
+    }
+}
+
+impl std::fmt::Display for LastEdition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            LastEdition::Nothing => write!(f, "Nothing to confirm"),
+            LastEdition::Delete => write!(f, "Delete files :"),
+            LastEdition::CutPaste => write!(f, "Move files :"),
+            LastEdition::CopyPaste => write!(f, "Copy & Paste files :"),
+        }
+    }
+}
+
 struct Status {
     mode: Mode,
     file_index: usize,
@@ -260,6 +292,7 @@ struct Status {
     config: Config,
     jump_index: usize,
     completion: Completion,
+    last_edition: LastEdition,
 }
 
 impl Status {
@@ -279,6 +312,7 @@ impl Status {
         let col = 0;
         let jump_index = 0;
         let completion = Completion::default();
+        let last_edition = LastEdition::Nothing;
         Self {
             mode,
             file_index,
@@ -293,6 +327,7 @@ impl Status {
             config,
             jump_index,
             completion,
+            last_edition,
         }
     }
 
@@ -433,7 +468,6 @@ impl Status {
             | Mode::Exec
             | Mode::Search
             | Mode::Goto => {
-                eprintln!("Delete");
                 self.input_string = self
                     .input_string
                     .chars()
@@ -459,9 +493,15 @@ impl Status {
                 if c == self.config.keybindings.toggle_hidden {
                     self.event_toggle_hidden()
                 } else if c == self.config.keybindings.copy_paste {
-                    self.event_copy_paste()
+                    {
+                        self.mode = Mode::NeedConfirmation;
+                        self.last_edition = LastEdition::CopyPaste;
+                    }
                 } else if c == self.config.keybindings.cut_paste {
-                    self.event_cut_paste()
+                    {
+                        self.mode = Mode::NeedConfirmation;
+                        self.last_edition = LastEdition::CutPaste;
+                    }
                 } else if c == self.config.keybindings.newdir {
                     self.mode = Mode::Newdir
                 } else if c == self.config.keybindings.newfile {
@@ -481,7 +521,10 @@ impl Status {
                 } else if c == self.config.keybindings.shell {
                     self.event_shell()
                 } else if c == self.config.keybindings.delete {
-                    self.event_delete()
+                    {
+                        self.mode = Mode::NeedConfirmation;
+                        self.last_edition = LastEdition::Delete;
+                    }
                 } else if c == self.config.keybindings.open_file {
                     self.event_open_file()
                 } else if c == self.config.keybindings.help {
@@ -508,6 +551,13 @@ impl Status {
                 }
             }
             Mode::Jump => (),
+            Mode::NeedConfirmation => {
+                if c == 'y' {
+                    self.exec_last_edition();
+                }
+                self.last_edition = LastEdition::Nothing;
+                self.mode = Mode::Normal;
+            }
         }
     }
 
@@ -701,7 +751,7 @@ impl Status {
             Mode::Goto => self.exec_goto(),
             Mode::RegexMatch => self.exec_regex(),
             Mode::Jump => self.exec_jump(),
-            Mode::Normal | Mode::Help => (),
+            Mode::Normal | Mode::NeedConfirmation | Mode::Help => (),
         }
 
         self.input_string_cursor_index = 0;
@@ -712,6 +762,17 @@ impl Status {
         self.input_string.clear();
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
+    }
+
+    fn exec_last_edition(&mut self) {
+        match self.last_edition {
+            LastEdition::Delete => self.event_delete(),
+            LastEdition::CutPaste => self.event_cut_paste(),
+            LastEdition::CopyPaste => self.event_copy_paste(),
+            LastEdition::Nothing => (),
+        }
+        self.mode = Mode::Normal;
+        self.last_edition = LastEdition::Nothing;
     }
 
     fn exec_rename(&mut self) {
@@ -737,6 +798,9 @@ impl Status {
     }
 
     fn exec_chmod(&mut self) {
+        if self.input_string.is_empty() {
+            return;
+        }
         let permissions: u32 = u32::from_str_radix(&self.input_string, 8).unwrap_or(0_u32);
         if permissions <= MAX_PERMISSIONS {
             for path in self.flagged.iter() {
@@ -967,6 +1031,9 @@ impl Display {
                     status.path_content.path.to_str().unwrap()
                 )
             }
+            Mode::NeedConfirmation => {
+                format!("Confirm {} (y/n) : ", status.last_edition)
+            }
             _ => {
                 format!("{:?} {}", status.mode.clone(), status.input_string.clone())
             }
@@ -1001,6 +1068,9 @@ impl Display {
                 for (row, line) in HELP_LINES.split('\n').enumerate() {
                     let _ = self.term.print(row, 0, line);
                 }
+            }
+            Mode::NeedConfirmation => {
+                let _ = self.term.set_cursor(0, status.last_edition.offset());
             }
             _ => {
                 let _ = self
