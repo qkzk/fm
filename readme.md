@@ -75,6 +75,11 @@
 2. look for config file in $HOME/.config/fm
 4. don't update, replace
 
+
+## completion
+
+workflow in #10
+
 ## Sources
 
 ### Configuration
