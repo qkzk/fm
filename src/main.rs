@@ -182,7 +182,62 @@ impl fmt::Debug for Mode {
     }
 }
 
-pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
+struct Completion {
+    proposals: Vec<String>,
+    index: usize,
+}
+
+impl Completion {
+    fn new() -> Self {
+        Self {
+            proposals: vec![],
+            index: 0,
+        }
+    }
+
+    fn next(&mut self) {
+        if self.proposals.is_empty() {
+            return;
+        }
+        self.index = (self.index + 1) % self.proposals.len()
+    }
+
+    fn prev(&mut self) {
+        if self.proposals.is_empty() {
+            return;
+        }
+        if self.index > 0 {
+            self.index -= 1
+        } else {
+            self.index = self.proposals.len() - 1
+        }
+    }
+
+    fn current_proposition(&self) -> String {
+        if self.proposals.is_empty() {
+            return "".to_owned();
+        }
+        self.proposals[self.index].to_owned()
+    }
+
+    fn update(&mut self, proposals: Vec<String>) {
+        self.index = 0;
+        self.proposals = proposals;
+    }
+
+    fn reset(&mut self) {
+        self.index = 0;
+        self.proposals.clear();
+    }
+}
+
+impl Default for Completion {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
     Command::new(exe).args(args).spawn().unwrap()
 }
 
@@ -204,6 +259,7 @@ struct Status {
     args: Args,
     config: Config,
     jump_index: usize,
+    completion: Completion,
 }
 
 impl Status {
@@ -222,6 +278,7 @@ impl Status {
         let input_string = "".to_string();
         let col = 0;
         let jump_index = 0;
+        let completion = Completion::default();
         Self {
             mode,
             file_index,
@@ -235,6 +292,7 @@ impl Status {
             args,
             config,
             jump_index,
+            completion,
         }
     }
 
@@ -247,30 +305,44 @@ impl Status {
     }
 
     fn event_up(&mut self) {
-        if let Mode::Normal = self.mode {
-            if self.file_index > 0 {
-                self.file_index -= 1;
+        match self.mode {
+            Mode::Normal => {
+                if self.file_index > 0 {
+                    self.file_index -= 1;
+                }
+                self.path_content.select_prev();
+                self.window.scroll_up_one(self.file_index);
             }
-            self.path_content.select_prev();
-            self.window.scroll_up_one(self.file_index);
-        } else if let Mode::Jump = self.mode {
-            if self.jump_index > 0 {
-                self.jump_index -= 1;
+            Mode::Jump => {
+                if self.jump_index > 0 {
+                    self.jump_index -= 1;
+                }
             }
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                self.completion.prev();
+            }
+            _ => (),
         }
     }
 
     fn event_down(&mut self) {
-        if let Mode::Normal = self.mode {
-            if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
-                self.file_index += 1;
+        match self.mode {
+            Mode::Normal => {
+                if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
+                    self.file_index += 1;
+                }
+                self.path_content.select_next();
+                self.window.scroll_down_one(self.file_index);
             }
-            self.path_content.select_next();
-            self.window.scroll_down_one(self.file_index);
-        } else if let Mode::Jump = self.mode {
-            if self.jump_index < self.flagged.len() {
-                self.jump_index += 1;
+            Mode::Jump => {
+                if self.jump_index < self.flagged.len() {
+                    self.jump_index += 1;
+                }
             }
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                self.completion.next();
+            }
+            _ => (),
         }
     }
 
@@ -376,14 +448,13 @@ impl Status {
 
     fn event_char(&mut self, c: char) {
         match self.mode {
-            Mode::Newfile
-            | Mode::Newdir
-            | Mode::Chmod
-            | Mode::Rename
-            | Mode::Exec
-            | Mode::Search
-            | Mode::Goto
-            | Mode::RegexMatch => self.event_text_insertion(c),
+            Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::RegexMatch => {
+                self.event_text_insertion(c)
+            }
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                self.event_text_insertion(c);
+                self.fill_completion();
+            }
             Mode::Normal => {
                 if c == self.config.keybindings.toggle_hidden {
                     self.event_toggle_hidden()
@@ -400,7 +471,7 @@ impl Status {
                 } else if c == self.config.keybindings.exec {
                     self.mode = Mode::Exec
                 } else if c == self.config.keybindings.goto {
-                    self.mode = Mode::Goto
+                    self.event_goto()
                 } else if c == self.config.keybindings.rename {
                     self.event_rename()
                 } else if c == self.config.keybindings.clear_flags {
@@ -542,6 +613,11 @@ impl Status {
                     .clone(),
             );
         }
+    }
+
+    fn event_goto(&mut self) {
+        self.mode = Mode::Goto;
+        self.completion.reset();
     }
 
     fn event_shell(&mut self) {
@@ -725,32 +801,71 @@ impl Status {
         self.window.scroll_to(self.file_index);
     }
 
-    fn event_completion(&mut self) {
-        if let Mode::Goto = self.mode {
-            let (parent, last_name) = self.split_input_string();
-            if last_name.is_empty() {
-                return;
-            }
-            if let Ok(path) = std::fs::canonicalize(parent) {
-                if let Some(completion) = match fs::read_dir(path) {
-                    Ok(entries) => entries
-                        .filter_map(|e| e.ok())
-                        .filter(|e| {
-                            e.file_type().unwrap().is_dir()
-                                && e.file_name()
-                                    .to_string_lossy()
-                                    .into_owned()
-                                    .starts_with(&last_name)
-                        })
-                        .take(1)
-                        .map(|e| e.path().to_string_lossy().into_owned())
-                        .next(),
-
-                    Err(_) => None,
-                } {
-                    self.input_string = completion;
+    fn fill_completion(&mut self) {
+        match self.mode {
+            Mode::Goto => {
+                let (parent, last_name) = self.split_input_string();
+                if last_name.is_empty() {
+                    return;
+                }
+                if let Ok(path) = std::fs::canonicalize(parent) {
+                    if let Ok(entries) = fs::read_dir(path) {
+                        self.completion.update(
+                            entries
+                                .filter_map(|e| e.ok())
+                                .filter(|e| {
+                                    e.file_type().unwrap().is_dir()
+                                        && filename_startswith(e, &last_name)
+                                })
+                                .map(|e| e.path().to_string_lossy().into_owned())
+                                .collect(),
+                        )
+                    }
                 }
             }
+            Mode::Exec => {
+                let mut proposals: Vec<String> = vec![];
+                for path in std::env::var_os("PATH")
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default()
+                    .split(':')
+                {
+                    if let Ok(entries) = fs::read_dir(path) {
+                        let comp: Vec<String> = entries
+                            .filter(|e| e.is_ok())
+                            .map(|e| e.unwrap())
+                            .filter(|e| {
+                                e.file_type().unwrap().is_file()
+                                    && filename_startswith(e, &self.input_string)
+                            })
+                            .map(|e| e.path().to_string_lossy().into_owned())
+                            .collect();
+                        proposals.extend(comp);
+                    }
+                }
+                self.completion.update(proposals);
+            }
+            Mode::Search => {
+                self.completion.update(
+                    self.path_content
+                        .files
+                        .iter()
+                        .filter(|f| f.filename.contains(&self.input_string))
+                        .map(|f| f.filename.clone())
+                        .collect(),
+                );
+            }
+            _ => (),
+        }
+    }
+
+    fn event_complete(&mut self) {
+        match self.mode {
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                self.input_string = self.completion.current_proposition()
+            }
+            _ => (),
         }
     }
 
@@ -820,6 +935,14 @@ impl Status {
         self.window.height = height;
         self.height = height;
     }
+}
+
+fn filename_startswith(entry: &std::fs::DirEntry, pattern: &String) -> bool {
+    entry
+        .file_name()
+        .to_string_lossy()
+        .into_owned()
+        .starts_with(pattern)
 }
 
 struct Display {
@@ -902,6 +1025,26 @@ impl Display {
             }
         }
     }
+
+    fn completion(&mut self, status: &Status) {
+        match status.mode {
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                let _ = self.term.clear();
+                self.first_line(status);
+                let _ = self
+                    .term
+                    .set_cursor(0, status.input_string_cursor_index + EDIT_BOX_OFFSET);
+                for (row, candidate) in status.completion.proposals.iter().enumerate() {
+                    let mut attr = Attr::default();
+                    if row == status.completion.index {
+                        attr.effect |= Effect::REVERSE;
+                    }
+                    let _ = self.term.print_with_attr(row + 1, 4, candidate, attr);
+                }
+            }
+            _ => (),
+        }
+    }
 }
 
 fn read_args() -> Args {
@@ -945,7 +1088,7 @@ fn main() {
             Event::Key(Key::PageDown) => status.event_page_down(),
             Event::Key(Key::PageUp) => status.event_page_up(),
             Event::Key(Key::Enter) => status.event_enter(),
-            Event::Key(Key::Tab) => status.event_completion(),
+            Event::Key(Key::Tab) => status.event_complete(),
             Event::Key(Key::WheelUp(_, _, _)) => status.event_up(),
             Event::Key(Key::WheelDown(_, _, _)) => status.event_down(),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => status.event_left_click(row),
@@ -959,6 +1102,7 @@ fn main() {
         display.files(&status);
         display.help_or_cursor(&status);
         display.jump_list(&status);
+        display.completion(&status);
 
         let _ = display.term.present();
     }
