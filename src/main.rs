@@ -305,34 +305,44 @@ impl Status {
     }
 
     fn event_up(&mut self) {
-        if let Mode::Normal = self.mode {
-            if self.file_index > 0 {
-                self.file_index -= 1;
+        match self.mode {
+            Mode::Normal => {
+                if self.file_index > 0 {
+                    self.file_index -= 1;
+                }
+                self.path_content.select_prev();
+                self.window.scroll_up_one(self.file_index);
             }
-            self.path_content.select_prev();
-            self.window.scroll_up_one(self.file_index);
-        } else if let Mode::Jump = self.mode {
-            if self.jump_index > 0 {
-                self.jump_index -= 1;
+            Mode::Jump => {
+                if self.jump_index > 0 {
+                    self.jump_index -= 1;
+                }
             }
-        } else if let Mode::Goto = self.mode {
-            self.completion.prev();
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                self.completion.prev();
+            }
+            _ => (),
         }
     }
 
     fn event_down(&mut self) {
-        if let Mode::Normal = self.mode {
-            if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
-                self.file_index += 1;
+        match self.mode {
+            Mode::Normal => {
+                if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
+                    self.file_index += 1;
+                }
+                self.path_content.select_next();
+                self.window.scroll_down_one(self.file_index);
             }
-            self.path_content.select_next();
-            self.window.scroll_down_one(self.file_index);
-        } else if let Mode::Jump = self.mode {
-            if self.jump_index < self.flagged.len() {
-                self.jump_index += 1;
+            Mode::Jump => {
+                if self.jump_index < self.flagged.len() {
+                    self.jump_index += 1;
+                }
             }
-        } else if let Mode::Goto = self.mode {
-            self.completion.next();
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                self.completion.next();
+            }
+            _ => (),
         }
     }
 
@@ -438,14 +448,10 @@ impl Status {
 
     fn event_char(&mut self, c: char) {
         match self.mode {
-            Mode::Newfile
-            | Mode::Newdir
-            | Mode::Chmod
-            | Mode::Rename
-            | Mode::Exec
-            | Mode::Search
-            | Mode::RegexMatch => self.event_text_insertion(c),
-            Mode::Goto => {
+            Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::RegexMatch => {
+                self.event_text_insertion(c)
+            }
+            Mode::Goto | Mode::Exec | Mode::Search => {
                 self.event_text_insertion(c);
                 self.fill_completion();
             }
@@ -796,37 +802,70 @@ impl Status {
     }
 
     fn fill_completion(&mut self) {
-        if let Mode::Goto = self.mode {
-            let (parent, last_name) = self.split_input_string();
-            if last_name.is_empty() {
-                return;
-            }
-            if let Ok(path) = std::fs::canonicalize(parent) {
-                let proposals: Vec<String> = match fs::read_dir(path) {
-                    Ok(entries) => entries
-                        .filter_map(|e| e.ok())
-                        .filter(|e| {
-                            e.file_type().unwrap().is_dir()
-                                && e.file_name()
-                                    .to_string_lossy()
-                                    .into_owned()
-                                    .starts_with(&last_name)
-                        })
-                        .map(|e| e.path().to_string_lossy().into_owned())
-                        .collect(),
-
-                    Err(_) => {
-                        vec![]
+        match self.mode {
+            Mode::Goto => {
+                let (parent, last_name) = self.split_input_string();
+                if last_name.is_empty() {
+                    return;
+                }
+                if let Ok(path) = std::fs::canonicalize(parent) {
+                    if let Ok(entries) = fs::read_dir(path) {
+                        self.completion.update(
+                            entries
+                                .filter_map(|e| e.ok())
+                                .filter(|e| {
+                                    e.file_type().unwrap().is_dir()
+                                        && filename_startswith(e, &last_name)
+                                })
+                                .map(|e| e.path().to_string_lossy().into_owned())
+                                .collect(),
+                        )
                     }
-                };
+                }
+            }
+            Mode::Exec => {
+                let mut proposals: Vec<String> = vec![];
+                for path in std::env::var_os("PATH")
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default()
+                    .split(':')
+                {
+                    if let Ok(entries) = fs::read_dir(path) {
+                        let comp: Vec<String> = entries
+                            .filter(|e| e.is_ok())
+                            .map(|e| e.unwrap())
+                            .filter(|e| {
+                                e.file_type().unwrap().is_file()
+                                    && filename_startswith(e, &self.input_string)
+                            })
+                            .map(|e| e.path().to_string_lossy().into_owned())
+                            .collect();
+                        proposals.extend(comp);
+                    }
+                }
                 self.completion.update(proposals);
             }
+            Mode::Search => {
+                self.completion.update(
+                    self.path_content
+                        .files
+                        .iter()
+                        .filter(|f| f.filename.contains(&self.input_string))
+                        .map(|f| f.filename.clone())
+                        .collect(),
+                );
+            }
+            _ => (),
         }
     }
 
     fn event_complete(&mut self) {
-        if let _mode = Mode::Goto {
-            self.input_string = self.completion.current_proposition();
+        match self.mode {
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                self.input_string = self.completion.current_proposition()
+            }
+            _ => (),
         }
     }
 
@@ -896,6 +935,14 @@ impl Status {
         self.window.height = height;
         self.height = height;
     }
+}
+
+fn filename_startswith(entry: &std::fs::DirEntry, pattern: &String) -> bool {
+    entry
+        .file_name()
+        .to_string_lossy()
+        .into_owned()
+        .starts_with(pattern)
 }
 
 struct Display {
@@ -980,19 +1027,22 @@ impl Display {
     }
 
     fn completion(&mut self, status: &Status) {
-        if let Mode::Goto = status.mode {
-            let _ = self.term.clear();
-            self.first_line(status);
-            let _ = self
-                .term
-                .set_cursor(0, status.input_string_cursor_index + EDIT_BOX_OFFSET);
-            for (row, candidate) in status.completion.proposals.iter().enumerate() {
-                let mut attr = Attr::default();
-                if row == status.completion.index {
-                    attr.effect |= Effect::REVERSE;
+        match status.mode {
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                let _ = self.term.clear();
+                self.first_line(status);
+                let _ = self
+                    .term
+                    .set_cursor(0, status.input_string_cursor_index + EDIT_BOX_OFFSET);
+                for (row, candidate) in status.completion.proposals.iter().enumerate() {
+                    let mut attr = Attr::default();
+                    if row == status.completion.index {
+                        attr.effect |= Effect::REVERSE;
+                    }
+                    let _ = self.term.print_with_attr(row + 1, 4, candidate, attr);
                 }
-                let _ = self.term.print_with_attr(row + 1, 4, candidate, attr);
             }
+            _ => (),
         }
     }
 }
