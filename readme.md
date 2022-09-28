@@ -47,6 +47,12 @@
   - [x] search
   - [x] mark multiple files
 - [x] jump pour next flagged file
+- [x] user config file
+- [x] completion
+  - workflow in [#10](https://github.com/qkzk/fm/issues/10)
+  - [x] in goto mode,
+  - [x] exec mode,
+  - [x] searchmode
 
 ## TODO
 
@@ -55,11 +61,6 @@
   - [ ] nvim plugin
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
-- [ ] installed config file, user config file
-- [ ] completion
-  - [x] in goto mode,
-  - [ ] exec mode,
-  - [ ] searchmode (???)
 - [ ] confirmation for cut/paste, copy/paste, delete
 
 ## BUGS
@@ -68,25 +69,7 @@
 - [ ] can navigate outside file list
 - [ ] strange behavior after leaving a mode, wrong files are flagged
 
-## Configuration sources & ideas
-
-
-1. struct without option and default hardcoded values
-2. look for config file in $HOME/.config/fm
-4. don't update, replace
-
-
-## completion
-
-workflow in [#10](https://github.com/qkzk/fm/issues/10)
-
 ## Sources
-
-### Configuration
-
-- [rust cli book](https://rust-cli.github.io/book/in-depth/config-files.html)
-- [crate confy](https://docs.rs/confy/latest/confy/fn.get_configuration_file_path.html)
-- [crate configure](https://docs.rs/configure/0.1.1/configure/)
 
 ### CLI
 
