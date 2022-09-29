@@ -61,9 +61,15 @@
 
 - [ ] remote control
   - [ ] listen to stdin (rcv etc.)
+    - [ ] follow change directory
+    - [ ] when called from a file buffer in nvim, open with this file selected
   - [ ] nvim plugin
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
+- [ ] display / event separation. use async and message passing between coroutines
+- [ ] sorting
+  - [ ] kind of sorts : filename, size, date, type
+  - [ ] key for alterning sorting
 
 ## BUGS
 
