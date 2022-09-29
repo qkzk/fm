@@ -6,8 +6,8 @@ use std::collections::HashSet;
 use std::fmt;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
+use std::path;
 use std::process::Command;
-use std::{env, path, process};
 
 use regex::Regex;
 use tuikit::attr::*;
@@ -21,24 +21,51 @@ use fm::fileinfo::{FileInfo, FileKind, PathContent};
 
 pub mod fileinfo;
 
-// use clap::Parser;
-//
-// /// Search for a pattern in a file and display the lines that contain it.
-// #[derive(Parser, Debug)]
-// pub struct Args {
-//     /// The path to the file to read
-//     pub path: std::path::PathBuf,
-//     /// hidden
-//     pub hidden: bool,
-//     pub help: bool,
-//     pub server: Option<String>,
-// }
-
 use clap::Parser;
 
-/// FM : dired like file manager
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[clap(author, version, about)]
+/// FM : dired like file manager{n}
+/// Default key bindings:{n}
+///{n}
+/// q:      quit{n}
+/// h:      help{n}
+///{n}
+/// - Navigation -{n}
+/// ←:      cd to parent directory{n}
+/// →:      cd to child directory{n}
+/// ↑:      one line up  {n}
+/// ↓:      one line down{n}
+/// Home:   go to first line{n}
+/// End:    go to last line{n}
+/// PgUp:   10 lines up{n}
+/// PgDown: 10 lines down{n}
+///{n}
+/// a:      toggle hidden{n}
+/// s:      shell in current directory{n}
+/// o:      xdg-open this file{n}
+/// i:      open with current NVIM session{n}
+///{n}
+/// - Action on flagged files -{n}
+///     space:  toggle flag on a file{n}
+///     *:      flag all{n}
+///     u:      clear flags{n}
+///     v:      reverse flags{n}
+///     c:      copy to current dir{n}
+///     p:      move to current dir{n}
+///     x:      delete flagged files{n}
+///{n}
+/// - MODES -{n}
+///     m:      CHMOD{n}
+///     e:      EXEC{n}
+///     d:      NEWDIR{n}
+///     n:      NEWFILE{n}
+///     r:      RENAME{n}
+///     g:      GOTO{n}
+///     w:      REGEXMATCH{n}
+///     j:      JUMP{n}
+///     Enter:  Execute mode then NORMAL{n}
+///     Esc:    NORMAL{n}
 struct Args {
     /// Starting path
     #[arg(short, long, default_value_t = String::from("."))]
@@ -59,19 +86,19 @@ const EDIT_BOX_OFFSET: usize = 10;
 const MAX_PERMISSIONS: u32 = 0o777;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
-static USAGE: &str = "
-FM: dired inspired File Manager
-
-dired [flags] [path]
-flags:
--a display hidden files
--h show help and exit
-";
+// static USAGE: &str = "
+// FM: dired inspired File Manager
+//
+// dired [flags] [path]
+// flags:
+// -a display hidden files
+// -h show help and exit
+// ";
 static HELP_LINES: &str = "
 Default key bindings:
 
 q:      quit
-?:      help
+h:      help
 
 - Navigation -
 ←:      cd to parent directory 
@@ -276,10 +303,10 @@ fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
     Command::new(exe).args(args).spawn().unwrap()
 }
 
-fn help() {
-    print!("{}", USAGE);
-    print!("{}", HELP_LINES);
-}
+// fn help() {
+//     print!("{}", USAGE);
+//     print!("{}", HELP_LINES);
+// }
 
 #[derive(Debug)]
 enum LastEdition {
@@ -575,7 +602,7 @@ impl Status {
                 } else if c == self.config.keybindings.jump {
                     self.event_jump();
                 } else if c == self.config.keybindings.nvim {
-                    self.event_nvim();
+                    self.event_nvim_filepicker();
                 }
             }
             Mode::Help => {
@@ -775,15 +802,26 @@ impl Status {
         }
     }
 
-    fn event_nvim(&mut self) {
+    fn event_nvim_filepicker(&mut self) {
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
+        let server = std::env::var("NVIM_LISTEN_ADDRESS").unwrap_or_else(|_| "".to_owned());
+        if server.is_empty() {
+            return;
+        }
         execute_in_child(
             "nvim-send",
             &vec![
                 "--remote-send",
-                "<esc>:bn readme.md<cr>",
+                &format!(
+                    "<esc>:e {}<cr><esc>:close<cr>",
+                    self.path_content.files[self.file_index]
+                        .path
+                        .clone()
+                        .to_str()
+                        .unwrap()
+                ),
                 "--servername",
-                "/run/user/1000/nvim.22399.0",
+                &server,
             ],
         );
     }
