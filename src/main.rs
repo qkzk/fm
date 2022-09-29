@@ -759,6 +759,7 @@ impl Status {
     }
 
     fn refresh_view(&mut self) {
+        self.file_index = 0;
         self.input_string.clear();
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());

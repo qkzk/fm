@@ -54,6 +54,7 @@
   - [x] exec mode,
   - [x] searchmode
 - [x] confirmation for cut/paste, copy/paste, delete
+- [x] bugfix: strange behavior after leaving a mode, wrong files are flagged - not in the right index or something
 
 ## TODO
 
@@ -67,7 +68,6 @@
 
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
 - [ ] can navigate outside file list
-- [ ] strange behavior after leaving a mode, wrong files are flagged
 
 ## Sources
 
