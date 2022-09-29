@@ -1047,7 +1047,7 @@ impl Display {
         for (i, string) in strings
             .iter()
             .enumerate()
-            .take(min(strings.len(), status.window.bottom))
+            .take(min(strings.len(), status.window.bottom + 1))
             .skip(status.window.top)
         {
             let row = i + WINDOW_MARGIN_TOP - status.window.top;

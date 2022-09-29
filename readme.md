@@ -55,6 +55,7 @@
   - [x] searchmode
 - [x] confirmation for cut/paste, copy/paste, delete
 - [x] bugfix: strange behavior after leaving a mode, wrong files are flagged - not in the right index or something
+- [x] bugfix: can navigate outside file list
 
 ## TODO
 
@@ -67,7 +68,6 @@
 ## BUGS
 
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
-- [ ] can navigate outside file list
 
 ## Sources
 
