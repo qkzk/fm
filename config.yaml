@@ -37,3 +37,4 @@ keybindings:
   reverse_flags: v
   regex_match: w
   jump: j
+  nvim: i

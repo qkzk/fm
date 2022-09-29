@@ -15,11 +15,43 @@ use tuikit::event::{Event, Key};
 use tuikit::key::MouseButton;
 use tuikit::term::{Term, TermHeight};
 
-use fm::args::Args;
+// use fm::args::Args;
 use fm::config::{load_config, str_to_tuikit, Colors, Config};
 use fm::fileinfo::{FileInfo, FileKind, PathContent};
 
 pub mod fileinfo;
+
+// use clap::Parser;
+//
+// /// Search for a pattern in a file and display the lines that contain it.
+// #[derive(Parser, Debug)]
+// pub struct Args {
+//     /// The path to the file to read
+//     pub path: std::path::PathBuf,
+//     /// hidden
+//     pub hidden: bool,
+//     pub help: bool,
+//     pub server: Option<String>,
+// }
+
+use clap::Parser;
+
+/// FM : dired like file manager
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Starting path
+    #[arg(short, long, default_value_t = String::from("."))]
+    path: String,
+
+    /// Display all files
+    #[arg(short, long, default_value_t = false)]
+    all: bool,
+
+    /// Nvim server
+    #[arg(short, long, default_value_t = String::from(""))]
+    server: String,
+}
 
 const WINDOW_PADDING: usize = 4;
 const WINDOW_MARGIN_TOP: usize = 1;
@@ -240,6 +272,7 @@ impl Default for Completion {
 }
 
 fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
+    eprintln!("exec exe {}, args {:?}", exe, args);
     Command::new(exe).args(args).spawn().unwrap()
 }
 
@@ -298,10 +331,10 @@ struct Status {
 impl Status {
     fn new(args: Args, config: Config, height: usize) -> Self {
         let path = std::fs::canonicalize(path::Path::new(&args.path)).unwrap_or_else(|_| {
-            eprintln!("File does not exists {}", args.path);
+            eprintln!("File does not exists {:?}", args.path);
             std::process::exit(2)
         });
-        let path_content = PathContent::new(path, args.hidden);
+        let path_content = PathContent::new(path, args.all);
 
         let mode = Mode::Normal;
         let file_index = 0;
@@ -386,7 +419,7 @@ impl Status {
             Mode::Normal => match self.path_content.path.parent() {
                 Some(parent) => {
                     self.path_content =
-                        PathContent::new(path::PathBuf::from(parent), self.args.hidden);
+                        PathContent::new(path::PathBuf::from(parent), self.args.all);
                     self.window.reset(self.path_content.files.len());
                     self.file_index = 0;
                     self.input_string_cursor_index = 0;
@@ -418,7 +451,7 @@ impl Status {
                         self.path_content.files[self.path_content.selected]
                             .path
                             .clone(),
-                        self.args.hidden,
+                        self.args.all,
                     );
                     self.window.reset(self.path_content.files.len());
                     self.file_index = 0;
@@ -541,6 +574,8 @@ impl Status {
                     self.event_reverse_flags();
                 } else if c == self.config.keybindings.jump {
                     self.event_jump();
+                } else if c == self.config.keybindings.nvim {
+                    self.event_nvim();
                 }
             }
             Mode::Help => {
@@ -601,7 +636,7 @@ impl Status {
     }
 
     fn event_toggle_hidden(&mut self) {
-        self.args.hidden = !self.args.hidden;
+        self.args.all = !self.args.all;
         self.path_content.show_hidden = !self.path_content.show_hidden;
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len())
@@ -738,6 +773,19 @@ impl Status {
             self.jump_index = 0;
             self.mode = Mode::Jump
         }
+    }
+
+    fn event_nvim(&mut self) {
+        // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
+        execute_in_child(
+            "nvim-send",
+            &vec![
+                "--remote-send",
+                "<esc>:bn readme.md<cr>",
+                "--servername",
+                "/run/user/1000/nvim.22399.0",
+            ],
+        );
     }
 
     fn event_enter(&mut self) {
@@ -958,7 +1006,7 @@ impl Status {
         let expanded_cow_path = shellexpand::tilde(&target_string);
         let expanded_target: &str = expanded_cow_path.borrow();
         if let Ok(path) = std::fs::canonicalize(expanded_target) {
-            self.path_content = PathContent::new(path, self.args.hidden);
+            self.path_content = PathContent::new(path, self.args.all);
             self.window.reset(self.path_content.files.len());
         }
     }
@@ -971,7 +1019,7 @@ impl Status {
             Some(parent) => parent.to_path_buf(),
             None => jump_target.clone(),
         };
-        self.path_content = PathContent::new(target_dir, self.args.hidden);
+        self.path_content = PathContent::new(target_dir, self.args.all);
         self.file_index = self
             .path_content
             .files
@@ -1118,21 +1166,23 @@ impl Display {
     }
 }
 
-fn read_args() -> Args {
-    let args = Args::new(env::args()).unwrap_or_else(|err| {
-        eprintln!("Problem parsing arguments: {}", err);
-        help();
-        process::exit(1);
-    });
-    if args.help {
-        help();
-        process::exit(0);
-    }
-    args
-}
+// fn read_args() -> Args {
+//     let args = Args::new(env::args()).unwrap_or_else(|err| {
+//         eprintln!("Problem parsing arguments: {}", err);
+//         help();
+//         process::exit(1);
+//     });
+//     let args = Args::parse()
+//     if args.help {
+//         help();
+//         process::exit(0);
+//     }
+//     args
+// }
 
 fn main() {
-    let args = read_args();
+    let args = Args::parse();
+    eprintln!("Clap args {:?}", args);
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
     let _ = term.enable_mouse_support();
     let (_, height) = term.term_size().unwrap();
