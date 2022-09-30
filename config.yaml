@@ -38,3 +38,4 @@ keybindings:
   regex_match: w
   jump: j
   nvim: i
+  sort_by: O
