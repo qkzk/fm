@@ -60,6 +60,8 @@
 ## TODO
 
 - [ ] remote control
+  - [x] filepicker
+        requires the nvim-remote rust crate installed
   - [ ] listen to stdin (rcv etc.)
     - [ ] follow change directory
     - [ ] when called from a file buffer in nvim, open with this file selected

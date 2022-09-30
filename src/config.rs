@@ -117,6 +117,7 @@ pub struct Keybindings {
     pub reverse_flags: char,
     pub regex_match: char,
     pub jump: char,
+    pub nvim: char,
 }
 
 impl Keybindings {
@@ -184,6 +185,9 @@ impl Keybindings {
         if let Some(jump) = yaml["jump"].as_str().map(|s| s.to_string()) {
             self.jump = jump.chars().next().unwrap_or('j');
         }
+        if let Some(nvim) = yaml["nvim"].as_str().map(|s| s.to_string()) {
+            self.nvim = nvim.chars().next().unwrap_or('i');
+        }
     }
 
     pub fn new() -> Self {
@@ -209,6 +213,7 @@ impl Keybindings {
             reverse_flags: 'v',
             regex_match: 'w',
             jump: 'j',
+            nvim: 'i',
         }
     }
 }

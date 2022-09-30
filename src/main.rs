@@ -6,8 +6,8 @@ use std::collections::HashSet;
 use std::fmt;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
+use std::path;
 use std::process::Command;
-use std::{env, path, process};
 
 use regex::Regex;
 use tuikit::attr::*;
@@ -15,11 +15,70 @@ use tuikit::event::{Event, Key};
 use tuikit::key::MouseButton;
 use tuikit::term::{Term, TermHeight};
 
-use fm::args::Args;
+// use fm::args::Args;
 use fm::config::{load_config, str_to_tuikit, Colors, Config};
 use fm::fileinfo::{FileInfo, FileKind, PathContent};
 
 pub mod fileinfo;
+
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about)]
+/// FM : dired like file manager{n}
+/// Default key bindings:{n}
+///{n}
+/// q:      quit{n}
+/// h:      help{n}
+///{n}
+/// - Navigation -{n}
+/// ←:      cd to parent directory{n}
+/// →:      cd to child directory{n}
+/// ↑:      one line up  {n}
+/// ↓:      one line down{n}
+/// Home:   go to first line{n}
+/// End:    go to last line{n}
+/// PgUp:   10 lines up{n}
+/// PgDown: 10 lines down{n}
+///{n}
+/// a:      toggle hidden{n}
+/// s:      shell in current directory{n}
+/// o:      xdg-open this file{n}
+/// i:      open with current NVIM session{n}
+///{n}
+/// - Action on flagged files -{n}
+///     space:  toggle flag on a file{n}
+///     *:      flag all{n}
+///     u:      clear flags{n}
+///     v:      reverse flags{n}
+///     c:      copy to current dir{n}
+///     p:      move to current dir{n}
+///     x:      delete flagged files{n}
+///{n}
+/// - MODES -{n}
+///     m:      CHMOD{n}
+///     e:      EXEC{n}
+///     d:      NEWDIR{n}
+///     n:      NEWFILE{n}
+///     r:      RENAME{n}
+///     g:      GOTO{n}
+///     w:      REGEXMATCH{n}
+///     j:      JUMP{n}
+///     Enter:  Execute mode then NORMAL{n}
+///     Esc:    NORMAL{n}
+struct Args {
+    /// Starting path
+    #[arg(short, long, default_value_t = String::from("."))]
+    path: String,
+
+    /// Display all files
+    #[arg(short, long, default_value_t = false)]
+    all: bool,
+
+    /// Nvim server
+    #[arg(short, long, default_value_t = String::from(""))]
+    server: String,
+}
 
 const WINDOW_PADDING: usize = 4;
 const WINDOW_MARGIN_TOP: usize = 1;
@@ -27,19 +86,19 @@ const EDIT_BOX_OFFSET: usize = 10;
 const MAX_PERMISSIONS: u32 = 0o777;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
-static USAGE: &str = "
-FM: dired inspired File Manager
-
-dired [flags] [path]
-flags:
--a display hidden files
--h show help and exit
-";
+// static USAGE: &str = "
+// FM: dired inspired File Manager
+//
+// dired [flags] [path]
+// flags:
+// -a display hidden files
+// -h show help and exit
+// ";
 static HELP_LINES: &str = "
 Default key bindings:
 
 q:      quit
-?:      help
+h:      help
 
 - Navigation -
 ←:      cd to parent directory 
@@ -240,13 +299,14 @@ impl Default for Completion {
 }
 
 fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
+    eprintln!("exec exe {}, args {:?}", exe, args);
     Command::new(exe).args(args).spawn().unwrap()
 }
 
-fn help() {
-    print!("{}", USAGE);
-    print!("{}", HELP_LINES);
-}
+// fn help() {
+//     print!("{}", USAGE);
+//     print!("{}", HELP_LINES);
+// }
 
 #[derive(Debug)]
 enum LastEdition {
@@ -298,10 +358,10 @@ struct Status {
 impl Status {
     fn new(args: Args, config: Config, height: usize) -> Self {
         let path = std::fs::canonicalize(path::Path::new(&args.path)).unwrap_or_else(|_| {
-            eprintln!("File does not exists {}", args.path);
+            eprintln!("File does not exists {:?}", args.path);
             std::process::exit(2)
         });
-        let path_content = PathContent::new(path, args.hidden);
+        let path_content = PathContent::new(path, args.all);
 
         let mode = Mode::Normal;
         let file_index = 0;
@@ -386,7 +446,7 @@ impl Status {
             Mode::Normal => match self.path_content.path.parent() {
                 Some(parent) => {
                     self.path_content =
-                        PathContent::new(path::PathBuf::from(parent), self.args.hidden);
+                        PathContent::new(path::PathBuf::from(parent), self.args.all);
                     self.window.reset(self.path_content.files.len());
                     self.file_index = 0;
                     self.input_string_cursor_index = 0;
@@ -418,7 +478,7 @@ impl Status {
                         self.path_content.files[self.path_content.selected]
                             .path
                             .clone(),
-                        self.args.hidden,
+                        self.args.all,
                     );
                     self.window.reset(self.path_content.files.len());
                     self.file_index = 0;
@@ -541,6 +601,8 @@ impl Status {
                     self.event_reverse_flags();
                 } else if c == self.config.keybindings.jump {
                     self.event_jump();
+                } else if c == self.config.keybindings.nvim {
+                    self.event_nvim_filepicker();
                 }
             }
             Mode::Help => {
@@ -601,7 +663,7 @@ impl Status {
     }
 
     fn event_toggle_hidden(&mut self) {
-        self.args.hidden = !self.args.hidden;
+        self.args.all = !self.args.all;
         self.path_content.show_hidden = !self.path_content.show_hidden;
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len())
@@ -738,6 +800,30 @@ impl Status {
             self.jump_index = 0;
             self.mode = Mode::Jump
         }
+    }
+
+    fn event_nvim_filepicker(&mut self) {
+        // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
+        let server = std::env::var("NVIM_LISTEN_ADDRESS").unwrap_or_else(|_| "".to_owned());
+        if server.is_empty() {
+            return;
+        }
+        execute_in_child(
+            "nvim-send",
+            &vec![
+                "--remote-send",
+                &format!(
+                    "<esc>:e {}<cr><esc>:close<cr>",
+                    self.path_content.files[self.file_index]
+                        .path
+                        .clone()
+                        .to_str()
+                        .unwrap()
+                ),
+                "--servername",
+                &server,
+            ],
+        );
     }
 
     fn event_enter(&mut self) {
@@ -958,7 +1044,7 @@ impl Status {
         let expanded_cow_path = shellexpand::tilde(&target_string);
         let expanded_target: &str = expanded_cow_path.borrow();
         if let Ok(path) = std::fs::canonicalize(expanded_target) {
-            self.path_content = PathContent::new(path, self.args.hidden);
+            self.path_content = PathContent::new(path, self.args.all);
             self.window.reset(self.path_content.files.len());
         }
     }
@@ -971,7 +1057,7 @@ impl Status {
             Some(parent) => parent.to_path_buf(),
             None => jump_target.clone(),
         };
-        self.path_content = PathContent::new(target_dir, self.args.hidden);
+        self.path_content = PathContent::new(target_dir, self.args.all);
         self.file_index = self
             .path_content
             .files
@@ -1118,21 +1204,23 @@ impl Display {
     }
 }
 
-fn read_args() -> Args {
-    let args = Args::new(env::args()).unwrap_or_else(|err| {
-        eprintln!("Problem parsing arguments: {}", err);
-        help();
-        process::exit(1);
-    });
-    if args.help {
-        help();
-        process::exit(0);
-    }
-    args
-}
+// fn read_args() -> Args {
+//     let args = Args::new(env::args()).unwrap_or_else(|err| {
+//         eprintln!("Problem parsing arguments: {}", err);
+//         help();
+//         process::exit(1);
+//     });
+//     let args = Args::parse()
+//     if args.help {
+//         help();
+//         process::exit(0);
+//     }
+//     args
+// }
 
 fn main() {
-    let args = read_args();
+    let args = Args::parse();
+    eprintln!("Clap args {:?}", args);
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
     let _ = term.enable_mouse_support();
     let (_, height) = term.term_size().unwrap();
