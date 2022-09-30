@@ -620,20 +620,21 @@ impl Status {
                 self.mode = Mode::Normal;
             }
             Mode::Sort => {
-                if c == 'n' {
-                    self.path_content.sort_by = SortBy::Filename;
-                    self.path_content.sort();
-                } else if c == 'd' {
-                    self.path_content.sort_by = SortBy::Filename;
-                    self.path_content.sort();
-                } else if c == 's' {
-                    self.path_content.sort_by = SortBy::Size;
-                    self.path_content.sort();
-                } else if c == 'e' {
-                    self.path_content.sort_by = SortBy::Extension;
-                    self.path_content.sort();
+                match c {
+                    'n' => self.path_content.sort_by = SortBy::Filename,
+                    'd' => self.path_content.sort_by = SortBy::Date,
+                    's' => self.path_content.sort_by = SortBy::Size,
+                    'e' => self.path_content.sort_by = SortBy::Extension,
+                    _ => {
+                        self.mode = Mode::Normal;
+                        return;
+                    }
                 }
                 self.mode = Mode::Normal;
+                self.path_content.files[self.file_index].unselect();
+                self.path_content.sort();
+                self.event_home();
+                self.path_content.select_index(0);
             }
         }
     }
