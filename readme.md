@@ -56,6 +56,7 @@
 - [x] confirmation for cut/paste, copy/paste, delete
 - [x] bugfix: strange behavior after leaving a mode, wrong files are flagged - not in the right index or something
 - [x] bugfix: can navigate outside file list
+- [ ] sorting : filename, size, date, type
 
 ## TODO
 
@@ -69,9 +70,6 @@
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
-- [ ] sorting
-  - [ ] kind of sorts : filename, size, date, type
-  - [ ] key for alterning sorting
 
 ## BUGS
 
@@ -86,3 +84,5 @@
 ### filepicker in vim
 
 - [fff](https://github.com/dylanaraps/fff)
+
+

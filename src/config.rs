@@ -118,6 +118,7 @@ pub struct Keybindings {
     pub regex_match: char,
     pub jump: char,
     pub nvim: char,
+    pub sort_by: char,
 }
 
 impl Keybindings {
@@ -188,6 +189,9 @@ impl Keybindings {
         if let Some(nvim) = yaml["nvim"].as_str().map(|s| s.to_string()) {
             self.nvim = nvim.chars().next().unwrap_or('i');
         }
+        if let Some(nvim) = yaml["sort_by"].as_str().map(|s| s.to_string()) {
+            self.nvim = nvim.chars().next().unwrap_or('O');
+        }
     }
 
     pub fn new() -> Self {
@@ -214,6 +218,7 @@ impl Keybindings {
             regex_match: 'w',
             jump: 'j',
             nvim: 'i',
+            sort_by: 'O',
         }
     }
 }

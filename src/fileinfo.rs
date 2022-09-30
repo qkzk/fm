@@ -6,6 +6,25 @@ use std::path;
 
 use users::get_user_by_uid;
 
+#[derive(Debug, Clone)]
+pub enum SortBy {
+    Filename,
+    Date,
+    Size,
+    Extension,
+}
+
+impl SortBy {
+    pub fn by_key(&self, file: &FileInfo) -> String {
+        match *self {
+            Self::Filename => file.filename.clone(),
+            Self::Date => file.system_time.clone(),
+            Self::Size => file.file_size.clone(),
+            Self::Extension => file.extension.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum FileKind {
     NormalFile,
@@ -63,6 +82,7 @@ pub struct FileInfo {
     pub system_time: String,
     pub is_selected: bool,
     pub file_kind: FileKind,
+    pub extension: String,
 }
 
 impl FileInfo {
@@ -77,6 +97,7 @@ impl FileInfo {
 
         let file_kind = FileKind::new(direntry);
         let dir_symbol = file_kind.extract_dir_symbol();
+        let extension = get_extension_from_filename(&filename).unwrap_or("").into();
 
         Ok(FileInfo {
             path,
@@ -88,6 +109,7 @@ impl FileInfo {
             system_time,
             is_selected,
             file_kind,
+            extension,
         })
     }
 
@@ -121,6 +143,7 @@ pub struct PathContent {
     pub files: Vec<FileInfo>,
     pub selected: usize,
     pub show_hidden: bool,
+    pub sort_by: SortBy,
 }
 
 impl PathContent {
@@ -142,7 +165,8 @@ impl PathContent {
             })
             .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
             .collect();
-        files.sort_by_key(|file| file.filename.clone());
+        let sort_by = SortBy::Filename;
+        files.sort_by_key(|file| sort_by.by_key(file));
         let selected: usize = 0;
         if !files.is_empty() {
             files[selected].select();
@@ -153,7 +177,12 @@ impl PathContent {
             files,
             selected,
             show_hidden,
+            sort_by,
         }
+    }
+
+    pub fn sort(&mut self) {
+        self.files.sort_by_key(|file| self.sort_by.by_key(file));
     }
 
     fn owner_column_width(&self) -> usize {
@@ -279,4 +308,10 @@ fn human_size(bytes: u64) -> String {
         size[factor as usize]
     );
     human_size
+}
+
+fn get_extension_from_filename(filename: &str) -> Option<&str> {
+    path::Path::new(filename)
+        .extension()
+        .and_then(std::ffi::OsStr::to_str)
 }

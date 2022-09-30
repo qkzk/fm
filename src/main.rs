@@ -17,7 +17,7 @@ use tuikit::term::{Term, TermHeight};
 
 // use fm::args::Args;
 use fm::config::{load_config, str_to_tuikit, Colors, Config};
-use fm::fileinfo::{FileInfo, FileKind, PathContent};
+use fm::fileinfo::{FileInfo, FileKind, PathContent, SortBy};
 
 pub mod fileinfo;
 
@@ -64,6 +64,7 @@ use clap::Parser;
 ///     g:      GOTO{n}
 ///     w:      REGEXMATCH{n}
 ///     j:      JUMP{n}
+///     O:      SORT{n}
 ///     Enter:  Execute mode then NORMAL{n}
 ///     Esc:    NORMAL{n}
 struct Args {
@@ -83,17 +84,10 @@ struct Args {
 const WINDOW_PADDING: usize = 4;
 const WINDOW_MARGIN_TOP: usize = 1;
 const EDIT_BOX_OFFSET: usize = 10;
+const SORT_CURSOR_OFFSET: usize = 29;
 const MAX_PERMISSIONS: u32 = 0o777;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
-// static USAGE: &str = "
-// FM: dired inspired File Manager
-//
-// dired [flags] [path]
-// flags:
-// -a display hidden files
-// -h show help and exit
-// ";
 static HELP_LINES: &str = "
 Default key bindings:
 
@@ -132,6 +126,7 @@ o:      xdg-open this file
     g:      GOTO
     w:      REGEXMATCH
     j:      JUMP
+    O:      SORT
     Enter:  Execute mode then NORMAL
     Esc:    NORMAL
 ";
@@ -222,6 +217,7 @@ enum Mode {
     RegexMatch,
     Jump,
     NeedConfirmation,
+    Sort,
 }
 
 impl fmt::Debug for Mode {
@@ -239,6 +235,7 @@ impl fmt::Debug for Mode {
             Mode::RegexMatch => write!(f, "Regex :  "),
             Mode::Jump => write!(f, "Jump  :  "),
             Mode::NeedConfirmation => write!(f, "Y/N   :"),
+            Mode::Sort => write!(f, "(N)ame (D)ate (S)ize (E)xt : "),
         }
     }
 }
@@ -603,6 +600,8 @@ impl Status {
                     self.event_jump();
                 } else if c == self.config.keybindings.nvim {
                     self.event_nvim_filepicker();
+                } else if c == self.config.keybindings.sort_by {
+                    self.mode = Mode::Sort;
                 }
             }
             Mode::Help => {
@@ -619,6 +618,24 @@ impl Status {
                 }
                 self.last_edition = LastEdition::Nothing;
                 self.mode = Mode::Normal;
+            }
+            Mode::Sort => {
+                self.mode = Mode::Normal;
+                match c {
+                    'n' => self.path_content.sort_by = SortBy::Filename,
+                    'd' => self.path_content.sort_by = SortBy::Date,
+                    's' => self.path_content.sort_by = SortBy::Size,
+                    'e' => self.path_content.sort_by = SortBy::Extension,
+                    _ => {
+                        return;
+                    }
+                }
+                if !self.path_content.files.is_empty() {
+                    self.path_content.files[self.file_index].unselect();
+                    self.path_content.sort();
+                    self.event_home();
+                    self.path_content.select_index(0);
+                }
             }
         }
     }
@@ -837,7 +854,7 @@ impl Status {
             Mode::Goto => self.exec_goto(),
             Mode::RegexMatch => self.exec_regex(),
             Mode::Jump => self.exec_jump(),
-            Mode::Normal | Mode::NeedConfirmation | Mode::Help => (),
+            Mode::Normal | Mode::NeedConfirmation | Mode::Help | Mode::Sort => (),
         }
 
         self.input_string_cursor_index = 0;
@@ -1108,14 +1125,9 @@ impl Display {
         let first_row: String = match status.mode {
             Mode::Normal => {
                 format!(
-                    "h: {}, s: {} wt: {} wb: {}  m: {:?} - c: {:?} - {}",
-                    status.height,
+                    "Path: {}   --   {} files",
+                    status.path_content.path.to_str().unwrap(),
                     status.path_content.files.len(),
-                    status.window.top,
-                    status.window.bottom,
-                    status.mode,
-                    status.args,
-                    status.path_content.path.to_str().unwrap()
                 )
             }
             Mode::NeedConfirmation => {
@@ -1158,6 +1170,9 @@ impl Display {
             }
             Mode::NeedConfirmation => {
                 let _ = self.term.set_cursor(0, status.last_edition.offset());
+            }
+            Mode::Sort => {
+                let _ = self.term.set_cursor(0, SORT_CURSOR_OFFSET);
             }
             _ => {
                 let _ = self
