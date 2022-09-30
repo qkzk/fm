@@ -20,7 +20,21 @@ impl Display {
     pub fn new(term: Term) -> Self {
         Self { term }
     }
-    pub fn first_line(&mut self, status: &Status) {
+
+    pub fn display_all(&mut self, status: &Status) {
+        self.first_line(status);
+        self.files(status);
+        self.help_or_cursor(status);
+        self.jump_list(status);
+        self.completion(status);
+    }
+
+    pub fn height(&self) -> usize {
+        let (_, height) = self.term.term_size().unwrap();
+        height
+    }
+
+    fn first_line(&mut self, status: &Status) {
         let first_row: String = match status.mode {
             Mode::Normal => {
                 format!(
@@ -39,7 +53,7 @@ impl Display {
         let _ = self.term.print(0, 0, &first_row);
     }
 
-    pub fn files(&mut self, status: &Status) {
+    fn files(&mut self, status: &Status) {
         let strings = status.path_content.strings();
         for (i, string) in strings
             .iter()
@@ -56,7 +70,7 @@ impl Display {
         }
     }
 
-    pub fn help_or_cursor(&mut self, status: &Status) {
+    fn help_or_cursor(&mut self, status: &Status) {
         match status.mode {
             Mode::Normal => {
                 let _ = self.term.set_cursor(0, 0);
@@ -81,7 +95,7 @@ impl Display {
         }
     }
 
-    pub fn jump_list(&mut self, status: &Status) {
+    fn jump_list(&mut self, status: &Status) {
         if let Mode::Jump = status.mode {
             let _ = self.term.clear();
             let _ = self.term.print(0, 0, "Jump to...");

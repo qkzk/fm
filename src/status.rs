@@ -1,11 +1,13 @@
 use std::borrow::Borrow;
 use std::cmp::min;
+use std::collections::HashSet;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path;
 use std::process::Command;
 
 use regex::Regex;
+use tuikit::prelude::{Event, Key, MouseButton};
 
 use crate::args::Args;
 use crate::completion::Completion;
@@ -14,7 +16,6 @@ use crate::file_window::{FilesWindow, WINDOW_MARGIN_TOP};
 use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
-use std::collections::HashSet;
 
 const MAX_PERMISSIONS: u32 = 0o777;
 
@@ -71,7 +72,32 @@ impl Status {
         }
     }
 
-    pub fn event_esc(&mut self) {
+    pub fn read_event(&mut self, ev: Event) {
+        match ev {
+            Event::Key(Key::ESC) => self.event_esc(),
+            Event::Key(Key::Up) => self.event_up(),
+            Event::Key(Key::Down) => self.event_down(),
+            Event::Key(Key::Left) => self.event_left(),
+            Event::Key(Key::Right) => self.event_right(),
+            Event::Key(Key::Backspace) => self.event_backspace(),
+            Event::Key(Key::Ctrl('d')) => self.event_delete_char(),
+            Event::Key(Key::Delete) => self.event_delete_char(),
+            Event::Key(Key::Char(c)) => self.event_char(c),
+            Event::Key(Key::Home) => self.event_home(),
+            Event::Key(Key::End) => self.event_end(),
+            Event::Key(Key::PageDown) => self.event_page_down(),
+            Event::Key(Key::PageUp) => self.event_page_up(),
+            Event::Key(Key::Enter) => self.event_enter(),
+            Event::Key(Key::Tab) => self.event_complete(),
+            Event::Key(Key::WheelUp(_, _, _)) => self.event_up(),
+            Event::Key(Key::WheelDown(_, _, _)) => self.event_down(),
+            Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => self.event_left_click(row),
+            Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => self.event_right_click(row),
+            _ => {}
+        }
+    }
+
+    fn event_esc(&mut self) {
         self.input_string.clear();
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
@@ -79,7 +105,7 @@ impl Status {
         self.input_string_cursor_index = 0;
     }
 
-    pub fn event_up(&mut self) {
+    fn event_up(&mut self) {
         match self.mode {
             Mode::Normal => {
                 if self.file_index > 0 {
@@ -100,7 +126,7 @@ impl Status {
         }
     }
 
-    pub fn event_down(&mut self) {
+    fn event_down(&mut self) {
         match self.mode {
             Mode::Normal => {
                 if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
@@ -121,7 +147,7 @@ impl Status {
         }
     }
 
-    pub fn event_left(&mut self) {
+    fn event_left(&mut self) {
         match self.mode {
             Mode::Normal => match self.path_content.path.parent() {
                 Some(parent) => {
@@ -148,7 +174,7 @@ impl Status {
         }
     }
 
-    pub fn event_right(&mut self) {
+    fn event_right(&mut self) {
         match self.mode {
             Mode::Normal => {
                 if let FileKind::Directory =
@@ -180,7 +206,7 @@ impl Status {
         }
     }
 
-    pub fn event_backspace(&mut self) {
+    fn event_backspace(&mut self) {
         match self.mode {
             Mode::Rename
             | Mode::Newdir
@@ -199,7 +225,7 @@ impl Status {
         }
     }
 
-    pub fn event_delete_char(&mut self) {
+    fn event_delete_char(&mut self) {
         match self.mode {
             Mode::Rename
             | Mode::Newdir
@@ -220,7 +246,7 @@ impl Status {
         }
     }
 
-    pub fn event_char(&mut self, c: char) {
+    fn event_char(&mut self, c: char) {
         match self.mode {
             Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::RegexMatch => {
                 self.event_text_insertion(c)
@@ -323,12 +349,12 @@ impl Status {
         }
     }
 
-    pub fn event_text_insertion(&mut self, c: char) {
+    fn event_text_insertion(&mut self, c: char) {
         self.input_string.insert(self.input_string_cursor_index, c);
         self.input_string_cursor_index += 1;
     }
 
-    pub fn event_toggle_flag(&mut self) {
+    fn event_toggle_flag(&mut self) {
         self.toggle_flag_on_path(self.path_content.files[self.file_index].path.clone());
         if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
             self.file_index += 1;
@@ -337,7 +363,7 @@ impl Status {
         self.window.scroll_down_one(self.file_index);
     }
 
-    pub fn event_flag_all(&mut self) {
+    fn event_flag_all(&mut self) {
         self.path_content.files.iter().for_each(|file| {
             self.flagged.insert(file.path.clone());
         });
@@ -351,7 +377,7 @@ impl Status {
         }
     }
 
-    pub fn event_reverse_flags(&mut self) {
+    fn event_reverse_flags(&mut self) {
         // TODO: is there a way to use `toggle_flag_on_path` ? 2 mutable borrows...
         self.path_content.files.iter().for_each(|file| {
             if self.flagged.contains(&file.path.clone()) {
@@ -362,14 +388,14 @@ impl Status {
         });
     }
 
-    pub fn event_toggle_hidden(&mut self) {
+    fn event_toggle_hidden(&mut self) {
         self.args.all = !self.args.all;
         self.path_content.show_hidden = !self.path_content.show_hidden;
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len())
     }
 
-    pub fn event_copy_paste(&mut self) {
+    fn event_copy_paste(&mut self) {
         self.flagged.iter().for_each(|oldpath| {
             let newpath = self
                 .path_content
@@ -383,7 +409,7 @@ impl Status {
         self.window.reset(self.path_content.files.len());
     }
 
-    pub fn event_open_file(&mut self) {
+    fn event_open_file(&mut self) {
         execute_in_child(
             &self.config.opener,
             &vec![self.path_content.files[self.path_content.selected]
@@ -393,7 +419,7 @@ impl Status {
         );
     }
 
-    pub fn event_cut_paste(&mut self) {
+    fn event_cut_paste(&mut self) {
         self.flagged.iter().for_each(|oldpath| {
             let newpath = self
                 .path_content
@@ -407,7 +433,7 @@ impl Status {
         self.window.reset(self.path_content.files.len());
     }
 
-    pub fn event_rename(&mut self) {
+    fn event_rename(&mut self) {
         self.mode = Mode::Rename;
         let oldname = self.path_content.files[self.path_content.selected]
             .filename
@@ -416,7 +442,7 @@ impl Status {
         self.oldpath.push(oldname);
     }
 
-    pub fn event_chmod(&mut self) {
+    fn event_chmod(&mut self) {
         self.mode = Mode::Chmod;
         if self.flagged.is_empty() {
             self.flagged.insert(
@@ -427,19 +453,19 @@ impl Status {
         }
     }
 
-    pub fn event_goto(&mut self) {
+    fn event_goto(&mut self) {
         self.mode = Mode::Goto;
         self.completion.reset();
     }
 
-    pub fn event_shell(&mut self) {
+    fn event_shell(&mut self) {
         execute_in_child(
             &self.config.terminal,
             &vec!["-d", self.path_content.path.to_str().unwrap()],
         );
     }
 
-    pub fn event_delete(&mut self) {
+    fn event_delete(&mut self) {
         self.flagged.iter().for_each(|pathbuf| {
             if pathbuf.is_dir() {
                 fs::remove_dir_all(pathbuf).unwrap_or(());
@@ -452,7 +478,7 @@ impl Status {
         self.window.reset(self.path_content.files.len());
     }
 
-    pub fn event_home(&mut self) {
+    fn event_home(&mut self) {
         if let Mode::Normal = self.mode {
             self.path_content.select_index(0);
             self.file_index = 0;
@@ -462,7 +488,7 @@ impl Status {
         }
     }
 
-    pub fn event_end(&mut self) {
+    fn event_end(&mut self) {
         if let Mode::Normal = self.mode {
             let last_index = self.path_content.files.len() - 1;
             self.path_content.select_index(last_index);
@@ -473,7 +499,7 @@ impl Status {
         }
     }
 
-    pub fn event_page_down(&mut self) {
+    fn event_page_down(&mut self) {
         if let Mode::Normal = self.mode {
             let down_index = min(self.path_content.files.len() - 1, self.file_index + 10);
             self.path_content.select_index(down_index);
@@ -482,7 +508,7 @@ impl Status {
         }
     }
 
-    pub fn event_page_up(&mut self) {
+    fn event_page_up(&mut self) {
         if let Mode::Normal = self.mode {
             let up_index = if self.file_index > 10 {
                 self.file_index - 10
@@ -495,14 +521,14 @@ impl Status {
         }
     }
 
-    pub fn event_jump(&mut self) {
+    fn event_jump(&mut self) {
         if !self.flagged.is_empty() {
             self.jump_index = 0;
             self.mode = Mode::Jump
         }
     }
 
-    pub fn event_nvim_filepicker(&mut self) {
+    fn event_nvim_filepicker(&mut self) {
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         let server = std::env::var("NVIM_LISTEN_ADDRESS").unwrap_or_else(|_| "".to_owned());
         if server.is_empty() {
@@ -526,7 +552,7 @@ impl Status {
         );
     }
 
-    pub fn event_enter(&mut self) {
+    fn event_enter(&mut self) {
         match self.mode {
             Mode::Rename => self.exec_rename(),
             Mode::Newfile => self.exec_newfile(),
@@ -617,14 +643,14 @@ impl Status {
         execute_in_child(command, &args);
     }
 
-    pub fn event_left_click(&mut self, row: u16) {
+    fn event_left_click(&mut self, row: u16) {
         if let Mode::Normal = self.mode {
             self.file_index = (row - 1).into();
             self.path_content.select_index(self.file_index);
             self.window.scroll_to(self.file_index)
         }
     }
-    pub fn event_right_click(&mut self, row: u16) {
+    fn event_right_click(&mut self, row: u16) {
         if let Mode::Normal = self.mode {
             self.file_index = (row - 1).into();
             self.path_content.select_index(self.file_index);
@@ -711,7 +737,7 @@ impl Status {
         }
     }
 
-    pub fn event_complete(&mut self) {
+    fn event_complete(&mut self) {
         match self.mode {
             Mode::Goto | Mode::Exec | Mode::Search => {
                 self.input_string = self.completion.current_proposition()
