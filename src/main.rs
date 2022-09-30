@@ -1,5 +1,3 @@
-extern crate shellexpand;
-
 use clap::Parser;
 use tuikit::term::{Term, TermHeight};
 
