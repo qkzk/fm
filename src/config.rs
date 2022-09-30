@@ -12,7 +12,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             colors: Colors::default(),
             keybindings: Keybindings::default(),
@@ -21,7 +21,7 @@ impl Config {
         }
     }
 
-    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
         self.colors.update_from_config(&yaml["colors"]);
         self.keybindings.update_from_config(&yaml["keybindings"]);
         if let Some(terminal) = yaml["terminal"].as_str().map(|s| s.to_string()) {
@@ -51,7 +51,7 @@ pub struct Colors {
 }
 
 impl Colors {
-    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
         if let Some(file) = yaml["file"].as_str().map(|s| s.to_string()) {
             self.file = file;
         }
@@ -75,7 +75,7 @@ impl Colors {
         }
     }
 
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             file: "white".to_owned(),
             directory: "red".to_owned(),
@@ -122,7 +122,7 @@ pub struct Keybindings {
 }
 
 impl Keybindings {
-    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
         if let Some(toggle_hidden) = yaml["toggle_hidden"].as_str().map(|s| s.to_string()) {
             self.toggle_hidden = toggle_hidden.chars().next().unwrap_or('a');
         }
@@ -194,7 +194,7 @@ impl Keybindings {
         }
     }
 
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             toggle_hidden: 'a',
             copy_paste: 'c',
