@@ -1219,20 +1219,6 @@ impl Display {
     }
 }
 
-// fn read_args() -> Args {
-//     let args = Args::new(env::args()).unwrap_or_else(|err| {
-//         eprintln!("Problem parsing arguments: {}", err);
-//         help();
-//         process::exit(1);
-//     });
-//     let args = Args::parse()
-//     if args.help {
-//         help();
-//         process::exit(0);
-//     }
-//     args
-// }
-
 fn main() {
     let args = Args::parse();
     eprintln!("Clap args {:?}", args);

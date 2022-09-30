@@ -56,7 +56,7 @@
 - [x] confirmation for cut/paste, copy/paste, delete
 - [x] bugfix: strange behavior after leaving a mode, wrong files are flagged - not in the right index or something
 - [x] bugfix: can navigate outside file list
-- [ ] sorting : filename, size, date, type
+- [x] sorting : filename, size, date, type
 
 ## TODO
 
@@ -84,5 +84,3 @@
 ### filepicker in vim
 
 - [fff](https://github.com/dylanaraps/fff)
-
-
