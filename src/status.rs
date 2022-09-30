@@ -47,7 +47,7 @@ impl Status {
         let mode = Mode::Normal;
         let file_index = 0;
         let window = FilesWindow::new(path_content.files.len(), height);
-        let oldpath: path::PathBuf = path::PathBuf::new();
+        let oldpath = path::PathBuf::new();
         let flagged = HashSet::new();
         let input_string = "".to_string();
         let col = 0;
