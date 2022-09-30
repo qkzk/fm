@@ -1,6 +1,9 @@
 pub mod args;
+pub mod completion;
 pub mod config;
 pub mod file_window;
 pub mod fileinfo;
 pub mod help;
+pub mod last_edition;
 pub mod mode;
+pub mod status;
