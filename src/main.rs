@@ -1,7 +1,7 @@
 extern crate shellexpand;
 
 use std::borrow::Borrow;
-use std::cmp::{max, min};
+use std::cmp::min;
 use std::collections::HashSet;
 use std::fmt;
 use std::fs;
@@ -9,236 +9,27 @@ use std::os::unix::fs::PermissionsExt;
 use std::path;
 use std::process::Command;
 
+use clap::Parser;
 use regex::Regex;
 use tuikit::attr::*;
 use tuikit::event::{Event, Key};
 use tuikit::key::MouseButton;
 use tuikit::term::{Term, TermHeight};
 
-// use fm::args::Args;
-use fm::config::{load_config, str_to_tuikit, Colors, Config};
-use fm::fileinfo::{FileInfo, FileKind, PathContent, SortBy};
+use fm::args::Args;
+use fm::config::{load_config, Config};
+use fm::file_window::{FilesWindow, WINDOW_MARGIN_TOP};
+use fm::fileinfo::{fileinfo_attr, FileKind, PathContent, SortBy};
+use fm::help::HELP_LINES;
+use fm::mode::Mode;
 
-pub mod fileinfo;
+// pub mod fileinfo;
 
-use clap::Parser;
-
-#[derive(Parser, Debug)]
-#[clap(author, version, about)]
-/// FM : dired like file manager{n}
-/// Default key bindings:{n}
-///{n}
-/// q:      quit{n}
-/// h:      help{n}
-///{n}
-/// - Navigation -{n}
-/// ←:      cd to parent directory{n}
-/// →:      cd to child directory{n}
-/// ↑:      one line up  {n}
-/// ↓:      one line down{n}
-/// Home:   go to first line{n}
-/// End:    go to last line{n}
-/// PgUp:   10 lines up{n}
-/// PgDown: 10 lines down{n}
-///{n}
-/// a:      toggle hidden{n}
-/// s:      shell in current directory{n}
-/// o:      xdg-open this file{n}
-/// i:      open with current NVIM session{n}
-///{n}
-/// - Action on flagged files -{n}
-///     space:  toggle flag on a file{n}
-///     *:      flag all{n}
-///     u:      clear flags{n}
-///     v:      reverse flags{n}
-///     c:      copy to current dir{n}
-///     p:      move to current dir{n}
-///     x:      delete flagged files{n}
-///{n}
-/// - MODES -{n}
-///     m:      CHMOD{n}
-///     e:      EXEC{n}
-///     d:      NEWDIR{n}
-///     n:      NEWFILE{n}
-///     r:      RENAME{n}
-///     g:      GOTO{n}
-///     w:      REGEXMATCH{n}
-///     j:      JUMP{n}
-///     O:      SORT{n}
-///     Enter:  Execute mode then NORMAL{n}
-///     Esc:    NORMAL{n}
-struct Args {
-    /// Starting path
-    #[arg(short, long, default_value_t = String::from("."))]
-    path: String,
-
-    /// Display all files
-    #[arg(short, long, default_value_t = false)]
-    all: bool,
-
-    /// Nvim server
-    #[arg(short, long, default_value_t = String::from(""))]
-    server: String,
-}
-
-const WINDOW_PADDING: usize = 4;
-const WINDOW_MARGIN_TOP: usize = 1;
 const EDIT_BOX_OFFSET: usize = 10;
 const SORT_CURSOR_OFFSET: usize = 29;
 const MAX_PERMISSIONS: u32 = 0o777;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
-static HELP_LINES: &str = "
-Default key bindings:
-
-q:      quit
-h:      help
-
-- Navigation -
-←:      cd to parent directory 
-→:      cd to child directory
-↑:      one line up  
-↓:      one line down
-Home:   go to first line
-End:    go to last line
-PgUp:   10 lines up
-PgDown: 10 lines down
-
-a:      toggle hidden
-s:      shell in current directory
-o:      xdg-open this file
-
-- Action on flagged files - 
-    space:  toggle flag on a file 
-    *:      flag all
-    u:      clear flags
-    v:      reverse flags
-    c:      copy to current dir
-    p:      move to current dir
-    x:      delete flagged files
-
-- MODES - 
-    m:      CHMOD 
-    e:      EXEC 
-    d:      NEWDIR 
-    n:      NEWFILE
-    r:      RENAME
-    g:      GOTO
-    w:      REGEXMATCH
-    j:      JUMP
-    O:      SORT
-    Enter:  Execute mode then NORMAL
-    Esc:    NORMAL
-";
-
-struct FilesWindow {
-    top: usize,
-    bottom: usize,
-    len: usize,
-    height: usize,
-}
-
-impl FilesWindow {
-    fn new(len: usize, height: usize) -> Self {
-        FilesWindow {
-            top: 0,
-            bottom: min(len, height - 3),
-            len,
-            height: height - 3,
-        }
-    }
-
-    fn scroll_up_one(&mut self, index: usize) {
-        if index < self.top + WINDOW_PADDING && self.top > 0 {
-            self.top -= 1;
-            self.bottom -= 1;
-        }
-    }
-
-    fn scroll_down_one(&mut self, index: usize) {
-        if self.len < self.height {
-            return;
-        }
-        if index > self.bottom - WINDOW_PADDING && self.bottom < self.len - WINDOW_MARGIN_TOP {
-            self.top += 1;
-            self.bottom += 1;
-        }
-    }
-
-    fn reset(&mut self, len: usize) {
-        self.len = len;
-        self.top = 0;
-        self.bottom = min(len, self.height);
-    }
-
-    fn scroll_to(&mut self, index: usize) {
-        if index < self.top || index > self.bottom {
-            self.top = max(index, WINDOW_PADDING) - WINDOW_PADDING;
-            self.bottom = self.top + min(self.len, self.height - 3);
-        }
-    }
-}
-
-fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
-    let fg = match fileinfo.file_kind {
-        FileKind::Directory => str_to_tuikit(&colors.directory),
-        FileKind::BlockDevice => str_to_tuikit(&colors.block),
-        FileKind::CharDevice => str_to_tuikit(&colors.char),
-        FileKind::Fifo => str_to_tuikit(&colors.fifo),
-        FileKind::Socket => str_to_tuikit(&colors.socket),
-        FileKind::SymbolicLink => str_to_tuikit(&colors.symlink),
-        _ => str_to_tuikit(&colors.file),
-    };
-
-    let effect = if fileinfo.is_selected {
-        Effect::REVERSE
-    } else {
-        Effect::empty()
-    };
-
-    Attr {
-        fg,
-        bg: Color::default(),
-        effect,
-    }
-}
-
-#[derive(Clone)]
-enum Mode {
-    Normal,
-    Rename,
-    Chmod,
-    Newfile,
-    Newdir,
-    Exec,
-    Help,
-    Search,
-    Goto,
-    RegexMatch,
-    Jump,
-    NeedConfirmation,
-    Sort,
-}
-
-impl fmt::Debug for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Mode::Normal => write!(f, "Normal:  "),
-            Mode::Rename => write!(f, "Rename:  "),
-            Mode::Chmod => write!(f, "Chmod:   "),
-            Mode::Newfile => write!(f, "Newfile: "),
-            Mode::Newdir => write!(f, "Newdir:  "),
-            Mode::Exec => write!(f, "Exec:    "),
-            Mode::Help => write!(f, ""),
-            Mode::Search => write!(f, "Search:  "),
-            Mode::Goto => write!(f, "Goto  :  "),
-            Mode::RegexMatch => write!(f, "Regex :  "),
-            Mode::Jump => write!(f, "Jump  :  "),
-            Mode::NeedConfirmation => write!(f, "Y/N   :"),
-            Mode::Sort => write!(f, "(N)ame (D)ate (S)ize (E)xt : "),
-        }
-    }
-}
 
 struct Completion {
     proposals: Vec<String>,
@@ -299,11 +90,6 @@ fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
     eprintln!("exec exe {}, args {:?}", exe, args);
     Command::new(exe).args(args).spawn().unwrap()
 }
-
-// fn help() {
-//     print!("{}", USAGE);
-//     print!("{}", HELP_LINES);
-// }
 
 #[derive(Debug)]
 enum LastEdition {

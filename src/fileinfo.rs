@@ -1,10 +1,13 @@
-use chrono::offset::Local;
-use chrono::DateTime;
 use std::fs::{metadata, read_dir, DirEntry};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
 
+use chrono::offset::Local;
+use chrono::DateTime;
+use tuikit::prelude::{Attr, Color, Effect};
 use users::get_user_by_uid;
+
+use super::config::{str_to_tuikit, Colors};
 
 #[derive(Debug, Clone)]
 pub enum SortBy {
@@ -240,6 +243,30 @@ impl PathContent {
         if !self.files.is_empty() {
             self.files[0].select();
         }
+    }
+}
+
+pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
+    let fg = match fileinfo.file_kind {
+        FileKind::Directory => str_to_tuikit(&colors.directory),
+        FileKind::BlockDevice => str_to_tuikit(&colors.block),
+        FileKind::CharDevice => str_to_tuikit(&colors.char),
+        FileKind::Fifo => str_to_tuikit(&colors.fifo),
+        FileKind::Socket => str_to_tuikit(&colors.socket),
+        FileKind::SymbolicLink => str_to_tuikit(&colors.symlink),
+        _ => str_to_tuikit(&colors.file),
+    };
+
+    let effect = if fileinfo.is_selected {
+        Effect::REVERSE
+    } else {
+        Effect::empty()
+    };
+
+    Attr {
+        fg,
+        bg: Color::default(),
+        effect,
     }
 }
 
