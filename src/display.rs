@@ -73,10 +73,11 @@ impl Display {
     fn help_or_cursor(&mut self, status: &Status) {
         match status.mode {
             Mode::Normal => {
-                let _ = self.term.set_cursor(0, 0);
+                let _ = self.term.show_cursor(false);
             }
             Mode::Help => {
                 let _ = self.term.clear();
+                let _ = self.term.show_cursor(false);
                 for (row, line) in HELP_LINES.split('\n').enumerate() {
                     let _ = self.term.print(row, 0, line);
                 }
