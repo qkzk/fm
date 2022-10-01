@@ -24,7 +24,8 @@ impl Display {
     pub fn display_all(&mut self, status: &Status) {
         self.first_line(status);
         self.files(status);
-        self.help_or_cursor(status);
+        self.cursor(status);
+        self.help(status);
         self.jump_list(status);
         self.completion(status);
     }
@@ -70,17 +71,10 @@ impl Display {
         }
     }
 
-    fn help_or_cursor(&mut self, status: &Status) {
+    fn cursor(&mut self, status: &Status) {
         match status.mode {
-            Mode::Normal => {
+            Mode::Normal | Mode::Help => {
                 let _ = self.term.show_cursor(false);
-            }
-            Mode::Help => {
-                let _ = self.term.clear();
-                let _ = self.term.show_cursor(false);
-                for (row, line) in HELP_LINES.split('\n').enumerate() {
-                    let _ = self.term.print(row, 0, line);
-                }
             }
             Mode::NeedConfirmation => {
                 let _ = self.term.set_cursor(0, status.last_edition.offset());
@@ -94,6 +88,15 @@ impl Display {
                     .set_cursor(0, status.input_string_cursor_index + EDIT_BOX_OFFSET);
             }
         }
+    }
+
+    fn help(&mut self, status: &Status) {
+        if let Mode::Help = status.mode {
+            let _ = self.term.clear();
+            for (row, line) in HELP_LINES.split('\n').enumerate() {
+                let _ = self.term.print(row, 0, line);
+            }
+        };
     }
 
     fn jump_list(&mut self, status: &Status) {
