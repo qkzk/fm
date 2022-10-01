@@ -1,0 +1,38 @@
+   Compiling fm v0.1.0 (/home/quentin/gclem/dev/rust/fm)
+warning: unused doc comment
+   --> src/config.rs:278:9
+    |
+278 |           /// Returns a new `Keybindings` instance with hardcoded values.
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+279 | /         Self {
+280 | |             toggle_hidden: 'a',
+281 | |             copy_paste: 'c',
+282 | |             cut_paste: 'p',
+...   |
+302 | |             sort_by: 'O',
+303 | |         }
+    | |_________- rustdoc does not generate documentation for expressions
+    |
+    = note: `#[warn(unused_doc_comments)]` on by default
+    = help: use `//` for a plain comment
+
+error[E0308]: `match` arms have incompatible types
+   --> src/status.rs:106:41
+    |
+97  | /         match ev {
+98  | |             Event::Key(Key::ESC) => self.event_esc(),
+99  | |             Event::Key(Key::Up) => self.event_up(),
+100 | |             Event::Key(Key::Down) => self.event_down(),
+...   |
+105 | |             Event::Key(Key::Delete) => self.event_delete_char(),
+    | |                                        ------------------------ this and all prior arms are found to be of type `()`
+106 | |             Event::Key(Key::Char(c)) => self.event_char(c),
+    | |                                         ^^^^^^^^^^^^^^^^^^ expected `()`, found `bool`
+...   |
+117 | |             _ => {}
+118 | |         }
+    | |_________- `match` arms have incompatible types
+
+For more information about this error, try `rustc --explain E0308`.
+warning: `fm` (lib) generated 1 warning
+error: could not compile `fm` due to previous error; 1 warning emitted

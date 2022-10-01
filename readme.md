@@ -74,6 +74,7 @@
 ## BUGS
 
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
+- [ ] cursor is hidden before leaving the application
 
 ## Sources
 

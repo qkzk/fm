@@ -1,3 +1,5 @@
+/// Help message to be displayed when help key is pressed.
+/// Default help key is `'h'`.
 pub static HELP_LINES: &str = "
 Default key bindings:
 

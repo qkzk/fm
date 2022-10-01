@@ -9,16 +9,23 @@ use users::get_user_by_uid;
 
 use super::config::{str_to_tuikit, Colors};
 
+/// Different kind of sort
 #[derive(Debug, Clone)]
 pub enum SortBy {
+    /// by filename
     Filename,
+    /// by date
     Date,
+    /// by size
     Size,
+    /// by extension
     Extension,
 }
 
 impl SortBy {
-    pub fn by_key(&self, file: &FileInfo) -> String {
+    /// Returns a key for each variant.
+    /// The key can be used to sort the directory content.
+    pub fn key(&self, file: &FileInfo) -> String {
         match *self {
             Self::Filename => file.filename.clone(),
             Self::Date => file.system_time.clone(),
@@ -28,18 +35,29 @@ impl SortBy {
     }
 }
 
+/// Different kind of files
 #[derive(Debug, Clone, Copy)]
 pub enum FileKind {
+    /// Classic files.
     NormalFile,
+    /// Folder
     Directory,
+    /// Block devices like /sda1
     BlockDevice,
+    /// Char devices like /dev/null
     CharDevice,
+    /// Named pipes
     Fifo,
+    /// File socket
     Socket,
+    /// symlink
     SymbolicLink,
 }
 
 impl FileKind {
+    /// Returns a new `FileKind` depending on metadata.
+    /// Only linux files have some of those metadata
+    /// since we rely on `std::fs::MetadataExt`.
     pub fn new(direntry: &DirEntry) -> Self {
         if let Ok(meta) = direntry.metadata() {
             if meta.file_type().is_dir() {
@@ -61,34 +79,53 @@ impl FileKind {
             Self::NormalFile
         }
     }
+    /// Returns the expected first symbol from `ln -l` line.
+    /// d for directory, s for socket, . for file, c for char device,
+    /// b for block, l for links.
     fn extract_dir_symbol(&self) -> String {
         match self {
-            FileKind::Fifo => "p".into(),
-            FileKind::Socket => "s".into(),
-            FileKind::Directory => "d".into(),
-            FileKind::NormalFile => ".".into(),
-            FileKind::CharDevice => "c".into(),
-            FileKind::BlockDevice => "b".into(),
-            FileKind::SymbolicLink => "l".into(),
+            FileKind::Fifo => "p".to_owned(),
+            FileKind::Socket => "s".to_owned(),
+            FileKind::Directory => "d".to_owned(),
+            FileKind::NormalFile => ".".to_owned(),
+            FileKind::CharDevice => "c".to_owned(),
+            FileKind::BlockDevice => "b".to_owned(),
+            FileKind::SymbolicLink => "l".to_owned(),
         }
     }
 }
 
+/// Infos about a file
+/// We read and keep tracks every displayable information about
+/// a file.
+/// Like in [exa](https://github.com/ogham/exa) we don't display the group.
 #[derive(Clone)]
 pub struct FileInfo {
+    /// Full path of the file
     pub path: path::PathBuf,
+    /// Filename
     pub filename: String,
+    /// File size as a `String`, already human formated.
     pub file_size: String,
+    /// First symbol displaying the kind of file.
     pub dir_symbol: String,
+    /// Str formatted permissions like rwxr..rw.
     pub permissions: String,
+    /// Owner name of the file.
     pub owner: String,
+    /// System time of last modification
     pub system_time: String,
+    /// Is this file currently selected ?
     pub is_selected: bool,
+    /// What kind of file is this ?
     pub file_kind: FileKind,
+    /// Extension of the file. `""` for a directory.
     pub extension: String,
 }
 
 impl FileInfo {
+    /// Reads every information about a file from its metadata and returs
+    /// a new `FileInfo` object if we can create one.
     pub fn new(direntry: &DirEntry) -> Result<FileInfo, &'static str> {
         let path = direntry.path();
         let filename = extract_filename(direntry);
@@ -100,7 +137,9 @@ impl FileInfo {
 
         let file_kind = FileKind::new(direntry);
         let dir_symbol = file_kind.extract_dir_symbol();
-        let extension = get_extension_from_filename(&filename).unwrap_or("").into();
+        let extension = extract_extension_from_filename(&filename)
+            .unwrap_or("")
+            .into();
 
         Ok(FileInfo {
             path,
@@ -116,6 +155,9 @@ impl FileInfo {
         })
     }
 
+    /// Format the file line.
+    /// Since files can have different owners in the same directory, we need to
+    /// know the maximum size of owner column for formatting purpose.
     fn format(&self, owner_col_width: usize) -> String {
         format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {system_time} {filename}",
@@ -128,18 +170,21 @@ impl FileInfo {
             filename = self.filename,
         )
     }
-}
 
-impl FileInfo {
+    /// Select the file.
     pub fn select(&mut self) {
         self.is_selected = true;
     }
 
+    /// Unselect the file.
     pub fn unselect(&mut self) {
         self.is_selected = false;
     }
 }
 
+/// Holds the information about file in the current directory.
+/// We know about the current path, the files themselves, the selected index,
+/// the "display all files including hidden" flag and the key to sort files.
 #[derive(Clone)]
 pub struct PathContent {
     pub path: path::PathBuf,
@@ -150,6 +195,9 @@ pub struct PathContent {
 }
 
 impl PathContent {
+    /// Reads the paths and creates a new `PathContent`.
+    /// Files are sorted by filename by default.
+    /// Selects the first file if any.
     pub fn new(path: path::PathBuf, show_hidden: bool) -> Self {
         let mut files: Vec<FileInfo> = read_dir(&path)
             .unwrap_or_else(|_| {
@@ -169,7 +217,7 @@ impl PathContent {
             .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
             .collect();
         let sort_by = SortBy::Filename;
-        files.sort_by_key(|file| sort_by.by_key(file));
+        files.sort_by_key(|file| sort_by.key(file));
         let selected: usize = 0;
         if !files.is_empty() {
             files[selected].select();
@@ -184,10 +232,12 @@ impl PathContent {
         }
     }
 
+    /// Sort the file with current key.
     pub fn sort(&mut self) {
-        self.files.sort_by_key(|file| self.sort_by.by_key(file));
+        self.files.sort_by_key(|file| self.sort_by.key(file));
     }
 
+    /// Calculates the size of the owner column.
     fn owner_column_width(&self) -> usize {
         let mut owner_size_btreeset = std::collections::BTreeSet::new();
         for file in self.files.iter() {
@@ -196,6 +246,7 @@ impl PathContent {
         *owner_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
+    /// Returns a vector of displayable strings for every file.
     pub fn strings(&self) -> Vec<String> {
         let owner_size = self.owner_column_width();
         self.files
@@ -204,6 +255,7 @@ impl PathContent {
             .collect()
     }
 
+    /// Select the next file, if any.
     pub fn select_next(&mut self) {
         if self.selected < self.files.len() - 1 {
             self.files[self.selected].unselect();
@@ -212,6 +264,7 @@ impl PathContent {
         }
     }
 
+    /// Select the previous file, if any.
     pub fn select_prev(&mut self) {
         if self.selected > 0 {
             self.files[self.selected].unselect();
@@ -220,12 +273,18 @@ impl PathContent {
         }
     }
 
+    /// Select the file from a given index.
     pub fn select_index(&mut self, index: usize) {
-        self.files[self.selected].unselect();
-        self.files[index].select();
-        self.selected = index;
+        if index < self.files.len() {
+            self.files[self.selected].unselect();
+            self.files[index].select();
+            self.selected = index;
+        }
     }
 
+    /// Reset the current file content.
+    /// Reads and sort the content with current key.
+    /// Select the first file if any.
     pub fn reset_files(&mut self) {
         self.files = read_dir(&self.path)
             .unwrap_or_else(|_| panic!("Couldn't traverse path {:?}", &self.path))
@@ -246,6 +305,9 @@ impl PathContent {
     }
 }
 
+/// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
+/// effect.
+/// Selected file is reversed.
 pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
     let fg = match fileinfo.file_kind {
         FileKind::Directory => str_to_tuikit(&colors.directory),
@@ -270,6 +332,7 @@ pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
     }
 }
 
+/// true if the file isn't hidden.
 fn is_not_hidden(entry: &DirEntry) -> bool {
     entry
         .file_name()
@@ -277,16 +340,20 @@ fn is_not_hidden(entry: &DirEntry) -> bool {
         .map(|s| !s.starts_with('.'))
         .unwrap_or(false)
 }
+
+/// Returns the modified time.
 fn extract_datetime(direntry: &DirEntry) -> String {
     let system_time = direntry.metadata().unwrap().modified();
     let datetime: DateTime<Local> = system_time.unwrap().into();
     format!("{}", datetime.format("%d/%m/%Y %T"))
 }
 
+/// Returns the filename.
 fn extract_filename(direntry: &DirEntry) -> String {
     direntry.file_name().into_string().unwrap()
 }
 
+/// Reads the permission and converts them into a string.
 fn extract_permissions_string(direntry: &DirEntry) -> String {
     match metadata(direntry.path()) {
         Ok(metadata) => {
@@ -297,15 +364,17 @@ fn extract_permissions_string(direntry: &DirEntry) -> String {
 
             [s_o, s_g, s_a].join("")
         }
-        Err(_) => String::from("---"),
+        Err(_) => String::from("---------"),
     }
 }
 
+/// Convert an integer like `Oo777` into its string representation like `"rwx"`
 fn convert_octal_mode(mode: u32) -> String {
     let rwx = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
     String::from(rwx[(mode & 7_u32) as usize])
 }
 
+/// Reads the owner name and returns it as a string.
 fn extract_owner(direntry: &DirEntry) -> String {
     match metadata(direntry.path()) {
         Ok(metadata) => String::from(
@@ -319,6 +388,7 @@ fn extract_owner(direntry: &DirEntry) -> String {
     }
 }
 
+/// Returns the file size.
 fn extract_file_size(direntry: &DirEntry) -> u64 {
     match direntry.path().metadata() {
         Ok(size) => size.len(),
@@ -326,18 +396,19 @@ fn extract_file_size(direntry: &DirEntry) -> u64 {
     }
 }
 
+/// Convert a file size from bytes to human readable string.
 fn human_size(bytes: u64) -> String {
     let size = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"];
     let factor = (bytes.to_string().chars().count() as u64 - 1) / 3_u64;
-    let human_size = format!(
+    format!(
         "{:>3}{:<1}",
         bytes / (1024_u64).pow(factor as u32),
         size[factor as usize]
-    );
-    human_size
+    )
 }
 
-fn get_extension_from_filename(filename: &str) -> Option<&str> {
+/// Extract the optional extension from a filename.
+fn extract_extension_from_filename(filename: &str) -> Option<&str> {
     path::Path::new(filename)
         .extension()
         .and_then(std::ffi::OsStr::to_str)

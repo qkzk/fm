@@ -3,15 +3,66 @@ use std::{fs::File, path};
 use serde_yaml;
 use tuikit::attr::Color;
 
+/// Holds every configurable aspect of the application.
+/// All attributes are hardcoded then updated from optional values
+/// of the config file.
+/// The config file is a YAML file in `~/.config/fm/config.yaml`
+/// Default config file looks like this and is easier to read in code directly.
+/// # the terminal must be installed
+/// terminal: st
+/// # the opener must be installed
+/// opener: rifle
+/// colors:
+///   # white, black, red, green, blue, yellow, cyan, magenta
+///   # light_white, light_black, light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta
+///   file: white
+///   directory: red
+///   block: yellow
+///   char: green
+///   fifo: blue
+///   socket: cyan
+///   symlink: magenta
+/// keybindings:
+///   # only ASCII char keys are allowed
+///   # ASCII letters must be lowercase
+///   # non ASCII letters char must be in single quotes like this '*'
+///   toggle_hidden: a
+///   copy_paste: c
+///   cut_paste: p
+///   delete: x
+///   chmod: m
+///   exec: e
+///   newdir: d
+///   newfile: n
+///   rename: r
+///   clear_flags: u
+///   toggle_flag: ' '
+///   shell: s
+///   open_file: o
+///   help: h
+///   search: '/'
+///   quit: q
+///   goto: g
+///   flag_all: '*'
+///   reverse_flags: v
+///   regex_match: w
+///   jump: j
+///   nvim: i
+///   sort_by: O
 #[derive(Debug, Clone)]
 pub struct Config {
+    /// Color of every kind of file
     pub colors: Colors,
+    /// Configurable keybindings.
     pub keybindings: Keybindings,
+    /// Terminal used to open file
     pub terminal: String,
+    /// File opener
     pub opener: String,
 }
 
 impl Config {
+    /// Returns a default config with hardcoded values.
     fn new() -> Self {
         Self {
             colors: Colors::default(),
@@ -21,6 +72,7 @@ impl Config {
         }
     }
 
+    /// Updates the config from  a configuration content.
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
         self.colors.update_from_config(&yaml["colors"]);
         self.keybindings.update_from_config(&yaml["keybindings"]);
@@ -51,6 +103,7 @@ pub struct Colors {
 }
 
 impl Colors {
+    /// Update a config from a YAML content.
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
         if let Some(file) = yaml["file"].as_str().map(|s| s.to_string()) {
             self.file = file;
@@ -75,6 +128,7 @@ impl Colors {
         }
     }
 
+    /// Every default color is hardcoded.
     fn new() -> Self {
         Self {
             file: "white".to_owned(),
@@ -96,32 +150,58 @@ impl Default for Colors {
 
 #[derive(Debug, Clone)]
 pub struct Keybindings {
+    /// Toggling the display between hidden and not
     pub toggle_hidden: char,
+    /// Copy and paste the currently flagged files
     pub copy_paste: char,
+    /// Cut and paste (ie move) the currently flagged files
     pub cut_paste: char,
+    /// Delete the currently flagged files
     pub delete: char,
+    /// Edit the permissions of selected file.
     pub chmod: char,
+    /// Exec a command on the selected file.
     pub exec: char,
+    /// Creates a new directory.
     pub newdir: char,
+    /// Creates a new file.
     pub newfile: char,
+    /// Rename the selected file.
     pub rename: char,
+    /// Empty the flagged files
     pub clear_flags: char,
+    /// Toggle all the selected file as flag and move to next file.
     pub toggle_flag: char,
+    /// Open a terminal in current directory
     pub shell: char,
+    /// Open a file with configured file opener
     pub open_file: char,
+    /// Display the help with default keybindings
     pub help: char,
+    /// Search for a file
     pub search: char,
+    /// Quit the application
     pub quit: char,
+    /// Move to a directory
     pub goto: char,
+    /// Set all files as flagged in current directory
     pub flag_all: char,
+    /// Reverse all the flagged in current directory
     pub reverse_flags: char,
+    /// Flag all files matching a regex
     pub regex_match: char,
+    /// Jump to a flagged directory.
     pub jump: char,
+    /// Pick the current file in NVIM.
+    /// The application must have been launched from NVIM for it to work.
     pub nvim: char,
+    /// Change file sorting.
     pub sort_by: char,
 }
 
 impl Keybindings {
+    /// Updates the keybindings from a YAML content.
+    /// If a bind isn't present, the old value is kept.
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
         if let Some(toggle_hidden) = yaml["toggle_hidden"].as_str().map(|s| s.to_string()) {
             self.toggle_hidden = toggle_hidden.chars().next().unwrap_or('a');
@@ -195,6 +275,7 @@ impl Keybindings {
     }
 
     fn new() -> Self {
+        /// Returns a new `Keybindings` instance with hardcoded values.
         Self {
             toggle_hidden: 'a',
             copy_paste: 'c',
@@ -229,6 +310,7 @@ impl Default for Keybindings {
     }
 }
 
+/// Convert a string color into a `tuikit::Color` instance.
 pub fn str_to_tuikit(color: &str) -> Color {
     match color {
         "white" => Color::WHITE,
@@ -251,6 +333,11 @@ pub fn str_to_tuikit(color: &str) -> Color {
     }
 }
 
+/// Returns a config with values from :
+///
+/// 1. hardcoded values
+///
+/// 2. configured values from `~/.config/fm/config.yaml` if the file exists.
 pub fn load_config(path: &str) -> Config {
     let mut config = Config::default();
 

@@ -1,14 +1,22 @@
 use std::fmt;
 
+/// Different kind of last edition command received.
 #[derive(Debug)]
 pub enum LastEdition {
+    /// No edition command
     Nothing,
+    /// Delete flagged files
     Delete,
+    /// Move flagged files
     CutPaste,
+    /// Copy flagged files
     CopyPaste,
 }
 
 impl LastEdition {
+    /// Offset before the cursor.
+    /// Since we ask the user confirmation, we need to know how much space
+    /// is needed.
     pub fn offset(&self) -> usize {
         match *self {
             Self::Nothing => 0,

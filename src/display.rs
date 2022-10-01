@@ -12,15 +12,31 @@ use crate::status::Status;
 const EDIT_BOX_OFFSET: usize = 10;
 const SORT_CURSOR_OFFSET: usize = 29;
 
+/// Is responsible for displaying content in the terminal.
+/// It uses an already created terminal.
 pub struct Display {
     pub term: Term,
 }
 
 impl Display {
+    /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Term) -> Self {
         Self { term }
     }
 
+    /// Display every possible content in the terminal.
+    ///
+    /// The top line
+    ///
+    /// The files if we're displaying them
+    ///
+    /// The cursor if a content is editable
+    ///
+    /// The help if `Mode::Help`
+    ///
+    /// The jump_list if `Mode::Jump`
+    ///
+    /// The completion list if any.
     pub fn display_all(&mut self, status: &Status) {
         self.first_line(status);
         self.files(status);
@@ -30,11 +46,17 @@ impl Display {
         self.completion(status);
     }
 
+    /// Reads and returns the `tuikit::term::Term` height.
     pub fn height(&self) -> usize {
         let (_, height) = self.term.term_size().unwrap();
         height
     }
 
+    /// Display the top line on terminal.
+    /// Its content depends on the mode.
+    /// In normal mode we display the path and number of files.
+    /// When a confirmation is needed we ask the user to input `'y'` or
+    /// something else.
     fn first_line(&mut self, status: &Status) {
         let first_row: String = match status.mode {
             Mode::Normal => {
@@ -54,6 +76,13 @@ impl Display {
         let _ = self.term.print(0, 0, &first_row);
     }
 
+    /// Displays the current directory content, one line per item like in
+    /// `ls -l`.
+    ///
+    /// Those files are always shown, which make it a little bit faster in;
+    /// normal (ie. default) mode.
+    /// Where there's too much files, only those around the selected one are
+    /// displayed.
     fn files(&mut self, status: &Status) {
         let strings = status.path_content.strings();
         for (i, string) in strings
@@ -71,6 +100,7 @@ impl Display {
         }
     }
 
+    /// Display a cursor in the top row, at a correct column.
     fn cursor(&mut self, status: &Status) {
         match status.mode {
             Mode::Normal | Mode::Help => {
@@ -90,6 +120,7 @@ impl Display {
         }
     }
 
+    /// Display the help message with default keybindings.
     fn help(&mut self, status: &Status) {
         if let Mode::Help = status.mode {
             let _ = self.term.clear();
@@ -99,6 +130,7 @@ impl Display {
         };
     }
 
+    /// Display the possible jump destination from flagged files.
     fn jump_list(&mut self, status: &Status) {
         if let Mode::Jump = status.mode {
             let _ = self.term.clear();
@@ -115,6 +147,8 @@ impl Display {
         }
     }
 
+    /// Display the possible completion items. The currently selected one is
+    /// reversed.
     pub fn completion(&mut self, status: &Status) {
         match status.mode {
             Mode::Goto | Mode::Exec | Mode::Search => {

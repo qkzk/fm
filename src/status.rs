@@ -19,24 +19,44 @@ use crate::mode::Mode;
 
 const MAX_PERMISSIONS: u32 = 0o777;
 
+/// Holds every thing about the current status of the application.
+/// Is responsible to execute commands depending on received events, mutating
+/// the status of the application.
+/// Every change on the application comes here.
 pub struct Status {
+    /// The mode the application is currenty in
     pub mode: Mode,
+    /// The given index of a file.
     file_index: usize,
+    /// The indexes of displayed file
     pub window: FilesWindow,
+    /// oldpath before renaming
     oldpath: path::PathBuf,
+    /// Files marked as flagged
     pub flagged: HashSet<path::PathBuf>,
+    /// Currently typed input string
     pub input_string: String,
+    /// Column of the cursor in the input string
     pub input_string_cursor_index: usize,
+    /// Content of the file and index of selected one
     pub path_content: PathContent,
+    /// Height of the terminal window
     height: usize,
+    /// Args readed from command line
     args: Args,
+    /// Configuration (colors, keybindings, terminal, opener) read from
+    /// config file or hardcoded.
     pub config: Config,
+    /// Index in the jump list
     pub jump_index: usize,
+    /// Completion list and index in it.
     pub completion: Completion,
+    /// Last edition command kind received
     pub last_edition: LastEdition,
 }
 
 impl Status {
+    /// Creates a new status from args, config and height.
     pub fn new(args: Args, config: Config, height: usize) -> Self {
         let path = std::fs::canonicalize(path::Path::new(&args.path)).unwrap_or_else(|_| {
             eprintln!("File does not exists {:?}", args.path);
@@ -72,6 +92,7 @@ impl Status {
         }
     }
 
+    /// Reaction to received events.
     pub fn read_event(&mut self, ev: Event) {
         match ev {
             Event::Key(Key::ESC) => self.event_esc(),
@@ -97,6 +118,7 @@ impl Status {
         }
     }
 
+    /// Leaving a mode reset the window
     fn event_esc(&mut self) {
         self.input_string.clear();
         self.path_content.reset_files();
@@ -105,6 +127,7 @@ impl Status {
         self.input_string_cursor_index = 0;
     }
 
+    /// Move one line up
     fn event_up(&mut self) {
         match self.mode {
             Mode::Normal => {
@@ -126,6 +149,7 @@ impl Status {
         }
     }
 
+    /// Move one line down
     fn event_down(&mut self) {
         match self.mode {
             Mode::Normal => {
@@ -147,6 +171,7 @@ impl Status {
         }
     }
 
+    /// Move left in a string, move to parent in normal mode
     fn event_left(&mut self) {
         match self.mode {
             Mode::Normal => match self.path_content.path.parent() {
@@ -174,6 +199,7 @@ impl Status {
         }
     }
 
+    /// Move right in a string, move to children in normal mode.
     fn event_right(&mut self) {
         match self.mode {
             Mode::Normal => {
@@ -206,6 +232,7 @@ impl Status {
         }
     }
 
+    /// Deletes a char in input string
     fn event_backspace(&mut self) {
         match self.mode {
             Mode::Rename
@@ -808,12 +835,14 @@ impl Status {
         self.input_string.clear();
     }
 
+    /// Set the height of the window and itself.
     pub fn set_height(&mut self, height: usize) {
-        self.window.height = height;
+        self.window.set_height(height);
         self.height = height;
     }
 }
 
+/// true if the filename starts with a pattern
 fn filename_startswith(entry: &std::fs::DirEntry, pattern: &String) -> bool {
     entry
         .file_name()
@@ -822,6 +851,7 @@ fn filename_startswith(entry: &std::fs::DirEntry, pattern: &String) -> bool {
         .starts_with(pattern)
 }
 
+/// Execute the command in a fork.
 fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
     eprintln!("exec exe {}, args {:?}", exe, args);
     Command::new(exe).args(args).spawn().unwrap()

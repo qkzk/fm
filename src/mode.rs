@@ -1,19 +1,35 @@
 use std::fmt;
 
+/// Different mode in which the application can be.
+/// It dictates the reaction to event and what to display.
 #[derive(Clone)]
 pub enum Mode {
+    /// Default mode: display the files
     Normal,
+    /// Rename the selected file
     Rename,
+    /// Change permissions of the selected file
     Chmod,
+    /// Touch a new file
     Newfile,
+    /// Mkdir a new directory
     Newdir,
+    /// Execute a command on the file
     Exec,
+    /// Display the help
     Help,
+    /// Search in current directory for a string
     Search,
+    /// cd into a directory
     Goto,
+    /// Flag files matching a regex
     RegexMatch,
+    /// Jump to a flagged file
     Jump,
+    /// Confirmation is required before modification is made to files :
+    /// delete, move, copy
     NeedConfirmation,
+    /// Change the type of sort
     Sort,
 }
 
