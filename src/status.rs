@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::cmp::min;
 use std::collections::HashSet;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -118,6 +119,39 @@ impl Status {
         self.path_content.select_index(0);
         self.file_index = 0;
         self.window.scroll_to(0);
+    }
+
+    pub fn event_up_10_rows(&mut self) {
+        let up_index = if self.file_index > 10 {
+            self.file_index - 10
+        } else {
+            0
+        };
+        self.path_content.select_index(up_index);
+        self.file_index = up_index;
+        self.window.scroll_to(up_index);
+    }
+
+    pub fn event_go_bottom(&mut self) {
+        let last_index = self.path_content.files.len() - 1;
+        self.path_content.select_index(last_index);
+        self.file_index = last_index;
+        self.window.scroll_to(last_index);
+    }
+
+    pub fn event_cursor_home(&mut self) {
+        self.input_string_cursor_index = 0;
+    }
+
+    pub fn event_cursor_end(&mut self) {
+        self.input_string_cursor_index = self.input_string.len();
+    }
+
+    pub fn event_down_10_rows(&mut self) {
+        let down_index = min(self.path_content.files.len() - 1, self.file_index + 10);
+        self.path_content.select_index(down_index);
+        self.file_index = down_index;
+        self.window.scroll_to(down_index);
     }
 
     pub fn event_select_row(&mut self, row: u16) {
@@ -356,23 +390,26 @@ impl Status {
         );
     }
 
-    fn event_delete(&mut self) {
-        self.flagged.iter().for_each(|pathbuf| {
-            if pathbuf.is_dir() {
-                fs::remove_dir_all(pathbuf).unwrap_or(());
-            } else {
-                fs::remove_file(pathbuf).unwrap_or(());
-            }
-        });
-        self.flagged.clear();
-        self.path_content.reset_files();
-        self.window.reset(self.path_content.files.len());
-    }
     pub fn event_jump(&mut self) {
         if !self.flagged.is_empty() {
             self.jump_index = 0;
             self.mode = Mode::Jump
         }
+    }
+
+    pub fn event_right_click(&mut self, row: u16) {
+        self.file_index = (row - 1).into();
+        self.path_content.select_index(self.file_index);
+        self.window.scroll_to(self.file_index);
+        if let FileKind::Directory = self.path_content.files[self.file_index].file_kind {
+            self.event_go_to_child()
+        } else {
+            self.event_open_file()
+        }
+    }
+
+    pub fn event_replace_input_with_completion(&mut self) {
+        self.input_string = self.completion.current_proposition()
     }
 
     pub fn event_nvim_filepicker(&mut self) {
@@ -428,7 +465,7 @@ impl Status {
 
     pub fn exec_last_edition(&mut self) {
         match self.last_edition {
-            LastEdition::Delete => self.event_delete(),
+            LastEdition::Delete => self.exec_delete_files(),
             LastEdition::CutPaste => self.exec_cut_paste(),
             LastEdition::CopyPaste => self.exec_copy_paste(),
             LastEdition::Nothing => (),
@@ -447,6 +484,19 @@ impl Status {
         )
         .unwrap_or(());
         self.refresh_view()
+    }
+
+    fn exec_delete_files(&mut self) {
+        self.flagged.iter().for_each(|pathbuf| {
+            if pathbuf.is_dir() {
+                fs::remove_dir_all(pathbuf).unwrap_or(());
+            } else {
+                fs::remove_file(pathbuf).unwrap_or(());
+            }
+        });
+        self.flagged.clear();
+        self.path_content.reset_files();
+        self.window.reset(self.path_content.files.len());
     }
 
     pub fn exec_newfile(&mut self) {

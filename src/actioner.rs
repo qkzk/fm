@@ -1,8 +1,5 @@
-use std::cmp::min;
-
 use tuikit::prelude::{Event, Key, MouseButton};
 
-use crate::fileinfo::FileKind;
 use crate::mode::Mode;
 use crate::status::Status;
 
@@ -129,40 +126,27 @@ impl Actioner {
         if let Mode::Normal = status.mode {
             status.event_go_top()
         } else {
-            status.input_string_cursor_index = 0;
+            status.event_cursor_home()
         }
     }
 
     fn end(&self, status: &mut Status) {
         if let Mode::Normal = status.mode {
-            let last_index = status.path_content.files.len() - 1;
-            status.path_content.select_index(last_index);
-            status.file_index = last_index;
-            status.window.scroll_to(last_index);
+            status.event_go_bottom()
         } else {
-            status.input_string_cursor_index = status.input_string.len();
+            status.event_cursor_end()
         }
     }
 
     fn page_down(&self, status: &mut Status) {
         if let Mode::Normal = status.mode {
-            let down_index = min(status.path_content.files.len() - 1, status.file_index + 10);
-            status.path_content.select_index(down_index);
-            status.file_index = down_index;
-            status.window.scroll_to(down_index);
+            status.event_down_10_rows()
         }
     }
 
     fn page_up(&self, status: &mut Status) {
         if let Mode::Normal = status.mode {
-            let up_index = if status.file_index > 10 {
-                status.file_index - 10
-            } else {
-                0
-            };
-            status.path_content.select_index(up_index);
-            status.file_index = up_index;
-            status.window.scroll_to(up_index);
+            status.event_up_10_rows()
         }
     }
 
@@ -192,22 +176,13 @@ impl Actioner {
 
     fn right_click(&self, status: &mut Status, row: u16) {
         if let Mode::Normal = status.mode {
-            status.file_index = (row - 1).into();
-            status.path_content.select_index(status.file_index);
-            status.window.scroll_to(status.file_index)
-        }
-        if let FileKind::Directory = status.path_content.files[status.file_index].file_kind {
-            status.event_go_to_child()
-        } else {
-            status.event_open_file()
+            status.event_right_click(row)
         }
     }
 
     fn tab(&self, status: &mut Status) {
         match status.mode {
-            Mode::Goto | Mode::Exec | Mode::Search => {
-                status.input_string = status.completion.current_proposition()
-            }
+            Mode::Goto | Mode::Exec | Mode::Search => status.event_replace_input_with_completion(),
             _ => (),
         }
     }
