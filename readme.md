@@ -70,6 +70,11 @@
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
+- [ ] refactor key(char) -> action
+  - [ ] enum for actions
+  - [ ] hmap for keybindings
+  - [ ] key -> action association with match and clear code
+  - [ ] dissociate keyrinding from status update
 
 ## BUGS
 
