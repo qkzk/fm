@@ -1,6 +1,7 @@
 use clap::Parser;
 use tuikit::term::{Term, TermHeight};
 
+use fm::actioner::Actioner;
 use fm::args::Args;
 use fm::config::load_config;
 use fm::display::Display;
@@ -29,13 +30,15 @@ fn init_display() -> Display {
 fn main() {
     let mut display = init_display();
     let mut status = init_status(display.height());
+    let actioner = Actioner {};
 
     while let Ok(event) = display.term.poll_event() {
         let _ = display.term.clear();
         let (_width, height) = display.term.term_size().unwrap();
 
         status.set_height(height);
-        status.read_event(event);
+
+        actioner.read_event(&mut status, event);
 
         display.display_all(&status);
 

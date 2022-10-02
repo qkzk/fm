@@ -1,4 +1,4 @@
-pub mod actions;
+pub mod actioner;
 pub mod args;
 pub mod completion;
 pub mod config;
