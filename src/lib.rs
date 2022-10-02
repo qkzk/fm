@@ -1,3 +1,4 @@
+pub mod actions;
 pub mod args;
 pub mod completion;
 pub mod config;

@@ -73,7 +73,8 @@
 - [ ] refactor key(char) -> action
   - [ ] enum for actions
   - [ ] hmap for keybindings
-  - [ ] key -> action association with match and clear code
+  - [ ] key -> action -> status.update(action)
+  - [ ] association with match and clear code
   - [ ] dissociate keyrinding from status update
 
 ## BUGS

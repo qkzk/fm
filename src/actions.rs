@@ -1,0 +1,41 @@
+pub enum Action {
+    Quit,
+    Escape,
+
+    UpOneRow,
+    DownOneRow,
+    GoParent,
+    GoChild,
+    GoTop,
+    GoBottom,
+    GoUp10,
+    GoDown10,
+    SelectThisFile,
+    Search,
+    GoToDir,
+
+    CursorLeft,
+    CursorRight,
+    DeleteCharLeft,
+    DeleteCharsRight,
+    TextInsertion,
+
+    ToggleFlag,
+    FlagAll,
+    ReverseFlags,
+
+    CopyPasteFile,
+    CutPasteFile,
+    DeleteFile,
+    OpenFile,
+    RenameFile,
+    ChmodFile,
+    NewFile,
+    NewDirectory,
+
+    ShellInThisDirectory,
+    Jump,
+    NvimFilePicker,
+    Enter,
+    CompleteTestInput,
+}
