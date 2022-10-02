@@ -274,8 +274,8 @@ impl Keybindings {
         }
     }
 
+    /// Returns a new `Keybindings` instance with hardcoded values.
     fn new() -> Self {
-        /// Returns a new `Keybindings` instance with hardcoded values.
         Self {
             toggle_hidden: 'a',
             copy_paste: 'c',
