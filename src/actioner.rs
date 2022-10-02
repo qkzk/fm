@@ -36,7 +36,7 @@ impl Actioner {
 
     /// Leaving a mode reset the window
     fn escape(&self, status: &mut Status) {
-        status.event_mode_normal()
+        status.event_normal()
     }
 
     /// Move one line up

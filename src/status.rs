@@ -34,6 +34,7 @@ pub struct Status {
     /// Files marked as flagged
     pub flagged: HashSet<path::PathBuf>,
     /// Currently typed input string
+    // TODO: create a struct for this 2
     pub input_string: String,
     /// Column of the cursor in the input string
     pub input_string_cursor_index: usize,
@@ -91,7 +92,7 @@ impl Status {
         }
     }
 
-    pub fn event_mode_normal(&mut self) {
+    pub fn event_normal(&mut self) {
         self.input_string.clear();
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
@@ -276,10 +277,6 @@ impl Status {
 
     pub fn event_sort(&mut self) {
         self.mode = Mode::Sort;
-    }
-
-    pub fn event_normal(&mut self) {
-        self.mode = Mode::Normal
     }
 
     pub fn event_quit(&mut self) {
