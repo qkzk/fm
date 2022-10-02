@@ -3,6 +3,9 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::mode::Mode;
 use crate::status::Status;
 
+/// Empty struct which mutates `Status`.
+/// All keys are mapped to relevent events on status.
+/// Keybindings are read from `Config`.
 pub struct Actioner {}
 
 impl Actioner {
@@ -108,6 +111,7 @@ impl Actioner {
         }
     }
 
+    /// Deletes chars right of cursor in input string.
     fn delete(&self, status: &mut Status) {
         match status.mode {
             Mode::Rename
@@ -122,6 +126,7 @@ impl Actioner {
         }
     }
 
+    /// Move to top or beggining of line.
     fn home(&self, status: &mut Status) {
         if let Mode::Normal = status.mode {
             status.event_go_top()
@@ -130,6 +135,7 @@ impl Actioner {
         }
     }
 
+    /// Move to end or end of line.
     fn end(&self, status: &mut Status) {
         if let Mode::Normal = status.mode {
             status.event_go_bottom()
@@ -138,18 +144,21 @@ impl Actioner {
         }
     }
 
+    /// Move down 10 rows
     fn page_down(&self, status: &mut Status) {
         if let Mode::Normal = status.mode {
             status.event_down_10_rows()
         }
     }
 
+    /// Move up 10 rows
     fn page_up(&self, status: &mut Status) {
         if let Mode::Normal = status.mode {
             status.event_up_10_rows()
         }
     }
 
+    /// Execute a command
     fn enter(&self, status: &mut Status) {
         match status.mode {
             Mode::Rename => status.exec_rename(),
@@ -168,18 +177,21 @@ impl Actioner {
         status.mode = Mode::Normal;
     }
 
+    /// Select this file
     fn left_click(&self, status: &mut Status, row: u16) {
         if let Mode::Normal = status.mode {
             status.event_select_row(row)
         }
     }
 
+    /// Open a directory or a file
     fn right_click(&self, status: &mut Status, row: u16) {
         if let Mode::Normal = status.mode {
             status.event_right_click(row)
         }
     }
 
+    /// Select next completion and insert it
     fn tab(&self, status: &mut Status) {
         match status.mode {
             Mode::Goto | Mode::Exec | Mode::Search => status.event_replace_input_with_completion(),
@@ -187,6 +199,8 @@ impl Actioner {
         }
     }
 
+    /// Match read key to a relevent event, depending on keybindings.
+    /// Keybindings are read from `Config`.
     fn char(&self, status: &mut Status, c: char) {
         match status.mode {
             Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::RegexMatch => {
