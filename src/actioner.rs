@@ -12,40 +12,38 @@ impl Actioner {
     /// Reaction to received events.
     pub fn read_event(&self, status: &mut Status, ev: Event) {
         match ev {
-            Event::Key(Key::ESC) => self.action_escape(status),
-            Event::Key(Key::Up) => self.action_up(status),
-            Event::Key(Key::Down) => self.action_down(status),
-            Event::Key(Key::Left) => self.action_left(status),
-            Event::Key(Key::Right) => self.action_right(status),
-            Event::Key(Key::Backspace) => self.action_backspace(status),
-            Event::Key(Key::Ctrl('d')) => self.action_delete(status),
-            Event::Key(Key::Delete) => self.action_delete(status),
-            Event::Key(Key::Char(c)) => self.action_char(status, c),
-            Event::Key(Key::Home) => self.action_home(status),
-            Event::Key(Key::End) => self.action_end(status),
-            Event::Key(Key::PageDown) => self.action_page_down(status),
-            Event::Key(Key::PageUp) => self.action_page_up(status),
-            Event::Key(Key::Enter) => self.action_enter(status),
-            Event::Key(Key::Tab) => self.action_tab(status),
-            Event::Key(Key::WheelUp(_, _, _)) => self.action_up(status),
-            Event::Key(Key::WheelDown(_, _, _)) => self.action_down(status),
-            Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => {
-                self.action_left_click(status, row)
-            }
+            Event::Key(Key::ESC) => self.escape(status),
+            Event::Key(Key::Up) => self.up(status),
+            Event::Key(Key::Down) => self.down(status),
+            Event::Key(Key::Left) => self.left(status),
+            Event::Key(Key::Right) => self.right(status),
+            Event::Key(Key::Backspace) => self.backspace(status),
+            Event::Key(Key::Ctrl('d')) => self.delete(status),
+            Event::Key(Key::Delete) => self.delete(status),
+            Event::Key(Key::Char(c)) => self.char(status, c),
+            Event::Key(Key::Home) => self.home(status),
+            Event::Key(Key::End) => self.end(status),
+            Event::Key(Key::PageDown) => self.page_down(status),
+            Event::Key(Key::PageUp) => self.page_up(status),
+            Event::Key(Key::Enter) => self.enter(status),
+            Event::Key(Key::Tab) => self.tab(status),
+            Event::Key(Key::WheelUp(_, _, _)) => self.up(status),
+            Event::Key(Key::WheelDown(_, _, _)) => self.down(status),
+            Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => self.left_click(status, row),
             Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => {
-                self.action_right_click(status, row)
+                self.right_click(status, row)
             }
             _ => {}
         }
     }
 
     /// Leaving a mode reset the window
-    fn action_escape(&self, status: &mut Status) {
+    fn escape(&self, status: &mut Status) {
         status.event_mode_normal()
     }
 
     /// Move one line up
-    fn action_up(&self, status: &mut Status) {
+    fn up(&self, status: &mut Status) {
         match status.mode {
             Mode::Normal => status.event_up_one_row(),
             Mode::Jump => status.event_jumplist_prev(),
@@ -57,7 +55,7 @@ impl Actioner {
     }
 
     /// Move one line down
-    fn action_down(&self, status: &mut Status) {
+    fn down(&self, status: &mut Status) {
         match status.mode {
             Mode::Normal => status.event_down_one_row(),
             Mode::Jump => status.event_jumplist_next(),
@@ -69,7 +67,7 @@ impl Actioner {
     }
 
     /// Move left in a string, move to parent in normal mode
-    fn action_left(&self, status: &mut Status) {
+    fn left(&self, status: &mut Status) {
         match status.mode {
             Mode::Normal => status.event_move_to_parent(),
             Mode::Rename
@@ -84,7 +82,7 @@ impl Actioner {
     }
 
     /// Move right in a string, move to children in normal mode.
-    fn action_right(&self, status: &mut Status) {
+    fn right(&self, status: &mut Status) {
         match status.mode {
             Mode::Normal => status.event_go_to_child(),
             Mode::Rename
@@ -99,7 +97,7 @@ impl Actioner {
     }
 
     /// Deletes a char in input string
-    fn action_backspace(&self, status: &mut Status) {
+    fn backspace(&self, status: &mut Status) {
         match status.mode {
             Mode::Rename
             | Mode::Newdir
@@ -113,7 +111,7 @@ impl Actioner {
         }
     }
 
-    fn action_delete(&self, status: &mut Status) {
+    fn delete(&self, status: &mut Status) {
         match status.mode {
             Mode::Rename
             | Mode::Newdir
@@ -127,7 +125,7 @@ impl Actioner {
         }
     }
 
-    fn action_home(&self, status: &mut Status) {
+    fn home(&self, status: &mut Status) {
         if let Mode::Normal = status.mode {
             status.event_go_top()
         } else {
@@ -135,7 +133,7 @@ impl Actioner {
         }
     }
 
-    fn action_end(&self, status: &mut Status) {
+    fn end(&self, status: &mut Status) {
         if let Mode::Normal = status.mode {
             let last_index = status.path_content.files.len() - 1;
             status.path_content.select_index(last_index);
@@ -146,7 +144,7 @@ impl Actioner {
         }
     }
 
-    fn action_page_down(&self, status: &mut Status) {
+    fn page_down(&self, status: &mut Status) {
         if let Mode::Normal = status.mode {
             let down_index = min(status.path_content.files.len() - 1, status.file_index + 10);
             status.path_content.select_index(down_index);
@@ -155,7 +153,7 @@ impl Actioner {
         }
     }
 
-    fn action_page_up(&self, status: &mut Status) {
+    fn page_up(&self, status: &mut Status) {
         if let Mode::Normal = status.mode {
             let up_index = if status.file_index > 10 {
                 status.file_index - 10
@@ -168,7 +166,7 @@ impl Actioner {
         }
     }
 
-    fn action_enter(&self, status: &mut Status) {
+    fn enter(&self, status: &mut Status) {
         match status.mode {
             Mode::Rename => status.exec_rename(),
             Mode::Newfile => status.exec_newfile(),
@@ -186,13 +184,13 @@ impl Actioner {
         status.mode = Mode::Normal;
     }
 
-    fn action_left_click(&self, status: &mut Status, row: u16) {
+    fn left_click(&self, status: &mut Status, row: u16) {
         if let Mode::Normal = status.mode {
             status.event_select_row(row)
         }
     }
 
-    fn action_right_click(&self, status: &mut Status, row: u16) {
+    fn right_click(&self, status: &mut Status, row: u16) {
         if let Mode::Normal = status.mode {
             status.file_index = (row - 1).into();
             status.path_content.select_index(status.file_index);
@@ -205,7 +203,7 @@ impl Actioner {
         }
     }
 
-    fn action_tab(&self, status: &mut Status) {
+    fn tab(&self, status: &mut Status) {
         match status.mode {
             Mode::Goto | Mode::Exec | Mode::Search => {
                 status.input_string = status.completion.current_proposition()
@@ -214,7 +212,7 @@ impl Actioner {
         }
     }
 
-    fn action_char(&self, status: &mut Status, c: char) {
+    fn char(&self, status: &mut Status, c: char) {
         match status.mode {
             Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::RegexMatch => {
                 status.event_text_insertion(c)
