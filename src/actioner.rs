@@ -1,14 +1,50 @@
+use std::collections::HashMap;
 use tuikit::prelude::{Event, Key, MouseButton};
 
+use crate::config::Keybindings;
+use crate::event_char::EventChar;
 use crate::mode::Mode;
 use crate::status::Status;
 
-/// Empty struct which mutates `Status`.
+/// Struct which mutates `Status`.
+/// Holds a mapping which can't be static since it's read from a config file.
 /// All keys are mapped to relevent events on status.
 /// Keybindings are read from `Config`.
-pub struct Actioner {}
+pub struct Actioner {
+    binds: HashMap<char, EventChar>,
+}
 
 impl Actioner {
+    /// Creates a map of configurable keybindings to `EventChar`
+    /// The `EventChar` is then associated to a `Status` method.
+    pub fn new(keybindings: &Keybindings) -> Self {
+        let binds = HashMap::from([
+            (keybindings.toggle_hidden, EventChar::ToggleHidden),
+            (keybindings.copy_paste, EventChar::CopyPaste),
+            (keybindings.cut_paste, EventChar::CutPaste),
+            (keybindings.newdir, EventChar::NewDir),
+            (keybindings.newfile, EventChar::NewFile),
+            (keybindings.chmod, EventChar::Chmod),
+            (keybindings.exec, EventChar::Exec),
+            (keybindings.goto, EventChar::Goto),
+            (keybindings.rename, EventChar::Rename),
+            (keybindings.clear_flags, EventChar::ClearFlags),
+            (keybindings.toggle_flag, EventChar::ToggleFlag),
+            (keybindings.shell, EventChar::Shell),
+            (keybindings.delete, EventChar::DeleteFile),
+            (keybindings.open_file, EventChar::OpenFile),
+            (keybindings.help, EventChar::Help),
+            (keybindings.search, EventChar::Search),
+            (keybindings.regex_match, EventChar::RegexMatch),
+            (keybindings.quit, EventChar::Quit),
+            (keybindings.flag_all, EventChar::FlagAll),
+            (keybindings.reverse_flags, EventChar::ReverseFlags),
+            (keybindings.jump, EventChar::Jump),
+            (keybindings.nvim, EventChar::NvimFilepicker),
+            (keybindings.sort_by, EventChar::Sort),
+        ]);
+        Self { binds }
+    }
     /// Reaction to received events.
     pub fn read_event(&self, status: &mut Status, ev: Event) {
         match ev {
@@ -207,55 +243,10 @@ impl Actioner {
                 status.event_text_insertion(c)
             }
             Mode::Goto | Mode::Exec | Mode::Search => status.event_text_insert_and_complete(c),
-            Mode::Normal => {
-                if c == status.config.keybindings.toggle_hidden {
-                    status.event_toggle_hidden()
-                } else if c == status.config.keybindings.copy_paste {
-                    status.event_copy_paste()
-                } else if c == status.config.keybindings.cut_paste {
-                    status.event_cur_paste()
-                } else if c == status.config.keybindings.newdir {
-                    status.event_new_dir()
-                } else if c == status.config.keybindings.newfile {
-                    status.event_new_file()
-                } else if c == status.config.keybindings.chmod {
-                    status.event_chmod()
-                } else if c == status.config.keybindings.exec {
-                    status.event_exec()
-                } else if c == status.config.keybindings.goto {
-                    status.event_goto()
-                } else if c == status.config.keybindings.rename {
-                    status.event_rename()
-                } else if c == status.config.keybindings.clear_flags {
-                    status.event_clear_flags()
-                } else if c == status.config.keybindings.toggle_flag {
-                    status.event_toggle_flag()
-                } else if c == status.config.keybindings.shell {
-                    status.event_shell()
-                } else if c == status.config.keybindings.delete {
-                    status.event_delete_file()
-                } else if c == status.config.keybindings.open_file {
-                    status.event_open_file()
-                } else if c == status.config.keybindings.help {
-                    status.event_help()
-                } else if c == status.config.keybindings.search {
-                    status.event_search()
-                } else if c == status.config.keybindings.regex_match {
-                    status.event_regex_match()
-                } else if c == status.config.keybindings.quit {
-                    status.event_quit()
-                } else if c == status.config.keybindings.flag_all {
-                    status.event_flag_all()
-                } else if c == status.config.keybindings.reverse_flags {
-                    status.event_reverse_flags()
-                } else if c == status.config.keybindings.jump {
-                    status.event_jump();
-                } else if c == status.config.keybindings.nvim {
-                    status.event_nvim_filepicker()
-                } else if c == status.config.keybindings.sort_by {
-                    status.event_sort()
-                }
-            }
+            Mode::Normal => match self.binds.get(&c) {
+                Some(event_char) => event_char.match_char(status),
+                None => (),
+            },
             Mode::Help => status.event_normal(),
             Mode::Jump => (),
             Mode::NeedConfirmation => {

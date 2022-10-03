@@ -9,14 +9,6 @@ use fm::status::Status;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 
-/// Returns a `Status` instance after reading `args` and `config`
-/// from env and config file.
-fn init_status(height: usize) -> Status {
-    let args = Args::parse();
-    let config = load_config(CONFIG_PATH);
-    Status::new(args, config, height)
-}
-
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
 fn init_display() -> Display {
     let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
@@ -28,9 +20,10 @@ fn init_display() -> Display {
 /// Init the status and display and listen to events from keyboard and mouse.
 /// The application is redrawn after every event.
 fn main() {
+    let config = load_config(CONFIG_PATH);
+    let actioner = Actioner::new(&config.keybindings);
     let mut display = init_display();
-    let mut status = init_status(display.height());
-    let actioner = Actioner {};
+    let mut status = Status::new(Args::parse(), config, display.height());
 
     while let Ok(event) = display.term.poll_event() {
         let _ = display.term.clear();

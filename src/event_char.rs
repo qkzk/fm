@@ -1,0 +1,57 @@
+use crate::status::Status;
+
+pub enum EventChar {
+    ToggleHidden,
+    CopyPaste,
+    CutPaste,
+    NewDir,
+    NewFile,
+    Chmod,
+    Exec,
+    Goto,
+    Rename,
+    ClearFlags,
+    ToggleFlag,
+    Shell,
+    DeleteFile,
+    OpenFile,
+    Help,
+    Search,
+    RegexMatch,
+    Quit,
+    FlagAll,
+    ReverseFlags,
+    Jump,
+    NvimFilepicker,
+    Sort,
+}
+
+impl EventChar {
+    pub fn match_char(&self, status: &mut Status) {
+        match *self {
+            EventChar::ToggleHidden => status.event_toggle_hidden(),
+            EventChar::CopyPaste => status.event_copy_paste(),
+            EventChar::CutPaste => status.event_cur_paste(),
+            EventChar::NewDir => status.event_new_dir(),
+            EventChar::NewFile => status.event_new_file(),
+            EventChar::Chmod => status.event_chmod(),
+            EventChar::Exec => status.event_exec(),
+            EventChar::Goto => status.event_goto(),
+            EventChar::Rename => status.event_rename(),
+            EventChar::ClearFlags => status.event_clear_flags(),
+            EventChar::ToggleFlag => status.event_toggle_flag(),
+            EventChar::Shell => status.event_shell(),
+            EventChar::DeleteFile => status.event_delete_file(),
+            EventChar::OpenFile => status.event_open_file(),
+            EventChar::Help => status.event_help(),
+            EventChar::Search => status.event_search(),
+            EventChar::RegexMatch => status.event_regex_match(),
+            EventChar::Quit => status.event_quit(),
+            EventChar::FlagAll => status.event_flag_all(),
+            EventChar::ReverseFlags => status.event_reverse_flags(),
+            EventChar::Jump => status.event_jump(),
+            EventChar::NvimFilepicker => status.event_nvim_filepicker(),
+            EventChar::Sort => status.event_sort(),
+        }
+    }
+}
