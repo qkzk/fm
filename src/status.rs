@@ -34,17 +34,17 @@ pub struct Status {
     oldpath: path::PathBuf,
     /// Files marked as flagged
     pub flagged: HashSet<path::PathBuf>,
-    /// Currently typed input string
-    // TODO: create a struct for this 2
+    /// String typed by the user in relevant modes
     pub input: Input,
+    /// Files in current path
     pub path_content: PathContent,
     /// Height of the terminal window
     height: usize,
     /// Args readed from command line
     args: Args,
-    /// Configuration (colors, keybindings, terminal, opener) read from
-    /// config file or hardcoded.
+    /// Configurable terminal executable
     terminal: String,
+    /// Configurable file opener. Default to "xgg-open"
     opener: String,
     /// Index in the jump list
     pub jump_index: usize,
