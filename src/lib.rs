@@ -1,7 +1,9 @@
+pub mod actioner;
 pub mod args;
 pub mod completion;
 pub mod config;
 pub mod display;
+pub mod event_char;
 pub mod file_window;
 pub mod fileinfo;
 pub mod help;

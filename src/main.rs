@@ -1,20 +1,13 @@
 use clap::Parser;
 use tuikit::term::{Term, TermHeight};
 
+use fm::actioner::Actioner;
 use fm::args::Args;
 use fm::config::load_config;
 use fm::display::Display;
 use fm::status::Status;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
-
-/// Returns a `Status` instance after reading `args` and `config`
-/// from env and config file.
-fn init_status(height: usize) -> Status {
-    let args = Args::parse();
-    let config = load_config(CONFIG_PATH);
-    Status::new(args, config, height)
-}
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
 fn init_display() -> Display {
@@ -27,15 +20,18 @@ fn init_display() -> Display {
 /// Init the status and display and listen to events from keyboard and mouse.
 /// The application is redrawn after every event.
 fn main() {
+    let config = load_config(CONFIG_PATH);
+    let actioner = Actioner::new(&config.keybindings);
     let mut display = init_display();
-    let mut status = init_status(display.height());
+    let mut status = Status::new(Args::parse(), config, display.height());
 
     while let Ok(event) = display.term.poll_event() {
         let _ = display.term.clear();
         let (_width, height) = display.term.term_size().unwrap();
 
         status.set_height(height);
-        status.read_event(event);
+
+        actioner.read_event(&mut status, event);
 
         display.display_all(&status);
 
