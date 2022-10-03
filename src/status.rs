@@ -53,6 +53,7 @@ pub struct Status {
     pub completion: Completion,
     /// Last edition command kind received
     pub last_edition: LastEdition,
+    must_quit: bool,
 }
 
 impl Status {
@@ -74,6 +75,7 @@ impl Status {
         let jump_index = 0;
         let completion = Completion::default();
         let last_edition = LastEdition::Nothing;
+        let must_quit = false;
         Self {
             mode,
             file_index,
@@ -89,6 +91,7 @@ impl Status {
             jump_index,
             completion,
             last_edition,
+            must_quit,
         }
     }
 
@@ -280,7 +283,7 @@ impl Status {
     }
 
     pub fn event_quit(&mut self) {
-        std::process::exit(0);
+        self.must_quit = true
     }
 
     pub fn event_leave_need_confirmation(&mut self) {
@@ -694,6 +697,10 @@ impl Status {
         } else {
             self.flagged.insert(path);
         }
+    }
+
+    pub fn must_quit(&self) -> bool {
+        self.must_quit
     }
 }
 

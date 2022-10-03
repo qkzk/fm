@@ -16,6 +16,11 @@ fn init_display() -> Display {
     Display::new(term)
 }
 
+/// Display the cursor
+fn reset_cursor(display: &Display) {
+    let _ = display.term.show_cursor(true);
+}
+
 /// Main function.
 /// Init the status and display and listen to events from keyboard and mouse.
 /// The application is redrawn after every event.
@@ -36,5 +41,10 @@ fn main() {
         display.display_all(&status);
 
         let _ = display.term.present();
+
+        if status.must_quit() {
+            reset_cursor(&display);
+            break;
+        };
     }
 }
