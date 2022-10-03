@@ -13,6 +13,7 @@ use crate::completion::Completion;
 use crate::config::Config;
 use crate::file_window::{FilesWindow, WINDOW_MARGIN_TOP};
 use crate::fileinfo::{FileKind, PathContent, SortBy};
+use crate::input::Input;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
 
@@ -35,10 +36,7 @@ pub struct Status {
     pub flagged: HashSet<path::PathBuf>,
     /// Currently typed input string
     // TODO: create a struct for this 2
-    pub input_string: String,
-    /// Column of the cursor in the input string
-    pub input_string_cursor_index: usize,
-    /// Content of the file and index of selected one
+    pub input: Input,
     pub path_content: PathContent,
     /// Height of the terminal window
     height: usize,
@@ -46,7 +44,8 @@ pub struct Status {
     args: Args,
     /// Configuration (colors, keybindings, terminal, opener) read from
     /// config file or hardcoded.
-    pub config: Config,
+    terminal: String,
+    opener: String,
     /// Index in the jump list
     pub jump_index: usize,
     /// Completion list and index in it.
@@ -64,14 +63,14 @@ impl Status {
             std::process::exit(2)
         });
         let path_content = PathContent::new(path, args.all);
-
+        let terminal = config.terminal;
+        let opener = config.opener;
         let mode = Mode::Normal;
         let file_index = 0;
         let window = FilesWindow::new(path_content.files.len(), height);
         let oldpath = path::PathBuf::new();
         let flagged = HashSet::new();
-        let input_string = "".to_string();
-        let input_string_cursor_index = 0;
+        let input = Input::default();
         let jump_index = 0;
         let completion = Completion::default();
         let last_edition = LastEdition::Nothing;
@@ -82,12 +81,12 @@ impl Status {
             window,
             oldpath,
             flagged,
-            input_string,
-            input_string_cursor_index,
+            input,
             path_content,
             height,
             args,
-            config,
+            terminal,
+            opener,
             jump_index,
             completion,
             last_edition,
@@ -96,11 +95,10 @@ impl Status {
     }
 
     pub fn event_normal(&mut self) {
-        self.input_string.clear();
+        self.input.reset();
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
         self.mode = Mode::Normal;
-        self.input_string_cursor_index = 0;
     }
 
     pub fn event_up_one_row(&mut self) {
@@ -144,11 +142,11 @@ impl Status {
     }
 
     pub fn event_cursor_home(&mut self) {
-        self.input_string_cursor_index = 0;
+        self.input.cursor_start()
     }
 
     pub fn event_cursor_end(&mut self) {
-        self.input_string_cursor_index = self.input_string.len();
+        self.input.cursor_end()
     }
 
     pub fn event_down_10_rows(&mut self) {
@@ -182,16 +180,14 @@ impl Status {
                 self.path_content = PathContent::new(path::PathBuf::from(parent), self.args.all);
                 self.window.reset(self.path_content.files.len());
                 self.file_index = 0;
-                self.input_string_cursor_index = 0;
+                self.input.cursor_start()
             }
             None => (),
         }
     }
 
     pub fn event_move_cursor_left(&mut self) {
-        if self.input_string_cursor_index > 0 {
-            self.input_string_cursor_index -= 1
-        }
+        self.input.cursor_left()
     }
 
     pub fn event_go_to_child(&mut self) {
@@ -204,30 +200,20 @@ impl Status {
             );
             self.window.reset(self.path_content.files.len());
             self.file_index = 0;
-            self.input_string_cursor_index = 0;
+            self.input.cursor_start()
         }
     }
 
     pub fn event_move_cursor_right(&mut self) {
-        if self.input_string_cursor_index < self.input_string.len() {
-            self.input_string_cursor_index += 1
-        }
+        self.input.cursor_right()
     }
 
     pub fn event_delete_char_left(&mut self) {
-        if self.input_string_cursor_index > 0 && !self.input_string.is_empty() {
-            self.input_string.remove(self.input_string_cursor_index - 1);
-            self.input_string_cursor_index -= 1;
-        }
+        self.input.delete_char_left()
     }
 
     pub fn event_delete_chars_right(&mut self) {
-        self.input_string = self
-            .input_string
-            .chars()
-            .into_iter()
-            .take(self.input_string_cursor_index)
-            .collect();
+        self.input.delete_chars_right()
     }
 
     pub fn event_text_insert_and_complete(&mut self, c: char) {
@@ -311,8 +297,7 @@ impl Status {
     }
 
     pub fn event_text_insertion(&mut self, c: char) {
-        self.input_string.insert(self.input_string_cursor_index, c);
-        self.input_string_cursor_index += 1
+        self.input.insert(c);
     }
 
     pub fn event_toggle_flag(&mut self) {
@@ -350,7 +335,7 @@ impl Status {
 
     pub fn event_open_file(&mut self) {
         execute_in_child(
-            &self.config.opener,
+            &self.opener,
             &vec![self.path_content.files[self.path_content.selected]
                 .path
                 .to_str()
@@ -385,7 +370,7 @@ impl Status {
 
     pub fn event_shell(&mut self) {
         execute_in_child(
-            &self.config.terminal,
+            &self.terminal,
             &vec!["-d", self.path_content.path.to_str().unwrap()],
         );
     }
@@ -409,7 +394,7 @@ impl Status {
     }
 
     pub fn event_replace_input_with_completion(&mut self) {
-        self.input_string = self.completion.current_proposition()
+        self.input.replace(self.completion.current_proposition())
     }
 
     pub fn event_nvim_filepicker(&mut self) {
@@ -480,7 +465,7 @@ impl Status {
             self.path_content
                 .path
                 .to_path_buf()
-                .join(&self.input_string),
+                .join(&self.input.string),
         )
         .unwrap_or(());
         self.refresh_view()
@@ -500,32 +485,32 @@ impl Status {
     }
 
     pub fn exec_newfile(&mut self) {
-        if fs::File::create(self.path_content.path.join(self.input_string.clone())).is_ok() {}
+        if fs::File::create(self.path_content.path.join(self.input.string.clone())).is_ok() {}
         self.refresh_view()
     }
 
     pub fn exec_newdir(&mut self) {
-        fs::create_dir(self.path_content.path.join(self.input_string.clone())).unwrap_or(());
+        fs::create_dir(self.path_content.path.join(self.input.string.clone())).unwrap_or(());
         self.refresh_view()
     }
 
     pub fn exec_chmod(&mut self) {
-        if self.input_string.is_empty() {
+        if self.input.string.is_empty() {
             return;
         }
-        let permissions: u32 = u32::from_str_radix(&self.input_string, 8).unwrap_or(0_u32);
+        let permissions: u32 = u32::from_str_radix(&self.input.string, 8).unwrap_or(0_u32);
         if permissions <= MAX_PERMISSIONS {
             for path in self.flagged.iter() {
                 Self::set_permissions(path.clone(), permissions).unwrap_or(())
             }
             self.flagged.clear()
         }
-        self.input_string.clear();
+        self.input.string.clear();
         self.refresh_view()
     }
 
     pub fn exec_exec(&mut self) {
-        let exec_command = self.input_string.clone();
+        let exec_command = self.input.string.clone();
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         args.push(
@@ -534,12 +519,12 @@ impl Status {
                 .to_str()
                 .unwrap(),
         );
-        self.input_string.clear();
+        self.input.reset();
         execute_in_child(command, &args);
     }
 
     pub fn exec_search(&mut self) {
-        let searched_term = self.input_string.clone();
+        let searched_term = self.input.string.clone();
         let mut next_index = self.file_index;
         for (index, file) in self.path_content.files.iter().enumerate().skip(next_index) {
             if file.filename.contains(&searched_term) {
@@ -547,15 +532,15 @@ impl Status {
                 break;
             };
         }
-        self.input_string.clear();
+        self.input.reset();
         self.path_content.select_index(next_index);
         self.file_index = next_index;
         self.window.scroll_to(self.file_index);
     }
 
     pub fn exec_goto(&mut self) {
-        let target_string = self.input_string.clone();
-        self.input_string.clear();
+        let target_string = self.input.string.clone();
+        self.input.reset();
         let expanded_cow_path = shellexpand::tilde(&target_string);
         let expanded_target: &str = expanded_cow_path.borrow();
         if let Ok(path) = std::fs::canonicalize(expanded_target) {
@@ -565,7 +550,7 @@ impl Status {
     }
 
     pub fn exec_jump(&mut self) {
-        self.input_string.clear();
+        self.input.reset();
         let jump_list: Vec<&path::PathBuf> = self.flagged.iter().collect();
         let jump_target = jump_list[self.jump_index].clone();
         let target_dir = match jump_target.parent() {
@@ -585,8 +570,8 @@ impl Status {
     }
 
     pub fn exec_regex(&mut self) {
-        let re = Regex::new(&self.input_string).unwrap();
-        if !self.input_string.is_empty() {
+        let re = Regex::new(&self.input.string).unwrap();
+        if !self.input.string.is_empty() {
             self.flagged.clear();
             for file in self.path_content.files.iter() {
                 if re.is_match(file.path.to_str().unwrap()) {
@@ -594,7 +579,7 @@ impl Status {
                 }
             }
         }
-        self.input_string.clear();
+        self.input.reset();
     }
 
     fn set_permissions(path: path::PathBuf, permissions: u32) -> Result<(), std::io::Error> {
@@ -637,7 +622,7 @@ impl Status {
                             .map(|e| e.unwrap())
                             .filter(|e| {
                                 e.file_type().unwrap().is_file()
-                                    && filename_startswith(e, &self.input_string)
+                                    && filename_startswith(e, &self.input.string)
                             })
                             .map(|e| e.path().to_string_lossy().into_owned())
                             .collect();
@@ -651,7 +636,7 @@ impl Status {
                     self.path_content
                         .files
                         .iter()
-                        .filter(|f| f.filename.contains(&self.input_string))
+                        .filter(|f| f.filename.contains(&self.input.string))
                         .map(|f| f.filename.clone())
                         .collect(),
                 );
@@ -662,7 +647,7 @@ impl Status {
 
     fn refresh_view(&mut self) {
         self.file_index = 0;
-        self.input_string.clear();
+        self.input.reset();
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
     }
@@ -674,7 +659,7 @@ impl Status {
     }
 
     fn split_input_string(&self) -> (String, String) {
-        let steps = self.input_string.split('/');
+        let steps = self.input.string.split('/');
         let mut vec_steps: Vec<&str> = steps.collect();
         let last_name = vec_steps.pop().unwrap_or("").to_owned();
         let parent = self.create_parent(vec_steps);
