@@ -57,6 +57,12 @@
 - [x] bugfix: strange behavior after leaving a mode, wrong files are flagged - not in the right index or something
 - [x] bugfix: can navigate outside file list
 - [x] sorting : filename, size, date, type
+- [x] refactor key(char) -> action
+  - [x] enum for actions
+  - [x] hmap for keybindings
+  - [x] key -> action -> status.update(action)
+  - [x] association with match and clear code
+  - [x] dissociate keyrinding from status update
 
 ## TODO
 
@@ -70,12 +76,6 @@
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
-- [ ] refactor key(char) -> action
-  - [ ] enum for actions
-  - [ ] hmap for keybindings
-  - [ ] key -> action -> status.update(action)
-  - [ ] association with match and clear code
-  - [ ] dissociate keyrinding from status update
 
 ## BUGS
 
