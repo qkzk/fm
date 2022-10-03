@@ -39,7 +39,7 @@ pub struct Status {
     /// Height of the terminal window
     height: usize,
     /// Args readed from command line
-    args: Args,
+    show_hidden: bool,
     /// Configurable terminal executable
     terminal: String,
     /// Configurable file opener. Default to "xgg-open"
@@ -61,6 +61,7 @@ impl Status {
             std::process::exit(2)
         });
         let path_content = PathContent::new(path, args.all);
+        let show_hidden = args.all;
         let terminal = config.terminal;
         let opener = config.opener;
         let mode = Mode::Normal;
@@ -80,7 +81,7 @@ impl Status {
             input,
             path_content,
             height,
-            args,
+            show_hidden,
             terminal,
             opener,
             jump_index,
@@ -173,7 +174,7 @@ impl Status {
     pub fn event_move_to_parent(&mut self) {
         match self.path_content.path.parent() {
             Some(parent) => {
-                self.path_content = PathContent::new(path::PathBuf::from(parent), self.args.all);
+                self.path_content = PathContent::new(path::PathBuf::from(parent), self.show_hidden);
                 self.window.reset(self.path_content.files.len());
                 self.file_index = 0;
                 self.input.cursor_start()
@@ -192,7 +193,7 @@ impl Status {
                 self.path_content.files[self.path_content.selected]
                     .path
                     .clone(),
-                self.args.all,
+                self.show_hidden,
             );
             self.window.reset(self.path_content.files.len());
             self.file_index = 0;
@@ -323,7 +324,7 @@ impl Status {
     }
 
     pub fn event_toggle_hidden(&mut self) {
-        self.args.all = !self.args.all;
+        self.show_hidden = !self.show_hidden;
         self.path_content.show_hidden = !self.path_content.show_hidden;
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len())
@@ -537,7 +538,7 @@ impl Status {
         let expanded_cow_path = shellexpand::tilde(&target_string);
         let expanded_target: &str = expanded_cow_path.borrow();
         if let Ok(path) = std::fs::canonicalize(expanded_target) {
-            self.path_content = PathContent::new(path, self.args.all);
+            self.path_content = PathContent::new(path, self.show_hidden);
             self.window.reset(self.path_content.files.len());
         }
     }
@@ -550,7 +551,7 @@ impl Status {
             Some(parent) => parent.to_path_buf(),
             None => jump_target.clone(),
         };
-        self.path_content = PathContent::new(target_dir, self.args.all);
+        self.path_content = PathContent::new(target_dir, self.show_hidden);
         self.file_index = self
             .path_content
             .files
