@@ -38,11 +38,11 @@ pub struct Status {
     pub path_content: PathContent,
     /// Height of the terminal window
     height: usize,
-    /// Args readed from command line
+    /// read from command line
     show_hidden: bool,
     /// Configurable terminal executable
     terminal: String,
-    /// Configurable file opener. Default to "xgg-open"
+    /// Configurable file opener. Default to "xdg-open"
     opener: String,
     /// Index in the jump list
     pub jump_index: usize,
@@ -412,6 +412,7 @@ impl Status {
             ],
         );
     }
+
     fn exec_copy_paste(&mut self) {
         self.flagged.iter().for_each(|oldpath| {
             let newpath = self
