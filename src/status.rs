@@ -30,8 +30,6 @@ pub struct Status {
     pub file_index: usize,
     /// The indexes of displayed file
     pub window: FilesWindow,
-    /// oldpath before renaming
-    oldpath: path::PathBuf,
     /// Files marked as flagged
     pub flagged: HashSet<path::PathBuf>,
     /// String typed by the user in relevant modes
@@ -68,7 +66,6 @@ impl Status {
         let mode = Mode::Normal;
         let file_index = 0;
         let window = FilesWindow::new(path_content.files.len(), height);
-        let oldpath = path::PathBuf::new();
         let flagged = HashSet::new();
         let input = Input::default();
         let jump_index = 0;
@@ -79,7 +76,6 @@ impl Status {
             mode,
             file_index,
             window,
-            oldpath,
             flagged,
             input,
             path_content,
@@ -345,11 +341,6 @@ impl Status {
 
     pub fn event_rename(&mut self) {
         self.mode = Mode::Rename;
-        let oldname = self.path_content.files[self.path_content.selected]
-            .filename
-            .clone();
-        self.oldpath = self.path_content.path.to_path_buf();
-        self.oldpath.push(oldname);
     }
 
     pub fn event_chmod(&mut self) {
@@ -461,7 +452,9 @@ impl Status {
 
     pub fn exec_rename(&mut self) {
         fs::rename(
-            self.oldpath.clone(),
+            self.path_content.files[self.path_content.selected]
+                .clone()
+                .path,
             self.path_content
                 .path
                 .to_path_buf()
