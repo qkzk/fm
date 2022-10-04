@@ -1,7 +1,6 @@
 use std::cmp::min;
 use std::io::BufRead;
 
-use bat::PrettyPrinter;
 use tuikit::attr::*;
 use tuikit::term::Term;
 
