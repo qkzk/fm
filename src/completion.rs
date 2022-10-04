@@ -1,3 +1,7 @@
+use std::fs;
+
+use crate::fileinfo::PathContent;
+
 /// Holds a `Vec<String>` of possible completions and an `usize` index
 /// showing where the user is in the vec.
 pub struct Completion {
@@ -58,10 +62,91 @@ impl Completion {
         self.index = 0;
         self.proposals.clear();
     }
+
+    pub fn goto(&mut self, input_string: &str) {
+        let (parent, last_name) = split_input_string(input_string);
+        if last_name.is_empty() {
+            return;
+        }
+        if let Ok(path) = std::fs::canonicalize(parent) {
+            if let Ok(entries) = fs::read_dir(path) {
+                self.update(
+                    entries
+                        .filter_map(|e| e.ok())
+                        .filter(|e| {
+                            e.file_type().unwrap().is_dir() && filename_startswith(e, &last_name)
+                        })
+                        .map(|e| e.path().to_string_lossy().into_owned())
+                        .collect(),
+                )
+            }
+        }
+    }
+
+    pub fn exec(&mut self, input_string: &String) {
+        let mut proposals: Vec<String> = vec![];
+        for path in std::env::var_os("PATH")
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default()
+            .split(':')
+        {
+            if let Ok(entries) = fs::read_dir(path) {
+                let comp: Vec<String> = entries
+                    .filter(|e| e.is_ok())
+                    .map(|e| e.unwrap())
+                    .filter(|e| {
+                        e.file_type().unwrap().is_file() && filename_startswith(e, input_string)
+                    })
+                    .map(|e| e.path().to_string_lossy().into_owned())
+                    .collect();
+                proposals.extend(comp);
+            }
+        }
+        self.update(proposals);
+    }
+
+    pub fn search(&mut self, input_string: &String, path_content: &PathContent) {
+        self.update(
+            path_content
+                .files
+                .iter()
+                .filter(|f| f.filename.contains(input_string))
+                .map(|f| f.filename.clone())
+                .collect(),
+        );
+    }
 }
 
 impl Default for Completion {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// true if the filename starts with a pattern
+fn filename_startswith(entry: &std::fs::DirEntry, pattern: &String) -> bool {
+    entry
+        .file_name()
+        .to_string_lossy()
+        .into_owned()
+        .starts_with(pattern)
+}
+
+fn split_input_string(input_string: &str) -> (String, String) {
+    let steps = input_string.split('/');
+    let mut vec_steps: Vec<&str> = steps.collect();
+    let last_name = vec_steps.pop().unwrap_or("").to_owned();
+    let parent = create_parent(vec_steps);
+    (parent, last_name)
+}
+
+fn create_parent(vec_steps: Vec<&str>) -> String {
+    let mut parent = if vec_steps.is_empty() || vec_steps.len() == 1 && vec_steps[0] != "~" {
+        "/".to_owned()
+    } else {
+        "".to_owned()
+    };
+    parent.push_str(&vec_steps.join("/"));
+    shellexpand::tilde(&parent).to_string()
 }

@@ -583,59 +583,11 @@ impl Status {
 
     fn fill_completion(&mut self) {
         match self.mode {
-            Mode::Goto => {
-                let (parent, last_name) = self.split_input_string();
-                if last_name.is_empty() {
-                    return;
-                }
-                if let Ok(path) = std::fs::canonicalize(parent) {
-                    if let Ok(entries) = fs::read_dir(path) {
-                        self.completion.update(
-                            entries
-                                .filter_map(|e| e.ok())
-                                .filter(|e| {
-                                    e.file_type().unwrap().is_dir()
-                                        && filename_startswith(e, &last_name)
-                                })
-                                .map(|e| e.path().to_string_lossy().into_owned())
-                                .collect(),
-                        )
-                    }
-                }
-            }
-            Mode::Exec => {
-                let mut proposals: Vec<String> = vec![];
-                for path in std::env::var_os("PATH")
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap_or_default()
-                    .split(':')
-                {
-                    if let Ok(entries) = fs::read_dir(path) {
-                        let comp: Vec<String> = entries
-                            .filter(|e| e.is_ok())
-                            .map(|e| e.unwrap())
-                            .filter(|e| {
-                                e.file_type().unwrap().is_file()
-                                    && filename_startswith(e, &self.input.string)
-                            })
-                            .map(|e| e.path().to_string_lossy().into_owned())
-                            .collect();
-                        proposals.extend(comp);
-                    }
-                }
-                self.completion.update(proposals);
-            }
-            Mode::Search => {
-                self.completion.update(
-                    self.path_content
-                        .files
-                        .iter()
-                        .filter(|f| f.filename.contains(&self.input.string))
-                        .map(|f| f.filename.clone())
-                        .collect(),
-                );
-            }
+            Mode::Goto => self.completion.goto(&self.input.string),
+            Mode::Exec => self.completion.exec(&self.input.string),
+            Mode::Search => self
+                .completion
+                .search(&self.input.string, &self.path_content),
             _ => (),
         }
     }
@@ -653,24 +605,6 @@ impl Status {
         self.height = height;
     }
 
-    fn split_input_string(&self) -> (String, String) {
-        let steps = self.input.string.split('/');
-        let mut vec_steps: Vec<&str> = steps.collect();
-        let last_name = vec_steps.pop().unwrap_or("").to_owned();
-        let parent = self.create_parent(vec_steps);
-        (parent, last_name)
-    }
-
-    fn create_parent(&self, vec_steps: Vec<&str>) -> String {
-        let mut parent = if vec_steps.is_empty() || vec_steps.len() == 1 && vec_steps[0] != "~" {
-            "/".to_owned()
-        } else {
-            "".to_owned()
-        };
-        parent.push_str(&vec_steps.join("/"));
-        shellexpand::tilde(&parent).to_string()
-    }
-
     fn toggle_flag_on_path(&mut self, path: path::PathBuf) {
         if self.flagged.contains(&path) {
             self.flagged.remove(&path);
@@ -682,15 +616,6 @@ impl Status {
     pub fn must_quit(&self) -> bool {
         self.must_quit
     }
-}
-
-/// true if the filename starts with a pattern
-fn filename_startswith(entry: &std::fs::DirEntry, pattern: &String) -> bool {
-    entry
-        .file_name()
-        .to_string_lossy()
-        .into_owned()
-        .starts_with(pattern)
 }
 
 /// Execute the command in a fork.
