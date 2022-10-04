@@ -306,6 +306,16 @@ impl PathContent {
             self.files[0].select();
         }
     }
+
+    /// Return the Optional FileInfo
+    /// Since the FileInfo is borrowed it won't be mutable.
+    pub fn selected_file(&self) -> Option<&FileInfo> {
+        if self.files.is_empty() {
+            None
+        } else {
+            Some(&self.files[self.selected])
+        }
+    }
 }
 
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
