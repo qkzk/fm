@@ -618,6 +618,7 @@ impl Status {
     }
 }
 
+// TODO: use [wait with output](https://doc.rust-lang.org/std/process/struct.Child.html#method.wait_with_output)
 /// Execute the command in a fork.
 fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
     eprintln!("exec exe {}, args {:?}", exe, args);
