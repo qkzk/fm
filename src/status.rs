@@ -393,6 +393,21 @@ impl Status {
         self.input.replace(self.completion.current_proposition())
     }
 
+    /// Creates a symlink of every flagged file to the current directory.
+    pub fn event_symlink(&mut self) {
+        self.flagged.iter().for_each(|oldpath| {
+            let newpath = self
+                .path_content
+                .path
+                .clone()
+                .join(oldpath.as_path().file_name().unwrap());
+            std::os::unix::fs::symlink(oldpath, newpath).unwrap_or(());
+        });
+        self.flagged.clear();
+        self.path_content.reset_files();
+        self.window.reset(self.path_content.files.len());
+    }
+
     pub fn event_nvim_filepicker(&mut self) {
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         let server = std::env::var("NVIM_LISTEN_ADDRESS").unwrap_or_else(|_| "".to_owned());

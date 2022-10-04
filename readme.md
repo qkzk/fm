@@ -64,6 +64,7 @@
   - [x] association with match and clear code
   - [x] dissociate keybinding from status update
 - [x] fix: cursor is hidden before leaving the application
+- [x] create a symlink to flagged files
 
 ## TODO
 

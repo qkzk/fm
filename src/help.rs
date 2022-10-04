@@ -28,6 +28,7 @@ o:      xdg-open this file
     c:      copy to current dir
     p:      move to current dir
     x:      delete flagged files
+    S:      symlink flagged files
 
 - MODES - 
     m:      CHMOD 
