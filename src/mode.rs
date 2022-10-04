@@ -48,7 +48,7 @@ impl fmt::Debug for Mode {
             Mode::RegexMatch => write!(f, "Regex :  "),
             Mode::Jump => write!(f, "Jump  :  "),
             Mode::NeedConfirmation => write!(f, "Y/N   :"),
-            Mode::Sort => write!(f, "(N)ame (D)ate (S)ize (E)xt : "),
+            Mode::Sort => write!(f, "(N)ame (D)ate (S)ize (E)xt (R)ev :"),
         }
     }
 }

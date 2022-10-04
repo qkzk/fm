@@ -11,7 +11,7 @@ use crate::mode::Mode;
 use crate::status::Status;
 
 const EDIT_BOX_OFFSET: usize = 10;
-const SORT_CURSOR_OFFSET: usize = 29;
+const SORT_CURSOR_OFFSET: usize = 36;
 
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.

@@ -192,6 +192,7 @@ pub struct PathContent {
     pub selected: usize,
     pub show_hidden: bool,
     pub sort_by: SortBy,
+    pub reverse: bool,
 }
 
 impl PathContent {
@@ -222,6 +223,7 @@ impl PathContent {
         if !files.is_empty() {
             files[selected].select();
         }
+        let reverse = false;
 
         Self {
             path,
@@ -229,6 +231,7 @@ impl PathContent {
             selected,
             show_hidden,
             sort_by,
+            reverse,
         }
     }
 

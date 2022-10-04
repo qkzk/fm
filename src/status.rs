@@ -281,6 +281,7 @@ impl Status {
             'd' => self.path_content.sort_by = SortBy::Date,
             's' => self.path_content.sort_by = SortBy::Size,
             'e' => self.path_content.sort_by = SortBy::Extension,
+            'r' => self.path_content.reverse = !self.path_content.reverse,
             _ => {
                 return;
             }
@@ -288,6 +289,9 @@ impl Status {
         if !self.path_content.files.is_empty() {
             self.path_content.files[self.file_index].unselect();
             self.path_content.sort();
+            if self.path_content.reverse {
+                self.path_content.files.reverse();
+            }
             self.event_go_top();
             self.path_content.select_index(0)
         }
