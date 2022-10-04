@@ -331,6 +331,7 @@ impl Status {
         self.show_hidden = !self.show_hidden;
         self.path_content.show_hidden = !self.path_content.show_hidden;
         self.path_content.reset_files();
+        self.file_index = 0;
         self.window.reset(self.path_content.files.len())
     }
 
