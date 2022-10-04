@@ -62,7 +62,8 @@
   - [x] hmap for keybindings
   - [x] key -> action -> status.update(action)
   - [x] association with match and clear code
-  - [x] dissociate keyrinding from status update
+  - [x] dissociate keybinding from status update
+- [x] fix: cursor is hidden before leaving the application
 
 ## TODO
 
@@ -80,7 +81,6 @@
 ## BUGS
 
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
-- [ ] cursor is hidden before leaving the application
 
 ## Sources
 

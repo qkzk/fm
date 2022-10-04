@@ -209,7 +209,7 @@ impl Actioner {
             Mode::Normal | Mode::NeedConfirmation | Mode::Help | Mode::Sort => (),
         }
 
-        status.input_string_cursor_index = 0;
+        status.input.reset();
         status.mode = Mode::Normal;
     }
 

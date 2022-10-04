@@ -7,6 +7,7 @@ pub mod event_char;
 pub mod file_window;
 pub mod fileinfo;
 pub mod help;
+pub mod input;
 pub mod last_edition;
 pub mod mode;
 pub mod status;

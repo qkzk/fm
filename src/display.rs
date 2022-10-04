@@ -3,6 +3,7 @@ use std::cmp::min;
 use tuikit::attr::*;
 use tuikit::term::Term;
 
+use crate::config::Colors;
 use crate::file_window::WINDOW_MARGIN_TOP;
 use crate::fileinfo::fileinfo_attr;
 use crate::help::HELP_LINES;
@@ -16,12 +17,13 @@ const SORT_CURSOR_OFFSET: usize = 29;
 /// It uses an already created terminal.
 pub struct Display {
     pub term: Term,
+    pub colors: Colors,
 }
 
 impl Display {
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
-    pub fn new(term: Term) -> Self {
-        Self { term }
+    pub fn new(term: Term, colors: Colors) -> Self {
+        Self { term, colors }
     }
 
     /// Display every possible content in the terminal.
@@ -70,7 +72,7 @@ impl Display {
                 format!("Confirm {} (y/n) : ", status.last_edition)
             }
             _ => {
-                format!("{:?} {}", status.mode.clone(), status.input_string.clone())
+                format!("{:?} {}", status.mode.clone(), status.input.string.clone())
             }
         };
         let _ = self.term.print(0, 0, &first_row);
@@ -92,7 +94,7 @@ impl Display {
             .skip(status.window.top)
         {
             let row = i + WINDOW_MARGIN_TOP - status.window.top;
-            let mut attr = fileinfo_attr(&status.path_content.files[i], &status.config.colors);
+            let mut attr = fileinfo_attr(&status.path_content.files[i], &self.colors);
             if status.flagged.contains(&status.path_content.files[i].path) {
                 attr.effect |= Effect::UNDERLINE;
             }
@@ -115,7 +117,7 @@ impl Display {
             _ => {
                 let _ = self
                     .term
-                    .set_cursor(0, status.input_string_cursor_index + EDIT_BOX_OFFSET);
+                    .set_cursor(0, status.input.cursor_index + EDIT_BOX_OFFSET);
             }
         }
     }
@@ -156,7 +158,7 @@ impl Display {
                 self.first_line(status);
                 let _ = self
                     .term
-                    .set_cursor(0, status.input_string_cursor_index + EDIT_BOX_OFFSET);
+                    .set_cursor(0, status.input.cursor_index + EDIT_BOX_OFFSET);
                 for (row, candidate) in status.completion.proposals.iter().enumerate() {
                     let mut attr = Attr::default();
                     if row == status.completion.index {
