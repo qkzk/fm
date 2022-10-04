@@ -24,6 +24,7 @@ pub enum EventChar {
     Jump,
     NvimFilepicker,
     Sort,
+    Symlink,
 }
 
 impl EventChar {
@@ -52,6 +53,7 @@ impl EventChar {
             EventChar::Jump => status.event_jump(),
             EventChar::NvimFilepicker => status.event_nvim_filepicker(),
             EventChar::Sort => status.event_sort(),
+            EventChar::Symlink => status.event_symlink(),
         }
     }
 }

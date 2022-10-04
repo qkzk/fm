@@ -39,3 +39,4 @@ keybindings:
   jump: j
   nvim: i
   sort_by: O
+  symlink: S

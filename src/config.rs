@@ -197,6 +197,8 @@ pub struct Keybindings {
     pub nvim: char,
     /// Change file sorting.
     pub sort_by: char,
+    /// Creates asymlink
+    pub symlink: char,
 }
 
 impl Keybindings {
@@ -269,8 +271,11 @@ impl Keybindings {
         if let Some(nvim) = yaml["nvim"].as_str().map(|s| s.to_string()) {
             self.nvim = nvim.chars().next().unwrap_or('i');
         }
-        if let Some(nvim) = yaml["sort_by"].as_str().map(|s| s.to_string()) {
-            self.nvim = nvim.chars().next().unwrap_or('O');
+        if let Some(sort_by) = yaml["sort_by"].as_str().map(|s| s.to_string()) {
+            self.sort_by = sort_by.chars().next().unwrap_or('O');
+        }
+        if let Some(symblink) = yaml["symblink"].as_str().map(|s| s.to_string()) {
+            self.symblink = symblink.chars().next().unwrap_or('S');
         }
     }
 
@@ -300,6 +305,7 @@ impl Keybindings {
             jump: 'j',
             nvim: 'i',
             sort_by: 'O',
+            symlink: 'S',
         }
     }
 }

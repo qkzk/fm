@@ -393,6 +393,13 @@ impl Status {
         self.input.replace(self.completion.current_proposition())
     }
 
+    pub fn event_symlink(&mut self) {
+        self.mode = Mode::Symlink
+    }
+
+    pub fn exec_symlink(&mut self) {
+   
+
     pub fn event_nvim_filepicker(&mut self) {
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         let server = std::env::var("NVIM_LISTEN_ADDRESS").unwrap_or_else(|_| "".to_owned());

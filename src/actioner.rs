@@ -42,6 +42,7 @@ impl Actioner {
             (keybindings.jump, EventChar::Jump),
             (keybindings.nvim, EventChar::NvimFilepicker),
             (keybindings.sort_by, EventChar::Sort),
+            (keybindings.symlink, EventChar::Symlink),
         ]);
         Self { binds }
     }
