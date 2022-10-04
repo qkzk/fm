@@ -50,6 +50,7 @@ use tuikit::attr::Color;
 ///   jump: j
 ///   nvim: i
 ///   sort_by: O
+///   preview: S
 #[derive(Debug, Clone)]
 pub struct Config {
     /// Color of every kind of file
@@ -200,6 +201,8 @@ pub struct Keybindings {
     pub sort_by: char,
     /// Creates asymlink
     pub symlink: char,
+    /// Preview with bat
+    pub preview: char,
 }
 
 impl Keybindings {
@@ -275,8 +278,11 @@ impl Keybindings {
         if let Some(sort_by) = yaml["sort_by"].as_str().map(|s| s.to_string()) {
             self.sort_by = sort_by.chars().next().unwrap_or('O');
         }
-        if let Some(symlink) = yaml["symblink"].as_str().map(|s| s.to_string()) {
+        if let Some(symlink) = yaml["symlink"].as_str().map(|s| s.to_string()) {
             self.symlink = symlink.chars().next().unwrap_or('S');
+        }
+        if let Some(preview) = yaml["preview"].as_str().map(|s| s.to_string()) {
+            self.preview = preview.chars().next().unwrap_or('P');
         }
     }
 
@@ -307,6 +313,7 @@ impl Keybindings {
             nvim: 'i',
             sort_by: 'O',
             symlink: 'S',
+            preview: 'P',
         }
     }
 }

@@ -188,11 +188,12 @@ impl Status {
     }
 
     pub fn event_go_to_child(&mut self) {
-        if let FileKind::Directory = self.path_content.files[self.path_content.selected].file_kind {
+        if self.path_content.files.is_empty() {
+            return;
+        }
+        if let FileKind::Directory = self.path_content.selected_file().unwrap().file_kind {
             self.path_content = PathContent::new(
-                self.path_content.files[self.path_content.selected]
-                    .path
-                    .clone(),
+                self.path_content.selected_file().unwrap().path.clone(),
                 self.show_hidden,
             );
             self.window.reset(self.path_content.files.len());
@@ -238,6 +239,12 @@ impl Status {
 
     pub fn event_exec(&mut self) {
         self.mode = Mode::Exec
+    }
+
+    pub fn event_preview(&mut self) {
+        if !self.path_content.files.is_empty() {
+            self.mode = Mode::Preview
+        }
     }
 
     pub fn event_clear_flags(&mut self) {
@@ -302,7 +309,10 @@ impl Status {
     }
 
     pub fn event_toggle_flag(&mut self) {
-        self.toggle_flag_on_path(self.path_content.files[self.file_index].path.clone());
+        if self.path_content.files.is_empty() {
+            return;
+        }
+        self.toggle_flag_on_path(self.path_content.selected_file().unwrap().path.clone());
         if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
             self.file_index += 1
         }
@@ -336,9 +346,15 @@ impl Status {
     }
 
     pub fn event_open_file(&mut self) {
+        if self.path_content.files.is_empty() {
+            return;
+        }
         execute_in_child(
             &self.opener,
-            &vec![self.path_content.files[self.path_content.selected]
+            &vec![self
+                .path_content
+                .selected_file()
+                .unwrap()
                 .path
                 .to_str()
                 .unwrap()],
@@ -350,13 +366,13 @@ impl Status {
     }
 
     pub fn event_chmod(&mut self) {
+        if self.path_content.files.is_empty() {
+            return;
+        }
         self.mode = Mode::Chmod;
         if self.flagged.is_empty() {
-            self.flagged.insert(
-                self.path_content.files[self.path_content.selected]
-                    .path
-                    .clone(),
-            );
+            self.flagged
+                .insert(self.path_content.selected_file().unwrap().path.clone());
         }
     }
 
@@ -380,10 +396,13 @@ impl Status {
     }
 
     pub fn event_right_click(&mut self, row: u16) {
+        if self.path_content.files.is_empty() || row as usize > self.path_content.files.len() {
+            return;
+        }
         self.file_index = (row - 1).into();
         self.path_content.select_index(self.file_index);
         self.window.scroll_to(self.file_index);
-        if let FileKind::Directory = self.path_content.files[self.file_index].file_kind {
+        if let FileKind::Directory = self.path_content.selected_file().unwrap().file_kind {
             self.event_go_to_child()
         } else {
             self.event_open_file()
@@ -410,6 +429,9 @@ impl Status {
     }
 
     pub fn event_nvim_filepicker(&mut self) {
+        if self.path_content.files.is_empty() {
+            return;
+        }
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         let server = std::env::var("NVIM_LISTEN_ADDRESS").unwrap_or_else(|_| "".to_owned());
         if server.is_empty() {
@@ -421,7 +443,9 @@ impl Status {
                 "--remote-send",
                 &format!(
                     "<esc>:e {}<cr><esc>:close<cr>",
-                    self.path_content.files[self.file_index]
+                    self.path_content
+                        .selected_file()
+                        .unwrap()
                         .path
                         .clone()
                         .to_str()
@@ -473,10 +497,11 @@ impl Status {
     }
 
     pub fn exec_rename(&mut self) {
+        if self.path_content.files.is_empty() {
+            return;
+        }
         fs::rename(
-            self.path_content.files[self.path_content.selected]
-                .clone()
-                .path,
+            self.path_content.selected_file().unwrap().clone().path,
             self.path_content
                 .path
                 .to_path_buf()
@@ -525,11 +550,16 @@ impl Status {
     }
 
     pub fn exec_exec(&mut self) {
+        if self.path_content.files.is_empty() {
+            return;
+        }
         let exec_command = self.input.string.clone();
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         args.push(
-            self.path_content.files[self.path_content.selected]
+            self.path_content
+                .selected_file()
+                .unwrap()
                 .path
                 .to_str()
                 .unwrap(),

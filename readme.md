@@ -78,6 +78,7 @@
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
+- [ ] less or cat/bat a file content, window with preview
 
 ## BUGS
 

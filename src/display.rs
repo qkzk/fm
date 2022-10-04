@@ -1,5 +1,7 @@
 use std::cmp::min;
+use std::io::BufRead;
 
+use bat::PrettyPrinter;
 use tuikit::attr::*;
 use tuikit::term::Term;
 
@@ -46,6 +48,7 @@ impl Display {
         self.help(status);
         self.jump_list(status);
         self.completion(status);
+        self.preview(status);
     }
 
     /// Reads and returns the `tuikit::term::Term` height.
@@ -71,6 +74,10 @@ impl Display {
             Mode::NeedConfirmation => {
                 format!("Confirm {} (y/n) : ", status.last_edition)
             }
+            Mode::Preview => match status.path_content.selected_file() {
+                Some(fileinfo) => format!("{:?} {}", status.mode.clone(), fileinfo.filename),
+                None => "".to_owned(),
+            },
             _ => {
                 format!("{:?} {}", status.mode.clone(), status.input.string.clone())
             }
@@ -151,7 +158,7 @@ impl Display {
 
     /// Display the possible completion items. The currently selected one is
     /// reversed.
-    pub fn completion(&mut self, status: &Status) {
+    fn completion(&mut self, status: &Status) {
         match status.mode {
             Mode::Goto | Mode::Exec | Mode::Search => {
                 let _ = self.term.clear();
@@ -168,6 +175,30 @@ impl Display {
                 }
             }
             _ => (),
+        }
+    }
+
+    /// Display a preview of a file with bat
+    fn preview(&mut self, status: &Status) {
+        if let Mode::Preview = status.mode {
+            match status.path_content.selected_file() {
+                Some(file) => {
+                    let _ = self.term.clear();
+                    self.first_line(status);
+                    let attr = Attr::default();
+                    let reader =
+                        std::io::BufReader::new(std::fs::File::open(file.path.clone()).unwrap());
+                    for (row, line) in reader.lines().enumerate() {
+                        let _ = self.term.print_with_attr(
+                            row + 1,
+                            3,
+                            &line.unwrap_or("".to_owned()),
+                            attr,
+                        );
+                    }
+                }
+                None => (),
+            }
         }
     }
 }

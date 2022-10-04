@@ -43,6 +43,7 @@ impl Actioner {
             (keybindings.nvim, EventChar::NvimFilepicker),
             (keybindings.sort_by, EventChar::Sort),
             (keybindings.symlink, EventChar::Symlink),
+            (keybindings.preview, EventChar::Preview),
         ]);
         Self { binds }
     }
@@ -207,7 +208,7 @@ impl Actioner {
             Mode::Goto => status.exec_goto(),
             Mode::RegexMatch => status.exec_regex(),
             Mode::Jump => status.exec_jump(),
-            Mode::Normal | Mode::NeedConfirmation | Mode::Help | Mode::Sort => (),
+            Mode::Normal | Mode::NeedConfirmation | Mode::Help | Mode::Sort | Mode::Preview => (),
         }
 
         status.input.reset();
@@ -248,7 +249,7 @@ impl Actioner {
                 Some(event_char) => event_char.match_char(status),
                 None => (),
             },
-            Mode::Help => status.event_normal(),
+            Mode::Help | Mode::Preview => status.event_normal(),
             Mode::Jump => (),
             Mode::NeedConfirmation => {
                 if c == 'y' {

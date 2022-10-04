@@ -19,6 +19,8 @@ PgDown: 10 lines down
 a:      toggle hidden
 s:      shell in current directory
 o:      xdg-open this file
+i:      open in current nvim session
+P:      preview this file
 
 - Action on flagged files - 
     space:  toggle flag on a file 

@@ -40,3 +40,4 @@ keybindings:
   nvim: i
   sort_by: O
   symlink: S
+  preview: P
