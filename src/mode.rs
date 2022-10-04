@@ -31,8 +31,6 @@ pub enum Mode {
     NeedConfirmation,
     /// Change the type of sort
     Sort,
-    /// Creates symlink
-    Symlink,
 }
 
 impl fmt::Debug for Mode {
@@ -51,7 +49,6 @@ impl fmt::Debug for Mode {
             Mode::Jump => write!(f, "Jump  :  "),
             Mode::NeedConfirmation => write!(f, "Y/N   :"),
             Mode::Sort => write!(f, "(N)ame (D)ate (S)ize (E)xt (R)ev :"),
-            Mode::Symlink => write!(f, "Symlink:  "),
         }
     }
 }
