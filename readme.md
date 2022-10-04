@@ -65,6 +65,7 @@
   - [x] dissociate keybinding from status update
 - [x] fix: cursor is hidden before leaving the application
 - [x] create a symlink to flagged files
+- [x] preview a file with P
 
 ## TODO
 
@@ -78,7 +79,6 @@
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
-- [ ] less or cat/bat a file content, window with preview
 
 ## BUGS
 
