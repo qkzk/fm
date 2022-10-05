@@ -4,19 +4,11 @@ use tuikit::attr::*;
 use tuikit::term::Term;
 
 use crate::config::Colors;
-use crate::content_window::WINDOW_MARGIN_TOP;
+use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::help::HELP_LINES;
 use crate::mode::Mode;
 use crate::status::Status;
-
-const EDIT_BOX_OFFSET: usize = 10;
-const SORT_CURSOR_OFFSET: usize = 36;
-static LINE_ATTR: Attr = Attr {
-    fg: Color::CYAN,
-    bg: Color::Default,
-    effect: Effect::empty(),
-};
 
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.
@@ -33,6 +25,14 @@ impl Display {
         Self { term, colors }
     }
 
+    const EDIT_BOX_OFFSET: usize = 10;
+    const SORT_CURSOR_OFFSET: usize = 36;
+
+    const LINE_ATTR: Attr = Attr {
+        fg: Color::CYAN,
+        bg: Color::Default,
+        effect: Effect::empty(),
+    };
     /// Display every possible content in the terminal.
     ///
     /// The top line
@@ -89,7 +89,7 @@ impl Display {
                 format!("{:?} {}", status.mode.clone(), status.input.string.clone())
             }
         };
-        let _ = self.term.print_with_attr(0, 0, &first_row, LINE_ATTR);
+        let _ = self.term.print_with_attr(0, 0, &first_row, Self::LINE_ATTR);
     }
 
     /// Displays the current directory content, one line per item like in
@@ -107,7 +107,7 @@ impl Display {
             .take(min(strings.len(), status.window.bottom + 1))
             .skip(status.window.top)
         {
-            let row = i + WINDOW_MARGIN_TOP - status.window.top;
+            let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
             let mut attr = fileinfo_attr(&status.path_content.files[i], &self.colors);
             if status.flagged.contains(&status.path_content.files[i].path) {
                 attr.effect |= Effect::UNDERLINE;
@@ -126,12 +126,12 @@ impl Display {
                 let _ = self.term.set_cursor(0, status.last_edition.offset());
             }
             Mode::Sort => {
-                let _ = self.term.set_cursor(0, SORT_CURSOR_OFFSET);
+                let _ = self.term.set_cursor(0, Self::SORT_CURSOR_OFFSET);
             }
             _ => {
                 let _ = self
                     .term
-                    .set_cursor(0, status.input.cursor_index + EDIT_BOX_OFFSET);
+                    .set_cursor(0, status.input.cursor_index + Self::EDIT_BOX_OFFSET);
             }
         }
     }
@@ -172,7 +172,7 @@ impl Display {
                 self.first_line(status);
                 let _ = self
                     .term
-                    .set_cursor(0, status.input.cursor_index + EDIT_BOX_OFFSET);
+                    .set_cursor(0, status.input.cursor_index + Self::EDIT_BOX_OFFSET);
                 for (row, candidate) in status.completion.proposals.iter().enumerate() {
                     let mut attr = Attr::default();
                     if row == status.completion.index {
@@ -199,10 +199,10 @@ impl Display {
                 .take(min(status.preview_lines.len(), status.window.bottom + 1))
                 .skip(status.window.top)
             {
-                let row = i + WINDOW_MARGIN_TOP - status.window.top;
-                let _ = self
-                    .term
-                    .print_with_attr(row + 2, 0, &(i + 1).to_string(), LINE_ATTR);
+                let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
+                let _ =
+                    self.term
+                        .print_with_attr(row + 2, 0, &(i + 1).to_string(), Self::LINE_ATTR);
                 let _ = self
                     .term
                     .print_with_attr(row + 2, line_number_offset, line, content_attr);

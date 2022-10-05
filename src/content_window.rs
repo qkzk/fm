@@ -1,12 +1,5 @@
 use std::cmp::{max, min};
 
-/// The padding around the last displayed file
-const WINDOW_PADDING: usize = 4;
-/// The space of the top element
-pub const WINDOW_MARGIN_TOP: usize = 1;
-/// How many rows are reserved at bottom
-const RESERVED_ROWS: usize = 3;
-
 /// Holds the information about the displayed window of lines.
 /// When there's too much lines to display in one screen, we can scroll
 /// and this struct is responsible for that.
@@ -30,20 +23,27 @@ impl ContentWindow {
     pub fn new(len: usize, height: usize) -> Self {
         ContentWindow {
             top: 0,
-            bottom: min(len, height - RESERVED_ROWS),
+            bottom: min(len, height - Self::RESERVED_ROWS),
             len,
-            height: height - RESERVED_ROWS,
+            height: height - Self::RESERVED_ROWS,
         }
     }
 
+    /// The padding around the last displayed file
+    const WINDOW_PADDING: usize = 4;
+    /// The space of the top element
+    pub const WINDOW_MARGIN_TOP: usize = 1;
+    /// How many rows are reserved at bottom
+    const RESERVED_ROWS: usize = 3;
+
     /// Set the height of file window.
     pub fn set_height(&mut self, height: usize) {
-        self.height = height - RESERVED_ROWS;
+        self.height = height - Self::RESERVED_ROWS;
     }
 
     /// Move the window one line up if possible.
     pub fn scroll_up_one(&mut self, index: usize) {
-        if index < self.top + WINDOW_PADDING && self.top > 0 {
+        if index < self.top + Self::WINDOW_PADDING && self.top > 0 {
             self.top -= 1;
             self.bottom -= 1;
         }
@@ -54,7 +54,9 @@ impl ContentWindow {
         if self.len < self.height {
             return;
         }
-        if index > self.bottom - WINDOW_PADDING && self.bottom < self.len - WINDOW_MARGIN_TOP {
+        if index > self.bottom - Self::WINDOW_PADDING
+            && self.bottom < self.len - Self::WINDOW_MARGIN_TOP
+        {
             self.top += 1;
             self.bottom += 1;
         }
@@ -70,7 +72,7 @@ impl ContentWindow {
     /// Scroll the window to this index if possible.
     pub fn scroll_to(&mut self, index: usize) {
         if index < self.top || index > self.bottom {
-            self.top = max(index, WINDOW_PADDING) - WINDOW_PADDING;
+            self.top = max(index, Self::WINDOW_PADDING) - Self::WINDOW_PADDING;
             self.bottom = self.top + min(self.len, self.height - 3);
         }
     }

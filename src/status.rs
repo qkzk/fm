@@ -12,13 +12,11 @@ use regex::Regex;
 use crate::args::Args;
 use crate::completion::Completion;
 use crate::config::Config;
-use crate::content_window::{ContentWindow, WINDOW_MARGIN_TOP};
+use crate::content_window::ContentWindow;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::input::Input;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
-
-const MAX_PERMISSIONS: u32 = 0o777;
 
 /// Holds every thing about the current status of the application.
 /// Is responsible to execute commands depending on received events, mutating
@@ -97,6 +95,8 @@ impl Status {
         }
     }
 
+    const MAX_PERMISSIONS: u32 = 0o777;
+
     pub fn event_normal(&mut self) {
         self.input.reset();
         self.path_content.reset_files();
@@ -122,7 +122,7 @@ impl Status {
         } else {
             self.preview_lines.len()
         };
-        if self.line_index < max_line - WINDOW_MARGIN_TOP {
+        if self.line_index < max_line - ContentWindow::WINDOW_MARGIN_TOP {
             self.line_index += 1;
         }
         self.window.scroll_down_one(self.line_index);
@@ -347,7 +347,7 @@ impl Status {
             return;
         }
         self.toggle_flag_on_path(self.path_content.selected_file().unwrap().path.clone());
-        if self.line_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
+        if self.line_index < self.path_content.files.len() - ContentWindow::WINDOW_MARGIN_TOP {
             self.line_index += 1
         }
         self.path_content.select_next();
@@ -573,7 +573,7 @@ impl Status {
             return;
         }
         let permissions: u32 = u32::from_str_radix(&self.input.string, 8).unwrap_or(0_u32);
-        if permissions <= MAX_PERMISSIONS {
+        if permissions <= Self::MAX_PERMISSIONS {
             for path in self.flagged.iter() {
                 Self::set_permissions(path.clone(), permissions).unwrap_or(())
             }
