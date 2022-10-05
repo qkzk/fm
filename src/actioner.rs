@@ -83,7 +83,7 @@ impl Actioner {
     /// Move one line up
     fn up(&self, status: &mut Status) {
         match status.mode {
-            Mode::Normal => status.event_up_one_row(),
+            Mode::Normal | Mode::Preview => status.event_up_one_row(),
             Mode::Jump => status.event_jumplist_prev(),
             Mode::Goto | Mode::Exec | Mode::Search => {
                 status.completion.prev();
@@ -95,7 +95,7 @@ impl Actioner {
     /// Move one line down
     fn down(&self, status: &mut Status) {
         match status.mode {
-            Mode::Normal => status.event_down_one_row(),
+            Mode::Normal | Mode::Preview => status.event_down_one_row(),
             Mode::Jump => status.event_jumplist_next(),
             Mode::Goto | Mode::Exec | Mode::Search => {
                 status.completion.next();
@@ -166,33 +166,33 @@ impl Actioner {
 
     /// Move to top or beggining of line.
     fn home(&self, status: &mut Status) {
-        if let Mode::Normal = status.mode {
-            status.event_go_top()
-        } else {
-            status.event_cursor_home()
+        match status.mode {
+            Mode::Normal | Mode::Preview => status.event_go_top(),
+            _ => status.event_cursor_home(),
         }
     }
 
     /// Move to end or end of line.
     fn end(&self, status: &mut Status) {
-        if let Mode::Normal = status.mode {
-            status.event_go_bottom()
-        } else {
-            status.event_cursor_end()
+        match status.mode {
+            Mode::Normal | Mode::Preview => status.event_go_bottom(),
+            _ => status.event_cursor_end(),
         }
     }
 
     /// Move down 10 rows
     fn page_down(&self, status: &mut Status) {
-        if let Mode::Normal = status.mode {
-            status.event_down_10_rows()
+        match status.mode {
+            Mode::Normal | Mode::Preview => status.event_down_10_rows(),
+            _ => (),
         }
     }
 
     /// Move up 10 rows
     fn page_up(&self, status: &mut Status) {
-        if let Mode::Normal = status.mode {
-            status.event_up_10_rows()
+        match status.mode {
+            Mode::Normal | Mode::Preview => status.event_page_up(),
+            _ => (),
         }
     }
 

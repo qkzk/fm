@@ -1,5 +1,4 @@
 use std::cmp::min;
-use std::io::BufRead;
 
 use tuikit::attr::*;
 use tuikit::term::Term;
@@ -13,12 +12,19 @@ use crate::status::Status;
 
 const EDIT_BOX_OFFSET: usize = 10;
 const SORT_CURSOR_OFFSET: usize = 36;
+static LINE_ATTR: Attr = Attr {
+    fg: Color::CYAN,
+    bg: Color::Default,
+    effect: Effect::empty(),
+};
 
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.
 pub struct Display {
+    /// The Tuikit terminal attached to the display.
+    /// It will print every symbol shown on screen.
     pub term: Term,
-    pub colors: Colors,
+    colors: Colors,
 }
 
 impl Display {
@@ -40,6 +46,8 @@ impl Display {
     /// The jump_list if `Mode::Jump`
     ///
     /// The completion list if any.
+    ///
+    /// The preview in preview mode.
     pub fn display_all(&mut self, status: &Status) {
         self.first_line(status);
         self.files(status);
@@ -81,7 +89,7 @@ impl Display {
                 format!("{:?} {}", status.mode.clone(), status.input.string.clone())
             }
         };
-        let _ = self.term.print(0, 0, &first_row);
+        let _ = self.term.print_with_attr(0, 0, &first_row, LINE_ATTR);
     }
 
     /// Displays the current directory content, one line per item like in
@@ -177,26 +185,27 @@ impl Display {
         }
     }
 
-    /// Display a preview of a file with bat
+    /// Display a scrollable preview of a file.
     fn preview(&mut self, status: &Status) {
         if let Mode::Preview = status.mode {
-            match status.path_content.selected_file() {
-                Some(file) => {
-                    let _ = self.term.clear();
-                    self.first_line(status);
-                    let attr = Attr::default();
-                    let reader =
-                        std::io::BufReader::new(std::fs::File::open(file.path.clone()).unwrap());
-                    for (row, line) in reader.lines().enumerate() {
-                        let _ = self.term.print_with_attr(
-                            row + 1,
-                            3,
-                            &line.unwrap_or("".to_owned()),
-                            attr,
-                        );
-                    }
-                }
-                None => (),
+            let _ = self.term.clear();
+            self.first_line(status);
+            let content_attr = Attr::default();
+            let line_number_offset = status.preview_lines.len().to_string().len() + 2;
+            for (i, line) in status
+                .preview_lines
+                .iter()
+                .enumerate()
+                .take(min(status.preview_lines.len(), status.window.bottom + 1))
+                .skip(status.window.top)
+            {
+                let row = i + WINDOW_MARGIN_TOP - status.window.top;
+                let _ = self
+                    .term
+                    .print_with_attr(row + 2, 0, &(i + 1).to_string(), LINE_ATTR);
+                let _ = self
+                    .term
+                    .print_with_attr(row + 2, line_number_offset, line, content_attr);
             }
         }
     }

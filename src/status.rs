@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::cmp::min;
 use std::collections::HashSet;
 use std::fs;
+use std::io::BufRead;
 use std::os::unix::fs::PermissionsExt;
 use std::path;
 use std::process::Command;
@@ -27,7 +28,7 @@ pub struct Status {
     /// The mode the application is currenty in
     pub mode: Mode,
     /// The given index of a file.
-    pub file_index: usize,
+    pub line_index: usize,
     /// The indexes of displayed file
     pub window: FilesWindow,
     /// Files marked as flagged
@@ -51,6 +52,9 @@ pub struct Status {
     /// Last edition command kind received
     pub last_edition: LastEdition,
     must_quit: bool,
+    /// Lines of the previewed files.
+    /// Empty if not in preview mode.
+    pub preview_lines: Vec<String>,
 }
 
 impl Status {
@@ -65,7 +69,7 @@ impl Status {
         let terminal = config.terminal;
         let opener = config.opener;
         let mode = Mode::Normal;
-        let file_index = 0;
+        let line_index = 0;
         let window = FilesWindow::new(path_content.files.len(), height);
         let flagged = HashSet::new();
         let input = Input::default();
@@ -73,9 +77,10 @@ impl Status {
         let completion = Completion::default();
         let last_edition = LastEdition::Nothing;
         let must_quit = false;
+        let preview_lines = vec![];
         Self {
             mode,
-            file_index,
+            line_index,
             window,
             flagged,
             input,
@@ -88,6 +93,7 @@ impl Status {
             completion,
             last_edition,
             must_quit,
+            preview_lines,
         }
     }
 
@@ -96,45 +102,67 @@ impl Status {
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
         self.mode = Mode::Normal;
+        self.preview_lines = vec![];
     }
 
     pub fn event_up_one_row(&mut self) {
-        if self.file_index > 0 {
-            self.file_index -= 1;
+        if let Mode::Normal = self.mode {
+            self.path_content.select_prev();
         }
-        self.path_content.select_prev();
-        self.window.scroll_up_one(self.file_index);
+        if self.line_index > 0 {
+            self.line_index -= 1;
+        }
+        self.window.scroll_up_one(self.line_index);
     }
 
     pub fn event_down_one_row(&mut self) {
-        if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
-            self.file_index += 1;
+        let max_line = if let Mode::Normal = self.mode {
+            self.path_content.select_next();
+            self.path_content.files.len()
+        } else {
+            self.preview_lines.len()
+        };
+        if self.line_index < max_line - WINDOW_MARGIN_TOP {
+            self.line_index += 1;
         }
-        self.path_content.select_next();
-        self.window.scroll_down_one(self.file_index);
+        self.window.scroll_down_one(self.line_index);
     }
 
     pub fn event_go_top(&mut self) {
-        self.path_content.select_index(0);
-        self.file_index = 0;
+        if let Mode::Preview = self.mode {
+            self.path_content.select_index(0);
+        }
+        self.line_index = 0;
         self.window.scroll_to(0);
     }
 
-    pub fn event_up_10_rows(&mut self) {
-        let up_index = if self.file_index > 10 {
-            self.file_index - 10
+    pub fn event_page_up(&mut self) {
+        let scroll_up: usize = if let Mode::Normal = self.mode {
+            10
+        } else {
+            self.height
+        };
+        let up_index = if self.line_index > scroll_up {
+            self.line_index - scroll_up
         } else {
             0
         };
-        self.path_content.select_index(up_index);
-        self.file_index = up_index;
+        if let Mode::Normal = self.mode {
+            self.path_content.select_index(up_index);
+        }
+        self.line_index = up_index;
         self.window.scroll_to(up_index);
     }
 
     pub fn event_go_bottom(&mut self) {
-        let last_index = self.path_content.files.len() - 1;
-        self.path_content.select_index(last_index);
-        self.file_index = last_index;
+        let last_index: usize;
+        if let Mode::Normal = self.mode {
+            last_index = self.path_content.files.len() - 1;
+            self.path_content.select_index(last_index);
+        } else {
+            last_index = self.preview_lines.len() - 1;
+        }
+        self.line_index = last_index;
         self.window.scroll_to(last_index);
     }
 
@@ -147,16 +175,20 @@ impl Status {
     }
 
     pub fn event_down_10_rows(&mut self) {
-        let down_index = min(self.path_content.files.len() - 1, self.file_index + 10);
+        let down_index = if let Mode::Normal = self.mode {
+            min(self.path_content.files.len() - 1, self.line_index + 10)
+        } else {
+            min(self.preview_lines.len() - 1, self.line_index + 30)
+        };
         self.path_content.select_index(down_index);
-        self.file_index = down_index;
+        self.line_index = down_index;
         self.window.scroll_to(down_index);
     }
 
     pub fn event_select_row(&mut self, row: u16) {
-        self.file_index = (row - 1).into();
-        self.path_content.select_index(self.file_index);
-        self.window.scroll_to(self.file_index)
+        self.line_index = (row - 1).into();
+        self.path_content.select_index(self.line_index);
+        self.window.scroll_to(self.line_index)
     }
 
     pub fn event_jumplist_next(&mut self) {
@@ -176,7 +208,7 @@ impl Status {
             Some(parent) => {
                 self.path_content = PathContent::new(path::PathBuf::from(parent), self.show_hidden);
                 self.window.reset(self.path_content.files.len());
-                self.file_index = 0;
+                self.line_index = 0;
                 self.input.cursor_start()
             }
             None => (),
@@ -191,13 +223,13 @@ impl Status {
         if self.path_content.files.is_empty() {
             return;
         }
-        if let FileKind::Directory = self.path_content.selected_file().unwrap().file_kind {
+        if let FileKind::Directory = self.path_content.files[self.path_content.selected].file_kind {
             self.path_content = PathContent::new(
                 self.path_content.selected_file().unwrap().path.clone(),
                 self.show_hidden,
             );
             self.window.reset(self.path_content.files.len());
-            self.file_index = 0;
+            self.line_index = 0;
             self.input.cursor_start()
         }
     }
@@ -243,7 +275,9 @@ impl Status {
 
     pub fn event_preview(&mut self) {
         if !self.path_content.files.is_empty() {
-            self.mode = Mode::Preview
+            self.mode = Mode::Preview;
+            self.fill_preview_lines();
+            self.window.reset(self.preview_lines.len())
         }
     }
 
@@ -294,7 +328,7 @@ impl Status {
             }
         }
         if !self.path_content.files.is_empty() {
-            self.path_content.files[self.file_index].unselect();
+            self.path_content.files[self.line_index].unselect();
             self.path_content.sort();
             if self.path_content.reverse {
                 self.path_content.files.reverse();
@@ -313,11 +347,11 @@ impl Status {
             return;
         }
         self.toggle_flag_on_path(self.path_content.selected_file().unwrap().path.clone());
-        if self.file_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
-            self.file_index += 1
+        if self.line_index < self.path_content.files.len() - WINDOW_MARGIN_TOP {
+            self.line_index += 1
         }
         self.path_content.select_next();
-        self.window.scroll_down_one(self.file_index)
+        self.window.scroll_down_one(self.line_index)
     }
 
     pub fn event_flag_all(&mut self) {
@@ -341,7 +375,7 @@ impl Status {
         self.show_hidden = !self.show_hidden;
         self.path_content.show_hidden = !self.path_content.show_hidden;
         self.path_content.reset_files();
-        self.file_index = 0;
+        self.line_index = 0;
         self.window.reset(self.path_content.files.len())
     }
 
@@ -399,9 +433,9 @@ impl Status {
         if self.path_content.files.is_empty() || row as usize > self.path_content.files.len() {
             return;
         }
-        self.file_index = (row - 1).into();
-        self.path_content.select_index(self.file_index);
-        self.window.scroll_to(self.file_index);
+        self.line_index = (row - 1).into();
+        self.path_content.select_index(self.line_index);
+        self.window.scroll_to(self.line_index);
         if let FileKind::Directory = self.path_content.selected_file().unwrap().file_kind {
             self.event_go_to_child()
         } else {
@@ -570,7 +604,7 @@ impl Status {
 
     pub fn exec_search(&mut self) {
         let searched_term = self.input.string.clone();
-        let mut next_index = self.file_index;
+        let mut next_index = self.line_index;
         for (index, file) in self.path_content.files.iter().enumerate().skip(next_index) {
             if file.filename.contains(&searched_term) {
                 next_index = index;
@@ -579,8 +613,8 @@ impl Status {
         }
         self.input.reset();
         self.path_content.select_index(next_index);
-        self.file_index = next_index;
-        self.window.scroll_to(self.file_index);
+        self.line_index = next_index;
+        self.window.scroll_to(self.line_index);
     }
 
     pub fn exec_goto(&mut self) {
@@ -603,15 +637,15 @@ impl Status {
             None => jump_target.clone(),
         };
         self.path_content = PathContent::new(target_dir, self.show_hidden);
-        self.file_index = self
+        self.line_index = self
             .path_content
             .files
             .iter()
             .position(|file| file.path == jump_target.clone())
             .unwrap_or(0);
-        self.path_content.select_index(self.file_index);
+        self.path_content.select_index(self.line_index);
         self.window.reset(self.path_content.files.len());
-        self.window.scroll_to(self.file_index);
+        self.window.scroll_to(self.line_index);
     }
 
     pub fn exec_regex(&mut self) {
@@ -643,7 +677,7 @@ impl Status {
     }
 
     fn refresh_view(&mut self) {
-        self.file_index = 0;
+        self.line_index = 0;
         self.input.reset();
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
@@ -665,6 +699,20 @@ impl Status {
 
     pub fn must_quit(&self) -> bool {
         self.must_quit
+    }
+
+    pub fn fill_preview_lines(&mut self) {
+        self.preview_lines = match self.path_content.selected_file() {
+            Some(file) => {
+                let reader =
+                    std::io::BufReader::new(std::fs::File::open(file.path.clone()).unwrap());
+                reader
+                    .lines()
+                    .map(|line| line.unwrap_or_else(|_| "".to_owned()))
+                    .collect()
+            }
+            None => vec![],
+        };
     }
 }
 

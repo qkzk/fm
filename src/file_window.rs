@@ -12,6 +12,7 @@ const RESERVED_ROWS: usize = 3;
 /// and this struct is responsible for that.
 /// Scrolling is done with `scroll_to`, `scroll_up_one`, `scroll_down_one`
 /// methods.
+#[derive(Debug)]
 pub struct FilesWindow {
     /// The index of the first displayed file.
     pub top: usize,
