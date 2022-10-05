@@ -7,13 +7,13 @@ pub const WINDOW_MARGIN_TOP: usize = 1;
 /// How many rows are reserved at bottom
 const RESERVED_ROWS: usize = 3;
 
-/// Holds the information about the displayed window of files.
-/// When there's too much files to display in one screen, we can scroll
+/// Holds the information about the displayed window of lines.
+/// When there's too much lines to display in one screen, we can scroll
 /// and this struct is responsible for that.
 /// Scrolling is done with `scroll_to`, `scroll_up_one`, `scroll_down_one`
 /// methods.
 #[derive(Debug)]
-pub struct FilesWindow {
+pub struct ContentWindow {
     /// The index of the first displayed file.
     pub top: usize,
     /// The index of the last displayed file.
@@ -24,11 +24,11 @@ pub struct FilesWindow {
     pub height: usize,
 }
 
-impl FilesWindow {
-    /// Returns a new `FilesWindow` instance with values depending of
+impl ContentWindow {
+    /// Returns a new `ContentWindow` instance with values depending of
     /// number of files and height of the terminal screen.
     pub fn new(len: usize, height: usize) -> Self {
-        FilesWindow {
+        ContentWindow {
             top: 0,
             bottom: min(len, height - RESERVED_ROWS),
             len,

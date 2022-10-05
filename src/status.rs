@@ -12,7 +12,7 @@ use regex::Regex;
 use crate::args::Args;
 use crate::completion::Completion;
 use crate::config::Config;
-use crate::file_window::{FilesWindow, WINDOW_MARGIN_TOP};
+use crate::content_window::{ContentWindow, WINDOW_MARGIN_TOP};
 use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::input::Input;
 use crate::last_edition::LastEdition;
@@ -30,7 +30,7 @@ pub struct Status {
     /// The given index of a file.
     pub line_index: usize,
     /// The indexes of displayed file
-    pub window: FilesWindow,
+    pub window: ContentWindow,
     /// Files marked as flagged
     pub flagged: HashSet<path::PathBuf>,
     /// String typed by the user in relevant modes
@@ -70,7 +70,7 @@ impl Status {
         let opener = config.opener;
         let mode = Mode::Normal;
         let line_index = 0;
-        let window = FilesWindow::new(path_content.files.len(), height);
+        let window = ContentWindow::new(path_content.files.len(), height);
         let flagged = HashSet::new();
         let input = Input::default();
         let jump_index = 0;

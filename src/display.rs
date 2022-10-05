@@ -4,7 +4,7 @@ use tuikit::attr::*;
 use tuikit::term::Term;
 
 use crate::config::Colors;
-use crate::file_window::WINDOW_MARGIN_TOP;
+use crate::content_window::WINDOW_MARGIN_TOP;
 use crate::fileinfo::fileinfo_attr;
 use crate::help::HELP_LINES;
 use crate::mode::Mode;

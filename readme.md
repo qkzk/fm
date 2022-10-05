@@ -66,6 +66,7 @@
 - [x] fix: cursor is hidden before leaving the application
 - [x] create a symlink to flagged files
 - [x] preview a file with P
+  - [x] preview navigation, integrate into file_window,
 
 ## TODO
 
@@ -79,7 +80,7 @@
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
-- [ ] preview navigation, integrate into file_window, could be renamed as content window ?
+- [ ] rename file_window to content_window ?
 
 ## BUGS
 
