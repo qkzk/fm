@@ -1,5 +1,5 @@
 use clap::Parser;
-use tuikit::term::{Term, TermHeight};
+use tuikit::term::Term;
 
 use fm::actioner::Actioner;
 use fm::args::Args;
@@ -12,7 +12,7 @@ static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
 fn init_display(colors: Colors) -> Display {
-    let term: Term<()> = Term::with_height(TermHeight::Percent(100)).unwrap();
+    let term: Term<()> = Term::new().unwrap();
     let _ = term.enable_mouse_support();
     Display::new(term, colors)
 }
