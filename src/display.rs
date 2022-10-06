@@ -1,5 +1,8 @@
 use std::cmp::min;
 
+use syntect::easy::HighlightLines;
+use syntect::highlighting::ThemeSet;
+use syntect::parsing::SyntaxSet;
 use tuikit::attr::*;
 use tuikit::term::Term;
 
@@ -8,6 +11,7 @@ use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::help::HELP_LINES;
 use crate::mode::Mode;
+// use crate::preview::*;
 use crate::status::Status;
 
 /// Is responsible for displaying content in the terminal.
@@ -17,12 +21,21 @@ pub struct Display {
     /// It will print every symbol shown on screen.
     pub term: Term,
     colors: Colors,
+    ps: SyntaxSet,
+    ts: ThemeSet,
 }
 
 impl Display {
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Term, colors: Colors) -> Self {
-        Self { term, colors }
+        let ps = SyntaxSet::load_defaults_newlines();
+        let ts = ThemeSet::load_defaults();
+        Self {
+            term,
+            colors,
+            ps,
+            ts,
+        }
     }
 
     const EDIT_BOX_OFFSET: usize = 10;
@@ -190,9 +203,10 @@ impl Display {
         if let Mode::Preview = status.mode {
             let _ = self.term.clear();
             self.first_line(status);
-            let content_attr = Attr::default();
-            let line_number_offset = status.preview.content.len().to_string().len() + 2;
-            for (i, line) in status
+            let syntax = self.ps.find_syntax_by_extension("rs").unwrap();
+            let mut highlight_line = HighlightLines::new(syntax, &self.ts.themes["InspiredGitHub"]);
+
+            for (row, line) in status
                 .preview
                 .content
                 .iter()
@@ -200,14 +214,51 @@ impl Display {
                 .take(min(status.preview.content.len(), status.window.bottom + 1))
                 .skip(status.window.top)
             {
-                let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
-                let _ =
-                    self.term
-                        .print_with_attr(row + 2, 0, &(i + 1).to_string(), Self::LINE_ATTR);
-                let _ = self
-                    .term
-                    .print_with_attr(row + 2, line_number_offset, line, content_attr);
+                let mut col = 0;
+                for v in highlight_line.highlight_line(line, &mut self.ps) {
+                    if v.is_empty() {
+                        continue;
+                    }
+
+                    for (style, s) in v.iter() {
+                        let fg = style.foreground;
+                        let attr = Attr {
+                            fg: Color::Rgb(fg.r, fg.g, fg.b),
+                            ..Default::default()
+                        };
+                        let _ = self.term.print_with_attr(row + 2, col + 5, s, attr);
+                        col += s.len();
+                    }
+                }
             }
+            // highlighter.preview(
+            //     status
+            //         .preview
+            //         .content
+            //         .iter()
+            //         .enumerate()
+            //         .take(min(status.preview.content.len(), status.window.bottom + 1))
+            //         .skip(status.window.top),
+            //     &self.term,
+            // );
+            // let content_attr = Attr::default();
+            // let line_number_offset = status.preview.content.len().to_string().len() + 2;
+            // for (i, line) in status
+            //     .preview
+            //     .content
+            //     .iter()
+            //     .enumerate()
+            //     .take(min(status.preview.content.len(), status.window.bottom + 1))
+            //     .skip(status.window.top)
+            // {
+            //     let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
+            //     let _ =
+            //         self.term
+            //             .print_with_attr(row + 2, 0, &(i + 1).to_string(), Self::LINE_ATTR);
+            //     let _ = self
+            //         .term
+            //         .print_with_attr(row + 2, line_number_offset, line, content_attr);
+            // }
         }
     }
 }
