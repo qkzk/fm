@@ -65,8 +65,6 @@
   - [x] dissociate keybinding from status update
 - [x] fix: cursor is hidden before leaving the application
 - [x] create a symlink to flagged files
-- [x] preview a file with P
-  - [x] preview navigation, integrate into file_window,
 
 ## TODO
 
@@ -81,6 +79,13 @@
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] rename file_window to content_window ?
+- [x] preview a file with P
+  - [x] preview navigation, integrate into file_window,
+  - [x] preview content in head not stack
+  - [ ] use external previewer, async like fzf and whatever
+  - [ ] async / thread / fork ?
+  - [ ] syntax highlighting with [syntect](https://github.com/trishume/syntect)
+- [ ] integrate fzf or another fuzzy finder
 
 ## BUGS
 
