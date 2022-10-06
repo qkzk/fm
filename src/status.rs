@@ -52,7 +52,7 @@ pub struct Status {
     must_quit: bool,
     /// Lines of the previewed files.
     /// Empty if not in preview mode.
-    pub preview_lines: Vec<String>,
+    pub preview_lines: Box<Vec<String>>,
 }
 
 impl Status {
@@ -75,7 +75,7 @@ impl Status {
         let completion = Completion::default();
         let last_edition = LastEdition::Nothing;
         let must_quit = false;
-        let preview_lines = vec![];
+        let preview_lines = Box::new(vec![]);
         Self {
             mode,
             line_index,
@@ -102,7 +102,7 @@ impl Status {
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
         self.mode = Mode::Normal;
-        self.preview_lines = vec![];
+        self.preview_lines = Box::new(vec![]);
     }
 
     pub fn event_up_one_row(&mut self) {
@@ -706,12 +706,14 @@ impl Status {
             Some(file) => {
                 let reader =
                     std::io::BufReader::new(std::fs::File::open(file.path.clone()).unwrap());
-                reader
-                    .lines()
-                    .map(|line| line.unwrap_or_else(|_| "".to_owned()))
-                    .collect()
+                Box::new(
+                    reader
+                        .lines()
+                        .map(|line| line.unwrap_or_else(|_| "".to_owned()))
+                        .collect(),
+                )
             }
-            None => vec![],
+            None => Box::new(vec![]),
         };
     }
 }
