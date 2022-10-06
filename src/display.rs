@@ -191,12 +191,13 @@ impl Display {
             let _ = self.term.clear();
             self.first_line(status);
             let content_attr = Attr::default();
-            let line_number_offset = status.preview_lines.len().to_string().len() + 2;
+            let line_number_offset = status.preview.content.len().to_string().len() + 2;
             for (i, line) in status
-                .preview_lines
+                .preview
+                .content
                 .iter()
                 .enumerate()
-                .take(min(status.preview_lines.len(), status.window.bottom + 1))
+                .take(min(status.preview.content.len(), status.window.bottom + 1))
                 .skip(status.window.top)
             {
                 let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;

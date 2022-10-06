@@ -2,7 +2,6 @@ use std::borrow::Borrow;
 use std::cmp::min;
 use std::collections::HashSet;
 use std::fs;
-use std::io::BufRead;
 use std::os::unix::fs::PermissionsExt;
 use std::path;
 use std::process::Command;
@@ -17,6 +16,7 @@ use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::input::Input;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
+use crate::preview::Preview;
 
 /// Holds every thing about the current status of the application.
 /// Is responsible to execute commands depending on received events, mutating
@@ -52,7 +52,7 @@ pub struct Status {
     must_quit: bool,
     /// Lines of the previewed files.
     /// Empty if not in preview mode.
-    pub preview_lines: Box<Vec<String>>,
+    pub preview: Preview,
 }
 
 impl Status {
@@ -75,7 +75,7 @@ impl Status {
         let completion = Completion::default();
         let last_edition = LastEdition::Nothing;
         let must_quit = false;
-        let preview_lines = Box::new(vec![]);
+        let preview = Preview::default();
         Self {
             mode,
             line_index,
@@ -91,7 +91,7 @@ impl Status {
             completion,
             last_edition,
             must_quit,
-            preview_lines,
+            preview,
         }
     }
 
@@ -102,7 +102,7 @@ impl Status {
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
         self.mode = Mode::Normal;
-        self.empty_preview_lines()
+        self.preview.empty_preview_lines()
     }
 
     pub fn event_up_one_row(&mut self) {
@@ -120,7 +120,7 @@ impl Status {
             self.path_content.select_next();
             self.path_content.files.len()
         } else {
-            self.preview_lines.len()
+            self.preview.content.len()
         };
         if self.line_index < max_line - ContentWindow::WINDOW_MARGIN_TOP {
             self.line_index += 1;
@@ -160,7 +160,7 @@ impl Status {
             last_index = self.path_content.files.len() - 1;
             self.path_content.select_index(last_index);
         } else {
-            last_index = self.preview_lines.len() - 1;
+            last_index = self.preview.content.len() - 1;
         }
         self.line_index = last_index;
         self.window.scroll_to(last_index);
@@ -178,7 +178,7 @@ impl Status {
         let down_index = if let Mode::Normal = self.mode {
             min(self.path_content.files.len() - 1, self.line_index + 10)
         } else {
-            min(self.preview_lines.len() - 1, self.line_index + 30)
+            min(self.preview.content.len() - 1, self.line_index + 30)
         };
         self.path_content.select_index(down_index);
         self.line_index = down_index;
@@ -276,8 +276,8 @@ impl Status {
     pub fn event_preview(&mut self) {
         if !self.path_content.files.is_empty() {
             self.mode = Mode::Preview;
-            self.fill_preview_lines();
-            self.window.reset(self.preview_lines.len())
+            self.preview.fill_preview_lines(&self.path_content);
+            self.window.reset(self.preview.content.len())
         }
     }
 
@@ -702,26 +702,6 @@ impl Status {
     /// terminal parameters gracefully.
     pub fn must_quit(&self) -> bool {
         self.must_quit
-    }
-
-    fn fill_preview_lines(&mut self) {
-        self.preview_lines = match self.path_content.selected_file() {
-            Some(file) => {
-                let reader =
-                    std::io::BufReader::new(std::fs::File::open(file.path.clone()).unwrap());
-                Box::new(
-                    reader
-                        .lines()
-                        .map(|line| line.unwrap_or_else(|_| "".to_owned()))
-                        .collect(),
-                )
-            }
-            None => Box::new(vec![]),
-        };
-    }
-
-    fn empty_preview_lines(&mut self) {
-        self.preview_lines = Box::new(vec![])
     }
 }
 
