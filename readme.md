@@ -85,6 +85,7 @@
   - [ ] use external previewer, async like fzf and whatever
   - [ ] async / thread / fork ?
   - [ ] syntax highlighting with [syntect](https://github.com/trishume/syntect)
+  - [ ] simple example : [latex demo](https://github.com/trishume/syntect/blob/master/examples/latex-demo.rs)
 - [ ] integrate fzf or another fuzzy finder
 
 ## BUGS

@@ -49,4 +49,5 @@ impl Preview {
         )
         .unwrap();
     }
+    // TODO: ref : https://github.com/trishume/syntect/blob/master/examples/latex-demo.rs
 }
