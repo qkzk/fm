@@ -102,7 +102,7 @@ impl Status {
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
         self.mode = Mode::Normal;
-        self.preview_lines = Box::new(vec![]);
+        self.empty_preview_lines()
     }
 
     pub fn event_up_one_row(&mut self) {
@@ -697,11 +697,14 @@ impl Status {
         }
     }
 
+    /// Returns `true` iff the application has to quit.
+    /// This methods allows use to reset the cursors and other
+    /// terminal parameters gracefully.
     pub fn must_quit(&self) -> bool {
         self.must_quit
     }
 
-    pub fn fill_preview_lines(&mut self) {
+    fn fill_preview_lines(&mut self) {
         self.preview_lines = match self.path_content.selected_file() {
             Some(file) => {
                 let reader =
@@ -715,6 +718,10 @@ impl Status {
             }
             None => Box::new(vec![]),
         };
+    }
+
+    fn empty_preview_lines(&mut self) {
+        self.preview_lines = Box::new(vec![])
     }
 }
 
