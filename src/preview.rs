@@ -1,31 +1,55 @@
 use std::io::BufRead;
-use std::iter::Skip;
 
-use syntect::easy::HighlightFile;
 use syntect::easy::HighlightLines;
-use syntect::highlighting::{FontStyle, ThemeSet};
+use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::SyntaxSet;
-use syntect::util::LinesWithEndings;
-use tuikit::attr::*;
+use tuikit::attr::{Attr, Color};
 use tuikit::term::Term;
 
 use crate::fileinfo::PathContent;
 
+pub struct SyntaxedString {
+    row: usize,
+    col: usize,
+    content: String,
+    attr: Attr,
+}
+
+impl SyntaxedString {
+    pub fn from_syntect(row: usize, col: usize, content: String, style: Style) -> Self {
+        let fg = style.foreground;
+        let attr = Attr {
+            fg: Color::Rgb(fg.r, fg.g, fg.b),
+            ..Default::default()
+        };
+        Self {
+            row,
+            col,
+            content,
+            attr,
+        }
+    }
+
+    pub fn print(&self, term: &Term) {
+        let _ = term.print_with_attr(self.row + 2, self.col + 5, &self.content, self.attr);
+    }
+}
+
 pub struct Preview {
-    pub content: Box<Vec<String>>,
+    pub highlighted_content: Box<Vec<Vec<SyntaxedString>>>,
 }
 
 impl Default for Preview {
     fn default() -> Self {
         Self {
-            content: Box::new(vec![]),
+            highlighted_content: Box::new(vec![vec![]]),
         }
     }
 }
 
 impl Preview {
-    pub fn fill_preview_lines(&mut self, path_content: &PathContent) {
-        self.content = match path_content.selected_file() {
+    pub fn new(path_content: &PathContent) -> Self {
+        let content = match path_content.selected_file() {
             Some(file) => {
                 let reader =
                     std::io::BufReader::new(std::fs::File::open(file.path.clone()).unwrap());
@@ -38,58 +62,43 @@ impl Preview {
             }
             None => Box::new(vec![]),
         };
+        let ps = SyntaxSet::load_defaults_nonewlines();
+        let ts = ThemeSet::load_defaults();
+        let mut highlighted_content = Box::new(vec![]);
+        match path_content.selected_file() {
+            Some(file) => {
+                if let Some(syntaxset) = ps.find_syntax_by_extension(&file.extension) {
+                    let syntax = syntaxset.to_owned();
+                    let mut highlight_line =
+                        HighlightLines::new(&syntax, &ts.themes["Solarized (dark)"]);
+
+                    for (row, line) in content.iter().enumerate() {
+                        let mut col = 0;
+                        let mut v_line = vec![];
+                        if let Ok(v) = highlight_line.highlight_line(line, &ps) {
+                            for (style, token) in v.iter() {
+                                v_line.push(SyntaxedString::from_syntect(
+                                    row,
+                                    col,
+                                    token.to_string(),
+                                    *style,
+                                ));
+                                col += token.len();
+                            }
+                        }
+                        highlighted_content.push(v_line)
+                    }
+                }
+            }
+            None => (),
+        }
+
+        Self {
+            highlighted_content,
+        }
     }
 
-    pub fn empty_preview_lines(&mut self) {
-        self.content = Box::new(vec![])
+    pub fn reset(&mut self) {
+        self.highlighted_content = Box::new(vec![vec![]])
     }
-
-    // pub fn bla(&self, path_content: &PathContent) -> HighlightFile {
-    //     HighlightFile::new(
-    //         path_content.selected_file().unwrap().path.clone(),
-    //         &ss,
-    //          SyntaxSet::load_defaults_nonewlines();
-    //         &ThemeSet::load_defaults().themes["InspiredGitHub"].clone(),
-    //     )
-    //     .unwrap()
-    // }
-    // TODO: ref : https://github.com/trishume/syntect/blob/master/examples/latex-demo.rs
 }
-
-// pub struct Highlighter {
-//     ps: SyntaxSet,
-//     ts: ThemeSet,
-// }
-//
-// impl Highlighter {
-//     pub fn preview(&mut self, code: Skip<Vec<String>>, term: &Term) {
-//         let syntax = self.ps.find_syntax_by_extension("yml").unwrap();
-//         let mut h = HighlightLines::new(syntax, &self.ts.themes["base16-ocean.light"]);
-//
-//         for (row, line) in code.iter().enumerate() {
-//             for (col, (style, s)) in h.highlight_line(line, &self.ps).iter().enumerate() {
-//                 let fg = style.foreground;
-//                 let attr = Attr {
-//                     fg: Color::Rgb(fg.r, fg.g, fg.b),
-//                     ..Default::default()
-//                 };
-//                 let _ = term.print_with_attr(row + 2, col + 5, s, attr);
-//             }
-//         }
-//     }
-// }
-//
-// impl Highlighter {
-//     pub fn new() -> Highlighter {
-//         Highlighter {
-//             ps: SyntaxSet::load_defaults_newlines(),
-//             ts: ThemeSet::load_defaults(),
-//         }
-//     }
-// }
-//
-// impl Default for Highlighter {
-//     fn default() -> Self {
-//         Highlighter::new()
-//     }
-// }
