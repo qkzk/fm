@@ -1,8 +1,8 @@
 use std::io::BufRead;
 
 use syntect::easy::HighlightFile;
+use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
-use syntect::highlighting;
 
 use crate::fileinfo::PathContent;
 
@@ -40,8 +40,13 @@ impl Preview {
     }
 
     pub fn bla(&self, path_content: &PathContent) {
-        let ss:
-        let mut highlighter =
-            HighlightFile::new(path_content.selected_file().unwrap().path, &ss, &theme).unwrap();
+        let ss = SyntaxSet::load_defaults_nonewlines();
+        let theme = ThemeSet::load_defaults().themes["InspiredGitHub"].clone();
+        let highlighter = HighlightFile::new(
+            path_content.selected_file().unwrap().path.clone(),
+            &ss,
+            &theme,
+        )
+        .unwrap();
     }
 }
