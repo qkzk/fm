@@ -1,6 +1,8 @@
 use std::io::BufRead;
 
-use syntect;
+use syntect::easy::HighlightFile;
+use syntect::parsing::SyntaxSet;
+use syntect::highlighting;
 
 use crate::fileinfo::PathContent;
 
@@ -35,5 +37,11 @@ impl Preview {
 
     pub fn empty_preview_lines(&mut self) {
         self.content = Box::new(vec![])
+    }
+
+    pub fn bla(&self, path_content: &PathContent) {
+        let ss:
+        let mut highlighter =
+            HighlightFile::new(path_content.selected_file().unwrap().path, &ss, &theme).unwrap();
     }
 }
