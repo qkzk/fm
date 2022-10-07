@@ -191,28 +191,29 @@ impl Display {
             let _ = self.term.clear();
             self.first_line(status);
 
-            for (row, vec_line) in status
+            for (i, vec_line) in status
                 .preview
                 .highlighted_content
                 .iter()
+                .enumerate()
+                .skip(status.window.top)
                 .take(min(
                     status.preview.highlighted_content.len(),
                     status.window.bottom + 1,
                 ))
-                .skip(status.window.top)
-                .enumerate()
             {
+                let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
                 let _ = self.term.print_with_attr(
-                    row + 2,
+                    row,
                     0,
-                    &(row + 1 + status.window.top).to_string(),
+                    &(i + 1 + status.window.top).to_string(),
                     Attr {
                         fg: Color::CYAN,
                         ..Default::default()
                     },
                 );
                 for s in vec_line.iter() {
-                    s.print(&self.term);
+                    s.print(&self.term, row);
                 }
             }
         }

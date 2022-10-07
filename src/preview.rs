@@ -9,29 +9,29 @@ use tuikit::term::Term;
 use crate::fileinfo::PathContent;
 
 pub struct SyntaxedString {
-    row: usize,
+    // row: usize,
     col: usize,
     content: String,
     attr: Attr,
 }
 
 impl SyntaxedString {
-    pub fn from_syntect(row: usize, col: usize, content: String, style: Style) -> Self {
+    pub fn from_syntect(col: usize, content: String, style: Style) -> Self {
         let fg = style.foreground;
         let attr = Attr {
             fg: Color::Rgb(fg.r, fg.g, fg.b),
             ..Default::default()
         };
         Self {
-            row,
+            // row,
             col,
             content,
             attr,
         }
     }
 
-    pub fn print(&self, term: &Term) {
-        let _ = term.print_with_attr(self.row + 2, self.col + 5, &self.content, self.attr);
+    pub fn print(&self, term: &Term, row: usize) {
+        let _ = term.print_with_attr(row, self.col + 5, &self.content, self.attr);
     }
 }
 
@@ -72,13 +72,12 @@ impl Preview {
                     let mut highlight_line =
                         HighlightLines::new(&syntax, &ts.themes["Solarized (dark)"]);
 
-                    for (row, line) in content.iter().enumerate() {
+                    for line in content.iter() {
                         let mut col = 0;
                         let mut v_line = vec![];
                         if let Ok(v) = highlight_line.highlight_line(line, &ps) {
                             for (style, token) in v.iter() {
                                 v_line.push(SyntaxedString::from_syntect(
-                                    row,
                                     col,
                                     token.to_string(),
                                     *style,
