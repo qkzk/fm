@@ -105,6 +105,8 @@ pub struct FileInfo {
     pub path: path::PathBuf,
     /// Filename
     pub filename: String,
+    /// size (nb of bytes) of the file
+    pub size: u64,
     /// File size as a `String`, already human formated.
     pub file_size: String,
     /// First symbol displaying the kind of file.
@@ -129,7 +131,8 @@ impl FileInfo {
     pub fn new(direntry: &DirEntry) -> Result<FileInfo, &'static str> {
         let path = direntry.path();
         let filename = extract_filename(direntry);
-        let file_size = human_size(extract_file_size(direntry));
+        let size = extract_file_size(direntry);
+        let file_size = human_size(size);
         let permissions = extract_permissions_string(direntry);
         let owner = extract_owner(direntry);
         let system_time = extract_datetime(direntry);
@@ -144,6 +147,7 @@ impl FileInfo {
         Ok(FileInfo {
             path,
             filename,
+            size,
             file_size,
             dir_symbol,
             permissions,

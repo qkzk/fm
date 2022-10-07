@@ -1,5 +1,7 @@
-use std::io::BufRead;
+use std::io::{BufRead, Read};
+use std::path::PathBuf;
 
+use content_inspector::{inspect, ContentType};
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
@@ -11,6 +13,7 @@ use crate::fileinfo::PathContent;
 pub enum Preview {
     SyntaxedPreview(SyntaxedContent),
     TextPreview(TextContent),
+    Binary(BinaryContent),
     Empty,
 }
 
@@ -23,10 +26,21 @@ impl Preview {
         let ps = SyntaxSet::load_defaults_nonewlines();
         match path_content.selected_file() {
             Some(file) => {
-                if let Some(syntaxset) = ps.find_syntax_by_extension(&file.extension) {
-                    Self::SyntaxedPreview(SyntaxedContent::new(ps.clone(), path_content, syntaxset))
+                let mut f = std::fs::File::open(file.path.clone()).unwrap();
+                let mut buffer = vec![0; 1024];
+                f.read_exact(&mut buffer).unwrap();
+                if inspect(&buffer) == ContentType::BINARY {
+                    Self::Binary(BinaryContent::new(path_content.to_owned()))
                 } else {
-                    Self::TextPreview(TextContent::from_file(path_content))
+                    if let Some(syntaxset) = ps.find_syntax_by_extension(&file.extension) {
+                        Self::SyntaxedPreview(SyntaxedContent::new(
+                            ps.clone(),
+                            path_content,
+                            syntaxset,
+                        ))
+                    } else {
+                        Self::TextPreview(TextContent::from_file(path_content))
+                    }
                 }
             }
             None => Self::Empty,
@@ -38,6 +52,7 @@ impl Preview {
             Self::SyntaxedPreview(syntaxed) => syntaxed.len(),
             Self::TextPreview(text) => text.len(),
             Self::Empty => 0,
+            Self::Binary(binary) => binary.len(),
         }
     }
 
@@ -171,5 +186,25 @@ impl SyntaxedString {
 
     pub fn print(&self, term: &Term, row: usize, offset: usize) {
         let _ = term.print_with_attr(row, self.col + offset + 2, &self.content, self.attr);
+    }
+}
+
+pub struct BinaryContent {
+    pub path: PathBuf,
+    length: u64,
+}
+
+impl BinaryContent {
+    fn new(path_content: PathContent) -> Self {
+        let file = path_content.selected_file().unwrap();
+
+        Self {
+            path: file.path.clone(),
+            length: file.size,
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.length as usize
     }
 }

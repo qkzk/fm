@@ -1,4 +1,5 @@
 use std::cmp::min;
+use std::io::Read;
 
 use tuikit::attr::*;
 use tuikit::term::Term;
@@ -239,8 +240,54 @@ impl Display {
                         let _ = self.term.print(row, line_number_width + 3, line);
                     }
                 }
+                Preview::Binary(bin) => {
+                    let mut reader =
+                        std::io::BufReader::new(std::fs::File::open(bin.path.clone()).unwrap());
+                    let mut buffer = Box::new(vec![]);
+                    reader.read_to_end(&mut buffer).unwrap();
+                    let mut line: Vec<u8> = vec![];
+                    for (i, byte) in buffer
+                        .iter()
+                        .enumerate()
+                        .skip(16 * status.window.top)
+                        .take(min(length, 16 * status.window.bottom + 1))
+                    {
+                        let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
+                        if line.len() < 16 {
+                            line.push(*byte);
+                        } else {
+                            let _ = self.term.print_with_attr(
+                                row / 16,
+                                0,
+                                &format_line_nr_hex((i + 1 + status.window.top) / 16),
+                                Attr {
+                                    fg: Color::CYAN,
+                                    ..Default::default()
+                                },
+                            );
+                            let _ = self.term.print(
+                                row / 16,
+                                line_number_width + 3,
+                                &format_line_of_bytes(line),
+                            );
+                            line = vec![];
+                        }
+                    }
+                }
                 Preview::Empty => (),
             }
         }
     }
+}
+
+fn format_line_nr_hex(line_nr: usize) -> String {
+    format!("{:x>}", line_nr)
+}
+
+fn format_line_of_bytes(bytes: Vec<u8>) -> String {
+    bytes
+        .iter()
+        .map(|byte| format!("{:02x}", byte))
+        .collect::<Vec<String>>()
+        .join(" ")
 }
