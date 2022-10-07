@@ -8,6 +8,7 @@ use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::help::HELP_LINES;
 use crate::mode::Mode;
+use crate::preview::Preview;
 use crate::status::Status;
 
 /// Is responsible for displaying content in the terminal.
@@ -191,30 +192,54 @@ impl Display {
             let _ = self.term.clear();
             self.first_line(status);
 
-            for (i, vec_line) in status
-                .preview
-                .highlighted_content
-                .iter()
-                .enumerate()
-                .skip(status.window.top)
-                .take(min(
-                    status.preview.highlighted_content.len(),
-                    status.window.bottom + 1,
-                ))
-            {
-                let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
-                let _ = self.term.print_with_attr(
-                    row,
-                    0,
-                    &(i + 1 + status.window.top).to_string(),
-                    Attr {
-                        fg: Color::CYAN,
-                        ..Default::default()
-                    },
-                );
-                for s in vec_line.iter() {
-                    s.print(&self.term, row);
+            let length = status.preview.len();
+            let line_number_width = length.to_string().len();
+            match &status.preview {
+                Preview::SyntaxedPreview(syntaxed) => {
+                    for (i, vec_line) in syntaxed
+                        .highlighted_content
+                        .iter()
+                        .enumerate()
+                        .skip(status.window.top)
+                        .take(min(length, status.window.bottom + 1))
+                    {
+                        let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
+                        let _ = self.term.print_with_attr(
+                            row,
+                            0,
+                            &(i + 1 + status.window.top).to_string(),
+                            Attr {
+                                fg: Color::CYAN,
+                                ..Default::default()
+                            },
+                        );
+                        for s in vec_line.iter() {
+                            s.print(&self.term, row, line_number_width);
+                        }
+                    }
                 }
+                Preview::TextPreview(text) => {
+                    for (i, line) in text
+                        .content
+                        .iter()
+                        .enumerate()
+                        .skip(status.window.top)
+                        .take(min(length, status.window.bottom + 1))
+                    {
+                        let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
+                        let _ = self.term.print_with_attr(
+                            row,
+                            0,
+                            &(i + 1 + status.window.top).to_string(),
+                            Attr {
+                                fg: Color::CYAN,
+                                ..Default::default()
+                            },
+                        );
+                        let _ = self.term.print(row, line_number_width + 3, line);
+                    }
+                }
+                Preview::Empty => (),
             }
         }
     }

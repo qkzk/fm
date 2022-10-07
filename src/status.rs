@@ -75,7 +75,7 @@ impl Status {
         let completion = Completion::default();
         let last_edition = LastEdition::Nothing;
         let must_quit = false;
-        let preview = Preview::default();
+        let preview = Preview::Empty;
         Self {
             mode,
             line_index,
@@ -102,7 +102,7 @@ impl Status {
         self.path_content.reset_files();
         self.window.reset(self.path_content.files.len());
         self.mode = Mode::Normal;
-        self.preview.reset()
+        self.preview = Preview::empty()
     }
 
     pub fn event_up_one_row(&mut self) {
@@ -120,7 +120,7 @@ impl Status {
             self.path_content.select_next();
             self.path_content.files.len()
         } else {
-            self.preview.highlighted_content.len()
+            self.preview.len()
         };
         if self.line_index < max_line - ContentWindow::WINDOW_MARGIN_TOP {
             self.line_index += 1;
@@ -160,7 +160,7 @@ impl Status {
             last_index = self.path_content.files.len() - 1;
             self.path_content.select_index(last_index);
         } else {
-            last_index = self.preview.highlighted_content.len() - 1;
+            last_index = self.preview.len() - 1;
         }
         self.line_index = last_index;
         self.window.scroll_to(last_index);
@@ -178,10 +178,7 @@ impl Status {
         let down_index = if let Mode::Normal = self.mode {
             min(self.path_content.files.len() - 1, self.line_index + 10)
         } else {
-            min(
-                self.preview.highlighted_content.len() - 1,
-                self.line_index + 30,
-            )
+            min(self.preview.len() - 1, self.line_index + 30)
         };
         self.path_content.select_index(down_index);
         self.line_index = down_index;
@@ -280,7 +277,7 @@ impl Status {
         if !self.path_content.files.is_empty() {
             self.mode = Mode::Preview;
             self.preview = Preview::new(&self.path_content);
-            self.window.reset(self.preview.highlighted_content.len())
+            self.window.reset(self.preview.len())
         }
     }
 
