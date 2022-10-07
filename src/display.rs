@@ -241,6 +241,11 @@ impl Display {
                     }
                 }
                 Preview::Binary(bin) => {
+                    // TODO: Simplify this to only read relevant bytes
+                    // Don't use a bufreader, just skip to desired position, read the correct number of bytes
+                    // Slice it into rows of pair of bytes + line number (int)
+                    // Make a type for littleendian or whatever kind of representation with inspect
+                    // Format it from the struct
                     let mut reader =
                         std::io::BufReader::new(std::fs::File::open(bin.path.clone()).unwrap());
                     let mut buffer = Box::new(vec![]);
