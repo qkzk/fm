@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::io::{BufRead, Read};
 use std::path::PathBuf;
 
@@ -11,13 +12,15 @@ use tuikit::term::Term;
 use crate::fileinfo::PathContent;
 
 pub enum Preview {
-    SyntaxedPreview(SyntaxedContent),
-    TextPreview(TextContent),
+    Syntaxed(SyntaxedContent),
+    Text(TextContent),
     Binary(BinaryContent),
     Empty,
 }
 
 impl Preview {
+    const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
+
     pub fn empty() -> Self {
         Self::Empty
     }
@@ -25,22 +28,18 @@ impl Preview {
     pub fn new(path_content: &PathContent) -> Self {
         let ps = SyntaxSet::load_defaults_nonewlines();
         match path_content.selected_file() {
-            Some(file) => {
-                let mut f = std::fs::File::open(file.path.clone()).unwrap();
-                let mut buffer = vec![0; 1024];
-                f.read_exact(&mut buffer).unwrap();
-                if inspect(&buffer) == ContentType::BINARY {
+            Some(file_info) => {
+                let mut file = std::fs::File::open(file_info.path.clone()).unwrap();
+                let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
+                if let Some(syntaxset) = ps.find_syntax_by_extension(&file_info.extension) {
+                    Self::Syntaxed(SyntaxedContent::new(ps.clone(), path_content, syntaxset))
+                } else if file_info.size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
+                    && file.read_exact(&mut buffer).is_ok()
+                    && inspect(&buffer) == ContentType::BINARY
+                {
                     Self::Binary(BinaryContent::new(path_content.to_owned()))
                 } else {
-                    if let Some(syntaxset) = ps.find_syntax_by_extension(&file.extension) {
-                        Self::SyntaxedPreview(SyntaxedContent::new(
-                            ps.clone(),
-                            path_content,
-                            syntaxset,
-                        ))
-                    } else {
-                        Self::TextPreview(TextContent::from_file(path_content))
-                    }
+                    Self::Text(TextContent::from_file(path_content))
                 }
             }
             None => Self::Empty,
@@ -49,8 +48,8 @@ impl Preview {
 
     pub fn len(&self) -> usize {
         match self {
-            Self::SyntaxedPreview(syntaxed) => syntaxed.len(),
-            Self::TextPreview(text) => text.len(),
+            Self::Syntaxed(syntaxed) => syntaxed.len(),
+            Self::Text(text) => text.len(),
             Self::Empty => 0,
             Self::Binary(binary) => binary.len(),
         }
@@ -192,19 +191,71 @@ impl SyntaxedString {
 pub struct BinaryContent {
     pub path: PathBuf,
     length: u64,
+    pub content: Box<Vec<Line>>,
 }
 
 impl BinaryContent {
+    const LINE_WIDTH: usize = 16;
+
     fn new(path_content: PathContent) -> Self {
         let file = path_content.selected_file().unwrap();
+        let mut reader = std::io::BufReader::new(std::fs::File::open(file.path.clone()).unwrap());
+        let mut buffer = [0; Self::LINE_WIDTH];
+        let mut content: Box<Vec<Line>> = Box::new(vec![]);
+        while let Ok(n) = reader.read(&mut buffer[..]) {
+            if n != Self::LINE_WIDTH {
+                content.push(Line::new((&buffer[0..n]).into()));
+                break;
+            } else {
+                content.push(Line::new(buffer.into()));
+            }
+        }
 
         Self {
             path: file.path.clone(),
-            length: file.size,
+            length: file.size / Self::LINE_WIDTH as u64,
+            content,
         }
     }
 
-    fn len(&self) -> usize {
+    /// WATCHOUT !
+    /// Doesn't return the size of the file, like similar methods in other variants.
+    /// It returns the number of **lines**.
+    /// It's the size of the file divided by `BinaryContent::LINE_WIDTH` which is 16.
+    pub fn len(&self) -> usize {
         self.length as usize
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.length == 0
+    }
+}
+
+/// Holds a `Vec` of "bytes" (`u8`).
+/// It's mostly used to implement a `print` method.
+pub struct Line {
+    line: Vec<u8>,
+}
+
+impl Line {
+    fn new(line: Vec<u8>) -> Self {
+        Self { line }
+    }
+
+    fn format(&self) -> String {
+        let mut s = "".to_owned();
+        for (i, byte) in self.line.iter().enumerate() {
+            let _ = write!(s, "{:02x}", byte);
+            if i % 2 == 1 {
+                s.push(' ');
+            }
+        }
+        s
+    }
+
+    /// Print line of pair of bytes in hexadecimal, 16 bytes long.
+    /// It imitates the output of hexdump.
+    pub fn print(&self, term: &Term, row: usize, offset: usize) {
+        let _ = term.print(row, offset + 2, &self.format());
     }
 }

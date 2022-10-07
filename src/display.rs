@@ -1,5 +1,4 @@
 use std::cmp::min;
-use std::io::Read;
 
 use tuikit::attr::*;
 use tuikit::term::Term;
@@ -84,7 +83,11 @@ impl Display {
                 format!("Confirm {} (y/n) : ", status.last_edition)
             }
             Mode::Preview => match status.path_content.selected_file() {
-                Some(fileinfo) => format!("{:?} {}", status.mode.clone(), fileinfo.filename),
+                Some(fileinfo) => format!(
+                    "{:?} {}",
+                    status.mode.clone(),
+                    fileinfo.path.to_string_lossy()
+                ),
                 None => "".to_owned(),
             },
             _ => {
@@ -188,6 +191,12 @@ impl Display {
     }
 
     /// Display a scrollable preview of a file.
+    /// Multiple modes are supported :
+    /// if the filename extension is recognized, the preview is highlighted,
+    /// if the file content is recognized as binary, an hex dump is previewed with 16 bytes lines,
+    /// else the content is supposed to be text and shown as such.
+    /// It may fail to recognize some usual extensions, notably `.toml`.
+    /// It may fail to recognize small files (< 1024 bytes).
     fn preview(&mut self, status: &Status) {
         if let Mode::Preview = status.mode {
             let _ = self.term.clear();
@@ -196,7 +205,8 @@ impl Display {
             let length = status.preview.len();
             let line_number_width = length.to_string().len();
             match &status.preview {
-                Preview::SyntaxedPreview(syntaxed) => {
+                // TODO: should it belong to separate methods ?
+                Preview::Syntaxed(syntaxed) => {
                     for (i, vec_line) in syntaxed
                         .highlighted_content
                         .iter()
@@ -219,7 +229,7 @@ impl Display {
                         }
                     }
                 }
-                Preview::TextPreview(text) => {
+                Preview::Text(text) => {
                     for (i, line) in text
                         .content
                         .iter()
@@ -241,42 +251,27 @@ impl Display {
                     }
                 }
                 Preview::Binary(bin) => {
-                    // TODO: Simplify this to only read relevant bytes
-                    // Don't use a bufreader, just skip to desired position, read the correct number of bytes
-                    // Slice it into rows of pair of bytes + line number (int)
-                    // Make a type for littleendian or whatever kind of representation with inspect
-                    // Format it from the struct
-                    let mut reader =
-                        std::io::BufReader::new(std::fs::File::open(bin.path.clone()).unwrap());
-                    let mut buffer = Box::new(vec![]);
-                    reader.read_to_end(&mut buffer).unwrap();
-                    let mut line: Vec<u8> = vec![];
-                    for (i, byte) in buffer
+                    let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
+
+                    for (i, line) in bin
+                        .content
                         .iter()
                         .enumerate()
-                        .skip(16 * status.window.top)
-                        .take(min(length, 16 * status.window.bottom + 1))
+                        .skip(status.window.top)
+                        .take(min(length, status.window.bottom + 1))
                     {
                         let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
-                        if line.len() < 16 {
-                            line.push(*byte);
-                        } else {
-                            let _ = self.term.print_with_attr(
-                                row / 16,
-                                0,
-                                &format_line_nr_hex((i + 1 + status.window.top) / 16),
-                                Attr {
-                                    fg: Color::CYAN,
-                                    ..Default::default()
-                                },
-                            );
-                            let _ = self.term.print(
-                                row / 16,
-                                line_number_width + 3,
-                                &format_line_of_bytes(line),
-                            );
-                            line = vec![];
-                        }
+
+                        let _ = self.term.print_with_attr(
+                            row,
+                            0,
+                            &format_line_nr_hex(i + 1 + status.window.top, line_number_width_hex),
+                            Attr {
+                                fg: Color::CYAN,
+                                ..Default::default()
+                            },
+                        );
+                        line.print(&self.term, row, line_number_width_hex + 1);
                     }
                 }
                 Preview::Empty => (),
@@ -285,14 +280,6 @@ impl Display {
     }
 }
 
-fn format_line_nr_hex(line_nr: usize) -> String {
-    format!("{:x>}", line_nr)
-}
-
-fn format_line_of_bytes(bytes: Vec<u8>) -> String {
-    bytes
-        .iter()
-        .map(|byte| format!("{:02x}", byte))
-        .collect::<Vec<String>>()
-        .join(" ")
+fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
+    format!("{:0width$x}", line_nr)
 }
