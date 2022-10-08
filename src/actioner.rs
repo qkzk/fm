@@ -183,7 +183,7 @@ impl Actioner {
     /// Move down 10 rows
     fn page_down(&self, status: &mut Status) {
         match status.mode {
-            Mode::Normal | Mode::Preview => status.event_down_10_rows(),
+            Mode::Normal | Mode::Preview => status.event_page_down(),
             _ => (),
         }
     }

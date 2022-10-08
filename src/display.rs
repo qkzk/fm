@@ -8,6 +8,7 @@ use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::help::HELP_LINES;
 use crate::mode::Mode;
+use crate::preview::Preview;
 use crate::status::Status;
 
 /// Is responsible for displaying content in the terminal.
@@ -82,7 +83,11 @@ impl Display {
                 format!("Confirm {} (y/n) : ", status.last_edition)
             }
             Mode::Preview => match status.path_content.selected_file() {
-                Some(fileinfo) => format!("{:?} {}", status.mode.clone(), fileinfo.filename),
+                Some(fileinfo) => format!(
+                    "{:?} {}",
+                    status.mode.clone(),
+                    fileinfo.path.to_string_lossy()
+                ),
                 None => "".to_owned(),
             },
             _ => {
@@ -186,27 +191,95 @@ impl Display {
     }
 
     /// Display a scrollable preview of a file.
+    /// Multiple modes are supported :
+    /// if the filename extension is recognized, the preview is highlighted,
+    /// if the file content is recognized as binary, an hex dump is previewed with 16 bytes lines,
+    /// else the content is supposed to be text and shown as such.
+    /// It may fail to recognize some usual extensions, notably `.toml`.
+    /// It may fail to recognize small files (< 1024 bytes).
     fn preview(&mut self, status: &Status) {
         if let Mode::Preview = status.mode {
             let _ = self.term.clear();
             self.first_line(status);
-            let content_attr = Attr::default();
-            let line_number_offset = status.preview_lines.len().to_string().len() + 2;
-            for (i, line) in status
-                .preview_lines
-                .iter()
-                .enumerate()
-                .take(min(status.preview_lines.len(), status.window.bottom + 1))
-                .skip(status.window.top)
-            {
-                let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
-                let _ =
-                    self.term
-                        .print_with_attr(row + 2, 0, &(i + 1).to_string(), Self::LINE_ATTR);
-                let _ = self
-                    .term
-                    .print_with_attr(row + 2, line_number_offset, line, content_attr);
+
+            let length = status.preview.len();
+            let line_number_width = length.to_string().len();
+            match &status.preview {
+                // TODO: should it belong to separate methods ?
+                Preview::Syntaxed(syntaxed) => {
+                    for (i, vec_line) in syntaxed
+                        .highlighted_content
+                        .iter()
+                        .enumerate()
+                        .skip(status.window.top)
+                        .take(min(length, status.window.bottom + 1))
+                    {
+                        let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
+                        let _ = self.term.print_with_attr(
+                            row,
+                            0,
+                            &(i + 1 + status.window.top).to_string(),
+                            Attr {
+                                fg: Color::CYAN,
+                                ..Default::default()
+                            },
+                        );
+                        for s in vec_line.iter() {
+                            s.print(&self.term, row, line_number_width);
+                        }
+                    }
+                }
+                Preview::Text(text) => {
+                    for (i, line) in text
+                        .content
+                        .iter()
+                        .enumerate()
+                        .skip(status.window.top)
+                        .take(min(length, status.window.bottom + 1))
+                    {
+                        let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
+                        let _ = self.term.print_with_attr(
+                            row,
+                            0,
+                            &(i + 1 + status.window.top).to_string(),
+                            Attr {
+                                fg: Color::CYAN,
+                                ..Default::default()
+                            },
+                        );
+                        let _ = self.term.print(row, line_number_width + 3, line);
+                    }
+                }
+                Preview::Binary(bin) => {
+                    let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
+
+                    for (i, line) in bin
+                        .content
+                        .iter()
+                        .enumerate()
+                        .skip(status.window.top)
+                        .take(min(length, status.window.bottom + 1))
+                    {
+                        let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
+
+                        let _ = self.term.print_with_attr(
+                            row,
+                            0,
+                            &format_line_nr_hex(i + 1 + status.window.top, line_number_width_hex),
+                            Attr {
+                                fg: Color::CYAN,
+                                ..Default::default()
+                            },
+                        );
+                        line.print(&self.term, row, line_number_width_hex + 1);
+                    }
+                }
+                Preview::Empty => (),
             }
         }
     }
+}
+
+fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
+    format!("{:0width$x}", line_nr)
 }

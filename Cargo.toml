@@ -14,9 +14,11 @@ path = "src/lib.rs"
 
 [dependencies]
 chrono = "*"
+clap = { version = "4.0", features = ["derive"] }
 regex = "1"
 serde_yaml = "0.9.13"
 shellexpand = "2.1.2"
+syntect = "5.0"
 tuikit = "*"
 users = "0.11.0"
-clap = { version = "4.0", features = ["derive"] }
+content_inspector = "0.2.4"
