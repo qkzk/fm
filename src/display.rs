@@ -55,6 +55,7 @@ impl Display {
         self.cursor(status);
         self.help(status);
         self.jump_list(status);
+        self.history(status);
         self.completion(status);
         self.preview(status);
     }
@@ -159,6 +160,22 @@ impl Display {
             for (row, path) in status.flagged.iter().enumerate() {
                 let mut attr = Attr::default();
                 if row == status.jump_index {
+                    attr.effect |= Effect::REVERSE;
+                }
+                let _ = self
+                    .term
+                    .print_with_attr(row + 1, 4, path.to_str().unwrap(), attr);
+            }
+        }
+    }
+    /// Display the history of visited directories.
+    fn history(&mut self, status: &Status) {
+        if let Mode::History = status.mode {
+            let _ = self.term.clear();
+            let _ = self.term.print(0, 0, "Go to...");
+            for (row, path) in status.history.visited.iter().rev().enumerate() {
+                let mut attr = Attr::default();
+                if row == status.history.len() - status.history.index - 1 {
                     attr.effect |= Effect::REVERSE;
                 }
                 let _ = self

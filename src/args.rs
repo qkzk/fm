@@ -42,6 +42,7 @@ use clap::Parser;
 ///     w:      REGEXMATCH{n}
 ///     j:      JUMP{n}
 ///     O:      SORT{n}
+///     H:      HISTORY{n}
 ///     Enter:  Execute mode then NORMAL{n}
 ///     Esc:    NORMAL{n}
 pub struct Args {

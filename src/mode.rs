@@ -33,6 +33,8 @@ pub enum Mode {
     Sort,
     /// Preview a content with bat
     Preview,
+    /// Display a stack of visited directories,
+    History,
 }
 
 impl fmt::Debug for Mode {
@@ -49,6 +51,7 @@ impl fmt::Debug for Mode {
             Mode::Goto => write!(f, "Goto  :  "),
             Mode::RegexMatch => write!(f, "Regex :  "),
             Mode::Jump => write!(f, "Jump  :  "),
+            Mode::History => write!(f, "History :"),
             Mode::NeedConfirmation => write!(f, "Y/N   :"),
             Mode::Sort => write!(f, "(N)ame (D)ate (S)ize (E)xt (R)ev :"),
             Mode::Preview => write!(f, "Preview : "),

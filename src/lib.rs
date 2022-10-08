@@ -12,3 +12,4 @@ pub mod last_edition;
 pub mod mode;
 pub mod preview;
 pub mod status;
+pub mod visited;
