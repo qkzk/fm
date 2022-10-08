@@ -44,6 +44,7 @@ impl Actioner {
             (keybindings.sort_by, EventChar::Sort),
             (keybindings.symlink, EventChar::Symlink),
             (keybindings.preview, EventChar::Preview),
+            (keybindings.history, EventChar::History),
         ]);
         Self { binds }
     }
@@ -85,6 +86,7 @@ impl Actioner {
         match status.mode {
             Mode::Normal | Mode::Preview => status.event_up_one_row(),
             Mode::Jump => status.event_jumplist_prev(),
+            Mode::History => status.event_history_prev(),
             Mode::Goto | Mode::Exec | Mode::Search => {
                 status.completion.prev();
             }
@@ -97,6 +99,7 @@ impl Actioner {
         match status.mode {
             Mode::Normal | Mode::Preview => status.event_down_one_row(),
             Mode::Jump => status.event_jumplist_next(),
+            Mode::History => status.event_history_next(),
             Mode::Goto | Mode::Exec | Mode::Search => {
                 status.completion.next();
             }
@@ -208,6 +211,7 @@ impl Actioner {
             Mode::Goto => status.exec_goto(),
             Mode::RegexMatch => status.exec_regex(),
             Mode::Jump => status.exec_jump(),
+            Mode::History => status.exec_history(),
             Mode::Normal | Mode::NeedConfirmation | Mode::Help | Mode::Sort | Mode::Preview => (),
         }
 
@@ -251,6 +255,7 @@ impl Actioner {
             },
             Mode::Help | Mode::Preview => status.event_normal(),
             Mode::Jump => (),
+            Mode::History => (),
             Mode::NeedConfirmation => {
                 if c == 'y' {
                     status.exec_last_edition()

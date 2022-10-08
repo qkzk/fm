@@ -42,6 +42,7 @@ P:      preview this file
     w:      REGEXMATCH
     j:      JUMP
     O:      SORT
+    H:      HISTORY
     Enter:  Execute mode then NORMAL
     Esc:    NORMAL
 ";

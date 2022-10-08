@@ -203,6 +203,8 @@ pub struct Keybindings {
     pub symlink: char,
     /// Preview with bat
     pub preview: char,
+    /// Display a stack of visited directories
+    pub history: char,
 }
 
 impl Keybindings {
@@ -284,6 +286,9 @@ impl Keybindings {
         if let Some(preview) = yaml["preview"].as_str().map(|s| s.to_string()) {
             self.preview = preview.chars().next().unwrap_or('P');
         }
+        if let Some(history) = yaml["history"].as_str().map(|s| s.to_string()) {
+            self.history = history.chars().next().unwrap_or('H');
+        }
     }
 
     /// Returns a new `Keybindings` instance with hardcoded values.
@@ -314,6 +319,7 @@ impl Keybindings {
             sort_by: 'O',
             symlink: 'S',
             preview: 'P',
+            history: 'H',
         }
     }
 }

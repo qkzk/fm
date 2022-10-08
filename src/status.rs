@@ -17,6 +17,7 @@ use crate::input::Input;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
 use crate::preview::Preview;
+use crate::visited::History;
 
 /// Holds every thing about the current status of the application.
 /// Is responsible to execute commands depending on received events, mutating
@@ -53,6 +54,8 @@ pub struct Status {
     /// Lines of the previewed files.
     /// Empty if not in preview mode.
     pub preview: Preview,
+    /// Visited directories
+    pub history: History,
 }
 
 impl Status {
@@ -62,7 +65,7 @@ impl Status {
             eprintln!("File does not exists {:?}", args.path);
             std::process::exit(2)
         });
-        let path_content = PathContent::new(path, args.all);
+        let path_content = PathContent::new(path.clone(), args.all);
         let show_hidden = args.all;
         let terminal = config.terminal;
         let opener = config.opener;
@@ -76,6 +79,8 @@ impl Status {
         let last_edition = LastEdition::Nothing;
         let must_quit = false;
         let preview = Preview::Empty;
+        let mut history = History::default();
+        history.push(&path);
         Self {
             mode,
             line_index,
@@ -92,6 +97,7 @@ impl Status {
             last_edition,
             must_quit,
             preview,
+            history,
         }
     }
 
@@ -203,10 +209,20 @@ impl Status {
         }
     }
 
+    pub fn event_history_next(&mut self) {
+        self.history.next()
+    }
+
+    pub fn event_history_prev(&mut self) {
+        self.history.prev()
+    }
+
     pub fn event_move_to_parent(&mut self) {
         match self.path_content.path.parent() {
             Some(parent) => {
-                self.path_content = PathContent::new(path::PathBuf::from(parent), self.show_hidden);
+                let path = path::PathBuf::from(parent);
+                self.history.push(&path);
+                self.path_content = PathContent::new(path, self.show_hidden);
                 self.window.reset(self.path_content.files.len());
                 self.line_index = 0;
                 self.input.cursor_start()
@@ -224,10 +240,9 @@ impl Status {
             return;
         }
         if let FileKind::Directory = self.path_content.files[self.path_content.selected].file_kind {
-            self.path_content = PathContent::new(
-                self.path_content.selected_file().unwrap().path.clone(),
-                self.show_hidden,
-            );
+            let childpath = self.path_content.selected_file().unwrap().path.clone();
+            self.history.push(&childpath);
+            self.path_content = PathContent::new(childpath, self.show_hidden);
             self.window.reset(self.path_content.files.len());
             self.line_index = 0;
             self.input.cursor_start()
@@ -429,6 +444,10 @@ impl Status {
         }
     }
 
+    pub fn event_history(&mut self) {
+        self.mode = Mode::History
+    }
+
     pub fn event_right_click(&mut self, row: u16) {
         if self.path_content.files.is_empty() || row as usize > self.path_content.files.len() {
             return;
@@ -623,6 +642,7 @@ impl Status {
         let expanded_cow_path = shellexpand::tilde(&target_string);
         let expanded_target: &str = expanded_cow_path.borrow();
         if let Ok(path) = std::fs::canonicalize(expanded_target) {
+            self.history.push(&path);
             self.path_content = PathContent::new(path, self.show_hidden);
             self.window.reset(self.path_content.files.len());
         }
@@ -636,6 +656,7 @@ impl Status {
             Some(parent) => parent.to_path_buf(),
             None => jump_target.clone(),
         };
+        self.history.push(&target_dir);
         self.path_content = PathContent::new(target_dir, self.show_hidden);
         self.line_index = self
             .path_content
@@ -646,6 +667,15 @@ impl Status {
         self.path_content.select_index(self.line_index);
         self.window.reset(self.path_content.files.len());
         self.window.scroll_to(self.line_index);
+    }
+
+    pub fn exec_history(&mut self) {
+        self.input.reset();
+        if let Some(path) = self.history.selected() {
+            self.path_content = PathContent::new(path, self.show_hidden);
+        }
+        self.history.drop_queue();
+        self.event_normal();
     }
 
     pub fn exec_regex(&mut self) {
