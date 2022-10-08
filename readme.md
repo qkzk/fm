@@ -65,6 +65,11 @@
   - [x] dissociate keybinding from status update
 - [x] fix: cursor is hidden before leaving the application
 - [x] create a symlink to flagged files
+- [x] preview a file with P
+  - [x] preview navigation, integrate into file_window,
+  - [x] preview content in head not stack
+  - [x] syntax highlighting with [syntect](https://github.com/trishume/syntect)
+  - [x] binary preview
 
 ## TODO
 
@@ -79,14 +84,8 @@
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] rename file_window to content_window ?
-- [x] preview a file with P
-  - [x] preview navigation, integrate into file_window,
-  - [x] preview content in head not stack
-  - [ ] use external previewer, async like fzf and whatever
-  - [ ] async / thread / fork ?
-  - [ ] syntax highlighting with [syntect](https://github.com/trishume/syntect)
-  - [ ] simple example : [latex demo](https://github.com/trishume/syntect/blob/master/examples/latex-demo.rs)
 - [ ] integrate fzf or another fuzzy finder
+- [ ] history of visited files: use a Vec as a stack [collections](https://doc.rust-lang.org/std/collections/index.html)
 
 ## BUGS
 
