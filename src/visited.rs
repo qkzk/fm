@@ -1,18 +1,9 @@
 use std::path::PathBuf;
 
-#[derive(Clone, Debug)]
+#[derive(Default)]
 pub struct History {
     pub visited: Vec<PathBuf>,
     pub index: usize,
-}
-
-impl Default for History {
-    fn default() -> Self {
-        Self {
-            visited: vec![],
-            index: 0,
-        }
-    }
 }
 
 impl History {
@@ -21,10 +12,6 @@ impl History {
             self.visited.push(path.to_owned());
             self.index = self.len() - 1
         }
-    }
-
-    pub fn pop(&mut self) -> Option<PathBuf> {
-        self.visited.pop()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -62,6 +49,9 @@ impl History {
     }
 
     pub fn drop_queue(&mut self) {
+        if self.is_empty() {
+            return;
+        }
         let final_length = self.len() - self.index;
         self.visited.truncate(final_length);
         if self.is_empty() {
