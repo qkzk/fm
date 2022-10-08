@@ -58,6 +58,7 @@ impl Actioner {
             Event::Key(Key::Right) => self.right(status),
             Event::Key(Key::Backspace) => self.backspace(status),
             Event::Key(Key::Ctrl('d')) => self.delete(status),
+            Event::Key(Key::Ctrl('q')) => self.escape(status),
             Event::Key(Key::Delete) => self.delete(status),
             Event::Key(Key::Char(c)) => self.char(status, c),
             Event::Key(Key::Home) => self.home(status),
