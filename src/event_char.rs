@@ -27,6 +27,7 @@ pub enum EventChar {
     Sort,
     Symlink,
     Preview,
+    Shortcut,
 }
 
 impl EventChar {
@@ -58,6 +59,7 @@ impl EventChar {
             EventChar::Sort => status.event_sort(),
             EventChar::Symlink => status.event_symlink(),
             EventChar::Preview => status.event_preview(),
+            EventChar::Shortcut => status.event_shortcut(),
         }
     }
 }
