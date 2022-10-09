@@ -5,7 +5,7 @@ use std::cmp::{max, min};
 /// and this struct is responsible for that.
 /// Scrolling is done with `scroll_to`, `scroll_up_one`, `scroll_down_one`
 /// methods.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ContentWindow {
     /// The index of the first displayed file.
     pub top: usize,

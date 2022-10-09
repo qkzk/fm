@@ -11,6 +11,7 @@ use tuikit::term::Term;
 
 use crate::fileinfo::PathContent;
 
+#[derive(Clone)]
 pub enum Preview {
     Syntaxed(SyntaxedContent),
     Text(TextContent),
@@ -105,6 +106,7 @@ impl TextContent {
     }
 }
 
+#[derive(Clone)]
 pub struct SyntaxedContent {
     pub highlighted_content: Box<Vec<Vec<SyntaxedString>>>,
     length: usize,
@@ -161,6 +163,7 @@ impl SyntaxedContent {
     }
 }
 
+#[derive(Clone)]
 pub struct SyntaxedString {
     // row: usize,
     col: usize,
@@ -188,6 +191,7 @@ impl SyntaxedString {
     }
 }
 
+#[derive(Clone)]
 pub struct BinaryContent {
     pub path: PathBuf,
     length: u64,
@@ -233,6 +237,7 @@ impl BinaryContent {
 
 /// Holds a `Vec` of "bytes" (`u8`).
 /// It's mostly used to implement a `print` method.
+#[derive(Clone)]
 pub struct Line {
     line: Vec<u8>,
 }

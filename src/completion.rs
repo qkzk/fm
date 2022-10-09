@@ -4,6 +4,7 @@ use crate::fileinfo::PathContent;
 
 /// Holds a `Vec<String>` of possible completions and an `usize` index
 /// showing where the user is in the vec.
+#[derive(Clone)]
 pub struct Completion {
     pub proposals: Vec<String>,
     pub index: usize,

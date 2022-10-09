@@ -24,6 +24,7 @@ use crate::visited::History;
 /// Is responsible to execute commands depending on received events, mutating
 /// the status of the application.
 /// Every change on the application comes here.
+#[derive(Clone)]
 pub struct Status {
     /// The mode the application is currenty in
     pub mode: Mode,

@@ -1,7 +1,7 @@
 use std::fmt;
 
 /// Different kind of last edition command received.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum LastEdition {
     /// No edition command
     Nothing,

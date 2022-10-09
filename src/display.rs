@@ -10,6 +10,7 @@ use crate::help::HELP_LINES;
 use crate::mode::Mode;
 use crate::preview::Preview;
 use crate::status::Status;
+use crate::tabs::Tabs;
 
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.
@@ -49,16 +50,17 @@ impl Display {
     /// The completion list if any.
     ///
     /// The preview in preview mode.
-    pub fn display_all(&mut self, status: &Status) {
-        self.first_line(status);
-        self.files(status);
-        self.cursor(status);
-        self.help(status);
-        self.jump_list(status);
-        self.history(status);
-        self.completion(status);
-        self.preview(status);
-        self.shortcuts(status);
+    pub fn display_all(&mut self, tabs: &mut Tabs) {
+        let index = tabs.index;
+        self.first_line(tabs.selected(), index);
+        self.files(tabs.selected());
+        self.cursor(tabs.selected());
+        self.help(tabs.selected());
+        self.jump_list(tabs.selected());
+        self.history(tabs.selected());
+        self.completion(tabs.selected(), index);
+        self.preview(tabs.selected(), index);
+        self.shortcuts(tabs.selected());
     }
 
     /// Reads and returns the `tuikit::term::Term` height.
@@ -72,11 +74,12 @@ impl Display {
     /// In normal mode we display the path and number of files.
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
-    fn first_line(&mut self, status: &Status) {
+    fn first_line(&mut self, status: &Status, index: usize) {
         let first_row: String = match status.mode {
             Mode::Normal => {
                 format!(
-                    "Path: {}   --   {} files",
+                    "Tab: {} - Path: {}   --   {} files",
+                    index,
                     status.path_content.path.to_str().unwrap(),
                     status.path_content.files.len(),
                 )
@@ -206,11 +209,11 @@ impl Display {
 
     /// Display the possible completion items. The currently selected one is
     /// reversed.
-    fn completion(&mut self, status: &Status) {
+    fn completion(&mut self, status: &Status, index: usize) {
         match status.mode {
             Mode::Goto | Mode::Exec | Mode::Search => {
                 let _ = self.term.clear();
-                self.first_line(status);
+                self.first_line(status, index);
                 let _ = self
                     .term
                     .set_cursor(0, status.input.cursor_index + Self::EDIT_BOX_OFFSET);
@@ -233,10 +236,10 @@ impl Display {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&mut self, status: &Status) {
+    fn preview(&mut self, status: &Status, index: usize) {
         if let Mode::Preview = status.mode {
             let _ = self.term.clear();
-            self.first_line(status);
+            self.first_line(status, index);
 
             let length = status.preview.len();
             let line_number_width = length.to_string().len();

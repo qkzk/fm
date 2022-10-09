@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct History {
     pub visited: Vec<PathBuf>,
     pub index: usize,

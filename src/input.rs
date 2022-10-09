@@ -1,5 +1,6 @@
 /// Holds a string typed by the user and the cursor position.
 /// Methods allow mutation of this string and movement of the cursor.
+#[derive(Clone)]
 pub struct Input {
     pub string: String,
     pub cursor_index: usize,

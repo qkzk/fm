@@ -13,4 +13,5 @@ pub mod mode;
 pub mod preview;
 pub mod shortcut;
 pub mod status;
+pub mod tabs;
 pub mod visited;
