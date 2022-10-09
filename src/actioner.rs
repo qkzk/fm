@@ -61,6 +61,7 @@ impl Actioner {
             Event::Key(Key::Ctrl('d')) => self.delete(tabs),
             Event::Key(Key::Ctrl('q')) => self.escape(tabs),
             Event::Key(Key::Delete) => self.delete(tabs),
+            Event::Key(Key::Insert) => self.insert(tabs),
             Event::Key(Key::Char(c)) => self.char(tabs, c),
             Event::Key(Key::Home) => self.home(tabs),
             Event::Key(Key::End) => self.end(tabs),
@@ -85,7 +86,7 @@ impl Actioner {
     fn up(&self, tabs: &mut Tabs) {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview => tabs.selected().event_up_one_row(),
-            Mode::Jump => tabs.selected().event_jumplist_prev(),
+            Mode::Jump => tabs.event_jumplist_prev(),
             Mode::History => tabs.selected().event_history_prev(),
             Mode::Shortcut => tabs.selected().event_shortcut_prev(),
             Mode::Goto | Mode::Exec | Mode::Search => {
@@ -99,7 +100,7 @@ impl Actioner {
     fn down(&self, tabs: &mut Tabs) {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview => tabs.selected().event_down_one_row(),
-            Mode::Jump => tabs.selected().event_jumplist_next(),
+            Mode::Jump => tabs.event_jumplist_next(),
             Mode::History => tabs.selected().event_history_next(),
             Mode::Shortcut => tabs.selected().event_shortcut_next(),
             Mode::Goto | Mode::Exec | Mode::Search => {
@@ -155,6 +156,7 @@ impl Actioner {
     }
 
     /// Deletes chars right of cursor in input string.
+    /// Remove current tab in normal mode.
     fn delete(&self, tabs: &mut Tabs) {
         match tabs.selected().mode {
             Mode::Rename
@@ -164,7 +166,15 @@ impl Actioner {
             | Mode::Exec
             | Mode::Search
             | Mode::Goto => tabs.selected().event_delete_chars_right(),
-            Mode::Normal => (),
+            Mode::Normal => tabs.drop_tab(),
+            _ => (),
+        }
+    }
+
+    /// Insert a new tab in normal mode
+    fn insert(&self, tabs: &mut Tabs) {
+        match tabs.selected().mode {
+            Mode::Normal => tabs.new_tab(),
             _ => (),
         }
     }
@@ -207,12 +217,12 @@ impl Actioner {
             Mode::Rename => tabs.selected().exec_rename(),
             Mode::Newfile => tabs.selected().exec_newfile(),
             Mode::Newdir => tabs.selected().exec_newdir(),
-            Mode::Chmod => tabs.selected().exec_chmod(),
+            Mode::Chmod => tabs.exec_chmod(),
             Mode::Exec => tabs.selected().exec_exec(),
             Mode::Search => tabs.selected().exec_search(),
             Mode::Goto => tabs.selected().exec_goto(),
-            Mode::RegexMatch => tabs.selected().exec_regex(),
-            Mode::Jump => tabs.selected().exec_jump(),
+            Mode::RegexMatch => tabs.exec_regex(),
+            Mode::Jump => tabs.exec_jump(),
             Mode::History => tabs.selected().exec_history(),
             Mode::Shortcut => tabs.selected().exec_shortcut(),
             Mode::Normal | Mode::NeedConfirmation | Mode::Help | Mode::Sort | Mode::Preview => (),
@@ -258,7 +268,7 @@ impl Actioner {
                 tabs.selected().event_text_insert_and_complete(c)
             }
             Mode::Normal => match self.binds.get(&c) {
-                Some(event_char) => event_char.match_char(tabs.selected()),
+                Some(event_char) => event_char.match_char(tabs),
                 None => (),
             },
             Mode::Help | Mode::Preview | Mode::Shortcut => tabs.selected().event_normal(),
@@ -266,7 +276,7 @@ impl Actioner {
             Mode::History => (),
             Mode::NeedConfirmation => {
                 if c == 'y' {
-                    tabs.selected().exec_last_edition()
+                    tabs.exec_last_edition()
                 }
                 tabs.selected().event_leave_need_confirmation()
             }

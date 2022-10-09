@@ -50,17 +50,18 @@ impl Display {
     /// The completion list if any.
     ///
     /// The preview in preview mode.
-    pub fn display_all(&mut self, tabs: &mut Tabs) {
-        let index = tabs.index;
-        self.first_line(tabs.selected(), index);
-        self.files(tabs.selected());
-        self.cursor(tabs.selected());
-        self.help(tabs.selected());
-        self.jump_list(tabs.selected());
-        self.history(tabs.selected());
-        self.completion(tabs.selected(), index);
-        self.preview(tabs.selected(), index);
-        self.shortcuts(tabs.selected());
+    pub fn display_all(&mut self, tabs: &Tabs) {
+        let tab_index = tabs.index;
+        let current_status = tabs.selected_non_mut();
+        self.first_line(current_status, tab_index);
+        self.files(current_status, tabs);
+        self.cursor(current_status);
+        self.help(current_status);
+        self.jump_list(current_status, tabs);
+        self.history(current_status);
+        self.completion(current_status, tab_index);
+        self.preview(current_status, tab_index);
+        self.shortcuts(current_status);
     }
 
     /// Reads and returns the `tuikit::term::Term` height.
@@ -74,12 +75,12 @@ impl Display {
     /// In normal mode we display the path and number of files.
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
-    fn first_line(&mut self, status: &Status, index: usize) {
+    fn first_line(&mut self, status: &Status, tab_index: usize) {
         let first_row: String = match status.mode {
             Mode::Normal => {
                 format!(
-                    "Tab: {} - Path: {}   --   {} files",
-                    index,
+                    "Tab: {}  --  Path: {}   --   Files: {}",
+                    tab_index,
                     status.path_content.path.to_str().unwrap(),
                     status.path_content.files.len(),
                 )
@@ -109,7 +110,7 @@ impl Display {
     /// normal (ie. default) mode.
     /// Where there's too much files, only those around the selected one are
     /// displayed.
-    fn files(&mut self, status: &Status) {
+    fn files(&mut self, status: &Status, tabs: &Tabs) {
         let strings = status.path_content.strings();
         for (i, string) in strings
             .iter()
@@ -119,7 +120,7 @@ impl Display {
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
             let mut attr = fileinfo_attr(&status.path_content.files[i], &self.colors);
-            if status.flagged.contains(&status.path_content.files[i].path) {
+            if tabs.flagged.contains(&status.path_content.files[i].path) {
                 attr.effect |= Effect::UNDERLINE;
             }
             let _ = self.term.print_with_attr(row, 0, string, attr);
@@ -157,11 +158,11 @@ impl Display {
     }
 
     /// Display the possible jump destination from flagged files.
-    fn jump_list(&mut self, status: &Status) {
+    fn jump_list(&mut self, status: &Status, tabs: &Tabs) {
         if let Mode::Jump = status.mode {
             let _ = self.term.clear();
             let _ = self.term.print(0, 0, "Jump to...");
-            for (row, path) in status.flagged.iter().enumerate() {
+            for (row, path) in tabs.flagged.iter().enumerate() {
                 let mut attr = Attr::default();
                 if row == status.jump_index {
                     attr.effect |= Effect::REVERSE;
@@ -209,11 +210,11 @@ impl Display {
 
     /// Display the possible completion items. The currently selected one is
     /// reversed.
-    fn completion(&mut self, status: &Status, index: usize) {
+    fn completion(&mut self, status: &Status, tab_index: usize) {
         match status.mode {
             Mode::Goto | Mode::Exec | Mode::Search => {
                 let _ = self.term.clear();
-                self.first_line(status, index);
+                self.first_line(status, tab_index);
                 let _ = self
                     .term
                     .set_cursor(0, status.input.cursor_index + Self::EDIT_BOX_OFFSET);
@@ -236,10 +237,10 @@ impl Display {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&mut self, status: &Status, index: usize) {
+    fn preview(&mut self, status: &Status, tab_index: usize) {
         if let Mode::Preview = status.mode {
             let _ = self.term.clear();
-            self.first_line(status, index);
+            self.first_line(status, tab_index);
 
             let length = status.preview.len();
             let line_number_width = length.to_string().len();

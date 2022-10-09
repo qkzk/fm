@@ -22,6 +22,11 @@ o:      xdg-open this file
 i:      open in current nvim session
 P:      preview this file
 
+- Tabs -
+    Tab:    Next tab
+    Del:    Close the current tab
+    Ins:    Insert a new tab
+
 - Action on flagged files - 
     space:  toggle flag on a file 
     *:      flag all
@@ -46,4 +51,5 @@ P:      preview this file
     G:      SHORTCUT
     Enter:  Execute mode then NORMAL
     Esc:    NORMAL
+    Ctrl+q: NORMAL
 ";

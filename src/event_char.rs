@@ -1,4 +1,4 @@
-use crate::status::Status;
+use crate::tabs::Tabs;
 
 pub enum EventChar {
     ToggleHidden,
@@ -31,35 +31,36 @@ pub enum EventChar {
 }
 
 impl EventChar {
-    pub fn match_char(&self, status: &mut Status) {
+    pub fn match_char(&self, tabs: &mut Tabs) {
+        let current_status = tabs.selected();
         match *self {
-            EventChar::ToggleHidden => status.event_toggle_hidden(),
-            EventChar::CopyPaste => status.event_copy_paste(),
-            EventChar::CutPaste => status.event_cur_paste(),
-            EventChar::NewDir => status.event_new_dir(),
-            EventChar::NewFile => status.event_new_file(),
-            EventChar::Chmod => status.event_chmod(),
-            EventChar::Exec => status.event_exec(),
-            EventChar::Goto => status.event_goto(),
-            EventChar::Rename => status.event_rename(),
-            EventChar::ClearFlags => status.event_clear_flags(),
-            EventChar::ToggleFlag => status.event_toggle_flag(),
-            EventChar::Shell => status.event_shell(),
-            EventChar::DeleteFile => status.event_delete_file(),
-            EventChar::OpenFile => status.event_open_file(),
-            EventChar::Help => status.event_help(),
-            EventChar::Search => status.event_search(),
-            EventChar::RegexMatch => status.event_regex_match(),
-            EventChar::Quit => status.event_quit(),
-            EventChar::FlagAll => status.event_flag_all(),
-            EventChar::ReverseFlags => status.event_reverse_flags(),
-            EventChar::Jump => status.event_jump(),
-            EventChar::History => status.event_history(),
-            EventChar::NvimFilepicker => status.event_nvim_filepicker(),
-            EventChar::Sort => status.event_sort(),
-            EventChar::Symlink => status.event_symlink(),
-            EventChar::Preview => status.event_preview(),
-            EventChar::Shortcut => status.event_shortcut(),
+            EventChar::ToggleHidden => current_status.event_toggle_hidden(),
+            EventChar::CopyPaste => current_status.event_copy_paste(),
+            EventChar::CutPaste => current_status.event_cur_paste(),
+            EventChar::NewDir => current_status.event_new_dir(),
+            EventChar::NewFile => current_status.event_new_file(),
+            EventChar::Chmod => tabs.event_chmod(),
+            EventChar::Exec => current_status.event_exec(),
+            EventChar::Goto => current_status.event_goto(),
+            EventChar::Rename => current_status.event_rename(),
+            EventChar::ClearFlags => tabs.event_clear_flags(),
+            EventChar::ToggleFlag => tabs.event_toggle_flag(),
+            EventChar::Shell => current_status.event_shell(),
+            EventChar::DeleteFile => current_status.event_delete_file(),
+            EventChar::OpenFile => current_status.event_open_file(),
+            EventChar::Help => current_status.event_help(),
+            EventChar::Search => current_status.event_search(),
+            EventChar::RegexMatch => current_status.event_regex_match(),
+            EventChar::Quit => current_status.event_quit(),
+            EventChar::FlagAll => tabs.event_flag_all(),
+            EventChar::ReverseFlags => tabs.event_reverse_flags(),
+            EventChar::Jump => tabs.event_jump(),
+            EventChar::History => current_status.event_history(),
+            EventChar::NvimFilepicker => current_status.event_nvim_filepicker(),
+            EventChar::Sort => current_status.event_sort(),
+            EventChar::Symlink => tabs.event_symlink(),
+            EventChar::Preview => current_status.event_preview(),
+            EventChar::Shortcut => current_status.event_shortcut(),
         }
     }
 }

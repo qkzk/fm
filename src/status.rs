@@ -1,12 +1,8 @@
 use std::borrow::Borrow;
 use std::cmp::min;
-use std::collections::HashSet;
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path;
 use std::process::Command;
-
-use regex::Regex;
 
 use crate::args::Args;
 use crate::completion::Completion;
@@ -33,15 +29,13 @@ pub struct Status {
     /// The indexes of displayed file
     pub window: ContentWindow,
     /// Files marked as flagged
-    pub flagged: HashSet<path::PathBuf>,
-    /// String typed by the user in relevant modes
     pub input: Input,
     /// Files in current path
     pub path_content: PathContent,
     /// Height of the terminal window
     height: usize,
     /// read from command line
-    show_hidden: bool,
+    pub show_hidden: bool,
     /// Configurable terminal executable
     terminal: String,
     /// Configurable file opener. Default to "xdg-open"
@@ -76,7 +70,7 @@ impl Status {
         let mode = Mode::Normal;
         let line_index = 0;
         let window = ContentWindow::new(path_content.files.len(), height);
-        let flagged = HashSet::new();
+        // let flagged = HashSet::new();
         let input = Input::default();
         let jump_index = 0;
         let completion = Completion::default();
@@ -90,7 +84,6 @@ impl Status {
             mode,
             line_index,
             window,
-            flagged,
             input,
             path_content,
             height,
@@ -106,8 +99,6 @@ impl Status {
             shortcut,
         }
     }
-
-    const MAX_PERMISSIONS: u32 = 0o777;
 
     pub fn event_normal(&mut self) {
         self.input.reset();
@@ -201,18 +192,6 @@ impl Status {
         self.line_index = (row - 1).into();
         self.path_content.select_index(self.line_index);
         self.window.scroll_to(self.line_index)
-    }
-
-    pub fn event_jumplist_next(&mut self) {
-        if self.jump_index < self.flagged.len() {
-            self.jump_index += 1;
-        }
-    }
-
-    pub fn event_jumplist_prev(&mut self) {
-        if self.jump_index > 0 {
-            self.jump_index -= 1;
-        }
     }
 
     pub fn event_shortcut_next(&mut self) {
@@ -310,10 +289,6 @@ impl Status {
         }
     }
 
-    pub fn event_clear_flags(&mut self) {
-        self.flagged.clear()
-    }
-
     pub fn event_delete_file(&mut self) {
         self.mode = Mode::NeedConfirmation;
         self.last_edition = LastEdition::Delete;
@@ -371,35 +346,6 @@ impl Status {
         self.input.insert(c);
     }
 
-    pub fn event_toggle_flag(&mut self) {
-        if self.path_content.files.is_empty() {
-            return;
-        }
-        self.toggle_flag_on_path(self.path_content.selected_file().unwrap().path.clone());
-        if self.line_index < self.path_content.files.len() - ContentWindow::WINDOW_MARGIN_TOP {
-            self.line_index += 1
-        }
-        self.path_content.select_next();
-        self.window.scroll_down_one(self.line_index)
-    }
-
-    pub fn event_flag_all(&mut self) {
-        self.path_content.files.iter().for_each(|file| {
-            self.flagged.insert(file.path.clone());
-        })
-    }
-
-    pub fn event_reverse_flags(&mut self) {
-        // TODO: is there a way to use `toggle_flag_on_path` ? 2 mutable borrows...
-        self.path_content.files.iter().for_each(|file| {
-            if self.flagged.contains(&file.path.clone()) {
-                self.flagged.remove(&file.path.clone());
-            } else {
-                self.flagged.insert(file.path.clone());
-            }
-        });
-    }
-
     pub fn event_toggle_hidden(&mut self) {
         self.show_hidden = !self.show_hidden;
         self.path_content.show_hidden = !self.path_content.show_hidden;
@@ -428,17 +374,6 @@ impl Status {
         self.mode = Mode::Rename;
     }
 
-    pub fn event_chmod(&mut self) {
-        if self.path_content.files.is_empty() {
-            return;
-        }
-        self.mode = Mode::Chmod;
-        if self.flagged.is_empty() {
-            self.flagged
-                .insert(self.path_content.selected_file().unwrap().path.clone());
-        }
-    }
-
     pub fn event_goto(&mut self) {
         self.mode = Mode::Goto;
         self.completion.reset();
@@ -449,13 +384,6 @@ impl Status {
             &self.terminal,
             &vec!["-d", self.path_content.path.to_str().unwrap()],
         );
-    }
-
-    pub fn event_jump(&mut self) {
-        if !self.flagged.is_empty() {
-            self.jump_index = 0;
-            self.mode = Mode::Jump
-        }
     }
 
     pub fn event_history(&mut self) {
@@ -482,21 +410,6 @@ impl Status {
 
     pub fn event_replace_input_with_completion(&mut self) {
         self.input.replace(self.completion.current_proposition())
-    }
-
-    /// Creates a symlink of every flagged file to the current directory.
-    pub fn event_symlink(&mut self) {
-        self.flagged.iter().for_each(|oldpath| {
-            let newpath = self
-                .path_content
-                .path
-                .clone()
-                .join(oldpath.as_path().file_name().unwrap());
-            std::os::unix::fs::symlink(oldpath, newpath).unwrap_or(());
-        });
-        self.flagged.clear();
-        self.path_content.reset_files();
-        self.window.reset(self.path_content.files.len());
     }
 
     pub fn event_nvim_filepicker(&mut self) {
@@ -528,45 +441,6 @@ impl Status {
         );
     }
 
-    fn exec_copy_paste(&mut self) {
-        self.flagged.iter().for_each(|oldpath| {
-            let newpath = self
-                .path_content
-                .path
-                .clone()
-                .join(oldpath.as_path().file_name().unwrap());
-            fs::copy(oldpath, newpath).unwrap_or(0);
-        });
-        self.flagged.clear();
-        self.path_content.reset_files();
-        self.window.reset(self.path_content.files.len());
-    }
-
-    fn exec_cut_paste(&mut self) {
-        self.flagged.iter().for_each(|oldpath| {
-            let newpath = self
-                .path_content
-                .path
-                .clone()
-                .join(oldpath.as_path().file_name().unwrap());
-            fs::rename(oldpath, newpath).unwrap_or(());
-        });
-        self.flagged.clear();
-        self.path_content.reset_files();
-        self.window.reset(self.path_content.files.len());
-    }
-
-    pub fn exec_last_edition(&mut self) {
-        match self.last_edition {
-            LastEdition::Delete => self.exec_delete_files(),
-            LastEdition::CutPaste => self.exec_cut_paste(),
-            LastEdition::CopyPaste => self.exec_copy_paste(),
-            LastEdition::Nothing => (),
-        }
-        self.mode = Mode::Normal;
-        self.last_edition = LastEdition::Nothing;
-    }
-
     pub fn exec_rename(&mut self) {
         if self.path_content.files.is_empty() {
             return;
@@ -582,19 +456,6 @@ impl Status {
         self.refresh_view()
     }
 
-    fn exec_delete_files(&mut self) {
-        self.flagged.iter().for_each(|pathbuf| {
-            if pathbuf.is_dir() {
-                fs::remove_dir_all(pathbuf).unwrap_or(());
-            } else {
-                fs::remove_file(pathbuf).unwrap_or(());
-            }
-        });
-        self.flagged.clear();
-        self.path_content.reset_files();
-        self.window.reset(self.path_content.files.len());
-    }
-
     pub fn exec_newfile(&mut self) {
         if fs::File::create(self.path_content.path.join(self.input.string.clone())).is_ok() {}
         self.refresh_view()
@@ -602,21 +463,6 @@ impl Status {
 
     pub fn exec_newdir(&mut self) {
         fs::create_dir(self.path_content.path.join(self.input.string.clone())).unwrap_or(());
-        self.refresh_view()
-    }
-
-    pub fn exec_chmod(&mut self) {
-        if self.input.string.is_empty() {
-            return;
-        }
-        let permissions: u32 = u32::from_str_radix(&self.input.string, 8).unwrap_or(0_u32);
-        if permissions <= Self::MAX_PERMISSIONS {
-            for path in self.flagged.iter() {
-                Self::set_permissions(path.clone(), permissions).unwrap_or(())
-            }
-            self.flagged.clear()
-        }
-        self.input.string.clear();
         self.refresh_view()
     }
 
@@ -666,27 +512,6 @@ impl Status {
         }
     }
 
-    pub fn exec_jump(&mut self) {
-        self.input.reset();
-        let jump_list: Vec<&path::PathBuf> = self.flagged.iter().collect();
-        let jump_target = jump_list[self.jump_index].clone();
-        let target_dir = match jump_target.parent() {
-            Some(parent) => parent.to_path_buf(),
-            None => jump_target.clone(),
-        };
-        self.history.push(&target_dir);
-        self.path_content = PathContent::new(target_dir, self.show_hidden);
-        self.line_index = self
-            .path_content
-            .files
-            .iter()
-            .position(|file| file.path == jump_target.clone())
-            .unwrap_or(0);
-        self.path_content.select_index(self.line_index);
-        self.window.reset(self.path_content.files.len());
-        self.window.scroll_to(self.line_index);
-    }
-
     pub fn exec_shortcut(&mut self) {
         self.input.reset();
         let path = self.shortcut.selected();
@@ -704,23 +529,6 @@ impl Status {
         self.event_normal();
     }
 
-    pub fn exec_regex(&mut self) {
-        let re = Regex::new(&self.input.string).unwrap();
-        if !self.input.string.is_empty() {
-            self.flagged.clear();
-            for file in self.path_content.files.iter() {
-                if re.is_match(file.path.to_str().unwrap()) {
-                    self.flagged.insert(file.path.clone());
-                }
-            }
-        }
-        self.input.reset();
-    }
-
-    fn set_permissions(path: path::PathBuf, permissions: u32) -> Result<(), std::io::Error> {
-        fs::set_permissions(path, fs::Permissions::from_mode(permissions))
-    }
-
     fn fill_completion(&mut self) {
         match self.mode {
             Mode::Goto => self.completion.goto(&self.input.string),
@@ -732,7 +540,7 @@ impl Status {
         }
     }
 
-    fn refresh_view(&mut self) {
+    pub fn refresh_view(&mut self) {
         self.line_index = 0;
         self.input.reset();
         self.path_content.reset_files();
@@ -743,14 +551,6 @@ impl Status {
     pub fn set_height(&mut self, height: usize) {
         self.window.set_height(height);
         self.height = height;
-    }
-
-    fn toggle_flag_on_path(&mut self, path: path::PathBuf) {
-        if self.flagged.contains(&path) {
-            self.flagged.remove(&path);
-        } else {
-            self.flagged.insert(path);
-        }
     }
 
     /// Returns `true` iff the application has to quit.
