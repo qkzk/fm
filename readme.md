@@ -71,6 +71,7 @@
   - [x] syntax highlighting with [syntect](https://github.com/trishume/syntect)
   - [x] binary preview
 - [x] history of visited files: use a Vec as a stack [collections](https://doc.rust-lang.org/std/collections/index.html)
+- [x] shortcuts
 
 ## TODO
 
@@ -87,7 +88,6 @@
 - [ ] rename file_window to content_window ?
 - [ ] integrate fzf or another fuzzy finder
 - [ ] multiple tabs
-- [ ] shortcuts
 
 ## BUGS
 
