@@ -72,6 +72,8 @@
   - [x] binary preview
 - [x] history of visited files: use a Vec as a stack [collections](https://doc.rust-lang.org/std/collections/index.html)
 - [x] shortcuts
+- [x] multiple tabs: TAB to switch, DEL to drop, INS to create. Flagged files are shared between tabs.
+- [x] rename file_window to content_window ?
 
 ## TODO
 
@@ -85,9 +87,7 @@
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
-- [ ] rename file_window to content_window ?
 - [ ] integrate fzf or another fuzzy finder
-- [ ] multiple tabs
 
 ## BUGS
 

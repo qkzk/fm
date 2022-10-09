@@ -6,7 +6,7 @@ use fm::args::Args;
 use fm::config::load_config;
 use fm::config::Colors;
 use fm::display::Display;
-use fm::status::Status;
+use fm::tabs::Tabs;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 
@@ -29,21 +29,21 @@ fn main() {
     let config = load_config(CONFIG_PATH);
     let actioner = Actioner::new(&config.keybindings);
     let mut display = init_display(config.colors.clone());
-    let mut status = Status::new(Args::parse(), config, display.height());
+    let mut tabs = Tabs::new(Args::parse(), config, display.height());
 
     while let Ok(event) = display.term.poll_event() {
         let _ = display.term.clear();
         let (_width, height) = display.term.term_size().unwrap();
 
-        status.set_height(height);
+        tabs.selected().set_height(height);
 
-        actioner.read_event(&mut status, event);
+        actioner.read_event(&mut tabs, event);
 
-        display.display_all(&status);
+        display.display_all(&mut tabs);
 
         let _ = display.term.present();
 
-        if status.must_quit() {
+        if tabs.selected().must_quit() {
             reset_cursor(&display);
             break;
         };
