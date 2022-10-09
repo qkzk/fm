@@ -40,8 +40,6 @@ pub struct Status {
     terminal: String,
     /// Configurable file opener. Default to "xdg-open"
     opener: String,
-    /// Index in the jump list
-    pub jump_index: usize,
     /// Completion list and index in it.
     pub completion: Completion,
     /// Last edition command kind received
@@ -70,9 +68,7 @@ impl Status {
         let mode = Mode::Normal;
         let line_index = 0;
         let window = ContentWindow::new(path_content.files.len(), height);
-        // let flagged = HashSet::new();
         let input = Input::default();
-        let jump_index = 0;
         let completion = Completion::default();
         let last_edition = LastEdition::Nothing;
         let must_quit = false;
@@ -90,7 +86,6 @@ impl Status {
             show_hidden,
             terminal,
             opener,
-            jump_index,
             completion,
             last_edition,
             must_quit,

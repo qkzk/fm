@@ -5,7 +5,6 @@ use std::path::PathBuf;
 
 use crate::args::Args;
 use crate::config::Config;
-use crate::content_window::ContentWindow;
 use crate::fileinfo::PathContent;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
@@ -18,6 +17,8 @@ pub struct Tabs {
     pub index: usize,
     /// Set of flagged files
     pub flagged: HashSet<PathBuf>,
+    /// Index in the jump list
+    pub jump_index: usize,
 }
 
 impl Tabs {
@@ -28,6 +29,7 @@ impl Tabs {
             statuses: vec![Status::new(args, config, height)],
             index: 0,
             flagged: HashSet::new(),
+            jump_index: 0,
         }
     }
 
@@ -122,7 +124,6 @@ impl Tabs {
         } else {
             self.flagged.insert(path);
         };
-        self.reset_statuses()
     }
 
     pub fn event_toggle_flag(&mut self) {
@@ -137,25 +138,18 @@ impl Tabs {
                 .path
                 .clone(),
         );
-        if self.selected().line_index
-            < self.selected().path_content.files.len() - ContentWindow::WINDOW_MARGIN_TOP
-        {
-            self.selected().line_index += 1
-        }
-        self.selected().path_content.select_next();
-        let dest = self.statuses[self.index].line_index;
-        self.statuses[self.index].window.scroll_down_one(dest)
+        self.selected().event_down_one_row()
     }
 
     pub fn event_jumplist_next(&mut self) {
-        if self.selected().jump_index < self.flagged.len() {
-            self.selected().jump_index += 1;
+        if self.jump_index < self.flagged.len() {
+            self.jump_index += 1;
         }
     }
 
     pub fn event_jumplist_prev(&mut self) {
-        if self.selected().jump_index > 0 {
-            self.selected().jump_index -= 1;
+        if self.jump_index > 0 {
+            self.jump_index -= 1;
         }
     }
 
@@ -179,7 +173,7 @@ impl Tabs {
 
     pub fn event_jump(&mut self) {
         if !self.flagged.is_empty() {
-            self.selected().jump_index = 0;
+            self.jump_index = 0;
             self.selected().mode = Mode::Jump
         }
     }
@@ -268,7 +262,7 @@ impl Tabs {
     pub fn exec_jump(&mut self) {
         self.selected().input.reset();
         let jump_list: Vec<&PathBuf> = self.flagged.iter().collect();
-        let jump_target = jump_list[self.statuses[self.index].jump_index].clone();
+        let jump_target = jump_list[self.jump_index].clone();
         let target_dir = match jump_target.parent() {
             Some(parent) => parent.to_path_buf(),
             None => jump_target.clone(),

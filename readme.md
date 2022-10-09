@@ -88,6 +88,7 @@
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] integrate fzf or another fuzzy finder
+- [ ] improve the top row
 
 ## BUGS
 

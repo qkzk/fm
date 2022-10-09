@@ -51,17 +51,19 @@ impl Display {
     ///
     /// The preview in preview mode.
     pub fn display_all(&mut self, tabs: &Tabs) {
-        let tab_index = tabs.index;
-        let current_status = tabs.selected_non_mut();
-        self.first_line(current_status, tab_index);
-        self.files(current_status, tabs);
-        self.cursor(current_status);
-        self.help(current_status);
-        self.jump_list(current_status, tabs);
-        self.history(current_status);
-        self.completion(current_status, tab_index);
-        self.preview(current_status, tab_index);
-        self.shortcuts(current_status);
+        let status = tabs.selected_non_mut();
+        self.first_line(status, tabs);
+        self.files(status, tabs);
+        self.cursor(status);
+        match status.mode {
+            Mode::Help => self.help(),
+            Mode::Jump => self.jump_list(tabs),
+            Mode::History => self.history(status),
+            Mode::Exec | Mode::Goto | Mode::Search => self.completion(status, tabs),
+            Mode::Preview => self.preview(status, tabs),
+            Mode::Shortcut => self.shortcuts(status),
+            _ => (),
+        }
     }
 
     /// Reads and returns the `tuikit::term::Term` height.
@@ -75,12 +77,13 @@ impl Display {
     /// In normal mode we display the path and number of files.
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
-    fn first_line(&mut self, status: &Status, tab_index: usize) {
+    fn first_line(&mut self, status: &Status, tabs: &Tabs) {
         let first_row: String = match status.mode {
             Mode::Normal => {
                 format!(
-                    "Tab: {}  --  Path: {}   --   Files: {}",
-                    tab_index,
+                    "Tab: {}/{}  --  Path: {}   --   Files: {}",
+                    tabs.index + 1,
+                    tabs.len(),
                     status.path_content.path.to_str().unwrap(),
                     status.path_content.files.len(),
                 )
@@ -148,85 +151,86 @@ impl Display {
     }
 
     /// Display the help message with default keybindings.
-    fn help(&mut self, status: &Status) {
-        if let Mode::Help = status.mode {
-            let _ = self.term.clear();
-            for (row, line) in HELP_LINES.split('\n').enumerate() {
-                let _ = self.term.print(row, 0, line);
-            }
-        };
+    fn help(&mut self) {
+        let _ = self.term.clear();
+        for (row, line) in HELP_LINES.split('\n').enumerate() {
+            let _ = self.term.print(row, 0, line);
+        }
     }
 
     /// Display the possible jump destination from flagged files.
-    fn jump_list(&mut self, status: &Status, tabs: &Tabs) {
-        if let Mode::Jump = status.mode {
-            let _ = self.term.clear();
-            let _ = self.term.print(0, 0, "Jump to...");
-            for (row, path) in tabs.flagged.iter().enumerate() {
-                let mut attr = Attr::default();
-                if row == status.jump_index {
-                    attr.effect |= Effect::REVERSE;
-                }
-                let _ = self
-                    .term
-                    .print_with_attr(row + 1, 4, path.to_str().unwrap(), attr);
+    fn jump_list(&mut self, tabs: &Tabs) {
+        let _ = self.term.clear();
+        let _ = self.term.print(0, 0, "Jump to...");
+        for (row, path) in tabs.flagged.iter().enumerate() {
+            let mut attr = Attr::default();
+            if row == tabs.jump_index {
+                attr.effect |= Effect::REVERSE;
             }
+            let _ = self.term.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                path.to_str().unwrap(),
+                attr,
+            );
         }
     }
 
     /// Display the history of visited directories.
     fn history(&mut self, status: &Status) {
-        if let Mode::History = status.mode {
-            let _ = self.term.clear();
-            let _ = self.term.print(0, 0, "Go to...");
-            for (row, path) in status.history.visited.iter().rev().enumerate() {
-                let mut attr = Attr::default();
-                if row == status.history.len() - status.history.index - 1 {
-                    attr.effect |= Effect::REVERSE;
-                }
-                let _ = self
-                    .term
-                    .print_with_attr(row + 1, 4, path.to_str().unwrap(), attr);
+        let _ = self.term.clear();
+        let _ = self.term.print(0, 0, "Go to...");
+        for (row, path) in status.history.visited.iter().rev().enumerate() {
+            let mut attr = Attr::default();
+            if row == status.history.len() - status.history.index - 1 {
+                attr.effect |= Effect::REVERSE;
             }
+            let _ = self.term.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                path.to_str().unwrap(),
+                attr,
+            );
         }
     }
 
     /// Display the predefined shortcuts.
     fn shortcuts(&mut self, status: &Status) {
-        if let Mode::Shortcut = status.mode {
-            let _ = self.term.clear();
-            let _ = self.term.print(0, 0, "Go to...");
-            for (row, path) in status.shortcut.shortcuts.iter().enumerate() {
-                let mut attr = Attr::default();
-                if row == status.shortcut.index {
-                    attr.effect |= Effect::REVERSE;
-                }
-                let _ = self
-                    .term
-                    .print_with_attr(row + 1, 4, path.to_str().unwrap(), attr);
+        let _ = self.term.clear();
+        let _ = self.term.print(0, 0, "Go to...");
+        for (row, path) in status.shortcut.shortcuts.iter().enumerate() {
+            let mut attr = Attr::default();
+            if row == status.shortcut.index {
+                attr.effect |= Effect::REVERSE;
             }
+            let _ = self.term.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                path.to_str().unwrap(),
+                attr,
+            );
         }
     }
 
     /// Display the possible completion items. The currently selected one is
     /// reversed.
-    fn completion(&mut self, status: &Status, tab_index: usize) {
-        match status.mode {
-            Mode::Goto | Mode::Exec | Mode::Search => {
-                let _ = self.term.clear();
-                self.first_line(status, tab_index);
-                let _ = self
-                    .term
-                    .set_cursor(0, status.input.cursor_index + Self::EDIT_BOX_OFFSET);
-                for (row, candidate) in status.completion.proposals.iter().enumerate() {
-                    let mut attr = Attr::default();
-                    if row == status.completion.index {
-                        attr.effect |= Effect::REVERSE;
-                    }
-                    let _ = self.term.print_with_attr(row + 1, 4, candidate, attr);
-                }
+    fn completion(&mut self, status: &Status, tabs: &Tabs) {
+        let _ = self.term.clear();
+        self.first_line(status, tabs);
+        let _ = self
+            .term
+            .set_cursor(0, status.input.cursor_index + Self::EDIT_BOX_OFFSET);
+        for (row, candidate) in status.completion.proposals.iter().enumerate() {
+            let mut attr = Attr::default();
+            if row == status.completion.index {
+                attr.effect |= Effect::REVERSE;
             }
-            _ => (),
+            let _ = self.term.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                candidate,
+                attr,
+            );
         }
     }
 
@@ -237,10 +241,10 @@ impl Display {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&mut self, status: &Status, tab_index: usize) {
+    fn preview(&mut self, status: &Status, tabs: &Tabs) {
         if let Mode::Preview = status.mode {
             let _ = self.term.clear();
-            self.first_line(status, tab_index);
+            self.first_line(status, tabs);
 
             let length = status.preview.len();
             let line_number_width = length.to_string().len();
@@ -248,24 +252,21 @@ impl Display {
                 // TODO: should it belong to separate methods ?
                 Preview::Syntaxed(syntaxed) => {
                     for (i, vec_line) in syntaxed
-                        .highlighted_content
+                        .content
                         .iter()
                         .enumerate()
                         .skip(status.window.top)
                         .take(min(length, status.window.bottom + 1))
                     {
-                        let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
+                        let row = Self::calc_line_row(i, status);
                         let _ = self.term.print_with_attr(
                             row,
                             0,
                             &(i + 1 + status.window.top).to_string(),
-                            Attr {
-                                fg: Color::CYAN,
-                                ..Default::default()
-                            },
+                            Self::LINE_ATTR,
                         );
-                        for s in vec_line.iter() {
-                            s.print(&self.term, row, line_number_width);
+                        for token in vec_line.iter() {
+                            token.print(&self.term, row, line_number_width);
                         }
                     }
                 }
@@ -277,15 +278,12 @@ impl Display {
                         .skip(status.window.top)
                         .take(min(length, status.window.bottom + 1))
                     {
-                        let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
+                        let row = Self::calc_line_row(i, status);
                         let _ = self.term.print_with_attr(
                             row,
                             0,
                             &(i + 1 + status.window.top).to_string(),
-                            Attr {
-                                fg: Color::CYAN,
-                                ..Default::default()
-                            },
+                            Self::LINE_ATTR,
                         );
                         let _ = self.term.print(row, line_number_width + 3, line);
                     }
@@ -300,16 +298,13 @@ impl Display {
                         .skip(status.window.top)
                         .take(min(length, status.window.bottom + 1))
                     {
-                        let row = i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top;
+                        let row = Self::calc_line_row(i, status);
 
                         let _ = self.term.print_with_attr(
                             row,
                             0,
                             &format_line_nr_hex(i + 1 + status.window.top, line_number_width_hex),
-                            Attr {
-                                fg: Color::CYAN,
-                                ..Default::default()
-                            },
+                            Self::LINE_ATTR,
                         );
                         line.print(&self.term, row, line_number_width_hex + 1);
                     }
@@ -317,6 +312,10 @@ impl Display {
                 Preview::Empty => (),
             }
         }
+    }
+
+    fn calc_line_row(i: usize, status: &Status) -> usize {
+        i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top
     }
 }
 

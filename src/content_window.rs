@@ -32,7 +32,7 @@ impl ContentWindow {
     /// The padding around the last displayed file
     const WINDOW_PADDING: usize = 4;
     /// The space of the top element
-    pub const WINDOW_MARGIN_TOP: usize = 1;
+    pub const WINDOW_MARGIN_TOP: usize = 2;
     /// How many rows are reserved at bottom
     const RESERVED_ROWS: usize = 3;
 

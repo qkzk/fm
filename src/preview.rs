@@ -108,14 +108,14 @@ impl TextContent {
 
 #[derive(Clone)]
 pub struct SyntaxedContent {
-    pub highlighted_content: Box<Vec<Vec<SyntaxedString>>>,
+    pub content: Box<Vec<Vec<SyntaxedString>>>,
     length: usize,
 }
 
 impl Default for SyntaxedContent {
     fn default() -> Self {
         Self {
-            highlighted_content: Box::new(vec![vec![]]),
+            content: Box::new(vec![vec![]]),
             length: 0,
         }
     }
@@ -150,12 +150,12 @@ impl SyntaxedContent {
 
         Self {
             length: highlighted_content.len(),
-            highlighted_content,
+            content: highlighted_content,
         }
     }
 
     pub fn reset(&mut self) {
-        self.highlighted_content = Box::new(vec![vec![]])
+        self.content = Box::new(vec![vec![]])
     }
 
     fn len(&self) -> usize {
