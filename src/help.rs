@@ -43,6 +43,7 @@ P:      preview this file
     j:      JUMP
     O:      SORT
     H:      HISTORY
+    G:      SHORTCUT
     Enter:  Execute mode then NORMAL
     Esc:    NORMAL
 ";

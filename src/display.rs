@@ -58,6 +58,7 @@ impl Display {
         self.history(status);
         self.completion(status);
         self.preview(status);
+        self.shortcuts(status);
     }
 
     /// Reads and returns the `tuikit::term::Term` height.
@@ -168,6 +169,7 @@ impl Display {
             }
         }
     }
+
     /// Display the history of visited directories.
     fn history(&mut self, status: &Status) {
         if let Mode::History = status.mode {
@@ -176,6 +178,23 @@ impl Display {
             for (row, path) in status.history.visited.iter().rev().enumerate() {
                 let mut attr = Attr::default();
                 if row == status.history.len() - status.history.index - 1 {
+                    attr.effect |= Effect::REVERSE;
+                }
+                let _ = self
+                    .term
+                    .print_with_attr(row + 1, 4, path.to_str().unwrap(), attr);
+            }
+        }
+    }
+
+    /// Display the predefined shortcuts.
+    fn shortcuts(&mut self, status: &Status) {
+        if let Mode::Shortcut = status.mode {
+            let _ = self.term.clear();
+            let _ = self.term.print(0, 0, "Go to...");
+            for (row, path) in status.shortcut.shortcuts.iter().enumerate() {
+                let mut attr = Attr::default();
+                if row == status.shortcut.index {
                     attr.effect |= Effect::REVERSE;
                 }
                 let _ = self

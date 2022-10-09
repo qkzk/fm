@@ -50,7 +50,8 @@ use tuikit::attr::Color;
 ///   jump: j
 ///   nvim: i
 ///   sort_by: O
-///   preview: S
+///   preview: P
+///   shortcut: S
 #[derive(Debug, Clone)]
 pub struct Config {
     /// Color of every kind of file
@@ -205,6 +206,8 @@ pub struct Keybindings {
     pub preview: char,
     /// Display a stack of visited directories
     pub history: char,
+    /// Display predefined shortcuts
+    pub shortcut: char,
 }
 
 impl Keybindings {
@@ -289,6 +292,9 @@ impl Keybindings {
         if let Some(history) = yaml["history"].as_str().map(|s| s.to_string()) {
             self.history = history.chars().next().unwrap_or('H');
         }
+        if let Some(shortcut) = yaml["shortcut"].as_str().map(|s| s.to_string()) {
+            self.shortcut = shortcut.chars().next().unwrap_or('G');
+        }
     }
 
     /// Returns a new `Keybindings` instance with hardcoded values.
@@ -320,6 +326,7 @@ impl Keybindings {
             symlink: 'S',
             preview: 'P',
             history: 'H',
+            shortcut: 'G',
         }
     }
 }

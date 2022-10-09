@@ -35,6 +35,8 @@ pub enum Mode {
     Preview,
     /// Display a stack of visited directories,
     History,
+    /// Display predefined shortcuts
+    Shortcut,
 }
 
 impl fmt::Debug for Mode {
@@ -55,6 +57,7 @@ impl fmt::Debug for Mode {
             Mode::NeedConfirmation => write!(f, "Y/N   :"),
             Mode::Sort => write!(f, "(N)ame (D)ate (S)ize (E)xt (R)ev :"),
             Mode::Preview => write!(f, "Preview : "),
+            Mode::Shortcut => write!(f, "Shortcut :"),
         }
     }
 }

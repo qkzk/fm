@@ -1,0 +1,67 @@
+use std::borrow::Borrow;
+use std::{path::PathBuf, str::FromStr};
+
+#[derive(Debug, Clone)]
+pub struct Shortcut {
+    pub shortcuts: [PathBuf; 10],
+    pub index: usize,
+}
+
+impl Default for Shortcut {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Shortcut {
+    pub fn new() -> Self {
+        let expanded_cow_path = shellexpand::tilde("~");
+        let expanded_target: &str = expanded_cow_path.borrow();
+        let path = std::fs::canonicalize(expanded_target).unwrap();
+        Self {
+            shortcuts: [
+                PathBuf::from_str("/").unwrap(),
+                PathBuf::from_str("/dev").unwrap(),
+                PathBuf::from_str("/etc").unwrap(),
+                PathBuf::from_str("/media").unwrap(),
+                PathBuf::from_str("/mnt").unwrap(),
+                PathBuf::from_str("/opt").unwrap(),
+                PathBuf::from_str("/run/media").unwrap(),
+                PathBuf::from_str("/tmp").unwrap(),
+                PathBuf::from_str("/usr").unwrap(),
+                std::fs::canonicalize(path).unwrap(),
+            ],
+            index: 0,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.shortcuts.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.shortcuts.len()
+    }
+
+    pub fn next(&mut self) {
+        if self.is_empty() {
+            self.index = 0;
+        } else {
+            self.index = (self.index + 1) % self.len()
+        }
+    }
+
+    pub fn prev(&mut self) {
+        if self.is_empty() {
+            self.index = 0
+        } else if self.index > 0 {
+            self.index -= 1;
+        } else {
+            self.index = self.len() - 1
+        }
+    }
+
+    pub fn selected(&self) -> PathBuf {
+        self.shortcuts[self.index].clone()
+    }
+}

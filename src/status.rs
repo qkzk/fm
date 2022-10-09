@@ -17,6 +17,7 @@ use crate::input::Input;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
 use crate::preview::Preview;
+use crate::shortcut::Shortcut;
 use crate::visited::History;
 
 /// Holds every thing about the current status of the application.
@@ -56,6 +57,8 @@ pub struct Status {
     pub preview: Preview,
     /// Visited directories
     pub history: History,
+    /// Predefined shortcuts
+    pub shortcut: Shortcut,
 }
 
 impl Status {
@@ -81,6 +84,7 @@ impl Status {
         let preview = Preview::Empty;
         let mut history = History::default();
         history.push(&path);
+        let shortcut = Shortcut::default();
         Self {
             mode,
             line_index,
@@ -98,6 +102,7 @@ impl Status {
             must_quit,
             preview,
             history,
+            shortcut,
         }
     }
 
@@ -207,6 +212,14 @@ impl Status {
         if self.jump_index > 0 {
             self.jump_index -= 1;
         }
+    }
+
+    pub fn event_shortcut_next(&mut self) {
+        self.shortcut.next()
+    }
+
+    pub fn event_shortcut_prev(&mut self) {
+        self.shortcut.prev()
     }
 
     pub fn event_history_next(&mut self) {
@@ -448,6 +461,10 @@ impl Status {
         self.mode = Mode::History
     }
 
+    pub fn event_shortcut(&mut self) {
+        self.mode = Mode::Shortcut
+    }
+
     pub fn event_right_click(&mut self, row: u16) {
         if self.path_content.files.is_empty() || row as usize > self.path_content.files.len() {
             return;
@@ -667,6 +684,14 @@ impl Status {
         self.path_content.select_index(self.line_index);
         self.window.reset(self.path_content.files.len());
         self.window.scroll_to(self.line_index);
+    }
+
+    pub fn exec_shortcut(&mut self) {
+        self.input.reset();
+        let path = self.shortcut.selected();
+        self.history.push(&path);
+        self.path_content = PathContent::new(path, self.show_hidden);
+        self.event_normal();
     }
 
     pub fn exec_history(&mut self) {

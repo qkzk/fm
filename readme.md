@@ -86,6 +86,8 @@
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] rename file_window to content_window ?
 - [ ] integrate fzf or another fuzzy finder
+- [ ] multiple tabs
+- [ ] shortcuts
 
 ## BUGS
 
