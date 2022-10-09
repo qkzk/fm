@@ -12,9 +12,11 @@ use crate::mode::Mode;
 use crate::status::Status;
 
 pub struct Tabs {
+    /// Vector of `Status`, each of them are displayed in a separate tab.
     pub statuses: Vec<Status>,
+    /// Index of the current selected tab
     pub index: usize,
-    /// String typed by the user in relevant modes
+    /// Set of flagged files
     pub flagged: HashSet<PathBuf>,
 }
 
