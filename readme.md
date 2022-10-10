@@ -74,6 +74,8 @@
 - [x] shortcuts
 - [x] multiple tabs: TAB to switch, DEL to drop, INS to create. Flagged files are shared between tabs.
 - [x] rename file_window to content_window ?
+- [x] improve the top row
+- [x] confirmation display shows a list of edited files
 
 ## TODO
 
@@ -88,7 +90,6 @@
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] integrate fzf or another fuzzy finder
-- [ ] improve the top row
 
 ## BUGS
 
