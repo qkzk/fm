@@ -7,6 +7,7 @@ use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::help::HELP_LINES;
+use crate::last_edition::LastEdition;
 use crate::mode::Mode;
 use crate::preview::Preview;
 use crate::status::Status;
@@ -60,6 +61,7 @@ impl Display {
             Mode::Jump => self.jump_list(tabs),
             Mode::History => self.history(status),
             Mode::Exec | Mode::Goto | Mode::Search => self.completion(status, tabs),
+            Mode::NeedConfirmation => self.confirmation(status, tabs),
             Mode::Preview => self.preview(status, tabs),
             Mode::Shortcut => self.shortcuts(status),
             _ => (),
@@ -231,6 +233,33 @@ impl Display {
                 candidate,
                 attr,
             );
+        }
+    }
+
+    /// Display a list of edited (deleted, copied, moved) files for confirmation
+    fn confirmation(&mut self, status: &Status, tabs: &Tabs) {
+        let _ = self.term.clear();
+        self.first_line(status, tabs);
+        for (row, path) in tabs.flagged.iter().enumerate() {
+            let _ = self.term.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                4,
+                path.to_str().unwrap(),
+                Attr::default(),
+            );
+        }
+        eprintln!("last_edition: {}", status.last_edition);
+        if let LastEdition::CopyPaste = status.last_edition {
+            let attr = Attr {
+                fg: Color::YELLOW,
+                bg: Color::Default,
+                effect: Effect::BOLD,
+            };
+            let content = format!(
+                "Files will be copied to {}",
+                status.path_content.path.to_str().unwrap()
+            );
+            let _ = self.term.print_with_attr(2, 3, &content, attr);
         }
     }
 
