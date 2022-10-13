@@ -1,9 +1,12 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use tuikit::prelude::{Event, Key, MouseButton};
+use tuikit::term::Term;
 
 use crate::config::Keybindings;
 use crate::event_char::EventChar;
 use crate::mode::Mode;
+use crate::skim::Skimer;
 use crate::tabs::Tabs;
 
 /// Struct which mutates `tabs.selected()..
@@ -12,12 +15,13 @@ use crate::tabs::Tabs;
 /// Keybindings are read from `Config`.
 pub struct Actioner {
     binds: HashMap<char, EventChar>,
+    term: Arc<Term>,
 }
 
 impl Actioner {
     /// Creates a map of configurable keybindings to `EventChar`
     /// The `EventChar` is then associated to a `tabs.selected(). method.
-    pub fn new(keybindings: &Keybindings) -> Self {
+    pub fn new(keybindings: &Keybindings, term: Arc<Term>) -> Self {
         let binds = HashMap::from([
             (keybindings.toggle_hidden, EventChar::ToggleHidden),
             (keybindings.copy_paste, EventChar::CopyPaste),
@@ -47,7 +51,7 @@ impl Actioner {
             (keybindings.history, EventChar::History),
             (keybindings.shortcut, EventChar::Shortcut),
         ]);
-        Self { binds }
+        Self { binds, term }
     }
     /// Reaction to received events.
     pub fn read_event(&self, tabs: &mut Tabs, ev: Event) {
@@ -73,6 +77,7 @@ impl Actioner {
             Event::Key(Key::WheelDown(_, _, _)) => self.down(tabs),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => self.left_click(tabs, row),
             Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => self.right_click(tabs, row),
+            Event::Key(Key::Ctrl('f')) => self.ctrl_s(tabs),
             _ => {}
         }
     }
@@ -173,9 +178,8 @@ impl Actioner {
 
     /// Insert a new tab in normal mode
     fn insert(&self, tabs: &mut Tabs) {
-        match tabs.selected().mode {
-            Mode::Normal => tabs.new_tab(),
-            _ => (),
+        if let Mode::Normal = tabs.selected().mode {
+            tabs.new_tab()
         }
     }
 
@@ -255,6 +259,13 @@ impl Actioner {
             Mode::Normal => tabs.next(),
             _ => (),
         }
+    }
+
+    fn ctrl_s(&self, tabs: &mut Tabs) {
+        let skimer = Skimer::new(self.term.clone());
+        let output = skimer.no_source();
+        let _ = self.term.clear();
+        tabs.create_tabs_from_skim(output);
     }
 
     /// Match read key to a relevent event, depending on keybindings.

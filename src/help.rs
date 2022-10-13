@@ -21,6 +21,7 @@ s:      shell in current directory
 o:      xdg-open this file
 i:      open in current nvim session
 P:      preview this file
+Ctrl+f: fuzzy finder
 
 - Tabs -
     Tab:    Next tab
