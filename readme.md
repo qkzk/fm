@@ -76,6 +76,7 @@
 - [x] rename file_window to content_window ?
 - [x] improve the top row
 - [x] confirmation display shows a list of edited files
+- [x] integrate fzf or another fuzzy finder
 
 ## TODO
 
@@ -89,7 +90,6 @@
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
-- [ ] integrate fzf or another fuzzy finder
 
 ## BUGS
 
