@@ -507,6 +507,12 @@ impl Status {
         }
     }
 
+    pub fn set_pathcontent(&mut self, path: path::PathBuf) {
+        self.history.push(&path);
+        self.path_content = PathContent::new(path, self.show_hidden);
+        self.window.reset(self.path_content.files.len());
+    }
+
     pub fn exec_shortcut(&mut self) {
         self.input.reset();
         let path = self.shortcut.selected();

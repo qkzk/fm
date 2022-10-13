@@ -77,7 +77,7 @@ impl Actioner {
             Event::Key(Key::WheelDown(_, _, _)) => self.down(tabs),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => self.left_click(tabs, row),
             Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => self.right_click(tabs, row),
-            Event::Key(Key::Ctrl('s')) => self.ctrl_s(),
+            Event::Key(Key::Ctrl('s')) => self.ctrl_s(tabs),
             _ => {}
         }
     }
@@ -262,9 +262,10 @@ impl Actioner {
         }
     }
 
-    fn ctrl_s(&self) {
+    fn ctrl_s(&self, tabs: &mut Tabs) {
         let skimer = Skimer::new(self.term.clone());
         let output = skimer.no_source();
+        tabs.create_tabs_from_skim(output);
     }
 
     /// Match read key to a relevent event, depending on keybindings.

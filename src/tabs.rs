@@ -1,7 +1,11 @@
 use regex::Regex;
+use skim::SkimItem;
+use std::borrow::Cow;
 use std::collections::HashSet;
+use std::fs::{self, metadata};
 use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
+use std::path::{self, PathBuf};
+use std::sync::Arc;
 
 use crate::args::Args;
 use crate::config::Config;
@@ -124,6 +128,28 @@ impl Tabs {
         } else {
             self.flagged.insert(path);
         };
+    }
+
+    pub fn create_tabs_from_skim(&mut self, output: Vec<Arc<dyn SkimItem>>) {
+        for path in output.iter() {
+            self.create_tab_from_output(path)
+        }
+    }
+
+    fn create_tab_from_output(&mut self, cow_path: &Arc<dyn SkimItem>) {
+        let mut status = self.selected().clone();
+        let s_path = cow_path.output().to_string();
+        if let Ok(path) = fs::canonicalize(path::Path::new(&s_path)) {
+            if metadata(path.clone()).unwrap().is_file() {
+                if let Some(parent) = path.parent() {
+                    status.set_pathcontent(parent.to_path_buf());
+                    self.statuses.push(status);
+                }
+            } else {
+                status.set_pathcontent(path.to_path_buf());
+                self.statuses.push(status);
+            }
+        }
     }
 
     pub fn event_toggle_flag(&mut self) {
