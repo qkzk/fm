@@ -11,10 +11,9 @@ impl Skimer {
         Self { term }
     }
 
-    pub fn no_source(self) -> Vec<Arc<dyn SkimItem>> {
-        let skim = Skim::new_from_term(self.term);
-
-        skim.run_without(None)
+    pub fn no_source(self, path_str: String) -> Vec<Arc<dyn SkimItem>> {
+        Skim::new_from_term(self.term)
+            .run_internal(None, path_str)
             .map(|out| out.selected_items)
             .unwrap_or_else(Vec::new)
     }
