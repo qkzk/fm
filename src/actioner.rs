@@ -178,9 +178,8 @@ impl Actioner {
 
     /// Insert a new tab in normal mode
     fn insert(&self, tabs: &mut Tabs) {
-        match tabs.selected().mode {
-            Mode::Normal => tabs.new_tab(),
-            _ => (),
+        if let Mode::Normal = tabs.selected().mode {
+            tabs.new_tab()
         }
     }
 

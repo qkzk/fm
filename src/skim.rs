@@ -16,6 +16,6 @@ impl Skimer {
 
         skim.run_without(None)
             .map(|out| out.selected_items)
-            .unwrap_or_else(|| Vec::new())
+            .unwrap_or_else(Vec::new)
     }
 }

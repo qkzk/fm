@@ -6,16 +6,15 @@ use tuikit::term::Term;
 use fm::actioner::Actioner;
 use fm::args::Args;
 use fm::config::load_config;
-use fm::config::Colors;
 use fm::display::Display;
 use fm::tabs::Tabs;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
-fn init_term(colors: Colors) -> Term {
+fn init_term() -> Term {
     let term: Term<()> = Term::new().unwrap();
-    let _ = term.enable_mouse_support().unwrap();
+    let _ = term.enable_mouse_support();
     term
 }
 
@@ -29,7 +28,7 @@ fn reset_cursor(display: &Display) {
 /// The application is redrawn after every event.
 fn main() {
     let config = load_config(CONFIG_PATH);
-    let term = Arc::new(init_term(config.colors.clone()));
+    let term = Arc::new(init_term());
     let actioner = Actioner::new(&config.keybindings, term.clone());
     let mut display = Display::new(term, config.colors.clone());
     let mut tabs = Tabs::new(Args::parse(), config, display.height());
@@ -42,7 +41,7 @@ fn main() {
 
         actioner.read_event(&mut tabs, event);
 
-        display.display_all(&mut tabs);
+        display.display_all(&tabs);
 
         let _ = display.term.present();
 
