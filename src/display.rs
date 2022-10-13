@@ -1,4 +1,5 @@
 use std::cmp::min;
+use std::sync::Arc;
 
 use tuikit::attr::*;
 use tuikit::term::Term;
@@ -18,13 +19,13 @@ use crate::tabs::Tabs;
 pub struct Display {
     /// The Tuikit terminal attached to the display.
     /// It will print every symbol shown on screen.
-    pub term: Term,
+    pub term: Arc<Term>,
     colors: Colors,
 }
 
 impl Display {
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
-    pub fn new(term: Term, colors: Colors) -> Self {
+    pub fn new(term: Arc<Term>, colors: Colors) -> Self {
         Self { term, colors }
     }
 

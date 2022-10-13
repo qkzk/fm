@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use tuikit::prelude::{Event, Key, MouseButton};
 use tuikit::term::Term;
 
@@ -14,12 +15,13 @@ use crate::tabs::Tabs;
 /// Keybindings are read from `Config`.
 pub struct Actioner {
     binds: HashMap<char, EventChar>,
+    term: Arc<Term>,
 }
 
 impl Actioner {
     /// Creates a map of configurable keybindings to `EventChar`
     /// The `EventChar` is then associated to a `tabs.selected(). method.
-    pub fn new(keybindings: &Keybindings) -> Self {
+    pub fn new(keybindings: &Keybindings, term: Arc<Term>) -> Self {
         let binds = HashMap::from([
             (keybindings.toggle_hidden, EventChar::ToggleHidden),
             (keybindings.copy_paste, EventChar::CopyPaste),
@@ -49,10 +51,10 @@ impl Actioner {
             (keybindings.history, EventChar::History),
             (keybindings.shortcut, EventChar::Shortcut),
         ]);
-        Self { binds }
+        Self { binds, term }
     }
     /// Reaction to received events.
-    pub fn read_event(&self, tabs: &mut Tabs, ev: Event, term: Term) -> Term {
+    pub fn read_event(&self, tabs: &mut Tabs, ev: Event) {
         match ev {
             Event::Key(Key::ESC) => self.escape(tabs),
             Event::Key(Key::Up) => self.up(tabs),
@@ -75,10 +77,9 @@ impl Actioner {
             Event::Key(Key::WheelDown(_, _, _)) => self.down(tabs),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => self.left_click(tabs, row),
             Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => self.right_click(tabs, row),
-            Event::Key(Key::Ctrl('s')) => term = self.ctrl_s(term),
+            Event::Key(Key::Ctrl('s')) => self.ctrl_s(),
             _ => {}
         }
-        term
     }
 
     /// Leaving a mode reset the window
@@ -261,10 +262,9 @@ impl Actioner {
         }
     }
 
-    fn ctrl_s(&self, term: Term) -> Term {
-        let skimer = Skimer::new(term);
-        let (output, term) = skimer.no_source();
-        term
+    fn ctrl_s(&self) {
+        let skimer = Skimer::new(self.term.clone());
+        let output = skimer.no_source();
     }
 
     /// Match read key to a relevent event, depending on keybindings.

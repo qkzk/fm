@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use clap::Parser;
 use tuikit::term::Term;
 
@@ -11,10 +13,10 @@ use fm::tabs::Tabs;
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
-fn init_display(colors: Colors) -> Display {
+fn init_term(colors: Colors) -> Term {
     let term: Term<()> = Term::new().unwrap();
-    let _ = term.enable_mouse_support();
-    Display::new(term, colors)
+    let _ = term.enable_mouse_support().unwrap();
+    term
 }
 
 /// Display the cursor
@@ -27,8 +29,9 @@ fn reset_cursor(display: &Display) {
 /// The application is redrawn after every event.
 fn main() {
     let config = load_config(CONFIG_PATH);
-    let actioner = Actioner::new(&config.keybindings);
-    let mut display = init_display(config.colors.clone());
+    let term = Arc::new(init_term(config.colors.clone()));
+    let actioner = Actioner::new(&config.keybindings, term.clone());
+    let mut display = Display::new(term, config.colors.clone());
     let mut tabs = Tabs::new(Args::parse(), config, display.height());
 
     while let Ok(event) = display.term.poll_event() {
@@ -37,7 +40,7 @@ fn main() {
 
         tabs.selected().set_height(height);
 
-        display.term = actioner.read_event(&mut tabs, event, display.term);
+        actioner.read_event(&mut tabs, event);
 
         display.display_all(&mut tabs);
 

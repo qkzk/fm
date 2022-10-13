@@ -1,6 +1,7 @@
 use std::fmt::Write as _;
 use std::io::{BufRead, Read};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use content_inspector::{inspect, ContentType};
 use syntect::easy::HighlightLines;
@@ -186,7 +187,7 @@ impl SyntaxedString {
         }
     }
 
-    pub fn print(&self, term: &Term, row: usize, offset: usize) {
+    pub fn print(&self, term: &Arc<Term>, row: usize, offset: usize) {
         let _ = term.print_with_attr(row, self.col + offset + 2, &self.content, self.attr);
     }
 }
