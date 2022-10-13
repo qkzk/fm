@@ -264,6 +264,7 @@ impl Actioner {
     fn ctrl_s(&self, tabs: &mut Tabs) {
         let skimer = Skimer::new(self.term.clone());
         let output = skimer.no_source();
+        let _ = self.term.clear();
         tabs.create_tabs_from_skim(output);
     }
 
