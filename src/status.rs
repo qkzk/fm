@@ -560,6 +560,10 @@ impl Status {
     pub fn must_quit(&self) -> bool {
         self.must_quit
     }
+
+    pub fn path_str(&self) -> String {
+        self.path_content.path.to_str().unwrap().to_owned()
+    }
 }
 
 // TODO: use [wait with output](https://doc.rust-lang.org/std/process/struct.Child.html#method.wait_with_output)

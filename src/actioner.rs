@@ -262,15 +262,7 @@ impl Actioner {
     }
 
     fn ctrl_f(&self, tabs: &mut Tabs) {
-        let skimer = Skimer::new(self.term.clone());
-        let output = skimer.no_source(
-            tabs.selected_non_mut()
-                .path_content
-                .path
-                .to_str()
-                .unwrap()
-                .to_owned(),
-        );
+        let output = Skimer::new(self.term.clone()).no_source(tabs.selected_non_mut().path_str());
         let _ = self.term.clear();
         tabs.create_tabs_from_skim(output);
     }
