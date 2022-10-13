@@ -12,6 +12,7 @@ pub mod last_edition;
 pub mod mode;
 pub mod preview;
 pub mod shortcut;
+pub mod skim;
 pub mod status;
 pub mod tabs;
 pub mod visited;

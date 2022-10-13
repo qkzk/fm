@@ -37,7 +37,7 @@ fn main() {
 
         tabs.selected().set_height(height);
 
-        actioner.read_event(&mut tabs, event);
+        display.term = actioner.read_event(&mut tabs, event, display.term);
 
         display.display_all(&mut tabs);
 

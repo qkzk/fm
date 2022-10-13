@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use tuikit::prelude::{Event, Key, MouseButton};
+use tuikit::term::Term;
 
 use crate::config::Keybindings;
 use crate::event_char::EventChar;
 use crate::mode::Mode;
+use crate::skim::Skimer;
 use crate::tabs::Tabs;
 
 /// Struct which mutates `tabs.selected()..
@@ -50,7 +52,7 @@ impl Actioner {
         Self { binds }
     }
     /// Reaction to received events.
-    pub fn read_event(&self, tabs: &mut Tabs, ev: Event) {
+    pub fn read_event(&self, tabs: &mut Tabs, ev: Event, term: Term) -> Term {
         match ev {
             Event::Key(Key::ESC) => self.escape(tabs),
             Event::Key(Key::Up) => self.up(tabs),
@@ -73,8 +75,10 @@ impl Actioner {
             Event::Key(Key::WheelDown(_, _, _)) => self.down(tabs),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => self.left_click(tabs, row),
             Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => self.right_click(tabs, row),
+            Event::Key(Key::Ctrl('s')) => term = self.ctrl_s(term),
             _ => {}
         }
+        term
     }
 
     /// Leaving a mode reset the window
@@ -255,6 +259,12 @@ impl Actioner {
             Mode::Normal => tabs.next(),
             _ => (),
         }
+    }
+
+    fn ctrl_s(&self, term: Term) -> Term {
+        let skimer = Skimer::new(term);
+        let (output, term) = skimer.no_source();
+        term
     }
 
     /// Match read key to a relevent event, depending on keybindings.
