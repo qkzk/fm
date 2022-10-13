@@ -77,7 +77,7 @@ impl Actioner {
             Event::Key(Key::WheelDown(_, _, _)) => self.down(tabs),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => self.left_click(tabs, row),
             Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => self.right_click(tabs, row),
-            Event::Key(Key::Ctrl('s')) => self.ctrl_s(tabs),
+            Event::Key(Key::Ctrl('f')) => self.ctrl_s(tabs),
             _ => {}
         }
     }
