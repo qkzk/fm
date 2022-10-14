@@ -1,0 +1,24 @@
+audio:
+  opener: moc
+  use_term: true
+bitmap_image:
+  opener: viewnior
+  use_term: false
+libreoffice:
+  opener: libreoffice
+  use_term: false
+readable:
+  opener: zathura
+  use_term: false
+text:
+  opener: nvim
+  use_term: true
+unknown:
+  opener: rifle
+  use_term: false
+vectorial_image:
+  opener: inkscape
+  use_term: false
+video:
+  opener: mpv
+  use_term: false

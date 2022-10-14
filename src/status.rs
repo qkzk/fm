@@ -12,10 +12,13 @@ use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::input::Input;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
+use crate::opener::load_opener;
 use crate::opener::Opener;
 use crate::preview::Preview;
 use crate::shortcut::Shortcut;
 use crate::visited::History;
+
+static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
 
 /// Holds every thing about the current status of the application.
 /// Is responsible to execute commands depending on received events, mutating
@@ -39,8 +42,6 @@ pub struct Status {
     pub show_hidden: bool,
     /// Configurable terminal executable
     terminal: String,
-    /// Configurable file opener. Default to "xdg-open"
-    opener: String,
     /// Completion list and index in it.
     pub completion: Completion,
     /// Last edition command kind received
@@ -53,7 +54,7 @@ pub struct Status {
     pub history: History,
     /// Predefined shortcuts
     pub shortcut: Shortcut,
-    opener2: Opener,
+    opener: Opener,
 }
 
 impl Status {
@@ -65,8 +66,8 @@ impl Status {
         });
         let path_content = PathContent::new(path.clone(), args.all);
         let show_hidden = args.all;
-        let terminal = config.terminal.clone();
-        let opener = config.opener;
+        let terminal = config.terminal;
+        // let opener = config.opener;
         let mode = Mode::Normal;
         let line_index = 0;
         let window = ContentWindow::new(path_content.files.len(), height);
@@ -78,7 +79,8 @@ impl Status {
         let mut history = History::default();
         history.push(&path);
         let shortcut = Shortcut::default();
-        let opener2 = Opener::new(terminal.clone());
+        let opener = load_opener(OPENER_PATH, terminal.clone())
+            .unwrap_or_else(|_| Opener::new(terminal.clone()));
         Self {
             mode,
             line_index,
@@ -88,14 +90,13 @@ impl Status {
             height,
             show_hidden,
             terminal,
-            opener,
             completion,
             last_edition,
             must_quit,
             preview,
             history,
             shortcut,
-            opener2,
+            opener,
         }
     }
 
@@ -357,7 +358,7 @@ impl Status {
         if self.path_content.files.is_empty() {
             return;
         }
-        self.opener2
+        self.opener
             .open(self.path_content.selected_file().unwrap().path.clone());
         // eprintln!("opener: {}", self.opener);
         // let child = execute_in_child(&self.opener, &vec![&self.path_str()]);
