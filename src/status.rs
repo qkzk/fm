@@ -12,6 +12,7 @@ use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::input::Input;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
+use crate::opener::Opener;
 use crate::preview::Preview;
 use crate::shortcut::Shortcut;
 use crate::visited::History;
@@ -52,6 +53,7 @@ pub struct Status {
     pub history: History,
     /// Predefined shortcuts
     pub shortcut: Shortcut,
+    opener2: Opener,
 }
 
 impl Status {
@@ -63,7 +65,7 @@ impl Status {
         });
         let path_content = PathContent::new(path.clone(), args.all);
         let show_hidden = args.all;
-        let terminal = config.terminal;
+        let terminal = config.terminal.clone();
         let opener = config.opener;
         let mode = Mode::Normal;
         let line_index = 0;
@@ -76,6 +78,7 @@ impl Status {
         let mut history = History::default();
         history.push(&path);
         let shortcut = Shortcut::default();
+        let opener2 = Opener::new(terminal.clone());
         Self {
             mode,
             line_index,
@@ -92,6 +95,7 @@ impl Status {
             preview,
             history,
             shortcut,
+            opener2,
         }
     }
 
@@ -353,16 +357,11 @@ impl Status {
         if self.path_content.files.is_empty() {
             return;
         }
-        execute_in_child(
-            &self.opener,
-            &vec![self
-                .path_content
-                .selected_file()
-                .unwrap()
-                .path
-                .to_str()
-                .unwrap()],
-        );
+        self.opener2
+            .open(self.path_content.selected_file().unwrap().path.clone());
+        // eprintln!("opener: {}", self.opener);
+        // let child = execute_in_child(&self.opener, &vec![&self.path_str()]);
+        // eprintln!("after {:?}", child);
     }
 
     pub fn event_rename(&mut self) {
