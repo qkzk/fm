@@ -2,36 +2,58 @@ use std::collections::HashMap;
 use std::process::Command;
 
 #[derive(Clone)]
-struct OpenConfig {
+struct OpenerAssociation {
+    config: HashMap<String, OpenerInfo>,
+}
+
+impl OpenerAssociation {
+    pub fn new() -> Self {
+        let config = Self::hard_coded();
+        Self { config }
+    }
+
+    fn hard_coded() -> HashMap<String, OpenerInfo> {
+        let mut association = HashMap::new();
+        association.insert("md".to_owned(), OpenerInfo::new("nvim".to_owned(), true));
+        association.insert(
+            "png".to_owned(),
+            OpenerInfo::new("viewnior".to_owned(), false),
+        );
+        association
+    }
+
+    fn update_from_file(filepath: std::path::PathBuf) {}
+}
+
+#[derive(Clone)]
+struct OpenerInfo {
     opener: String,
     use_term: bool,
 }
 
-impl OpenConfig {
+impl OpenerInfo {
     pub fn new(opener: String, use_term: bool) -> Self {
-        OpenConfig { opener, use_term }
+        Self { opener, use_term }
     }
 }
 
 #[derive(Clone)]
 pub struct Opener {
     terminal: String,
-    association: HashMap<String, OpenConfig>,
+    openers: OpenerAssociation,
 }
 
 impl Opener {
     pub fn new(terminal: String) -> Self {
-        let mut association = HashMap::new();
-        association.insert("md".to_owned(), OpenConfig::new("nvim".to_owned(), true));
         Self {
             terminal,
-            association,
+            openers: OpenerAssociation::new(),
         }
     }
 
     pub fn open(&self, filepath: std::path::PathBuf) {
         let extension = filepath.extension().unwrap().to_str().unwrap();
-        if let Some(open_config) = self.association.get(extension) {
+        if let Some(open_config) = self.openers.config.get(extension) {
             if open_config.use_term {
                 self.open_terminal(
                     open_config.opener.clone(),
