@@ -5,33 +5,33 @@ use std::process::Command;
 use serde_yaml;
 
 #[derive(Clone, Hash, Eq, PartialEq)]
-enum ExtensionCategory {
+enum ExtensionKind {
     Audio,
-    BitmapImage,
-    LibreOffice,
+    Bitmap,
+    Office,
     Readable,
     Text,
     Unknown,
-    VectorialImage,
+    Vectorial,
     Video,
 }
 
 // TODO: move those associations to a config file
-impl ExtensionCategory {
+impl ExtensionKind {
     fn parse(ext: &str) -> Self {
         match ext {
-            "avif" => Self::BitmapImage,
-            "bmp" => Self::BitmapImage,
-            "gif" => Self::BitmapImage,
-            "png" => Self::BitmapImage,
-            "jpg" => Self::BitmapImage,
-            "jpeg" => Self::BitmapImage,
-            "pgm" => Self::BitmapImage,
-            "ppm" => Self::BitmapImage,
-            "webp" => Self::BitmapImage,
-            "tiff" => Self::BitmapImage,
+            "avif" => Self::Bitmap,
+            "bmp" => Self::Bitmap,
+            "gif" => Self::Bitmap,
+            "png" => Self::Bitmap,
+            "jpg" => Self::Bitmap,
+            "jpeg" => Self::Bitmap,
+            "pgm" => Self::Bitmap,
+            "ppm" => Self::Bitmap,
+            "webp" => Self::Bitmap,
+            "tiff" => Self::Bitmap,
 
-            "svg" => Self::VectorialImage,
+            "svg" => Self::Vectorial,
 
             "flac" => Self::Audio,
             "m4a" => Self::Audio,
@@ -93,16 +93,16 @@ impl ExtensionCategory {
             "yaml" => Self::Text,
             "yml" => Self::Text,
 
-            "odt" => Self::LibreOffice,
-            "odf" => Self::LibreOffice,
-            "ods" => Self::LibreOffice,
-            "odp" => Self::LibreOffice,
-            "doc" => Self::LibreOffice,
-            "docx" => Self::LibreOffice,
-            "xls" => Self::LibreOffice,
-            "xlsx" => Self::LibreOffice,
-            "ppt" => Self::LibreOffice,
-            "pptx" => Self::LibreOffice,
+            "odt" => Self::Office,
+            "odf" => Self::Office,
+            "ods" => Self::Office,
+            "odp" => Self::Office,
+            "doc" => Self::Office,
+            "docx" => Self::Office,
+            "xls" => Self::Office,
+            "xlsx" => Self::Office,
+            "ppt" => Self::Office,
+            "pptx" => Self::Office,
 
             "pdf" => Self::Readable,
 
@@ -113,82 +113,67 @@ impl ExtensionCategory {
 
 #[derive(Clone)]
 struct OpenerAssociation {
-    association: HashMap<ExtensionCategory, OpenerInfo>,
+    association: HashMap<ExtensionKind, OpenerInfo>,
 }
 
 impl OpenerAssociation {
     fn new() -> Self {
         let mut association = HashMap::new();
 
-        association.insert(ExtensionCategory::Audio, OpenerInfo::new("moc", true));
-        association.insert(
-            ExtensionCategory::BitmapImage,
-            OpenerInfo::new("viewnior", false),
-        );
-        association.insert(
-            ExtensionCategory::LibreOffice,
-            OpenerInfo::new("libreoffice", false),
-        );
-        association.insert(
-            ExtensionCategory::Readable,
-            OpenerInfo::new("zathura", false),
-        );
-        association.insert(ExtensionCategory::Text, OpenerInfo::new("nvim", true));
-        association.insert(
-            ExtensionCategory::Unknown,
-            OpenerInfo::new("xdg-open", false),
-        );
-        association.insert(
-            ExtensionCategory::VectorialImage,
-            OpenerInfo::new("inkscape", false),
-        );
-        association.insert(ExtensionCategory::Video, OpenerInfo::new("mpv", false));
+        association.insert(ExtensionKind::Audio, OpenerInfo::new("moc", true));
+        association.insert(ExtensionKind::Bitmap, OpenerInfo::new("viewnior", false));
+        association.insert(ExtensionKind::Office, OpenerInfo::new("libreoffice", false));
+        association.insert(ExtensionKind::Readable, OpenerInfo::new("zathura", false));
+        association.insert(ExtensionKind::Text, OpenerInfo::new("nvim", true));
+        association.insert(ExtensionKind::Unknown, OpenerInfo::new("xdg-open", false));
+        association.insert(ExtensionKind::Vectorial, OpenerInfo::new("inkscape", false));
+        association.insert(ExtensionKind::Video, OpenerInfo::new("mpv", false));
         Self { association }
     }
 
     fn opener_info(&self, ext: &str) -> Option<&OpenerInfo> {
-        self.association.get(&ExtensionCategory::parse(ext))
+        self.association.get(&ExtensionKind::parse(ext))
     }
 
     fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
         if let Some(audio) = OpenerInfo::from_yaml(&yaml["audio"]) {
             self.association
-                .entry(ExtensionCategory::Audio)
+                .entry(ExtensionKind::Audio)
                 .and_modify(|e| *e = audio);
         }
         if let Some(bitmap_image) = OpenerInfo::from_yaml(&yaml["bitmap_image"]) {
             self.association
-                .entry(ExtensionCategory::BitmapImage)
+                .entry(ExtensionKind::Bitmap)
                 .and_modify(|e| *e = bitmap_image);
         }
         if let Some(libreoffice) = OpenerInfo::from_yaml(&yaml["libreoffice"]) {
             self.association
-                .entry(ExtensionCategory::LibreOffice)
+                .entry(ExtensionKind::Office)
                 .and_modify(|e| *e = libreoffice);
         }
         if let Some(readable) = OpenerInfo::from_yaml(&yaml["readable"]) {
             self.association
-                .entry(ExtensionCategory::Readable)
+                .entry(ExtensionKind::Readable)
                 .and_modify(|e| *e = readable);
         }
         if let Some(text) = OpenerInfo::from_yaml(&yaml["text"]) {
             self.association
-                .entry(ExtensionCategory::Text)
+                .entry(ExtensionKind::Text)
                 .and_modify(|e| *e = text);
         }
         if let Some(unknown) = OpenerInfo::from_yaml(&yaml["unknown"]) {
             self.association
-                .entry(ExtensionCategory::Unknown)
+                .entry(ExtensionKind::Unknown)
                 .and_modify(|e| *e = unknown);
         }
         if let Some(vectorial_image) = OpenerInfo::from_yaml(&yaml["vectorial_image"]) {
             self.association
-                .entry(ExtensionCategory::VectorialImage)
+                .entry(ExtensionKind::Vectorial)
                 .and_modify(|e| *e = vectorial_image);
         }
         if let Some(video) = OpenerInfo::from_yaml(&yaml["video"]) {
             self.association
-                .entry(ExtensionCategory::Video)
+                .entry(ExtensionKind::Video)
                 .and_modify(|e| *e = video);
         }
     }
@@ -267,6 +252,7 @@ impl Opener {
         execute_in_child(&executable, &vec![&filepath]);
     }
 
+    // TODO: use terminal specific parameters instead of -e for all terminals
     fn open_terminal(&self, executable: String, filepath: String) {
         execute_in_child(&self.terminal, &vec!["-e", &executable, &filepath]);
     }
