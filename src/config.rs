@@ -10,8 +10,6 @@ use tuikit::attr::Color;
 /// Default config file looks like this and is easier to read in code directly.
 /// # the terminal must be installed
 /// terminal: st
-/// # the opener must be installed
-/// opener: rifle
 /// colors:
 ///   # white, black, red, green, blue, yellow, cyan, magenta
 ///   # light_white, light_black, light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta
@@ -60,8 +58,6 @@ pub struct Config {
     pub keybindings: Keybindings,
     /// Terminal used to open file
     pub terminal: String,
-    /// File opener
-    pub opener: String,
 }
 
 impl Config {
@@ -71,7 +67,6 @@ impl Config {
             colors: Colors::default(),
             keybindings: Keybindings::default(),
             terminal: "st".to_owned(),
-            opener: "xdg-open".to_owned(),
         }
     }
 
@@ -81,9 +76,6 @@ impl Config {
         self.keybindings.update_from_config(&yaml["keybindings"]);
         if let Some(terminal) = yaml["terminal"].as_str().map(|s| s.to_string()) {
             self.terminal = terminal;
-        }
-        if let Some(opener) = yaml["opener"].as_str().map(|s| s.to_string()) {
-            self.opener = opener;
         }
     }
 }

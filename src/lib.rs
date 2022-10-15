@@ -16,3 +16,4 @@ pub mod skim;
 pub mod status;
 pub mod tabs;
 pub mod visited;
+pub mod opener;

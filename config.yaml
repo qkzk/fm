@@ -1,7 +1,5 @@
 # the terminal must be installed
 terminal: st
-# the opener must be installed
-opener: rifle
 colors:
   # white, black, red, green, blue, yellow, cyan, magenta 
   # light_white, light_black, light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 

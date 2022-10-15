@@ -1,9 +1,11 @@
 use std::fmt::Write as _;
 use std::io::{BufRead, Read};
+use std::panic;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use content_inspector::{inspect, ContentType};
+use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
@@ -17,6 +19,7 @@ pub enum Preview {
     Syntaxed(SyntaxedContent),
     Text(TextContent),
     Binary(BinaryContent),
+    Pdf(PdfContent),
     Empty,
 }
 
@@ -33,7 +36,9 @@ impl Preview {
             Some(file_info) => {
                 let mut file = std::fs::File::open(file_info.path.clone()).unwrap();
                 let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
-                if let Some(syntaxset) = ps.find_syntax_by_extension(&file_info.extension) {
+                if file_info.extension == "pdf".to_owned() {
+                    Self::Pdf(PdfContent::new(file_info.path.clone()))
+                } else if let Some(syntaxset) = ps.find_syntax_by_extension(&file_info.extension) {
                     Self::Syntaxed(SyntaxedContent::new(ps.clone(), path_content, syntaxset))
                 } else if file_info.size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
                     && file.read_exact(&mut buffer).is_ok()
@@ -54,6 +59,7 @@ impl Preview {
             Self::Text(text) => text.len(),
             Self::Empty => 0,
             Self::Binary(binary) => binary.len(),
+            Self::Pdf(pdf) => pdf.len(),
         }
     }
 
@@ -264,4 +270,43 @@ impl Line {
     pub fn print(&self, term: &Term, row: usize, offset: usize) {
         let _ = term.print(row, offset + 2, &self.format());
     }
+}
+
+#[derive(Clone)]
+pub struct PdfContent {
+    length: usize,
+    pub content: Vec<String>,
+}
+
+impl PdfContent {
+    fn new(path: PathBuf) -> Self {
+        let result = catch_unwind_silent(|| {
+            if let Ok(content_string) = pdf_extract::extract_text(path) {
+                content_string
+                    .split_whitespace()
+                    .map(|s| s.to_owned())
+                    .collect()
+            } else {
+                vec!["Coudln't parse the pdf".to_owned()]
+            }
+        });
+        let content = result.unwrap_or_else(|_| vec!["Couldn't read the pdf".to_owned()]);
+
+        Self {
+            length: content.len(),
+            content,
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
+fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
+    let prev_hook = panic::take_hook();
+    panic::set_hook(Box::new(|_| {}));
+    let result = panic::catch_unwind(f);
+    panic::set_hook(prev_hook);
+    result
 }
