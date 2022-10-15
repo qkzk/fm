@@ -5,7 +5,7 @@ use std::process::Command;
 use serde_yaml;
 
 #[derive(Clone, Hash, Eq, PartialEq)]
-enum ExtensionKind {
+pub enum ExtensionKind {
     Audio,
     Bitmap,
     Office,
@@ -112,7 +112,7 @@ impl ExtensionKind {
 }
 
 #[derive(Clone)]
-struct OpenerAssociation {
+pub struct OpenerAssociation {
     association: HashMap<ExtensionKind, OpenerInfo>,
 }
 
@@ -180,7 +180,7 @@ impl OpenerAssociation {
 }
 
 #[derive(Clone)]
-struct OpenerInfo {
+pub struct OpenerInfo {
     opener: String,
     use_term: bool,
 }
@@ -210,7 +210,7 @@ impl OpenerInfo {
 #[derive(Clone)]
 pub struct Opener {
     terminal: String,
-    opener_association: OpenerAssociation,
+    pub opener_association: OpenerAssociation,
 }
 
 impl Opener {
@@ -229,18 +229,22 @@ impl Opener {
         if let Some(extension_os_str) = filepath.extension() {
             let extension = extension_os_str.to_str().unwrap();
             if let Some(open_info) = self.opener_association.opener_info(extension) {
-                if open_info.use_term {
-                    self.open_terminal(
-                        open_info.opener.clone(),
-                        filepath.to_str().unwrap().to_owned(),
-                    )
-                } else {
-                    self.open_directly(
-                        open_info.opener.clone(),
-                        filepath.to_str().unwrap().to_owned(),
-                    )
-                }
+                self.open_with(open_info, filepath)
             }
+        }
+    }
+
+    pub fn open_with(&self, open_info: &OpenerInfo, filepath: std::path::PathBuf) {
+        if open_info.use_term {
+            self.open_terminal(
+                open_info.opener.clone(),
+                filepath.to_str().unwrap().to_owned(),
+            )
+        } else {
+            self.open_directly(
+                open_info.opener.clone(),
+                filepath.to_str().unwrap().to_owned(),
+            )
         }
     }
 
@@ -255,6 +259,10 @@ impl Opener {
     // TODO: use terminal specific parameters instead of -e for all terminals
     fn open_terminal(&self, executable: String, filepath: String) {
         execute_in_child(&self.terminal, &vec!["-e", &executable, &filepath]);
+    }
+
+    pub fn get(&self, kind: ExtensionKind) -> Option<&OpenerInfo> {
+        self.opener_association.association.get(&kind)
     }
 }
 
