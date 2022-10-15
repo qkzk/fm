@@ -10,15 +10,16 @@ static TMP_FOLDER: &str = "/tmp";
 
 struct BulkRenamer {
     original_filepath: Vec<PathBuf>,
-    temp_file: Option<PathBuf>,
+    temp_file: PathBuf,
 }
 
 impl BulkRenamer {
-    pub fn new(original_filepath: Vec<PathBuf>) -> Self {
-        Self {
+    pub fn new(original_filepath: Vec<PathBuf>) -> Result<Self, io::Error> {
+        let temp_file = Self::create_random_file()?;
+        Ok(Self {
             original_filepath,
-            temp_file: None,
-        }
+            temp_file,
+        })
     }
 
     fn random_name() -> String {
@@ -31,44 +32,31 @@ impl BulkRenamer {
         rand_str
     }
 
-    fn create_random_file(&mut self, rand_name: String) -> Result<(), io::Error> {
+    fn create_random_file() -> Result<PathBuf, io::Error> {
         let mut filepath = PathBuf::from(&TMP_FOLDER);
-        filepath.push(rand_name);
+        filepath.push(Self::random_name());
         let _ = std::fs::File::create(&filepath)?;
-        self.temp_file = Some(filepath);
-        Ok(())
+        Ok(filepath)
     }
 
     fn write_original_names(&self) -> Result<(), io::Error> {
-        if let Some(filepath) = &self.temp_file {
-            for path in self.original_filepath.iter() {
-                if let Some(os_filename) = path.file_name() {
-                    if let Some(filename) = os_filename.to_str() {
-                        std::fs::write(&filepath, filename)?
-                    }
+        let filepath = &self.temp_file;
+        for path in self.original_filepath.iter() {
+            if let Some(os_filename) = path.file_name() {
+                if let Some(filename) = os_filename.to_str() {
+                    std::fs::write(&filepath, filename)?
                 }
             }
-            Ok(())
-        } else {
-            Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "Temp file hasn't been created",
-            ))
         }
+        Ok(())
     }
 
     fn open_temp_file_with_editor(&self, opener: &Opener) -> Result<(), io::Error> {
-        if let Some(filepath) = &self.temp_file {
-            if let Some(editor_info) = opener.get(ExtensionKind::Text) {
-                opener.open_with(editor_info, filepath.to_owned())
-            };
-            Ok(())
-        } else {
-            Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "Couldn't open the temp file.",
-            ))
-        }
+        let filepath = &self.temp_file;
+        if let Some(editor_info) = opener.get(ExtensionKind::Text) {
+            opener.open_with(editor_info, filepath.to_owned())
+        };
+        Ok(())
     }
 
     fn is_file_modified(
@@ -98,16 +86,21 @@ impl BulkRenamer {
         Ok(new_names)
     }
 
-    fn delete_temp_file(&self, filepath: PathBuf) -> Result<(), io::Error> {
+    fn delete_temp_file(&self) -> Result<(), io::Error> {
+        let filepath = &self.temp_file;
         Ok(std::fs::remove_file(&filepath)?)
     }
 
-    fn rename(&self, new_filenames: Vec<String>) -> Result<(), io::Error> {
+    fn rename_all(&self, new_filenames: Vec<String>) -> Result<(), io::Error> {
         for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
-            let mut parent = path.clone();
-            parent.pop();
-            std::fs::rename(path, parent.join(&filename))?;
+            self.rename(path, filename)?
         }
         Ok(())
+    }
+
+    fn rename(&self, path: &PathBuf, filename: &str) -> Result<(), io::Error> {
+        let mut parent = path.clone();
+        parent.pop();
+        Ok(std::fs::rename(path, parent.join(&filename))?)
     }
 }
