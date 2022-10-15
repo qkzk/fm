@@ -339,6 +339,24 @@ impl Display {
                         line.print(&self.term, row, line_number_width_hex + 1);
                     }
                 }
+                Preview::Pdf(text) => {
+                    for (i, line) in text
+                        .content
+                        .iter()
+                        .enumerate()
+                        .skip(status.window.top)
+                        .take(min(length, status.window.bottom + 1))
+                    {
+                        let row = Self::calc_line_row(i, status);
+                        let _ = self.term.print_with_attr(
+                            row,
+                            0,
+                            &(i + 1 + status.window.top).to_string(),
+                            Self::LINE_ATTR,
+                        );
+                        let _ = self.term.print(row, line_number_width + 3, line);
+                    }
+                }
                 Preview::Empty => (),
             }
         }
