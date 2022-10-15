@@ -5,7 +5,7 @@ use std::process::Command;
 use serde_yaml;
 
 #[derive(Clone, Hash, Eq, PartialEq)]
-enum FileType {
+enum ExtensionCategory {
     Audio,
     BitmapImage,
     LibreOffice,
@@ -16,7 +16,8 @@ enum FileType {
     Video,
 }
 
-impl FileType {
+// TODO: move those associations to a config file
+impl ExtensionCategory {
     fn parse(ext: &str) -> Self {
         match ext {
             "avif" => Self::BitmapImage,
@@ -112,29 +113,85 @@ impl FileType {
 
 #[derive(Clone)]
 struct OpenerAssociation {
-    association: HashMap<FileType, OpenerInfo>,
+    association: HashMap<ExtensionCategory, OpenerInfo>,
 }
 
 impl OpenerAssociation {
     fn new() -> Self {
         let mut association = HashMap::new();
 
-        association.insert(FileType::Audio, OpenerInfo::new("moc", true));
-        association.insert(FileType::BitmapImage, OpenerInfo::new("viewnior", false));
-        association.insert(FileType::LibreOffice, OpenerInfo::new("libreoffice", false));
-        association.insert(FileType::Readable, OpenerInfo::new("zathura", false));
-        association.insert(FileType::Text, OpenerInfo::new("nvim", true));
-        association.insert(FileType::Unknown, OpenerInfo::new("xdg-open", false));
-        association.insert(FileType::VectorialImage, OpenerInfo::new("inkscape", false));
-        association.insert(FileType::Video, OpenerInfo::new("mpv", false));
+        association.insert(ExtensionCategory::Audio, OpenerInfo::new("moc", true));
+        association.insert(
+            ExtensionCategory::BitmapImage,
+            OpenerInfo::new("viewnior", false),
+        );
+        association.insert(
+            ExtensionCategory::LibreOffice,
+            OpenerInfo::new("libreoffice", false),
+        );
+        association.insert(
+            ExtensionCategory::Readable,
+            OpenerInfo::new("zathura", false),
+        );
+        association.insert(ExtensionCategory::Text, OpenerInfo::new("nvim", true));
+        association.insert(
+            ExtensionCategory::Unknown,
+            OpenerInfo::new("xdg-open", false),
+        );
+        association.insert(
+            ExtensionCategory::VectorialImage,
+            OpenerInfo::new("inkscape", false),
+        );
+        association.insert(ExtensionCategory::Video, OpenerInfo::new("mpv", false));
         Self { association }
     }
 
     fn opener_info(&self, ext: &str) -> Option<&OpenerInfo> {
-        self.association.get(&FileType::parse(ext))
+        self.association.get(&ExtensionCategory::parse(ext))
     }
 
-    fn update_from_file(&mut self, _yaml: &serde_yaml::value::Value) {}
+    fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
+        if let Some(audio) = OpenerInfo::from_yaml(&yaml["audio"]) {
+            self.association
+                .entry(ExtensionCategory::Audio)
+                .and_modify(|e| *e = audio);
+        }
+        if let Some(bitmap_image) = OpenerInfo::from_yaml(&yaml["bitmap_image"]) {
+            self.association
+                .entry(ExtensionCategory::BitmapImage)
+                .and_modify(|e| *e = bitmap_image);
+        }
+        if let Some(libreoffice) = OpenerInfo::from_yaml(&yaml["libreoffice"]) {
+            self.association
+                .entry(ExtensionCategory::LibreOffice)
+                .and_modify(|e| *e = libreoffice);
+        }
+        if let Some(readable) = OpenerInfo::from_yaml(&yaml["readable"]) {
+            self.association
+                .entry(ExtensionCategory::Readable)
+                .and_modify(|e| *e = readable);
+        }
+        if let Some(text) = OpenerInfo::from_yaml(&yaml["text"]) {
+            self.association
+                .entry(ExtensionCategory::Text)
+                .and_modify(|e| *e = text);
+        }
+        if let Some(unknown) = OpenerInfo::from_yaml(&yaml["unknown"]) {
+            self.association
+                .entry(ExtensionCategory::Unknown)
+                .and_modify(|e| *e = unknown);
+        }
+        if let Some(vectorial_image) = OpenerInfo::from_yaml(&yaml["vectorial_image"]) {
+            self.association
+                .entry(ExtensionCategory::VectorialImage)
+                .and_modify(|e| *e = vectorial_image);
+        }
+        if let Some(video) = OpenerInfo::from_yaml(&yaml["video"]) {
+            self.association
+                .entry(ExtensionCategory::Video)
+                .and_modify(|e| *e = video);
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -144,10 +201,23 @@ struct OpenerInfo {
 }
 
 impl OpenerInfo {
-    pub fn new(opener: &str, use_term: bool) -> Self {
+    fn new(opener: &str, use_term: bool) -> Self {
         Self {
             opener: opener.to_owned(),
             use_term,
+        }
+    }
+
+    fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
+        let opener = yaml.get("opener");
+        let use_term = yaml.get("use_term");
+        if opener.is_some() && use_term.is_some() {
+            Some(Self::new(
+                opener.unwrap().as_str().unwrap(),
+                use_term.unwrap().as_bool().unwrap(),
+            ))
+        } else {
+            None
         }
     }
 }
@@ -213,6 +283,5 @@ pub fn load_opener(path: &str, terminal: String) -> Result<Opener, Box<dyn Error
     let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
     let yaml = serde_yaml::from_reader(file)?;
     opener.update_from_file(&yaml);
-    eprintln!("read from file okay !");
     Ok(opener)
 }
