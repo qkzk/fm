@@ -225,6 +225,7 @@ impl Tabs {
         match Bulkrename::new(self.filtered_flagged_files()) {
             Ok(mut renamer) => {
                 let _ = renamer.rename(&self.selected().opener);
+                self.selected().refresh_view()
             }
             Err(e) => eprintln!("{}", e),
         }
