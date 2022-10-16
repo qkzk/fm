@@ -320,6 +320,10 @@ impl PathContent {
             Some(&self.files[self.selected])
         }
     }
+
+    pub fn contains(&self, path: &path::PathBuf) -> bool {
+        path.starts_with(&self.path)
+    }
 }
 
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and

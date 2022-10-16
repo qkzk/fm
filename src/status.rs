@@ -54,7 +54,7 @@ pub struct Status {
     pub history: History,
     /// Predefined shortcuts
     pub shortcut: Shortcut,
-    opener: Opener,
+    pub opener: Opener,
 }
 
 impl Status {

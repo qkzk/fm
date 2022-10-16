@@ -50,6 +50,7 @@ impl Actioner {
             (keybindings.preview, EventChar::Preview),
             (keybindings.history, EventChar::History),
             (keybindings.shortcut, EventChar::Shortcut),
+            (keybindings.bulkrename, EventChar::Bulkrename),
         ]);
         Self { binds, term }
     }

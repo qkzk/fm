@@ -37,6 +37,7 @@ Ctrl+f: fuzzy finder
     p:      move to current dir
     x:      delete flagged files
     S:      symlink flagged files
+    B:      Bulkrename
 
 - MODES - 
     m:      CHMOD 

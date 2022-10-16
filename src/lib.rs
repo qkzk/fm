@@ -1,5 +1,6 @@
 pub mod actioner;
 pub mod args;
+pub mod bulkrename;
 pub mod completion;
 pub mod config;
 pub mod content_window;
@@ -10,10 +11,10 @@ pub mod help;
 pub mod input;
 pub mod last_edition;
 pub mod mode;
+pub mod opener;
 pub mod preview;
 pub mod shortcut;
 pub mod skim;
 pub mod status;
 pub mod tabs;
 pub mod visited;
-pub mod opener;
