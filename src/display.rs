@@ -7,7 +7,6 @@ use tuikit::term::Term;
 use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
-use crate::help::HELP_LINES;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
 use crate::preview::Preview;
@@ -151,14 +150,6 @@ impl Display {
                     .term
                     .set_cursor(0, status.input.cursor_index + Self::EDIT_BOX_OFFSET);
             }
-        }
-    }
-
-    /// Display the help message with default keybindings.
-    fn help(&mut self) {
-        let _ = self.term.clear();
-        for (row, line) in HELP_LINES.split('\n').enumerate() {
-            let _ = self.term.print(row, 0, line);
         }
     }
 
