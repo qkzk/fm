@@ -481,15 +481,18 @@ impl Status {
     }
 
     pub fn exec_search(&mut self) {
-        let searched_term = self.input.string.clone();
+        self.input.reset();
+        let completed = self.completion.current_proposition();
+        if completed.is_empty() {
+            return;
+        }
         let mut next_index = self.line_index;
         for (index, file) in self.path_content.files.iter().enumerate().skip(next_index) {
-            if file.filename.contains(&searched_term) {
+            if file.filename == completed {
                 next_index = index;
                 break;
             };
         }
-        self.input.reset();
         self.path_content.select_index(next_index);
         self.line_index = next_index;
         self.window.scroll_to(self.line_index);
