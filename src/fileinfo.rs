@@ -321,7 +321,7 @@ impl PathContent {
         }
     }
 
-    pub fn contains(&self, path: &path::PathBuf) -> bool {
+    pub fn contains(&self, path: &path::Path) -> bool {
         path.starts_with(&self.path)
     }
 }

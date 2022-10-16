@@ -37,7 +37,7 @@ impl Preview {
             Some(file_info) => {
                 let mut file = std::fs::File::open(file_info.path.clone()).unwrap();
                 let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
-                if file_info.extension == "pdf".to_owned() {
+                if file_info.extension == *"pdf" {
                     Self::Pdf(PdfContent::new(file_info.path.clone()))
                 } else if let Some(syntaxset) = ps.find_syntax_by_extension(&file_info.extension) {
                     Self::Syntaxed(SyntaxedContent::new(ps.clone(), path_content, syntaxset))

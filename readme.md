@@ -6,7 +6,6 @@
   - [x] identifier filetype cf TODO
   - [x] colorier selon filetype cf TODO
 - [x] scroll
-<!-- TODO: bug quand on a trop de fichiers, on peut scroll jusqu'en bas -->
 - [x] load from anywhere
 - [x] args : dirpath & show hidden (-a)
 - [x] toggle hidden
@@ -78,6 +77,8 @@
 - [x] confirmation display shows a list of edited files
 - [x] integrate fzf or another fuzzy finder
 - [x] custom a file opener
+- [x] bulkrename @ ranger
+- [x] scrollable help
 
 ## TODO
 
@@ -91,7 +92,7 @@
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 - [ ] display / event separation. use async and message passing between coroutines
-- [ ] scrollable help
+- [ ] preview images @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
 
 ## BUGS
 
@@ -102,7 +103,3 @@
 ### CLI
 
 - [CLI crates](https://lib.rs/command-line-interface)
-
-### filepicker in vim
-
-- [fff](https://github.com/dylanaraps/fff)

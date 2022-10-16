@@ -6,8 +6,6 @@ use std::time::{Duration, SystemTime};
 
 use crate::opener::{ExtensionKind, Opener};
 
-//TODO: comme pour skim, attach a Arc<Term> and use it to display the editor
-
 static TMP_FOLDER: &str = "/tmp";
 
 pub struct Bulkrename {
@@ -38,9 +36,7 @@ impl Bulkrename {
 
     fn watch_modification_in_thread(filepath: PathBuf, original_modification: SystemTime) {
         let handle = thread::spawn(move || loop {
-            if Self::is_file_modified(&filepath, original_modification.clone())
-                .unwrap_or_else(|_| true)
-            {
+            if Self::is_file_modified(&filepath, original_modification).unwrap_or(true) {
                 break;
             }
             thread::sleep(Duration::from_millis(10));
@@ -119,7 +115,7 @@ impl Bulkrename {
 
     fn delete_temp_file(&self) -> Result<(), io::Error> {
         let filepath = &self.temp_file;
-        Ok(std::fs::remove_file(&filepath)?)
+        std::fs::remove_file(&filepath)
     }
 
     fn rename_all(&self, new_filenames: Vec<String>) -> Result<(), io::Error> {
@@ -132,6 +128,6 @@ impl Bulkrename {
     fn rename_file(&self, path: &PathBuf, filename: &str) -> Result<(), io::Error> {
         let mut parent = path.clone();
         parent.pop();
-        Ok(std::fs::rename(path, parent.join(&filename))?)
+        std::fs::rename(path, parent.join(&filename))
     }
 }
