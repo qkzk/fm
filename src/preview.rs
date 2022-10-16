@@ -13,6 +13,7 @@ use tuikit::attr::{Attr, Color};
 use tuikit::term::Term;
 
 use crate::fileinfo::PathContent;
+use crate::help::HELP_LINES;
 
 #[derive(Clone)]
 pub enum Preview {
@@ -53,6 +54,10 @@ impl Preview {
         }
     }
 
+    pub fn help() -> Self {
+        Self::Text(TextContent::help())
+    }
+
     pub fn len(&self) -> usize {
         match self {
             Self::Syntaxed(syntaxed) => syntaxed.len(),
@@ -84,7 +89,16 @@ impl Default for TextContent {
 }
 
 impl TextContent {
-    pub fn from_file(path_content: &PathContent) -> Self {
+    fn help() -> Self {
+        let content: Box<Vec<String>> =
+            Box::new(HELP_LINES.split('\n').map(|s| s.to_owned()).collect());
+        Self {
+            length: content.len(),
+            content,
+        }
+    }
+
+    fn from_file(path_content: &PathContent) -> Self {
         let content = match path_content.selected_file() {
             Some(file) => {
                 let reader =

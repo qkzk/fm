@@ -295,7 +295,9 @@ impl Status {
     }
 
     pub fn event_help(&mut self) {
-        self.mode = Mode::Help
+        self.mode = Mode::Help;
+        self.preview = Preview::help();
+        self.window.reset(self.preview.len())
     }
 
     pub fn event_search(&mut self) {

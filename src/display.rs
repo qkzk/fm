@@ -58,12 +58,12 @@ impl Display {
         self.files(status, tabs);
         self.cursor(status);
         match status.mode {
-            Mode::Help => self.help(),
+            // Mode::Help => self.help(),
             Mode::Jump => self.jump_list(tabs),
             Mode::History => self.history(status),
             Mode::Exec | Mode::Goto | Mode::Search => self.completion(status, tabs),
             Mode::NeedConfirmation => self.confirmation(status, tabs),
-            Mode::Preview => self.preview(status, tabs),
+            Mode::Preview | Mode::Help => self.preview(status, tabs),
             Mode::Shortcut => self.shortcuts(status),
             _ => (),
         }
@@ -102,6 +102,7 @@ impl Display {
                 ),
                 None => "".to_owned(),
             },
+            Mode::Help => "fm: a dired like file manager. Default keybindings.".to_owned(),
             _ => {
                 format!("{:?} {}", status.mode.clone(), status.input.string.clone())
             }
@@ -272,93 +273,91 @@ impl Display {
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
     fn preview(&mut self, status: &Status, tabs: &Tabs) {
-        if let Mode::Preview = status.mode {
-            let _ = self.term.clear();
-            self.first_line(status, tabs);
+        let _ = self.term.clear();
+        self.first_line(status, tabs);
 
-            let length = status.preview.len();
-            let line_number_width = length.to_string().len();
-            match &status.preview {
-                // TODO: should it belong to separate methods ?
-                Preview::Syntaxed(syntaxed) => {
-                    for (i, vec_line) in syntaxed
-                        .content
-                        .iter()
-                        .enumerate()
-                        .skip(status.window.top)
-                        .take(min(length, status.window.bottom + 1))
-                    {
-                        let row = Self::calc_line_row(i, status);
-                        let _ = self.term.print_with_attr(
-                            row,
-                            0,
-                            &(i + 1 + status.window.top).to_string(),
-                            Self::LINE_ATTR,
-                        );
-                        for token in vec_line.iter() {
-                            token.print(&self.term, row, line_number_width);
-                        }
+        let length = status.preview.len();
+        let line_number_width = length.to_string().len();
+        match &status.preview {
+            // TODO: should it belong to separate methods ?
+            Preview::Syntaxed(syntaxed) => {
+                for (i, vec_line) in syntaxed
+                    .content
+                    .iter()
+                    .enumerate()
+                    .skip(status.window.top)
+                    .take(min(length, status.window.bottom + 1))
+                {
+                    let row = Self::calc_line_row(i, status);
+                    let _ = self.term.print_with_attr(
+                        row,
+                        0,
+                        &(i + 1 + status.window.top).to_string(),
+                        Self::LINE_ATTR,
+                    );
+                    for token in vec_line.iter() {
+                        token.print(&self.term, row, line_number_width);
                     }
                 }
-                Preview::Text(text) => {
-                    for (i, line) in text
-                        .content
-                        .iter()
-                        .enumerate()
-                        .skip(status.window.top)
-                        .take(min(length, status.window.bottom + 1))
-                    {
-                        let row = Self::calc_line_row(i, status);
-                        let _ = self.term.print_with_attr(
-                            row,
-                            0,
-                            &(i + 1 + status.window.top).to_string(),
-                            Self::LINE_ATTR,
-                        );
-                        let _ = self.term.print(row, line_number_width + 3, line);
-                    }
-                }
-                Preview::Binary(bin) => {
-                    let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
-
-                    for (i, line) in bin
-                        .content
-                        .iter()
-                        .enumerate()
-                        .skip(status.window.top)
-                        .take(min(length, status.window.bottom + 1))
-                    {
-                        let row = Self::calc_line_row(i, status);
-
-                        let _ = self.term.print_with_attr(
-                            row,
-                            0,
-                            &format_line_nr_hex(i + 1 + status.window.top, line_number_width_hex),
-                            Self::LINE_ATTR,
-                        );
-                        line.print(&self.term, row, line_number_width_hex + 1);
-                    }
-                }
-                Preview::Pdf(text) => {
-                    for (i, line) in text
-                        .content
-                        .iter()
-                        .enumerate()
-                        .skip(status.window.top)
-                        .take(min(length, status.window.bottom + 1))
-                    {
-                        let row = Self::calc_line_row(i, status);
-                        let _ = self.term.print_with_attr(
-                            row,
-                            0,
-                            &(i + 1 + status.window.top).to_string(),
-                            Self::LINE_ATTR,
-                        );
-                        let _ = self.term.print(row, line_number_width + 3, line);
-                    }
-                }
-                Preview::Empty => (),
             }
+            Preview::Text(text) => {
+                for (i, line) in text
+                    .content
+                    .iter()
+                    .enumerate()
+                    .skip(status.window.top)
+                    .take(min(length, status.window.bottom + 1))
+                {
+                    let row = Self::calc_line_row(i, status);
+                    let _ = self.term.print_with_attr(
+                        row,
+                        0,
+                        &(i + 1 + status.window.top).to_string(),
+                        Self::LINE_ATTR,
+                    );
+                    let _ = self.term.print(row, line_number_width + 3, line);
+                }
+            }
+            Preview::Binary(bin) => {
+                let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
+
+                for (i, line) in bin
+                    .content
+                    .iter()
+                    .enumerate()
+                    .skip(status.window.top)
+                    .take(min(length, status.window.bottom + 1))
+                {
+                    let row = Self::calc_line_row(i, status);
+
+                    let _ = self.term.print_with_attr(
+                        row,
+                        0,
+                        &format_line_nr_hex(i + 1 + status.window.top, line_number_width_hex),
+                        Self::LINE_ATTR,
+                    );
+                    line.print(&self.term, row, line_number_width_hex + 1);
+                }
+            }
+            Preview::Pdf(text) => {
+                for (i, line) in text
+                    .content
+                    .iter()
+                    .enumerate()
+                    .skip(status.window.top)
+                    .take(min(length, status.window.bottom + 1))
+                {
+                    let row = Self::calc_line_row(i, status);
+                    let _ = self.term.print_with_attr(
+                        row,
+                        0,
+                        &(i + 1 + status.window.top).to_string(),
+                        Self::LINE_ATTR,
+                    );
+                    let _ = self.term.print(row, line_number_width + 3, line);
+                }
+            }
+            Preview::Empty => (),
         }
     }
 

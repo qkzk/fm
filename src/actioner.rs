@@ -91,7 +91,7 @@ impl Actioner {
     /// Move one line up
     fn up(&self, tabs: &mut Tabs) {
         match tabs.selected().mode {
-            Mode::Normal | Mode::Preview => tabs.selected().event_up_one_row(),
+            Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_up_one_row(),
             Mode::Jump => tabs.event_jumplist_prev(),
             Mode::History => tabs.selected().event_history_prev(),
             Mode::Shortcut => tabs.selected().event_shortcut_prev(),
@@ -105,7 +105,7 @@ impl Actioner {
     /// Move one line down
     fn down(&self, tabs: &mut Tabs) {
         match tabs.selected().mode {
-            Mode::Normal | Mode::Preview => tabs.selected().event_down_one_row(),
+            Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_down_one_row(),
             Mode::Jump => tabs.event_jumplist_next(),
             Mode::History => tabs.selected().event_history_next(),
             Mode::Shortcut => tabs.selected().event_shortcut_next(),
@@ -187,7 +187,7 @@ impl Actioner {
     /// Move to top or beggining of line.
     fn home(&self, tabs: &mut Tabs) {
         match tabs.selected().mode {
-            Mode::Normal | Mode::Preview => tabs.selected().event_go_top(),
+            Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_go_top(),
             _ => tabs.selected().event_cursor_home(),
         }
     }
@@ -195,7 +195,7 @@ impl Actioner {
     /// Move to end or end of line.
     fn end(&self, tabs: &mut Tabs) {
         match tabs.selected().mode {
-            Mode::Normal | Mode::Preview => tabs.selected().event_go_bottom(),
+            Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_go_bottom(),
             _ => tabs.selected().event_cursor_end(),
         }
     }
@@ -203,7 +203,7 @@ impl Actioner {
     /// Move down 10 rows
     fn page_down(&self, tabs: &mut Tabs) {
         match tabs.selected().mode {
-            Mode::Normal | Mode::Preview => tabs.selected().event_page_down(),
+            Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_page_down(),
             _ => (),
         }
     }
@@ -211,7 +211,7 @@ impl Actioner {
     /// Move up 10 rows
     fn page_up(&self, tabs: &mut Tabs) {
         match tabs.selected().mode {
-            Mode::Normal | Mode::Preview => tabs.selected().event_page_up(),
+            Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_page_up(),
             _ => (),
         }
     }
