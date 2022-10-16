@@ -7,6 +7,7 @@ use std::path::{self, PathBuf};
 use std::sync::Arc;
 
 use crate::args::Args;
+use crate::bulkrename::Bulkrename;
 use crate::config::Config;
 use crate::fileinfo::PathContent;
 use crate::last_edition::LastEdition;
@@ -218,6 +219,24 @@ impl Tabs {
         let len = self.statuses[self.index].path_content.files.len();
         self.statuses[self.index].window.reset(len);
         self.reset_statuses()
+    }
+
+    pub fn event_bulkrename(&mut self) {
+        match Bulkrename::new(self.filtered_flagged_files()) {
+            Ok(mut renamer) => {
+                let _ = renamer.rename(&self.selected().opener);
+            }
+            Err(e) => eprintln!("{}", e),
+        }
+    }
+
+    fn filtered_flagged_files(&mut self) -> Vec<PathBuf> {
+        let path_content = self.selected().path_content.clone();
+        self.flagged
+            .iter()
+            .filter(|p| path_content.contains(p))
+            .map(|p| p.to_owned())
+            .collect()
     }
 
     fn exec_copy_paste(&mut self) {

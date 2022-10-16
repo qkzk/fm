@@ -200,6 +200,8 @@ pub struct Keybindings {
     pub history: char,
     /// Display predefined shortcuts
     pub shortcut: char,
+    /// Bulkrename
+    pub bulkrename: char,
 }
 
 impl Keybindings {
@@ -287,6 +289,9 @@ impl Keybindings {
         if let Some(shortcut) = yaml["shortcut"].as_str().map(|s| s.to_string()) {
             self.shortcut = shortcut.chars().next().unwrap_or('G');
         }
+        if let Some(bulkrename) = yaml["bulkrename"].as_str().map(|s| s.to_string()) {
+            self.bulkrename = bulkrename.chars().next().unwrap_or('B');
+        }
     }
 
     /// Returns a new `Keybindings` instance with hardcoded values.
@@ -319,6 +324,7 @@ impl Keybindings {
             preview: 'P',
             history: 'H',
             shortcut: 'G',
+            bulkrename: 'B',
         }
     }
 }

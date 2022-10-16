@@ -28,6 +28,7 @@ pub enum EventChar {
     Symlink,
     Preview,
     Shortcut,
+    Bulkrename,
 }
 
 impl EventChar {
@@ -61,6 +62,7 @@ impl EventChar {
             EventChar::Symlink => tabs.event_symlink(),
             EventChar::Preview => current_status.event_preview(),
             EventChar::Shortcut => current_status.event_shortcut(),
+            EventChar::Bulkrename => tabs.event_bulkrename(),
         }
     }
 }
