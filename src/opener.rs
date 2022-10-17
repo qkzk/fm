@@ -194,9 +194,10 @@ impl OpenerInfo {
     }
 
     fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
-        let opener = yaml.get("opener");
-        let use_term = yaml.get("use_term");
-        Some(Self::new(opener?.as_str()?, use_term?.as_bool()?))
+        Some(Self::new(
+            yaml.get("opener")?.as_str()?,
+            yaml.get("use_term")?.as_bool()?,
+        ))
     }
 }
 

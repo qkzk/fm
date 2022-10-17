@@ -40,6 +40,8 @@ pub struct Status {
     height: usize,
     /// read from command line
     pub show_hidden: bool,
+    /// NVIM RPC server address
+    nvim_server: String,
     /// Configurable terminal executable
     terminal: String,
     /// Completion list and index in it.
@@ -66,6 +68,7 @@ impl Status {
         });
         let path_content = PathContent::new(path.clone(), args.all);
         let show_hidden = args.all;
+        let nvim_server = args.server;
         let terminal = config.terminal;
         // let opener = config.opener;
         let mode = Mode::Normal;
@@ -89,6 +92,7 @@ impl Status {
             path_content,
             height,
             show_hidden,
+            nvim_server,
             terminal,
             completion,
             last_edition,
@@ -411,31 +415,33 @@ impl Status {
 
     pub fn event_nvim_filepicker(&mut self) {
         if self.path_content.files.is_empty() {
+            eprintln!("Called nvim filepicker in an empty directory.");
             return;
         }
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
-        let server = std::env::var("NVIM_LISTEN_ADDRESS").unwrap_or_else(|_| "".to_owned());
-        if server.is_empty() {
-            return;
+        if let Ok(nvim_listen_address) = self.nvim_listen_address() {
+            if let Some(path_str) = self.path_content.selected_path_str() {
+                execute_in_child(
+                    "nvim-send",
+                    &vec![
+                        "--remote-send",
+                        &format!("<esc>:e {}<cr><esc>:close<cr>", path_str),
+                        "--servername",
+                        &nvim_listen_address,
+                    ],
+                );
+            }
+        } else {
+            eprintln!("Nvim server not defined");
         }
-        execute_in_child(
-            "nvim-send",
-            &vec![
-                "--remote-send",
-                &format!(
-                    "<esc>:e {}<cr><esc>:close<cr>",
-                    self.path_content
-                        .selected_file()
-                        .unwrap()
-                        .path
-                        .clone()
-                        .to_str()
-                        .unwrap()
-                ),
-                "--servername",
-                &server,
-            ],
-        );
+    }
+
+    fn nvim_listen_address(&self) -> Result<String, std::env::VarError> {
+        if !self.nvim_server.is_empty() {
+            Ok(self.nvim_server.clone())
+        } else {
+            std::env::var("NVIM_LISTEN_ADDRESS")
+        }
     }
 
     pub fn exec_rename(&mut self) {

@@ -321,6 +321,10 @@ impl PathContent {
         }
     }
 
+    pub fn selected_path_str(&self) -> Option<String> {
+        Some(self.selected_file()?.path.to_str()?.to_owned())
+    }
+
     pub fn contains(&self, path: &path::Path) -> bool {
         path.starts_with(&self.path)
     }

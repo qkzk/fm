@@ -88,9 +88,11 @@
   - [ ] listen to stdin (rcv etc.)
     - [ ] follow change directory
     - [ ] when called from a file buffer in nvim, open with this file selected
-  - [ ] nvim plugin
+  - [ ] nvim plugin - set a serverstart with a listenaddress, send it to fm
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
+  - [ ] $NVIM_LISTEN_ADDRESS isn't always set on nbim startup ; can be set from nvim before running... then sent to fm with some args
+  - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] preview images @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
 
