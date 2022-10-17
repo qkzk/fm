@@ -70,7 +70,6 @@ impl Status {
         let show_hidden = args.all;
         let nvim_server = args.server;
         let terminal = config.terminal;
-        // let opener = config.opener;
         let mode = Mode::Normal;
         let line_index = 0;
         let window = ContentWindow::new(path_content.files.len(), height);
@@ -366,9 +365,6 @@ impl Status {
         }
         self.opener
             .open(self.path_content.selected_file().unwrap().path.clone());
-        // eprintln!("opener: {}", self.opener);
-        // let child = execute_in_child(&self.opener, &vec![&self.path_str()]);
-        // eprintln!("after {:?}", child);
     }
 
     pub fn event_rename(&mut self) {
@@ -449,7 +445,7 @@ impl Status {
             return;
         }
         fs::rename(
-            self.path_content.selected_file().unwrap().clone().path,
+            self.path_content.selected_path_str().unwrap(),
             self.path_content
                 .path
                 .to_path_buf()
@@ -476,16 +472,11 @@ impl Status {
         let exec_command = self.input.string.clone();
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
-        args.push(
-            self.path_content
-                .selected_file()
-                .unwrap()
-                .path
-                .to_str()
-                .unwrap(),
-        );
-        self.input.reset();
-        execute_in_child(command, &args);
+        if let Some(path) = &self.path_content.selected_path_str() {
+            args.push(path);
+            self.input.reset();
+            execute_in_child(command, &args);
+        }
     }
 
     pub fn exec_search(&mut self) {
