@@ -253,10 +253,10 @@ impl Tabs {
                 std::fs::copy(oldpath, newpath).unwrap_or(0);
             }
         });
-        self.clear_flags()
+        self.clear_flags_and_reset_view()
     }
 
-    fn clear_flags(&mut self) {
+    fn clear_flags_and_reset_view(&mut self) {
         self.flagged.clear();
         self.selected().path_content.reset_files();
         let len = self.statuses[self.index].path_content.files.len();
@@ -280,7 +280,7 @@ impl Tabs {
                 std::fs::remove_file(pathbuf).unwrap_or(());
             }
         });
-        self.clear_flags()
+        self.clear_flags_and_reset_view()
     }
 
     pub fn exec_chmod(&mut self) {
@@ -295,13 +295,12 @@ impl Tabs {
             }
             self.flagged.clear()
         }
-        self.selected().input.string.clear();
         self.selected().refresh_view();
         self.reset_statuses()
     }
 
     pub fn exec_jump(&mut self) {
-        self.selected().input.reset();
+        self.selected().input.string.clear();
         let jump_list: Vec<&PathBuf> = self.flagged.iter().collect();
         let jump_target = jump_list[self.jump_index].clone();
         let target_dir = match jump_target.parent() {
