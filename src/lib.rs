@@ -10,6 +10,7 @@ pub mod fileinfo;
 pub mod help;
 pub mod input;
 pub mod last_edition;
+pub mod marks;
 pub mod mode;
 pub mod opener;
 pub mod preview;

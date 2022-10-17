@@ -1,0 +1,81 @@
+use std::collections::HashMap;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::{self, BufRead, BufWriter, Error, ErrorKind, Write};
+use std::path::{Path, PathBuf};
+
+pub struct Marks {
+    save_path: PathBuf,
+    marks: HashMap<char, PathBuf>,
+}
+
+impl Marks {
+    pub fn read_from_file(save_path: PathBuf) -> Self {
+        let mut marks = HashMap::new();
+        if let Ok(lines) = read_lines(&save_path) {
+            for line in lines {
+                if let Ok((ch, path)) = Self::parse_line(line) {
+                    marks.insert(ch, path);
+                }
+            }
+        }
+        Self { save_path, marks }
+    }
+
+    fn parse_line(line: Result<String, io::Error>) -> Result<(char, PathBuf), io::Error> {
+        let line = line?;
+        let sp: Vec<&str> = line.split(":").collect();
+        if let Some(ch) = sp[0].chars().next() {
+            let path = PathBuf::from(sp[1]);
+            Ok((ch, path))
+        } else {
+            Err(Error::new(ErrorKind::InvalidData, "Invalid char"))
+        }
+    }
+
+    fn new_mark(&mut self, ch: char, path: PathBuf) {
+        if ch == ':' {
+            return;
+        }
+        self.marks.insert(ch, path);
+        self.save_marks();
+    }
+
+    fn save_marks(&self) {
+        let file = OpenOptions::new()
+            .write(true)
+            .open(self.save_path.clone())
+            .unwrap();
+        let mut buf = BufWriter::new(file);
+
+        for (ch, path) in self.marks.iter() {
+            write!(
+                buf,
+                "{}:{}",
+                ch,
+                path.clone()
+                    .into_os_string()
+                    .into_string()
+                    .unwrap_or("".to_owned())
+            );
+        }
+    }
+
+    pub fn as_string(&self) -> String {
+        let mut s = "".to_owned();
+        for (ch, path) in self.marks.iter() {
+            s.push(*ch);
+            s.push(':');
+            s.push_str(&path.clone().into_os_string().into_string().unwrap());
+        }
+        s
+    }
+}
+
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where
+    P: AsRef<Path>,
+{
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
+}
