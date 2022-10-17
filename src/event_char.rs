@@ -29,6 +29,8 @@ pub enum EventChar {
     Preview,
     Shortcut,
     Bulkrename,
+    MarksNew,
+    MarksJump,
 }
 
 impl EventChar {
@@ -63,6 +65,8 @@ impl EventChar {
             EventChar::Preview => current_status.event_preview(),
             EventChar::Shortcut => current_status.event_shortcut(),
             EventChar::Bulkrename => tabs.event_bulkrename(),
+            EventChar::MarksNew => tabs.event_marks_new(),
+            EventChar::MarksJump => tabs.event_marks_jump(),
         }
     }
 }

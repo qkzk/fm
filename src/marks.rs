@@ -4,12 +4,19 @@ use std::fs::OpenOptions;
 use std::io::{self, BufRead, BufWriter, Error, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 
+static MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
+
 pub struct Marks {
     save_path: PathBuf,
     marks: HashMap<char, PathBuf>,
 }
 
 impl Marks {
+    pub fn read_from_config_file() -> Self {
+        Self::read_from_file(PathBuf::from(
+            std::fs::canonicalize(MARKS_FILEPATH).unwrap_or(PathBuf::new()),
+        ))
+    }
     pub fn read_from_file(save_path: PathBuf) -> Self {
         let mut marks = HashMap::new();
         if let Ok(lines) = read_lines(&save_path) {
@@ -42,6 +49,8 @@ impl Marks {
     }
 
     fn save_marks(&self) {
+        let _ = std::fs::File::create(MARKS_FILEPATH);
+
         let file = OpenOptions::new()
             .write(true)
             .open(self.save_path.clone())
@@ -67,6 +76,7 @@ impl Marks {
             s.push(*ch);
             s.push(':');
             s.push_str(&path.clone().into_os_string().into_string().unwrap());
+            s.push('\n');
         }
         s
     }

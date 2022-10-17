@@ -11,6 +11,7 @@ use crate::bulkrename::Bulkrename;
 use crate::config::Config;
 use crate::fileinfo::PathContent;
 use crate::last_edition::LastEdition;
+use crate::marks::Marks;
 use crate::mode::Mode;
 use crate::status::Status;
 
@@ -23,6 +24,8 @@ pub struct Tabs {
     pub flagged: HashSet<PathBuf>,
     /// Index in the jump list
     pub jump_index: usize,
+    /// Marks allows you to jump to a save mark
+    pub marks: Marks,
 }
 
 impl Tabs {
@@ -34,6 +37,7 @@ impl Tabs {
             index: 0,
             flagged: HashSet::new(),
             jump_index: 0,
+            marks: Marks::read_from_config_file(),
         }
     }
 
@@ -203,6 +207,28 @@ impl Tabs {
             self.selected().mode = Mode::Jump
         }
     }
+
+    pub fn event_marks_new(&mut self) {
+        // display the current path
+
+        // display the marks
+
+        // read a char
+
+        // save
+    }
+
+    pub fn event_marks_jump(&mut self) {
+        // display the marks
+
+        // read a char
+
+        // parse char
+    }
+
+    pub fn exec_marks_new(&mut self) {}
+
+    pub fn exec_marks_jump(&mut self) {}
 
     /// Creates a symlink of every flagged file to the current directory.
     pub fn event_symlink(&mut self) {
