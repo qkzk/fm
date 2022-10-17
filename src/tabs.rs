@@ -240,15 +240,23 @@ impl Tabs {
             .collect()
     }
 
-    fn exec_copy_paste(&mut self) {
+    fn cut_or_copy_paste(&mut self, cut: bool) {
         self.flagged.iter().for_each(|oldpath| {
             let newpath = self.statuses[self.index]
                 .path_content
                 .path
                 .clone()
                 .join(oldpath.as_path().file_name().unwrap());
-            std::fs::copy(oldpath, newpath).unwrap_or(0);
+            if cut {
+                std::fs::rename(oldpath, newpath).unwrap_or(());
+            } else {
+                std::fs::copy(oldpath, newpath).unwrap_or(0);
+            }
         });
+        self.clear_flags()
+    }
+
+    fn clear_flags(&mut self) {
         self.flagged.clear();
         self.selected().path_content.reset_files();
         let len = self.statuses[self.index].path_content.files.len();
@@ -256,20 +264,12 @@ impl Tabs {
         self.reset_statuses()
     }
 
+    fn exec_copy_paste(&mut self) {
+        self.cut_or_copy_paste(false)
+    }
+
     fn exec_cut_paste(&mut self) {
-        self.flagged.iter().for_each(|oldpath| {
-            let newpath = self.statuses[self.index]
-                .path_content
-                .path
-                .clone()
-                .join(oldpath.as_path().file_name().unwrap());
-            std::fs::rename(oldpath, newpath).unwrap_or(());
-        });
-        self.flagged.clear();
-        self.selected().path_content.reset_files();
-        let len = self.statuses[self.index].path_content.files.len();
-        self.selected().window.reset(len);
-        self.reset_statuses()
+        self.cut_or_copy_paste(true)
     }
 
     fn exec_delete_files(&mut self) {
@@ -280,11 +280,7 @@ impl Tabs {
                 std::fs::remove_file(pathbuf).unwrap_or(());
             }
         });
-        self.flagged.clear();
-        self.selected().path_content.reset_files();
-        let len = self.statuses[self.index].path_content.files.len();
-        self.selected().window.reset(len);
-        self.reset_statuses()
+        self.clear_flags()
     }
 
     pub fn exec_chmod(&mut self) {
