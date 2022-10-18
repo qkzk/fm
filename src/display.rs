@@ -8,7 +8,7 @@ use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::last_edition::LastEdition;
-use crate::mode::Mode;
+use crate::mode::{MarkAction, Mode};
 use crate::preview::Preview;
 use crate::status::Status;
 use crate::tabs::Tabs;
@@ -64,6 +64,9 @@ impl Display {
             Mode::NeedConfirmation => self.confirmation(status, tabs),
             Mode::Preview | Mode::Help => self.preview(status, tabs),
             Mode::Shortcut => self.shortcuts(status),
+            Mode::Marks(MarkAction::New) | Mode::Marks(MarkAction::Jump) => {
+                self.marks(status, tabs)
+            }
             _ => (),
         }
     }
@@ -102,6 +105,8 @@ impl Display {
                 None => "".to_owned(),
             },
             Mode::Help => "fm: a dired like file manager. Default keybindings.".to_owned(),
+            Mode::Marks(MarkAction::Jump) => "Jump to...".to_owned(),
+            Mode::Marks(MarkAction::New) => "Save mark...".to_owned(),
             _ => {
                 format!("{:?} {}", status.mode.clone(), status.input.string.clone())
             }
@@ -349,6 +354,26 @@ impl Display {
                 }
             }
             Preview::Empty => (),
+        }
+    }
+
+    fn marks(&mut self, status: &Status, tabs: &Tabs) {
+        let _ = self.term.clear();
+        self.first_line(status, tabs);
+
+        let strings = tabs.marks.as_strings();
+
+        let length = strings.len();
+        let line_number_width = length.to_string().len();
+        for (i, line) in tabs.marks.as_strings().iter().enumerate() {
+            let row = Self::calc_line_row(i, status);
+            let _ = self.term.print_with_attr(
+                row,
+                0,
+                &(i + 1 + status.window.top).to_string(),
+                Self::LINE_ATTR,
+            );
+            let _ = self.term.print(row, line_number_width + 3, line);
         }
     }
 

@@ -17,6 +17,7 @@ impl Marks {
             std::fs::canonicalize(MARKS_FILEPATH).unwrap_or(PathBuf::new()),
         ))
     }
+
     pub fn read_from_file(save_path: PathBuf) -> Self {
         let mut marks = HashMap::new();
         if let Ok(lines) = read_lines(&save_path) {
@@ -27,6 +28,10 @@ impl Marks {
             }
         }
         Self { save_path, marks }
+    }
+
+    pub fn get(&self, ch: char) -> Option<&PathBuf> {
+        self.marks.get(&ch)
     }
 
     fn parse_line(line: Result<String, io::Error>) -> Result<(char, PathBuf), io::Error> {
@@ -40,7 +45,7 @@ impl Marks {
         }
     }
 
-    fn new_mark(&mut self, ch: char, path: PathBuf) {
+    pub fn new_mark(&mut self, ch: char, path: PathBuf) {
         if ch == ':' {
             return;
         }
@@ -49,16 +54,17 @@ impl Marks {
     }
 
     fn save_marks(&self) {
-        let _ = std::fs::File::create(MARKS_FILEPATH);
+        eprintln!("save path {:?}", &self.save_path);
+        let _ = std::fs::File::create(&self.save_path);
 
         let file = OpenOptions::new()
             .write(true)
-            .open(self.save_path.clone())
+            .open(&self.save_path)
             .unwrap();
         let mut buf = BufWriter::new(file);
 
         for (ch, path) in self.marks.iter() {
-            write!(
+            let _ = write!(
                 buf,
                 "{}:{}",
                 ch,
@@ -70,14 +76,19 @@ impl Marks {
         }
     }
 
-    pub fn as_string(&self) -> String {
+    pub fn as_strings(&self) -> Vec<String> {
+        self.marks
+            .iter()
+            .map(|(ch, path)| Self::format_mark(ch, path))
+            .collect()
+    }
+
+    fn format_mark(ch: &char, path: &PathBuf) -> String {
         let mut s = "".to_owned();
-        for (ch, path) in self.marks.iter() {
-            s.push(*ch);
-            s.push(':');
-            s.push_str(&path.clone().into_os_string().into_string().unwrap());
-            s.push('\n');
-        }
+        s.push(*ch);
+        s.push(':');
+        s.push_str(&path.clone().into_os_string().into_string().unwrap());
+        s.push('\n');
         s
     }
 }

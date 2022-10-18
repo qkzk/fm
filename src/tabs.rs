@@ -12,7 +12,7 @@ use crate::config::Config;
 use crate::fileinfo::PathContent;
 use crate::last_edition::LastEdition;
 use crate::marks::Marks;
-use crate::mode::Mode;
+use crate::mode::{MarkAction, Mode};
 use crate::status::Status;
 
 pub struct Tabs {
@@ -209,26 +209,27 @@ impl Tabs {
     }
 
     pub fn event_marks_new(&mut self) {
-        // display the current path
-
-        // display the marks
-
-        // read a char
-
-        // save
+        self.selected().mode = Mode::Marks(MarkAction::New)
     }
 
     pub fn event_marks_jump(&mut self) {
-        // display the marks
-
-        // read a char
-
-        // parse char
+        self.selected().mode = Mode::Marks(MarkAction::Jump)
     }
 
-    pub fn exec_marks_new(&mut self) {}
+    pub fn exec_marks_new(&mut self, c: char) {
+        let path = self.selected().path_content.path.clone();
+        self.marks.new_mark(c, path);
+        self.selected().event_normal()
+    }
 
-    pub fn exec_marks_jump(&mut self) {}
+    pub fn exec_marks_jump(&mut self, c: char) {
+        if let Some(path) = self.marks.get(c) {
+            let path = path.to_owned();
+            self.selected().history.push(&path);
+            self.selected().path_content = PathContent::new(path, self.selected().show_hidden);
+        };
+        self.selected().event_normal()
+    }
 
     /// Creates a symlink of every flagged file to the current directory.
     pub fn event_symlink(&mut self) {
