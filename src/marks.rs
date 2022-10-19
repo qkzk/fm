@@ -13,12 +13,11 @@ pub struct Marks {
 
 impl Marks {
     pub fn read_from_config_file() -> Self {
-        Self::read_from_file(PathBuf::from(
-            std::fs::canonicalize(MARKS_FILEPATH).unwrap_or(PathBuf::new()),
-        ))
+        let path = PathBuf::from(shellexpand::tilde(&MARKS_FILEPATH).to_string());
+        Self::read_from_file(path)
     }
 
-    pub fn read_from_file(save_path: PathBuf) -> Self {
+    fn read_from_file(save_path: PathBuf) -> Self {
         let mut marks = HashMap::new();
         if let Ok(lines) = read_lines(&save_path) {
             for line in lines {
@@ -54,8 +53,10 @@ impl Marks {
     }
 
     fn save_marks(&self) {
-        eprintln!("save path {:?}", &self.save_path);
-        let _ = std::fs::File::create(&self.save_path);
+        if !self.save_path.exists() {
+            let _ = std::fs::File::create(&self.save_path);
+            eprintln!("Created a file for marks in {:?}", &self.save_path);
+        }
 
         let file = OpenOptions::new()
             .write(true)
@@ -64,16 +65,15 @@ impl Marks {
         let mut buf = BufWriter::new(file);
 
         for (ch, path) in self.marks.iter() {
-            let _ = write!(
-                buf,
-                "{}:{}",
-                ch,
-                path.clone()
-                    .into_os_string()
-                    .into_string()
-                    .unwrap_or("".to_owned())
-            );
+            let _ = write!(buf, "{}:{}", ch, Self::path_as_string(path));
         }
+    }
+
+    fn path_as_string(path: &PathBuf) -> String {
+        path.clone()
+            .into_os_string()
+            .into_string()
+            .unwrap_or("".to_owned())
     }
 
     pub fn as_strings(&self) -> Vec<String> {
@@ -86,7 +86,7 @@ impl Marks {
     fn format_mark(ch: &char, path: &PathBuf) -> String {
         let mut s = "".to_owned();
         s.push(*ch);
-        s.push(':');
+        s.push_str("   ");
         s.push_str(&path.clone().into_os_string().into_string().unwrap());
         s.push('\n');
         s
