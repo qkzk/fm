@@ -40,3 +40,5 @@ keybindings:
   symlink: S
   preview: P
   history: H
+  marks_new: M
+  marks_jump: "'"

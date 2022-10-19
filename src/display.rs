@@ -8,7 +8,7 @@ use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::last_edition::LastEdition;
-use crate::mode::Mode;
+use crate::mode::{MarkAction, Mode};
 use crate::preview::Preview;
 use crate::status::Status;
 use crate::tabs::Tabs;
@@ -30,9 +30,13 @@ impl Display {
 
     const EDIT_BOX_OFFSET: usize = 10;
     const SORT_CURSOR_OFFSET: usize = 36;
-
-    const LINE_ATTR: Attr = Attr {
+    const ATTR_LINE_NR: Attr = Attr {
         fg: Color::CYAN,
+        bg: Color::Default,
+        effect: Effect::empty(),
+    };
+    const ATTR_YELLOW: Attr = Attr {
+        fg: Color::YELLOW,
         bg: Color::Default,
         effect: Effect::empty(),
     };
@@ -64,6 +68,9 @@ impl Display {
             Mode::NeedConfirmation => self.confirmation(status, tabs),
             Mode::Preview | Mode::Help => self.preview(status, tabs),
             Mode::Shortcut => self.shortcuts(status),
+            Mode::Marks(MarkAction::New) | Mode::Marks(MarkAction::Jump) => {
+                self.marks(status, tabs)
+            }
             _ => (),
         }
     }
@@ -102,11 +109,15 @@ impl Display {
                 None => "".to_owned(),
             },
             Mode::Help => "fm: a dired like file manager. Default keybindings.".to_owned(),
+            Mode::Marks(MarkAction::Jump) => "Jump to...".to_owned(),
+            Mode::Marks(MarkAction::New) => "Save mark...".to_owned(),
             _ => {
                 format!("{:?} {}", status.mode.clone(), status.input.string.clone())
             }
         };
-        let _ = self.term.print_with_attr(0, 0, &first_row, Self::LINE_ATTR);
+        let _ = self
+            .term
+            .print_with_attr(0, 0, &first_row, Self::ATTR_LINE_NR);
     }
 
     /// Displays the current directory content, one line per item like in
@@ -136,7 +147,7 @@ impl Display {
     /// Display a cursor in the top row, at a correct column.
     fn cursor(&mut self, status: &Status) {
         match status.mode {
-            Mode::Normal | Mode::Help => {
+            Mode::Normal | Mode::Help | Mode::Marks(_) => {
                 let _ = self.term.show_cursor(false);
             }
             Mode::NeedConfirmation => {
@@ -284,7 +295,7 @@ impl Display {
                         row,
                         0,
                         &(i + 1 + status.window.top).to_string(),
-                        Self::LINE_ATTR,
+                        Self::ATTR_LINE_NR,
                     );
                     for token in vec_line.iter() {
                         token.print(&self.term, row, line_number_width);
@@ -304,7 +315,7 @@ impl Display {
                         row,
                         0,
                         &(i + 1 + status.window.top).to_string(),
-                        Self::LINE_ATTR,
+                        Self::ATTR_LINE_NR,
                     );
                     let _ = self.term.print(row, line_number_width + 3, line);
                 }
@@ -325,7 +336,7 @@ impl Display {
                         row,
                         0,
                         &format_line_nr_hex(i + 1 + status.window.top, line_number_width_hex),
-                        Self::LINE_ATTR,
+                        Self::ATTR_LINE_NR,
                     );
                     line.print(&self.term, row, line_number_width_hex + 1);
                 }
@@ -343,12 +354,26 @@ impl Display {
                         row,
                         0,
                         &(i + 1 + status.window.top).to_string(),
-                        Self::LINE_ATTR,
+                        Self::ATTR_LINE_NR,
                     );
                     let _ = self.term.print(row, line_number_width + 3, line);
                 }
             }
             Preview::Empty => (),
+        }
+    }
+
+    fn marks(&mut self, status: &Status, tabs: &Tabs) {
+        let _ = self.term.clear();
+        self.first_line(status, tabs);
+
+        let _ = self
+            .term
+            .print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW);
+
+        for (i, line) in tabs.marks.as_strings().iter().enumerate() {
+            let row = Self::calc_line_row(i, status) + 2;
+            let _ = self.term.print(row, 3, line);
         }
     }
 

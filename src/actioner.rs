@@ -5,7 +5,7 @@ use tuikit::term::Term;
 
 use crate::config::Keybindings;
 use crate::event_char::EventChar;
-use crate::mode::Mode;
+use crate::mode::{MarkAction, Mode};
 use crate::skim::Skimer;
 use crate::tabs::Tabs;
 
@@ -51,6 +51,8 @@ impl Actioner {
             (keybindings.history, EventChar::History),
             (keybindings.shortcut, EventChar::Shortcut),
             (keybindings.bulkrename, EventChar::Bulkrename),
+            (keybindings.marks_new, EventChar::MarksNew),
+            (keybindings.marks_jump, EventChar::MarksJump),
         ]);
         Self { binds, term }
     }
@@ -230,7 +232,12 @@ impl Actioner {
             Mode::Jump => tabs.exec_jump(),
             Mode::History => tabs.selected().exec_history(),
             Mode::Shortcut => tabs.selected().exec_shortcut(),
-            Mode::Normal | Mode::NeedConfirmation | Mode::Help | Mode::Sort | Mode::Preview => (),
+            Mode::Normal
+            | Mode::NeedConfirmation
+            | Mode::Help
+            | Mode::Sort
+            | Mode::Preview
+            | Mode::Marks(_) => (),
         }
 
         tabs.selected().input.reset();
@@ -291,6 +298,8 @@ impl Actioner {
                 }
                 tabs.selected().event_leave_need_confirmation()
             }
+            Mode::Marks(MarkAction::Jump) => tabs.exec_marks_jump(c),
+            Mode::Marks(MarkAction::New) => tabs.exec_marks_new(c),
             Mode::Sort => tabs.selected().event_leave_sort(c),
         }
     }

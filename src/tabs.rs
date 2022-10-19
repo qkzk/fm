@@ -11,7 +11,8 @@ use crate::bulkrename::Bulkrename;
 use crate::config::Config;
 use crate::fileinfo::PathContent;
 use crate::last_edition::LastEdition;
-use crate::mode::Mode;
+use crate::marks::Marks;
+use crate::mode::{MarkAction, Mode};
 use crate::status::Status;
 
 pub struct Tabs {
@@ -23,6 +24,8 @@ pub struct Tabs {
     pub flagged: HashSet<PathBuf>,
     /// Index in the jump list
     pub jump_index: usize,
+    /// Marks allows you to jump to a save mark
+    pub marks: Marks,
 }
 
 impl Tabs {
@@ -34,6 +37,7 @@ impl Tabs {
             index: 0,
             flagged: HashSet::new(),
             jump_index: 0,
+            marks: Marks::read_from_config_file(),
         }
     }
 
@@ -202,6 +206,29 @@ impl Tabs {
             self.jump_index = 0;
             self.selected().mode = Mode::Jump
         }
+    }
+
+    pub fn event_marks_new(&mut self) {
+        self.selected().mode = Mode::Marks(MarkAction::New)
+    }
+
+    pub fn event_marks_jump(&mut self) {
+        self.selected().mode = Mode::Marks(MarkAction::Jump)
+    }
+
+    pub fn exec_marks_new(&mut self, c: char) {
+        let path = self.selected().path_content.path.clone();
+        self.marks.new_mark(c, path);
+        self.selected().event_normal()
+    }
+
+    pub fn exec_marks_jump(&mut self, c: char) {
+        if let Some(path) = self.marks.get(c) {
+            let path = path.to_owned();
+            self.selected().history.push(&path);
+            self.selected().path_content = PathContent::new(path, self.selected().show_hidden);
+        };
+        self.selected().event_normal()
     }
 
     /// Creates a symlink of every flagged file to the current directory.

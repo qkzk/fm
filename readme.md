@@ -79,6 +79,7 @@
 - [x] custom a file opener
 - [x] bulkrename @ ranger
 - [x] scrollable help
+- [x] user defined marks ; saved and read from a file.
 
 ## TODO
 
@@ -96,7 +97,6 @@
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] preview images @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
 - [ ] refactor: main should return result, have everything raise errors
-- [ ] user defined marks
 
 ## BUGS
 

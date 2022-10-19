@@ -1,5 +1,11 @@
 use std::fmt;
 
+#[derive(Clone)]
+pub enum MarkAction {
+    Jump,
+    New,
+}
+
 /// Different mode in which the application can be.
 /// It dictates the reaction to event and what to display.
 #[derive(Clone)]
@@ -37,6 +43,8 @@ pub enum Mode {
     History,
     /// Display predefined shortcuts
     Shortcut,
+    /// Jump to a saved mark
+    Marks(MarkAction),
 }
 
 impl fmt::Debug for Mode {
@@ -58,6 +66,7 @@ impl fmt::Debug for Mode {
             Mode::Sort => write!(f, "(N)ame (D)ate (S)ize (E)xt (R)ev :"),
             Mode::Preview => write!(f, "Preview : "),
             Mode::Shortcut => write!(f, "Shortcut :"),
+            Mode::Marks(_) => write!(f, "Marks jump:"),
         }
     }
 }
