@@ -7,7 +7,7 @@ use crate::config::Keybindings;
 use crate::event_char::EventChar;
 use crate::mode::{MarkAction, Mode};
 use crate::skim::Skimer;
-use crate::tabs::Tabs;
+use crate::status::Tabs;
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.

@@ -7,7 +7,7 @@ use fm::actioner::Actioner;
 use fm::args::Args;
 use fm::config::load_config;
 use fm::display::Display;
-use fm::tabs::Tabs;
+use fm::status::Tabs;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 

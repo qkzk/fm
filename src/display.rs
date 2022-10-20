@@ -10,8 +10,8 @@ use crate::fileinfo::fileinfo_attr;
 use crate::last_edition::LastEdition;
 use crate::mode::{MarkAction, Mode};
 use crate::preview::Preview;
-use crate::status::Status;
-use crate::tabs::Tabs;
+use crate::status::Tabs;
+use crate::tab::Status;
 
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.

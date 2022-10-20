@@ -1,4 +1,4 @@
-use crate::tabs::Tabs;
+use crate::status::Tabs;
 
 pub enum EventChar {
     ToggleHidden,
