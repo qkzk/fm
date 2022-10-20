@@ -35,7 +35,7 @@ impl Marks {
 
     fn parse_line(line: Result<String, io::Error>) -> Result<(char, PathBuf), io::Error> {
         let line = line?;
-        let sp: Vec<&str> = line.split(":").collect();
+        let sp: Vec<&str> = line.split(':').collect();
         if let Some(ch) = sp[0].chars().next() {
             let path = PathBuf::from(sp[1]);
             Ok((ch, path))
@@ -69,11 +69,8 @@ impl Marks {
         }
     }
 
-    fn path_as_string(path: &PathBuf) -> String {
-        path.clone()
-            .into_os_string()
-            .into_string()
-            .unwrap_or("".to_owned())
+    fn path_as_string(path: &Path) -> String {
+        path.to_str().unwrap_or("").to_owned()
     }
 
     pub fn as_strings(&self) -> Vec<String> {
@@ -83,11 +80,11 @@ impl Marks {
             .collect()
     }
 
-    fn format_mark(ch: &char, path: &PathBuf) -> String {
+    fn format_mark(ch: &char, path: &Path) -> String {
         let mut s = "".to_owned();
         s.push(*ch);
         s.push_str("   ");
-        s.push_str(&path.clone().into_os_string().into_string().unwrap());
+        s.push_str(path.to_str().unwrap_or(""));
         s.push('\n');
         s
     }

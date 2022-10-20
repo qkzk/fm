@@ -15,8 +15,14 @@ use crate::marks::Marks;
 use crate::mode::{MarkAction, Mode};
 use crate::tab::Tab;
 
+#[derive(Clone)]
+enum CutOrCopy {
+    Cut,
+    Copy,
+}
+
 pub struct Status {
-    /// Vector of `Status`, each of them are displayed in a separate tab.
+    /// Vector of `Tab`, each of them are displayed in a separate tab.
     pub statuses: Vec<Tab>,
     /// Index of the current selected tab
     pub index: usize,
@@ -156,19 +162,11 @@ impl Status {
         }
     }
 
-    pub fn event_toggle_flag(&mut self) {
-        if self.selected().path_content.files.is_empty() {
-            return;
-        }
-        self.toggle_flag_on_path(
-            self.statuses[self.index]
-                .path_content
-                .selected_file()
-                .unwrap()
-                .path
-                .clone(),
-        );
-        self.selected().event_down_one_row()
+    pub fn event_toggle_flag(&mut self) -> Option<()> {
+        let file = self.statuses[self.index].path_content.selected_file()?;
+        self.toggle_flag_on_path(file.path.clone());
+        self.selected().event_down_one_row();
+        Some(())
     }
 
     pub fn event_jumplist_next(&mut self) {
@@ -183,22 +181,22 @@ impl Status {
         }
     }
 
-    pub fn event_chmod(&mut self) {
+    pub fn event_chmod(&mut self) -> Option<()> {
         if self.selected().path_content.files.is_empty() {
-            return;
+            return None;
         }
         self.selected().mode = Mode::Chmod;
         if self.flagged.is_empty() {
             self.flagged.insert(
                 self.statuses[self.index]
                     .path_content
-                    .selected_file()
-                    .unwrap()
+                    .selected_file()?
                     .path
                     .clone(),
             );
         };
-        self.reset_statuses()
+        self.reset_statuses();
+        Some(())
     }
 
     pub fn event_jump(&mut self) {
@@ -232,20 +230,22 @@ impl Status {
     }
 
     /// Creates a symlink of every flagged file to the current directory.
-    pub fn event_symlink(&mut self) {
-        self.flagged.iter().for_each(|oldpath| {
+    pub fn event_symlink(&mut self) -> std::io::Result<()> {
+        for oldpath in self.flagged.iter() {
             let newpath = self.statuses[self.index]
                 .path_content
                 .path
                 .clone()
-                .join(oldpath.as_path().file_name().unwrap());
-            std::os::unix::fs::symlink(oldpath, newpath).unwrap_or(());
-        });
+                .join(oldpath.as_path().file_name().unwrap_or_default());
+            std::os::unix::fs::symlink(oldpath, newpath)?;
+        }
+
         self.flagged.clear();
         self.selected().path_content.reset_files();
         let len = self.statuses[self.index].path_content.files.len();
         self.statuses[self.index].window.reset(len);
-        self.reset_statuses()
+        self.reset_statuses();
+        Ok(())
     }
 
     pub fn event_bulkrename(&mut self) {
@@ -267,20 +267,31 @@ impl Status {
             .collect()
     }
 
-    fn cut_or_copy_paste(&mut self, cut: bool) {
-        self.flagged.iter().for_each(|oldpath| {
+    fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CutOrCopy) -> std::io::Result<()> {
+        for oldpath in self.flagged.iter() {
+            let filename = oldpath.as_path().file_name().unwrap_or_default();
             let newpath = self.statuses[self.index]
                 .path_content
                 .path
                 .clone()
-                .join(oldpath.as_path().file_name().unwrap());
-            if cut {
-                std::fs::rename(oldpath, newpath).unwrap_or(());
-            } else {
-                std::fs::copy(oldpath, newpath).unwrap_or(0);
-            }
-        });
-        self.clear_flags_and_reset_view()
+                .join(filename);
+            Self::cut_or_copy(cut_or_copy.clone(), oldpath, newpath)?
+        }
+        self.clear_flags_and_reset_view();
+        Ok(())
+    }
+
+    fn cut_or_copy(
+        cut_or_copy: CutOrCopy,
+        oldpath: &PathBuf,
+        newpath: PathBuf,
+    ) -> std::io::Result<()> {
+        if let CutOrCopy::Cut = cut_or_copy {
+            std::fs::rename(oldpath, newpath)?
+        } else {
+            std::fs::copy(oldpath, newpath)?;
+        }
+        Ok(())
     }
 
     fn clear_flags_and_reset_view(&mut self) {
@@ -291,39 +302,41 @@ impl Status {
         self.reset_statuses()
     }
 
-    fn exec_copy_paste(&mut self) {
-        self.cut_or_copy_paste(false)
+    fn exec_copy_paste(&mut self) -> std::io::Result<()> {
+        self.cut_or_copy_flagged_files(CutOrCopy::Copy)
     }
 
-    fn exec_cut_paste(&mut self) {
-        self.cut_or_copy_paste(true)
+    fn exec_cut_paste(&mut self) -> std::io::Result<()> {
+        self.cut_or_copy_flagged_files(CutOrCopy::Cut)
     }
 
-    fn exec_delete_files(&mut self) {
-        self.flagged.iter().for_each(|pathbuf| {
+    fn exec_delete_files(&mut self) -> std::io::Result<()> {
+        for pathbuf in self.flagged.iter() {
             if pathbuf.is_dir() {
-                std::fs::remove_dir_all(pathbuf).unwrap_or(());
+                std::fs::remove_dir_all(pathbuf)?;
             } else {
-                std::fs::remove_file(pathbuf).unwrap_or(());
+                std::fs::remove_file(pathbuf)?;
             }
-        });
-        self.clear_flags_and_reset_view()
+        }
+        self.clear_flags_and_reset_view();
+        Ok(())
     }
 
-    pub fn exec_chmod(&mut self) {
+    pub fn exec_chmod(&mut self) -> std::io::Result<()> {
         if self.selected().input.string.is_empty() {
-            return;
+            return Ok(());
         }
         let permissions: u32 =
             u32::from_str_radix(&self.selected().input.string, 8).unwrap_or(0_u32);
         if permissions <= Self::MAX_PERMISSIONS {
             for path in self.flagged.iter() {
-                Self::set_permissions(path.clone(), permissions).unwrap_or(())
+                Self::set_permissions(path.clone(), permissions)?
             }
             self.flagged.clear()
         }
         self.selected().refresh_view();
-        self.reset_statuses()
+        self.reset_statuses();
+        Ok(())
     }
 
     pub fn exec_jump(&mut self) {
@@ -336,13 +349,12 @@ impl Status {
         };
         self.selected().history.push(&target_dir);
         self.selected().path_content = PathContent::new(target_dir, self.selected().show_hidden);
-        self.selected().line_index = self
-            .selected()
-            .path_content
-            .files
-            .iter()
-            .position(|file| file.path == jump_target.clone())
-            .unwrap_or(0);
+        if let Some(index) = self.find_jump_target(jump_target) {
+            self.selected().line_index = index;
+        } else {
+            self.selected().line_index = 0;
+        }
+
         let s_index = self.statuses[self.index].line_index;
         self.statuses[self.index].path_content.select_index(s_index);
         let len = self.statuses[self.index].path_content.files.len();
@@ -350,31 +362,45 @@ impl Status {
         self.selected().window.scroll_to(s_index);
     }
 
-    pub fn exec_last_edition(&mut self) {
+    fn find_jump_target(&mut self, jump_target: PathBuf) -> Option<usize> {
+        self.selected()
+            .path_content
+            .files
+            .iter()
+            .position(|file| file.path == jump_target.clone())
+    }
+
+    pub fn exec_last_edition(&mut self) -> std::io::Result<()> {
+        let _ = self._exec_last_edition();
+        self.selected().mode = Mode::Normal;
+        self.selected().last_edition = LastEdition::Nothing;
+        Ok(())
+    }
+
+    fn _exec_last_edition(&mut self) -> std::io::Result<()> {
         match self.selected().last_edition {
             LastEdition::Delete => self.exec_delete_files(),
             LastEdition::CutPaste => self.exec_cut_paste(),
             LastEdition::CopyPaste => self.exec_copy_paste(),
-            LastEdition::Nothing => (),
+            LastEdition::Nothing => Ok(()),
         }
-        self.selected().mode = Mode::Normal;
-        self.selected().last_edition = LastEdition::Nothing;
     }
 
     fn set_permissions(path: PathBuf, permissions: u32) -> Result<(), std::io::Error> {
         std::fs::set_permissions(path, std::fs::Permissions::from_mode(permissions))
     }
 
-    pub fn exec_regex(&mut self) {
-        let re = Regex::new(&self.selected().input.string).unwrap();
+    pub fn exec_regex(&mut self) -> Result<(), regex::Error> {
+        let re = Regex::new(&self.selected().input.string)?;
         if !self.selected().input.string.is_empty() {
             self.flagged.clear();
             for file in self.statuses[self.index].path_content.files.iter() {
-                if re.is_match(file.path.to_str().unwrap()) {
+                if re.is_match(&file.path.to_string_lossy()) {
                     self.flagged.insert(file.path.clone());
                 }
             }
         }
         self.selected().input.reset();
+        Ok(())
     }
 }

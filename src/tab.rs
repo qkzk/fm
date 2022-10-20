@@ -20,10 +20,9 @@ use crate::visited::History;
 
 static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
 
-/// Holds every thing about the current status of the application.
+/// Holds every thing about the current tab of the application.
 /// Is responsible to execute commands depending on received events, mutating
-/// the status of the application.
-/// Every change on the application comes here.
+/// the tab of the application.
 #[derive(Clone)]
 pub struct Tab {
     /// The mode the application is currenty in
@@ -60,10 +59,10 @@ pub struct Tab {
 }
 
 impl Tab {
-    /// Creates a new status from args, config and height.
+    /// Creates a new tab from args, config and height.
     pub fn new(args: Args, config: Config, height: usize) -> Self {
         let path = std::fs::canonicalize(path::Path::new(&args.path)).unwrap_or_else(|_| {
-            eprintln!("File does not exists {:?}", args.path);
+            eprintln!("Inaccessible path {:?}", args.path);
             std::process::exit(2)
         });
         let path_content = PathContent::new(path.clone(), args.all);
@@ -231,18 +230,25 @@ impl Tab {
         self.input.cursor_left()
     }
 
-    pub fn event_go_to_child(&mut self) {
+    pub fn event_go_to_child(&mut self) -> std::io::Result<()> {
         if self.path_content.files.is_empty() {
-            return;
+            return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
         }
         if let FileKind::Directory = self.path_content.files[self.path_content.selected].file_kind {
-            let childpath = self.path_content.selected_file().unwrap().path.clone();
+            let childpath = self
+                .path_content
+                .selected_file()
+                .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?
+                .path
+                .clone();
             self.history.push(&childpath);
             self.path_content = PathContent::new(childpath, self.show_hidden);
             self.window.reset(self.path_content.files.len());
             self.line_index = 0;
-            self.input.cursor_start()
+            self.input.cursor_start();
+            return Ok(());
         }
+        Err(std::io::Error::from(std::io::ErrorKind::NotFound))
     }
 
     pub fn event_move_cursor_right(&mut self) {
@@ -359,12 +365,18 @@ impl Tab {
         self.window.reset(self.path_content.files.len())
     }
 
-    pub fn event_open_file(&mut self) {
+    pub fn event_open_file(&mut self) -> std::io::Result<()> {
         if self.path_content.files.is_empty() {
-            return;
+            return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
         }
-        self.opener
-            .open(self.path_content.selected_file().unwrap().path.clone());
+        self.opener.open(
+            self.path_content
+                .selected_file()
+                .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?
+                .path
+                .clone(),
+        );
+        Ok(())
     }
 
     pub fn event_rename(&mut self) {
@@ -391,9 +403,9 @@ impl Tab {
         self.mode = Mode::Shortcut
     }
 
-    pub fn event_right_click(&mut self, row: u16) {
+    pub fn event_right_click(&mut self, row: u16) -> std::io::Result<()> {
         if self.path_content.files.is_empty() || row as usize > self.path_content.files.len() {
-            return;
+            return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
         }
         self.line_index = (row - 1).into();
         self.path_content.select_index(self.line_index);

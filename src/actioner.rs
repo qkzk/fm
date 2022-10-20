@@ -136,7 +136,7 @@ impl Actioner {
     /// Move right in a string, move to children in normal mode.
     fn right(&self, tabs: &mut Status) {
         match tabs.selected().mode {
-            Mode::Normal => tabs.selected().event_go_to_child(),
+            Mode::Normal => tabs.selected().event_go_to_child().unwrap_or_default(),
             Mode::Rename
             | Mode::Chmod
             | Mode::Newdir
@@ -224,11 +224,11 @@ impl Actioner {
             Mode::Rename => tabs.selected().exec_rename(),
             Mode::Newfile => tabs.selected().exec_newfile(),
             Mode::Newdir => tabs.selected().exec_newdir(),
-            Mode::Chmod => tabs.exec_chmod(),
+            Mode::Chmod => tabs.exec_chmod().unwrap_or_default(),
             Mode::Exec => tabs.selected().exec_exec(),
             Mode::Search => tabs.selected().exec_search(),
             Mode::Goto => tabs.selected().exec_goto(),
-            Mode::RegexMatch => tabs.exec_regex(),
+            Mode::RegexMatch => tabs.exec_regex().unwrap_or_default(),
             Mode::Jump => tabs.exec_jump(),
             Mode::History => tabs.selected().exec_history(),
             Mode::Shortcut => tabs.selected().exec_shortcut(),
@@ -254,7 +254,7 @@ impl Actioner {
     /// Open a directory or a file
     fn right_click(&self, tabs: &mut Status, row: u16) {
         if let Mode::Normal = tabs.selected().mode {
-            tabs.selected().event_right_click(row)
+            let _ = tabs.selected().event_right_click(row);
         }
     }
 
@@ -294,7 +294,7 @@ impl Actioner {
             Mode::History => (),
             Mode::NeedConfirmation => {
                 if c == 'y' {
-                    tabs.exec_last_edition()
+                    let _ = tabs.exec_last_edition();
                 }
                 tabs.selected().event_leave_need_confirmation()
             }
