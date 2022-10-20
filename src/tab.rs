@@ -25,7 +25,7 @@ static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
 /// the status of the application.
 /// Every change on the application comes here.
 #[derive(Clone)]
-pub struct Status {
+pub struct Tab {
     /// The mode the application is currenty in
     pub mode: Mode,
     /// The given index of a file.
@@ -59,7 +59,7 @@ pub struct Status {
     pub opener: Opener,
 }
 
-impl Status {
+impl Tab {
     /// Creates a new status from args, config and height.
     pub fn new(args: Args, config: Config, height: usize) -> Self {
         let path = std::fs::canonicalize(path::Path::new(&args.path)).unwrap_or_else(|_| {

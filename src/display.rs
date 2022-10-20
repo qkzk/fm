@@ -10,8 +10,8 @@ use crate::fileinfo::fileinfo_attr;
 use crate::last_edition::LastEdition;
 use crate::mode::{MarkAction, Mode};
 use crate::preview::Preview;
-use crate::status::Tabs;
-use crate::tab::Status;
+use crate::status::Status;
+use crate::tab::Tab;
 
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.
@@ -55,7 +55,7 @@ impl Display {
     /// The completion list if any.
     ///
     /// The preview in preview mode.
-    pub fn display_all(&mut self, tabs: &Tabs) {
+    pub fn display_all(&mut self, tabs: &Status) {
         let status = tabs.selected_non_mut();
         self.first_line(status, tabs);
         self.files(status, tabs);
@@ -86,7 +86,7 @@ impl Display {
     /// In normal mode we display the path and number of files.
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
-    fn first_line(&mut self, status: &Status, tabs: &Tabs) {
+    fn first_line(&mut self, status: &Tab, tabs: &Status) {
         let first_row: String = match status.mode {
             Mode::Normal => {
                 format!(
@@ -127,7 +127,7 @@ impl Display {
     /// normal (ie. default) mode.
     /// Where there's too much files, only those around the selected one are
     /// displayed.
-    fn files(&mut self, status: &Status, tabs: &Tabs) {
+    fn files(&mut self, status: &Tab, tabs: &Status) {
         let strings = status.path_content.strings();
         for (i, string) in strings
             .iter()
@@ -145,7 +145,7 @@ impl Display {
     }
 
     /// Display a cursor in the top row, at a correct column.
-    fn cursor(&mut self, status: &Status) {
+    fn cursor(&mut self, status: &Tab) {
         match status.mode {
             Mode::Normal | Mode::Help | Mode::Marks(_) => {
                 let _ = self.term.show_cursor(false);
@@ -165,7 +165,7 @@ impl Display {
     }
 
     /// Display the possible jump destination from flagged files.
-    fn jump_list(&mut self, tabs: &Tabs) {
+    fn jump_list(&mut self, tabs: &Status) {
         let _ = self.term.clear();
         let _ = self.term.print(0, 0, "Jump to...");
         for (row, path) in tabs.flagged.iter().enumerate() {
@@ -183,7 +183,7 @@ impl Display {
     }
 
     /// Display the history of visited directories.
-    fn history(&mut self, status: &Status) {
+    fn history(&mut self, status: &Tab) {
         let _ = self.term.clear();
         let _ = self.term.print(0, 0, "Go to...");
         for (row, path) in status.history.visited.iter().rev().enumerate() {
@@ -201,7 +201,7 @@ impl Display {
     }
 
     /// Display the predefined shortcuts.
-    fn shortcuts(&mut self, status: &Status) {
+    fn shortcuts(&mut self, status: &Tab) {
         let _ = self.term.clear();
         let _ = self.term.print(0, 0, "Go to...");
         for (row, path) in status.shortcut.shortcuts.iter().enumerate() {
@@ -220,7 +220,7 @@ impl Display {
 
     /// Display the possible completion items. The currently selected one is
     /// reversed.
-    fn completion(&mut self, status: &Status, tabs: &Tabs) {
+    fn completion(&mut self, status: &Tab, tabs: &Status) {
         let _ = self.term.clear();
         self.first_line(status, tabs);
         let _ = self
@@ -241,7 +241,7 @@ impl Display {
     }
 
     /// Display a list of edited (deleted, copied, moved) files for confirmation
-    fn confirmation(&mut self, status: &Status, tabs: &Tabs) {
+    fn confirmation(&mut self, status: &Tab, tabs: &Status) {
         let _ = self.term.clear();
         self.first_line(status, tabs);
         for (row, path) in tabs.flagged.iter().enumerate() {
@@ -274,7 +274,7 @@ impl Display {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&mut self, status: &Status, tabs: &Tabs) {
+    fn preview(&mut self, status: &Tab, tabs: &Status) {
         let _ = self.term.clear();
         self.first_line(status, tabs);
 
@@ -363,7 +363,7 @@ impl Display {
         }
     }
 
-    fn marks(&mut self, status: &Status, tabs: &Tabs) {
+    fn marks(&mut self, status: &Tab, tabs: &Status) {
         let _ = self.term.clear();
         self.first_line(status, tabs);
 
@@ -377,7 +377,7 @@ impl Display {
         }
     }
 
-    fn calc_line_row(i: usize, status: &Status) -> usize {
+    fn calc_line_row(i: usize, status: &Tab) -> usize {
         i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top
     }
 }

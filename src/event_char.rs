@@ -1,4 +1,4 @@
-use crate::status::Tabs;
+use crate::status::Status;
 
 pub enum EventChar {
     ToggleHidden,
@@ -34,7 +34,7 @@ pub enum EventChar {
 }
 
 impl EventChar {
-    pub fn match_char(&self, tabs: &mut Tabs) {
+    pub fn match_char(&self, tabs: &mut Status) {
         let current_status = tabs.selected();
         match *self {
             EventChar::ToggleHidden => current_status.event_toggle_hidden(),

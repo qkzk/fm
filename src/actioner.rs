@@ -7,7 +7,7 @@ use crate::config::Keybindings;
 use crate::event_char::EventChar;
 use crate::mode::{MarkAction, Mode};
 use crate::skim::Skimer;
-use crate::status::Tabs;
+use crate::status::Status;
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -57,7 +57,7 @@ impl Actioner {
         Self { binds, term }
     }
     /// Reaction to received events.
-    pub fn read_event(&self, tabs: &mut Tabs, ev: Event) {
+    pub fn read_event(&self, tabs: &mut Status, ev: Event) {
         match ev {
             Event::Key(Key::ESC) => self.escape(tabs),
             Event::Key(Key::Up) => self.up(tabs),
@@ -86,12 +86,12 @@ impl Actioner {
     }
 
     /// Leaving a mode reset the window
-    fn escape(&self, tabs: &mut Tabs) {
+    fn escape(&self, tabs: &mut Status) {
         tabs.selected().event_normal()
     }
 
     /// Move one line up
-    fn up(&self, tabs: &mut Tabs) {
+    fn up(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_up_one_row(),
             Mode::Jump => tabs.event_jumplist_prev(),
@@ -105,7 +105,7 @@ impl Actioner {
     }
 
     /// Move one line down
-    fn down(&self, tabs: &mut Tabs) {
+    fn down(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_down_one_row(),
             Mode::Jump => tabs.event_jumplist_next(),
@@ -119,7 +119,7 @@ impl Actioner {
     }
 
     /// Move left in a string, move to parent in normal mode
-    fn left(&self, tabs: &mut Tabs) {
+    fn left(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Normal => tabs.selected().event_move_to_parent(),
             Mode::Rename
@@ -134,7 +134,7 @@ impl Actioner {
     }
 
     /// Move right in a string, move to children in normal mode.
-    fn right(&self, tabs: &mut Tabs) {
+    fn right(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Normal => tabs.selected().event_go_to_child(),
             Mode::Rename
@@ -149,7 +149,7 @@ impl Actioner {
     }
 
     /// Deletes a char in input string
-    fn backspace(&self, tabs: &mut Tabs) {
+    fn backspace(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Rename
             | Mode::Newdir
@@ -165,7 +165,7 @@ impl Actioner {
 
     /// Deletes chars right of cursor in input string.
     /// Remove current tab in normal mode.
-    fn delete(&self, tabs: &mut Tabs) {
+    fn delete(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Rename
             | Mode::Newdir
@@ -180,14 +180,14 @@ impl Actioner {
     }
 
     /// Insert a new tab in normal mode
-    fn insert(&self, tabs: &mut Tabs) {
+    fn insert(&self, tabs: &mut Status) {
         if let Mode::Normal = tabs.selected().mode {
             tabs.new_tab()
         }
     }
 
     /// Move to top or beggining of line.
-    fn home(&self, tabs: &mut Tabs) {
+    fn home(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_go_top(),
             _ => tabs.selected().event_cursor_home(),
@@ -195,7 +195,7 @@ impl Actioner {
     }
 
     /// Move to end or end of line.
-    fn end(&self, tabs: &mut Tabs) {
+    fn end(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_go_bottom(),
             _ => tabs.selected().event_cursor_end(),
@@ -203,7 +203,7 @@ impl Actioner {
     }
 
     /// Move down 10 rows
-    fn page_down(&self, tabs: &mut Tabs) {
+    fn page_down(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_page_down(),
             _ => (),
@@ -211,7 +211,7 @@ impl Actioner {
     }
 
     /// Move up 10 rows
-    fn page_up(&self, tabs: &mut Tabs) {
+    fn page_up(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_page_up(),
             _ => (),
@@ -219,7 +219,7 @@ impl Actioner {
     }
 
     /// Execute a command
-    fn enter(&self, tabs: &mut Tabs) {
+    fn enter(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Rename => tabs.selected().exec_rename(),
             Mode::Newfile => tabs.selected().exec_newfile(),
@@ -245,21 +245,21 @@ impl Actioner {
     }
 
     /// Select this file
-    fn left_click(&self, tabs: &mut Tabs, row: u16) {
+    fn left_click(&self, tabs: &mut Status, row: u16) {
         if let Mode::Normal = tabs.selected().mode {
             tabs.selected().event_select_row(row)
         }
     }
 
     /// Open a directory or a file
-    fn right_click(&self, tabs: &mut Tabs, row: u16) {
+    fn right_click(&self, tabs: &mut Status, row: u16) {
         if let Mode::Normal = tabs.selected().mode {
             tabs.selected().event_right_click(row)
         }
     }
 
     /// Select next completion and insert it
-    fn tab(&self, tabs: &mut Tabs) {
+    fn tab(&self, tabs: &mut Status) {
         match tabs.selected().mode {
             Mode::Goto | Mode::Exec | Mode::Search => {
                 tabs.selected().event_replace_input_with_completion()
@@ -269,7 +269,7 @@ impl Actioner {
         }
     }
 
-    fn ctrl_f(&self, tabs: &mut Tabs) {
+    fn ctrl_f(&self, tabs: &mut Status) {
         let output = Skimer::new(self.term.clone()).no_source(tabs.selected_non_mut().path_str());
         let _ = self.term.clear();
         tabs.create_tabs_from_skim(output);
@@ -277,7 +277,7 @@ impl Actioner {
 
     /// Match read key to a relevent event, depending on keybindings.
     /// Keybindings are read from `Config`.
-    fn char(&self, tabs: &mut Tabs, c: char) {
+    fn char(&self, tabs: &mut Status, c: char) {
         match tabs.selected().mode {
             Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::RegexMatch => {
                 tabs.selected().event_text_insertion(c)

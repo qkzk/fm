@@ -13,11 +13,11 @@ use crate::fileinfo::PathContent;
 use crate::last_edition::LastEdition;
 use crate::marks::Marks;
 use crate::mode::{MarkAction, Mode};
-use crate::tab::Status;
+use crate::tab::Tab;
 
-pub struct Tabs {
+pub struct Status {
     /// Vector of `Status`, each of them are displayed in a separate tab.
-    pub statuses: Vec<Status>,
+    pub statuses: Vec<Tab>,
     /// Index of the current selected tab
     pub index: usize,
     /// Set of flagged files
@@ -28,12 +28,12 @@ pub struct Tabs {
     pub marks: Marks,
 }
 
-impl Tabs {
+impl Status {
     const MAX_PERMISSIONS: u32 = 0o777;
 
     pub fn new(args: Args, config: Config, height: usize) -> Self {
         Self {
-            statuses: vec![Status::new(args, config, height)],
+            statuses: vec![Tab::new(args, config, height)],
             index: 0,
             flagged: HashSet::new(),
             jump_index: 0,
@@ -80,11 +80,11 @@ impl Tabs {
         }
     }
 
-    pub fn selected(&mut self) -> &mut Status {
+    pub fn selected(&mut self) -> &mut Tab {
         &mut self.statuses[self.index]
     }
 
-    pub fn selected_non_mut(&self) -> &Status {
+    pub fn selected_non_mut(&self) -> &Tab {
         &self.statuses[self.index]
     }
 

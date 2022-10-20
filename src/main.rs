@@ -7,7 +7,7 @@ use fm::actioner::Actioner;
 use fm::args::Args;
 use fm::config::load_config;
 use fm::display::Display;
-use fm::status::Tabs;
+use fm::status::Status;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 
@@ -31,7 +31,7 @@ fn main() {
     let term = Arc::new(init_term());
     let actioner = Actioner::new(&config.keybindings, term.clone());
     let mut display = Display::new(term, config.colors.clone());
-    let mut tabs = Tabs::new(Args::parse(), config, display.height());
+    let mut tabs = Status::new(Args::parse(), config, display.height());
 
     while let Ok(event) = display.term.poll_event() {
         let _ = display.term.clear();
