@@ -9,6 +9,7 @@ use crate::completion::Completion;
 use crate::config::Config;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
+use crate::fm_error::FmError;
 use crate::input::Input;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
@@ -230,15 +231,17 @@ impl Tab {
         self.input.cursor_left()
     }
 
-    pub fn event_go_to_child(&mut self) -> std::io::Result<()> {
-        if self.path_content.files.is_empty() {
-            return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
-        }
-        if let FileKind::Directory = self.path_content.files[self.path_content.selected].file_kind {
+    pub fn event_go_to_child(&mut self) -> Result<(), FmError> {
+        if let FileKind::Directory = self
+            .path_content
+            .selected_file()
+            .ok_or_else(|| FmError::new("Empty directory"))?
+            .file_kind
+        {
             let childpath = self
                 .path_content
                 .selected_file()
-                .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?
+                .ok_or_else(|| FmError::new("Empty directory"))?
                 .path
                 .clone();
             self.history.push(&childpath);
@@ -248,7 +251,7 @@ impl Tab {
             self.input.cursor_start();
             return Ok(());
         }
-        Err(std::io::Error::from(std::io::ErrorKind::NotFound))
+        Err(FmError::new("File not found"))
     }
 
     pub fn event_move_cursor_right(&mut self) {
@@ -365,14 +368,11 @@ impl Tab {
         self.window.reset(self.path_content.files.len())
     }
 
-    pub fn event_open_file(&mut self) -> std::io::Result<()> {
-        if self.path_content.files.is_empty() {
-            return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
-        }
+    pub fn event_open_file(&mut self) -> Result<(), FmError> {
         self.opener.open(
             self.path_content
                 .selected_file()
-                .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?
+                .ok_or_else(|| FmError::new("Empty directory"))?
                 .path
                 .clone(),
         );
@@ -388,7 +388,7 @@ impl Tab {
         self.completion.reset();
     }
 
-    pub fn event_shell(&mut self) -> std::io::Result<std::process::Child> {
+    pub fn event_shell(&mut self) -> Result<(), FmError> {
         execute_in_child(
             &self.terminal,
             &vec![
@@ -396,9 +396,10 @@ impl Tab {
                 self.path_content
                     .path
                     .to_str()
-                    .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?,
+                    .ok_or_else(|| FmError::new("Couldn't parse the path name"))?,
             ],
-        )
+        )?;
+        Ok(())
     }
 
     pub fn event_history(&mut self) {
@@ -409,9 +410,9 @@ impl Tab {
         self.mode = Mode::Shortcut
     }
 
-    pub fn event_right_click(&mut self, row: u16) -> std::io::Result<()> {
+    pub fn event_right_click(&mut self, row: u16) -> Result<(), FmError> {
         if self.path_content.files.is_empty() || row as usize > self.path_content.files.len() + 1 {
-            return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
+            return Err(FmError::new("not found"));
         }
         self.line_index = (row - 2).into();
         self.path_content.select_index(self.line_index);
@@ -419,7 +420,7 @@ impl Tab {
         if let FileKind::Directory = self
             .path_content
             .selected_file()
-            .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?
+            .ok_or_else(|| FmError::new("not found"))?
             .file_kind
         {
             self.event_go_to_child()
@@ -440,7 +441,7 @@ impl Tab {
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         if let Ok(nvim_listen_address) = self.nvim_listen_address() {
             if let Some(path_str) = self.path_content.selected_path_str() {
-                execute_in_child(
+                let _ = execute_in_child(
                     "nvim-send",
                     &vec![
                         "--remote-send",
@@ -463,46 +464,51 @@ impl Tab {
         }
     }
 
-    pub fn exec_rename(&mut self) -> std::io::Result<()> {
+    pub fn exec_rename(&mut self) -> Result<(), FmError> {
         if self.path_content.files.is_empty() {
-            return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
+            return Err(FmError::new("Empty directory"));
         }
-        if let Some(oldpath) = self.path_content.selected_path_str() {
-            fs::rename(
-                oldpath,
-                self.path_content
-                    .path
-                    .to_path_buf()
-                    .join(&self.input.string),
-            )?;
-            Ok(self.refresh_view())
-        } else {
-            Err(std::io::Error::from(std::io::ErrorKind::NotFound))
-        }
+        fs::rename(
+            self.path_content
+                .selected_path_str()
+                .ok_or_else(|| FmError::new("File not found"))?,
+            self.path_content
+                .path
+                .to_path_buf()
+                .join(&self.input.string),
+        )?;
+        self.refresh_view();
+        Ok(())
     }
 
     pub fn exec_newfile(&mut self) -> std::io::Result<()> {
         fs::File::create(self.path_content.path.join(self.input.string.clone()))?;
-        Ok(self.refresh_view())
+        self.refresh_view();
+        Ok(())
     }
 
     pub fn exec_newdir(&mut self) -> std::io::Result<()> {
         fs::create_dir(self.path_content.path.join(self.input.string.clone()))?;
-        Ok(self.refresh_view())
+        self.refresh_view();
+        Ok(())
     }
 
-    pub fn exec_exec(&mut self) {
+    pub fn exec_exec(&mut self) -> Result<(), FmError> {
         if self.path_content.files.is_empty() {
-            return;
+            return Err(FmError::new("empty directory"));
         }
         let exec_command = self.input.string.clone();
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
-        if let Some(path) = &self.path_content.selected_path_str() {
-            args.push(path);
-            self.input.reset();
-            execute_in_child(command, &args);
-        }
+
+        let path = &self
+            .path_content
+            .selected_path_str()
+            .ok_or_else(|| FmError::new("path unreachable"))?;
+        args.push(path);
+        self.input.reset();
+        execute_in_child(command, &args)?;
+        Ok(())
     }
 
     pub fn exec_search(&mut self) {
@@ -523,16 +529,16 @@ impl Tab {
         self.window.scroll_to(self.line_index);
     }
 
-    pub fn exec_goto(&mut self) {
+    pub fn exec_goto(&mut self) -> Result<(), FmError> {
         let target_string = self.input.string.clone();
         self.input.reset();
         let expanded_cow_path = shellexpand::tilde(&target_string);
         let expanded_target: &str = expanded_cow_path.borrow();
-        if let Ok(path) = std::fs::canonicalize(expanded_target) {
-            self.history.push(&path);
-            self.path_content = PathContent::new(path, self.show_hidden);
-            self.window.reset(self.path_content.files.len());
-        }
+        let path = std::fs::canonicalize(expanded_target)?;
+        self.history.push(&path);
+        self.path_content = PathContent::new(path, self.show_hidden);
+        self.window.reset(self.path_content.files.len());
+        Ok(())
     }
 
     pub fn set_pathcontent(&mut self, path: path::PathBuf) {
@@ -549,13 +555,17 @@ impl Tab {
         self.event_normal();
     }
 
-    pub fn exec_history(&mut self) {
+    pub fn exec_history(&mut self) -> Result<(), FmError> {
         self.input.reset();
-        if let Some(path) = self.history.selected() {
-            self.path_content = PathContent::new(path, self.show_hidden);
-        }
+        self.path_content = PathContent::new(
+            self.history
+                .selected()
+                .ok_or_else(|| FmError::new("path unreachable"))?,
+            self.show_hidden,
+        );
         self.history.drop_queue();
         self.event_normal();
+        Ok(())
     }
 
     fn fill_completion(&mut self) {

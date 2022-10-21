@@ -3,13 +3,14 @@ use skim::SkimItem;
 use std::collections::HashSet;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::path::{self, PathBuf};
+use std::path::{self, Path, PathBuf};
 use std::sync::Arc;
 
 use crate::args::Args;
 use crate::bulkrename::Bulkrename;
 use crate::config::Config;
 use crate::fileinfo::PathContent;
+use crate::fm_error::FmError;
 use crate::last_edition::LastEdition;
 use crate::marks::Marks;
 use crate::mode::{MarkAction, Mode};
@@ -230,13 +231,13 @@ impl Status {
     }
 
     /// Creates a symlink of every flagged file to the current directory.
-    pub fn event_symlink(&mut self) -> std::io::Result<()> {
+    pub fn event_symlink(&mut self) -> Result<(), FmError> {
         for oldpath in self.flagged.iter() {
             let newpath = self.statuses[self.index].path_content.path.clone().join(
                 oldpath
                     .as_path()
                     .file_name()
-                    .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?,
+                    .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?,
             );
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }
@@ -249,31 +250,27 @@ impl Status {
         Ok(())
     }
 
-    pub fn event_bulkrename(&mut self) {
-        match Bulkrename::new(self.filtered_flagged_files()) {
-            Ok(mut renamer) => {
-                let _ = renamer.rename(&self.selected().opener);
-                self.selected().refresh_view()
-            }
-            Err(e) => eprintln!("{}", e),
-        }
+    pub fn event_bulkrename(&mut self) -> Result<(), FmError> {
+        Bulkrename::new(self.filtered_flagged_files())?.rename(&self.selected_non_mut().opener)?;
+        self.selected().refresh_view();
+        Ok(())
     }
 
-    fn filtered_flagged_files(&mut self) -> Vec<PathBuf> {
-        let path_content = self.selected().path_content.clone();
+    fn filtered_flagged_files(&self) -> Vec<&Path> {
+        let path_content = self.selected_non_mut().path_content.clone();
         self.flagged
             .iter()
             .filter(|p| path_content.contains(p))
-            .map(|p| p.to_owned())
+            .map(|p| p.as_path())
             .collect()
     }
 
-    fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CutOrCopy) -> std::io::Result<()> {
+    fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CutOrCopy) -> Result<(), FmError> {
         for oldpath in self.flagged.iter() {
             let filename = oldpath
                 .as_path()
                 .file_name()
-                .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?;
+                .ok_or_else(|| FmError::new("Couldn't parse the filename"))?;
             let newpath = self.statuses[self.index]
                 .path_content
                 .path
@@ -289,7 +286,7 @@ impl Status {
         cut_or_copy: CutOrCopy,
         oldpath: &PathBuf,
         newpath: PathBuf,
-    ) -> std::io::Result<()> {
+    ) -> Result<(), FmError> {
         if let CutOrCopy::Cut = cut_or_copy {
             std::fs::rename(oldpath, newpath)?
         } else {
@@ -306,15 +303,15 @@ impl Status {
         self.reset_statuses()
     }
 
-    fn exec_copy_paste(&mut self) -> std::io::Result<()> {
+    fn exec_copy_paste(&mut self) -> Result<(), FmError> {
         self.cut_or_copy_flagged_files(CutOrCopy::Copy)
     }
 
-    fn exec_cut_paste(&mut self) -> std::io::Result<()> {
+    fn exec_cut_paste(&mut self) -> Result<(), FmError> {
         self.cut_or_copy_flagged_files(CutOrCopy::Cut)
     }
 
-    fn exec_delete_files(&mut self) -> std::io::Result<()> {
+    fn exec_delete_files(&mut self) -> Result<(), FmError> {
         for pathbuf in self.flagged.iter() {
             if pathbuf.is_dir() {
                 std::fs::remove_dir_all(pathbuf)?;
@@ -326,7 +323,7 @@ impl Status {
         Ok(())
     }
 
-    pub fn exec_chmod(&mut self) -> std::io::Result<()> {
+    pub fn exec_chmod(&mut self) -> Result<(), FmError> {
         if self.selected().input.string.is_empty() {
             return Ok(());
         }
@@ -353,7 +350,7 @@ impl Status {
         };
         self.selected().history.push(&target_dir);
         self.selected().path_content = PathContent::new(target_dir, self.selected().show_hidden);
-        if let Some(index) = self.find_jump_target(jump_target) {
+        if let Some(index) = self.find_jump_target(&jump_target) {
             self.selected().line_index = index;
         } else {
             self.selected().line_index = 0;
@@ -366,22 +363,22 @@ impl Status {
         self.selected().window.scroll_to(s_index);
     }
 
-    fn find_jump_target(&mut self, jump_target: PathBuf) -> Option<usize> {
+    fn find_jump_target(&mut self, jump_target: &Path) -> Option<usize> {
         self.selected()
             .path_content
             .files
             .iter()
-            .position(|file| file.path == jump_target.clone())
+            .position(|file| file.path == jump_target)
     }
 
-    pub fn exec_last_edition(&mut self) -> std::io::Result<()> {
+    pub fn exec_last_edition(&mut self) -> Result<(), FmError> {
         let _ = self._exec_last_edition();
         self.selected().mode = Mode::Normal;
         self.selected().last_edition = LastEdition::Nothing;
         Ok(())
     }
 
-    fn _exec_last_edition(&mut self) -> std::io::Result<()> {
+    fn _exec_last_edition(&mut self) -> Result<(), FmError> {
         match self.selected().last_edition {
             LastEdition::Delete => self.exec_delete_files(),
             LastEdition::CutPaste => self.exec_cut_paste(),
@@ -390,14 +387,17 @@ impl Status {
         }
     }
 
-    fn set_permissions(path: PathBuf, permissions: u32) -> Result<(), std::io::Error> {
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(permissions))
+    fn set_permissions(path: PathBuf, permissions: u32) -> Result<(), FmError> {
+        Ok(std::fs::set_permissions(
+            path,
+            std::fs::Permissions::from_mode(permissions),
+        )?)
     }
 
     pub fn exec_regex(&mut self) -> Result<(), regex::Error> {
-        let re = Regex::new(&self.selected().input.string)?;
         if !self.selected().input.string.is_empty() {
             self.flagged.clear();
+            let re = Regex::new(&self.selected().input.string)?;
             for file in self.statuses[self.index].path_content.files.iter() {
                 if re.is_match(&file.path.to_string_lossy()) {
                     self.flagged.insert(file.path.clone());

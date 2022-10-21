@@ -66,7 +66,7 @@ impl EventChar {
             EventChar::Symlink => tabs.event_symlink().unwrap_or_default(),
             EventChar::Preview => current_status.event_preview(),
             EventChar::Shortcut => current_status.event_shortcut(),
-            EventChar::Bulkrename => tabs.event_bulkrename(),
+            EventChar::Bulkrename => tabs.event_bulkrename().unwrap_or_default(),
             EventChar::MarksNew => tabs.event_marks_new(),
             EventChar::MarksJump => tabs.event_marks_jump(),
         }

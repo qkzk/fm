@@ -5,6 +5,7 @@ use tuikit::term::Term;
 
 use crate::config::Keybindings;
 use crate::event_char::EventChar;
+use crate::fm_error::FmError;
 use crate::mode::{MarkAction, Mode};
 use crate::skim::Skimer;
 use crate::status::Status;
@@ -74,7 +75,7 @@ impl Actioner {
             Event::Key(Key::End) => self.end(tabs),
             Event::Key(Key::PageDown) => self.page_down(tabs),
             Event::Key(Key::PageUp) => self.page_up(tabs),
-            Event::Key(Key::Enter) => self.enter(tabs),
+            Event::Key(Key::Enter) => self.enter(tabs).unwrap_or_default(),
             Event::Key(Key::Tab) => self.tab(tabs),
             Event::Key(Key::WheelUp(_, _, _)) => self.up(tabs),
             Event::Key(Key::WheelDown(_, _, _)) => self.down(tabs),
@@ -219,18 +220,18 @@ impl Actioner {
     }
 
     /// Execute a command
-    fn enter(&self, tabs: &mut Status) {
+    fn enter(&self, tabs: &mut Status) -> Result<(), FmError> {
         match tabs.selected().mode {
-            Mode::Rename => tabs.selected().exec_rename().unwrap_or_default(),
-            Mode::Newfile => tabs.selected().exec_newfile().unwrap_or_default(),
-            Mode::Newdir => tabs.selected().exec_newdir().unwrap_or_default(),
-            Mode::Chmod => tabs.exec_chmod().unwrap_or_default(),
-            Mode::Exec => tabs.selected().exec_exec(),
+            Mode::Rename => tabs.selected().exec_rename()?,
+            Mode::Newfile => tabs.selected().exec_newfile()?,
+            Mode::Newdir => tabs.selected().exec_newdir()?,
+            Mode::Chmod => tabs.exec_chmod()?,
+            Mode::Exec => tabs.selected().exec_exec()?,
             Mode::Search => tabs.selected().exec_search(),
-            Mode::Goto => tabs.selected().exec_goto(),
-            Mode::RegexMatch => tabs.exec_regex().unwrap_or_default(),
+            Mode::Goto => tabs.selected().exec_goto()?,
+            Mode::RegexMatch => tabs.exec_regex()?,
             Mode::Jump => tabs.exec_jump(),
-            Mode::History => tabs.selected().exec_history(),
+            Mode::History => tabs.selected().exec_history()?,
             Mode::Shortcut => tabs.selected().exec_shortcut(),
             Mode::Normal
             | Mode::NeedConfirmation
@@ -242,6 +243,7 @@ impl Actioner {
 
         tabs.selected().input.reset();
         tabs.selected().mode = Mode::Normal;
+        Ok(())
     }
 
     /// Select this file
