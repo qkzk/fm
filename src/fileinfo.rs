@@ -216,7 +216,7 @@ impl PathContent {
             .filter(|r| {
                 show_hidden
                     || match r {
-                        Ok(e) => is_not_hidden(e).unwrap(),
+                        Ok(e) => is_not_hidden(&e).unwrap(),
                         Err(_) => false,
                     }
             })
@@ -293,23 +293,27 @@ impl PathContent {
     /// Reset the current file content.
     /// Reads and sort the content with current key.
     /// Select the first file if any.
-    pub fn reset_files(&mut self) {
-        self.files = read_dir(&self.path)
-            .unwrap_or_else(|_| panic!("Couldn't traverse path {:?}", &self.path))
-            .filter(|r| {
-                self.show_hidden
-                    || match r {
-                        Ok(e) => is_not_hidden(e).unwrap(),
-                        Err(_) => false,
-                    }
-            })
-            .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
-            .collect();
+    pub fn reset_files(&mut self) -> Result<(), FmError> {
+        if self.show_hidden {
+            self.files = read_dir(&self.path)?
+                .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
+                .collect();
+        } else {
+            self.files = read_dir(&self.path)?
+                .filter(|r| match r {
+                    Ok(e) => is_not_hidden(e).unwrap(),
+                    Err(_) => false,
+                })
+                .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
+                .collect();
+        }
+
         self.files.sort_by_key(|file| file.filename.clone());
         self.selected = 0;
         if !self.files.is_empty() {
-            self.files[0].select();
+            self.files[self.selected].select();
         }
+        Ok(())
     }
 
     /// Return the Optional FileInfo
