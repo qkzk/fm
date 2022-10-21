@@ -48,7 +48,9 @@ impl EventChar {
             EventChar::Rename => current_status.event_rename(),
             EventChar::ClearFlags => tabs.event_clear_flags(),
             EventChar::ToggleFlag => tabs.event_toggle_flag().unwrap_or_default(),
-            EventChar::Shell => current_status.event_shell(),
+            EventChar::Shell => {
+                current_status.event_shell().unwrap();
+            }
             EventChar::DeleteFile => current_status.event_delete_file(),
             EventChar::OpenFile => current_status.event_open_file().unwrap_or_default(),
             EventChar::Help => current_status.event_help(),

@@ -80,7 +80,7 @@ impl Actioner {
             Event::Key(Key::WheelDown(_, _, _)) => self.down(tabs),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => self.left_click(tabs, row),
             Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => self.right_click(tabs, row),
-            Event::Key(Key::Ctrl('f')) => self.ctrl_f(tabs),
+            Event::Key(Key::Ctrl('f')) => self.ctrl_f(tabs).unwrap_or_default(),
             _ => {}
         }
     }
@@ -269,10 +269,11 @@ impl Actioner {
         }
     }
 
-    fn ctrl_f(&self, tabs: &mut Status) {
-        let output = Skimer::new(self.term.clone()).no_source(tabs.selected_non_mut().path_str());
+    fn ctrl_f(&self, tabs: &mut Status) -> Option<()> {
+        let output = Skimer::new(self.term.clone()).no_source(tabs.selected_non_mut().path_str()?);
         let _ = self.term.clear();
         tabs.create_tabs_from_skim(output);
+        Some(())
     }
 
     /// Match read key to a relevent event, depending on keybindings.

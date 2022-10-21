@@ -232,11 +232,12 @@ impl Status {
     /// Creates a symlink of every flagged file to the current directory.
     pub fn event_symlink(&mut self) -> std::io::Result<()> {
         for oldpath in self.flagged.iter() {
-            let newpath = self.statuses[self.index]
-                .path_content
-                .path
-                .clone()
-                .join(oldpath.as_path().file_name().unwrap_or_default());
+            let newpath = self.statuses[self.index].path_content.path.clone().join(
+                oldpath
+                    .as_path()
+                    .file_name()
+                    .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?,
+            );
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }
 
@@ -269,7 +270,10 @@ impl Status {
 
     fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CutOrCopy) -> std::io::Result<()> {
         for oldpath in self.flagged.iter() {
-            let filename = oldpath.as_path().file_name().unwrap_or_default();
+            let filename = oldpath
+                .as_path()
+                .file_name()
+                .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?;
             let newpath = self.statuses[self.index]
                 .path_content
                 .path

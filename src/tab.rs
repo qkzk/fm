@@ -388,11 +388,17 @@ impl Tab {
         self.completion.reset();
     }
 
-    pub fn event_shell(&mut self) {
+    pub fn event_shell(&mut self) -> std::io::Result<std::process::Child> {
         execute_in_child(
             &self.terminal,
-            &vec!["-d", self.path_content.path.to_str().unwrap()],
-        );
+            &vec![
+                "-d",
+                self.path_content
+                    .path
+                    .to_str()
+                    .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?,
+            ],
+        )
     }
 
     pub fn event_history(&mut self) {
@@ -461,14 +467,18 @@ impl Tab {
         if self.path_content.files.is_empty() {
             return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
         }
-        fs::rename(
-            self.path_content.selected_path_str().unwrap(),
-            self.path_content
-                .path
-                .to_path_buf()
-                .join(&self.input.string),
-        )?;
-        Ok(self.refresh_view())
+        if let Some(oldpath) = self.path_content.selected_path_str() {
+            fs::rename(
+                oldpath,
+                self.path_content
+                    .path
+                    .to_path_buf()
+                    .join(&self.input.string),
+            )?;
+            Ok(self.refresh_view())
+        } else {
+            Err(std::io::Error::from(std::io::ErrorKind::NotFound))
+        }
     }
 
     pub fn exec_newfile(&mut self) -> std::io::Result<()> {
@@ -579,14 +589,14 @@ impl Tab {
         self.must_quit
     }
 
-    pub fn path_str(&self) -> String {
-        self.path_content.path.to_str().unwrap().to_owned()
+    pub fn path_str(&self) -> Option<String> {
+        Some(self.path_content.path.to_str()?.to_owned())
     }
 }
 
 // TODO: use [wait with output](https://doc.rust-lang.org/std/process/struct.Child.html#method.wait_with_output)
 /// Execute the command in a fork.
-fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
+fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::io::Result<std::process::Child> {
     eprintln!("exec exe {}, args {:?}", exe, args);
-    Command::new(exe).args(args).spawn().unwrap()
+    Command::new(exe).args(args).spawn()
 }
