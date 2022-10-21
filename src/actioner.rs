@@ -221,9 +221,9 @@ impl Actioner {
     /// Execute a command
     fn enter(&self, tabs: &mut Status) {
         match tabs.selected().mode {
-            Mode::Rename => tabs.selected().exec_rename(),
-            Mode::Newfile => tabs.selected().exec_newfile(),
-            Mode::Newdir => tabs.selected().exec_newdir(),
+            Mode::Rename => tabs.selected().exec_rename().unwrap_or_default(),
+            Mode::Newfile => tabs.selected().exec_newfile().unwrap_or_default(),
+            Mode::Newdir => tabs.selected().exec_newdir().unwrap_or_default(),
             Mode::Chmod => tabs.exec_chmod().unwrap_or_default(),
             Mode::Exec => tabs.selected().exec_exec(),
             Mode::Search => tabs.selected().exec_search(),

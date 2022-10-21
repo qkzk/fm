@@ -410,7 +410,12 @@ impl Tab {
         self.line_index = (row - 2).into();
         self.path_content.select_index(self.line_index);
         self.window.scroll_to(self.line_index);
-        if let FileKind::Directory = self.path_content.selected_file().unwrap().file_kind {
+        if let FileKind::Directory = self
+            .path_content
+            .selected_file()
+            .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?
+            .file_kind
+        {
             self.event_go_to_child()
         } else {
             self.event_open_file()
@@ -452,9 +457,9 @@ impl Tab {
         }
     }
 
-    pub fn exec_rename(&mut self) {
+    pub fn exec_rename(&mut self) -> std::io::Result<()> {
         if self.path_content.files.is_empty() {
-            return;
+            return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
         }
         fs::rename(
             self.path_content.selected_path_str().unwrap(),
@@ -462,19 +467,18 @@ impl Tab {
                 .path
                 .to_path_buf()
                 .join(&self.input.string),
-        )
-        .unwrap_or(());
-        self.refresh_view()
+        )?;
+        Ok(self.refresh_view())
     }
 
-    pub fn exec_newfile(&mut self) {
-        if fs::File::create(self.path_content.path.join(self.input.string.clone())).is_ok() {}
-        self.refresh_view()
+    pub fn exec_newfile(&mut self) -> std::io::Result<()> {
+        fs::File::create(self.path_content.path.join(self.input.string.clone()))?;
+        Ok(self.refresh_view())
     }
 
-    pub fn exec_newdir(&mut self) {
-        fs::create_dir(self.path_content.path.join(self.input.string.clone())).unwrap_or(());
-        self.refresh_view()
+    pub fn exec_newdir(&mut self) -> std::io::Result<()> {
+        fs::create_dir(self.path_content.path.join(self.input.string.clone()))?;
+        Ok(self.refresh_view())
     }
 
     pub fn exec_exec(&mut self) {
