@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt;
 
@@ -35,5 +36,11 @@ impl From<std::io::Error> for FmError {
 impl From<regex::Error> for FmError {
     fn from(err: regex::Error) -> Self {
         Self::new(&err.to_string())
+    }
+}
+
+impl From<std::ffi::OsString> for FmError {
+    fn from(os_string: std::ffi::OsString) -> Self {
+        Self::new(&os_string.to_string_lossy().borrow())
     }
 }

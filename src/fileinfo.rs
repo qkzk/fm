@@ -7,7 +7,8 @@ use chrono::DateTime;
 use tuikit::prelude::{Attr, Color, Effect};
 use users::get_user_by_uid;
 
-use super::config::{str_to_tuikit, Colors};
+use crate::config::{str_to_tuikit, Colors};
+use crate::fm_error::FmError;
 
 /// Different kind of sort
 #[derive(Debug, Clone)]
@@ -128,14 +129,14 @@ pub struct FileInfo {
 impl FileInfo {
     /// Reads every information about a file from its metadata and returs
     /// a new `FileInfo` object if we can create one.
-    pub fn new(direntry: &DirEntry) -> Result<FileInfo, &'static str> {
+    pub fn new(direntry: &DirEntry) -> Result<FileInfo, FmError> {
         let path = direntry.path();
-        let filename = extract_filename(direntry);
-        let size = extract_file_size(direntry);
+        let filename = extract_filename(direntry)?;
+        let size = extract_file_size(direntry)?;
         let file_size = human_size(size);
-        let permissions = extract_permissions_string(direntry);
-        let owner = extract_owner(direntry);
-        let system_time = extract_datetime(direntry);
+        let permissions = extract_permissions_string(direntry)?;
+        let owner = extract_owner(direntry)?;
+        let system_time = extract_datetime(direntry)?;
         let is_selected = false;
 
         let file_kind = FileKind::new(direntry);
@@ -215,7 +216,7 @@ impl PathContent {
             .filter(|r| {
                 show_hidden
                     || match r {
-                        Ok(e) => is_not_hidden(e),
+                        Ok(e) => is_not_hidden(e).unwrap(),
                         Err(_) => false,
                     }
             })
@@ -298,7 +299,7 @@ impl PathContent {
             .filter(|r| {
                 self.show_hidden
                     || match r {
-                        Ok(e) => is_not_hidden(e),
+                        Ok(e) => is_not_hidden(e).unwrap(),
                         Err(_) => false,
                     }
             })
@@ -358,39 +359,32 @@ pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
 }
 
 /// true if the file isn't hidden.
-fn is_not_hidden(entry: &DirEntry) -> bool {
-    entry
+fn is_not_hidden(entry: &DirEntry) -> Result<bool, FmError> {
+    Ok(entry
         .file_name()
-        .to_str()
-        .map(|s| !s.starts_with('.'))
-        .unwrap_or(false)
+        .into_string()
+        .map(|s| !s.starts_with('.'))?)
 }
 
 /// Returns the modified time.
-fn extract_datetime(direntry: &DirEntry) -> String {
-    let system_time = direntry.metadata().unwrap().modified();
-    let datetime: DateTime<Local> = system_time.unwrap().into();
-    format!("{}", datetime.format("%d/%m/%Y %T"))
+fn extract_datetime(direntry: &DirEntry) -> Result<String, FmError> {
+    let datetime: DateTime<Local> = direntry.metadata()?.modified()?.into();
+    Ok(format!("{}", datetime.format("%d/%m/%Y %T")))
 }
 
 /// Returns the filename.
-fn extract_filename(direntry: &DirEntry) -> String {
-    direntry.file_name().into_string().unwrap()
+fn extract_filename(direntry: &DirEntry) -> Result<String, FmError> {
+    Ok(direntry.file_name().into_string()?)
 }
 
 /// Reads the permission and converts them into a string.
-fn extract_permissions_string(direntry: &DirEntry) -> String {
-    match metadata(direntry.path()) {
-        Ok(metadata) => {
-            let mode = metadata.mode() & 511;
-            let s_o = convert_octal_mode(mode >> 6);
-            let s_g = convert_octal_mode((mode >> 3) & 7);
-            let s_a = convert_octal_mode(mode & 7);
-
-            [s_o, s_g, s_a].join("")
-        }
-        Err(_) => String::from("---------"),
-    }
+fn extract_permissions_string(direntry: &DirEntry) -> Result<String, FmError> {
+    let metadata = metadata(direntry.path())?;
+    let mode = metadata.mode() & 511;
+    let s_o = convert_octal_mode(mode >> 6);
+    let s_g = convert_octal_mode((mode >> 3) & 7);
+    let s_a = convert_octal_mode(mode & 7);
+    Ok([s_o, s_g, s_a].join(""))
 }
 
 /// Convert an integer like `Oo777` into its string representation like `"rwx"`
@@ -400,25 +394,19 @@ fn convert_octal_mode(mode: u32) -> String {
 }
 
 /// Reads the owner name and returns it as a string.
-fn extract_owner(direntry: &DirEntry) -> String {
-    match metadata(direntry.path()) {
-        Ok(metadata) => String::from(
-            get_user_by_uid(metadata.uid())
-                .unwrap()
-                .name()
-                .to_str()
-                .unwrap(),
-        ),
-        Err(_) => String::from(""),
-    }
+fn extract_owner(direntry: &DirEntry) -> Result<String, FmError> {
+    Ok(String::from(
+        get_user_by_uid(metadata(direntry.path())?.uid())
+            .ok_or_else(|| FmError::new("Couldn't read uid"))?
+            .name()
+            .to_str()
+            .unwrap(),
+    ))
 }
 
 /// Returns the file size.
-fn extract_file_size(direntry: &DirEntry) -> u64 {
-    match direntry.path().metadata() {
-        Ok(size) => size.len(),
-        Err(_) => 0,
-    }
+fn extract_file_size(direntry: &DirEntry) -> Result<u64, FmError> {
+    Ok(direntry.path().metadata()?.len())
 }
 
 /// Convert a file size from bytes to human readable string.
