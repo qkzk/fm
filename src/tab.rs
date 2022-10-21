@@ -191,7 +191,7 @@ impl Tab {
     }
 
     pub fn event_select_row(&mut self, row: u16) {
-        self.line_index = (row - 1).into();
+        self.line_index = (row - 2).into();
         self.path_content.select_index(self.line_index);
         self.window.scroll_to(self.line_index)
     }
@@ -404,10 +404,10 @@ impl Tab {
     }
 
     pub fn event_right_click(&mut self, row: u16) -> std::io::Result<()> {
-        if self.path_content.files.is_empty() || row as usize > self.path_content.files.len() {
+        if self.path_content.files.is_empty() || row as usize > self.path_content.files.len() + 1 {
             return Err(std::io::Error::from(std::io::ErrorKind::NotFound));
         }
-        self.line_index = (row - 1).into();
+        self.line_index = (row - 2).into();
         self.path_content.select_index(self.line_index);
         self.window.scroll_to(self.line_index);
         if let FileKind::Directory = self.path_content.selected_file().unwrap().file_kind {
