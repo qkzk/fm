@@ -8,7 +8,7 @@ use tuikit::prelude::{Attr, Color, Effect};
 use users::get_user_by_uid;
 
 use crate::config::{str_to_tuikit, Colors};
-use crate::fm_error::FmError;
+use crate::fm_error::{FmError, FmResult};
 
 /// Different kind of sort
 #[derive(Debug, Clone)]
@@ -205,22 +205,7 @@ impl PathContent {
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
     pub fn new(path: path::PathBuf, show_hidden: bool) -> Result<Self, FmError> {
-        let read_dir = read_dir(&path)?;
-        let mut files: Vec<FileInfo> = if show_hidden {
-            read_dir
-                .filter_map(|res_direntry| res_direntry.ok())
-                .map(|direntry| FileInfo::new(&direntry))
-                .filter_map(|res_file_entry| res_file_entry.ok())
-                .collect()
-        } else {
-            read_dir
-                .filter_map(|res_direntry| res_direntry.ok())
-                .filter(|e| is_not_hidden(e).unwrap())
-                .map(|direntry| FileInfo::new(&direntry))
-                .filter_map(|res_file_entry| res_file_entry.ok())
-                .collect()
-        };
-
+        let mut files = Self::files(&path, show_hidden)?;
         let sort_by = SortBy::Filename;
         files.sort_by_key(|file| sort_by.key(file));
         let selected: usize = 0;
@@ -237,6 +222,25 @@ impl PathContent {
             sort_by,
             reverse,
         })
+    }
+
+    fn files(path: &path::Path, show_hidden: bool) -> FmResult<Vec<FileInfo>> {
+        let read_dir = read_dir(path)?;
+        let files: Vec<FileInfo> = if show_hidden {
+            read_dir
+                .filter_map(|res_direntry| res_direntry.ok())
+                .map(|direntry| FileInfo::new(&direntry))
+                .filter_map(|res_file_entry| res_file_entry.ok())
+                .collect()
+        } else {
+            read_dir
+                .filter_map(|res_direntry| res_direntry.ok())
+                .filter(|e| is_not_hidden(e).unwrap())
+                .map(|direntry| FileInfo::new(&direntry))
+                .filter_map(|res_file_entry| res_file_entry.ok())
+                .collect()
+        };
+        Ok(files)
     }
 
     /// Sort the file with current key.
@@ -293,19 +297,7 @@ impl PathContent {
     /// Reads and sort the content with current key.
     /// Select the first file if any.
     pub fn reset_files(&mut self) -> Result<(), FmError> {
-        if self.show_hidden {
-            self.files = read_dir(&self.path)?
-                .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
-                .collect();
-        } else {
-            self.files = read_dir(&self.path)?
-                .filter(|r| match r {
-                    Ok(e) => is_not_hidden(e).unwrap(),
-                    Err(_) => false,
-                })
-                .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
-                .collect();
-        }
+        self.files = Self::files(&self.path, self.show_hidden)?;
 
         self.files.sort_by_key(|file| file.filename.clone());
         self.selected = 0;
@@ -403,7 +395,7 @@ fn extract_owner(direntry: &DirEntry) -> Result<String, FmError> {
             .ok_or_else(|| FmError::new("Couldn't read uid"))?
             .name()
             .to_str()
-            .unwrap(),
+            .ok_or_else(|| FmError::new("Couldn't read owner name"))?,
     ))
 }
 
