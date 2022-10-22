@@ -45,4 +45,14 @@ impl From<std::ffi::OsString> for FmError {
     }
 }
 
+impl From<Box<dyn std::any::Any + Send + 'static>> for FmError {
+    fn from(thread_error: Box<dyn std::any::Any + Send + 'static>) -> Self {
+        Self::new(
+            thread_error
+                .downcast_ref::<&str>()
+                .unwrap_or(&"Unreadable error from thread"),
+        )
+    }
+}
+
 pub type FmResult<T> = Result<T, FmError>;

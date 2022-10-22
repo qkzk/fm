@@ -13,6 +13,7 @@ use tuikit::attr::{Attr, Color};
 use tuikit::term::Term;
 
 use crate::fileinfo::PathContent;
+use crate::fm_error::{FmError, FmResult};
 use crate::help::HELP_LINES;
 
 #[derive(Clone)]
@@ -31,26 +32,30 @@ impl Preview {
         Self::Empty
     }
 
-    pub fn new(path_content: &PathContent) -> Self {
+    pub fn new(path_content: &PathContent) -> FmResult<Self> {
         let ps = SyntaxSet::load_defaults_nonewlines();
         match path_content.selected_file() {
             Some(file_info) => {
-                let mut file = std::fs::File::open(file_info.path.clone()).unwrap();
+                let mut file = std::fs::File::open(file_info.path.clone())?;
                 let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
                 if file_info.extension == *"pdf" {
-                    Self::Pdf(PdfContent::new(file_info.path.clone()))
+                    Ok(Self::Pdf(PdfContent::new(file_info.path.clone())))
                 } else if let Some(syntaxset) = ps.find_syntax_by_extension(&file_info.extension) {
-                    Self::Syntaxed(SyntaxedContent::new(ps.clone(), path_content, syntaxset))
+                    Ok(Self::Syntaxed(SyntaxedContent::new(
+                        ps.clone(),
+                        path_content,
+                        syntaxset,
+                    )?))
                 } else if file_info.size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
                     && file.read_exact(&mut buffer).is_ok()
                     && inspect(&buffer) == ContentType::BINARY
                 {
-                    Self::Binary(BinaryContent::new(path_content.to_owned()))
+                    Ok(Self::Binary(BinaryContent::new(path_content.to_owned())?))
                 } else {
-                    Self::Text(TextContent::from_file(path_content))
+                    Ok(Self::Text(TextContent::from_file(path_content)?))
                 }
             }
-            None => Self::Empty,
+            None => Ok(Self::Empty),
         }
     }
 
@@ -98,11 +103,10 @@ impl TextContent {
         }
     }
 
-    fn from_file(path_content: &PathContent) -> Self {
+    fn from_file(path_content: &PathContent) -> FmResult<Self> {
         let content = match path_content.selected_file() {
             Some(file) => {
-                let reader =
-                    std::io::BufReader::new(std::fs::File::open(file.path.clone()).unwrap());
+                let reader = std::io::BufReader::new(std::fs::File::open(file.path.clone())?);
                 Box::new(
                     reader
                         .lines()
@@ -112,10 +116,10 @@ impl TextContent {
             }
             None => Box::new(vec![]),
         };
-        Self {
+        Ok(Self {
             length: content.len(),
             content,
-        }
+        })
     }
 
     pub fn len(&self) -> usize {
@@ -143,9 +147,15 @@ impl Default for SyntaxedContent {
 }
 
 impl SyntaxedContent {
-    pub fn new(ps: SyntaxSet, path_content: &PathContent, syntaxset: &SyntaxReference) -> Self {
-        let file = path_content.selected_file().unwrap();
-        let reader = std::io::BufReader::new(std::fs::File::open(file.path.clone()).unwrap());
+    pub fn new(
+        ps: SyntaxSet,
+        path_content: &PathContent,
+        syntaxset: &SyntaxReference,
+    ) -> FmResult<Self> {
+        let file = path_content
+            .selected_file()
+            .ok_or_else(|| FmError::new("Path shouldn't be empty"))?;
+        let reader = std::io::BufReader::new(std::fs::File::open(file.path.clone())?);
         let content: Box<Vec<String>> = Box::new(
             reader
                 .lines()
@@ -169,10 +179,10 @@ impl SyntaxedContent {
             highlighted_content.push(v_line)
         }
 
-        Self {
+        Ok(Self {
             length: highlighted_content.len(),
             content: highlighted_content,
-        }
+        })
     }
 
     pub fn reset(&mut self) {
@@ -222,9 +232,11 @@ pub struct BinaryContent {
 impl BinaryContent {
     const LINE_WIDTH: usize = 16;
 
-    fn new(path_content: PathContent) -> Self {
-        let file = path_content.selected_file().unwrap();
-        let mut reader = std::io::BufReader::new(std::fs::File::open(file.path.clone()).unwrap());
+    fn new(path_content: PathContent) -> FmResult<Self> {
+        let file = path_content
+            .selected_file()
+            .ok_or_else(|| FmError::new("Path shouldn't be emtpy"))?;
+        let mut reader = std::io::BufReader::new(std::fs::File::open(file.path.clone())?);
         let mut buffer = [0; Self::LINE_WIDTH];
         let mut content: Box<Vec<Line>> = Box::new(vec![]);
         while let Ok(n) = reader.read(&mut buffer[..]) {
@@ -236,11 +248,11 @@ impl BinaryContent {
             }
         }
 
-        Self {
+        Ok(Self {
             path: file.path.clone(),
             length: file.size / Self::LINE_WIDTH as u64,
             content,
-        }
+        })
     }
 
     /// WATCHOUT !

@@ -4,6 +4,8 @@ use std::fs::OpenOptions;
 use std::io::{self, BufRead, BufWriter, Error, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 
+use crate::fm_error::FmResult;
+
 static MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 
 pub struct Marks {
@@ -44,29 +46,27 @@ impl Marks {
         }
     }
 
-    pub fn new_mark(&mut self, ch: char, path: PathBuf) {
+    pub fn new_mark(&mut self, ch: char, path: PathBuf) -> FmResult<()> {
         if ch == ':' {
-            return;
+            return Err(crate::fm_error::FmError::new("':' can't be used as a mark"));
         }
         self.marks.insert(ch, path);
-        self.save_marks();
+        self.save_marks()
     }
 
-    fn save_marks(&self) {
+    fn save_marks(&self) -> FmResult<()> {
         if !self.save_path.exists() {
             let _ = std::fs::File::create(&self.save_path);
             eprintln!("Created a file for marks in {:?}", &self.save_path);
         }
 
-        let file = OpenOptions::new()
-            .write(true)
-            .open(&self.save_path)
-            .unwrap();
+        let file = OpenOptions::new().write(true).open(&self.save_path)?;
         let mut buf = BufWriter::new(file);
 
         for (ch, path) in self.marks.iter() {
             let _ = write!(buf, "{}:{}", ch, Self::path_as_string(path));
         }
+        Ok(())
     }
 
     fn path_as_string(path: &Path) -> String {

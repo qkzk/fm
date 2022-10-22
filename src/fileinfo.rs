@@ -243,6 +243,10 @@ impl PathContent {
         Ok(files)
     }
 
+    pub fn path_to_str(&self) -> &str {
+        self.path.to_str().unwrap_or_default()
+    }
+
     /// Sort the file with current key.
     pub fn sort(&mut self) {
         self.files.sort_by_key(|file| self.sort_by.key(file));

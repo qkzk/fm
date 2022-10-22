@@ -77,7 +77,7 @@ impl Display {
 
     /// Reads and returns the `tuikit::term::Term` height.
     pub fn height(&self) -> usize {
-        let (_, height) = self.term.term_size().unwrap();
+        let (_, height) = self.term.term_size().unwrap_or((0, 20));
         height
     }
 
@@ -93,7 +93,7 @@ impl Display {
                     "Tab: {}/{}  --  Path: {}   --   Files: {}",
                     tabs.index + 1,
                     tabs.len(),
-                    status.path_content.path.to_str().unwrap(),
+                    status.path_content.path_to_str(),
                     status.path_content.files.len(),
                 )
             }
@@ -176,7 +176,7 @@ impl Display {
             let _ = self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str().unwrap(),
+                path.to_str().unwrap_or_default(),
                 attr,
             );
         }
@@ -194,7 +194,7 @@ impl Display {
             let _ = self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str().unwrap(),
+                path.to_str().unwrap_or_default(),
                 attr,
             );
         }
@@ -212,7 +212,7 @@ impl Display {
             let _ = self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str().unwrap(),
+                path.to_str().unwrap_or_default(),
                 attr,
             );
         }
@@ -248,7 +248,7 @@ impl Display {
             let _ = self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2,
                 4,
-                path.to_str().unwrap(),
+                path.to_str().unwrap_or_default(),
                 Attr::default(),
             );
         }
@@ -261,7 +261,7 @@ impl Display {
             };
             let content = format!(
                 "Files will be copied to {}",
-                status.path_content.path.to_str().unwrap()
+                status.path_content.path_to_str()
             );
             let _ = self.term.print_with_attr(2, 3, &content, attr);
         }

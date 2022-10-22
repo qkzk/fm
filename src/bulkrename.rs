@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
-use crate::fm_error::FmError;
+use crate::fm_error::{FmError, FmResult};
 use crate::opener::{ExtensionKind, Opener};
 
 static TMP_FOLDER: &str = "/tmp";
@@ -28,21 +28,23 @@ impl<'a> Bulkrename<'a> {
         let original_modification = Self::get_modified_date(&self.temp_file)?;
         self.open_temp_file_with_editor(opener)?;
 
-        Self::watch_modification_in_thread(self.temp_file.clone(), original_modification);
+        Self::watch_modification_in_thread(self.temp_file.clone(), original_modification)?;
 
         self.rename_all(self.get_new_filenames()?)?;
-        self.delete_temp_file()?;
-        Ok(())
+        self.delete_temp_file()
     }
 
-    fn watch_modification_in_thread(filepath: PathBuf, original_modification: SystemTime) {
+    fn watch_modification_in_thread(
+        filepath: PathBuf,
+        original_modification: SystemTime,
+    ) -> FmResult<()> {
         let handle = thread::spawn(move || loop {
             if Self::is_file_modified(&filepath, original_modification).unwrap_or(true) {
                 break;
             }
             thread::sleep(Duration::from_millis(10));
         });
-        handle.join().unwrap();
+        Ok(handle.join()?)
     }
 
     fn get_modified_date(filepath: &PathBuf) -> Result<SystemTime, FmError> {
@@ -82,8 +84,12 @@ impl<'a> Bulkrename<'a> {
     fn open_temp_file_with_editor(&self, opener: &Opener) -> Result<(), FmError> {
         let filepath = &self.temp_file;
         if let Some(editor_info) = opener.get(ExtensionKind::Text) {
-            opener.open_with(editor_info, filepath.to_owned())
-        };
+            opener.open_with(editor_info, filepath.to_owned())?;
+        } else {
+            return Err(FmError::new(
+                "Markdown files should have a dedicated opener",
+            ));
+        }
         Ok(())
     }
 

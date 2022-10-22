@@ -218,7 +218,7 @@ impl Status {
 
     pub fn exec_marks_new(&mut self, c: char) -> FmResult<()> {
         let path = self.selected().path_content.path.clone();
-        self.marks.new_mark(c, path);
+        self.marks.new_mark(c, path)?;
         self.selected().event_normal()
     }
 
@@ -232,7 +232,7 @@ impl Status {
     }
 
     /// Creates a symlink of every flagged file to the current directory.
-    pub fn event_symlink(&mut self) -> Result<(), FmError> {
+    pub fn event_symlink(&mut self) -> FmResult<()> {
         for oldpath in self.flagged.iter() {
             let newpath = self.statuses[self.index].path_content.path.clone().join(
                 oldpath
@@ -250,7 +250,7 @@ impl Status {
         self.reset_statuses()
     }
 
-    pub fn event_bulkrename(&mut self) -> Result<(), FmError> {
+    pub fn event_bulkrename(&mut self) -> FmResult<()> {
         Bulkrename::new(self.filtered_flagged_files())?.rename(&self.selected_non_mut().opener)?;
         self.selected().refresh_view()
     }
@@ -264,7 +264,7 @@ impl Status {
             .collect()
     }
 
-    fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CutOrCopy) -> Result<(), FmError> {
+    fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CutOrCopy) -> FmResult<()> {
         for oldpath in self.flagged.iter() {
             let filename = oldpath
                 .as_path()
@@ -280,11 +280,7 @@ impl Status {
         self.clear_flags_and_reset_view()
     }
 
-    fn cut_or_copy(
-        cut_or_copy: CutOrCopy,
-        oldpath: &PathBuf,
-        newpath: PathBuf,
-    ) -> Result<(), FmError> {
+    fn cut_or_copy(cut_or_copy: CutOrCopy, oldpath: &PathBuf, newpath: PathBuf) -> FmResult<()> {
         if let CutOrCopy::Cut = cut_or_copy {
             std::fs::rename(oldpath, newpath)?
         } else {
@@ -301,15 +297,15 @@ impl Status {
         self.reset_statuses()
     }
 
-    fn exec_copy_paste(&mut self) -> Result<(), FmError> {
+    fn exec_copy_paste(&mut self) -> FmResult<()> {
         self.cut_or_copy_flagged_files(CutOrCopy::Copy)
     }
 
-    fn exec_cut_paste(&mut self) -> Result<(), FmError> {
+    fn exec_cut_paste(&mut self) -> FmResult<()> {
         self.cut_or_copy_flagged_files(CutOrCopy::Cut)
     }
 
-    fn exec_delete_files(&mut self) -> Result<(), FmError> {
+    fn exec_delete_files(&mut self) -> FmResult<()> {
         for pathbuf in self.flagged.iter() {
             if pathbuf.is_dir() {
                 std::fs::remove_dir_all(pathbuf)?;
@@ -320,7 +316,7 @@ impl Status {
         self.clear_flags_and_reset_view()
     }
 
-    pub fn exec_chmod(&mut self) -> Result<(), FmError> {
+    pub fn exec_chmod(&mut self) -> FmResult<()> {
         if self.selected().input.string.is_empty() {
             return Ok(());
         }
@@ -368,14 +364,14 @@ impl Status {
             .position(|file| file.path == jump_target)
     }
 
-    pub fn exec_last_edition(&mut self) -> Result<(), FmError> {
+    pub fn exec_last_edition(&mut self) -> FmResult<()> {
         let _ = self._exec_last_edition();
         self.selected().mode = Mode::Normal;
         self.selected().last_edition = LastEdition::Nothing;
         Ok(())
     }
 
-    fn _exec_last_edition(&mut self) -> Result<(), FmError> {
+    fn _exec_last_edition(&mut self) -> FmResult<()> {
         match self.selected().last_edition {
             LastEdition::Delete => self.exec_delete_files(),
             LastEdition::CutPaste => self.exec_cut_paste(),
@@ -384,7 +380,7 @@ impl Status {
         }
     }
 
-    fn set_permissions(path: PathBuf, permissions: u32) -> Result<(), FmError> {
+    fn set_permissions(path: PathBuf, permissions: u32) -> FmResult<()> {
         Ok(std::fs::set_permissions(
             path,
             std::fs::Permissions::from_mode(permissions),

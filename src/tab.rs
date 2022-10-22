@@ -219,10 +219,9 @@ impl Tab {
 
     pub fn event_move_to_parent(&mut self) -> FmResult<()> {
         let parent = self.path_content.path.parent();
-        if parent.is_none() {
-            return Ok(());
-        }
-        let path = path::PathBuf::from(parent.unwrap());
+        let path = path::PathBuf::from(
+            parent.ok_or_else(|| FmError::new("Root directory has no parent"))?,
+        );
         self.history.push(&path);
         self.path_content = PathContent::new(path, self.show_hidden)?;
         self.window.reset(self.path_content.files.len());
@@ -235,7 +234,7 @@ impl Tab {
         self.input.cursor_left()
     }
 
-    pub fn event_go_to_child(&mut self) -> Result<(), FmError> {
+    pub fn event_go_to_child(&mut self) -> FmResult<()> {
         if let FileKind::Directory = self
             .path_content
             .selected_file()
@@ -297,12 +296,14 @@ impl Tab {
         self.mode = Mode::Exec
     }
 
-    pub fn event_preview(&mut self) {
-        if !self.path_content.files.is_empty() {
-            self.mode = Mode::Preview;
-            self.preview = Preview::new(&self.path_content);
-            self.window.reset(self.preview.len())
-        }
+    pub fn event_preview(&mut self) -> FmResult<()> {
+        if self.path_content.files.is_empty() {
+            return Err(FmError::new("No file to preview"));
+        };
+        self.mode = Mode::Preview;
+        self.preview = Preview::new(&self.path_content)?;
+        self.window.reset(self.preview.len());
+        Ok(())
     }
 
     pub fn event_delete_file(&mut self) {
@@ -373,14 +374,14 @@ impl Tab {
         Ok(())
     }
 
-    pub fn event_open_file(&mut self) -> Result<(), FmError> {
+    pub fn event_open_file(&mut self) -> FmResult<()> {
         self.opener.open(
             self.path_content
                 .selected_file()
                 .ok_or_else(|| FmError::new("Empty directory"))?
                 .path
                 .clone(),
-        );
+        )?;
         Ok(())
     }
 
@@ -393,7 +394,7 @@ impl Tab {
         self.completion.reset();
     }
 
-    pub fn event_shell(&mut self) -> Result<(), FmError> {
+    pub fn event_shell(&mut self) -> FmResult<()> {
         execute_in_child(
             &self.terminal,
             &vec![
@@ -415,7 +416,7 @@ impl Tab {
         self.mode = Mode::Shortcut
     }
 
-    pub fn event_right_click(&mut self, row: u16) -> Result<(), FmError> {
+    pub fn event_right_click(&mut self, row: u16) -> FmResult<()> {
         if self.path_content.files.is_empty() || row as usize > self.path_content.files.len() + 1 {
             return Err(FmError::new("not found"));
         }
@@ -469,7 +470,7 @@ impl Tab {
         }
     }
 
-    pub fn exec_rename(&mut self) -> Result<(), FmError> {
+    pub fn exec_rename(&mut self) -> FmResult<()> {
         if self.path_content.files.is_empty() {
             return Err(FmError::new("Empty directory"));
         }
@@ -495,7 +496,7 @@ impl Tab {
         self.refresh_view()
     }
 
-    pub fn exec_exec(&mut self) -> Result<(), FmError> {
+    pub fn exec_exec(&mut self) -> FmResult<()> {
         if self.path_content.files.is_empty() {
             return Err(FmError::new("empty directory"));
         }
@@ -531,7 +532,7 @@ impl Tab {
         self.window.scroll_to(self.line_index);
     }
 
-    pub fn exec_goto(&mut self) -> Result<(), FmError> {
+    pub fn exec_goto(&mut self) -> FmResult<()> {
         let target_string = self.input.string.clone();
         self.input.reset();
         let expanded_cow_path = shellexpand::tilde(&target_string);
@@ -558,7 +559,7 @@ impl Tab {
         self.event_normal()
     }
 
-    pub fn exec_history(&mut self) -> Result<(), FmError> {
+    pub fn exec_history(&mut self) -> FmResult<()> {
         self.input.reset();
         self.path_content = PathContent::new(
             self.history

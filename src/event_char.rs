@@ -48,9 +48,7 @@ impl EventChar {
             EventChar::Rename => current_status.event_rename(),
             EventChar::ClearFlags => tabs.event_clear_flags().unwrap_or_default(),
             EventChar::ToggleFlag => tabs.event_toggle_flag().unwrap_or_default(),
-            EventChar::Shell => {
-                current_status.event_shell().unwrap();
-            }
+            EventChar::Shell => current_status.event_shell().unwrap_or_default(),
             EventChar::DeleteFile => current_status.event_delete_file(),
             EventChar::OpenFile => current_status.event_open_file().unwrap_or_default(),
             EventChar::Help => current_status.event_help(),
@@ -64,7 +62,7 @@ impl EventChar {
             EventChar::NvimFilepicker => current_status.event_nvim_filepicker(),
             EventChar::Sort => current_status.event_sort(),
             EventChar::Symlink => tabs.event_symlink().unwrap_or_default(),
-            EventChar::Preview => current_status.event_preview(),
+            EventChar::Preview => current_status.event_preview().unwrap_or_default(),
             EventChar::Shortcut => current_status.event_shortcut(),
             EventChar::Bulkrename => tabs.event_bulkrename().unwrap_or_default(),
             EventChar::MarksNew => tabs.event_marks_new(),

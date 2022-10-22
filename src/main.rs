@@ -31,21 +31,21 @@ fn main() {
     let term = Arc::new(init_term());
     let actioner = Actioner::new(&config.keybindings, term.clone());
     let mut display = Display::new(term, config.colors.clone());
-    let mut tabs = Status::new(Args::parse(), config, display.height());
+    let mut status = Status::new(Args::parse(), config, display.height());
 
     while let Ok(event) = display.term.poll_event() {
         let _ = display.term.clear();
         let (_width, height) = display.term.term_size().unwrap();
 
-        tabs.selected().set_height(height);
+        status.selected().set_height(height);
 
-        actioner.read_event(&mut tabs, event);
+        actioner.read_event(&mut status, event);
 
-        display.display_all(&tabs);
+        display.display_all(&status);
 
         let _ = display.term.present();
 
-        if tabs.selected().must_quit() {
+        if status.selected().must_quit() {
             reset_cursor(&display);
             break;
         };
