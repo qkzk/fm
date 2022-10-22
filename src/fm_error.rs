@@ -41,6 +41,8 @@ impl From<regex::Error> for FmError {
 
 impl From<std::ffi::OsString> for FmError {
     fn from(os_string: std::ffi::OsString) -> Self {
-        Self::new(&os_string.to_string_lossy().borrow())
+        Self::new(os_string.to_string_lossy().borrow())
     }
 }
+
+pub type FmResult<T> = Result<T, FmError>;

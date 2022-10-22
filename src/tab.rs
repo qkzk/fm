@@ -9,7 +9,7 @@ use crate::completion::Completion;
 use crate::config::Config;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
-use crate::fm_error::FmError;
+use crate::fm_error::{FmError, FmResult};
 use crate::input::Input;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
@@ -66,7 +66,10 @@ impl Tab {
             eprintln!("Inaccessible path {:?}", args.path);
             std::process::exit(2)
         });
-        let path_content = PathContent::new(path.clone(), args.all);
+        let path_content = PathContent::new(path.clone(), args.all).unwrap_or_else(|_| {
+            eprintln!("Couldn't explore the path {:?}", args.path);
+            std::process::exit(2)
+        });
         let show_hidden = args.all;
         let nvim_server = args.server;
         let terminal = config.terminal;
@@ -103,12 +106,13 @@ impl Tab {
         }
     }
 
-    pub fn event_normal(&mut self) {
+    pub fn event_normal(&mut self) -> FmResult<()> {
         self.input.reset();
-        self.path_content.reset_files();
+        self.path_content.reset_files()?;
         self.window.reset(self.path_content.files.len());
         self.mode = Mode::Normal;
-        self.preview = Preview::empty()
+        self.preview = Preview::empty();
+        Ok(())
     }
 
     pub fn event_up_one_row(&mut self) {
@@ -213,18 +217,18 @@ impl Tab {
         self.history.prev()
     }
 
-    pub fn event_move_to_parent(&mut self) {
-        match self.path_content.path.parent() {
-            Some(parent) => {
-                let path = path::PathBuf::from(parent);
-                self.history.push(&path);
-                self.path_content = PathContent::new(path, self.show_hidden);
-                self.window.reset(self.path_content.files.len());
-                self.line_index = 0;
-                self.input.cursor_start()
-            }
-            None => (),
+    pub fn event_move_to_parent(&mut self) -> FmResult<()> {
+        let parent = self.path_content.path.parent();
+        if parent.is_none() {
+            return Ok(());
         }
+        let path = path::PathBuf::from(parent.unwrap());
+        self.history.push(&path);
+        self.path_content = PathContent::new(path, self.show_hidden)?;
+        self.window.reset(self.path_content.files.len());
+        self.line_index = 0;
+        self.input.cursor_start();
+        Ok(())
     }
 
     pub fn event_move_cursor_left(&mut self) {
@@ -245,7 +249,7 @@ impl Tab {
                 .path
                 .clone();
             self.history.push(&childpath);
-            self.path_content = PathContent::new(childpath, self.show_hidden);
+            self.path_content = PathContent::new(childpath, self.show_hidden)?;
             self.window.reset(self.path_content.files.len());
             self.line_index = 0;
             self.input.cursor_start();
@@ -360,12 +364,13 @@ impl Tab {
         self.input.insert(c);
     }
 
-    pub fn event_toggle_hidden(&mut self) {
+    pub fn event_toggle_hidden(&mut self) -> FmResult<()> {
         self.show_hidden = !self.show_hidden;
         self.path_content.show_hidden = !self.path_content.show_hidden;
-        self.path_content.reset_files();
+        self.path_content.reset_files()?;
         self.line_index = 0;
-        self.window.reset(self.path_content.files.len())
+        self.window.reset(self.path_content.files.len());
+        Ok(())
     }
 
     pub fn event_open_file(&mut self) -> Result<(), FmError> {
@@ -477,20 +482,17 @@ impl Tab {
                 .to_path_buf()
                 .join(&self.input.string),
         )?;
-        self.refresh_view();
-        Ok(())
+        self.refresh_view()
     }
 
-    pub fn exec_newfile(&mut self) -> std::io::Result<()> {
+    pub fn exec_newfile(&mut self) -> FmResult<()> {
         fs::File::create(self.path_content.path.join(self.input.string.clone()))?;
-        self.refresh_view();
-        Ok(())
+        self.refresh_view()
     }
 
-    pub fn exec_newdir(&mut self) -> std::io::Result<()> {
+    pub fn exec_newdir(&mut self) -> FmResult<()> {
         fs::create_dir(self.path_content.path.join(self.input.string.clone()))?;
-        self.refresh_view();
-        Ok(())
+        self.refresh_view()
     }
 
     pub fn exec_exec(&mut self) -> Result<(), FmError> {
@@ -536,23 +538,24 @@ impl Tab {
         let expanded_target: &str = expanded_cow_path.borrow();
         let path = std::fs::canonicalize(expanded_target)?;
         self.history.push(&path);
-        self.path_content = PathContent::new(path, self.show_hidden);
+        self.path_content = PathContent::new(path, self.show_hidden)?;
         self.window.reset(self.path_content.files.len());
         Ok(())
     }
 
-    pub fn set_pathcontent(&mut self, path: path::PathBuf) {
+    pub fn set_pathcontent(&mut self, path: path::PathBuf) -> FmResult<()> {
         self.history.push(&path);
-        self.path_content = PathContent::new(path, self.show_hidden);
+        self.path_content = PathContent::new(path, self.show_hidden)?;
         self.window.reset(self.path_content.files.len());
+        Ok(())
     }
 
-    pub fn exec_shortcut(&mut self) {
+    pub fn exec_shortcut(&mut self) -> FmResult<()> {
         self.input.reset();
         let path = self.shortcut.selected();
         self.history.push(&path);
-        self.path_content = PathContent::new(path, self.show_hidden);
-        self.event_normal();
+        self.path_content = PathContent::new(path, self.show_hidden)?;
+        self.event_normal()
     }
 
     pub fn exec_history(&mut self) -> Result<(), FmError> {
@@ -562,10 +565,9 @@ impl Tab {
                 .selected()
                 .ok_or_else(|| FmError::new("path unreachable"))?,
             self.show_hidden,
-        );
+        )?;
         self.history.drop_queue();
-        self.event_normal();
-        Ok(())
+        self.event_normal()
     }
 
     fn fill_completion(&mut self) {
@@ -579,11 +581,12 @@ impl Tab {
         }
     }
 
-    pub fn refresh_view(&mut self) {
+    pub fn refresh_view(&mut self) -> FmResult<()> {
         self.line_index = 0;
         self.input.reset();
-        self.path_content.reset_files();
+        self.path_content.reset_files()?;
         self.window.reset(self.path_content.files.len());
+        Ok(())
     }
 
     /// Set the height of the window and itself.

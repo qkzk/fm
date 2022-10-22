@@ -37,7 +37,7 @@ impl EventChar {
     pub fn match_char(&self, tabs: &mut Status) {
         let current_status = tabs.selected();
         match *self {
-            EventChar::ToggleHidden => current_status.event_toggle_hidden(),
+            EventChar::ToggleHidden => current_status.event_toggle_hidden().unwrap_or_default(),
             EventChar::CopyPaste => current_status.event_copy_paste(),
             EventChar::CutPaste => current_status.event_cur_paste(),
             EventChar::NewDir => current_status.event_new_dir(),
@@ -46,7 +46,7 @@ impl EventChar {
             EventChar::Exec => current_status.event_exec(),
             EventChar::Goto => current_status.event_goto(),
             EventChar::Rename => current_status.event_rename(),
-            EventChar::ClearFlags => tabs.event_clear_flags(),
+            EventChar::ClearFlags => tabs.event_clear_flags().unwrap_or_default(),
             EventChar::ToggleFlag => tabs.event_toggle_flag().unwrap_or_default(),
             EventChar::Shell => {
                 current_status.event_shell().unwrap();
@@ -57,8 +57,8 @@ impl EventChar {
             EventChar::Search => current_status.event_search(),
             EventChar::RegexMatch => current_status.event_regex_match(),
             EventChar::Quit => current_status.event_quit(),
-            EventChar::FlagAll => tabs.event_flag_all(),
-            EventChar::ReverseFlags => tabs.event_reverse_flags(),
+            EventChar::FlagAll => tabs.event_flag_all().unwrap_or_default(),
+            EventChar::ReverseFlags => tabs.event_reverse_flags().unwrap_or_default(),
             EventChar::Jump => tabs.event_jump(),
             EventChar::History => current_status.event_history(),
             EventChar::NvimFilepicker => current_status.event_nvim_filepicker(),

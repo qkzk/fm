@@ -88,7 +88,7 @@ impl Actioner {
 
     /// Leaving a mode reset the window
     fn escape(&self, tabs: &mut Status) {
-        tabs.selected().event_normal()
+        tabs.selected().event_normal().unwrap_or_default();
     }
 
     /// Move one line up
@@ -122,7 +122,7 @@ impl Actioner {
     /// Move left in a string, move to parent in normal mode
     fn left(&self, tabs: &mut Status) {
         match tabs.selected().mode {
-            Mode::Normal => tabs.selected().event_move_to_parent(),
+            Mode::Normal => tabs.selected().event_move_to_parent().unwrap_or_default(),
             Mode::Rename
             | Mode::Chmod
             | Mode::Newdir
@@ -230,9 +230,9 @@ impl Actioner {
             Mode::Search => tabs.selected().exec_search(),
             Mode::Goto => tabs.selected().exec_goto()?,
             Mode::RegexMatch => tabs.exec_regex()?,
-            Mode::Jump => tabs.exec_jump(),
+            Mode::Jump => tabs.exec_jump()?,
             Mode::History => tabs.selected().exec_history()?,
-            Mode::Shortcut => tabs.selected().exec_shortcut(),
+            Mode::Shortcut => tabs.selected().exec_shortcut()?,
             Mode::Normal
             | Mode::NeedConfirmation
             | Mode::Help
@@ -292,7 +292,9 @@ impl Actioner {
                 Some(event_char) => event_char.match_char(tabs),
                 None => (),
             },
-            Mode::Help | Mode::Preview | Mode::Shortcut => tabs.selected().event_normal(),
+            Mode::Help | Mode::Preview | Mode::Shortcut => {
+                tabs.selected().event_normal().unwrap_or_default()
+            }
             Mode::Jump => (),
             Mode::History => (),
             Mode::NeedConfirmation => {
@@ -301,8 +303,8 @@ impl Actioner {
                 }
                 tabs.selected().event_leave_need_confirmation()
             }
-            Mode::Marks(MarkAction::Jump) => tabs.exec_marks_jump(c),
-            Mode::Marks(MarkAction::New) => tabs.exec_marks_new(c),
+            Mode::Marks(MarkAction::Jump) => tabs.exec_marks_jump(c).unwrap_or_default(),
+            Mode::Marks(MarkAction::New) => tabs.exec_marks_new(c).unwrap_or_default(),
             Mode::Sort => tabs.selected().event_leave_sort(c),
         }
     }

@@ -10,7 +10,7 @@ use crate::args::Args;
 use crate::bulkrename::Bulkrename;
 use crate::config::Config;
 use crate::fileinfo::PathContent;
-use crate::fm_error::FmError;
+use crate::fm_error::{FmError, FmResult};
 use crate::last_edition::LastEdition;
 use crate::marks::Marks;
 use crate::mode::{MarkAction, Mode};
@@ -95,18 +95,19 @@ impl Status {
         &self.statuses[self.index]
     }
 
-    fn reset_statuses(&mut self) {
+    fn reset_statuses(&mut self) -> FmResult<()> {
         for status in self.statuses.iter_mut() {
-            status.refresh_view()
+            status.refresh_view()?
         }
+        Ok(())
     }
 
-    pub fn event_clear_flags(&mut self) {
+    pub fn event_clear_flags(&mut self) -> FmResult<()> {
         self.flagged.clear();
         self.reset_statuses()
     }
 
-    pub fn event_flag_all(&mut self) {
+    pub fn event_flag_all(&mut self) -> FmResult<()> {
         self.statuses[self.index]
             .path_content
             .files
@@ -117,7 +118,7 @@ impl Status {
         self.reset_statuses()
     }
 
-    pub fn event_reverse_flags(&mut self) {
+    pub fn event_reverse_flags(&mut self) -> FmResult<()> {
         // TODO: is there a way to use `toggle_flag_on_path` ? 2 mutable borrows...
         self.statuses[self.index]
             .path_content
@@ -153,11 +154,11 @@ impl Status {
         if let Ok(path) = fs::canonicalize(path::Path::new(&s_path)) {
             if path.is_file() {
                 if let Some(parent) = path.parent() {
-                    status.set_pathcontent(parent.to_path_buf());
+                    let _ = status.set_pathcontent(parent.to_path_buf());
                     self.statuses.push(status);
                 }
             } else if path.is_dir() {
-                status.set_pathcontent(path);
+                let _ = status.set_pathcontent(path);
                 self.statuses.push(status);
             }
         }
@@ -182,22 +183,22 @@ impl Status {
         }
     }
 
-    pub fn event_chmod(&mut self) -> Option<()> {
+    pub fn event_chmod(&mut self) -> FmResult<()> {
         if self.selected().path_content.files.is_empty() {
-            return None;
+            return Ok(());
         }
         self.selected().mode = Mode::Chmod;
         if self.flagged.is_empty() {
             self.flagged.insert(
                 self.statuses[self.index]
                     .path_content
-                    .selected_file()?
+                    .selected_file()
+                    .unwrap()
                     .path
                     .clone(),
             );
         };
-        self.reset_statuses();
-        Some(())
+        self.reset_statuses()
     }
 
     pub fn event_jump(&mut self) {
@@ -215,17 +216,17 @@ impl Status {
         self.selected().mode = Mode::Marks(MarkAction::Jump)
     }
 
-    pub fn exec_marks_new(&mut self, c: char) {
+    pub fn exec_marks_new(&mut self, c: char) -> FmResult<()> {
         let path = self.selected().path_content.path.clone();
         self.marks.new_mark(c, path);
         self.selected().event_normal()
     }
 
-    pub fn exec_marks_jump(&mut self, c: char) {
+    pub fn exec_marks_jump(&mut self, c: char) -> FmResult<()> {
         if let Some(path) = self.marks.get(c) {
             let path = path.to_owned();
             self.selected().history.push(&path);
-            self.selected().path_content = PathContent::new(path, self.selected().show_hidden);
+            self.selected().path_content = PathContent::new(path, self.selected().show_hidden)?;
         };
         self.selected().event_normal()
     }
@@ -243,17 +244,15 @@ impl Status {
         }
 
         self.flagged.clear();
-        self.selected().path_content.reset_files();
+        self.selected().path_content.reset_files()?;
         let len = self.statuses[self.index].path_content.files.len();
         self.statuses[self.index].window.reset(len);
-        self.reset_statuses();
-        Ok(())
+        self.reset_statuses()
     }
 
     pub fn event_bulkrename(&mut self) -> Result<(), FmError> {
         Bulkrename::new(self.filtered_flagged_files())?.rename(&self.selected_non_mut().opener)?;
-        self.selected().refresh_view();
-        Ok(())
+        self.selected().refresh_view()
     }
 
     fn filtered_flagged_files(&self) -> Vec<&Path> {
@@ -278,8 +277,7 @@ impl Status {
                 .join(filename);
             Self::cut_or_copy(cut_or_copy.clone(), oldpath, newpath)?
         }
-        self.clear_flags_and_reset_view();
-        Ok(())
+        self.clear_flags_and_reset_view()
     }
 
     fn cut_or_copy(
@@ -295,9 +293,9 @@ impl Status {
         Ok(())
     }
 
-    fn clear_flags_and_reset_view(&mut self) {
+    fn clear_flags_and_reset_view(&mut self) -> FmResult<()> {
         self.flagged.clear();
-        self.selected().path_content.reset_files();
+        self.selected().path_content.reset_files()?;
         let len = self.statuses[self.index].path_content.files.len();
         self.selected().window.reset(len);
         self.reset_statuses()
@@ -319,8 +317,7 @@ impl Status {
                 std::fs::remove_file(pathbuf)?;
             }
         }
-        self.clear_flags_and_reset_view();
-        Ok(())
+        self.clear_flags_and_reset_view()
     }
 
     pub fn exec_chmod(&mut self) -> Result<(), FmError> {
@@ -335,12 +332,11 @@ impl Status {
             }
             self.flagged.clear()
         }
-        self.selected().refresh_view();
-        self.reset_statuses();
-        Ok(())
+        self.selected().refresh_view()?;
+        self.reset_statuses()
     }
 
-    pub fn exec_jump(&mut self) {
+    pub fn exec_jump(&mut self) -> FmResult<()> {
         self.selected().input.string.clear();
         let jump_list: Vec<&PathBuf> = self.flagged.iter().collect();
         let jump_target = jump_list[self.jump_index].clone();
@@ -349,7 +345,7 @@ impl Status {
             None => jump_target.clone(),
         };
         self.selected().history.push(&target_dir);
-        self.selected().path_content = PathContent::new(target_dir, self.selected().show_hidden);
+        self.selected().path_content = PathContent::new(target_dir, self.selected().show_hidden)?;
         if let Some(index) = self.find_jump_target(&jump_target) {
             self.selected().line_index = index;
         } else {
@@ -361,6 +357,7 @@ impl Status {
         let len = self.statuses[self.index].path_content.files.len();
         self.selected().window.reset(len);
         self.selected().window.scroll_to(s_index);
+        Ok(())
     }
 
     fn find_jump_target(&mut self, jump_target: &Path) -> Option<usize> {

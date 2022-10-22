@@ -204,24 +204,23 @@ impl PathContent {
     /// Reads the paths and creates a new `PathContent`.
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
-    pub fn new(path: path::PathBuf, show_hidden: bool) -> Self {
-        let mut files: Vec<FileInfo> = read_dir(&path)
-            .unwrap_or_else(|_| {
-                eprintln!(
-                    "File does not exists {}",
-                    path.to_str().unwrap_or("unreadable path")
-                );
-                std::process::exit(2)
-            })
-            .filter(|r| {
-                show_hidden
-                    || match r {
-                        Ok(e) => is_not_hidden(&e).unwrap(),
-                        Err(_) => false,
-                    }
-            })
-            .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
-            .collect();
+    pub fn new(path: path::PathBuf, show_hidden: bool) -> Result<Self, FmError> {
+        let read_dir = read_dir(&path)?;
+        let mut files: Vec<FileInfo> = if show_hidden {
+            read_dir
+                .filter_map(|res_direntry| res_direntry.ok())
+                .map(|direntry| FileInfo::new(&direntry))
+                .filter_map(|res_file_entry| res_file_entry.ok())
+                .collect()
+        } else {
+            read_dir
+                .filter_map(|res_direntry| res_direntry.ok())
+                .filter(|e| is_not_hidden(e).unwrap())
+                .map(|direntry| FileInfo::new(&direntry))
+                .filter_map(|res_file_entry| res_file_entry.ok())
+                .collect()
+        };
+
         let sort_by = SortBy::Filename;
         files.sort_by_key(|file| sort_by.key(file));
         let selected: usize = 0;
@@ -230,14 +229,14 @@ impl PathContent {
         }
         let reverse = false;
 
-        Self {
+        Ok(Self {
             path,
             files,
             selected,
             show_hidden,
             sort_by,
             reverse,
-        }
+        })
     }
 
     /// Sort the file with current key.
