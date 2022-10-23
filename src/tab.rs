@@ -61,15 +61,9 @@ pub struct Tab {
 
 impl Tab {
     /// Creates a new tab from args, config and height.
-    pub fn new(args: Args, config: Config, height: usize) -> Self {
-        let path = std::fs::canonicalize(path::Path::new(&args.path)).unwrap_or_else(|_| {
-            eprintln!("Inaccessible path {:?}", args.path);
-            std::process::exit(2)
-        });
-        let path_content = PathContent::new(path.clone(), args.all).unwrap_or_else(|_| {
-            eprintln!("Couldn't explore the path {:?}", args.path);
-            std::process::exit(2)
-        });
+    pub fn new(args: Args, config: Config, height: usize) -> FmResult<Self> {
+        let path = std::fs::canonicalize(path::Path::new(&args.path))?;
+        let path_content = PathContent::new(path.clone(), args.all)?;
         let show_hidden = args.all;
         let nvim_server = args.server;
         let terminal = config.terminal;
@@ -86,7 +80,7 @@ impl Tab {
         let shortcut = Shortcut::default();
         let opener = load_opener(OPENER_PATH, terminal.clone())
             .unwrap_or_else(|_| Opener::new(terminal.clone()));
-        Self {
+        Ok(Self {
             mode,
             line_index,
             window,
@@ -103,7 +97,7 @@ impl Tab {
             history,
             shortcut,
             opener,
-        }
+        })
     }
 
     pub fn event_normal(&mut self) -> FmResult<()> {

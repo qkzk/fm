@@ -38,14 +38,14 @@ pub struct Status {
 impl Status {
     const MAX_PERMISSIONS: u32 = 0o777;
 
-    pub fn new(args: Args, config: Config, height: usize) -> Self {
-        Self {
-            statuses: vec![Tab::new(args, config, height)],
+    pub fn new(args: Args, config: Config, height: usize) -> FmResult<Self> {
+        Ok(Self {
+            statuses: vec![Tab::new(args, config, height)?],
             index: 0,
             flagged: HashSet::new(),
             jump_index: 0,
             marks: Marks::read_from_config_file(),
-        }
+        })
     }
 
     pub fn new_tab(&mut self) {

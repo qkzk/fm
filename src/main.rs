@@ -7,6 +7,7 @@ use fm::actioner::Actioner;
 use fm::args::Args;
 use fm::config::load_config;
 use fm::display::Display;
+use fm::fm_error::FmResult;
 use fm::status::Status;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
@@ -26,12 +27,12 @@ fn reset_cursor(display: &Display) {
 /// Main function.
 /// Init the status and display and listen to events from keyboard and mouse.
 /// The application is redrawn after every event.
-fn main() {
+fn main() -> FmResult<()> {
     let config = load_config(CONFIG_PATH);
     let term = Arc::new(init_term());
     let actioner = Actioner::new(&config.keybindings, term.clone());
     let mut display = Display::new(term, config.colors.clone());
-    let mut status = Status::new(Args::parse(), config, display.height());
+    let mut status = Status::new(Args::parse(), config, display.height())?;
 
     while let Ok(event) = display.term.poll_event() {
         let _ = display.term.clear();
@@ -50,4 +51,5 @@ fn main() {
             break;
         };
     }
+    Ok(())
 }
