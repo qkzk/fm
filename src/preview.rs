@@ -217,8 +217,9 @@ impl SyntaxedString {
         }
     }
 
-    pub fn print(&self, term: &Arc<Term>, row: usize, offset: usize) {
-        let _ = term.print_with_attr(row, self.col + offset + 2, &self.content, self.attr);
+    pub fn print(&self, term: &Arc<Term>, row: usize, offset: usize) -> FmResult<()> {
+        term.print_with_attr(row, self.col + offset + 2, &self.content, self.attr)?;
+        Ok(())
     }
 }
 

@@ -2,6 +2,8 @@ use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt;
 
+use tuikit::error::TuikitError;
+
 #[derive(Debug)]
 pub struct FmError {
     pub details: String,
@@ -52,6 +54,12 @@ impl From<Box<dyn std::any::Any + Send + 'static>> for FmError {
                 .downcast_ref::<&str>()
                 .unwrap_or(&"Unreadable error from thread"),
         )
+    }
+}
+
+impl From<TuikitError> for FmError {
+    fn from(tuikit_error: TuikitError) -> Self {
+        Self::new(&tuikit_error.to_string())
     }
 }
 

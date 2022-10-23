@@ -7,6 +7,7 @@ use tuikit::term::Term;
 use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
+use crate::fm_error::FmResult;
 use crate::last_edition::LastEdition;
 use crate::mode::{MarkAction, Mode};
 use crate::preview::Preview;
@@ -55,11 +56,11 @@ impl Display {
     /// The completion list if any.
     ///
     /// The preview in preview mode.
-    pub fn display_all(&mut self, tabs: &Status) {
+    pub fn display_all(&mut self, tabs: &Status) -> FmResult<()> {
         let status = tabs.selected_non_mut();
-        self.first_line(status, tabs);
-        self.files(status, tabs);
-        self.cursor(status);
+        self.first_line(status, tabs)?;
+        self.files(status, tabs)?;
+        self.cursor(status)?;
         match status.mode {
             // Mode::Help => self.help(),
             Mode::Jump => self.jump_list(tabs),
@@ -71,14 +72,14 @@ impl Display {
             Mode::Marks(MarkAction::New) | Mode::Marks(MarkAction::Jump) => {
                 self.marks(status, tabs)
             }
-            _ => (),
+            _ => Ok(()),
         }
     }
 
     /// Reads and returns the `tuikit::term::Term` height.
-    pub fn height(&self) -> usize {
-        let (_, height) = self.term.term_size().unwrap_or((0, 20));
-        height
+    pub fn height(&self) -> FmResult<usize> {
+        let (_, height) = self.term.term_size()?;
+        Ok(height)
     }
 
     /// Display the top line on terminal.
@@ -86,7 +87,7 @@ impl Display {
     /// In normal mode we display the path and number of files.
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
-    fn first_line(&mut self, status: &Tab, tabs: &Status) {
+    fn first_line(&mut self, status: &Tab, tabs: &Status) -> FmResult<()> {
         let first_row: String = match status.mode {
             Mode::Normal => {
                 format!(
@@ -115,9 +116,9 @@ impl Display {
                 format!("{:?} {}", status.mode.clone(), status.input.string.clone())
             }
         };
-        let _ = self
-            .term
-            .print_with_attr(0, 0, &first_row, Self::ATTR_LINE_NR);
+        self.term
+            .print_with_attr(0, 0, &first_row, Self::ATTR_LINE_NR)?;
+        Ok(())
     }
 
     /// Displays the current directory content, one line per item like in
@@ -127,7 +128,7 @@ impl Display {
     /// normal (ie. default) mode.
     /// Where there's too much files, only those around the selected one are
     /// displayed.
-    fn files(&mut self, status: &Tab, tabs: &Status) {
+    fn files(&mut self, status: &Tab, tabs: &Status) -> FmResult<()> {
         let strings = status.path_content.strings();
         for (i, string) in strings
             .iter()
@@ -140,34 +141,35 @@ impl Display {
             if tabs.flagged.contains(&status.path_content.files[i].path) {
                 attr.effect |= Effect::UNDERLINE;
             }
-            let _ = self.term.print_with_attr(row, 0, string, attr);
+            self.term.print_with_attr(row, 0, string, attr)?;
         }
+        Ok(())
     }
 
     /// Display a cursor in the top row, at a correct column.
-    fn cursor(&mut self, status: &Tab) {
+    fn cursor(&mut self, status: &Tab) -> FmResult<()> {
         match status.mode {
             Mode::Normal | Mode::Help | Mode::Marks(_) => {
-                let _ = self.term.show_cursor(false);
+                self.term.show_cursor(false)?;
             }
             Mode::NeedConfirmation => {
-                let _ = self.term.set_cursor(0, status.last_edition.offset());
+                self.term.set_cursor(0, status.last_edition.offset())?;
             }
             Mode::Sort => {
-                let _ = self.term.set_cursor(0, Self::SORT_CURSOR_OFFSET);
+                self.term.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
             }
             _ => {
-                let _ = self
-                    .term
-                    .set_cursor(0, status.input.cursor_index + Self::EDIT_BOX_OFFSET);
+                self.term
+                    .set_cursor(0, status.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
             }
         }
+        Ok(())
     }
 
     /// Display the possible jump destination from flagged files.
-    fn jump_list(&mut self, tabs: &Status) {
-        let _ = self.term.clear();
-        let _ = self.term.print(0, 0, "Jump to...");
+    fn jump_list(&mut self, tabs: &Status) -> FmResult<()> {
+        self.term.clear()?;
+        self.term.print(0, 0, "Jump to...")?;
         for (row, path) in tabs.flagged.iter().enumerate() {
             let mut attr = Attr::default();
             if row == tabs.jump_index {
@@ -180,30 +182,32 @@ impl Display {
                 attr,
             );
         }
+        Ok(())
     }
 
     /// Display the history of visited directories.
-    fn history(&mut self, status: &Tab) {
-        let _ = self.term.clear();
-        let _ = self.term.print(0, 0, "Go to...");
+    fn history(&mut self, status: &Tab) -> FmResult<()> {
+        self.term.clear()?;
+        self.term.print(0, 0, "Go to...")?;
         for (row, path) in status.history.visited.iter().rev().enumerate() {
             let mut attr = Attr::default();
             if row == status.history.len() - status.history.index - 1 {
                 attr.effect |= Effect::REVERSE;
             }
-            let _ = self.term.print_with_attr(
+            self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
                 path.to_str().unwrap_or_default(),
                 attr,
-            );
+            )?;
         }
+        Ok(())
     }
 
     /// Display the predefined shortcuts.
-    fn shortcuts(&mut self, status: &Tab) {
-        let _ = self.term.clear();
-        let _ = self.term.print(0, 0, "Go to...");
+    fn shortcuts(&mut self, status: &Tab) -> FmResult<()> {
+        self.term.clear()?;
+        self.term.print(0, 0, "Go to...")?;
         for (row, path) in status.shortcut.shortcuts.iter().enumerate() {
             let mut attr = Attr::default();
             if row == status.shortcut.index {
@@ -216,41 +220,42 @@ impl Display {
                 attr,
             );
         }
+        Ok(())
     }
 
     /// Display the possible completion items. The currently selected one is
     /// reversed.
-    fn completion(&mut self, status: &Tab, tabs: &Status) {
-        let _ = self.term.clear();
-        self.first_line(status, tabs);
-        let _ = self
-            .term
-            .set_cursor(0, status.input.cursor_index + Self::EDIT_BOX_OFFSET);
+    fn completion(&mut self, status: &Tab, tabs: &Status) -> FmResult<()> {
+        self.term.clear()?;
+        self.first_line(status, tabs)?;
+        self.term
+            .set_cursor(0, status.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
         for (row, candidate) in status.completion.proposals.iter().enumerate() {
             let mut attr = Attr::default();
             if row == status.completion.index {
                 attr.effect |= Effect::REVERSE;
             }
-            let _ = self.term.print_with_attr(
+            self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
                 candidate,
                 attr,
-            );
+            )?;
         }
+        Ok(())
     }
 
     /// Display a list of edited (deleted, copied, moved) files for confirmation
-    fn confirmation(&mut self, status: &Tab, tabs: &Status) {
-        let _ = self.term.clear();
-        self.first_line(status, tabs);
+    fn confirmation(&mut self, status: &Tab, tabs: &Status) -> FmResult<()> {
+        self.term.clear()?;
+        self.first_line(status, tabs)?;
         for (row, path) in tabs.flagged.iter().enumerate() {
-            let _ = self.term.print_with_attr(
+            self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2,
                 4,
                 path.to_str().unwrap_or_default(),
                 Attr::default(),
-            );
+            )?;
         }
         eprintln!("last_edition: {}", status.last_edition);
         if let LastEdition::CopyPaste = status.last_edition {
@@ -263,8 +268,9 @@ impl Display {
                 "Files will be copied to {}",
                 status.path_content.path_to_str()
             );
-            let _ = self.term.print_with_attr(2, 3, &content, attr);
+            self.term.print_with_attr(2, 3, &content, attr)?;
         }
+        Ok(())
     }
 
     /// Display a scrollable preview of a file.
@@ -274,9 +280,9 @@ impl Display {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&mut self, status: &Tab, tabs: &Status) {
-        let _ = self.term.clear();
-        self.first_line(status, tabs);
+    fn preview(&mut self, status: &Tab, tabs: &Status) -> FmResult<()> {
+        self.term.clear()?;
+        self.first_line(status, tabs)?;
 
         let length = status.preview.len();
         let line_number_width = length.to_string().len();
@@ -291,14 +297,14 @@ impl Display {
                     .take(min(length, status.window.bottom + 1))
                 {
                     let row = Self::calc_line_row(i, status);
-                    let _ = self.term.print_with_attr(
+                    self.term.print_with_attr(
                         row,
                         0,
                         &(i + 1 + status.window.top).to_string(),
                         Self::ATTR_LINE_NR,
-                    );
+                    )?;
                     for token in vec_line.iter() {
-                        token.print(&self.term, row, line_number_width);
+                        token.print(&self.term, row, line_number_width)?;
                     }
                 }
             }
@@ -311,13 +317,13 @@ impl Display {
                     .take(min(length, status.window.bottom + 1))
                 {
                     let row = Self::calc_line_row(i, status);
-                    let _ = self.term.print_with_attr(
+                    self.term.print_with_attr(
                         row,
                         0,
                         &(i + 1 + status.window.top).to_string(),
                         Self::ATTR_LINE_NR,
-                    );
-                    let _ = self.term.print(row, line_number_width + 3, line);
+                    )?;
+                    self.term.print(row, line_number_width + 3, line)?;
                 }
             }
             Preview::Binary(bin) => {
@@ -332,12 +338,12 @@ impl Display {
                 {
                     let row = Self::calc_line_row(i, status);
 
-                    let _ = self.term.print_with_attr(
+                    self.term.print_with_attr(
                         row,
                         0,
                         &format_line_nr_hex(i + 1 + status.window.top, line_number_width_hex),
                         Self::ATTR_LINE_NR,
-                    );
+                    )?;
                     line.print(&self.term, row, line_number_width_hex + 1);
                 }
             }
@@ -350,31 +356,32 @@ impl Display {
                     .take(min(length, status.window.bottom + 1))
                 {
                     let row = Self::calc_line_row(i, status);
-                    let _ = self.term.print_with_attr(
+                    self.term.print_with_attr(
                         row,
                         0,
                         &(i + 1 + status.window.top).to_string(),
                         Self::ATTR_LINE_NR,
-                    );
-                    let _ = self.term.print(row, line_number_width + 3, line);
+                    )?;
+                    self.term.print(row, line_number_width + 3, line)?;
                 }
             }
             Preview::Empty => (),
         }
+        Ok(())
     }
 
-    fn marks(&mut self, status: &Tab, tabs: &Status) {
-        let _ = self.term.clear();
-        self.first_line(status, tabs);
+    fn marks(&mut self, status: &Tab, tabs: &Status) -> FmResult<()> {
+        self.term.clear()?;
+        self.first_line(status, tabs)?;
 
-        let _ = self
-            .term
-            .print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW);
+        self.term
+            .print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
 
         for (i, line) in tabs.marks.as_strings().iter().enumerate() {
             let row = Self::calc_line_row(i, status) + 2;
-            let _ = self.term.print(row, 3, line);
+            self.term.print(row, 3, line)?;
         }
+        Ok(())
     }
 
     fn calc_line_row(i: usize, status: &Tab) -> usize {

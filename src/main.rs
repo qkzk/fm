@@ -13,15 +13,15 @@ use fm::status::Status;
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
-fn init_term() -> Term {
-    let term: Term<()> = Term::new().unwrap();
-    let _ = term.enable_mouse_support();
-    term
+fn init_term() -> FmResult<Term> {
+    let term: Term<()> = Term::new()?;
+    term.enable_mouse_support()?;
+    Ok(term)
 }
 
 /// Display the cursor
-fn reset_cursor(display: &Display) {
-    let _ = display.term.show_cursor(true);
+fn reset_cursor(display: &Display) -> FmResult<()> {
+    Ok(display.term.show_cursor(true)?)
 }
 
 /// Main function.
@@ -29,10 +29,10 @@ fn reset_cursor(display: &Display) {
 /// The application is redrawn after every event.
 fn main() -> FmResult<()> {
     let config = load_config(CONFIG_PATH);
-    let term = Arc::new(init_term());
+    let term = Arc::new(init_term()?);
     let actioner = Actioner::new(&config.keybindings, term.clone());
     let mut display = Display::new(term, config.colors.clone());
-    let mut status = Status::new(Args::parse(), config, display.height())?;
+    let mut status = Status::new(Args::parse(), config, display.height()?)?;
 
     while let Ok(event) = display.term.poll_event() {
         let _ = display.term.clear();
@@ -42,12 +42,12 @@ fn main() -> FmResult<()> {
 
         actioner.read_event(&mut status, event);
 
-        display.display_all(&status);
+        display.display_all(&status)?;
 
         let _ = display.term.present();
 
         if status.selected().must_quit() {
-            reset_cursor(&display);
+            reset_cursor(&display)?;
             break;
         };
     }
