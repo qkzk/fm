@@ -233,7 +233,7 @@ impl PathContent {
         } else {
             read_dir
                 .filter_map(|res_direntry| res_direntry.ok())
-                .filter(|e| is_not_hidden(e).unwrap())
+                .filter(|e| is_not_hidden(e).unwrap_or(true))
                 .map(|direntry| FileInfo::new(&direntry))
                 .filter_map(|res_file_entry| res_file_entry.ok())
                 .collect()
