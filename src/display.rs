@@ -7,7 +7,7 @@ use tuikit::term::Term;
 use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
-use crate::fm_error::FmResult;
+use crate::fm_error::{FmError, FmResult};
 use crate::last_edition::LastEdition;
 use crate::mode::{MarkAction, Mode};
 use crate::preview::Preview;
@@ -94,7 +94,7 @@ impl Display {
                     "Tab: {}/{}  --  Path: {}   --   Files: {}",
                     tabs.index + 1,
                     tabs.len(),
-                    status.path_content.path_to_str(),
+                    status.path_content.path_to_str()?,
                     status.path_content.files.len(),
                 )
             }
@@ -178,7 +178,8 @@ impl Display {
             let _ = self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str().unwrap_or_default(),
+                path.to_str()
+                    .ok_or_else(|| FmError::new("Unreadable filename"))?,
                 attr,
             );
         }
@@ -197,7 +198,8 @@ impl Display {
             self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str().unwrap_or_default(),
+                path.to_str()
+                    .ok_or_else(|| FmError::new("Unreadable filename"))?,
                 attr,
             )?;
         }
@@ -216,7 +218,8 @@ impl Display {
             let _ = self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str().unwrap_or_default(),
+                path.to_str()
+                    .ok_or_else(|| FmError::new("Unreadable filename"))?,
                 attr,
             );
         }
@@ -253,7 +256,8 @@ impl Display {
             self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2,
                 4,
-                path.to_str().unwrap_or_default(),
+                path.to_str()
+                    .ok_or_else(|| FmError::new("Unreadable filename"))?,
                 Attr::default(),
             )?;
         }
@@ -266,7 +270,7 @@ impl Display {
             };
             let content = format!(
                 "Files will be copied to {}",
-                status.path_content.path_to_str()
+                status.path_content.path_to_str()?
             );
             self.term.print_with_attr(2, 3, &content, attr)?;
         }
@@ -377,7 +381,7 @@ impl Display {
         self.term
             .print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
 
-        for (i, line) in tabs.marks.as_strings().iter().enumerate() {
+        for (i, line) in tabs.marks.as_strings()?.iter().enumerate() {
             let row = Self::calc_line_row(i, status) + 2;
             self.term.print(row, 3, line)?;
         }

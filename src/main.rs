@@ -36,7 +36,7 @@ fn main() -> FmResult<()> {
 
     while let Ok(event) = display.term.poll_event() {
         let _ = display.term.clear();
-        let (_width, height) = display.term.term_size().unwrap();
+        let (_width, height) = display.term.term_size()?;
 
         status.selected().set_height(height);
 
@@ -44,7 +44,7 @@ fn main() -> FmResult<()> {
 
         display.display_all(&status)?;
 
-        let _ = display.term.present();
+        display.term.present()?;
 
         if status.selected().must_quit() {
             reset_cursor(&display)?;

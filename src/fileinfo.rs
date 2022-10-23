@@ -141,9 +141,7 @@ impl FileInfo {
 
         let file_kind = FileKind::new(direntry);
         let dir_symbol = file_kind.extract_dir_symbol();
-        let extension = extract_extension_from_filename(&filename)
-            .unwrap_or("")
-            .into();
+        let extension = extract_extension_from_filename(&filename).into();
 
         Ok(FileInfo {
             path,
@@ -243,8 +241,10 @@ impl PathContent {
         Ok(files)
     }
 
-    pub fn path_to_str(&self) -> &str {
-        self.path.to_str().unwrap_or_default()
+    pub fn path_to_str(&self) -> FmResult<&str> {
+        self.path
+            .to_str()
+            .ok_or_else(|| FmError::new("Unreadable path"))
     }
 
     /// Sort the file with current key.
@@ -366,18 +366,18 @@ fn is_not_hidden(entry: &DirEntry) -> Result<bool, FmError> {
 }
 
 /// Returns the modified time.
-fn extract_datetime(direntry: &DirEntry) -> Result<String, FmError> {
+fn extract_datetime(direntry: &DirEntry) -> FmResult<String> {
     let datetime: DateTime<Local> = direntry.metadata()?.modified()?.into();
     Ok(format!("{}", datetime.format("%d/%m/%Y %T")))
 }
 
 /// Returns the filename.
-fn extract_filename(direntry: &DirEntry) -> Result<String, FmError> {
+fn extract_filename(direntry: &DirEntry) -> FmResult<String> {
     Ok(direntry.file_name().into_string()?)
 }
 
 /// Reads the permission and converts them into a string.
-fn extract_permissions_string(direntry: &DirEntry) -> Result<String, FmError> {
+fn extract_permissions_string(direntry: &DirEntry) -> FmResult<String> {
     let metadata = metadata(direntry.path())?;
     let mode = metadata.mode() & 511;
     let s_o = convert_octal_mode(mode >> 6);
@@ -393,7 +393,7 @@ fn convert_octal_mode(mode: u32) -> String {
 }
 
 /// Reads the owner name and returns it as a string.
-fn extract_owner(direntry: &DirEntry) -> Result<String, FmError> {
+fn extract_owner(direntry: &DirEntry) -> FmResult<String> {
     Ok(String::from(
         get_user_by_uid(metadata(direntry.path())?.uid())
             .ok_or_else(|| FmError::new("Couldn't read uid"))?
@@ -420,8 +420,10 @@ fn human_size(bytes: u64) -> String {
 }
 
 /// Extract the optional extension from a filename.
-fn extract_extension_from_filename(filename: &str) -> Option<&str> {
+/// Returns empty &str aka "" if the file has no extension.
+fn extract_extension_from_filename(filename: &str) -> &str {
     path::Path::new(filename)
         .extension()
         .and_then(std::ffi::OsStr::to_str)
+        .unwrap_or_default()
 }

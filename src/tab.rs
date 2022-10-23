@@ -263,9 +263,9 @@ impl Tab {
         self.input.delete_chars_right()
     }
 
-    pub fn event_text_insert_and_complete(&mut self, c: char) {
+    pub fn event_text_insert_and_complete(&mut self, c: char) -> FmResult<()> {
         self.event_text_insertion(c);
-        self.fill_completion();
+        self.fill_completion()
     }
 
     pub fn event_copy_paste(&mut self) {
@@ -565,14 +565,14 @@ impl Tab {
         self.event_normal()
     }
 
-    fn fill_completion(&mut self) {
+    fn fill_completion(&mut self) -> FmResult<()> {
         match self.mode {
             Mode::Goto => self.completion.goto(&self.input.string),
             Mode::Exec => self.completion.exec(&self.input.string),
             Mode::Search => self
                 .completion
                 .search(&self.input.string, &self.path_content),
-            _ => (),
+            _ => Ok(()),
         }
     }
 

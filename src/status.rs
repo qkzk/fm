@@ -164,11 +164,14 @@ impl Status {
         }
     }
 
-    pub fn event_toggle_flag(&mut self) -> Option<()> {
-        let file = self.statuses[self.index].path_content.selected_file()?;
+    pub fn event_toggle_flag(&mut self) -> FmResult<()> {
+        let file = self.statuses[self.index]
+            .path_content
+            .selected_file()
+            .ok_or_else(|| FmError::new("No selected file"))?;
         self.toggle_flag_on_path(file.path.clone());
         self.selected().event_down_one_row();
-        Some(())
+        Ok(())
     }
 
     pub fn event_jumplist_next(&mut self) {

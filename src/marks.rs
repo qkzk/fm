@@ -4,6 +4,7 @@ use std::fs::OpenOptions;
 use std::io::{self, BufRead, BufWriter, Error, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 
+use crate::fm_error::FmError;
 use crate::fm_error::FmResult;
 
 static MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
@@ -64,29 +65,36 @@ impl Marks {
         let mut buf = BufWriter::new(file);
 
         for (ch, path) in self.marks.iter() {
-            let _ = write!(buf, "{}:{}", ch, Self::path_as_string(path));
+            let _ = write!(buf, "{}:{}", ch, Self::path_as_string(path)?);
         }
         Ok(())
     }
 
-    fn path_as_string(path: &Path) -> String {
-        path.to_str().unwrap_or("").to_owned()
+    fn path_as_string(path: &Path) -> FmResult<String> {
+        Ok(path
+            .to_str()
+            .ok_or_else(|| FmError::new("Unreadable path"))?
+            .to_owned())
     }
 
-    pub fn as_strings(&self) -> Vec<String> {
-        self.marks
+    pub fn as_strings(&self) -> FmResult<Vec<String>> {
+        Ok(self
+            .marks
             .iter()
-            .map(|(ch, path)| Self::format_mark(ch, path))
-            .collect()
+            .map(|(ch, path)| Self::format_mark(ch, path).unwrap_or_default())
+            .collect())
     }
 
-    fn format_mark(ch: &char, path: &Path) -> String {
+    fn format_mark(ch: &char, path: &Path) -> FmResult<String> {
         let mut s = "".to_owned();
         s.push(*ch);
         s.push_str("   ");
-        s.push_str(path.to_str().unwrap_or(""));
+        s.push_str(
+            path.to_str()
+                .ok_or_else(|| FmError::new("Unreadable path"))?,
+        );
         s.push('\n');
-        s
+        Ok(s)
     }
 }
 
