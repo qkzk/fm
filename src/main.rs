@@ -40,7 +40,7 @@ fn main() -> FmResult<()> {
 
         status.selected().set_height(height);
 
-        actioner.read_event(&mut status, event);
+        actioner.read_event(&mut status, event)?;
 
         display.display_all(&status)?;
 

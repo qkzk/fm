@@ -5,7 +5,7 @@ use tuikit::term::Term;
 
 use crate::config::Keybindings;
 use crate::event_char::EventChar;
-use crate::fm_error::FmError;
+use crate::fm_error::{FmError, FmResult};
 use crate::mode::{MarkAction, Mode};
 use crate::skim::Skimer;
 use crate::status::Status;
@@ -58,31 +58,91 @@ impl Actioner {
         Self { binds, term }
     }
     /// Reaction to received events.
-    pub fn read_event(&self, tabs: &mut Status, ev: Event) {
+    pub fn read_event(&self, tabs: &mut Status, ev: Event) -> FmResult<()> {
         match ev {
-            Event::Key(Key::ESC) => self.escape(tabs),
-            Event::Key(Key::Up) => self.up(tabs),
-            Event::Key(Key::Down) => self.down(tabs),
-            Event::Key(Key::Left) => self.left(tabs),
-            Event::Key(Key::Right) => self.right(tabs),
-            Event::Key(Key::Backspace) => self.backspace(tabs),
-            Event::Key(Key::Ctrl('d')) => self.delete(tabs),
-            Event::Key(Key::Ctrl('q')) => self.escape(tabs),
-            Event::Key(Key::Delete) => self.delete(tabs),
-            Event::Key(Key::Insert) => self.insert(tabs),
-            Event::Key(Key::Char(c)) => self.char(tabs, c),
-            Event::Key(Key::Home) => self.home(tabs),
-            Event::Key(Key::End) => self.end(tabs),
-            Event::Key(Key::PageDown) => self.page_down(tabs),
-            Event::Key(Key::PageUp) => self.page_up(tabs),
-            Event::Key(Key::Enter) => self.enter(tabs).unwrap_or_default(),
-            Event::Key(Key::Tab) => self.tab(tabs),
-            Event::Key(Key::WheelUp(_, _, _)) => self.up(tabs),
-            Event::Key(Key::WheelDown(_, _, _)) => self.down(tabs),
-            Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => self.left_click(tabs, row),
-            Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => self.right_click(tabs, row),
-            Event::Key(Key::Ctrl('f')) => self.ctrl_f(tabs).unwrap_or_default(),
-            _ => {}
+            Event::Key(Key::ESC) => {
+                self.escape(tabs);
+                Ok(())
+            }
+            Event::Key(Key::Up) => {
+                self.up(tabs);
+                Ok(())
+            }
+            Event::Key(Key::Down) => {
+                self.down(tabs);
+                Ok(())
+            }
+            Event::Key(Key::Left) => {
+                self.left(tabs);
+                Ok(())
+            }
+            Event::Key(Key::Right) => {
+                self.right(tabs);
+                Ok(())
+            }
+            Event::Key(Key::Backspace) => {
+                self.backspace(tabs);
+                Ok(())
+            }
+            Event::Key(Key::Ctrl('d')) => {
+                self.delete(tabs);
+                Ok(())
+            }
+            Event::Key(Key::Ctrl('q')) => {
+                self.escape(tabs);
+                Ok(())
+            }
+            Event::Key(Key::Delete) => {
+                self.delete(tabs);
+                Ok(())
+            }
+            Event::Key(Key::Insert) => {
+                (self.insert(tabs));
+                Ok(())
+            }
+            Event::Key(Key::Char(c)) => {
+                self.char(tabs, c);
+                Ok(())
+            }
+            Event::Key(Key::Home) => {
+                self.home(tabs);
+                Ok(())
+            }
+            Event::Key(Key::End) => {
+                (self.end(tabs));
+                Ok(())
+            }
+            Event::Key(Key::PageDown) => {
+                self.page_down(tabs);
+                Ok(())
+            }
+            Event::Key(Key::PageUp) => {
+                self.page_up(tabs);
+                Ok(())
+            }
+            Event::Key(Key::Enter) => self.enter(tabs),
+            Event::Key(Key::Tab) => {
+                self.tab(tabs);
+                Ok(())
+            }
+            Event::Key(Key::WheelUp(_, _, _)) => {
+                self.up(tabs);
+                Ok(())
+            }
+            Event::Key(Key::WheelDown(_, _, _)) => {
+                self.down(tabs);
+                Ok(())
+            }
+            Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => {
+                self.left_click(tabs, row);
+                Ok(())
+            }
+            Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => {
+                self.right_click(tabs, row);
+                Ok(())
+            }
+            Event::Key(Key::Ctrl('f')) => self.ctrl_f(tabs),
+            _ => Ok(()),
         }
     }
 
@@ -271,11 +331,15 @@ impl Actioner {
         }
     }
 
-    fn ctrl_f(&self, tabs: &mut Status) -> Option<()> {
-        let output = Skimer::new(self.term.clone()).no_source(tabs.selected_non_mut().path_str()?);
+    fn ctrl_f(&self, tabs: &mut Status) -> FmResult<()> {
+        let output = Skimer::new(self.term.clone()).no_source(
+            tabs.selected_non_mut()
+                .path_str()
+                .ok_or_else(|| FmError::new("skim error"))?,
+        );
         let _ = self.term.clear();
         tabs.create_tabs_from_skim(output);
-        Some(())
+        Ok(())
     }
 
     /// Match read key to a relevent event, depending on keybindings.
