@@ -7,7 +7,8 @@ use chrono::DateTime;
 use tuikit::prelude::{Attr, Color, Effect};
 use users::get_user_by_uid;
 
-use super::config::{str_to_tuikit, Colors};
+use crate::config::{str_to_tuikit, Colors};
+use crate::fm_error::{FmError, FmResult};
 
 /// Different kind of sort
 #[derive(Debug, Clone)]
@@ -128,21 +129,19 @@ pub struct FileInfo {
 impl FileInfo {
     /// Reads every information about a file from its metadata and returs
     /// a new `FileInfo` object if we can create one.
-    pub fn new(direntry: &DirEntry) -> Result<FileInfo, &'static str> {
+    pub fn new(direntry: &DirEntry) -> Result<FileInfo, FmError> {
         let path = direntry.path();
-        let filename = extract_filename(direntry);
-        let size = extract_file_size(direntry);
+        let filename = extract_filename(direntry)?;
+        let size = extract_file_size(direntry)?;
         let file_size = human_size(size);
-        let permissions = extract_permissions_string(direntry);
-        let owner = extract_owner(direntry);
-        let system_time = extract_datetime(direntry);
+        let permissions = extract_permissions_string(direntry)?;
+        let owner = extract_owner(direntry)?;
+        let system_time = extract_datetime(direntry)?;
         let is_selected = false;
 
         let file_kind = FileKind::new(direntry);
         let dir_symbol = file_kind.extract_dir_symbol();
-        let extension = extract_extension_from_filename(&filename)
-            .unwrap_or("")
-            .into();
+        let extension = extract_extension_from_filename(&filename).into();
 
         Ok(FileInfo {
             path,
@@ -203,24 +202,8 @@ impl PathContent {
     /// Reads the paths and creates a new `PathContent`.
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
-    pub fn new(path: path::PathBuf, show_hidden: bool) -> Self {
-        let mut files: Vec<FileInfo> = read_dir(&path)
-            .unwrap_or_else(|_| {
-                eprintln!(
-                    "File does not exists {}",
-                    path.to_str().unwrap_or("unreadable path")
-                );
-                std::process::exit(2)
-            })
-            .filter(|r| {
-                show_hidden
-                    || match r {
-                        Ok(e) => is_not_hidden(e),
-                        Err(_) => false,
-                    }
-            })
-            .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
-            .collect();
+    pub fn new(path: path::PathBuf, show_hidden: bool) -> Result<Self, FmError> {
+        let mut files = Self::files(&path, show_hidden)?;
         let sort_by = SortBy::Filename;
         files.sort_by_key(|file| sort_by.key(file));
         let selected: usize = 0;
@@ -229,14 +212,39 @@ impl PathContent {
         }
         let reverse = false;
 
-        Self {
+        Ok(Self {
             path,
             files,
             selected,
             show_hidden,
             sort_by,
             reverse,
-        }
+        })
+    }
+
+    fn files(path: &path::Path, show_hidden: bool) -> FmResult<Vec<FileInfo>> {
+        let read_dir = read_dir(path)?;
+        let files: Vec<FileInfo> = if show_hidden {
+            read_dir
+                .filter_map(|res_direntry| res_direntry.ok())
+                .map(|direntry| FileInfo::new(&direntry))
+                .filter_map(|res_file_entry| res_file_entry.ok())
+                .collect()
+        } else {
+            read_dir
+                .filter_map(|res_direntry| res_direntry.ok())
+                .filter(|e| is_not_hidden(e).unwrap_or(true))
+                .map(|direntry| FileInfo::new(&direntry))
+                .filter_map(|res_file_entry| res_file_entry.ok())
+                .collect()
+        };
+        Ok(files)
+    }
+
+    pub fn path_to_str(&self) -> FmResult<&str> {
+        self.path
+            .to_str()
+            .ok_or_else(|| FmError::new("Unreadable path"))
     }
 
     /// Sort the file with current key.
@@ -292,23 +300,15 @@ impl PathContent {
     /// Reset the current file content.
     /// Reads and sort the content with current key.
     /// Select the first file if any.
-    pub fn reset_files(&mut self) {
-        self.files = read_dir(&self.path)
-            .unwrap_or_else(|_| panic!("Couldn't traverse path {:?}", &self.path))
-            .filter(|r| {
-                self.show_hidden
-                    || match r {
-                        Ok(e) => is_not_hidden(e),
-                        Err(_) => false,
-                    }
-            })
-            .map(|direntry| FileInfo::new(&direntry.unwrap()).unwrap())
-            .collect();
+    pub fn reset_files(&mut self) -> Result<(), FmError> {
+        self.files = Self::files(&self.path, self.show_hidden)?;
+
         self.files.sort_by_key(|file| file.filename.clone());
         self.selected = 0;
         if !self.files.is_empty() {
-            self.files[0].select();
+            self.files[self.selected].select();
         }
+        Ok(())
     }
 
     /// Return the Optional FileInfo
@@ -358,39 +358,32 @@ pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
 }
 
 /// true if the file isn't hidden.
-fn is_not_hidden(entry: &DirEntry) -> bool {
-    entry
+fn is_not_hidden(entry: &DirEntry) -> Result<bool, FmError> {
+    Ok(entry
         .file_name()
-        .to_str()
-        .map(|s| !s.starts_with('.'))
-        .unwrap_or(false)
+        .into_string()
+        .map(|s| !s.starts_with('.'))?)
 }
 
 /// Returns the modified time.
-fn extract_datetime(direntry: &DirEntry) -> String {
-    let system_time = direntry.metadata().unwrap().modified();
-    let datetime: DateTime<Local> = system_time.unwrap().into();
-    format!("{}", datetime.format("%d/%m/%Y %T"))
+fn extract_datetime(direntry: &DirEntry) -> FmResult<String> {
+    let datetime: DateTime<Local> = direntry.metadata()?.modified()?.into();
+    Ok(format!("{}", datetime.format("%d/%m/%Y %T")))
 }
 
 /// Returns the filename.
-fn extract_filename(direntry: &DirEntry) -> String {
-    direntry.file_name().into_string().unwrap()
+fn extract_filename(direntry: &DirEntry) -> FmResult<String> {
+    Ok(direntry.file_name().into_string()?)
 }
 
 /// Reads the permission and converts them into a string.
-fn extract_permissions_string(direntry: &DirEntry) -> String {
-    match metadata(direntry.path()) {
-        Ok(metadata) => {
-            let mode = metadata.mode() & 511;
-            let s_o = convert_octal_mode(mode >> 6);
-            let s_g = convert_octal_mode((mode >> 3) & 7);
-            let s_a = convert_octal_mode(mode & 7);
-
-            [s_o, s_g, s_a].join("")
-        }
-        Err(_) => String::from("---------"),
-    }
+fn extract_permissions_string(direntry: &DirEntry) -> FmResult<String> {
+    let metadata = metadata(direntry.path())?;
+    let mode = metadata.mode() & 511;
+    let s_o = convert_octal_mode(mode >> 6);
+    let s_g = convert_octal_mode((mode >> 3) & 7);
+    let s_a = convert_octal_mode(mode & 7);
+    Ok([s_o, s_g, s_a].join(""))
 }
 
 /// Convert an integer like `Oo777` into its string representation like `"rwx"`
@@ -400,25 +393,19 @@ fn convert_octal_mode(mode: u32) -> String {
 }
 
 /// Reads the owner name and returns it as a string.
-fn extract_owner(direntry: &DirEntry) -> String {
-    match metadata(direntry.path()) {
-        Ok(metadata) => String::from(
-            get_user_by_uid(metadata.uid())
-                .unwrap()
-                .name()
-                .to_str()
-                .unwrap(),
-        ),
-        Err(_) => String::from(""),
-    }
+fn extract_owner(direntry: &DirEntry) -> FmResult<String> {
+    Ok(String::from(
+        get_user_by_uid(metadata(direntry.path())?.uid())
+            .ok_or_else(|| FmError::new("Couldn't read uid"))?
+            .name()
+            .to_str()
+            .ok_or_else(|| FmError::new("Couldn't read owner name"))?,
+    ))
 }
 
 /// Returns the file size.
-fn extract_file_size(direntry: &DirEntry) -> u64 {
-    match direntry.path().metadata() {
-        Ok(size) => size.len(),
-        Err(_) => 0,
-    }
+fn extract_file_size(direntry: &DirEntry) -> Result<u64, FmError> {
+    Ok(direntry.path().metadata()?.len())
 }
 
 /// Convert a file size from bytes to human readable string.
@@ -433,8 +420,10 @@ fn human_size(bytes: u64) -> String {
 }
 
 /// Extract the optional extension from a filename.
-fn extract_extension_from_filename(filename: &str) -> Option<&str> {
+/// Returns empty &str aka "" if the file has no extension.
+fn extract_extension_from_filename(filename: &str) -> &str {
     path::Path::new(filename)
         .extension()
         .and_then(std::ffi::OsStr::to_str)
+        .unwrap_or_default()
 }

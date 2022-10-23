@@ -5,9 +5,10 @@ use tuikit::term::Term;
 
 use crate::config::Keybindings;
 use crate::event_char::EventChar;
+use crate::fm_error::{FmError, FmResult};
 use crate::mode::{MarkAction, Mode};
 use crate::skim::Skimer;
-use crate::tabs::Tabs;
+use crate::status::Status;
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -57,7 +58,7 @@ impl Actioner {
         Self { binds, term }
     }
     /// Reaction to received events.
-    pub fn read_event(&self, tabs: &mut Tabs, ev: Event) {
+    pub fn read_event(&self, tabs: &mut Status, ev: Event) -> FmResult<()> {
         match ev {
             Event::Key(Key::ESC) => self.escape(tabs),
             Event::Key(Key::Up) => self.up(tabs),
@@ -78,20 +79,26 @@ impl Actioner {
             Event::Key(Key::Tab) => self.tab(tabs),
             Event::Key(Key::WheelUp(_, _, _)) => self.up(tabs),
             Event::Key(Key::WheelDown(_, _, _)) => self.down(tabs),
-            Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => self.left_click(tabs, row),
-            Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => self.right_click(tabs, row),
+            Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => {
+                self.left_click(tabs, row);
+                Ok(())
+            }
+            Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => {
+                self.right_click(tabs, row);
+                Ok(())
+            }
             Event::Key(Key::Ctrl('f')) => self.ctrl_f(tabs),
-            _ => {}
+            _ => Ok(()),
         }
     }
 
     /// Leaving a mode reset the window
-    fn escape(&self, tabs: &mut Tabs) {
+    fn escape(&self, tabs: &mut Status) -> FmResult<()> {
         tabs.selected().event_normal()
     }
 
     /// Move one line up
-    fn up(&self, tabs: &mut Tabs) {
+    fn up(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_up_one_row(),
             Mode::Jump => tabs.event_jumplist_prev(),
@@ -101,11 +108,12 @@ impl Actioner {
                 tabs.selected().completion.prev();
             }
             _ => (),
-        }
+        };
+        Ok(())
     }
 
     /// Move one line down
-    fn down(&self, tabs: &mut Tabs) {
+    fn down(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_down_one_row(),
             Mode::Jump => tabs.event_jumplist_next(),
@@ -115,11 +123,12 @@ impl Actioner {
                 tabs.selected().completion.next();
             }
             _ => (),
-        }
+        };
+        Ok(())
     }
 
     /// Move left in a string, move to parent in normal mode
-    fn left(&self, tabs: &mut Tabs) {
+    fn left(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
             Mode::Normal => tabs.selected().event_move_to_parent(),
             Mode::Rename
@@ -128,13 +137,17 @@ impl Actioner {
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => tabs.selected().event_move_cursor_left(),
-            _ => (),
+            | Mode::Goto => {
+                tabs.selected().event_move_cursor_left();
+                Ok(())
+            }
+
+            _ => Ok(()),
         }
     }
 
     /// Move right in a string, move to children in normal mode.
-    fn right(&self, tabs: &mut Tabs) {
+    fn right(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
             Mode::Normal => tabs.selected().event_go_to_child(),
             Mode::Rename
@@ -143,13 +156,16 @@ impl Actioner {
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => tabs.selected().event_move_cursor_right(),
-            _ => (),
+            | Mode::Goto => {
+                tabs.selected().event_move_cursor_right();
+                Ok(())
+            }
+            _ => Ok(()),
         }
     }
 
     /// Deletes a char in input string
-    fn backspace(&self, tabs: &mut Tabs) {
+    fn backspace(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
             Mode::Rename
             | Mode::Newdir
@@ -157,15 +173,18 @@ impl Actioner {
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => tabs.selected().event_delete_char_left(),
-            Mode::Normal => (),
-            _ => (),
+            | Mode::Goto => {
+                tabs.selected().event_delete_char_left();
+                Ok(())
+            }
+            Mode::Normal => Ok(()),
+            _ => Ok(()),
         }
     }
 
     /// Deletes chars right of cursor in input string.
     /// Remove current tab in normal mode.
-    fn delete(&self, tabs: &mut Tabs) {
+    fn delete(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
             Mode::Rename
             | Mode::Newdir
@@ -173,65 +192,77 @@ impl Actioner {
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => tabs.selected().event_delete_chars_right(),
-            Mode::Normal => tabs.drop_tab(),
-            _ => (),
+            | Mode::Goto => {
+                tabs.selected().event_delete_chars_right();
+                Ok(())
+            }
+
+            Mode::Normal => {
+                tabs.drop_tab();
+                Ok(())
+            }
+            _ => Ok(()),
         }
     }
 
     /// Insert a new tab in normal mode
-    fn insert(&self, tabs: &mut Tabs) {
+    fn insert(&self, tabs: &mut Status) -> FmResult<()> {
         if let Mode::Normal = tabs.selected().mode {
             tabs.new_tab()
-        }
+        };
+        Ok(())
     }
 
     /// Move to top or beggining of line.
-    fn home(&self, tabs: &mut Tabs) {
+    fn home(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_go_top(),
             _ => tabs.selected().event_cursor_home(),
-        }
+        };
+        Ok(())
     }
 
     /// Move to end or end of line.
-    fn end(&self, tabs: &mut Tabs) {
+    fn end(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_go_bottom(),
             _ => tabs.selected().event_cursor_end(),
-        }
+        };
+        Ok(())
     }
 
     /// Move down 10 rows
-    fn page_down(&self, tabs: &mut Tabs) {
+    fn page_down(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_page_down(),
             _ => (),
-        }
+        };
+        Ok(())
     }
 
     /// Move up 10 rows
-    fn page_up(&self, tabs: &mut Tabs) {
+    fn page_up(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => tabs.selected().event_page_up(),
             _ => (),
-        }
+        };
+        Ok(())
     }
 
     /// Execute a command
-    fn enter(&self, tabs: &mut Tabs) {
+    fn enter(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
-            Mode::Rename => tabs.selected().exec_rename(),
-            Mode::Newfile => tabs.selected().exec_newfile(),
-            Mode::Newdir => tabs.selected().exec_newdir(),
-            Mode::Chmod => tabs.exec_chmod(),
-            Mode::Exec => tabs.selected().exec_exec(),
+            Mode::Rename => tabs.selected().exec_rename()?,
+            Mode::Newfile => tabs.selected().exec_newfile()?,
+            Mode::Newdir => tabs.selected().exec_newdir()?,
+            Mode::Chmod => tabs.exec_chmod()?,
+            Mode::Exec => tabs.selected().exec_exec()?,
             Mode::Search => tabs.selected().exec_search(),
-            Mode::Goto => tabs.selected().exec_goto(),
-            Mode::RegexMatch => tabs.exec_regex(),
-            Mode::Jump => tabs.exec_jump(),
-            Mode::History => tabs.selected().exec_history(),
-            Mode::Shortcut => tabs.selected().exec_shortcut(),
+            Mode::Goto => tabs.selected().exec_goto()?,
+            Mode::RegexMatch => tabs.exec_regex()?,
+            Mode::Jump => tabs.exec_jump()?,
+            Mode::History => tabs.selected().exec_history()?,
+            Mode::Shortcut => tabs.selected().exec_shortcut()?,
             Mode::Normal
             | Mode::NeedConfirmation
             | Mode::Help
@@ -242,65 +273,77 @@ impl Actioner {
 
         tabs.selected().input.reset();
         tabs.selected().mode = Mode::Normal;
+        Ok(())
     }
 
     /// Select this file
-    fn left_click(&self, tabs: &mut Tabs, row: u16) {
+    fn left_click(&self, tabs: &mut Status, row: u16) {
         if let Mode::Normal = tabs.selected().mode {
             tabs.selected().event_select_row(row)
         }
     }
 
     /// Open a directory or a file
-    fn right_click(&self, tabs: &mut Tabs, row: u16) {
+    fn right_click(&self, tabs: &mut Status, row: u16) {
         if let Mode::Normal = tabs.selected().mode {
-            tabs.selected().event_right_click(row)
+            let _ = tabs.selected().event_right_click(row);
         }
     }
 
     /// Select next completion and insert it
-    fn tab(&self, tabs: &mut Tabs) {
+    fn tab(&self, tabs: &mut Status) -> FmResult<()> {
         match tabs.selected().mode {
             Mode::Goto | Mode::Exec | Mode::Search => {
                 tabs.selected().event_replace_input_with_completion()
             }
             Mode::Normal => tabs.next(),
             _ => (),
-        }
+        };
+        Ok(())
     }
 
-    fn ctrl_f(&self, tabs: &mut Tabs) {
-        let output = Skimer::new(self.term.clone()).no_source(tabs.selected_non_mut().path_str());
+    fn ctrl_f(&self, tabs: &mut Status) -> FmResult<()> {
+        let output = Skimer::new(self.term.clone()).no_source(
+            tabs.selected_non_mut()
+                .path_str()
+                .ok_or_else(|| FmError::new("skim error"))?,
+        );
         let _ = self.term.clear();
         tabs.create_tabs_from_skim(output);
+        Ok(())
     }
 
     /// Match read key to a relevent event, depending on keybindings.
     /// Keybindings are read from `Config`.
-    fn char(&self, tabs: &mut Tabs, c: char) {
-        match tabs.selected().mode {
+    fn char(&self, status: &mut Status, c: char) -> FmResult<()> {
+        match status.selected().mode {
             Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::RegexMatch => {
-                tabs.selected().event_text_insertion(c)
+                status.selected().event_text_insertion(c);
+                Ok(())
             }
             Mode::Goto | Mode::Exec | Mode::Search => {
-                tabs.selected().event_text_insert_and_complete(c)
+                status.selected().event_text_insert_and_complete(c)
             }
             Mode::Normal => match self.binds.get(&c) {
-                Some(event_char) => event_char.match_char(tabs),
-                None => (),
+                Some(event_char) => event_char.match_char(status),
+                None => Ok(()),
             },
-            Mode::Help | Mode::Preview | Mode::Shortcut => tabs.selected().event_normal(),
-            Mode::Jump => (),
-            Mode::History => (),
+            Mode::Help | Mode::Preview | Mode::Shortcut => status.selected().event_normal(),
+            Mode::Jump => Ok(()),
+            Mode::History => Ok(()),
             Mode::NeedConfirmation => {
                 if c == 'y' {
-                    tabs.exec_last_edition()
+                    let _ = status.exec_last_edition();
                 }
-                tabs.selected().event_leave_need_confirmation()
+                status.selected().event_leave_need_confirmation();
+                Ok(())
             }
-            Mode::Marks(MarkAction::Jump) => tabs.exec_marks_jump(c),
-            Mode::Marks(MarkAction::New) => tabs.exec_marks_new(c),
-            Mode::Sort => tabs.selected().event_leave_sort(c),
+            Mode::Marks(MarkAction::Jump) => status.exec_marks_jump(c),
+            Mode::Marks(MarkAction::New) => status.exec_marks_new(c),
+            Mode::Sort => {
+                status.selected().event_leave_sort(c);
+                Ok(())
+            }
         }
     }
 }

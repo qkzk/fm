@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::fileinfo::PathContent;
+use crate::{fileinfo::PathContent, fm_error::FmResult};
 
 /// Holds a `Vec<String>` of possible completions and an `usize` index
 /// showing where the user is in the vec.
@@ -64,10 +64,10 @@ impl Completion {
         self.proposals.clear();
     }
 
-    pub fn goto(&mut self, input_string: &str) {
+    pub fn goto(&mut self, input_string: &str) -> FmResult<()> {
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
-            return;
+            return Ok(());
         }
         if let Ok(path) = std::fs::canonicalize(parent) {
             if let Ok(entries) = fs::read_dir(path) {
@@ -81,10 +81,11 @@ impl Completion {
                         .collect(),
                 )
             }
-        }
+        };
+        Ok(())
     }
 
-    pub fn exec(&mut self, input_string: &String) {
+    pub fn exec(&mut self, input_string: &String) -> FmResult<()> {
         let mut proposals: Vec<String> = vec![];
         for path in std::env::var_os("PATH")
             .unwrap_or_default()
@@ -92,22 +93,21 @@ impl Completion {
             .unwrap_or_default()
             .split(':')
         {
-            if let Ok(entries) = fs::read_dir(path) {
-                let comp: Vec<String> = entries
-                    .filter(|e| e.is_ok())
-                    .map(|e| e.unwrap())
-                    .filter(|e| {
-                        e.file_type().unwrap().is_file() && filename_startswith(e, input_string)
-                    })
-                    .map(|e| e.path().to_string_lossy().into_owned())
-                    .collect();
-                proposals.extend(comp);
-            }
+            let comp: Vec<String> = fs::read_dir(path)?
+                .filter(|e| e.is_ok())
+                .map(|e| e.unwrap())
+                .filter(|e| {
+                    e.file_type().unwrap().is_file() && filename_startswith(e, input_string)
+                })
+                .map(|e| e.path().to_string_lossy().into_owned())
+                .collect();
+            proposals.extend(comp);
         }
         self.update(proposals);
+        Ok(())
     }
 
-    pub fn search(&mut self, input_string: &String, path_content: &PathContent) {
+    pub fn search(&mut self, input_string: &String, path_content: &PathContent) -> FmResult<()> {
         self.update(
             path_content
                 .files
@@ -116,6 +116,7 @@ impl Completion {
                 .map(|f| f.filename.clone())
                 .collect(),
         );
+        Ok(())
     }
 }
 

@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
+use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct Shortcut {
@@ -15,22 +16,21 @@ impl Default for Shortcut {
 
 impl Shortcut {
     pub fn new() -> Self {
-        let expanded_cow_path = shellexpand::tilde("~");
-        let expanded_target: &str = expanded_cow_path.borrow();
-        let path = std::fs::canonicalize(expanded_target).unwrap();
+        // Since PathBuf::from_str returns a Result<String, Infaillible>, we can unwrap safely.
+        let shortcuts = [
+            PathBuf::from_str("/").unwrap(),
+            PathBuf::from_str("/dev").unwrap(),
+            PathBuf::from_str("/etc").unwrap(),
+            PathBuf::from_str("/media").unwrap(),
+            PathBuf::from_str("/mnt").unwrap(),
+            PathBuf::from_str("/opt").unwrap(),
+            PathBuf::from_str("/run/media").unwrap(),
+            PathBuf::from_str("/tmp").unwrap(),
+            PathBuf::from_str("/usr").unwrap(),
+            PathBuf::from_str(shellexpand::tilde("~").borrow()).unwrap(),
+        ];
         Self {
-            shortcuts: [
-                PathBuf::from_str("/").unwrap(),
-                PathBuf::from_str("/dev").unwrap(),
-                PathBuf::from_str("/etc").unwrap(),
-                PathBuf::from_str("/media").unwrap(),
-                PathBuf::from_str("/mnt").unwrap(),
-                PathBuf::from_str("/opt").unwrap(),
-                PathBuf::from_str("/run/media").unwrap(),
-                PathBuf::from_str("/tmp").unwrap(),
-                PathBuf::from_str("/usr").unwrap(),
-                std::fs::canonicalize(path).unwrap(),
-            ],
+            shortcuts,
             index: 0,
         }
     }

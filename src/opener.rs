@@ -4,6 +4,8 @@ use std::process::Command;
 
 use serde_yaml;
 
+use crate::fm_error::{FmError, FmResult};
+
 #[derive(Clone, Hash, Eq, PartialEq)]
 pub enum ExtensionKind {
     Audio,
@@ -215,29 +217,40 @@ impl Opener {
         }
     }
 
-    pub fn open(&self, filepath: std::path::PathBuf) {
+    pub fn open(&self, filepath: std::path::PathBuf) -> FmResult<std::process::Child> {
         if filepath.is_dir() {
-            return;
+            return Err(FmError::new("Can't execute a directory"));
         }
 
-        if let Some(extension_os_str) = filepath.extension() {
-            let extension = extension_os_str.to_str().unwrap();
-            if let Some(open_info) = self.opener_association.opener_info(extension) {
-                self.open_with(open_info, filepath)
-            }
-        }
+        let extension_os_string = filepath
+            .extension()
+            .ok_or_else(|| FmError::new("Unreadable extension"))?
+            .to_owned();
+        let extension = extension_os_string
+            .to_str()
+            .ok_or_else(|| FmError::new("Extension couldn't be parsed correctly"))?;
+        self.open_with(
+            self.opener_association
+                .opener_info(extension)
+                .ok_or_else(|| FmError::new("This extension has no known opener"))?,
+            filepath,
+        )
     }
 
-    pub fn open_with(&self, open_info: &OpenerInfo, filepath: std::path::PathBuf) {
+    pub fn open_with(
+        &self,
+        open_info: &OpenerInfo,
+        filepath: std::path::PathBuf,
+    ) -> FmResult<std::process::Child> {
         if open_info.use_term {
             self.open_terminal(
                 open_info.opener.clone(),
-                filepath.to_str().unwrap().to_owned(),
+                filepath.as_os_str().to_owned().into_string()?,
             )
         } else {
             self.open_directly(
                 open_info.opener.clone(),
-                filepath.to_str().unwrap().to_owned(),
+                filepath.as_os_str().to_owned().into_string()?,
             )
         }
     }
@@ -246,13 +259,13 @@ impl Opener {
         self.opener_association.update_from_file(yaml)
     }
 
-    fn open_directly(&self, executable: String, filepath: String) {
-        execute_in_child(&executable, &vec![&filepath]);
+    fn open_directly(&self, executable: String, filepath: String) -> FmResult<std::process::Child> {
+        execute_in_child(&executable, &vec![&filepath])
     }
 
     // TODO: use terminal specific parameters instead of -e for all terminals
-    fn open_terminal(&self, executable: String, filepath: String) {
-        execute_in_child(&self.terminal, &vec!["-e", &executable, &filepath]);
+    fn open_terminal(&self, executable: String, filepath: String) -> FmResult<std::process::Child> {
+        execute_in_child(&self.terminal, &vec!["-e", &executable, &filepath])
     }
 
     pub fn get(&self, kind: ExtensionKind) -> Option<&OpenerInfo> {
@@ -261,9 +274,9 @@ impl Opener {
 }
 
 /// Execute the command in a fork.
-fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::process::Child {
+fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
     eprintln!("exec exe {}, args {:?}", exe, args);
-    Command::new(exe).args(args).spawn().unwrap()
+    Ok(Command::new(exe).args(args).spawn()?)
 }
 
 pub fn load_opener(path: &str, terminal: String) -> Result<Opener, Box<dyn Error>> {
