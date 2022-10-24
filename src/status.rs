@@ -31,7 +31,7 @@ pub struct Status {
     /// Set of flagged files
     pub flagged: HashSet<PathBuf>,
     /// Index in the jump list
-    jump_index: usize,
+    pub jump_index: usize,
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
     /// Colors for extension
@@ -245,7 +245,7 @@ impl Status {
                 oldpath
                     .as_path()
                     .file_name()
-                    .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?,
+                    .ok_or_else(|| FmError::new("File not found"))?,
             );
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }
