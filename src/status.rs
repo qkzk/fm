@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use crate::args::Args;
 use crate::bulkrename::Bulkrename;
+use crate::color_cache::ColorCache;
 use crate::config::Config;
 use crate::fileinfo::PathContent;
 use crate::fm_error::{FmError, FmResult};
@@ -33,6 +34,8 @@ pub struct Status {
     pub jump_index: usize,
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
+    /// Colors for extension
+    pub colors: ColorCache,
 }
 
 impl Status {
@@ -45,6 +48,7 @@ impl Status {
             flagged: HashSet::new(),
             jump_index: 0,
             marks: Marks::read_from_config_file(),
+            colors: ColorCache::default(),
         })
     }
 
