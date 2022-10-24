@@ -25,13 +25,13 @@ enum CutOrCopy {
 
 pub struct Status {
     /// Vector of `Tab`, each of them are displayed in a separate tab.
-    pub tabs: Vec<Tab>,
+    tabs: Vec<Tab>,
     /// Index of the current selected tab
     pub index: usize,
     /// Set of flagged files
     pub flagged: HashSet<PathBuf>,
     /// Index in the jump list
-    pub jump_index: usize,
+    jump_index: usize,
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
     /// Colors for extension
