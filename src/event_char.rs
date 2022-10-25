@@ -35,8 +35,8 @@ pub enum EventChar {
 }
 
 impl EventChar {
-    pub fn match_char(&self, tabs: &mut Status) -> FmResult<()> {
-        let current_status = tabs.selected();
+    pub fn match_char(&self, status: &mut Status) -> FmResult<()> {
+        let current_status = status.selected();
         match *self {
             EventChar::ToggleHidden => current_status.event_toggle_hidden(),
             EventChar::CopyPaste => {
@@ -55,7 +55,7 @@ impl EventChar {
                 current_status.event_new_file();
                 Ok(())
             }
-            EventChar::Chmod => tabs.event_chmod(),
+            EventChar::Chmod => status.event_chmod(),
             EventChar::Exec => {
                 current_status.event_exec();
                 Ok(())
@@ -68,8 +68,8 @@ impl EventChar {
                 current_status.event_rename();
                 Ok(())
             }
-            EventChar::ClearFlags => tabs.event_clear_flags(),
-            EventChar::ToggleFlag => tabs.event_toggle_flag(),
+            EventChar::ClearFlags => status.event_clear_flags(),
+            EventChar::ToggleFlag => status.event_toggle_flag(),
             EventChar::Shell => current_status.event_shell(),
             EventChar::DeleteFile => {
                 current_status.event_delete_file();
@@ -92,10 +92,10 @@ impl EventChar {
                 current_status.event_quit();
                 Ok(())
             }
-            EventChar::FlagAll => tabs.event_flag_all(),
-            EventChar::ReverseFlags => tabs.event_reverse_flags(),
+            EventChar::FlagAll => status.event_flag_all(),
+            EventChar::ReverseFlags => status.event_reverse_flags(),
             EventChar::Jump => {
-                tabs.event_jump();
+                status.event_jump();
                 Ok(())
             }
             EventChar::History => {
@@ -110,19 +110,19 @@ impl EventChar {
                 current_status.event_sort();
                 Ok(())
             }
-            EventChar::Symlink => tabs.event_symlink(),
+            EventChar::Symlink => status.event_symlink(),
             EventChar::Preview => current_status.event_preview(),
             EventChar::Shortcut => {
                 current_status.event_shortcut();
                 Ok(())
             }
-            EventChar::Bulkrename => tabs.event_bulkrename(),
+            EventChar::Bulkrename => status.event_bulkrename(),
             EventChar::MarksNew => {
-                tabs.event_marks_new();
+                status.event_marks_new();
                 Ok(())
             }
             EventChar::MarksJump => {
-                tabs.event_marks_jump();
+                status.event_marks_jump();
                 Ok(())
             }
         }

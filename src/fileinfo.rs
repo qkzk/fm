@@ -162,8 +162,8 @@ impl FileInfo {
     /// Format the file line.
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
-    fn format(&self, owner_col_width: usize) -> String {
-        format!(
+    fn format(&self, owner_col_width: usize) -> FmResult<String> {
+        let mut repr = format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {system_time} {filename}",
             dir_symbol = self.dir_symbol,
             permissions = self.permissions,
@@ -172,7 +172,21 @@ impl FileInfo {
             owner_col_width = owner_col_width,
             system_time = self.system_time,
             filename = self.filename,
-        )
+        );
+        if let FileKind::SymbolicLink = self.file_kind {
+            repr = self.add_pointed_file_to_symlink(repr);
+        }
+        Ok(repr)
+    }
+
+    fn add_pointed_file_to_symlink(&self, mut repr: String) -> String {
+        if let Ok(dest_path) = &std::fs::read_link(&self.path) {
+            let dest = dest_path.to_str().ok_or("Unreadable path");
+            repr.push_str(&format!(" -> {}", dest.unwrap()));
+            repr
+        } else {
+            "Broken link".to_owned()
+        }
     }
 
     /// Select the file.
@@ -267,7 +281,7 @@ impl PathContent {
         let owner_size = self.owner_column_width();
         self.files
             .iter()
-            .map(|fileinfo| fileinfo.format(owner_size))
+            .map(|fileinfo| fileinfo.format(owner_size).unwrap_or_default())
             .collect()
     }
 
