@@ -46,7 +46,7 @@ fn main() -> FmResult<()> {
 
         display.term.present()?;
 
-        if status.selected().must_quit() {
+        if status.selected_non_mut().must_quit() {
             reset_cursor(&display)?;
             break;
         };

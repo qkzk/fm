@@ -9,6 +9,7 @@ use users::get_user_by_uid;
 
 use crate::config::{str_to_tuikit, Colors};
 use crate::fm_error::{FmError, FmResult};
+use crate::status::Status;
 
 /// Different kind of sort
 #[derive(Debug, Clone)]
@@ -333,7 +334,7 @@ impl PathContent {
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
 /// effect.
 /// Selected file is reversed.
-pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
+pub fn fileinfo_attr(status: &Status, fileinfo: &FileInfo, colors: &Colors) -> Attr {
     let fg = match fileinfo.file_kind {
         FileKind::Directory => str_to_tuikit(&colors.directory),
         FileKind::BlockDevice => str_to_tuikit(&colors.block),
@@ -341,7 +342,7 @@ pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
         FileKind::Fifo => str_to_tuikit(&colors.fifo),
         FileKind::Socket => str_to_tuikit(&colors.socket),
         FileKind::SymbolicLink => str_to_tuikit(&colors.symlink),
-        _ => str_to_tuikit(&colors.file),
+        _ => status.colors.extension_color(&fileinfo.extension),
     };
 
     let effect = if fileinfo.is_selected {

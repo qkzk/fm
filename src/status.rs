@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use crate::args::Args;
 use crate::bulkrename::Bulkrename;
+use crate::color_cache::ColorCache;
 use crate::config::Config;
 use crate::fileinfo::PathContent;
 use crate::fm_error::{FmError, FmResult};
@@ -24,7 +25,7 @@ enum CutOrCopy {
 
 pub struct Status {
     /// Vector of `Tab`, each of them are displayed in a separate tab.
-    pub statuses: Vec<Tab>,
+    tabs: Vec<Tab>,
     /// Index of the current selected tab
     pub index: usize,
     /// Set of flagged files
@@ -33,6 +34,8 @@ pub struct Status {
     pub jump_index: usize,
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
+    /// Colors for extension
+    pub colors: ColorCache,
 }
 
 impl Status {
@@ -40,21 +43,22 @@ impl Status {
 
     pub fn new(args: Args, config: Config, height: usize) -> FmResult<Self> {
         Ok(Self {
-            statuses: vec![Tab::new(args, config, height)?],
+            tabs: vec![Tab::new(args, config, height)?],
             index: 0,
             flagged: HashSet::new(),
             jump_index: 0,
             marks: Marks::read_from_config_file(),
+            colors: ColorCache::default(),
         })
     }
 
     pub fn new_tab(&mut self) {
-        self.statuses.push(self.statuses[self.index].clone())
+        self.tabs.push(self.tabs[self.index].clone())
     }
 
     pub fn drop_tab(&mut self) {
-        if self.statuses.len() > 1 {
-            self.statuses.remove(self.index);
+        if self.tabs.len() > 1 {
+            self.tabs.remove(self.index);
             if self.index > 0 {
                 self.index = (self.index - 1) % self.len()
             }
@@ -62,11 +66,11 @@ impl Status {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.statuses.is_empty()
+        self.tabs.is_empty()
     }
 
     pub fn len(&self) -> usize {
-        self.statuses.len()
+        self.tabs.len()
     }
 
     pub fn next(&mut self) {
@@ -88,15 +92,15 @@ impl Status {
     }
 
     pub fn selected(&mut self) -> &mut Tab {
-        &mut self.statuses[self.index]
+        &mut self.tabs[self.index]
     }
 
     pub fn selected_non_mut(&self) -> &Tab {
-        &self.statuses[self.index]
+        &self.tabs[self.index]
     }
 
     fn reset_statuses(&mut self) -> FmResult<()> {
-        for status in self.statuses.iter_mut() {
+        for status in self.tabs.iter_mut() {
             status.refresh_view()?
         }
         Ok(())
@@ -108,7 +112,7 @@ impl Status {
     }
 
     pub fn event_flag_all(&mut self) -> FmResult<()> {
-        self.statuses[self.index]
+        self.tabs[self.index]
             .path_content
             .files
             .iter()
@@ -120,7 +124,7 @@ impl Status {
 
     pub fn event_reverse_flags(&mut self) -> FmResult<()> {
         // TODO: is there a way to use `toggle_flag_on_path` ? 2 mutable borrows...
-        self.statuses[self.index]
+        self.tabs[self.index]
             .path_content
             .files
             .iter()
@@ -155,17 +159,17 @@ impl Status {
             if path.is_file() {
                 if let Some(parent) = path.parent() {
                     let _ = status.set_pathcontent(parent.to_path_buf());
-                    self.statuses.push(status);
+                    self.tabs.push(status);
                 }
             } else if path.is_dir() {
                 let _ = status.set_pathcontent(path);
-                self.statuses.push(status);
+                self.tabs.push(status);
             }
         }
     }
 
     pub fn event_toggle_flag(&mut self) -> FmResult<()> {
-        let file = self.statuses[self.index]
+        let file = self.tabs[self.index]
             .path_content
             .selected_file()
             .ok_or_else(|| FmError::new("No selected file"))?;
@@ -193,7 +197,7 @@ impl Status {
         self.selected().mode = Mode::Chmod;
         if self.flagged.is_empty() {
             self.flagged.insert(
-                self.statuses[self.index]
+                self.tabs[self.index]
                     .path_content
                     .selected_file()
                     .unwrap()
@@ -237,19 +241,19 @@ impl Status {
     /// Creates a symlink of every flagged file to the current directory.
     pub fn event_symlink(&mut self) -> FmResult<()> {
         for oldpath in self.flagged.iter() {
-            let newpath = self.statuses[self.index].path_content.path.clone().join(
+            let newpath = self.tabs[self.index].path_content.path.clone().join(
                 oldpath
                     .as_path()
                     .file_name()
-                    .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?,
+                    .ok_or_else(|| FmError::new("File not found"))?,
             );
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }
 
         self.flagged.clear();
         self.selected().path_content.reset_files()?;
-        let len = self.statuses[self.index].path_content.files.len();
-        self.statuses[self.index].window.reset(len);
+        let len = self.tabs[self.index].path_content.files.len();
+        self.tabs[self.index].window.reset(len);
         self.reset_statuses()
     }
 
@@ -273,7 +277,7 @@ impl Status {
                 .as_path()
                 .file_name()
                 .ok_or_else(|| FmError::new("Couldn't parse the filename"))?;
-            let newpath = self.statuses[self.index]
+            let newpath = self.tabs[self.index]
                 .path_content
                 .path
                 .clone()
@@ -295,7 +299,7 @@ impl Status {
     fn clear_flags_and_reset_view(&mut self) -> FmResult<()> {
         self.flagged.clear();
         self.selected().path_content.reset_files()?;
-        let len = self.statuses[self.index].path_content.files.len();
+        let len = self.tabs[self.index].path_content.files.len();
         self.selected().window.reset(len);
         self.reset_statuses()
     }
@@ -351,9 +355,9 @@ impl Status {
             self.selected().line_index = 0;
         }
 
-        let s_index = self.statuses[self.index].line_index;
-        self.statuses[self.index].path_content.select_index(s_index);
-        let len = self.statuses[self.index].path_content.files.len();
+        let s_index = self.tabs[self.index].line_index;
+        self.tabs[self.index].path_content.select_index(s_index);
+        let len = self.tabs[self.index].path_content.files.len();
         self.selected().window.reset(len);
         self.selected().window.scroll_to(s_index);
         Ok(())
@@ -394,7 +398,7 @@ impl Status {
         if !self.selected().input.string.is_empty() {
             self.flagged.clear();
             let re = Regex::new(&self.selected().input.string)?;
-            for file in self.statuses[self.index].path_content.files.iter() {
+            for file in self.tabs[self.index].path_content.files.iter() {
                 if re.is_match(&file.path.to_string_lossy()) {
                     self.flagged.insert(file.path.clone());
                 }
