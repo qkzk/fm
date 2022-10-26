@@ -130,7 +130,7 @@ pub struct FileInfo {
 impl FileInfo {
     /// Reads every information about a file from its metadata and returs
     /// a new `FileInfo` object if we can create one.
-    pub fn new(direntry: &DirEntry) -> Result<FileInfo, FmError> {
+    pub fn new(direntry: &DirEntry) -> FmResult<FileInfo> {
         let path = direntry.path();
         let filename = extract_filename(direntry)?;
         let size = extract_file_size(direntry)?;
@@ -174,18 +174,16 @@ impl FileInfo {
             filename = self.filename,
         );
         if let FileKind::SymbolicLink = self.file_kind {
-            repr = self.add_pointed_file_to_symlink(repr);
+            repr.push_str(" -> ");
+            repr.push_str(&self.read_dest().unwrap());
         }
         Ok(repr)
     }
 
-    fn add_pointed_file_to_symlink(&self, mut repr: String) -> String {
-        if let Ok(dest_path) = &std::fs::read_link(&self.path) {
-            let dest = dest_path.to_str().ok_or("Unreadable path");
-            repr.push_str(&format!(" -> {}", dest.unwrap()));
-            repr
-        } else {
-            "Broken link".to_owned()
+    fn read_dest(&self) -> Option<String> {
+        match metadata(&self.path) {
+            Ok(_) => Some(std::fs::read_link(&self.path).ok()?.to_str()?.to_owned()),
+            Err(_) => Some("Broken link".to_owned()),
         }
     }
 
@@ -393,12 +391,16 @@ fn extract_filename(direntry: &DirEntry) -> FmResult<String> {
 
 /// Reads the permission and converts them into a string.
 fn extract_permissions_string(direntry: &DirEntry) -> FmResult<String> {
-    let metadata = metadata(direntry.path())?;
-    let mode = metadata.mode() & 511;
-    let s_o = convert_octal_mode(mode >> 6);
-    let s_g = convert_octal_mode((mode >> 3) & 7);
-    let s_a = convert_octal_mode(mode & 7);
-    Ok([s_o, s_g, s_a].join(""))
+    match metadata(direntry.path()) {
+        Ok(metadata) => {
+            let mode = metadata.mode() & 511;
+            let s_o = convert_octal_mode(mode >> 6);
+            let s_g = convert_octal_mode((mode >> 3) & 7);
+            let s_a = convert_octal_mode(mode & 7);
+            Ok([s_o, s_g, s_a].join(""))
+        }
+        Err(_) => Ok("??????".to_owned()),
+    }
 }
 
 /// Convert an integer like `Oo777` into its string representation like `"rwx"`
@@ -409,18 +411,24 @@ fn convert_octal_mode(mode: u32) -> String {
 
 /// Reads the owner name and returns it as a string.
 fn extract_owner(direntry: &DirEntry) -> FmResult<String> {
-    Ok(String::from(
-        get_user_by_uid(metadata(direntry.path())?.uid())
-            .ok_or_else(|| FmError::new("Couldn't read uid"))?
-            .name()
-            .to_str()
-            .ok_or_else(|| FmError::new("Couldn't read owner name"))?,
-    ))
+    match metadata(direntry.path()) {
+        Ok(metadata) => Ok(String::from(
+            get_user_by_uid(metadata.uid())
+                .ok_or_else(|| FmError::new("Couldn't read uid"))?
+                .name()
+                .to_str()
+                .ok_or_else(|| FmError::new("Couldn't read owner name"))?,
+        )),
+        Err(_) => Ok("".to_owned()),
+    }
 }
 
 /// Returns the file size.
 fn extract_file_size(direntry: &DirEntry) -> Result<u64, FmError> {
-    Ok(direntry.path().metadata()?.len())
+    match direntry.path().metadata() {
+        Ok(metadata) => Ok(metadata.len()),
+        Err(_) => Ok(0),
+    }
 }
 
 /// Convert a file size from bytes to human readable string.

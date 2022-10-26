@@ -82,6 +82,7 @@
 - [x] user defined marks ; saved and read from a file.
 - [x] refactor: main should return result, have everything raise errors
 - [x] stable colors per extension with caching
+- [x] BUGFIX creating an already existing dir / file crashes
 
 ## TODO
 
@@ -103,6 +104,7 @@
 ## BUGS
 
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
+- [ ] broken links aren't shown
 
 ## Sources
 

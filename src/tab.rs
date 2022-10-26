@@ -486,7 +486,13 @@ impl Tab {
     }
 
     pub fn exec_newdir(&mut self) -> FmResult<()> {
-        fs::create_dir(self.path_content.path.join(self.input.string.clone()))?;
+        match fs::create_dir(self.path_content.path.join(self.input.string.clone())) {
+            Ok(()) => (),
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::AlreadyExists => (),
+                _ => return Err(FmError::from(e)),
+            },
+        }
         self.refresh_view()
     }
 
