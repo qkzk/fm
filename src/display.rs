@@ -136,11 +136,11 @@ impl Display {
         .skip(tab.window.top)
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
-            let mut attr = fileinfo_attr(status, &file, &self.colors);
+            let mut attr = fileinfo_attr(status, file, &self.colors);
             if status.flagged.contains(&file.path) {
                 attr.effect |= Effect::UNDERLINE;
             }
-            self.term.print_with_attr(row, 0, &string, attr)?;
+            self.term.print_with_attr(row, 0, string, attr)?;
         }
         Ok(())
     }
