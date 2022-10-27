@@ -54,6 +54,7 @@ impl Actioner {
             (keybindings.bulkrename, EventChar::Bulkrename),
             (keybindings.marks_new, EventChar::MarksNew),
             (keybindings.marks_jump, EventChar::MarksJump),
+            (keybindings.filter, EventChar::Filter),
         ]);
         Self { binds, term }
     }
@@ -265,6 +266,7 @@ impl Actioner {
             Mode::Jump => status.exec_jump()?,
             Mode::History => status.selected().exec_history()?,
             Mode::Shortcut => status.selected().exec_shortcut()?,
+            Mode::Filter => status.selected().exec_filter()?,
             Mode::Normal
             | Mode::NeedConfirmation
             | Mode::Help
@@ -334,7 +336,12 @@ impl Actioner {
     /// Keybindings are read from `Config`.
     fn char(&self, status: &mut Status, c: char) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::RegexMatch => {
+            Mode::Newfile
+            | Mode::Newdir
+            | Mode::Chmod
+            | Mode::Rename
+            | Mode::RegexMatch
+            | Mode::Filter => {
                 status.selected().event_text_insertion(c);
                 Ok(())
             }

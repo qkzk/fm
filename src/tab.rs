@@ -11,6 +11,7 @@ use crate::completion::Completion;
 use crate::config::Config;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
+use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::input::Input;
 use crate::last_edition::LastEdition;
@@ -479,6 +480,12 @@ impl Tab {
         Ok(())
     }
 
+    pub fn event_filter(&mut self) -> FmResult<()> {
+        eprintln!("entering filter mode");
+        self.mode = Mode::Filter;
+        Ok(())
+    }
+
     fn nvim_listen_address(&self) -> Result<String, std::env::VarError> {
         if !self.nvim_server.is_empty() {
             Ok(self.nvim_server.clone())
@@ -591,6 +598,14 @@ impl Tab {
             self.show_hidden,
         )?;
         self.history.drop_queue();
+        self.event_normal()
+    }
+
+    pub fn exec_filter(&mut self) -> FmResult<()> {
+        let filter = FilterKind::from_input(&self.input.string);
+        self.path_content.set_filter(filter);
+        self.input.reset();
+        self.path_content.reset_files()?;
         self.event_normal()
     }
 

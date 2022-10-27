@@ -204,6 +204,7 @@ pub struct Keybindings {
     pub bulkrename: char,
     pub marks_new: char,
     pub marks_jump: char,
+    pub filter: char,
 }
 
 impl Keybindings {
@@ -300,6 +301,9 @@ impl Keybindings {
         if let Some(marks_jump) = yaml["marks_jump"].as_str().map(|s| s.to_string()) {
             self.marks_jump = marks_jump.chars().next().unwrap_or('\'');
         }
+        if let Some(filter) = yaml["filter"].as_str().map(|s| s.to_string()) {
+            self.filter = filter.chars().next().unwrap_or('f');
+        }
     }
 
     /// Returns a new `Keybindings` instance with hardcoded values.
@@ -335,6 +339,7 @@ impl Keybindings {
             bulkrename: 'B',
             marks_new: 'M',
             marks_jump: '\'',
+            filter: 'f',
         }
     }
 }
