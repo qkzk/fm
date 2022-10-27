@@ -18,12 +18,14 @@ PgDown: 10 lines down
 
 a:      toggle hidden
 s:      shell in current directory
-o:      xdg-open this file
+o:      open this file
 i:      open in current nvim session
 P:      preview this file
 Ctrl+f: fuzzy finder
-Ctrl+c: copy selected filename to clipboard
-Ctrl+p: copy selected filepath to clipboard
+Ctrl+c: copy filename to clipboard
+Ctrl+p: copy filepath to clipboard
+M:      Mark current path
+':      Jump to a mark
 
 - Tabs -
     Tab:    Next tab
@@ -37,9 +39,9 @@ Ctrl+p: copy selected filepath to clipboard
     v:      reverse flags
     c:      copy to current dir
     p:      move to current dir
-    x:      delete flagged files
-    S:      symlink flagged files
-    B:      Bulkrename
+    x:      delete files
+    S:      symlink files
+    B:      Bulkrename files
 
 - MODES - 
     m:      CHMOD 
@@ -53,6 +55,7 @@ Ctrl+p: copy selected filepath to clipboard
     O:      SORT
     H:      HISTORY
     G:      SHORTCUT
+    /:      SEARCH
     Enter:  Execute mode then NORMAL
     Esc:    NORMAL
     Ctrl+q: NORMAL
