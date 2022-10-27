@@ -4,6 +4,8 @@ use std::fs;
 use std::path;
 use std::process::Command;
 
+use copypasta::{ClipboardContext, ClipboardProvider};
+
 use crate::args::Args;
 use crate::completion::Completion;
 use crate::config::Config;
@@ -454,6 +456,27 @@ impl Tab {
         } else {
             eprintln!("Nvim server not defined");
         }
+    }
+
+    pub fn event_filename_to_clipboard(&self) -> FmResult<()> {
+        if let Some(file) = self.path_content.selected_file() {
+            let filename = file.filename.clone();
+            let mut ctx = ClipboardContext::new()?;
+            ctx.set_contents(filename)?;
+            // For some reason, it's not writen if you don't read it back...
+            let _ = ctx.get_contents();
+        }
+        Ok(())
+    }
+
+    pub fn event_filepath_to_clipboard(&self) -> FmResult<()> {
+        if let Some(filepath) = self.path_content.selected_path_str() {
+            let mut ctx = ClipboardContext::new()?;
+            ctx.set_contents(filepath)?;
+            // For some reason, it's not writen if you don't read it back...
+            let _ = ctx.get_contents();
+        }
+        Ok(())
     }
 
     fn nvim_listen_address(&self) -> Result<String, std::env::VarError> {

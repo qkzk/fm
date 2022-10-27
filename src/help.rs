@@ -22,6 +22,8 @@ o:      xdg-open this file
 i:      open in current nvim session
 P:      preview this file
 Ctrl+f: fuzzy finder
+Ctrl+c: copy selected filename to clipboard
+Ctrl+p: copy selected filepath to clipboard
 
 - Tabs -
     Tab:    Next tab
