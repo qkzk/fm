@@ -83,6 +83,8 @@
 - [x] refactor: main should return result, have everything raise errors
 - [x] stable colors per extension with caching
 - [x] BUGFIX creating an already existing dir / file crashes
+- [x] display link destination
+- [x] copy filename/filepath to clipboard with ctrl+c & ctrl+p
 
 ## TODO
 
@@ -99,7 +101,6 @@
   - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] preview images @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
-- [ ] display link destination
 
 ## BUGS
 

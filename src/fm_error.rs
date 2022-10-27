@@ -63,4 +63,10 @@ impl From<TuikitError> for FmError {
     }
 }
 
+impl From<Box<dyn Error + Send + Sync + 'static>> for FmError {
+    fn from(err: Box<dyn Error + Send + Sync + 'static>) -> Self {
+        Self::new(&err.to_string())
+    }
+}
+
 pub type FmResult<T> = Result<T, FmError>;
