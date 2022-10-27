@@ -45,6 +45,8 @@ pub enum Mode {
     Shortcut,
     /// Jump to a saved mark
     Marks(MarkAction),
+    /// Filter by ...
+    Filter,
 }
 
 impl fmt::Debug for Mode {
@@ -67,6 +69,7 @@ impl fmt::Debug for Mode {
             Mode::Preview => write!(f, "Preview : "),
             Mode::Shortcut => write!(f, "Shortcut :"),
             Mode::Marks(_) => write!(f, "Marks jump:"),
+            Mode::Filter => write!(f, "Filter:  "),
         }
     }
 }

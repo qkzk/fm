@@ -42,3 +42,4 @@ keybindings:
   history: H
   marks_new: M
   marks_jump: "'"
+  filter: "f"

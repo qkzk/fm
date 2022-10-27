@@ -56,6 +56,8 @@ M:      Mark current path
     H:      HISTORY
     G:      SHORTCUT
     /:      SEARCH
+    f:      FILTER 
+        (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
     Enter:  Execute mode then NORMAL
     Esc:    NORMAL
     Ctrl+q: NORMAL

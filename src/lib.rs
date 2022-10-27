@@ -8,6 +8,7 @@ pub mod content_window;
 pub mod display;
 pub mod event_char;
 pub mod fileinfo;
+pub mod filter;
 pub mod fm_error;
 pub mod help;
 pub mod input;

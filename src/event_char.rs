@@ -32,6 +32,7 @@ pub enum EventChar {
     Bulkrename,
     MarksNew,
     MarksJump,
+    Filter,
 }
 
 impl EventChar {
@@ -125,6 +126,7 @@ impl EventChar {
                 status.event_marks_jump();
                 Ok(())
             }
+            EventChar::Filter => status.selected().event_filter(),
         }
     }
 }

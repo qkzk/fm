@@ -8,6 +8,7 @@ use tuikit::prelude::{Attr, Color, Effect};
 use users::get_user_by_uid;
 
 use crate::config::{str_to_tuikit, Colors};
+use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::status::Status;
 
@@ -209,6 +210,7 @@ pub struct PathContent {
     pub show_hidden: bool,
     pub sort_by: SortBy,
     pub reverse: bool,
+    filter: FilterKind,
 }
 
 impl PathContent {
@@ -216,7 +218,8 @@ impl PathContent {
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
     pub fn new(path: path::PathBuf, show_hidden: bool) -> Result<Self, FmError> {
-        let mut files = Self::files(&path, show_hidden)?;
+        let filter = FilterKind::All;
+        let mut files = Self::files(&path, show_hidden, filter.clone())?;
         let sort_by = SortBy::Filename;
         files.sort_by_key(|file| sort_by.key(file));
         let selected: usize = 0;
@@ -232,16 +235,22 @@ impl PathContent {
             show_hidden,
             sort_by,
             reverse,
+            filter,
         })
     }
 
-    fn files(path: &path::Path, show_hidden: bool) -> FmResult<Vec<FileInfo>> {
+    pub fn set_filter(&mut self, filter: FilterKind) {
+        self.filter = filter
+    }
+
+    fn files(path: &path::Path, show_hidden: bool, filter: FilterKind) -> FmResult<Vec<FileInfo>> {
         let read_dir = read_dir(path)?;
         let files: Vec<FileInfo> = if show_hidden {
             read_dir
                 .filter_map(|res_direntry| res_direntry.ok())
                 .map(|direntry| FileInfo::new(&direntry))
                 .filter_map(|res_file_entry| res_file_entry.ok())
+                .filter(|fileinfo| filter.filter_by(fileinfo))
                 .collect()
         } else {
             read_dir
@@ -249,6 +258,7 @@ impl PathContent {
                 .filter(|e| is_not_hidden(e).unwrap_or(true))
                 .map(|direntry| FileInfo::new(&direntry))
                 .filter_map(|res_file_entry| res_file_entry.ok())
+                .filter(|fileinfo| filter.filter_by(fileinfo))
                 .collect()
         };
         Ok(files)
@@ -314,7 +324,7 @@ impl PathContent {
     /// Reads and sort the content with current key.
     /// Select the first file if any.
     pub fn reset_files(&mut self) -> Result<(), FmError> {
-        self.files = Self::files(&self.path, self.show_hidden)?;
+        self.files = Self::files(&self.path, self.show_hidden, self.filter.clone())?;
 
         self.files.sort_by_key(|file| file.filename.clone());
         self.selected = 0;
