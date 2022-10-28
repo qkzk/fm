@@ -1,3 +1,5 @@
+use regex::Regex;
+
 use crate::fileinfo::{FileInfo, FileKind};
 
 #[derive(Clone)]
@@ -36,7 +38,11 @@ impl FilterKind {
     }
 
     fn filter_by_name(fileinfo: &FileInfo, filename: String) -> bool {
-        fileinfo.filename.contains(&filename)
+        if let Ok(re) = Regex::new(&filename) {
+            re.is_match(&fileinfo.filename)
+        } else {
+            false
+        }
     }
 
     fn filter_directory(fileinfo: &FileInfo) -> bool {
