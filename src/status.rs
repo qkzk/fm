@@ -1,15 +1,18 @@
-use regex::Regex;
-use skim::SkimItem;
 use std::collections::HashSet;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{self, Path, PathBuf};
 use std::sync::Arc;
 
+use regex::Regex;
+use skim::SkimItem;
+use tuikit::term::Term;
+
 use crate::args::Args;
 use crate::bulkrename::Bulkrename;
 use crate::color_cache::ColorCache;
 use crate::config::Config;
+use crate::copy_move::CopierMover;
 use crate::fileinfo::PathContent;
 use crate::fm_error::{FmError, FmResult};
 use crate::last_edition::LastEdition;
@@ -36,12 +39,14 @@ pub struct Status {
     pub marks: Marks,
     /// Colors for extension
     pub colors: ColorCache,
+    ///
+    copier_mover: CopierMover,
 }
 
 impl Status {
     const MAX_PERMISSIONS: u32 = 0o777;
 
-    pub fn new(args: Args, config: Config, height: usize) -> FmResult<Self> {
+    pub fn new(args: Args, config: Config, height: usize, term: Arc<Term>) -> FmResult<Self> {
         Ok(Self {
             tabs: vec![Tab::new(args, config, height)?],
             index: 0,
@@ -49,6 +54,7 @@ impl Status {
             jump_index: 0,
             marks: Marks::read_from_config_file(),
             colors: ColorCache::default(),
+            copier_mover: CopierMover::new(term),
         })
     }
 
@@ -272,28 +278,25 @@ impl Status {
     }
 
     fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CutOrCopy) -> FmResult<()> {
-        for oldpath in self.flagged.iter() {
-            let filename = oldpath
-                .as_path()
-                .file_name()
-                .ok_or_else(|| FmError::new("Couldn't parse the filename"))?;
-            let newpath = self.tabs[self.index]
-                .path_content
-                .path
-                .clone()
-                .join(filename);
-            Self::cut_or_copy(cut_or_copy.clone(), oldpath, newpath)?
+        let sources: Vec<&PathBuf> = self.flagged.iter().collect();
+        if let CutOrCopy::Cut = cut_or_copy {
+            self.copier_mover.mover(
+                sources,
+                &self
+                    .selected_non_mut()
+                    .path_str()
+                    .ok_or_else(|| FmError::new("unreadable path"))?,
+            )?
+        } else {
+            self.copier_mover.copy(
+                sources,
+                &self
+                    .selected_non_mut()
+                    .path_str()
+                    .ok_or_else(|| FmError::new("unreadable path"))?,
+            )?
         }
         self.clear_flags_and_reset_view()
-    }
-
-    fn cut_or_copy(cut_or_copy: CutOrCopy, oldpath: &PathBuf, newpath: PathBuf) -> FmResult<()> {
-        if let CutOrCopy::Cut = cut_or_copy {
-            std::fs::rename(oldpath, newpath)?
-        } else {
-            std::fs::copy(oldpath, newpath)?;
-        }
-        Ok(())
     }
 
     fn clear_flags_and_reset_view(&mut self) -> FmResult<()> {

@@ -140,7 +140,8 @@ impl Actioner {
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => {
+            | Mode::Goto
+            | Mode::Filter => {
                 status.selected().event_move_cursor_left();
                 Ok(())
             }
@@ -159,7 +160,8 @@ impl Actioner {
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => {
+            | Mode::Goto
+            | Mode::Filter => {
                 status.selected().event_move_cursor_right();
                 Ok(())
             }
@@ -176,7 +178,8 @@ impl Actioner {
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => {
+            | Mode::Goto
+            | Mode::Filter => {
                 status.selected().event_delete_char_left();
                 Ok(())
             }
@@ -195,7 +198,8 @@ impl Actioner {
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => {
+            | Mode::Goto
+            | Mode::Filter => {
                 status.selected().event_delete_chars_right();
                 Ok(())
             }

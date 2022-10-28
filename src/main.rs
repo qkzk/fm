@@ -27,12 +27,13 @@ fn reset_cursor(display: &Display) -> FmResult<()> {
 /// Main function.
 /// Init the status and display and listen to events from keyboard and mouse.
 /// The application is redrawn after every event.
+
 fn main() -> FmResult<()> {
     let config = load_config(CONFIG_PATH);
     let term = Arc::new(init_term()?);
     let actioner = Actioner::new(&config.keybindings, term.clone());
-    let mut display = Display::new(term, config.colors.clone());
-    let mut status = Status::new(Args::parse(), config, display.height()?)?;
+    let mut display = Display::new(term.clone(), config.colors.clone());
+    let mut status = Status::new(Args::parse(), config, display.height()?, term)?;
 
     while let Ok(event) = display.term.poll_event() {
         let _ = display.term.clear();

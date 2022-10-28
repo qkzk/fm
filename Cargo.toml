@@ -17,6 +17,8 @@ chrono = "*"
 clap = { version = "4.0", features = ["derive"] }
 content_inspector = "0.2.4"
 copypasta = "0.8.1"
+fs_extra = "1.2.0"
+indicatif = { version = "0.17.1", features= ["in_memory"] }
 pdf-extract = "0.6.4"
 rand = "^0"
 regex = "1"

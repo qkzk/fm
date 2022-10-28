@@ -5,6 +5,7 @@ pub mod color_cache;
 pub mod completion;
 pub mod config;
 pub mod content_window;
+pub mod copy_move;
 pub mod display;
 pub mod event_char;
 pub mod fileinfo;

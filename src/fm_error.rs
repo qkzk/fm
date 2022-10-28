@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt;
 
+use fs_extra::error::Error as FsExtraError;
 use tuikit::error::TuikitError;
 
 #[derive(Debug)]
@@ -66,6 +67,12 @@ impl From<TuikitError> for FmError {
 impl From<Box<dyn Error + Send + Sync + 'static>> for FmError {
     fn from(err: Box<dyn Error + Send + Sync + 'static>) -> Self {
         Self::new(&err.to_string())
+    }
+}
+
+impl From<FsExtraError> for FmError {
+    fn from(fs_extra_error: FsExtraError) -> Self {
+        Self::new(&fs_extra_error.to_string())
     }
 }
 
