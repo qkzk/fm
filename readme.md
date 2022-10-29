@@ -87,6 +87,13 @@
 - [x] copy filename/filepath to clipboard with ctrl+c & ctrl+p
 - [x] filters by ext / name / only dirs / all (aka no filter)
 - [x] FIX: broken links aren't shown
+- [x] COPY improvment
+  - [x] async/threaded copy -- move & delete should be quick enough
+  - [x] progress bar for copy
+  - [x] move/copy progress displayed, nothing else
+  - [x] display copy/move with style, refresh when done (reset file position)
+- [x] FIX: opener crash, right on file crash when in nvim toggleterm
+- [x] FIX: marks saved without newlines
 
 ## TODO
 
@@ -103,11 +110,6 @@
   - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] preview images @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
-- [ ] COPY improvment
-  - [ ] async/threaded copy -- move & delete should be quick enough
-  - [x] progress bar for copy
-  - [x] move/copy progress displayed, nothing else
-- [ ] opener crash, right on file crash when in nvim toggleterm
 
 ## BUGS
 
