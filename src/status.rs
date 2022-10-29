@@ -1,15 +1,18 @@
-use regex::Regex;
-use skim::SkimItem;
 use std::collections::HashSet;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{self, Path, PathBuf};
 use std::sync::Arc;
 
+use regex::Regex;
+use skim::SkimItem;
+use tuikit::term::Term;
+
 use crate::args::Args;
 use crate::bulkrename::Bulkrename;
 use crate::color_cache::ColorCache;
 use crate::config::Config;
+use crate::copy_move::{copy, mover};
 use crate::fileinfo::PathContent;
 use crate::fm_error::{FmError, FmResult};
 use crate::last_edition::LastEdition;
@@ -36,12 +39,14 @@ pub struct Status {
     pub marks: Marks,
     /// Colors for extension
     pub colors: ColorCache,
+    /// terminal
+    term: Arc<Term>,
 }
 
 impl Status {
     const MAX_PERMISSIONS: u32 = 0o777;
 
-    pub fn new(args: Args, config: Config, height: usize) -> FmResult<Self> {
+    pub fn new(args: Args, config: Config, height: usize, term: Arc<Term>) -> FmResult<Self> {
         Ok(Self {
             tabs: vec![Tab::new(args, config, height)?],
             index: 0,
@@ -49,6 +54,7 @@ impl Status {
             jump_index: 0,
             marks: Marks::read_from_config_file(),
             colors: ColorCache::default(),
+            term,
         })
     }
 
@@ -249,12 +255,7 @@ impl Status {
             );
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }
-
-        self.flagged.clear();
-        self.selected().path_content.reset_files()?;
-        let len = self.tabs[self.index].path_content.files.len();
-        self.tabs[self.index].window.reset(len);
-        self.reset_statuses()
+        self.clear_flags_and_reset_view()
     }
 
     pub fn event_bulkrename(&mut self) -> FmResult<()> {
@@ -272,28 +273,17 @@ impl Status {
     }
 
     fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CutOrCopy) -> FmResult<()> {
-        for oldpath in self.flagged.iter() {
-            let filename = oldpath
-                .as_path()
-                .file_name()
-                .ok_or_else(|| FmError::new("Couldn't parse the filename"))?;
-            let newpath = self.tabs[self.index]
-                .path_content
-                .path
-                .clone()
-                .join(filename);
-            Self::cut_or_copy(cut_or_copy.clone(), oldpath, newpath)?
+        let sources: Vec<PathBuf> = self.flagged.iter().map(|path| path.to_owned()).collect();
+        let dest = self
+            .selected_non_mut()
+            .path_str()
+            .ok_or_else(|| FmError::new("unreadable path"))?;
+        if let CutOrCopy::Cut = cut_or_copy {
+            mover(sources, dest, self.term.clone())?
+        } else {
+            copy(sources, dest, self.term.clone())?
         }
         self.clear_flags_and_reset_view()
-    }
-
-    fn cut_or_copy(cut_or_copy: CutOrCopy, oldpath: &PathBuf, newpath: PathBuf) -> FmResult<()> {
-        if let CutOrCopy::Cut = cut_or_copy {
-            std::fs::rename(oldpath, newpath)?
-        } else {
-            std::fs::copy(oldpath, newpath)?;
-        }
-        Ok(())
     }
 
     fn clear_flags_and_reset_view(&mut self) -> FmResult<()> {

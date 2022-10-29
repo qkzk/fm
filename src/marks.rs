@@ -65,7 +65,7 @@ impl Marks {
         let mut buf = BufWriter::new(file);
 
         for (ch, path) in self.marks.iter() {
-            let _ = write!(buf, "{}:{}", ch, Self::path_as_string(path)?);
+            let _ = writeln!(buf, "{}:{}", ch, Self::path_as_string(path)?);
         }
         Ok(())
     }

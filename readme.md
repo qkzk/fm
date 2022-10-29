@@ -86,6 +86,7 @@
 - [x] display link destination
 - [x] copy filename/filepath to clipboard with ctrl+c & ctrl+p
 - [x] filters by ext / name / only dirs / all (aka no filter)
+- [x] FIX: broken links aren't shown
 
 ## TODO
 
@@ -104,12 +105,13 @@
 - [ ] preview images @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
 - [ ] COPY improvment
   - [ ] async/threaded copy -- move & delete should be quick enough
-  - [ ] progress bar for copy
+  - [x] progress bar for copy
+  - [x] move/copy progress displayed, nothing else
+- [ ] opener crash, right on file crash when in nvim toggleterm
 
 ## BUGS
 
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
-- [ ] broken links aren't shown
 
 ## Sources
 

@@ -91,6 +91,8 @@ impl Actioner {
             Event::Key(Key::Ctrl('f')) => self.ctrl_f(status),
             Event::Key(Key::Ctrl('c')) => self.ctrl_c(status),
             Event::Key(Key::Ctrl('p')) => self.ctrl_p(status),
+            Event::Key(Key::Ctrl('r')) => self.refresh_selected_view(status),
+            Event::User(_) => self.refresh_selected_view(status),
             _ => Ok(()),
         }
     }
@@ -140,7 +142,8 @@ impl Actioner {
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => {
+            | Mode::Goto
+            | Mode::Filter => {
                 status.selected().event_move_cursor_left();
                 Ok(())
             }
@@ -152,14 +155,15 @@ impl Actioner {
     /// Move right in a string, move to children in normal mode.
     fn right(&self, status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal => status.selected().event_go_to_child(),
+            Mode::Normal => status.selected().event_child_or_open(),
             Mode::Rename
             | Mode::Chmod
             | Mode::Newdir
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => {
+            | Mode::Goto
+            | Mode::Filter => {
                 status.selected().event_move_cursor_right();
                 Ok(())
             }
@@ -176,7 +180,8 @@ impl Actioner {
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => {
+            | Mode::Goto
+            | Mode::Filter => {
                 status.selected().event_delete_char_left();
                 Ok(())
             }
@@ -195,7 +200,8 @@ impl Actioner {
             | Mode::Newfile
             | Mode::Exec
             | Mode::Search
-            | Mode::Goto => {
+            | Mode::Goto
+            | Mode::Filter => {
                 status.selected().event_delete_chars_right();
                 Ok(())
             }
@@ -330,6 +336,10 @@ impl Actioner {
             return status.selected_non_mut().event_filepath_to_clipboard();
         }
         Ok(())
+    }
+
+    fn refresh_selected_view(&self, status: &mut Status) -> FmResult<()> {
+        status.selected().refresh_view()
     }
 
     /// Match read key to a relevent event, depending on keybindings.
