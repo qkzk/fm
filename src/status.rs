@@ -255,12 +255,7 @@ impl Status {
             );
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }
-
-        self.flagged.clear();
-        self.selected().path_content.reset_files()?;
-        let len = self.tabs[self.index].path_content.files.len();
-        self.tabs[self.index].window.reset(len);
-        self.reset_statuses()
+        self.clear_flags_and_reset_view()
     }
 
     pub fn event_bulkrename(&mut self) -> FmResult<()> {
