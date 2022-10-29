@@ -18,8 +18,8 @@ impl CopierMover {
     }
 
     fn setup(&self) -> FmResult<(InMemoryTerm, ProgressBar, fs_extra::dir::CopyOptions)> {
-        let (height, width) = self.term.term_size()?;
-        let in_mem = InMemoryTerm::new(height as u16, width as u16);
+        // let (height, width) = self.term.term_size()?;
+        let in_mem = InMemoryTerm::new(10, 80);
         let pb = ProgressBar::with_draw_target(
             None,
             ProgressDrawTarget::term_like(Box::new(in_mem.clone())),
@@ -29,21 +29,29 @@ impl CopierMover {
     }
 
     pub fn copy(&self, sources: Vec<&PathBuf>, dest: &str) -> FmResult<()> {
-        let (in_mem, pb, options) = self.setup()?;
-        let handle = |process_info: fs_extra::TransitProcess| {
-            pb.set_position(100 * process_info.copied_bytes / process_info.total_bytes);
-            let r = self
-                .term
-                .print_with_attr(0, 0, &in_mem.contents(), attr::Attr::default());
-            match r {
-                Ok(bits) => eprintln!("wrote {} chars", bits),
-                Err(e) => eprintln!("err {:?}", e),
+        match self.setup() {
+            Ok((in_mem, pb, options)) => {
+                let handle = |process_info: fs_extra::TransitProcess| {
+                    pb.set_position(100 * process_info.copied_bytes / process_info.total_bytes);
+                    let r =
+                        self.term
+                            .print_with_attr(0, 0, &in_mem.contents(), attr::Attr::default());
+                    let _ = self.term.present();
+                    match r {
+                        Ok(bits) => eprintln!("wrote {} chars", bits),
+                        Err(e) => eprintln!("err {:?}", e),
+                    }
+                    fs_extra::dir::TransitProcessResult::ContinueOrAbort
+                };
+                fs_extra::copy_items_with_progress(&sources, dest, &options, handle)?;
+                pb.finish_with_message("done");
+                Ok(())
             }
-            fs_extra::dir::TransitProcessResult::ContinueOrAbort
-        };
-        fs_extra::copy_items_with_progress(&sources, dest, &options, handle)?;
-        pb.finish_with_message("done");
-        Ok(())
+            Err(e) => {
+                eprintln!("{:?}", e);
+                return Err(e);
+            }
+        }
     }
 
     pub fn mover(&self, sources: Vec<&PathBuf>, dest: &str) -> FmResult<()> {
