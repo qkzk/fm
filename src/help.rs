@@ -22,6 +22,7 @@ o:      open this file
 i:      open in current nvim session
 P:      preview this file
 Ctrl+f: fuzzy finder
+Ctrl+r: refresh view
 Ctrl+c: copy filename to clipboard
 Ctrl+p: copy filepath to clipboard
 M:      Mark current path
