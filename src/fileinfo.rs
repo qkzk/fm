@@ -176,7 +176,7 @@ impl FileInfo {
         );
         if let FileKind::SymbolicLink = self.file_kind {
             repr.push_str(" -> ");
-            repr.push_str(&self.read_dest().unwrap());
+            repr.push_str(&self.read_dest().unwrap_or("Broken link".to_owned()));
         }
         Ok(repr)
     }

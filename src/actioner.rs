@@ -91,6 +91,10 @@ impl Actioner {
             Event::Key(Key::Ctrl('f')) => self.ctrl_f(status),
             Event::Key(Key::Ctrl('c')) => self.ctrl_c(status),
             Event::Key(Key::Ctrl('p')) => self.ctrl_p(status),
+            Event::User(_) => {
+                eprintln!("read user event from user");
+                Ok(())
+            }
             _ => Ok(()),
         }
     }
@@ -153,7 +157,7 @@ impl Actioner {
     /// Move right in a string, move to children in normal mode.
     fn right(&self, status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal => status.selected().event_go_to_child(),
+            Mode::Normal => status.selected().event_child_or_open(),
             Mode::Rename
             | Mode::Chmod
             | Mode::Newdir

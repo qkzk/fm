@@ -12,7 +12,7 @@ use crate::args::Args;
 use crate::bulkrename::Bulkrename;
 use crate::color_cache::ColorCache;
 use crate::config::Config;
-use crate::copy_move::CopierMover;
+use crate::copy_move::{copy, mover};
 use crate::fileinfo::PathContent;
 use crate::fm_error::{FmError, FmResult};
 use crate::last_edition::LastEdition;
@@ -39,8 +39,8 @@ pub struct Status {
     pub marks: Marks,
     /// Colors for extension
     pub colors: ColorCache,
-    ///
-    copier_mover: CopierMover,
+    /// terminal
+    term: Arc<Term>,
 }
 
 impl Status {
@@ -54,7 +54,7 @@ impl Status {
             jump_index: 0,
             marks: Marks::read_from_config_file(),
             colors: ColorCache::default(),
-            copier_mover: CopierMover::new(term),
+            term,
         })
     }
 
@@ -273,15 +273,15 @@ impl Status {
     }
 
     fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CutOrCopy) -> FmResult<()> {
-        let sources: Vec<&PathBuf> = self.flagged.iter().collect();
-        let dest = &self
+        let sources: Vec<PathBuf> = self.flagged.iter().map(|path| path.to_owned()).collect();
+        let dest = self
             .selected_non_mut()
             .path_str()
             .ok_or_else(|| FmError::new("unreadable path"))?;
         if let CutOrCopy::Cut = cut_or_copy {
-            self.copier_mover.mover(sources, dest)?
+            mover(sources, dest, self.term.clone())?
         } else {
-            self.copier_mover.copy(sources, dest)?
+            copy(sources, dest, self.term.clone())?
         }
         self.clear_flags_and_reset_view()
     }

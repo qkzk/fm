@@ -233,27 +233,32 @@ impl Tab {
         self.input.cursor_left()
     }
 
-    pub fn event_go_to_child(&mut self) -> FmResult<()> {
+    pub fn event_child_or_open(&mut self) -> FmResult<()> {
         if let FileKind::Directory = self
             .path_content
             .selected_file()
             .ok_or_else(|| FmError::new("Empty directory"))?
             .file_kind
         {
-            let childpath = self
-                .path_content
-                .selected_file()
-                .ok_or_else(|| FmError::new("Empty directory"))?
-                .path
-                .clone();
-            self.history.push(&childpath);
-            self.path_content = PathContent::new(childpath, self.show_hidden)?;
-            self.window.reset(self.path_content.files.len());
-            self.line_index = 0;
-            self.input.cursor_start();
-            return Ok(());
+            self.go_to_child()
+        } else {
+            self.event_open_file()
         }
-        Err(FmError::new("File not found"))
+    }
+
+    fn go_to_child(&mut self) -> FmResult<()> {
+        let childpath = self
+            .path_content
+            .selected_file()
+            .ok_or_else(|| FmError::new("Empty directory"))?
+            .path
+            .clone();
+        self.history.push(&childpath);
+        self.path_content = PathContent::new(childpath, self.show_hidden)?;
+        self.window.reset(self.path_content.files.len());
+        self.line_index = 0;
+        self.input.cursor_start();
+        Ok(())
     }
 
     pub fn event_move_cursor_right(&mut self) {
@@ -428,7 +433,7 @@ impl Tab {
             .ok_or_else(|| FmError::new("not found"))?
             .file_kind
         {
-            self.event_go_to_child()
+            self.event_child_or_open()
         } else {
             self.event_open_file()
         }

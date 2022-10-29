@@ -1,70 +1,60 @@
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::thread;
 
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget};
-use std::path::PathBuf;
-use tuikit::attr;
-use tuikit::term::Term;
+use tuikit::prelude::Term;
 
 use crate::fm_error::FmResult;
 
-pub struct CopierMover {
-    term: Arc<Term>,
+fn setup(
+    height: usize,
+    width: usize,
+) -> FmResult<(InMemoryTerm, ProgressBar, fs_extra::dir::CopyOptions)> {
+    let in_mem = InMemoryTerm::new(height as u16, width as u16);
+    let pb = ProgressBar::with_draw_target(
+        Some(100),
+        ProgressDrawTarget::term_like(Box::new(in_mem.clone())),
+    );
+    let options = fs_extra::dir::CopyOptions::new(); //Initialize default values for CopyOptions
+    Ok((in_mem, pb, options))
 }
 
-impl CopierMover {
-    pub fn new(term: Arc<Term>) -> Self {
-        Self { term }
-    }
+fn handle_progress_display(
+    in_mem: &InMemoryTerm,
+    pb: &ProgressBar,
+    term: &Arc<Term>,
+    process_info: fs_extra::TransitProcess,
+) -> fs_extra::dir::TransitProcessResult {
+    pb.set_position(100 * process_info.copied_bytes / process_info.total_bytes);
+    let _ = term.print(0, 0, &in_mem.to_owned().contents());
+    let _ = term.present();
+    fs_extra::dir::TransitProcessResult::ContinueOrAbort
+}
 
-    fn setup(&self) -> FmResult<(InMemoryTerm, ProgressBar, fs_extra::dir::CopyOptions)> {
-        // let (height, width) = self.term.term_size()?;
-        let in_mem = InMemoryTerm::new(10, 80);
-        let pb = ProgressBar::with_draw_target(
-            None,
-            ProgressDrawTarget::term_like(Box::new(in_mem.clone())),
-        );
-        let options = fs_extra::dir::CopyOptions::new(); //Initialize default values for CopyOptions
-        Ok((in_mem, pb, options))
-    }
+pub fn copy(sources: Vec<PathBuf>, dest: String, term: Arc<Term>) -> FmResult<()> {
+    let (height, width) = term.term_size()?;
+    let (in_mem, pb, options) = setup(height, width)?;
+    let handle_progress = move |process_info: fs_extra::TransitProcess| {
+        handle_progress_display(&in_mem, &pb, &term, process_info)
+    };
+    let _ = thread::spawn(move || {
+        fs_extra::copy_items_with_progress(&sources, &dest, &options, handle_progress)
+            .unwrap_or_default();
+    });
+    Ok(())
+}
 
-    pub fn copy(&self, sources: Vec<&PathBuf>, dest: &str) -> FmResult<()> {
-        match self.setup() {
-            Ok((in_mem, pb, options)) => {
-                let handle = |process_info: fs_extra::TransitProcess| {
-                    pb.set_position(100 * process_info.copied_bytes / process_info.total_bytes);
-                    let r =
-                        self.term
-                            .print_with_attr(0, 0, &in_mem.contents(), attr::Attr::default());
-                    let _ = self.term.present();
-                    match r {
-                        Ok(bits) => eprintln!("wrote {} chars", bits),
-                        Err(e) => eprintln!("err {:?}", e),
-                    }
-                    fs_extra::dir::TransitProcessResult::ContinueOrAbort
-                };
-                fs_extra::copy_items_with_progress(&sources, dest, &options, handle)?;
-                pb.finish_with_message("done");
-                Ok(())
-            }
-            Err(e) => {
-                eprintln!("{:?}", e);
-                return Err(e);
-            }
-        }
-    }
-
-    pub fn mover(&self, sources: Vec<&PathBuf>, dest: &str) -> FmResult<()> {
-        let (in_mem, pb, options) = self.setup()?;
-        let handle = |process_info: fs_extra::TransitProcess| {
-            pb.set_position(100 * process_info.copied_bytes / process_info.total_bytes);
-            let _ = self
-                .term
-                .print_with_attr(0, 0, &in_mem.contents(), attr::Attr::default());
-            fs_extra::dir::TransitProcessResult::ContinueOrAbort
-        };
-        fs_extra::move_items_with_progress(&sources, dest, &options, handle)?;
-        pb.finish_with_message("done");
-        Ok(())
-    }
+pub fn mover(sources: Vec<PathBuf>, dest: String, term: Arc<Term>) -> FmResult<()> {
+    let (height, width) = term.term_size()?;
+    let (in_mem, pb, options) = setup(height, width)?;
+    let handle_progress = move |process_info: fs_extra::TransitProcess| {
+        handle_progress_display(&in_mem, &pb, &term, process_info)
+    };
+    let _ = thread::spawn(move || {
+        fs_extra::move_items_with_progress(&sources, dest, &options, handle_progress)
+            .unwrap_or_default();
+    });
+    Ok(())
 }
