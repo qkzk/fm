@@ -18,8 +18,8 @@ impl CopierMover {
     }
 
     fn setup(&self) -> FmResult<(InMemoryTerm, ProgressBar, fs_extra::dir::CopyOptions)> {
-        let (_, width) = self.term.term_size()?;
-        let in_mem = InMemoryTerm::new(10, width as u16);
+        let (height, width) = self.term.term_size()?;
+        let in_mem = InMemoryTerm::new(height as u16, width as u16);
         let pb = ProgressBar::with_draw_target(
             None,
             ProgressDrawTarget::term_like(Box::new(in_mem.clone())),
@@ -34,7 +34,7 @@ impl CopierMover {
             pb.set_position(100 * process_info.copied_bytes / process_info.total_bytes);
             let _ = self
                 .term
-                .print_with_attr(0, 0, &in_mem.contents(), attr::Attr::default());
+                .print_with_attr(1, 0, &in_mem.contents(), attr::Attr::default());
             fs_extra::dir::TransitProcessResult::ContinueOrAbort
         };
         fs_extra::copy_items_with_progress(&sources, dest, &options, handle)?;

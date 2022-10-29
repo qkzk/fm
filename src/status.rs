@@ -279,22 +279,14 @@ impl Status {
 
     fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CutOrCopy) -> FmResult<()> {
         let sources: Vec<&PathBuf> = self.flagged.iter().collect();
+        let dest = &self
+            .selected_non_mut()
+            .path_str()
+            .ok_or_else(|| FmError::new("unreadable path"))?;
         if let CutOrCopy::Cut = cut_or_copy {
-            self.copier_mover.mover(
-                sources,
-                &self
-                    .selected_non_mut()
-                    .path_str()
-                    .ok_or_else(|| FmError::new("unreadable path"))?,
-            )?
+            self.copier_mover.mover(sources, dest)?
         } else {
-            self.copier_mover.copy(
-                sources,
-                &self
-                    .selected_non_mut()
-                    .path_str()
-                    .ok_or_else(|| FmError::new("unreadable path"))?,
-            )?
+            self.copier_mover.copy(sources, dest)?
         }
         self.clear_flags_and_reset_view()
     }
