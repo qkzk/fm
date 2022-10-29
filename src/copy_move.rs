@@ -21,7 +21,7 @@ fn setup(
     );
     pb.set_style(
         ProgressStyle::with_template(
-            "{spinner} {action} [{elapsed}] [{wide_bar}] {percent} ({eta})",
+            "{spinner} {action} [{elapsed}] [{wide_bar}] {percent}% ({eta})",
         )
         .unwrap()
         .with_key("eta", |state: &ProgressState, w: &mut dyn Write| {
