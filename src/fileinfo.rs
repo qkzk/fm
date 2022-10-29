@@ -295,7 +295,7 @@ impl PathContent {
 
     /// Select the next file, if any.
     pub fn select_next(&mut self) {
-        if self.selected < self.files.len() - 1 {
+        if !self.files.is_empty() && self.selected < self.files.len() - 1 {
             self.files[self.selected].unselect();
             self.selected += 1;
             self.files[self.selected].select();

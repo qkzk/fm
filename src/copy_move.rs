@@ -32,9 +32,13 @@ impl CopierMover {
         let (in_mem, pb, options) = self.setup()?;
         let handle = |process_info: fs_extra::TransitProcess| {
             pb.set_position(100 * process_info.copied_bytes / process_info.total_bytes);
-            let _ = self
+            let r = self
                 .term
-                .print_with_attr(1, 0, &in_mem.contents(), attr::Attr::default());
+                .print_with_attr(0, 0, &in_mem.contents(), attr::Attr::default());
+            match r {
+                Ok(bits) => eprintln!("wrote {} chars", bits),
+                Err(e) => eprintln!("err {:?}", e),
+            }
             fs_extra::dir::TransitProcessResult::ContinueOrAbort
         };
         fs_extra::copy_items_with_progress(&sources, dest, &options, handle)?;
@@ -48,7 +52,7 @@ impl CopierMover {
             pb.set_position(100 * process_info.copied_bytes / process_info.total_bytes);
             let _ = self
                 .term
-                .print_with_attr(1, 0, &in_mem.contents(), attr::Attr::default());
+                .print_with_attr(0, 0, &in_mem.contents(), attr::Attr::default());
             fs_extra::dir::TransitProcessResult::ContinueOrAbort
         };
         fs_extra::move_items_with_progress(&sources, dest, &options, handle)?;

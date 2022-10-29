@@ -129,7 +129,9 @@ impl Tab {
         } else {
             self.preview.len()
         };
-        if self.line_index < max_line - ContentWindow::WINDOW_MARGIN_TOP {
+        if max_line >= ContentWindow::WINDOW_MARGIN_TOP
+            && self.line_index < max_line - ContentWindow::WINDOW_MARGIN_TOP
+        {
             self.line_index += 1;
         }
         self.window.scroll_down_one(self.line_index);
