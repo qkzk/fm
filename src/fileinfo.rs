@@ -351,6 +351,22 @@ impl PathContent {
     pub fn contains(&self, path: &path::Path) -> bool {
         path.starts_with(&self.path)
     }
+
+    pub fn is_selected_dir(&self) -> FmResult<bool> {
+        if let FileKind::Directory = self
+            .selected_file()
+            .ok_or_else(|| FmError::new("Empty directory"))?
+            .file_kind
+        {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.files.is_empty()
+    }
 }
 
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and

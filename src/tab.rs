@@ -234,12 +234,10 @@ impl Tab {
     }
 
     pub fn exec_file(&mut self) -> FmResult<()> {
-        if let FileKind::Directory = self
-            .path_content
-            .selected_file()
-            .ok_or_else(|| FmError::new("Empty directory"))?
-            .file_kind
-        {
+        if self.path_content.is_empty() {
+            return Ok(());
+        }
+        if self.path_content.is_selected_dir()? {
             self.go_to_child()
         } else {
             self.event_open_file()
