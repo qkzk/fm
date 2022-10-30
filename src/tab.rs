@@ -233,7 +233,7 @@ impl Tab {
         self.input.cursor_left()
     }
 
-    pub fn event_child_or_open(&mut self) -> FmResult<()> {
+    pub fn exec_file(&mut self) -> FmResult<()> {
         if let FileKind::Directory = self
             .path_content
             .selected_file()
@@ -433,7 +433,7 @@ impl Tab {
             .ok_or_else(|| FmError::new("not found"))?
             .file_kind
         {
-            self.event_child_or_open()
+            self.exec_file()
         } else {
             self.event_open_file()
         }

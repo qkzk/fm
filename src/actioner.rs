@@ -155,7 +155,7 @@ impl Actioner {
     /// Move right in a string, move to children in normal mode.
     fn right(&self, status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal => status.selected().event_child_or_open(),
+            Mode::Normal => status.selected().exec_file(),
             Mode::Rename
             | Mode::Chmod
             | Mode::Newdir
@@ -273,12 +273,8 @@ impl Actioner {
             Mode::History => status.selected().exec_history()?,
             Mode::Shortcut => status.selected().exec_shortcut()?,
             Mode::Filter => status.selected().exec_filter()?,
-            Mode::Normal
-            | Mode::NeedConfirmation
-            | Mode::Help
-            | Mode::Sort
-            | Mode::Preview
-            | Mode::Marks(_) => (),
+            Mode::Normal => status.selected().exec_file()?,
+            Mode::NeedConfirmation | Mode::Help | Mode::Sort | Mode::Preview | Mode::Marks(_) => (),
         }
 
         status.selected().input.reset();
