@@ -105,6 +105,7 @@ impl Tab {
 
     pub fn event_normal(&mut self) -> FmResult<()> {
         self.input.reset();
+        self.completion.reset();
         self.path_content.reset_files()?;
         self.window.reset(self.path_content.files.len());
         self.mode = Mode::Normal;
@@ -538,18 +539,16 @@ impl Tab {
         let exec_command = self.input.string.clone();
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
-        if !std::path::Path::new(command).exists() {
-            eprintln!("File {} doesn't exist.", command);
-            return Ok(());
+        if std::path::Path::new(command).exists() {
+            let path = &self
+                .path_content
+                .selected_path_str()
+                .ok_or_else(|| FmError::new("path unreachable"))?;
+            args.push(path);
+            execute_in_child(command, &args)?;
         }
-
-        let path = &self
-            .path_content
-            .selected_path_str()
-            .ok_or_else(|| FmError::new("path unreachable"))?;
-        args.push(path);
+        self.completion.reset();
         self.input.reset();
-        execute_in_child(command, &args)?;
         Ok(())
     }
 
