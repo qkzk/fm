@@ -92,6 +92,7 @@ impl Completion {
             .to_str()
             .unwrap_or_default()
             .split(':')
+            .filter(|path| std::path::Path::new(path).exists())
         {
             let comp: Vec<String> = fs::read_dir(path)?
                 .filter(|e| e.is_ok())

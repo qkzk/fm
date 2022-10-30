@@ -538,6 +538,10 @@ impl Tab {
         let exec_command = self.input.string.clone();
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
+        if !std::path::Path::new(command).exists() {
+            eprintln!("File {} doesn't exist.", command);
+            return Ok(());
+        }
 
         let path = &self
             .path_content

@@ -94,6 +94,7 @@
   - [x] display copy/move with style, refresh when done (reset file position)
 - [x] FIX: opener crash, right on file crash when in nvim toggleterm
 - [x] FIX: marks saved without newlines
+- [x] drag & drop: exec and find dragon-drop
 
 ## TODO
 
