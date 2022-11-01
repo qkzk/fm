@@ -4,6 +4,7 @@ use std::fmt;
 
 use fs_extra::error::Error as FsExtraError;
 use tuikit::error::TuikitError;
+use zip::result::ZipError;
 
 #[derive(Debug)]
 pub struct FmError {
@@ -73,6 +74,12 @@ impl From<Box<dyn Error + Send + Sync + 'static>> for FmError {
 impl From<FsExtraError> for FmError {
     fn from(fs_extra_error: FsExtraError) -> Self {
         Self::new(&fs_extra_error.to_string())
+    }
+}
+
+impl From<ZipError> for FmError {
+    fn from(zip_error: ZipError) -> Self {
+        Self::new(&zip_error.to_string())
     }
 }
 

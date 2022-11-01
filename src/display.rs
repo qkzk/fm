@@ -374,6 +374,24 @@ impl Display {
                     self.term.print(row, line_number_width + 3, line)?;
                 }
             }
+            Preview::Compressed(zip) => {
+                for (i, line) in zip
+                    .content
+                    .iter()
+                    .enumerate()
+                    .skip(tab.window.top)
+                    .take(min(length, tab.window.bottom + 1))
+                {
+                    let row = Self::calc_line_row(i, tab);
+                    self.term.print_with_attr(
+                        row,
+                        0,
+                        &(i + 1 + tab.window.top).to_string(),
+                        Self::ATTR_LINE_NR,
+                    )?;
+                    self.term.print(row, line_number_width + 3, line)?;
+                }
+            }
             Preview::Empty => (),
         }
         Ok(())
