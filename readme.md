@@ -95,6 +95,7 @@
 - [x] FIX: opener crash, right on file crash when in nvim toggleterm
 - [x] FIX: marks saved without newlines
 - [x] drag & drop: exec and find dragon-drop
+- [x] optional numbers in preview
 
 ## TODO
 
@@ -115,7 +116,6 @@
   - [ ] compress
   - [x] decompress selected file with ctrl+x
   - [x] preview
-- [ ] optional numbers in preview
 
 ## BUGS
 
