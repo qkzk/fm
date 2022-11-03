@@ -115,6 +115,7 @@
   - [ ] compress
   - [x] decompress selected file with ctrl+x
   - [x] preview
+- [ ] optional numbers in preview
 
 ## BUGS
 
