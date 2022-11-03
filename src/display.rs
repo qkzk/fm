@@ -138,7 +138,7 @@ impl Display {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
             let mut attr = fileinfo_attr(status, file, &self.colors);
             if status.flagged.contains(&file.path) {
-                attr.effect |= Effect::UNDERLINE;
+                attr.effect |= Effect::BOLD | Effect::UNDERLINE;
             }
             self.term.print_with_attr(row, 0, string, attr)?;
         }
@@ -281,6 +281,20 @@ impl Display {
         Ok(())
     }
 
+    fn preview_line_numbers(
+        &mut self,
+        tab: &Tab,
+        line_index: usize,
+        row_index: usize,
+    ) -> FmResult<usize> {
+        Ok(self.term.print_with_attr(
+            row_index,
+            0,
+            &(line_index + 1 + tab.window.top).to_string(),
+            Self::ATTR_LINE_NR,
+        )?)
+    }
+
     /// Display a scrollable preview of a file.
     /// Multiple modes are supported :
     /// if the filename extension is recognized, the preview is highlighted,
@@ -306,12 +320,7 @@ impl Display {
                     .take(min(length, tab.window.bottom + 1))
                 {
                     let row = Self::calc_line_row(i, tab);
-                    self.term.print_with_attr(
-                        row,
-                        0,
-                        &(i + 1 + tab.window.top).to_string(),
-                        Self::ATTR_LINE_NR,
-                    )?;
+                    self.preview_line_numbers(tab, i, row)?;
                     for token in vec_line.iter() {
                         token.print(&self.term, row, line_number_width)?;
                     }
@@ -326,12 +335,6 @@ impl Display {
                     .take(min(length, tab.window.bottom + 1))
                 {
                     let row = Self::calc_line_row(i, tab);
-                    self.term.print_with_attr(
-                        row,
-                        0,
-                        &(i + 1 + tab.window.top).to_string(),
-                        Self::ATTR_LINE_NR,
-                    )?;
                     self.term.print(row, line_number_width + 3, line)?;
                 }
             }
@@ -358,6 +361,18 @@ impl Display {
             }
             Preview::Pdf(text) => {
                 for (i, line) in text
+                    .content
+                    .iter()
+                    .enumerate()
+                    .skip(tab.window.top)
+                    .take(min(length, tab.window.bottom + 1))
+                {
+                    let row = Self::calc_line_row(i, tab);
+                    self.term.print(row, line_number_width + 3, line)?;
+                }
+            }
+            Preview::Compressed(zip) => {
+                for (i, line) in zip
                     .content
                     .iter()
                     .enumerate()

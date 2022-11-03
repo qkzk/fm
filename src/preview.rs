@@ -11,6 +11,7 @@ use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
 use tuikit::term::Term;
+use zip::ZipArchive;
 
 use crate::fileinfo::PathContent;
 use crate::fm_error::{FmError, FmResult};
@@ -22,6 +23,7 @@ pub enum Preview {
     Text(TextContent),
     Binary(BinaryContent),
     Pdf(PdfContent),
+    Compressed(CompressedContent),
     Empty,
 }
 
@@ -38,7 +40,11 @@ impl Preview {
             Some(file_info) => {
                 let mut file = std::fs::File::open(file_info.path.clone())?;
                 let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
-                if file_info.extension == *"pdf" {
+                if file_info.extension == *"zip" {
+                    Ok(Self::Compressed(CompressedContent::new(
+                        file_info.path.clone(),
+                    )?))
+                } else if file_info.extension == *"pdf" {
                     Ok(Self::Pdf(PdfContent::new(file_info.path.clone())))
                 } else if let Some(syntaxset) = ps.find_syntax_by_extension(&file_info.extension) {
                     Ok(Self::Syntaxed(SyntaxedContent::new(
@@ -70,6 +76,7 @@ impl Preview {
             Self::Empty => 0,
             Self::Binary(binary) => binary.len(),
             Self::Pdf(pdf) => pdf.len(),
+            Self::Compressed(zip) => zip.len(),
         }
     }
 
@@ -323,6 +330,31 @@ impl PdfContent {
             length: content.len(),
             content,
         }
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
+#[derive(Clone)]
+pub struct CompressedContent {
+    length: usize,
+    pub content: Vec<String>,
+}
+
+impl CompressedContent {
+    fn new(path: PathBuf) -> FmResult<Self> {
+        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
+        let zip = ZipArchive::new(reader)?;
+        let mut content_str: Vec<&str> = zip.file_names().collect();
+        content_str.sort();
+        let content: Vec<String> = content_str.iter().map(|s| (*s).to_owned()).collect();
+
+        Ok(Self {
+            length: content.len(),
+            content,
+        })
     }
 
     fn len(&self) -> usize {

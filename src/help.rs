@@ -25,6 +25,7 @@ Ctrl+f: fuzzy finder
 Ctrl+r: refresh view
 Ctrl+c: copy filename to clipboard
 Ctrl+p: copy filepath to clipboard
+Ctrl+x: decompress selected file
 M:      Mark current path
 ':      Jump to a mark
 

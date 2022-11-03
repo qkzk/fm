@@ -274,7 +274,7 @@ impl Opener {
 }
 
 /// Execute the command in a fork.
-fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
+pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
     eprintln!("exec exe {}, args {:?}", exe, args);
     Ok(Command::new(exe).args(args).spawn()?)
 }

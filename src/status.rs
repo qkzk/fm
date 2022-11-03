@@ -114,7 +114,7 @@ impl Status {
 
     pub fn event_clear_flags(&mut self) -> FmResult<()> {
         self.flagged.clear();
-        self.reset_statuses()
+        Ok(())
     }
 
     pub fn event_flag_all(&mut self) -> FmResult<()> {
@@ -129,7 +129,10 @@ impl Status {
     }
 
     pub fn event_reverse_flags(&mut self) -> FmResult<()> {
-        // TODO: is there a way to use `toggle_flag_on_path` ? 2 mutable borrows...
+        // for file in self.selected().path_content.files.iter() {
+        //     self.toggle_flag_on_path(file.path.clone())
+        // }
+
         self.tabs[self.index]
             .path_content
             .files

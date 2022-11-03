@@ -8,6 +8,7 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 
 use crate::args::Args;
 use crate::completion::Completion;
+use crate::compress::decompress;
 use crate::config::Config;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
@@ -490,6 +491,14 @@ impl Tab {
         eprintln!("entering filter mode");
         self.mode = Mode::Filter;
         Ok(())
+    }
+
+    pub fn event_decompress(&mut self) -> FmResult<()> {
+        if let Some(fileinfo) = self.path_content.selected_file() {
+            decompress(&fileinfo.path)
+        } else {
+            Ok(())
+        }
     }
 
     fn nvim_listen_address(&self) -> Result<String, std::env::VarError> {

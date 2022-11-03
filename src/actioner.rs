@@ -92,6 +92,7 @@ impl Actioner {
             Event::Key(Key::Ctrl('c')) => self.ctrl_c(status),
             Event::Key(Key::Ctrl('p')) => self.ctrl_p(status),
             Event::Key(Key::Ctrl('r')) => self.refresh_selected_view(status),
+            Event::Key(Key::Ctrl('x')) => self.ctrl_x(status),
             Event::User(_) => self.refresh_selected_view(status),
             _ => Ok(()),
         }
@@ -336,6 +337,10 @@ impl Actioner {
 
     fn refresh_selected_view(&self, status: &mut Status) -> FmResult<()> {
         status.selected().refresh_view()
+    }
+
+    fn ctrl_x(&self, status: &mut Status) -> FmResult<()> {
+        status.selected().event_decompress()
     }
 
     /// Match read key to a relevent event, depending on keybindings.
