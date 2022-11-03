@@ -114,7 +114,7 @@ impl Status {
 
     pub fn event_clear_flags(&mut self) -> FmResult<()> {
         self.flagged.clear();
-        self.reset_statuses()
+        Ok(())
     }
 
     pub fn event_flag_all(&mut self) -> FmResult<()> {
