@@ -15,6 +15,8 @@ use crate::status::Status;
 /// Different kind of sort
 #[derive(Debug, Clone)]
 pub enum SortBy {
+    /// Directory first
+    Kind,
     /// by filename
     Filename,
     /// by date
@@ -30,11 +32,27 @@ impl SortBy {
     /// The key can be used to sort the directory content.
     pub fn key(&self, file: &FileInfo) -> String {
         match *self {
+            Self::Kind => Self::sort_by_kind(file),
             Self::Filename => file.filename.clone(),
             Self::Date => file.system_time.clone(),
             Self::Size => file.file_size.clone(),
             Self::Extension => file.extension.clone(),
         }
+    }
+
+    fn sort_by_kind(file: &FileInfo) -> String {
+        let mut s = String::new();
+        match file.file_kind {
+            FileKind::Directory => s.push('a'),
+            FileKind::NormalFile => s.push('b'),
+            FileKind::SymbolicLink => s.push('c'),
+            FileKind::BlockDevice => s.push('d'),
+            FileKind::CharDevice => s.push('e'),
+            FileKind::Socket => s.push('f'),
+            FileKind::Fifo => s.push('g'),
+        }
+        s.push_str(&file.filename);
+        s
     }
 }
 
@@ -220,7 +238,7 @@ impl PathContent {
     pub fn new(path: path::PathBuf, show_hidden: bool) -> Result<Self, FmError> {
         let filter = FilterKind::All;
         let mut files = Self::files(&path, show_hidden, filter.clone())?;
-        let sort_by = SortBy::Filename;
+        let sort_by = SortBy::Kind;
         files.sort_by_key(|file| sort_by.key(file));
         let selected: usize = 0;
         if !files.is_empty() {
@@ -326,7 +344,7 @@ impl PathContent {
     pub fn reset_files(&mut self) -> Result<(), FmError> {
         self.files = Self::files(&self.path, self.show_hidden, self.filter.clone())?;
 
-        self.files.sort_by_key(|file| file.filename.clone());
+        self.files.sort_by_key(|file| SortBy::sort_by_kind(file));
         self.selected = 0;
         if !self.files.is_empty() {
             self.files[self.selected].select();

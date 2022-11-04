@@ -65,7 +65,7 @@ impl fmt::Debug for Mode {
             Mode::Jump => write!(f, "Jump  :  "),
             Mode::History => write!(f, "History :"),
             Mode::NeedConfirmation => write!(f, "Y/N   :"),
-            Mode::Sort => write!(f, "(N)ame (D)ate (S)ize (E)xt (R)ev :"),
+            Mode::Sort => write!(f, "Sort: Kind Name Modif Size Ext Rev :"),
             Mode::Preview => write!(f, "Preview : "),
             Mode::Shortcut => write!(f, "Shortcut :"),
             Mode::Marks(_) => write!(f, "Marks jump:"),

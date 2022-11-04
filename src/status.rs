@@ -365,7 +365,7 @@ impl Status {
     }
 
     pub fn exec_last_edition(&mut self) -> FmResult<()> {
-        let _ = self._exec_last_edition();
+        self._exec_last_edition()?;
         self.selected().mode = Mode::Normal;
         self.selected().last_edition = LastEdition::Nothing;
         Ok(())

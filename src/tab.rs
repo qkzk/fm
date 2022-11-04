@@ -346,8 +346,9 @@ impl Tab {
     pub fn event_leave_sort(&mut self, c: char) {
         self.mode = Mode::Normal;
         match c {
+            'k' => self.path_content.sort_by = SortBy::Kind,
             'n' => self.path_content.sort_by = SortBy::Filename,
-            'd' => self.path_content.sort_by = SortBy::Date,
+            'm' => self.path_content.sort_by = SortBy::Date,
             's' => self.path_content.sort_by = SortBy::Size,
             'e' => self.path_content.sort_by = SortBy::Extension,
             'r' => self.path_content.reverse = !self.path_content.reverse,
