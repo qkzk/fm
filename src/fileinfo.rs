@@ -120,7 +120,7 @@ impl FileKind {
 /// We read and keep tracks every displayable information about
 /// a file.
 /// Like in [exa](https://github.com/ogham/exa) we don't display the group.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FileInfo {
     /// Full path of the file
     pub path: path::PathBuf,
@@ -371,14 +371,21 @@ impl PathContent {
     }
 
     pub fn is_selected_dir(&self) -> FmResult<bool> {
-        if let FileKind::Directory = self
+        match self
             .selected_file()
             .ok_or_else(|| FmError::new("Empty directory"))?
             .file_kind
         {
-            Ok(true)
-        } else {
-            Ok(false)
+            FileKind::Directory => Ok(true),
+            FileKind::SymbolicLink => {
+                let dest = self
+                    .selected_file()
+                    .ok_or_else(|| FmError::new("unreachable"))?
+                    .read_dest()
+                    .unwrap_or_default();
+                Ok(path::PathBuf::from(dest).is_dir())
+            }
+            _ => Ok(false),
         }
     }
 

@@ -381,13 +381,20 @@ impl Tab {
     }
 
     pub fn event_open_file(&mut self) -> FmResult<()> {
-        self.opener.open(
+        match self.opener.open(
             self.path_content
                 .selected_file()
                 .ok_or_else(|| FmError::new("Empty directory"))?
                 .path
                 .clone(),
-        )?;
+        ) {
+            Ok(_) => (),
+            Err(e) => eprint!(
+                "Error opening {:?}: {:?}",
+                self.path_content.selected_file(),
+                e
+            ),
+        }
         Ok(())
     }
 
