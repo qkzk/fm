@@ -343,8 +343,8 @@ impl PathContent {
     /// Select the first file if any.
     pub fn reset_files(&mut self) -> Result<(), FmError> {
         self.files = Self::files(&self.path, self.show_hidden, self.filter.clone())?;
-
-        self.files.sort_by_key(|file| SortBy::sort_by_kind(file));
+        self.sort_by = SortBy::Kind;
+        self.sort();
         self.selected = 0;
         if !self.files.is_empty() {
             self.files[self.selected].select();
