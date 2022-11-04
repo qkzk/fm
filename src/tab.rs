@@ -140,7 +140,7 @@ impl Tab {
     }
 
     pub fn event_go_top(&mut self) {
-        if let Mode::Preview = self.mode {
+        if let Mode::Normal = self.mode {
             self.path_content.select_index(0);
         }
         self.line_index = 0;
@@ -186,12 +186,13 @@ impl Tab {
     }
 
     pub fn event_page_down(&mut self) {
-        let down_index = if let Mode::Normal = self.mode {
-            min(self.path_content.files.len() - 1, self.line_index + 10)
+        let down_index: usize;
+        if let Mode::Normal = self.mode {
+            down_index = min(self.path_content.files.len() - 1, self.line_index + 10);
+            self.path_content.select_index(down_index);
         } else {
-            min(self.preview.len() - 1, self.line_index + 30)
-        };
-        self.path_content.select_index(down_index);
+            down_index = min(self.preview.len() - 1, self.line_index + 30)
+        }
         self.line_index = down_index;
         self.window.scroll_to(down_index);
     }

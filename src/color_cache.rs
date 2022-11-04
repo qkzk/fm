@@ -29,16 +29,14 @@ impl ColorCache {
     }
 }
 
-/// Picks a color on color picker hexagon's perimeter.
+/// Picks a blueish/greenish color on color picker hexagon's perimeter.
 fn color(coords: usize) -> Color {
-    (0..255)
-        .map(|g| Color::Rgb(255, g, 0))
-        .chain((0..255).rev().map(|r| Color::Rgb(r, 255, 0)))
-        .chain((0..255).map(|b| Color::Rgb(0, 255, b)))
-        .chain((0..255).rev().map(|g| Color::Rgb(0, g, 255)))
-        .chain((0..255).map(|r| Color::Rgb(r, 0, 255)))
-        .chain((0..255).rev().map(|b| Color::Rgb(255, 0, b)))
-        .nth(coords % 1536)
+    (128..255)
+        .map(|b| Color::Rgb(0, 255, b))
+        .chain((128..255).map(|g| Color::Rgb(0, g, 255)))
+        .chain((128..255).rev().map(|b| Color::Rgb(0, 255, b)))
+        .chain((128..255).rev().map(|g| Color::Rgb(0, g, 255)))
+        .nth(coords % 508)
         .unwrap()
 }
 
