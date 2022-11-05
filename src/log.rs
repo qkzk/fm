@@ -26,6 +26,7 @@ pub fn set_logger() -> FmResult<Handle> {
     let compound_policy =
         CompoundPolicy::new(Box::new(size_trigger), Box::new(fixed_window_roller));
     let log_path = shellexpand::tilde(LOG_PATH).to_string();
+    std::fs::create_dir_all(&log_path)?;
 
     // Log Trace level output to file where trace is the default level
     // and the programmatically specified level to stderr.
