@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use clap::Parser;
+use log::info;
 use tuikit::term::Term;
 
 use fm::actioner::Actioner;
@@ -8,6 +9,7 @@ use fm::args::Args;
 use fm::config::load_config;
 use fm::display::Display;
 use fm::fm_error::FmResult;
+use fm::log::set_logger;
 use fm::status::Status;
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
@@ -29,6 +31,9 @@ fn reset_cursor(display: &Display) -> FmResult<()> {
 /// The application is redrawn after every event.
 
 fn main() -> FmResult<()> {
+    let _handle = set_logger()?;
+    info!("booting up");
+
     let config = load_config(CONFIG_PATH);
     let term = Arc::new(init_term()?);
     let actioner = Actioner::new(&config.keybindings, term.clone());

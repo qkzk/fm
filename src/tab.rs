@@ -5,6 +5,7 @@ use std::path;
 use std::process::Command;
 
 use copypasta::{ClipboardContext, ClipboardProvider};
+use log::info;
 
 use crate::args::Args;
 use crate::completion::Completion;
@@ -389,7 +390,7 @@ impl Tab {
                 .clone(),
         ) {
             Ok(_) => (),
-            Err(e) => eprint!(
+            Err(e) => info!(
                 "Error opening {:?}: {:?}",
                 self.path_content.selected_file(),
                 e
@@ -454,7 +455,7 @@ impl Tab {
 
     pub fn event_nvim_filepicker(&mut self) {
         if self.path_content.files.is_empty() {
-            eprintln!("Called nvim filepicker in an empty directory.");
+            info!("Called nvim filepicker in an empty directory.");
             return;
         }
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
@@ -471,7 +472,7 @@ impl Tab {
                 );
             }
         } else {
-            eprintln!("Nvim server not defined");
+            info!("Nvim server not defined");
         }
     }
 
@@ -497,7 +498,7 @@ impl Tab {
     }
 
     pub fn event_filter(&mut self) -> FmResult<()> {
-        eprintln!("entering filter mode");
+        info!("entering filter mode");
         self.mode = Mode::Filter;
         Ok(())
     }
@@ -675,6 +676,6 @@ impl Tab {
 // TODO: use [wait with output](https://doc.rust-lang.org/std/process/struct.Child.html#method.wait_with_output)
 /// Execute the command in a fork.
 fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::io::Result<std::process::Child> {
-    eprintln!("exec exe {}, args {:?}", exe, args);
+    info!("exec exe {}, args {:?}", exe, args);
     Command::new(exe).args(args).spawn()
 }
