@@ -96,6 +96,7 @@
 - [x] FIX: marks saved without newlines
 - [x] drag & drop: exec and find dragon-drop
 - [x] optional numbers in preview
+- [x] logging with rotating log files.
 
 ## TODO
 
@@ -116,10 +117,6 @@
   - [ ] compress
   - [x] decompress selected file with ctrl+x
   - [x] preview
-- [ ] logging.
-  - Not as simple as I thought it would be. FileRotate seems to work but the "log" object is mutated when we write to it... So it can't be shared (multiple borrow mut)
-  - Standard logging uses macros like info! debug! etc. but the output isn't defined and seems to be captured from outside. Not what I want.
-  - What do I want ?
 
 ## BUGS
 
