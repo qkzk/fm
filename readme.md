@@ -96,6 +96,7 @@
 - [x] FIX: marks saved without newlines
 - [x] drag & drop: exec and find dragon-drop
 - [x] optional numbers in preview
+- [x] logging with rotating log files.
 
 ## TODO
 

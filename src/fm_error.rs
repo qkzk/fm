@@ -3,6 +3,7 @@ use std::error::Error;
 use std::fmt;
 
 use fs_extra::error::Error as FsExtraError;
+use log::SetLoggerError;
 use tuikit::error::TuikitError;
 use zip::result::ZipError;
 
@@ -80,6 +81,12 @@ impl From<FsExtraError> for FmError {
 impl From<ZipError> for FmError {
     fn from(zip_error: ZipError) -> Self {
         Self::new(&zip_error.to_string())
+    }
+}
+
+impl From<SetLoggerError> for FmError {
+    fn from(error: SetLoggerError) -> Self {
+        Self::new(&error.to_string())
     }
 }
 

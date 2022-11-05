@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::process::Command;
 
+use log::info;
 use serde_yaml;
 
 use crate::fm_error::{FmError, FmResult};
@@ -275,7 +276,10 @@ impl Opener {
 
 /// Execute the command in a fork.
 pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
-    eprintln!("exec exe {}, args {:?}", exe, args);
+    info!(
+        "execute_in_child. executable: {}, arguments: {:?}",
+        exe, args
+    );
     Ok(Command::new(exe).args(args).spawn()?)
 }
 

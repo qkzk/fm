@@ -1,6 +1,7 @@
 use std::cmp::min;
 use std::sync::Arc;
 
+use log::info;
 use tuikit::attr::*;
 use tuikit::term::Term;
 
@@ -265,7 +266,7 @@ impl Display {
                 Attr::default(),
             )?;
         }
-        eprintln!("last_edition: {}", tab.last_edition);
+        info!("last_edition: {}", tab.last_edition);
         if let LastEdition::CopyPaste = tab.last_edition {
             let attr = Attr {
                 fg: Color::YELLOW,

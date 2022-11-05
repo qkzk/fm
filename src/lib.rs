@@ -15,6 +15,7 @@ pub mod fm_error;
 pub mod help;
 pub mod input;
 pub mod last_edition;
+pub mod log;
 pub mod marks;
 pub mod mode;
 pub mod opener;

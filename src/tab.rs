@@ -2,9 +2,9 @@ use std::borrow::Borrow;
 use std::cmp::min;
 use std::fs;
 use std::path;
-use std::process::Command;
 
 use copypasta::{ClipboardContext, ClipboardProvider};
+use log::info;
 
 use crate::args::Args;
 use crate::completion::Completion;
@@ -17,8 +17,7 @@ use crate::fm_error::{FmError, FmResult};
 use crate::input::Input;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
-use crate::opener::load_opener;
-use crate::opener::Opener;
+use crate::opener::{execute_in_child, load_opener, Opener};
 use crate::preview::Preview;
 use crate::shortcut::Shortcut;
 use crate::visited::History;
@@ -389,7 +388,7 @@ impl Tab {
                 .clone(),
         ) {
             Ok(_) => (),
-            Err(e) => eprint!(
+            Err(e) => info!(
                 "Error opening {:?}: {:?}",
                 self.path_content.selected_file(),
                 e
@@ -454,7 +453,7 @@ impl Tab {
 
     pub fn event_nvim_filepicker(&mut self) {
         if self.path_content.files.is_empty() {
-            eprintln!("Called nvim filepicker in an empty directory.");
+            info!("Called nvim filepicker in an empty directory.");
             return;
         }
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
@@ -471,7 +470,7 @@ impl Tab {
                 );
             }
         } else {
-            eprintln!("Nvim server not defined");
+            info!("Nvim server not defined");
         }
     }
 
@@ -497,7 +496,6 @@ impl Tab {
     }
 
     pub fn event_filter(&mut self) -> FmResult<()> {
-        eprintln!("entering filter mode");
         self.mode = Mode::Filter;
         Ok(())
     }
@@ -670,11 +668,4 @@ impl Tab {
     pub fn path_str(&self) -> Option<String> {
         Some(self.path_content.path.to_str()?.to_owned())
     }
-}
-
-// TODO: use [wait with output](https://doc.rust-lang.org/std/process/struct.Child.html#method.wait_with_output)
-/// Execute the command in a fork.
-fn execute_in_child(exe: &str, args: &Vec<&str>) -> std::io::Result<std::process::Child> {
-    eprintln!("exec exe {}, args {:?}", exe, args);
-    Command::new(exe).args(args).spawn()
 }
