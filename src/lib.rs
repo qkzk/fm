@@ -12,6 +12,7 @@ pub mod event_char;
 pub mod fileinfo;
 pub mod filter;
 pub mod fm_error;
+pub mod git;
 pub mod help;
 pub mod input;
 pub mod last_edition;

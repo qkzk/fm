@@ -97,6 +97,7 @@
 - [x] drag & drop: exec and find dragon-drop
 - [x] optional numbers in preview
 - [x] logging with rotating log files.
+- [x] git integration in first line of normal mode.
 
 ## TODO
 
@@ -117,6 +118,7 @@
   - [ ] compress
   - [x] decompress selected file with ctrl+x
   - [x] preview
+- [ ] auto mount usb keys ???
 
 ## BUGS
 
