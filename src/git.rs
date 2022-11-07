@@ -4,7 +4,7 @@
 
 use std::error::Error;
 use std::fmt::Write as _;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process;
 
 struct GitStatus {
@@ -73,7 +73,7 @@ fn parse_porcelain2(data: String) -> Option<GitStatus> {
     Some(status)
 }
 
-pub fn git(path: PathBuf) -> Result<String, Box<dyn Error>> {
+pub fn git(path: &Path) -> Result<String, Box<dyn Error>> {
     if std::env::set_current_dir(&path).is_err() {
         // The path may not exist. It should never happen.
         return Ok("".to_owned());

@@ -90,7 +90,7 @@ impl Display {
         let tab = status.selected_non_mut();
         let first_row: String = match tab.mode {
             Mode::Normal => {
-                let git_string = git(tab.path_content.path.clone())?;
+                let git_string = git(&tab.path_content.path)?;
                 format!(
                     "Tab: {}/{}  --  Path: {}   --   Files: {}  -- {}",
                     status.index + 1,

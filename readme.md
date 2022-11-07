@@ -97,6 +97,7 @@
 - [x] drag & drop: exec and find dragon-drop
 - [x] optional numbers in preview
 - [x] logging with rotating log files.
+- [x] git integration in first line of normal mode.
 
 ## TODO
 
