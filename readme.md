@@ -117,6 +117,7 @@
   - [ ] compress
   - [x] decompress selected file with ctrl+x
   - [x] preview
+- [ ] auto mount usb keys ???
 
 ## BUGS
 

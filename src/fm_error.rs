@@ -90,4 +90,10 @@ impl From<SetLoggerError> for FmError {
     }
 }
 
+impl From<Box<dyn Error>> for FmError {
+    fn from(error: Box<dyn Error>) -> Self {
+        Self::new(&error.to_string())
+    }
+}
+
 pub type FmResult<T> = Result<T, FmError>;

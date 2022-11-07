@@ -9,6 +9,7 @@ use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{FmError, FmResult};
+use crate::git::git;
 use crate::last_edition::LastEdition;
 use crate::mode::{MarkAction, Mode};
 use crate::preview::Preview;
@@ -89,12 +90,14 @@ impl Display {
         let tab = status.selected_non_mut();
         let first_row: String = match tab.mode {
             Mode::Normal => {
+                let git_string = git(tab.path_content.path.clone())?;
                 format!(
-                    "Tab: {}/{}  --  Path: {}   --   Files: {}",
+                    "Tab: {}/{}  --  Path: {}   --   Files: {}  -- {}",
                     status.index + 1,
                     status.len(),
                     tab.path_content.path_to_str()?,
                     tab.path_content.files.len(),
+                    git_string,
                 )
             }
             Mode::NeedConfirmation => {
