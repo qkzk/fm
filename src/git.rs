@@ -1,6 +1,8 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Copied from https://github.com/9ary/gitprompt-rs/blob/master/src/main.rs
+// Couldn't use without forking and I'm lazy.
 
 use std::error::Error;
 use std::fmt::Write as _;
