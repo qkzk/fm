@@ -4,6 +4,7 @@ use std::path;
 
 use chrono::offset::Local;
 use chrono::DateTime;
+use fs_extra::dir::get_size;
 use tuikit::prelude::{Attr, Color, Effect};
 use users::get_user_by_uid;
 
@@ -229,6 +230,7 @@ pub struct PathContent {
     pub sort_by: SortBy,
     pub reverse: bool,
     filter: FilterKind,
+    pub used_space: u64,
 }
 
 impl PathContent {
@@ -245,6 +247,7 @@ impl PathContent {
             files[selected].select();
         }
         let reverse = false;
+        let used_space = get_size(&path)?;
 
         Ok(Self {
             path,
@@ -254,6 +257,7 @@ impl PathContent {
             sort_by,
             reverse,
             filter,
+            used_space,
         })
     }
 
@@ -483,7 +487,7 @@ fn extract_file_size(direntry: &DirEntry) -> Result<u64, FmError> {
 }
 
 /// Convert a file size from bytes to human readable string.
-fn human_size(bytes: u64) -> String {
+pub fn human_size(bytes: u64) -> String {
     let size = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"];
     let factor = (bytes.to_string().chars().count() as u64 - 1) / 3_u64;
     format!(
