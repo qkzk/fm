@@ -4,7 +4,7 @@ use std::path;
 
 use chrono::offset::Local;
 use chrono::DateTime;
-use fs_extra::dir::get_size;
+// use fs_extra::dir::get_size;
 use tuikit::prelude::{Attr, Color, Effect};
 use users::get_user_by_uid;
 
@@ -247,7 +247,7 @@ impl PathContent {
             files[selected].select();
         }
         let reverse = false;
-        let used_space = get_size(&path)?;
+        let used_space = get_size(path.clone()).unwrap_or_default();
 
         Ok(Self {
             path,
@@ -504,4 +504,20 @@ fn extract_extension_from_filename(filename: &str) -> &str {
         .extension()
         .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default()
+}
+
+fn get_size(path: path::PathBuf) -> FmResult<u64> {
+    let mut result = 0;
+
+    if path.is_dir() {
+        for entry in read_dir(&path)? {
+            let _path = entry?.path();
+            if _path.is_file() {
+                result += _path.metadata()?.len();
+            }
+        }
+    } else {
+        result = path.metadata()?.len();
+    }
+    Ok(result)
 }

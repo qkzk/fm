@@ -76,12 +76,12 @@ fn parse_porcelain2(data: String) -> Option<GitStatus> {
 }
 
 pub fn git(path: &Path) -> Result<String, Box<dyn Error>> {
-    if std::env::set_current_dir(&path).is_err() {
+    if std::env::set_current_dir(path).is_err() {
         // The path may not exist. It should never happen.
         return Ok("".to_owned());
     }
     let output = process::Command::new("git")
-        .args(&[
+        .args([
             "status",
             "--porcelain=v2",
             "-z",

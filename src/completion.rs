@@ -95,8 +95,7 @@ impl Completion {
             .filter(|path| std::path::Path::new(path).exists())
         {
             let comp: Vec<String> = fs::read_dir(path)?
-                .filter(|e| e.is_ok())
-                .map(|e| e.unwrap())
+                .filter_map(|e| e.ok())
                 .filter(|e| {
                     e.file_type().unwrap().is_file() && filename_startswith(e, input_string)
                 })

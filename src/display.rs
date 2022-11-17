@@ -2,6 +2,7 @@ use std::cmp::min;
 use std::sync::Arc;
 
 use log::info;
+use sysinfo::{DiskExt, System, SystemExt};
 use tuikit::attr::*;
 use tuikit::term::Term;
 
@@ -23,12 +24,18 @@ pub struct Display {
     /// It will print every symbol shown on screen.
     pub term: Arc<Term>,
     colors: Colors,
+    /// system info
+    sys: System,
 }
 
 impl Display {
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>, colors: Colors) -> Self {
-        Self { term, colors }
+        Self {
+            term,
+            colors,
+            sys: System::new_all(),
+        }
     }
 
     const EDIT_BOX_OFFSET: usize = 10;
@@ -60,8 +67,6 @@ impl Display {
     /// The preview in preview mode.
     pub fn display_all(&mut self, status: &Status) -> FmResult<()> {
         // let status = status.selected_non_mut();
-        self.first_line(status)?;
-        self.cursor(status)?;
         match status.selected_non_mut().mode {
             // Mode::Help => self.help(),
             Mode::Jump => self.jump_list(status),
@@ -72,7 +77,9 @@ impl Display {
             Mode::Shortcut => self.shortcuts(status),
             Mode::Marks(MarkAction::New) | Mode::Marks(MarkAction::Jump) => self.marks(status),
             _ => self.files(status),
-        }
+        }?;
+        self.cursor(status)?;
+        self.first_line(status)
     }
 
     /// Reads and returns the `tuikit::term::Term` height.
@@ -91,12 +98,13 @@ impl Display {
         let first_row: String = match tab.mode {
             Mode::Normal => {
                 format!(
-                    "Tab: {}/{}  --  Path: {}   --   Files: {} -- Sum: {}  -- {}",
+                    "Tab: {}/{}  --  Path: {}   --   Files: {} -- Sum: {} -- Avail: {}  -- {}",
                     status.index + 1,
                     status.len(),
                     tab.path_content.path_to_str()?,
                     tab.path_content.files.len(),
                     human_size(tab.path_content.used_space),
+                    human_size(self.disk_space(tab.path_str().unwrap())),
                     git(&tab.path_content.path)?,
                 )
             }
@@ -237,7 +245,6 @@ impl Display {
     fn completion(&mut self, status: &Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
         self.term.clear()?;
-        self.first_line(status)?;
         self.term
             .set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
         for (row, candidate) in tab.completion.proposals.iter().enumerate() {
@@ -259,7 +266,6 @@ impl Display {
     fn confirmation(&mut self, status: &Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
         self.term.clear()?;
-        self.first_line(status)?;
         for (row, path) in status.flagged.iter().enumerate() {
             self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2,
@@ -309,7 +315,6 @@ impl Display {
     fn preview(&mut self, status: &Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
         self.term.clear()?;
-        self.first_line(status)?;
 
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
@@ -401,7 +406,6 @@ impl Display {
     fn marks(&mut self, status: &Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
         self.term.clear()?;
-        self.first_line(status)?;
 
         self.term
             .print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
@@ -415,6 +419,17 @@ impl Display {
 
     fn calc_line_row(i: usize, status: &Tab) -> usize {
         i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top
+    }
+
+    fn disk_space(&mut self, path_str: String) -> u64 {
+        self.sys.refresh_disks();
+        let mut size = 0_u64;
+        for disk in self.sys.disks() {
+            if path_str.contains(disk.mount_point().as_os_str().to_str().unwrap()) {
+                size = disk.available_space();
+            };
+        }
+        size
     }
 }
 

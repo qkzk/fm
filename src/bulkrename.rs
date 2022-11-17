@@ -122,7 +122,7 @@ impl<'a> Bulkrename<'a> {
 
     fn delete_temp_file(&self) -> Result<(), FmError> {
         let filepath = &self.temp_file;
-        std::fs::remove_file(&filepath)?;
+        std::fs::remove_file(filepath)?;
         Ok(())
     }
 
@@ -136,7 +136,7 @@ impl<'a> Bulkrename<'a> {
     fn rename_file(&self, path: &Path, filename: &str) -> Result<(), FmError> {
         let mut parent = PathBuf::from(path);
         parent.pop();
-        std::fs::rename(path, parent.join(&filename))?;
+        std::fs::rename(path, parent.join(filename))?;
         Ok(())
     }
 }

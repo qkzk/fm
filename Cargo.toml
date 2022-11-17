@@ -28,6 +28,7 @@ serde_yaml = "0.9.13"
 shellexpand = "2.1.2"
 skim = { git = "https://github.com/qkzk/skim" }
 syntect = "5.0"
+sysinfo = "0.26.7"
 tuikit = "*"
 users = "0.11.0"
 zip = "0.6.3"
