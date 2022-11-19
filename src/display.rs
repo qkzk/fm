@@ -424,7 +424,9 @@ impl Display {
     fn disk_space(&mut self, path_str: String) -> u64 {
         self.sys.refresh_disks();
         let mut size = 0_u64;
-        for disk in self.sys.disks() {
+        let mut disks: Vec<&sysinfo::Disk> = self.sys.disks().iter().collect();
+        disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
+        for disk in disks {
             if path_str.contains(disk.mount_point().as_os_str().to_str().unwrap()) {
                 size = disk.available_space();
             };

@@ -101,6 +101,7 @@
 - [x] display space used (only the current folder, no recursive total)
 - [x] display the free space
 - [x] reduce release binary size a bit (12M -> 6M)
+- [x] FIX: disk space is always showing the same disk
 
 ## TODO
 
