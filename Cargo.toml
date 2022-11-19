@@ -3,6 +3,10 @@ name = "fm"
 version = "0.1.0"
 edition = "2021"
 
+[profile.release]
+strip = true  # Automatically strip symbols from the binary.
+lto = true # instructs the linker to optimize at the link stage.
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
 name = "fm"
