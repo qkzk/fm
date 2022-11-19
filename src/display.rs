@@ -66,9 +66,8 @@ impl Display {
     ///
     /// The preview in preview mode.
     pub fn display_all(&mut self, status: &Status) -> FmResult<()> {
-        // let status = status.selected_non_mut();
+        self.term.clear()?;
         match status.selected_non_mut().mode {
-            // Mode::Help => self.help(),
             Mode::Jump => self.jump_list(status),
             Mode::History => self.history(status),
             Mode::Exec | Mode::Goto | Mode::Search => self.completion(status),
@@ -180,7 +179,6 @@ impl Display {
 
     /// Display the possible jump destination from flagged files.
     fn jump_list(&mut self, tabs: &Status) -> FmResult<()> {
-        self.term.clear()?;
         self.term.print(0, 0, "Jump to...")?;
         for (row, path) in tabs.flagged.iter().enumerate() {
             let mut attr = Attr::default();
@@ -201,7 +199,6 @@ impl Display {
     /// Display the history of visited directories.
     fn history(&mut self, status: &Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        self.term.clear()?;
         self.term.print(0, 0, "Go to...")?;
         for (row, path) in tab.history.visited.iter().rev().enumerate() {
             let mut attr = Attr::default();
@@ -222,7 +219,6 @@ impl Display {
     /// Display the predefined shortcuts.
     fn shortcuts(&mut self, status: &Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        self.term.clear()?;
         self.term.print(0, 0, "Go to...")?;
         for (row, path) in tab.shortcut.shortcuts.iter().enumerate() {
             let mut attr = Attr::default();
@@ -244,7 +240,6 @@ impl Display {
     /// reversed.
     fn completion(&mut self, status: &Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        self.term.clear()?;
         self.term
             .set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
         for (row, candidate) in tab.completion.proposals.iter().enumerate() {
@@ -265,7 +260,6 @@ impl Display {
     /// Display a list of edited (deleted, copied, moved) files for confirmation
     fn confirmation(&mut self, status: &Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        self.term.clear()?;
         for (row, path) in status.flagged.iter().enumerate() {
             self.term.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2,
@@ -314,7 +308,6 @@ impl Display {
     /// It may fail to recognize small files (< 1024 bytes).
     fn preview(&mut self, status: &Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        self.term.clear()?;
 
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
@@ -405,7 +398,6 @@ impl Display {
 
     fn marks(&mut self, status: &Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        self.term.clear()?;
 
         self.term
             .print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
