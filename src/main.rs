@@ -21,15 +21,9 @@ fn init_term() -> FmResult<Term> {
     Ok(term)
 }
 
-/// Display the cursor
-fn reset_cursor(display: &Display) -> FmResult<()> {
-    Ok(display.show_cursor()?)
-}
-
-/// Main function.
+/// Main function
 /// Init the status and display and listen to events from keyboard and mouse.
 /// The application is redrawn after every event.
-
 fn main() -> FmResult<()> {
     set_logger()?;
     info!("fm is starting...");
@@ -51,6 +45,6 @@ fn main() -> FmResult<()> {
             break;
         };
     }
-    reset_cursor(&display)?;
+    display.show_cursor()?;
     Ok(())
 }
