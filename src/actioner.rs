@@ -1,4 +1,3 @@
-use log::info;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tuikit::prelude::{Event, Key, MouseButton};
