@@ -98,6 +98,9 @@
 - [x] optional numbers in preview
 - [x] logging with rotating log files.
 - [x] git integration in first line of normal mode.
+- [x] display space used (only the current folder, no recursive total)
+- [x] display the free space
+- [x] reduce release binary size a bit (12M -> 6M)
 
 ## TODO
 
