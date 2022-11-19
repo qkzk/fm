@@ -47,10 +47,6 @@ impl Display {
         }
     }
 
-    pub fn term_height(&self) -> FmResult<usize> {
-        Ok(self.term.term_size()?.1)
-    }
-
     pub fn show_cursor(&self) -> FmResult<()> {
         Ok(self.term.show_cursor(true)?)
     }

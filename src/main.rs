@@ -35,9 +35,6 @@ fn main() -> FmResult<()> {
     let mut status = Status::new(Args::parse(), config, display.height()?, term)?;
 
     while let Ok(event) = display.poll_event() {
-        let height = display.term_height()?;
-
-        status.selected().set_height(height);
         actioner.read_event(&mut status, event)?;
         display.display_all(&status)?;
 
