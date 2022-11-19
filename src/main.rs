@@ -46,5 +46,6 @@ fn main() -> FmResult<()> {
         };
     }
     display.show_cursor()?;
+    info!("fm is shutting down");
     Ok(())
 }
