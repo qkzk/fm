@@ -102,6 +102,8 @@
 - [x] display the free space
 - [x] reduce release binary size a bit (12M -> 6M)
 - [x] FIX: disk space is always showing the same disk
+- [x] Colored first line
+- [x] Resize immediatly
 
 ## TODO
 

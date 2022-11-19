@@ -4,6 +4,7 @@ use std::sync::Arc;
 use log::info;
 use sysinfo::{DiskExt, System, SystemExt};
 use tuikit::attr::*;
+use tuikit::event::Event;
 use tuikit::term::Term;
 
 use crate::config::Colors;
@@ -22,7 +23,7 @@ use crate::tab::Tab;
 pub struct Display {
     /// The Tuikit terminal attached to the display.
     /// It will print every symbol shown on screen.
-    pub term: Arc<Term>,
+    term: Arc<Term>,
     colors: Colors,
     /// system info
     sys: System,
@@ -44,6 +45,18 @@ impl Display {
             colors,
             sys: System::new_all(),
         }
+    }
+
+    pub fn term_height(&self) -> FmResult<usize> {
+        Ok(self.term.term_size()?.1)
+    }
+
+    pub fn show_cursor(&self) -> FmResult<()> {
+        Ok(self.term.show_cursor(true)?)
+    }
+
+    pub fn poll_event(&self) -> FmResult<Event> {
+        Ok(self.term.poll_event()?)
     }
 
     const EDIT_BOX_OFFSET: usize = 10;
@@ -109,7 +122,7 @@ impl Display {
 
     fn create_first_row(&mut self, status: &Status) -> FmResult<Vec<String>> {
         let tab = status.selected_non_mut();
-        let first_row: Vec<String> = match tab.mode {
+        Ok(match tab.mode {
             Mode::Normal => {
                 vec![
                     format!("Tab: {}/{} ", status.index + 1, status.len()),
@@ -150,8 +163,7 @@ impl Display {
                     format!("{}", tab.input.string.clone()),
                 ]
             }
-        };
-        Ok(first_row)
+        })
     }
 
     fn draw_colored_strings(&self, first_row: Vec<String>) -> FmResult<()> {

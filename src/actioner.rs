@@ -1,3 +1,4 @@
+use log::info;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tuikit::prelude::{Event, Key, MouseButton};
@@ -94,6 +95,7 @@ impl Actioner {
             Event::Key(Key::Ctrl('r')) => self.refresh_selected_view(status),
             Event::Key(Key::Ctrl('x')) => self.ctrl_x(status),
             Event::User(_) => self.refresh_selected_view(status),
+            Event::Resize { width, height } => self.resize(status, width, height),
             _ => Ok(()),
         }
     }
@@ -380,5 +382,11 @@ impl Actioner {
                 Ok(())
             }
         }
+    }
+
+    fn resize(&self, status: &mut Status, _: usize, height: usize) -> FmResult<()> {
+        status.selected().set_height(height);
+        self.refresh_selected_view(status)?;
+        Ok(())
     }
 }
