@@ -28,6 +28,14 @@ pub struct Display {
     sys: System,
 }
 
+const fn color_to_attr(color: Color) -> Attr {
+    Attr {
+        fg: color,
+        bg: Color::Default,
+        effect: Effect::empty(),
+    }
+}
+
 impl Display {
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>, colors: Colors) -> Self {
@@ -40,16 +48,16 @@ impl Display {
 
     const EDIT_BOX_OFFSET: usize = 10;
     const SORT_CURSOR_OFFSET: usize = 36;
-    const ATTR_LINE_NR: Attr = Attr {
-        fg: Color::CYAN,
-        bg: Color::Default,
-        effect: Effect::empty(),
-    };
-    const ATTR_YELLOW: Attr = Attr {
-        fg: Color::YELLOW,
-        bg: Color::Default,
-        effect: Effect::empty(),
-    };
+    const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
+    const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
+    const LINE_COLORS: [Attr; 6] = [
+        color_to_attr(Color::Rgb(231, 162, 156)),
+        color_to_attr(Color::Rgb(124, 152, 166)),
+        color_to_attr(Color::Rgb(214, 125, 83)),
+        color_to_attr(Color::Rgb(91, 152, 119)),
+        color_to_attr(Color::Rgb(152, 87, 137)),
+        color_to_attr(Color::Rgb(230, 189, 87)),
+    ];
     /// Display every possible content in the terminal.
     ///
     /// The top line
@@ -94,38 +102,64 @@ impl Display {
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
     fn first_line(&mut self, status: &Status) -> FmResult<()> {
+        let first_row = self.create_first_row(status)?;
+        self.draw_colored_strings(first_row)?;
+        Ok(())
+    }
+
+    fn create_first_row(&mut self, status: &Status) -> FmResult<Vec<String>> {
         let tab = status.selected_non_mut();
-        let first_row: String = match tab.mode {
+        let first_row: Vec<String> = match tab.mode {
             Mode::Normal => {
-                format!(
-                    "Tab: {}/{}  --  Path: {}   --   Files: {} -- Sum: {} -- Avail: {}  -- {}",
-                    status.index + 1,
-                    status.len(),
-                    tab.path_content.path_to_str()?,
-                    tab.path_content.files.len(),
-                    tab.path_content.used_space(),
-                    self.disk_space(tab.path_str().unwrap_or_default()),
-                    git(&tab.path_content.path)?,
-                )
+                vec![
+                    format!("Tab: {}/{} ", status.index + 1, status.len()),
+                    format!("{} ", tab.path_content.path_to_str()?),
+                    format!("{} files ", tab.path_content.files.len()),
+                    format!("{}  ", tab.path_content.used_space()),
+                    format!(
+                        "Avail: {}  ",
+                        self.disk_space(tab.path_str().unwrap_or_default())
+                    ),
+                    format!("{}  ", git(&tab.path_content.path)?),
+                ]
             }
             Mode::NeedConfirmation => {
-                format!("Confirm {} (y/n) : ", tab.last_edition)
+                vec![
+                    format!("Confirm {}", tab.last_edition),
+                    "(y/n) : ".to_owned(),
+                ]
             }
             Mode::Preview => match tab.path_content.selected_file() {
                 Some(fileinfo) => {
-                    format!("{:?} {}", tab.mode.clone(), fileinfo.path.to_string_lossy())
+                    vec![
+                        format!("{:?}", tab.mode.clone()),
+                        format!("{}", fileinfo.path.to_string_lossy()),
+                    ]
                 }
-                None => "".to_owned(),
+                None => vec!["".to_owned()],
             },
-            Mode::Help => "fm: a dired like file manager. Default keybindings.".to_owned(),
-            Mode::Marks(MarkAction::Jump) => "Jump to...".to_owned(),
-            Mode::Marks(MarkAction::New) => "Save mark...".to_owned(),
+            Mode::Help => vec![
+                "fm: a dired like file manager.".to_owned(),
+                "Default keybindings.".to_owned(),
+            ],
+            Mode::Marks(MarkAction::Jump) => vec!["Jump to...".to_owned()],
+            Mode::Marks(MarkAction::New) => vec!["Save mark...".to_owned()],
             _ => {
-                format!("{:?} {}", tab.mode.clone(), tab.input.string.clone())
+                vec![
+                    format!("{:?}", tab.mode.clone()),
+                    format!("{}", tab.input.string.clone()),
+                ]
             }
         };
-        self.term
-            .print_with_attr(0, 0, &first_row, Self::ATTR_LINE_NR)?;
+        Ok(first_row)
+    }
+
+    fn draw_colored_strings(&self, first_row: Vec<String>) -> FmResult<()> {
+        let mut col = 0;
+        for (text, color) in std::iter::zip(first_row.iter(), Self::LINE_COLORS.iter().cycle()) {
+            self.term.print_with_attr(0, col, text, *color)?;
+            col += text.len()
+        }
         Ok(())
     }
 
