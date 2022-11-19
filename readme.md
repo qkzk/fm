@@ -125,6 +125,7 @@
   - [x] decompress selected file with ctrl+x
   - [x] preview
 - [ ] auto mount usb keys ???
+- [ ] display should be "terminal manager" and it shouldn't handle anything else (git, available space etc.)
 
 ## BUGS
 
