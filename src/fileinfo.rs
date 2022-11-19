@@ -230,7 +230,7 @@ pub struct PathContent {
     pub sort_by: SortBy,
     pub reverse: bool,
     filter: FilterKind,
-    pub used_space: u64,
+    used_space: u64,
 }
 
 impl PathContent {
@@ -395,6 +395,10 @@ impl PathContent {
 
     pub fn is_empty(&self) -> bool {
         self.files.is_empty()
+    }
+
+    pub fn used_space(&self) -> String {
+        human_size(self.used_space)
     }
 }
 

@@ -103,8 +103,8 @@ impl Display {
                     status.len(),
                     tab.path_content.path_to_str()?,
                     tab.path_content.files.len(),
-                    human_size(tab.path_content.used_space),
-                    human_size(self.disk_space(tab.path_str().unwrap())),
+                    tab.path_content.used_space(),
+                    self.disk_space(tab.path_str().unwrap_or_default()),
                     git(&tab.path_content.path)?,
                 )
             }
@@ -414,7 +414,7 @@ impl Display {
         i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top
     }
 
-    fn disk_space(&mut self, path_str: String) -> u64 {
+    fn disk_space(&mut self, path_str: String) -> String {
         self.sys.refresh_disks();
         let mut size = 0_u64;
         let mut disks: Vec<&sysinfo::Disk> = self.sys.disks().iter().collect();
@@ -424,7 +424,7 @@ impl Display {
                 size = disk.available_space();
             };
         }
-        size
+        human_size(size)
     }
 }
 
