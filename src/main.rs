@@ -31,7 +31,7 @@ fn reset_cursor(display: &Display) -> FmResult<()> {
 /// The application is redrawn after every event.
 
 fn main() -> FmResult<()> {
-    let _handle = set_logger()?;
+    set_logger()?;
     info!("fm is starting...");
 
     let config = load_config(CONFIG_PATH);
@@ -44,15 +44,13 @@ fn main() -> FmResult<()> {
         let (_width, height) = display.term.term_size()?;
 
         status.selected().set_height(height);
-
         actioner.read_event(&mut status, event)?;
-
         display.display_all(&status)?;
 
         if status.selected_non_mut().must_quit() {
-            reset_cursor(&display)?;
             break;
         };
     }
+    reset_cursor(&display)?;
     Ok(())
 }
