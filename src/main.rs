@@ -32,7 +32,7 @@ fn reset_cursor(display: &Display) -> FmResult<()> {
 
 fn main() -> FmResult<()> {
     let _handle = set_logger()?;
-    info!("booting up");
+    info!("fm is starting...");
 
     let config = load_config(CONFIG_PATH);
     let term = Arc::new(init_term()?);
@@ -48,8 +48,6 @@ fn main() -> FmResult<()> {
         actioner.read_event(&mut status, event)?;
 
         display.display_all(&status)?;
-
-        display.term.present()?;
 
         if status.selected_non_mut().must_quit() {
             reset_cursor(&display)?;

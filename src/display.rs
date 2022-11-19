@@ -78,7 +78,8 @@ impl Display {
             _ => self.files(status),
         }?;
         self.cursor(status)?;
-        self.first_line(status)
+        self.first_line(status)?;
+        Ok(self.term.present()?)
     }
 
     /// Reads and returns the `tuikit::term::Term` height.
