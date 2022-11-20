@@ -11,6 +11,7 @@ use users::get_user_by_uid;
 use crate::config::{str_to_tuikit, Colors};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::git::git;
 use crate::status::Status;
 
 /// Different kind of sort
@@ -399,6 +400,10 @@ impl PathContent {
 
     pub fn used_space(&self) -> String {
         human_size(self.used_space)
+    }
+
+    pub fn git_string(&self) -> FmResult<String> {
+        Ok(git(&self.path)?)
     }
 }
 

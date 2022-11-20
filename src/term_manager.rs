@@ -2,21 +2,33 @@ use std::cmp::min;
 use std::sync::Arc;
 
 use log::info;
-use sysinfo::{DiskExt, System, SystemExt};
 use tuikit::attr::*;
 use tuikit::event::Event;
 use tuikit::term::Term;
 
 use crate::config::Colors;
 use crate::content_window::ContentWindow;
-use crate::fileinfo::{fileinfo_attr, human_size};
+use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{FmError, FmResult};
-use crate::git::git;
 use crate::last_edition::LastEdition;
 use crate::mode::{MarkAction, Mode};
 use crate::preview::Preview;
 use crate::status::Status;
 use crate::tab::Tab;
+
+pub struct EventReader {
+    term: Arc<Term>,
+}
+
+impl EventReader {
+    pub fn new(term: Arc<Term>) -> Self {
+        Self { term }
+    }
+
+    pub fn poll_event(&self) -> FmResult<Event> {
+        Ok(self.term.poll_event()?)
+    }
+}
 
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.
@@ -25,34 +37,15 @@ pub struct Display {
     /// It will print every symbol shown on screen.
     term: Arc<Term>,
     colors: Colors,
-    /// system info
-    sys: System,
 }
-
-const fn color_to_attr(color: Color) -> Attr {
-    Attr {
-        fg: color,
-        bg: Color::Default,
-        effect: Effect::empty(),
-    }
-}
-
 impl Display {
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>, colors: Colors) -> Self {
-        Self {
-            term,
-            colors,
-            sys: System::new_all(),
-        }
+        Self { term, colors }
     }
 
     pub fn show_cursor(&self) -> FmResult<()> {
         Ok(self.term.show_cursor(true)?)
-    }
-
-    pub fn poll_event(&self) -> FmResult<Event> {
-        Ok(self.term.poll_event()?)
     }
 
     const EDIT_BOX_OFFSET: usize = 10;
@@ -82,7 +75,7 @@ impl Display {
     /// The completion list if any.
     ///
     /// The preview in preview mode.
-    pub fn display_all(&mut self, status: &Status) -> FmResult<()> {
+    pub fn display_all(&mut self, status: &Status, disk_space: String) -> FmResult<()> {
         self.term.clear()?;
         match status.selected_non_mut().mode {
             Mode::Jump => self.jump_list(status),
@@ -95,7 +88,7 @@ impl Display {
             _ => self.files(status),
         }?;
         self.cursor(status)?;
-        self.first_line(status)?;
+        self.first_line(status, disk_space)?;
         Ok(self.term.present()?)
     }
 
@@ -110,13 +103,13 @@ impl Display {
     /// In normal mode we display the path and number of files.
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
-    fn first_line(&mut self, status: &Status) -> FmResult<()> {
-        let first_row = self.create_first_row(status)?;
+    fn first_line(&mut self, status: &Status, disk_space: String) -> FmResult<()> {
+        let first_row = self.create_first_row(status, disk_space)?;
         self.draw_colored_strings(first_row)?;
         Ok(())
     }
 
-    fn create_first_row(&mut self, status: &Status) -> FmResult<Vec<String>> {
+    fn create_first_row(&mut self, status: &Status, disk_space: String) -> FmResult<Vec<String>> {
         let tab = status.selected_non_mut();
         Ok(match tab.mode {
             Mode::Normal => {
@@ -125,11 +118,8 @@ impl Display {
                     format!("{} ", tab.path_content.path_to_str()?),
                     format!("{} files ", tab.path_content.files.len()),
                     format!("{}  ", tab.path_content.used_space()),
-                    format!(
-                        "Avail: {}  ",
-                        self.disk_space(tab.path_str().unwrap_or_default())
-                    ),
-                    format!("{}  ", git(&tab.path_content.path)?),
+                    format!("Avail: {}  ", disk_space),
+                    format!("{}  ", &tab.path_content.git_string()?),
                 ]
             }
             Mode::NeedConfirmation => {
@@ -456,20 +446,28 @@ impl Display {
         i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top
     }
 
-    fn disk_space(&mut self, path_str: String) -> String {
-        self.sys.refresh_disks();
-        let mut size = 0_u64;
-        let mut disks: Vec<&sysinfo::Disk> = self.sys.disks().iter().collect();
-        disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
-        for disk in disks {
-            if path_str.contains(disk.mount_point().as_os_str().to_str().unwrap()) {
-                size = disk.available_space();
-            };
-        }
-        human_size(size)
-    }
+    // fn disk_space(&mut self, path_str: String) -> String {
+    //     self.sys.refresh_disks();
+    //     let mut size = 0_u64;
+    //     let mut disks: Vec<&sysinfo::Disk> = self.sys.disks().iter().collect();
+    //     disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
+    //     for disk in disks {
+    //         if path_str.contains(disk.mount_point().as_os_str().to_str().unwrap()) {
+    //             size = disk.available_space();
+    //         };
+    //     }
+    //     human_size(size)
+    // }
 }
 
 fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
     format!("{:0width$x}", line_nr)
+}
+
+const fn color_to_attr(color: Color) -> Attr {
+    Attr {
+        fg: color,
+        bg: Color::Default,
+        effect: Effect::empty(),
+    }
 }
