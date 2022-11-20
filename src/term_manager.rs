@@ -11,7 +11,6 @@ use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, human_size};
 use crate::fm_error::{FmError, FmResult};
-use crate::git::git;
 use crate::last_edition::LastEdition;
 use crate::mode::{MarkAction, Mode};
 use crate::preview::Preview;
@@ -130,7 +129,7 @@ impl Display {
                         "Avail: {}  ",
                         self.disk_space(tab.path_str().unwrap_or_default())
                     ),
-                    format!("{}  ", git(&tab.path_content.path)?),
+                    format!("{}  ", &tab.path_content.git_string()?),
                 ]
             }
             Mode::NeedConfirmation => {
