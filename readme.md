@@ -126,6 +126,9 @@
   - [x] decompress selected file with ctrl+x
   - [x] preview
 - [ ] auto mount usb keys ???
+- [ ] mtp... but fast [libmtp.rs](https://docs.rs/libmtp-rs/0.7.7/libmtp_rs/)
+- [ ] preview EXIF for image files
+- [ ] media info for video file / audio file
 
 ## BUGS
 

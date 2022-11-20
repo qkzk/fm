@@ -96,4 +96,10 @@ impl From<Box<dyn Error>> for FmError {
     }
 }
 
+impl From<exif::Error> for FmError {
+    fn from(error: exif::Error) -> Self {
+        Self::new(&error.to_string())
+    }
+}
+
 pub type FmResult<T> = Result<T, FmError>;
