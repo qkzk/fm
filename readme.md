@@ -105,6 +105,7 @@
 - [x] Colored first line
 - [x] Resize immediatly
 - [x] display should be "terminal manager" and it shouldn't handle anything else (git, available space etc.)
+- [x] preview EXIF for image files
 
 ## TODO
 
@@ -127,7 +128,6 @@
   - [x] preview
 - [ ] auto mount usb keys ???
 - [ ] mtp... but fast [libmtp.rs](https://docs.rs/libmtp-rs/0.7.7/libmtp_rs/)
-- [ ] preview EXIF for image files
 - [ ] media info for video file / audio file
 
 ## BUGS
