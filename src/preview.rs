@@ -25,6 +25,7 @@ pub enum Preview {
     Pdf(PdfContent),
     Compressed(CompressedContent),
     Image(ExifContent),
+    Media(MediainfoContent),
     Empty,
 }
 
@@ -45,6 +46,10 @@ impl Preview {
                 "pdf" => Ok(Self::Pdf(PdfContent::new(file_info.path.clone()))),
                 "png" | "jpg" | "jpeg" | "tiff" | "heif" => {
                     Ok(Self::Image(ExifContent::new(file_info.path.clone())?))
+                }
+                "mkv" | "ogg" | "ogm" | "riff" | "mpeg" | "mp2" | "mp3" | "mp4" | "wm" | "qt"
+                | "ac3" | "dts" | "aac" | "mac" | "flac" | "avi" => {
+                    Ok(Self::Media(MediainfoContent::new(file_info.path.clone())?))
                 }
                 _ => {
                     let mut file = std::fs::File::open(file_info.path.clone())?;
@@ -82,6 +87,7 @@ impl Preview {
             Self::Pdf(pdf) => pdf.len(),
             Self::Compressed(zip) => zip.len(),
             Self::Image(img) => img.len(),
+            Self::Media(media) => media.len(),
         }
     }
 
@@ -387,6 +393,32 @@ impl ExifContent {
                 f.ifd_num,
                 f.display_value().with_unit(&exif)
             ))
+        }
+        Ok(Self {
+            length: content.len(),
+            content,
+        })
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
+#[derive(Clone)]
+pub struct MediainfoContent {
+    length: usize,
+    pub content: Vec<String>,
+}
+
+impl MediainfoContent {
+    fn new(path: PathBuf) -> FmResult<Self> {
+        let content: Vec<String>;
+        if let Ok(output) = std::process::Command::new("mediainfo").arg(path).output() {
+            let s = String::from_utf8(output.stdout).unwrap_or_default();
+            content = s.lines().map(|s| s.to_owned()).collect();
+        } else {
+            content = vec![];
         }
         Ok(Self {
             length: content.len(),
