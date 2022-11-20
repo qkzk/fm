@@ -24,6 +24,7 @@ pub enum Preview {
     Binary(BinaryContent),
     Pdf(PdfContent),
     Compressed(CompressedContent),
+    Image(ExifContent),
     Empty,
 }
 
@@ -37,30 +38,33 @@ impl Preview {
     pub fn new(path_content: &PathContent) -> FmResult<Self> {
         let ps = SyntaxSet::load_defaults_nonewlines();
         match path_content.selected_file() {
-            Some(file_info) => {
-                let mut file = std::fs::File::open(file_info.path.clone())?;
-                let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
-                if file_info.extension == *"zip" {
-                    Ok(Self::Compressed(CompressedContent::new(
-                        file_info.path.clone(),
-                    )?))
-                } else if file_info.extension == *"pdf" {
-                    Ok(Self::Pdf(PdfContent::new(file_info.path.clone())))
-                } else if let Some(syntaxset) = ps.find_syntax_by_extension(&file_info.extension) {
-                    Ok(Self::Syntaxed(SyntaxedContent::new(
-                        ps.clone(),
-                        path_content,
-                        syntaxset,
-                    )?))
-                } else if file_info.size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
-                    && file.read_exact(&mut buffer).is_ok()
-                    && inspect(&buffer) == ContentType::BINARY
-                {
-                    Ok(Self::Binary(BinaryContent::new(path_content.to_owned())?))
-                } else {
-                    Ok(Self::Text(TextContent::from_file(path_content)?))
+            Some(file_info) => match file_info.extension.to_lowercase().as_str() {
+                "zip" => Ok(Self::Compressed(CompressedContent::new(
+                    file_info.path.clone(),
+                )?)),
+                "pdf" => Ok(Self::Pdf(PdfContent::new(file_info.path.clone()))),
+                "png" | "jpg" | "jpeg" | "tiff" | "heif" => {
+                    Ok(Self::Image(ExifContent::new(file_info.path.clone())?))
                 }
-            }
+                _ => {
+                    let mut file = std::fs::File::open(file_info.path.clone())?;
+                    let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
+                    if let Some(syntaxset) = ps.find_syntax_by_extension(&file_info.extension) {
+                        Ok(Self::Syntaxed(SyntaxedContent::new(
+                            ps.clone(),
+                            path_content,
+                            syntaxset,
+                        )?))
+                    } else if file_info.size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
+                        && file.read_exact(&mut buffer).is_ok()
+                        && inspect(&buffer) == ContentType::BINARY
+                    {
+                        Ok(Self::Binary(BinaryContent::new(path_content.to_owned())?))
+                    } else {
+                        Ok(Self::Text(TextContent::from_file(path_content)?))
+                    }
+                }
+            },
             None => Ok(Self::Empty),
         }
     }
@@ -77,6 +81,7 @@ impl Preview {
             Self::Binary(binary) => binary.len(),
             Self::Pdf(pdf) => pdf.len(),
             Self::Compressed(zip) => zip.len(),
+            Self::Image(img) => img.len(),
         }
     }
 
@@ -351,6 +356,38 @@ impl CompressedContent {
         content_str.sort();
         let content: Vec<String> = content_str.iter().map(|s| (*s).to_owned()).collect();
 
+        Ok(Self {
+            length: content.len(),
+            content,
+        })
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
+#[derive(Clone)]
+pub struct ExifContent {
+    length: usize,
+    pub content: Vec<String>,
+}
+
+impl ExifContent {
+    fn new(path: PathBuf) -> FmResult<Self> {
+        let file = std::fs::File::open(path)?;
+        let mut bufreader = std::io::BufReader::new(&file);
+        let exifreader = exif::Reader::new();
+        let exif = exifreader.read_from_container(&mut bufreader)?;
+        let mut content = vec![];
+        for f in exif.fields() {
+            content.push(format!(
+                "{} {} {}",
+                f.tag,
+                f.ifd_num,
+                f.display_value().with_unit(&exif)
+            ))
+        }
         Ok(Self {
             length: content.len(),
             content,
