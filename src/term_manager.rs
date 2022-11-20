@@ -18,6 +18,20 @@ use crate::preview::Preview;
 use crate::status::Status;
 use crate::tab::Tab;
 
+pub struct EventReader {
+    term: Arc<Term>,
+}
+
+impl EventReader {
+    pub fn new(term: Arc<Term>) -> Self {
+        Self { term }
+    }
+
+    pub fn poll_event(&self) -> FmResult<Event> {
+        Ok(self.term.poll_event()?)
+    }
+}
+
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.
 pub struct Display {
@@ -28,15 +42,6 @@ pub struct Display {
     /// system info
     sys: System,
 }
-
-const fn color_to_attr(color: Color) -> Attr {
-    Attr {
-        fg: color,
-        bg: Color::Default,
-        effect: Effect::empty(),
-    }
-}
-
 impl Display {
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>, colors: Colors) -> Self {
@@ -49,10 +54,6 @@ impl Display {
 
     pub fn show_cursor(&self) -> FmResult<()> {
         Ok(self.term.show_cursor(true)?)
-    }
-
-    pub fn poll_event(&self) -> FmResult<Event> {
-        Ok(self.term.poll_event()?)
     }
 
     const EDIT_BOX_OFFSET: usize = 10;
@@ -472,4 +473,12 @@ impl Display {
 
 fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
     format!("{:0width$x}", line_nr)
+}
+
+const fn color_to_attr(color: Color) -> Attr {
+    Attr {
+        fg: color,
+        bg: Color::Default,
+        effect: Effect::empty(),
+    }
 }

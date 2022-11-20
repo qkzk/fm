@@ -7,10 +7,10 @@ use tuikit::term::Term;
 use fm::actioner::Actioner;
 use fm::args::Args;
 use fm::config::load_config;
-use fm::display::Display;
 use fm::fm_error::FmResult;
 use fm::log::set_logger;
 use fm::status::Status;
+use fm::term_manager::{Display, EventReader};
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 
@@ -31,10 +31,11 @@ fn main() -> FmResult<()> {
     let config = load_config(CONFIG_PATH);
     let term = Arc::new(init_term()?);
     let actioner = Actioner::new(&config.keybindings, term.clone());
+    let term_manager = EventReader::new(term.clone());
     let mut display = Display::new(term.clone(), config.colors.clone());
     let mut status = Status::new(Args::parse(), config, display.height()?, term)?;
 
-    while let Ok(event) = display.poll_event() {
+    while let Ok(event) = term_manager.poll_event() {
         actioner.read_event(&mut status, event)?;
         display.display_all(&status)?;
 
