@@ -104,6 +104,7 @@
 - [x] FIX: disk space is always showing the same disk
 - [x] Colored first line
 - [x] Resize immediatly
+- [x] display should be "terminal manager" and it shouldn't handle anything else (git, available space etc.)
 
 ## TODO
 
@@ -125,7 +126,6 @@
   - [x] decompress selected file with ctrl+x
   - [x] preview
 - [ ] auto mount usb keys ???
-- [ ] display should be "terminal manager" and it shouldn't handle anything else (git, available space etc.)
 
 ## BUGS
 
