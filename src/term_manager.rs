@@ -436,6 +436,18 @@ impl Display {
                     self.term.print(row, line_number_width + 3, line)?;
                 }
             }
+            Preview::Media(media) => {
+                for (i, line) in media
+                    .content
+                    .iter()
+                    .enumerate()
+                    .skip(tab.window.top)
+                    .take(min(length, tab.window.bottom + 1))
+                {
+                    let row = Self::calc_line_row(i, tab);
+                    self.term.print(row, line_number_width + 3, line)?;
+                }
+            }
             Preview::Empty => (),
         }
         Ok(())
