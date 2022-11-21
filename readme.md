@@ -130,6 +130,12 @@
   - [x] preview
 - [ ] auto mount usb keys ??? [rusb](https://github.com/a1ien/rusb)
 - [ ] mtp... but fast [libmtp.rs](https://docs.rs/libmtp-rs/0.7.7/libmtp_rs/)
+- [x] improve tabs interface
+  - [x] tab bar
+  - [x] digit move to respective tab
+  - [x] <TAB> creates a new tab if only one
+  - [x] <BACKTAB> moves to previous tab
+  - [x] hardcoded limit to 10 tabs
 
 ## BUGS
 
