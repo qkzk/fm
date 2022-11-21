@@ -136,6 +136,8 @@
   - [x] preview
 - [ ] auto mount usb keys ??? [rusb](https://github.com/a1ien/rusb)
 - [ ] mtp... but fast [libmtp.rs](https://docs.rs/libmtp-rs/0.7.7/libmtp_rs/)
+- [ ] cd on quit with S+q ? requires wrapping the program in another bash function and calling cd from it ?
+- [ ] print full path on quit
 
 ## BUGS
 

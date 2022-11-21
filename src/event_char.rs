@@ -37,60 +37,60 @@ pub enum EventChar {
 
 impl EventChar {
     pub fn match_char(&self, status: &mut Status) -> FmResult<()> {
-        let current_status = status.selected();
+        let current_tab = status.selected();
         match *self {
-            EventChar::ToggleHidden => current_status.event_toggle_hidden(),
+            EventChar::ToggleHidden => current_tab.event_toggle_hidden(),
             EventChar::CopyPaste => {
-                current_status.event_copy_paste();
+                current_tab.event_copy_paste();
                 Ok(())
             }
             EventChar::CutPaste => {
-                current_status.event_cur_paste();
+                current_tab.event_cur_paste();
                 Ok(())
             }
             EventChar::NewDir => {
-                current_status.event_new_dir();
+                current_tab.event_new_dir();
                 Ok(())
             }
             EventChar::NewFile => {
-                current_status.event_new_file();
+                current_tab.event_new_file();
                 Ok(())
             }
             EventChar::Chmod => status.event_chmod(),
             EventChar::Exec => {
-                current_status.event_exec();
+                current_tab.event_exec();
                 Ok(())
             }
             EventChar::Goto => {
-                current_status.event_goto();
+                current_tab.event_goto();
                 Ok(())
             }
             EventChar::Rename => {
-                current_status.event_rename();
+                current_tab.event_rename();
                 Ok(())
             }
             EventChar::ClearFlags => status.event_clear_flags(),
             EventChar::ToggleFlag => status.event_toggle_flag(),
-            EventChar::Shell => current_status.event_shell(),
+            EventChar::Shell => current_tab.event_shell(),
             EventChar::DeleteFile => {
-                current_status.event_delete_file();
+                current_tab.event_delete_file();
                 Ok(())
             }
-            EventChar::OpenFile => current_status.event_open_file(),
+            EventChar::OpenFile => current_tab.event_open_file(),
             EventChar::Help => {
-                current_status.event_help();
+                current_tab.event_help();
                 Ok(())
             }
             EventChar::Search => {
-                current_status.event_search();
+                current_tab.event_search();
                 Ok(())
             }
             EventChar::RegexMatch => {
-                current_status.event_regex_match();
+                current_tab.event_regex_match();
                 Ok(())
             }
             EventChar::Quit => {
-                current_status.event_quit();
+                current_tab.event_quit();
                 Ok(())
             }
             EventChar::FlagAll => status.event_flag_all(),
@@ -100,21 +100,21 @@ impl EventChar {
                 Ok(())
             }
             EventChar::History => {
-                current_status.event_history();
+                current_tab.event_history();
                 Ok(())
             }
             EventChar::NvimFilepicker => {
-                current_status.event_nvim_filepicker();
+                current_tab.event_nvim_filepicker();
                 Ok(())
             }
             EventChar::Sort => {
-                current_status.event_sort();
+                current_tab.event_sort();
                 Ok(())
             }
             EventChar::Symlink => status.event_symlink(),
-            EventChar::Preview => current_status.event_preview(),
+            EventChar::Preview => current_tab.event_preview(),
             EventChar::Shortcut => {
-                current_status.event_shortcut();
+                current_tab.event_shortcut();
                 Ok(())
             }
             EventChar::Bulkrename => status.event_bulkrename(),

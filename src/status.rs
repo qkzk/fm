@@ -39,6 +39,8 @@ pub struct Status {
     pub marks: Marks,
     /// Colors for extension
     pub colors: ColorCache,
+    /// Should it display the last selected file before exiting?
+    pub print_path_on_quit: bool,
     /// terminal
     term: Arc<Term>,
 }
@@ -55,6 +57,7 @@ impl Status {
             jump_index: 0,
             marks: Marks::read_from_config_file(),
             colors: ColorCache::default(),
+            print_path_on_quit: false,
             term,
         })
     }

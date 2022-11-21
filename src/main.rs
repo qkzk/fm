@@ -23,7 +23,7 @@ fn init_term() -> FmResult<Term> {
     Ok(term)
 }
 
-pub fn disk_space(disks: &[Disk], path_str: String) -> String {
+fn disk_space(disks: &[Disk], path_str: String) -> String {
     if path_str.is_empty() {
         return "".to_owned();
     }
@@ -37,6 +37,29 @@ pub fn disk_space(disks: &[Disk], path_str: String) -> String {
     }
     human_size(size)
 }
+
+fn print_on_quit(
+    term: Arc<Term>,
+    actioner: Actioner,
+    event_reader: EventReader,
+    status: Status,
+    display: Display,
+) {
+    if status.print_path_on_quit {
+        let path = status
+            .selected_non_mut()
+            .path_content
+            .selected_path_str()
+            .unwrap_or_default();
+        std::mem::drop(term);
+        std::mem::drop(actioner);
+        std::mem::drop(event_reader);
+        std::mem::drop(status);
+        std::mem::drop(display);
+        println!("{}", path)
+    }
+}
+
 /// Main function
 /// Init the status and display and listen to events from keyboard and mouse.
 /// The application is redrawn after every event.
@@ -45,12 +68,13 @@ fn main() -> FmResult<()> {
     info!("fm is starting...");
 
     let config = load_config(CONFIG_PATH);
+
     let term = Arc::new(init_term()?);
     let actioner = Actioner::new(&config.keybindings, term.clone());
     let event_reader = EventReader::new(term.clone());
     let mut display = Display::new(term.clone(), config.colors.clone());
     let mut sys = System::new_all();
-    let mut status = Status::new(Args::parse(), config, display.height()?, term)?;
+    let mut status = Status::new(Args::parse(), config, display.height()?, term.clone())?;
 
     while let Ok(event) = event_reader.poll_event() {
         sys.refresh_disks();
@@ -68,6 +92,7 @@ fn main() -> FmResult<()> {
         };
     }
     display.show_cursor()?;
+    print_on_quit(term, actioner, event_reader, status, display);
     info!("fm is shutting down");
     Ok(())
 }
