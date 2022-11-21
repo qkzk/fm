@@ -78,6 +78,7 @@ impl Actioner {
             Event::Key(Key::PageUp) => self.page_up(status),
             Event::Key(Key::Enter) => self.enter(status),
             Event::Key(Key::Tab) => self.tab(status),
+            Event::Key(Key::BackTab) => self.backtab(status),
             Event::Key(Key::WheelUp(_, _, _)) => self.up(status),
             Event::Key(Key::WheelDown(_, _, _)) => self.down(status),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => {
@@ -299,14 +300,28 @@ impl Actioner {
     }
 
     /// Select next completion and insert it
+    /// Select next tab
     fn tab(&self, status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Goto | Mode::Exec | Mode::Search => {
                 status.selected().event_replace_input_with_completion()
             }
-            Mode::Normal => status.next(),
+            Mode::Normal => {
+                if status.len_index_of_tabs().0 == 1 {
+                    status.new_tab()
+                }
+                status.next()
+            }
             _ => (),
         };
+        Ok(())
+    }
+
+    /// Select previous tab
+    fn backtab(&self, status: &mut Status) -> FmResult<()> {
+        if let Mode::Normal = status.selected().mode {
+            status.prev()
+        }
         Ok(())
     }
 
@@ -362,7 +377,12 @@ impl Actioner {
             }
             Mode::Normal => match self.binds.get(&c) {
                 Some(event_char) => event_char.match_char(status),
-                None => Ok(()),
+                None => {
+                    if c.is_ascii_digit() {
+                        status.go_tab(c)
+                    }
+                    Ok(())
+                }
             },
             Mode::Help | Mode::Preview | Mode::Shortcut => status.selected().event_normal(),
             Mode::Jump => Ok(()),

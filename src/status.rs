@@ -44,6 +44,7 @@ pub struct Status {
 }
 
 impl Status {
+    const MAX_TAB: u32 = 10;
     const MAX_PERMISSIONS: u32 = 0o777;
 
     pub fn new(args: Args, config: Config, height: usize, term: Arc<Term>) -> FmResult<Self> {
@@ -58,8 +59,21 @@ impl Status {
         })
     }
 
+    pub fn len_index_of_tabs(&self) -> (usize, usize) {
+        (self.tabs.len(), self.index)
+    }
+
     pub fn new_tab(&mut self) {
-        self.tabs.push(self.tabs[self.index].clone())
+        if self.tabs.len() < Self::MAX_TAB as usize {
+            self.tabs.push(self.tabs[self.index].clone())
+        }
+    }
+
+    pub fn go_tab(&mut self, digit: char) {
+        let index = digit.to_digit(10).unwrap_or(Self::MAX_TAB) as usize;
+        if self.tabs.len() > index {
+            self.index = index
+        }
     }
 
     pub fn drop_tab(&mut self) {

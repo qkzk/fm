@@ -104,17 +104,23 @@ impl Display {
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
     fn first_line(&mut self, status: &Status, disk_space: String) -> FmResult<()> {
-        let first_row = self.create_first_row(status, disk_space)?;
-        self.draw_colored_strings(first_row)?;
+        let (offset, first_row) = self.create_first_row(status, disk_space)?;
+        self.draw_colored_strings(offset, first_row)?;
         Ok(())
     }
 
-    fn create_first_row(&mut self, status: &Status, disk_space: String) -> FmResult<Vec<String>> {
+    fn create_first_row(
+        &mut self,
+        status: &Status,
+        disk_space: String,
+    ) -> FmResult<(usize, Vec<String>)> {
         let tab = status.selected_non_mut();
-        Ok(match tab.mode {
+        let mut offset = 0;
+        let first_row = match tab.mode {
             Mode::Normal => {
+                offset = self.tab_bar(status)?;
                 vec![
-                    format!("Tab: {}/{} ", status.index + 1, status.len()),
+                    // format!("Tab: {}/{} ", status.index + 1, status.len()),
                     format!("{} ", tab.path_content.path_to_str()?),
                     format!("{} files ", tab.path_content.files.len()),
                     format!("{}  ", tab.path_content.used_space()),
@@ -149,13 +155,38 @@ impl Display {
                     format!("{}", tab.input.string.clone()),
                 ]
             }
-        })
+        };
+        Ok((offset, first_row))
     }
 
-    fn draw_colored_strings(&self, first_row: Vec<String>) -> FmResult<()> {
+    fn tab_bar(&self, status: &Status) -> FmResult<usize> {
+        let mut attr = Attr::default();
+        self.term.print_with_attr(0, 0, "[", attr)?;
+        let (number_of_tabs, selected_index) = status.len_index_of_tabs();
+
+        for tab in 0..(number_of_tabs) {
+            if tab == selected_index {
+                attr = Attr {
+                    bg: Color::default(),
+                    fg: Color::CYAN,
+                    effect: Effect::REVERSE,
+                };
+            }
+            self.term
+                .print_with_attr(0, 2 * tab + 1, &format!("{}", tab), attr)?;
+            attr = Attr::default();
+            self.term
+                .print_with_attr(0, 2 * number_of_tabs, " ", Attr::default())?;
+        }
+        self.term
+            .print_with_attr(0, 2 * number_of_tabs, "]", Attr::default())?;
+        Ok(2 * number_of_tabs + 2)
+    }
+
+    fn draw_colored_strings(&self, offset: usize, first_row: Vec<String>) -> FmResult<()> {
         let mut col = 0;
         for (text, color) in std::iter::zip(first_row.iter(), Self::LINE_COLORS.iter().cycle()) {
-            self.term.print_with_attr(0, col, text, *color)?;
+            self.term.print_with_attr(0, offset + col, text, *color)?;
             col += text.len()
         }
         Ok(())
