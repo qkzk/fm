@@ -104,23 +104,20 @@ impl Display {
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
     fn first_line(&mut self, status: &Status, disk_space: String) -> FmResult<()> {
-        let (offset, first_row) = self.create_first_row(status, disk_space)?;
+        let mut offset = 0;
+        if let Mode::Normal = status.selected_non_mut().mode {
+            offset = self.tab_bar(status)?
+        }
+        let first_row = self.create_first_row(status, disk_space)?;
         self.draw_colored_strings(offset, first_row)?;
         Ok(())
     }
 
-    fn create_first_row(
-        &mut self,
-        status: &Status,
-        disk_space: String,
-    ) -> FmResult<(usize, Vec<String>)> {
+    fn create_first_row(&mut self, status: &Status, disk_space: String) -> FmResult<Vec<String>> {
         let tab = status.selected_non_mut();
-        let mut offset = 0;
         let first_row = match tab.mode {
             Mode::Normal => {
-                offset = self.tab_bar(status)?;
                 vec![
-                    // format!("Tab: {}/{} ", status.index + 1, status.len()),
                     format!("{} ", tab.path_content.path_to_str()?),
                     format!("{} files ", tab.path_content.files.len()),
                     format!("{}  ", tab.path_content.used_space()),
@@ -156,7 +153,7 @@ impl Display {
                 ]
             }
         };
-        Ok((offset, first_row))
+        Ok(first_row)
     }
 
     fn tab_bar(&self, status: &Status) -> FmResult<usize> {
