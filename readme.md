@@ -107,6 +107,7 @@
 - [x] display should be "terminal manager" and it shouldn't handle anything else (git, available space etc.)
 - [x] preview EXIF for image files
 - [x] media info for video file / audio file
+- [x] fix wrong position of cursor
 
 ## TODO
 

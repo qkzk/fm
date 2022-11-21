@@ -48,13 +48,13 @@ impl Display {
         Ok(self.term.show_cursor(true)?)
     }
 
-    const EDIT_BOX_OFFSET: usize = 10;
-    const SORT_CURSOR_OFFSET: usize = 36;
+    const EDIT_BOX_OFFSET: usize = 9;
+    const SORT_CURSOR_OFFSET: usize = 37;
     const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
     const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
     const LINE_COLORS: [Attr; 6] = [
         color_to_attr(Color::Rgb(231, 162, 156)),
-        color_to_attr(Color::Rgb(124, 152, 166)),
+        color_to_attr(Color::Rgb(144, 172, 186)),
         color_to_attr(Color::Rgb(214, 125, 83)),
         color_to_attr(Color::Rgb(91, 152, 119)),
         color_to_attr(Color::Rgb(152, 87, 137)),
