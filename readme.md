@@ -114,6 +114,7 @@
   - [x] <TAB> creates a new tab if only one
   - [x] <BACKTAB> moves to previous tab
   - [x] hardcoded limit to 10 tabs
+- [x] print selected path on quit
 
 ## TODO
 
@@ -136,8 +137,13 @@
   - [x] preview
 - [ ] auto mount usb keys ??? [rusb](https://github.com/a1ien/rusb)
 - [ ] mtp... but fast [libmtp.rs](https://docs.rs/libmtp-rs/0.7.7/libmtp_rs/)
-- [ ] cd on quit with S+q ? requires wrapping the program in another bash function and calling cd from it ?
-- [ ] print full path on quit
+- [ ] cd on quit with S+q ? requires wrapping the program in another shell function and calling cd from it ?
+- [ ] connexion to remote servers [removefs](https://crates.io/crates/remotefs) [termscp](https://crates.io/crates/termscp)
+  - ssh
+  - sftp
+  - ftp
+  - google drive
+- [ ] notification of file copy for big files
 
 ## BUGS
 
