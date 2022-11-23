@@ -115,6 +115,7 @@
   - [x] <BACKTAB> moves to previous tab
   - [x] hardcoded limit to 10 tabs
 - [x] print selected path on quit
+- [x] Alt+d call dragon-drop on selected file
 
 ## TODO
 
@@ -132,18 +133,31 @@
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] preview images @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
 - [ ] compression
+
   - [ ] compress
   - [x] decompress selected file with ctrl+x
   - [x] preview
-- [ ] auto mount usb keys ??? [rusb](https://github.com/a1ien/rusb)
-- [ ] mtp... but fast [libmtp.rs](https://docs.rs/libmtp-rs/0.7.7/libmtp_rs/)
+
 - [ ] cd on quit with S+q ? requires wrapping the program in another shell function and calling cd from it ?
+- [ ] notification of file copy for big files
+
+## Won't do
+
+### auto stuff
+
+All of this stuff can be done easily through a shell command or automatically. I'm not sure I wan't to bloat fm with it.
+
+- [ ] auto mount usb keys ??? [rusb](https://github.com/a1ien/rusb) -- just use udiskie (started automatically) and udiskie-umount /mount/point
+      just use udiskie
+- [ ] mtp... but fast [libmtp.rs](https://docs.rs/libmtp-rs/0.7.7/libmtp_rs/)
 - [ ] connexion to remote servers [removefs](https://crates.io/crates/remotefs) [termscp](https://crates.io/crates/termscp)
+
   - ssh
   - sftp
   - ftp
   - google drive
-- [ ] notification of file copy for big files
+
+  or just use sshfs...
 
 ## BUGS
 

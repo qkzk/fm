@@ -72,6 +72,7 @@ impl Actioner {
             Event::Key(Key::Delete) => self.delete(status),
             Event::Key(Key::Insert) => self.insert(status),
             Event::Key(Key::Alt('q')) => self.alt_q(status),
+            Event::Key(Key::Alt('d')) => self.alt_d(status),
             Event::Key(Key::Char('Q')) => self.shift_q(status),
             Event::Key(Key::Char(c)) => self.char(status, c),
             Event::Key(Key::Home) => self.home(status),
@@ -369,6 +370,11 @@ impl Actioner {
     fn alt_q(&self, status: &mut Status) -> FmResult<()> {
         status.print_path_on_quit = true;
         status.selected().event_quit();
+        Ok(())
+    }
+
+    fn alt_d(&self, status: &mut Status) -> FmResult<()> {
+        status.selected().event_drag_n_drop()?;
         Ok(())
     }
 

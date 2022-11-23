@@ -562,9 +562,20 @@ impl Tab {
                 .ok_or_else(|| FmError::new("path unreachable"))?;
             args.push(path);
             execute_in_child(command, &args)?;
+            self.completion.reset();
+            self.input.reset();
         }
-        self.completion.reset();
-        self.input.reset();
+        Ok(())
+    }
+
+    pub fn event_drag_n_drop(&mut self) -> FmResult<()> {
+        execute_in_child(
+            "dragon-drop",
+            &vec![&self
+                .path_content
+                .selected_path_str()
+                .ok_or_else(|| FmError::new("path unreachable"))?],
+        )?;
         Ok(())
     }
 
