@@ -18,6 +18,7 @@ use crate::fm_error::{FmError, FmResult};
 use crate::last_edition::LastEdition;
 use crate::marks::Marks;
 use crate::mode::{MarkAction, Mode};
+use crate::skim::Skimer;
 use crate::tab::Tab;
 
 #[derive(Clone)]
@@ -41,6 +42,7 @@ pub struct Status {
     pub colors: ColorCache,
     /// terminal
     term: Arc<Term>,
+    skimer: Skimer,
 }
 
 impl Status {
@@ -55,6 +57,7 @@ impl Status {
             jump_index: 0,
             marks: Marks::read_from_config_file(),
             colors: ColorCache::default(),
+            skimer: Skimer::new(term.clone()),
             term,
         })
     }
@@ -169,10 +172,20 @@ impl Status {
         };
     }
 
-    pub fn create_tabs_from_skim(&mut self, output: Vec<Arc<dyn SkimItem>>) {
-        for path in output.iter() {
+    pub fn create_tabs_from_skim(&mut self) -> FmResult<()> {
+        for path in self
+            .skimer
+            .no_source(
+                self.selected_non_mut()
+                    .path_str()
+                    .ok_or_else(|| FmError::new("skim error"))?,
+            )
+            .iter()
+        {
             self.create_tab_from_skim_output(path)
         }
+        let _ = self.term.clear();
+        Ok(())
     }
 
     fn create_tab_from_skim_output(&mut self, cow_path: &Arc<dyn SkimItem>) {

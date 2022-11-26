@@ -326,14 +326,7 @@ impl Actioner {
     }
 
     fn ctrl_f(&self, status: &mut Status) -> FmResult<()> {
-        let output = Skimer::new(self.term.clone()).no_source(
-            status
-                .selected_non_mut()
-                .path_str()
-                .ok_or_else(|| FmError::new("skim error"))?,
-        );
-        let _ = self.term.clear();
-        status.create_tabs_from_skim(output);
+        status.create_tabs_from_skim();
         Ok(())
     }
 
