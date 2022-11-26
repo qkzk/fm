@@ -25,4 +25,5 @@ pub mod skim;
 pub mod status;
 pub mod tab;
 pub mod term_manager;
+pub mod utils;
 pub mod visited;

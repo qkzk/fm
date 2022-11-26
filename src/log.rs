@@ -12,9 +12,23 @@ use log4rs::{
     Handle,
 };
 
-use crate::fm_error::FmResult;
+use crate::fm_error::{FmError, FmResult};
 
 static LOG_PATH: &str = "~/.config/fm/fm.log";
+
+fn create_log_folder(log_path: &str) -> FmResult<()> {
+    let _ = std::fs::create_dir_all(
+        &std::path::PathBuf::from(log_path.clone())
+            .parent()
+            .ok_or_else(|| {
+                FmError::new(&format!(
+                    "Couldn't create log folder. LOGPATH {} should have a parent",
+                    LOG_PATH
+                ))
+            })?,
+    );
+    Ok(())
+}
 
 pub fn set_logger() -> FmResult<Handle> {
     let window_size = 3; // log0, log1, log2
@@ -27,7 +41,7 @@ pub fn set_logger() -> FmResult<Handle> {
         CompoundPolicy::new(Box::new(size_trigger), Box::new(fixed_window_roller));
     let log_path = shellexpand::tilde(LOG_PATH).to_string();
     // Don't propagate the error with ? since it crashes the application.
-    let _ = std::fs::create_dir_all(&log_path);
+    create_log_folder(&log_path)?;
     // Log Trace level output to file where trace is the default level
     // and the programmatically specified level to stderr.
     let config = Config::builder()
