@@ -116,6 +116,23 @@
   - [x] hardcoded limit to 10 tabs
 - [x] print selected path on quit
 - [x] Alt+d call dragon-drop on selected file
+- [x] cd on quit:
+
+  fm prints its current directory when exiting
+
+  1. Install a link to `fm` in your path or copy the binary
+
+  2. Add this to .zshrc :
+
+     ```bash
+     function f() {
+       dest=$(fm $@)
+       if [[ ! -z $dest ]]
+       then
+         cd $dest
+       fi
+     }
+     ```
 
 ## TODO
 

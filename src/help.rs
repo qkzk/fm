@@ -4,7 +4,6 @@ pub static HELP_LINES: &str = "
 Default key bindings:
 
 q:      quit
-Atl+q:  quit and print selected path
 h:      help
 
 - Navigation -

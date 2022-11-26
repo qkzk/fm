@@ -41,7 +41,7 @@ pub fn set_logger() -> FmResult<Handle> {
         CompoundPolicy::new(Box::new(size_trigger), Box::new(fixed_window_roller));
     let log_path = shellexpand::tilde(LOG_PATH).to_string();
     // Don't propagate the error with ? since it crashes the application.
-    create_log_folder(LOG_PATH)?;
+    create_log_folder(&log_path)?;
     // Log Trace level output to file where trace is the default level
     // and the programmatically specified level to stderr.
     let config = Config::builder()
