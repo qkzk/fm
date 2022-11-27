@@ -52,6 +52,7 @@ impl Actioner {
             (keybindings.marks_jump, EventChar::MarksJump),
             (keybindings.filter, EventChar::Filter),
             (keybindings.back, EventChar::Back),
+            (keybindings.home, EventChar::Home),
         ]);
         Self { binds }
     }

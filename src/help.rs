@@ -30,6 +30,7 @@ Alt+d:  dragon-drop selected file
 M:      Mark current path
 ':      Jump to a mark
 -:      Move back to previous dir
+~:      Move to $HOME
 
 - Tabs -
     Tab:    Next tab
