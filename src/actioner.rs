@@ -1,13 +1,10 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 use tuikit::prelude::{Event, Key, MouseButton};
-use tuikit::term::Term;
 
 use crate::config::Keybindings;
 use crate::event_char::EventChar;
-use crate::fm_error::{FmError, FmResult};
+use crate::fm_error::FmResult;
 use crate::mode::{MarkAction, Mode};
-use crate::skim::Skimer;
 use crate::status::Status;
 
 /// Struct which mutates `tabs.selected()..
@@ -16,13 +13,12 @@ use crate::status::Status;
 /// Keybindings are read from `Config`.
 pub struct Actioner {
     binds: HashMap<char, EventChar>,
-    term: Arc<Term>,
 }
 
 impl Actioner {
     /// Creates a map of configurable keybindings to `EventChar`
     /// The `EventChar` is then associated to a `tabs.selected(). method.
-    pub fn new(keybindings: &Keybindings, term: Arc<Term>) -> Self {
+    pub fn new(keybindings: &Keybindings) -> Self {
         let binds = HashMap::from([
             (keybindings.toggle_hidden, EventChar::ToggleHidden),
             (keybindings.copy_paste, EventChar::CopyPaste),
@@ -56,7 +52,7 @@ impl Actioner {
             (keybindings.marks_jump, EventChar::MarksJump),
             (keybindings.filter, EventChar::Filter),
         ]);
-        Self { binds, term }
+        Self { binds }
     }
     /// Reaction to received events.
     pub fn read_event(&self, status: &mut Status, ev: Event) -> FmResult<()> {
@@ -326,14 +322,7 @@ impl Actioner {
     }
 
     fn ctrl_f(&self, status: &mut Status) -> FmResult<()> {
-        let output = Skimer::new(self.term.clone()).no_source(
-            status
-                .selected_non_mut()
-                .path_str()
-                .ok_or_else(|| FmError::new("skim error"))?,
-        );
-        let _ = self.term.clear();
-        status.create_tabs_from_skim(output);
+        status.create_tabs_from_skim()?;
         Ok(())
     }
 

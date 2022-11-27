@@ -1,18 +1,19 @@
 use skim::prelude::*;
 use tuikit::term::Term;
 
-#[derive()]
 pub struct Skimer {
-    term: Arc<Term>,
+    skim: Skim,
 }
 
 impl Skimer {
     pub fn new(term: Arc<Term>) -> Self {
-        Self { term }
+        Self {
+            skim: Skim::new_from_term(term),
+        }
     }
 
-    pub fn no_source(self, path_str: String) -> Vec<Arc<dyn SkimItem>> {
-        Skim::new_from_term(self.term)
+    pub fn no_source(&self, path_str: String) -> Vec<Arc<dyn SkimItem>> {
+        self.skim
             .run_internal(None, path_str)
             .map(|out| out.selected_items)
             .unwrap_or_else(Vec::new)

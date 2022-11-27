@@ -17,16 +17,14 @@ use crate::fm_error::{FmError, FmResult};
 static LOG_PATH: &str = "~/.config/fm/fm.log";
 
 fn create_log_folder(log_path: &str) -> FmResult<()> {
-    let _ = std::fs::create_dir_all(
-        &std::path::PathBuf::from(log_path.clone())
-            .parent()
-            .ok_or_else(|| {
-                FmError::new(&format!(
-                    "Couldn't create log folder. LOGPATH {} should have a parent",
-                    LOG_PATH
-                ))
-            })?,
-    );
+    let _ =
+        std::fs::create_dir_all(std::path::PathBuf::from(log_path).parent().ok_or_else(|| {
+            FmError::new(&format!(
+                "Couldn't create log folder. LOGPATH {} should have a parent",
+                LOG_PATH
+            ))
+        })?);
+
     Ok(())
 }
 
