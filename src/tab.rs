@@ -508,6 +508,19 @@ impl Tab {
         }
     }
 
+    pub fn event_back(&mut self) -> FmResult<()> {
+        eprintln!("event back");
+        if self.history.visited.len() <= 1 {
+            return Ok(());
+        }
+        self.history.visited.pop();
+        let last = self.history.visited[self.history.len() - 1].clone();
+        eprintln!("moving back to {:?}", last);
+        self.set_pathcontent(last)?;
+
+        Ok(())
+    }
+
     fn nvim_listen_address(&self) -> Result<String, std::env::VarError> {
         if !self.nvim_server.is_empty() {
             Ok(self.nvim_server.clone())

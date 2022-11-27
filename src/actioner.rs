@@ -51,6 +51,7 @@ impl Actioner {
             (keybindings.marks_new, EventChar::MarksNew),
             (keybindings.marks_jump, EventChar::MarksJump),
             (keybindings.filter, EventChar::Filter),
+            (keybindings.back, EventChar::Back),
         ]);
         Self { binds }
     }
@@ -368,6 +369,7 @@ impl Actioner {
                 Some(event_char) => event_char.match_char(status),
                 None => {
                     if c.is_ascii_digit() {
+                        eprintln!("char {} is a digit", c);
                         status.go_tab(c)
                     }
                     Ok(())

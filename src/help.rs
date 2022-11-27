@@ -29,6 +29,7 @@ Ctrl+x: decompress selected file
 Alt+d:  dragon-drop selected file
 M:      Mark current path
 ':      Jump to a mark
+-:      Move back to previous dir
 
 - Tabs -
     Tab:    Next tab
