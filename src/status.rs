@@ -184,22 +184,21 @@ impl Status {
         {
             self.create_tab_from_skim_output(path)
         }
-        let _ = self.term.clear();
         Ok(())
     }
 
     fn create_tab_from_skim_output(&mut self, cow_path: &Arc<dyn SkimItem>) {
-        let mut status = self.selected().clone();
+        let mut tab = self.selected().clone();
         let s_path = cow_path.output().to_string();
         if let Ok(path) = fs::canonicalize(path::Path::new(&s_path)) {
             if path.is_file() {
                 if let Some(parent) = path.parent() {
-                    let _ = status.set_pathcontent(parent.to_path_buf());
-                    self.tabs.push(status);
+                    let _ = tab.set_pathcontent(parent.to_path_buf());
+                    self.tabs.push(tab);
                 }
             } else if path.is_dir() {
-                let _ = status.set_pathcontent(path);
-                self.tabs.push(status);
+                let _ = tab.set_pathcontent(path);
+                self.tabs.push(tab);
             }
         }
     }
