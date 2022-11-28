@@ -109,7 +109,7 @@ impl Display {
             offset = self.tab_bar(status)?
         }
         let first_row = self.create_first_row(status, disk_space)?;
-        self.draw_colored_strings(offset, first_row)?;
+        self.draw_colored_strings(0, offset, first_row)?;
         Ok(())
     }
 
@@ -180,10 +180,15 @@ impl Display {
         Ok(2 * number_of_tabs + 2)
     }
 
-    fn draw_colored_strings(&self, offset: usize, first_row: Vec<String>) -> FmResult<()> {
+    fn draw_colored_strings(
+        &self,
+        row: usize,
+        offset: usize,
+        strings: Vec<String>,
+    ) -> FmResult<()> {
         let mut col = 0;
-        for (text, color) in std::iter::zip(first_row.iter(), Self::LINE_COLORS.iter().cycle()) {
-            self.term.print_with_attr(0, offset + col, text, *color)?;
+        for (text, attr) in std::iter::zip(strings.iter(), Self::LINE_COLORS.iter().cycle()) {
+            self.term.print_with_attr(row, offset + col, text, *attr)?;
             col += text.len()
         }
         Ok(())
