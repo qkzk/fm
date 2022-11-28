@@ -114,26 +114,32 @@ impl Tab {
     }
 
     pub fn event_up_one_row(&mut self) {
-        if let Mode::Normal = self.mode {
-            self.path_content.select_prev();
-        }
-        if self.line_index > 0 {
-            self.line_index -= 1;
+        match self.mode {
+            Mode::Normal => {
+                self.path_content.select_prev();
+                if self.line_index > 0 {
+                    self.line_index -= 1;
+                }
+            }
+            Mode::Preview | Mode::Help => self.line_index = self.window.top,
+            _ => (),
         }
         self.window.scroll_up_one(self.line_index);
     }
 
     pub fn event_down_one_row(&mut self) {
-        let max_line = if let Mode::Normal = self.mode {
-            self.path_content.select_next();
-            self.path_content.files.len()
-        } else {
-            self.preview.len()
-        };
-        if max_line >= ContentWindow::WINDOW_MARGIN_TOP
-            && self.line_index < max_line - ContentWindow::WINDOW_MARGIN_TOP
-        {
-            self.line_index += 1;
+        match self.mode {
+            Mode::Normal => {
+                self.path_content.select_next();
+                let max_line = self.path_content.files.len();
+                if max_line >= ContentWindow::WINDOW_MARGIN_TOP
+                    && self.line_index < max_line - ContentWindow::WINDOW_MARGIN_TOP
+                {
+                    self.line_index += 1;
+                }
+            }
+            Mode::Preview | Mode::Help => self.line_index = self.window.bottom,
+            _ => (),
         }
         self.window.scroll_down_one(self.line_index);
     }
