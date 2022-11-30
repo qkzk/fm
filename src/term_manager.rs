@@ -12,7 +12,7 @@ use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{FmError, FmResult};
 use crate::last_edition::LastEdition;
 use crate::mode::{MarkAction, Mode};
-use crate::preview::Preview;
+use crate::preview::{Preview, Window};
 use crate::status::Status;
 use crate::tab::Tab;
 
@@ -378,15 +378,8 @@ impl Display {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
         match &tab.preview {
-            // TODO: should it belong to separate methods ?
             Preview::Syntaxed(syntaxed) => {
-                for (i, vec_line) in syntaxed
-                    .content
-                    .iter()
-                    .enumerate()
-                    .skip(tab.window.top)
-                    .take(min(length, tab.window.bottom + 1))
-                {
+                for (i, vec_line) in (*syntaxed).window(tab.window.top, tab.window.bottom, length) {
                     let row = Self::calc_line_row(i, tab);
                     self.preview_line_numbers(tab, i, row)?;
                     for token in vec_line.iter() {
@@ -395,13 +388,7 @@ impl Display {
                 }
             }
             Preview::Text(text) => {
-                for (i, line) in text
-                    .content
-                    .iter()
-                    .enumerate()
-                    .skip(tab.window.top)
-                    .take(min(length, tab.window.bottom + 1))
-                {
+                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
                     let row = Self::calc_line_row(i, tab);
                     self.term.print(row, line_number_width + 3, line)?;
                 }
@@ -409,13 +396,7 @@ impl Display {
             Preview::Binary(bin) => {
                 let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
-                for (i, line) in bin
-                    .content
-                    .iter()
-                    .enumerate()
-                    .skip(tab.window.top)
-                    .take(min(length, tab.window.bottom + 1))
-                {
+                for (i, line) in (*bin).window(tab.window.top, tab.window.bottom, length) {
                     let row = Self::calc_line_row(i, tab);
 
                     self.term.print_with_attr(
@@ -428,25 +409,13 @@ impl Display {
                 }
             }
             Preview::Pdf(text) => {
-                for (i, line) in text
-                    .content
-                    .iter()
-                    .enumerate()
-                    .skip(tab.window.top)
-                    .take(min(length, tab.window.bottom + 1))
-                {
+                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
                     let row = Self::calc_line_row(i, tab);
                     self.term.print(row, line_number_width + 3, line)?;
                 }
             }
-            Preview::Compressed(zip) => {
-                for (i, line) in zip
-                    .content
-                    .iter()
-                    .enumerate()
-                    .skip(tab.window.top)
-                    .take(min(length, tab.window.bottom + 1))
-                {
+            Preview::Compressed(text) => {
+                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
                     let row = Self::calc_line_row(i, tab);
                     self.term.print_with_attr(
                         row,
@@ -458,25 +427,13 @@ impl Display {
                 }
             }
             Preview::Image(text) => {
-                for (i, line) in text
-                    .content
-                    .iter()
-                    .enumerate()
-                    .skip(tab.window.top)
-                    .take(min(length, tab.window.bottom + 1))
-                {
+                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
                     let row = Self::calc_line_row(i, tab);
                     self.term.print(row, line_number_width + 3, line)?;
                 }
             }
-            Preview::Media(media) => {
-                for (i, line) in media
-                    .content
-                    .iter()
-                    .enumerate()
-                    .skip(tab.window.top)
-                    .take(min(length, tab.window.bottom + 1))
-                {
+            Preview::Media(text) => {
+                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
                     let row = Self::calc_line_row(i, tab);
                     self.term.print(row, line_number_width + 3, line)?;
                 }

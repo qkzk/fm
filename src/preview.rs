@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::fmt::Write as _;
 use std::io::{BufRead, Read};
 use std::panic;
@@ -428,6 +429,117 @@ impl MediainfoContent {
 
     fn len(&self) -> usize {
         self.length
+    }
+}
+
+pub trait Window<T> {
+    fn window(
+        &self,
+        top: usize,
+        bottom: usize,
+        length: usize,
+    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, T>>>>;
+}
+
+impl Window<String> for TextContent {
+    fn window(
+        &self,
+        top: usize,
+        bottom: usize,
+        length: usize,
+    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, String>>>> {
+        self.content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(length, bottom + 1))
+    }
+}
+
+impl Window<String> for PdfContent {
+    fn window(
+        &self,
+        top: usize,
+        bottom: usize,
+        length: usize,
+    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, String>>>> {
+        self.content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(length, bottom + 1))
+    }
+}
+impl Window<String> for CompressedContent {
+    fn window(
+        &self,
+        top: usize,
+        bottom: usize,
+        length: usize,
+    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, String>>>> {
+        self.content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(length, bottom + 1))
+    }
+}
+impl Window<String> for ExifContent {
+    fn window(
+        &self,
+        top: usize,
+        bottom: usize,
+        length: usize,
+    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, String>>>> {
+        self.content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(length, bottom + 1))
+    }
+}
+impl Window<String> for MediainfoContent {
+    fn window(
+        &self,
+        top: usize,
+        bottom: usize,
+        length: usize,
+    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, String>>>> {
+        self.content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(length, bottom + 1))
+    }
+}
+impl Window<Line> for BinaryContent {
+    fn window(
+        &self,
+        top: usize,
+        bottom: usize,
+        length: usize,
+    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, Line>>>> {
+        self.content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(length, bottom + 1))
+    }
+}
+impl Window<Vec<SyntaxedString>> for SyntaxedContent {
+    fn window(
+        &self,
+        top: usize,
+        bottom: usize,
+        length: usize,
+    ) -> std::iter::Take<
+        std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, Vec<SyntaxedString>>>>,
+    > {
+        self.content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(length, bottom + 1))
     }
 }
 
