@@ -32,6 +32,32 @@ pub enum Preview {
     Empty,
 }
 
+fn is_ext_image(ext: &str) -> bool {
+    matches!(ext, "png" | "jpg" | "jpeg" | "tiff" | "heif")
+}
+
+fn is_ext_media(ext: &str) -> bool {
+    matches!(
+        ext,
+        "mkv"
+            | "ogg"
+            | "ogm"
+            | "riff"
+            | "mpeg"
+            | "mp2"
+            | "mp3"
+            | "mp4"
+            | "wm"
+            | "qt"
+            | "ac3"
+            | "dts"
+            | "aac"
+            | "mac"
+            | "flac"
+            | "avi"
+    )
+}
+
 impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
@@ -40,23 +66,20 @@ impl Preview {
     }
 
     pub fn new(path_content: &PathContent) -> FmResult<Self> {
-        let ps = SyntaxSet::load_defaults_nonewlines();
         match path_content.selected_file() {
             Some(file_info) => match file_info.extension.to_lowercase().as_str() {
                 "zip" => Ok(Self::Compressed(CompressedContent::new(
                     file_info.path.clone(),
                 )?)),
                 "pdf" => Ok(Self::Pdf(PdfContent::new(file_info.path.clone()))),
-                "png" | "jpg" | "jpeg" | "tiff" | "heif" => {
-                    Ok(Self::Image(ExifContent::new(file_info.path.clone())?))
-                }
-                "mkv" | "ogg" | "ogm" | "riff" | "mpeg" | "mp2" | "mp3" | "mp4" | "wm" | "qt"
-                | "ac3" | "dts" | "aac" | "mac" | "flac" | "avi" => {
+                e if is_ext_image(e) => Ok(Self::Image(ExifContent::new(file_info.path.clone())?)),
+                e if is_ext_media(e) => {
                     Ok(Self::Media(MediainfoContent::new(file_info.path.clone())?))
                 }
                 _ => {
                     let mut file = std::fs::File::open(file_info.path.clone())?;
                     let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
+                    let ps = SyntaxSet::load_defaults_nonewlines();
                     if let Some(syntaxset) = ps.find_syntax_by_extension(&file_info.extension) {
                         Ok(Self::Syntaxed(SyntaxedContent::new(
                             ps.clone(),
@@ -384,23 +407,25 @@ pub struct ExifContent {
 
 impl ExifContent {
     fn new(path: PathBuf) -> FmResult<Self> {
-        let file = std::fs::File::open(path)?;
-        let mut bufreader = std::io::BufReader::new(&file);
-        let exifreader = exif::Reader::new();
-        let exif = exifreader.read_from_container(&mut bufreader)?;
-        let mut content = vec![];
-        for f in exif.fields() {
-            content.push(format!(
-                "{} {} {}",
-                f.tag,
-                f.ifd_num,
-                f.display_value().with_unit(&exif)
-            ))
-        }
+        let mut bufreader = std::io::BufReader::new(std::fs::File::open(path)?);
+        let exif = exif::Reader::new().read_from_container(&mut bufreader)?;
+        let content: Vec<String> = exif
+            .fields()
+            .map(|f| Self::format_exif_field(f, &exif))
+            .collect();
         Ok(Self {
             length: content.len(),
             content,
         })
+    }
+
+    fn format_exif_field(f: &exif::Field, exif: &exif::Exif) -> String {
+        format!(
+            "{} {} {}",
+            f.tag,
+            f.ifd_num,
+            f.display_value().with_unit(exif)
+        )
     }
 
     fn len(&self) -> usize {
