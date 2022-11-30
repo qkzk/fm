@@ -134,6 +134,9 @@
      }
      ```
 
+- [x] Refactor preview using a common trait & macros
+- [x] fix previewing non normal file hangs by preventing previewing...
+
 ## TODO
 
 - [ ] remote control
