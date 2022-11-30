@@ -1,8 +1,10 @@
 use std::cmp::min;
 use std::fmt::Write as _;
 use std::io::{BufRead, Read};
+use std::iter::{Enumerate, Skip, Take};
 use std::panic;
 use std::path::PathBuf;
+use std::slice::Iter;
 use std::sync::Arc;
 
 use content_inspector::{inspect, ContentType};
@@ -438,103 +440,16 @@ pub trait Window<T> {
         top: usize,
         bottom: usize,
         length: usize,
-    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, T>>>>;
+    ) -> Take<Skip<Enumerate<Iter<'_, T>>>>;
 }
 
-impl Window<String> for TextContent {
-    fn window(
-        &self,
-        top: usize,
-        bottom: usize,
-        length: usize,
-    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, String>>>> {
-        self.content
-            .iter()
-            .enumerate()
-            .skip(top)
-            .take(min(length, bottom + 1))
-    }
-}
-
-impl Window<String> for PdfContent {
-    fn window(
-        &self,
-        top: usize,
-        bottom: usize,
-        length: usize,
-    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, String>>>> {
-        self.content
-            .iter()
-            .enumerate()
-            .skip(top)
-            .take(min(length, bottom + 1))
-    }
-}
-impl Window<String> for CompressedContent {
-    fn window(
-        &self,
-        top: usize,
-        bottom: usize,
-        length: usize,
-    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, String>>>> {
-        self.content
-            .iter()
-            .enumerate()
-            .skip(top)
-            .take(min(length, bottom + 1))
-    }
-}
-impl Window<String> for ExifContent {
-    fn window(
-        &self,
-        top: usize,
-        bottom: usize,
-        length: usize,
-    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, String>>>> {
-        self.content
-            .iter()
-            .enumerate()
-            .skip(top)
-            .take(min(length, bottom + 1))
-    }
-}
-impl Window<String> for MediainfoContent {
-    fn window(
-        &self,
-        top: usize,
-        bottom: usize,
-        length: usize,
-    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, String>>>> {
-        self.content
-            .iter()
-            .enumerate()
-            .skip(top)
-            .take(min(length, bottom + 1))
-    }
-}
-impl Window<Line> for BinaryContent {
-    fn window(
-        &self,
-        top: usize,
-        bottom: usize,
-        length: usize,
-    ) -> std::iter::Take<std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, Line>>>> {
-        self.content
-            .iter()
-            .enumerate()
-            .skip(top)
-            .take(min(length, bottom + 1))
-    }
-}
 impl Window<Vec<SyntaxedString>> for SyntaxedContent {
     fn window(
         &self,
         top: usize,
         bottom: usize,
         length: usize,
-    ) -> std::iter::Take<
-        std::iter::Skip<std::iter::Enumerate<std::slice::Iter<'_, Vec<SyntaxedString>>>>,
-    > {
+    ) -> std::iter::Take<Skip<Enumerate<Iter<'_, Vec<SyntaxedString>>>>> {
         self.content
             .iter()
             .enumerate()
@@ -542,6 +457,32 @@ impl Window<Vec<SyntaxedString>> for SyntaxedContent {
             .take(min(length, bottom + 1))
     }
 }
+
+macro_rules! impl_window {
+    ($t:ident, $u:ident) => {
+        impl Window<$u> for $t {
+            fn window(
+                &self,
+                top: usize,
+                bottom: usize,
+                length: usize,
+            ) -> Take<Skip<Enumerate<Iter<'_, $u>>>> {
+                self.content
+                    .iter()
+                    .enumerate()
+                    .skip(top)
+                    .take(min(length, bottom + 1))
+            }
+        }
+    };
+}
+
+impl_window!(TextContent, String);
+impl_window!(BinaryContent, Line);
+impl_window!(PdfContent, String);
+impl_window!(CompressedContent, String);
+impl_window!(ExifContent, String);
+impl_window!(MediainfoContent, String);
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
     let prev_hook = panic::take_hook();
