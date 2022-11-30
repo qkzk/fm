@@ -309,10 +309,14 @@ impl Tab {
     pub fn event_preview(&mut self) -> FmResult<()> {
         if self.path_content.files.is_empty() {
             return Err(FmError::new("No file to preview"));
-        };
-        self.mode = Mode::Preview;
-        self.preview = Preview::new(&self.path_content)?;
-        self.window.reset(self.preview.len());
+        }
+        if let Some(file) = self.path_content.selected_file() {
+            if let FileKind::NormalFile = file.file_kind {
+                self.mode = Mode::Preview;
+                self.preview = Preview::new(&self.path_content)?;
+                self.window.reset(self.preview.len());
+            }
+        }
         Ok(())
     }
 
