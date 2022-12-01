@@ -158,7 +158,11 @@
   - [x] decompress selected file with ctrl+x
   - [x] preview
 
-- [ ] notification of file copy for big files
+- [x] notification
+  - [x] send notification
+  - [x] move & copy
+  - [x] read bytes copied
+  - [ ] use a relative path to an icon
 
 ## Won't do
 

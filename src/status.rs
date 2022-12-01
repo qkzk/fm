@@ -12,7 +12,7 @@ use crate::args::Args;
 use crate::bulkrename::Bulkrename;
 use crate::color_cache::ColorCache;
 use crate::config::Config;
-use crate::copy_move::{copy, mover};
+use crate::copy_move::{copy_move, CopyMove};
 use crate::fileinfo::PathContent;
 use crate::fm_error::{FmError, FmResult};
 use crate::last_edition::LastEdition;
@@ -20,12 +20,6 @@ use crate::marks::Marks;
 use crate::mode::{MarkAction, Mode};
 use crate::skim::Skimer;
 use crate::tab::Tab;
-
-#[derive(Clone)]
-enum CutOrCopy {
-    Cut,
-    Copy,
-}
 
 pub struct Status {
     /// Vector of `Tab`, each of them are displayed in a separate tab.
@@ -301,17 +295,13 @@ impl Status {
             .collect()
     }
 
-    fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CutOrCopy) -> FmResult<()> {
+    fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> FmResult<()> {
         let sources: Vec<PathBuf> = self.flagged.iter().map(|path| path.to_owned()).collect();
         let dest = self
             .selected_non_mut()
             .path_str()
             .ok_or_else(|| FmError::new("unreadable path"))?;
-        if let CutOrCopy::Cut = cut_or_copy {
-            mover(sources, dest, self.term.clone())?
-        } else {
-            copy(sources, dest, self.term.clone())?
-        }
+        copy_move(cut_or_copy, sources, dest, self.term.clone())?;
         self.clear_flags_and_reset_view()
     }
 
@@ -324,11 +314,11 @@ impl Status {
     }
 
     fn exec_copy_paste(&mut self) -> FmResult<()> {
-        self.cut_or_copy_flagged_files(CutOrCopy::Copy)
+        self.cut_or_copy_flagged_files(CopyMove::Copy)
     }
 
     fn exec_cut_paste(&mut self) -> FmResult<()> {
-        self.cut_or_copy_flagged_files(CutOrCopy::Cut)
+        self.cut_or_copy_flagged_files(CopyMove::Move)
     }
 
     fn exec_delete_files(&mut self) -> FmResult<()> {
