@@ -5,8 +5,10 @@ use std::thread;
 
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
+use notify_rust::Notification;
 use tuikit::prelude::{Attr, Color, Effect, Event, Term};
 
+use crate::fileinfo::human_size;
 use crate::fm_error::FmResult;
 
 fn setup(
@@ -65,9 +67,13 @@ pub fn copy(sources: Vec<PathBuf>, dest: String, term: Arc<Term>) -> FmResult<()
         handle_progress_display(&in_mem, &pb, &term, process_info)
     };
     let _ = thread::spawn(move || {
-        fs_extra::copy_items_with_progress(&sources, &dest, &options, handle_progress)
+        let bytes = fs_extra::copy_items_with_progress(&sources, &dest, &options, handle_progress)
             .unwrap_or_default();
         let _ = c_term.send_event(Event::User(()));
+        let _ = notify(
+            "fm: copy finished",
+            &format!("{}B copied", human_size(bytes)),
+        );
     });
     Ok(())
 }
@@ -80,9 +86,22 @@ pub fn mover(sources: Vec<PathBuf>, dest: String, term: Arc<Term>) -> FmResult<(
         handle_progress_display(&in_mem, &pb, &term, process_info)
     };
     let _ = thread::spawn(move || {
-        fs_extra::move_items_with_progress(&sources, dest, &options, handle_progress)
+        let bytes = fs_extra::move_items_with_progress(&sources, dest, &options, handle_progress)
             .unwrap_or_default();
         let _ = c_term.send_event(Event::User(()));
+        let _ = notify(
+            "fm: move finished",
+            &format!("{}B moved", human_size(bytes)),
+        );
     });
+    Ok(())
+}
+
+pub fn notify(summary: &str, body: &str) -> FmResult<()> {
+    Notification::new()
+        .summary(summary)
+        .body(body)
+        .icon("/home/quentin/gclem/dev/rust/fm/media/folder-teal-activities.svg")
+        .show()?;
     Ok(())
 }

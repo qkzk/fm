@@ -158,7 +158,6 @@
   - [x] decompress selected file with ctrl+x
   - [x] preview
 
-- [ ] cd on quit with S+q ? requires wrapping the program in another shell function and calling cd from it ?
 - [ ] notification of file copy for big files
 
 ## Won't do

@@ -4,6 +4,7 @@ use std::fmt;
 
 use fs_extra::error::Error as FsExtraError;
 use log::SetLoggerError;
+use notify_rust::error::Error as NotifyError;
 use tuikit::error::TuikitError;
 use zip::result::ZipError;
 
@@ -98,6 +99,12 @@ impl From<Box<dyn Error>> for FmError {
 
 impl From<exif::Error> for FmError {
     fn from(error: exif::Error) -> Self {
+        Self::new(&error.to_string())
+    }
+}
+
+impl From<NotifyError> for FmError {
+    fn from(error: NotifyError) -> Self {
         Self::new(&error.to_string())
     }
 }
