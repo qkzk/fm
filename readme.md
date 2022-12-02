@@ -136,6 +136,7 @@
 
 - [x] Refactor preview using a common trait & macros
 - [x] fix previewing non normal file hangs by preventing previewing...
+- [x] send a notification when files are copied or moved
 
 ## TODO
 
@@ -157,12 +158,6 @@
   - [ ] compress
   - [x] decompress selected file with ctrl+x
   - [x] preview
-
-- [x] notification
-  - [x] send notification
-  - [x] move & copy
-  - [x] read bytes copied
-  - [ ] use a relative path to an icon
 
 ## Won't do
 
