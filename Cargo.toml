@@ -1,6 +1,7 @@
 [package]
 name = "fm"
 version = "0.1.0"
+authors = ["Quentin Konieczko <qu3nt1n@gmail.com>"]
 edition = "2021"
 
 [profile.release]
