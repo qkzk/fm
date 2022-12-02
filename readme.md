@@ -158,8 +158,11 @@
   - [x] decompress selected file with ctrl+x
   - [x] preview
 
-- [ ] cd on quit with S+q ? requires wrapping the program in another shell function and calling cd from it ?
-- [ ] notification of file copy for big files
+- [x] notification
+  - [x] send notification
+  - [x] move & copy
+  - [x] read bytes copied
+  - [ ] use a relative path to an icon
 
 ## Won't do
 

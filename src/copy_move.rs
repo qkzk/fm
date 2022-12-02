@@ -5,8 +5,10 @@ use std::thread;
 
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
+use notify_rust::Notification;
 use tuikit::prelude::{Attr, Color, Effect, Event, Term};
 
+use crate::fileinfo::human_size;
 use crate::fm_error::FmResult;
 
 fn setup(
@@ -57,32 +59,60 @@ fn handle_progress_display(
     fs_extra::dir::TransitProcessResult::ContinueOrAbort
 }
 
-pub fn copy(sources: Vec<PathBuf>, dest: String, term: Arc<Term>) -> FmResult<()> {
+pub enum CopyMove {
+    Copy,
+    Move,
+}
+
+impl CopyMove {
+    fn kind(&self) -> &str {
+        match *self {
+            CopyMove::Copy => "copy",
+            CopyMove::Move => "move",
+        }
+    }
+
+    fn preterit(&self) -> &str {
+        match *self {
+            CopyMove::Copy => "copied",
+            CopyMove::Move => "moved",
+        }
+    }
+}
+
+pub fn copy_move(
+    copy_or_move: CopyMove,
+    sources: Vec<PathBuf>,
+    dest: String,
+    term: Arc<Term>,
+) -> FmResult<()> {
     let c_term = term.clone();
     let (height, width) = term.term_size()?;
-    let (in_mem, pb, options) = setup("copy".to_owned(), height, width)?;
+    let (in_mem, pb, options) = setup(copy_or_move.kind().to_owned(), height, width)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&in_mem, &pb, &term, process_info)
     };
     let _ = thread::spawn(move || {
-        fs_extra::copy_items_with_progress(&sources, &dest, &options, handle_progress)
-            .unwrap_or_default();
+        let copier_mover = match copy_or_move {
+            CopyMove::Copy => fs_extra::copy_items_with_progress,
+            CopyMove::Move => fs_extra::move_items_with_progress,
+        };
+        let transfered_bytes =
+            copier_mover(&sources, &dest, &options, handle_progress).unwrap_or_default();
         let _ = c_term.send_event(Event::User(()));
+        let _ = notify(
+            &format!("fm: {} finished", copy_or_move.kind()),
+            &format!(
+                "{}B {}",
+                human_size(transfered_bytes),
+                copy_or_move.preterit()
+            ),
+        );
     });
     Ok(())
 }
 
-pub fn mover(sources: Vec<PathBuf>, dest: String, term: Arc<Term>) -> FmResult<()> {
-    let c_term = term.clone();
-    let (height, width) = term.term_size()?;
-    let (in_mem, pb, options) = setup("move".to_owned(), height, width)?;
-    let handle_progress = move |process_info: fs_extra::TransitProcess| {
-        handle_progress_display(&in_mem, &pb, &term, process_info)
-    };
-    let _ = thread::spawn(move || {
-        fs_extra::move_items_with_progress(&sources, dest, &options, handle_progress)
-            .unwrap_or_default();
-        let _ = c_term.send_event(Event::User(()));
-    });
+pub fn notify(summary: &str, body: &str) -> FmResult<()> {
+    Notification::new().summary(summary).body(body).show()?;
     Ok(())
 }
