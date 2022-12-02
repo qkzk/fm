@@ -159,6 +159,8 @@
   - [x] decompress selected file with ctrl+x
   - [x] preview
 
+- [ ] multiple flags based on regular expression
+
 ## Won't do
 
 ### auto stuff

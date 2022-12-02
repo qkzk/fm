@@ -403,16 +403,22 @@ impl Status {
         )?)
     }
 
-    pub fn exec_regex(&mut self) -> Result<(), regex::Error> {
-        if !self.selected().input.string.is_empty() {
-            self.flagged.clear();
-            let re = Regex::new(&self.selected().input.string)?;
-            for file in self.tabs[self.index].path_content.files.iter() {
-                if re.is_match(&file.path.to_string_lossy()) {
-                    self.flagged.insert(file.path.clone());
-                }
+    pub fn select_from_regex(&mut self) -> Result<(), regex::Error> {
+        if self.selected().input.string.is_empty() {
+            return Ok(());
+        }
+        self.flagged.clear();
+        let re = Regex::new(&self.selected().input.string)?;
+        for file in self.tabs[self.index].path_content.files.iter() {
+            if re.is_match(&file.path.to_string_lossy()) {
+                self.flagged.insert(file.path.clone());
             }
         }
+        Ok(())
+    }
+
+    pub fn exec_regex(&mut self) -> Result<(), regex::Error> {
+        self.select_from_regex()?;
         self.selected().input.reset();
         Ok(())
     }
