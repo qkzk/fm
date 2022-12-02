@@ -137,6 +137,7 @@
 - [x] Refactor preview using a common trait & macros
 - [x] fix previewing non normal file hangs by preventing previewing...
 - [x] send a notification when files are copied or moved
+- [x] regex matcher (w) updates as you type
 
 ## TODO
 

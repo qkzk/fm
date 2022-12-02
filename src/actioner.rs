@@ -144,6 +144,7 @@ impl Actioner {
             | Mode::Exec
             | Mode::Search
             | Mode::Goto
+            | Mode::RegexMatch
             | Mode::Filter => {
                 status.selected().event_move_cursor_left();
                 Ok(())
@@ -164,6 +165,7 @@ impl Actioner {
             | Mode::Exec
             | Mode::Search
             | Mode::Goto
+            | Mode::RegexMatch
             | Mode::Filter => {
                 status.selected().event_move_cursor_right();
                 Ok(())
@@ -182,6 +184,7 @@ impl Actioner {
             | Mode::Exec
             | Mode::Search
             | Mode::Goto
+            | Mode::RegexMatch
             | Mode::Filter => {
                 status.selected().event_delete_char_left();
                 Ok(())
@@ -202,6 +205,7 @@ impl Actioner {
             | Mode::Exec
             | Mode::Search
             | Mode::Goto
+            | Mode::RegexMatch
             | Mode::Filter => {
                 status.selected().event_delete_chars_right();
                 Ok(())
@@ -354,13 +358,13 @@ impl Actioner {
     /// Keybindings are read from `Config`.
     fn char(&self, status: &mut Status, c: char) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Newfile
-            | Mode::Newdir
-            | Mode::Chmod
-            | Mode::Rename
-            | Mode::RegexMatch
-            | Mode::Filter => {
+            Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::Filter => {
                 status.selected().event_text_insertion(c);
+                Ok(())
+            }
+            Mode::RegexMatch => {
+                status.selected().event_text_insertion(c);
+                status.select_from_regex()?;
                 Ok(())
             }
             Mode::Goto | Mode::Exec | Mode::Search => {
