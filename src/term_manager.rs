@@ -42,18 +42,18 @@ impl<'a> Draw for WinTab<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         match self.tab.mode {
             Mode::Jump => self.jump_list(self.status, canvas),
-            Mode::History => self.history(self.status, canvas),
-            Mode::Exec | Mode::Goto | Mode::Search => self.completion(self.status, canvas),
-            Mode::NeedConfirmation => self.confirmation(self.status, canvas),
-            Mode::Preview | Mode::Help => self.preview(self.status, canvas),
-            Mode::Shortcut => self.shortcuts(self.status, canvas),
+            Mode::History => self.history(self.tab, canvas),
+            Mode::Exec | Mode::Goto | Mode::Search => self.completion(self.tab, canvas),
+            Mode::NeedConfirmation => self.confirmation(self.status, self.tab, canvas),
+            Mode::Preview | Mode::Help => self.preview(self.tab, canvas),
+            Mode::Shortcut => self.shortcuts(self.tab, canvas),
             Mode::Marks(MarkAction::New) | Mode::Marks(MarkAction::Jump) => {
-                self.marks(self.status, canvas)
+                self.marks(self.status, self.tab, canvas)
             }
-            _ => self.files(self.status, canvas),
+            _ => self.files(self.status, self.tab, canvas),
         }?;
-        self.cursor(self.status, canvas)?;
-        self.first_line(self.status, self.disk_space.clone(), canvas)?;
+        self.cursor(self.status, self.tab, canvas)?;
+        self.first_line(self.status, self.tab, self.disk_space.clone(), canvas)?;
         Ok(())
     }
 }
@@ -81,20 +81,20 @@ impl<'a> WinTab<'a> {
     fn first_line(
         &self,
         status: &Status,
+        tab: &Tab,
         disk_space: String,
         canvas: &mut dyn Canvas,
     ) -> FmResult<()> {
         let mut offset = 0;
-        if let Mode::Normal = status.selected_non_mut().mode {
+        if let Mode::Normal = tab.mode {
             offset = self.tab_bar(status, canvas)?
         }
-        let first_row = self.create_first_row(status, disk_space)?;
+        let first_row = self.create_first_row(tab, disk_space)?;
         self.draw_colored_strings(0, offset, first_row, canvas)?;
         Ok(())
     }
 
-    fn create_first_row(&self, status: &Status, disk_space: String) -> FmResult<Vec<String>> {
-        let tab = status.selected_non_mut();
+    fn create_first_row(&self, tab: &Tab, disk_space: String) -> FmResult<Vec<String>> {
         let first_row = match tab.mode {
             Mode::Normal => {
                 vec![
@@ -179,8 +179,7 @@ impl<'a> WinTab<'a> {
     /// normal (ie. default) mode.
     /// When there's too much files, only those around the selected one are
     /// displayed.
-    fn files(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let tab = status.selected_non_mut();
+    fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         let len = tab.path_content.files.len();
         for (i, (file, string)) in std::iter::zip(
             tab.path_content.files.iter(),
@@ -201,8 +200,7 @@ impl<'a> WinTab<'a> {
     }
 
     /// Display a cursor in the top row, at a correct column.
-    fn cursor(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let tab = status.selected_non_mut();
+    fn cursor(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
             Mode::Normal | Mode::Help | Mode::Marks(_) => {
                 canvas.show_cursor(false)?;
@@ -240,8 +238,7 @@ impl<'a> WinTab<'a> {
     }
 
     /// Display the history of visited directories.
-    fn history(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let tab = status.selected_non_mut();
+    fn history(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         canvas.print(0, 0, "Go to...")?;
         for (row, path) in tab.history.visited.iter().rev().enumerate() {
             let mut attr = Attr::default();
@@ -260,8 +257,7 @@ impl<'a> WinTab<'a> {
     }
 
     /// Display the predefined shortcuts.
-    fn shortcuts(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let tab = status.selected_non_mut();
+    fn shortcuts(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         canvas.print(0, 0, "Go to...")?;
         for (row, path) in tab.shortcut.shortcuts.iter().enumerate() {
             let mut attr = Attr::default();
@@ -281,8 +277,7 @@ impl<'a> WinTab<'a> {
 
     /// Display the possible completion items. The currently selected one is
     /// reversed.
-    fn completion(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let tab = status.selected_non_mut();
+    fn completion(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
         for (row, candidate) in tab.completion.proposals.iter().enumerate() {
             let mut attr = Attr::default();
@@ -295,8 +290,7 @@ impl<'a> WinTab<'a> {
     }
 
     /// Display a list of edited (deleted, copied, moved) files for confirmation
-    fn confirmation(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let tab = status.selected_non_mut();
+    fn confirmation(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         for (row, path) in status.flagged.iter().enumerate() {
             canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2,
@@ -344,9 +338,7 @@ impl<'a> WinTab<'a> {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let tab = status.selected_non_mut();
-
+    fn preview(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
         match &tab.preview {
@@ -417,9 +409,7 @@ impl<'a> WinTab<'a> {
         Ok(())
     }
 
-    fn marks(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let tab = status.selected_non_mut();
-
+    fn marks(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
 
         for (i, line) in status.marks.as_strings()?.iter().enumerate() {
