@@ -18,7 +18,6 @@ use zip::ZipArchive;
 
 use crate::fileinfo::PathContent;
 use crate::fm_error::{FmError, FmResult};
-use crate::help::HELP_LINES;
 
 #[derive(Clone)]
 pub enum Preview {
@@ -100,8 +99,8 @@ impl Preview {
         }
     }
 
-    pub fn help() -> Self {
-        Self::Text(TextContent::help())
+    pub fn help(help: String) -> Self {
+        Self::Text(TextContent::help(help))
     }
 
     pub fn len(&self) -> usize {
@@ -138,9 +137,8 @@ impl Default for TextContent {
 }
 
 impl TextContent {
-    fn help() -> Self {
-        let content: Box<Vec<String>> =
-            Box::new(HELP_LINES.split('\n').map(|s| s.to_owned()).collect());
+    fn help(help: String) -> Self {
+        let content: Box<Vec<String>> = Box::new(help.split('\n').map(|s| s.to_owned()).collect());
         Self {
             length: content.len(),
             content,

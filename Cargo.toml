@@ -34,6 +34,7 @@ regex = "1"
 serde_yaml = "0.9.13"
 shellexpand = "2.1.2"
 skim = { git = "https://github.com/qkzk/skim" }
+strfmt = "0.2.2"
 syntect = "5.0"
 sysinfo = "0.26.7"
 tuikit = "*"

@@ -141,8 +141,8 @@ impl Display {
                 None => vec!["".to_owned()],
             },
             Mode::Help => vec![
-                "fm: a dired like file manager.".to_owned(),
-                "Default keybindings.".to_owned(),
+                "fm: a dired like file manager. ".to_owned(),
+                "Keybindings.".to_owned(),
             ],
             Mode::Marks(MarkAction::Jump) => vec!["Jump to...".to_owned()],
             Mode::Marks(MarkAction::New) => vec!["Save mark...".to_owned()],

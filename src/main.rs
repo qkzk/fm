@@ -8,6 +8,7 @@ use fm::actioner::Actioner;
 use fm::args::Args;
 use fm::config::load_config;
 use fm::fm_error::FmResult;
+use fm::help::Help;
 use fm::log::set_logger;
 use fm::status::Status;
 use fm::term_manager::{Display, EventReader};
@@ -27,9 +28,10 @@ fn main() -> FmResult<()> {
     let term = Arc::new(init_term()?);
     let actioner = Actioner::new(&config.keybindings);
     let event_reader = EventReader::new(term.clone());
+    let help = Help::from_keybindings(&config.keybindings)?.help;
     let mut display = Display::new(term.clone(), config.colors.clone());
     let mut sys = System::new_all();
-    let mut status = Status::new(Args::parse(), config, display.height()?, term.clone())?;
+    let mut status = Status::new(Args::parse(), config, display.height()?, term.clone(), help)?;
 
     while let Ok(event) = event_reader.poll_event() {
         sys.refresh_disks();

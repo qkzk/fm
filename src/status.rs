@@ -43,9 +43,15 @@ impl Status {
     const MAX_TAB: u32 = 10;
     const MAX_PERMISSIONS: u32 = 0o777;
 
-    pub fn new(args: Args, config: Config, height: usize, term: Arc<Term>) -> FmResult<Self> {
+    pub fn new(
+        args: Args,
+        config: Config,
+        height: usize,
+        term: Arc<Term>,
+        help: String,
+    ) -> FmResult<Self> {
         Ok(Self {
-            tabs: vec![Tab::new(args, config, height)?],
+            tabs: vec![Tab::new(args, config, height, help)?],
             index: 0,
             flagged: HashSet::new(),
             jump_index: 0,

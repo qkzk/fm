@@ -1,10 +1,20 @@
+use strfmt::strfmt;
+
+use crate::config::Keybindings;
+use crate::fm_error::FmResult;
+
 /// Help message to be displayed when help key is pressed.
 /// Default help key is `'h'`.
-pub static HELP_LINES: &str = "
-Default key bindings:
 
-q:      quit
-h:      help
+pub struct Help {
+    pub help: String,
+}
+
+impl Help {
+    pub fn from_keybindings(keybindings: &Keybindings) -> FmResult<Self> {
+        let help_to_format = "
+{quit}:      quit
+{help}:      help
 
 - Navigation -
 ←:      cd to parent directory 
@@ -16,21 +26,21 @@ End:    go to last line
 PgUp:   10 lines up
 PgDown: 10 lines down
 
-a:      toggle hidden
-s:      shell in current directory
-o:      open this file
-i:      open in current nvim session
-P:      preview this file
+{toggle_hidden}:      toggle hidden
+{shell}:      shell in current directory
+{open_file}:      open this file
+{nvim}:      open in current nvim session
+{preview}:      preview this file
 Ctrl+f: fuzzy finder
 Ctrl+r: refresh view
 Ctrl+c: copy filename to clipboard
 Ctrl+p: copy filepath to clipboard
 Ctrl+x: decompress selected file
 Alt+d:  dragon-drop selected file
-M:      Mark current path
-':      Jump to a mark
--:      Move back to previous dir
-~:      Move to $HOME
+{marks_new}:      Mark current path
+{marks_jump}:      Jump to a mark
+{back}:      Move back to previous dir
+{home}:      Move to $HOME
 
 - Tabs -
     Tab:    Next tab
@@ -39,31 +49,36 @@ M:      Mark current path
 
 - Action on flagged files - 
     space:  toggle flag on a file 
-    *:      flag all
-    u:      clear flags
-    v:      reverse flags
-    c:      copy to current dir
-    p:      move to current dir
-    x:      delete files
-    S:      symlink files
-    B:      Bulkrename files
+{flag_all}:      flag all
+{clear_flags}:      clear flags
+{reverse_flags}:      reverse flags
+{copy_paste}:      copy to current dir
+{cut_paste}:      move to current dir
+{delete}:      delete files
+{symlink}:      symlink files
+{bulkrename}:      Bulkrename files
 
 - MODES - 
-    m:      CHMOD 
-    e:      EXEC 
-    d:      NEWDIR 
-    n:      NEWFILE
-    r:      RENAME
-    g:      GOTO
-    w:      REGEXMATCH
-    j:      JUMP
-    O:      SORT
-    H:      HISTORY
-    G:      SHORTCUT
-    /:      SEARCH
-    f:      FILTER 
+    {chmod}:      CHMOD 
+    {exec}:      EXEC 
+    {newdir}:      NEWDIR 
+    {newfile}:      NEWFILE
+    {rename}:      RENAME
+    {goto}:      GOTO
+    {regex_match}:      REGEXMATCH
+    {jump}:      JUMP
+    {sort_by}:      SORT
+    {history}:      HISTORY
+    {shortcut}:      SHORTCUT
+    {search}:      SEARCH
+    {filter}:      FILTER 
         (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
     Enter:  Execute mode then NORMAL
     Esc:    NORMAL
     Ctrl+q: NORMAL
-";
+"
+        .to_owned();
+        let help = strfmt(&help_to_format, &keybindings.to_hashmap())?;
+        Ok(Self { help })
+    }
+}
