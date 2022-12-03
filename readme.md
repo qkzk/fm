@@ -138,6 +138,7 @@
 - [x] fix previewing non normal file hangs by preventing previewing...
 - [x] send a notification when files are copied or moved
 - [x] regex matcher (w) updates as you type
+- [x] help displays current keybindings
 
 ## TODO
 
@@ -160,7 +161,6 @@
   - [x] decompress selected file with ctrl+x
   - [x] preview
 
-- [ ] help should display current bindings
 - [ ] plugins
   - which language ?
   - what for ?
