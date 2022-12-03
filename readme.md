@@ -164,6 +164,8 @@
 - [ ] plugins
   - which language ?
   - what for ?
+- [ ] second pane ?
+- [ ] configurable output (owner, group etc.)
 
 ## Won't do
 

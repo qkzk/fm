@@ -23,7 +23,7 @@ use crate::tab::Tab;
 
 pub struct Status {
     /// Vector of `Tab`, each of them are displayed in a separate tab.
-    tabs: Vec<Tab>,
+    pub tabs: Vec<Tab>,
     /// Index of the current selected tab
     pub index: usize,
     /// Set of flagged files
@@ -50,8 +50,9 @@ impl Status {
         term: Arc<Term>,
         help: String,
     ) -> FmResult<Self> {
+        let tab = Tab::new(args, config, height, help)?;
         Ok(Self {
-            tabs: vec![Tab::new(args, config, height, help)?],
+            tabs: vec![tab.clone(), tab],
             index: 0,
             flagged: HashSet::new(),
             jump_index: 0,
