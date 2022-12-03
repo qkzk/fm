@@ -139,6 +139,7 @@
 - [x] send a notification when files are copied or moved
 - [x] regex matcher (w) updates as you type
 - [x] help displays current keybindings
+- [x] dual pane. Only two tabs
 
 ## TODO
 
@@ -164,7 +165,6 @@
 - [ ] plugins
   - which language ?
   - what for ?
-- [ ] second pane ?
 - [ ] configurable output (owner, group etc.)
 
 ## Won't do
