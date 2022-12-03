@@ -5,7 +5,6 @@ use std::iter::{Enumerate, Skip, Take};
 use std::panic;
 use std::path::PathBuf;
 use std::slice::Iter;
-use std::sync::Arc;
 
 use content_inspector::{inspect, ContentType};
 use pdf_extract;
@@ -13,7 +12,6 @@ use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
-use tuikit::term::Term;
 use zip::ZipArchive;
 
 use crate::fileinfo::PathContent;
@@ -259,8 +257,13 @@ impl SyntaxedString {
         }
     }
 
-    pub fn print(&self, term: &Arc<Term>, row: usize, offset: usize) -> FmResult<()> {
-        term.print_with_attr(row, self.col + offset + 2, &self.content, self.attr)?;
+    pub fn print(
+        &self,
+        canvas: &mut dyn tuikit::canvas::Canvas,
+        row: usize,
+        offset: usize,
+    ) -> FmResult<()> {
+        canvas.print_with_attr(row, self.col + offset + 2, &self.content, self.attr)?;
         Ok(())
     }
 }
@@ -336,8 +339,8 @@ impl Line {
 
     /// Print line of pair of bytes in hexadecimal, 16 bytes long.
     /// It imitates the output of hexdump.
-    pub fn print(&self, term: &Term, row: usize, offset: usize) {
-        let _ = term.print(row, offset + 2, &self.format());
+    pub fn print(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
+        let _ = canvas.print(row, offset + 2, &self.format());
     }
 }
 

@@ -52,8 +52,8 @@ impl<'a> Draw for WinTab<'a> {
             }
             _ => self.files(self.status, self.tab, canvas),
         }?;
-        self.cursor(self.status, self.tab, canvas)?;
-        self.first_line(self.status, self.tab, self.disk_space.clone(), canvas)?;
+        self.cursor(self.tab, canvas)?;
+        self.first_line(self.tab, self.disk_space.clone(), canvas)?;
         Ok(())
     }
 }
@@ -78,19 +78,9 @@ impl<'a> WinTab<'a> {
     /// In normal mode we display the path and number of files.
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
-    fn first_line(
-        &self,
-        status: &Status,
-        tab: &Tab,
-        disk_space: String,
-        canvas: &mut dyn Canvas,
-    ) -> FmResult<()> {
-        let mut offset = 0;
-        if let Mode::Normal = tab.mode {
-            offset = self.tab_bar(status, canvas)?
-        }
+    fn first_line(&self, tab: &Tab, disk_space: String, canvas: &mut dyn Canvas) -> FmResult<()> {
         let first_row = self.create_first_row(tab, disk_space)?;
-        self.draw_colored_strings(0, offset, first_row, canvas)?;
+        self.draw_colored_strings(0, 0, first_row, canvas)?;
         Ok(())
     }
 
@@ -136,27 +126,6 @@ impl<'a> WinTab<'a> {
         Ok(first_row)
     }
 
-    fn tab_bar(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<usize> {
-        let mut attr = Attr::default();
-        canvas.print_with_attr(0, 0, "[", attr)?;
-        let (number_of_tabs, selected_index) = status.len_index_of_tabs();
-
-        for tab in 0..(number_of_tabs) {
-            if tab == selected_index {
-                attr = Attr {
-                    bg: Color::default(),
-                    fg: Color::CYAN,
-                    effect: Effect::REVERSE,
-                };
-            }
-            canvas.print_with_attr(0, 2 * tab + 1, &format!("{}", tab), attr)?;
-            attr = Attr::default();
-            canvas.print_with_attr(0, 2 * number_of_tabs, " ", Attr::default())?;
-        }
-        canvas.print_with_attr(0, 2 * number_of_tabs, "]", Attr::default())?;
-        Ok(2 * number_of_tabs + 2)
-    }
-
     fn draw_colored_strings(
         &self,
         row: usize,
@@ -200,7 +169,7 @@ impl<'a> WinTab<'a> {
     }
 
     /// Display a cursor in the top row, at a correct column.
-    fn cursor(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
             Mode::Normal | Mode::Help | Mode::Marks(_) => {
                 canvas.show_cursor(false)?;
@@ -348,7 +317,7 @@ impl<'a> WinTab<'a> {
                     self.preview_line_numbers(tab, i, row, canvas)?;
                     for token in vec_line.iter() {
                         //TODO! fix token print
-                        // token.print(&canvas, row, line_number_width)?;
+                        token.print(canvas, row, line_number_width)?;
                     }
                 }
             }
@@ -371,7 +340,7 @@ impl<'a> WinTab<'a> {
                         Self::ATTR_LINE_NR,
                     )?;
                     //TODO! Fix line print
-                    // line.print(&canvas, row, line_number_width_hex + 1);
+                    line.print(canvas, row, line_number_width_hex + 1);
                 }
             }
             Preview::Pdf(text) => {
@@ -483,9 +452,36 @@ impl Display {
             disk_space,
             colors: self.colors.clone(),
         };
+        let left_selected = status.index == 0;
+        let left_border: Attr;
+        let right_border: Attr;
+        if left_selected {
+            left_border = Attr {
+                fg: Color::WHITE,
+                bg: Color::default(),
+                effect: Effect::REVERSE | Effect::BOLD,
+            };
+            right_border = Attr::default();
+        } else {
+            left_border = Attr::default();
+            right_border = Attr {
+                fg: Color::WHITE,
+                bg: Color::default(),
+                effect: Effect::REVERSE | Effect::BOLD,
+            };
+        }
+
         let hsplit = HSplit::default()
-            .split(Win::new(&win_tab_left).border(true))
-            .split(Win::new(&win_tab_right).border(true));
+            .split(
+                Win::new(&win_tab_left)
+                    .border(true)
+                    .border_attr(left_border),
+            )
+            .split(
+                Win::new(&win_tab_right)
+                    .border(true)
+                    .border_attr(right_border),
+            );
 
         self.term.draw(&hsplit)?;
         Ok(self.term.present()?)

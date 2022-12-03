@@ -202,7 +202,7 @@ impl Status {
                 }
             } else if path.is_dir() {
                 let _ = tab.set_pathcontent(path);
-                // self.tabs.push(tab);
+                self.tabs[self.index] = tab;
             }
         }
     }
