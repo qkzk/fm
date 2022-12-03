@@ -34,8 +34,8 @@ impl EventReader {
 struct WinTab<'a> {
     status: &'a Status,
     tab: &'a Tab,
-    disk_space: String,
-    colors: Colors,
+    disk_space: &'a str,
+    colors: &'a Colors,
 }
 
 impl<'a> Draw for WinTab<'a> {
@@ -53,7 +53,7 @@ impl<'a> Draw for WinTab<'a> {
             _ => self.files(self.status, self.tab, canvas),
         }?;
         self.cursor(self.tab, canvas)?;
-        self.first_line(self.tab, self.disk_space.clone(), canvas)?;
+        self.first_line(self.tab, self.disk_space, canvas)?;
         Ok(())
     }
 }
@@ -65,6 +65,11 @@ impl<'a> WinTab<'a> {
     const SORT_CURSOR_OFFSET: usize = 37;
     const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
     const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
+    const ATTR_YELLOW_BOLD: Attr = Attr {
+        fg: Color::YELLOW,
+        bg: Color::Default,
+        effect: Effect::BOLD,
+    };
     const LINE_COLORS: [Attr; 6] = [
         color_to_attr(Color::Rgb(231, 162, 156)),
         color_to_attr(Color::Rgb(144, 172, 186)),
@@ -78,13 +83,13 @@ impl<'a> WinTab<'a> {
     /// In normal mode we display the path and number of files.
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
-    fn first_line(&self, tab: &Tab, disk_space: String, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> FmResult<()> {
         let first_row = self.create_first_row(tab, disk_space)?;
         self.draw_colored_strings(0, 0, first_row, canvas)?;
         Ok(())
     }
 
-    fn create_first_row(&self, tab: &Tab, disk_space: String) -> FmResult<Vec<String>> {
+    fn create_first_row(&self, tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
         let first_row = match tab.mode {
             Mode::Normal => {
                 vec![
@@ -159,7 +164,7 @@ impl<'a> WinTab<'a> {
         .skip(tab.window.top)
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
-            let mut attr = fileinfo_attr(status, file, &self.colors);
+            let mut attr = fileinfo_attr(status, file, self.colors);
             if status.flagged.contains(&file.path) {
                 attr.effect |= Effect::BOLD | Effect::UNDERLINE;
             }
@@ -271,16 +276,11 @@ impl<'a> WinTab<'a> {
         }
         info!("last_edition: {}", tab.last_edition);
         if let LastEdition::CopyPaste = tab.last_edition {
-            let attr = Attr {
-                fg: Color::YELLOW,
-                bg: Color::Default,
-                effect: Effect::BOLD,
-            };
             let content = format!(
                 "Files will be copied to {}",
                 tab.path_content.path_to_str()?
             );
-            canvas.print_with_attr(2, 3, &content, attr)?;
+            canvas.print_with_attr(2, 3, &content, Self::ATTR_YELLOW_BOLD)?;
         }
         Ok(())
     }
@@ -391,19 +391,6 @@ impl<'a> WinTab<'a> {
     fn calc_line_row(i: usize, status: &Tab) -> usize {
         i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top
     }
-
-    // fn disk_space(&mut self, path_str: String) -> String {
-    //     self.sys.refresh_disks();
-    //     let mut size = 0_u64;
-    //     let mut disks: Vec<&sysinfo::Disk> = self.sys.disks().iter().collect();
-    //     disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
-    //     for disk in disks {
-    //         if path_str.contains(disk.mount_point().as_os_str().to_str().unwrap()) {
-    //             size = disk.available_space();
-    //         };
-    //     }
-    //     human_size(size)
-    // }
 }
 
 /// Is responsible for displaying content in the terminal.
@@ -415,6 +402,9 @@ pub struct Display {
     colors: Colors,
 }
 impl Display {
+    const SELECTED_BORDER: Attr = reversed_color_to_attr(Color::LIGHT_BLUE);
+    const INERT_BORDER: Attr = color_to_attr(Color::WHITE);
+
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>, colors: Colors) -> Self {
         Self { term, colors }
@@ -438,37 +428,33 @@ impl Display {
     /// The completion list if any.
     ///
     /// The preview in preview mode.
-    pub fn display_all(&mut self, status: &Status, disk_space: String) -> FmResult<()> {
+    pub fn display_all(
+        &mut self,
+        status: &Status,
+        disk_space_tab_0: String,
+        disk_space_tab_1: String,
+    ) -> FmResult<()> {
         self.term.clear()?;
         let win_tab_left = WinTab {
             status,
             tab: &status.tabs[0],
-            disk_space: disk_space.clone(),
-            colors: self.colors.clone(),
+            disk_space: &disk_space_tab_0,
+            colors: &self.colors,
         };
         let win_tab_right = WinTab {
             status,
             tab: &status.tabs[1],
-            disk_space,
-            colors: self.colors.clone(),
+            disk_space: &disk_space_tab_1,
+            colors: &self.colors,
         };
-        let left_selected = status.index == 0;
         let left_border: Attr;
         let right_border: Attr;
-        if left_selected {
-            left_border = Attr {
-                fg: Color::WHITE,
-                bg: Color::default(),
-                effect: Effect::REVERSE | Effect::BOLD,
-            };
-            right_border = Attr::default();
+        if status.index == 0 {
+            left_border = Self::SELECTED_BORDER;
+            right_border = Self::INERT_BORDER;
         } else {
-            left_border = Attr::default();
-            right_border = Attr {
-                fg: Color::WHITE,
-                bg: Color::default(),
-                effect: Effect::REVERSE | Effect::BOLD,
-            };
+            left_border = Self::INERT_BORDER;
+            right_border = Self::SELECTED_BORDER;
         }
 
         let hsplit = HSplit::default()
@@ -503,5 +489,13 @@ const fn color_to_attr(color: Color) -> Attr {
         fg: color,
         bg: Color::Default,
         effect: Effect::empty(),
+    }
+}
+
+const fn reversed_color_to_attr(color: Color) -> Attr {
+    Attr {
+        fg: color,
+        bg: Color::Default,
+        effect: Effect::REVERSE,
     }
 }

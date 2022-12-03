@@ -25,6 +25,7 @@ Home:   go to first line
 End:    go to last line
 PgUp:   10 lines up
 PgDown: 10 lines down
+Tab:    Cycle tab
 
 {toggle_hidden}:      toggle hidden
 {shell}:      shell in current directory
@@ -41,11 +42,6 @@ Alt+d:  dragon-drop selected file
 {marks_jump}:      Jump to a mark
 {back}:      Move back to previous dir
 {home}:      Move to $HOME
-
-- Tabs -
-    Tab:    Next tab
-    Del:    Close the current tab
-    Ins:    Insert a new tab
 
 - Action on flagged files - 
     space:  toggle flag on a file 
