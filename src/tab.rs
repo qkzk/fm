@@ -60,11 +60,12 @@ pub struct Tab {
     /// Predefined shortcuts
     pub shortcut: Shortcut,
     pub opener: Opener,
+    help: String,
 }
 
 impl Tab {
     /// Creates a new tab from args, config and height.
-    pub fn new(args: Args, config: Config, height: usize) -> FmResult<Self> {
+    pub fn new(args: Args, config: Config, height: usize, help: String) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
         let path_content = PathContent::new(path.clone(), args.all)?;
         let show_hidden = args.all;
@@ -100,6 +101,7 @@ impl Tab {
             history,
             shortcut,
             opener,
+            help,
         })
     }
 
@@ -327,7 +329,7 @@ impl Tab {
 
     pub fn event_help(&mut self) {
         self.mode = Mode::Help;
-        self.preview = Preview::help();
+        self.preview = Preview::help(self.help.clone());
         self.window.reset(self.preview.len())
     }
 

@@ -352,6 +352,46 @@ impl Keybindings {
             home: '~',
         }
     }
+
+    pub fn to_hashmap(&self) -> std::collections::HashMap<String, String> {
+        let mut kb = std::collections::HashMap::new();
+
+        kb.insert("toggle_hidden".to_owned(), self.toggle_hidden.to_string());
+        kb.insert("copy_paste".to_owned(), self.copy_paste.to_string());
+        kb.insert("cut_paste".to_owned(), self.cut_paste.to_string());
+        kb.insert("delete".to_owned(), self.delete.to_string());
+        kb.insert("chmod".to_owned(), self.chmod.to_string());
+        kb.insert("exec".to_owned(), self.exec.to_string());
+        kb.insert("newdir".to_owned(), self.newdir.to_string());
+        kb.insert("newfile".to_owned(), self.newfile.to_string());
+        kb.insert("rename".to_owned(), self.rename.to_string());
+        kb.insert("clear_flags".to_owned(), self.clear_flags.to_string());
+        kb.insert("toggle_flag".to_owned(), self.toggle_flag.to_string());
+        kb.insert("shell".to_owned(), self.shell.to_string());
+        kb.insert("open_file".to_owned(), self.open_file.to_string());
+        kb.insert("help".to_owned(), self.help.to_string());
+        kb.insert("search".to_owned(), self.search.to_string());
+        kb.insert("quit".to_owned(), self.quit.to_string());
+        kb.insert("goto".to_owned(), self.goto.to_string());
+        kb.insert("flag_all".to_owned(), self.flag_all.to_string());
+        kb.insert("reverse_flags".to_owned(), self.reverse_flags.to_string());
+        kb.insert("regex_match".to_owned(), self.regex_match.to_string());
+        kb.insert("jump".to_owned(), self.jump.to_string());
+        kb.insert("nvim".to_owned(), self.nvim.to_string());
+        kb.insert("sort_by".to_owned(), self.sort_by.to_string());
+        kb.insert("symlink".to_owned(), self.symlink.to_string());
+        kb.insert("preview".to_owned(), self.preview.to_string());
+        kb.insert("history".to_owned(), self.history.to_string());
+        kb.insert("shortcut".to_owned(), self.shortcut.to_string());
+        kb.insert("bulkrename".to_owned(), self.bulkrename.to_string());
+        kb.insert("marks_new".to_owned(), self.marks_new.to_string());
+        kb.insert("marks_jump".to_owned(), self.marks_jump.to_string());
+        kb.insert("filter".to_owned(), self.filter.to_string());
+        kb.insert("back".to_owned(), self.back.to_string());
+        kb.insert("home".to_owned(), self.home.to_string());
+
+        kb
+    }
 }
 
 impl Default for Keybindings {

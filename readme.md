@@ -160,6 +160,11 @@
   - [x] decompress selected file with ctrl+x
   - [x] preview
 
+- [ ] help should display current bindings
+- [ ] plugins
+  - which language ?
+  - what for ?
+
 ## Won't do
 
 ### auto stuff
