@@ -1,7 +1,9 @@
+use strum_macros::{Display, EnumString};
+
 use crate::fm_error::FmResult;
 use crate::status::Status;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Display, EnumString)]
 pub enum EventChar {
     ToggleHidden,
     CopyPaste,
@@ -39,44 +41,6 @@ pub enum EventChar {
 }
 
 impl EventChar {
-    pub fn from(s: &str) -> Self {
-        match s {
-            "ToggleHidden" => EventChar::ToggleHidden,
-            "CopyPaste" => EventChar::CopyPaste,
-            "CutPaste" => EventChar::CutPaste,
-            "NewDir" => EventChar::NewDir,
-            "NewFile" => EventChar::NewFile,
-            "Chmod" => EventChar::Chmod,
-            "Exec" => EventChar::Exec,
-            "Goto" => EventChar::Goto,
-            "Rename" => EventChar::Rename,
-            "ClearFlags" => EventChar::ClearFlags,
-            "ToggleFlag" => EventChar::ToggleFlag,
-            "Shell" => EventChar::Shell,
-            "DeleteFile" => EventChar::DeleteFile,
-            "OpenFile" => EventChar::OpenFile,
-            "Help" => EventChar::Help,
-            "Search" => EventChar::Search,
-            "RegexMatch" => EventChar::RegexMatch,
-            "Quit" => EventChar::Quit,
-            "FlagAll" => EventChar::FlagAll,
-            "ReverseFlags" => EventChar::ReverseFlags,
-            "Jump" => EventChar::Jump,
-            "History" => EventChar::History,
-            "NvimFilepicker" => EventChar::NvimFilepicker,
-            "Sort" => EventChar::Sort,
-            "Symlink" => EventChar::Symlink,
-            "Preview" => EventChar::Preview,
-            "Shortcut" => EventChar::Shortcut,
-            "Bulkrename" => EventChar::Bulkrename,
-            "MarksNew" => EventChar::MarksNew,
-            "MarksJump" => EventChar::MarksJump,
-            "Filter" => EventChar::Filter,
-            "Back" => EventChar::Back,
-            "Home" => EventChar::Home,
-            _ => panic!("Unreadable command"),
-        }
-    }
     pub fn match_char(&self, status: &mut Status) -> FmResult<()> {
         let current_tab = status.selected();
         match *self {
@@ -170,46 +134,6 @@ impl EventChar {
             EventChar::Filter => status.selected().event_filter(),
             EventChar::Back => status.selected().event_back(),
             EventChar::Home => status.selected().event_home(),
-        }
-    }
-}
-
-impl Into<String> for EventChar {
-    fn into(self) -> String {
-        match self {
-            EventChar::ToggleHidden => "ToggleHidden".to_owned(),
-            EventChar::CopyPaste => "CopyPaste".to_owned(),
-            EventChar::CutPaste => "CutPaste".to_owned(),
-            EventChar::NewDir => "NewDir".to_owned(),
-            EventChar::NewFile => "NewFile".to_owned(),
-            EventChar::Chmod => "Chmod".to_owned(),
-            EventChar::Exec => "Exec".to_owned(),
-            EventChar::Goto => "Goto".to_owned(),
-            EventChar::Rename => "Rename".to_owned(),
-            EventChar::ClearFlags => "ClearFlags".to_owned(),
-            EventChar::ToggleFlag => "ToggleFlag".to_owned(),
-            EventChar::Shell => "Shell".to_owned(),
-            EventChar::DeleteFile => "DeleteFile".to_owned(),
-            EventChar::OpenFile => "OpenFile".to_owned(),
-            EventChar::Help => "Help".to_owned(),
-            EventChar::Search => "Search".to_owned(),
-            EventChar::RegexMatch => "RegexMatch".to_owned(),
-            EventChar::Quit => "Quit".to_owned(),
-            EventChar::FlagAll => "FlagAll".to_owned(),
-            EventChar::ReverseFlags => "ReverseFlags".to_owned(),
-            EventChar::Jump => "Jump".to_owned(),
-            EventChar::History => "History".to_owned(),
-            EventChar::NvimFilepicker => "NvimFilepicker".to_owned(),
-            EventChar::Sort => "Sort".to_owned(),
-            EventChar::Symlink => "Symlink".to_owned(),
-            EventChar::Preview => "Preview".to_owned(),
-            EventChar::Shortcut => "Shortcut".to_owned(),
-            EventChar::Bulkrename => "Bulkrename".to_owned(),
-            EventChar::MarksNew => "MarksNew".to_owned(),
-            EventChar::MarksJump => "MarksJump".to_owned(),
-            EventChar::Filter => "Filter".to_owned(),
-            EventChar::Back => "Back".to_owned(),
-            EventChar::Home => "Home".to_owned(),
         }
     }
 }

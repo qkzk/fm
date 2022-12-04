@@ -4,6 +4,7 @@ use crate::fm_error::FmResult;
 use crate::keybindings::Keybindings;
 use crate::mode::{MarkAction, Mode};
 use crate::status::Status;
+use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -271,12 +272,7 @@ impl Actioner {
             Mode::Goto | Mode::Exec | Mode::Search => {
                 status.selected().event_replace_input_with_completion()
             }
-            Mode::Normal => {
-                if status.len_index_of_tabs().0 == 1 {
-                    status.new_tab()
-                }
-                status.next()
-            }
+            Mode::Normal => status.next(),
             _ => (),
         };
         Ok(())
@@ -362,7 +358,13 @@ impl Actioner {
         }
     }
 
-    fn resize(&self, status: &mut Status, _: usize, height: usize) -> FmResult<()> {
+    fn resize(&self, status: &mut Status, width: usize, height: usize) -> FmResult<()> {
+        if width < MIN_WIDTH_FOR_DUAL_PANE {
+            status.select_tab(0)?;
+            status.set_dual_pane(false);
+        } else {
+            status.set_dual_pane(true);
+        }
         status.selected().set_height(height);
         self.refresh_selected_view(status)?;
         Ok(())

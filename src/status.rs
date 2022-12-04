@@ -37,6 +37,7 @@ pub struct Status {
     /// terminal
     term: Arc<Term>,
     skimer: Skimer,
+    dual_pane: bool,
 }
 
 impl Status {
@@ -60,6 +61,7 @@ impl Status {
             colors: ColorCache::default(),
             skimer: Skimer::new(term.clone()),
             term,
+            dual_pane: true,
         })
     }
 
@@ -100,6 +102,9 @@ impl Status {
     }
 
     pub fn next(&mut self) {
+        if !self.dual_pane {
+            return;
+        }
         if self.is_empty() {
             self.index = 0;
         } else {
@@ -108,6 +113,9 @@ impl Status {
     }
 
     pub fn prev(&mut self) {
+        if !self.dual_pane {
+            return;
+        }
         if self.is_empty() {
             self.index = 0
         } else if self.index > 0 {
@@ -431,5 +439,22 @@ impl Status {
         self.select_from_regex()?;
         self.selected().input.reset();
         Ok(())
+    }
+
+    pub fn select_tab(&mut self, index: usize) -> FmResult<()> {
+        if index >= self.tabs.len() {
+            Err(FmError::new(&format!(
+                "Only {} tabs. Can't select tab {}",
+                self.tabs.len(),
+                index
+            )))
+        } else {
+            self.index = index;
+            Ok(())
+        }
+    }
+
+    pub fn set_dual_pane(&mut self, dual_pane: bool) {
+        self.dual_pane = dual_pane;
     }
 }

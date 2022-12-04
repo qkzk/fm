@@ -23,8 +23,7 @@ fn main() -> FmResult<()> {
     set_logger()?;
     info!("fm is starting...");
 
-    let config = load_config(CONFIG_PATH);
-
+    let config = load_config(CONFIG_PATH)?;
     let term = Arc::new(init_term()?);
     let actioner = Actioner::new(config.keybindings.clone());
     let event_reader = EventReader::new(term.clone());

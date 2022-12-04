@@ -116,4 +116,10 @@ impl From<FmtError> for FmError {
     }
 }
 
+impl From<strum::ParseError> for FmError {
+    fn from(error: strum::ParseError) -> Self {
+        Self::new(&error.to_string())
+    }
+}
+
 pub type FmResult<T> = Result<T, FmError>;

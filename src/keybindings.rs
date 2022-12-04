@@ -1,6 +1,9 @@
 use std::collections::HashMap;
+use std::str::FromStr;
+use std::string::ToString;
 
 use crate::event_char::EventChar;
+use crate::fm_error::FmResult;
 
 #[derive(Clone, Debug)]
 pub struct Keybindings {
@@ -60,21 +63,22 @@ impl Keybindings {
         Self { binds }
     }
 
-    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
         for i in Self::ASCII_FIRST_PRINTABLE..=Self::ASCII_LAST_PRINTABLE {
             let key = i as char;
             let string = key.to_string();
             if let Some(event_string) = yaml[string].as_str().map(|event| event.to_string()) {
-                self.binds.insert(key, EventChar::from(&event_string));
+                self.binds.insert(key, EventChar::from_str(&event_string)?);
             }
         }
+        Ok(())
     }
 
     pub fn to_hashmap(&self) -> HashMap<String, String> {
         self.binds
             .clone()
             .into_iter()
-            .map(|(k, v)| (v.into(), k.into()))
+            .map(|(k, v)| (v.to_string(), k.into()))
             .collect()
     }
 }

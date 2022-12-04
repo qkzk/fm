@@ -17,6 +17,8 @@ use crate::preview::{Preview, Window};
 use crate::status::Status;
 use crate::tab::Tab;
 
+pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 100;
+
 pub struct EventReader {
     term: Arc<Term>,
 }
@@ -402,8 +404,8 @@ pub struct Display {
     colors: Colors,
 }
 impl Display {
-    const SELECTED_BORDER: Attr = reversed_color_to_attr(Color::LIGHT_BLUE);
-    const INERT_BORDER: Attr = color_to_attr(Color::WHITE);
+    const SELECTED_BORDER: Attr = color_to_attr(Color::LIGHT_BLUE);
+    const INERT_BORDER: Attr = color_to_attr(Color::Default);
 
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>, colors: Colors) -> Self {
@@ -435,42 +437,57 @@ impl Display {
         disk_space_tab_1: String,
     ) -> FmResult<()> {
         self.term.clear()?;
-        let win_tab_left = WinTab {
+
+        let (width, _) = self.term.term_size()?;
+        if width > MIN_WIDTH_FOR_DUAL_PANE {
+            self.draw_dual_pane(status, disk_space_tab_0, disk_space_tab_1)?
+        } else {
+            self.draw_single_pane(status, disk_space_tab_0)?
+        }
+
+        Ok(self.term.present()?)
+    }
+
+    fn draw_dual_pane(
+        &mut self,
+        status: &Status,
+        disk_space_tab_0: String,
+        disk_space_tab_1: String,
+    ) -> FmResult<()> {
+        let win_left = WinTab {
             status,
             tab: &status.tabs[0],
             disk_space: &disk_space_tab_0,
             colors: &self.colors,
         };
-        let win_tab_right = WinTab {
+        let win_right = WinTab {
             status,
             tab: &status.tabs[1],
             disk_space: &disk_space_tab_1,
             colors: &self.colors,
         };
-        let left_border: Attr;
-        let right_border: Attr;
-        if status.index == 0 {
-            left_border = Self::SELECTED_BORDER;
-            right_border = Self::INERT_BORDER;
+        let (left_border, right_border) = if status.index == 0 {
+            (Self::SELECTED_BORDER, Self::INERT_BORDER)
         } else {
-            left_border = Self::INERT_BORDER;
-            right_border = Self::SELECTED_BORDER;
-        }
-
+            (Self::INERT_BORDER, Self::SELECTED_BORDER)
+        };
         let hsplit = HSplit::default()
-            .split(
-                Win::new(&win_tab_left)
-                    .border(true)
-                    .border_attr(left_border),
-            )
-            .split(
-                Win::new(&win_tab_right)
-                    .border(true)
-                    .border_attr(right_border),
-            );
+            .split(Win::new(&win_left).border(true).border_attr(left_border))
+            .split(Win::new(&win_right).border(true).border_attr(right_border));
+        Ok(self.term.draw(&hsplit)?)
+    }
 
-        self.term.draw(&hsplit)?;
-        Ok(self.term.present()?)
+    fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: String) -> FmResult<()> {
+        let win_left = WinTab {
+            status,
+            tab: &status.tabs[0],
+            disk_space: &disk_space_tab_0,
+            colors: &self.colors,
+        };
+        let win = Win::new(&win_left)
+            .border(true)
+            .border_attr(Self::SELECTED_BORDER);
+        Ok(self.term.draw(&win)?)
     }
 
     /// Reads and returns the `tuikit::term::Term` height.
@@ -489,13 +506,5 @@ const fn color_to_attr(color: Color) -> Attr {
         fg: color,
         bg: Color::Default,
         effect: Effect::empty(),
-    }
-}
-
-const fn reversed_color_to_attr(color: Color) -> Attr {
-    Attr {
-        fg: color,
-        bg: color,
-        effect: Effect::REVERSE,
     }
 }
