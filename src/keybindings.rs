@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use log::info;
-
 use crate::event_char::EventChar;
 
 #[derive(Clone, Debug)]
@@ -16,8 +14,8 @@ impl Default for Keybindings {
 }
 
 impl Keybindings {
-    const u8: ASCII_FIRST_PRINTABLE = 32;
-    const u8: ASCII_LAST_PRINTABLE = 127;
+    const ASCII_FIRST_PRINTABLE: u8 = 32;
+    const ASCII_LAST_PRINTABLE: u8 = 127;
 
     pub fn get(&self, key: &char) -> Option<&EventChar> {
         self.binds.get(key)
@@ -65,19 +63,18 @@ impl Keybindings {
     pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
         for i in Self::ASCII_FIRST_PRINTABLE..=Self::ASCII_LAST_PRINTABLE {
             let key = i as char;
-            let strng = key.to_string();
-            if let Some(event_string) = yaml[strng].as_str().map(|s| s.to_string()) {
-                info!("config: {} - {} - {:?}", i, key, event_string);
+            let string = key.to_string();
+            if let Some(event_string) = yaml[string].as_str().map(|event| event.to_string()) {
                 self.binds.insert(key, EventChar::from(&event_string));
             }
         }
     }
 
     pub fn to_hashmap(&self) -> HashMap<String, String> {
-        let mut reverse = HashMap::new();
-        for (k, v) in self.binds.clone().into_iter() {
-            let _ = reverse.insert(v.into(), k.into());
-        }
-        reverse
+        self.binds
+            .clone()
+            .into_iter()
+            .map(|(k, v)| (v.into(), k.into()))
+            .collect()
     }
 }

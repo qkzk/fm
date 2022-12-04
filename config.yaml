@@ -12,7 +12,6 @@ colors:
   symlink: magenta
 keybindings:
   # only ASCII char keys are allowed
-  # ASCII letters must be lowercase
   # non ASCII letters char must be in single quotes like this '*'
   a: ToggleHidden
   c: CopyPaste

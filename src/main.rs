@@ -24,15 +24,11 @@ fn main() -> FmResult<()> {
     info!("fm is starting...");
 
     let config = load_config(CONFIG_PATH);
-    info!("config loaded");
 
     let term = Arc::new(init_term()?);
     let actioner = Actioner::new(config.keybindings.clone());
-    info!("{:?}", config.keybindings.binds);
-    info!("actioner loaded");
     let event_reader = EventReader::new(term.clone());
     let help = Help::from_keybindings(&config.keybindings)?.help;
-    info!("help loaded");
     let mut display = Display::new(term.clone(), config.colors.clone());
     let mut sys = System::new_all();
     let mut status = Status::new(Args::parse(), config, display.height()?, term.clone(), help)?;
