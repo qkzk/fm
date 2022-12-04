@@ -1,9 +1,7 @@
-use std::collections::HashMap;
 use tuikit::prelude::{Event, Key, MouseButton};
 
-use crate::config::Keybindings;
-use crate::event_char::EventChar;
 use crate::fm_error::FmResult;
+use crate::keybindings::Keybindings;
 use crate::mode::{MarkAction, Mode};
 use crate::status::Status;
 
@@ -12,48 +10,13 @@ use crate::status::Status;
 /// All keys are mapped to relevent events on tabs.selected().
 /// Keybindings are read from `Config`.
 pub struct Actioner {
-    binds: HashMap<char, EventChar>,
+    binds: Keybindings,
 }
 
 impl Actioner {
     /// Creates a map of configurable keybindings to `EventChar`
     /// The `EventChar` is then associated to a `tabs.selected(). method.
-    pub fn new(keybindings: &Keybindings) -> Self {
-        let binds = HashMap::from([
-            (keybindings.toggle_hidden, EventChar::ToggleHidden),
-            (keybindings.copy_paste, EventChar::CopyPaste),
-            (keybindings.cut_paste, EventChar::CutPaste),
-            (keybindings.newdir, EventChar::NewDir),
-            (keybindings.newfile, EventChar::NewFile),
-            (keybindings.chmod, EventChar::Chmod),
-            (keybindings.exec, EventChar::Exec),
-            (keybindings.goto, EventChar::Goto),
-            (keybindings.rename, EventChar::Rename),
-            (keybindings.clear_flags, EventChar::ClearFlags),
-            (keybindings.toggle_flag, EventChar::ToggleFlag),
-            (keybindings.shell, EventChar::Shell),
-            (keybindings.delete, EventChar::DeleteFile),
-            (keybindings.open_file, EventChar::OpenFile),
-            (keybindings.help, EventChar::Help),
-            (keybindings.search, EventChar::Search),
-            (keybindings.regex_match, EventChar::RegexMatch),
-            (keybindings.quit, EventChar::Quit),
-            (keybindings.flag_all, EventChar::FlagAll),
-            (keybindings.reverse_flags, EventChar::ReverseFlags),
-            (keybindings.jump, EventChar::Jump),
-            (keybindings.nvim, EventChar::NvimFilepicker),
-            (keybindings.sort_by, EventChar::Sort),
-            (keybindings.symlink, EventChar::Symlink),
-            (keybindings.preview, EventChar::Preview),
-            (keybindings.history, EventChar::History),
-            (keybindings.shortcut, EventChar::Shortcut),
-            (keybindings.bulkrename, EventChar::Bulkrename),
-            (keybindings.marks_new, EventChar::MarksNew),
-            (keybindings.marks_jump, EventChar::MarksJump),
-            (keybindings.filter, EventChar::Filter),
-            (keybindings.back, EventChar::Back),
-            (keybindings.home, EventChar::Home),
-        ]);
+    pub fn new(binds: Keybindings) -> Self {
         Self { binds }
     }
     /// Reaction to received events.

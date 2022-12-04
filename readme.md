@@ -140,6 +140,7 @@
 - [x] regex matcher (w) updates as you type
 - [x] help displays current keybindings
 - [x] dual pane. Only two tabs
+- [x] allow multiple keybindings for same action
 
 ## TODO
 
@@ -166,7 +167,6 @@
   - which language ?
   - what for ?
 - [ ] configurable output (owner, group etc.)
-- [ ] multiple keybindings for same action
 
 ## Won't do
 
