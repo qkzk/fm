@@ -166,6 +166,7 @@
   - which language ?
   - what for ?
 - [ ] configurable output (owner, group etc.)
+- [ ] multiple keybindings for same action
 
 ## Won't do
 
