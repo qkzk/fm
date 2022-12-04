@@ -3,6 +3,7 @@ use std::{fs::File, path};
 use serde_yaml;
 use tuikit::attr::Color;
 
+use crate::fm_error::FmResult;
 use crate::keybindings::Keybindings;
 
 /// Holds every configurable aspect of the application.
@@ -73,12 +74,13 @@ impl Config {
     }
 
     /// Updates the config from  a configuration content.
-    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
         self.colors.update_from_config(&yaml["colors"]);
-        self.keybindings.update_from_config(&yaml["keybindings"]);
+        self.keybindings.update_from_config(&yaml["keybindings"])?;
         if let Some(terminal) = yaml["terminal"].as_str().map(|s| s.to_string()) {
             self.terminal = terminal;
         }
+        Ok(())
     }
 }
 
@@ -173,14 +175,14 @@ pub fn str_to_tuikit(color: &str) -> Color {
 /// 1. hardcoded values
 ///
 /// 2. configured values from `~/.config/fm/config.yaml` if the file exists.
-pub fn load_config(path: &str) -> Config {
+pub fn load_config(path: &str) -> FmResult<Config> {
     let mut config = Config::default();
 
     if let Ok(file) = File::open(path::Path::new(&shellexpand::tilde(path).to_string())) {
         if let Ok(yaml) = serde_yaml::from_reader(file) {
-            config.update_from_config(&yaml);
+            config.update_from_config(&yaml)?;
         }
     }
 
-    config
+    Ok(config)
 }

@@ -167,6 +167,7 @@
   - which language ?
   - what for ?
 - [ ] configurable output (owner, group etc.)
+- [ ] single pane if width is low
 
 ## Won't do
 
