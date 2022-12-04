@@ -495,7 +495,7 @@ const fn color_to_attr(color: Color) -> Attr {
 const fn reversed_color_to_attr(color: Color) -> Attr {
     Attr {
         fg: color,
-        bg: Color::Default,
+        bg: color,
         effect: Effect::REVERSE,
     }
 }
