@@ -14,32 +14,31 @@ keybindings:
   # only ASCII char keys are allowed
   # ASCII letters must be lowercase
   # non ASCII letters char must be in single quotes like this '*'
-  toggle_hidden: a
-  copy_paste: c
-  cut_paste: p
-  delete: x
-  chmod: m
-  exec: e
-  newdir: d
-  newfile: n
-  rename: r
-  clear_flags: u
-  toggle_flag: ' '
-  shell: s
-  open_file: o
-  help: h
-  search: '/'
-  quit: q
-  goto: g
-  flag_all: '*'
-  reverse_flags: v
-  regex_match: w
-  jump: j
-  nvim: i
-  sort_by: O
-  symlink: S
-  preview: P
-  history: H
-  marks_new: M
-  marks_jump: "'"
-  filter: "f"
+  a: ToggleHidden
+  c: CopyPaste
+  p: CutPaste
+  x: DeleteFile
+  m: Chmod
+  e: Exec
+  d: NewDir
+  n: NewFile
+  r: Rename
+  u: ClearFlags
+  " " : ToggleFlag
+  s: Shell
+  o: OpenFile
+  h: Help
+  "/": Search
+  g: Goto
+  "*": FlagAll
+  W: RegexMatch
+  j: Jump
+  i: NvimFilepicker
+  O: Sort
+  S: Symlink
+  P: Preview
+  H: History
+  M: MarksNew
+  "'": MarksJump
+  k: Shell
+  G: Shortcut

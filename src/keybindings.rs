@@ -16,6 +16,9 @@ impl Default for Keybindings {
 }
 
 impl Keybindings {
+    const u8: ASCII_FIRST_PRINTABLE = 32;
+    const u8: ASCII_LAST_PRINTABLE = 127;
+
     pub fn get(&self, key: &char) -> Option<&EventChar> {
         self.binds.get(key)
     }
@@ -60,12 +63,12 @@ impl Keybindings {
     }
 
     pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
-        for i in 32_u8..=127_u8 {
-            let c = i as char;
-            let s = c.to_string();
-            if let Some(v) = yaml[s].as_str().map(|s| s.to_string()) {
-                info!("config: {} - {} - {:?}", i, c, v);
-                self.binds.insert(c, EventChar::from(&v));
+        for i in Self::ASCII_FIRST_PRINTABLE..=Self::ASCII_LAST_PRINTABLE {
+            let key = i as char;
+            let strng = key.to_string();
+            if let Some(event_string) = yaml[strng].as_str().map(|s| s.to_string()) {
+                info!("config: {} - {} - {:?}", i, key, event_string);
+                self.binds.insert(key, EventChar::from(&event_string));
             }
         }
     }
