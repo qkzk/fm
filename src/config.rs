@@ -76,7 +76,6 @@ impl Config {
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
         self.colors.update_from_config(&yaml["colors"]);
         self.keybindings.update_from_config(&yaml["keybindings"]);
-        self.keybindings.update(&yaml["bindings"]);
         if let Some(terminal) = yaml["terminal"].as_str().map(|s| s.to_string()) {
             self.terminal = terminal;
         }
