@@ -38,10 +38,8 @@ fn main() -> FmResult<()> {
         actioner.read_event(&mut status, event)?;
         display.display_all(
             &status,
-            disk_space(
-                sys.disks(),
-                status.selected_non_mut().path_str().unwrap_or_default(),
-            ),
+            disk_space(sys.disks(), status.tabs[0].path_str().unwrap_or_default()),
+            disk_space(sys.disks(), status.tabs[1].path_str().unwrap_or_default()),
         )?;
 
         if status.selected_non_mut().must_quit() {

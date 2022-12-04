@@ -23,7 +23,7 @@ use crate::tab::Tab;
 
 pub struct Status {
     /// Vector of `Tab`, each of them are displayed in a separate tab.
-    tabs: Vec<Tab>,
+    pub tabs: [Tab; 2],
     /// Index of the current selected tab
     pub index: usize,
     /// Set of flagged files
@@ -50,8 +50,9 @@ impl Status {
         term: Arc<Term>,
         help: String,
     ) -> FmResult<Self> {
+        let tab = Tab::new(args, config, height, help)?;
         Ok(Self {
-            tabs: vec![Tab::new(args, config, height, help)?],
+            tabs: [tab.clone(), tab],
             index: 0,
             flagged: HashSet::new(),
             jump_index: 0,
@@ -67,9 +68,10 @@ impl Status {
     }
 
     pub fn new_tab(&mut self) {
-        if self.tabs.len() < Self::MAX_TAB as usize {
-            self.tabs.push(self.tabs[self.index].clone())
-        }
+        //TODO: remove
+        // if self.tabs.len() < Self::MAX_TAB as usize {
+        //     self.tabs.push(self.tabs[self.index].clone())
+        // }
     }
 
     pub fn go_tab(&mut self, digit: char) {
@@ -80,12 +82,13 @@ impl Status {
     }
 
     pub fn drop_tab(&mut self) {
-        if self.tabs.len() > 1 {
-            self.tabs.remove(self.index);
-            if self.index > 0 {
-                self.index = (self.index - 1) % self.len()
-            }
-        }
+        //TODO: remove
+        // if self.tabs.len() > 1 {
+        //     self.tabs.remove(self.index);
+        //     if self.index > 0 {
+        //         self.index = (self.index - 1) % self.len()
+        //     }
+        // }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -188,17 +191,18 @@ impl Status {
     }
 
     fn create_tab_from_skim_output(&mut self, cow_path: &Arc<dyn SkimItem>) {
+        // TODO: replace tab by selection
         let mut tab = self.selected().clone();
         let s_path = cow_path.output().to_string();
         if let Ok(path) = fs::canonicalize(path::Path::new(&s_path)) {
             if path.is_file() {
                 if let Some(parent) = path.parent() {
                     let _ = tab.set_pathcontent(parent.to_path_buf());
-                    self.tabs.push(tab);
+                    // self.tabs.push(tab);
                 }
             } else if path.is_dir() {
                 let _ = tab.set_pathcontent(path);
-                self.tabs.push(tab);
+                self.tabs[self.index] = tab;
             }
         }
     }
