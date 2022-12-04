@@ -141,6 +141,7 @@
 - [x] help displays current keybindings
 - [x] dual pane. Only two tabs
 - [x] allow multiple keybindings for same action
+- [x] single pane if width is low
 
 ## TODO
 
@@ -168,6 +169,15 @@
   - what for ?
 - [ ] configurable output (owner, group etc.)
 - [ ] single pane if width is low
+- [ ] refresh disks if needed (aka changed disk...) main <-> status.
+  - [ ] detect disk change...
+  - [ ] flag in status
+  - [ ] update flag if needed
+  - [ ] store disks size in variable in main
+- [ ] don't refresh diskspace every event (main, utils, status)
+  - [ ] detect disk change
+  - [ ] store sizes & paths in main ?
+  - [ ] update if necessary
 
 ## Won't do
 
