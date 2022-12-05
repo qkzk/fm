@@ -142,6 +142,10 @@
 - [x] dual pane. Only two tabs
 - [x] allow multiple keybindings for same action
 - [x] single pane if width is low
+- [x] disks:
+  - [x] simplify disk space read,
+  - [x] hold a sys reference in status
+  - [x] add shortcut to mount points
 
 ## TODO
 
@@ -174,10 +178,6 @@
   - [ ] flag in status
   - [ ] update flag if needed
   - [ ] store disks size in variable in main
-- [ ] don't refresh diskspace every event (main, utils, status)
-  - [ ] detect disk change
-  - [ ] store sizes & paths in main ?
-  - [ ] update if necessary
 
 ## Won't do
 
