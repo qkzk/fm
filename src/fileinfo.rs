@@ -4,7 +4,7 @@ use std::path;
 
 use chrono::offset::Local;
 use chrono::DateTime;
-// use fs_extra::dir::get_size;
+use log::info;
 use tuikit::prelude::{Attr, Color, Effect};
 use users::get_user_by_uid;
 
@@ -267,24 +267,31 @@ impl PathContent {
     }
 
     fn files(path: &path::Path, show_hidden: bool, filter: FilterKind) -> FmResult<Vec<FileInfo>> {
-        let read_dir = read_dir(path)?;
-        let files: Vec<FileInfo> = if show_hidden {
-            read_dir
-                .filter_map(|res_direntry| res_direntry.ok())
-                .map(|direntry| FileInfo::new(&direntry))
-                .filter_map(|res_file_entry| res_file_entry.ok())
-                .filter(|fileinfo| filter.filter_by(fileinfo))
-                .collect()
-        } else {
-            read_dir
-                .filter_map(|res_direntry| res_direntry.ok())
-                .filter(|e| is_not_hidden(e).unwrap_or(true))
-                .map(|direntry| FileInfo::new(&direntry))
-                .filter_map(|res_file_entry| res_file_entry.ok())
-                .filter(|fileinfo| filter.filter_by(fileinfo))
-                .collect()
-        };
-        Ok(files)
+        match read_dir(path) {
+            Ok(read_dir) => {
+                let files: Vec<FileInfo> = if show_hidden {
+                    read_dir
+                        .filter_map(|res_direntry| res_direntry.ok())
+                        .map(|direntry| FileInfo::new(&direntry))
+                        .filter_map(|res_file_entry| res_file_entry.ok())
+                        .filter(|fileinfo| filter.filter_by(fileinfo))
+                        .collect()
+                } else {
+                    read_dir
+                        .filter_map(|res_direntry| res_direntry.ok())
+                        .filter(|e| is_not_hidden(e).unwrap_or(true))
+                        .map(|direntry| FileInfo::new(&direntry))
+                        .filter_map(|res_file_entry| res_file_entry.ok())
+                        .filter(|fileinfo| filter.filter_by(fileinfo))
+                        .collect()
+                };
+                Ok(files)
+            }
+            Err(error) => {
+                info!("Couldn't read path {} - {}", path.to_string_lossy(), error);
+                Ok(vec![])
+            }
+        }
     }
 
     pub fn path_to_str(&self) -> FmResult<&str> {

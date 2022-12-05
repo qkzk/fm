@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::Arc;
 
 use sysinfo::{Disk, DiskExt};
@@ -16,19 +17,27 @@ pub fn init_term() -> FmResult<Term> {
     Ok(term)
 }
 
-pub fn disk_space(disks: &[Disk], path_str: String) -> String {
-    if path_str.is_empty() {
-        return "".to_owned();
-    }
-    let mut size = 0_u64;
+fn disk_used_by_path<'a>(disks: &'a [Disk], path: &Path) -> Option<&'a Disk> {
     let mut disks: Vec<&Disk> = disks.iter().collect();
     disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
-    for disk in disks {
-        if path_str.contains(disk.mount_point().as_os_str().to_str().unwrap()) {
-            size = disk.available_space();
-        };
+    disks.reverse();
+    disks
+        .into_iter()
+        .find(|&disk| path.starts_with(disk.mount_point()))
+}
+
+fn disk_space_used(disk: Option<&Disk>) -> String {
+    match disk {
+        None => "".to_owned(),
+        Some(disk) => human_size(disk.available_space()),
     }
-    human_size(size)
+}
+
+pub fn disk_space(disks: &[Disk], path: &Path) -> String {
+    if path.as_os_str().is_empty() {
+        return "".to_owned();
+    }
+    disk_space_used(disk_used_by_path(disks, path))
 }
 
 pub fn print_on_quit(

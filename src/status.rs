@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use regex::Regex;
 use skim::SkimItem;
+use sysinfo::{Disk, DiskExt, System, SystemExt};
 use tuikit::term::Term;
 
 use crate::args::Args;
@@ -20,6 +21,7 @@ use crate::marks::Marks;
 use crate::mode::{MarkAction, Mode};
 use crate::skim::Skimer;
 use crate::tab::Tab;
+use crate::utils::disk_space;
 
 pub struct Status {
     /// Vector of `Tab`, each of them are displayed in a separate tab.
@@ -38,6 +40,7 @@ pub struct Status {
     term: Arc<Term>,
     skimer: Skimer,
     dual_pane: bool,
+    sys: System,
 }
 
 impl Status {
@@ -51,7 +54,11 @@ impl Status {
         term: Arc<Term>,
         help: String,
     ) -> FmResult<Self> {
-        let tab = Tab::new(args, config, height, help)?;
+        let mut tab = Tab::new(args, config, height, help)?;
+        let sys = System::new_all();
+        tab.shortcut
+            .update_mount_points(Self::disks_mounts(sys.disks()));
+
         Ok(Self {
             tabs: [tab.clone(), tab],
             index: 0,
@@ -62,6 +69,7 @@ impl Status {
             skimer: Skimer::new(term.clone()),
             term,
             dual_pane: true,
+            sys,
         })
     }
 
@@ -456,5 +464,32 @@ impl Status {
 
     pub fn set_dual_pane(&mut self, dual_pane: bool) {
         self.dual_pane = dual_pane;
+    }
+
+    pub fn refresh_disks(&mut self) {
+        self.sys.refresh_disks();
+        let disks = self.sys.disks();
+        self.tabs[0]
+            .shortcut
+            .update_mount_points(Self::disks_mounts(disks));
+        self.tabs[1]
+            .shortcut
+            .update_mount_points(Self::disks_mounts(disks));
+    }
+
+    pub fn disks(&self) -> &[Disk] {
+        self.sys.disks()
+    }
+
+    pub fn disk_spaces(&self) -> (String, String) {
+        let disks = self.disks();
+        (
+            disk_space(disks, &self.tabs[0].path_content.path),
+            disk_space(disks, &self.tabs[1].path_content.path),
+        )
+    }
+
+    pub fn disks_mounts(disks: &[Disk]) -> Vec<&Path> {
+        disks.iter().map(|d| d.mount_point()).collect()
     }
 }
