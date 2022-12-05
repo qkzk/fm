@@ -23,89 +23,25 @@ pub enum ExtensionKind {
 impl ExtensionKind {
     fn parse(ext: &str) -> Self {
         match ext {
-            "avif" => Self::Bitmap,
-            "bmp" => Self::Bitmap,
-            "gif" => Self::Bitmap,
-            "png" => Self::Bitmap,
-            "jpg" => Self::Bitmap,
-            "jpeg" => Self::Bitmap,
-            "pgm" => Self::Bitmap,
-            "ppm" => Self::Bitmap,
-            "webp" => Self::Bitmap,
-            "tiff" => Self::Bitmap,
+            "avif" | "bmp" | "gif" | "png" | "jpg" | "jpeg" | "pgm" | "ppm" | "webp" | "tiff" => {
+                Self::Bitmap
+            }
 
             "svg" => Self::Vectorial,
 
-            "flac" => Self::Audio,
-            "m4a" => Self::Audio,
-            "wav" => Self::Audio,
-            "mp3" => Self::Audio,
-            "ogg" => Self::Audio,
-            "opus" => Self::Audio,
+            "flac" | "m4a" | "wav" | "mp3" | "ogg" | "opus" => Self::Audio,
 
-            "avi" => Self::Video,
-            "mkv" => Self::Video,
-            "av1" => Self::Video,
-            "m4v" => Self::Video,
-            "ts" => Self::Video,
-            "webm" => Self::Video,
-            "mov" => Self::Video,
-            "wmv" => Self::Video,
+            "avi" | "mkv" | "av1" | "m4v" | "ts" | "webm" | "mov" | "wmv" => Self::Video,
 
-            "build" => Self::Text,
-            "c" => Self::Text,
-            "cmake" => Self::Text,
-            "conf" => Self::Text,
-            "cpp" => Self::Text,
-            "css" => Self::Text,
-            "csv" => Self::Text,
-            "cu" => Self::Text,
-            "ebuild" => Self::Text,
-            "eex" => Self::Text,
-            "env" => Self::Text,
-            "ex" => Self::Text,
-            "exs" => Self::Text,
-            "go" => Self::Text,
-            "h" => Self::Text,
-            "hpp" => Self::Text,
-            "hs" => Self::Text,
-            "html" => Self::Text,
-            "ini" => Self::Text,
-            "java" => Self::Text,
-            "js" => Self::Text,
-            "json" => Self::Text,
-            "kt" => Self::Text,
-            "lua" => Self::Text,
-            "log" => Self::Text,
-            "md" => Self::Text,
-            "micro" => Self::Text,
-            "ninja" => Self::Text,
-            "py" => Self::Text,
-            "rkt" => Self::Text,
-            "rs" => Self::Text,
-            "scss" => Self::Text,
-            "sh" => Self::Text,
-            "srt" => Self::Text,
-            "svelte" => Self::Text,
-            "tex" => Self::Text,
-            "toml" => Self::Text,
-            "tsx" => Self::Text,
-            "txt" => Self::Text,
-            "vim" => Self::Text,
-            "xml" => Self::Text,
-            "yaml" => Self::Text,
-            "yml" => Self::Text,
+            "build" | "c" | "cmake" | "conf" | "cpp" | "css" | "csv" | "cu" | "ebuild" | "eex"
+            | "env" | "ex" | "exs" | "go" | "h" | "hpp" | "hs" | "html" | "ini" | "java" | "js"
+            | "json" | "kt" | "lua" | "log" | "md" | "micro" | "ninja" | "py" | "rkt" | "rs"
+            | "scss" | "sh" | "srt" | "svelte" | "tex" | "toml" | "tsx" | "txt" | "vim" | "xml"
+            | "yaml" | "yml" => Self::Text,
 
-            "odt" => Self::Office,
-            "odf" => Self::Office,
-            "ods" => Self::Office,
-            "odp" => Self::Office,
-            "doc" => Self::Office,
-            "docx" => Self::Office,
-            "xls" => Self::Office,
-            "xlsx" => Self::Office,
-            "ppt" => Self::Office,
-            "pptx" => Self::Office,
+            "odt" | "odf" | "ods" | "odp" | "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" => {
+                Self::Office
+            }
 
             "pdf" => Self::Readable,
 
@@ -121,64 +57,45 @@ pub struct OpenerAssociation {
 
 impl OpenerAssociation {
     fn new() -> Self {
-        let mut association = HashMap::new();
-
-        association.insert(ExtensionKind::Audio, OpenerInfo::new("moc", true));
-        association.insert(ExtensionKind::Bitmap, OpenerInfo::new("viewnior", false));
-        association.insert(ExtensionKind::Office, OpenerInfo::new("libreoffice", false));
-        association.insert(ExtensionKind::Readable, OpenerInfo::new("zathura", false));
-        association.insert(ExtensionKind::Text, OpenerInfo::new("nvim", true));
-        association.insert(ExtensionKind::Unknown, OpenerInfo::new("xdg-open", false));
-        association.insert(ExtensionKind::Vectorial, OpenerInfo::new("inkscape", false));
-        association.insert(ExtensionKind::Video, OpenerInfo::new("mpv", false));
-        Self { association }
+        Self {
+            association: HashMap::from([
+                (ExtensionKind::Audio, OpenerInfo::new("moc", true)),
+                (ExtensionKind::Bitmap, OpenerInfo::new("viewnior", false)),
+                (ExtensionKind::Office, OpenerInfo::new("libreoffice", false)),
+                (ExtensionKind::Readable, OpenerInfo::new("zathura", false)),
+                (ExtensionKind::Text, OpenerInfo::new("nvim", true)),
+                (ExtensionKind::Unknown, OpenerInfo::new("xdg-open", false)),
+                (ExtensionKind::Vectorial, OpenerInfo::new("inkscape", false)),
+                (ExtensionKind::Video, OpenerInfo::new("mpv", false)),
+            ]),
+        }
     }
+}
 
+macro_rules! open_file_with {
+    ($self:ident, $key:ident, $variant:ident, $yaml:ident) => {
+        if let Some($key) = OpenerInfo::from_yaml(&$yaml["$key"]) {
+            $self
+                .association
+                .entry(ExtensionKind::$variant)
+                .and_modify(|e| *e = $key);
+        }
+    };
+}
+impl OpenerAssociation {
     fn opener_info(&self, ext: &str) -> Option<&OpenerInfo> {
         self.association.get(&ExtensionKind::parse(ext))
     }
 
     fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
-        if let Some(audio) = OpenerInfo::from_yaml(&yaml["audio"]) {
-            self.association
-                .entry(ExtensionKind::Audio)
-                .and_modify(|e| *e = audio);
-        }
-        if let Some(bitmap_image) = OpenerInfo::from_yaml(&yaml["bitmap_image"]) {
-            self.association
-                .entry(ExtensionKind::Bitmap)
-                .and_modify(|e| *e = bitmap_image);
-        }
-        if let Some(libreoffice) = OpenerInfo::from_yaml(&yaml["libreoffice"]) {
-            self.association
-                .entry(ExtensionKind::Office)
-                .and_modify(|e| *e = libreoffice);
-        }
-        if let Some(readable) = OpenerInfo::from_yaml(&yaml["readable"]) {
-            self.association
-                .entry(ExtensionKind::Readable)
-                .and_modify(|e| *e = readable);
-        }
-        if let Some(text) = OpenerInfo::from_yaml(&yaml["text"]) {
-            self.association
-                .entry(ExtensionKind::Text)
-                .and_modify(|e| *e = text);
-        }
-        if let Some(unknown) = OpenerInfo::from_yaml(&yaml["unknown"]) {
-            self.association
-                .entry(ExtensionKind::Unknown)
-                .and_modify(|e| *e = unknown);
-        }
-        if let Some(vectorial_image) = OpenerInfo::from_yaml(&yaml["vectorial_image"]) {
-            self.association
-                .entry(ExtensionKind::Vectorial)
-                .and_modify(|e| *e = vectorial_image);
-        }
-        if let Some(video) = OpenerInfo::from_yaml(&yaml["video"]) {
-            self.association
-                .entry(ExtensionKind::Video)
-                .and_modify(|e| *e = video);
-        }
+        open_file_with!(self, audio, Audio, yaml);
+        open_file_with!(self, bitmap_image, Bitmap, yaml);
+        open_file_with!(self, libreoffice, Office, yaml);
+        open_file_with!(self, readable, Readable, yaml);
+        open_file_with!(self, text, Text, yaml);
+        open_file_with!(self, unknown, Unknown, yaml);
+        open_file_with!(self, vectorial_image, Vectorial, yaml);
+        open_file_with!(self, video, Video, yaml);
     }
 }
 

@@ -31,8 +31,6 @@ impl Actioner {
             Event::Key(Key::Backspace) => self.backspace(status),
             Event::Key(Key::Ctrl('d')) => self.delete(status),
             Event::Key(Key::Ctrl('q')) => self.escape(status),
-            Event::Key(Key::Delete) => self.delete(status),
-            Event::Key(Key::Insert) => self.insert(status),
             Event::Key(Key::Char(c)) => self.char(status, c),
             Event::Key(Key::Home) => self.home(status),
             Event::Key(Key::End) => self.end(status),
@@ -174,21 +172,8 @@ impl Actioner {
                 status.selected().event_delete_chars_right();
                 Ok(())
             }
-
-            Mode::Normal => {
-                status.drop_tab();
-                Ok(())
-            }
             _ => Ok(()),
         }
-    }
-
-    /// Insert a new tab in normal mode
-    fn insert(&self, status: &mut Status) -> FmResult<()> {
-        if let Mode::Normal = status.selected().mode {
-            status.new_tab()
-        };
-        Ok(())
     }
 
     /// Move to top or beggining of line.
@@ -331,13 +316,7 @@ impl Actioner {
             }
             Mode::Normal => match self.binds.get(&c) {
                 Some(event_char) => event_char.match_char(status),
-                None => {
-                    if c.is_ascii_digit() {
-                        eprintln!("char {} is a digit", c);
-                        status.go_tab(c)
-                    }
-                    Ok(())
-                }
+                None => Ok(()),
             },
             Mode::Help | Mode::Preview | Mode::Shortcut => status.selected().event_normal(),
             Mode::Jump => Ok(()),

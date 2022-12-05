@@ -73,17 +73,6 @@ impl Status {
         })
     }
 
-    pub fn len_index_of_tabs(&self) -> (usize, usize) {
-        (self.tabs.len(), self.index)
-    }
-
-    pub fn new_tab(&mut self) {
-        //TODO: remove
-        // if self.tabs.len() < Self::MAX_TAB as usize {
-        //     self.tabs.push(self.tabs[self.index].clone())
-        // }
-    }
-
     pub fn go_tab(&mut self, digit: char) {
         let index = digit.to_digit(10).unwrap_or(Self::MAX_TAB) as usize;
         if self.tabs.len() > index {
@@ -91,21 +80,7 @@ impl Status {
         }
     }
 
-    pub fn drop_tab(&mut self) {
-        //TODO: remove
-        // if self.tabs.len() > 1 {
-        //     self.tabs.remove(self.index);
-        //     if self.index > 0 {
-        //         self.index = (self.index - 1) % self.len()
-        //     }
-        // }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.tabs.is_empty()
-    }
-
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.tabs.len()
     }
 
@@ -113,20 +88,15 @@ impl Status {
         if !self.dual_pane {
             return;
         }
-        if self.is_empty() {
-            self.index = 0;
-        } else {
-            self.index = (self.index + 1) % self.len()
-        }
+
+        self.index = (self.index + 1) % self.len()
     }
 
     pub fn prev(&mut self) {
         if !self.dual_pane {
             return;
         }
-        if self.is_empty() {
-            self.index = 0
-        } else if self.index > 0 {
+        if self.index > 0 {
             self.index -= 1;
         } else {
             self.index = self.len() - 1
@@ -207,14 +177,12 @@ impl Status {
     }
 
     fn create_tab_from_skim_output(&mut self, cow_path: &Arc<dyn SkimItem>) {
-        // TODO: replace tab by selection
         let mut tab = self.selected().clone();
         let s_path = cow_path.output().to_string();
         if let Ok(path) = fs::canonicalize(path::Path::new(&s_path)) {
             if path.is_file() {
                 if let Some(parent) = path.parent() {
                     let _ = tab.set_pathcontent(parent.to_path_buf());
-                    // self.tabs.push(tab);
                 }
             } else if path.is_dir() {
                 let _ = tab.set_pathcontent(path);

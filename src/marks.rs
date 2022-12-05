@@ -6,8 +6,7 @@ use std::path::{Path, PathBuf};
 
 use log::info;
 
-use crate::fm_error::FmError;
-use crate::fm_error::FmResult;
+use crate::fm_error::{FmError, FmResult};
 
 static MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 
@@ -51,7 +50,7 @@ impl Marks {
 
     pub fn new_mark(&mut self, ch: char, path: PathBuf) -> FmResult<()> {
         if ch == ':' {
-            return Err(crate::fm_error::FmError::new("':' can't be used as a mark"));
+            return Err(FmError::new("':' can't be used as a mark"));
         }
         self.marks.insert(ch, path);
         self.save_marks()

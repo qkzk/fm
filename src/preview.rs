@@ -103,9 +103,9 @@ impl Preview {
 
     pub fn len(&self) -> usize {
         match self {
+            Self::Empty => 0,
             Self::Syntaxed(syntaxed) => syntaxed.len(),
             Self::Text(text) => text.len(),
-            Self::Empty => 0,
             Self::Binary(binary) => binary.len(),
             Self::Pdf(pdf) => pdf.len(),
             Self::Compressed(zip) => zip.len(),

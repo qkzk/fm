@@ -24,18 +24,21 @@ impl Shortcut {
     }
 
     fn reset_shortcuts() -> Vec<PathBuf> {
-        vec![
-            PathBuf::from_str("/").unwrap(),
-            PathBuf::from_str("/dev").unwrap(),
-            PathBuf::from_str("/etc").unwrap(),
-            PathBuf::from_str("/media").unwrap(),
-            PathBuf::from_str("/mnt").unwrap(),
-            PathBuf::from_str("/opt").unwrap(),
-            PathBuf::from_str("/run/media").unwrap(),
-            PathBuf::from_str("/tmp").unwrap(),
-            PathBuf::from_str("/usr").unwrap(),
-            PathBuf::from_str(shellexpand::tilde("~").borrow()).unwrap(),
+        [
+            "/",
+            "/dev",
+            "/etc",
+            "/media",
+            "/mnt",
+            "/opt",
+            "/run/media",
+            "/tmp",
+            "/usr",
+            shellexpand::tilde("~").borrow(),
         ]
+        .iter()
+        .map(|s| PathBuf::from_str(s).unwrap())
+        .collect()
     }
 
     pub fn update_mount_points(&mut self, mount_points: Vec<&Path>) {
