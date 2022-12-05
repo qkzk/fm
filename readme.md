@@ -172,12 +172,6 @@
   - which language ?
   - what for ?
 - [ ] configurable output (owner, group etc.)
-- [ ] single pane if width is low
-- [ ] refresh disks if needed (aka changed disk...) main <-> status.
-  - [ ] detect disk change...
-  - [ ] flag in status
-  - [ ] update flag if needed
-  - [ ] store disks size in variable in main
 
 ## Won't do
 

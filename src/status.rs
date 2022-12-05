@@ -467,7 +467,7 @@ impl Status {
     }
 
     pub fn refresh_disks(&mut self) {
-        self.sys.refresh_disks();
+        self.sys.refresh_disks_list();
         let disks = self.sys.disks();
         self.tabs[0]
             .shortcut
