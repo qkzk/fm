@@ -81,7 +81,7 @@ impl Tab {
         let preview = Preview::Empty;
         let mut history = History::default();
         history.push(&path);
-        let shortcut = Shortcut::default();
+        let shortcut = Shortcut::new();
         let opener = load_opener(OPENER_PATH, terminal.clone())
             .unwrap_or_else(|_| Opener::new(terminal.clone()));
         Ok(Self {

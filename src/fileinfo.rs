@@ -4,7 +4,7 @@ use std::path;
 
 use chrono::offset::Local;
 use chrono::DateTime;
-// use fs_extra::dir::get_size;
+use log::info;
 use tuikit::prelude::{Attr, Color, Effect};
 use users::get_user_by_uid;
 
@@ -267,7 +267,14 @@ impl PathContent {
     }
 
     fn files(path: &path::Path, show_hidden: bool, filter: FilterKind) -> FmResult<Vec<FileInfo>> {
-        let read_dir = read_dir(path)?;
+        info!("reading files...");
+        let read_dir = read_dir(path);
+        if read_dir.is_err() {
+            info!("Couldn't read path {:?} - {:?}", path, read_dir);
+            return Ok(vec![]);
+        }
+        info!("files read");
+        let read_dir = read_dir.unwrap();
         let files: Vec<FileInfo> = if show_hidden {
             read_dir
                 .filter_map(|res_direntry| res_direntry.ok())

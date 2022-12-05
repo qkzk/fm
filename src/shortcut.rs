@@ -1,23 +1,25 @@
 use std::borrow::Borrow;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct Shortcut {
-    pub shortcuts: [PathBuf; 10],
+    pub shortcuts: Vec<PathBuf>,
     pub index: usize,
-}
-
-impl Default for Shortcut {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Shortcut {
     pub fn new() -> Self {
         // Since PathBuf::from_str returns a Result<String, Infaillible>, we can unwrap safely.
-        let shortcuts = [
+        let shortcuts = Self::reset_shortcuts();
+        Self {
+            shortcuts,
+            index: 0,
+        }
+    }
+
+    fn reset_shortcuts() -> Vec<PathBuf> {
+        vec![
             PathBuf::from_str("/").unwrap(),
             PathBuf::from_str("/dev").unwrap(),
             PathBuf::from_str("/etc").unwrap(),
@@ -28,11 +30,13 @@ impl Shortcut {
             PathBuf::from_str("/tmp").unwrap(),
             PathBuf::from_str("/usr").unwrap(),
             PathBuf::from_str(shellexpand::tilde("~").borrow()).unwrap(),
-        ];
-        Self {
-            shortcuts,
-            index: 0,
-        }
+        ]
+    }
+
+    pub fn update_mount_points(&mut self, mount_points: Vec<&Path>) {
+        let mut shortcuts = Self::reset_shortcuts();
+        shortcuts.extend(mount_points.iter().map(|p| p.to_path_buf()));
+        self.shortcuts = shortcuts;
     }
 
     pub fn is_empty(&self) -> bool {

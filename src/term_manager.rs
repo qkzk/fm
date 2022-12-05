@@ -430,19 +430,15 @@ impl Display {
     /// The completion list if any.
     ///
     /// The preview in preview mode.
-    pub fn display_all(
-        &mut self,
-        status: &Status,
-        disk_space_tab_0: String,
-        disk_space_tab_1: String,
-    ) -> FmResult<()> {
+    pub fn display_all(&mut self, status: &Status) -> FmResult<()> {
         self.term.clear()?;
 
         let (width, _) = self.term.term_size()?;
+        let disk_spaces = status.disk_spaces();
         if width > MIN_WIDTH_FOR_DUAL_PANE {
-            self.draw_dual_pane(status, disk_space_tab_0, disk_space_tab_1)?
+            self.draw_dual_pane(status, disk_spaces.0, disk_spaces.1)?
         } else {
-            self.draw_single_pane(status, disk_space_tab_0)?
+            self.draw_single_pane(status, disk_spaces.0)?
         }
 
         Ok(self.term.present()?)
