@@ -267,31 +267,31 @@ impl PathContent {
     }
 
     fn files(path: &path::Path, show_hidden: bool, filter: FilterKind) -> FmResult<Vec<FileInfo>> {
-        info!("reading files...");
-        let read_dir = read_dir(path);
-        if read_dir.is_err() {
-            info!("Couldn't read path {:?} - {:?}", path, read_dir);
-            return Ok(vec![]);
+        match read_dir(path) {
+            Ok(read_dir) => {
+                let files: Vec<FileInfo> = if show_hidden {
+                    read_dir
+                        .filter_map(|res_direntry| res_direntry.ok())
+                        .map(|direntry| FileInfo::new(&direntry))
+                        .filter_map(|res_file_entry| res_file_entry.ok())
+                        .filter(|fileinfo| filter.filter_by(fileinfo))
+                        .collect()
+                } else {
+                    read_dir
+                        .filter_map(|res_direntry| res_direntry.ok())
+                        .filter(|e| is_not_hidden(e).unwrap_or(true))
+                        .map(|direntry| FileInfo::new(&direntry))
+                        .filter_map(|res_file_entry| res_file_entry.ok())
+                        .filter(|fileinfo| filter.filter_by(fileinfo))
+                        .collect()
+                };
+                Ok(files)
+            }
+            Err(error) => {
+                info!("Couldn't read path {} - {}", path.to_string_lossy(), error);
+                Ok(vec![])
+            }
         }
-        info!("files read");
-        let read_dir = read_dir.unwrap();
-        let files: Vec<FileInfo> = if show_hidden {
-            read_dir
-                .filter_map(|res_direntry| res_direntry.ok())
-                .map(|direntry| FileInfo::new(&direntry))
-                .filter_map(|res_file_entry| res_file_entry.ok())
-                .filter(|fileinfo| filter.filter_by(fileinfo))
-                .collect()
-        } else {
-            read_dir
-                .filter_map(|res_direntry| res_direntry.ok())
-                .filter(|e| is_not_hidden(e).unwrap_or(true))
-                .map(|direntry| FileInfo::new(&direntry))
-                .filter_map(|res_file_entry| res_file_entry.ok())
-                .filter(|fileinfo| filter.filter_by(fileinfo))
-                .collect()
-        };
-        Ok(files)
     }
 
     pub fn path_to_str(&self) -> FmResult<&str> {

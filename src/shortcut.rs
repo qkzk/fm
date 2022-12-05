@@ -8,9 +8,14 @@ pub struct Shortcut {
     pub index: usize,
 }
 
+impl Default for Shortcut {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Shortcut {
     pub fn new() -> Self {
-        // Since PathBuf::from_str returns a Result<String, Infaillible>, we can unwrap safely.
         let shortcuts = Self::reset_shortcuts();
         Self {
             shortcuts,
