@@ -172,6 +172,28 @@
   - which language ?
   - what for ?
 - [ ] configurable output (owner, group etc.)
+- [ ] dissociate action from status / tab
+
+  - [ ] move actions to actioner, which stays immutable
+  - [ ] actioner takes responsability for every action
+  - [ ] actioner mutates status
+  - [ ] status mutates tabs
+
+  flow:
+
+  ```rust
+  event(key) - map -> action: method(status: &mut Status, tab: &mut Tab) -> ()
+    {
+      mutate(status)
+      mutate(tab)
+    }
+  ```
+
+  - [ ] make every key configurable
+
+    - [ ] vim syntax for key: "C-q" -> Key(Ctrl('q'))
+    - [ ] config parser -> `Keybindings { binds: HashMap<Key, String>}`
+    - [ ] help display
 
 ## Won't do
 
