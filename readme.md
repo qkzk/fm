@@ -146,6 +146,7 @@
   - [x] simplify disk space read,
   - [x] hold a sys reference in status
   - [x] add shortcut to mount points
+- [x] dissociate action from status / tab
 
 ## TODO
 
@@ -172,22 +173,6 @@
   - which language ?
   - what for ?
 - [ ] configurable output (owner, group etc.)
-- [ ] dissociate action from status / tab
-
-  - [ ] move actions to actioner, which stays immutable
-  - [ ] actioner takes responsability for every action
-  - [ ] actioner mutates status
-  - [ ] status mutates tabs
-
-  flow:
-
-  ```rust
-  event(key) - map -> action: method(status: &mut Status, tab: &mut Tab) -> ()
-    {
-      mutate(status)
-      mutate(tab)
-    }
-  ```
 
   - [ ] make every key configurable
 
