@@ -43,7 +43,7 @@ impl ExtensionKind {
                 Self::Office
             }
 
-            "pdf" => Self::Readable,
+            "pdf" | "epub" => Self::Readable,
 
             _ => Self::Unknown,
         }
