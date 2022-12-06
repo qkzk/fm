@@ -1,10 +1,10 @@
 use tuikit::prelude::{Event, Key, MouseButton};
 
+use crate::event_exec::EventExec;
 use crate::fm_error::FmResult;
 use crate::keybindings::Keybindings;
 use crate::mode::{MarkAction, Mode};
 use crate::status::Status;
-use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -23,55 +23,57 @@ impl Actioner {
     /// Reaction to received events.
     pub fn read_event(&self, status: &mut Status, ev: Event) -> FmResult<()> {
         match ev {
-            Event::Key(Key::ESC) => self.escape(status),
-            Event::Key(Key::Up) => self.up(status),
-            Event::Key(Key::Down) => self.down(status),
-            Event::Key(Key::Left) => self.left(status),
-            Event::Key(Key::Right) => self.right(status),
-            Event::Key(Key::Backspace) => self.backspace(status),
-            Event::Key(Key::Ctrl('d')) => self.delete(status),
-            Event::Key(Key::Ctrl('q')) => self.escape(status),
-            Event::Key(Key::Char(c)) => self.char(status, c),
-            Event::Key(Key::Home) => self.home(status),
-            Event::Key(Key::End) => self.end(status),
-            Event::Key(Key::PageDown) => self.page_down(status),
-            Event::Key(Key::PageUp) => self.page_up(status),
-            Event::Key(Key::Enter) => self.enter(status),
-            Event::Key(Key::Tab) => self.tab(status),
-            Event::Key(Key::BackTab) => self.backtab(status),
-            Event::Key(Key::WheelUp(_, _, _)) => self.up(status),
-            Event::Key(Key::WheelDown(_, _, _)) => self.down(status),
+            Event::Key(Key::ESC) => Self::escape(status),
+            Event::Key(Key::Up) => Self::up(status),
+            Event::Key(Key::Down) => Self::down(status),
+            Event::Key(Key::Left) => Self::left(status),
+            Event::Key(Key::Right) => Self::right(status),
+            Event::Key(Key::Backspace) => Self::backspace(status),
+            Event::Key(Key::Ctrl('d')) => Self::delete(status),
+            Event::Key(Key::Ctrl('q')) => Self::escape(status),
+            Event::Key(Key::Char(c)) => Self::char(status, c, &self.binds),
+            Event::Key(Key::Home) => Self::home(status),
+            Event::Key(Key::End) => Self::end(status),
+            Event::Key(Key::PageDown) => Self::page_down(status),
+            Event::Key(Key::PageUp) => Self::page_up(status),
+            Event::Key(Key::Enter) => Self::enter(status),
+            Event::Key(Key::Tab) => Self::tab(status),
+            Event::Key(Key::BackTab) => Self::backtab(status),
+            Event::Key(Key::WheelUp(_, _, _)) => Self::up(status),
+            Event::Key(Key::WheelDown(_, _, _)) => Self::down(status),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => {
-                self.left_click(status, row);
+                Self::left_click(status, row);
                 Ok(())
             }
             Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => {
-                self.right_click(status, row);
+                Self::right_click(status, row);
                 Ok(())
             }
-            Event::Key(Key::Ctrl('f')) => self.ctrl_f(status),
-            Event::Key(Key::Ctrl('c')) => self.ctrl_c(status),
-            Event::Key(Key::Ctrl('p')) => self.ctrl_p(status),
-            Event::Key(Key::Ctrl('r')) => self.refresh_selected_view(status),
-            Event::Key(Key::Ctrl('x')) => self.ctrl_x(status),
-            Event::User(_) => self.refresh_selected_view(status),
-            Event::Resize { width, height } => self.resize(status, width, height),
+            Event::Key(Key::Ctrl('f')) => Self::ctrl_f(status),
+            Event::Key(Key::Ctrl('c')) => Self::ctrl_c(status),
+            Event::Key(Key::Ctrl('p')) => Self::ctrl_p(status),
+            Event::Key(Key::Ctrl('r')) => EventExec::refresh_selected_view(status),
+            Event::Key(Key::Ctrl('x')) => Self::ctrl_x(status),
+            Event::User(_) => EventExec::refresh_selected_view(status),
+            Event::Resize { width, height } => EventExec::resize(status, width, height),
             _ => Ok(()),
         }
     }
 
     /// Leaving a mode reset the window
-    fn escape(&self, status: &mut Status) -> FmResult<()> {
-        status.selected().event_normal()
+    fn escape(status: &mut Status) -> FmResult<()> {
+        EventExec::event_normal(status.selected())
     }
 
     /// Move one line up
-    fn up(&self, status: &mut Status) -> FmResult<()> {
+    fn up(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => status.selected().event_up_one_row(),
-            Mode::Jump => status.event_jumplist_prev(),
-            Mode::History => status.selected().event_history_prev(),
-            Mode::Shortcut => status.selected().event_shortcut_prev(),
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_up_one_row(status.selected())
+            }
+            Mode::Jump => EventExec::event_jumplist_prev(status),
+            Mode::History => EventExec::event_history_prev(status.selected()),
+            Mode::Shortcut => EventExec::event_shortcut_prev(status.selected()),
             Mode::Goto | Mode::Exec | Mode::Search => {
                 status.selected().completion.prev();
             }
@@ -81,12 +83,14 @@ impl Actioner {
     }
 
     /// Move one line down
-    fn down(&self, status: &mut Status) -> FmResult<()> {
+    fn down(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => status.selected().event_down_one_row(),
-            Mode::Jump => status.event_jumplist_next(),
-            Mode::History => status.selected().event_history_next(),
-            Mode::Shortcut => status.selected().event_shortcut_next(),
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_down_one_row(status.selected())
+            }
+            Mode::Jump => EventExec::event_jumplist_next(status),
+            Mode::History => EventExec::event_history_next(status.selected()),
+            Mode::Shortcut => EventExec::event_shortcut_next(status.selected()),
             Mode::Goto | Mode::Exec | Mode::Search => {
                 status.selected().completion.next();
             }
@@ -96,9 +100,9 @@ impl Actioner {
     }
 
     /// Move left in a string, move to parent in normal mode
-    fn left(&self, status: &mut Status) -> FmResult<()> {
+    fn left(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal => status.selected().event_move_to_parent(),
+            Mode::Normal => EventExec::event_move_to_parent(status.selected()),
             Mode::Rename
             | Mode::Chmod
             | Mode::Newdir
@@ -108,7 +112,7 @@ impl Actioner {
             | Mode::Goto
             | Mode::RegexMatch
             | Mode::Filter => {
-                status.selected().event_move_cursor_left();
+                EventExec::event_move_cursor_left(status.selected());
                 Ok(())
             }
 
@@ -117,9 +121,9 @@ impl Actioner {
     }
 
     /// Move right in a string, move to children in normal mode.
-    fn right(&self, status: &mut Status) -> FmResult<()> {
+    fn right(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal => status.selected().exec_file(),
+            Mode::Normal => EventExec::exec_file(status.selected()),
             Mode::Rename
             | Mode::Chmod
             | Mode::Newdir
@@ -129,7 +133,7 @@ impl Actioner {
             | Mode::Goto
             | Mode::RegexMatch
             | Mode::Filter => {
-                status.selected().event_move_cursor_right();
+                EventExec::event_move_cursor_right(status.selected());
                 Ok(())
             }
             _ => Ok(()),
@@ -137,7 +141,7 @@ impl Actioner {
     }
 
     /// Deletes a char in input string
-    fn backspace(&self, status: &mut Status) -> FmResult<()> {
+    fn backspace(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Rename
             | Mode::Newdir
@@ -148,7 +152,7 @@ impl Actioner {
             | Mode::Goto
             | Mode::RegexMatch
             | Mode::Filter => {
-                status.selected().event_delete_char_left();
+                EventExec::event_delete_char_left(status.selected());
                 Ok(())
             }
             Mode::Normal => Ok(()),
@@ -158,7 +162,7 @@ impl Actioner {
 
     /// Deletes chars right of cursor in input string.
     /// Remove current tab in normal mode.
-    fn delete(&self, status: &mut Status) -> FmResult<()> {
+    fn delete(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Rename
             | Mode::Newdir
@@ -169,7 +173,7 @@ impl Actioner {
             | Mode::Goto
             | Mode::RegexMatch
             | Mode::Filter => {
-                status.selected().event_delete_chars_right();
+                EventExec::event_delete_chars_right(status.selected());
                 Ok(())
             }
             _ => Ok(()),
@@ -177,59 +181,65 @@ impl Actioner {
     }
 
     /// Move to top or beggining of line.
-    fn home(&self, status: &mut Status) -> FmResult<()> {
+    fn home(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => status.selected().event_go_top(),
-            _ => status.selected().event_cursor_home(),
+            Mode::Normal | Mode::Preview | Mode::Help => EventExec::event_go_top(status.selected()),
+            _ => EventExec::event_cursor_home(status.selected()),
         };
         Ok(())
     }
 
     /// Move to end or end of line.
-    fn end(&self, status: &mut Status) -> FmResult<()> {
+    fn end(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => status.selected().event_go_bottom(),
-            _ => status.selected().event_cursor_end(),
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_go_bottom(status.selected())
+            }
+            _ => EventExec::event_cursor_end(status.selected()),
         };
         Ok(())
     }
 
     /// Move down 10 rows
-    fn page_down(&self, status: &mut Status) -> FmResult<()> {
+    fn page_down(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => status.selected().event_page_down(),
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_page_down(status.selected())
+            }
             _ => (),
         };
         Ok(())
     }
 
     /// Move up 10 rows
-    fn page_up(&self, status: &mut Status) -> FmResult<()> {
+    fn page_up(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => status.selected().event_page_up(),
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_page_up(status.selected())
+            }
             _ => (),
         };
         Ok(())
     }
 
     /// Execute a command
-    fn enter(&self, status: &mut Status) -> FmResult<()> {
+    fn enter(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Rename => status.selected().exec_rename()?,
-            Mode::Newfile => status.selected().exec_newfile()?,
-            Mode::Newdir => status.selected().exec_newdir()?,
-            Mode::Chmod => status.exec_chmod()?,
-            Mode::Exec => status.selected().exec_exec()?,
-            Mode::Search => status.selected().exec_search(),
-            Mode::Goto => status.selected().exec_goto()?,
-            Mode::RegexMatch => status.exec_regex()?,
-            Mode::Jump => status.exec_jump()?,
-            Mode::History => status.selected().exec_history()?,
-            Mode::Shortcut => status.selected().exec_shortcut()?,
-            Mode::Filter => status.selected().exec_filter()?,
-            Mode::Normal => status.selected().exec_file()?,
+            Mode::Rename => EventExec::exec_rename(status.selected())?,
+            Mode::Newfile => EventExec::exec_newfile(status.selected())?,
+            Mode::Newdir => EventExec::exec_newdir(status.selected())?,
+            Mode::Chmod => EventExec::exec_chmod(status)?,
+            Mode::Exec => EventExec::exec_exec(status.selected())?,
+            Mode::Search => EventExec::exec_search(status.selected()),
+            Mode::Goto => EventExec::exec_goto(status.selected())?,
+            Mode::RegexMatch => EventExec::exec_regex(status)?,
+            Mode::Jump => EventExec::exec_jump(status)?,
+            Mode::History => EventExec::exec_history(status.selected())?,
+            Mode::Shortcut => EventExec::exec_shortcut(status.selected())?,
+            Mode::Filter => EventExec::exec_filter(status.selected())?,
+            Mode::Normal => EventExec::exec_file(status.selected())?,
             Mode::NeedConfirmation | Mode::Help | Mode::Sort | Mode::Preview | Mode::Marks(_) => (),
-        }
+        };
 
         status.selected().input.reset();
         status.selected().mode = Mode::Normal;
@@ -237,25 +247,25 @@ impl Actioner {
     }
 
     /// Select this file
-    fn left_click(&self, status: &mut Status, row: u16) {
+    fn left_click(status: &mut Status, row: u16) {
         if let Mode::Normal = status.selected().mode {
-            status.selected().event_select_row(row)
+            EventExec::event_select_row(status.selected(), row)
         }
     }
 
     /// Open a directory or a file
-    fn right_click(&self, status: &mut Status, row: u16) {
+    fn right_click(status: &mut Status, row: u16) {
         if let Mode::Normal = status.selected().mode {
-            let _ = status.selected().event_right_click(row);
+            let _ = EventExec::event_right_click(status.selected(), row);
         }
     }
 
     /// Select next completion and insert it
     /// Select next tab
-    fn tab(&self, status: &mut Status) -> FmResult<()> {
+    fn tab(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Goto | Mode::Exec | Mode::Search => {
-                status.selected().event_replace_input_with_completion()
+                EventExec::event_replace_input_with_completion(status.selected())
             }
             Mode::Normal => status.next(),
             _ => (),
@@ -264,88 +274,74 @@ impl Actioner {
     }
 
     /// Select previous tab
-    fn backtab(&self, status: &mut Status) -> FmResult<()> {
+    fn backtab(status: &mut Status) -> FmResult<()> {
         if let Mode::Normal = status.selected().mode {
             status.prev()
         }
         Ok(())
     }
 
-    fn ctrl_f(&self, status: &mut Status) -> FmResult<()> {
+    fn ctrl_f(status: &mut Status) -> FmResult<()> {
         status.create_tabs_from_skim()?;
         Ok(())
     }
 
-    fn ctrl_c(&self, status: &mut Status) -> FmResult<()> {
+    fn ctrl_c(status: &mut Status) -> FmResult<()> {
         if let Mode::Normal = status.selected_non_mut().mode {
-            return status.selected_non_mut().event_filename_to_clipboard();
+            return EventExec::event_filename_to_clipboard(status.selected());
         }
         Ok(())
     }
 
-    fn ctrl_p(&self, status: &mut Status) -> FmResult<()> {
+    fn ctrl_p(status: &mut Status) -> FmResult<()> {
         if let Mode::Normal = status.selected_non_mut().mode {
-            return status.selected_non_mut().event_filepath_to_clipboard();
+            return EventExec::event_filepath_to_clipboard(status.selected());
         }
         Ok(())
     }
 
-    fn refresh_selected_view(&self, status: &mut Status) -> FmResult<()> {
-        status.selected().refresh_view()
-    }
-
-    fn ctrl_x(&self, status: &mut Status) -> FmResult<()> {
-        status.selected().event_decompress()
+    fn ctrl_x(status: &mut Status) -> FmResult<()> {
+        EventExec::event_decompress(status.selected())
     }
 
     /// Match read key to a relevent event, depending on keybindings.
     /// Keybindings are read from `Config`.
-    fn char(&self, status: &mut Status, c: char) -> FmResult<()> {
+    fn char(status: &mut Status, c: char, binds: &Keybindings) -> FmResult<()> {
         match status.selected().mode {
             Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::Filter => {
-                status.selected().event_text_insertion(c);
+                EventExec::event_text_insertion(status.selected(), c);
                 Ok(())
             }
             Mode::RegexMatch => {
-                status.selected().event_text_insertion(c);
+                EventExec::event_text_insertion(status.selected(), c);
                 status.select_from_regex()?;
                 Ok(())
             }
             Mode::Goto | Mode::Exec | Mode::Search => {
-                status.selected().event_text_insert_and_complete(c)
+                EventExec::event_text_insert_and_complete(status.selected(), c)
             }
-            Mode::Normal => match self.binds.get(&c) {
+            Mode::Normal => match binds.get(&c) {
                 Some(event_char) => event_char.match_char(status),
                 None => Ok(()),
             },
-            Mode::Help | Mode::Preview | Mode::Shortcut => status.selected().event_normal(),
+            Mode::Help | Mode::Preview | Mode::Shortcut => {
+                EventExec::event_normal(status.selected())
+            }
             Mode::Jump => Ok(()),
             Mode::History => Ok(()),
             Mode::NeedConfirmation => {
                 if c == 'y' {
-                    let _ = status.exec_last_edition();
+                    let _ = EventExec::exec_last_edition(status);
                 }
-                status.selected().event_leave_need_confirmation();
+                EventExec::event_leave_need_confirmation(status.selected());
                 Ok(())
             }
-            Mode::Marks(MarkAction::Jump) => status.exec_marks_jump(c),
-            Mode::Marks(MarkAction::New) => status.exec_marks_new(c),
+            Mode::Marks(MarkAction::Jump) => EventExec::exec_marks_jump(status, c),
+            Mode::Marks(MarkAction::New) => EventExec::exec_marks_new(status, c),
             Mode::Sort => {
-                status.selected().event_leave_sort(c);
+                EventExec::event_leave_sort(status.selected(), c);
                 Ok(())
             }
         }
-    }
-
-    fn resize(&self, status: &mut Status, width: usize, height: usize) -> FmResult<()> {
-        if width < MIN_WIDTH_FOR_DUAL_PANE {
-            status.select_tab(0)?;
-            status.set_dual_pane(false);
-        } else {
-            status.set_dual_pane(true);
-        }
-        status.selected().set_height(height);
-        self.refresh_selected_view(status)?;
-        Ok(())
     }
 }
