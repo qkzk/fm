@@ -8,6 +8,7 @@ pub mod compress;
 pub mod config;
 pub mod content_window;
 pub mod copy_move;
+pub mod event_exec;
 pub mod fileinfo;
 pub mod filter;
 pub mod fm_error;
