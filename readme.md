@@ -147,7 +147,7 @@
   - [x] hold a sys reference in status
   - [x] add shortcut to mount points
 - [x] dissociate action from status / tab
-- [ ] opener fallback to xdg-open
+- [x] opener fallback to xdg-open, capture stderr & stdout
 
 ## TODO
 
