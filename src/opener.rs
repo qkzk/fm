@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use log::info;
 use serde_yaml;
@@ -77,7 +77,7 @@ impl OpenerAssociation {
     fn new() -> Self {
         Self {
             association: HashMap::from([
-                (ExtensionKind::Audio, OpenerInfo::new("moc", true)),
+                (ExtensionKind::Audio, OpenerInfo::new("mocp", true)),
                 (ExtensionKind::Bitmap, OpenerInfo::new("viewnior", false)),
                 (ExtensionKind::Office, OpenerInfo::new("libreoffice", false)),
                 (ExtensionKind::Readable, OpenerInfo::new("zathura", false)),
@@ -231,7 +231,11 @@ pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::C
         "execute_in_child. executable: {}, arguments: {:?}",
         exe, args
     );
-    Ok(Command::new(exe).args(args).spawn()?)
+    Ok(Command::new(exe)
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?)
 }
 
 pub fn load_opener(path: &str, terminal: String) -> Result<Opener, Box<dyn Error>> {

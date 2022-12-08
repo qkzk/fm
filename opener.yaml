@@ -1,5 +1,5 @@
 audio:
-  opener: moc
+  opener: mocp
   use_term: true
 bitmap_image:
   opener: viewnior
