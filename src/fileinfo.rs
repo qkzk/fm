@@ -207,6 +207,10 @@ impl FileInfo {
         Ok(repr)
     }
 
+    fn format_simple(&self) -> FmResult<String> {
+        Ok(self.filename.to_owned())
+    }
+
     fn read_dest(&self) -> Option<String> {
         match metadata(&self.path) {
             Ok(_) => Some(std::fs::read_link(&self.path).ok()?.to_str()?.to_owned()),
@@ -331,7 +335,8 @@ impl PathContent {
         let group_size = self.group_column_width();
         self.files
             .iter()
-            .map(|fileinfo| fileinfo.format(owner_size, group_size).unwrap_or_default())
+            // .map(|fileinfo| fileinfo.format(owner_size, group_size).unwrap_or_default())
+            .map(|fileinfo| fileinfo.format_simple().unwrap_or_default())
             .collect()
     }
 
