@@ -56,6 +56,7 @@ impl<'a> Draw for WinTab<'a> {
         }?;
         self.cursor(self.tab, canvas)?;
         self.first_line(self.tab, self.disk_space, canvas)?;
+        self.second_line(self.status, self.tab, canvas)?;
         Ok(())
     }
 }
@@ -88,6 +89,21 @@ impl<'a> WinTab<'a> {
     fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> FmResult<()> {
         let first_row = self.create_first_row(tab, disk_space)?;
         self.draw_colored_strings(0, 0, first_row, canvas)?;
+        Ok(())
+    }
+
+    fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+        if let Mode::Normal = tab.mode {
+            if !status.display_full {
+                if let Some(file) = tab.path_content.selected_file() {
+                    let owner_size = file.owner.len();
+                    let group_size = file.group.len();
+                    let mut attr = fileinfo_attr(status, file, self.colors);
+                    attr.effect ^= Effect::REVERSE;
+                    canvas.print_with_attr(1, 0, &file.format(owner_size, group_size)?, attr)?;
+                }
+            }
+        }
         Ok(())
     }
 

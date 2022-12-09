@@ -187,7 +187,7 @@ impl FileInfo {
     /// Format the file line.
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
-    fn format(&self, owner_col_width: usize, group_col_width: usize) -> FmResult<String> {
+    pub fn format(&self, owner_col_width: usize, group_col_width: usize) -> FmResult<String> {
         let mut repr = format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time} {filename}",
             dir_symbol = self.dir_symbol,
