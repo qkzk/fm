@@ -32,7 +32,7 @@ pub enum ExtensionKind {
     Office,
     Readable,
     Text,
-    Unknown,
+    Default,
     Vectorial,
     Video,
 }
@@ -63,7 +63,7 @@ impl ExtensionKind {
 
             "pdf" | "epub" => Self::Readable,
 
-            _ => Self::Unknown,
+            _ => Self::Default,
         }
     }
 }
@@ -82,7 +82,7 @@ impl OpenerAssociation {
                 (ExtensionKind::Office, OpenerInfo::new("libreoffice", false)),
                 (ExtensionKind::Readable, OpenerInfo::new("zathura", false)),
                 (ExtensionKind::Text, OpenerInfo::new("nvim", true)),
-                (ExtensionKind::Unknown, OpenerInfo::new("xdg-open", false)),
+                (ExtensionKind::Default, OpenerInfo::new("xdg-open", false)),
                 (ExtensionKind::Vectorial, OpenerInfo::new("inkscape", false)),
                 (ExtensionKind::Video, OpenerInfo::new("mpv", false)),
             ]),
@@ -93,7 +93,6 @@ impl OpenerAssociation {
 macro_rules! open_file_with {
     ($self:ident, $key:expr, $variant:ident, $yaml:ident) => {
         if let Some(o) = OpenerInfo::from_yaml(&$yaml[$key]) {
-            info!("key {:?} variant {:?}", $key, ExtensionKind::$variant);
             $self
                 .association
                 .entry(ExtensionKind::$variant)
@@ -113,7 +112,7 @@ impl OpenerAssociation {
         open_file_with!(self, "libreoffice", Office, yaml);
         open_file_with!(self, "readable", Readable, yaml);
         open_file_with!(self, "text", Text, yaml);
-        open_file_with!(self, "unknown", Unknown, yaml);
+        open_file_with!(self, "default", Default, yaml);
         open_file_with!(self, "vectorial_image", Vectorial, yaml);
         open_file_with!(self, "video", Video, yaml);
 

@@ -1,3 +1,6 @@
+default:
+  opener: xdg-open
+  use_term: false
 audio:
   opener: mocp
   use_term: true
@@ -13,9 +16,6 @@ readable:
 text:
   opener: nvim
   use_term: true
-unknown:
-  opener: rifle
-  use_term: false
 vectorial_image:
   opener: inkscape
   use_term: false
