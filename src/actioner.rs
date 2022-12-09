@@ -54,6 +54,7 @@ impl Actioner {
             Event::Key(Key::Ctrl('p')) => Self::ctrl_p(status),
             Event::Key(Key::Ctrl('r')) => Self::ctrl_r(status),
             Event::Key(Key::Ctrl('x')) => Self::ctrl_x(status),
+            Event::Key(Key::Ctrl('e')) => Self::ctrl_e(status),
             Event::User(_) => EventExec::refresh_selected_view(status),
             Event::Resize { width, height } => EventExec::resize(status, width, height),
             _ => Ok(()),
@@ -306,6 +307,11 @@ impl Actioner {
 
     fn ctrl_x(status: &mut Status) -> FmResult<()> {
         EventExec::event_decompress(status.selected())
+    }
+
+    fn ctrl_e(status: &mut Status) -> FmResult<()> {
+        status.display_full = !status.display_full;
+        Ok(())
     }
 
     /// Match read key to a relevent event, depending on keybindings.

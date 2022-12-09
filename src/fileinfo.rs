@@ -330,14 +330,20 @@ impl PathContent {
     }
 
     /// Returns a vector of displayable strings for every file.
-    pub fn strings(&self) -> Vec<String> {
-        let owner_size = self.owner_column_width();
-        let group_size = self.group_column_width();
-        self.files
-            .iter()
-            // .map(|fileinfo| fileinfo.format(owner_size, group_size).unwrap_or_default())
-            .map(|fileinfo| fileinfo.format_simple().unwrap_or_default())
-            .collect()
+    pub fn strings(&self, display_full: bool) -> Vec<String> {
+        if display_full {
+            let owner_size = self.owner_column_width();
+            let group_size = self.group_column_width();
+            self.files
+                .iter()
+                .map(|fileinfo| fileinfo.format(owner_size, group_size).unwrap_or_default())
+                .collect()
+        } else {
+            self.files
+                .iter()
+                .map(|fileinfo| fileinfo.format_simple().unwrap_or_default())
+                .collect()
+        }
     }
 
     /// Select the next file, if any.

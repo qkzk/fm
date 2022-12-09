@@ -32,6 +32,7 @@ Tab:    Cycle tab
 {OpenFile}:      open this file
 {NvimFilepicker}:      open in current nvim session
 {Preview}:      preview this file
+Ctrl+e: toggle details on files
 Ctrl+f: fuzzy finder
 Ctrl+r: refresh view
 Ctrl+c: copy filename to clipboard

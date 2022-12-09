@@ -37,6 +37,7 @@ pub struct Status {
     skimer: Skimer,
     dual_pane: bool,
     sys: System,
+    pub display_full: bool,
 }
 
 impl Status {
@@ -65,6 +66,7 @@ impl Status {
             term,
             dual_pane: true,
             sys,
+            display_full: true,
         })
     }
 

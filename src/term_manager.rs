@@ -159,7 +159,7 @@ impl<'a> WinTab<'a> {
         let len = tab.path_content.files.len();
         for (i, (file, string)) in std::iter::zip(
             tab.path_content.files.iter(),
-            tab.path_content.strings().iter(),
+            tab.path_content.strings(status.display_full).iter(),
         )
         .enumerate()
         .take(min(len, tab.window.bottom + 1))
