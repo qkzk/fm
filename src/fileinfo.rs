@@ -6,7 +6,7 @@ use chrono::offset::Local;
 use chrono::DateTime;
 use log::info;
 use tuikit::prelude::{Attr, Color, Effect};
-use users::get_user_by_uid;
+use users::{get_group_by_gid, get_user_by_uid};
 
 use crate::config::{str_to_tuikit, Colors};
 use crate::filter::FilterKind;
@@ -138,6 +138,8 @@ pub struct FileInfo {
     pub permissions: String,
     /// Owner name of the file.
     pub owner: String,
+    /// Group name of the file.
+    pub group: String,
     /// System time of last modification
     pub system_time: String,
     /// Is this file currently selected ?
@@ -158,6 +160,7 @@ impl FileInfo {
         let file_size = human_size(size);
         let permissions = extract_permissions_string(direntry)?;
         let owner = extract_owner(direntry)?;
+        let group = extract_group(direntry)?;
         let system_time = extract_datetime(direntry)?;
         let is_selected = false;
 
@@ -173,6 +176,7 @@ impl FileInfo {
             dir_symbol,
             permissions,
             owner,
+            group,
             system_time,
             is_selected,
             file_kind,
@@ -183,14 +187,16 @@ impl FileInfo {
     /// Format the file line.
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
-    fn format(&self, owner_col_width: usize) -> FmResult<String> {
+    fn format(&self, owner_col_width: usize, group_col_width: usize) -> FmResult<String> {
         let mut repr = format!(
-            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {system_time} {filename}",
+            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time} {filename}",
             dir_symbol = self.dir_symbol,
             permissions = self.permissions,
             file_size = self.file_size,
             owner = self.owner,
             owner_col_width = owner_col_width,
+            group = self.group,
+            group_col_width = group_col_width,
             system_time = self.system_time,
             filename = self.filename,
         );
@@ -314,12 +320,22 @@ impl PathContent {
         *owner_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
+    /// Calculates the size of the group column.
+    fn group_column_width(&self) -> usize {
+        let mut group_size_btreeset = std::collections::BTreeSet::new();
+        for file in self.files.iter() {
+            group_size_btreeset.insert(file.group.len());
+        }
+        *group_size_btreeset.iter().next_back().unwrap_or(&1)
+    }
+
     /// Returns a vector of displayable strings for every file.
     pub fn strings(&self) -> Vec<String> {
         let owner_size = self.owner_column_width();
+        let group_size = self.group_column_width();
         self.files
             .iter()
-            .map(|fileinfo| fileinfo.format(owner_size).unwrap_or_default())
+            .map(|fileinfo| fileinfo.format(owner_size, group_size).unwrap_or_default())
             .collect()
     }
 
@@ -489,6 +505,20 @@ fn extract_owner(direntry: &DirEntry) -> FmResult<String> {
                 .name()
                 .to_str()
                 .ok_or_else(|| FmError::new("Couldn't read owner name"))?,
+        )),
+        Err(_) => Ok("".to_owned()),
+    }
+}
+
+/// Reads the group name and returns it as a string.
+fn extract_group(direntry: &DirEntry) -> FmResult<String> {
+    match metadata(direntry.path()) {
+        Ok(metadata) => Ok(String::from(
+            get_group_by_gid(metadata.gid())
+                .ok_or_else(|| FmError::new("Couldn't read gid"))?
+                .name()
+                .to_str()
+                .ok_or_else(|| FmError::new("Couldn't read group name"))?,
         )),
         Err(_) => Ok("".to_owned()),
     }
