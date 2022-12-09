@@ -313,19 +313,15 @@ impl PathContent {
 
     /// Calculates the size of the owner column.
     fn owner_column_width(&self) -> usize {
-        let mut owner_size_btreeset = std::collections::BTreeSet::new();
-        for file in self.files.iter() {
-            owner_size_btreeset.insert(file.owner.len());
-        }
+        let owner_size_btreeset: std::collections::BTreeSet<usize> =
+            self.files.iter().map(|file| file.owner.len()).collect();
         *owner_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
     /// Calculates the size of the group column.
     fn group_column_width(&self) -> usize {
-        let mut group_size_btreeset = std::collections::BTreeSet::new();
-        for file in self.files.iter() {
-            group_size_btreeset.insert(file.group.len());
-        }
+        let group_size_btreeset: std::collections::BTreeSet<usize> =
+            self.files.iter().map(|file| file.group.len()).collect();
         *group_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
