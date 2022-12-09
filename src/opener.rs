@@ -1,20 +1,38 @@
 use std::collections::HashMap;
+use std::env;
 use std::error::Error;
-use std::process::Command;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 use log::info;
 use serde_yaml;
 
 use crate::fm_error::{FmError, FmResult};
 
-#[derive(Clone, Hash, Eq, PartialEq)]
+fn find_it<P>(exe_name: P) -> Option<PathBuf>
+where
+    P: AsRef<Path>,
+{
+    env::var_os("PATH").and_then(|paths| {
+        env::split_paths(&paths).find_map(|dir| {
+            let full_path = dir.join(&exe_name);
+            if full_path.is_file() {
+                Some(full_path)
+            } else {
+                None
+            }
+        })
+    })
+}
+
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub enum ExtensionKind {
     Audio,
     Bitmap,
     Office,
     Readable,
     Text,
-    Unknown,
+    Default,
     Vectorial,
     Video,
 }
@@ -45,7 +63,7 @@ impl ExtensionKind {
 
             "pdf" | "epub" => Self::Readable,
 
-            _ => Self::Unknown,
+            _ => Self::Default,
         }
     }
 }
@@ -59,12 +77,12 @@ impl OpenerAssociation {
     fn new() -> Self {
         Self {
             association: HashMap::from([
-                (ExtensionKind::Audio, OpenerInfo::new("moc", true)),
+                (ExtensionKind::Audio, OpenerInfo::new("mocp", true)),
                 (ExtensionKind::Bitmap, OpenerInfo::new("viewnior", false)),
                 (ExtensionKind::Office, OpenerInfo::new("libreoffice", false)),
                 (ExtensionKind::Readable, OpenerInfo::new("zathura", false)),
                 (ExtensionKind::Text, OpenerInfo::new("nvim", true)),
-                (ExtensionKind::Unknown, OpenerInfo::new("xdg-open", false)),
+                (ExtensionKind::Default, OpenerInfo::new("xdg-open", false)),
                 (ExtensionKind::Vectorial, OpenerInfo::new("inkscape", false)),
                 (ExtensionKind::Video, OpenerInfo::new("mpv", false)),
             ]),
@@ -73,33 +91,43 @@ impl OpenerAssociation {
 }
 
 macro_rules! open_file_with {
-    ($self:ident, $key:ident, $variant:ident, $yaml:ident) => {
-        if let Some($key) = OpenerInfo::from_yaml(&$yaml["$key"]) {
+    ($self:ident, $key:expr, $variant:ident, $yaml:ident) => {
+        if let Some(o) = OpenerInfo::from_yaml(&$yaml[$key]) {
             $self
                 .association
                 .entry(ExtensionKind::$variant)
-                .and_modify(|e| *e = $key);
+                .and_modify(|e| *e = o);
         }
     };
 }
+
 impl OpenerAssociation {
     fn opener_info(&self, ext: &str) -> Option<&OpenerInfo> {
         self.association.get(&ExtensionKind::parse(ext))
     }
 
     fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
-        open_file_with!(self, audio, Audio, yaml);
-        open_file_with!(self, bitmap_image, Bitmap, yaml);
-        open_file_with!(self, libreoffice, Office, yaml);
-        open_file_with!(self, readable, Readable, yaml);
-        open_file_with!(self, text, Text, yaml);
-        open_file_with!(self, unknown, Unknown, yaml);
-        open_file_with!(self, vectorial_image, Vectorial, yaml);
-        open_file_with!(self, video, Video, yaml);
+        open_file_with!(self, "audio", Audio, yaml);
+        open_file_with!(self, "bitmap_image", Bitmap, yaml);
+        open_file_with!(self, "libreoffice", Office, yaml);
+        open_file_with!(self, "readable", Readable, yaml);
+        open_file_with!(self, "text", Text, yaml);
+        open_file_with!(self, "default", Default, yaml);
+        open_file_with!(self, "vectorial_image", Vectorial, yaml);
+        open_file_with!(self, "video", Video, yaml);
+
+        info!("{:?}", self.association);
+
+        self.validate_openers();
+    }
+
+    fn validate_openers(&mut self) {
+        self.association
+            .retain(|_, opener| find_it(opener.opener.clone()).is_some())
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OpenerInfo {
     opener: String,
     use_term: bool,
@@ -125,6 +153,7 @@ impl OpenerInfo {
 pub struct Opener {
     terminal: String,
     pub opener_association: OpenerAssociation,
+    default_opener: OpenerInfo,
 }
 
 impl Opener {
@@ -132,6 +161,15 @@ impl Opener {
         Self {
             terminal,
             opener_association: OpenerAssociation::new(),
+            default_opener: OpenerInfo::new("xdg-open", false),
+        }
+    }
+
+    fn get_opener(&self, extension: &str) -> &OpenerInfo {
+        if let Some(opener) = self.opener_association.opener_info(extension) {
+            opener
+        } else {
+            &self.default_opener
         }
     }
 
@@ -147,12 +185,7 @@ impl Opener {
         let extension = extension_os_string
             .to_str()
             .ok_or_else(|| FmError::new("Extension couldn't be parsed correctly"))?;
-        self.open_with(
-            self.opener_association
-                .opener_info(extension)
-                .ok_or_else(|| FmError::new("This extension has no known opener"))?,
-            filepath,
-        )
+        self.open_with(self.get_opener(extension), filepath)
     }
 
     pub fn open_with(
@@ -197,13 +230,18 @@ pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::C
         "execute_in_child. executable: {}, arguments: {:?}",
         exe, args
     );
-    Ok(Command::new(exe).args(args).spawn()?)
+    Ok(Command::new(exe)
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?)
 }
 
 pub fn load_opener(path: &str, terminal: String) -> Result<Opener, Box<dyn Error>> {
     let mut opener = Opener::new(terminal);
     let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
     let yaml = serde_yaml::from_reader(file)?;
+    info!("yaml opener : {:?}", yaml);
     opener.update_from_file(&yaml);
     Ok(opener)
 }

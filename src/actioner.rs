@@ -52,7 +52,7 @@ impl Actioner {
             Event::Key(Key::Ctrl('f')) => Self::ctrl_f(status),
             Event::Key(Key::Ctrl('c')) => Self::ctrl_c(status),
             Event::Key(Key::Ctrl('p')) => Self::ctrl_p(status),
-            Event::Key(Key::Ctrl('r')) => EventExec::refresh_selected_view(status),
+            Event::Key(Key::Ctrl('r')) => Self::ctrl_r(status),
             Event::Key(Key::Ctrl('x')) => Self::ctrl_x(status),
             Event::User(_) => EventExec::refresh_selected_view(status),
             Event::Resize { width, height } => EventExec::resize(status, width, height),
@@ -298,6 +298,10 @@ impl Actioner {
             return EventExec::event_filepath_to_clipboard(status.selected());
         }
         Ok(())
+    }
+
+    fn ctrl_r(status: &mut Status) -> FmResult<()> {
+        EventExec::refresh_selected_view(status)
     }
 
     fn ctrl_x(status: &mut Status) -> FmResult<()> {

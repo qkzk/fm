@@ -243,4 +243,8 @@ impl Status {
     pub fn disks_mounts(disks: &[Disk]) -> Vec<&Path> {
         disks.iter().map(|d| d.mount_point()).collect()
     }
+
+    pub fn term_size(&self) -> FmResult<(usize, usize)> {
+        Ok(self.term.term_size()?)
+    }
 }
