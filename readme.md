@@ -148,6 +148,7 @@
   - [x] add shortcut to mount points
 - [x] dissociate action from status / tab
 - [x] opener fallback to xdg-open, capture stderr & stdout
+- [x] toggle between simple & complete output
 
 ## TODO
 
@@ -173,7 +174,6 @@
 - [ ] plugins
   - which language ?
   - what for ?
-- [ ] configurable output (owner, group etc.)
 - [ ] make every key configurable
 
   - [ ] vim syntax for key: "C-q" -> Key(Ctrl('q'))
