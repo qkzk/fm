@@ -174,12 +174,11 @@
   - which language ?
   - what for ?
 - [ ] configurable output (owner, group etc.)
+- [ ] make every key configurable
 
-  - [ ] make every key configurable
-
-    - [ ] vim syntax for key: "C-q" -> Key(Ctrl('q'))
-    - [ ] config parser -> `Keybindings { binds: HashMap<Key, String>}`
-    - [ ] help display
+  - [ ] vim syntax for key: "C-q" -> Key(Ctrl('q'))
+  - [ ] config parser -> `Keybindings { binds: HashMap<Key, String>}`
+  - [ ] help display
 
 ## Won't do
 
