@@ -2,7 +2,7 @@ use tuikit::prelude::{Event, Key, MouseButton};
 
 use crate::event_exec::EventExec;
 use crate::fm_error::FmResult;
-use crate::keybindings::Keybindings;
+use crate::keybindings::Bindings;
 use crate::mode::{MarkAction, Mode};
 use crate::status::Status;
 
@@ -11,13 +11,13 @@ use crate::status::Status;
 /// All keys are mapped to relevent events on tabs.selected().
 /// Keybindings are read from `Config`.
 pub struct Actioner {
-    binds: Keybindings,
+    binds: Bindings,
 }
 
 impl Actioner {
     /// Creates a map of configurable keybindings to `EventChar`
     /// The `EventChar` is then associated to a `tabs.selected(). method.
-    pub fn new(binds: Keybindings) -> Self {
+    pub fn new(binds: Bindings) -> Self {
         Self { binds }
     }
     /// Reaction to received events.
@@ -31,7 +31,7 @@ impl Actioner {
             Event::Key(Key::Backspace) => Self::backspace(status),
             Event::Key(Key::Ctrl('d')) => Self::delete(status),
             Event::Key(Key::Ctrl('q')) => Self::escape(status),
-            Event::Key(Key::Char(c)) => Self::char(status, c, &self.binds),
+            Event::Key(Key::Char(c)) => Self::char(status, Key::Char(c), &self.binds),
             Event::Key(Key::Home) => Self::home(status),
             Event::Key(Key::End) => Self::end(status),
             Event::Key(Key::PageDown) => Self::page_down(status),
@@ -316,42 +316,45 @@ impl Actioner {
 
     /// Match read key to a relevent event, depending on keybindings.
     /// Keybindings are read from `Config`.
-    fn char(status: &mut Status, c: char, binds: &Keybindings) -> FmResult<()> {
-        match status.selected().mode {
-            Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::Filter => {
-                EventExec::event_text_insertion(status.selected(), c);
-                Ok(())
-            }
-            Mode::RegexMatch => {
-                EventExec::event_text_insertion(status.selected(), c);
-                status.select_from_regex()?;
-                Ok(())
-            }
-            Mode::Goto | Mode::Exec | Mode::Search => {
-                EventExec::event_text_insert_and_complete(status.selected(), c)
-            }
-            Mode::Normal => match binds.get(&c) {
-                Some(event_char) => event_char.match_char(status),
-                None => Ok(()),
-            },
-            Mode::Help | Mode::Preview | Mode::Shortcut => {
-                EventExec::event_normal(status.selected())
-            }
-            Mode::Jump => Ok(()),
-            Mode::History => Ok(()),
-            Mode::NeedConfirmation => {
-                if c == 'y' {
-                    let _ = EventExec::exec_last_edition(status);
+    fn char(status: &mut Status, k: Key, binds: &Bindings) -> FmResult<()> {
+        match k {
+            Key::Char(c) => match status.selected().mode {
+                Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::Filter => {
+                    EventExec::event_text_insertion(status.selected(), c);
+                    Ok(())
                 }
-                EventExec::event_leave_need_confirmation(status.selected());
-                Ok(())
-            }
-            Mode::Marks(MarkAction::Jump) => EventExec::exec_marks_jump(status, c),
-            Mode::Marks(MarkAction::New) => EventExec::exec_marks_new(status, c),
-            Mode::Sort => {
-                EventExec::event_leave_sort(status.selected(), c);
-                Ok(())
-            }
+                Mode::RegexMatch => {
+                    EventExec::event_text_insertion(status.selected(), c);
+                    status.select_from_regex()?;
+                    Ok(())
+                }
+                Mode::Goto | Mode::Exec | Mode::Search => {
+                    EventExec::event_text_insert_and_complete(status.selected(), c)
+                }
+                Mode::Normal => match binds.get(&k) {
+                    Some(event_char) => event_char.match_char(status),
+                    None => Ok(()),
+                },
+                Mode::Help | Mode::Preview | Mode::Shortcut => {
+                    EventExec::event_normal(status.selected())
+                }
+                Mode::Jump => Ok(()),
+                Mode::History => Ok(()),
+                Mode::NeedConfirmation => {
+                    if c == 'y' {
+                        let _ = EventExec::exec_last_edition(status);
+                    }
+                    EventExec::event_leave_need_confirmation(status.selected());
+                    Ok(())
+                }
+                Mode::Marks(MarkAction::Jump) => EventExec::exec_marks_jump(status, c),
+                Mode::Marks(MarkAction::New) => EventExec::exec_marks_new(status, c),
+                Mode::Sort => {
+                    EventExec::event_leave_sort(status.selected(), c);
+                    Ok(())
+                }
+            },
+            _ => Ok(()),
         }
     }
 }

@@ -39,6 +39,7 @@ pub enum ActionMap {
     Filter,
     Back,
     Home,
+    Nothing,
 }
 
 impl ActionMap {
@@ -135,6 +136,7 @@ impl ActionMap {
             ActionMap::Filter => EventExec::event_filter(status.selected()),
             ActionMap::Back => EventExec::event_back(status.selected()),
             ActionMap::Home => EventExec::event_home(status.selected()),
+            ActionMap::Nothing => Ok(()),
         }
     }
 }

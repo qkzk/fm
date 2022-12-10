@@ -4,7 +4,7 @@ use serde_yaml;
 use tuikit::attr::Color;
 
 use crate::fm_error::FmResult;
-use crate::keybindings::Keybindings;
+use crate::keybindings::Bindings;
 
 /// Holds every configurable aspect of the application.
 /// All attributes are hardcoded then updated from optional values
@@ -57,10 +57,9 @@ use crate::keybindings::Keybindings;
 pub struct Config {
     /// Color of every kind of file
     pub colors: Colors,
-    /// Configurable keybindings.
-    pub keybindings: Keybindings,
-    /// Terminal used to open file
     pub terminal: String,
+    /// Configurable keybindings.
+    pub binds: Bindings,
 }
 
 impl Config {
@@ -68,15 +67,16 @@ impl Config {
     fn new() -> Self {
         Self {
             colors: Colors::default(),
-            keybindings: Keybindings::default(),
             terminal: "st".to_owned(),
+            binds: Bindings::default(),
         }
     }
 
     /// Updates the config from  a configuration content.
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
         self.colors.update_from_config(&yaml["colors"]);
-        self.keybindings.update_from_config(&yaml["keybindings"])?;
+        // self.keybindings.update_from_config(&yaml["keybindings"])?;
+        self.binds.update_from_config(&yaml["keys"])?;
         if let Some(terminal) = yaml["terminal"].as_str().map(|s| s.to_string()) {
             self.terminal = terminal;
         }

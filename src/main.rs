@@ -24,9 +24,9 @@ fn main() -> FmResult<()> {
 
     let config = load_config(CONFIG_PATH)?;
     let term = Arc::new(init_term()?);
-    let actioner = Actioner::new(config.keybindings.clone());
+    let actioner = Actioner::new(config.binds.clone());
     let event_reader = EventReader::new(term.clone());
-    let help = Help::from_keybindings(&config.keybindings)?.help;
+    let help = Help::from_keybindings(&config.binds)?.help;
     let mut display = Display::new(term.clone(), config.colors.clone());
     let mut status = Status::new(Args::parse(), config, display.height()?, term.clone(), help)?;
 

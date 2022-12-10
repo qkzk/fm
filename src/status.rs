@@ -13,7 +13,7 @@ use crate::args::Args;
 use crate::color_cache::ColorCache;
 use crate::config::Config;
 use crate::copy_move::{copy_move, CopyMove};
-use crate::fm_error::{FmError, FmResult};
+use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::marks::Marks;
 use crate::skim::Skimer;
 use crate::tab::Tab;
@@ -119,11 +119,9 @@ impl Status {
     pub fn create_tabs_from_skim(&mut self) -> FmResult<()> {
         for path in self
             .skimer
-            .no_source(
-                self.selected_non_mut()
-                    .path_str()
-                    .ok_or_else(|| FmError::new("skim error"))?,
-            )
+            .no_source(self.selected_non_mut().path_str().ok_or_else(|| {
+                FmError::new(ErrorVariant::CUSTOM("skim".to_owned()), "skim error")
+            })?)
             .iter()
         {
             self.create_tab_from_skim_output(path)
@@ -157,10 +155,12 @@ impl Status {
 
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> FmResult<()> {
         let sources: Vec<PathBuf> = self.flagged.iter().map(|path| path.to_owned()).collect();
-        let dest = self
-            .selected_non_mut()
-            .path_str()
-            .ok_or_else(|| FmError::new("unreadable path"))?;
+        let dest = self.selected_non_mut().path_str().ok_or_else(|| {
+            FmError::new(
+                ErrorVariant::CUSTOM("cut or copy".to_owned()),
+                "unreadable path",
+            )
+        })?;
         copy_move(cut_or_copy, sources, dest, self.term.clone())?;
         self.clear_flags_and_reset_view()
     }
@@ -204,11 +204,10 @@ impl Status {
 
     pub fn select_tab(&mut self, index: usize) -> FmResult<()> {
         if index >= self.tabs.len() {
-            Err(FmError::new(&format!(
-                "Only {} tabs. Can't select tab {}",
-                self.tabs.len(),
-                index
-            )))
+            Err(FmError::new(
+                ErrorVariant::CUSTOM("select tab".to_owned()),
+                &format!("Only {} tabs. Can't select tab {}", self.tabs.len(), index),
+            ))
         } else {
             self.index = index;
             Ok(())

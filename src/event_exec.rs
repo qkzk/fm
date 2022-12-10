@@ -10,7 +10,7 @@ use crate::content_window::ContentWindow;
 use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::filter::FilterKind;
-use crate::fm_error::{FmError, FmResult};
+use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::last_edition::LastEdition;
 use crate::mode::{MarkAction, Mode};
 use crate::opener::execute_in_child;
@@ -79,7 +79,12 @@ impl EventExec {
         let file = status.tabs[status.index]
             .path_content
             .selected_file()
-            .ok_or_else(|| FmError::new("No selected file"))?;
+            .ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("event toggle flag".to_owned()),
+                    "No selected file",
+                )
+            })?;
         status.toggle_flag_on_path(file.path.clone());
         Self::event_down_one_row(status.selected());
         Ok(())
@@ -149,10 +154,12 @@ impl EventExec {
     pub fn event_symlink(status: &mut Status) -> FmResult<()> {
         for oldpath in status.flagged.iter() {
             let newpath = status.tabs[status.index].path_content.path.clone().join(
-                oldpath
-                    .as_path()
-                    .file_name()
-                    .ok_or_else(|| FmError::new("File not found"))?,
+                oldpath.as_path().file_name().ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("event symlink".to_owned()),
+                        "File not found",
+                    )
+                })?,
             );
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }
@@ -369,9 +376,12 @@ impl EventExec {
 
     pub fn event_move_to_parent(tab: &mut Tab) -> FmResult<()> {
         let parent = tab.path_content.path.parent();
-        let path = path::PathBuf::from(
-            parent.ok_or_else(|| FmError::new("Root directory has no parent"))?,
-        );
+        let path = path::PathBuf::from(parent.ok_or_else(|| {
+            FmError::new(
+                ErrorVariant::CUSTOM("event move to parent".to_owned()),
+                "Root directory has no parent",
+            )
+        })?);
         tab.history.push(&path);
         tab.path_content = PathContent::new(path, tab.show_hidden)?;
         tab.window.reset(tab.path_content.files.len());
@@ -436,7 +446,10 @@ impl EventExec {
 
     pub fn event_preview(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
-            return Err(FmError::new("No file to preview"));
+            return Err(FmError::new(
+                ErrorVariant::CUSTOM("event_preview".to_owned()),
+                "No file to preview",
+            ));
         }
         if let Some(file) = tab.path_content.selected_file() {
             if let FileKind::NormalFile = file.file_kind {
@@ -521,7 +534,12 @@ impl EventExec {
         match tab.opener.open(
             tab.path_content
                 .selected_file()
-                .ok_or_else(|| FmError::new("Empty directory"))?
+                .ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("event open file".to_owned()),
+                        "Empty directory",
+                    )
+                })?
                 .path
                 .clone(),
         ) {
@@ -549,10 +567,12 @@ impl EventExec {
             &tab.terminal,
             &vec![
                 "-d",
-                tab.path_content
-                    .path
-                    .to_str()
-                    .ok_or_else(|| FmError::new("Couldn't parse the path name"))?,
+                tab.path_content.path.to_str().ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("event_shell".to_owned()),
+                        "Couldn't parse the path name",
+                    )
+                })?,
             ],
         )?;
         Ok(())
@@ -568,7 +588,10 @@ impl EventExec {
 
     pub fn event_right_click(tab: &mut Tab, row: u16) -> FmResult<()> {
         if tab.path_content.files.is_empty() || row as usize > tab.path_content.files.len() + 1 {
-            return Err(FmError::new("not found"));
+            return Err(FmError::new(
+                ErrorVariant::CUSTOM("event right click".to_owned()),
+                "not found",
+            ));
         }
         tab.line_index = (row - 2).into();
         tab.path_content.select_index(tab.line_index);
@@ -576,7 +599,12 @@ impl EventExec {
         if let FileKind::Directory = tab
             .path_content
             .selected_file()
-            .ok_or_else(|| FmError::new("not found"))?
+            .ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("event right click".to_owned()),
+                    "not found",
+                )
+            })?
             .file_kind
         {
             Self::exec_file(tab)
@@ -676,12 +704,18 @@ impl EventExec {
 
     pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
-            return Err(FmError::new("Empty directory"));
+            return Err(FmError::new(
+                ErrorVariant::CUSTOM("event rename".to_owned()),
+                "Empty directory",
+            ));
         }
         fs::rename(
-            tab.path_content
-                .selected_path_str()
-                .ok_or_else(|| FmError::new("File not found"))?,
+            tab.path_content.selected_path_str().ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("exec rename".to_owned()),
+                    "File not found",
+                )
+            })?,
             tab.path_content.path.to_path_buf().join(&tab.input.string),
         )?;
         tab.refresh_view()
@@ -705,16 +739,21 @@ impl EventExec {
 
     pub fn exec_exec(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
-            return Err(FmError::new("empty directory"));
+            return Err(FmError::new(
+                ErrorVariant::CUSTOM("exec exec".to_owned()),
+                "empty directory",
+            ));
         }
         let exec_command = tab.input.string.clone();
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         if std::path::Path::new(command).exists() {
-            let path = &tab
-                .path_content
-                .selected_path_str()
-                .ok_or_else(|| FmError::new("path unreachable"))?;
+            let path = &tab.path_content.selected_path_str().ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("exec exec".to_owned()),
+                    "path unreachable",
+                )
+            })?;
             args.push(path);
             execute_in_child(command, &args)?;
             tab.completion.reset();
@@ -726,10 +765,12 @@ impl EventExec {
     pub fn event_drag_n_drop(tab: &mut Tab) -> FmResult<()> {
         execute_in_child(
             "dragon-drop",
-            &vec![&tab
-                .path_content
-                .selected_path_str()
-                .ok_or_else(|| FmError::new("path unreachable"))?],
+            &vec![&tab.path_content.selected_path_str().ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("event drag n drop".to_owned()),
+                    "path unreachable",
+                )
+            })?],
         )?;
         Ok(())
     }
@@ -775,9 +816,12 @@ impl EventExec {
     pub fn exec_history(tab: &mut Tab) -> FmResult<()> {
         tab.input.reset();
         tab.path_content = PathContent::new(
-            tab.history
-                .selected()
-                .ok_or_else(|| FmError::new("path unreachable"))?,
+            tab.history.selected().ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("exec history".to_owned()),
+                    "path unreachable",
+                )
+            })?,
             tab.show_hidden,
         )?;
         tab.history.drop_queue();

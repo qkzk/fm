@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 use log::info;
 use serde_yaml;
 
-use crate::fm_error::{FmError, FmResult};
+use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
 fn find_it<P>(exe_name: P) -> Option<PathBuf>
 where
@@ -175,16 +175,27 @@ impl Opener {
 
     pub fn open(&self, filepath: std::path::PathBuf) -> FmResult<std::process::Child> {
         if filepath.is_dir() {
-            return Err(FmError::new("Can't execute a directory"));
+            return Err(FmError::new(
+                ErrorVariant::CUSTOM("open".to_owned()),
+                "Can't execute a directory",
+            ));
         }
 
         let extension_os_string = filepath
             .extension()
-            .ok_or_else(|| FmError::new("Unreadable extension"))?
+            .ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("open".to_owned()),
+                    "Unreadable extension",
+                )
+            })?
             .to_owned();
-        let extension = extension_os_string
-            .to_str()
-            .ok_or_else(|| FmError::new("Extension couldn't be parsed correctly"))?;
+        let extension = extension_os_string.to_str().ok_or_else(|| {
+            FmError::new(
+                ErrorVariant::CUSTOM("open".to_owned()),
+                "Extension couldn't be parsed correctly",
+            )
+        })?;
         self.open_with(self.get_opener(extension), filepath)
     }
 

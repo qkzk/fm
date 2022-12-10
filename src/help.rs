@@ -1,7 +1,8 @@
+use log::info;
 use strfmt::strfmt;
 
 use crate::fm_error::FmResult;
-use crate::keybindings::Keybindings;
+use crate::keybindings::Bindings;
 
 /// Help message to be displayed when help key is pressed.
 /// Default help key is `'h'`.
@@ -11,7 +12,7 @@ pub struct Help {
 }
 
 impl Help {
-    pub fn from_keybindings(keybindings: &Keybindings) -> FmResult<Self> {
+    pub fn from_keybindings(binds: &Bindings) -> FmResult<Self> {
         let help_to_format = "
 {Quit}:      quit
 {Help}:      help
@@ -75,7 +76,9 @@ Alt+d:  dragon-drop selected file
     Ctrl+q: NORMAL
 "
         .to_owned();
-        let help = strfmt(&help_to_format, &keybindings.to_hashmap())?;
+        let hm = binds.keybind_reversed();
+        info!("binds to hashmap {:?}", hm);
+        let help = strfmt(&help_to_format, &binds.keybind_reversed())?;
         Ok(Self { help })
     }
 }
