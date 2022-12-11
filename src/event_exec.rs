@@ -835,4 +835,223 @@ impl EventExec {
         tab.path_content.reset_files()?;
         Self::event_normal(tab)
     }
+
+    pub fn event_move_up(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_up_one_row(status.selected())
+            }
+            Mode::Jump => EventExec::event_jumplist_prev(status),
+            Mode::History => EventExec::event_history_prev(status.selected()),
+            Mode::Shortcut => EventExec::event_shortcut_prev(status.selected()),
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                status.selected().completion.prev();
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    pub fn event_move_down(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_down_one_row(status.selected())
+            }
+            Mode::Jump => EventExec::event_jumplist_next(status),
+            Mode::History => EventExec::event_history_next(status.selected()),
+            Mode::Shortcut => EventExec::event_shortcut_next(status.selected()),
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                status.selected().completion.next();
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    pub fn event_move_left(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal => EventExec::event_move_to_parent(status.selected()),
+            Mode::Rename
+            | Mode::Chmod
+            | Mode::Newdir
+            | Mode::Newfile
+            | Mode::Exec
+            | Mode::Search
+            | Mode::Goto
+            | Mode::RegexMatch
+            | Mode::Filter => {
+                EventExec::event_move_cursor_left(status.selected());
+                Ok(())
+            }
+
+            _ => Ok(()),
+        }
+    }
+
+    pub fn event_move_right(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal => EventExec::exec_file(status.selected()),
+            Mode::Rename
+            | Mode::Chmod
+            | Mode::Newdir
+            | Mode::Newfile
+            | Mode::Exec
+            | Mode::Search
+            | Mode::Goto
+            | Mode::RegexMatch
+            | Mode::Filter => {
+                EventExec::event_move_cursor_right(status.selected());
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    pub fn event_backspace(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Rename
+            | Mode::Newdir
+            | Mode::Chmod
+            | Mode::Newfile
+            | Mode::Exec
+            | Mode::Search
+            | Mode::Goto
+            | Mode::RegexMatch
+            | Mode::Filter => {
+                EventExec::event_delete_char_left(status.selected());
+                Ok(())
+            }
+            Mode::Normal => Ok(()),
+            _ => Ok(()),
+        }
+    }
+
+    pub fn event_delete(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Rename
+            | Mode::Newdir
+            | Mode::Chmod
+            | Mode::Newfile
+            | Mode::Exec
+            | Mode::Search
+            | Mode::Goto
+            | Mode::RegexMatch
+            | Mode::Filter => {
+                EventExec::event_delete_chars_right(status.selected());
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    pub fn event_key_home(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => EventExec::event_go_top(status.selected()),
+            _ => EventExec::event_cursor_home(status.selected()),
+        };
+        Ok(())
+    }
+
+    pub fn event_end(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_go_bottom(status.selected())
+            }
+            _ => EventExec::event_cursor_end(status.selected()),
+        };
+        Ok(())
+    }
+
+    pub fn page_up(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_page_up(status.selected())
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    pub fn page_down(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_page_down(status.selected())
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    pub fn enter(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Rename => EventExec::exec_rename(status.selected())?,
+            Mode::Newfile => EventExec::exec_newfile(status.selected())?,
+            Mode::Newdir => EventExec::exec_newdir(status.selected())?,
+            Mode::Chmod => EventExec::exec_chmod(status)?,
+            Mode::Exec => EventExec::exec_exec(status.selected())?,
+            Mode::Search => EventExec::exec_search(status.selected()),
+            Mode::Goto => EventExec::exec_goto(status.selected())?,
+            Mode::RegexMatch => EventExec::exec_regex(status)?,
+            Mode::Jump => EventExec::exec_jump(status)?,
+            Mode::History => EventExec::exec_history(status.selected())?,
+            Mode::Shortcut => EventExec::exec_shortcut(status.selected())?,
+            Mode::Filter => EventExec::exec_filter(status.selected())?,
+            Mode::Normal => EventExec::exec_file(status.selected())?,
+            Mode::NeedConfirmation | Mode::Help | Mode::Sort | Mode::Preview | Mode::Marks(_) => (),
+        };
+
+        status.selected().input.reset();
+        status.selected().mode = Mode::Normal;
+        Ok(())
+    }
+
+    pub fn tab(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                EventExec::event_replace_input_with_completion(status.selected())
+            }
+            Mode::Normal => status.next(),
+            _ => (),
+        };
+        Ok(())
+    }
+
+    pub fn backtab(status: &mut Status) -> FmResult<()> {
+        if let Mode::Normal = status.selected().mode {
+            status.prev()
+        }
+        Ok(())
+    }
+
+    pub fn ctrl_f(status: &mut Status) -> FmResult<()> {
+        status.create_tabs_from_skim()?;
+        Ok(())
+    }
+
+    pub fn ctrl_c(status: &mut Status) -> FmResult<()> {
+        if let Mode::Normal = status.selected_non_mut().mode {
+            return EventExec::event_filename_to_clipboard(status.selected());
+        }
+        Ok(())
+    }
+
+    pub fn ctrl_p(status: &mut Status) -> FmResult<()> {
+        if let Mode::Normal = status.selected_non_mut().mode {
+            return EventExec::event_filepath_to_clipboard(status.selected());
+        }
+        Ok(())
+    }
+
+    pub fn ctrl_r(status: &mut Status) -> FmResult<()> {
+        Self::refresh_selected_view(status)
+    }
+
+    pub fn ctrl_x(status: &mut Status) -> FmResult<()> {
+        EventExec::event_decompress(status.selected())
+    }
+
+    pub fn ctrl_e(status: &mut Status) -> FmResult<()> {
+        status.display_full = !status.display_full;
+        Ok(())
+    }
 }

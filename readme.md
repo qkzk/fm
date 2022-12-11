@@ -176,9 +176,10 @@
   - what for ?
 - [ ] make every key configurable
 
-  - [ ] vim syntax for key: "C-q" -> Key(Ctrl('q'))
-  - [ ] config parser -> `Keybindings { binds: HashMap<Key, String>}`
-  - [ ] help display
+  - [x] syntax able to parse any combination of key
+  - [x] config parser -> `Keybindings { binds: HashMap<Key, ActionMap>}`
+  - [x] help display
+  - [ ] link any event to actionmap
 
 ## Won't do
 
