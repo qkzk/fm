@@ -40,7 +40,6 @@ pub enum ActionMap {
     Back,
     Home,
     Nothing,
-
     ModeNormal,
     MoveUp,
     MoveDown,
@@ -61,6 +60,7 @@ pub enum ActionMap {
     CtrlR,
     CtrlX,
     CtrlE,
+    DragNDrop,
 }
 
 impl ActionMap {
@@ -157,7 +157,6 @@ impl ActionMap {
             ActionMap::Filter => EventExec::event_filter(status.selected()),
             ActionMap::Back => EventExec::event_back(status.selected()),
             ActionMap::Home => EventExec::event_home(status.selected()),
-
             ActionMap::ModeNormal => EventExec::event_normal(status.selected()),
             ActionMap::MoveUp => EventExec::event_move_up(status),
             ActionMap::MoveDown => EventExec::event_move_down(status),
@@ -178,6 +177,7 @@ impl ActionMap {
             ActionMap::CtrlR => EventExec::ctrl_r(status),
             ActionMap::CtrlX => EventExec::ctrl_x(status),
             ActionMap::CtrlE => EventExec::ctrl_e(status),
+            ActionMap::DragNDrop => EventExec::event_drag_n_drop(status),
 
             ActionMap::Nothing => Ok(()),
         }

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
 
+use log::info;
 use tuikit::prelude::{from_keyname, Key};
 
 use crate::action_map::ActionMap;
@@ -54,6 +55,28 @@ impl Bindings {
             (Key::Char('F'), ActionMap::Filter),
             (Key::Char('-'), ActionMap::Back),
             (Key::Char('~'), ActionMap::Home),
+            (Key::ESC, ActionMap::ModeNormal),
+            (Key::Up, ActionMap::MoveUp),
+            (Key::Down, ActionMap::MoveDown),
+            (Key::Left, ActionMap::MoveLeft),
+            (Key::Right, ActionMap::MoveRight),
+            (Key::Backspace, ActionMap::Backspace),
+            (Key::Ctrl('d'), ActionMap::Delete),
+            (Key::Ctrl('q'), ActionMap::ModeNormal),
+            (Key::Home, ActionMap::KeyHome),
+            (Key::End, ActionMap::End),
+            (Key::PageDown, ActionMap::PageDown),
+            (Key::PageUp, ActionMap::PageUp),
+            (Key::Enter, ActionMap::Enter),
+            (Key::Tab, ActionMap::Tab),
+            (Key::BackTab, ActionMap::BackTab),
+            (Key::Ctrl('f'), ActionMap::CtrlF),
+            (Key::Ctrl('c'), ActionMap::CtrlC),
+            (Key::Ctrl('p'), ActionMap::CtrlP),
+            (Key::Ctrl('r'), ActionMap::CtrlR),
+            (Key::Ctrl('x'), ActionMap::CtrlX),
+            (Key::Ctrl('e'), ActionMap::CtrlE),
+            (Key::Alt('d'), ActionMap::DragNDrop),
         ]);
         Self { binds }
     }
@@ -63,16 +86,14 @@ impl Bindings {
     }
 
     pub fn keybind_reversed(&self) -> HashMap<String, String> {
-        self.binds
+        let b = self
+            .binds
             .clone()
             .into_iter()
-            .filter(|(k, _)| matches!(k, Key::Char(_)))
-            .map(|(k, v)| match k {
-                Key::Char(c) => (c, v),
-                _ => (' ', ActionMap::Nothing),
-            })
-            .map(|(k, v)| (v.to_string(), k.into()))
-            .collect()
+            .map(|(k, v)| (v.to_string(), format!("{:?}", k)))
+            .collect();
+        info!("reversed binds: {:?}", b);
+        b
     }
 
     pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {

@@ -10,34 +10,62 @@ colors:
   fifo: blue
   socket: cyan
   symlink: magenta
-keybindings:
+keys: 
   # only ASCII char keys are allowed
+  # ASCII letters must be lowercase
   # non ASCII letters char must be in single quotes like this '*'
-  a: ToggleHidden
-  c: CopyPaste
-  p: CutPaste
-  x: DeleteFile
-  m: Chmod
-  e: Exec
-  d: NewDir
-  n: NewFile
-  r: Rename
-  u: ClearFlags
-  " " : ToggleFlag
-  s: Shell
-  o: OpenFile
-  h: Help
-  "/": Search
-  g: Goto
-  "*": FlagAll
-  W: RegexMatch
-  j: Jump
-  i: NvimFilepicker
-  O: Sort
-  S: Symlink
-  P: Preview
-  H: History
-  M: MarksNew
-  "'": MarksJump
-  k: Shell
-  G: Shortcut
+  'a': ToggleHidden
+  'c': CopyPaste
+  'p': CutPaste
+  'd': NewDir
+  'n': NewFile
+  'm': Chmod
+  'e': Exec
+  'g': Goto
+  'r': Rename
+  'u': ClearFlags
+  ' ': ToggleFlag
+  's': Shell
+  'x': DeleteFile
+  'o': OpenFile
+  'h': Help
+  '/': Search
+  'w': RegexMatch
+  'q': Quit
+  '*': FlagAll
+  'v': ReverseFlags
+  'j': Jump
+  'shift-h': History
+  'i': NvimFilepicker
+  'shift-o': Sort
+  'l': Symlink
+  'shift-p': Preview
+  'shift-g': Shortcut
+  'shift-b': Bulkrename
+  'shift-m': MarksNew
+  '\': MarksJump
+  'shift-f': Filter
+  '-': Back
+  '~': Home
+  'esc': ModeNormal
+  'up': MoveUp
+  'down': MoveDown
+  'left': MoveLeft
+  'right': MoveRight
+  'bspace': Backspace
+  'ctrl-d': Delete
+  'ctrl-q': ModeNormal
+  'home': KeyHome
+  'end': End
+  'page-down': PageDown
+  'page-up': PageUp
+  'enter': Enter
+  'tab': Tab
+  'shift-tab': BackTab
+  'ctrl-f': CtrlF
+  'ctrl-c': CtrlC
+  'ctrl-p': CtrlP
+  'ctrl-r': CtrlR
+  'ctrl-x': CtrlX
+  'ctrl-e': CtrlE
+  'alt-d': DragNDrop

@@ -18,28 +18,28 @@ impl Help {
 {Help}:      help
 
 - Navigation -
-←:      cd to parent directory 
-→:      cd to child directory
-↑:      one line up  
-↓:      one line down
-Home:   go to first line
-End:    go to last line
-PgUp:   10 lines up
-PgDown: 10 lines down
-Tab:    Cycle tab
+{MoveLeft}:      cd to parent directory 
+{MoveRight}:      cd to child directory
+{MoveUp}:      one line up  
+{MoveDown}:      one line down
+{KeyHome}:   go to first line
+{End}:    go to last line
+{PageUp}:   10 lines up
+{PageDown}: 10 lines down
+{Tab}:    Cycle tab
 
 {ToggleHidden}:      toggle hidden
 {Shell}:      shell in current directory
 {OpenFile}:      open this file
 {NvimFilepicker}:      open in current nvim session
 {Preview}:      preview this file
-Ctrl+e: toggle details on files
-Ctrl+f: fuzzy finder
-Ctrl+r: refresh view
-Ctrl+c: copy filename to clipboard
-Ctrl+p: copy filepath to clipboard
-Ctrl+x: decompress selected file
-Alt+d:  dragon-drop selected file
+{CtrlE}: toggle details on files
+{CtrlF}: fuzzy finder
+{CtrlR}: refresh view
+{CtrlC}: copy filename to clipboard
+{CtrlP}: copy filepath to clipboard
+{CtrlX}: decompress selected file
+{DragNDrop}:  dragon-drop selected file
 {MarksNew}:      Mark current path
 {MarksJump}:      Jump to a mark
 {Back}:      Move back to previous dir
@@ -71,9 +71,8 @@ Alt+d:  dragon-drop selected file
     {Search}:      SEARCH
     {Filter}:      FILTER 
         (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
-    Enter:  Execute mode then NORMAL
-    Esc:    NORMAL
-    Ctrl+q: NORMAL
+    {Enter}:  Execute mode then NORMAL
+    {ModeNormal}:    NORMAL
 "
         .to_owned();
         let hm = binds.keybind_reversed();

@@ -150,6 +150,13 @@
 - [x] opener fallback to xdg-open, capture stderr & stdout
 - [x] toggle between simple & complete output
 
+- [x] make every key configurable
+  - [x] syntax able to parse any combination of key
+  - [x] config parser -> `Keybindings { binds: HashMap<Key, ActionMap>}`
+  - [x] help display
+  - [x] link any event to actionmap
+  - [x] display every event in help
+
 ## TODO
 
 - [ ] remote control
@@ -174,12 +181,6 @@
 - [ ] plugins
   - which language ?
   - what for ?
-- [ ] make every key configurable
-
-  - [x] syntax able to parse any combination of key
-  - [x] config parser -> `Keybindings { binds: HashMap<Key, ActionMap>}`
-  - [x] help display
-  - [ ] link any event to actionmap
 
 ## Won't do
 

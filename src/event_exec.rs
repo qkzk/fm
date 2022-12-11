@@ -58,10 +58,6 @@ impl EventExec {
     }
 
     pub fn event_reverse_flags(status: &mut Status) -> FmResult<()> {
-        // for file in self.selected().path_content.files.iter() {
-        //     self.toggle_flag_on_path(file.path.clone())
-        // }
-
         status.tabs[status.index]
             .path_content
             .files
@@ -762,7 +758,8 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_drag_n_drop(tab: &mut Tab) -> FmResult<()> {
+    pub fn event_drag_n_drop(status: &mut Status) -> FmResult<()> {
+        let tab = status.selected_non_mut();
         execute_in_child(
             "dragon-drop",
             &vec![&tab.path_content.selected_path_str().ok_or_else(|| {
