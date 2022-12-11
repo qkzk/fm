@@ -49,9 +49,7 @@ impl<'a> Draw for WinTab<'a> {
             Mode::NeedConfirmation => self.confirmation(self.status, self.tab, canvas),
             Mode::Preview | Mode::Help => self.preview(self.tab, canvas),
             Mode::Shortcut => self.shortcuts(self.tab, canvas),
-            Mode::Marks(MarkAction::New) | Mode::Marks(MarkAction::Jump) => {
-                self.marks(self.status, self.tab, canvas)
-            }
+            Mode::Marks(_) => self.marks(self.status, self.tab, canvas),
             _ => self.files(self.status, self.tab, canvas),
         }?;
         self.cursor(self.tab, canvas)?;

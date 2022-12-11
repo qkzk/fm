@@ -50,7 +50,7 @@ impl Bindings {
             (Key::Char('G'), ActionMap::Shortcut),
             (Key::Char('B'), ActionMap::Bulkrename),
             (Key::Char('M'), ActionMap::MarksNew),
-            (Key::Char('\\'), ActionMap::MarksJump),
+            (Key::Char('\''), ActionMap::MarksJump),
             (Key::Char('F'), ActionMap::Filter),
             (Key::Char('-'), ActionMap::Back),
             (Key::Char('~'), ActionMap::Home),

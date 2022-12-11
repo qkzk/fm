@@ -95,17 +95,13 @@ impl Marks {
     }
 
     fn format_mark(ch: &char, path: &Path) -> FmResult<String> {
-        let mut s = "".to_owned();
-        s.push(*ch);
-        s.push_str("   ");
-        s.push_str(path.to_str().ok_or_else(|| {
+        let p = path.to_str().ok_or_else(|| {
             FmError::new(
                 ErrorVariant::CUSTOM("format mark".to_owned()),
                 "Unreadable path",
             )
-        })?);
-        s.push('\n');
-        Ok(s)
+        })?;
+        Ok(format!("{}    {}\n", ch, p))
     }
 }
 
