@@ -415,11 +415,14 @@ pub struct ExifContent {
 impl ExifContent {
     fn new(path: PathBuf) -> FmResult<Self> {
         let mut bufreader = std::io::BufReader::new(std::fs::File::open(path)?);
-        let exif = exif::Reader::new().read_from_container(&mut bufreader)?;
-        let content: Vec<String> = exif
-            .fields()
-            .map(|f| Self::format_exif_field(f, &exif))
-            .collect();
+        let content: Vec<String> =
+            if let Ok(exif) = exif::Reader::new().read_from_container(&mut bufreader) {
+                exif.fields()
+                    .map(|f| Self::format_exif_field(f, &exif))
+                    .collect()
+            } else {
+                vec![]
+            };
         Ok(Self {
             length: content.len(),
             content,

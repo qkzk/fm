@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
 
-use log::info;
 use tuikit::prelude::{from_keyname, Key};
 
 use crate::action_map::ActionMap;
@@ -86,13 +85,11 @@ impl Bindings {
     }
 
     pub fn keybind_reversed(&self) -> HashMap<String, String> {
-        let b = self
-            .binds
+        self.binds
             .clone()
             .into_iter()
             .map(|(k, v)| (v.to_string(), format!("{:?}", k)))
-            .collect();
-        b
+            .collect()
     }
 
     pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
@@ -100,8 +97,6 @@ impl Bindings {
             if let Some(key_string) = yaml_key.as_str() {
                 if let Some(keymap) = from_keyname(key_string) {
                     if let Some(action_str) = yaml[yaml_key].as_str() {
-                        let action_map = ActionMap::from_str(action_str);
-                        info!("update {:?}-{}", keymap, action_str);
                         self.binds.insert(keymap, ActionMap::from_str(action_str)?);
                     }
                 }
