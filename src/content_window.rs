@@ -1,5 +1,6 @@
 use std::cmp::{max, min};
 
+pub const RESERVED_ROWS: usize = 3;
 /// Holds the information about the displayed window of lines.
 /// When there's too much lines to display in one screen, we can scroll
 /// and this struct is responsible for that.
@@ -23,9 +24,9 @@ impl ContentWindow {
     pub fn new(len: usize, height: usize) -> Self {
         ContentWindow {
             top: 0,
-            bottom: min(len, height - Self::RESERVED_ROWS),
+            bottom: min(len, height - RESERVED_ROWS),
             len,
-            height: height - Self::RESERVED_ROWS,
+            height: height - RESERVED_ROWS,
         }
     }
 
@@ -34,11 +35,10 @@ impl ContentWindow {
     /// The space of the top element
     pub const WINDOW_MARGIN_TOP: usize = 2;
     /// How many rows are reserved at bottom
-    const RESERVED_ROWS: usize = 3;
 
     /// Set the height of file window.
     pub fn set_height(&mut self, height: usize) {
-        self.height = height - Self::RESERVED_ROWS;
+        self.height = height - RESERVED_ROWS;
     }
 
     /// Move the window one line up if possible.

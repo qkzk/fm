@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use crate::bulkrename::Bulkrename;
 use crate::compress::decompress;
-use crate::content_window::ContentWindow;
+use crate::content_window::{ContentWindow, RESERVED_ROWS};
 use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::filter::FilterKind;
@@ -349,10 +349,14 @@ impl EventExec {
         tab.window.scroll_to(down_index);
     }
 
-    pub fn event_select_row(tab: &mut Tab, row: u16) {
-        tab.line_index = (row - 2).into();
-        tab.path_content.select_index(tab.line_index);
-        tab.window.scroll_to(tab.line_index)
+    pub fn event_select_row(status: &mut Status, row: u16) -> FmResult<()> {
+        if let Mode::Normal = status.selected_non_mut().mode {
+            let tab = status.selected();
+            tab.line_index = Self::row_to_index(row);
+            tab.path_content.select_index(tab.line_index);
+            tab.window.scroll_to(tab.line_index);
+        }
+        Ok(())
     }
 
     pub fn event_shortcut_next(tab: &mut Tab) {
@@ -583,30 +587,36 @@ impl EventExec {
         tab.mode = Mode::Shortcut
     }
 
-    pub fn event_right_click(tab: &mut Tab, row: u16) -> FmResult<()> {
-        if tab.path_content.files.is_empty() || row as usize > tab.path_content.files.len() + 1 {
-            return Err(FmError::new(
-                ErrorVariant::CUSTOM("event right click".to_owned()),
-                "not found",
-            ));
-        }
-        tab.line_index = (row - 2).into();
-        tab.path_content.select_index(tab.line_index);
-        tab.window.scroll_to(tab.line_index);
-        if let FileKind::Directory = tab
-            .path_content
-            .selected_file()
-            .ok_or_else(|| {
-                FmError::new(
+    pub fn event_right_click(status: &mut Status, row: u16) -> FmResult<()> {
+        if let Mode::Normal = status.selected_non_mut().mode {
+            let tab = status.selected();
+            if tab.path_content.files.is_empty() || row as usize > tab.path_content.files.len() + 1
+            {
+                return Err(FmError::new(
                     ErrorVariant::CUSTOM("event right click".to_owned()),
                     "not found",
-                )
-            })?
-            .file_kind
-        {
-            Self::exec_file(tab)
+                ));
+            }
+            tab.line_index = Self::row_to_index(row);
+            tab.path_content.select_index(tab.line_index);
+            tab.window.scroll_to(tab.line_index);
+            if let FileKind::Directory = tab
+                .path_content
+                .selected_file()
+                .ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("event right click".to_owned()),
+                        "not found",
+                    )
+                })?
+                .file_kind
+            {
+                Self::exec_file(tab)
+            } else {
+                Self::event_open_file(tab)
+            }
         } else {
-            Self::event_open_file(tab)
+            Ok(())
         }
     }
 
@@ -1051,5 +1061,9 @@ impl EventExec {
     pub fn ctrl_e(status: &mut Status) -> FmResult<()> {
         status.display_full = !status.display_full;
         Ok(())
+    }
+
+    fn row_to_index(row: u16) -> usize {
+        row as usize - RESERVED_ROWS
     }
 }

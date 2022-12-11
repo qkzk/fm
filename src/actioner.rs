@@ -26,12 +26,10 @@ impl Actioner {
             Event::Key(Key::WheelUp(_, _, _)) => EventExec::event_move_up(status),
             Event::Key(Key::WheelDown(_, _, _)) => EventExec::event_move_down(status),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => {
-                Self::left_click(status, row);
-                Ok(())
+                EventExec::event_select_row(status, row)
             }
             Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => {
-                Self::right_click(status, row);
-                Ok(())
+                EventExec::event_right_click(status, row)
             }
             Event::User(_) => EventExec::refresh_selected_view(status),
             Event::Resize { width, height } => EventExec::resize(status, width, height),
@@ -48,24 +46,10 @@ impl Actioner {
         }
     }
 
-    /// Select this file
-    fn left_click(status: &mut Status, row: u16) {
-        if let Mode::Normal = status.selected_non_mut().mode {
-            EventExec::event_select_row(status.selected(), row)
-        }
-    }
-
-    /// Open a directory or a file
-    fn right_click(status: &mut Status, row: u16) {
-        if let Mode::Normal = status.selected_non_mut().mode {
-            let _ = EventExec::event_right_click(status.selected(), row);
-        }
-    }
-
     /// Match read key to a relevent event, depending on keybindings.
     /// Keybindings are read from `Config`.
-    fn char(&self, status: &mut Status, k: Key) -> FmResult<()> {
-        match k {
+    fn char(&self, status: &mut Status, key_char: Key) -> FmResult<()> {
+        match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
                 Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::Filter => {
                     EventExec::event_text_insertion(status.selected(), c);
@@ -79,7 +63,7 @@ impl Actioner {
                 Mode::Goto | Mode::Exec | Mode::Search => {
                     EventExec::event_text_insert_and_complete(status.selected(), c)
                 }
-                Mode::Normal => match self.binds.get(&k) {
+                Mode::Normal => match self.binds.get(&key_char) {
                     Some(event_char) => event_char.matcher(status),
                     None => Ok(()),
                 },
