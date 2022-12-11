@@ -33,6 +33,15 @@ impl EventReader {
     }
 }
 
+macro_rules! impl_preview {
+    ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident) => {
+        for (i, line) in (*$text).window($tab.window.top, $tab.window.bottom, $length) {
+            let row = Self::calc_line_row(i, $tab);
+            $canvas.print(row, $line_number_width + 3, line)?;
+        }
+    };
+}
+
 struct WinTab<'a> {
     status: &'a Status,
     tab: &'a Tab,
@@ -352,12 +361,6 @@ impl<'a> WinTab<'a> {
                     }
                 }
             }
-            Preview::Text(text) => {
-                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
-                    canvas.print(row, line_number_width + 3, line)?;
-                }
-            }
             Preview::Binary(bin) => {
                 let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
@@ -374,12 +377,6 @@ impl<'a> WinTab<'a> {
                     line.print(canvas, row, line_number_width_hex + 1);
                 }
             }
-            Preview::Pdf(text) => {
-                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
-                    canvas.print(row, line_number_width + 3, line)?;
-                }
-            }
             Preview::Compressed(text) => {
                 for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
                     let row = Self::calc_line_row(i, tab);
@@ -392,18 +389,10 @@ impl<'a> WinTab<'a> {
                     canvas.print(row, line_number_width + 3, line)?;
                 }
             }
-            Preview::Image(text) => {
-                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
-                    canvas.print(row, line_number_width + 3, line)?;
-                }
-            }
-            Preview::Media(text) => {
-                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
-                    canvas.print(row, line_number_width + 3, line)?;
-                }
-            }
+            Preview::Text(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Image(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Media(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Empty => (),
         }
         Ok(())
