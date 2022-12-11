@@ -54,12 +54,12 @@ pub enum ActionMap {
     Enter,
     Tab,
     BackTab,
-    CtrlF,
-    CtrlC,
-    CtrlP,
-    CtrlR,
-    CtrlX,
-    CtrlE,
+    FuzzyFind,
+    CopyFilename,
+    CopyFilepath,
+    RefreshView,
+    Decompress,
+    DisplayFull,
     DragNDrop,
 }
 
@@ -68,92 +68,35 @@ impl ActionMap {
         let current_tab = status.selected();
         match *self {
             ActionMap::ToggleHidden => EventExec::event_toggle_hidden(current_tab),
-            ActionMap::CopyPaste => {
-                EventExec::event_copy_paste(current_tab);
-                Ok(())
-            }
-            ActionMap::CutPaste => {
-                EventExec::event_cur_paste(current_tab);
-                Ok(())
-            }
-            ActionMap::NewDir => {
-                EventExec::event_new_dir(current_tab);
-                Ok(())
-            }
-            ActionMap::NewFile => {
-                EventExec::event_new_file(current_tab);
-                Ok(())
-            }
+            ActionMap::CopyPaste => EventExec::event_copy_paste(current_tab),
+            ActionMap::CutPaste => EventExec::event_cut_paste(current_tab),
+            ActionMap::NewDir => EventExec::event_new_dir(current_tab),
+            ActionMap::NewFile => EventExec::event_new_file(current_tab),
             ActionMap::Chmod => EventExec::event_chmod(status),
-            ActionMap::Exec => {
-                EventExec::event_exec(current_tab);
-                Ok(())
-            }
-            ActionMap::Goto => {
-                EventExec::event_goto(current_tab);
-                Ok(())
-            }
-            ActionMap::Rename => {
-                EventExec::event_rename(current_tab);
-                Ok(())
-            }
+            ActionMap::Exec => EventExec::event_exec(current_tab),
+            ActionMap::Goto => EventExec::event_goto(current_tab),
+            ActionMap::Rename => EventExec::event_rename(current_tab),
             ActionMap::ClearFlags => EventExec::event_clear_flags(status),
             ActionMap::ToggleFlag => EventExec::event_toggle_flag(status),
             ActionMap::Shell => EventExec::event_shell(current_tab),
-            ActionMap::DeleteFile => {
-                EventExec::event_delete_file(current_tab);
-                Ok(())
-            }
+            ActionMap::DeleteFile => EventExec::event_delete_file(current_tab),
             ActionMap::OpenFile => EventExec::event_open_file(current_tab),
-            ActionMap::Help => {
-                EventExec::event_help(current_tab);
-                Ok(())
-            }
-            ActionMap::Search => {
-                EventExec::event_search(current_tab);
-                Ok(())
-            }
-            ActionMap::RegexMatch => {
-                EventExec::event_regex_match(current_tab);
-                Ok(())
-            }
-            ActionMap::Quit => {
-                EventExec::event_quit(current_tab);
-                Ok(())
-            }
+            ActionMap::Help => EventExec::event_help(current_tab),
+            ActionMap::Search => EventExec::event_search(current_tab),
+            ActionMap::RegexMatch => EventExec::event_regex_match(current_tab),
+            ActionMap::Quit => EventExec::event_quit(current_tab),
             ActionMap::FlagAll => EventExec::event_flag_all(status),
             ActionMap::ReverseFlags => EventExec::event_reverse_flags(status),
-            ActionMap::Jump => {
-                EventExec::event_jump(status);
-                Ok(())
-            }
-            ActionMap::History => {
-                EventExec::event_history(current_tab);
-                Ok(())
-            }
-            ActionMap::NvimFilepicker => {
-                EventExec::event_nvim_filepicker(current_tab);
-                Ok(())
-            }
-            ActionMap::Sort => {
-                EventExec::event_sort(current_tab);
-                Ok(())
-            }
+            ActionMap::Jump => EventExec::event_jump(status),
+            ActionMap::History => EventExec::event_history(current_tab),
+            ActionMap::NvimFilepicker => EventExec::event_nvim_filepicker(current_tab),
+            ActionMap::Sort => EventExec::event_sort(current_tab),
             ActionMap::Symlink => EventExec::event_symlink(status),
             ActionMap::Preview => EventExec::event_preview(current_tab),
-            ActionMap::Shortcut => {
-                EventExec::event_shortcut(current_tab);
-                Ok(())
-            }
+            ActionMap::Shortcut => EventExec::event_shortcut(current_tab),
             ActionMap::Bulkrename => EventExec::event_bulkrename(status),
-            ActionMap::MarksNew => {
-                EventExec::event_marks_new(status);
-                Ok(())
-            }
-            ActionMap::MarksJump => {
-                EventExec::event_marks_jump(status);
-                Ok(())
-            }
+            ActionMap::MarksNew => EventExec::event_marks_new(status),
+            ActionMap::MarksJump => EventExec::event_marks_jump(status),
             ActionMap::Filter => EventExec::event_filter(status.selected()),
             ActionMap::Back => EventExec::event_back(status.selected()),
             ActionMap::Home => EventExec::event_home(status.selected()),
@@ -171,12 +114,12 @@ impl ActionMap {
             ActionMap::Enter => EventExec::enter(status),
             ActionMap::Tab => EventExec::tab(status),
             ActionMap::BackTab => EventExec::backtab(status),
-            ActionMap::CtrlF => EventExec::ctrl_f(status),
-            ActionMap::CtrlC => EventExec::ctrl_c(status),
-            ActionMap::CtrlP => EventExec::ctrl_p(status),
-            ActionMap::CtrlR => EventExec::ctrl_r(status),
-            ActionMap::CtrlX => EventExec::ctrl_x(status),
-            ActionMap::CtrlE => EventExec::ctrl_e(status),
+            ActionMap::FuzzyFind => EventExec::event_fuzzyfind(status),
+            ActionMap::CopyFilename => EventExec::event_copy_filename(status),
+            ActionMap::CopyFilepath => EventExec::event_copy_filepath(status),
+            ActionMap::RefreshView => EventExec::event_refreshview(status),
+            ActionMap::Decompress => EventExec::event_decompress(status),
+            ActionMap::DisplayFull => EventExec::event_toggle_display_full(status),
             ActionMap::DragNDrop => EventExec::event_drag_n_drop(status),
 
             ActionMap::Nothing => Ok(()),

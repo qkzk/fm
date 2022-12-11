@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
 
+use log::info;
 use tuikit::prelude::{from_keyname, Key};
 
 use crate::action_map::ActionMap;
@@ -69,12 +70,12 @@ impl Bindings {
             (Key::Enter, ActionMap::Enter),
             (Key::Tab, ActionMap::Tab),
             (Key::BackTab, ActionMap::BackTab),
-            (Key::Ctrl('f'), ActionMap::CtrlF),
-            (Key::Ctrl('c'), ActionMap::CtrlC),
-            (Key::Ctrl('p'), ActionMap::CtrlP),
-            (Key::Ctrl('r'), ActionMap::CtrlR),
-            (Key::Ctrl('x'), ActionMap::CtrlX),
-            (Key::Ctrl('e'), ActionMap::CtrlE),
+            (Key::Ctrl('f'), ActionMap::FuzzyFind),
+            (Key::Ctrl('c'), ActionMap::CopyFilename),
+            (Key::Ctrl('p'), ActionMap::CopyFilepath),
+            (Key::Ctrl('r'), ActionMap::RefreshView),
+            (Key::Ctrl('x'), ActionMap::Decompress),
+            (Key::Ctrl('e'), ActionMap::DisplayFull),
             (Key::Alt('d'), ActionMap::DragNDrop),
         ]);
         Self { binds }
@@ -99,6 +100,8 @@ impl Bindings {
             if let Some(key_string) = yaml_key.as_str() {
                 if let Some(keymap) = from_keyname(key_string) {
                     if let Some(action_str) = yaml[yaml_key].as_str() {
+                        let action_map = ActionMap::from_str(action_str);
+                        info!("update {:?}-{}", keymap, action_str);
                         self.binds.insert(keymap, ActionMap::from_str(action_str)?);
                     }
                 }

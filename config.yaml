@@ -11,9 +11,6 @@ colors:
   socket: cyan
   symlink: magenta
 keys: 
-  # only ASCII char keys are allowed
-  # ASCII letters must be lowercase
-  # non ASCII letters char must be in single quotes like this '*'
   'a': ToggleHidden
   'c': CopyPaste
   'p': CutPaste
@@ -62,10 +59,10 @@ keys:
   'enter': Enter
   'tab': Tab
   'shift-tab': BackTab
-  'ctrl-f': CtrlF
-  'ctrl-c': CtrlC
-  'ctrl-p': CtrlP
-  'ctrl-r': CtrlR
-  'ctrl-x': CtrlX
-  'ctrl-e': CtrlE
+  'ctrl-f': FuzzyFind
+  'ctrl-c': CopyFilename
+  'ctrl-p': CopyFilepath
+  'ctrl-r': RefreshView
+  'ctrl-x': Decompress
+  'ctrl-e': DisplayFull
   'alt-d': DragNDrop

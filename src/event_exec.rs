@@ -117,19 +117,22 @@ impl EventExec {
         status.reset_statuses()
     }
 
-    pub fn event_jump(status: &mut Status) {
+    pub fn event_jump(status: &mut Status) -> FmResult<()> {
         if !status.flagged.is_empty() {
             status.jump_index = 0;
             status.selected().mode = Mode::Jump
         }
+        Ok(())
     }
 
-    pub fn event_marks_new(status: &mut Status) {
-        status.selected().mode = Mode::Marks(MarkAction::New)
+    pub fn event_marks_new(status: &mut Status)  -> FmResult<()>{
+        status.selected().mode = Mode::Marks(MarkAction::New);
+        Ok(())
     }
 
-    pub fn event_marks_jump(status: &mut Status) {
-        status.selected().mode = Mode::Marks(MarkAction::Jump)
+    pub fn event_marks_jump(status: &mut Status)  -> FmResult<()>{
+        status.selected().mode = Mode::Marks(MarkAction::Jump);
+        Ok(())
     }
 
     pub fn exec_marks_new(status: &mut Status, c: char) -> FmResult<()> {
@@ -423,26 +426,31 @@ impl EventExec {
         tab.fill_completion()
     }
 
-    pub fn event_copy_paste(tab: &mut Tab) {
+    pub fn event_copy_paste(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation;
         tab.last_edition = LastEdition::CopyPaste;
+        Ok(())
     }
 
-    pub fn event_cur_paste(tab: &mut Tab) {
+    pub fn event_cut_paste(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation;
         tab.last_edition = LastEdition::CutPaste;
+        Ok(())
     }
 
-    pub fn event_new_dir(tab: &mut Tab) {
-        tab.mode = Mode::Newdir
+    pub fn event_new_dir(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::Newdir;
+        Ok(())
     }
 
-    pub fn event_new_file(tab: &mut Tab) {
-        tab.mode = Mode::Newfile
+    pub fn event_new_file(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::Newfile;
+        Ok(())
     }
 
-    pub fn event_exec(tab: &mut Tab) {
-        tab.mode = Mode::Exec
+    pub fn event_exec(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::Exec;
+        Ok(())
     }
 
     pub fn event_preview(tab: &mut Tab) -> FmResult<()> {
@@ -462,31 +470,37 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_delete_file(tab: &mut Tab) {
+    pub fn event_delete_file(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation;
         tab.last_edition = LastEdition::Delete;
+        Ok(())
     }
 
-    pub fn event_help(tab: &mut Tab) {
+    pub fn event_help(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Help;
         tab.preview = Preview::help(tab.help.clone());
-        tab.window.reset(tab.preview.len())
+        tab.window.reset(tab.preview.len());
+        Ok(())
     }
 
-    pub fn event_search(tab: &mut Tab) {
-        tab.mode = Mode::Search
+    pub fn event_search(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::Search;
+        Ok(())
     }
 
-    pub fn event_regex_match(tab: &mut Tab) {
-        tab.mode = Mode::RegexMatch
+    pub fn event_regex_match(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::RegexMatch;
+        Ok(())
     }
 
-    pub fn event_sort(tab: &mut Tab) {
+    pub fn event_sort(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Sort;
+        Ok(())
     }
 
-    pub fn event_quit(tab: &mut Tab) {
-        tab.must_quit = true
+    pub fn event_quit(tab: &mut Tab) -> FmResult<()> {
+        tab.must_quit = true;
+        Ok(())
     }
 
     pub fn event_leave_need_confirmation(tab: &mut Tab) {
@@ -554,13 +568,15 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_rename(tab: &mut Tab) {
+    pub fn event_rename(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Rename;
+        Ok(())
     }
 
-    pub fn event_goto(tab: &mut Tab) {
+    pub fn event_goto(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Goto;
         tab.completion.reset();
+        Ok(())
     }
 
     pub fn event_shell(tab: &mut Tab) -> FmResult<()> {
@@ -579,12 +595,14 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_history(tab: &mut Tab) {
-        tab.mode = Mode::History
+    pub fn event_history(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::History;
+        Ok(())
     }
 
-    pub fn event_shortcut(tab: &mut Tab) {
-        tab.mode = Mode::Shortcut
+    pub fn event_shortcut(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::Shortcut;
+        Ok(())
     }
 
     pub fn event_right_click(status: &mut Status, row: u16) -> FmResult<()> {
@@ -624,10 +642,10 @@ impl EventExec {
         tab.input.replace(tab.completion.current_proposition())
     }
 
-    pub fn event_nvim_filepicker(tab: &mut Tab) {
+    pub fn event_nvim_filepicker(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
             info!("Called nvim filepicker in an empty directory.");
-            return;
+            return Ok(())
         }
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         if let Ok(nvim_listen_address) = Self::nvim_listen_address(tab) {
@@ -645,6 +663,7 @@ impl EventExec {
         } else {
             info!("Nvim server not defined");
         }
+        Ok(())
     }
 
     pub fn event_filename_to_clipboard(tab: &Tab) -> FmResult<()> {
@@ -673,7 +692,8 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_decompress(tab: &mut Tab) -> FmResult<()> {
+    pub fn event_decompress(status: &mut Status) -> FmResult<()> {
+        let tab = status.selected_non_mut();
         if let Some(fileinfo) = tab.path_content.selected_file() {
             decompress(&fileinfo.path)
         } else {
@@ -1031,34 +1051,30 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn ctrl_f(status: &mut Status) -> FmResult<()> {
+    pub fn event_fuzzyfind(status: &mut Status) -> FmResult<()> {
         status.create_tabs_from_skim()?;
         Ok(())
     }
 
-    pub fn ctrl_c(status: &mut Status) -> FmResult<()> {
+    pub fn event_copy_filename(status: &mut Status) -> FmResult<()> {
         if let Mode::Normal = status.selected_non_mut().mode {
             return EventExec::event_filename_to_clipboard(status.selected());
         }
         Ok(())
     }
 
-    pub fn ctrl_p(status: &mut Status) -> FmResult<()> {
+    pub fn event_copy_filepath(status: &mut Status) -> FmResult<()> {
         if let Mode::Normal = status.selected_non_mut().mode {
             return EventExec::event_filepath_to_clipboard(status.selected());
         }
         Ok(())
     }
 
-    pub fn ctrl_r(status: &mut Status) -> FmResult<()> {
+    pub fn event_refreshview(status: &mut Status) -> FmResult<()> {
         Self::refresh_selected_view(status)
     }
 
-    pub fn ctrl_x(status: &mut Status) -> FmResult<()> {
-        EventExec::event_decompress(status.selected())
-    }
-
-    pub fn ctrl_e(status: &mut Status) -> FmResult<()> {
+    pub fn event_toggle_display_full(status: &mut Status) -> FmResult<()> {
         status.display_full = !status.display_full;
         Ok(())
     }

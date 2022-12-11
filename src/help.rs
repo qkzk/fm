@@ -32,12 +32,12 @@ impl Help {
 {OpenFile}:      open this file
 {NvimFilepicker}:      open in current nvim session
 {Preview}:      preview this file
-{CtrlE}: toggle details on files
-{CtrlF}: fuzzy finder
-{CtrlR}: refresh view
-{CtrlC}: copy filename to clipboard
-{CtrlP}: copy filepath to clipboard
-{CtrlX}: decompress selected file
+{DisplayFull}: toggle details on files
+{FuzzyFind}: fuzzy finder
+{RefreshView}: refresh view
+{CopyFilename}: copy filename to clipboard
+{CopyFilepath}: copy filepath to clipboard
+{Decompress}: decompress selected file
 {DragNDrop}:  dragon-drop selected file
 {MarksNew}:      Mark current path
 {MarksJump}:      Jump to a mark
@@ -74,7 +74,6 @@ impl Help {
     {ModeNormal}:    NORMAL
 "
         .to_owned();
-        let hm = binds.keybind_reversed();
         let help = strfmt(&help_to_format, &binds.keybind_reversed())?;
         Ok(Self { help })
     }
