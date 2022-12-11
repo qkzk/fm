@@ -64,7 +64,7 @@ pub enum ActionMap {
 }
 
 impl ActionMap {
-    pub fn match_char(&self, status: &mut Status) -> FmResult<()> {
+    pub fn matcher(&self, status: &mut Status) -> FmResult<()> {
         let current_tab = status.selected();
         match *self {
             ActionMap::ToggleHidden => EventExec::event_toggle_hidden(current_tab),

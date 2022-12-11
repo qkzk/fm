@@ -71,6 +71,7 @@ impl EventExec {
             });
         status.reset_statuses()
     }
+
     pub fn event_toggle_flag(status: &mut Status) -> FmResult<()> {
         let file = status.tabs[status.index]
             .path_content

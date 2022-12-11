@@ -23,8 +23,8 @@ impl Actioner {
     /// Reaction to received events.
     pub fn read_event(&self, status: &mut Status, ev: Event) -> FmResult<()> {
         match ev {
-            Event::Key(Key::WheelUp(_, _, _)) => Self::up(status),
-            Event::Key(Key::WheelDown(_, _, _)) => Self::down(status),
+            Event::Key(Key::WheelUp(_, _, _)) => EventExec::event_move_up(status),
+            Event::Key(Key::WheelDown(_, _, _)) => EventExec::event_move_down(status),
             Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => {
                 Self::left_click(status, row);
                 Ok(())
@@ -43,31 +43,21 @@ impl Actioner {
 
     fn key_matcher(&self, status: &mut Status, key: Key) -> FmResult<()> {
         match self.binds.get(&key) {
-            Some(event_char) => event_char.match_char(status),
+            Some(action) => action.matcher(status),
             None => Ok(()),
         }
     }
 
-    /// Move one line up
-    fn up(status: &mut Status) -> FmResult<()> {
-        EventExec::event_move_up(status)
-    }
-
-    /// Move one line down
-    fn down(status: &mut Status) -> FmResult<()> {
-        EventExec::event_move_down(status)
-    }
-
     /// Select this file
     fn left_click(status: &mut Status, row: u16) {
-        if let Mode::Normal = status.selected().mode {
+        if let Mode::Normal = status.selected_non_mut().mode {
             EventExec::event_select_row(status.selected(), row)
         }
     }
 
     /// Open a directory or a file
     fn right_click(status: &mut Status, row: u16) {
-        if let Mode::Normal = status.selected().mode {
+        if let Mode::Normal = status.selected_non_mut().mode {
             let _ = EventExec::event_right_click(status.selected(), row);
         }
     }
@@ -76,7 +66,7 @@ impl Actioner {
     /// Keybindings are read from `Config`.
     fn char(&self, status: &mut Status, k: Key) -> FmResult<()> {
         match k {
-            Key::Char(c) => match status.selected().mode {
+            Key::Char(c) => match status.selected_non_mut().mode {
                 Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::Filter => {
                     EventExec::event_text_insertion(status.selected(), c);
                     Ok(())
@@ -90,7 +80,7 @@ impl Actioner {
                     EventExec::event_text_insert_and_complete(status.selected(), c)
                 }
                 Mode::Normal => match self.binds.get(&k) {
-                    Some(event_char) => event_char.match_char(status),
+                    Some(event_char) => event_char.matcher(status),
                     None => Ok(()),
                 },
                 Mode::Help | Mode::Preview | Mode::Shortcut => {
