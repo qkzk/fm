@@ -4,7 +4,7 @@ use std::sync::Arc;
 use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 
-use crate::actioner::Actioner;
+use crate::event_dispatch::EventDispatcher;
 use crate::fileinfo::human_size;
 use crate::fm_error::FmResult;
 use crate::status::Status;
@@ -42,14 +42,14 @@ pub fn disk_space(disks: &[Disk], path: &Path) -> String {
 
 pub fn print_on_quit(
     term: Arc<Term>,
-    actioner: Actioner,
+    event_dispatcher: EventDispatcher,
     event_reader: EventReader,
     status: Status,
     display: Display,
 ) {
     let path = status.selected_non_mut().path_str().unwrap_or_default();
     std::mem::drop(term);
-    std::mem::drop(actioner);
+    std::mem::drop(event_dispatcher);
     std::mem::drop(event_reader);
     std::mem::drop(status);
     std::mem::drop(display);

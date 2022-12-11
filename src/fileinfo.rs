@@ -10,7 +10,7 @@ use users::{get_group_by_gid, get_user_by_uid};
 
 use crate::config::{str_to_tuikit, Colors};
 use crate::filter::FilterKind;
-use crate::fm_error::{FmError, FmResult};
+use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::git::git;
 use crate::status::Status;
 
@@ -305,9 +305,12 @@ impl PathContent {
     }
 
     pub fn path_to_str(&self) -> FmResult<&str> {
-        self.path
-            .to_str()
-            .ok_or_else(|| FmError::new("Unreadable path"))
+        self.path.to_str().ok_or_else(|| {
+            FmError::new(
+                ErrorVariant::CUSTOM("path to str".to_owned()),
+                "Unreadable path",
+            )
+        })
     }
 
     /// Sort the file with current key.
@@ -408,14 +411,24 @@ impl PathContent {
     pub fn is_selected_dir(&self) -> FmResult<bool> {
         match self
             .selected_file()
-            .ok_or_else(|| FmError::new("Empty directory"))?
+            .ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("is selected dir".to_owned()),
+                    "Empty directory",
+                )
+            })?
             .file_kind
         {
             FileKind::Directory => Ok(true),
             FileKind::SymbolicLink => {
                 let dest = self
                     .selected_file()
-                    .ok_or_else(|| FmError::new("unreachable"))?
+                    .ok_or_else(|| {
+                        FmError::new(
+                            ErrorVariant::CUSTOM("is selected dir".to_owned()),
+                            "unreachable",
+                        )
+                    })?
                     .read_dest()
                     .unwrap_or_default();
                 Ok(path::PathBuf::from(dest).is_dir())
@@ -508,10 +521,20 @@ fn extract_owner(direntry: &DirEntry) -> FmResult<String> {
     match metadata(direntry.path()) {
         Ok(metadata) => Ok(String::from(
             get_user_by_uid(metadata.uid())
-                .ok_or_else(|| FmError::new("Couldn't read uid"))?
+                .ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("owner".to_owned()),
+                        "Couldn't read uid",
+                    )
+                })?
                 .name()
                 .to_str()
-                .ok_or_else(|| FmError::new("Couldn't read owner name"))?,
+                .ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("metadata".to_owned()),
+                        "Couldn't read owner name",
+                    )
+                })?,
         )),
         Err(_) => Ok("".to_owned()),
     }
@@ -522,10 +545,20 @@ fn extract_group(direntry: &DirEntry) -> FmResult<String> {
     match metadata(direntry.path()) {
         Ok(metadata) => Ok(String::from(
             get_group_by_gid(metadata.gid())
-                .ok_or_else(|| FmError::new("Couldn't read gid"))?
+                .ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("group".to_owned()),
+                        "Couldn't read gid",
+                    )
+                })?
                 .name()
                 .to_str()
-                .ok_or_else(|| FmError::new("Couldn't read group name"))?,
+                .ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("group".to_owned()),
+                        "Couldn't read group name",
+                    )
+                })?,
         )),
         Err(_) => Ok("".to_owned()),
     }

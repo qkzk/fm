@@ -150,6 +150,13 @@
 - [x] opener fallback to xdg-open, capture stderr & stdout
 - [x] toggle between simple & complete output
 
+- [x] make every key configurable
+  - [x] syntax able to parse any combination of key
+  - [x] config parser -> `Keybindings { binds: HashMap<Key, ActionMap>}`
+  - [x] help display
+  - [x] link any event to actionmap
+  - [x] display every event in help
+
 ## TODO
 
 - [ ] remote control
@@ -174,11 +181,6 @@
 - [ ] plugins
   - which language ?
   - what for ?
-- [ ] make every key configurable
-
-  - [ ] vim syntax for key: "C-q" -> Key(Ctrl('q'))
-  - [ ] config parser -> `Keybindings { binds: HashMap<Key, String>}`
-  - [ ] help display
 
 ## Won't do
 
@@ -201,6 +203,8 @@ All of this stuff can be done easily through a shell command or automatically. I
 ## BUGS
 
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
+- [ ] displaying marks also shows a char from previous mode at end of line
+- [ ] log0, log1, log2 are created by log4rs in source folder
 
 ## Sources
 

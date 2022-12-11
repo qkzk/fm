@@ -1,5 +1,4 @@
 pub mod action_map;
-pub mod actioner;
 pub mod args;
 pub mod bulkrename;
 pub mod color_cache;
@@ -8,6 +7,7 @@ pub mod compress;
 pub mod config;
 pub mod content_window;
 pub mod copy_move;
+pub mod event_dispatch;
 pub mod event_exec;
 pub mod fileinfo;
 pub mod filter;

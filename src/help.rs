@@ -1,7 +1,7 @@
 use strfmt::strfmt;
 
 use crate::fm_error::FmResult;
-use crate::keybindings::Keybindings;
+use crate::keybindings::Bindings;
 
 /// Help message to be displayed when help key is pressed.
 /// Default help key is `'h'`.
@@ -11,34 +11,34 @@ pub struct Help {
 }
 
 impl Help {
-    pub fn from_keybindings(keybindings: &Keybindings) -> FmResult<Self> {
+    pub fn from_keybindings(binds: &Bindings) -> FmResult<Self> {
         let help_to_format = "
 {Quit}:      quit
 {Help}:      help
 
 - Navigation -
-←:      cd to parent directory 
-→:      cd to child directory
-↑:      one line up  
-↓:      one line down
-Home:   go to first line
-End:    go to last line
-PgUp:   10 lines up
-PgDown: 10 lines down
-Tab:    Cycle tab
+{MoveLeft}:      cd to parent directory 
+{MoveRight}:      cd to child directory
+{MoveUp}:      one line up  
+{MoveDown}:      one line down
+{KeyHome}:   go to first line
+{End}:    go to last line
+{PageUp}:   10 lines up
+{PageDown}: 10 lines down
+{Tab}:    Cycle tab
 
 {ToggleHidden}:      toggle hidden
 {Shell}:      shell in current directory
 {OpenFile}:      open this file
 {NvimFilepicker}:      open in current nvim session
 {Preview}:      preview this file
-Ctrl+e: toggle details on files
-Ctrl+f: fuzzy finder
-Ctrl+r: refresh view
-Ctrl+c: copy filename to clipboard
-Ctrl+p: copy filepath to clipboard
-Ctrl+x: decompress selected file
-Alt+d:  dragon-drop selected file
+{DisplayFull}: toggle details on files
+{FuzzyFind}: fuzzy finder
+{RefreshView}: refresh view
+{CopyFilename}: copy filename to clipboard
+{CopyFilepath}: copy filepath to clipboard
+{Decompress}: decompress selected file
+{DragNDrop}:  dragon-drop selected file
 {MarksNew}:      Mark current path
 {MarksJump}:      Jump to a mark
 {Back}:      Move back to previous dir
@@ -70,12 +70,11 @@ Alt+d:  dragon-drop selected file
     {Search}:      SEARCH
     {Filter}:      FILTER 
         (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
-    Enter:  Execute mode then NORMAL
-    Esc:    NORMAL
-    Ctrl+q: NORMAL
+    {Enter}:  Execute mode then NORMAL
+    {ModeNormal}:    NORMAL
 "
         .to_owned();
-        let help = strfmt(&help_to_format, &keybindings.to_hashmap())?;
+        let help = strfmt(&help_to_format, &binds.keybind_reversed())?;
         Ok(Self { help })
     }
 }

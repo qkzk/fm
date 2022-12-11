@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
-use crate::fm_error::{FmError, FmResult};
+use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::opener::{ExtensionKind, Opener};
 
 static TMP_FOLDER: &str = "/tmp";
@@ -87,6 +87,7 @@ impl<'a> Bulkrename<'a> {
             opener.open_with(editor_info, filepath.to_owned())?;
         } else {
             return Err(FmError::new(
+                ErrorVariant::CUSTOM("open temp file".to_owned()),
                 "Markdown files should have a dedicated opener",
             ));
         }
@@ -110,12 +111,18 @@ impl<'a> Bulkrename<'a> {
             let line2 = line?;
             let line = line2.trim();
             if line.is_empty() {
-                return Err(FmError::new("empty filename"));
+                return Err(FmError::new(
+                    ErrorVariant::CUSTOM("new filenames".to_owned()),
+                    "empty filename",
+                ));
             }
             new_names.push(line2);
         }
         if new_names.len() < self.original_filepath.len() {
-            return Err(FmError::new("not enough filenames"));
+            return Err(FmError::new(
+                ErrorVariant::CUSTOM("new filenames".to_owned()),
+                "not enough filenames",
+            ));
         }
         Ok(new_names)
     }

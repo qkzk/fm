@@ -12,17 +12,20 @@ use log4rs::{
     Handle,
 };
 
-use crate::fm_error::{FmError, FmResult};
+use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
 static LOG_PATH: &str = "~/.config/fm/fm.log";
 
 fn create_log_folder(log_path: &str) -> FmResult<()> {
     let _ =
         std::fs::create_dir_all(std::path::PathBuf::from(log_path).parent().ok_or_else(|| {
-            FmError::new(&format!(
-                "Couldn't create log folder. LOGPATH {} should have a parent",
-                LOG_PATH
-            ))
+            FmError::new(
+                ErrorVariant::CUSTOM("create log folder".to_owned()),
+                &format!(
+                    "Couldn't create log folder. LOGPATH {} should have a parent",
+                    LOG_PATH
+                ),
+            )
         })?);
 
     Ok(())
@@ -50,7 +53,7 @@ pub fn set_logger() -> FmResult<Handle> {
                     &log_path,
                     Box::new(
                         RollingFileAppender::builder()
-                            .encoder(Box::new(PatternEncoder::new("{d} {l}::{m}{n}")))
+                            .encoder(Box::new(PatternEncoder::new("{d} {l}::{m} - {f}:{L}{n}")))
                             .build(&log_path, Box::new(compound_policy))?,
                     ),
                 ),

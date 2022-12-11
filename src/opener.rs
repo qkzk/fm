@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 use log::info;
 use serde_yaml;
 
-use crate::fm_error::{FmError, FmResult};
+use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
 fn find_it<P>(exe_name: P) -> Option<PathBuf>
 where
@@ -116,8 +116,6 @@ impl OpenerAssociation {
         open_file_with!(self, "vectorial_image", Vectorial, yaml);
         open_file_with!(self, "video", Video, yaml);
 
-        info!("{:?}", self.association);
-
         self.validate_openers();
     }
 
@@ -175,16 +173,27 @@ impl Opener {
 
     pub fn open(&self, filepath: std::path::PathBuf) -> FmResult<std::process::Child> {
         if filepath.is_dir() {
-            return Err(FmError::new("Can't execute a directory"));
+            return Err(FmError::new(
+                ErrorVariant::CUSTOM("open".to_owned()),
+                "Can't execute a directory",
+            ));
         }
 
         let extension_os_string = filepath
             .extension()
-            .ok_or_else(|| FmError::new("Unreadable extension"))?
+            .ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("open".to_owned()),
+                    "Unreadable extension",
+                )
+            })?
             .to_owned();
-        let extension = extension_os_string
-            .to_str()
-            .ok_or_else(|| FmError::new("Extension couldn't be parsed correctly"))?;
+        let extension = extension_os_string.to_str().ok_or_else(|| {
+            FmError::new(
+                ErrorVariant::CUSTOM("open".to_owned()),
+                "Extension couldn't be parsed correctly",
+            )
+        })?;
         self.open_with(self.get_opener(extension), filepath)
     }
 
@@ -241,7 +250,6 @@ pub fn load_opener(path: &str, terminal: String) -> Result<Opener, Box<dyn Error
     let mut opener = Opener::new(terminal);
     let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
     let yaml = serde_yaml::from_reader(file)?;
-    info!("yaml opener : {:?}", yaml);
     opener.update_from_file(&yaml);
     Ok(opener)
 }

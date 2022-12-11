@@ -6,11 +6,11 @@ use std::path::PathBuf;
 
 use crate::bulkrename::Bulkrename;
 use crate::compress::decompress;
-use crate::content_window::ContentWindow;
+use crate::content_window::{ContentWindow, RESERVED_ROWS};
 use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::filter::FilterKind;
-use crate::fm_error::{FmError, FmResult};
+use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::last_edition::LastEdition;
 use crate::mode::{MarkAction, Mode};
 use crate::opener::execute_in_child;
@@ -58,10 +58,6 @@ impl EventExec {
     }
 
     pub fn event_reverse_flags(status: &mut Status) -> FmResult<()> {
-        // for file in self.selected().path_content.files.iter() {
-        //     self.toggle_flag_on_path(file.path.clone())
-        // }
-
         status.tabs[status.index]
             .path_content
             .files
@@ -75,11 +71,17 @@ impl EventExec {
             });
         status.reset_statuses()
     }
+
     pub fn event_toggle_flag(status: &mut Status) -> FmResult<()> {
         let file = status.tabs[status.index]
             .path_content
             .selected_file()
-            .ok_or_else(|| FmError::new("No selected file"))?;
+            .ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("event toggle flag".to_owned()),
+                    "No selected file",
+                )
+            })?;
         status.toggle_flag_on_path(file.path.clone());
         Self::event_down_one_row(status.selected());
         Ok(())
@@ -115,19 +117,22 @@ impl EventExec {
         status.reset_statuses()
     }
 
-    pub fn event_jump(status: &mut Status) {
+    pub fn event_jump(status: &mut Status) -> FmResult<()> {
         if !status.flagged.is_empty() {
             status.jump_index = 0;
             status.selected().mode = Mode::Jump
         }
+        Ok(())
     }
 
-    pub fn event_marks_new(status: &mut Status) {
-        status.selected().mode = Mode::Marks(MarkAction::New)
+    pub fn event_marks_new(status: &mut Status)  -> FmResult<()>{
+        status.selected().mode = Mode::Marks(MarkAction::New);
+        Ok(())
     }
 
-    pub fn event_marks_jump(status: &mut Status) {
-        status.selected().mode = Mode::Marks(MarkAction::Jump)
+    pub fn event_marks_jump(status: &mut Status)  -> FmResult<()>{
+        status.selected().mode = Mode::Marks(MarkAction::Jump);
+        Ok(())
     }
 
     pub fn exec_marks_new(status: &mut Status, c: char) -> FmResult<()> {
@@ -149,10 +154,12 @@ impl EventExec {
     pub fn event_symlink(status: &mut Status) -> FmResult<()> {
         for oldpath in status.flagged.iter() {
             let newpath = status.tabs[status.index].path_content.path.clone().join(
-                oldpath
-                    .as_path()
-                    .file_name()
-                    .ok_or_else(|| FmError::new("File not found"))?,
+                oldpath.as_path().file_name().ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("event symlink".to_owned()),
+                        "File not found",
+                    )
+                })?,
             );
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }
@@ -345,10 +352,14 @@ impl EventExec {
         tab.window.scroll_to(down_index);
     }
 
-    pub fn event_select_row(tab: &mut Tab, row: u16) {
-        tab.line_index = (row - 2).into();
-        tab.path_content.select_index(tab.line_index);
-        tab.window.scroll_to(tab.line_index)
+    pub fn event_select_row(status: &mut Status, row: u16) -> FmResult<()> {
+        if let Mode::Normal = status.selected_non_mut().mode {
+            let tab = status.selected();
+            tab.line_index = Self::row_to_index(row);
+            tab.path_content.select_index(tab.line_index);
+            tab.window.scroll_to(tab.line_index);
+        }
+        Ok(())
     }
 
     pub fn event_shortcut_next(tab: &mut Tab) {
@@ -369,9 +380,12 @@ impl EventExec {
 
     pub fn event_move_to_parent(tab: &mut Tab) -> FmResult<()> {
         let parent = tab.path_content.path.parent();
-        let path = path::PathBuf::from(
-            parent.ok_or_else(|| FmError::new("Root directory has no parent"))?,
-        );
+        let path = path::PathBuf::from(parent.ok_or_else(|| {
+            FmError::new(
+                ErrorVariant::CUSTOM("event move to parent".to_owned()),
+                "Root directory has no parent",
+            )
+        })?);
         tab.history.push(&path);
         tab.path_content = PathContent::new(path, tab.show_hidden)?;
         tab.window.reset(tab.path_content.files.len());
@@ -412,31 +426,39 @@ impl EventExec {
         tab.fill_completion()
     }
 
-    pub fn event_copy_paste(tab: &mut Tab) {
+    pub fn event_copy_paste(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation;
         tab.last_edition = LastEdition::CopyPaste;
+        Ok(())
     }
 
-    pub fn event_cur_paste(tab: &mut Tab) {
+    pub fn event_cut_paste(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation;
         tab.last_edition = LastEdition::CutPaste;
+        Ok(())
     }
 
-    pub fn event_new_dir(tab: &mut Tab) {
-        tab.mode = Mode::Newdir
+    pub fn event_new_dir(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::Newdir;
+        Ok(())
     }
 
-    pub fn event_new_file(tab: &mut Tab) {
-        tab.mode = Mode::Newfile
+    pub fn event_new_file(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::Newfile;
+        Ok(())
     }
 
-    pub fn event_exec(tab: &mut Tab) {
-        tab.mode = Mode::Exec
+    pub fn event_exec(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::Exec;
+        Ok(())
     }
 
     pub fn event_preview(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
-            return Err(FmError::new("No file to preview"));
+            return Err(FmError::new(
+                ErrorVariant::CUSTOM("event_preview".to_owned()),
+                "No file to preview",
+            ));
         }
         if let Some(file) = tab.path_content.selected_file() {
             if let FileKind::NormalFile = file.file_kind {
@@ -448,31 +470,37 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_delete_file(tab: &mut Tab) {
+    pub fn event_delete_file(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation;
         tab.last_edition = LastEdition::Delete;
+        Ok(())
     }
 
-    pub fn event_help(tab: &mut Tab) {
+    pub fn event_help(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Help;
         tab.preview = Preview::help(tab.help.clone());
-        tab.window.reset(tab.preview.len())
+        tab.window.reset(tab.preview.len());
+        Ok(())
     }
 
-    pub fn event_search(tab: &mut Tab) {
-        tab.mode = Mode::Search
+    pub fn event_search(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::Search;
+        Ok(())
     }
 
-    pub fn event_regex_match(tab: &mut Tab) {
-        tab.mode = Mode::RegexMatch
+    pub fn event_regex_match(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::RegexMatch;
+        Ok(())
     }
 
-    pub fn event_sort(tab: &mut Tab) {
+    pub fn event_sort(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Sort;
+        Ok(())
     }
 
-    pub fn event_quit(tab: &mut Tab) {
-        tab.must_quit = true
+    pub fn event_quit(tab: &mut Tab) -> FmResult<()> {
+        tab.must_quit = true;
+        Ok(())
     }
 
     pub fn event_leave_need_confirmation(tab: &mut Tab) {
@@ -521,7 +549,12 @@ impl EventExec {
         match tab.opener.open(
             tab.path_content
                 .selected_file()
-                .ok_or_else(|| FmError::new("Empty directory"))?
+                .ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("event open file".to_owned()),
+                        "Empty directory",
+                    )
+                })?
                 .path
                 .clone(),
         ) {
@@ -535,13 +568,15 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_rename(tab: &mut Tab) {
+    pub fn event_rename(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Rename;
+        Ok(())
     }
 
-    pub fn event_goto(tab: &mut Tab) {
+    pub fn event_goto(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Goto;
         tab.completion.reset();
+        Ok(())
     }
 
     pub fn event_shell(tab: &mut Tab) -> FmResult<()> {
@@ -549,39 +584,57 @@ impl EventExec {
             &tab.terminal,
             &vec![
                 "-d",
-                tab.path_content
-                    .path
-                    .to_str()
-                    .ok_or_else(|| FmError::new("Couldn't parse the path name"))?,
+                tab.path_content.path.to_str().ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("event_shell".to_owned()),
+                        "Couldn't parse the path name",
+                    )
+                })?,
             ],
         )?;
         Ok(())
     }
 
-    pub fn event_history(tab: &mut Tab) {
-        tab.mode = Mode::History
+    pub fn event_history(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::History;
+        Ok(())
     }
 
-    pub fn event_shortcut(tab: &mut Tab) {
-        tab.mode = Mode::Shortcut
+    pub fn event_shortcut(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::Shortcut;
+        Ok(())
     }
 
-    pub fn event_right_click(tab: &mut Tab, row: u16) -> FmResult<()> {
-        if tab.path_content.files.is_empty() || row as usize > tab.path_content.files.len() + 1 {
-            return Err(FmError::new("not found"));
-        }
-        tab.line_index = (row - 2).into();
-        tab.path_content.select_index(tab.line_index);
-        tab.window.scroll_to(tab.line_index);
-        if let FileKind::Directory = tab
-            .path_content
-            .selected_file()
-            .ok_or_else(|| FmError::new("not found"))?
-            .file_kind
-        {
-            Self::exec_file(tab)
+    pub fn event_right_click(status: &mut Status, row: u16) -> FmResult<()> {
+        if let Mode::Normal = status.selected_non_mut().mode {
+            let tab = status.selected();
+            if tab.path_content.files.is_empty() || row as usize > tab.path_content.files.len() + 1
+            {
+                return Err(FmError::new(
+                    ErrorVariant::CUSTOM("event right click".to_owned()),
+                    "not found",
+                ));
+            }
+            tab.line_index = Self::row_to_index(row);
+            tab.path_content.select_index(tab.line_index);
+            tab.window.scroll_to(tab.line_index);
+            if let FileKind::Directory = tab
+                .path_content
+                .selected_file()
+                .ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("event right click".to_owned()),
+                        "not found",
+                    )
+                })?
+                .file_kind
+            {
+                Self::exec_file(tab)
+            } else {
+                Self::event_open_file(tab)
+            }
         } else {
-            Self::event_open_file(tab)
+            Ok(())
         }
     }
 
@@ -589,10 +642,10 @@ impl EventExec {
         tab.input.replace(tab.completion.current_proposition())
     }
 
-    pub fn event_nvim_filepicker(tab: &mut Tab) {
+    pub fn event_nvim_filepicker(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
             info!("Called nvim filepicker in an empty directory.");
-            return;
+            return Ok(())
         }
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         if let Ok(nvim_listen_address) = Self::nvim_listen_address(tab) {
@@ -610,6 +663,7 @@ impl EventExec {
         } else {
             info!("Nvim server not defined");
         }
+        Ok(())
     }
 
     pub fn event_filename_to_clipboard(tab: &Tab) -> FmResult<()> {
@@ -638,7 +692,8 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_decompress(tab: &mut Tab) -> FmResult<()> {
+    pub fn event_decompress(status: &mut Status) -> FmResult<()> {
+        let tab = status.selected_non_mut();
         if let Some(fileinfo) = tab.path_content.selected_file() {
             decompress(&fileinfo.path)
         } else {
@@ -676,12 +731,18 @@ impl EventExec {
 
     pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
-            return Err(FmError::new("Empty directory"));
+            return Err(FmError::new(
+                ErrorVariant::CUSTOM("event rename".to_owned()),
+                "Empty directory",
+            ));
         }
         fs::rename(
-            tab.path_content
-                .selected_path_str()
-                .ok_or_else(|| FmError::new("File not found"))?,
+            tab.path_content.selected_path_str().ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("exec rename".to_owned()),
+                    "File not found",
+                )
+            })?,
             tab.path_content.path.to_path_buf().join(&tab.input.string),
         )?;
         tab.refresh_view()
@@ -705,16 +766,21 @@ impl EventExec {
 
     pub fn exec_exec(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
-            return Err(FmError::new("empty directory"));
+            return Err(FmError::new(
+                ErrorVariant::CUSTOM("exec exec".to_owned()),
+                "empty directory",
+            ));
         }
         let exec_command = tab.input.string.clone();
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         if std::path::Path::new(command).exists() {
-            let path = &tab
-                .path_content
-                .selected_path_str()
-                .ok_or_else(|| FmError::new("path unreachable"))?;
+            let path = &tab.path_content.selected_path_str().ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("exec exec".to_owned()),
+                    "path unreachable",
+                )
+            })?;
             args.push(path);
             execute_in_child(command, &args)?;
             tab.completion.reset();
@@ -723,13 +789,16 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_drag_n_drop(tab: &mut Tab) -> FmResult<()> {
+    pub fn event_drag_n_drop(status: &mut Status) -> FmResult<()> {
+        let tab = status.selected_non_mut();
         execute_in_child(
             "dragon-drop",
-            &vec![&tab
-                .path_content
-                .selected_path_str()
-                .ok_or_else(|| FmError::new("path unreachable"))?],
+            &vec![&tab.path_content.selected_path_str().ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("event drag n drop".to_owned()),
+                    "path unreachable",
+                )
+            })?],
         )?;
         Ok(())
     }
@@ -775,9 +844,12 @@ impl EventExec {
     pub fn exec_history(tab: &mut Tab) -> FmResult<()> {
         tab.input.reset();
         tab.path_content = PathContent::new(
-            tab.history
-                .selected()
-                .ok_or_else(|| FmError::new("path unreachable"))?,
+            tab.history.selected().ok_or_else(|| {
+                FmError::new(
+                    ErrorVariant::CUSTOM("exec history".to_owned()),
+                    "path unreachable",
+                )
+            })?,
             tab.show_hidden,
         )?;
         tab.history.drop_queue();
@@ -790,5 +862,224 @@ impl EventExec {
         tab.input.reset();
         tab.path_content.reset_files()?;
         Self::event_normal(tab)
+    }
+
+    pub fn event_move_up(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_up_one_row(status.selected())
+            }
+            Mode::Jump => EventExec::event_jumplist_prev(status),
+            Mode::History => EventExec::event_history_prev(status.selected()),
+            Mode::Shortcut => EventExec::event_shortcut_prev(status.selected()),
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                status.selected().completion.prev();
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    pub fn event_move_down(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_down_one_row(status.selected())
+            }
+            Mode::Jump => EventExec::event_jumplist_next(status),
+            Mode::History => EventExec::event_history_next(status.selected()),
+            Mode::Shortcut => EventExec::event_shortcut_next(status.selected()),
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                status.selected().completion.next();
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    pub fn event_move_left(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal => EventExec::event_move_to_parent(status.selected()),
+            Mode::Rename
+            | Mode::Chmod
+            | Mode::Newdir
+            | Mode::Newfile
+            | Mode::Exec
+            | Mode::Search
+            | Mode::Goto
+            | Mode::RegexMatch
+            | Mode::Filter => {
+                EventExec::event_move_cursor_left(status.selected());
+                Ok(())
+            }
+
+            _ => Ok(()),
+        }
+    }
+
+    pub fn event_move_right(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal => EventExec::exec_file(status.selected()),
+            Mode::Rename
+            | Mode::Chmod
+            | Mode::Newdir
+            | Mode::Newfile
+            | Mode::Exec
+            | Mode::Search
+            | Mode::Goto
+            | Mode::RegexMatch
+            | Mode::Filter => {
+                EventExec::event_move_cursor_right(status.selected());
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    pub fn event_backspace(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Rename
+            | Mode::Newdir
+            | Mode::Chmod
+            | Mode::Newfile
+            | Mode::Exec
+            | Mode::Search
+            | Mode::Goto
+            | Mode::RegexMatch
+            | Mode::Filter => {
+                EventExec::event_delete_char_left(status.selected());
+                Ok(())
+            }
+            Mode::Normal => Ok(()),
+            _ => Ok(()),
+        }
+    }
+
+    pub fn event_delete(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Rename
+            | Mode::Newdir
+            | Mode::Chmod
+            | Mode::Newfile
+            | Mode::Exec
+            | Mode::Search
+            | Mode::Goto
+            | Mode::RegexMatch
+            | Mode::Filter => {
+                EventExec::event_delete_chars_right(status.selected());
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    pub fn event_key_home(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => EventExec::event_go_top(status.selected()),
+            _ => EventExec::event_cursor_home(status.selected()),
+        };
+        Ok(())
+    }
+
+    pub fn event_end(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_go_bottom(status.selected())
+            }
+            _ => EventExec::event_cursor_end(status.selected()),
+        };
+        Ok(())
+    }
+
+    pub fn page_up(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_page_up(status.selected())
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    pub fn page_down(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal | Mode::Preview | Mode::Help => {
+                EventExec::event_page_down(status.selected())
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    pub fn enter(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Rename => EventExec::exec_rename(status.selected())?,
+            Mode::Newfile => EventExec::exec_newfile(status.selected())?,
+            Mode::Newdir => EventExec::exec_newdir(status.selected())?,
+            Mode::Chmod => EventExec::exec_chmod(status)?,
+            Mode::Exec => EventExec::exec_exec(status.selected())?,
+            Mode::Search => EventExec::exec_search(status.selected()),
+            Mode::Goto => EventExec::exec_goto(status.selected())?,
+            Mode::RegexMatch => EventExec::exec_regex(status)?,
+            Mode::Jump => EventExec::exec_jump(status)?,
+            Mode::History => EventExec::exec_history(status.selected())?,
+            Mode::Shortcut => EventExec::exec_shortcut(status.selected())?,
+            Mode::Filter => EventExec::exec_filter(status.selected())?,
+            Mode::Normal => EventExec::exec_file(status.selected())?,
+            Mode::NeedConfirmation | Mode::Help | Mode::Sort | Mode::Preview | Mode::Marks(_) => (),
+        };
+
+        status.selected().input.reset();
+        status.selected().mode = Mode::Normal;
+        Ok(())
+    }
+
+    pub fn tab(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Goto | Mode::Exec | Mode::Search => {
+                EventExec::event_replace_input_with_completion(status.selected())
+            }
+            Mode::Normal => status.next(),
+            _ => (),
+        };
+        Ok(())
+    }
+
+    pub fn backtab(status: &mut Status) -> FmResult<()> {
+        if let Mode::Normal = status.selected().mode {
+            status.prev()
+        }
+        Ok(())
+    }
+
+    pub fn event_fuzzyfind(status: &mut Status) -> FmResult<()> {
+        status.create_tabs_from_skim()?;
+        Ok(())
+    }
+
+    pub fn event_copy_filename(status: &mut Status) -> FmResult<()> {
+        if let Mode::Normal = status.selected_non_mut().mode {
+            return EventExec::event_filename_to_clipboard(status.selected());
+        }
+        Ok(())
+    }
+
+    pub fn event_copy_filepath(status: &mut Status) -> FmResult<()> {
+        if let Mode::Normal = status.selected_non_mut().mode {
+            return EventExec::event_filepath_to_clipboard(status.selected());
+        }
+        Ok(())
+    }
+
+    pub fn event_refreshview(status: &mut Status) -> FmResult<()> {
+        Self::refresh_selected_view(status)
+    }
+
+    pub fn event_toggle_display_full(status: &mut Status) -> FmResult<()> {
+        status.display_full = !status.display_full;
+        Ok(())
+    }
+
+    fn row_to_index(row: u16) -> usize {
+        row as usize - RESERVED_ROWS
     }
 }

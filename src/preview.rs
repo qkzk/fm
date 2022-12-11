@@ -15,7 +15,7 @@ use tuikit::attr::{Attr, Color};
 use zip::ZipArchive;
 
 use crate::fileinfo::PathContent;
-use crate::fm_error::{FmError, FmResult};
+use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
 #[derive(Clone)]
 pub enum Preview {
@@ -192,9 +192,12 @@ impl SyntaxedContent {
         path_content: &PathContent,
         syntaxset: &SyntaxReference,
     ) -> FmResult<Self> {
-        let file = path_content
-            .selected_file()
-            .ok_or_else(|| FmError::new("Path shouldn't be empty"))?;
+        let file = path_content.selected_file().ok_or_else(|| {
+            FmError::new(
+                ErrorVariant::CUSTOM("SyntaxedContent".to_owned()),
+                "Path shouldn't be empty",
+            )
+        })?;
         let reader = std::io::BufReader::new(std::fs::File::open(file.path.clone())?);
         let content: Box<Vec<String>> = Box::new(
             reader
@@ -279,9 +282,12 @@ impl BinaryContent {
     const LINE_WIDTH: usize = 16;
 
     fn new(path_content: PathContent) -> FmResult<Self> {
-        let file = path_content
-            .selected_file()
-            .ok_or_else(|| FmError::new("Path shouldn't be emtpy"))?;
+        let file = path_content.selected_file().ok_or_else(|| {
+            FmError::new(
+                ErrorVariant::CUSTOM("BinaryContent".to_owned()),
+                "Path shouldn't be emtpy",
+            )
+        })?;
         let mut reader = std::io::BufReader::new(std::fs::File::open(file.path.clone())?);
         let mut buffer = [0; Self::LINE_WIDTH];
         let mut content: Box<Vec<Line>> = Box::new(vec![]);
@@ -409,11 +415,14 @@ pub struct ExifContent {
 impl ExifContent {
     fn new(path: PathBuf) -> FmResult<Self> {
         let mut bufreader = std::io::BufReader::new(std::fs::File::open(path)?);
-        let exif = exif::Reader::new().read_from_container(&mut bufreader)?;
-        let content: Vec<String> = exif
-            .fields()
-            .map(|f| Self::format_exif_field(f, &exif))
-            .collect();
+        let content: Vec<String> =
+            if let Ok(exif) = exif::Reader::new().read_from_container(&mut bufreader) {
+                exif.fields()
+                    .map(|f| Self::format_exif_field(f, &exif))
+                    .collect()
+            } else {
+                vec![]
+            };
         Ok(Self {
             length: content.len(),
             content,

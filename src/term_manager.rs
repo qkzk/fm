@@ -10,7 +10,7 @@ use tuikit::term::Term;
 use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
-use crate::fm_error::{FmError, FmResult};
+use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::last_edition::LastEdition;
 use crate::mode::{MarkAction, Mode};
 use crate::preview::{Preview, Window};
@@ -33,6 +33,15 @@ impl EventReader {
     }
 }
 
+macro_rules! impl_preview {
+    ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident) => {
+        for (i, line) in (*$text).window($tab.window.top, $tab.window.bottom, $length) {
+            let row = Self::calc_line_row(i, $tab);
+            $canvas.print(row, $line_number_width + 3, line)?;
+        }
+    };
+}
+
 struct WinTab<'a> {
     status: &'a Status,
     tab: &'a Tab,
@@ -49,9 +58,7 @@ impl<'a> Draw for WinTab<'a> {
             Mode::NeedConfirmation => self.confirmation(self.status, self.tab, canvas),
             Mode::Preview | Mode::Help => self.preview(self.tab, canvas),
             Mode::Shortcut => self.shortcuts(self.tab, canvas),
-            Mode::Marks(MarkAction::New) | Mode::Marks(MarkAction::Jump) => {
-                self.marks(self.status, self.tab, canvas)
-            }
+            Mode::Marks(_) => self.marks(self.status, self.tab, canvas),
             _ => self.files(self.status, self.tab, canvas),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -220,8 +227,12 @@ impl<'a> WinTab<'a> {
             let _ = canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str()
-                    .ok_or_else(|| FmError::new("Unreadable filename"))?,
+                path.to_str().ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("display".to_owned()),
+                        "Unreadable filename",
+                    )
+                })?,
                 attr,
             );
         }
@@ -239,8 +250,12 @@ impl<'a> WinTab<'a> {
             canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str()
-                    .ok_or_else(|| FmError::new("Unreadable filename"))?,
+                path.to_str().ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("display".to_owned()),
+                        "Unreadable filename",
+                    )
+                })?,
                 attr,
             )?;
         }
@@ -258,8 +273,12 @@ impl<'a> WinTab<'a> {
             let _ = canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str()
-                    .ok_or_else(|| FmError::new("Unreadable filename"))?,
+                path.to_str().ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("display".to_owned()),
+                        "Unreadable filename",
+                    )
+                })?,
                 attr,
             );
         }
@@ -286,8 +305,12 @@ impl<'a> WinTab<'a> {
             canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2,
                 4,
-                path.to_str()
-                    .ok_or_else(|| FmError::new("Unreadable filename"))?,
+                path.to_str().ok_or_else(|| {
+                    FmError::new(
+                        ErrorVariant::CUSTOM("display".to_owned()),
+                        "Unreadable filename",
+                    )
+                })?,
                 Attr::default(),
             )?;
         }
@@ -338,12 +361,6 @@ impl<'a> WinTab<'a> {
                     }
                 }
             }
-            Preview::Text(text) => {
-                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
-                    canvas.print(row, line_number_width + 3, line)?;
-                }
-            }
             Preview::Binary(bin) => {
                 let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
@@ -360,12 +377,6 @@ impl<'a> WinTab<'a> {
                     line.print(canvas, row, line_number_width_hex + 1);
                 }
             }
-            Preview::Pdf(text) => {
-                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
-                    canvas.print(row, line_number_width + 3, line)?;
-                }
-            }
             Preview::Compressed(text) => {
                 for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
                     let row = Self::calc_line_row(i, tab);
@@ -378,18 +389,10 @@ impl<'a> WinTab<'a> {
                     canvas.print(row, line_number_width + 3, line)?;
                 }
             }
-            Preview::Image(text) => {
-                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
-                    canvas.print(row, line_number_width + 3, line)?;
-                }
-            }
-            Preview::Media(text) => {
-                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
-                    canvas.print(row, line_number_width + 3, line)?;
-                }
-            }
+            Preview::Text(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Image(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Media(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Empty => (),
         }
         Ok(())
