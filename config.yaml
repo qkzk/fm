@@ -40,7 +40,7 @@ keys:
   'shift-g': Shortcut
   'shift-b': Bulkrename
   'shift-m': MarksNew
-  '\': MarksJump
+  "'": MarksJump
   'shift-f': Filter
   '-': Back
   '~': Home
