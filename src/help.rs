@@ -1,4 +1,3 @@
-use log::info;
 use strfmt::strfmt;
 
 use crate::fm_error::FmResult;
@@ -76,7 +75,6 @@ impl Help {
 "
         .to_owned();
         let hm = binds.keybind_reversed();
-        info!("binds to hashmap {:?}", hm);
         let help = strfmt(&help_to_format, &binds.keybind_reversed())?;
         Ok(Self { help })
     }

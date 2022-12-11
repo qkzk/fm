@@ -10,11 +10,11 @@ use crate::status::Status;
 /// Holds a mapping which can't be static since it's read from a config file.
 /// All keys are mapped to relevent events on tabs.selected().
 /// Keybindings are read from `Config`.
-pub struct Actioner {
+pub struct EventDispatcher {
     binds: Bindings,
 }
 
-impl Actioner {
+impl EventDispatcher {
     /// Creates a map of configurable keybindings to `EventChar`
     /// The `EventChar` is then associated to a `tabs.selected(). method.
     pub fn new(binds: Bindings) -> Self {

@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
 
-use log::info;
 use tuikit::prelude::{from_keyname, Key};
 
 use crate::action_map::ActionMap;
@@ -92,7 +91,6 @@ impl Bindings {
             .into_iter()
             .map(|(k, v)| (v.to_string(), format!("{:?}", k)))
             .collect();
-        info!("reversed binds: {:?}", b);
         b
     }
 

@@ -53,7 +53,7 @@ pub fn set_logger() -> FmResult<Handle> {
                     &log_path,
                     Box::new(
                         RollingFileAppender::builder()
-                            .encoder(Box::new(PatternEncoder::new("{d} {l}::{m}{n}")))
+                            .encoder(Box::new(PatternEncoder::new("{d} {l}::{m} - {f}:{L}{n}")))
                             .build(&log_path, Box::new(compound_policy))?,
                     ),
                 ),

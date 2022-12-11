@@ -116,8 +116,6 @@ impl OpenerAssociation {
         open_file_with!(self, "vectorial_image", Vectorial, yaml);
         open_file_with!(self, "video", Video, yaml);
 
-        info!("{:?}", self.association);
-
         self.validate_openers();
     }
 
@@ -252,7 +250,6 @@ pub fn load_opener(path: &str, terminal: String) -> Result<Opener, Box<dyn Error
     let mut opener = Opener::new(terminal);
     let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
     let yaml = serde_yaml::from_reader(file)?;
-    info!("yaml opener : {:?}", yaml);
     opener.update_from_file(&yaml);
     Ok(opener)
 }
