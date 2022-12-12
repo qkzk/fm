@@ -401,7 +401,7 @@ impl<'a> WinTab<'a> {
     fn marks(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
 
-        for (i, line) in status.marks.as_strings()?.iter().enumerate() {
+        for (i, line) in status.marks.as_strings().iter().enumerate() {
             let row = Self::calc_line_row(i, tab) + 2;
             canvas.print(row, 3, line)?;
         }

@@ -156,6 +156,7 @@
   - [x] help display
   - [x] link any event to actionmap
   - [x] display every event in help
+- [x] FIX. displaying marks also shows a char from previous mode at end of line. Don't add "\n"...
 
 ## TODO
 
@@ -203,7 +204,6 @@ All of this stuff can be done easily through a shell command or automatically. I
 ## BUGS
 
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
-- [ ] displaying marks also shows a char from previous mode at end of line
 - [ ] log0, log1, log2 are created by log4rs in source folder
 
 ## Sources

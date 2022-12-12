@@ -86,22 +86,15 @@ impl Marks {
             .to_owned())
     }
 
-    pub fn as_strings(&self) -> FmResult<Vec<String>> {
-        Ok(self
-            .marks
+    pub fn as_strings(&self) -> Vec<String> {
+        self.marks
             .iter()
-            .map(|(ch, path)| Self::format_mark(ch, path).unwrap_or_default())
-            .collect())
+            .map(|(ch, path)| Self::format_mark(ch, path))
+            .collect()
     }
 
-    fn format_mark(ch: &char, path: &Path) -> FmResult<String> {
-        let p = path.to_str().ok_or_else(|| {
-            FmError::new(
-                ErrorVariant::CUSTOM("format mark".to_owned()),
-                "Unreadable path",
-            )
-        })?;
-        Ok(format!("{}    {}\n", ch, p))
+    fn format_mark(ch: &char, path: &Path) -> String {
+        format!("{}    {}", ch, path.to_string_lossy())
     }
 }
 
