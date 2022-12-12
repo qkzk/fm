@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::fs::OpenOptions;
-use std::io::{self, BufRead, BufWriter, Error, ErrorKind, Write};
+use std::io::{self, BufRead, BufWriter, Write};
 use std::path::{Path, PathBuf};
-
-use log::info;
 
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
@@ -23,28 +20,45 @@ impl Marks {
 
     fn read_from_file(save_path: PathBuf) -> Self {
         let mut marks = HashMap::new();
+        let mut must_save = false;
         if let Ok(lines) = read_lines(&save_path) {
             for line in lines {
                 if let Ok((ch, path)) = Self::parse_line(line) {
                     marks.insert(ch, path);
+                } else {
+                    must_save = true;
                 }
             }
         }
-        Self { save_path, marks }
+        let marks = Self { save_path, marks };
+        if must_save {
+            eprintln!("Wrong marks found, will save it again");
+            let _ = marks.save_marks();
+        }
+        marks
     }
 
     pub fn get(&self, ch: char) -> Option<&PathBuf> {
         self.marks.get(&ch)
     }
 
-    fn parse_line(line: Result<String, io::Error>) -> Result<(char, PathBuf), io::Error> {
+    fn parse_line(line: Result<String, io::Error>) -> FmResult<(char, PathBuf)> {
         let line = line?;
         let sp: Vec<&str> = line.split(':').collect();
+        if sp.len() <= 1 {
+            return Err(FmError::new(
+                ErrorVariant::CUSTOM("marks: parse_line".to_owned()),
+                "Invalid mark line",
+            ));
+        }
         if let Some(ch) = sp[0].chars().next() {
             let path = PathBuf::from(sp[1]);
             Ok((ch, path))
         } else {
-            Err(Error::new(ErrorKind::InvalidData, "Invalid char"))
+            Err(FmError::new(
+                ErrorVariant::CUSTOM("marks: parse line".to_owned()),
+                "Invalid char",
+            ))
         }
     }
 
@@ -60,16 +74,10 @@ impl Marks {
     }
 
     fn save_marks(&self) -> FmResult<()> {
-        if !self.save_path.exists() {
-            let _ = std::fs::File::create(&self.save_path);
-            info!("Created a file for marks in {:?}", &self.save_path);
-        }
-
-        let file = OpenOptions::new().write(true).open(&self.save_path)?;
+        let file = std::fs::File::create(&self.save_path)?;
         let mut buf = BufWriter::new(file);
-
         for (ch, path) in self.marks.iter() {
-            let _ = writeln!(buf, "{}:{}", ch, Self::path_as_string(path)?);
+            writeln!(buf, "{}:{}", ch, Self::path_as_string(path)?)?;
         }
         Ok(())
     }
