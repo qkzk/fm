@@ -157,6 +157,7 @@
   - [x] link any event to actionmap
   - [x] display every event in help
 - [x] FIX. displaying marks also shows a char from previous mode at end of line. Don't add "\n"...
+- [x] FIX: open, visite, go back then display history -> crash.
 
 ## TODO
 

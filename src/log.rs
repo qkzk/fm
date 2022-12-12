@@ -34,7 +34,7 @@ fn create_log_folder(log_path: &str) -> FmResult<()> {
 pub fn set_logger() -> FmResult<Handle> {
     let window_size = 3; // log0, log1, log2
     let fixed_window_roller = FixedWindowRoller::builder()
-        .build("log{}", window_size)
+        .build("fm{}.log", window_size)
         .unwrap();
     let size_limit = 5 * 1024; // 5KB as max log file size to roll
     let size_trigger = SizeTrigger::new(size_limit);
