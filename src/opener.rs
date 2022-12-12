@@ -149,7 +149,7 @@ impl OpenerInfo {
 
 #[derive(Clone)]
 pub struct Opener {
-    terminal: String,
+    pub terminal: String,
     pub opener_association: OpenerAssociation,
     default_opener: OpenerInfo,
 }
@@ -230,6 +230,10 @@ impl Opener {
 
     pub fn get(&self, kind: ExtensionKind) -> Option<&OpenerInfo> {
         self.opener_association.association.get(&kind)
+    }
+
+    pub fn open_terminal_with_args(&self, args: Vec<&str>) -> FmResult<std::process::Child> {
+        execute_in_child(&self.terminal, &args)
     }
 }
 

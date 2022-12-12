@@ -125,12 +125,12 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_marks_new(status: &mut Status)  -> FmResult<()>{
+    pub fn event_marks_new(status: &mut Status) -> FmResult<()> {
         status.selected().mode = Mode::Marks(MarkAction::New);
         Ok(())
     }
 
-    pub fn event_marks_jump(status: &mut Status)  -> FmResult<()>{
+    pub fn event_marks_jump(status: &mut Status) -> FmResult<()> {
         status.selected().mode = Mode::Marks(MarkAction::Jump);
         Ok(())
     }
@@ -645,7 +645,7 @@ impl EventExec {
     pub fn event_nvim_filepicker(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
             info!("Called nvim filepicker in an empty directory.");
-            return Ok(())
+            return Ok(());
         }
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         if let Ok(nvim_listen_address) = Self::nvim_listen_address(tab) {
@@ -695,7 +695,7 @@ impl EventExec {
     pub fn event_decompress(status: &mut Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
         if let Some(fileinfo) = tab.path_content.selected_file() {
-            decompress(&fileinfo.path)
+            decompress(&status.selected_non_mut().opener.terminal, &fileinfo.path)
         } else {
             Ok(())
         }
