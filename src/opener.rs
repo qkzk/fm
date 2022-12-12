@@ -158,14 +158,15 @@ impl OpenerAssociation {
     }
 
     fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
-        open_file_with!(self, "audio", Audio, yaml);
-        open_file_with!(self, "bitmap_image", Bitmap, yaml);
-        open_file_with!(self, "libreoffice", Office, yaml);
-        open_file_with!(self, "readable", Readable, yaml);
-        open_file_with!(self, "text", Text, yaml);
-        open_file_with!(self, "default", Default, yaml);
-        open_file_with!(self, "vectorial_image", Vectorial, yaml);
-        open_file_with!(self, "video", Video, yaml);
+        // self.association[&ExtensionKind::Audio].update_from_yaml(&yaml["audio"]);
+        // open_file_with!(self, "audio", Audio, yaml);
+        // open_file_with!(self, "bitmap_image", Bitmap, yaml);
+        // open_file_with!(self, "libreoffice", Office, yaml);
+        // open_file_with!(self, "readable", Readable, yaml);
+        // open_file_with!(self, "text", Text, yaml);
+        // open_file_with!(self, "default", Default, yaml);
+        // open_file_with!(self, "vectorial_image", Vectorial, yaml);
+        // open_file_with!(self, "video", Video, yaml);
 
         self.validate_openers();
     }
@@ -187,15 +188,22 @@ impl OpenerInfo {
         Self { opener, use_term }
     }
 
-    fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
-        Some(Self::new(
-            yaml.get("opener")?
-                .as_str()?
-                .split(" ")
-                .map(|s| s.to_owned())
-                .collect(),
-            yaml.get("use_term")?.as_bool()?,
-        ))
+    fn update_from_yaml(&mut self, yaml: &serde_yaml::value::Value) -> Option<bool> {
+        let opener: Vec<String> = yaml
+            .get("opener")?
+            .as_str()?
+            .split(" ")
+            .map(|s| s.to_owned())
+            .collect();
+        let use_term = yaml.get("use_term")?.as_bool()?;
+        if find_it(&opener[0]).is_some() {
+            self.opener = opener;
+            self.use_term = use_term;
+            Some(true)
+        } else {
+            Some(false)
+        };
+        None
     }
 }
 
