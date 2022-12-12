@@ -14,35 +14,39 @@ use log4rs::{
 
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
-static LOG_PATH: &str = "~/.config/fm/fm.log";
+static LOG_PATH: &str = "~/.config/fm/fm{}";
 
-fn create_log_folder(log_path: &str) -> FmResult<()> {
-    let _ =
-        std::fs::create_dir_all(std::path::PathBuf::from(log_path).parent().ok_or_else(|| {
-            FmError::new(
-                ErrorVariant::CUSTOM("create log folder".to_owned()),
-                &format!(
-                    "Couldn't create log folder. LOGPATH {} should have a parent",
-                    LOG_PATH
-                ),
-            )
-        })?);
+fn create_log_folder(log_path: &str) -> FmResult<String> {
+    let path_buf = std::path::PathBuf::from(log_path);
+    let parent = path_buf.parent().ok_or_else(|| {
+        FmError::new(
+            ErrorVariant::CUSTOM("create log folder".to_owned()),
+            &format!(
+                "Couldn't create log folder. LOGPATH {} should have a parent",
+                LOG_PATH
+            ),
+        )
+    })?;
+    std::fs::create_dir_all(parent)?;
 
-    Ok(())
+    Ok(parent.to_string_lossy().to_string())
 }
 
 pub fn set_logger() -> FmResult<Handle> {
+    let log_path = shellexpand::tilde(LOG_PATH).to_string();
+    eprintln!("log path: {}", log_path);
+    create_log_folder(&log_path)?;
+    // log_path.push_str("/fm{}.log");
+
     let window_size = 3; // log0, log1, log2
     let fixed_window_roller = FixedWindowRoller::builder()
-        .build("fm{}.log", window_size)
+        .build(&log_path, window_size)
         .unwrap();
     let size_limit = 5 * 1024; // 5KB as max log file size to roll
     let size_trigger = SizeTrigger::new(size_limit);
     let compound_policy =
         CompoundPolicy::new(Box::new(size_trigger), Box::new(fixed_window_roller));
-    let log_path = shellexpand::tilde(LOG_PATH).to_string();
     // Don't propagate the error with ? since it crashes the application.
-    create_log_folder(&log_path)?;
     // Log Trace level output to file where trace is the default level
     // and the programmatically specified level to stderr.
     let config = Config::builder()
