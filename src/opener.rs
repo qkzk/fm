@@ -35,6 +35,7 @@ pub enum ExtensionKind {
     Default,
     Vectorial,
     Video,
+    Compressed(String),
 }
 
 // TODO: move those associations to a config file
@@ -63,6 +64,8 @@ impl ExtensionKind {
 
             "pdf" | "epub" => Self::Readable,
 
+            "tgz" | "zip" | "gzip" | "bzip2" | "xz" | "7z" => Self::Compressed(ext.to_owned()),
+
             _ => Self::Default,
         }
     }
@@ -77,14 +80,62 @@ impl OpenerAssociation {
     fn new() -> Self {
         Self {
             association: HashMap::from([
-                (ExtensionKind::Audio, OpenerInfo::new("mocp", true)),
-                (ExtensionKind::Bitmap, OpenerInfo::new("viewnior", false)),
-                (ExtensionKind::Office, OpenerInfo::new("libreoffice", false)),
-                (ExtensionKind::Readable, OpenerInfo::new("zathura", false)),
-                (ExtensionKind::Text, OpenerInfo::new("nvim", true)),
-                (ExtensionKind::Default, OpenerInfo::new("xdg-open", false)),
-                (ExtensionKind::Vectorial, OpenerInfo::new("inkscape", false)),
-                (ExtensionKind::Video, OpenerInfo::new("mpv", false)),
+                (
+                    ExtensionKind::Audio,
+                    OpenerInfo::new(vec!["mocp".to_owned()], true),
+                ),
+                (
+                    ExtensionKind::Bitmap,
+                    OpenerInfo::new(vec!["viewnior".to_owned()], false),
+                ),
+                (
+                    ExtensionKind::Office,
+                    OpenerInfo::new(vec!["libreoffice".to_owned()], false),
+                ),
+                (
+                    ExtensionKind::Readable,
+                    OpenerInfo::new(vec!["zathura".to_owned()], false),
+                ),
+                (
+                    ExtensionKind::Text,
+                    OpenerInfo::new(vec!["nvim".to_owned()], true),
+                ),
+                (
+                    ExtensionKind::Default,
+                    OpenerInfo::new(vec!["xdg-open".to_owned()], false),
+                ),
+                (
+                    ExtensionKind::Vectorial,
+                    OpenerInfo::new(vec!["inkscape".to_owned()], false),
+                ),
+                (
+                    ExtensionKind::Video,
+                    OpenerInfo::new(vec!["mpv".to_owned()], false),
+                ),
+                (
+                    ExtensionKind::Compressed("tgz".to_owned()),
+                    OpenerInfo::new(vec!["tar".to_owned(), "xf".to_owned()], true),
+                ),
+                (
+                    ExtensionKind::Compressed("zip".to_owned()),
+                    OpenerInfo::new(vec!["unzip".to_owned()], true),
+                ),
+                (
+                    ExtensionKind::Compressed("gzip".to_owned()),
+                    OpenerInfo::new(vec!["gunzip".to_owned()], true),
+                ),
+                (
+                    ExtensionKind::Compressed("bzip2".to_owned()),
+                    OpenerInfo::new(vec!["bunzip2".to_owned()], true),
+                ),
+                (
+                    ExtensionKind::Compressed("xz".to_owned()),
+                    OpenerInfo::new(vec!["xz".to_owned(), "-d".to_owned()], true),
+                ),
+                (
+                    ExtensionKind::Compressed("7z".to_owned()),
+                    OpenerInfo::new(vec!["7z".to_owned(), "e".to_owned()], true),
+                ),
             ]),
         }
     }
@@ -121,27 +172,28 @@ impl OpenerAssociation {
 
     fn validate_openers(&mut self) {
         self.association
-            .retain(|_, opener| find_it(opener.opener.clone()).is_some())
+            .retain(|_, opener| find_it(opener.opener[0].clone()).is_some())
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct OpenerInfo {
-    opener: String,
+    pub opener: Vec<String>,
     use_term: bool,
 }
 
 impl OpenerInfo {
-    fn new(opener: &str, use_term: bool) -> Self {
-        Self {
-            opener: opener.to_owned(),
-            use_term,
-        }
+    fn new(opener: Vec<String>, use_term: bool) -> Self {
+        Self { opener, use_term }
     }
 
     fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
         Some(Self::new(
-            yaml.get("opener")?.as_str()?,
+            yaml.get("opener")?
+                .as_str()?
+                .split(" ")
+                .map(|s| s.to_owned())
+                .collect(),
             yaml.get("use_term")?.as_bool()?,
         ))
     }
@@ -159,7 +211,7 @@ impl Opener {
         Self {
             terminal,
             opener_association: OpenerAssociation::new(),
-            default_opener: OpenerInfo::new("xdg-open", false),
+            default_opener: OpenerInfo::new(vec!["xdg-open".to_owned()], false),
         }
     }
 
@@ -202,16 +254,12 @@ impl Opener {
         open_info: &OpenerInfo,
         filepath: std::path::PathBuf,
     ) -> FmResult<std::process::Child> {
+        let mut args = open_info.opener.clone();
+        args.push(filepath.as_os_str().to_owned().into_string()?);
         if open_info.use_term {
-            self.open_terminal(
-                open_info.opener.clone(),
-                filepath.as_os_str().to_owned().into_string()?,
-            )
+            self.open_terminal(args)
         } else {
-            self.open_directly(
-                open_info.opener.clone(),
-                filepath.as_os_str().to_owned().into_string()?,
-            )
+            self.open_directly(args)
         }
     }
 
@@ -219,13 +267,15 @@ impl Opener {
         self.opener_association.update_from_file(yaml)
     }
 
-    fn open_directly(&self, executable: String, filepath: String) -> FmResult<std::process::Child> {
-        execute_in_child(&executable, &vec![&filepath])
+    fn open_directly(&self, mut args: Vec<String>) -> FmResult<std::process::Child> {
+        let executable = args.remove(0);
+        execute_in_child(&executable, &args.iter().map(|s| &**s).collect())
     }
 
     // TODO: use terminal specific parameters instead of -e for all terminals
-    fn open_terminal(&self, executable: String, filepath: String) -> FmResult<std::process::Child> {
-        execute_in_child(&self.terminal, &vec!["-e", &executable, &filepath])
+    fn open_terminal(&self, mut args: Vec<String>) -> FmResult<std::process::Child> {
+        args.insert(0, "-e".to_owned());
+        execute_in_child(&self.terminal, &args.iter().map(|s| &**s).collect())
     }
 
     pub fn get(&self, kind: ExtensionKind) -> Option<&OpenerInfo> {
@@ -239,6 +289,14 @@ impl Opener {
 
 /// Execute the command in a fork.
 pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
+    info!(
+        "execute_in_child. executable: {}, arguments: {:?}",
+        exe, args
+    );
+    Ok(Command::new(exe).args(args).spawn()?)
+}
+
+pub fn execute_in_child_piped(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
     info!(
         "execute_in_child. executable: {}, arguments: {:?}",
         exe, args
