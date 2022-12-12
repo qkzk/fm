@@ -158,6 +158,7 @@
   - [x] display every event in help
 - [x] FIX. displaying marks also shows a char from previous mode at end of line. Don't add "\n"...
 - [x] FIX: open, visite, go back then display history -> crash.
+- [x] FIX wrong pattern in mark file caused crash. Rewrite file if wrong pattern found.
 
 ## TODO
 
@@ -206,6 +207,8 @@ All of this stuff can be done easily through a shell command or automatically. I
 
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
 - [ ] log0, log1, log2 are created by log4rs in source folder
+  - [x] using absolute path, files are created in the right place
+  - [ ] the default file is still `log{}` instead of `log0`...
 
 ## Sources
 
