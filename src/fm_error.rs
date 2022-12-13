@@ -24,6 +24,7 @@ pub enum ErrorVariant {
     NOTIFY,
     FMT,
     STRUM,
+    COMPRESSTOOLS,
     CUSTOM(String),
 }
 
@@ -141,6 +142,12 @@ impl From<FmtError> for FmError {
 impl From<strum::ParseError> for FmError {
     fn from(error: strum::ParseError) -> Self {
         Self::new(ErrorVariant::STRUM, &error.to_string())
+    }
+}
+
+impl From<compress_tools::Error> for FmError {
+    fn from(error: compress_tools::Error) -> Self {
+        Self::new(ErrorVariant::COMPRESSTOOLS, &error.to_string())
     }
 }
 

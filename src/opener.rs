@@ -7,6 +7,7 @@ use std::process::{Command, Stdio};
 use log::info;
 use serde_yaml;
 
+use crate::compress::decompress;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
 fn find_it<P>(exe_name: P) -> Option<PathBuf>
@@ -35,7 +36,7 @@ pub enum ExtensionKind {
     Default,
     Vectorial,
     Video,
-    Compressed(String),
+    Compressed,
 }
 
 // TODO: move those associations to a config file
@@ -64,7 +65,7 @@ impl ExtensionKind {
 
             "pdf" | "epub" => Self::Readable,
 
-            "tgz" | "zip" | "gzip" | "bzip2" | "xz" | "7z" => Self::Compressed(ext.to_owned()),
+            "tgz" | "zip" | "gzip" | "bzip2" | "xz" | "7z" => Self::Compressed,
 
             _ => Self::Default,
         }
@@ -112,30 +113,7 @@ impl OpenerAssociation {
                     ExtensionKind::Video,
                     OpenerInfo::new(vec!["mpv".to_owned()], false),
                 ),
-                (
-                    ExtensionKind::Compressed("tgz".to_owned()),
-                    OpenerInfo::new(vec!["tar".to_owned(), "xf".to_owned()], true),
-                ),
-                (
-                    ExtensionKind::Compressed("zip".to_owned()),
-                    OpenerInfo::new(vec!["unzip".to_owned()], true),
-                ),
-                (
-                    ExtensionKind::Compressed("gzip".to_owned()),
-                    OpenerInfo::new(vec!["gunzip".to_owned()], true),
-                ),
-                (
-                    ExtensionKind::Compressed("bzip2".to_owned()),
-                    OpenerInfo::new(vec!["bunzip2".to_owned()], true),
-                ),
-                (
-                    ExtensionKind::Compressed("xz".to_owned()),
-                    OpenerInfo::new(vec!["xz".to_owned(), "-d".to_owned()], true),
-                ),
-                (
-                    ExtensionKind::Compressed("7z".to_owned()),
-                    OpenerInfo::new(vec!["7z".to_owned(), "e".to_owned()], true),
-                ),
+                (ExtensionKind::Compressed, OpenerInfo::decompress()),
             ]),
         }
     }
@@ -169,11 +147,12 @@ impl OpenerAssociation {
         // open_file_with!(self, "video", Video, yaml);
 
         self.validate_openers();
+        info!("update from file");
     }
 
     fn validate_openers(&mut self) {
         self.association
-            .retain(|_, opener| find_it(opener.opener[0].clone()).is_some())
+            .retain(|_, opener| find_it(opener.opener[0].clone()).is_some());
     }
 }
 
@@ -181,11 +160,24 @@ impl OpenerAssociation {
 pub struct OpenerInfo {
     pub opener: Vec<String>,
     use_term: bool,
+    external: bool,
 }
 
 impl OpenerInfo {
     fn new(opener: Vec<String>, use_term: bool) -> Self {
-        Self { opener, use_term }
+        Self {
+            opener,
+            use_term,
+            external: true,
+        }
+    }
+
+    fn decompress() -> Self {
+        Self {
+            opener: vec![],
+            use_term: false,
+            external: false,
+        }
     }
 
     fn update_from_yaml(&mut self, yaml: &serde_yaml::value::Value) -> Option<bool> {
@@ -231,7 +223,7 @@ impl Opener {
         }
     }
 
-    pub fn open(&self, filepath: std::path::PathBuf) -> FmResult<std::process::Child> {
+    pub fn open(&self, filepath: std::path::PathBuf) -> FmResult<()> {
         if filepath.is_dir() {
             return Err(FmError::new(
                 ErrorVariant::CUSTOM("open".to_owned()),
@@ -254,7 +246,13 @@ impl Opener {
                 "Extension couldn't be parsed correctly",
             )
         })?;
-        self.open_with(self.get_opener(extension), filepath)
+        let opener = self.get_opener(extension);
+        if opener.external {
+            self.open_with(opener, filepath)?;
+        } else {
+            decompress(filepath)?;
+        }
+        Ok(())
     }
 
     pub fn open_with(
@@ -318,8 +316,8 @@ pub fn execute_in_child_piped(exe: &str, args: &Vec<&str>) -> FmResult<std::proc
 
 pub fn load_opener(path: &str, terminal: String) -> Result<Opener, Box<dyn Error>> {
     let mut opener = Opener::new(terminal);
-    let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
-    let yaml = serde_yaml::from_reader(file)?;
-    opener.update_from_file(&yaml);
+    // let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
+    // let yaml = serde_yaml::from_reader(file)?;
+    // opener.update_from_file(&yaml);
     Ok(opener)
 }
