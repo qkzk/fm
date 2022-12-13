@@ -7,7 +7,6 @@ use log::{info, SetLoggerError};
 use notify_rust::error::Error as NotifyError;
 use strfmt::FmtError;
 use tuikit::error::TuikitError;
-use zip::result::ZipError;
 
 #[derive(Debug)]
 pub enum ErrorVariant {
@@ -100,12 +99,6 @@ impl From<Box<dyn Error + Send + Sync + 'static>> for FmError {
 impl From<FsExtraError> for FmError {
     fn from(fs_extra_error: FsExtraError) -> Self {
         Self::new(ErrorVariant::FSEXTRA, &fs_extra_error.to_string())
-    }
-}
-
-impl From<ZipError> for FmError {
-    fn from(zip_error: ZipError) -> Self {
-        Self::new(ErrorVariant::ZIP, &zip_error.to_string())
     }
 }
 
