@@ -141,16 +141,16 @@ impl OpenerAssociation {
     }
 }
 
-macro_rules! open_file_with {
-    ($self:ident, $key:expr, $variant:ident, $yaml:ident) => {
-        if let Some(o) = OpenerInfo::from_yaml(&$yaml[$key]) {
-            $self
-                .association
-                .entry(ExtensionKind::$variant)
-                .and_modify(|e| *e = o);
-        }
-    };
-}
+// macro_rules! open_file_with {
+//     ($self:ident, $key:expr, $variant:ident, $yaml:ident) => {
+//         if let Some(o) = OpenerInfo::from_yaml(&$yaml[$key]) {
+//             $self
+//                 .association
+//                 .entry(ExtensionKind::$variant)
+//                 .and_modify(|e| *e = o);
+//         }
+//     };
+// }
 
 impl OpenerAssociation {
     fn opener_info(&self, ext: &str) -> Option<&OpenerInfo> {
