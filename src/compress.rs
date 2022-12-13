@@ -13,7 +13,7 @@ pub fn decompress(source: PathBuf) -> FmResult<()> {
         )
     })?;
     let file = File::open(&source)?;
-    Ok(uncompress_archive(&file, &parent, Ownership::Preserve)?)
+    Ok(uncompress_archive(&file, parent, Ownership::Preserve)?)
 }
 
 pub fn list_files<P>(source: P) -> FmResult<Vec<String>>

@@ -36,7 +36,7 @@ pub enum ExtensionKind {
     Default,
     Vectorial,
     Video,
-    Compressed,
+    Internal(InternalVariant),
 }
 
 // TODO: move those associations to a config file
@@ -65,7 +65,9 @@ impl ExtensionKind {
 
             "pdf" | "epub" => Self::Readable,
 
-            "tgz" | "zip" | "gzip" | "bzip2" | "xz" | "7z" => Self::Compressed,
+            "lzip" | "lzma" | "rar" | "tgz" | "zip" | "gzip" | "bzip2" | "xz" | "7z" => {
+                Self::Internal(InternalVariant::Decompress)
+            }
 
             _ => Self::Default,
         }
@@ -81,54 +83,49 @@ impl OpenerAssociation {
     fn new() -> Self {
         Self {
             association: HashMap::from([
-                (
-                    ExtensionKind::Audio,
-                    OpenerInfo::new(vec!["mocp".to_owned()], true),
-                ),
+                (ExtensionKind::Audio, OpenerInfo::external("mocp", true)),
                 (
                     ExtensionKind::Bitmap,
-                    OpenerInfo::new(vec!["viewnior".to_owned()], false),
+                    OpenerInfo::external("viewnior", false),
                 ),
                 (
                     ExtensionKind::Office,
-                    OpenerInfo::new(vec!["libreoffice".to_owned()], false),
+                    OpenerInfo::external("libreoffice", false),
                 ),
                 (
                     ExtensionKind::Readable,
-                    OpenerInfo::new(vec!["zathura".to_owned()], false),
+                    OpenerInfo::external("zathura", false),
                 ),
-                (
-                    ExtensionKind::Text,
-                    OpenerInfo::new(vec!["nvim".to_owned()], true),
-                ),
+                (ExtensionKind::Text, OpenerInfo::external("nvim", true)),
                 (
                     ExtensionKind::Default,
-                    OpenerInfo::new(vec!["xdg-open".to_owned()], false),
+                    OpenerInfo::external("xdg-open", false),
                 ),
                 (
                     ExtensionKind::Vectorial,
-                    OpenerInfo::new(vec!["inkscape".to_owned()], false),
+                    OpenerInfo::external("inkscape", false),
                 ),
+                (ExtensionKind::Video, OpenerInfo::external("mpv", false)),
                 (
-                    ExtensionKind::Video,
-                    OpenerInfo::new(vec!["mpv".to_owned()], false),
+                    ExtensionKind::Internal(InternalVariant::Decompress),
+                    OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::Decompress))
+                        .unwrap(),
                 ),
-                (ExtensionKind::Compressed, OpenerInfo::decompress()),
             ]),
         }
     }
 }
 
-// macro_rules! open_file_with {
-//     ($self:ident, $key:expr, $variant:ident, $yaml:ident) => {
-//         if let Some(o) = OpenerInfo::from_yaml(&$yaml[$key]) {
-//             $self
-//                 .association
-//                 .entry(ExtensionKind::$variant)
-//                 .and_modify(|e| *e = o);
-//         }
-//     };
-// }
+macro_rules! open_file_with {
+    ($self:ident, $key:expr, $variant:ident, $yaml:ident) => {
+        if let Some(o) = OpenerInfo::from_yaml(&$yaml[$key]) {
+            $self
+                .association
+                .entry(ExtensionKind::$variant)
+                .and_modify(|e| *e = o);
+        }
+    };
+}
 
 impl OpenerAssociation {
     fn opener_info(&self, ext: &str) -> Option<&OpenerInfo> {
@@ -136,66 +133,67 @@ impl OpenerAssociation {
     }
 
     fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
-        // self.association[&ExtensionKind::Audio].update_from_yaml(&yaml["audio"]);
-        // open_file_with!(self, "audio", Audio, yaml);
-        // open_file_with!(self, "bitmap_image", Bitmap, yaml);
-        // open_file_with!(self, "libreoffice", Office, yaml);
-        // open_file_with!(self, "readable", Readable, yaml);
-        // open_file_with!(self, "text", Text, yaml);
-        // open_file_with!(self, "default", Default, yaml);
-        // open_file_with!(self, "vectorial_image", Vectorial, yaml);
-        // open_file_with!(self, "video", Video, yaml);
+        open_file_with!(self, "audio", Audio, yaml);
+        open_file_with!(self, "bitmap_image", Bitmap, yaml);
+        open_file_with!(self, "libreoffice", Office, yaml);
+        open_file_with!(self, "readable", Readable, yaml);
+        open_file_with!(self, "text", Text, yaml);
+        open_file_with!(self, "default", Default, yaml);
+        open_file_with!(self, "vectorial_image", Vectorial, yaml);
+        open_file_with!(self, "video", Video, yaml);
 
         self.validate_openers();
         info!("update from file");
     }
 
     fn validate_openers(&mut self) {
-        self.association
-            .retain(|_, opener| find_it(opener.opener[0].clone()).is_some());
+        self.association.retain(|_, opener| {
+            opener.external_program.is_none()
+                || find_it(opener.external_program.as_ref().unwrap()).is_some()
+        });
     }
+}
+
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub enum InternalVariant {
+    Decompress,
 }
 
 #[derive(Clone, Debug)]
 pub struct OpenerInfo {
-    pub opener: Vec<String>,
+    pub external_program: Option<String>,
+    pub internal_variant: Option<InternalVariant>,
     use_term: bool,
-    external: bool,
 }
 
 impl OpenerInfo {
-    fn new(opener: Vec<String>, use_term: bool) -> Self {
+    fn external(opener: &str, use_term: bool) -> Self {
         Self {
-            opener,
+            external_program: Some(opener.to_owned()),
+            internal_variant: None,
             use_term,
-            external: true,
         }
     }
 
-    fn decompress() -> Self {
-        Self {
-            opener: vec![],
-            use_term: false,
-            external: false,
+    fn internal(extension_kind: ExtensionKind) -> FmResult<Self> {
+        match extension_kind {
+            ExtensionKind::Internal(internal) => Ok(Self {
+                external_program: None,
+                internal_variant: Some(internal),
+                use_term: false,
+            }),
+            _ => Err(FmError::new(
+                ErrorVariant::CUSTOM("internal".to_owned()),
+                &format!("unsupported extension_kind: {:?}", extension_kind),
+            )),
         }
     }
 
-    fn update_from_yaml(&mut self, yaml: &serde_yaml::value::Value) -> Option<bool> {
-        let opener: Vec<String> = yaml
-            .get("opener")?
-            .as_str()?
-            .split(" ")
-            .map(|s| s.to_owned())
-            .collect();
-        let use_term = yaml.get("use_term")?.as_bool()?;
-        if find_it(&opener[0]).is_some() {
-            self.opener = opener;
-            self.use_term = use_term;
-            Some(true)
-        } else {
-            Some(false)
-        };
-        None
+    fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
+        Some(Self::external(
+            yaml.get("opener")?.as_str()?,
+            yaml.get("use_term")?.as_bool()?,
+        ))
     }
 }
 
@@ -211,7 +209,7 @@ impl Opener {
         Self {
             terminal,
             opener_association: OpenerAssociation::new(),
-            default_opener: OpenerInfo::new(vec!["xdg-open".to_owned()], false),
+            default_opener: OpenerInfo::external("xdg-open", false),
         }
     }
 
@@ -246,23 +244,30 @@ impl Opener {
                 "Extension couldn't be parsed correctly",
             )
         })?;
-        let opener = self.get_opener(extension);
-        if opener.external {
-            self.open_with(opener, filepath)?;
+        let open_info = self.get_opener(extension);
+        if open_info.external_program.is_some() {
+            self.open_with(
+                open_info.external_program.as_ref().unwrap(),
+                open_info.use_term,
+                filepath,
+            )?;
         } else {
-            decompress(filepath)?;
+            match open_info.internal_variant.as_ref().unwrap() {
+                InternalVariant::Decompress => decompress(filepath)?,
+            };
         }
         Ok(())
     }
 
     pub fn open_with(
         &self,
-        open_info: &OpenerInfo,
+        opener: &str,
+        use_term: bool,
         filepath: std::path::PathBuf,
     ) -> FmResult<std::process::Child> {
-        let mut args = open_info.opener.clone();
-        args.push(filepath.as_os_str().to_owned().into_string()?);
-        if open_info.use_term {
+        let strpath = filepath.into_os_string().into_string()?;
+        let args = vec![opener, &strpath];
+        if use_term {
             self.open_terminal(args)
         } else {
             self.open_directly(args)
@@ -273,15 +278,15 @@ impl Opener {
         self.opener_association.update_from_file(yaml)
     }
 
-    fn open_directly(&self, mut args: Vec<String>) -> FmResult<std::process::Child> {
+    fn open_directly(&self, mut args: Vec<&str>) -> FmResult<std::process::Child> {
         let executable = args.remove(0);
-        execute_in_child(&executable, &args.iter().map(|s| &**s).collect())
+        execute_in_child(executable, &args)
     }
 
     // TODO: use terminal specific parameters instead of -e for all terminals
-    fn open_terminal(&self, mut args: Vec<String>) -> FmResult<std::process::Child> {
-        args.insert(0, "-e".to_owned());
-        execute_in_child(&self.terminal, &args.iter().map(|s| &**s).collect())
+    fn open_terminal(&self, mut args: Vec<&str>) -> FmResult<std::process::Child> {
+        args.insert(0, "-e");
+        execute_in_child(&self.terminal, &args)
     }
 
     pub fn get(&self, kind: ExtensionKind) -> Option<&OpenerInfo> {
@@ -316,8 +321,8 @@ pub fn execute_in_child_piped(exe: &str, args: &Vec<&str>) -> FmResult<std::proc
 
 pub fn load_opener(path: &str, terminal: String) -> Result<Opener, Box<dyn Error>> {
     let mut opener = Opener::new(terminal);
-    // let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
-    // let yaml = serde_yaml::from_reader(file)?;
-    // opener.update_from_file(&yaml);
+    let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
+    let yaml = serde_yaml::from_reader(file)?;
+    opener.update_from_file(&yaml);
     Ok(opener)
 }

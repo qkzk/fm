@@ -244,7 +244,7 @@ impl<'a> WinTab<'a> {
         canvas.print(0, 0, "Go to...")?;
         for (row, path) in tab.history.visited.iter().rev().enumerate() {
             let mut attr = Attr::default();
-            if tab.history.len() >= tab.history.index + 1
+            if tab.history.len() > tab.history.index
                 && row == tab.history.len() - tab.history.index - 1
             {
                 attr.effect |= Effect::REVERSE;
