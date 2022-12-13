@@ -7,6 +7,7 @@ use std::process::{Command, Stdio};
 use log::info;
 use serde_yaml;
 
+use crate::compress::decompress;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
 fn find_it<P>(exe_name: P) -> Option<PathBuf>
@@ -35,6 +36,7 @@ pub enum ExtensionKind {
     Default,
     Vectorial,
     Video,
+    Internal(InternalVariant),
 }
 
 // TODO: move those associations to a config file
@@ -63,6 +65,10 @@ impl ExtensionKind {
 
             "pdf" | "epub" => Self::Readable,
 
+            "lzip" | "lzma" | "rar" | "tgz" | "zip" | "gzip" | "bzip2" | "xz" | "7z" => {
+                Self::Internal(InternalVariant::Decompress)
+            }
+
             _ => Self::Default,
         }
     }
@@ -77,14 +83,34 @@ impl OpenerAssociation {
     fn new() -> Self {
         Self {
             association: HashMap::from([
-                (ExtensionKind::Audio, OpenerInfo::new("mocp", true)),
-                (ExtensionKind::Bitmap, OpenerInfo::new("viewnior", false)),
-                (ExtensionKind::Office, OpenerInfo::new("libreoffice", false)),
-                (ExtensionKind::Readable, OpenerInfo::new("zathura", false)),
-                (ExtensionKind::Text, OpenerInfo::new("nvim", true)),
-                (ExtensionKind::Default, OpenerInfo::new("xdg-open", false)),
-                (ExtensionKind::Vectorial, OpenerInfo::new("inkscape", false)),
-                (ExtensionKind::Video, OpenerInfo::new("mpv", false)),
+                (ExtensionKind::Audio, OpenerInfo::external("mocp", true)),
+                (
+                    ExtensionKind::Bitmap,
+                    OpenerInfo::external("viewnior", false),
+                ),
+                (
+                    ExtensionKind::Office,
+                    OpenerInfo::external("libreoffice", false),
+                ),
+                (
+                    ExtensionKind::Readable,
+                    OpenerInfo::external("zathura", false),
+                ),
+                (ExtensionKind::Text, OpenerInfo::external("nvim", true)),
+                (
+                    ExtensionKind::Default,
+                    OpenerInfo::external("xdg-open", false),
+                ),
+                (
+                    ExtensionKind::Vectorial,
+                    OpenerInfo::external("inkscape", false),
+                ),
+                (ExtensionKind::Video, OpenerInfo::external("mpv", false)),
+                (
+                    ExtensionKind::Internal(InternalVariant::Decompress),
+                    OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::Decompress))
+                        .unwrap(),
+                ),
             ]),
         }
     }
@@ -117,30 +143,54 @@ impl OpenerAssociation {
         open_file_with!(self, "video", Video, yaml);
 
         self.validate_openers();
+        info!("update from file");
     }
 
     fn validate_openers(&mut self) {
-        self.association
-            .retain(|_, opener| find_it(opener.opener.clone()).is_some())
+        self.association.retain(|_, opener| {
+            opener.external_program.is_none()
+                || find_it(opener.external_program.as_ref().unwrap()).is_some()
+        });
     }
+}
+
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub enum InternalVariant {
+    Decompress,
 }
 
 #[derive(Clone, Debug)]
 pub struct OpenerInfo {
-    opener: String,
+    pub external_program: Option<String>,
+    pub internal_variant: Option<InternalVariant>,
     use_term: bool,
 }
 
 impl OpenerInfo {
-    fn new(opener: &str, use_term: bool) -> Self {
+    fn external(opener: &str, use_term: bool) -> Self {
         Self {
-            opener: opener.to_owned(),
+            external_program: Some(opener.to_owned()),
+            internal_variant: None,
             use_term,
         }
     }
 
+    fn internal(extension_kind: ExtensionKind) -> FmResult<Self> {
+        match extension_kind {
+            ExtensionKind::Internal(internal) => Ok(Self {
+                external_program: None,
+                internal_variant: Some(internal),
+                use_term: false,
+            }),
+            _ => Err(FmError::new(
+                ErrorVariant::CUSTOM("internal".to_owned()),
+                &format!("unsupported extension_kind: {:?}", extension_kind),
+            )),
+        }
+    }
+
     fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
-        Some(Self::new(
+        Some(Self::external(
             yaml.get("opener")?.as_str()?,
             yaml.get("use_term")?.as_bool()?,
         ))
@@ -159,7 +209,7 @@ impl Opener {
         Self {
             terminal,
             opener_association: OpenerAssociation::new(),
-            default_opener: OpenerInfo::new("xdg-open", false),
+            default_opener: OpenerInfo::external("xdg-open", false),
         }
     }
 
@@ -171,7 +221,7 @@ impl Opener {
         }
     }
 
-    pub fn open(&self, filepath: std::path::PathBuf) -> FmResult<std::process::Child> {
+    pub fn open(&self, filepath: std::path::PathBuf) -> FmResult<()> {
         if filepath.is_dir() {
             return Err(FmError::new(
                 ErrorVariant::CUSTOM("open".to_owned()),
@@ -194,24 +244,33 @@ impl Opener {
                 "Extension couldn't be parsed correctly",
             )
         })?;
-        self.open_with(self.get_opener(extension), filepath)
+        let open_info = self.get_opener(extension);
+        if open_info.external_program.is_some() {
+            self.open_with(
+                open_info.external_program.as_ref().unwrap(),
+                open_info.use_term,
+                filepath,
+            )?;
+        } else {
+            match open_info.internal_variant.as_ref().unwrap() {
+                InternalVariant::Decompress => decompress(filepath)?,
+            };
+        }
+        Ok(())
     }
 
     pub fn open_with(
         &self,
-        open_info: &OpenerInfo,
+        opener: &str,
+        use_term: bool,
         filepath: std::path::PathBuf,
     ) -> FmResult<std::process::Child> {
-        if open_info.use_term {
-            self.open_terminal(
-                open_info.opener.clone(),
-                filepath.as_os_str().to_owned().into_string()?,
-            )
+        let strpath = filepath.into_os_string().into_string()?;
+        let args = vec![opener, &strpath];
+        if use_term {
+            self.open_terminal(args)
         } else {
-            self.open_directly(
-                open_info.opener.clone(),
-                filepath.as_os_str().to_owned().into_string()?,
-            )
+            self.open_directly(args)
         }
     }
 
@@ -219,13 +278,15 @@ impl Opener {
         self.opener_association.update_from_file(yaml)
     }
 
-    fn open_directly(&self, executable: String, filepath: String) -> FmResult<std::process::Child> {
-        execute_in_child(&executable, &vec![&filepath])
+    fn open_directly(&self, mut args: Vec<&str>) -> FmResult<std::process::Child> {
+        let executable = args.remove(0);
+        execute_in_child(executable, &args)
     }
 
     // TODO: use terminal specific parameters instead of -e for all terminals
-    fn open_terminal(&self, executable: String, filepath: String) -> FmResult<std::process::Child> {
-        execute_in_child(&self.terminal, &vec!["-e", &executable, &filepath])
+    fn open_terminal(&self, mut args: Vec<&str>) -> FmResult<std::process::Child> {
+        args.insert(0, "-e");
+        execute_in_child(&self.terminal, &args)
     }
 
     pub fn get(&self, kind: ExtensionKind) -> Option<&OpenerInfo> {
@@ -239,6 +300,14 @@ impl Opener {
 
 /// Execute the command in a fork.
 pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
+    info!(
+        "execute_in_child. executable: {}, arguments: {:?}",
+        exe, args
+    );
+    Ok(Command::new(exe).args(args).spawn()?)
+}
+
+pub fn execute_in_child_piped(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
     info!(
         "execute_in_child. executable: {}, arguments: {:?}",
         exe, args

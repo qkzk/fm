@@ -5,7 +5,7 @@ use std::path;
 use std::path::PathBuf;
 
 use crate::bulkrename::Bulkrename;
-use crate::compress::decompress;
+// use crate::compress::decompress;
 use crate::content_window::{ContentWindow, RESERVED_ROWS};
 use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
@@ -692,14 +692,14 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_decompress(status: &mut Status) -> FmResult<()> {
-        let tab = status.selected_non_mut();
-        if let Some(fileinfo) = tab.path_content.selected_file() {
-            decompress(&status.selected_non_mut().opener.terminal, &fileinfo.path)
-        } else {
-            Ok(())
-        }
-    }
+    // pub fn event_decompress(status: &mut Status) -> FmResult<()> {
+    //     let tab = status.selected_non_mut();
+    //     if let Some(fileinfo) = tab.path_content.selected_file() {
+    //         decompress(&status.selected_non_mut().opener.terminal, &fileinfo.path)
+    //     } else {
+    //         Ok(())
+    //     }
+    // }
 
     pub fn event_back(tab: &mut Tab) -> FmResult<()> {
         if tab.history.visited.len() <= 1 {

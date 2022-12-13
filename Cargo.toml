@@ -20,6 +20,7 @@ path = "src/lib.rs"
 [dependencies]
 chrono = "*"
 clap = { version = "4.0", features = ["derive"] }
+compress-tools = "0.14.0"
 content_inspector = "0.2.4"
 copypasta = "0.8.1"
 fs_extra = "1.2.0"
@@ -41,4 +42,3 @@ syntect = "5.0"
 sysinfo = "0.26.7"
 tuikit = "*"
 users = "0.11.0"
-zip = "0.6.3"

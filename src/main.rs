@@ -20,9 +20,10 @@ static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 /// The application is redrawn after every event.
 fn main() -> FmResult<()> {
     set_logger()?;
-    info!("fm is starting...");
+    info!("fm is starting");
 
     let config = load_config(CONFIG_PATH)?;
+    info!("config loaded");
     let term = Arc::new(init_term()?);
     let event_dispatcher = EventDispatcher::new(config.binds.clone());
     let event_reader = EventReader::new(term.clone());

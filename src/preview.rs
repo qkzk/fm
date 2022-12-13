@@ -12,8 +12,9 @@ use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
-use zip::ZipArchive;
+// use zip::ZipArchive;
 
+use crate::compress::list_files;
 use crate::fileinfo::PathContent;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
@@ -389,11 +390,12 @@ pub struct CompressedContent {
 
 impl CompressedContent {
     fn new(path: PathBuf) -> FmResult<Self> {
-        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
-        let zip = ZipArchive::new(reader)?;
-        let mut content_str: Vec<&str> = zip.file_names().collect();
-        content_str.sort();
-        let content: Vec<String> = content_str.iter().map(|s| (*s).to_owned()).collect();
+        // let reader = std::io::BufReader::new(std::fs::File::open(path)?);
+        // let zip = ZipArchive::new(reader)?;
+        // let mut content_str: Vec<&str> = zip.file_names().collect();
+        // content_str.sort();
+        // let content: Vec<String> = content_str.iter().map(|s| (*s).to_owned()).collect();
+        let content = list_files(path)?;
 
         Ok(Self {
             length: content.len(),

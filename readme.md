@@ -159,6 +159,9 @@
 - [x] FIX. displaying marks also shows a char from previous mode at end of line. Don't add "\n"...
 - [x] FIX: open, visite, go back then display history -> crash.
 - [x] FIX wrong pattern in mark file caused crash. Rewrite file if wrong pattern found.
+- [x] Compressed files:
+  - [x] Opening a supported compressed file decompress it.
+  - [x] Preview a zip file displays its content
 
 ## TODO
 
@@ -175,11 +178,6 @@
   - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] preview images @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
-- [ ] compression
-
-  - [ ] compress
-  - [x] decompress selected file with ctrl+x
-  - [x] preview
 
 - [ ] plugins
   - which language ?

@@ -73,7 +73,6 @@ impl Bindings {
             (Key::Ctrl('c'), ActionMap::CopyFilename),
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
             (Key::Ctrl('r'), ActionMap::RefreshView),
-            (Key::Ctrl('x'), ActionMap::Decompress),
             (Key::Ctrl('e'), ActionMap::DisplayFull),
             (Key::Alt('d'), ActionMap::DragNDrop),
         ]);

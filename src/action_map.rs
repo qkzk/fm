@@ -16,7 +16,6 @@ pub enum ActionMap {
     CopyFilepath,
     CopyPaste,
     CutPaste,
-    Decompress,
     Delete,
     DeleteFile,
     DisplayFull,
@@ -118,7 +117,6 @@ impl ActionMap {
             ActionMap::CopyFilename => EventExec::event_copy_filename(status),
             ActionMap::CopyFilepath => EventExec::event_copy_filepath(status),
             ActionMap::RefreshView => EventExec::event_refreshview(status),
-            ActionMap::Decompress => EventExec::event_decompress(status),
             ActionMap::DisplayFull => EventExec::event_toggle_display_full(status),
             ActionMap::DragNDrop => EventExec::event_drag_n_drop(status),
 
