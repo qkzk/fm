@@ -37,7 +37,6 @@ impl Help {
 {RefreshView}: refresh view
 {CopyFilename}: copy filename to clipboard
 {CopyFilepath}: copy filepath to clipboard
-{Decompress}: decompress selected file
 {DragNDrop}:  dragon-drop selected file
 {MarksNew}:      Mark current path
 {MarksJump}:      Jump to a mark
