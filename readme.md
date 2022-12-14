@@ -177,12 +177,12 @@
   - [ ] $NVIM_LISTEN_ADDRESS isn't always set on nbim startup ; can be set from nvim before running... then sent to fm with some args
   - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
 - [ ] display / event separation. use async and message passing between coroutines
-- [ ] preview images @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
+- [x] preview images
 
-  - [x] preview an image as a pixeled thumbnail. IDK how to integrate ueberzug-rs / ueberzug into tuikit so it's an acceptable solution. The result is ugly.
-  - [x] configure between exif & thumbnail
-
-  May be it should be configurable.
+  - [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
+  - [x] display an image as a pixeled thumbnail. IDK how to integrate ueberzug-rs / ueberzug into tuikit so it's an acceptable solution. The result is ugly.
+  - [x] default preview exif
+  - [x] char('T') for thumbnail
 
 - [ ] plugins
   - which language ?
