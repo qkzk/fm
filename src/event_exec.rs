@@ -1052,7 +1052,7 @@ impl EventExec {
     }
 
     pub fn event_fuzzyfind(status: &mut Status) -> FmResult<()> {
-        status.create_tabs_from_skim()
+        status.fill_tabs_with_skim()
     }
 
     pub fn event_copy_filename(status: &mut Status) -> FmResult<()> {

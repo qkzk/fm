@@ -116,7 +116,7 @@ impl Status {
         };
     }
 
-    pub fn create_tabs_from_skim(&mut self) -> FmResult<()> {
+    pub fn fill_tabs_with_skim(&mut self) -> FmResult<()> {
         for path in self
             .skimer
             .no_source(self.selected_non_mut().path_str().ok_or_else(|| {

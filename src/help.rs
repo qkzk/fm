@@ -76,7 +76,7 @@ pub struct Help {
 
 impl Help {
     pub fn from_keybindings(binds: &Bindings) -> FmResult<Self> {
-        let help = strfmt(&HELP_TO_FORMAT, &binds.keybind_reversed())?;
+        let help = strfmt(HELP_TO_FORMAT, &binds.keybind_reversed())?;
         Ok(Self { help })
     }
 }
