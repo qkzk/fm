@@ -179,9 +179,15 @@
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] preview images @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
 
+  - [x] preview an image as a pixeled thumbnail. IDK how to integrate ueberzug-rs / ueberzug into tuikit so it's an acceptable solution. The result is ugly.
+  - [x] configure between exif & thumbnail
+
+  May be it should be configurable.
+
 - [ ] plugins
   - which language ?
   - what for ?
+- [ ] togglable dual panes... with default mode for low size
 
 ## Won't do
 

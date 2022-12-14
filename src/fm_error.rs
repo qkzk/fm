@@ -7,7 +7,6 @@ use log::{info, SetLoggerError};
 use notify_rust::error::Error as NotifyError;
 use strfmt::FmtError;
 use tuikit::error::TuikitError;
-use zip::result::ZipError;
 
 #[derive(Debug)]
 pub enum ErrorVariant {
@@ -25,6 +24,7 @@ pub enum ErrorVariant {
     FMT,
     STRUM,
     COMPRESSTOOLS,
+    IMAGEERROR,
     CUSTOM(String),
 }
 
@@ -103,12 +103,6 @@ impl From<FsExtraError> for FmError {
     }
 }
 
-impl From<ZipError> for FmError {
-    fn from(zip_error: ZipError) -> Self {
-        Self::new(ErrorVariant::ZIP, &zip_error.to_string())
-    }
-}
-
 impl From<SetLoggerError> for FmError {
     fn from(error: SetLoggerError) -> Self {
         Self::new(ErrorVariant::LOGGER, &error.to_string())
@@ -151,4 +145,9 @@ impl From<compress_tools::Error> for FmError {
     }
 }
 
+impl From<image::error::ImageError> for FmError {
+    fn from(error: image::error::ImageError) -> Self {
+        Self::new(ErrorVariant::IMAGEERROR, &error.to_string())
+    }
+}
 pub type FmResult<T> = Result<T, FmError>;

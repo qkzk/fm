@@ -1,6 +1,7 @@
 use std::cmp::min;
 use std::sync::Arc;
 
+use image::Rgb;
 use log::info;
 use tuikit::attr::*;
 use tuikit::event::Event;
@@ -391,9 +392,28 @@ impl<'a> WinTab<'a> {
                     canvas.print(row, line_number_width + 3, line)?;
                 }
             }
+            Preview::Thumbnail(image) => {
+                let (width, height) = canvas.size()?;
+
+                if let Ok(scaled_image) = (*image).resized_rgb8(width as u32 / 2, height as u32 - 3)
+                {
+                    let (width, _) = scaled_image.dimensions();
+                    for (i, pixel) in scaled_image.pixels().enumerate() {
+                        let (r, g, b) = pixel_values(pixel);
+                        let (row, col) = pixel_position(i, width);
+                        print_pixel(canvas, row, col, r, g, b)?;
+                    }
+                } else {
+                    canvas.print(
+                        3,
+                        3,
+                        &format!("Not a displayable image: {:?}", image.img_path),
+                    )?;
+                }
+            }
             Preview::Text(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Image(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Exif(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Media(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Empty => (),
         }
@@ -523,4 +543,36 @@ const fn color_to_attr(color: Color) -> Attr {
         bg: Color::Default,
         effect: Effect::empty(),
     }
+}
+
+const fn pixel_values(pixel: &Rgb<u8>) -> (u8, u8, u8) {
+    let [r, g, b] = pixel.0;
+    (r, g, b)
+}
+
+const fn pixel_position(i: usize, width: u32) -> (usize, usize) {
+    let col = 2 * (i % width as usize);
+    let row = i / width as usize + 3;
+    (row, col)
+}
+
+fn print_pixel(
+    canvas: &mut dyn Canvas,
+    row: usize,
+    col: usize,
+    r: u8,
+    g: u8,
+    b: u8,
+) -> FmResult<()> {
+    canvas.print_with_attr(
+        row,
+        col,
+        "██",
+        Attr {
+            fg: Color::Rgb(r, g, b),
+            bg: Color::Rgb(r, g, b),
+            ..Default::default()
+        },
+    )?;
+    Ok(())
 }

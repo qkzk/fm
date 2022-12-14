@@ -32,6 +32,7 @@ impl Help {
 {OpenFile}:      open this file
 {NvimFilepicker}:      open in current nvim session
 {Preview}:      preview this file
+{Thumbnail}:      display a thumbnail of an image
 {DisplayFull}: toggle details on files
 {FuzzyFind}: fuzzy finder
 {RefreshView}: refresh view

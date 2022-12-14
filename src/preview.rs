@@ -7,12 +7,13 @@ use std::path::PathBuf;
 use std::slice::Iter;
 
 use content_inspector::{inspect, ContentType};
+use image::imageops::FilterType;
+use image::{ImageBuffer, Rgb};
 use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
-// use zip::ZipArchive;
 
 use crate::compress::list_files;
 use crate::fileinfo::PathContent;
@@ -25,43 +26,14 @@ pub enum Preview {
     Binary(BinaryContent),
     Pdf(PdfContent),
     Compressed(CompressedContent),
-    Image(ExifContent),
+    Exif(ExifContent),
+    Thumbnail(Pixels),
     Media(MediainfoContent),
     Empty,
 }
 
-fn is_ext_image(ext: &str) -> bool {
-    matches!(ext, "png" | "jpg" | "jpeg" | "tiff" | "heif")
-}
-
-fn is_ext_media(ext: &str) -> bool {
-    matches!(
-        ext,
-        "mkv"
-            | "ogg"
-            | "ogm"
-            | "riff"
-            | "mpeg"
-            | "mp2"
-            | "mp3"
-            | "mp4"
-            | "wm"
-            | "qt"
-            | "ac3"
-            | "dts"
-            | "aac"
-            | "mac"
-            | "flac"
-            | "avi"
-    )
-}
-
 impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
-
-    pub fn empty() -> Self {
-        Self::Empty
-    }
 
     pub fn new(path_content: &PathContent) -> FmResult<Self> {
         match path_content.selected_file() {
@@ -70,7 +42,7 @@ impl Preview {
                     file_info.path.clone(),
                 )?)),
                 "pdf" => Ok(Self::Pdf(PdfContent::new(file_info.path.clone()))),
-                e if is_ext_image(e) => Ok(Self::Image(ExifContent::new(file_info.path.clone())?)),
+                e if is_ext_image(e) => Ok(Self::Exif(ExifContent::new(file_info.path.clone())?)),
                 e if is_ext_media(e) => {
                     Ok(Self::Media(MediainfoContent::new(file_info.path.clone())?))
                 }
@@ -98,8 +70,16 @@ impl Preview {
         }
     }
 
+    pub fn thumbnail(path: PathBuf) -> FmResult<Self> {
+        Ok(Self::Thumbnail(Pixels::new(path)?))
+    }
+
     pub fn help(help: String) -> Self {
         Self::Text(TextContent::help(help))
+    }
+
+    pub fn empty() -> Self {
+        Self::Empty
     }
 
     pub fn len(&self) -> usize {
@@ -110,7 +90,8 @@ impl Preview {
             Self::Binary(binary) => binary.len(),
             Self::Pdf(pdf) => pdf.len(),
             Self::Compressed(zip) => zip.len(),
-            Self::Image(img) => img.len(),
+            Self::Thumbnail(_img) => 0,
+            Self::Exif(exif_content) => exif_content.len(),
             Self::Media(media) => media.len(),
         }
     }
@@ -390,11 +371,6 @@ pub struct CompressedContent {
 
 impl CompressedContent {
     fn new(path: PathBuf) -> FmResult<Self> {
-        // let reader = std::io::BufReader::new(std::fs::File::open(path)?);
-        // let zip = ZipArchive::new(reader)?;
-        // let mut content_str: Vec<&str> = zip.file_names().collect();
-        // content_str.sort();
-        // let content: Vec<String> = content_str.iter().map(|s| (*s).to_owned()).collect();
         let content = list_files(path)?;
 
         Ok(Self {
@@ -471,6 +447,22 @@ impl MediainfoContent {
     }
 }
 
+#[derive(Clone)]
+pub struct Pixels {
+    pub img_path: PathBuf,
+}
+
+impl Pixels {
+    pub fn new(img_path: PathBuf) -> FmResult<Self> {
+        Ok(Self { img_path })
+    }
+
+    pub fn resized_rgb8(&self, width: u32, height: u32) -> FmResult<ImageBuffer<Rgb<u8>, Vec<u8>>> {
+        let img = image::open(&self.img_path)?;
+        Ok(img.resize(width, height, FilterType::Nearest).to_rgb8())
+    }
+}
+
 pub trait Window<T> {
     fn window(
         &self,
@@ -520,6 +512,32 @@ impl_window!(PdfContent, String);
 impl_window!(CompressedContent, String);
 impl_window!(ExifContent, String);
 impl_window!(MediainfoContent, String);
+
+fn is_ext_image(ext: &str) -> bool {
+    matches!(ext, "png" | "jpg" | "jpeg" | "tiff" | "heif")
+}
+
+fn is_ext_media(ext: &str) -> bool {
+    matches!(
+        ext,
+        "mkv"
+            | "ogg"
+            | "ogm"
+            | "riff"
+            | "mpeg"
+            | "mp2"
+            | "mp3"
+            | "mp4"
+            | "wm"
+            | "qt"
+            | "ac3"
+            | "dts"
+            | "aac"
+            | "mac"
+            | "flac"
+            | "avi"
+    )
+}
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
     let prev_hook = panic::take_hook();

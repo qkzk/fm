@@ -1074,6 +1074,17 @@ impl EventExec {
         Self::refresh_selected_view(status)
     }
 
+    pub fn event_thumbnail(tab: &mut Tab) -> FmResult<()> {
+        if let Mode::Normal = tab.mode {
+            tab.mode = Mode::Preview;
+            if let Some(file_info) = tab.path_content.selected_file() {
+                tab.preview = Preview::thumbnail(file_info.path.to_owned())?;
+                tab.window.reset(tab.preview.len());
+            }
+        }
+        Ok(())
+    }
+
     pub fn event_toggle_display_full(status: &mut Status) -> FmResult<()> {
         status.display_full = !status.display_full;
         Ok(())

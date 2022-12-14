@@ -58,6 +58,7 @@ pub enum ActionMap {
     Sort,
     Symlink,
     Tab,
+    Thumbnail,
     ToggleFlag,
     ToggleHidden,
 }
@@ -67,6 +68,7 @@ impl ActionMap {
         let current_tab = status.selected();
         match *self {
             ActionMap::ToggleHidden => EventExec::event_toggle_hidden(current_tab),
+            ActionMap::Thumbnail => EventExec::event_thumbnail(current_tab),
             ActionMap::CopyPaste => EventExec::event_copy_paste(current_tab),
             ActionMap::CutPaste => EventExec::event_cut_paste(current_tab),
             ActionMap::NewDir => EventExec::event_new_dir(current_tab),
