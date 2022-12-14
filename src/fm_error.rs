@@ -24,6 +24,7 @@ pub enum ErrorVariant {
     FMT,
     STRUM,
     COMPRESSTOOLS,
+    IMAGEERROR,
     CUSTOM(String),
 }
 
@@ -144,4 +145,9 @@ impl From<compress_tools::Error> for FmError {
     }
 }
 
+impl From<image::error::ImageError> for FmError {
+    fn from(error: image::error::ImageError) -> Self {
+        Self::new(ErrorVariant::IMAGEERROR, &error.to_string())
+    }
+}
 pub type FmResult<T> = Result<T, FmError>;

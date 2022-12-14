@@ -392,20 +392,28 @@ impl<'a> WinTab<'a> {
                     canvas.print(row, line_number_width + 3, line)?;
                 }
             }
-            Preview::Image(image) => {
+            Preview::Thumbnail(image) => {
                 let (width, height) = canvas.size()?;
 
-                let scaled_image = (*image).resized_rgb8(width as u32 / 2, height as u32 - 3);
-                let (width, _) = scaled_image.dimensions();
-                for (i, pixel) in scaled_image.pixels().enumerate() {
-                    let (r, g, b) = pixel_values(pixel);
-                    let (row, col) = pixel_position(i, width);
-                    print_pixel(canvas, row, col, r, g, b)?;
+                if let Ok(scaled_image) = (*image).resized_rgb8(width as u32 / 2, height as u32 - 3)
+                {
+                    let (width, _) = scaled_image.dimensions();
+                    for (i, pixel) in scaled_image.pixels().enumerate() {
+                        let (r, g, b) = pixel_values(pixel);
+                        let (row, col) = pixel_position(i, width);
+                        print_pixel(canvas, row, col, r, g, b)?;
+                    }
+                } else {
+                    canvas.print(
+                        3,
+                        3,
+                        &format!("Not a displayable image: {:?}", image.img_path),
+                    )?;
                 }
             }
             Preview::Text(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            // Preview::Image(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Exif(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Media(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Empty => (),
         }
