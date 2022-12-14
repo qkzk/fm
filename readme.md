@@ -161,7 +161,7 @@
 - [x] FIX wrong pattern in mark file caused crash. Rewrite file if wrong pattern found.
 - [x] Compressed files:
   - [x] Opening a supported compressed file decompress it.
-  - [x] Preview a zip file displays its content
+  - [x] Preview a compressed file displays its content
 - [x] preview images
   - [x] display an image as a pixeled thumbnail. IDK how to integrate ueberzug-rs / ueberzug into tuikit so it's an acceptable solution. The result is ugly.
   - [x] default preview exif
