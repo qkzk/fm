@@ -475,7 +475,7 @@ impl Display {
 
         let (width, _) = self.term.term_size()?;
         let disk_spaces = status.disk_spaces();
-        if width > MIN_WIDTH_FOR_DUAL_PANE {
+        if status.dual_pane && width > MIN_WIDTH_FOR_DUAL_PANE {
             self.draw_dual_pane(status, disk_spaces.0, disk_spaces.1)?
         } else {
             self.draw_single_pane(status, disk_spaces.0)?

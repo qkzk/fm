@@ -35,7 +35,7 @@ pub struct Status {
     /// terminal
     term: Arc<Term>,
     skimer: Skimer,
-    dual_pane: bool,
+    pub dual_pane: bool,
     sys: System,
     pub display_full: bool,
 }
