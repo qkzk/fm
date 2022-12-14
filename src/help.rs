@@ -6,46 +6,42 @@ use crate::keybindings::Bindings;
 /// Help message to be displayed when help key is pressed.
 /// Default help key is `'h'`.
 
-pub struct Help {
-    pub help: String,
-}
-
-impl Help {
-    pub fn from_keybindings(binds: &Bindings) -> FmResult<Self> {
-        let help_to_format = "
+static HELP_TO_FORMAT: &str = "
 {Quit}:      quit
 {Help}:      help
 
 - Navigation -
-{MoveLeft}:      cd to parent directory 
-{MoveRight}:      cd to child directory
-{MoveUp}:      one line up  
-{MoveDown}:      one line down
-{KeyHome}:   go to first line
-{End}:    go to last line
-{PageUp}:   10 lines up
-{PageDown}: 10 lines down
-{Tab}:    Cycle tab
+{MoveLeft}:           cd to parent directory 
+{MoveRight}:          cd to child directory
+{MoveUp}:             one line up  
+{MoveDown}:           one line down
+{KeyHome}:           go to first line
+{End}:            go to last line
+{PageUp}:         10 lines up
+{PageDown}:       10 lines down
+{Tab}:            cycle tab
 
+- Actions -
+{ToggleDualPane}:      toggle dual pane - if the width is sufficiant
 {ToggleHidden}:      toggle hidden
 {Shell}:      shell in current directory
-{OpenFile}:      open this file
+{OpenFile}:      open the selected file
 {NvimFilepicker}:      open in current nvim session
 {Preview}:      preview this file
 {Thumbnail}:      display a thumbnail of an image
-{DisplayFull}: toggle details on files
-{FuzzyFind}: fuzzy finder
-{RefreshView}: refresh view
-{CopyFilename}: copy filename to clipboard
-{CopyFilepath}: copy filepath to clipboard
-{DragNDrop}:  dragon-drop selected file
-{MarksNew}:      Mark current path
-{MarksJump}:      Jump to a mark
-{Back}:      Move back to previous dir
-{Home}:      Move to $HOME
+{Back}:      move back to previous dir
+{Home}:      move to $HOME
+{MarksNew}:      mark current path
+{MarksJump}:     jump to a mark
+{DisplayFull}:      toggle metadata on files
+{FuzzyFind}:      fuzzy finder
+{RefreshView}:      refresh view
+{CopyFilename}:      copy filename to clipboard
+{CopyFilepath}:      copy filepath to clipboard
+{DragNDrop}:       dragon-drop selected file
 
 - Action on flagged files - 
-    space:  toggle flag on a file 
+{ToggleFlag}:      toggle flag on a file 
 {FlagAll}:      flag all
 {ClearFlags}:      clear flags
 {ReverseFlags}:      reverse flags
@@ -53,28 +49,34 @@ impl Help {
 {CutPaste}:      move to current dir
 {DeleteFile}:      delete files
 {Symlink}:      symlink files
-{Bulkrename}:      Bulkrename files
+{Bulkrename}:      bulkrename files
 
 - MODES - 
-    {Chmod}:      CHMOD 
-    {Exec}:      EXEC 
-    {NewDir}:      NEWDIR 
-    {NewFile}:      NEWFILE
-    {Rename}:      RENAME
-    {Goto}:      GOTO
-    {RegexMatch}:      REGEXMATCH
-    {Jump}:      JUMP
-    {Sort}:      SORT
-    {History}:      HISTORY
-    {Shortcut}:      SHORTCUT
-    {Search}:      SEARCH
-    {Filter}:      FILTER 
-        (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
-    {Enter}:  Execute mode then NORMAL
-    {ModeNormal}:    NORMAL
-"
-        .to_owned();
-        let help = strfmt(&help_to_format, &binds.keybind_reversed())?;
+{Chmod}:      CHMOD 
+{Exec}:      EXEC 
+{NewDir}:      NEWDIR 
+{NewFile}:      NEWFILE
+{Rename}:      RENAME
+{Goto}:      GOTO
+{RegexMatch}:      REGEXMATCH
+{Jump}:      JUMP
+{Sort}:      SORT
+{History}:      HISTORY
+{Shortcut}:      SHORTCUT
+{Search}:      SEARCH
+{Filter}:      FILTER 
+    (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
+{Enter}:  Execute mode then NORMAL
+{ModeNormal}:    NORMAL
+";
+
+pub struct Help {
+    pub help: String,
+}
+
+impl Help {
+    pub fn from_keybindings(binds: &Bindings) -> FmResult<Self> {
+        let help = strfmt(&HELP_TO_FORMAT, &binds.keybind_reversed())?;
         Ok(Self { help })
     }
 }

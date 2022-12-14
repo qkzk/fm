@@ -1052,8 +1052,7 @@ impl EventExec {
     }
 
     pub fn event_fuzzyfind(status: &mut Status) -> FmResult<()> {
-        status.create_tabs_from_skim()?;
-        Ok(())
+        status.create_tabs_from_skim()
     }
 
     pub fn event_copy_filename(status: &mut Status) -> FmResult<()> {
@@ -1087,6 +1086,12 @@ impl EventExec {
 
     pub fn event_toggle_display_full(status: &mut Status) -> FmResult<()> {
         status.display_full = !status.display_full;
+        Ok(())
+    }
+
+    pub fn event_toggle_dualpane(status: &mut Status) -> FmResult<()> {
+        status.dual_pane = !status.dual_pane;
+        status.select_tab(0)?;
         Ok(())
     }
 
