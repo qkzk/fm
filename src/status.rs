@@ -36,7 +36,7 @@ pub struct Status {
     term: Arc<Term>,
     skimer: Skimer,
     pub dual_pane: bool,
-    sys: System,
+    system_info: System,
     pub display_full: bool,
 }
 
@@ -65,7 +65,7 @@ impl Status {
             skimer: Skimer::new(term.clone()),
             term,
             dual_pane: true,
-            sys,
+            system_info: sys,
             display_full: true,
         })
     }
@@ -219,8 +219,8 @@ impl Status {
     }
 
     pub fn refresh_disks(&mut self) {
-        self.sys.refresh_disks_list();
-        let disks = self.sys.disks();
+        self.system_info.refresh_disks_list();
+        let disks = self.system_info.disks();
         self.tabs[0]
             .shortcut
             .update_mount_points(Self::disks_mounts(disks));
@@ -230,7 +230,7 @@ impl Status {
     }
 
     pub fn disks(&self) -> &[Disk] {
-        self.sys.disks()
+        self.system_info.disks()
     }
 
     pub fn disk_spaces(&self) -> (String, String) {

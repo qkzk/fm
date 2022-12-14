@@ -59,8 +59,8 @@ impl Tab {
     /// Creates a new tab from args, config and height.
     pub fn new(args: Args, config: Config, height: usize, help: String) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
-        let path_content = PathContent::new(path.clone(), args.all)?;
-        let show_hidden = args.all;
+        let path_content = PathContent::new(path.clone(), false)?;
+        let show_hidden = false;
         let nvim_server = args.server;
         let terminal = config.terminal;
         let mode = Mode::Normal;
