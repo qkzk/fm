@@ -6,12 +6,13 @@ use crate::{fileinfo::PathContent, fm_error::FmResult};
 /// showing where the user is in the vec.
 #[derive(Clone)]
 pub struct Completion {
+    /// Possible completions
     pub proposals: Vec<String>,
+    /// Which completion is selected by the user
     pub index: usize,
 }
 
 impl Completion {
-    /// Creates a new `Completion` instance with empty proposals and index=0.
     fn new() -> Self {
         Self {
             proposals: vec![],
@@ -64,6 +65,8 @@ impl Completion {
         self.proposals.clear();
     }
 
+    /// Goto completion.
+    /// Looks for the valid path completing what the user typed.
     pub fn goto(&mut self, input_string: &str) -> FmResult<()> {
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
@@ -85,6 +88,7 @@ impl Completion {
         Ok(())
     }
 
+    /// Looks for programs in $PATH completing the one typed by the user.
     pub fn exec(&mut self, input_string: &String) -> FmResult<()> {
         let mut proposals: Vec<String> = vec![];
         for path in std::env::var_os("PATH")
@@ -107,6 +111,7 @@ impl Completion {
         Ok(())
     }
 
+    /// Looks for file within current folder completing what the user typed.
     pub fn search(&mut self, input_string: &String, path_content: &PathContent) -> FmResult<()> {
         self.update(
             path_content
@@ -120,6 +125,7 @@ impl Completion {
     }
 }
 
+/// Creates a new `Completion` instance with empty proposals and index=0.
 impl Default for Completion {
     fn default() -> Self {
         Self::new()

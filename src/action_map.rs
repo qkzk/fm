@@ -4,6 +4,10 @@ use crate::event_exec::EventExec;
 use crate::fm_error::FmResult;
 use crate::status::Status;
 
+/// Different kind of action which can be mapped to a key.
+/// All those actions are mapped to a key and this enum
+/// makes the junction between received Key events and
+/// actions in the application.
 #[derive(Clone, Debug, Display, EnumString)]
 pub enum ActionMap {
     Back,
@@ -65,6 +69,8 @@ pub enum ActionMap {
 }
 
 impl ActionMap {
+    /// Makes the junction between `Actions` and `Events`.
+    /// Every Action links to a different `EventExec` method.
     pub fn matcher(&self, status: &mut Status) -> FmResult<()> {
         let current_tab = status.selected();
         match *self {

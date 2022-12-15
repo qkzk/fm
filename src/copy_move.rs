@@ -59,6 +59,7 @@ fn handle_progress_display(
     fs_extra::dir::TransitProcessResult::ContinueOrAbort
 }
 
+/// Different kind of movement of files : copying or moving.
 pub enum CopyMove {
     Copy,
     Move,
@@ -80,6 +81,10 @@ impl CopyMove {
     }
 }
 
+/// Will copy or move a bunch of files to `dest`.
+/// A progress bar is displayed on the passed terminal.
+/// A notification is then sent to the user if a compatible notification system
+/// is installed.
 pub fn copy_move(
     copy_or_move: CopyMove,
     sources: Vec<PathBuf>,
@@ -112,6 +117,7 @@ pub fn copy_move(
     Ok(())
 }
 
+/// Send a notification to the desktop.
 pub fn notify(summary: &str, body: &str) -> FmResult<()> {
     Notification::new().summary(summary).body(body).show()?;
     Ok(())

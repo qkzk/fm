@@ -46,8 +46,6 @@ impl EventDispatcher {
         }
     }
 
-    /// Match read key to a relevent event, depending on keybindings.
-    /// Keybindings are read from `Config`.
     fn char(&self, status: &mut Status, key_char: Key) -> FmResult<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {

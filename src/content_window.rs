@@ -30,7 +30,7 @@ impl ContentWindow {
         }
     }
 
-    /// The padding around the last displayed file
+    /// The padding around the last displayed filename
     const WINDOW_PADDING: usize = 4;
     /// The space of the top element
     pub const WINDOW_MARGIN_TOP: usize = 2;
@@ -42,6 +42,7 @@ impl ContentWindow {
     }
 
     /// Move the window one line up if possible.
+    /// Does nothing if the index can't be reached.
     pub fn scroll_up_one(&mut self, index: usize) {
         if index < self.top + Self::WINDOW_PADDING && self.top > 0 {
             self.top -= 1;
@@ -50,6 +51,7 @@ impl ContentWindow {
     }
 
     /// Move the window one line down if possible.
+    /// Does nothing if the index can't be reached.
     pub fn scroll_down_one(&mut self, index: usize) {
         if self.len < self.height {
             return;
@@ -70,6 +72,7 @@ impl ContentWindow {
     }
 
     /// Scroll the window to this index if possible.
+    /// Does nothing if the index can't be reached.
     pub fn scroll_to(&mut self, index: usize) {
         if index < self.top || index > self.bottom {
             self.top = max(index, Self::WINDOW_PADDING) - Self::WINDOW_PADDING;

@@ -185,12 +185,19 @@
 - [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
 
 - [ ] plugins
+
   - which language ?
   - what for ?
-- [ ] documentation
-- [ ] remove references to local thing
-- [ ] readme for user not developpers, move readme to dev.md
-- [ ] publish on cargo
+
+- [ ] NeedConfirmation should take a parameter, avoiding an attribute in tab/status.
+
+- [ ] publish
+  - [ ] documentation
+  - [ ] remove references to local thing
+  - [ ] move strings to separate file
+  - [ ] translations i18n
+  - [ ] readme for user not developpers, move readme to dev.md
+  - [ ] publish on cargo
 
 ## BUGS
 
@@ -198,6 +205,7 @@
 - [ ] log0, log1, log2 are created by log4rs in source folder
   - [x] using absolute path, files are created in the right place
   - [ ] the default file is still `log{}` instead of `log0`...
+- [ ] non ascii typed symbols crash the application.
 
 ## Won't do
 

@@ -5,6 +5,10 @@ use compress_tools::*;
 
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
+/// Decompress a compressed file into its parent directory.
+/// It may fail an return a `FmError` if the file has no parent,
+/// which should be impossible.
+/// It used `compress_tools` which is a wrapper around  `libarchive`.
 pub fn decompress(source: PathBuf) -> FmResult<()> {
     let parent = source.parent().ok_or_else(|| {
         FmError::new(
@@ -16,6 +20,9 @@ pub fn decompress(source: PathBuf) -> FmResult<()> {
     Ok(uncompress_archive(&file, parent, Ownership::Preserve)?)
 }
 
+/// Returns a list of compressed files within the archive.
+/// it may fail if the file can't be opened or if libarchive
+/// can't read it.
 pub fn list_files<P>(source: P) -> FmResult<Vec<String>>
 where
     P: AsRef<Path>,
@@ -23,38 +30,3 @@ where
     let file = File::open(source)?;
     Ok(list_archive_files(file)?)
 }
-
-// fn decompression_command(compressed_file: &Path) -> FmResult<Vec<&str>> {
-//     match compressed_file
-//         .extension()
-//         .unwrap_or_default()
-//         .to_str()
-//         .unwrap_or_default()
-//     {
-//         "tgz" => Ok(vec!["tar", "xf"]),
-//         "zip" => Ok(vec!["unzip"]),
-//         "gzip" => Ok(vec!["gunzip"]),
-//         "bzip2" => Ok(vec!["bunzip2"]),
-//         "xz" => Ok(vec!["xz -d"]),
-//         "7z" => Ok(vec!["7z", "e"]),
-//         _ => Ok(vec![""]),
-//     }
-// }
-//
-// pub fn decompress(terminal: &str, compressed_file: &Path) -> FmResult<()> {
-//     let mut args = decompression_command(compressed_file)?;
-//     if !args.is_empty() {
-//         if let Some(parent) = compressed_file.parent() {
-//             let oldwd = std::env::current_dir()?;
-//
-//             std::env::set_current_dir(parent)?;
-//             args.push(compressed_file.to_str().unwrap_or_default());
-//             execute_in_child(terminal, &args)?;
-//
-//             std::env::set_current_dir(oldwd)?
-//         } else {
-//             return Ok(());
-//         }
-//     }
-//     Ok(())
-// }

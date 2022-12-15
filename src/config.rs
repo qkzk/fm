@@ -10,53 +10,11 @@ use crate::keybindings::Bindings;
 /// All attributes are hardcoded then updated from optional values
 /// of the config file.
 /// The config file is a YAML file in `~/.config/fm/config.yaml`
-/// Default config file looks like this and is easier to read in code directly.
-/// # the terminal must be installed
-/// terminal: st
-/// colors:
-///   # white, black, red, green, blue, yellow, cyan, magenta
-///   # light_white, light_black, light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta
-///   file: white
-///   directory: red
-///   block: yellow
-///   char: green
-///   fifo: blue
-///   socket: cyan
-///   symlink: magenta
-/// keybindings:
-///   # only ASCII char keys are allowed
-///   # ASCII letters must be lowercase
-///   # non ASCII letters char must be in single quotes like this '*'
-///   toggle_hidden: a
-///   copy_paste: c
-///   cut_paste: p
-///   delete: x
-///   symlink: S
-///   chmod: m
-///   exec: e
-///   newdir: d
-///   newfile: n
-///   rename: r
-///   clear_flags: u
-///   toggle_flag: ' '
-///   shell: s
-///   open_file: o
-///   help: h
-///   search: '/'
-///   quit: q
-///   goto: g
-///   flag_all: '*'
-///   reverse_flags: v
-///   regex_match: w
-///   jump: j
-///   nvim: i
-///   sort_by: O
-///   preview: P
-///   shortcut: S
 #[derive(Debug, Clone)]
 pub struct Config {
     /// Color of every kind of file
     pub colors: Colors,
+    /// The name of the terminal application. It should be installed properly.
     pub terminal: String,
     /// Configurable keybindings.
     pub binds: Bindings,
@@ -90,23 +48,26 @@ impl Default for Config {
     }
 }
 
+/// Holds configurable colors for every kind of file.
+/// "Normal" files are displayed with a different color by extension.
 #[derive(Debug, Clone)]
 pub struct Colors {
-    pub file: String,
+    /// Color for `directory` files.
     pub directory: String,
+    /// Color for `block` files.
     pub block: String,
+    /// Color for `char` files.
     pub char: String,
+    /// Color for `fifo` files.
     pub fifo: String,
+    /// Color for `socket` files.
     pub socket: String,
+    /// Color for `symlink` files.
     pub symlink: String,
 }
 
 impl Colors {
-    /// Update a config from a YAML content.
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
-        if let Some(file) = yaml["file"].as_str().map(|s| s.to_string()) {
-            self.file = file;
-        }
         if let Some(directory) = yaml["directory"].as_str().map(|s| s.to_string()) {
             self.directory = directory;
         }
@@ -127,10 +88,8 @@ impl Colors {
         }
     }
 
-    /// Every default color is hardcoded.
     fn new() -> Self {
         Self {
-            file: "white".to_owned(),
             directory: "red".to_owned(),
             block: "yellow".to_owned(),
             char: "green".to_owned(),
@@ -174,7 +133,7 @@ pub fn str_to_tuikit(color: &str) -> Color {
 ///
 /// 1. hardcoded values
 ///
-/// 2. configured values from `~/.config/fm/config.yaml` if the file exists.
+/// 2. configured values from `~/.config/fm/config_file_name.yaml` if those files exists.
 pub fn load_config(path: &str) -> FmResult<Config> {
     let mut config = Config::default();
 

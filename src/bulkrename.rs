@@ -9,12 +9,17 @@ use crate::opener::Opener;
 
 static TMP_FOLDER: &str = "/tmp";
 
+/// Struct holding informations about files about to be renamed.
+/// We only need to know which are the original filenames and which
+/// temporary file is used to modify them.
+/// This feature is a poor clone of ranger's one.
 pub struct Bulkrename<'a> {
     original_filepath: Vec<&'a Path>,
     temp_file: PathBuf,
 }
 
 impl<'a> Bulkrename<'a> {
+    /// Creates a new Bulkrename instance.
     pub fn new(original_filepath: Vec<&'a Path>) -> FmResult<Self> {
         let temp_file = Self::generate_random_filepath()?;
         Ok(Self {
@@ -23,6 +28,9 @@ impl<'a> Bulkrename<'a> {
         })
     }
 
+    /// Rename the files.
+    /// The tempory file is opened with our `Opener` crate, allowing us
+    /// to use the default text file editor.
     pub fn rename(&mut self, opener: &Opener) -> FmResult<()> {
         self.write_original_names()?;
         let original_modification = Self::get_modified_date(&self.temp_file)?;

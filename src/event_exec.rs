@@ -5,7 +5,6 @@ use std::path;
 use std::path::PathBuf;
 
 use crate::bulkrename::Bulkrename;
-// use crate::compress::decompress;
 use crate::content_window::{ContentWindow, RESERVED_ROWS};
 use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
@@ -22,13 +21,20 @@ use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use copypasta::{ClipboardContext, ClipboardProvider};
 use log::info;
 
+/// Every kind of mutation of the application is defined here.
+/// It mutates `Status` or its child `tab`.
 pub struct EventExec {}
 
 impl EventExec {
+    /// Reset the selected tab view to the default.
     pub fn refresh_selected_view(status: &mut Status) -> FmResult<()> {
         status.selected().refresh_view()
     }
 
+    /// When a rezise event occurs, we may hide the second panel if the width
+    /// isn't sufficiant to display enough information.
+    /// We also need to know the new height of the terminal to start scrolling
+    /// up or down.
     pub fn resize(status: &mut Status, width: usize, height: usize) -> FmResult<()> {
         if width < MIN_WIDTH_FOR_DUAL_PANE {
             status.select_tab(0)?;
@@ -41,11 +47,13 @@ impl EventExec {
         Ok(())
     }
 
+    /// Remove every flag on files in this directory and others.
     pub fn event_clear_flags(status: &mut Status) -> FmResult<()> {
         status.flagged.clear();
         Ok(())
     }
 
+    /// Flag all files in the current directory.
     pub fn event_flag_all(status: &mut Status) -> FmResult<()> {
         status.tabs[status.index]
             .path_content
@@ -57,6 +65,8 @@ impl EventExec {
         status.reset_statuses()
     }
 
+    /// Reverse every flag in _current_ directory. Flagged files in other
+    /// directory aren't affected.
     pub fn event_reverse_flags(status: &mut Status) -> FmResult<()> {
         status.tabs[status.index]
             .path_content
@@ -72,6 +82,7 @@ impl EventExec {
         status.reset_statuses()
     }
 
+    /// Toggle a single flag and move down one row.
     pub fn event_toggle_flag(status: &mut Status) -> FmResult<()> {
         let file = status.tabs[status.index]
             .path_content
@@ -87,18 +98,21 @@ impl EventExec {
         Ok(())
     }
 
+    /// Move to the next file in the jump list.
     pub fn event_jumplist_next(status: &mut Status) {
         if status.jump_index < status.flagged.len() {
             status.jump_index += 1;
         }
     }
 
+    /// Move to the previous file in the jump list.
     pub fn event_jumplist_prev(status: &mut Status) {
         if status.jump_index > 0 {
             status.jump_index -= 1;
         }
     }
 
+    /// Change to CHMOD mode allowing to edit permissions of a file.
     pub fn event_chmod(status: &mut Status) -> FmResult<()> {
         if status.selected().path_content.files.is_empty() {
             return Ok(());
@@ -117,6 +131,8 @@ impl EventExec {
         status.reset_statuses()
     }
 
+    /// Enter JUMP mode, allowing to jump to any flagged file.
+    /// Does nothing if no file is flagged.
     pub fn event_jump(status: &mut Status) -> FmResult<()> {
         if !status.flagged.is_empty() {
             status.jump_index = 0;
@@ -125,22 +141,27 @@ impl EventExec {
         Ok(())
     }
 
+    /// Enter Marks new mode, allowing to bind a char to a path.
     pub fn event_marks_new(status: &mut Status) -> FmResult<()> {
         status.selected().mode = Mode::Marks(MarkAction::New);
         Ok(())
     }
 
+    /// Enter Marks jump mode, allowing to jump to a marked file.
     pub fn event_marks_jump(status: &mut Status) -> FmResult<()> {
         status.selected().mode = Mode::Marks(MarkAction::Jump);
         Ok(())
     }
 
+    /// Execute a new mark, saving it to a config file for futher use.
     pub fn exec_marks_new(status: &mut Status, c: char) -> FmResult<()> {
         let path = status.selected().path_content.path.clone();
         status.marks.new_mark(c, path)?;
         Self::event_normal(status.selected())
     }
 
+    /// Execute a jump to a mark, moving to a valid path.
+    /// If the saved path is invalid, it does nothing but reset the view.
     pub fn exec_marks_jump(status: &mut Status, c: char) -> FmResult<()> {
         if let Some(path) = status.marks.get(c) {
             let path = path.to_owned();
@@ -166,20 +187,28 @@ impl EventExec {
         status.clear_flags_and_reset_view()
     }
 
+    /// Enter bulkrename mode, opening a random temp file where the user
+    /// can edit the selected filenames.
+    /// Once the temp file is saved, those file names are changed.
     pub fn event_bulkrename(status: &mut Status) -> FmResult<()> {
         Bulkrename::new(status.filtered_flagged_files())?
             .rename(&status.selected_non_mut().opener)?;
         status.selected().refresh_view()
     }
 
+    /// Copy the flagged file to current directory.
+    /// A progress bar is displayed and a notification is sent once it's done.
     pub fn exec_copy_paste(status: &mut Status) -> FmResult<()> {
         status.cut_or_copy_flagged_files(CopyMove::Copy)
     }
 
+    /// Move the flagged file to current directory.
+    /// A progress bar is displayed and a notification is sent once it's done.
     pub fn exec_cut_paste(status: &mut Status) -> FmResult<()> {
         status.cut_or_copy_flagged_files(CopyMove::Move)
     }
 
+    /// Recursively delete all flagged files.
     pub fn exec_delete_files(status: &mut Status) -> FmResult<()> {
         for pathbuf in status.flagged.iter() {
             if pathbuf.is_dir() {
@@ -191,6 +220,11 @@ impl EventExec {
         status.clear_flags_and_reset_view()
     }
 
+    /// Change permission of the flagged files.
+    /// Once the user has typed an octal permission like 754, it's applied to
+    /// the file.
+    /// Nothing is done if the user typed nothing or an invalid permission like
+    /// 955.
     pub fn exec_chmod(status: &mut Status) -> FmResult<()> {
         if status.selected().input.string.is_empty() {
             return Ok(());
@@ -206,7 +240,8 @@ impl EventExec {
         status.selected().refresh_view()?;
         status.reset_statuses()
     }
-    pub fn _exec_last_edition(status: &mut Status) -> FmResult<()> {
+
+    fn _exec_last_edition(status: &mut Status) -> FmResult<()> {
         match status.selected().last_edition {
             LastEdition::Delete => Self::exec_delete_files(status),
             LastEdition::CutPaste => Self::exec_cut_paste(status),
@@ -215,6 +250,9 @@ impl EventExec {
         }
     }
 
+    /// Execute a jump to the selected flagged file.
+    /// If the user selected a directory, we jump inside it.
+    /// Otherwise, we jump to the parent and select the file.
     pub fn exec_jump(status: &mut Status) -> FmResult<()> {
         status.selected().input.string.clear();
         let jump_list: Vec<&PathBuf> = status.flagged.iter().collect();
@@ -240,6 +278,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Execute a command requiring a confirmation (Delete, Move or Copy).
     pub fn exec_last_edition(status: &mut Status) -> FmResult<()> {
         Self::_exec_last_edition(status)?;
         status.selected().mode = Mode::Normal;
@@ -247,12 +286,15 @@ impl EventExec {
         Ok(())
     }
 
+    /// Select the first file matching the typed regex in current dir.
     pub fn exec_regex(status: &mut Status) -> Result<(), regex::Error> {
         status.select_from_regex()?;
         status.selected().input.reset();
         Ok(())
     }
 
+    /// Leave current mode to normal mode.
+    /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn event_normal(tab: &mut Tab) -> FmResult<()> {
         tab.input.reset();
         tab.completion.reset();
@@ -263,6 +305,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Move up one row if possible.
     pub fn event_up_one_row(tab: &mut Tab) {
         match tab.mode {
             Mode::Normal => {
@@ -277,6 +320,7 @@ impl EventExec {
         tab.window.scroll_up_one(tab.line_index);
     }
 
+    /// Move down one row if possible.
     pub fn event_down_one_row(tab: &mut Tab) {
         match tab.mode {
             Mode::Normal => {
@@ -294,6 +338,7 @@ impl EventExec {
         tab.window.scroll_down_one(tab.line_index);
     }
 
+    /// Move to the top of the current directory.
     pub fn event_go_top(tab: &mut Tab) {
         if let Mode::Normal = tab.mode {
             tab.path_content.select_index(0);
@@ -302,6 +347,9 @@ impl EventExec {
         tab.window.scroll_to(0);
     }
 
+    /// Move up 10 rows in normal mode.
+    /// In other modes where vertical scrolling is possible (atm Preview),
+    /// if moves up one page.
     pub fn event_page_up(tab: &mut Tab) {
         let scroll_up: usize = if let Mode::Normal = tab.mode {
             10
@@ -320,6 +368,7 @@ impl EventExec {
         tab.window.scroll_to(up_index);
     }
 
+    /// Move to the bottom of current view.
     pub fn event_go_bottom(tab: &mut Tab) {
         let last_index: usize;
         if let Mode::Normal = tab.mode {
@@ -332,14 +381,19 @@ impl EventExec {
         tab.window.scroll_to(last_index);
     }
 
+    /// Move the cursor to the start of line.
     pub fn event_cursor_home(tab: &mut Tab) {
         tab.input.cursor_start()
     }
 
+    /// Move the cursor to the end of line.
     pub fn event_cursor_end(tab: &mut Tab) {
         tab.input.cursor_end()
     }
 
+    /// Move down 10 rows in normal mode.
+    /// In other modes where vertical scrolling is possible (atm Preview),
+    /// if moves down one page.
     pub fn event_page_down(tab: &mut Tab) {
         let down_index: usize;
         if let Mode::Normal = tab.mode {
@@ -352,6 +406,7 @@ impl EventExec {
         tab.window.scroll_to(down_index);
     }
 
+    /// Select a given row, if there's something in it.
     pub fn event_select_row(status: &mut Status, row: u16) -> FmResult<()> {
         if let Mode::Normal = status.selected_non_mut().mode {
             let tab = status.selected();
@@ -362,22 +417,29 @@ impl EventExec {
         Ok(())
     }
 
+    /// Select the next shortcut.
     pub fn event_shortcut_next(tab: &mut Tab) {
         tab.shortcut.next()
     }
 
+    /// Select the previous shortcut.
     pub fn event_shortcut_prev(tab: &mut Tab) {
         tab.shortcut.prev()
     }
 
+    /// Select the next element in history of visited files.
     pub fn event_history_next(tab: &mut Tab) {
         tab.history.next()
     }
 
+    /// Select the previous element in history of visited files.
     pub fn event_history_prev(tab: &mut Tab) {
         tab.history.prev()
     }
 
+    /// Move to parent directory if there's one.
+    /// Raise an FmError in root folder.
+    /// Add the starting directory to history.
     pub fn event_move_to_parent(tab: &mut Tab) -> FmResult<()> {
         let parent = tab.path_content.path.parent();
         let path = path::PathBuf::from(parent.ok_or_else(|| {
@@ -394,10 +456,12 @@ impl EventExec {
         Ok(())
     }
 
+    /// Move the cursor left one block.
     pub fn event_move_cursor_left(tab: &mut Tab) {
         tab.input.cursor_left()
     }
 
+    /// Open the file with configured opener or enter the directory.
     pub fn exec_file(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.is_empty() {
             return Ok(());
@@ -409,50 +473,63 @@ impl EventExec {
         }
     }
 
+    /// Move the cursor to the right in input string.
     pub fn event_move_cursor_right(tab: &mut Tab) {
         tab.input.cursor_right()
     }
 
+    /// Delete the char to the left in input string.
     pub fn event_delete_char_left(tab: &mut Tab) {
         tab.input.delete_char_left()
     }
 
+    /// Delete all chars right of the cursor in input string.
     pub fn event_delete_chars_right(tab: &mut Tab) {
         tab.input.delete_chars_right()
     }
 
+    /// Add a char to input string, look for a possible completion.
     pub fn event_text_insert_and_complete(tab: &mut Tab, c: char) -> FmResult<()> {
         Self::event_text_insertion(tab, c);
         tab.fill_completion()
     }
 
+    /// Enter a copy paste mode.
     pub fn event_copy_paste(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation;
         tab.last_edition = LastEdition::CopyPaste;
         Ok(())
     }
 
+    /// Enter the 'move' mode.
     pub fn event_cut_paste(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation;
         tab.last_edition = LastEdition::CutPaste;
         Ok(())
     }
 
+    /// Enter the new dir mode.
     pub fn event_new_dir(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Newdir;
         Ok(())
     }
 
+    /// Enter the new file mode.
     pub fn event_new_file(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Newfile;
         Ok(())
     }
 
+    /// Enter the execute mode. Most commands must be executed to allow for
+    /// a confirmation.
     pub fn event_exec(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Exec;
         Ok(())
     }
 
+    /// Enter preview mode.
+    /// Every file can be previewed. See the `crate::enum::Preview` for
+    /// more details on previewing.
     pub fn event_preview(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
             return Err(FmError::new(
@@ -470,12 +547,16 @@ impl EventExec {
         Ok(())
     }
 
+    /// Enter the delete mode.
+    /// A confirmation is then asked.
     pub fn event_delete_file(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation;
         tab.last_edition = LastEdition::Delete;
         Ok(())
     }
 
+    /// Display the help which can be navigated and displays the configrable
+    /// binds.
     pub fn event_help(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Help;
         tab.preview = Preview::help(tab.help.clone());
@@ -483,43 +564,63 @@ impl EventExec {
         Ok(())
     }
 
+    /// Enter the search mode.
+    /// Matching items are displayed as you type them.
     pub fn event_search(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Search;
         Ok(())
     }
 
+    /// Enter the regex mode.
+    /// Every file matching the typed regex will be flagged.
     pub fn event_regex_match(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::RegexMatch;
         Ok(())
     }
 
+    /// Enter the sort mode, allowing the user to select a sort method.
     pub fn event_sort(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Sort;
         Ok(())
     }
 
+    /// Once a quit event is received, we change a flag and break the main loop.
+    /// It's usefull to reset the cursor before leaving the application.
     pub fn event_quit(tab: &mut Tab) -> FmResult<()> {
         tab.must_quit = true;
         Ok(())
     }
 
+    /// Reset the mode to normal.
     pub fn event_leave_need_confirmation(tab: &mut Tab) {
         tab.last_edition = LastEdition::Nothing;
         tab.mode = Mode::Normal;
     }
 
+    /// Sort the file with given criteria
+    /// Valid kind of sorts are :
+    /// by kind : directory first, files next, in alphanumeric order
+    /// by filename,
+    /// by date of modification,
+    /// by size,
+    /// by extension.
+    /// The first letter is used to identify the method.
+    /// If the user types an uppercase char, the sort is reverse.
     pub fn event_leave_sort(tab: &mut Tab, c: char) {
         tab.mode = Mode::Normal;
         match c {
-            'k' => tab.path_content.sort_by = SortBy::Kind,
-            'n' => tab.path_content.sort_by = SortBy::Filename,
-            'm' => tab.path_content.sort_by = SortBy::Date,
-            's' => tab.path_content.sort_by = SortBy::Size,
-            'e' => tab.path_content.sort_by = SortBy::Extension,
+            'k' | 'K' => tab.path_content.sort_by = SortBy::Kind,
+            'n' | 'N' => tab.path_content.sort_by = SortBy::Filename,
+            'm' | 'M' => tab.path_content.sort_by = SortBy::Date,
+            's' | 'S' => tab.path_content.sort_by = SortBy::Size,
+            'e' | 'E' => tab.path_content.sort_by = SortBy::Extension,
             'r' => tab.path_content.reverse = !tab.path_content.reverse,
             _ => {
                 return;
             }
+        }
+        if c.is_uppercase() {
+            tab.path_content.reverse = true
         }
         if !tab.path_content.files.is_empty() {
             tab.path_content.files[tab.line_index].unselect();
@@ -532,10 +633,12 @@ impl EventExec {
         }
     }
 
+    /// Insert a char in the input string.
     pub fn event_text_insertion(tab: &mut Tab, c: char) {
         tab.input.insert(c);
     }
 
+    /// Toggle the display of hidden files.
     pub fn event_toggle_hidden(tab: &mut Tab) -> FmResult<()> {
         tab.show_hidden = !tab.show_hidden;
         tab.path_content.show_hidden = !tab.path_content.show_hidden;
@@ -545,6 +648,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Open a file with custom opener.
     pub fn event_open_file(tab: &mut Tab) -> FmResult<()> {
         match tab.opener.open(
             tab.path_content
@@ -568,17 +672,22 @@ impl EventExec {
         Ok(())
     }
 
+    /// Enter the rename mode.
     pub fn event_rename(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Rename;
         Ok(())
     }
 
+    /// Enter the goto mode where an user can type a path to jump to.
     pub fn event_goto(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Goto;
         tab.completion.reset();
         Ok(())
     }
 
+    /// Open a new terminal in current directory.
+    /// The shell is a fork of current process and will exit if the application
+    /// is terminated first.
     pub fn event_shell(tab: &mut Tab) -> FmResult<()> {
         execute_in_child(
             &tab.terminal,
@@ -595,16 +704,22 @@ impl EventExec {
         Ok(())
     }
 
+    /// Enter the history mode, allowing to navigate to previously visited
+    /// directory.
     pub fn event_history(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::History;
         Ok(())
     }
 
+    /// Enter the shortcut mode, allowing to visite predefined shortcuts.
+    /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
+    /// visit ones) are proposed.
     pub fn event_shortcut(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Shortcut;
         Ok(())
     }
 
+    /// A right click opens a file or a directory.
     pub fn event_right_click(status: &mut Status, row: u16) -> FmResult<()> {
         if let Mode::Normal = status.selected_non_mut().mode {
             let tab = status.selected();
@@ -638,10 +753,15 @@ impl EventExec {
         }
     }
 
+    /// Replace the input string by the selected completion.
     pub fn event_replace_input_with_completion(tab: &mut Tab) {
         tab.input.replace(tab.completion.current_proposition())
     }
 
+    /// Send a signal to parent NVIM process, picking the selected file.
+    /// If no RPC server were provided at launch time - which may happen for
+    /// reasons unknow to me - it does nothing.
+    /// It requires the "nvim-send" application to be in $PATH.
     pub fn event_nvim_filepicker(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
             info!("Called nvim filepicker in an empty directory.");
@@ -666,6 +786,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Copy the selected filename to the clipboard. Only the filename.
     pub fn event_filename_to_clipboard(tab: &Tab) -> FmResult<()> {
         if let Some(file) = tab.path_content.selected_file() {
             let filename = file.filename.clone();
@@ -677,6 +798,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Copy the selected filepath to the clipboard. The absolute path.
     pub fn event_filepath_to_clipboard(tab: &Tab) -> FmResult<()> {
         if let Some(filepath) = tab.path_content.selected_path_str() {
             let mut ctx = ClipboardContext::new()?;
@@ -687,19 +809,12 @@ impl EventExec {
         Ok(())
     }
 
+    /// Enter the filter mode, where you can filter.
+    /// See `crate::filter::Filter` for more details.
     pub fn event_filter(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::Filter;
         Ok(())
     }
-
-    // pub fn event_decompress(status: &mut Status) -> FmResult<()> {
-    //     let tab = status.selected_non_mut();
-    //     if let Some(fileinfo) = tab.path_content.selected_file() {
-    //         decompress(&status.selected_non_mut().opener.terminal, &fileinfo.path)
-    //     } else {
-    //         Ok(())
-    //     }
-    // }
 
     pub fn event_back(tab: &mut Tab) -> FmResult<()> {
         if tab.history.visited.len() <= 1 {
