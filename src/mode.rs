@@ -37,15 +37,15 @@ pub enum Mode {
     NeedConfirmation,
     /// Change the type of sort
     Sort,
-    /// Preview a content with bat
+    /// Preview a file content
     Preview,
-    /// Display a stack of visited directories,
+    /// Display a sort of stack of visited directories
     History,
     /// Display predefined shortcuts
     Shortcut,
     /// Jump to a saved mark
     Marks(MarkAction),
-    /// Filter by ...
+    /// Filter by extension, name, directory or no filter
     Filter,
 }
 

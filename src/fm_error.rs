@@ -8,6 +8,8 @@ use notify_rust::error::Error as NotifyError;
 use strfmt::FmtError;
 use tuikit::error::TuikitError;
 
+/// Different variant of errors, depending on what caused the error.
+/// If the error is custom made, a string depicts the problem more precisely.
 #[derive(Debug)]
 pub enum ErrorVariant {
     IO,
@@ -25,9 +27,11 @@ pub enum ErrorVariant {
     STRUM,
     COMPRESSTOOLS,
     IMAGEERROR,
+    SERDEYAML,
     CUSTOM(String),
 }
 
+/// Default error used in whole application.
 #[derive(Debug)]
 pub struct FmError {
     variant: ErrorVariant,
@@ -35,6 +39,7 @@ pub struct FmError {
 }
 
 impl FmError {
+    /// Creates a new `FmError` with a variant and a message.
     pub fn new(variant: ErrorVariant, msg: &str) -> Self {
         info!("FmError. Variant: {:?} - msg: {}", variant, msg);
         Self {
@@ -150,4 +155,12 @@ impl From<image::error::ImageError> for FmError {
         Self::new(ErrorVariant::IMAGEERROR, &error.to_string())
     }
 }
+
+impl From<serde_yaml::Error> for FmError {
+    fn from(error: serde_yaml::Error) -> Self {
+        Self::new(ErrorVariant::SERDEYAML, &error.to_string())
+    }
+}
+
+/// A Result with type `T` and `FmError`.
 pub type FmResult<T> = Result<T, FmError>;

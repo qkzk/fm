@@ -7,8 +7,11 @@ use tuikit::prelude::{from_keyname, Key};
 use crate::action_map::ActionMap;
 use crate::fm_error::FmResult;
 
+/// Holds an hashmap between keys and actions.
 #[derive(Clone, Debug)]
 pub struct Bindings {
+    /// An HashMap of key & Actions.
+    /// Every binded key is linked to its corresponding action
     pub binds: HashMap<Key, ActionMap>,
 }
 
@@ -81,10 +84,13 @@ impl Bindings {
         Self { binds }
     }
 
+    /// Returns an Option of action. None if the key isn't binded.
     pub fn get(&self, key: &Key) -> Option<&ActionMap> {
         self.binds.get(key)
     }
 
+    /// Reverse the hashmap of keys.
+    /// Used to format the help string.
     pub fn keybind_reversed(&self) -> HashMap<String, String> {
         self.binds
             .clone()
@@ -93,6 +99,8 @@ impl Bindings {
             .collect()
     }
 
+    /// Update the binds from a config file.
+    /// It may fail (and leave keybinding intact) if the file isn't formated properly.
     pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
         for yaml_key in yaml.as_mapping().unwrap().keys() {
             if let Some(key_string) = yaml_key.as_str() {

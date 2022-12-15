@@ -7,12 +7,17 @@ use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
 static MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 
+/// Holds the marks created by the user.
+/// It's a map between any char (except :) and a PathBuf.
 pub struct Marks {
     save_path: PathBuf,
     marks: HashMap<char, PathBuf>,
 }
 
 impl Marks {
+    /// Reads the marks stored in the config file (~/.config/fm/marks.cfg).
+    /// If an invalid marks is read, only the valid ones are kept
+    /// and the file is saved again.
     pub fn read_from_config_file() -> Self {
         let path = PathBuf::from(shellexpand::tilde(&MARKS_FILEPATH).to_string());
         Self::read_from_file(path)
@@ -38,6 +43,7 @@ impl Marks {
         marks
     }
 
+    /// Returns an optional marks associated to a char bind.
     pub fn get(&self, ch: char) -> Option<&PathBuf> {
         self.marks.get(&ch)
     }
@@ -62,6 +68,8 @@ impl Marks {
         }
     }
 
+    /// Store a new mark in the config file.
+    /// All the marks are saved again.
     pub fn new_mark(&mut self, ch: char, path: PathBuf) -> FmResult<()> {
         if ch == ':' {
             return Err(FmError::new(
@@ -94,6 +102,7 @@ impl Marks {
             .to_owned())
     }
 
+    /// Returns a vector of strings like "d: /dev" for every mark.
     pub fn as_strings(&self) -> Vec<String> {
         self.marks
             .iter()

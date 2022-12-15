@@ -70,11 +70,16 @@ static HELP_TO_FORMAT: &str = "
 {ModeNormal}:    NORMAL
 ";
 
+/// Holds the help string, formated with current keybindings.
 pub struct Help {
+    /// The help string, formated with current keybindings.
     pub help: String,
 }
 
 impl Help {
+    /// Creates an Help instance from keybindings.
+    /// If multiple keybindings are bound to the same action, the last one
+    /// is displayed.
     pub fn from_keybindings(binds: &Bindings) -> FmResult<Self> {
         let help = strfmt(HELP_TO_FORMAT, &binds.keybind_reversed())?;
         Ok(Self { help })

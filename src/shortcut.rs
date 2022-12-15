@@ -2,9 +2,14 @@ use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+/// Holds the hardcoded and mountpoints shortcuts the user can jump to.
+/// Also know which shortcut is currently selected by the user.
 #[derive(Debug, Clone)]
 pub struct Shortcut {
+    /// The path to the shortcuts. It's a vector since we can't know how much
+    /// mount points are defined.
     pub shortcuts: Vec<PathBuf>,
+    /// The currently selected shortcut
     pub index: usize,
 }
 
@@ -15,6 +20,7 @@ impl Default for Shortcut {
 }
 
 impl Shortcut {
+    /// Creates the hardcoded shortcuts (no mount point yet).
     pub fn new() -> Self {
         let shortcuts = Self::reset_shortcuts();
         Self {
@@ -41,20 +47,22 @@ impl Shortcut {
         .collect()
     }
 
-    pub fn update_mount_points(&mut self, mount_points: Vec<&Path>) {
+    /// Update the shortcuts with the mount points.
+    pub fn update_mount_points(&mut self, mount_points: &[&Path]) {
         let mut shortcuts = Self::reset_shortcuts();
         shortcuts.extend(mount_points.iter().map(|p| p.to_path_buf()));
         self.shortcuts = shortcuts;
     }
 
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.shortcuts.is_empty()
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.shortcuts.len()
     }
 
+    /// Select the next shortcut.
     pub fn next(&mut self) {
         if self.is_empty() {
             self.index = 0;
@@ -63,6 +71,7 @@ impl Shortcut {
         }
     }
 
+    /// Select the previous shortcut.
     pub fn prev(&mut self) {
         if self.is_empty() {
             self.index = 0
@@ -73,6 +82,7 @@ impl Shortcut {
         }
     }
 
+    /// Returns the pathbuf of the currently selected shortcut.
     pub fn selected(&self) -> PathBuf {
         self.shortcuts[self.index].clone()
     }

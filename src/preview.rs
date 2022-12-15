@@ -19,6 +19,9 @@ use crate::compress::list_files;
 use crate::fileinfo::PathContent;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
+/// Different kind of preview used to display some informaitons
+/// About the file.
+/// We check if it's an archive first, then a pdf file, an image, a media file
 #[derive(Clone)]
 pub enum Preview {
     Syntaxed(SyntaxedContent),
@@ -35,10 +38,13 @@ pub enum Preview {
 impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
+    /// Creates a new preview instance based on the extension of the file.
+    /// Sometimes it's also reads the content of the file, sometimes it delegates
+    /// it to the display method.
     pub fn new(path_content: &PathContent) -> FmResult<Self> {
         match path_content.selected_file() {
             Some(file_info) => match file_info.extension.to_lowercase().as_str() {
-                "zip" => Ok(Self::Compressed(CompressedContent::new(
+                e if is_compressed_file(e) => Ok(Self::Compressed(CompressedContent::new(
                     file_info.path.clone(),
                 )?)),
                 "pdf" => Ok(Self::Pdf(PdfContent::new(file_info.path.clone()))),
@@ -70,18 +76,23 @@ impl Preview {
         }
     }
 
+    /// Creates a thumbnail preview of the file.
     pub fn thumbnail(path: PathBuf) -> FmResult<Self> {
         Ok(Self::Thumbnail(Pixels::new(path)?))
     }
 
+    /// Creates the help preview as if it was a text file.
     pub fn help(help: String) -> Self {
         Self::Text(TextContent::help(help))
     }
 
+    /// Empty preview, holding nothing.
     pub fn empty() -> Self {
         Self::Empty
     }
 
+    /// The size (most of the time the number of lines) of the preview.
+    /// Some preview (thumbnail, empty) can't be scrolled and their size is always 0.
     pub fn len(&self) -> usize {
         match self {
             Self::Empty => 0,
@@ -96,11 +107,14 @@ impl Preview {
         }
     }
 
+    /// True if nothing is currently previewed.
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        matches!(*self, Self::Empty)
     }
 }
 
+/// Holds a preview of a text content.
+/// It's a boxed vector of strings (per line)
 #[derive(Clone)]
 pub struct TextContent {
     pub content: Box<Vec<String>>,
@@ -144,15 +158,13 @@ impl TextContent {
         })
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.length
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.length == 0
     }
 }
 
+/// Holds a preview of a code text file whose language is supported by `Syntect`.
+/// The file is colored propery and line numbers are shown.
 #[derive(Clone)]
 pub struct SyntaxedContent {
     pub content: Box<Vec<Vec<SyntaxedString>>>,
@@ -169,6 +181,10 @@ impl Default for SyntaxedContent {
 }
 
 impl SyntaxedContent {
+    /// Creates a new displayable content of a syntect supported file.
+    /// It may file if the file isn't properly formatted or the extension
+    /// is wrong (ie. python content with .c extension).
+    /// ATM only Solarized (dark) theme is supported.
     pub fn new(
         ps: SyntaxSet,
         path_content: &PathContent,
@@ -210,15 +226,14 @@ impl SyntaxedContent {
         })
     }
 
-    pub fn reset(&mut self) {
-        self.content = Box::new(vec![vec![]])
-    }
-
     fn len(&self) -> usize {
         self.length
     }
 }
 
+/// Holds a string to be displayed with given colors.
+/// We have to read the colors from Syntect and parse it into tuikit attr
+/// This struct does the parsing.
 #[derive(Clone)]
 pub struct SyntaxedString {
     // row: usize,
@@ -228,20 +243,16 @@ pub struct SyntaxedString {
 }
 
 impl SyntaxedString {
+    /// Parse a content and style into a `SyntaxedString`
+    /// Only the foreground color is read, we don't the background nor
+    /// the style (bold, italic, underline) defined in Syntect.
     pub fn from_syntect(col: usize, content: String, style: Style) -> Self {
         let fg = style.foreground;
-        let attr = Attr {
-            fg: Color::Rgb(fg.r, fg.g, fg.b),
-            ..Default::default()
-        };
-        Self {
-            // row,
-            col,
-            content,
-            attr,
-        }
+        let attr = Attr::from(Color::Rgb(fg.r, fg.g, fg.b));
+        Self { col, content, attr }
     }
 
+    /// Prints itself on a tuikit canvas.
     pub fn print(
         &self,
         canvas: &mut dyn tuikit::canvas::Canvas,
@@ -253,6 +264,9 @@ impl SyntaxedString {
     }
 }
 
+/// Holds a preview of a binary content.
+/// It doesn't try to respect endianness.
+/// The lines are formatted to display 16 bytes.
 #[derive(Clone)]
 pub struct BinaryContent {
     pub path: PathBuf,
@@ -326,12 +340,17 @@ impl Line {
     }
 
     /// Print line of pair of bytes in hexadecimal, 16 bytes long.
-    /// It imitates the output of hexdump.
+    /// It tries to imitates the output of hexdump.
     pub fn print(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
         let _ = canvas.print(row, offset + 2, &self.format());
     }
 }
 
+/// Holds a preview of a pdffile as outputed by `pdf_extract` crate.
+/// If the pdf file content can't be extracted, it doesn't fail but simply hold
+/// an error message to be displayed.
+/// Afterall, it's just a TUI filemanager, the user shouldn't expect to display
+/// any kind of graphical pdf...
 #[derive(Clone)]
 pub struct PdfContent {
     length: usize,
@@ -363,6 +382,8 @@ impl PdfContent {
     }
 }
 
+/// Holds a list of file of an archive as returned by `compress_tools::list_files`.
+/// It may fail if the archive can't be read properly.
 #[derive(Clone)]
 pub struct CompressedContent {
     length: usize,
@@ -384,9 +405,14 @@ impl CompressedContent {
     }
 }
 
+/// Holds the exif content of an image.
+/// Since displaying a thumbnail is ugly and idk how to bind ueberzug into
+/// tuikit, it's preferable.
+/// At least it's an easy way to display informations about an image.
 #[derive(Clone)]
 pub struct ExifContent {
     length: usize,
+    /// The exif strings.
     pub content: Vec<String>,
 }
 
@@ -421,9 +447,11 @@ impl ExifContent {
     }
 }
 
+/// Holds media info about a "media" file (mostly videos and audios).
 #[derive(Clone)]
 pub struct MediainfoContent {
     length: usize,
+    /// The media info details.
     pub content: Vec<String>,
 }
 
@@ -447,22 +475,31 @@ impl MediainfoContent {
     }
 }
 
+/// Holds a path to an image and a method to convert it into an ugly thumbnail.
 #[derive(Clone)]
 pub struct Pixels {
     pub img_path: PathBuf,
 }
 
 impl Pixels {
+    /// Creates a new preview instance. It simply holds a path.
     pub fn new(img_path: PathBuf) -> FmResult<Self> {
         Ok(Self { img_path })
     }
 
+    /// Tries to scale down the image to be displayed in the terminal canvas.
+    /// Fastest algorithm is used (nearest neighbor) since the result is always
+    /// ugly nonetheless.
+    /// It may be fun to show to non geek users :)
     pub fn resized_rgb8(&self, width: u32, height: u32) -> FmResult<ImageBuffer<Rgb<u8>, Vec<u8>>> {
         let img = image::open(&self.img_path)?;
         Ok(img.resize(width, height, FilterType::Nearest).to_rgb8())
     }
 }
 
+/// Common trait for many preview methods which are just a bunch of lines with
+/// no specific formatting.
+/// Some previewing (thumbnail and syntaxed text) needs more details.
 pub trait Window<T> {
     fn window(
         &self,
@@ -513,6 +550,12 @@ impl_window!(CompressedContent, String);
 impl_window!(ExifContent, String);
 impl_window!(MediainfoContent, String);
 
+fn is_compressed_file(ext: &str) -> bool {
+    matches!(
+        ext,
+        "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
+    )
+}
 fn is_ext_image(ext: &str) -> bool {
     matches!(ext, "png" | "jpg" | "jpeg" | "tiff" | "heif")
 }

@@ -62,7 +62,7 @@ impl EventExec {
             .for_each(|file| {
                 status.flagged.insert(file.path.clone());
             });
-        status.reset_statuses()
+        status.reset_tabs_view()
     }
 
     /// Reverse every flag in _current_ directory. Flagged files in other
@@ -79,7 +79,7 @@ impl EventExec {
                     status.flagged.insert(file.path.clone());
                 }
             });
-        status.reset_statuses()
+        status.reset_tabs_view()
     }
 
     /// Toggle a single flag and move down one row.
@@ -128,7 +128,7 @@ impl EventExec {
                     .clone(),
             );
         };
-        status.reset_statuses()
+        status.reset_tabs_view()
     }
 
     /// Enter JUMP mode, allowing to jump to any flagged file.
@@ -191,8 +191,7 @@ impl EventExec {
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.
     pub fn event_bulkrename(status: &mut Status) -> FmResult<()> {
-        Bulkrename::new(status.filtered_flagged_files())?
-            .rename(&status.selected_non_mut().opener)?;
+        Bulkrename::new(status.filtered_flagged_files())?.rename(&status.opener)?;
         status.selected().refresh_view()
     }
 
@@ -238,7 +237,7 @@ impl EventExec {
             status.flagged.clear()
         }
         status.selected().refresh_view()?;
-        status.reset_statuses()
+        status.reset_tabs_view()
     }
 
     fn _exec_last_edition(status: &mut Status) -> FmResult<()> {
@@ -462,14 +461,15 @@ impl EventExec {
     }
 
     /// Open the file with configured opener or enter the directory.
-    pub fn exec_file(tab: &mut Tab) -> FmResult<()> {
+    pub fn exec_file(status: &mut Status) -> FmResult<()> {
+        let tab = status.selected();
         if tab.path_content.is_empty() {
             return Ok(());
         }
         if tab.path_content.is_selected_dir()? {
             tab.go_to_child()
         } else {
-            Self::event_open_file(tab)
+            Self::event_open_file(status)
         }
     }
 
@@ -557,9 +557,11 @@ impl EventExec {
 
     /// Display the help which can be navigated and displays the configrable
     /// binds.
-    pub fn event_help(tab: &mut Tab) -> FmResult<()> {
+    pub fn event_help(status: &mut Status) -> FmResult<()> {
+        let help = status.help.clone();
+        let tab = status.selected();
         tab.mode = Mode::Help;
-        tab.preview = Preview::help(tab.help.clone());
+        tab.preview = Preview::help(help);
         tab.window.reset(tab.preview.len());
         Ok(())
     }
@@ -649,9 +651,11 @@ impl EventExec {
     }
 
     /// Open a file with custom opener.
-    pub fn event_open_file(tab: &mut Tab) -> FmResult<()> {
-        match tab.opener.open(
-            tab.path_content
+    pub fn event_open_file(status: &mut Status) -> FmResult<()> {
+        match status.opener.open(
+            status
+                .selected_non_mut()
+                .path_content
                 .selected_file()
                 .ok_or_else(|| {
                     FmError::new(
@@ -665,7 +669,7 @@ impl EventExec {
             Ok(_) => (),
             Err(e) => info!(
                 "Error opening {:?}: {:?}",
-                tab.path_content.selected_file(),
+                status.selected_non_mut().path_content.selected_file(),
                 e
             ),
         }
@@ -688,9 +692,10 @@ impl EventExec {
     /// Open a new terminal in current directory.
     /// The shell is a fork of current process and will exit if the application
     /// is terminated first.
-    pub fn event_shell(tab: &mut Tab) -> FmResult<()> {
+    pub fn event_shell(status: &mut Status) -> FmResult<()> {
+        let tab = status.selected_non_mut();
         execute_in_child(
-            &tab.terminal,
+            &status.opener.terminal.clone(),
             &vec![
                 "-d",
                 tab.path_content.path.to_str().ok_or_else(|| {
@@ -744,9 +749,9 @@ impl EventExec {
                 })?
                 .file_kind
             {
-                Self::exec_file(tab)
+                Self::exec_file(status)
             } else {
-                Self::event_open_file(tab)
+                Self::event_open_file(status)
             }
         } else {
             Ok(())
@@ -977,6 +982,8 @@ impl EventExec {
         Ok(())
     }
 
+    /// Move to the selected shortcut.
+    /// It may fail if the user has no permission to visit the path.
     pub fn exec_shortcut(tab: &mut Tab) -> FmResult<()> {
         tab.input.reset();
         let path = tab.shortcut.selected();
@@ -985,6 +992,8 @@ impl EventExec {
         Self::event_normal(tab)
     }
 
+    /// Move back to a previously visited path.
+    /// It may fail if the user has no permission to visit the path
     pub fn exec_history(tab: &mut Tab) -> FmResult<()> {
         tab.input.reset();
         tab.path_content = PathContent::new(
@@ -1000,6 +1009,8 @@ impl EventExec {
         Self::event_normal(tab)
     }
 
+    /// Apply a filter to the displayed files.
+    /// See `crate::filter` for more details.
     pub fn exec_filter(tab: &mut Tab) -> FmResult<()> {
         let filter = FilterKind::from_input(&tab.input.string);
         tab.path_content.set_filter(filter);
@@ -1008,6 +1019,8 @@ impl EventExec {
         Self::event_normal(tab)
     }
 
+    /// Move up one row in modes allowing movement.
+    /// Does nothing if the selected item is already the first in list.
     pub fn event_move_up(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => {
@@ -1024,6 +1037,8 @@ impl EventExec {
         Ok(())
     }
 
+    /// Move down one row in modes allowing movements.
+    /// Does nothing if the user is already at the bottom.
     pub fn event_move_down(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => {
@@ -1040,6 +1055,8 @@ impl EventExec {
         Ok(())
     }
 
+    /// Move to parent in normal mode,
+    /// move left one char in mode requiring text input.
     pub fn event_move_left(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::event_move_to_parent(status.selected()),
@@ -1060,9 +1077,11 @@ impl EventExec {
         }
     }
 
+    /// Move to child if any or open a regular file in normal mode.
+    /// Move the cursor one char to right in mode requiring text input.
     pub fn event_move_right(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal => EventExec::exec_file(status.selected()),
+            Mode::Normal => EventExec::exec_file(status),
             Mode::Rename
             | Mode::Chmod
             | Mode::Newdir
@@ -1079,6 +1098,7 @@ impl EventExec {
         }
     }
 
+    /// Delete a char to the left in modes allowing edition.
     pub fn event_backspace(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Rename
@@ -1098,6 +1118,7 @@ impl EventExec {
         }
     }
 
+    /// Delete all chars to the right in mode allowing edition.
     pub fn event_delete(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Rename
@@ -1116,6 +1137,7 @@ impl EventExec {
         }
     }
 
+    /// Move to leftmost char in mode allowing edition.
     pub fn event_key_home(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => EventExec::event_go_top(status.selected()),
@@ -1124,6 +1146,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Move to the bottom in any mode.
     pub fn event_end(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => {
@@ -1134,6 +1157,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Move up 10 lines in normal mode and preview.
     pub fn page_up(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => {
@@ -1144,6 +1168,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Move down 10 lines in normal & preview mode.
     pub fn page_down(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview | Mode::Help => {
@@ -1154,6 +1179,11 @@ impl EventExec {
         Ok(())
     }
 
+    /// Execute the mode.
+    /// In modes requiring confirmation or text input, it will execute the
+    /// related action.
+    /// In normal mode, it will open the file.
+    /// Reset to normal mode afterwards.
     pub fn enter(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Rename => EventExec::exec_rename(status.selected())?,
@@ -1168,7 +1198,7 @@ impl EventExec {
             Mode::History => EventExec::exec_history(status.selected())?,
             Mode::Shortcut => EventExec::exec_shortcut(status.selected())?,
             Mode::Filter => EventExec::exec_filter(status.selected())?,
-            Mode::Normal => EventExec::exec_file(status.selected())?,
+            Mode::Normal => EventExec::exec_file(status)?,
             Mode::NeedConfirmation | Mode::Help | Mode::Sort | Mode::Preview | Mode::Marks(_) => (),
         };
 
@@ -1177,6 +1207,8 @@ impl EventExec {
         Ok(())
     }
 
+    /// Change tab in normal mode with dual pane displayed,
+    /// insert a completion in modes allowing completion.
     pub fn tab(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Goto | Mode::Exec | Mode::Search => {
@@ -1188,6 +1220,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Change tab in normal mode.
     pub fn backtab(status: &mut Status) -> FmResult<()> {
         if let Mode::Normal = status.selected().mode {
             status.prev()
@@ -1195,10 +1228,13 @@ impl EventExec {
         Ok(())
     }
 
+    /// Start a fuzzy find with skim.
+    /// ATM idk how to avoid using the whole screen.
     pub fn event_fuzzyfind(status: &mut Status) -> FmResult<()> {
         status.fill_tabs_with_skim()
     }
 
+    /// Copy the filename of the selected file in normal mode.
     pub fn event_copy_filename(status: &mut Status) -> FmResult<()> {
         if let Mode::Normal = status.selected_non_mut().mode {
             return EventExec::event_filename_to_clipboard(status.selected());
@@ -1206,6 +1242,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Copy the filepath of the selected file in normal mode.
     pub fn event_copy_filepath(status: &mut Status) -> FmResult<()> {
         if let Mode::Normal = status.selected_non_mut().mode {
             return EventExec::event_filepath_to_clipboard(status.selected());
@@ -1213,10 +1250,12 @@ impl EventExec {
         Ok(())
     }
 
+    /// Refresh the current view, reloading the files. Move the selection to top.
     pub fn event_refreshview(status: &mut Status) -> FmResult<()> {
         Self::refresh_selected_view(status)
     }
 
+    /// Open a thumbnail of an image, scaled up to the whole window.
     pub fn event_thumbnail(tab: &mut Tab) -> FmResult<()> {
         if let Mode::Normal = tab.mode {
             tab.mode = Mode::Preview;
@@ -1228,11 +1267,15 @@ impl EventExec {
         Ok(())
     }
 
+    /// Toggle between a full display (aka ls -lah) or a simple mode (only the
+    /// filenames).
     pub fn event_toggle_display_full(status: &mut Status) -> FmResult<()> {
         status.display_full = !status.display_full;
         Ok(())
     }
 
+    /// Toggle between dualpane and single pane. Does nothing if the width
+    /// is too low to display both panes.
     pub fn event_toggle_dualpane(status: &mut Status) -> FmResult<()> {
         status.dual_pane = !status.dual_pane;
         status.select_tab(0)?;
@@ -1247,5 +1290,5 @@ impl EventExec {
 fn string_to_path(path_string: String) -> FmResult<path::PathBuf> {
     let expanded_cow_path = shellexpand::tilde(&path_string);
     let expanded_target: &str = expanded_cow_path.borrow();
-    Ok(std::fs::canonicalize(expanded_target)?.to_path_buf())
+    Ok(std::fs::canonicalize(expanded_target)?)
 }

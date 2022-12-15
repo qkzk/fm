@@ -234,11 +234,17 @@ impl FileInfo {
 /// the "display all files including hidden" flag and the key to sort files.
 #[derive(Clone)]
 pub struct PathContent {
+    /// The current path
     pub path: path::PathBuf,
+    /// A vector of FileInfo with every file in current path
     pub files: Vec<FileInfo>,
+    /// The index of the selected file.
     pub selected: usize,
+    /// Do we display the hidden files ?
     pub show_hidden: bool,
+    /// The kind of sort used to display the files.
     pub sort_by: SortBy,
+    /// Is it reversed ?
     pub reverse: bool,
     filter: FilterKind,
     used_space: u64,
@@ -272,6 +278,7 @@ impl PathContent {
         })
     }
 
+    /// Apply the filter.
     pub fn set_filter(&mut self, filter: FilterKind) {
         self.filter = filter
     }
@@ -304,6 +311,8 @@ impl PathContent {
         }
     }
 
+    /// Convert a path to a &str.
+    /// It may fails if the path contains non valid utf-8 chars.
     pub fn path_to_str(&self) -> FmResult<&str> {
         self.path.to_str().ok_or_else(|| {
             FmError::new(
@@ -400,14 +409,18 @@ impl PathContent {
         }
     }
 
+    /// Path of the currently selected file.
     pub fn selected_path_str(&self) -> Option<String> {
         Some(self.selected_file()?.path.to_str()?.to_owned())
     }
 
+    /// True if the path starts with a subpath.
     pub fn contains(&self, path: &path::Path) -> bool {
         path.starts_with(&self.path)
     }
 
+    /// Is the selected file a directory ?
+    /// It may fails if the current path is empty, aka if nothing is selected.
     pub fn is_selected_dir(&self) -> FmResult<bool> {
         match self
             .selected_file()
@@ -437,14 +450,19 @@ impl PathContent {
         }
     }
 
+    /// True if the path is empty.
     pub fn is_empty(&self) -> bool {
         self.files.is_empty()
     }
 
+    /// Human readable string representation of the space used by _files_
+    /// in current path.
+    /// No recursive exploration of directory.
     pub fn used_space(&self) -> String {
         human_size(self.used_space)
     }
 
+    /// A string representation of the git status of the path.
     pub fn git_string(&self) -> FmResult<String> {
         Ok(git(&self.path)?)
     }

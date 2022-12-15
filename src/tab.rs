@@ -2,23 +2,18 @@ use std::path;
 
 use crate::args::Args;
 use crate::completion::Completion;
-use crate::config::Config;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::PathContent;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::input::Input;
 use crate::last_edition::LastEdition;
 use crate::mode::Mode;
-use crate::opener::{load_opener, Opener};
 use crate::preview::Preview;
 use crate::shortcut::Shortcut;
 use crate::visited::History;
 
-static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
-
 /// Holds every thing about the current tab of the application.
-/// Is responsible to execute commands depending on received events, mutating
-/// the tab of the application.
+/// Most of the mutation is done externally.
 #[derive(Clone)]
 pub struct Tab {
     /// The mode the application is currenty in
@@ -37,12 +32,12 @@ pub struct Tab {
     pub show_hidden: bool,
     /// NVIM RPC server address
     pub nvim_server: String,
-    /// Configurable terminal executable
-    pub terminal: String,
     /// Completion list and index in it.
     pub completion: Completion,
     /// Last edition command kind received
     pub last_edition: LastEdition,
+    /// True if the user issued a quit event (`Key::Char('q')` by default).
+    /// It's used to exit the main loop before reseting the cursor.
     pub must_quit: bool,
     /// Lines of the previewed files.
     /// Empty if not in preview mode.
@@ -51,18 +46,15 @@ pub struct Tab {
     pub history: History,
     /// Predefined shortcuts
     pub shortcut: Shortcut,
-    pub opener: Opener,
-    pub help: String,
 }
 
 impl Tab {
-    /// Creates a new tab from args, config and height.
-    pub fn new(args: Args, config: Config, height: usize, help: String) -> FmResult<Self> {
+    /// Creates a new tab from args and height.
+    pub fn new(args: Args, height: usize) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
         let path_content = PathContent::new(path.clone(), false)?;
         let show_hidden = false;
         let nvim_server = args.server;
-        let terminal = config.terminal;
         let mode = Mode::Normal;
         let line_index = 0;
         let window = ContentWindow::new(path_content.files.len(), height);
@@ -74,8 +66,6 @@ impl Tab {
         let mut history = History::default();
         history.push(&path);
         let shortcut = Shortcut::new();
-        let opener = load_opener(OPENER_PATH, terminal.clone())
-            .unwrap_or_else(|_| Opener::new(terminal.clone()));
         Ok(Self {
             mode,
             line_index,
@@ -85,18 +75,16 @@ impl Tab {
             height,
             show_hidden,
             nvim_server,
-            terminal,
             completion,
             last_edition,
             must_quit,
             preview,
             history,
             shortcut,
-            opener,
-            help,
         })
     }
 
+    /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> FmResult<()> {
         match self.mode {
             Mode::Goto => self.completion.goto(&self.input.string),
@@ -108,6 +96,10 @@ impl Tab {
         }
     }
 
+    /// Refresh the current view.
+    /// Input string is emptied, the files are read again, the window of
+    /// displayed files is reset.
+    /// The first file is selected.
     pub fn refresh_view(&mut self) -> FmResult<()> {
         self.line_index = 0;
         self.input.reset();
@@ -116,6 +108,9 @@ impl Tab {
         Ok(())
     }
 
+    /// Move to the currently selected directory.
+    /// Fail silently if the current directory is empty or if the selected
+    /// file isn't a directory.
     pub fn go_to_child(&mut self) -> FmResult<()> {
         let childpath = self
             .path_content
@@ -149,9 +144,14 @@ impl Tab {
         self.must_quit
     }
 
+    /// Returns a string of the current directory path.
     pub fn path_str(&self) -> Option<String> {
         Some(self.path_content.path.to_str()?.to_owned())
     }
+
+    /// Set the pathcontent to a new path.
+    /// Reset the window.
+    /// Add the last path to the history of visited paths.
     pub fn set_pathcontent(&mut self, path: path::PathBuf) -> FmResult<()> {
         self.history.push(&path);
         self.path_content = PathContent::new(path, self.show_hidden)?;

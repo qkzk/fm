@@ -30,6 +30,11 @@ impl Config {
         }
     }
 
+    /// The terminal name
+    pub fn terminal(&self) -> &str {
+        &self.terminal
+    }
+
     /// Updates the config from  a configuration content.
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
         self.colors.update_from_config(&yaml["colors"]);

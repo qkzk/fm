@@ -18,17 +18,22 @@ use crate::preview::{Preview, Window};
 use crate::status::Status;
 use crate::tab::Tab;
 
+/// At least 100 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 100;
 
+/// Simple struct to read the events.
 pub struct EventReader {
     term: Arc<Term>,
 }
 
 impl EventReader {
+    /// Creates a new instance with an Arc to a terminal.
     pub fn new(term: Arc<Term>) -> Self {
         Self { term }
     }
 
+    /// Returns the events as they're received. Wait indefinitely for a new one.
+    /// We should spend most of the application life here, doing nothing :)
     pub fn poll_event(&self) -> FmResult<Event> {
         Ok(self.term.poll_event()?)
     }
@@ -443,6 +448,7 @@ pub struct Display {
     term: Arc<Term>,
     colors: Colors,
 }
+
 impl Display {
     const SELECTED_BORDER: Attr = color_to_attr(Color::LIGHT_BLUE);
     const INERT_BORDER: Attr = color_to_attr(Color::Default);
@@ -455,6 +461,7 @@ impl Display {
     pub fn show_cursor(&self) -> FmResult<()> {
         Ok(self.term.show_cursor(true)?)
     }
+
     /// Display every possible content in the terminal.
     ///
     /// The top line
@@ -470,11 +477,13 @@ impl Display {
     /// The completion list if any.
     ///
     /// The preview in preview mode.
+    /// Displays one pane or two panes, depending of the width and current
+    /// status of the application.
     pub fn display_all(&mut self, status: &Status) -> FmResult<()> {
         self.term.clear()?;
 
         let (width, _) = self.term.term_size()?;
-        let disk_spaces = status.disk_spaces();
+        let disk_spaces = status.disk_spaces_per_tab();
         if status.dual_pane && width > MIN_WIDTH_FOR_DUAL_PANE {
             self.draw_dual_pane(status, disk_spaces.0, disk_spaces.1)?
         } else {

@@ -2,7 +2,9 @@
 /// Methods allow mutation of this string and movement of the cursor.
 #[derive(Clone)]
 pub struct Input {
+    /// The input string typed by the user
     pub string: String,
+    /// The index of the cursor in that string
     pub cursor_index: usize,
 }
 

@@ -15,10 +15,22 @@ use crate::config::Config;
 use crate::copy_move::{copy_move, CopyMove};
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::marks::Marks;
+use crate::opener::{load_opener, Opener};
 use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::utils::disk_space;
 
+static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
+
+/// Holds every mutable parameter of the application itself, except for
+/// the "display" information.
+/// It holds 2 tabs (left & right), even if only one can be displayed sometimes.
+/// It knows which tab is selected, which files are flagged,
+/// which jump target is selected, a cache of normal file colors,
+/// if we have to display one or two tabs and if all details are shown or only
+/// the filename.
+/// Mutation of this struct are mostly done externally, by the event crate :
+/// `crate::event_exec`.
 pub struct Status {
     /// Vector of `Tab`, each of them are displayed in a separate tab.
     pub tabs: [Tab; 2],
@@ -35,14 +47,24 @@ pub struct Status {
     /// terminal
     term: Arc<Term>,
     skimer: Skimer,
+    /// do we display one or two tabs ?
     pub dual_pane: bool,
     system_info: System,
+    /// do we display all info or only the filenames ?
     pub display_full: bool,
+    /// The opener used by the application.
+    pub opener: Opener,
+    /// The help string.
+    pub help: String,
 }
 
 impl Status {
+    /// Max valid permission number, ie `0o777`.
     pub const MAX_PERMISSIONS: u32 = 0o777;
 
+    /// Creates a new status for the application.
+    /// It requires most of the information (arguments, configuration, height
+    /// of the terminal, the formated help string).
     pub fn new(
         args: Args,
         config: Config,
@@ -50,10 +72,12 @@ impl Status {
         term: Arc<Term>,
         help: String,
     ) -> FmResult<Self> {
-        let mut tab = Tab::new(args, config, height, help)?;
+        let terminal = config.terminal();
         let sys = System::new_all();
+        let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
+        let mut tab = Tab::new(args, height)?;
         tab.shortcut
-            .update_mount_points(Self::disks_mounts(sys.disks()));
+            .update_mount_points(&Self::disks_mounts(sys.disks()));
 
         Ok(Self {
             tabs: [tab.clone(), tab],
@@ -67,47 +91,43 @@ impl Status {
             dual_pane: true,
             system_info: sys,
             display_full: true,
+            opener,
+            help,
         })
     }
 
-    fn len(&self) -> usize {
-        self.tabs.len()
-    }
-
+    /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn next(&mut self) {
         if !self.dual_pane {
             return;
         }
-
-        self.index = (self.index + 1) % self.len()
+        self.index = 1 - self.index
     }
 
+    /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn prev(&mut self) {
-        if !self.dual_pane {
-            return;
-        }
-        if self.index > 0 {
-            self.index -= 1;
-        } else {
-            self.index = self.len() - 1
-        }
+        self.next()
     }
 
+    /// Returns a mutable reference to the selected tab.
     pub fn selected(&mut self) -> &mut Tab {
         &mut self.tabs[self.index]
     }
 
+    /// Returns a non mutable reference to the selected tab.
     pub fn selected_non_mut(&self) -> &Tab {
         &self.tabs[self.index]
     }
 
-    pub fn reset_statuses(&mut self) -> FmResult<()> {
+    /// Reset the view of every tab.
+    pub fn reset_tabs_view(&mut self) -> FmResult<()> {
         for status in self.tabs.iter_mut() {
             status.refresh_view()?
         }
         Ok(())
     }
 
+    /// Toggle the flagged attribute of a path.
     pub fn toggle_flag_on_path(&mut self, path: PathBuf) {
         if self.flagged.contains(&path) {
             self.flagged.remove(&path);
@@ -116,6 +136,8 @@ impl Status {
         };
     }
 
+    /// Replace the tab content with what was returned by skim.
+    /// It calls skim read its output, then replace the tab itself.
     pub fn fill_tabs_with_skim(&mut self) -> FmResult<()> {
         for path in self
             .skimer
@@ -144,6 +166,12 @@ impl Status {
         }
     }
 
+    /// Returns a vector of path of files which are both flagged and in current
+    /// directory.
+    /// It's necessary since the user may have flagged files OUTSIDE of current
+    /// directory before calling Bulkrename.
+    /// It may creates confusion since the same filename can be used in
+    /// different places.
     pub fn filtered_flagged_files(&self) -> Vec<&Path> {
         let path_content = self.selected_non_mut().path_content.clone();
         self.flagged
@@ -153,6 +181,9 @@ impl Status {
             .collect()
     }
 
+    /// Execute a move or a copy of the flagged files to current directory.
+    /// A progress bar is displayed (invisible for small files) and a notification
+    /// is sent every time, even for 0 bytes files...
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> FmResult<()> {
         let sources: Vec<PathBuf> = self.flagged.iter().map(|path| path.to_owned()).collect();
         let dest = self.selected_non_mut().path_str().ok_or_else(|| {
@@ -165,14 +196,16 @@ impl Status {
         self.clear_flags_and_reset_view()
     }
 
+    /// Empty the flagged files, reset the view of every tab.
     pub fn clear_flags_and_reset_view(&mut self) -> FmResult<()> {
         self.flagged.clear();
         self.selected().path_content.reset_files()?;
         let len = self.tabs[self.index].path_content.files.len();
         self.selected().window.reset(len);
-        self.reset_statuses()
+        self.reset_tabs_view()
     }
 
+    /// Returns the correct index jump target to a flagged files.
     pub fn find_jump_target(&mut self, jump_target: &Path) -> Option<usize> {
         self.selected()
             .path_content
@@ -181,6 +214,8 @@ impl Status {
             .position(|file| file.path == jump_target)
     }
 
+    /// Set the permissions of the flagged files according to a given permission.
+    /// If the permission are invalid or if the user can't edit them, it may fail.
     pub fn set_permissions(path: PathBuf, permissions: u32) -> FmResult<()> {
         Ok(std::fs::set_permissions(
             path,
@@ -188,12 +223,13 @@ impl Status {
         )?)
     }
 
+    /// Flag every file matching a typed regex.
     pub fn select_from_regex(&mut self) -> Result<(), regex::Error> {
-        if self.selected().input.string.is_empty() {
+        if self.selected_non_mut().input.string.is_empty() {
             return Ok(());
         }
         self.flagged.clear();
-        let re = Regex::new(&self.selected().input.string)?;
+        let re = Regex::new(&self.selected_non_mut().input.string)?;
         for file in self.tabs[self.index].path_content.files.iter() {
             if re.is_match(&file.path.to_string_lossy()) {
                 self.flagged.insert(file.path.clone());
@@ -202,6 +238,10 @@ impl Status {
         Ok(())
     }
 
+    /// Select a tab according to its index.
+    /// It's deprecated and is left mostly because I'm not sure I want
+    /// tabs & panes... and I haven't fully decided yet.
+    /// Since I'm lazy and don't want to write it twice, it's left here.
     pub fn select_tab(&mut self, index: usize) -> FmResult<()> {
         if index >= self.tabs.len() {
             Err(FmError::new(
@@ -214,26 +254,34 @@ impl Status {
         }
     }
 
+    /// Set dual pane mode to true or false.
     pub fn set_dual_pane(&mut self, dual_pane: bool) {
         self.dual_pane = dual_pane;
     }
 
+    /// Refresh every disk information.
+    /// It also refreshes the disk list, which is usefull to detect removable medias.
+    /// It may be very slow...
+    /// There's surelly a better way, like doing it only once in a while or on
+    /// demand.
     pub fn refresh_disks(&mut self) {
+        // the fast variant, which doesn't check if the disks have changed.
+        // self.system_info.refresh_disks();
+        // the slow variant, which check if the disks have changed.
         self.system_info.refresh_disks_list();
         let disks = self.system_info.disks();
-        self.tabs[0]
-            .shortcut
-            .update_mount_points(Self::disks_mounts(disks));
-        self.tabs[1]
-            .shortcut
-            .update_mount_points(Self::disks_mounts(disks));
+        let mounts = Self::disks_mounts(disks);
+        self.tabs[0].shortcut.update_mount_points(&mounts);
+        self.tabs[1].shortcut.update_mount_points(&mounts);
     }
 
+    /// Returns an array of Disks
     pub fn disks(&self) -> &[Disk] {
         self.system_info.disks()
     }
 
-    pub fn disk_spaces(&self) -> (String, String) {
+    /// Returns a pair of disk spaces for both tab.
+    pub fn disk_spaces_per_tab(&self) -> (String, String) {
         let disks = self.disks();
         (
             disk_space(disks, &self.tabs[0].path_content.path),
@@ -241,11 +289,18 @@ impl Status {
         )
     }
 
+    /// Returns the mount points of every disk.
     pub fn disks_mounts(disks: &[Disk]) -> Vec<&Path> {
         disks.iter().map(|d| d.mount_point()).collect()
     }
 
+    /// Returns the sice of the terminal (width, height)
     pub fn term_size(&self) -> FmResult<(usize, usize)> {
         Ok(self.term.term_size()?)
+    }
+
+    /// Returns a string representing the current path in the selected tab.
+    pub fn selected_path_str(&self) -> String {
+        self.selected_non_mut().path_str().unwrap_or_default()
     }
 }

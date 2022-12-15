@@ -2,6 +2,8 @@ use regex::Regex;
 
 use crate::fileinfo::{FileInfo, FileKind};
 
+/// Different kinds of filters.
+/// By extension, by name, only the directory or all files.
 #[derive(Clone)]
 pub enum FilterKind {
     Extension(String),
@@ -11,6 +13,8 @@ pub enum FilterKind {
 }
 
 impl FilterKind {
+    /// Parse the input string into a filter.
+    /// It shouldn't fail but use a `Filter::All` if the string isn't parsable;
     pub fn from_input(input: &str) -> Self {
         let words = input.split_whitespace().collect::<Vec<&str>>();
         if words.len() < 2 {
@@ -24,6 +28,9 @@ impl FilterKind {
         }
     }
 
+    /// Apply the selected filter to the file list.
+    /// It's a "key" used by the Filter method to hold the files matching this
+    /// filter.
     pub fn filter_by(&self, fileinfo: &FileInfo) -> bool {
         match self {
             Self::Extension(ext) => Self::filter_by_ext(fileinfo, ext.clone()),

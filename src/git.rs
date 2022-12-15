@@ -75,6 +75,8 @@ fn parse_porcelain2(data: String) -> Option<GitStatus> {
     Some(status)
 }
 
+/// Returns a string representation of the git status of this path.
+/// Will return an empty string if we're not in a git repository.
 pub fn git(path: &Path) -> Result<String, Box<dyn Error>> {
     if std::env::set_current_dir(path).is_err() {
         // The path may not exist. It should never happen.

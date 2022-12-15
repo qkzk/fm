@@ -32,6 +32,9 @@ fn create_log_folder(log_path: &str) -> FmResult<String> {
     Ok(parent.to_string_lossy().to_string())
 }
 
+/// Creates a default logger with rotating file logs.
+/// 3 files à 5KB each are maintened.
+/// The log files are located in $HOME/username/.config/fm
 pub fn set_logger() -> FmResult<Handle> {
     let log_path = shellexpand::tilde(LOG_PATH).to_string();
     eprintln!("log path: {}", log_path);

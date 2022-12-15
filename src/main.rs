@@ -11,13 +11,14 @@ use fm::help::Help;
 use fm::log::set_logger;
 use fm::status::Status;
 use fm::term_manager::{Display, EventReader};
-use fm::utils::{init_term, print_on_quit};
+use fm::utils::{drop_everything, init_term, print_on_quit};
 
 static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 
 /// Main function
-/// Init the status and display and listen to events from keyboard and mouse.
+/// Init the status and display and listen to events (keyboard, mouse, resize, custom...).
 /// The application is redrawn after every event.
+/// When the user issues a quit event, the main loop is broken and we reset the cursor.
 fn main() -> FmResult<()> {
     set_logger()?;
     info!("fm is starting");
@@ -32,17 +33,19 @@ fn main() -> FmResult<()> {
     let mut status = Status::new(Args::parse(), config, display.height()?, term.clone(), help)?;
 
     while let Ok(event) = event_reader.poll_event() {
-        event_dispatcher.read_event(&mut status, event)?;
+        event_dispatcher.dispatch(&mut status, event)?;
         status.refresh_disks();
-
         display.display_all(&status)?;
 
         if status.selected_non_mut().must_quit() {
             break;
         };
     }
+
     display.show_cursor()?;
-    print_on_quit(term, event_dispatcher, event_reader, status, display);
+    let final_path = status.selected_path_str();
+    drop_everything(term, event_dispatcher, event_reader, status, display);
+    print_on_quit(final_path);
     info!("fm is shutting down");
     Ok(())
 }

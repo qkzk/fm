@@ -20,8 +20,12 @@ impl EventDispatcher {
     pub fn new(binds: Bindings) -> Self {
         Self { binds }
     }
+
     /// Reaction to received events.
-    pub fn read_event(&self, status: &mut Status, ev: Event) -> FmResult<()> {
+    /// Only non keyboard events are dealt here directly.
+    /// Keyboard events are configurable and are sent to specific functions
+    /// which needs to know those keybindings.
+    pub fn dispatch(&self, status: &mut Status, ev: Event) -> FmResult<()> {
         match ev {
             Event::Key(Key::WheelUp(_, _, _)) => EventExec::event_move_up(status),
             Event::Key(Key::WheelDown(_, _, _)) => EventExec::event_move_down(status),

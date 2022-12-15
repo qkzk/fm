@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::env;
-use std::error::Error;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 use log::info;
 use serde_yaml;
@@ -26,6 +25,7 @@ where
     })
 }
 
+/// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub enum ExtensionKind {
     Audio,
@@ -74,6 +74,8 @@ impl ExtensionKind {
     }
 }
 
+/// Holds an association map between `ExtensionKind` and `OpenerInfo`.
+/// It's used to know how to open a kind of file.
 #[derive(Clone)]
 pub struct OpenerAssociation {
     association: HashMap<ExtensionKind, OpenerInfo>,
@@ -154,14 +156,21 @@ impl OpenerAssociation {
     }
 }
 
+/// Some kind of files are "opened" using internal methods.
+/// ATM only one kind of files is supported, compressed ones, which use
+/// libarchive internally.
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum InternalVariant {
     Decompress,
 }
 
+/// A way to open one kind of files.
+/// It's either an internal method or an external program.
 #[derive(Clone, Debug)]
 pub struct OpenerInfo {
+    /// The external program used to open the file.
     pub external_program: Option<String>,
+    /// The internal variant kind.
     pub internal_variant: Option<InternalVariant>,
     use_term: bool,
 }
@@ -197,17 +206,23 @@ impl OpenerInfo {
     }
 }
 
+/// Holds the associations between different kind of files and opener method
+/// as well as the name of the terminal configured by the user.
 #[derive(Clone)]
 pub struct Opener {
+    /// The name of the configured terminal application
     pub terminal: String,
+    /// The association of openers for every kind of files
     pub opener_association: OpenerAssociation,
     default_opener: OpenerInfo,
 }
 
 impl Opener {
-    pub fn new(terminal: String) -> Self {
+    /// Creates a new opener instance.
+    /// Default values are used. It may be uptaded with configured ones later.
+    pub fn new(terminal: &str) -> Self {
         Self {
-            terminal,
+            terminal: terminal.to_owned(),
             opener_association: OpenerAssociation::new(),
             default_opener: OpenerInfo::external("xdg-open", false),
         }
@@ -221,6 +236,10 @@ impl Opener {
         }
     }
 
+    /// Open a file, using the configured method.
+    /// It may fail if the program changed after reading the config file.
+    /// It may also fail if the program can't handle this kind of files.
+    /// This is quite a tricky method, there's many possible failures.
     pub fn open(&self, filepath: std::path::PathBuf) -> FmResult<()> {
         if filepath.is_dir() {
             return Err(FmError::new(
@@ -259,14 +278,17 @@ impl Opener {
         Ok(())
     }
 
+    /// Open a file with a given program.
+    /// If the program requires a terminal, the terminal itself is opened
+    /// and the program and its parameters are sent to it.
     pub fn open_with(
         &self,
-        opener: &str,
+        program: &str,
         use_term: bool,
         filepath: std::path::PathBuf,
     ) -> FmResult<std::process::Child> {
         let strpath = filepath.into_os_string().into_string()?;
-        let args = vec![opener, &strpath];
+        let args = vec![program, &strpath];
         if use_term {
             self.open_terminal(args)
         } else {
@@ -274,7 +296,7 @@ impl Opener {
         }
     }
 
-    pub fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
+    fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
         self.opener_association.update_from_file(yaml)
     }
 
@@ -289,16 +311,14 @@ impl Opener {
         execute_in_child(&self.terminal, &args)
     }
 
+    /// Returns the Opener association associated to a kind of file.
     pub fn get(&self, kind: ExtensionKind) -> Option<&OpenerInfo> {
         self.opener_association.association.get(&kind)
     }
-
-    pub fn open_terminal_with_args(&self, args: Vec<&str>) -> FmResult<std::process::Child> {
-        execute_in_child(&self.terminal, &args)
-    }
 }
 
-/// Execute the command in a fork.
+/// Execute a command with options in a fork.
+/// Returns an handle to the child process.
 pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
     info!(
         "execute_in_child. executable: {}, arguments: {:?}",
@@ -307,19 +327,10 @@ pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::C
     Ok(Command::new(exe).args(args).spawn()?)
 }
 
-pub fn execute_in_child_piped(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
-    info!(
-        "execute_in_child. executable: {}, arguments: {:?}",
-        exe, args
-    );
-    Ok(Command::new(exe)
-        .args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?)
-}
-
-pub fn load_opener(path: &str, terminal: String) -> Result<Opener, Box<dyn Error>> {
+/// Returns the opener created from opener file with the given terminal
+/// application name.
+/// It may fail if the file can't be read.
+pub fn load_opener(path: &str, terminal: &str) -> FmResult<Opener> {
     let mut opener = Opener::new(terminal);
     let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
     let yaml = serde_yaml::from_reader(file)?;

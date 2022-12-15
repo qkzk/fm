@@ -33,6 +33,10 @@ fn disk_space_used(disk: Option<&Disk>) -> String {
     }
 }
 
+/// Returns the disk space of the disk holding this path.
+/// We can't be sure what's the disk of a given path, so we have to look
+/// if the mount point is a parent of given path.
+/// This solution is ugly but... for a lack of a better one...
 pub fn disk_space(disks: &[Disk], path: &Path) -> String {
     if path.as_os_str().is_empty() {
         return "".to_owned();
@@ -40,18 +44,28 @@ pub fn disk_space(disks: &[Disk], path: &Path) -> String {
     disk_space_used(disk_used_by_path(disks, path))
 }
 
-pub fn print_on_quit(
+/// Drops everything holding an `Arc<Term>`.
+/// If new structs holding `Arc<Term>`  are introduced
+/// (surelly to display something on their own...), we'll have to pass them
+/// here and drop them.
+/// It's used if the user wants to "cd on quit" which is a nice feature I
+/// wanted to implement.
+/// Since tuikit term redirects stdout, we have to drop them first.
+pub fn drop_everything(
     term: Arc<Term>,
     event_dispatcher: EventDispatcher,
     event_reader: EventReader,
     status: Status,
     display: Display,
 ) {
-    let path = status.selected_non_mut().path_str().unwrap_or_default();
     std::mem::drop(term);
     std::mem::drop(event_dispatcher);
     std::mem::drop(event_reader);
     std::mem::drop(status);
     std::mem::drop(display);
-    println!("{}", path)
+}
+
+/// Print the path on the stdout.
+pub fn print_on_quit(path_string: String) {
+    println!("{}", path_string)
 }
