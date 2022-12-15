@@ -192,12 +192,15 @@
 - [ ] NeedConfirmation should take a parameter, avoiding an attribute in tab/status.
 
 - [ ] publish
+
   - [ ] documentation
   - [ ] remove references to local thing
   - [ ] move strings to separate file
   - [ ] translations i18n
   - [ ] readme for user not developpers, move readme to dev.md
   - [ ] publish on cargo
+
+- [ ] keeps searching for same result. The only option atm is `/` (search), `down` one row, `enter` which is 3 keypresses
 
 ## BUGS
 

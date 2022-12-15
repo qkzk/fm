@@ -20,6 +20,16 @@ impl Completion {
         }
     }
 
+    /// The numbers of completion options currently found.
+    pub fn len(&self) -> usize {
+        self.proposals.len()
+    }
+
+    /// Is there any completion option ?
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Move the index to next element, cycling to 0.
     /// Does nothing if the list is empty.
     pub fn next(&mut self) {

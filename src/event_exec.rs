@@ -816,6 +816,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Move back in history to the last visited directory.
     pub fn event_back(tab: &mut Tab) -> FmResult<()> {
         if tab.history.visited.len() <= 1 {
             return Ok(());
@@ -827,6 +828,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Move to $HOME aka ~.
     pub fn event_home(tab: &mut Tab) -> FmResult<()> {
         let home_cow = shellexpand::tilde("~");
         let home: &str = home_cow.borrow();
@@ -836,7 +838,7 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn nvim_listen_address(tab: &Tab) -> Result<String, std::env::VarError> {
+    fn nvim_listen_address(tab: &Tab) -> Result<String, std::env::VarError> {
         if !tab.nvim_server.is_empty() {
             Ok(tab.nvim_server.clone())
         } else {
@@ -844,6 +846,9 @@ impl EventExec {
         }
     }
 
+    /// Execute a rename of the selected file.
+    /// It uses the `fs::rename` function and has the same limitations.
+    /// We only tries to rename in the same directory, so it shouldn't be a problem.
     pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
             return Err(FmError::new(
@@ -863,11 +868,19 @@ impl EventExec {
         tab.refresh_view()
     }
 
+    /// Creates a new file with input string as name.
+    /// We use `fs::File::create` internally, so if the file already exists,
+    /// it will be overwritten.
     pub fn exec_newfile(tab: &mut Tab) -> FmResult<()> {
         fs::File::create(tab.path_content.path.join(tab.input.string.clone()))?;
         tab.refresh_view()
     }
 
+    /// Creates a new directory with input string as name.
+    /// We use `fs::create_dir` internally so it will fail if the input string
+    /// is not an end point in the file system.
+    /// ie. the user can create `newdir` but not `newdir/newfolder`.
+    /// It will also fail if the directory already exists.
     pub fn exec_newdir(tab: &mut Tab) -> FmResult<()> {
         match fs::create_dir(tab.path_content.path.join(tab.input.string.clone())) {
             Ok(()) => (),
@@ -879,6 +892,10 @@ impl EventExec {
         tab.refresh_view()
     }
 
+    /// Tries to execute the selected file with an executable which is read
+    /// from the input string. It will fail silently if the executable can't
+    /// be found.
+    /// Optional parameters can be passed normally. ie. `"ls -lah"`
     pub fn exec_exec(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
             return Err(FmError::new(
@@ -893,7 +910,7 @@ impl EventExec {
             let path = &tab.path_content.selected_path_str().ok_or_else(|| {
                 FmError::new(
                     ErrorVariant::CUSTOM("exec exec".to_owned()),
-                    "path unreachable",
+                    &format!("can't find command {}", command),
                 )
             })?;
             args.push(path);
@@ -904,6 +921,8 @@ impl EventExec {
         Ok(())
     }
 
+    /// Executes a `dragon-drop` command on the selected file.
+    /// It obviously requires the `dragon-drop` command to be installed.
     pub fn event_drag_n_drop(status: &mut Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
         execute_in_child(
@@ -911,13 +930,18 @@ impl EventExec {
             &vec![&tab.path_content.selected_path_str().ok_or_else(|| {
                 FmError::new(
                     ErrorVariant::CUSTOM("event drag n drop".to_owned()),
-                    "path unreachable",
+                    "can't find dragon-drop in the system. Is the application installed?",
                 )
             })?],
         )?;
         Ok(())
     }
 
+    /// Executes a search in current folder, selecting the first file matching
+    /// the current completion proposition.
+    /// ie. If you typed `"jpg"` before, it will move to the first file
+    /// whose filename contains `"jpg"`.
+    /// The current order of files is used.
     pub fn exec_search(tab: &mut Tab) {
         tab.input.reset();
         let completed = tab.completion.current_proposition();
@@ -936,12 +960,17 @@ impl EventExec {
         tab.window.scroll_to(tab.line_index);
     }
 
+    /// Move to the folder typed by the user.
+    /// The first completion proposition is used, `~` expansion is done.
+    /// If no result were found, no cd is done and we go back to normal mode
+    /// silently.
     pub fn exec_goto(tab: &mut Tab) -> FmResult<()> {
-        let target_string = tab.input.string.clone();
+        if tab.completion.is_empty() {
+            return Ok(());
+        }
+        let completed = tab.completion.current_proposition();
+        let path = string_to_path(completed)?;
         tab.input.reset();
-        let expanded_cow_path = shellexpand::tilde(&target_string);
-        let expanded_target: &str = expanded_cow_path.borrow();
-        let path = std::fs::canonicalize(expanded_target)?;
         tab.history.push(&path);
         tab.path_content = PathContent::new(path, tab.show_hidden)?;
         tab.window.reset(tab.path_content.files.len());
@@ -1213,4 +1242,10 @@ impl EventExec {
     fn row_to_index(row: u16) -> usize {
         row as usize - RESERVED_ROWS
     }
+}
+
+fn string_to_path(path_string: String) -> FmResult<path::PathBuf> {
+    let expanded_cow_path = shellexpand::tilde(&path_string);
+    let expanded_target: &str = expanded_cow_path.borrow();
+    Ok(std::fs::canonicalize(expanded_target)?.to_path_buf())
 }
