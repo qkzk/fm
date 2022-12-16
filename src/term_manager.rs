@@ -151,7 +151,7 @@ impl<'a> WinTab<'a> {
             _ => {
                 vec![
                     format!("{:?}", tab.mode.clone()),
-                    format!("{}", tab.input.string.clone()),
+                    format!("{}", tab.input.string()),
                 ]
             }
         };

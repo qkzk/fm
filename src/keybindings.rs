@@ -30,6 +30,7 @@ impl Bindings {
             (Key::Left, ActionMap::MoveLeft),
             (Key::Right, ActionMap::MoveRight),
             (Key::Backspace, ActionMap::Backspace),
+            (Key::Delete, ActionMap::Delete),
             (Key::Home, ActionMap::KeyHome),
             (Key::End, ActionMap::End),
             (Key::PageDown, ActionMap::PageDown),
