@@ -212,6 +212,7 @@
 - [ ] log0, log1, log2 are created by log4rs in source folder
   - [x] using absolute path, files are created in the right place
   - [ ] the default file is still `log{}` instead of `log0`...
+- [ ] / (slash) in newfile, newdir crashes the app with strange errors
 
 ## Won't do
 
