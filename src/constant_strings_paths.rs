@@ -26,3 +26,5 @@ pub static DEFAULT_VECTORIAL_OPENER: (&str, bool) = ("inkscape", false);
 pub static DEFAULT_VIDEO_OPENER: (&str, bool) = ("mpv", false);
 /// Filepath of the opener config file
 pub static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
+/// Default program used to drag and drop files
+pub static DEFAULT_DRAGNDROP: &str = "dragon-drop";

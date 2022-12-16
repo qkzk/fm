@@ -5,6 +5,7 @@ use std::path;
 use std::path::PathBuf;
 
 use crate::bulkrename::Bulkrename;
+use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::content_window::{ContentWindow, RESERVED_ROWS};
 use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
@@ -934,7 +935,7 @@ impl EventExec {
     pub fn event_drag_n_drop(status: &mut Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
         execute_in_child(
-            "dragon-drop",
+            DEFAULT_DRAGNDROP,
             &vec![&tab.path_content.selected_path_str().ok_or_else(|| {
                 FmError::new(
                     ErrorVariant::CUSTOM("event drag n drop".to_owned()),
