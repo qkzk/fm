@@ -30,7 +30,7 @@ fm
 or with a path :
 
 ```sh
-fm ~/Downloads
+fm -p ~/Downloads
 ```
 
 ## Features
@@ -41,7 +41,7 @@ fm ~/Downloads
 - Copy / move / symlinks / delete with c, p, s, x
 - Create files, directory, rename with n, d, r
 - Open a new shell in this directory with s
-- Flag a bunch of file, change panel with tab and move/copy them !
+- Flag a bunch of file, change panel with TAB and move/copy them !
 - Many ways to jump somewhere :
 
   - g: type the full address (with completion enabled),
@@ -63,13 +63,29 @@ Most of those features are inspired by ranger and alternatives (Midnight command
 
 ## Neovim filepicker
 
-Use this keybind in neovim to start fm. It will send the neovim RPC server address as a command line argument.
 When you open a file with i, it will send an event to Neovim and open it in a new buffer.
+Recent versions of neovim export the RPC server address to an environement variable which is read if no argument
+is provided.
+
+It should always work, even outside of neovim.
+
+It's also possible to pass the RPC server address with `fm -s address`.
 
 ## cd on quit
 
 When leaving fm, it prints the last visited path.
 If you add this function to your `zshrc` / `bashrc`, it will listen to stdout and cd to the last dir.
+
+```bash
+function f() {
+  # start the fm filemanager, enabling cd on quit.
+  dest=$(fm $@)
+  if [[ ! -z $dest ]]
+  then
+   cd $dest
+  fi
+}
+```
 
 ## Default keybindings
 
