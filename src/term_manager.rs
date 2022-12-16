@@ -206,7 +206,25 @@ impl<'a> WinTab<'a> {
     /// Display a cursor in the top row, at a correct column.
     fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
-            Mode::Normal | Mode::Help | Mode::Marks(_) => {
+            Mode::Rename
+            | Mode::Newdir
+            | Mode::Newfile
+            | Mode::Exec
+            | Mode::Goto
+            | Mode::Chmod
+            | Mode::Search
+            | Mode::Filter
+            | Mode::RegexMatch => {
+                canvas.show_cursor(true)?;
+                canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
+            }
+            Mode::Normal
+            | Mode::Help
+            | Mode::Marks(_)
+            | Mode::Preview
+            | Mode::Shortcut
+            | Mode::Jump
+            | Mode::History => {
                 canvas.show_cursor(false)?;
             }
             Mode::NeedConfirmation => {
@@ -214,9 +232,6 @@ impl<'a> WinTab<'a> {
             }
             Mode::Sort => {
                 canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
-            }
-            _ => {
-                canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
             }
         }
         Ok(())
