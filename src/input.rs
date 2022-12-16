@@ -1,15 +1,15 @@
-/// Holds a string typed by the user and the cursor position.
-/// Methods allow mutation of this string and movement of the cursor.
+/// Holds the chars typed by the user and the cursor position.
+/// Methods allow mutation of this content and movement of the cursor.
 #[derive(Clone, Default)]
 pub struct Input {
-    /// The input string typed by the user
+    /// The input typed by the user
     chars: Vec<char>,
     /// The index of the cursor in that string
     pub cursor_index: usize,
 }
 
 impl Input {
-    /// Empty the string and move the cursor to start.
+    /// Empty the content and move the cursor to start.
     pub fn reset(&mut self) {
         self.chars.clear();
         self.cursor_index = 0;
@@ -60,14 +60,12 @@ impl Input {
         self.chars = self.chars.iter().copied().take(self.cursor_index).collect();
     }
 
-    /// Returns the string typed by the user.
+    /// Returns the content typed by the user as a String.
     pub fn string(&self) -> String {
         self.chars.iter().collect()
     }
 
-    /// Insert an utf-8 char into the string at cursor index.
-    /// Non ascii chars aren't supported in FM since it's a pain
-    /// to know where you're in the string.
+    /// Insert an utf-8 char into the input at cursor index.
     pub fn insert(&mut self, c: char) {
         self.chars.insert(self.cursor_index, c);
         self.cursor_index += 1
@@ -79,7 +77,8 @@ impl Input {
         self.cursor_index = 0;
     }
 
-    /// replace the string with the content
+    /// Replace the content with the new content.
+    /// Put the cursor at the end.
     pub fn replace(&mut self, content: String) {
         self.chars = content.chars().collect();
         self.cursor_index = self.len()
