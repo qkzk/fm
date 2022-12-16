@@ -867,6 +867,7 @@ dependencies = [
  "pdf-extract",
  "rand",
  "regex",
+ "sanitize-filename",
  "serde_yaml 0.9.13",
  "shellexpand",
  "skim",
@@ -1904,6 +1905,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "sanitize-filename"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08c502bdb638f1396509467cb0580ef3b29aa2a45c5d43e5d84928241280296c"
+dependencies = [
+ "lazy_static",
+ "regex",
 ]
 
 [[package]]

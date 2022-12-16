@@ -855,6 +855,7 @@ impl EventExec {
     /// Execute a rename of the selected file.
     /// It uses the `fs::rename` function and has the same limitations.
     /// We only tries to rename in the same directory, so it shouldn't be a problem.
+    /// Filename is sanitized before processing.
     pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
             return Err(FmError::new(
@@ -872,7 +873,7 @@ impl EventExec {
             tab.path_content
                 .path
                 .to_path_buf()
-                .join(&tab.input.string()),
+                .join(&sanitize_filename::sanitize(tab.input.string())),
         )?;
         tab.refresh_view()
     }
@@ -880,8 +881,13 @@ impl EventExec {
     /// Creates a new file with input string as name.
     /// We use `fs::File::create` internally, so if the file already exists,
     /// it will be overwritten.
+    /// Filename is sanitized before processing.
     pub fn exec_newfile(tab: &mut Tab) -> FmResult<()> {
-        fs::File::create(tab.path_content.path.join(tab.input.string()))?;
+        fs::File::create(
+            tab.path_content
+                .path
+                .join(sanitize_filename::sanitize(tab.input.string())),
+        )?;
         tab.refresh_view()
     }
 
@@ -890,8 +896,13 @@ impl EventExec {
     /// is not an end point in the file system.
     /// ie. the user can create `newdir` but not `newdir/newfolder`.
     /// It will also fail if the directory already exists.
+    /// Directory name is sanitized before processing.
     pub fn exec_newdir(tab: &mut Tab) -> FmResult<()> {
-        match fs::create_dir(tab.path_content.path.join(tab.input.string())) {
+        match fs::create_dir(
+            tab.path_content
+                .path
+                .join(sanitize_filename::sanitize(tab.input.string())),
+        ) {
             Ok(()) => (),
             Err(e) => match e.kind() {
                 std::io::ErrorKind::AlreadyExists => (),

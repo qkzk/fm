@@ -1,6 +1,5 @@
-use std::fs;
-
-use crate::{fileinfo::PathContent, fm_error::FmResult};
+use crate::fileinfo::PathContent;
+use crate::fm_error::FmResult;
 
 /// Holds a `Vec<String>` of possible completions and an `usize` index
 /// showing where the user is in the vec.
@@ -63,9 +62,14 @@ impl Completion {
 
     /// Updates the proposition with a new `Vec`.
     /// Reset the index to 0.
-    pub fn update(&mut self, proposals: Vec<String>) {
+    fn update(&mut self, proposals: Vec<String>) {
         self.index = 0;
         self.proposals = proposals;
+    }
+
+    fn extend(&mut self, proposals: Vec<String>) {
+        self.index = 0;
+        self.proposals.extend_from_slice(&proposals)
     }
 
     /// Empty the proposals `Vec`.
@@ -77,7 +81,7 @@ impl Completion {
 
     /// Goto completion.
     /// Looks for the valid path completing what the user typed.
-    pub fn goto(&mut self, input_string: &str) -> FmResult<()> {
+    pub fn goto(&mut self, input_string: &str, current_path: Option<String>) -> FmResult<()> {
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
             return Ok(());
@@ -95,6 +99,20 @@ impl Completion {
                 )
             }
         };
+
+        if let Some(valid_path) = current_path {
+            if let Ok(entries) = fs::read_dir(valid_path) {
+                self.extend(
+                    entries
+                        .filter_map(|e| e.ok())
+                        .filter(|e| {
+                            e.file_type().unwrap().is_dir() && filename_startswith(e, &last_name)
+                        })
+                        .map(|e| e.path().to_string_lossy().into_owned())
+                        .collect(),
+                )
+            }
+        }
         Ok(())
     }
 

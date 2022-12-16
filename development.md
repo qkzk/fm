@@ -171,6 +171,7 @@
       Don't use non ascii chars atm. It's hard to navigate in a string of non ascii chars and
       would require another crate.
 - [x] non ascii char support. ie graphemes. Simply use a vec of chars and collect it when needed.
+- [x] Fix: / (slash) in newfile, newdir crashes the app with strange errors. Use sanitize_filename
 
 ## TODO
 
@@ -205,6 +206,7 @@
   - [ ] publish on cargo
 
 - [ ] keeps searching for same result. The only option atm is `/` (search), `down` one row, `enter` which is 3 keypresses
+- [ ] go to relative path. ATM it completes absolute path only
 
 ## BUGS
 
@@ -212,7 +214,6 @@
 - [ ] log0, log1, log2 are created by log4rs in source folder
   - [x] using absolute path, files are created in the right place
   - [ ] the default file is still `log{}` instead of `log0`...
-- [ ] / (slash) in newfile, newdir crashes the app with strange errors
 
 ## Won't do
 

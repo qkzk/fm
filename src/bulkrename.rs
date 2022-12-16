@@ -30,6 +30,7 @@ impl<'a> Bulkrename<'a> {
     /// Rename the files.
     /// The tempory file is opened with our `Opener` crate, allowing us
     /// to use the default text file editor.
+    /// Filenames are sanitized before processing.
     pub fn rename(&mut self, opener: &Opener) -> FmResult<()> {
         self.write_original_names()?;
         let original_modification = Self::get_modified_date(&self.temp_file)?;
@@ -134,7 +135,7 @@ impl<'a> Bulkrename<'a> {
 
     fn rename_all(&self, new_filenames: Vec<String>) -> FmResult<()> {
         for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
-            self.rename_file(path, filename)?
+            self.rename_file(path, &sanitize_filename::sanitize(filename))?
         }
         Ok(())
     }
