@@ -473,6 +473,9 @@ impl Display {
         Self { term, colors }
     }
 
+    /// Used to force a display of the cursor before leaving the application.
+    /// Most of the times we don't need a cursor and it's hidden. We have to
+    /// do it unless the shell won't display a cursor anymore.
     pub fn show_cursor(&self) -> FmResult<()> {
         Ok(self.term.show_cursor(true)?)
     }
