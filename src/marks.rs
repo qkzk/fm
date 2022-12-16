@@ -3,9 +3,8 @@ use std::fs::File;
 use std::io::{self, BufRead, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
+use crate::constant_strings_paths::MARKS_FILEPATH;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
-
-static MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 
 /// Holds the marks created by the user.
 /// It's a map between any char (except :) and a PathBuf.

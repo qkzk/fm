@@ -4,10 +4,9 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
+use crate::constant_strings_paths::TMP_FOLDER_PATH;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::opener::Opener;
-
-static TMP_FOLDER: &str = "/tmp";
 
 /// Struct holding informations about files about to be renamed.
 /// We only need to know which are the original filenames and which
@@ -71,7 +70,7 @@ impl<'a> Bulkrename<'a> {
     }
 
     fn generate_random_filepath() -> FmResult<PathBuf> {
-        let mut filepath = PathBuf::from(&TMP_FOLDER);
+        let mut filepath = PathBuf::from(&TMP_FOLDER_PATH);
         filepath.push(Self::random_name());
         Ok(filepath)
     }

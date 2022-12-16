@@ -7,6 +7,10 @@ use log::info;
 use serde_yaml;
 
 use crate::compress::decompress;
+use crate::constant_strings_paths::{
+    DEFAULT_AUDIO_OPENER, DEFAULT_IMAGE_OPENER, DEFAULT_OFFICE_OPENER, DEFAULT_OPENER,
+    DEFAULT_READABLE_OPENER, DEFAULT_TEXT_OPENER, DEFAULT_VECTORIAL_OPENER, DEFAULT_VIDEO_OPENER,
+};
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
 fn find_it<P>(exe_name: P) -> Option<PathBuf>
@@ -85,29 +89,35 @@ impl OpenerAssociation {
     fn new() -> Self {
         Self {
             association: HashMap::from([
-                (ExtensionKind::Audio, OpenerInfo::external("mocp", true)),
+                (
+                    ExtensionKind::Audio,
+                    OpenerInfo::external(DEFAULT_AUDIO_OPENER),
+                ),
                 (
                     ExtensionKind::Bitmap,
-                    OpenerInfo::external("viewnior", false),
+                    OpenerInfo::external(DEFAULT_IMAGE_OPENER),
                 ),
                 (
                     ExtensionKind::Office,
-                    OpenerInfo::external("libreoffice", false),
+                    OpenerInfo::external(DEFAULT_OFFICE_OPENER),
                 ),
                 (
                     ExtensionKind::Readable,
-                    OpenerInfo::external("zathura", false),
+                    OpenerInfo::external(DEFAULT_READABLE_OPENER),
                 ),
-                (ExtensionKind::Text, OpenerInfo::external("nvim", true)),
                 (
-                    ExtensionKind::Default,
-                    OpenerInfo::external("xdg-open", false),
+                    ExtensionKind::Text,
+                    OpenerInfo::external(DEFAULT_TEXT_OPENER),
                 ),
+                (ExtensionKind::Default, OpenerInfo::external(DEFAULT_OPENER)),
                 (
                     ExtensionKind::Vectorial,
-                    OpenerInfo::external("inkscape", false),
+                    OpenerInfo::external(DEFAULT_VECTORIAL_OPENER),
                 ),
-                (ExtensionKind::Video, OpenerInfo::external("mpv", false)),
+                (
+                    ExtensionKind::Video,
+                    OpenerInfo::external(DEFAULT_VIDEO_OPENER),
+                ),
                 (
                     ExtensionKind::Internal(InternalVariant::Decompress),
                     OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::Decompress))
@@ -176,7 +186,9 @@ pub struct OpenerInfo {
 }
 
 impl OpenerInfo {
-    fn external(opener: &str, use_term: bool) -> Self {
+    fn external(opener_pair: (&str, bool)) -> Self {
+        let opener = opener_pair.0;
+        let use_term = opener_pair.1;
         Self {
             external_program: Some(opener.to_owned()),
             internal_variant: None,
@@ -199,10 +211,10 @@ impl OpenerInfo {
     }
 
     fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
-        Some(Self::external(
+        Some(Self::external((
             yaml.get("opener")?.as_str()?,
             yaml.get("use_term")?.as_bool()?,
-        ))
+        )))
     }
 }
 
@@ -224,7 +236,7 @@ impl Opener {
         Self {
             terminal: terminal.to_owned(),
             opener_association: OpenerAssociation::new(),
-            default_opener: OpenerInfo::external("xdg-open", false),
+            default_opener: OpenerInfo::external(DEFAULT_OPENER),
         }
     }
 

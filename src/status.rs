@@ -12,6 +12,7 @@ use tuikit::term::Term;
 use crate::args::Args;
 use crate::color_cache::ColorCache;
 use crate::config::Config;
+use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::marks::Marks;
@@ -19,8 +20,6 @@ use crate::opener::{load_opener, Opener};
 use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::utils::disk_space;
-
-static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
 
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.

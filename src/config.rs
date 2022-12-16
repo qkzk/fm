@@ -3,6 +3,7 @@ use std::{fs::File, path};
 use serde_yaml;
 use tuikit::attr::Color;
 
+use crate::constant_strings_paths::DEFAULT_TERMINAL_APPLICATION;
 use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
 
@@ -25,7 +26,7 @@ impl Config {
     fn new() -> Self {
         Self {
             colors: Colors::default(),
-            terminal: "st".to_owned(),
+            terminal: DEFAULT_TERMINAL_APPLICATION.to_owned(),
             binds: Bindings::default(),
         }
     }

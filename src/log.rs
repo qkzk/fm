@@ -12,9 +12,8 @@ use log4rs::{
     Handle,
 };
 
+use crate::constant_strings_paths::LOG_PATH;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
-
-static LOG_PATH: &str = "~/.config/fm/fm{}";
 
 fn create_log_folder(log_path: &str) -> FmResult<String> {
     let path_buf = std::path::PathBuf::from(log_path);

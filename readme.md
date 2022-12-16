@@ -1,235 +1,142 @@
-# FM : Dired like File Manager
+# FM: a dired inspired TUI file manager
 
-## DONE
+Written in rust.
 
-- [x] filetype
-  - [x] identifier filetype cf TODO
-  - [x] colorier selon filetype cf TODO
-- [x] scroll
-- [x] load from anywhere
-- [x] args : dirpath & show hidden (-a)
-- [x] toggle hidden
-- [x] spawn a shell, open with xdg-open
-- [x] manipuler :
+```
+FM : dired like file manager
 
-  [fuzzy finder in tuiki](https://github.com/lotabout/skim/blob/master/src/input.rs)
 
-  - [x] flagged
-  - [x] rename
-  - [x] supprimer
-  - [x] insérer fichier / dossier
-  - [x] chmod parsed from octal
-  - [x] cut copy paste
-  - [x] spawn shell in dir
-  - [x] open file with xdg-open
-  - [x] open file with custom command
+Usage: fm [OPTIONS]
 
-- [x] usage
-- [x] help menu
-- [x] custom config file
-- [x] custom keybindings
-- [x] GOTO mode
-- [x] batch chmod
-- [x] mouse support
-  - [x] left move index to this file
-  - [x] right on dir enter
-  - [x] right on file open
-  - [x] up / down
-- [x] links are followed
-- [x] resize (i guess it's an event like in curse) seems to work already
-- [x] dirsymbol for sockets and whatever
-- [x] refactor FileInfo, use an enum
-- [x] '\*' flag all
-- [x] v reverse flags
-- [x] allow '~' in GOTO mode
-- [x] regex
-  - [x] search
-  - [x] mark multiple files
-- [x] jump pour next flagged file
-- [x] user config file
-- [x] completion
-  - workflow in [#10](https://github.com/qkzk/fm/issues/10)
-  - [x] in goto mode,
-  - [x] exec mode,
-  - [x] searchmode
-- [x] confirmation for cut/paste, copy/paste, delete
-- [x] bugfix: strange behavior after leaving a mode, wrong files are flagged - not in the right index or something
-- [x] bugfix: can navigate outside file list
-- [x] sorting : filename, size, date, type
-- [x] refactor key(char) -> action
-  - [x] enum for actions
-  - [x] hmap for keybindings
-  - [x] key -> action -> status.update(action)
-  - [x] association with match and clear code
-  - [x] dissociate keybinding from status update
-- [x] fix: cursor is hidden before leaving the application
-- [x] create a symlink to flagged files
-- [x] preview a file with P
-  - [x] preview navigation, integrate into file_window,
-  - [x] preview content in head not stack
-  - [x] syntax highlighting with [syntect](https://github.com/trishume/syntect)
-  - [x] binary preview
-- [x] history of visited files: use a Vec as a stack [collections](https://doc.rust-lang.org/std/collections/index.html)
-- [x] shortcuts
-- [x] multiple tabs: TAB to switch, DEL to drop, INS to create. Flagged files are shared between tabs.
-- [x] rename file_window to content_window ?
-- [x] improve the top row
-- [x] confirmation display shows a list of edited files
-- [x] integrate fzf or another fuzzy finder
-- [x] custom a file opener
-- [x] bulkrename @ ranger
-- [x] scrollable help
-- [x] user defined marks ; saved and read from a file.
-- [x] refactor: main should return result, have everything raise errors
-- [x] stable colors per extension with caching
-- [x] BUGFIX creating an already existing dir / file crashes
-- [x] display link destination
-- [x] copy filename/filepath to clipboard with ctrl+c & ctrl+p
-- [x] filters by ext / name / only dirs / all (aka no filter)
-- [x] FIX: broken links aren't shown
-- [x] COPY improvment
-  - [x] async/threaded copy -- move & delete should be quick enough
-  - [x] progress bar for copy
-  - [x] move/copy progress displayed, nothing else
-  - [x] display copy/move with style, refresh when done (reset file position)
-- [x] FIX: opener crash, right on file crash when in nvim toggleterm
-- [x] FIX: marks saved without newlines
-- [x] drag & drop: exec and find dragon-drop
-- [x] optional numbers in preview
-- [x] logging with rotating log files.
-- [x] git integration in first line of normal mode.
-- [x] display space used (only the current folder, no recursive total)
-- [x] display the free space
-- [x] reduce release binary size a bit (12M -> 6M)
-- [x] FIX: disk space is always showing the same disk
-- [x] Colored first line
-- [x] Resize immediatly
-- [x] display should be "terminal manager" and it shouldn't handle anything else (git, available space etc.)
-- [x] preview EXIF for image files
-- [x] media info for video file / audio file
-- [x] fix wrong position of cursor
-- [x] improve tabs interface
-  - [x] tab bar
-  - [x] digit move to respective tab
-  - [x] <TAB> creates a new tab if only one
-  - [x] <BACKTAB> moves to previous tab
-  - [x] hardcoded limit to 10 tabs
-- [x] print selected path on quit
-- [x] Alt+d call dragon-drop on selected file
-- [x] cd on quit:
+Options:
+  -p, --path <PATH>      Starting path [default: .]
+  -s, --server <SERVER>  Nvim server [default: ]
+  -h, --help             Print help information
+  -V, --version          Print version information
+```
 
-  fm prints its current directory when exiting
+## Screenshots
 
-  1. Install a link to `fm` in your path or copy the binary
+## Installation
 
-  2. Add this to .zshrc :
+## Usage
 
-     ```bash
-     function f() {
-       dest=$(fm $@)
-       if [[ ! -z $dest ]]
-       then
-         cd $dest
-       fi
-     }
-     ```
+Start it from command line with no parameters :
 
-- [x] Refactor preview using a common trait & macros
-- [x] fix previewing non normal file hangs by preventing previewing...
-- [x] send a notification when files are copied or moved
-- [x] regex matcher (w) updates as you type
-- [x] help displays current keybindings
-- [x] dual pane. Only two tabs
-- [x] allow multiple keybindings for same action
-- [x] single pane if width is low
-- [x] disks:
-  - [x] simplify disk space read,
-  - [x] hold a sys reference in status
-  - [x] add shortcut to mount points
-- [x] dissociate action from status / tab
-- [x] opener fallback to xdg-open, capture stderr & stdout
-- [x] toggle between simple & complete output
+```sh
+fm
+```
 
-- [x] make every key configurable
-  - [x] syntax able to parse any combination of key
-  - [x] config parser -> `Keybindings { binds: HashMap<Key, ActionMap>}`
-  - [x] help display
-  - [x] link any event to actionmap
-  - [x] display every event in help
-- [x] FIX. displaying marks also shows a char from previous mode at end of line. Don't add "\n"...
-- [x] FIX: open, visite, go back then display history -> crash.
-- [x] FIX wrong pattern in mark file caused crash. Rewrite file if wrong pattern found.
-- [x] Compressed files:
-  - [x] Opening a supported compressed file decompress it.
-  - [x] Preview a compressed file displays its content
-- [x] preview images
-  - [x] display an image as a pixeled thumbnail. IDK how to integrate ueberzug-rs / ueberzug into tuikit so it's an acceptable solution. The result is ugly.
-  - [x] default preview exif
-  - [x] char('T') for thumbnail
-- [x] togglable dual panes... with default mode for low size
+or with a path :
 
-## TODO
+```sh
+fm ~/Downloads
+```
 
-- [ ] remote control
-  - [x] filepicker
-        requires the nvim-remote rust crate installed
-  - [ ] listen to stdin (rcv etc.)
-    - [ ] follow change directory
-    - [ ] when called from a file buffer in nvim, open with this file selected
-  - [ ] nvim plugin - set a serverstart with a listenaddress, send it to fm
-  - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
-  - https://neovim.io/doc/user/api.html
-  - [ ] $NVIM_LISTEN_ADDRESS isn't always set on nbim startup ; can be set from nvim before running... then sent to fm with some args
-  - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
-- [ ] display / event separation. use async and message passing between coroutines
-- [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
+## Features
 
-- [ ] plugins
+- Navigate with the arrows or the mouse (left select, right open, wheel)
+- Open a file with o, enter or right click
+- Execute a file with a custom command with e
+- Copy / move / symlinks / delete with c, p, s, x
+- Create files, directory, rename with n, d, r
+- Open a new shell in this directory with s
+- Flag a bunch of file, change panel with tab and move/copy them !
+- Many ways to jump somewhere :
 
-  - which language ?
-  - what for ?
+  - g: type the full address (with completion enabled),
+  - G: a predefined shortcut (default root folders, home and mount points),
+  - j: by jumping to a flagged file,
+  - ': by creating your own marks and jumping to them
 
-- [ ] NeedConfirmation should take a parameter, avoiding an attribute in tab/status.
+- Change display, removing details or displaying a single pane.
+- Preview most of files (text, highlighted code, binary, pdf, exif details, video/audio details, archives) with P
+- Decompress an archive with Ctrl+x
+- Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p
+- Rename a bunch of file with B. Flag files, B, edit the names and save the file. The renaming is done.
+- Use the integrated fuzzy finder (forked version of skim, an fzf clone) with Ctrl+f to navigate quickly
+- Filter the view (by extension, name, directory only, all files) with F
+- Find files with / (with completion), flag files matching a regex with w
+- Detect removable disks automatically and jump to them in a few keystrokes (G, up, enter)
 
-- [ ] publish
+Most of those features are inspired by ranger and alternatives (Midnight commander), the look and feel by dired.
 
-  - [ ] documentation
-  - [ ] remove references to local thing
-  - [ ] move strings to separate file
-  - [ ] translations i18n
-  - [ ] readme for user not developpers, move readme to dev.md
-  - [ ] publish on cargo
+## Neovim filepicker
 
-- [ ] keeps searching for same result. The only option atm is `/` (search), `down` one row, `enter` which is 3 keypresses
+Use this keybind in neovim to start fm. It will send the neovim RPC server address as a command line argument.
+When you open a file with i, it will send an event to Neovim and open it in a new buffer.
 
-## BUGS
+## cd on quit
 
-- [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
-- [ ] log0, log1, log2 are created by log4rs in source folder
-  - [x] using absolute path, files are created in the right place
-  - [ ] the default file is still `log{}` instead of `log0`...
-- [ ] non ascii typed symbols crash the application.
+When leaving fm, it prints the last visited path.
+If you add this function to your `zshrc` / `bashrc`, it will listen to stdout and cd to the last dir.
 
-## Won't do
+## Default keybindings
 
-### auto stuff
+Press `h` by default to display the help.
+Your current keybindings are shown. Here are the default ones.
 
-All of this stuff can be done easily through a shell command or automatically. I'm not sure I wan't to bloat fm with it.
+````
+fm: a dired like file manager. Keybindings.
+                                                                  ```
 
-- [ ] auto mount usb keys ??? [rusb](https://github.com/a1ien/rusb) -- just use udiskie (started automatically) and udiskie-umount /mount/point
-      just use udiskie
-- [ ] mtp... but fast [libmtp.rs](https://docs.rs/libmtp-rs/0.7.7/libmtp_rs/)
-- [ ] connexion to remote servers [removefs](https://crates.io/crates/remotefs) [termscp](https://crates.io/crates/termscp)
+     Char('q'):      quit                                         ## Configuration
+     Char('h'):      help
+                                                                  Every configuration file is saved in `~/.config/fm/`
+     - Navigation -
+     Left:           cd to parent directory                       You can configure :
+     Right:          cd to child directory
+     Up:             one line up                                  - **Colors** for non standard file types (directory, socket, char device, block device)
+     Down:           one line down                                - **Keybindings**. Some should be left as they are, but all keybindings can be configured.
+     Home:           go to first line                               use the provided config file as a default.
+     End:            go to last line                                Multiple keys can be bound the the same action.
+     PageUp:         10 lines up                                  - **Openers**. fm tries to be smart and open some files with a standard program.
+     PageDown:       10 lines down                                  You can change that and use whatever installed program you want. Specify if it
+     Tab:            cycle tab                                      requires a shell to be run (like neovim) or not (like subl).
+                                                                  - **Marks**. Users can save about 100 differents marks to jump to, they're saved
+     - Actions -                                                    in your marks.config file. It's easier to let fm manage your marks, but if
+     Char('D'):      toggle dual pane - if the width is sufficiant  you made a mess or want to start over, simply delete the file or a single line.
+     Char('a'):      toggle hidden
+     Char('s'):      shell in current directory                   ## Neovim file picker
+     Char('o'):      open the selected file
+     Char('i'):      open in current nvim session                 If you bind this key to start fm, it will send it its RPC server address to fm
+     Char('P'):      preview this file                            as an argument.
+     Char('T'):      display a thumbnail of an image
+     Char('-'):      move back to previous dir                    When you execute `NvimFilePicker` on a file, fm will send an event to this
+     Char('~'):      move to $HOME                                address and it should open the file.
+     Char('M'):      mark current path
+     Char('\''):     jump to a mark                               ## cd on quit
+     Ctrl('e'):      toggle metadata on files
+     Ctrl('f'):      fuzzy finder                                 When the application is stopped normally, it prints the last visited path on
+     Ctrl('r'):      refresh view                                 stdout.
+     Ctrl('c'):      copy filename to clipboard
+     Ctrl('p'):      copy filepath to clipboard                   If you add the following function to your .zshrc file, you will cd on quit
+     Alt('d'):       dragon-drop selected file                    to this directory.
 
-  - ssh
-  - sftp
-  - ftp
-  - google drive
+     - Action on flagged files -                                  ## Contribution
+     Char(' '):      toggle flag on a file
+     Char('*'):      flag all
+     Char('u'):      clear flags
+     Char('v'):      reverse flags
+     Char('c'):      copy to current dir
+     Char('p'):      move to current dir
+     Char('x'):      delete files
+     Char('l'):      symlink files
+     Char('B'):      bulkrename files
 
-  or just use sshfs...
-
-## Sources
-
-### CLI
-
-- [CLI crates](https://lib.rs/command-line-interface)
+     - MODES -
+     Char('m'):      CHMOD
+     Char('e'):      EXEC
+     Char('d'):      NEWDIR
+     Char('n'):      NEWFILE
+     Char('r'):      RENAME
+     Char('g'):      GOTO
+     Char('w'):      REGEXMATCH
+     Char('j'):      JUMP
+     Char('O'):      SORT
+     Char('H'):      HISTORY
+     Char('G'):      SHORTCUT
+     Char('/'):      SEARCH
+     Char('F'):      FILTER
+         (by name "n name", by ext "e ext", only directories d or all for reset)
+````

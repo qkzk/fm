@@ -5,6 +5,7 @@ use log::info;
 
 use fm::args::Args;
 use fm::config::load_config;
+use fm::constant_strings_paths::CONFIG_PATH;
 use fm::event_dispatch::EventDispatcher;
 use fm::fm_error::FmResult;
 use fm::help::Help;
@@ -12,8 +13,6 @@ use fm::log::set_logger;
 use fm::status::Status;
 use fm::term_manager::{Display, EventReader};
 use fm::utils::{drop_everything, init_term, print_on_quit};
-
-static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 
 /// Main function
 /// Init the status and display and listen to events (keyboard, mouse, resize, custom...).
