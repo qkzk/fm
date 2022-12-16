@@ -225,11 +225,11 @@ impl EventExec {
     /// Nothing is done if the user typed nothing or an invalid permission like
     /// 955.
     pub fn exec_chmod(status: &mut Status) -> FmResult<()> {
-        if status.selected().input.string.is_empty() {
+        if status.selected().input.is_empty() {
             return Ok(());
         }
         let permissions: u32 =
-            u32::from_str_radix(&status.selected().input.string, 8).unwrap_or(0_u32);
+            u32::from_str_radix(&status.selected().input.string(), 8).unwrap_or(0_u32);
         if permissions <= Status::MAX_PERMISSIONS {
             for path in status.flagged.iter() {
                 Status::set_permissions(path.clone(), permissions)?
@@ -253,7 +253,7 @@ impl EventExec {
     /// If the user selected a directory, we jump inside it.
     /// Otherwise, we jump to the parent and select the file.
     pub fn exec_jump(status: &mut Status) -> FmResult<()> {
-        status.selected().input.string.clear();
+        status.selected().input.clear();
         let jump_list: Vec<&PathBuf> = status.flagged.iter().collect();
         let jump_target = jump_list[status.jump_index].clone();
         let target_dir = match jump_target.parent() {
@@ -868,7 +868,10 @@ impl EventExec {
                     "File not found",
                 )
             })?,
-            tab.path_content.path.to_path_buf().join(&tab.input.string),
+            tab.path_content
+                .path
+                .to_path_buf()
+                .join(&tab.input.string()),
         )?;
         tab.refresh_view()
     }
@@ -877,7 +880,7 @@ impl EventExec {
     /// We use `fs::File::create` internally, so if the file already exists,
     /// it will be overwritten.
     pub fn exec_newfile(tab: &mut Tab) -> FmResult<()> {
-        fs::File::create(tab.path_content.path.join(tab.input.string.clone()))?;
+        fs::File::create(tab.path_content.path.join(tab.input.string()))?;
         tab.refresh_view()
     }
 
@@ -887,7 +890,7 @@ impl EventExec {
     /// ie. the user can create `newdir` but not `newdir/newfolder`.
     /// It will also fail if the directory already exists.
     pub fn exec_newdir(tab: &mut Tab) -> FmResult<()> {
-        match fs::create_dir(tab.path_content.path.join(tab.input.string.clone())) {
+        match fs::create_dir(tab.path_content.path.join(tab.input.string())) {
             Ok(()) => (),
             Err(e) => match e.kind() {
                 std::io::ErrorKind::AlreadyExists => (),
@@ -908,7 +911,7 @@ impl EventExec {
                 "empty directory",
             ));
         }
-        let exec_command = tab.input.string.clone();
+        let exec_command = tab.input.string();
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         if std::path::Path::new(command).exists() {
@@ -1012,7 +1015,7 @@ impl EventExec {
     /// Apply a filter to the displayed files.
     /// See `crate::filter` for more details.
     pub fn exec_filter(tab: &mut Tab) -> FmResult<()> {
-        let filter = FilterKind::from_input(&tab.input.string);
+        let filter = FilterKind::from_input(&tab.input.string());
         tab.path_content.set_filter(filter);
         tab.input.reset();
         tab.path_content.reset_files()?;

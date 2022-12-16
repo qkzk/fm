@@ -87,11 +87,11 @@ impl Tab {
     /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> FmResult<()> {
         match self.mode {
-            Mode::Goto => self.completion.goto(&self.input.string),
-            Mode::Exec => self.completion.exec(&self.input.string),
+            Mode::Goto => self.completion.goto(&self.input.string()),
+            Mode::Exec => self.completion.exec(&self.input.string()),
             Mode::Search => self
                 .completion
-                .search(&self.input.string, &self.path_content),
+                .search(&self.input.string(), &self.path_content),
             _ => Ok(()),
         }
     }

@@ -224,11 +224,11 @@ impl Status {
 
     /// Flag every file matching a typed regex.
     pub fn select_from_regex(&mut self) -> Result<(), regex::Error> {
-        if self.selected_non_mut().input.string.is_empty() {
+        if self.selected_non_mut().input.string().is_empty() {
             return Ok(());
         }
         self.flagged.clear();
-        let re = Regex::new(&self.selected_non_mut().input.string)?;
+        let re = Regex::new(&self.selected_non_mut().input.string())?;
         for file in self.tabs[self.index].path_content.files.iter() {
             if re.is_match(&file.path.to_string_lossy()) {
                 self.flagged.insert(file.path.clone());
