@@ -170,6 +170,7 @@
 - [x] FIX: non ascii typed symbols crash the application.
       Don't use non ascii chars atm. It's hard to navigate in a string of non ascii chars and
       would require another crate.
+- [x] non ascii char support. ie graphemes. Simply use a vec of chars and collect it when needed.
 
 ## TODO
 
@@ -204,7 +205,6 @@
   - [ ] publish on cargo
 
 - [ ] keeps searching for same result. The only option atm is `/` (search), `down` one row, `enter` which is 3 keypresses
-- [ ] non ascii char support. ie graphemes
 
 ## BUGS
 
