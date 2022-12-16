@@ -167,6 +167,9 @@
   - [x] default preview exif
   - [x] char('T') for thumbnail
 - [x] togglable dual panes... with default mode for low size
+- [x] FIX: non ascii typed symbols crash the application.
+      Don't use non ascii chars atm. It's hard to navigate in a string of non ascii chars and
+      would require another crate.
 
 ## TODO
 
@@ -201,6 +204,7 @@
   - [ ] publish on cargo
 
 - [ ] keeps searching for same result. The only option atm is `/` (search), `down` one row, `enter` which is 3 keypresses
+- [ ] non ascii char support. ie graphemes
 
 ## BUGS
 
@@ -208,7 +212,6 @@
 - [ ] log0, log1, log2 are created by log4rs in source folder
   - [x] using absolute path, files are created in the right place
   - [ ] the default file is still `log{}` instead of `log0`...
-- [ ] non ascii typed symbols crash the application.
 
 ## Won't do
 
