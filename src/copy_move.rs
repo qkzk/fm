@@ -66,7 +66,7 @@ pub enum CopyMove {
 }
 
 impl CopyMove {
-    fn kind(&self) -> &str {
+    fn verb(&self) -> &str {
         match *self {
             CopyMove::Copy => "copy",
             CopyMove::Move => "move",
@@ -93,7 +93,7 @@ pub fn copy_move(
 ) -> FmResult<()> {
     let c_term = term.clone();
     let (height, width) = term.term_size()?;
-    let (in_mem, pb, options) = setup(copy_or_move.kind().to_owned(), height, width)?;
+    let (in_mem, pb, options) = setup(copy_or_move.verb().to_owned(), height, width)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&in_mem, &pb, &term, process_info)
     };
@@ -106,7 +106,7 @@ pub fn copy_move(
             copier_mover(&sources, &dest, &options, handle_progress).unwrap_or_default();
         let _ = c_term.send_event(Event::User(()));
         let _ = notify(
-            &format!("fm: {} finished", copy_or_move.kind()),
+            &format!("fm: {} finished", copy_or_move.verb()),
             &format!(
                 "{}B {}",
                 human_size(transfered_bytes),

@@ -18,9 +18,9 @@ impl Skimer {
     /// Call skim on its term.
     /// Once the user has selected a file, it will returns its results
     /// as a vec of skimitems.
-    pub fn no_source(&self, path_str: String) -> Vec<Arc<dyn SkimItem>> {
+    pub fn no_source(&self, path_str: &str) -> Vec<Arc<dyn SkimItem>> {
         self.skim
-            .run_internal(None, path_str)
+            .run_internal(None, path_str.to_owned())
             .map(|out| out.selected_items)
             .unwrap_or_else(Vec::new)
     }

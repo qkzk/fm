@@ -140,7 +140,7 @@ impl Status {
     pub fn fill_tabs_with_skim(&mut self) -> FmResult<()> {
         for path in self
             .skimer
-            .no_source(self.selected_non_mut().path_str().ok_or_else(|| {
+            .no_source(&self.selected_non_mut().path_str().ok_or_else(|| {
                 FmError::new(ErrorVariant::CUSTOM("skim".to_owned()), "skim error")
             })?)
             .iter()

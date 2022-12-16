@@ -9,6 +9,7 @@ use tuikit::prelude::{Attr, Color, Effect};
 use users::{get_group_by_gid, get_user_by_uid};
 
 use crate::config::{str_to_tuikit, Colors};
+use crate::constant_strings_paths::PERMISSIONS_STR;
 use crate::filter::FilterKind;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::git::git;
@@ -468,7 +469,7 @@ impl PathContent {
     }
 }
 
-/// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
+/// Associates a filetype to `tuikit::prelude::Color` : fg color, bg color and
 /// effect.
 /// Selected file is reversed.
 pub fn fileinfo_attr(status: &Status, fileinfo: &FileInfo, colors: &Colors) -> Attr {
@@ -495,8 +496,8 @@ pub fn fileinfo_attr(status: &Status, fileinfo: &FileInfo, colors: &Colors) -> A
     }
 }
 
-/// true if the file isn't hidden.
-fn is_not_hidden(entry: &DirEntry) -> Result<bool, FmError> {
+/// True if the file isn't hidden.
+fn is_not_hidden(entry: &DirEntry) -> FmResult<bool> {
     Ok(entry
         .file_name()
         .into_string()
@@ -518,20 +519,23 @@ fn extract_filename(direntry: &DirEntry) -> FmResult<String> {
 fn extract_permissions_string(direntry: &DirEntry) -> FmResult<String> {
     match metadata(direntry.path()) {
         Ok(metadata) => {
-            let mode = metadata.mode() & 511;
+            let mut perm = String::with_capacity(9);
+            let mode = (metadata.mode() & 511) as usize;
             let s_o = convert_octal_mode(mode >> 6);
             let s_g = convert_octal_mode((mode >> 3) & 7);
             let s_a = convert_octal_mode(mode & 7);
-            Ok([s_o, s_g, s_a].join(""))
+            perm.push_str(s_o);
+            perm.push_str(s_a);
+            perm.push_str(s_g);
+            Ok(perm)
         }
-        Err(_) => Ok("??????".to_owned()),
+        Err(_) => Ok("?????????".to_owned()),
     }
 }
 
-/// Convert an integer like `Oo777` into its string representation like `"rwx"`
-fn convert_octal_mode(mode: u32) -> String {
-    let rwx = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
-    String::from(rwx[(mode & 7_u32) as usize])
+/// Convert an integer like `Oo7` into its string representation like `"rwx"`
+fn convert_octal_mode(mode: usize) -> &'static str {
+    PERMISSIONS_STR[mode]
 }
 
 /// Reads the owner name and returns it as a string.

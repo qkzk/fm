@@ -28,3 +28,6 @@ pub static DEFAULT_VIDEO_OPENER: (&str, bool) = ("mpv", false);
 pub static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
 /// Default program used to drag and drop files
 pub static DEFAULT_DRAGNDROP: &str = "dragon-drop";
+/// Array of text representation of a file permissions.
+/// The index of each string gives a correct representation.
+pub static PERMISSIONS_STR: [&str; 8] = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];

@@ -5,7 +5,7 @@ use crate::fm_error::FmResult;
 
 /// Holds a `Vec<String>` of possible completions and an `usize` index
 /// showing where the user is in the vec.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Completion {
     /// Possible completions
     pub proposals: Vec<String>,
@@ -14,21 +14,9 @@ pub struct Completion {
 }
 
 impl Completion {
-    fn new() -> Self {
-        Self {
-            proposals: vec![],
-            index: 0,
-        }
-    }
-
-    /// The numbers of completion options currently found.
-    pub fn len(&self) -> usize {
-        self.proposals.len()
-    }
-
     /// Is there any completion option ?
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.proposals.is_empty()
     }
 
     /// Move the index to next element, cycling to 0.
@@ -88,12 +76,12 @@ impl Completion {
         if last_name.is_empty() {
             return Ok(());
         }
-        self.update_absolute_paths(parent, &last_name);
+        self.update_absolute_paths(&parent, &last_name);
         self.extend_relative_paths(current_path, &last_name);
         Ok(())
     }
 
-    fn update_absolute_paths(&mut self, parent: String, last_name: &str) {
+    fn update_absolute_paths(&mut self, parent: &str, last_name: &str) {
         if let Ok(path) = std::fs::canonicalize(parent) {
             if let Ok(entries) = fs::read_dir(path) {
                 self.update(Self::entries_matching_filename(entries, last_name))
@@ -153,13 +141,6 @@ impl Completion {
                 .collect(),
         );
         Ok(())
-    }
-}
-
-/// Creates a new `Completion` instance with empty proposals and index=0.
-impl Default for Completion {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
