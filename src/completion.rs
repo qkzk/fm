@@ -1,3 +1,5 @@
+use std::fs::{self, ReadDir};
+
 use crate::fileinfo::PathContent;
 use crate::fm_error::FmResult;
 
@@ -86,34 +88,35 @@ impl Completion {
         if last_name.is_empty() {
             return Ok(());
         }
+        self.update_absolute_paths(parent, &last_name);
+        self.extend_relative_paths(current_path, &last_name);
+        Ok(())
+    }
+
+    fn update_absolute_paths(&mut self, parent: String, last_name: &str) {
         if let Ok(path) = std::fs::canonicalize(parent) {
             if let Ok(entries) = fs::read_dir(path) {
-                self.update(
-                    entries
-                        .filter_map(|e| e.ok())
-                        .filter(|e| {
-                            e.file_type().unwrap().is_dir() && filename_startswith(e, &last_name)
-                        })
-                        .map(|e| e.path().to_string_lossy().into_owned())
-                        .collect(),
-                )
-            }
-        };
-
-        if let Some(valid_path) = current_path {
-            if let Ok(entries) = fs::read_dir(valid_path) {
-                self.extend(
-                    entries
-                        .filter_map(|e| e.ok())
-                        .filter(|e| {
-                            e.file_type().unwrap().is_dir() && filename_startswith(e, &last_name)
-                        })
-                        .map(|e| e.path().to_string_lossy().into_owned())
-                        .collect(),
-                )
+                self.update(Self::entries_matching_filename(entries, last_name))
             }
         }
-        Ok(())
+    }
+
+    fn extend_relative_paths(&mut self, current_path: Option<String>, last_name: &str) {
+        if let Some(valid_path) = current_path {
+            if let Ok(entries) = fs::read_dir(valid_path) {
+                self.extend(Self::entries_matching_filename(entries, last_name))
+            }
+        }
+    }
+
+    fn entries_matching_filename(entries: ReadDir, last_name: &str) -> Vec<String> {
+        entries
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.file_type().unwrap().is_dir() && filename_startswith(e, &last_name.to_owned())
+            })
+            .map(|e| e.path().to_string_lossy().into_owned())
+            .collect()
     }
 
     /// Looks for programs in $PATH completing the one typed by the user.

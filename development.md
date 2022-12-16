@@ -206,7 +206,7 @@
   - [ ] publish on cargo
 
 - [ ] keeps searching for same result. The only option atm is `/` (search), `down` one row, `enter` which is 3 keypresses
-- [ ] go to relative path. ATM it completes absolute path only
+- [x] goto relative path. Look for directory in current path
 
 ## BUGS
 
