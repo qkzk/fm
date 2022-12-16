@@ -202,6 +202,7 @@
   - [ ] remove references to local thing
   - [x] move strings to separate file
   - [ ] translations i18n
+  - [ ] build script
   - [x] readme for user not developpers, move readme to dev.md
   - [ ] publish on cargo
 
