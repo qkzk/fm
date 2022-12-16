@@ -570,6 +570,7 @@ impl EventExec {
     /// Enter the search mode.
     /// Matching items are displayed as you type them.
     pub fn event_search(tab: &mut Tab) -> FmResult<()> {
+        tab.searched = None;
         tab.mode = Mode::Search;
         Ok(())
     }
@@ -963,21 +964,57 @@ impl EventExec {
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
     pub fn exec_search(tab: &mut Tab) {
+        let searched = tab.input.string();
         tab.input.reset();
-        let completed = tab.completion.current_proposition();
-        if completed.is_empty() {
+        if searched.is_empty() {
+            tab.searched = None;
             return;
         }
-        let mut next_index = tab.line_index;
+        tab.searched = Some(searched.clone());
+        let next_index = tab.line_index;
+        Self::search_from(tab, searched, next_index);
+    }
+
+    /// Search in current directory for an file whose name contains `searched_name`,
+    /// from a starting position `next_index`.
+    /// We search forward from that position and start again from top if nothing is found.
+    /// We move the selection to the first matching file.
+    fn search_from(tab: &mut Tab, searched_name: String, mut next_index: usize) {
+        let mut found = false;
         for (index, file) in tab.path_content.files.iter().enumerate().skip(next_index) {
-            if file.filename == completed {
+            if file.filename.contains(&searched_name) {
                 next_index = index;
+                found = true;
                 break;
             };
         }
-        tab.path_content.select_index(next_index);
-        tab.line_index = next_index;
-        tab.window.scroll_to(tab.line_index);
+        if found {
+            tab.path_content.select_index(next_index);
+            tab.line_index = next_index;
+            tab.window.scroll_to(tab.line_index);
+        } else {
+            for (index, file) in tab.path_content.files.iter().enumerate().take(next_index) {
+                if file.filename.starts_with(&searched_name) {
+                    next_index = index;
+                    found = true;
+                    break;
+                };
+            }
+            if found {
+                tab.path_content.select_index(next_index);
+                tab.line_index = next_index;
+                tab.window.scroll_to(tab.line_index);
+            }
+        }
+    }
+
+    pub fn event_search_next(tab: &mut Tab) -> FmResult<()> {
+        if let Some(searched) = tab.searched.clone() {
+            let next_index = (tab.line_index + 1) % tab.path_content.files.len();
+            Self::search_from(tab, searched, next_index);
+        } else {
+        }
+        Ok(())
     }
 
     /// Move to the folder typed by the user.

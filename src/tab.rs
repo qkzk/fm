@@ -46,6 +46,8 @@ pub struct Tab {
     pub history: History,
     /// Predefined shortcuts
     pub shortcut: Shortcut,
+    /// Searched string
+    pub searched: Option<String>,
 }
 
 impl Tab {
@@ -66,6 +68,7 @@ impl Tab {
         let mut history = History::default();
         history.push(&path);
         let shortcut = Shortcut::new();
+        let searched = None;
         Ok(Self {
             mode,
             line_index,
@@ -81,6 +84,7 @@ impl Tab {
             preview,
             history,
             shortcut,
+            searched,
         })
     }
 

@@ -34,6 +34,7 @@ static HELP_TO_FORMAT: &str = "
 {MarksNew}:      mark current path
 {MarksJump}:     jump to a mark
 {DisplayFull}:      toggle metadata on files
+{SearchNext}:      Search next matching element
 {FuzzyFind}:      fuzzy finder
 {RefreshView}:      refresh view
 {CopyFilename}:      copy filename to clipboard

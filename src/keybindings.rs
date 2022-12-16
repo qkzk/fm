@@ -57,6 +57,7 @@ impl Bindings {
             (Key::Char('c'), ActionMap::CopyPaste),
             (Key::Char('d'), ActionMap::NewDir),
             (Key::Char('e'), ActionMap::Exec),
+            (Key::Char('f'), ActionMap::SearchNext),
             (Key::Char('g'), ActionMap::Goto),
             (Key::Char('h'), ActionMap::Help),
             (Key::Char('i'), ActionMap::NvimFilepicker),
