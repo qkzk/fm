@@ -81,6 +81,7 @@ impl Input {
 
     /// replace the string with the content
     pub fn replace(&mut self, content: String) {
-        self.chars = content.chars().collect()
+        self.chars = content.chars().collect();
+        self.cursor_index = self.len()
     }
 }
