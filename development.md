@@ -172,6 +172,15 @@
       would require another crate.
 - [x] non ascii char support. ie graphemes. Simply use a vec of chars and collect it when needed.
 - [x] Fix: / (slash) in newfile, newdir crashes the app with strange errors. Use sanitize_filename
+- [x] goto relative path. Look for directory in current path
+- [x] keeps searching for same result with f.
+
+  When a search is made (/),
+
+  - if the user completes (TAB) and Enter, only this file can be found.
+  - if the user doesn't complete but Enter immediatly, we can find any file containing this name.
+
+    The user can search from next element with f.
 
 ## TODO
 
@@ -205,9 +214,6 @@
   - [x] build script
   - [x] readme for user not developpers, move readme to dev.md
   - [ ] publish on cargo
-
-- [ ] keeps searching for same result. The only option atm is `/` (search), `down` one row, `enter` which is 3 keypresses
-- [x] goto relative path. Look for directory in current path
 
 ## BUGS
 

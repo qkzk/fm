@@ -46,7 +46,7 @@ pub struct Tab {
     pub history: History,
     /// Predefined shortcuts
     pub shortcut: Shortcut,
-    /// Searched string
+    /// Last searched string
     pub searched: Option<String>,
 }
 
