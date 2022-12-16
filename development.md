@@ -197,7 +197,7 @@
   - [ ] remove references to local thing
   - [x] move strings to separate file
   - [ ] translations i18n
-  - [ ] readme for user not developpers, move readme to dev.md
+  - [x] readme for user not developpers, move readme to dev.md
   - [ ] publish on cargo
 
 - [ ] keeps searching for same result. The only option atm is `/` (search), `down` one row, `enter` which is 3 keypresses

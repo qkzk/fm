@@ -66,10 +66,14 @@ impl Input {
             .collect();
     }
 
-    /// Insert a char into the string at cursor index.
+    /// Insert an ASCII char into the string at cursor index.
+    /// Non ascii chars aren't supported in FM since it's a pain
+    /// to know where you're in the string.
     pub fn insert(&mut self, c: char) {
-        self.string.insert(self.cursor_index, c);
-        self.cursor_index += 1
+        if c.is_ascii() {
+            self.string.insert(self.cursor_index, c);
+            self.cursor_index += 1
+        }
     }
 
     /// replace the string with the content
