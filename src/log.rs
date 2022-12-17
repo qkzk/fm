@@ -1,4 +1,4 @@
-use log::LevelFilter;
+use log::{info, LevelFilter};
 use log4rs::{
     append::rolling_file::{
         policy::compound::{
@@ -36,9 +36,8 @@ fn create_log_folder(log_path: &str) -> FmResult<String> {
 /// The log files are located in $HOME/username/.config/fm
 pub fn set_logger() -> FmResult<Handle> {
     let log_path = shellexpand::tilde(LOG_PATH).to_string();
-    eprintln!("log path: {}", log_path);
+    info!("log path: {}", log_path);
     create_log_folder(&log_path)?;
-    // log_path.push_str("/fm{}.log");
 
     let window_size = 3; // log0, log1, log2
     let fixed_window_roller = FixedWindowRoller::builder()

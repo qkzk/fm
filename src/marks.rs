@@ -3,6 +3,8 @@ use std::fs::File;
 use std::io::{self, BufRead, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
+use log::info;
+
 use crate::constant_strings_paths::MARKS_FILEPATH;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 
@@ -36,7 +38,7 @@ impl Marks {
         }
         let marks = Self { save_path, marks };
         if must_save {
-            eprintln!("Wrong marks found, will save it again");
+            info!("Wrong marks found, will save it again");
             let _ = marks.save_marks();
         }
         marks
