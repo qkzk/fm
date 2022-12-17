@@ -12,8 +12,7 @@ use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
-use crate::last_edition::LastEdition;
-use crate::mode::{MarkAction, Mode};
+use crate::mode::{ConfirmedAction, MarkAction, Mode};
 use crate::preview::{Preview, Window};
 use crate::status::Status;
 use crate::tab::Tab;
@@ -61,7 +60,9 @@ impl<'a> Draw for WinTab<'a> {
             Mode::Jump => self.jump_list(self.status, canvas),
             Mode::History => self.history(self.tab, canvas),
             Mode::Exec | Mode::Goto | Mode::Search => self.completion(self.tab, canvas),
-            Mode::NeedConfirmation => self.confirmation(self.status, self.tab, canvas),
+            Mode::NeedConfirmation(confirmed_mode) => {
+                self.confirmation(self.status, self.tab, confirmed_mode, canvas)
+            }
             Mode::Preview | Mode::Help => self.preview(self.tab, canvas),
             Mode::Shortcut => self.shortcuts(self.tab, canvas),
             Mode::Marks(_) => self.marks(self.status, self.tab, canvas),
@@ -127,11 +128,14 @@ impl<'a> WinTab<'a> {
                     format!("{}  ", &tab.path_content.git_string()?),
                 ]
             }
-            Mode::NeedConfirmation => {
-                vec![
-                    format!("Confirm {}", tab.last_edition),
-                    "(y/n) : ".to_owned(),
-                ]
+            Mode::NeedConfirmation(ConfirmedAction::Copy) => {
+                vec!["Copy   (y, n)".to_owned()]
+            }
+            Mode::NeedConfirmation(ConfirmedAction::Move) => {
+                vec!["Move   (y, n)".to_owned()]
+            }
+            Mode::NeedConfirmation(ConfirmedAction::Delete) => {
+                vec!["Delete (y, n)".to_owned()]
             }
             Mode::Preview => match tab.path_content.selected_file() {
                 Some(fileinfo) => {
@@ -227,8 +231,8 @@ impl<'a> WinTab<'a> {
             | Mode::History => {
                 canvas.show_cursor(false)?;
             }
-            Mode::NeedConfirmation => {
-                canvas.set_cursor(0, tab.last_edition.offset())?;
+            Mode::NeedConfirmation(confirmed_action) => {
+                canvas.set_cursor(0, confirmed_action.cursor_offset())?;
             }
             Mode::Sort => {
                 canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
@@ -323,7 +327,13 @@ impl<'a> WinTab<'a> {
     }
 
     /// Display a list of edited (deleted, copied, moved) files for confirmation
-    fn confirmation(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn confirmation(
+        &self,
+        status: &Status,
+        tab: &Tab,
+        confirmed_mode: ConfirmedAction,
+        canvas: &mut dyn Canvas,
+    ) -> FmResult<()> {
         for (row, path) in status.flagged.iter().enumerate() {
             canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2,
@@ -338,7 +348,7 @@ impl<'a> WinTab<'a> {
             )?;
         }
         info!("last_edition: {}", tab.last_edition);
-        if let LastEdition::CopyPaste = tab.last_edition {
+        if let ConfirmedAction::Copy = confirmed_mode {
             let content = format!(
                 "Files will be copied to {}",
                 tab.path_content.path_to_str()?
