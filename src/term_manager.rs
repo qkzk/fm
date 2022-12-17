@@ -9,6 +9,7 @@ use tuikit::prelude::*;
 use tuikit::term::Term;
 
 use crate::config::Colors;
+use crate::constant_strings_paths::{HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE};
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
@@ -155,8 +156,8 @@ impl<'a> WinTab<'a> {
                 Preview::Text(text_content) => {
                     if matches!(text_content.kind, TextKind::HELP) {
                         vec![
-                            "fm: a dired / ranger like file manager. ".to_owned(),
-                            "Keybindings.".to_owned(),
+                            HELP_FIRST_SENTENCE.to_owned(),
+                            HELP_SECOND_SENTENCE.to_owned(),
                         ]
                     } else {
                         Self::default_preview_first_line(tab)
