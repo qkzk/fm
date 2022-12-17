@@ -11,7 +11,6 @@ use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::filter::FilterKind;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
-use crate::last_edition::LastEdition;
 use crate::mode::ConfirmedAction;
 use crate::mode::{MarkAction, Mode};
 use crate::opener::execute_in_child;
@@ -288,7 +287,6 @@ impl EventExec {
     ) -> FmResult<()> {
         Self::_exec_confirmed_action(status, confirmed_action)?;
         status.selected().mode = Mode::Normal;
-        status.selected().last_edition = LastEdition::Nothing;
         Ok(())
     }
 
@@ -504,14 +502,12 @@ impl EventExec {
     /// Enter a copy paste mode.
     pub fn event_copy_paste(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation(crate::mode::ConfirmedAction::Copy);
-        tab.last_edition = LastEdition::CopyPaste;
         Ok(())
     }
 
     /// Enter the 'move' mode.
     pub fn event_cut_paste(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation(crate::mode::ConfirmedAction::Move);
-        tab.last_edition = LastEdition::CutPaste;
         Ok(())
     }
 
@@ -558,7 +554,6 @@ impl EventExec {
     /// A confirmation is then asked.
     pub fn event_delete_file(tab: &mut Tab) -> FmResult<()> {
         tab.mode = Mode::NeedConfirmation(crate::mode::ConfirmedAction::Delete);
-        tab.last_edition = LastEdition::Delete;
         Ok(())
     }
 
@@ -603,7 +598,6 @@ impl EventExec {
 
     /// Reset the mode to normal.
     pub fn event_leave_need_confirmation(tab: &mut Tab) {
-        tab.last_edition = LastEdition::Nothing;
         tab.mode = Mode::Normal;
     }
 

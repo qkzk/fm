@@ -128,14 +128,8 @@ impl<'a> WinTab<'a> {
                     format!("{}  ", &tab.path_content.git_string()?),
                 ]
             }
-            Mode::NeedConfirmation(ConfirmedAction::Copy) => {
-                vec!["Copy   (y, n)".to_owned()]
-            }
-            Mode::NeedConfirmation(ConfirmedAction::Move) => {
-                vec!["Move   (y, n)".to_owned()]
-            }
-            Mode::NeedConfirmation(ConfirmedAction::Delete) => {
-                vec!["Delete (y, n)".to_owned()]
+            Mode::NeedConfirmation(confirmed_action) => {
+                vec![format!("{} (y/n)", confirmed_action)]
             }
             Mode::Preview => match tab.path_content.selected_file() {
                 Some(fileinfo) => {
@@ -347,14 +341,21 @@ impl<'a> WinTab<'a> {
                 Attr::default(),
             )?;
         }
-        info!("last_edition: {}", tab.last_edition);
-        if let ConfirmedAction::Copy = confirmed_mode {
-            let content = format!(
-                "Files will be copied to {}",
-                tab.path_content.path_to_str()?
-            );
-            canvas.print_with_attr(2, 3, &content, Self::ATTR_YELLOW_BOLD)?;
-        }
+        info!("confirmed action: {:?}", confirmed_mode);
+        let content = match confirmed_mode {
+            ConfirmedAction::Copy => {
+                format!(
+                    "Files will be copied to {}",
+                    tab.path_content.path_to_str()?
+                )
+            }
+            ConfirmedAction::Delete => "Files will deleted permanently".to_owned(),
+            ConfirmedAction::Move => {
+                format!("Files will be moved to {}", tab.path_content.path_to_str()?)
+            }
+        };
+        canvas.print_with_attr(2, 3, &content, Self::ATTR_YELLOW_BOLD)?;
+
         Ok(())
     }
 

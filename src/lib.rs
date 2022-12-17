@@ -17,7 +17,6 @@ pub mod git;
 pub mod help;
 pub mod input;
 pub mod keybindings;
-pub mod last_edition;
 pub mod log;
 pub mod marks;
 pub mod mode;

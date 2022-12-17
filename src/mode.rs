@@ -6,10 +6,14 @@ pub enum MarkAction {
     New,
 }
 
-#[derive(Clone, Copy)]
+/// Different kind of last edition command received.
+#[derive(Clone, Copy, Debug)]
 pub enum ConfirmedAction {
+    /// Copy flagged files
     Copy,
+    /// Delete flagged files
     Delete,
+    /// Move flagged files
     Move,
 }
 
@@ -19,9 +23,9 @@ impl ConfirmedAction {
     /// is needed.
     pub fn cursor_offset(&self) -> usize {
         match *self {
-            Self::Copy => 37,
-            Self::Delete => 31,
-            Self::Move => 29,
+            Self::Copy => 25,
+            Self::Delete => 21,
+            Self::Move => 25,
         }
     }
 }
@@ -30,8 +34,8 @@ impl std::fmt::Display for ConfirmedAction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Self::Delete => write!(f, "Delete files :"),
-            Self::Move => write!(f, "Move files :"),
-            Self::Copy => write!(f, "Copy & Paste files :"),
+            Self::Move => write!(f, "Move files here :"),
+            Self::Copy => write!(f, "Copy files here :"),
         }
     }
 }
