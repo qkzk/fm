@@ -76,7 +76,7 @@ pub enum Mode {
     Normal,
     /// We'll be able to complete the input string with
     /// different kind of completed items (exec, goto, search)
-    Completed(CompletionKind),
+    InputCompleted(CompletionKind),
     /// Display the help
     Jump,
     /// Confirmation is required before modification is made to existing files :
@@ -89,25 +89,25 @@ pub enum Mode {
     /// Display predefined shortcuts
     Shortcut,
     /// Modes requiring an input that can't be completed
-    ReadInput(InputKind),
+    InputSimple(InputKind),
 }
 
-impl fmt::Debug for Mode {
+impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Mode::Normal => write!(f, "Normal:  "),
-            Mode::ReadInput(InputKind::Rename) => write!(f, "Rename:  "),
-            Mode::ReadInput(InputKind::Chmod) => write!(f, "Chmod:   "),
-            Mode::ReadInput(InputKind::Newfile) => write!(f, "Newfile: "),
-            Mode::ReadInput(InputKind::Newdir) => write!(f, "Newdir:  "),
-            Mode::ReadInput(InputKind::RegexMatch) => write!(f, "Regex :  "),
-            Mode::ReadInput(InputKind::Sort) => write!(f, "Sort: Kind Name Modif Size Ext Rev :"),
-            Mode::ReadInput(InputKind::Marks(_)) => write!(f, "Marks jump:"),
-            Mode::ReadInput(InputKind::Filter) => write!(f, "Filter:  "),
-            Mode::Completed(CompletionKind::Exec) => write!(f, "Exec:    "),
-            Mode::Completed(CompletionKind::Goto) => write!(f, "Goto  :  "),
-            Mode::Completed(CompletionKind::Search) => write!(f, "Search:  "),
-            Mode::Completed(CompletionKind::Nothing) => write!(f, "Nothing:  "),
+            Mode::InputSimple(InputKind::Rename) => write!(f, "Rename:  "),
+            Mode::InputSimple(InputKind::Chmod) => write!(f, "Chmod:   "),
+            Mode::InputSimple(InputKind::Newfile) => write!(f, "Newfile: "),
+            Mode::InputSimple(InputKind::Newdir) => write!(f, "Newdir:  "),
+            Mode::InputSimple(InputKind::RegexMatch) => write!(f, "Regex:   "),
+            Mode::InputSimple(InputKind::Sort) => write!(f, "Sort: Kind Name Modif Size Ext Rev :"),
+            Mode::InputSimple(InputKind::Marks(_)) => write!(f, "Marks jump:"),
+            Mode::InputSimple(InputKind::Filter) => write!(f, "Filter:  "),
+            Mode::InputCompleted(CompletionKind::Exec) => write!(f, "Exec:    "),
+            Mode::InputCompleted(CompletionKind::Goto) => write!(f, "Goto  :  "),
+            Mode::InputCompleted(CompletionKind::Search) => write!(f, "Search:  "),
+            Mode::InputCompleted(CompletionKind::Nothing) => write!(f, "Nothing:  "),
             Mode::Jump => write!(f, "Jump  :  "),
             Mode::History => write!(f, "History :"),
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),

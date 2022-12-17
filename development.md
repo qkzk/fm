@@ -222,10 +222,13 @@
 
     - [x] group every mode requiring input (2 variants with subvariants: with or wirtout completion)
     - [x] combine help & preview
+    - [x] better first line for mode filter
     - [ ] BUG: help has wrong first line
 
+- [ ] Version 0.1.2
+
+  - [ ] refactor Preview::new() an enum may be useful ?
   - [ ] parse .. in goto
-  - [ ] better first line for mode filter
 
 - [ ] Version 0.2.0
 

@@ -118,7 +118,7 @@ impl EventExec {
         if status.selected().path_content.files.is_empty() {
             return Ok(());
         }
-        status.selected().mode = Mode::ReadInput(InputKind::Chmod);
+        status.selected().mode = Mode::InputSimple(InputKind::Chmod);
         if status.flagged.is_empty() {
             status.flagged.insert(
                 status.tabs[status.index]
@@ -144,13 +144,13 @@ impl EventExec {
 
     /// Enter Marks new mode, allowing to bind a char to a path.
     pub fn event_marks_new(status: &mut Status) -> FmResult<()> {
-        status.selected().mode = Mode::ReadInput(InputKind::Marks(MarkAction::New));
+        status.selected().mode = Mode::InputSimple(InputKind::Marks(MarkAction::New));
         Ok(())
     }
 
     /// Enter Marks jump mode, allowing to jump to a marked file.
     pub fn event_marks_jump(status: &mut Status) -> FmResult<()> {
-        status.selected().mode = Mode::ReadInput(InputKind::Marks(MarkAction::Jump));
+        status.selected().mode = Mode::InputSimple(InputKind::Marks(MarkAction::Jump));
         Ok(())
     }
 
@@ -513,20 +513,20 @@ impl EventExec {
 
     /// Enter the new dir mode.
     pub fn event_new_dir(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::ReadInput(InputKind::Newdir);
+        tab.mode = Mode::InputSimple(InputKind::Newdir);
         Ok(())
     }
 
     /// Enter the new file mode.
     pub fn event_new_file(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::ReadInput(InputKind::Newfile);
+        tab.mode = Mode::InputSimple(InputKind::Newfile);
         Ok(())
     }
 
     /// Enter the execute mode. Most commands must be executed to allow for
     /// a confirmation.
     pub fn event_exec(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::Completed(CompletionKind::Exec);
+        tab.mode = Mode::InputCompleted(CompletionKind::Exec);
         Ok(())
     }
 
@@ -572,20 +572,20 @@ impl EventExec {
     /// Matching items are displayed as you type them.
     pub fn event_search(tab: &mut Tab) -> FmResult<()> {
         tab.searched = None;
-        tab.mode = Mode::Completed(CompletionKind::Search);
+        tab.mode = Mode::InputCompleted(CompletionKind::Search);
         Ok(())
     }
 
     /// Enter the regex mode.
     /// Every file matching the typed regex will be flagged.
     pub fn event_regex_match(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::ReadInput(InputKind::RegexMatch);
+        tab.mode = Mode::InputSimple(InputKind::RegexMatch);
         Ok(())
     }
 
     /// Enter the sort mode, allowing the user to select a sort method.
     pub fn event_sort(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::ReadInput(InputKind::Sort);
+        tab.mode = Mode::InputSimple(InputKind::Sort);
         Ok(())
     }
 
@@ -680,13 +680,13 @@ impl EventExec {
 
     /// Enter the rename mode.
     pub fn event_rename(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::ReadInput(InputKind::Rename);
+        tab.mode = Mode::InputSimple(InputKind::Rename);
         Ok(())
     }
 
     /// Enter the goto mode where an user can type a path to jump to.
     pub fn event_goto(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::Completed(CompletionKind::Goto);
+        tab.mode = Mode::InputCompleted(CompletionKind::Goto);
         tab.completion.reset();
         Ok(())
     }
@@ -819,7 +819,7 @@ impl EventExec {
     /// Enter the filter mode, where you can filter.
     /// See `crate::filter::Filter` for more details.
     pub fn event_filter(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::ReadInput(InputKind::Filter);
+        tab.mode = Mode::InputSimple(InputKind::Filter);
         Ok(())
     }
 
@@ -1079,7 +1079,7 @@ impl EventExec {
             Mode::Jump => EventExec::event_jumplist_prev(status),
             Mode::History => EventExec::event_history_prev(status.selected()),
             Mode::Shortcut => EventExec::event_shortcut_prev(status.selected()),
-            Mode::Completed(_) => {
+            Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
             }
             _ => (),
@@ -1095,7 +1095,7 @@ impl EventExec {
             Mode::Jump => EventExec::event_jumplist_next(status),
             Mode::History => EventExec::event_history_next(status.selected()),
             Mode::Shortcut => EventExec::event_shortcut_next(status.selected()),
-            Mode::Completed(_) => status.selected().completion.next(),
+            Mode::InputCompleted(_) => status.selected().completion.next(),
             _ => (),
         };
         Ok(())
@@ -1106,7 +1106,7 @@ impl EventExec {
     pub fn event_move_left(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::event_move_to_parent(status.selected()),
-            Mode::ReadInput(_) | Mode::Completed(_) => {
+            Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_move_cursor_left(status.selected());
                 Ok(())
             }
@@ -1120,7 +1120,7 @@ impl EventExec {
     pub fn event_move_right(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::exec_file(status),
-            Mode::ReadInput(_) | Mode::Completed(_) => {
+            Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_move_cursor_right(status.selected());
                 Ok(())
             }
@@ -1131,7 +1131,7 @@ impl EventExec {
     /// Delete a char to the left in modes allowing edition.
     pub fn event_backspace(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::ReadInput(_) | Mode::Completed(_) => {
+            Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_delete_char_left(status.selected());
                 Ok(())
             }
@@ -1143,7 +1143,7 @@ impl EventExec {
     /// Delete all chars to the right in mode allowing edition.
     pub fn event_delete(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::ReadInput(_) | Mode::Completed(_) => {
+            Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_delete_chars_right(status.selected());
                 Ok(())
             }
@@ -1194,24 +1194,26 @@ impl EventExec {
     /// Reset to normal mode afterwards.
     pub fn enter(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::ReadInput(InputKind::Rename) => EventExec::exec_rename(status.selected())?,
-            Mode::ReadInput(InputKind::Newfile) => EventExec::exec_newfile(status.selected())?,
-            Mode::ReadInput(InputKind::Newdir) => EventExec::exec_newdir(status.selected())?,
-            Mode::ReadInput(InputKind::Chmod) => EventExec::exec_chmod(status)?,
-            Mode::ReadInput(InputKind::RegexMatch) => EventExec::exec_regex(status)?,
-            Mode::ReadInput(InputKind::Filter) => EventExec::exec_filter(status.selected())?,
+            Mode::InputSimple(InputKind::Rename) => EventExec::exec_rename(status.selected())?,
+            Mode::InputSimple(InputKind::Newfile) => EventExec::exec_newfile(status.selected())?,
+            Mode::InputSimple(InputKind::Newdir) => EventExec::exec_newdir(status.selected())?,
+            Mode::InputSimple(InputKind::Chmod) => EventExec::exec_chmod(status)?,
+            Mode::InputSimple(InputKind::RegexMatch) => EventExec::exec_regex(status)?,
+            Mode::InputSimple(InputKind::Filter) => EventExec::exec_filter(status.selected())?,
             Mode::Jump => EventExec::exec_jump(status)?,
-            Mode::Completed(CompletionKind::Exec) => EventExec::exec_exec(status.selected())?,
-            Mode::Completed(CompletionKind::Search) => EventExec::exec_search(status.selected()),
-            Mode::Completed(CompletionKind::Goto) => EventExec::exec_goto(status.selected())?,
+            Mode::InputCompleted(CompletionKind::Exec) => EventExec::exec_exec(status.selected())?,
+            Mode::InputCompleted(CompletionKind::Search) => {
+                EventExec::exec_search(status.selected())
+            }
+            Mode::InputCompleted(CompletionKind::Goto) => EventExec::exec_goto(status.selected())?,
             Mode::History => EventExec::exec_history(status.selected())?,
             Mode::Shortcut => EventExec::exec_shortcut(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
-            | Mode::Completed(CompletionKind::Nothing)
-            | Mode::ReadInput(InputKind::Sort)
-            | Mode::ReadInput(InputKind::Marks(_)) => (),
+            | Mode::InputCompleted(CompletionKind::Nothing)
+            | Mode::InputSimple(InputKind::Sort)
+            | Mode::InputSimple(InputKind::Marks(_)) => (),
         };
 
         status.selected().input.reset();
@@ -1223,7 +1225,9 @@ impl EventExec {
     /// insert a completion in modes allowing completion.
     pub fn tab(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Completed(_) => EventExec::event_replace_input_with_completion(status.selected()),
+            Mode::InputCompleted(_) => {
+                EventExec::event_replace_input_with_completion(status.selected())
+            }
             Mode::Normal => status.next(),
             _ => (),
         };

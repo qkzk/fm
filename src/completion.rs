@@ -31,7 +31,7 @@ pub struct Completion {
 
 impl Completion {
     pub fn set_kind(&mut self, mode: &Mode) {
-        if let Mode::Completed(completion_kind) = mode {
+        if let Mode::InputCompleted(completion_kind) = mode {
             self.kind = completion_kind.clone()
         } else {
             self.kind = CompletionKind::Nothing

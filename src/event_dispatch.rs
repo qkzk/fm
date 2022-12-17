@@ -53,26 +53,26 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, key_char: Key) -> FmResult<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
-                Mode::ReadInput(InputKind::Marks(MarkAction::Jump)) => {
+                Mode::InputSimple(InputKind::Marks(MarkAction::Jump)) => {
                     EventExec::exec_marks_jump(status, c)
                 }
-                Mode::ReadInput(InputKind::Marks(MarkAction::New)) => {
+                Mode::InputSimple(InputKind::Marks(MarkAction::New)) => {
                     EventExec::exec_marks_new(status, c)
                 }
-                Mode::ReadInput(InputKind::Sort) => {
+                Mode::InputSimple(InputKind::Sort) => {
                     EventExec::event_leave_sort(status.selected(), c);
                     Ok(())
                 }
-                Mode::ReadInput(InputKind::RegexMatch) => {
+                Mode::InputSimple(InputKind::RegexMatch) => {
                     EventExec::event_text_insertion(status.selected(), c);
                     status.select_from_regex()?;
                     Ok(())
                 }
-                Mode::ReadInput(_) => {
+                Mode::InputSimple(_) => {
                     EventExec::event_text_insertion(status.selected(), c);
                     Ok(())
                 }
-                Mode::Completed(_) => {
+                Mode::InputCompleted(_) => {
                     EventExec::event_text_insert_and_complete(status.selected(), c)
                 }
                 Mode::Normal => match self.binds.get(&key_char) {
