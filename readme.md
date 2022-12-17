@@ -102,44 +102,44 @@ function f() {
 Press `h` by default to display the help.
 Your current keybindings are shown. Here are the default ones.
 
-````
+```
 fm: a dired like file manager. Keybindings.
-                                                                  ```
 
-     Char('q'):      quit                                         ## Configuration
+
+     Char('q'):      quit
      Char('h'):      help
-                                                                  Every configuration file is saved in `~/.config/fm/`
-     - Navigation -
-     Left:           cd to parent directory                       You can configure :
-     Right:          cd to child directory
-     Up:             one line up                                  - **Colors** for non standard file types (directory, socket, char device, block device)
-     Down:           one line down                                - **Keybindings**. Some should be left as they are, but all keybindings can be configured.
-     Home:           go to first line                               use the provided config file as a default.
-     End:            go to last line                                Multiple keys can be bound the the same action.
-     PageUp:         10 lines up                                  - **Openers**. fm tries to be smart and open some files with a standard program.
-     PageDown:       10 lines down                                  You can change that and use whatever installed program you want. Specify if it
-     Tab:            cycle tab                                      requires a shell to be run (like neovim) or not (like subl).
-                                                                  - **Marks**. Users can save about 100 differents marks to jump to, they're saved
-     - Actions -                                                    in your marks.config file. It's easier to let fm manage your marks, but if
-     Char('D'):      toggle dual pane - if the width is sufficiant  you made a mess or want to start over, simply delete the file or a single line.
-     Char('a'):      toggle hidden
-     Char('s'):      shell in current directory                   ## Neovim file picker
-     Char('o'):      open the selected file
-     Char('i'):      open in current nvim session                 If you bind this key to start fm, it will send it its RPC server address to fm
-     Char('P'):      preview this file                            as an argument.
-     Char('T'):      display a thumbnail of an image
-     Char('-'):      move back to previous dir                    When you execute `NvimFilePicker` on a file, fm will send an event to this
-     Char('~'):      move to $HOME                                address and it should open the file.
-     Char('M'):      mark current path
-     Char('\''):     jump to a mark                               ## cd on quit
-     Ctrl('e'):      toggle metadata on files
-     Ctrl('f'):      fuzzy finder                                 When the application is stopped normally, it prints the last visited path on
-     Ctrl('r'):      refresh view                                 stdout.
-     Ctrl('c'):      copy filename to clipboard
-     Ctrl('p'):      copy filepath to clipboard                   If you add the following function to your .zshrc file, you will cd on quit
-     Alt('d'):       dragon-drop selected file                    to this directory.
 
-     - Action on flagged files -                                  ## Contribution
+     - Navigation -
+     Left:           cd to parent directory
+     Right:          cd to child directory
+     Up:             one line up
+     Down:           one line down
+     Home:           go to first line
+     End:            go to last line
+     PageUp:         10 lines up
+     PageDown:       10 lines down
+     Tab:            cycle tab
+
+     - Actions -
+     Char('D'):      toggle dual pane - if the width is sufficiant
+     Char('a'):      toggle hidden
+     Char('s'):      shell in current directory
+     Char('o'):      open the selected file
+     Char('i'):      open in current nvim session
+     Char('P'):      preview this file
+     Char('T'):      display a thumbnail of an image
+     Char('-'):      move back to previous dir
+     Char('~'):      move to $HOME
+     Char('M'):      mark current path
+     Char('\''):     jump to a mark
+     Ctrl('e'):      toggle metadata on files
+     Ctrl('f'):      fuzzy finder
+     Ctrl('r'):      refresh view
+     Ctrl('c'):      copy filename to clipboard
+     Ctrl('p'):      copy filepath to clipboard
+     Alt('d'):       dragon-drop selected file
+
+     - Action on flagged files -
      Char(' '):      toggle flag on a file
      Char('*'):      flag all
      Char('u'):      clear flags
@@ -165,4 +165,25 @@ fm: a dired like file manager. Keybindings.
      Char('/'):      SEARCH
      Char('F'):      FILTER
          (by name "n name", by ext "e ext", only directories d or all for reset)
-````
+```
+
+## Configuration
+
+Every configuration file is saved in `~/.config/fm/`
+
+You can configure :
+
+- **Colors** for non standard file types (directory, socket, char device, block device)
+- **Keybindings**. Some should be left as they are, but all keybindings can be configured.
+  use the provided config file as a default.
+  Multiple keys can be bound the the same action.
+- **Openers**. fm tries to be smart and open some files with a standard program.
+  You can change that and use whatever installed program you want. Specify if it
+  requires a shell to be run (like neovim) or not (like subl).
+- **Marks**. Users can save about 100 differents marks to jump to, they're saved
+  in your marks.config file. It's easier to let fm manage your marks, but if
+  you made a mess or want to start over, simply delete the file or a single line.
+
+## Contribution
+
+Any help is appreciated, it's my first "published" program, so don't get upset by the code quality.
