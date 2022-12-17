@@ -28,7 +28,7 @@ shellexpand = "2.1.2"
 fs_extra = "1.2.0"
 
 [dependencies]
-chrono = "*"
+chrono = "0.4.22"
 clap = { version = "4.0.2", features = ["derive"] }
 compress-tools = "0.14.0"
 content_inspector = "0.2.4"
