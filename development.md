@@ -182,6 +182,15 @@
 
     The user can search from next element with f.
 
+- [x] publish 0.1.0 on [crates.io](https://crates.io/crates/fm-tui)
+
+  - [x] documentation
+  - [x] move strings to separate file
+  - [x] build script
+  - [x] readme for user not developpers, move readme to dev.md
+  - [x] fix dependencies (skim-qkzk instead of a git version, no wildcards, tuikit 0.4.5 for skim)
+  - [x] publish on cargo
+
 ## TODO
 
 - [ ] remote control
@@ -205,15 +214,9 @@
 
 - [ ] NeedConfirmation should take a parameter, avoiding an attribute in tab/status.
 
-- [ ] publish
-
-  - [x] documentation
+- [ ] Future version
   - [ ] remove references to local thing
-  - [x] move strings to separate file
   - [ ] translations i18n
-  - [x] build script
-  - [x] readme for user not developpers, move readme to dev.md
-  - [ ] publish on cargo
 
 ## BUGS
 
