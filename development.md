@@ -228,6 +228,8 @@
   also we should group all modes allowing completion to refactor
 
 - [ ] parse .. in goto
+- [ ] better first line for mode filter
+- [ ] combine help & preview
 
 ## BUGS
 

@@ -12,7 +12,7 @@ use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
-use crate::mode::{ConfirmedAction, MarkAction, Mode};
+use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
 use crate::preview::{Preview, Window};
 use crate::status::Status;
 use crate::tab::Tab;
@@ -65,7 +65,7 @@ impl<'a> Draw for WinTab<'a> {
             }
             Mode::Preview | Mode::Help => self.preview(self.tab, canvas),
             Mode::Shortcut => self.shortcuts(self.tab, canvas),
-            Mode::Marks(_) => self.marks(self.status, self.tab, canvas),
+            Mode::ReadInput(InputKind::Marks(_)) => self.marks(self.status, self.tab, canvas),
             _ => self.files(self.status, self.tab, canvas),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -144,8 +144,8 @@ impl<'a> WinTab<'a> {
                 "fm: a dired like file manager. ".to_owned(),
                 "Keybindings.".to_owned(),
             ],
-            Mode::Marks(MarkAction::Jump) => vec!["Jump to...".to_owned()],
-            Mode::Marks(MarkAction::New) => vec!["Save mark...".to_owned()],
+            Mode::ReadInput(InputKind::Marks(MarkAction::Jump)) => vec!["Jump to...".to_owned()],
+            Mode::ReadInput(InputKind::Marks(MarkAction::New)) => vec!["Save mark...".to_owned()],
             _ => {
                 vec![
                     format!("{:?}", tab.mode.clone()),
@@ -204,30 +204,24 @@ impl<'a> WinTab<'a> {
     /// Display a cursor in the top row, at a correct column.
     fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
-            Mode::Rename
-            | Mode::Newdir
-            | Mode::Newfile
-            | Mode::Completed(_)
-            | Mode::Chmod
-            | Mode::Filter
-            | Mode::RegexMatch => {
-                canvas.show_cursor(true)?;
-                canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
-            }
             Mode::Normal
             | Mode::Help
-            | Mode::Marks(_)
+            | Mode::ReadInput(InputKind::Marks(_))
             | Mode::Preview
             | Mode::Shortcut
             | Mode::Jump
             | Mode::History => {
                 canvas.show_cursor(false)?;
             }
+            Mode::ReadInput(InputKind::Sort) => {
+                canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
+            }
+            Mode::ReadInput(_) | Mode::Completed(_) => {
+                canvas.show_cursor(true)?;
+                canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
+            }
             Mode::NeedConfirmation(confirmed_action) => {
                 canvas.set_cursor(0, confirmed_action.cursor_offset())?;
-            }
-            Mode::Sort => {
-                canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
             }
         }
         Ok(())

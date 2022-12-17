@@ -3,7 +3,7 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::event_exec::EventExec;
 use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
-use crate::mode::{MarkAction, Mode};
+use crate::mode::{InputKind, MarkAction, Mode};
 use crate::status::Status;
 
 /// Struct which mutates `tabs.selected()..
@@ -53,11 +53,15 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, key_char: Key) -> FmResult<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
-                Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::Filter => {
+                Mode::ReadInput(InputKind::Newfile)
+                | Mode::ReadInput(InputKind::Newdir)
+                | Mode::ReadInput(InputKind::Chmod)
+                | Mode::ReadInput(InputKind::Rename)
+                | Mode::ReadInput(InputKind::Filter) => {
                     EventExec::event_text_insertion(status.selected(), c);
                     Ok(())
                 }
-                Mode::RegexMatch => {
+                Mode::ReadInput(InputKind::RegexMatch) => {
                     EventExec::event_text_insertion(status.selected(), c);
                     status.select_from_regex()?;
                     Ok(())
@@ -81,9 +85,13 @@ impl EventDispatcher {
                     EventExec::event_leave_need_confirmation(status.selected());
                     Ok(())
                 }
-                Mode::Marks(MarkAction::Jump) => EventExec::exec_marks_jump(status, c),
-                Mode::Marks(MarkAction::New) => EventExec::exec_marks_new(status, c),
-                Mode::Sort => {
+                Mode::ReadInput(InputKind::Marks(MarkAction::Jump)) => {
+                    EventExec::exec_marks_jump(status, c)
+                }
+                Mode::ReadInput(InputKind::Marks(MarkAction::New)) => {
+                    EventExec::exec_marks_new(status, c)
+                }
+                Mode::ReadInput(InputKind::Sort) => {
                     EventExec::event_leave_sort(status.selected(), c);
                     Ok(())
                 }

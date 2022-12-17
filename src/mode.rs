@@ -13,7 +13,8 @@ pub enum MarkAction {
     New,
 }
 
-/// Different kind of last edition command received.
+/// Different kind of last edition command received requiring a confirmation.
+/// Copy, move and delete require a confirmation to prevent big mistakes.
 #[derive(Clone, Copy, Debug)]
 pub enum ConfirmedAction {
     /// Copy flagged files
@@ -47,12 +48,8 @@ impl std::fmt::Display for ConfirmedAction {
     }
 }
 
-/// Different mode in which the application can be.
-/// It dictates the reaction to event and what to display.
 #[derive(Clone)]
-pub enum Mode {
-    /// Default mode: display the files
-    Normal,
+pub enum InputKind {
     /// Rename the selected file
     Rename,
     /// Change permissions of the selected file
@@ -61,54 +58,64 @@ pub enum Mode {
     Newfile,
     /// Mkdir a new directory
     Newdir,
-    /// We'll be able to complete the input string with
-    /// different kind of completed items (exec, goto, search)
-    Completed(CompletionKind),
-    /// Display the help
-    Help,
     /// Flag files matching a regex
     RegexMatch,
-    /// Jump to a flagged file
-    Jump,
-    /// Confirmation is required before modification is made to files :
-    /// delete, move, copy
-    NeedConfirmation(ConfirmedAction),
     /// Change the type of sort
     Sort,
-    /// Preview a file content
-    Preview,
-    /// Display a sort of stack of visited directories
-    History,
-    /// Display predefined shortcuts
-    Shortcut,
     /// Jump to a saved mark
     Marks(MarkAction),
     /// Filter by extension, name, directory or no filter
     Filter,
 }
 
+/// Different mode in which the application can be.
+/// It dictates the reaction to event and what to display.
+#[derive(Clone)]
+pub enum Mode {
+    /// Default mode: display the files
+    Normal,
+    /// We'll be able to complete the input string with
+    /// different kind of completed items (exec, goto, search)
+    Completed(CompletionKind),
+    /// Display the help
+    Help,
+    /// Jump to a flagged file
+    Jump,
+    /// Confirmation is required before modification is made to existing files :
+    /// delete, move, copy
+    NeedConfirmation(ConfirmedAction),
+    /// Preview a file content
+    Preview,
+    /// Display a sort of stack of visited directories
+    History,
+    /// Display predefined shortcuts
+    Shortcut,
+    /// Modes requiring an input that can't be completed
+    ReadInput(InputKind),
+}
+
 impl fmt::Debug for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Mode::Normal => write!(f, "Normal:  "),
-            Mode::Rename => write!(f, "Rename:  "),
-            Mode::Chmod => write!(f, "Chmod:   "),
-            Mode::Newfile => write!(f, "Newfile: "),
-            Mode::Newdir => write!(f, "Newdir:  "),
+            Mode::ReadInput(InputKind::Rename) => write!(f, "Rename:  "),
+            Mode::ReadInput(InputKind::Chmod) => write!(f, "Chmod:   "),
+            Mode::ReadInput(InputKind::Newfile) => write!(f, "Newfile: "),
+            Mode::ReadInput(InputKind::Newdir) => write!(f, "Newdir:  "),
+            Mode::ReadInput(InputKind::RegexMatch) => write!(f, "Regex :  "),
+            Mode::ReadInput(InputKind::Sort) => write!(f, "Sort: Kind Name Modif Size Ext Rev :"),
+            Mode::ReadInput(InputKind::Marks(_)) => write!(f, "Marks jump:"),
+            Mode::ReadInput(InputKind::Filter) => write!(f, "Filter:  "),
             Mode::Completed(CompletionKind::Exec) => write!(f, "Exec:    "),
             Mode::Completed(CompletionKind::Goto) => write!(f, "Goto  :  "),
             Mode::Completed(CompletionKind::Search) => write!(f, "Search:  "),
             Mode::Completed(CompletionKind::Nothing) => write!(f, "Nothing:  "),
             Mode::Help => write!(f, ""),
-            Mode::RegexMatch => write!(f, "Regex :  "),
             Mode::Jump => write!(f, "Jump  :  "),
             Mode::History => write!(f, "History :"),
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
-            Mode::Sort => write!(f, "Sort: Kind Name Modif Size Ext Rev :"),
             Mode::Preview => write!(f, "Preview : "),
             Mode::Shortcut => write!(f, "Shortcut :"),
-            Mode::Marks(_) => write!(f, "Marks jump:"),
-            Mode::Filter => write!(f, "Filter:  "),
         }
     }
 }
