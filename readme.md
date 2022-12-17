@@ -2,7 +2,10 @@
 
 Written in rust.
 
-[![crates.io](https://img.shields.io/crates/v/$CRATE.svg)](https://crates.io/crates/fm-tui)
+[![fm-tui on crates.io][cratesio-image]][cratesio]
+
+[cratesio-image]: https://img.shields.io/crates/v/fm-tui.svg
+[cratesio]: https://crates.io/crates/fm-tui
 
 ```
 FM : dired like file manager
