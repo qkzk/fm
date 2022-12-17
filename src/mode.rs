@@ -1,8 +1,13 @@
 use std::fmt;
 
+/// Different kind of mark actions.
+/// Either we jump to an existing mark or we save current path to a mark.
+/// In both case, we'll have to listen to the next char typed.
 #[derive(Clone)]
 pub enum MarkAction {
+    /// Jump to a selected mark (ie a path associated to a char)
     Jump,
+    /// Creates a new mark (a path associated to a char)
     New,
 }
 
