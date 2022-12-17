@@ -23,7 +23,7 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 use log::info;
 
 /// Every kind of mutation of the application is defined here.
-/// It mutates `Status` or its child `tab`.
+/// It mutates `Status` or its children `tab`.
 pub struct EventExec {}
 
 impl EventExec {
@@ -501,13 +501,13 @@ impl EventExec {
 
     /// Enter a copy paste mode.
     pub fn event_copy_paste(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::NeedConfirmation(crate::mode::ConfirmedAction::Copy);
+        tab.mode = Mode::NeedConfirmation(ConfirmedAction::Copy);
         Ok(())
     }
 
     /// Enter the 'move' mode.
     pub fn event_cut_paste(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::NeedConfirmation(crate::mode::ConfirmedAction::Move);
+        tab.mode = Mode::NeedConfirmation(ConfirmedAction::Move);
         Ok(())
     }
 
@@ -553,7 +553,7 @@ impl EventExec {
     /// Enter the delete mode.
     /// A confirmation is then asked.
     pub fn event_delete_file(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::NeedConfirmation(crate::mode::ConfirmedAction::Delete);
+        tab.mode = Mode::NeedConfirmation(ConfirmedAction::Delete);
         Ok(())
     }
 

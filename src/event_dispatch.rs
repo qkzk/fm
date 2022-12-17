@@ -53,17 +53,23 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, key_char: Key) -> FmResult<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
-                Mode::ReadInput(InputKind::Newfile)
-                | Mode::ReadInput(InputKind::Newdir)
-                | Mode::ReadInput(InputKind::Chmod)
-                | Mode::ReadInput(InputKind::Rename)
-                | Mode::ReadInput(InputKind::Filter) => {
-                    EventExec::event_text_insertion(status.selected(), c);
+                Mode::ReadInput(InputKind::Marks(MarkAction::Jump)) => {
+                    EventExec::exec_marks_jump(status, c)
+                }
+                Mode::ReadInput(InputKind::Marks(MarkAction::New)) => {
+                    EventExec::exec_marks_new(status, c)
+                }
+                Mode::ReadInput(InputKind::Sort) => {
+                    EventExec::event_leave_sort(status.selected(), c);
                     Ok(())
                 }
                 Mode::ReadInput(InputKind::RegexMatch) => {
                     EventExec::event_text_insertion(status.selected(), c);
                     status.select_from_regex()?;
+                    Ok(())
+                }
+                Mode::ReadInput(_) => {
+                    EventExec::event_text_insertion(status.selected(), c);
                     Ok(())
                 }
                 Mode::Completed(_) => {
@@ -81,16 +87,6 @@ impl EventDispatcher {
                         let _ = EventExec::exec_confirmed_action(status, confirmed_action);
                     }
                     EventExec::event_leave_need_confirmation(status.selected());
-                    Ok(())
-                }
-                Mode::ReadInput(InputKind::Marks(MarkAction::Jump)) => {
-                    EventExec::exec_marks_jump(status, c)
-                }
-                Mode::ReadInput(InputKind::Marks(MarkAction::New)) => {
-                    EventExec::exec_marks_new(status, c)
-                }
-                Mode::ReadInput(InputKind::Sort) => {
-                    EventExec::event_leave_sort(status.selected(), c);
                     Ok(())
                 }
             },
