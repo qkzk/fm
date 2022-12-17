@@ -215,8 +215,11 @@
 - [ ] NeedConfirmation should take a parameter, avoiding an attribute in tab/status.
 
 - [ ] Future version
+
   - [ ] remove references to local thing
   - [ ] translations i18n
+
+- [ ] tests
 
 ## BUGS
 

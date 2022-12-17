@@ -186,4 +186,8 @@ You can configure :
 
 ## Contribution
 
-Any help is appreciated, it's my first "published" program, so don't get upset by the code quality.
+Any help is appreciated.
+
+I comment everything I do in [dev.md](development.md).
+
+It's my first "published" program, so don't get upset by the code quality.
