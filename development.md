@@ -199,9 +199,10 @@
 
   use child enum to simplify Modes
 
-  - [x] group every mode requiring input (2 variants with subvariants: with or wirtout completion)
+  - [x] group every mode requiring input (2 variants with subvariants: with or without completion)
   - [x] combine help & preview
   - [x] better first line for mode filter
+  - [x] FIXED: help has wrong first line
 
 ## TODO
 
@@ -219,25 +220,26 @@
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
 
-- [ ] plugins
+- [ ] Version 0.1.2 : refactor preview
+
+  - [ ] refactor Preview::new() an enum may be useful ?
+
+- [ ] Version 0.1.3 : cd ..
+
+  - [ ] parse .. in goto
+
+- [ ] Version 0.2.0 : tests
+
+  - [ ] tests
+  - [ ] remove references to local thing
+  - [ ] translations i18n
+
+- [ ] Version 0.3.0 : dark/light theme, transparency etc.
+
+- [ ] Version 0.4.0 : plugins
 
   - which language ?
   - what for ?
-
-- [ ] Version 0.1.1
-
-  - [ ] BUG: help has wrong first line
-
-- [ ] Version 0.1.2
-
-  - [ ] refactor Preview::new() an enum may be useful ?
-  - [ ] parse .. in goto
-
-- [ ] Version 0.2.0
-
-  - [ ] remove references to local thing
-  - [ ] translations i18n
-  - [ ] tests
 
 ## BUGS
 
