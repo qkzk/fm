@@ -216,16 +216,25 @@
   - which language ?
   - what for ?
 
-- [ ] Future version
+- [ ] Version 0.1.1
+
+  - [ ] use child enum to simplify Modes
+
+    - [x] group every mode requiring input (2 variants with subvariants: with or wirtout completion)
+    - [x] combine help & preview
+    - [x] better first line for mode filter
+    - [ ] BUG: help has wrong first line
+
+- [ ] Version 0.1.2
+
+  - [ ] refactor Preview::new() an enum may be useful ?
+  - [ ] parse .. in goto
+
+- [ ] Version 0.2.0
 
   - [ ] remove references to local thing
   - [ ] translations i18n
-
-- [ ] tests
-- [ ] use child enum to simplify Modes
-
-  mode: New(NewAction) where enum NewAction { newname, newfile, newdir } or NeedInput( ActionFromInput )
-  also we should group all modes allowing completion to refactor
+  - [ ] tests
 
 ## BUGS
 

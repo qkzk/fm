@@ -12,7 +12,7 @@ use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
-use crate::mode::{ConfirmedAction, MarkAction, Mode};
+use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
 use crate::preview::{Preview, Window};
 use crate::status::Status;
 use crate::tab::Tab;
@@ -59,13 +59,13 @@ impl<'a> Draw for WinTab<'a> {
         match self.tab.mode {
             Mode::Jump => self.jump_list(self.status, canvas),
             Mode::History => self.history(self.tab, canvas),
-            Mode::Exec | Mode::Goto | Mode::Search => self.completion(self.tab, canvas),
+            Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
-            Mode::Preview | Mode::Help => self.preview(self.tab, canvas),
+            Mode::Preview => self.preview(self.tab, canvas),
             Mode::Shortcut => self.shortcuts(self.tab, canvas),
-            Mode::Marks(_) => self.marks(self.status, self.tab, canvas),
+            Mode::InputSimple(InputKind::Marks(_)) => self.marks(self.status, self.tab, canvas),
             _ => self.files(self.status, self.tab, canvas),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -106,12 +106,32 @@ impl<'a> WinTab<'a> {
     }
 
     fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
-        if let Some(file) = tab.path_content.selected_file() {
-            let owner_size = file.owner.len();
-            let group_size = file.group.len();
-            let mut attr = fileinfo_attr(status, file, self.colors);
-            attr.effect ^= Effect::REVERSE;
-            canvas.print_with_attr(1, 0, &file.format(owner_size, group_size)?, attr)?;
+        match tab.mode {
+            Mode::Normal => {
+                if !status.display_full {
+                    if let Some(file) = tab.path_content.selected_file() {
+                        let owner_size = file.owner.len();
+                        let group_size = file.group.len();
+                        let mut attr = fileinfo_attr(status, file, self.colors);
+                        attr.effect ^= Effect::REVERSE;
+                        canvas.print_with_attr(
+                            1,
+                            0,
+                            &file.format(owner_size, group_size)?,
+                            attr,
+                        )?;
+                    }
+                }
+            }
+            Mode::InputSimple(InputKind::Filter) => {
+                canvas.print_with_attr(
+                    1,
+                    0,
+                    "by name: n name, by ext: e ext, only directories: d, reset: a",
+                    Self::ATTR_YELLOW_BOLD,
+                )?;
+            }
+            _ => (),
         }
 
         Ok(())
@@ -134,21 +154,17 @@ impl<'a> WinTab<'a> {
             Mode::Preview => match tab.path_content.selected_file() {
                 Some(fileinfo) => {
                     vec![
-                        format!("{:?}", tab.mode.clone()),
+                        format!("{}", tab.mode.clone()),
                         format!("{}", fileinfo.path.to_string_lossy()),
                     ]
                 }
                 None => vec!["".to_owned()],
             },
-            Mode::Help => vec![
-                "fm: a dired like file manager. ".to_owned(),
-                "Keybindings.".to_owned(),
-            ],
-            Mode::Marks(MarkAction::Jump) => vec!["Jump to...".to_owned()],
-            Mode::Marks(MarkAction::New) => vec!["Save mark...".to_owned()],
+            Mode::InputSimple(InputKind::Marks(MarkAction::Jump)) => vec!["Jump to...".to_owned()],
+            Mode::InputSimple(InputKind::Marks(MarkAction::New)) => vec!["Save mark...".to_owned()],
             _ => {
                 vec![
-                    format!("{:?}", tab.mode.clone()),
+                    format!("{}", tab.mode.clone()),
                     format!("{}", tab.input.string()),
                 ]
             }
@@ -195,41 +211,30 @@ impl<'a> WinTab<'a> {
             }
             canvas.print_with_attr(row, 0, string, attr)?;
         }
-        if !status.display_full {
-            self.second_line(status, tab, canvas)?
-        }
+        self.second_line(status, tab, canvas)?;
         Ok(())
     }
 
     /// Display a cursor in the top row, at a correct column.
     fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
-            Mode::Rename
-            | Mode::Newdir
-            | Mode::Newfile
-            | Mode::Exec
-            | Mode::Goto
-            | Mode::Chmod
-            | Mode::Search
-            | Mode::Filter
-            | Mode::RegexMatch => {
-                canvas.show_cursor(true)?;
-                canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
-            }
             Mode::Normal
-            | Mode::Help
-            | Mode::Marks(_)
+            | Mode::InputSimple(InputKind::Marks(_))
             | Mode::Preview
             | Mode::Shortcut
             | Mode::Jump
             | Mode::History => {
                 canvas.show_cursor(false)?;
             }
+            Mode::InputSimple(InputKind::Sort) => {
+                canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
+            }
+            Mode::InputSimple(_) | Mode::InputCompleted(_) => {
+                canvas.show_cursor(true)?;
+                canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
+            }
             Mode::NeedConfirmation(confirmed_action) => {
                 canvas.set_cursor(0, confirmed_action.cursor_offset())?;
-            }
-            Mode::Sort => {
-                canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
             }
         }
         Ok(())

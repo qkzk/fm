@@ -3,7 +3,7 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::event_exec::EventExec;
 use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
-use crate::mode::{MarkAction, Mode};
+use crate::mode::{InputKind, MarkAction, Mode};
 use crate::status::Status;
 
 /// Struct which mutates `tabs.selected()..
@@ -53,25 +53,33 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, key_char: Key) -> FmResult<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
-                Mode::Newfile | Mode::Newdir | Mode::Chmod | Mode::Rename | Mode::Filter => {
-                    EventExec::event_text_insertion(status.selected(), c);
+                Mode::InputSimple(InputKind::Marks(MarkAction::Jump)) => {
+                    EventExec::exec_marks_jump(status, c)
+                }
+                Mode::InputSimple(InputKind::Marks(MarkAction::New)) => {
+                    EventExec::exec_marks_new(status, c)
+                }
+                Mode::InputSimple(InputKind::Sort) => {
+                    EventExec::event_leave_sort(status.selected(), c);
                     Ok(())
                 }
-                Mode::RegexMatch => {
+                Mode::InputSimple(InputKind::RegexMatch) => {
                     EventExec::event_text_insertion(status.selected(), c);
                     status.select_from_regex()?;
                     Ok(())
                 }
-                Mode::Goto | Mode::Exec | Mode::Search => {
+                Mode::InputSimple(_) => {
+                    EventExec::event_text_insertion(status.selected(), c);
+                    Ok(())
+                }
+                Mode::InputCompleted(_) => {
                     EventExec::event_text_insert_and_complete(status.selected(), c)
                 }
                 Mode::Normal => match self.binds.get(&key_char) {
                     Some(event_char) => event_char.matcher(status),
                     None => Ok(()),
                 },
-                Mode::Help | Mode::Preview | Mode::Shortcut => {
-                    EventExec::event_normal(status.selected())
-                }
+                Mode::Preview | Mode::Shortcut => EventExec::event_normal(status.selected()),
                 Mode::Jump => Ok(()),
                 Mode::History => Ok(()),
                 Mode::NeedConfirmation(confirmed_action) => {
@@ -79,12 +87,6 @@ impl EventDispatcher {
                         let _ = EventExec::exec_confirmed_action(status, confirmed_action);
                     }
                     EventExec::event_leave_need_confirmation(status.selected());
-                    Ok(())
-                }
-                Mode::Marks(MarkAction::Jump) => EventExec::exec_marks_jump(status, c),
-                Mode::Marks(MarkAction::New) => EventExec::exec_marks_new(status, c),
-                Mode::Sort => {
-                    EventExec::event_leave_sort(status.selected(), c);
                     Ok(())
                 }
             },

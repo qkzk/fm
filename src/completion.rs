@@ -2,11 +2,27 @@ use std::fs::{self, ReadDir};
 
 use crate::fileinfo::PathContent;
 use crate::fm_error::FmResult;
+use crate::mode::Mode;
+
+/// Different kind of completions
+#[derive(Clone, Default)]
+pub enum CompletionKind {
+    /// No completion needed
+    #[default]
+    Nothing,
+    /// Complete a directory path in filesystem
+    Goto,
+    /// Complete a filename from current directory
+    Search,
+    /// Complete an executable name from $PATH
+    Exec,
+}
 
 /// Holds a `Vec<String>` of possible completions and an `usize` index
 /// showing where the user is in the vec.
 #[derive(Clone, Default)]
 pub struct Completion {
+    pub kind: CompletionKind,
     /// Possible completions
     pub proposals: Vec<String>,
     /// Which completion is selected by the user
@@ -14,6 +30,14 @@ pub struct Completion {
 }
 
 impl Completion {
+    pub fn set_kind(&mut self, mode: &Mode) {
+        if let Mode::InputCompleted(completion_kind) = mode {
+            self.kind = completion_kind.clone()
+        } else {
+            self.kind = CompletionKind::Nothing
+        }
+    }
+
     /// Is there any completion option ?
     pub fn is_empty(&self) -> bool {
         self.proposals.is_empty()
@@ -69,9 +93,27 @@ impl Completion {
         self.proposals.clear();
     }
 
+    /// Fill the completions items from some parameters, depending on the mode.
+    /// In Exec mode, we search for executable in $PATH starting with what the user typed.
+    /// In Goto mode, we search for valid absolute & relative paths starting with what the user typed.
+    /// In Search mode, we search for filenames in current directory starting with what the user typed.
+    pub fn complete(
+        &mut self,
+        input_string: &str,
+        path_content: &PathContent,
+        current_path: Option<String>,
+    ) -> FmResult<()> {
+        match self.kind {
+            CompletionKind::Exec => self.exec(input_string),
+            CompletionKind::Goto => self.goto(input_string, current_path),
+            CompletionKind::Search => self.search(input_string, path_content),
+            CompletionKind::Nothing => Ok(()),
+        }
+    }
+
     /// Goto completion.
     /// Looks for the valid path completing what the user typed.
-    pub fn goto(&mut self, input_string: &str, current_path: Option<String>) -> FmResult<()> {
+    fn goto(&mut self, input_string: &str, current_path: Option<String>) -> FmResult<()> {
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
             return Ok(());
@@ -100,15 +142,13 @@ impl Completion {
     fn entries_matching_filename(entries: ReadDir, last_name: &str) -> Vec<String> {
         entries
             .filter_map(|e| e.ok())
-            .filter(|e| {
-                e.file_type().unwrap().is_dir() && filename_startswith(e, &last_name.to_owned())
-            })
+            .filter(|e| e.file_type().unwrap().is_dir() && filename_startswith(e, last_name))
             .map(|e| e.path().to_string_lossy().into_owned())
             .collect()
     }
 
     /// Looks for programs in $PATH completing the one typed by the user.
-    pub fn exec(&mut self, input_string: &String) -> FmResult<()> {
+    fn exec(&mut self, input_string: &str) -> FmResult<()> {
         let mut proposals: Vec<String> = vec![];
         for path in std::env::var_os("PATH")
             .unwrap_or_default()
@@ -131,7 +171,7 @@ impl Completion {
     }
 
     /// Looks for file within current folder completing what the user typed.
-    pub fn search(&mut self, input_string: &String, path_content: &PathContent) -> FmResult<()> {
+    fn search(&mut self, input_string: &str, path_content: &PathContent) -> FmResult<()> {
         self.update(
             path_content
                 .files
@@ -145,7 +185,7 @@ impl Completion {
 }
 
 /// true if the filename starts with a pattern
-fn filename_startswith(entry: &std::fs::DirEntry, pattern: &String) -> bool {
+fn filename_startswith(entry: &std::fs::DirEntry, pattern: &str) -> bool {
     entry
         .file_name()
         .to_string_lossy()
