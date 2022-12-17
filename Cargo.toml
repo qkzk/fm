@@ -9,6 +9,7 @@ readme = "readme.md"
 repository = "https://github.com/qkzk/fm"
 keywords = ["tui", "file-manager", "file", "manager", "tuikit"]
 categories = ["command-line-utility", "filesystem", "os::unix-apis"]
+documentation = "https://docs.serde.rs/fm-tui/"
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
