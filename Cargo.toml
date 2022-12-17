@@ -3,6 +3,12 @@ name = "fm"
 version = "0.1.0"
 authors = ["Quentin Konieczko <qu3nt1n@gmail.com>"]
 edition = "2021"
+licence = "common clause"
+description = "A TUI file manager inspired by dired and ranger"
+readme = "readme.md"
+repository = "https://github.com/qkzk/fm"
+keywords = ["tui", "file-manager", "file", "manager", "tuikit"]
+categories = ["command-line-utility", "filesystem", "os::unix-apis"]
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
