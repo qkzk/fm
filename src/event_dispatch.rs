@@ -73,9 +73,7 @@ impl EventDispatcher {
                     Some(event_char) => event_char.matcher(status),
                     None => Ok(()),
                 },
-                Mode::Help | Mode::Preview | Mode::Shortcut => {
-                    EventExec::event_normal(status.selected())
-                }
+                Mode::Preview | Mode::Shortcut => EventExec::event_normal(status.selected()),
                 Mode::Jump => Ok(()),
                 Mode::History => Ok(()),
                 Mode::NeedConfirmation(confirmed_action) => {

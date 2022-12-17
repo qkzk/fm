@@ -78,8 +78,6 @@ pub enum Mode {
     /// different kind of completed items (exec, goto, search)
     Completed(CompletionKind),
     /// Display the help
-    Help,
-    /// Jump to a flagged file
     Jump,
     /// Confirmation is required before modification is made to existing files :
     /// delete, move, copy
@@ -110,7 +108,6 @@ impl fmt::Debug for Mode {
             Mode::Completed(CompletionKind::Goto) => write!(f, "Goto  :  "),
             Mode::Completed(CompletionKind::Search) => write!(f, "Search:  "),
             Mode::Completed(CompletionKind::Nothing) => write!(f, "Nothing:  "),
-            Mode::Help => write!(f, ""),
             Mode::Jump => write!(f, "Jump  :  "),
             Mode::History => write!(f, "History :"),
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),

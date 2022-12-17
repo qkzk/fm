@@ -63,7 +63,7 @@ impl<'a> Draw for WinTab<'a> {
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
-            Mode::Preview | Mode::Help => self.preview(self.tab, canvas),
+            Mode::Preview => self.preview(self.tab, canvas),
             Mode::Shortcut => self.shortcuts(self.tab, canvas),
             Mode::ReadInput(InputKind::Marks(_)) => self.marks(self.status, self.tab, canvas),
             _ => self.files(self.status, self.tab, canvas),
@@ -140,10 +140,6 @@ impl<'a> WinTab<'a> {
                 }
                 None => vec!["".to_owned()],
             },
-            Mode::Help => vec![
-                "fm: a dired like file manager. ".to_owned(),
-                "Keybindings.".to_owned(),
-            ],
             Mode::ReadInput(InputKind::Marks(MarkAction::Jump)) => vec!["Jump to...".to_owned()],
             Mode::ReadInput(InputKind::Marks(MarkAction::New)) => vec!["Save mark...".to_owned()],
             _ => {
@@ -205,7 +201,6 @@ impl<'a> WinTab<'a> {
     fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
             Mode::Normal
-            | Mode::Help
             | Mode::ReadInput(InputKind::Marks(_))
             | Mode::Preview
             | Mode::Shortcut

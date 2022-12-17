@@ -318,7 +318,7 @@ impl EventExec {
                     tab.line_index -= 1;
                 }
             }
-            Mode::Preview | Mode::Help => tab.line_index = tab.window.top,
+            Mode::Preview => tab.line_index = tab.window.top,
             _ => (),
         }
         tab.window.scroll_up_one(tab.line_index);
@@ -336,7 +336,7 @@ impl EventExec {
                     tab.line_index += 1;
                 }
             }
-            Mode::Preview | Mode::Help => tab.line_index = tab.window.bottom,
+            Mode::Preview => tab.line_index = tab.window.bottom,
             _ => (),
         }
         tab.window.scroll_down_one(tab.line_index);
@@ -562,7 +562,7 @@ impl EventExec {
     pub fn event_help(status: &mut Status) -> FmResult<()> {
         let help = status.help.clone();
         let tab = status.selected();
-        tab.mode = Mode::Help;
+        tab.mode = Mode::Preview;
         tab.preview = Preview::help(help);
         tab.window.reset(tab.preview.len());
         Ok(())
@@ -1075,9 +1075,7 @@ impl EventExec {
     /// Does nothing if the selected item is already the first in list.
     pub fn event_move_up(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => {
-                EventExec::event_up_one_row(status.selected())
-            }
+            Mode::Normal | Mode::Preview => EventExec::event_up_one_row(status.selected()),
             Mode::Jump => EventExec::event_jumplist_prev(status),
             Mode::History => EventExec::event_history_prev(status.selected()),
             Mode::Shortcut => EventExec::event_shortcut_prev(status.selected()),
@@ -1093,9 +1091,7 @@ impl EventExec {
     /// Does nothing if the user is already at the bottom.
     pub fn event_move_down(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => {
-                EventExec::event_down_one_row(status.selected())
-            }
+            Mode::Normal | Mode::Preview => EventExec::event_down_one_row(status.selected()),
             Mode::Jump => EventExec::event_jumplist_next(status),
             Mode::History => EventExec::event_history_next(status.selected()),
             Mode::Shortcut => EventExec::event_shortcut_next(status.selected()),
@@ -1158,7 +1154,7 @@ impl EventExec {
     /// Move to leftmost char in mode allowing edition.
     pub fn event_key_home(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => EventExec::event_go_top(status.selected()),
+            Mode::Normal | Mode::Preview => EventExec::event_go_top(status.selected()),
             _ => EventExec::event_cursor_home(status.selected()),
         };
         Ok(())
@@ -1167,9 +1163,7 @@ impl EventExec {
     /// Move to the bottom in any mode.
     pub fn event_end(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => {
-                EventExec::event_go_bottom(status.selected())
-            }
+            Mode::Normal | Mode::Preview => EventExec::event_go_bottom(status.selected()),
             _ => EventExec::event_cursor_end(status.selected()),
         };
         Ok(())
@@ -1178,9 +1172,7 @@ impl EventExec {
     /// Move up 10 lines in normal mode and preview.
     pub fn page_up(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => {
-                EventExec::event_page_up(status.selected())
-            }
+            Mode::Normal | Mode::Preview => EventExec::event_page_up(status.selected()),
             _ => (),
         };
         Ok(())
@@ -1189,9 +1181,7 @@ impl EventExec {
     /// Move down 10 lines in normal & preview mode.
     pub fn page_down(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview | Mode::Help => {
-                EventExec::event_page_down(status.selected())
-            }
+            Mode::Normal | Mode::Preview => EventExec::event_page_down(status.selected()),
             _ => (),
         };
         Ok(())
@@ -1218,7 +1208,6 @@ impl EventExec {
             Mode::Shortcut => EventExec::exec_shortcut(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
             Mode::NeedConfirmation(_)
-            | Mode::Help
             | Mode::Preview
             | Mode::Completed(CompletionKind::Nothing)
             | Mode::ReadInput(InputKind::Sort)
