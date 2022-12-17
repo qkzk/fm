@@ -6,6 +6,40 @@ pub enum MarkAction {
     New,
 }
 
+/// Different kind of last edition command received.
+#[derive(Clone, Copy, Debug)]
+pub enum ConfirmedAction {
+    /// Copy flagged files
+    Copy,
+    /// Delete flagged files
+    Delete,
+    /// Move flagged files
+    Move,
+}
+
+impl ConfirmedAction {
+    /// Offset before the cursor.
+    /// Since we ask the user confirmation, we need to know how much space
+    /// is needed.
+    pub fn cursor_offset(&self) -> usize {
+        match *self {
+            Self::Copy => 25,
+            Self::Delete => 21,
+            Self::Move => 25,
+        }
+    }
+}
+
+impl std::fmt::Display for ConfirmedAction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Self::Delete => write!(f, "Delete files :"),
+            Self::Move => write!(f, "Move files here :"),
+            Self::Copy => write!(f, "Copy files here :"),
+        }
+    }
+}
+
 /// Different mode in which the application can be.
 /// It dictates the reaction to event and what to display.
 #[derive(Clone)]
@@ -34,7 +68,7 @@ pub enum Mode {
     Jump,
     /// Confirmation is required before modification is made to files :
     /// delete, move, copy
-    NeedConfirmation,
+    NeedConfirmation(ConfirmedAction),
     /// Change the type of sort
     Sort,
     /// Preview a file content
@@ -64,7 +98,7 @@ impl fmt::Debug for Mode {
             Mode::RegexMatch => write!(f, "Regex :  "),
             Mode::Jump => write!(f, "Jump  :  "),
             Mode::History => write!(f, "History :"),
-            Mode::NeedConfirmation => write!(f, "Y/N   :"),
+            Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
             Mode::Sort => write!(f, "Sort: Kind Name Modif Size Ext Rev :"),
             Mode::Preview => write!(f, "Preview : "),
             Mode::Shortcut => write!(f, "Shortcut :"),

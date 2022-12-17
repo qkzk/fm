@@ -191,6 +191,10 @@
   - [x] fix dependencies (skim-qkzk instead of a git version, no wildcards, tuikit 0.4.5 for skim)
   - [x] publish on cargo
 
+### Version 0.1.1
+
+- [x] NeedConfirmation should take a parameter, avoiding an attribute in tab/status.
+
 ## TODO
 
 - [ ] remote control
@@ -212,14 +216,16 @@
   - which language ?
   - what for ?
 
-- [ ] NeedConfirmation should take a parameter, avoiding an attribute in tab/status.
-
 - [ ] Future version
 
   - [ ] remove references to local thing
   - [ ] translations i18n
 
 - [ ] tests
+- [ ] use child enum to simplify Modes
+
+  mode: New(NewAction) where enum NewAction { newname, newfile, newdir } or NeedInput( ActionFromInput )
+  also we should group all modes allowing completion to refactor
 
 ## BUGS
 

@@ -74,9 +74,9 @@ impl EventDispatcher {
                 }
                 Mode::Jump => Ok(()),
                 Mode::History => Ok(()),
-                Mode::NeedConfirmation => {
+                Mode::NeedConfirmation(confirmed_action) => {
                     if c == 'y' {
-                        let _ = EventExec::exec_last_edition(status);
+                        let _ = EventExec::exec_confirmed_action(status, confirmed_action);
                     }
                     EventExec::event_leave_need_confirmation(status.selected());
                     Ok(())

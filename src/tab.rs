@@ -6,7 +6,6 @@ use crate::content_window::ContentWindow;
 use crate::fileinfo::PathContent;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::input::Input;
-use crate::last_edition::LastEdition;
 use crate::mode::Mode;
 use crate::preview::Preview;
 use crate::shortcut::Shortcut;
@@ -34,8 +33,6 @@ pub struct Tab {
     pub nvim_server: String,
     /// Completion list and index in it.
     pub completion: Completion,
-    /// Last edition command kind received
-    pub last_edition: LastEdition,
     /// True if the user issued a quit event (`Key::Char('q')` by default).
     /// It's used to exit the main loop before reseting the cursor.
     pub must_quit: bool,
@@ -62,7 +59,6 @@ impl Tab {
         let window = ContentWindow::new(path_content.files.len(), height);
         let input = Input::default();
         let completion = Completion::default();
-        let last_edition = LastEdition::Nothing;
         let must_quit = false;
         let preview = Preview::Empty;
         let mut history = History::default();
@@ -79,7 +75,6 @@ impl Tab {
             show_hidden,
             nvim_server,
             completion,
-            last_edition,
             must_quit,
             preview,
             history,
