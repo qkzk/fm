@@ -41,6 +41,8 @@ or with a path :
 fm -p ~/Downloads
 ```
 
+If you added the [recommanded function](#cd-on-quit) to your bashrc/zshrc, simply use `f` and you will cd to the last visited directory when exiting.
+
 ## Features
 
 - Navigate with the arrows or the mouse (left select, right open, wheel)
