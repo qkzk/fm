@@ -8,7 +8,7 @@ description = "A TUI file manager inspired by dired and ranger"
 readme = "readme.md"
 repository = "https://github.com/qkzk/fm"
 keywords = ["tui", "file-manager", "file", "manager", "tuikit"]
-categories = ["command-line-utility", "filesystem", "os::unix-apis"]
+categories = ["command-line-utilities", "filesystem", "os::unix-apis"]
 documentation = "https://docs.serde.rs/fm-tui/"
 
 [profile.release]
