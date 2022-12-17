@@ -13,7 +13,7 @@ use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
 use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
-use crate::preview::{Preview, Window};
+use crate::preview::{Preview, TextKind, Window};
 use crate::status::Status;
 use crate::tab::Tab;
 
@@ -151,14 +151,18 @@ impl<'a> WinTab<'a> {
             Mode::NeedConfirmation(confirmed_action) => {
                 vec![format!("{} (y/n)", confirmed_action)]
             }
-            Mode::Preview => match tab.path_content.selected_file() {
-                Some(fileinfo) => {
-                    vec![
-                        format!("{}", tab.mode.clone()),
-                        format!("{}", fileinfo.path.to_string_lossy()),
-                    ]
+            Mode::Preview => match &tab.preview {
+                Preview::Text(text_content) => {
+                    if matches!(text_content.kind, TextKind::HELP) {
+                        vec![
+                            "fm: a dired / ranger like file manager. ".to_owned(),
+                            "Keybindings.".to_owned(),
+                        ]
+                    } else {
+                        Self::default_preview_first_line(tab)
+                    }
                 }
-                None => vec!["".to_owned()],
+                _ => Self::default_preview_first_line(tab),
             },
             Mode::InputSimple(InputKind::Marks(MarkAction::Jump)) => vec!["Jump to...".to_owned()],
             Mode::InputSimple(InputKind::Marks(MarkAction::New)) => vec!["Save mark...".to_owned()],
@@ -170,6 +174,18 @@ impl<'a> WinTab<'a> {
             }
         };
         Ok(first_row)
+    }
+
+    fn default_preview_first_line(tab: &Tab) -> Vec<String> {
+        match tab.path_content.selected_file() {
+            Some(fileinfo) => {
+                vec![
+                    format!("{}", tab.mode.clone()),
+                    format!("{}", fileinfo.path.to_string_lossy()),
+                ]
+            }
+            None => vec!["".to_owned()],
+        }
     }
 
     fn draw_colored_strings(

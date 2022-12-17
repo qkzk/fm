@@ -195,6 +195,14 @@
 
 - [x] NeedConfirmation should take a parameter, avoiding an attribute in tab/status.
 
+- [x] Mode Refactor.
+
+  use child enum to simplify Modes
+
+  - [x] group every mode requiring input (2 variants with subvariants: with or wirtout completion)
+  - [x] combine help & preview
+  - [x] better first line for mode filter
+
 ## TODO
 
 - [ ] remote control
@@ -218,12 +226,7 @@
 
 - [ ] Version 0.1.1
 
-  - [ ] use child enum to simplify Modes
-
-    - [x] group every mode requiring input (2 variants with subvariants: with or wirtout completion)
-    - [x] combine help & preview
-    - [x] better first line for mode filter
-    - [ ] BUG: help has wrong first line
+  - [ ] BUG: help has wrong first line
 
 - [ ] Version 0.1.2
 

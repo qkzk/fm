@@ -35,6 +35,12 @@ pub enum Preview {
     Empty,
 }
 
+#[derive(Clone)]
+pub enum TextKind {
+    HELP,
+    TEXTFILE,
+}
+
 impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
@@ -117,6 +123,7 @@ impl Preview {
 /// It's a boxed vector of strings (per line)
 #[derive(Clone)]
 pub struct TextContent {
+    pub kind: TextKind,
     pub content: Box<Vec<String>>,
     length: usize,
 }
@@ -124,6 +131,7 @@ pub struct TextContent {
 impl Default for TextContent {
     fn default() -> Self {
         Self {
+            kind: TextKind::TEXTFILE,
             content: Box::new(vec![]),
             length: 0,
         }
@@ -134,6 +142,7 @@ impl TextContent {
     fn help(help: String) -> Self {
         let content: Box<Vec<String>> = Box::new(help.split('\n').map(|s| s.to_owned()).collect());
         Self {
+            kind: TextKind::HELP,
             length: content.len(),
             content,
         }
@@ -153,6 +162,7 @@ impl TextContent {
             None => Box::new(vec![]),
         };
         Ok(Self {
+            kind: TextKind::TEXTFILE,
             length: content.len(),
             content,
         })
