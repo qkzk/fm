@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::completion::CompletionKind;
+
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.
 /// In both case, we'll have to listen to the next char typed.
@@ -59,14 +61,11 @@ pub enum Mode {
     Newfile,
     /// Mkdir a new directory
     Newdir,
-    /// Execute a command on the file
-    Exec,
+    /// We'll be able to complete the input string with
+    /// different kind of completed items (exec, goto, search)
+    Completed(CompletionKind),
     /// Display the help
     Help,
-    /// Search in current directory for a string
-    Search,
-    /// cd into a directory
-    Goto,
     /// Flag files matching a regex
     RegexMatch,
     /// Jump to a flagged file
@@ -96,10 +95,11 @@ impl fmt::Debug for Mode {
             Mode::Chmod => write!(f, "Chmod:   "),
             Mode::Newfile => write!(f, "Newfile: "),
             Mode::Newdir => write!(f, "Newdir:  "),
-            Mode::Exec => write!(f, "Exec:    "),
+            Mode::Completed(CompletionKind::Exec) => write!(f, "Exec:    "),
+            Mode::Completed(CompletionKind::Goto) => write!(f, "Goto  :  "),
+            Mode::Completed(CompletionKind::Search) => write!(f, "Search:  "),
+            Mode::Completed(CompletionKind::Nothing) => write!(f, "Nothing:  "),
             Mode::Help => write!(f, ""),
-            Mode::Search => write!(f, "Search:  "),
-            Mode::Goto => write!(f, "Goto  :  "),
             Mode::RegexMatch => write!(f, "Regex :  "),
             Mode::Jump => write!(f, "Jump  :  "),
             Mode::History => write!(f, "History :"),

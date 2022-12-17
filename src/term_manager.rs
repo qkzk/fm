@@ -59,7 +59,7 @@ impl<'a> Draw for WinTab<'a> {
         match self.tab.mode {
             Mode::Jump => self.jump_list(self.status, canvas),
             Mode::History => self.history(self.tab, canvas),
-            Mode::Exec | Mode::Goto | Mode::Search => self.completion(self.tab, canvas),
+            Mode::Completed(_) => self.completion(self.tab, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
@@ -207,10 +207,8 @@ impl<'a> WinTab<'a> {
             Mode::Rename
             | Mode::Newdir
             | Mode::Newfile
-            | Mode::Exec
-            | Mode::Goto
+            | Mode::Completed(_)
             | Mode::Chmod
-            | Mode::Search
             | Mode::Filter
             | Mode::RegexMatch => {
                 canvas.show_cursor(true)?;

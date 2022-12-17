@@ -227,6 +227,8 @@
   mode: New(NewAction) where enum NewAction { newname, newfile, newdir } or NeedInput( ActionFromInput )
   also we should group all modes allowing completion to refactor
 
+- [ ] parse .. in goto
+
 ## BUGS
 
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs

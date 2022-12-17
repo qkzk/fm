@@ -5,14 +5,14 @@ use std::path;
 use std::path::PathBuf;
 
 use crate::bulkrename::Bulkrename;
+use crate::completion::CompletionKind;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::content_window::{ContentWindow, RESERVED_ROWS};
 use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::filter::FilterKind;
 use crate::fm_error::{ErrorVariant, FmError, FmResult};
-use crate::mode::ConfirmedAction;
-use crate::mode::{MarkAction, Mode};
+use crate::mode::{ConfirmedAction, MarkAction, Mode};
 use crate::opener::execute_in_child;
 use crate::preview::Preview;
 use crate::status::Status;
@@ -526,7 +526,7 @@ impl EventExec {
     /// Enter the execute mode. Most commands must be executed to allow for
     /// a confirmation.
     pub fn event_exec(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::Exec;
+        tab.mode = Mode::Completed(CompletionKind::Exec);
         Ok(())
     }
 
@@ -572,7 +572,7 @@ impl EventExec {
     /// Matching items are displayed as you type them.
     pub fn event_search(tab: &mut Tab) -> FmResult<()> {
         tab.searched = None;
-        tab.mode = Mode::Search;
+        tab.mode = Mode::Completed(CompletionKind::Search);
         Ok(())
     }
 
@@ -686,7 +686,7 @@ impl EventExec {
 
     /// Enter the goto mode where an user can type a path to jump to.
     pub fn event_goto(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::Goto;
+        tab.mode = Mode::Completed(CompletionKind::Goto);
         tab.completion.reset();
         Ok(())
     }
@@ -1081,7 +1081,7 @@ impl EventExec {
             Mode::Jump => EventExec::event_jumplist_prev(status),
             Mode::History => EventExec::event_history_prev(status.selected()),
             Mode::Shortcut => EventExec::event_shortcut_prev(status.selected()),
-            Mode::Goto | Mode::Exec | Mode::Search => {
+            Mode::Completed(_) => {
                 status.selected().completion.prev();
             }
             _ => (),
@@ -1099,9 +1099,7 @@ impl EventExec {
             Mode::Jump => EventExec::event_jumplist_next(status),
             Mode::History => EventExec::event_history_next(status.selected()),
             Mode::Shortcut => EventExec::event_shortcut_next(status.selected()),
-            Mode::Goto | Mode::Exec | Mode::Search => {
-                status.selected().completion.next();
-            }
+            Mode::Completed(_) => status.selected().completion.next(),
             _ => (),
         };
         Ok(())
@@ -1116,9 +1114,7 @@ impl EventExec {
             | Mode::Chmod
             | Mode::Newdir
             | Mode::Newfile
-            | Mode::Exec
-            | Mode::Search
-            | Mode::Goto
+            | Mode::Completed(_)
             | Mode::RegexMatch
             | Mode::Filter => {
                 EventExec::event_move_cursor_left(status.selected());
@@ -1138,9 +1134,7 @@ impl EventExec {
             | Mode::Chmod
             | Mode::Newdir
             | Mode::Newfile
-            | Mode::Exec
-            | Mode::Search
-            | Mode::Goto
+            | Mode::Completed(_)
             | Mode::RegexMatch
             | Mode::Filter => {
                 EventExec::event_move_cursor_right(status.selected());
@@ -1157,9 +1151,7 @@ impl EventExec {
             | Mode::Newdir
             | Mode::Chmod
             | Mode::Newfile
-            | Mode::Exec
-            | Mode::Search
-            | Mode::Goto
+            | Mode::Completed(_)
             | Mode::RegexMatch
             | Mode::Filter => {
                 EventExec::event_delete_char_left(status.selected());
@@ -1177,9 +1169,7 @@ impl EventExec {
             | Mode::Newdir
             | Mode::Chmod
             | Mode::Newfile
-            | Mode::Exec
-            | Mode::Search
-            | Mode::Goto
+            | Mode::Completed(_)
             | Mode::RegexMatch
             | Mode::Filter => {
                 EventExec::event_delete_chars_right(status.selected());
@@ -1242,9 +1232,9 @@ impl EventExec {
             Mode::Newfile => EventExec::exec_newfile(status.selected())?,
             Mode::Newdir => EventExec::exec_newdir(status.selected())?,
             Mode::Chmod => EventExec::exec_chmod(status)?,
-            Mode::Exec => EventExec::exec_exec(status.selected())?,
-            Mode::Search => EventExec::exec_search(status.selected()),
-            Mode::Goto => EventExec::exec_goto(status.selected())?,
+            Mode::Completed(CompletionKind::Exec) => EventExec::exec_exec(status.selected())?,
+            Mode::Completed(CompletionKind::Search) => EventExec::exec_search(status.selected()),
+            Mode::Completed(CompletionKind::Goto) => EventExec::exec_goto(status.selected())?,
             Mode::RegexMatch => EventExec::exec_regex(status)?,
             Mode::Jump => EventExec::exec_jump(status)?,
             Mode::History => EventExec::exec_history(status.selected())?,
@@ -1255,6 +1245,7 @@ impl EventExec {
             | Mode::Help
             | Mode::Sort
             | Mode::Preview
+            | Mode::Completed(CompletionKind::Nothing)
             | Mode::Marks(_) => (),
         };
 
@@ -1267,9 +1258,7 @@ impl EventExec {
     /// insert a completion in modes allowing completion.
     pub fn tab(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Goto | Mode::Exec | Mode::Search => {
-                EventExec::event_replace_input_with_completion(status.selected())
-            }
+            Mode::Completed(_) => EventExec::event_replace_input_with_completion(status.selected()),
             Mode::Normal => status.next(),
             _ => (),
         };

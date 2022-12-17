@@ -62,7 +62,7 @@ impl EventDispatcher {
                     status.select_from_regex()?;
                     Ok(())
                 }
-                Mode::Goto | Mode::Exec | Mode::Search => {
+                Mode::Completed(_) => {
                     EventExec::event_text_insert_and_complete(status.selected(), c)
                 }
                 Mode::Normal => match self.binds.get(&key_char) {

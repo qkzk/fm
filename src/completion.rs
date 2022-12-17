@@ -31,13 +31,13 @@ pub struct Completion {
 
 impl Completion {
     pub fn set_kind(&mut self, mode: &Mode) {
-        self.kind = match *mode {
-            Mode::Exec => CompletionKind::Exec,
-            Mode::Goto => CompletionKind::Goto,
-            Mode::Search => CompletionKind::Search,
-            _ => CompletionKind::Nothing,
+        if let Mode::Completed(completion_kind) = mode {
+            self.kind = completion_kind.clone()
+        } else {
+            self.kind = CompletionKind::Nothing
         }
     }
+
     /// Is there any completion option ?
     pub fn is_empty(&self) -> bool {
         self.proposals.is_empty()
@@ -142,9 +142,7 @@ impl Completion {
     fn entries_matching_filename(entries: ReadDir, last_name: &str) -> Vec<String> {
         entries
             .filter_map(|e| e.ok())
-            .filter(|e| {
-                e.file_type().unwrap().is_dir() && filename_startswith(e, &last_name.to_owned())
-            })
+            .filter(|e| e.file_type().unwrap().is_dir() && filename_startswith(e, last_name))
             .map(|e| e.path().to_string_lossy().into_owned())
             .collect()
     }
