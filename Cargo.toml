@@ -46,7 +46,7 @@ regex = "1"
 sanitize-filename = "0.4.0"
 serde_yaml = "0.9.13"
 shellexpand = "2.1.2"
-skim = { git = "https://github.com/qkzk/skim" }
+skim-qkzk = "0.9.7"
 strfmt = "0.2.2"
 strum = {version = "0.24.1", features = ["derive"]}
 strum_macros = "0.24.3"

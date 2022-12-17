@@ -870,7 +870,7 @@ dependencies = [
  "sanitize-filename",
  "serde_yaml 0.9.13",
  "shellexpand",
- "skim",
+ "skim-qkzk",
  "strfmt",
  "strum 0.24.1",
  "strum_macros 0.24.3",
@@ -2058,9 +2058,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 
 [[package]]
-name = "skim"
-version = "0.9.6"
-source = "git+https://github.com/qkzk/skim#964ea54e98f1a99dbd1002861a068ae63356e3b6"
+name = "skim-qkzk"
+version = "0.9.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d34303048c0481c3618a6790138c2fd48f26bfeeb4f303f50ef53b853585345f"
 dependencies = [
  "atty",
  "beef",
