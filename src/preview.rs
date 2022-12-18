@@ -1,6 +1,6 @@
 use std::cmp::min;
 use std::fmt::Write as _;
-use std::io::{BufRead, Read};
+use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::panic;
 use std::path::{Path, PathBuf};
@@ -266,12 +266,12 @@ impl BinaryContent {
     const LINE_WIDTH: usize = 16;
 
     fn new(file_info: &FileInfo) -> FmResult<Self> {
-        let mut reader = std::io::BufReader::new(std::fs::File::open(file_info.path.clone())?);
+        let mut reader = BufReader::new(std::fs::File::open(file_info.path.clone())?);
         let mut buffer = [0; Self::LINE_WIDTH];
         let mut content: Box<Vec<Line>> = Box::new(vec![]);
-        while let Ok(n) = reader.read(&mut buffer[..]) {
-            if n != Self::LINE_WIDTH {
-                content.push(Line::new((&buffer[0..n]).into()));
+        while let Ok(nb_bytes_read) = reader.read(&mut buffer[..]) {
+            if nb_bytes_read != Self::LINE_WIDTH {
+                content.push(Line::new((&buffer[0..nb_bytes_read]).into()));
                 break;
             } else {
                 content.push(Line::new(buffer.into()));
@@ -400,7 +400,7 @@ pub struct ExifContent {
 
 impl ExifContent {
     fn new(path: &Path) -> FmResult<Self> {
-        let mut bufreader = std::io::BufReader::new(std::fs::File::open(path)?);
+        let mut bufreader = BufReader::new(std::fs::File::open(path)?);
         let content: Vec<String> =
             if let Ok(exif) = exif::Reader::new().read_from_container(&mut bufreader) {
                 exif.fields()
@@ -430,6 +430,7 @@ impl ExifContent {
 }
 
 /// Holds media info about a "media" file (mostly videos and audios).
+/// Requires the [`mediainfo`](https://mediaarea.net/) executable installed in path.
 #[derive(Clone)]
 pub struct MediaContent {
     length: usize,
