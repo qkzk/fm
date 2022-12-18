@@ -208,6 +208,10 @@
 
 - [x] refactor Preview::new() refactored and simplified
 
+### Version 0.1.3 : cd ..
+
+- [x] parse .. in goto
+
 ## TODO
 
 - [ ] remote control
@@ -224,9 +228,7 @@
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
 
-- [ ] Version 0.1.3 : cd ..
-
-  - [ ] parse .. in goto
+- [ ] 0.1.4 : screenshots
 
 - [ ] Version 0.2.0 : tests
 
