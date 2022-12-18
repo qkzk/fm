@@ -81,6 +81,8 @@ It should always work, even outside of neovim.
 
 It's also possible to pass the RPC server address with `fm -s address`.
 
+This feature requires `nvim-send` to be installed (`cargo install nvim-send`)
+
 ## cd on quit
 
 When leaving fm, it prints the last visited path.

@@ -3,7 +3,7 @@ use std::fmt::Write as _;
 use std::io::{BufRead, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::panic;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::slice::Iter;
 
 use content_inspector::{inspect, ContentType};
@@ -16,28 +16,29 @@ use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
 
 use crate::compress::list_files;
-use crate::fileinfo::PathContent;
-use crate::fm_error::{ErrorVariant, FmError, FmResult};
+use crate::fileinfo::FileInfo;
+use crate::fm_error::FmResult;
 
 /// Different kind of preview used to display some informaitons
 /// About the file.
 /// We check if it's an archive first, then a pdf file, an image, a media file
 #[derive(Clone)]
 pub enum Preview {
-    Syntaxed(SyntaxedContent),
+    Syntaxed(HLContent),
     Text(TextContent),
     Binary(BinaryContent),
     Pdf(PdfContent),
-    Compressed(CompressedContent),
+    Archive(ZipContent),
     Exif(ExifContent),
     Thumbnail(Pixels),
-    Media(MediainfoContent),
+    Media(MediaContent),
     Empty,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub enum TextKind {
     HELP,
+    #[default]
     TEXTFILE,
 }
 
@@ -45,41 +46,42 @@ impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
     /// Creates a new preview instance based on the extension of the file.
-    /// Sometimes it's also reads the content of the file, sometimes it delegates
+    /// Sometimes it reads the content of the file, sometimes it delegates
     /// it to the display method.
-    pub fn new(path_content: &PathContent) -> FmResult<Self> {
-        match path_content.selected_file() {
-            Some(file_info) => match file_info.extension.to_lowercase().as_str() {
-                e if is_compressed_file(e) => Ok(Self::Compressed(CompressedContent::new(
-                    file_info.path.clone(),
-                )?)),
-                "pdf" => Ok(Self::Pdf(PdfContent::new(file_info.path.clone()))),
-                e if is_ext_image(e) => Ok(Self::Exif(ExifContent::new(file_info.path.clone())?)),
-                e if is_ext_media(e) => {
-                    Ok(Self::Media(MediainfoContent::new(file_info.path.clone())?))
-                }
-                _ => {
-                    let mut file = std::fs::File::open(file_info.path.clone())?;
-                    let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
-                    let ps = SyntaxSet::load_defaults_nonewlines();
-                    if let Some(syntaxset) = ps.find_syntax_by_extension(&file_info.extension) {
-                        Ok(Self::Syntaxed(SyntaxedContent::new(
-                            ps.clone(),
-                            path_content,
-                            syntaxset,
-                        )?))
-                    } else if file_info.size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
-                        && file.read_exact(&mut buffer).is_ok()
-                        && inspect(&buffer) == ContentType::BINARY
-                    {
-                        Ok(Self::Binary(BinaryContent::new(path_content.to_owned())?))
-                    } else {
-                        Ok(Self::Text(TextContent::from_file(path_content)?))
-                    }
-                }
+    pub fn new(file_info: &FileInfo) -> FmResult<Self> {
+        match file_info.extension.to_lowercase().as_str() {
+            e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
+            e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
+            e if is_ext_image(e) => Ok(Self::Exif(ExifContent::new(&file_info.path)?)),
+            e if is_ext_media(e) => Ok(Self::Media(MediaContent::new(&file_info.path)?)),
+            e => match Self::preview_syntaxed(e, &file_info.path) {
+                Some(syntaxed_preview) => Ok(syntaxed_preview),
+                None => Self::preview_text_or_binary(file_info),
             },
-            None => Ok(Self::Empty),
         }
+    }
+
+    fn preview_syntaxed(ext: &str, path: &Path) -> Option<Self> {
+        let ss = SyntaxSet::load_defaults_nonewlines();
+        ss.find_syntax_by_extension(ext).map(|syntax| {
+            Self::Syntaxed(HLContent::new(path, ss.clone(), syntax).unwrap_or_default())
+        })
+    }
+
+    fn preview_text_or_binary(file_info: &FileInfo) -> FmResult<Self> {
+        let mut file = std::fs::File::open(file_info.path.clone())?;
+        let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
+        if Self::is_binary(file_info, &mut file, &mut buffer) {
+            Ok(Self::Binary(BinaryContent::new(file_info)?))
+        } else {
+            Ok(Self::Text(TextContent::from_file(&file_info.path)?))
+        }
+    }
+
+    fn is_binary(file_info: &FileInfo, file: &mut std::fs::File, buffer: &mut [u8]) -> bool {
+        file_info.size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
+            && file.read_exact(buffer).is_ok()
+            && inspect(buffer) == ContentType::BINARY
     }
 
     /// Creates a thumbnail preview of the file.
@@ -106,7 +108,7 @@ impl Preview {
             Self::Text(text) => text.len(),
             Self::Binary(binary) => binary.len(),
             Self::Pdf(pdf) => pdf.len(),
-            Self::Compressed(zip) => zip.len(),
+            Self::Archive(zip) => zip.len(),
             Self::Thumbnail(_img) => 0,
             Self::Exif(exif_content) => exif_content.len(),
             Self::Media(media) => media.len(),
@@ -121,21 +123,11 @@ impl Preview {
 
 /// Holds a preview of a text content.
 /// It's a boxed vector of strings (per line)
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct TextContent {
     pub kind: TextKind,
     pub content: Box<Vec<String>>,
     length: usize,
-}
-
-impl Default for TextContent {
-    fn default() -> Self {
-        Self {
-            kind: TextKind::TEXTFILE,
-            content: Box::new(vec![]),
-            length: 0,
-        }
-    }
 }
 
 impl TextContent {
@@ -148,19 +140,14 @@ impl TextContent {
         }
     }
 
-    fn from_file(path_content: &PathContent) -> FmResult<Self> {
-        let content = match path_content.selected_file() {
-            Some(file) => {
-                let reader = std::io::BufReader::new(std::fs::File::open(file.path.clone())?);
-                Box::new(
-                    reader
-                        .lines()
-                        .map(|line| line.unwrap_or_else(|_| "".to_owned()))
-                        .collect(),
-                )
-            }
-            None => Box::new(vec![]),
-        };
+    fn from_file(path: &Path) -> FmResult<Self> {
+        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
+        let content: Box<Vec<String>> = Box::new(
+            reader
+                .lines()
+                .map(|line| line.unwrap_or_else(|_| "".to_owned()))
+                .collect(),
+        );
         Ok(Self {
             kind: TextKind::TEXTFILE,
             length: content.len(),
@@ -175,60 +162,26 @@ impl TextContent {
 
 /// Holds a preview of a code text file whose language is supported by `Syntect`.
 /// The file is colored propery and line numbers are shown.
-#[derive(Clone)]
-pub struct SyntaxedContent {
+#[derive(Clone, Default)]
+pub struct HLContent {
     pub content: Box<Vec<Vec<SyntaxedString>>>,
     length: usize,
 }
 
-impl Default for SyntaxedContent {
-    fn default() -> Self {
-        Self {
-            content: Box::new(vec![vec![]]),
-            length: 0,
-        }
-    }
-}
-
-impl SyntaxedContent {
+impl HLContent {
     /// Creates a new displayable content of a syntect supported file.
     /// It may file if the file isn't properly formatted or the extension
     /// is wrong (ie. python content with .c extension).
     /// ATM only Solarized (dark) theme is supported.
-    pub fn new(
-        ps: SyntaxSet,
-        path_content: &PathContent,
-        syntaxset: &SyntaxReference,
-    ) -> FmResult<Self> {
-        let file = path_content.selected_file().ok_or_else(|| {
-            FmError::new(
-                ErrorVariant::CUSTOM("SyntaxedContent".to_owned()),
-                "Path shouldn't be empty",
-            )
-        })?;
-        let reader = std::io::BufReader::new(std::fs::File::open(file.path.clone())?);
-        let content: Box<Vec<String>> = Box::new(
+    pub fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> FmResult<Self> {
+        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
+        let raw_content: Box<Vec<String>> = Box::new(
             reader
                 .lines()
                 .map(|line| line.unwrap_or_else(|_| "".to_owned()))
                 .collect(),
         );
-        let ts = ThemeSet::load_defaults();
-        let mut highlighted_content = Box::new(vec![]);
-        let syntax = syntaxset.to_owned();
-        let mut highlight_line = HighlightLines::new(&syntax, &ts.themes["Solarized (dark)"]);
-
-        for line in content.iter() {
-            let mut col = 0;
-            let mut v_line = vec![];
-            if let Ok(v) = highlight_line.highlight_line(line, &ps) {
-                for (style, token) in v.iter() {
-                    v_line.push(SyntaxedString::from_syntect(col, token.to_string(), *style));
-                    col += token.len();
-                }
-            }
-            highlighted_content.push(v_line)
-        }
+        let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref);
 
         Ok(Self {
             length: highlighted_content.len(),
@@ -238,6 +191,31 @@ impl SyntaxedContent {
 
     fn len(&self) -> usize {
         self.length
+    }
+
+    fn parse_raw_content(
+        raw_content: Box<Vec<String>>,
+        syntax_set: SyntaxSet,
+        syntax_ref: &SyntaxReference,
+    ) -> Box<Vec<Vec<SyntaxedString>>> {
+        let theme_set = ThemeSet::load_defaults();
+        let mut highlighted_content = Box::new(vec![]);
+        let mut highlighter =
+            HighlightLines::new(syntax_ref, &theme_set.themes["Solarized (dark)"]);
+
+        for line in raw_content.iter() {
+            let mut col = 0;
+            let mut v_line = vec![];
+            if let Ok(v) = highlighter.highlight_line(line, &syntax_set) {
+                for (style, token) in v.iter() {
+                    v_line.push(SyntaxedString::from_syntect(col, token.to_string(), *style));
+                    col += token.len();
+                }
+            }
+            highlighted_content.push(v_line)
+        }
+
+        highlighted_content
     }
 }
 
@@ -287,14 +265,8 @@ pub struct BinaryContent {
 impl BinaryContent {
     const LINE_WIDTH: usize = 16;
 
-    fn new(path_content: PathContent) -> FmResult<Self> {
-        let file = path_content.selected_file().ok_or_else(|| {
-            FmError::new(
-                ErrorVariant::CUSTOM("BinaryContent".to_owned()),
-                "Path shouldn't be emtpy",
-            )
-        })?;
-        let mut reader = std::io::BufReader::new(std::fs::File::open(file.path.clone())?);
+    fn new(file_info: &FileInfo) -> FmResult<Self> {
+        let mut reader = std::io::BufReader::new(std::fs::File::open(file_info.path.clone())?);
         let mut buffer = [0; Self::LINE_WIDTH];
         let mut content: Box<Vec<Line>> = Box::new(vec![]);
         while let Ok(n) = reader.read(&mut buffer[..]) {
@@ -307,8 +279,8 @@ impl BinaryContent {
         }
 
         Ok(Self {
-            path: file.path.clone(),
-            length: file.size / Self::LINE_WIDTH as u64,
+            path: file_info.path.clone(),
+            length: file_info.size / Self::LINE_WIDTH as u64,
             content,
         })
     }
@@ -368,7 +340,7 @@ pub struct PdfContent {
 }
 
 impl PdfContent {
-    fn new(path: PathBuf) -> Self {
+    fn new(path: &Path) -> Self {
         let result = catch_unwind_silent(|| {
             if let Ok(content_string) = pdf_extract::extract_text(path) {
                 content_string
@@ -395,13 +367,13 @@ impl PdfContent {
 /// Holds a list of file of an archive as returned by `compress_tools::list_files`.
 /// It may fail if the archive can't be read properly.
 #[derive(Clone)]
-pub struct CompressedContent {
+pub struct ZipContent {
     length: usize,
     pub content: Vec<String>,
 }
 
-impl CompressedContent {
-    fn new(path: PathBuf) -> FmResult<Self> {
+impl ZipContent {
+    fn new(path: &Path) -> FmResult<Self> {
         let content = list_files(path)?;
 
         Ok(Self {
@@ -427,7 +399,7 @@ pub struct ExifContent {
 }
 
 impl ExifContent {
-    fn new(path: PathBuf) -> FmResult<Self> {
+    fn new(path: &Path) -> FmResult<Self> {
         let mut bufreader = std::io::BufReader::new(std::fs::File::open(path)?);
         let content: Vec<String> =
             if let Ok(exif) = exif::Reader::new().read_from_container(&mut bufreader) {
@@ -459,14 +431,14 @@ impl ExifContent {
 
 /// Holds media info about a "media" file (mostly videos and audios).
 #[derive(Clone)]
-pub struct MediainfoContent {
+pub struct MediaContent {
     length: usize,
     /// The media info details.
     pub content: Vec<String>,
 }
 
-impl MediainfoContent {
-    fn new(path: PathBuf) -> FmResult<Self> {
+impl MediaContent {
+    fn new(path: &Path) -> FmResult<Self> {
         let content: Vec<String>;
         if let Ok(output) = std::process::Command::new("mediainfo").arg(path).output() {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
@@ -519,7 +491,7 @@ pub trait Window<T> {
     ) -> Take<Skip<Enumerate<Iter<'_, T>>>>;
 }
 
-impl Window<Vec<SyntaxedString>> for SyntaxedContent {
+impl Window<Vec<SyntaxedString>> for HLContent {
     fn window(
         &self,
         top: usize,
@@ -556,11 +528,11 @@ macro_rules! impl_window {
 impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
 impl_window!(PdfContent, String);
-impl_window!(CompressedContent, String);
+impl_window!(ZipContent, String);
 impl_window!(ExifContent, String);
-impl_window!(MediainfoContent, String);
+impl_window!(MediaContent, String);
 
-fn is_compressed_file(ext: &str) -> bool {
+fn is_ext_zip(ext: &str) -> bool {
     matches!(
         ext,
         "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
@@ -590,6 +562,10 @@ fn is_ext_media(ext: &str) -> bool {
             | "flac"
             | "avi"
     )
+}
+
+fn is_ext_pdf(ext: &str) -> bool {
+    ext == "pdf"
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {

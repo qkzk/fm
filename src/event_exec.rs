@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use crate::bulkrename::Bulkrename;
 use crate::completion::CompletionKind;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
+use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::{ContentWindow, RESERVED_ROWS};
 use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
@@ -540,10 +541,10 @@ impl EventExec {
                 "No file to preview",
             ));
         }
-        if let Some(file) = tab.path_content.selected_file() {
-            if let FileKind::NormalFile = file.file_kind {
+        if let Some(file_info) = tab.path_content.selected_file() {
+            if let FileKind::NormalFile = file_info.file_kind {
                 tab.mode = Mode::Preview;
-                tab.preview = Preview::new(&tab.path_content)?;
+                tab.preview = Preview::new(file_info)?;
                 tab.window.reset(tab.preview.len());
             }
         }
@@ -778,7 +779,7 @@ impl EventExec {
         if let Ok(nvim_listen_address) = Self::nvim_listen_address(tab) {
             if let Some(path_str) = tab.path_content.selected_path_str() {
                 let _ = execute_in_child(
-                    "nvim-send",
+                    NVIM_RPC_SENDER,
                     &vec![
                         "--remote-send",
                         &format!("<esc>:e {}<cr><esc>:close<cr>", path_str),

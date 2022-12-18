@@ -433,7 +433,7 @@ impl<'a> WinTab<'a> {
                     line.print(canvas, row, line_number_width_hex + 1);
                 }
             }
-            Preview::Compressed(text) => {
+            Preview::Archive(text) => {
                 for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
                     let row = Self::calc_line_row(i, tab);
                     canvas.print_with_attr(

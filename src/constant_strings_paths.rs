@@ -35,3 +35,5 @@ pub static PERMISSIONS_STR: [&str; 8] = ["---", "--x", "-w-", "-wx", "r--", "r-x
 pub static HELP_FIRST_SENTENCE: &str = "fm: a dired / ranger like file manager. ";
 /// Description of the content below, aka the help itself.
 pub static HELP_SECOND_SENTENCE: &str = "Keybindings";
+/// nvim-send is a rust program which can send commands to neovim
+pub static NVIM_RPC_SENDER: &str = "nvim-send";
