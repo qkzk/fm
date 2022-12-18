@@ -23,7 +23,9 @@ Options:
   -V, --version          Print version information
 ```
 
-## Screenshots
+## Video
+
+![fm](./fm.gif)
 
 ## Installation
 
