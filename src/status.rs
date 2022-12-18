@@ -14,7 +14,7 @@ use crate::color_cache::ColorCache;
 use crate::config::Config;
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
-use crate::fm_error::{ErrorVariant, FmError, FmResult};
+use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
 use crate::skim::Skimer;
@@ -140,9 +140,12 @@ impl Status {
     pub fn fill_tabs_with_skim(&mut self) -> FmResult<()> {
         for path in self
             .skimer
-            .no_source(&self.selected_non_mut().path_str().ok_or_else(|| {
-                FmError::new(ErrorVariant::CUSTOM("skim".to_owned()), "skim error")
-            })?)
+            .no_source(
+                &self
+                    .selected_non_mut()
+                    .path_str()
+                    .ok_or_else(|| FmError::custom("skim", "skim error"))?,
+            )
             .iter()
         {
             self.create_tab_from_skim_output(path)
@@ -185,12 +188,10 @@ impl Status {
     /// is sent every time, even for 0 bytes files...
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> FmResult<()> {
         let sources: Vec<PathBuf> = self.flagged.iter().map(|path| path.to_owned()).collect();
-        let dest = self.selected_non_mut().path_str().ok_or_else(|| {
-            FmError::new(
-                ErrorVariant::CUSTOM("cut or copy".to_owned()),
-                "unreadable path",
-            )
-        })?;
+        let dest = self
+            .selected_non_mut()
+            .path_str()
+            .ok_or_else(|| FmError::custom("cut or copy", "unreadable path"))?;
         copy_move(cut_or_copy, sources, dest, self.term.clone())?;
         self.clear_flags_and_reset_view()
     }
@@ -243,8 +244,8 @@ impl Status {
     /// Since I'm lazy and don't want to write it twice, it's left here.
     pub fn select_tab(&mut self, index: usize) -> FmResult<()> {
         if index >= self.tabs.len() {
-            Err(FmError::new(
-                ErrorVariant::CUSTOM("select tab".to_owned()),
+            Err(FmError::custom(
+                "select tab",
                 &format!("Only {} tabs. Can't select tab {}", self.tabs.len(), index),
             ))
         } else {

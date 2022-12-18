@@ -29,6 +29,10 @@ Options:
 
 ## Installation
 
+```sh
+cargo install fm-tui
+```
+
 ## Usage
 
 Start it from command line with no parameters :

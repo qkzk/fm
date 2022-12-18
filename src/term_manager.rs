@@ -12,7 +12,7 @@ use crate::config::Colors;
 use crate::constant_strings_paths::{HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE};
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
-use crate::fm_error::{ErrorVariant, FmError, FmResult};
+use crate::fm_error::{FmError, FmResult};
 use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
 use crate::preview::{Preview, TextKind, Window};
 use crate::status::Status;
@@ -268,12 +268,8 @@ impl<'a> WinTab<'a> {
             let _ = canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str().ok_or_else(|| {
-                    FmError::new(
-                        ErrorVariant::CUSTOM("display".to_owned()),
-                        "Unreadable filename",
-                    )
-                })?,
+                path.to_str()
+                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
                 attr,
             );
         }
@@ -293,12 +289,8 @@ impl<'a> WinTab<'a> {
             canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str().ok_or_else(|| {
-                    FmError::new(
-                        ErrorVariant::CUSTOM("display".to_owned()),
-                        "Unreadable filename",
-                    )
-                })?,
+                path.to_str()
+                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
                 attr,
             )?;
         }
@@ -316,12 +308,8 @@ impl<'a> WinTab<'a> {
             let _ = canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str().ok_or_else(|| {
-                    FmError::new(
-                        ErrorVariant::CUSTOM("display".to_owned()),
-                        "Unreadable filename",
-                    )
-                })?,
+                path.to_str()
+                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
                 attr,
             );
         }
@@ -354,12 +342,8 @@ impl<'a> WinTab<'a> {
             canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2,
                 4,
-                path.to_str().ok_or_else(|| {
-                    FmError::new(
-                        ErrorVariant::CUSTOM("display".to_owned()),
-                        "Unreadable filename",
-                    )
-                })?,
+                path.to_str()
+                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
                 Attr::default(),
             )?;
         }

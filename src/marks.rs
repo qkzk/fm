@@ -62,10 +62,7 @@ impl Marks {
             let path = PathBuf::from(sp[1]);
             Ok((ch, path))
         } else {
-            Err(FmError::new(
-                ErrorVariant::CUSTOM("marks: parse line".to_owned()),
-                "Invalid char",
-            ))
+            Err(FmError::custom("marks: parse line", "Invalid char"))
         }
     }
 
@@ -73,10 +70,7 @@ impl Marks {
     /// All the marks are saved again.
     pub fn new_mark(&mut self, ch: char, path: PathBuf) -> FmResult<()> {
         if ch == ':' {
-            return Err(FmError::new(
-                ErrorVariant::CUSTOM("new_mark".to_owned()),
-                "':' can't be used as a mark",
-            ));
+            return Err(FmError::custom("new_mark", "':' can't be used as a mark"));
         }
         self.marks.insert(ch, path);
         self.save_marks()
@@ -94,12 +88,7 @@ impl Marks {
     fn path_as_string(path: &Path) -> FmResult<String> {
         Ok(path
             .to_str()
-            .ok_or_else(|| {
-                FmError::new(
-                    ErrorVariant::CUSTOM("path_as_string".to_owned()),
-                    "Unreadable path",
-                )
-            })?
+            .ok_or_else(|| FmError::custom("path_as_string", "Unreadable path"))?
             .to_owned())
     }
 

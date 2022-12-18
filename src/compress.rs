@@ -3,19 +3,16 @@ use std::path::{Path, PathBuf};
 
 use compress_tools::*;
 
-use crate::fm_error::{ErrorVariant, FmError, FmResult};
+use crate::fm_error::{FmError, FmResult};
 
 /// Decompress a compressed file into its parent directory.
 /// It may fail an return a `FmError` if the file has no parent,
 /// which should be impossible.
 /// It used `compress_tools` which is a wrapper around  `libarchive`.
 pub fn decompress(source: PathBuf) -> FmResult<()> {
-    let parent = source.parent().ok_or_else(|| {
-        FmError::new(
-            ErrorVariant::CUSTOM("decompress".to_owned()),
-            "source should have a parent",
-        )
-    })?;
+    let parent = source
+        .parent()
+        .ok_or_else(|| FmError::custom("decompress", "source should have a parent"))?;
     let file = File::open(&source)?;
     Ok(uncompress_archive(&file, parent, Ownership::Preserve)?)
 }

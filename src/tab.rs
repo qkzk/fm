@@ -4,7 +4,7 @@ use crate::args::Args;
 use crate::completion::Completion;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::PathContent;
-use crate::fm_error::{ErrorVariant, FmError, FmResult};
+use crate::fm_error::{FmError, FmResult};
 use crate::input::Input;
 use crate::mode::Mode;
 use crate::preview::Preview;
@@ -112,12 +112,7 @@ impl Tab {
         let childpath = self
             .path_content
             .selected_file()
-            .ok_or_else(|| {
-                FmError::new(
-                    ErrorVariant::CUSTOM("go_to_child".to_owned()),
-                    "Empty directory",
-                )
-            })?
+            .ok_or_else(|| FmError::custom("go_to_child", "Empty directory"))?
             .path
             .clone();
         self.history.push(&childpath);

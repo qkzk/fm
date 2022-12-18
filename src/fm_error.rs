@@ -47,6 +47,12 @@ impl FmError {
             details: msg.to_string(),
         }
     }
+
+    /// Creates a new CUSTOM error.
+    /// Syntaxic sugar
+    pub fn custom(variant_str: &str, msg: &str) -> Self {
+        Self::new(ErrorVariant::CUSTOM(variant_str.to_owned()), msg)
+    }
 }
 
 impl fmt::Display for FmError {

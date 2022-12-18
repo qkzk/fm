@@ -12,7 +12,7 @@ use crate::content_window::{ContentWindow, RESERVED_ROWS};
 use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::filter::FilterKind;
-use crate::fm_error::{ErrorVariant, FmError, FmResult};
+use crate::fm_error::{FmError, FmResult};
 use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
 use crate::opener::execute_in_child;
 use crate::preview::Preview;
@@ -89,12 +89,7 @@ impl EventExec {
         let file = status.tabs[status.index]
             .path_content
             .selected_file()
-            .ok_or_else(|| {
-                FmError::new(
-                    ErrorVariant::CUSTOM("event toggle flag".to_owned()),
-                    "No selected file",
-                )
-            })?;
+            .ok_or_else(|| FmError::custom("event toggle flag", "No selected file"))?;
         status.toggle_flag_on_path(file.path.clone());
         Self::event_down_one_row(status.selected());
         Ok(())
@@ -177,12 +172,10 @@ impl EventExec {
     pub fn event_symlink(status: &mut Status) -> FmResult<()> {
         for oldpath in status.flagged.iter() {
             let newpath = status.tabs[status.index].path_content.path.clone().join(
-                oldpath.as_path().file_name().ok_or_else(|| {
-                    FmError::new(
-                        ErrorVariant::CUSTOM("event symlink".to_owned()),
-                        "File not found",
-                    )
-                })?,
+                oldpath
+                    .as_path()
+                    .file_name()
+                    .ok_or_else(|| FmError::custom("event symlink", "File not found"))?,
             );
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }
@@ -448,10 +441,7 @@ impl EventExec {
     pub fn event_move_to_parent(tab: &mut Tab) -> FmResult<()> {
         let parent = tab.path_content.path.parent();
         let path = path::PathBuf::from(parent.ok_or_else(|| {
-            FmError::new(
-                ErrorVariant::CUSTOM("event move to parent".to_owned()),
-                "Root directory has no parent",
-            )
+            FmError::custom("event move to parent", "Root directory has no parent")
         })?);
         tab.history.push(&path);
         tab.path_content = PathContent::new(path, tab.show_hidden)?;
@@ -536,10 +526,7 @@ impl EventExec {
     /// more details on previewing.
     pub fn event_preview(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
-            return Err(FmError::new(
-                ErrorVariant::CUSTOM("event_preview".to_owned()),
-                "No file to preview",
-            ));
+            return Err(FmError::custom("event_preview", "No file to preview"));
         }
         if let Some(file_info) = tab.path_content.selected_file() {
             if let FileKind::NormalFile = file_info.file_kind {
@@ -660,12 +647,7 @@ impl EventExec {
                 .selected_non_mut()
                 .path_content
                 .selected_file()
-                .ok_or_else(|| {
-                    FmError::new(
-                        ErrorVariant::CUSTOM("event open file".to_owned()),
-                        "Empty directory",
-                    )
-                })?
+                .ok_or_else(|| FmError::custom("event open file", "Empty directory"))?
                 .path
                 .clone(),
         ) {
@@ -702,10 +684,7 @@ impl EventExec {
             &vec![
                 "-d",
                 tab.path_content.path.to_str().ok_or_else(|| {
-                    FmError::new(
-                        ErrorVariant::CUSTOM("event_shell".to_owned()),
-                        "Couldn't parse the path name",
-                    )
+                    FmError::custom("event_shell", "Couldn't parse the path name")
                 })?,
             ],
         )?;
@@ -733,10 +712,7 @@ impl EventExec {
             let tab = status.selected();
             if tab.path_content.files.is_empty() || row as usize > tab.path_content.files.len() + 1
             {
-                return Err(FmError::new(
-                    ErrorVariant::CUSTOM("event right click".to_owned()),
-                    "not found",
-                ));
+                return Err(FmError::custom("event right click", "not found"));
             }
             tab.line_index = Self::row_to_index(row);
             tab.path_content.select_index(tab.line_index);
@@ -744,12 +720,7 @@ impl EventExec {
             if let FileKind::Directory = tab
                 .path_content
                 .selected_file()
-                .ok_or_else(|| {
-                    FmError::new(
-                        ErrorVariant::CUSTOM("event right click".to_owned()),
-                        "not found",
-                    )
-                })?
+                .ok_or_else(|| FmError::custom("event right click", "not found"))?
                 .file_kind
             {
                 Self::exec_file(status)
@@ -860,18 +831,12 @@ impl EventExec {
     /// Filename is sanitized before processing.
     pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
-            return Err(FmError::new(
-                ErrorVariant::CUSTOM("event rename".to_owned()),
-                "Empty directory",
-            ));
+            return Err(FmError::custom("event rename", "Empty directory"));
         }
         fs::rename(
-            tab.path_content.selected_path_str().ok_or_else(|| {
-                FmError::new(
-                    ErrorVariant::CUSTOM("exec rename".to_owned()),
-                    "File not found",
-                )
-            })?,
+            tab.path_content
+                .selected_path_str()
+                .ok_or_else(|| FmError::custom("exec rename", "File not found"))?,
             tab.path_content
                 .path
                 .to_path_buf()
@@ -920,20 +885,14 @@ impl EventExec {
     /// Optional parameters can be passed normally. ie. `"ls -lah"`
     pub fn exec_exec(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
-            return Err(FmError::new(
-                ErrorVariant::CUSTOM("exec exec".to_owned()),
-                "empty directory",
-            ));
+            return Err(FmError::custom("exec exec", "empty directory"));
         }
         let exec_command = tab.input.string();
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         if std::path::Path::new(command).exists() {
             let path = &tab.path_content.selected_path_str().ok_or_else(|| {
-                FmError::new(
-                    ErrorVariant::CUSTOM("exec exec".to_owned()),
-                    &format!("can't find command {}", command),
-                )
+                FmError::custom("exec exec", &format!("can't find command {}", command))
             })?;
             args.push(path);
             execute_in_child(command, &args)?;
@@ -950,8 +909,8 @@ impl EventExec {
         execute_in_child(
             DEFAULT_DRAGNDROP,
             &vec![&tab.path_content.selected_path_str().ok_or_else(|| {
-                FmError::new(
-                    ErrorVariant::CUSTOM("event drag n drop".to_owned()),
+                FmError::custom(
+                    "event drag n drop",
                     "can't find dragon-drop in the system. Is the application installed?",
                 )
             })?],
@@ -1050,12 +1009,9 @@ impl EventExec {
     pub fn exec_history(tab: &mut Tab) -> FmResult<()> {
         tab.input.reset();
         tab.path_content = PathContent::new(
-            tab.history.selected().ok_or_else(|| {
-                FmError::new(
-                    ErrorVariant::CUSTOM("exec history".to_owned()),
-                    "path unreachable",
-                )
-            })?,
+            tab.history
+                .selected()
+                .ok_or_else(|| FmError::custom("exec history", "path unreachable"))?,
             tab.show_hidden,
         )?;
         tab.history.drop_queue();

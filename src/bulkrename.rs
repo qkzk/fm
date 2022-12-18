@@ -5,7 +5,7 @@ use std::thread;
 use std::time::{Duration, SystemTime};
 
 use crate::constant_strings_paths::TMP_FOLDER_PATH;
-use crate::fm_error::{ErrorVariant, FmError, FmResult};
+use crate::fm_error::{FmError, FmResult};
 use crate::opener::Opener;
 
 /// Struct holding informations about files about to be renamed.
@@ -55,7 +55,7 @@ impl<'a> Bulkrename<'a> {
         Ok(handle.join()?)
     }
 
-    fn get_modified_date(filepath: &PathBuf) -> FmResult<SystemTime> {
+    fn get_modified_date(filepath: &Path) -> FmResult<SystemTime> {
         Ok(std::fs::metadata(filepath)?.modified()?)
     }
 
@@ -95,7 +95,7 @@ impl<'a> Bulkrename<'a> {
     }
 
     fn is_file_modified(
-        path: &PathBuf,
+        path: &Path,
         original_modification: std::time::SystemTime,
     ) -> FmResult<bool> {
         let last_modification = Self::get_modified_date(path)?;
@@ -111,18 +111,12 @@ impl<'a> Bulkrename<'a> {
             let line2 = line?;
             let line = line2.trim();
             if line.is_empty() {
-                return Err(FmError::new(
-                    ErrorVariant::CUSTOM("new filenames".to_owned()),
-                    "empty filename",
-                ));
+                return Err(FmError::custom("new filenames", "empty filename"));
             }
             new_names.push(line2);
         }
         if new_names.len() < self.original_filepath.len() {
-            return Err(FmError::new(
-                ErrorVariant::CUSTOM("new filenames".to_owned()),
-                "not enough filenames",
-            ));
+            return Err(FmError::custom("new filenames", "not enough filenames"));
         }
         Ok(new_names)
     }

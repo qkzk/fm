@@ -11,7 +11,7 @@ use crate::constant_strings_paths::{
     DEFAULT_AUDIO_OPENER, DEFAULT_IMAGE_OPENER, DEFAULT_OFFICE_OPENER, DEFAULT_OPENER,
     DEFAULT_READABLE_OPENER, DEFAULT_TEXT_OPENER, DEFAULT_VECTORIAL_OPENER, DEFAULT_VIDEO_OPENER,
 };
-use crate::fm_error::{ErrorVariant, FmError, FmResult};
+use crate::fm_error::{FmError, FmResult};
 
 fn find_it<P>(exe_name: P) -> Option<PathBuf>
 where
@@ -203,8 +203,8 @@ impl OpenerInfo {
                 internal_variant: Some(internal),
                 use_term: false,
             }),
-            _ => Err(FmError::new(
-                ErrorVariant::CUSTOM("internal".to_owned()),
+            _ => Err(FmError::custom(
+                "internal",
                 &format!("unsupported extension_kind: {:?}", extension_kind),
             )),
         }
@@ -252,29 +252,18 @@ impl Opener {
     /// It may fail if the program changed after reading the config file.
     /// It may also fail if the program can't handle this kind of files.
     /// This is quite a tricky method, there's many possible failures.
-    pub fn open(&self, filepath: std::path::PathBuf) -> FmResult<()> {
+    pub fn open(&self, filepath: PathBuf) -> FmResult<()> {
         if filepath.is_dir() {
-            return Err(FmError::new(
-                ErrorVariant::CUSTOM("open".to_owned()),
-                "Can't execute a directory",
-            ));
+            return Err(FmError::custom("open", "Can't execute a directory"));
         }
 
         let extension_os_string = filepath
             .extension()
-            .ok_or_else(|| {
-                FmError::new(
-                    ErrorVariant::CUSTOM("open".to_owned()),
-                    "Unreadable extension",
-                )
-            })?
+            .ok_or_else(|| FmError::custom("open", "Unreadable extension"))?
             .to_owned();
-        let extension = extension_os_string.to_str().ok_or_else(|| {
-            FmError::new(
-                ErrorVariant::CUSTOM("open".to_owned()),
-                "Extension couldn't be parsed correctly",
-            )
-        })?;
+        let extension = extension_os_string
+            .to_str()
+            .ok_or_else(|| FmError::custom("open", "Extension couldn't be parsed correctly"))?;
         let open_info = self.get_opener(extension);
         if open_info.external_program.is_some() {
             self.open_with(

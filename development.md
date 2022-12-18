@@ -212,6 +212,11 @@
 
 - [x] parse .. in goto
 
+### Version 0.1.4 : animation
+
+- [x] 0.1.4 : screenshots
+- [x] syntastic sugar to create custom errors
+
 ## TODO
 
 - [ ] remote control
@@ -227,8 +232,6 @@
   - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
-
-- [ ] 0.1.4 : screenshots
 
 - [ ] Version 0.2.0 : tests
 
