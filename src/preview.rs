@@ -164,7 +164,7 @@ impl TextContent {
 /// The file is colored propery and line numbers are shown.
 #[derive(Clone, Default)]
 pub struct HLContent {
-    pub content: Box<Vec<Vec<SyntaxedString>>>,
+    pub content: Vec<Vec<SyntaxedString>>,
     length: usize,
 }
 
@@ -175,12 +175,10 @@ impl HLContent {
     /// ATM only Solarized (dark) theme is supported.
     pub fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> FmResult<Self> {
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
-        let raw_content: Box<Vec<String>> = Box::new(
-            reader
-                .lines()
-                .map(|line| line.unwrap_or_else(|_| "".to_owned()))
-                .collect(),
-        );
+        let raw_content: Vec<String> = reader
+            .lines()
+            .map(|line| line.unwrap_or_else(|_| "".to_owned()))
+            .collect();
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref);
 
         Ok(Self {
@@ -194,12 +192,12 @@ impl HLContent {
     }
 
     fn parse_raw_content(
-        raw_content: Box<Vec<String>>,
+        raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
-    ) -> Box<Vec<Vec<SyntaxedString>>> {
+    ) -> Vec<Vec<SyntaxedString>> {
         let theme_set = ThemeSet::load_defaults();
-        let mut highlighted_content = Box::new(vec![]);
+        let mut highlighted_content = vec![];
         let mut highlighter =
             HighlightLines::new(syntax_ref, &theme_set.themes["Solarized (dark)"]);
 

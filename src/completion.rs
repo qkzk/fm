@@ -101,7 +101,7 @@ impl Completion {
         &mut self,
         input_string: &str,
         path_content: &PathContent,
-        current_path: Option<String>,
+        current_path: String,
     ) -> FmResult<()> {
         match self.kind {
             CompletionKind::Exec => self.exec(input_string),
@@ -113,29 +113,47 @@ impl Completion {
 
     /// Goto completion.
     /// Looks for the valid path completing what the user typed.
-    fn goto(&mut self, input_string: &str, current_path: Option<String>) -> FmResult<()> {
+    fn goto(&mut self, input_string: &str, current_path: String) -> FmResult<()> {
+        self.update_from_input(input_string, &current_path);
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
             return Ok(());
         }
-        self.update_absolute_paths(&parent, &last_name);
+        self.extend_absolute_paths(&parent, &last_name);
         self.extend_relative_paths(current_path, &last_name);
         Ok(())
     }
 
-    fn update_absolute_paths(&mut self, parent: &str, last_name: &str) {
+    fn update_from_input(&mut self, input_string: &str, current_path: &str) {
+        if let Some(input_path) = self.canonicalize_input(input_string, current_path) {
+            self.proposals = vec![input_path]
+        } else {
+            self.proposals = vec![]
+        }
+    }
+
+    fn canonicalize_input(&mut self, input_string: &str, current_path: &str) -> Option<String> {
+        let mut path = fs::canonicalize(current_path).unwrap();
+        path.push(input_string);
+        let path = fs::canonicalize(path).unwrap_or_default();
+        if path.exists() {
+            Some(path.to_str().unwrap_or_default().to_owned())
+        } else {
+            None
+        }
+    }
+
+    fn extend_absolute_paths(&mut self, parent: &str, last_name: &str) {
         if let Ok(path) = std::fs::canonicalize(parent) {
             if let Ok(entries) = fs::read_dir(path) {
-                self.update(Self::entries_matching_filename(entries, last_name))
+                self.extend(Self::entries_matching_filename(entries, last_name))
             }
         }
     }
 
-    fn extend_relative_paths(&mut self, current_path: Option<String>, last_name: &str) {
-        if let Some(valid_path) = current_path {
-            if let Ok(entries) = fs::read_dir(valid_path) {
-                self.extend(Self::entries_matching_filename(entries, last_name))
-            }
+    fn extend_relative_paths(&mut self, current_path: String, last_name: &str) {
+        if let Ok(entries) = fs::read_dir(current_path) {
+            self.extend(Self::entries_matching_filename(entries, last_name))
         }
     }
 
