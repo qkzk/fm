@@ -31,31 +31,26 @@ pub enum SortBy {
 }
 
 impl SortBy {
-    /// Returns a key for each variant.
-    /// The key can be used to sort the directory content.
-    pub fn key(&self, file: &FileInfo) -> String {
-        match *self {
-            Self::Kind => Self::sort_by_kind(file),
-            Self::Filename => file.filename.clone(),
-            Self::Date => file.system_time.clone(),
-            Self::Size => file.file_size.clone(),
-            Self::Extension => file.extension.clone(),
-        }
+    /// Use Higher Rank Trait Bounds
+    /// Avoid using slices to sort a collection.
+    /// It allows use to use references to `String` (`&str`) instead of cloning the `String`.
+    /// Reference: [StackOverflow](https://stackoverflow.com/questions/56105305/how-to-sort-a-vec-of-structs-by-a-string-field)
+    fn sort_by_key_hrtb<T, F, K>(slice: &mut [T], f: F)
+    where
+        F: for<'a> Fn(&'a T) -> &'a K,
+        K: Ord,
+    {
+        slice.sort_by(|a, b| f(a).cmp(f(b)))
     }
 
-    fn sort_by_kind(file: &FileInfo) -> String {
-        let mut s = String::new();
-        match file.file_kind {
-            FileKind::Directory => s.push('a'),
-            FileKind::NormalFile => s.push('b'),
-            FileKind::SymbolicLink => s.push('c'),
-            FileKind::BlockDevice => s.push('d'),
-            FileKind::CharDevice => s.push('e'),
-            FileKind::Socket => s.push('f'),
-            FileKind::Fifo => s.push('g'),
+    fn sort(&self, files: &mut Vec<FileInfo>) {
+        match self {
+            Self::Kind => Self::sort_by_key_hrtb(files, |f| &f.kind_format),
+            Self::Filename => Self::sort_by_key_hrtb(files, |f| &f.filename),
+            Self::Date => Self::sort_by_key_hrtb(files, |f| &f.system_time),
+            Self::Size => Self::sort_by_key_hrtb(files, |f| &f.file_size),
+            Self::Extension => Self::sort_by_key_hrtb(files, |f| &f.extension),
         }
-        s.push_str(&file.filename);
-        s
     }
 }
 
@@ -106,15 +101,27 @@ impl FileKind {
     /// Returns the expected first symbol from `ln -l` line.
     /// d for directory, s for socket, . for file, c for char device,
     /// b for block, l for links.
-    fn extract_dir_symbol(&self) -> String {
+    fn extract_dir_symbol(&self) -> char {
         match self {
-            FileKind::Fifo => "p".to_owned(),
-            FileKind::Socket => "s".to_owned(),
-            FileKind::Directory => "d".to_owned(),
-            FileKind::NormalFile => ".".to_owned(),
-            FileKind::CharDevice => "c".to_owned(),
-            FileKind::BlockDevice => "b".to_owned(),
-            FileKind::SymbolicLink => "l".to_owned(),
+            FileKind::Fifo => 'p',
+            FileKind::Socket => 's',
+            FileKind::Directory => 'd',
+            FileKind::NormalFile => '.',
+            FileKind::CharDevice => 'c',
+            FileKind::BlockDevice => 'b',
+            FileKind::SymbolicLink => 'l',
+        }
+    }
+
+    fn sortable_char(&self) -> char {
+        match self {
+            FileKind::Directory => 'a',
+            FileKind::NormalFile => 'b',
+            FileKind::SymbolicLink => 'c',
+            FileKind::BlockDevice => 'd',
+            FileKind::CharDevice => 'e',
+            FileKind::Socket => 'f',
+            FileKind::Fifo => 'g',
         }
     }
 }
@@ -134,7 +141,7 @@ pub struct FileInfo {
     /// File size as a `String`, already human formated.
     pub file_size: String,
     /// First symbol displaying the kind of file.
-    pub dir_symbol: String,
+    pub dir_symbol: char,
     /// Str formatted permissions like rwxr..rw.
     pub permissions: String,
     /// Owner name of the file.
@@ -149,6 +156,7 @@ pub struct FileInfo {
     pub file_kind: FileKind,
     /// Extension of the file. `""` for a directory.
     pub extension: String,
+    kind_format: String,
 }
 
 impl FileInfo {
@@ -168,6 +176,7 @@ impl FileInfo {
         let file_kind = FileKind::new(direntry);
         let dir_symbol = file_kind.extract_dir_symbol();
         let extension = extract_extension_from_filename(&filename).into();
+        let kind_format = Self::kind_format(&filename, &file_kind);
 
         Ok(FileInfo {
             path,
@@ -182,6 +191,7 @@ impl FileInfo {
             is_selected,
             file_kind,
             extension,
+            kind_format,
         })
     }
 
@@ -206,6 +216,13 @@ impl FileInfo {
             repr.push_str(&self.read_dest().unwrap_or_else(|| "Broken link".to_owned()));
         }
         Ok(repr)
+    }
+
+    fn kind_format(filename: &str, file_kind: &FileKind) -> String {
+        let mut s = String::new();
+        s.push(file_kind.sortable_char());
+        s.push_str(filename);
+        s
     }
 
     fn format_simple(&self) -> FmResult<String> {
@@ -259,7 +276,7 @@ impl PathContent {
         let filter = FilterKind::All;
         let mut files = Self::files(&path, show_hidden, filter.clone())?;
         let sort_by = SortBy::Kind;
-        files.sort_by_key(|file| sort_by.key(file));
+        SortBy::sort_by_key_hrtb(&mut files, |f| &f.kind_format);
         let selected: usize = 0;
         if !files.is_empty() {
             files[selected].select();
@@ -322,7 +339,14 @@ impl PathContent {
 
     /// Sort the file with current key.
     pub fn sort(&mut self) {
-        self.files.sort_by_key(|file| self.sort_by.key(file));
+        self.sort_by.sort(&mut self.files)
+        // match self.sort_by {
+        //     SortBy::Kind => SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.kind_format),
+        //     SortBy::Filename => SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.filename),
+        //     SortBy::Date => SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.system_time),
+        //     SortBy::Size => SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.file_size),
+        //     SortBy::Extension => SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.extension),
+        // }
     }
 
     /// Calculates the size of the owner column.
