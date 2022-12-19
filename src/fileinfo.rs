@@ -273,7 +273,7 @@ impl PathContent {
             files[selected].select();
         }
         let reverse = false;
-        let used_space = get_size(&files);
+        let used_space = get_used_space(&files);
 
         Ok(Self {
             path,
@@ -331,13 +331,6 @@ impl PathContent {
     /// Sort the file with current key.
     pub fn sort(&mut self) {
         self.sort_by.sort(&mut self.files)
-        // match self.sort_by {
-        //     SortBy::Kind => SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.kind_format),
-        //     SortBy::Filename => SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.filename),
-        //     SortBy::Date => SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.system_time),
-        //     SortBy::Size => SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.file_size),
-        //     SortBy::Extension => SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.extension),
-        // }
     }
 
     /// Calculates the size of the owner column.
@@ -471,7 +464,7 @@ impl PathContent {
     }
 }
 
-/// Associates a filetype to `tuikit::prelude::Color` : fg color, bg color and
+/// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
 /// effect.
 /// Selected file is reversed.
 pub fn fileinfo_attr(status: &Status, fileinfo: &FileInfo, colors: &Colors) -> Attr {
@@ -581,7 +574,7 @@ fn extract_extension(path: &path::Path) -> &str {
         .unwrap_or_default()
 }
 
-fn get_size(files: &[FileInfo]) -> u64 {
+fn get_used_space(files: &[FileInfo]) -> u64 {
     files.iter().map(|f| f.size).sum()
 }
 
