@@ -1,4 +1,4 @@
-use std::fs::{metadata, read_dir, DirEntry};
+use std::fs::{metadata, read_dir, DirEntry, Metadata};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
 
@@ -43,7 +43,7 @@ impl SortBy {
         slice.sort_by(|a, b| f(a).cmp(f(b)))
     }
 
-    fn sort(&self, files: &mut Vec<FileInfo>) {
+    fn sort(&self, files: &mut [FileInfo]) {
         match self {
             Self::Kind => Self::sort_by_key_hrtb(files, |f| &f.kind_format),
             Self::Filename => Self::sort_by_key_hrtb(files, |f| &f.filename),
@@ -77,23 +77,19 @@ impl FileKind {
     /// Returns a new `FileKind` depending on metadata.
     /// Only linux files have some of those metadata
     /// since we rely on `std::fs::MetadataExt`.
-    pub fn new(direntry: &DirEntry) -> Self {
-        if let Ok(meta) = direntry.metadata() {
-            if meta.file_type().is_dir() {
-                Self::Directory
-            } else if meta.file_type().is_block_device() {
-                Self::BlockDevice
-            } else if meta.file_type().is_socket() {
-                Self::Socket
-            } else if meta.file_type().is_char_device() {
-                Self::CharDevice
-            } else if meta.file_type().is_fifo() {
-                Self::Fifo
-            } else if meta.file_type().is_symlink() {
-                Self::SymbolicLink
-            } else {
-                Self::NormalFile
-            }
+    pub fn new(meta: &Metadata) -> Self {
+        if meta.file_type().is_dir() {
+            Self::Directory
+        } else if meta.file_type().is_block_device() {
+            Self::BlockDevice
+        } else if meta.file_type().is_socket() {
+            Self::Socket
+        } else if meta.file_type().is_char_device() {
+            Self::CharDevice
+        } else if meta.file_type().is_fifo() {
+            Self::Fifo
+        } else if meta.file_type().is_symlink() {
+            Self::SymbolicLink
         } else {
             Self::NormalFile
         }
@@ -163,20 +159,22 @@ impl FileInfo {
     /// Reads every information about a file from its metadata and returs
     /// a new `FileInfo` object if we can create one.
     pub fn new(direntry: &DirEntry) -> FmResult<FileInfo> {
+        let metadata = direntry.metadata()?;
+
         let path = direntry.path();
         let filename = extract_filename(direntry)?;
-        let size = extract_file_size(direntry)?;
+        let size = extract_file_size(&metadata);
         let file_size = human_size(size);
-        let permissions = extract_permissions_string(direntry)?;
-        let owner = extract_owner(direntry)?;
-        let group = extract_group(direntry)?;
-        let system_time = extract_datetime(direntry)?;
+        let permissions = extract_permissions_string(&metadata)?;
+        let owner = extract_owner(&metadata)?;
+        let group = extract_group(&metadata)?;
+        let system_time = extract_datetime(&metadata)?;
         let is_selected = false;
 
-        let file_kind = FileKind::new(direntry);
+        let file_kind = FileKind::new(&metadata);
         let dir_symbol = file_kind.extract_dir_symbol();
-        let extension = extract_extension_from_filename(&filename).into();
-        let kind_format = Self::kind_format(&filename, &file_kind);
+        let extension = extract_extension(&path).into();
+        let kind_format = filekind_and_filename(&filename, &file_kind);
 
         Ok(FileInfo {
             path,
@@ -216,13 +214,6 @@ impl FileInfo {
             repr.push_str(&self.read_dest().unwrap_or_else(|| "Broken link".to_owned()));
         }
         Ok(repr)
-    }
-
-    fn kind_format(filename: &str, file_kind: &FileKind) -> String {
-        let mut s = String::new();
-        s.push(file_kind.sortable_char());
-        s.push_str(filename);
-        s
     }
 
     fn format_simple(&self) -> FmResult<String> {
@@ -282,7 +273,7 @@ impl PathContent {
             files[selected].select();
         }
         let reverse = false;
-        let used_space = get_size(path.clone()).unwrap_or_default();
+        let used_space = get_size(&files);
 
         Ok(Self {
             path,
@@ -516,8 +507,8 @@ fn is_not_hidden(entry: &DirEntry) -> FmResult<bool> {
 }
 
 /// Returns the modified time.
-fn extract_datetime(direntry: &DirEntry) -> FmResult<String> {
-    let datetime: DateTime<Local> = direntry.metadata()?.modified()?.into();
+fn extract_datetime(metadata: &Metadata) -> FmResult<String> {
+    let datetime: DateTime<Local> = metadata.modified()?.into();
     Ok(format!("{}", datetime.format("%d/%m/%Y %T")))
 }
 
@@ -527,21 +518,16 @@ fn extract_filename(direntry: &DirEntry) -> FmResult<String> {
 }
 
 /// Reads the permission and converts them into a string.
-fn extract_permissions_string(direntry: &DirEntry) -> FmResult<String> {
-    match metadata(direntry.path()) {
-        Ok(metadata) => {
-            let mut perm = String::with_capacity(9);
-            let mode = (metadata.mode() & 511) as usize;
-            let s_o = convert_octal_mode(mode >> 6);
-            let s_g = convert_octal_mode((mode >> 3) & 7);
-            let s_a = convert_octal_mode(mode & 7);
-            perm.push_str(s_o);
-            perm.push_str(s_a);
-            perm.push_str(s_g);
-            Ok(perm)
-        }
-        Err(_) => Ok("?????????".to_owned()),
-    }
+fn extract_permissions_string(metadata: &Metadata) -> FmResult<String> {
+    let mut perm = String::with_capacity(9);
+    let mode = (metadata.mode() & 511) as usize;
+    let s_o = convert_octal_mode(mode >> 6);
+    let s_g = convert_octal_mode((mode >> 3) & 7);
+    let s_a = convert_octal_mode(mode & 7);
+    perm.push_str(s_o);
+    perm.push_str(s_a);
+    perm.push_str(s_g);
+    Ok(perm)
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`
@@ -550,39 +536,30 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 }
 
 /// Reads the owner name and returns it as a string.
-fn extract_owner(direntry: &DirEntry) -> FmResult<String> {
-    match metadata(direntry.path()) {
-        Ok(metadata) => Ok(String::from(
-            get_user_by_uid(metadata.uid())
-                .ok_or_else(|| FmError::custom("owner", "Couldn't read uid"))?
-                .name()
-                .to_str()
-                .ok_or_else(|| FmError::custom("metadata", "Couldn't read owner name"))?,
-        )),
-        Err(_) => Ok("".to_owned()),
-    }
+fn extract_owner(metadata: &Metadata) -> FmResult<String> {
+    Ok(String::from(
+        get_user_by_uid(metadata.uid())
+            .ok_or_else(|| FmError::custom("owner", "Couldn't read uid"))?
+            .name()
+            .to_str()
+            .ok_or_else(|| FmError::custom("metadata", "Couldn't read owner name"))?,
+    ))
 }
 
 /// Reads the group name and returns it as a string.
-fn extract_group(direntry: &DirEntry) -> FmResult<String> {
-    match metadata(direntry.path()) {
-        Ok(metadata) => Ok(String::from(
-            get_group_by_gid(metadata.gid())
-                .ok_or_else(|| FmError::custom("group", "Couldn't read gid"))?
-                .name()
-                .to_str()
-                .ok_or_else(|| FmError::custom("group", "Couldn't read group name"))?,
-        )),
-        Err(_) => Ok("".to_owned()),
-    }
+fn extract_group(metadata: &Metadata) -> FmResult<String> {
+    Ok(String::from(
+        get_group_by_gid(metadata.gid())
+            .ok_or_else(|| FmError::custom("owner", "Couldn't read gid"))?
+            .name()
+            .to_str()
+            .ok_or_else(|| FmError::custom("metadata", "Couldn't read group name"))?,
+    ))
 }
 
 /// Returns the file size.
-fn extract_file_size(direntry: &DirEntry) -> Result<u64, FmError> {
-    match direntry.path().metadata() {
-        Ok(metadata) => Ok(metadata.len()),
-        Err(_) => Ok(0),
-    }
+fn extract_file_size(metadata: &Metadata) -> u64 {
+    metadata.len()
 }
 
 /// Convert a file size from bytes to human readable string.
@@ -598,25 +575,19 @@ pub fn human_size(bytes: u64) -> String {
 
 /// Extract the optional extension from a filename.
 /// Returns empty &str aka "" if the file has no extension.
-fn extract_extension_from_filename(filename: &str) -> &str {
-    path::Path::new(filename)
-        .extension()
+fn extract_extension(path: &path::Path) -> &str {
+    path.extension()
         .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default()
 }
 
-fn get_size(path: path::PathBuf) -> FmResult<u64> {
-    let mut result = 0;
+fn get_size(files: &[FileInfo]) -> u64 {
+    files.iter().map(|f| f.size).sum()
+}
 
-    if path.is_dir() {
-        for entry in read_dir(&path)? {
-            let _path = entry?.path();
-            if _path.is_file() {
-                result += _path.metadata()?.len();
-            }
-        }
-    } else {
-        result = path.metadata()?.len();
-    }
-    Ok(result)
+fn filekind_and_filename(filename: &str, file_kind: &FileKind) -> String {
+    let mut s = String::new();
+    s.push(file_kind.sortable_char());
+    s.push_str(filename);
+    s
 }
