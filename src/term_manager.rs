@@ -9,7 +9,9 @@ use tuikit::prelude::*;
 use tuikit::term::Term;
 
 use crate::config::Colors;
-use crate::constant_strings_paths::{HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE};
+use crate::constant_strings_paths::{
+    FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
+};
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{FmError, FmResult};
@@ -122,15 +124,17 @@ impl<'a> WinTab<'a> {
                             attr,
                         )?;
                     }
+                } else {
+                    canvas.print_with_attr(
+                        1,
+                        0,
+                        &format!("{}", &status.selected_non_mut().path_content.filter),
+                        Self::ATTR_YELLOW_BOLD,
+                    )?;
                 }
             }
             Mode::InputSimple(InputKind::Filter) => {
-                canvas.print_with_attr(
-                    1,
-                    0,
-                    "by name: n name, by ext: e ext, only directories: d, reset: a",
-                    Self::ATTR_YELLOW_BOLD,
-                )?;
+                canvas.print_with_attr(1, 0, FILTER_PRESENTATION, Self::ATTR_YELLOW_BOLD)?;
             }
             _ => (),
         }

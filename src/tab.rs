@@ -4,6 +4,7 @@ use crate::args::Args;
 use crate::completion::Completion;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::PathContent;
+use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::input::Input;
 use crate::mode::Mode;
@@ -98,6 +99,7 @@ impl Tab {
     /// displayed files is reset.
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> FmResult<()> {
+        self.path_content.filter = FilterKind::All;
         self.line_index = 0;
         self.input.reset();
         self.path_content.reset_files()?;

@@ -37,3 +37,6 @@ pub static HELP_FIRST_SENTENCE: &str = "fm: a dired / ranger like file manager. 
 pub static HELP_SECOND_SENTENCE: &str = "Keybindings";
 /// nvim-send is a rust program which can send commands to neovim
 pub static NVIM_RPC_SENDER: &str = "nvim-send";
+/// Filter presentation for the second line
+pub static FILTER_PRESENTATION: &str =
+    "By name: n expr, by ext: e expr, only directories: d, reset: a";

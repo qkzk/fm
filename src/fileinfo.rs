@@ -255,7 +255,7 @@ pub struct PathContent {
     pub sort_by: SortBy,
     /// Is it reversed ?
     pub reverse: bool,
-    filter: FilterKind,
+    pub filter: FilterKind,
     used_space: u64,
 }
 
