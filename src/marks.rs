@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use log::info;
 
 use crate::constant_strings_paths::MARKS_FILEPATH;
-use crate::fm_error::{ErrorVariant, FmError, FmResult};
+use crate::fm_error::{FmError, FmResult};
 
 /// Holds the marks created by the user.
 /// It's a map between any char (except :) and a PathBuf.
@@ -53,16 +53,19 @@ impl Marks {
         let line = line?;
         let sp: Vec<&str> = line.split(':').collect();
         if sp.len() <= 1 {
-            return Err(FmError::new(
-                ErrorVariant::CUSTOM("marks: parse_line".to_owned()),
-                "Invalid mark line",
+            return Err(FmError::custom(
+                "marks: parse_line",
+                &format!("Invalid mark line: {}", line),
             ));
         }
         if let Some(ch) = sp[0].chars().next() {
             let path = PathBuf::from(sp[1]);
             Ok((ch, path))
         } else {
-            Err(FmError::custom("marks: parse line", "Invalid char"))
+            Err(FmError::custom(
+                "marks: parse line",
+                &format!("Invalid first character in: {}", line),
+            ))
         }
     }
 

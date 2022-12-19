@@ -35,7 +35,7 @@ pub enum ErrorVariant {
 #[derive(Debug)]
 pub struct FmError {
     variant: ErrorVariant,
-    pub details: String,
+    details: String,
 }
 
 impl FmError {
@@ -49,7 +49,7 @@ impl FmError {
     }
 
     /// Creates a new CUSTOM error.
-    /// Syntaxic sugar
+    /// Syntactic sugar
     pub fn custom(variant_str: &str, msg: &str) -> Self {
         Self::new(ErrorVariant::CUSTOM(variant_str.to_owned()), msg)
     }

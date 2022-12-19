@@ -40,3 +40,14 @@ pub static NVIM_RPC_SENDER: &str = "nvim-send";
 /// Filter presentation for the second line
 pub static FILTER_PRESENTATION: &str =
     "By name: n expr, by ext: e expr, only directories: d, reset: a";
+pub static HARDCODED_SHORTCUTS: [&str; 9] = [
+    "/",
+    "/dev",
+    "/etc",
+    "/media",
+    "/mnt",
+    "/opt",
+    "/run/media",
+    "/tmp",
+    "/usr",
+];

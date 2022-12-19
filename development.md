@@ -215,7 +215,8 @@
 ### Version 0.1.4 : animation
 
 - [x] 0.1.4 : screenshots
-- [x] syntastic sugar to create custom errors
+- [x] syntactic sugar to create custom errors
+- [x] filter improvment: better display, use &str when possible
 
 ## TODO
 
