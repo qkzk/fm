@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use crate::constant_strings_paths::HARDCODED_SHORTCUTS;
-use crate::indexed_vector::IndexedVector;
+use crate::impl_indexed_vector;
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.
 /// Also know which shortcut is currently selected by the user.
@@ -62,37 +62,4 @@ impl Shortcut {
     }
 }
 
-impl IndexedVector<PathBuf> for Shortcut {
-    fn is_empty(&self) -> bool {
-        self.content.is_empty()
-    }
-
-    fn len(&self) -> usize {
-        self.content.len()
-    }
-
-    /// Select the next shortcut.
-    fn next(&mut self) {
-        if self.is_empty() {
-            self.index = 0;
-        } else {
-            self.index = (self.index + 1) % self.len()
-        }
-    }
-
-    /// Select the previous shortcut.
-    fn prev(&mut self) {
-        if self.is_empty() {
-            self.index = 0
-        } else if self.index > 0 {
-            self.index -= 1;
-        } else {
-            self.index = self.len() - 1
-        }
-    }
-
-    /// Returns the pathbuf of the currently selected shortcut.
-    fn selected(&self) -> Option<&PathBuf> {
-        Some(&self.content[self.index])
-    }
-}
+impl_indexed_vector!(PathBuf, Shortcut);

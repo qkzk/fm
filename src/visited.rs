@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::indexed_vector::IndexedVector;
+use crate::impl_indexed_vector;
 
 /// A Vec of pathbuf of visited files.
 /// It's mostly used as a stack but we want to avoid multiple instances of the
@@ -41,43 +41,4 @@ impl History {
     }
 }
 
-impl IndexedVector<PathBuf> for History {
-    /// True if nothing was visited. Shouldn't be the case...
-    fn is_empty(&self) -> bool {
-        self.content.is_empty()
-    }
-
-    /// Number of visited paths.
-    fn len(&self) -> usize {
-        self.content.len()
-    }
-
-    /// Select the next visited path.
-    fn next(&mut self) {
-        if self.is_empty() {
-            self.index = 0
-        } else if self.index > 0 {
-            self.index -= 1;
-        } else {
-            self.index = self.len() - 1
-        }
-    }
-
-    /// Select the previously visited path.
-    fn prev(&mut self) {
-        if self.is_empty() {
-            self.index = 0;
-        } else {
-            self.index = (self.index + 1) % self.len()
-        }
-    }
-
-    /// Returns the currently selected visited path.
-    fn selected(&self) -> Option<&PathBuf> {
-        if self.index < self.len() {
-            Some(&self.content[self.index])
-        } else {
-            None
-        }
-    }
-}
+impl_indexed_vector!(PathBuf, History);

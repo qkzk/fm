@@ -13,7 +13,7 @@ use crate::constant_strings_paths::PERMISSIONS_STR;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::git::git;
-use crate::indexed_vector::IndexedVector;
+use crate::impl_indexed_vector;
 use crate::sort::SortKind;
 use crate::status::Status;
 
@@ -214,7 +214,7 @@ pub struct PathContent {
     /// A vector of FileInfo with every file in current path
     pub content: Vec<FileInfo>,
     /// The index of the selected file.
-    pub selected_index: usize,
+    pub index: usize,
     /// Do we display the hidden files ?
     pub show_hidden: bool,
     /// The kind of sort used to display the files.
@@ -242,7 +242,7 @@ impl PathContent {
         Ok(Self {
             path,
             content: files,
-            selected_index,
+            index: selected_index,
             show_hidden,
             sort_kind,
             filter,
@@ -253,7 +253,7 @@ impl PathContent {
     pub fn change_directory(&mut self, path: &path::Path) -> FmResult<()> {
         self.content = Self::files(path, self.show_hidden, self.filter.clone())?;
         self.sort_kind.sort(&mut self.content);
-        self.selected_index = 0;
+        self.index = 0;
         if !self.content.is_empty() {
             self.content[0].select()
         }
@@ -342,9 +342,9 @@ impl PathContent {
     /// Select the file from a given index.
     pub fn select_index(&mut self, index: usize) {
         if index < self.content.len() {
-            self.content[self.selected_index].unselect();
+            self.content[self.index].unselect();
             self.content[index].select();
-            self.selected_index = index;
+            self.index = index;
         }
     }
 
@@ -355,9 +355,9 @@ impl PathContent {
         self.content = Self::files(&self.path, self.show_hidden, self.filter.clone())?;
         self.sort_kind = SortKind::default();
         self.sort();
-        self.selected_index = 0;
+        self.index = 0;
         if !self.content.is_empty() {
-            self.content[self.selected_index].select();
+            self.content[self.index].select();
         }
         Ok(())
     }
@@ -416,42 +416,7 @@ impl PathContent {
     }
 }
 
-impl IndexedVector<FileInfo> for PathContent {
-    fn is_empty(&self) -> bool {
-        self.content.is_empty()
-    }
-
-    fn len(&self) -> usize {
-        self.content.len()
-    }
-    /// Select the next file, if any.
-    fn next(&mut self) {
-        if !self.content.is_empty() && self.selected_index < self.content.len() - 1 {
-            self.content[self.selected_index].unselect();
-            self.selected_index += 1;
-            self.content[self.selected_index].select();
-        }
-    }
-
-    /// Select the previous file, if any.
-    fn prev(&mut self) {
-        if self.selected_index > 0 {
-            self.content[self.selected_index].unselect();
-            self.selected_index -= 1;
-            self.content[self.selected_index].select();
-        }
-    }
-
-    /// Return the Optional FileInfo
-    /// Since the FileInfo is borrowed it won't be mutable.
-    fn selected(&self) -> Option<&FileInfo> {
-        if self.content.is_empty() {
-            None
-        } else {
-            Some(&self.content[self.selected_index])
-        }
-    }
-}
+impl_indexed_vector!(FileInfo, PathContent);
 
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
 /// effect.
