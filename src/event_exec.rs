@@ -8,7 +8,7 @@ use crate::bulkrename::Bulkrename;
 use crate::completion::CompletionKind;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
-use crate::content_window::{ContentWindow, RESERVED_ROWS};
+use crate::content_window::RESERVED_ROWS;
 use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent, SortBy};
 use crate::filter::FilterKind;
@@ -308,9 +308,7 @@ impl EventExec {
         match tab.mode {
             Mode::Normal => {
                 tab.path_content.select_prev();
-                if tab.line_index > 0 {
-                    tab.line_index -= 1;
-                }
+                tab.move_line_up();
             }
             Mode::Preview => tab.line_index = tab.window.top,
             _ => (),
@@ -323,12 +321,7 @@ impl EventExec {
         match tab.mode {
             Mode::Normal => {
                 tab.path_content.select_next();
-                let max_line = tab.path_content.files.len();
-                if max_line >= ContentWindow::WINDOW_MARGIN_TOP
-                    && tab.line_index < max_line - ContentWindow::WINDOW_MARGIN_TOP
-                {
-                    tab.line_index += 1;
-                }
+                tab.move_line_down();
             }
             Mode::Preview => tab.line_index = tab.window.bottom,
             _ => (),
@@ -436,18 +429,12 @@ impl EventExec {
     }
 
     /// Move to parent directory if there's one.
-    /// Raise an FmError in root folder.
+    /// Does
     /// Add the starting directory to history.
     pub fn event_move_to_parent(tab: &mut Tab) -> FmResult<()> {
-        let parent = tab.path_content.path.parent();
-        let path = path::PathBuf::from(parent.ok_or_else(|| {
-            FmError::custom("event move to parent", "Root directory has no parent")
-        })?);
-        tab.history.push(&path);
-        tab.path_content = PathContent::new(path, tab.show_hidden)?;
-        tab.window.reset(tab.path_content.files.len());
-        tab.line_index = 0;
-        tab.input.cursor_start();
+        if let Some(parent) = tab.path_content.path.parent() {
+            tab.set_pathcontent(parent.to_path_buf())?;
+        }
         Ok(())
     }
 

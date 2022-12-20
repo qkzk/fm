@@ -148,8 +148,9 @@ impl Tab {
     /// Add the last path to the history of visited paths.
     pub fn set_pathcontent(&mut self, path: path::PathBuf) -> FmResult<()> {
         self.history.push(&path);
-        self.path_content = PathContent::new(path, self.show_hidden)?;
+        self.path_content.change_directory(&path)?;
         self.window.reset(self.path_content.files.len());
+        self.line_index = 0;
         Ok(())
     }
 
@@ -171,5 +172,22 @@ impl Tab {
             .files
             .iter()
             .position(|file| file.path == jump_target)
+    }
+
+    /// Move the index one line up
+    pub fn move_line_up(&mut self) {
+        if self.line_index > 0 {
+            self.line_index -= 1;
+        }
+    }
+
+    /// Move the index one line down
+    pub fn move_line_down(&mut self) {
+        let max_line = self.path_content.files.len();
+        if max_line >= ContentWindow::WINDOW_MARGIN_TOP
+            && self.line_index < max_line - ContentWindow::WINDOW_MARGIN_TOP
+        {
+            self.line_index += 1;
+        }
     }
 }
