@@ -219,6 +219,8 @@
 - [x] filter improvment: better display, use &str when possible
 - [x] sort refactor. Use a crate. Use 2 methods for ascending/descending. Separate
       char parsing from sort itself
+- [x] Fix: in long dirs, we can scroll past the last displayed file
+- [x] Fix: multiple mount points display in shortcuts.
 
 ## TODO
 
@@ -255,7 +257,6 @@
 - [ ] log0, log1, log2 are created by log4rs in source folder
   - [x] using absolute path, files are created in the right place
   - [ ] the default file is still `log{}` instead of `log0`...
-- [ ] in long dirs, we can scroll past the last displayed file
 
 ## Won't do
 
