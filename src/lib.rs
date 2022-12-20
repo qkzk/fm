@@ -24,6 +24,7 @@ pub mod opener;
 pub mod preview;
 pub mod shortcut;
 pub mod skim;
+pub mod sort;
 pub mod status;
 pub mod tab;
 pub mod term_manager;

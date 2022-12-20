@@ -13,46 +13,8 @@ use crate::constant_strings_paths::PERMISSIONS_STR;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::git::git;
+use crate::sort::SortKind;
 use crate::status::Status;
-
-/// Different kind of sort
-#[derive(Debug, Clone)]
-pub enum SortBy {
-    /// Directory first
-    Kind,
-    /// by filename
-    Filename,
-    /// by date
-    Date,
-    /// by size
-    Size,
-    /// by extension
-    Extension,
-}
-
-impl SortBy {
-    /// Use Higher Rank Trait Bounds
-    /// Avoid using slices to sort a collection.
-    /// It allows use to use references to `String` (`&str`) instead of cloning the `String`.
-    /// Reference: [StackOverflow](https://stackoverflow.com/questions/56105305/how-to-sort-a-vec-of-structs-by-a-string-field)
-    fn sort_by_key_hrtb<T, F, K>(slice: &mut [T], f: F)
-    where
-        F: for<'a> Fn(&'a T) -> &'a K,
-        K: Ord,
-    {
-        slice.sort_by(|a, b| f(a).cmp(f(b)))
-    }
-
-    fn sort(&self, files: &mut [FileInfo]) {
-        match self {
-            Self::Kind => Self::sort_by_key_hrtb(files, |f| &f.kind_format),
-            Self::Filename => Self::sort_by_key_hrtb(files, |f| &f.filename),
-            Self::Date => Self::sort_by_key_hrtb(files, |f| &f.system_time),
-            Self::Size => Self::sort_by_key_hrtb(files, |f| &f.file_size),
-            Self::Extension => Self::sort_by_key_hrtb(files, |f| &f.extension),
-        }
-    }
-}
 
 /// Different kind of files
 #[derive(Debug, Clone, Copy)]
@@ -152,7 +114,10 @@ pub struct FileInfo {
     pub file_kind: FileKind,
     /// Extension of the file. `""` for a directory.
     pub extension: String,
-    kind_format: String,
+    /// A formated filename where the "kind" of file
+    /// (directory, char device, block devive, fifo, socket, normal)
+    /// is prepend to the name, allowing a "sort by kind" method.
+    pub kind_format: String,
 }
 
 impl FileInfo {
@@ -252,9 +217,8 @@ pub struct PathContent {
     /// Do we display the hidden files ?
     pub show_hidden: bool,
     /// The kind of sort used to display the files.
-    pub sort_by: SortBy,
-    /// Is it reversed ?
-    pub reverse: bool,
+    sort_kind: SortKind,
+    /// The filter use before displaying files
     pub filter: FilterKind,
     used_space: u64,
 }
@@ -266,13 +230,12 @@ impl PathContent {
     pub fn new(path: path::PathBuf, show_hidden: bool) -> FmResult<Self> {
         let filter = FilterKind::All;
         let mut files = Self::files(&path, show_hidden, filter.clone())?;
-        let sort_by = SortBy::Kind;
-        SortBy::sort_by_key_hrtb(&mut files, |f| &f.kind_format);
+        let sort_kind = SortKind::default();
+        sort_kind.sort(&mut files);
         let selected: usize = 0;
         if !files.is_empty() {
             files[selected].select();
         }
-        let reverse = false;
         let used_space = get_used_space(&files);
 
         Ok(Self {
@@ -280,8 +243,7 @@ impl PathContent {
             files,
             selected,
             show_hidden,
-            sort_by,
-            reverse,
+            sort_kind,
             filter,
             used_space,
         })
@@ -289,7 +251,7 @@ impl PathContent {
 
     pub fn change_directory(&mut self, path: &path::Path) -> FmResult<()> {
         self.files = Self::files(path, self.show_hidden, self.filter.clone())?;
-        SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.kind_format);
+        self.sort_kind.sort(&mut self.files);
         self.selected = 0;
         if !self.files.is_empty() {
             self.files[0].select()
@@ -342,7 +304,7 @@ impl PathContent {
 
     /// Sort the file with current key.
     pub fn sort(&mut self) {
-        self.sort_by.sort(&mut self.files)
+        self.sort_kind.sort(&mut self.files)
     }
 
     /// Calculates the size of the owner column.
@@ -408,7 +370,7 @@ impl PathContent {
     /// Select the first file if any.
     pub fn reset_files(&mut self) -> Result<(), FmError> {
         self.files = Self::files(&self.path, self.show_hidden, self.filter.clone())?;
-        self.sort_by = SortBy::Kind;
+        self.sort_kind = SortKind::default();
         self.sort();
         self.selected = 0;
         if !self.files.is_empty() {
@@ -473,6 +435,11 @@ impl PathContent {
     /// A string representation of the git status of the path.
     pub fn git_string(&self) -> FmResult<String> {
         Ok(git(&self.path)?)
+    }
+
+    /// Update the kind of sort
+    pub fn update_sort_from_char(&mut self, c: char) {
+        self.sort_kind.update_from_char(c)
     }
 }
 

@@ -10,7 +10,7 @@ use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::RESERVED_ROWS;
 use crate::copy_move::CopyMove;
-use crate::fileinfo::{FileKind, PathContent, SortBy};
+use crate::fileinfo::{FileKind, PathContent};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
@@ -508,12 +508,13 @@ impl EventExec {
         Ok(())
     }
 
-    /// Enter preview mode.
+    /// Preview the selected file.
     /// Every file can be previewed. See the `crate::enum::Preview` for
-    /// more details on previewing.
+    /// more details on previewinga file.
+    /// Does nothing if the directory is empty.
     pub fn event_preview(tab: &mut Tab) -> FmResult<()> {
         if tab.path_content.files.is_empty() {
-            return Err(FmError::custom("event_preview", "No file to preview"));
+            return Ok(());
         }
         if let Some(file_info) = tab.path_content.selected_file() {
             if let FileKind::NormalFile = file_info.file_kind {
@@ -587,29 +588,14 @@ impl EventExec {
     /// If the user types an uppercase char, the sort is reverse.
     pub fn event_leave_sort(tab: &mut Tab, c: char) {
         tab.mode = Mode::Normal;
-        match c {
-            'k' | 'K' => tab.path_content.sort_by = SortBy::Kind,
-            'n' | 'N' => tab.path_content.sort_by = SortBy::Filename,
-            'm' | 'M' => tab.path_content.sort_by = SortBy::Date,
-            's' | 'S' => tab.path_content.sort_by = SortBy::Size,
-            'e' | 'E' => tab.path_content.sort_by = SortBy::Extension,
-            'r' => tab.path_content.reverse = !tab.path_content.reverse,
-            _ => {
-                return;
-            }
+        if tab.path_content.files.is_empty() {
+            return;
         }
-        if c.is_uppercase() {
-            tab.path_content.reverse = true
-        }
-        if !tab.path_content.files.is_empty() {
-            tab.path_content.files[tab.line_index].unselect();
-            tab.path_content.sort();
-            if tab.path_content.reverse {
-                tab.path_content.files.reverse();
-            }
-            Self::event_go_top(tab);
-            tab.path_content.select_index(0)
-        }
+        tab.path_content.files[tab.line_index].unselect();
+        tab.path_content.update_sort_from_char(c);
+        tab.path_content.sort();
+        Self::event_go_top(tab);
+        tab.path_content.select_index(0)
     }
 
     /// Insert a char in the input string.
