@@ -2,6 +2,7 @@ use std::path;
 
 use crate::args::Args;
 use crate::completion::Completion;
+use crate::constant_strings_paths::HARDCODED_SHORTCUTS;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::PathContent;
 use crate::filter::FilterKind;
@@ -189,5 +190,14 @@ impl Tab {
         {
             self.line_index += 1;
         }
+    }
+
+    /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
+    /// extend the vector with the mount points.
+    pub fn refresh_shortcuts(&mut self, mounts: &[&path::Path]) {
+        self.shortcut
+            .shortcuts
+            .truncate(HARDCODED_SHORTCUTS.len() + 1);
+        self.shortcut.extend_with_mount_points(mounts)
     }
 }

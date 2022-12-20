@@ -48,7 +48,7 @@ impl Shortcut {
     }
 
     /// Update the shortcuts with the mount points.
-    pub fn update_mount_points(&mut self, mount_points: &[&Path]) {
+    pub fn extend_with_mount_points(&mut self, mount_points: &[&Path]) {
         self.shortcuts
             .extend(mount_points.iter().map(|p| p.to_path_buf()));
     }

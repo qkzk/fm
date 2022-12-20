@@ -76,7 +76,7 @@ impl Status {
         let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
         let mut tab = Tab::new(args, height)?;
         tab.shortcut
-            .update_mount_points(&Self::disks_mounts(sys.disks()));
+            .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
 
         Ok(Self {
             tabs: [tab.clone(), tab],
@@ -262,8 +262,8 @@ impl Status {
         self.system_info.refresh_disks_list();
         let disks = self.system_info.disks();
         let mounts = Self::disks_mounts(disks);
-        self.tabs[0].shortcut.update_mount_points(&mounts);
-        self.tabs[1].shortcut.update_mount_points(&mounts);
+        self.tabs[0].refresh_shortcuts(&mounts);
+        self.tabs[1].refresh_shortcuts(&mounts);
     }
 
     /// Returns an array of Disks
