@@ -79,9 +79,9 @@ impl EventDispatcher {
                     Some(event_char) => event_char.matcher(status),
                     None => Ok(()),
                 },
-                Mode::Preview | Mode::Shortcut => EventExec::event_normal(status.selected()),
-                Mode::Jump => Ok(()),
-                Mode::History => Ok(()),
+                Mode::Preview | Mode::Shortcut | Mode::Jump | Mode::History => {
+                    EventExec::event_normal(status.selected())
+                }
                 Mode::NeedConfirmation(confirmed_action) => {
                     if c == 'y' {
                         let _ = EventExec::exec_confirmed_action(status, confirmed_action);

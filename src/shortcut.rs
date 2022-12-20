@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use crate::constant_strings_paths::HARDCODED_SHORTCUTS;
-use crate::impl_indexed_vector;
+use crate::impl_selectable_content;
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.
 /// Also know which shortcut is currently selected by the user.
@@ -62,4 +62,4 @@ impl Shortcut {
     }
 }
 
-impl_indexed_vector!(PathBuf, Shortcut);
+impl_selectable_content!(PathBuf, Shortcut);

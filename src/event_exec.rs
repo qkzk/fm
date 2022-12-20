@@ -13,10 +13,10 @@ use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
-use crate::indexed_vector::IndexedVector;
 use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
 use crate::opener::execute_in_child;
 use crate::preview::Preview;
+use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
@@ -308,7 +308,9 @@ impl EventExec {
     pub fn event_up_one_row(tab: &mut Tab) {
         match tab.mode {
             Mode::Normal => {
+                tab.path_content.unselect_current();
                 tab.path_content.prev();
+                tab.path_content.select_current();
                 tab.move_line_up();
             }
             Mode::Preview => tab.line_index = tab.window.top,
@@ -321,7 +323,9 @@ impl EventExec {
     pub fn event_down_one_row(tab: &mut Tab) {
         match tab.mode {
             Mode::Normal => {
+                tab.path_content.unselect_current();
                 tab.path_content.next();
+                tab.path_content.select_current();
                 tab.move_line_down();
             }
             Mode::Preview => tab.line_index = tab.window.bottom,
@@ -420,13 +424,17 @@ impl EventExec {
     }
 
     /// Select the next element in history of visited files.
+    /// Watchout! Since the history is displayed in reverse order,
+    /// we call the "prev" method of the `History` instance instead.
     pub fn event_history_next(tab: &mut Tab) {
-        tab.history.next()
+        tab.history.prev()
     }
 
     /// Select the previous element in history of visited files.
+    /// Watchout! Since the history is displayed in reverse order,
+    /// we call the "next" method of the `History` instance instead.
     pub fn event_history_prev(tab: &mut Tab) {
-        tab.history.prev()
+        tab.history.next()
     }
 
     /// Move to parent directory if there's one.

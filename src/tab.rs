@@ -6,10 +6,10 @@ use crate::content_window::ContentWindow;
 use crate::fileinfo::PathContent;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
-use crate::indexed_vector::IndexedVector;
 use crate::input::Input;
 use crate::mode::Mode;
 use crate::preview::Preview;
+use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
 use crate::visited::History;
 

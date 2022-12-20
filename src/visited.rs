@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::impl_indexed_vector;
+use crate::impl_selectable_content;
 
 /// A Vec of pathbuf of visited files.
 /// It's mostly used as a stack but we want to avoid multiple instances of the
@@ -41,4 +41,4 @@ impl History {
     }
 }
 
-impl_indexed_vector!(PathBuf, History);
+impl_selectable_content!(PathBuf, History);

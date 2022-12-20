@@ -13,7 +13,7 @@ use crate::constant_strings_paths::PERMISSIONS_STR;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::git::git;
-use crate::impl_indexed_vector;
+use crate::impl_selectable_content;
 use crate::sort::SortKind;
 use crate::status::Status;
 
@@ -410,13 +410,33 @@ impl PathContent {
         Ok(git(&self.path)?)
     }
 
-    /// Update the kind of sort
+    /// Update the kind of sort from a char typed by the user.
     pub fn update_sort_from_char(&mut self, c: char) {
         self.sort_kind.update_from_char(c)
     }
+
+    /// Unselect the current item.
+    /// Since we use a common trait to navigate the files,
+    /// this method is required.
+    pub fn unselect_current(&mut self) {
+        if self.is_empty() {
+            return;
+        }
+        self.content[self.index].unselect();
+    }
+
+    /// Select the current item.
+    /// Since we use a common trait to navigate the files,
+    /// this method is required.
+    pub fn select_current(&mut self) {
+        if self.is_empty() {
+            return;
+        }
+        self.content[self.index].select();
+    }
 }
 
-impl_indexed_vector!(FileInfo, PathContent);
+impl_selectable_content!(FileInfo, PathContent);
 
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
 /// effect.

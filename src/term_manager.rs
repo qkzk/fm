@@ -15,9 +15,9 @@ use crate::constant_strings_paths::{
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{FmError, FmResult};
-use crate::indexed_vector::IndexedVector;
 use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
 use crate::preview::{Preview, TextKind, Window};
+use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 
