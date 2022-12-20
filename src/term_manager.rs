@@ -15,6 +15,7 @@ use crate::constant_strings_paths::{
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{FmError, FmResult};
+use crate::indexed_vector::IndexedVector;
 use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
 use crate::preview::{Preview, TextKind, Window};
 use crate::status::Status;
@@ -112,7 +113,7 @@ impl<'a> WinTab<'a> {
         match tab.mode {
             Mode::Normal => {
                 if !status.display_full {
-                    if let Some(file) = tab.path_content.selected_file() {
+                    if let Some(file) = tab.path_content.selected() {
                         let owner_size = file.owner.len();
                         let group_size = file.group.len();
                         let mut attr = fileinfo_attr(status, file, self.colors);
@@ -147,7 +148,7 @@ impl<'a> WinTab<'a> {
             Mode::Normal => {
                 vec![
                     format!("{} ", tab.path_content.path_to_str()?),
-                    format!("{} files ", tab.path_content.files.len()),
+                    format!("{} files ", tab.path_content.content.len()),
                     format!("{}  ", tab.path_content.used_space()),
                     format!("Avail: {}  ", disk_space),
                     format!("{}  ", &tab.path_content.git_string()?),
@@ -182,7 +183,7 @@ impl<'a> WinTab<'a> {
     }
 
     fn default_preview_first_line(tab: &Tab) -> Vec<String> {
-        match tab.path_content.selected_file() {
+        match tab.path_content.selected() {
             Some(fileinfo) => {
                 vec![
                     format!("{}", tab.mode.clone()),
@@ -216,9 +217,9 @@ impl<'a> WinTab<'a> {
     /// When there's too much files, only those around the selected one are
     /// displayed.
     fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let len = tab.path_content.files.len();
+        let len = tab.path_content.content.len();
         for (i, (file, string)) in std::iter::zip(
-            tab.path_content.files.iter(),
+            tab.path_content.content.iter(),
             tab.path_content.strings(status.display_full).iter(),
         )
         .enumerate()
@@ -283,7 +284,7 @@ impl<'a> WinTab<'a> {
     /// Display the history of visited directories.
     fn history(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         canvas.print(0, 0, "Go to...")?;
-        for (row, path) in tab.history.visited.iter().rev().enumerate() {
+        for (row, path) in tab.history.content.iter().rev().enumerate() {
             let mut attr = Attr::default();
             if tab.history.len() > tab.history.index
                 && row == tab.history.len() - tab.history.index - 1
@@ -304,7 +305,7 @@ impl<'a> WinTab<'a> {
     /// Display the predefined shortcuts.
     fn shortcuts(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         canvas.print(0, 0, "Go to...")?;
-        for (row, path) in tab.shortcut.shortcuts.iter().enumerate() {
+        for (row, path) in tab.shortcut.content.iter().enumerate() {
             let mut attr = Attr::default();
             if row == tab.shortcut.index {
                 attr.effect |= Effect::REVERSE;

@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use crate::constant_strings_paths::HARDCODED_SHORTCUTS;
+use crate::indexed_vector::IndexedVector;
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.
 /// Also know which shortcut is currently selected by the user.
@@ -10,7 +11,7 @@ use crate::constant_strings_paths::HARDCODED_SHORTCUTS;
 pub struct Shortcut {
     /// The path to the shortcuts. It's a vector since we can't know how much
     /// mount points are defined.
-    pub shortcuts: Vec<PathBuf>,
+    pub content: Vec<PathBuf>,
     /// The currently selected shortcut
     pub index: usize,
 }
@@ -27,7 +28,7 @@ impl Shortcut {
         let mut shortcuts = Self::hardcoded_shortcuts();
         shortcuts = Self::with_home_path(shortcuts);
         Self {
-            shortcuts,
+            content: shortcuts,
             index: 0,
         }
     }
@@ -49,27 +50,29 @@ impl Shortcut {
 
     /// Update the shortcuts with the mount points.
     pub fn extend_with_mount_points(&mut self, mount_points: &[&Path]) {
-        self.shortcuts
+        self.content
             .extend(mount_points.iter().map(|p| p.to_path_buf()));
     }
 
     /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
     /// extend the vector with the mount points.
     pub fn refresh(&mut self, mount_points: &[&Path]) {
-        self.shortcuts.truncate(HARDCODED_SHORTCUTS.len() + 1);
+        self.content.truncate(HARDCODED_SHORTCUTS.len() + 1);
         self.extend_with_mount_points(mount_points)
     }
+}
 
+impl IndexedVector<PathBuf> for Shortcut {
     fn is_empty(&self) -> bool {
-        self.shortcuts.is_empty()
+        self.content.is_empty()
     }
 
     fn len(&self) -> usize {
-        self.shortcuts.len()
+        self.content.len()
     }
 
     /// Select the next shortcut.
-    pub fn next(&mut self) {
+    fn next(&mut self) {
         if self.is_empty() {
             self.index = 0;
         } else {
@@ -78,7 +81,7 @@ impl Shortcut {
     }
 
     /// Select the previous shortcut.
-    pub fn prev(&mut self) {
+    fn prev(&mut self) {
         if self.is_empty() {
             self.index = 0
         } else if self.index > 0 {
@@ -89,7 +92,7 @@ impl Shortcut {
     }
 
     /// Returns the pathbuf of the currently selected shortcut.
-    pub fn selected(&self) -> PathBuf {
-        self.shortcuts[self.index].clone()
+    fn selected(&self) -> Option<&PathBuf> {
+        Some(&self.content[self.index])
     }
 }

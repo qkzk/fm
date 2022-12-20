@@ -15,6 +15,7 @@ pub mod filter;
 pub mod fm_error;
 pub mod git;
 pub mod help;
+pub mod indexed_vector;
 pub mod input;
 pub mod keybindings;
 pub mod log;

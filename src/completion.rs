@@ -192,7 +192,7 @@ impl Completion {
     fn search(&mut self, input_string: &str, path_content: &PathContent) -> FmResult<()> {
         self.update(
             path_content
-                .files
+                .content
                 .iter()
                 .filter(|f| f.filename.contains(input_string))
                 .map(|f| f.filename.clone())

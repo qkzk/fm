@@ -200,7 +200,7 @@ impl Status {
     pub fn clear_flags_and_reset_view(&mut self) -> FmResult<()> {
         self.flagged.clear();
         self.selected().path_content.reset_files()?;
-        let len = self.tabs[self.index].path_content.files.len();
+        let len = self.tabs[self.index].path_content.content.len();
         self.selected().window.reset(len);
         self.reset_tabs_view()
     }
@@ -221,7 +221,7 @@ impl Status {
         }
         self.flagged.clear();
         let re = Regex::new(&self.selected_non_mut().input.string())?;
-        for file in self.tabs[self.index].path_content.files.iter() {
+        for file in self.tabs[self.index].path_content.content.iter() {
             if re.is_match(&file.path.to_string_lossy()) {
                 self.flagged.insert(file.path.clone());
             }
