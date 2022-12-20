@@ -53,6 +53,13 @@ impl Shortcut {
             .extend(mount_points.iter().map(|p| p.to_path_buf()));
     }
 
+    /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
+    /// extend the vector with the mount points.
+    pub fn refresh(&mut self, mount_points: &[&Path]) {
+        self.shortcuts.truncate(HARDCODED_SHORTCUTS.len() + 1);
+        self.extend_with_mount_points(mount_points)
+    }
+
     fn is_empty(&self) -> bool {
         self.shortcuts.is_empty()
     }

@@ -214,7 +214,7 @@
 
 ### Version 0.1.4 : animation, refactoring
 
-- [x] 0.1.4 : screenshots
+- [x] Gif animation in readme
 - [x] syntactic sugar to create custom errors
 - [x] filter improvment: better display, use &str when possible
 - [x] sort refactor. Use a crate. Use 2 methods for ascending/descending. Separate
@@ -237,6 +237,13 @@
   - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
+
+- [ ] trait for struct or thing with index
+
+  - [ ] trait<T> { collection: Vec<T>, index: usize}: next, prev etc.
+  - [ ] harmonize code for multiple instances
+  - [ ] macro to impl auto
+  - [ ] derive
 
 - [ ] Version 0.2.0 : tests
 
