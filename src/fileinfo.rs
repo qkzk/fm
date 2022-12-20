@@ -263,7 +263,7 @@ impl PathContent {
     /// Reads the paths and creates a new `PathContent`.
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
-    pub fn new(path: path::PathBuf, show_hidden: bool) -> Result<Self, FmError> {
+    pub fn new(path: path::PathBuf, show_hidden: bool) -> FmResult<Self> {
         let filter = FilterKind::All;
         let mut files = Self::files(&path, show_hidden, filter.clone())?;
         let sort_by = SortBy::Kind;
@@ -285,6 +285,18 @@ impl PathContent {
             filter,
             used_space,
         })
+    }
+
+    pub fn change_directory(&mut self, path: &path::Path) -> FmResult<()> {
+        self.files = Self::files(path, self.show_hidden, self.filter.clone())?;
+        SortBy::sort_by_key_hrtb(&mut self.files, |f| &f.kind_format);
+        self.selected = 0;
+        if !self.files.is_empty() {
+            self.files[0].select()
+        }
+        self.used_space = get_used_space(&self.files);
+        self.path = path.to_path_buf();
+        Ok(())
     }
 
     /// Apply the filter.

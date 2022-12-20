@@ -205,15 +205,6 @@ impl Status {
         self.reset_tabs_view()
     }
 
-    /// Returns the correct index jump target to a flagged files.
-    pub fn find_jump_target(&mut self, jump_target: &Path) -> Option<usize> {
-        self.selected()
-            .path_content
-            .files
-            .iter()
-            .position(|file| file.path == jump_target)
-    }
-
     /// Set the permissions of the flagged files according to a given permission.
     /// If the permission are invalid or if the user can't edit them, it may fail.
     pub fn set_permissions(path: PathBuf, permissions: u32) -> FmResult<()> {

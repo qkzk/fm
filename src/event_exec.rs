@@ -171,12 +171,15 @@ impl EventExec {
     /// Creates a symlink of every flagged file to the current directory.
     pub fn event_symlink(status: &mut Status) -> FmResult<()> {
         for oldpath in status.flagged.iter() {
-            let newpath = status.tabs[status.index].path_content.path.clone().join(
-                oldpath
-                    .as_path()
-                    .file_name()
-                    .ok_or_else(|| FmError::custom("event symlink", "File not found"))?,
-            );
+            let filename = oldpath
+                .as_path()
+                .file_name()
+                .ok_or_else(|| FmError::custom("event symlink", "File not found"))?;
+            let newpath = status.tabs[status.index]
+                .path_content
+                .path
+                .clone()
+                .join(filename);
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }
         status.clear_flags_and_reset_view()
@@ -250,28 +253,25 @@ impl EventExec {
     /// If the user selected a directory, we jump inside it.
     /// Otherwise, we jump to the parent and select the file.
     pub fn exec_jump(status: &mut Status) -> FmResult<()> {
-        status.selected().input.clear();
-        let jump_list: Vec<&PathBuf> = status.flagged.iter().collect();
-        let jump_target = jump_list[status.jump_index].clone();
+        let jump_target = Self::find_jump_path(status);
         let target_dir = match jump_target.parent() {
-            Some(parent) => parent.to_path_buf(),
-            None => jump_target.clone(),
+            Some(parent) => parent,
+            None => &jump_target,
         };
-        status.selected().history.push(&target_dir);
-        status.selected().path_content =
-            PathContent::new(target_dir, status.selected().show_hidden)?;
-        if let Some(index) = status.find_jump_target(&jump_target) {
-            status.selected().line_index = index;
-        } else {
-            status.selected().line_index = 0;
-        }
-
-        let s_index = status.tabs[status.index].line_index;
-        status.tabs[status.index].path_content.select_index(s_index);
-        let len = status.tabs[status.index].path_content.files.len();
-        status.selected().window.reset(len);
-        status.selected().window.scroll_to(s_index);
+        let tab = status.selected();
+        tab.input.clear();
+        tab.history.push(&target_dir.to_path_buf());
+        tab.path_content.change_directory(target_dir)?;
+        let index = tab.find_jump_index(&jump_target).unwrap_or_default();
+        tab.path_content.select_index(index);
+        tab.set_window();
+        tab.scroll_to(index);
         Ok(())
+    }
+
+    fn find_jump_path(status: &Status) -> PathBuf {
+        let jump_list: Vec<&PathBuf> = status.flagged.iter().collect();
+        jump_list[status.jump_index].clone()
     }
 
     /// Execute a command requiring a confirmation (Delete, Move or Copy).

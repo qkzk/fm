@@ -212,7 +212,7 @@
 
 - [x] parse .. in goto
 
-### Version 0.1.4 : animation
+### Version 0.1.4 : animation, refactoring
 
 - [x] 0.1.4 : screenshots
 - [x] syntactic sugar to create custom errors

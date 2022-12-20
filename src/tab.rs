@@ -152,4 +152,24 @@ impl Tab {
         self.window.reset(self.path_content.files.len());
         Ok(())
     }
+
+    /// Set the window. Doesn't require the lenght to be known.
+    pub fn set_window(&mut self) {
+        let len = self.path_content.files.len();
+        self.window.reset(len);
+    }
+
+    /// Set the line index to `index` and scroll there.
+    pub fn scroll_to(&mut self, index: usize) {
+        self.line_index = index;
+        self.window.scroll_to(index);
+    }
+
+    /// Returns the correct index jump target to a flagged files.
+    pub fn find_jump_index(&self, jump_target: &path::Path) -> Option<usize> {
+        self.path_content
+            .files
+            .iter()
+            .position(|file| file.path == jump_target)
+    }
 }
