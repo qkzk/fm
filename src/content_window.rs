@@ -56,12 +56,15 @@ impl ContentWindow {
         if self.len < self.height {
             return;
         }
-        if index > self.bottom - Self::WINDOW_PADDING
-            && self.bottom <= self.len - Self::WINDOW_MARGIN_TOP
-        {
+        if self.must_scoll_down(index) {
             self.top += 1;
             self.bottom += 1;
         }
+    }
+
+    fn must_scoll_down(&self, index: usize) -> bool {
+        index > self.bottom - Self::WINDOW_PADDING
+            && self.bottom <= self.len - Self::WINDOW_MARGIN_TOP
     }
 
     /// Reset the window to the first files of the current directory.
