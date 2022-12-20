@@ -57,7 +57,7 @@ impl ContentWindow {
             return;
         }
         if index > self.bottom - Self::WINDOW_PADDING
-            && self.bottom < self.len - Self::WINDOW_MARGIN_TOP
+            && self.bottom <= self.len - Self::WINDOW_MARGIN_TOP
         {
             self.top += 1;
             self.bottom += 1;

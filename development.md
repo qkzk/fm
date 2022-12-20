@@ -217,6 +217,8 @@
 - [x] 0.1.4 : screenshots
 - [x] syntactic sugar to create custom errors
 - [x] filter improvment: better display, use &str when possible
+- [x] sort refactor. Use a crate. Use 2 methods for ascending/descending. Separate
+      char parsing from sort itself
 
 ## TODO
 
