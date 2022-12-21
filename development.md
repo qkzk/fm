@@ -221,6 +221,14 @@
       char parsing from sort itself
 - [x] Fix: in long dirs, we can scroll past the last displayed file
 - [x] Fix: multiple mount points display in shortcuts.
+- [x] trait for struct or thing with index
+
+  - [x] trait<T> { collection: Vec<T>, index: usize}: next, prev etc.
+  - [x] harmonize code for multiple instances
+  - [x] macro to impl auto
+  - [x] struct for flagged. Use a vector instead of hashset... :(
+  - [x] regroup shortcut, history, jump, visited
+  - [x] improve flagged complexity using binary search since the content is maintened sorted.
 
 ## TODO
 
@@ -237,15 +245,6 @@
   - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
-
-- [ ] trait for struct or thing with index
-
-  - [x] trait<T> { collection: Vec<T>, index: usize}: next, prev etc.
-  - [x] harmonize code for multiple instances
-  - [x] macro to impl auto
-  - [x] struct for flagged. Use a vector instead of hashset... :(
-  - [x] regroup shortcut, history, jump, visited
-  - [ ] derive
 
 - [ ] Version 0.2.0 : tests
 
