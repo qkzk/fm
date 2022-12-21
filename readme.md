@@ -67,13 +67,14 @@ If you added the [recommanded function](#cd-on-quit) to your bashrc/zshrc, simpl
 
 - Change display, removing details or displaying a single pane.
 - Preview most of files (text, highlighted code, binary, pdf, exif details, video/audio details, archives) with P
-- Decompress an archive with Ctrl+x
+- Decompress an archive by opening it (o, enter, right click)
 - Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p
 - Rename a bunch of file with B. Flag files, B, edit the names and save the file. The renaming is done.
 - Use the integrated fuzzy finder (forked version of skim, an fzf clone) with Ctrl+f to navigate quickly
 - Filter the view (by extension, name, directory only, all files) with F
 - Find files with / (with completion), flag files matching a regex with w
 - Detect removable disks automatically and jump to them in a few keystrokes (G, up, enter)
+- Drag and drop files (requires dragon-drop installed) with Alt+D
 
 Most of those features are inspired by ranger and alternatives (Midnight commander), the look and feel by dired.
 

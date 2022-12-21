@@ -245,6 +245,7 @@
   - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
+- [ ] vim keys, harmonize keybinds with ranger
 
 - [ ] Version 0.2.0 : tests
 
