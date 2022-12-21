@@ -272,7 +272,7 @@ impl<'a> WinTab<'a> {
     fn navigate(
         &self,
         canvas: &mut dyn Canvas,
-        content: &Vec<std::path::PathBuf>,
+        content: &[std::path::PathBuf],
         index: usize,
     ) -> FmResult<()> {
         canvas.print(0, 0, "Go to...")?;
