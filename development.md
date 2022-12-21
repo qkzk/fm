@@ -240,10 +240,12 @@
 
 - [ ] trait for struct or thing with index
 
-  - [ ] trait<T> { collection: Vec<T>, index: usize}: next, prev etc.
-  - [ ] harmonize code for multiple instances
-  - [ ] macro to impl auto
+  - [x] trait<T> { collection: Vec<T>, index: usize}: next, prev etc.
+  - [x] harmonize code for multiple instances
+  - [x] macro to impl auto
+  - [x] struct for flagged. Use a vector instead of hashset... :(
   - [ ] derive
+  - [ ] regroup shortcut, history, jump, visited
 
 - [ ] Version 0.2.0 : tests
 

@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{self, Path, PathBuf};
@@ -14,6 +13,7 @@ use crate::color_cache::ColorCache;
 use crate::config::Config;
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
+use crate::flagged::Flagged;
 use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
@@ -35,10 +35,8 @@ pub struct Status {
     pub tabs: [Tab; 2],
     /// Index of the current selected tab
     pub index: usize,
-    /// Set of flagged files
-    pub flagged: HashSet<PathBuf>,
-    /// Index in the jump list
-    pub jump_index: usize,
+    /// The flagged files
+    pub flagged: Flagged,
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
     /// Colors for extension
@@ -81,8 +79,7 @@ impl Status {
         Ok(Self {
             tabs: [tab.clone(), tab],
             index: 0,
-            flagged: HashSet::new(),
-            jump_index: 0,
+            flagged: Flagged::default(),
             marks: Marks::read_from_config_file(),
             colors: ColorCache::default(),
             skimer: Skimer::new(term.clone()),
@@ -127,12 +124,8 @@ impl Status {
     }
 
     /// Toggle the flagged attribute of a path.
-    pub fn toggle_flag_on_path(&mut self, path: PathBuf) {
-        if self.flagged.contains(&path) {
-            self.flagged.remove(&path);
-        } else {
-            self.flagged.insert(path);
-        };
+    pub fn toggle_flag_on_path(&mut self, path: &Path) {
+        self.flagged.toggle(path)
     }
 
     /// Replace the tab content with what was returned by skim.
@@ -172,22 +165,18 @@ impl Status {
     /// directory.
     /// It's necessary since the user may have flagged files OUTSIDE of current
     /// directory before calling Bulkrename.
-    /// It may creates confusion since the same filename can be used in
+    /// It may be confusing since the same filename can be used in
     /// different places.
     pub fn filtered_flagged_files(&self) -> Vec<&Path> {
-        let path_content = self.selected_non_mut().path_content.clone();
         self.flagged
-            .iter()
-            .filter(|p| path_content.contains(p))
-            .map(|p| p.as_path())
-            .collect()
+            .filtered(&self.selected_non_mut().path_content.path)
     }
 
     /// Execute a move or a copy of the flagged files to current directory.
     /// A progress bar is displayed (invisible for small files) and a notification
     /// is sent every time, even for 0 bytes files...
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> FmResult<()> {
-        let sources: Vec<PathBuf> = self.flagged.iter().map(|path| path.to_owned()).collect();
+        let sources = self.flagged.content.clone();
         let dest = self
             .selected_non_mut()
             .path_str()
@@ -223,7 +212,7 @@ impl Status {
         let re = Regex::new(&self.selected_non_mut().input.string())?;
         for file in self.tabs[self.index].path_content.content.iter() {
             if re.is_match(&file.path.to_string_lossy()) {
-                self.flagged.insert(file.path.clone());
+                self.flagged.push(file.path.clone());
             }
         }
         Ok(())

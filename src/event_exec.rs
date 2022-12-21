@@ -2,7 +2,6 @@ use std::borrow::Borrow;
 use std::cmp::min;
 use std::fs;
 use std::path;
-use std::path::PathBuf;
 
 use crate::bulkrename::Bulkrename;
 use crate::completion::CompletionKind;
@@ -63,7 +62,7 @@ impl EventExec {
             .content
             .iter()
             .for_each(|file| {
-                status.flagged.insert(file.path.clone());
+                status.flagged.push(file.path.clone());
             });
         status.reset_tabs_view()
     }
@@ -75,39 +74,28 @@ impl EventExec {
             .path_content
             .content
             .iter()
-            .for_each(|file| {
-                if status.flagged.contains(&file.path.clone()) {
-                    status.flagged.remove(&file.path.clone());
-                } else {
-                    status.flagged.insert(file.path.clone());
-                }
-            });
+            .for_each(|file| status.flagged.toggle(&file.path));
         status.reset_tabs_view()
     }
 
     /// Toggle a single flag and move down one row.
     pub fn event_toggle_flag(status: &mut Status) -> FmResult<()> {
-        let file = status.tabs[status.index]
-            .path_content
-            .selected()
-            .ok_or_else(|| FmError::custom("event toggle flag", "No selected file"))?;
-        status.toggle_flag_on_path(file.path.clone());
-        Self::event_down_one_row(status.selected());
+        if let Some(file) = status.selected().path_content.selected() {
+            let path = file.path.clone();
+            status.toggle_flag_on_path(&path);
+            Self::event_down_one_row(status.selected());
+        }
         Ok(())
     }
 
     /// Move to the next file in the jump list.
     pub fn event_jumplist_next(status: &mut Status) {
-        if status.jump_index < status.flagged.len() {
-            status.jump_index += 1;
-        }
+        status.flagged.next()
     }
 
     /// Move to the previous file in the jump list.
     pub fn event_jumplist_prev(status: &mut Status) {
-        if status.jump_index > 0 {
-            status.jump_index -= 1;
-        }
+        status.flagged.prev()
     }
 
     /// Change to CHMOD mode allowing to edit permissions of a file.
@@ -117,7 +105,7 @@ impl EventExec {
         }
         status.selected().mode = Mode::InputSimple(InputKind::Chmod);
         if status.flagged.is_empty() {
-            status.flagged.insert(
+            status.flagged.push(
                 status.tabs[status.index]
                     .path_content
                     .selected()
@@ -133,7 +121,8 @@ impl EventExec {
     /// Does nothing if no file is flagged.
     pub fn event_jump(status: &mut Status) -> FmResult<()> {
         if !status.flagged.is_empty() {
-            status.jump_index = 0;
+            status.flagged.index = 0;
+            info!("entering jump mode");
             status.selected().mode = Mode::Jump
         }
         Ok(())
@@ -171,7 +160,7 @@ impl EventExec {
 
     /// Creates a symlink of every flagged file to the current directory.
     pub fn event_symlink(status: &mut Status) -> FmResult<()> {
-        for oldpath in status.flagged.iter() {
+        for oldpath in status.flagged.content.iter() {
             let filename = oldpath
                 .as_path()
                 .file_name()
@@ -208,7 +197,7 @@ impl EventExec {
 
     /// Recursively delete all flagged files.
     pub fn exec_delete_files(status: &mut Status) -> FmResult<()> {
-        for pathbuf in status.flagged.iter() {
+        for pathbuf in status.flagged.content.iter() {
             if pathbuf.is_dir() {
                 std::fs::remove_dir_all(pathbuf)?;
             } else {
@@ -230,7 +219,7 @@ impl EventExec {
         let permissions: u32 =
             u32::from_str_radix(&status.selected().input.string(), 8).unwrap_or(0_u32);
         if permissions <= Status::MAX_PERMISSIONS {
-            for path in status.flagged.iter() {
+            for path in status.flagged.content.iter() {
                 Status::set_permissions(path.clone(), permissions)?
             }
             status.flagged.clear()
@@ -254,25 +243,22 @@ impl EventExec {
     /// If the user selected a directory, we jump inside it.
     /// Otherwise, we jump to the parent and select the file.
     pub fn exec_jump(status: &mut Status) -> FmResult<()> {
-        let jump_target = Self::find_jump_path(status);
-        let target_dir = match jump_target.parent() {
-            Some(parent) => parent,
-            None => &jump_target,
-        };
-        let tab = status.selected();
-        tab.input.clear();
-        tab.history.push(&target_dir.to_path_buf());
-        tab.path_content.change_directory(target_dir)?;
-        let index = tab.find_jump_index(&jump_target).unwrap_or_default();
-        tab.path_content.select_index(index);
-        tab.set_window();
-        tab.scroll_to(index);
+        if let Some(jump_target) = status.flagged.selected() {
+            let jump_target = jump_target.to_owned();
+            let target_dir = match jump_target.parent() {
+                Some(parent) => parent,
+                None => &jump_target,
+            };
+            let tab = status.selected();
+            tab.input.clear();
+            tab.history.push(&target_dir.to_path_buf());
+            tab.path_content.change_directory(target_dir)?;
+            let index = tab.find_jump_index(&jump_target).unwrap_or_default();
+            tab.path_content.select_index(index);
+            tab.set_window();
+            tab.scroll_to(index);
+        }
         Ok(())
-    }
-
-    fn find_jump_path(status: &Status) -> PathBuf {
-        let jump_list: Vec<&PathBuf> = status.flagged.iter().collect();
-        jump_list[status.jump_index].clone()
     }
 
     /// Execute a command requiring a confirmation (Delete, Move or Copy).

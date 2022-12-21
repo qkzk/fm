@@ -265,9 +265,9 @@ impl<'a> WinTab<'a> {
     /// Display the possible jump destination from flagged files.
     fn jump_list(&self, tabs: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
         canvas.print(0, 0, "Jump to...")?;
-        for (row, path) in tabs.flagged.iter().enumerate() {
+        for (row, path) in tabs.flagged.content.iter().enumerate() {
             let mut attr = Attr::default();
-            if row == tabs.jump_index {
+            if row == tabs.flagged.index {
                 attr.effect |= Effect::REVERSE;
             }
             let _ = canvas.print_with_attr(
@@ -343,7 +343,7 @@ impl<'a> WinTab<'a> {
         confirmed_mode: ConfirmedAction,
         canvas: &mut dyn Canvas,
     ) -> FmResult<()> {
-        for (row, path) in status.flagged.iter().enumerate() {
+        for (row, path) in status.flagged.content.iter().enumerate() {
             canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2,
                 4,
