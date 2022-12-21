@@ -48,6 +48,11 @@ impl std::fmt::Display for ConfirmedAction {
     }
 }
 
+/// Different modes in which the user is expeted to type something.
+/// It may be a new filename, a mode (aka an octal permission),
+/// the name of a new file, of a new directory,
+/// A regex to match all files in current directory,
+/// a kind of sort, a mark name, a new mark or a filter.
 #[derive(Clone)]
 pub enum InputKind {
     /// Rename the selected file
@@ -68,6 +73,18 @@ pub enum InputKind {
     Filter,
 }
 
+/// Different modes in which we display a bunch of possible destinations.
+/// In all those mode we can select a destination and move there.
+#[derive(Clone)]
+pub enum Navigate {
+    /// Navigate to a flagged file
+    Jump,
+    /// Navigate back to a visited path
+    History,
+    /// Navigate to a predefined shortcut
+    Shortcut,
+}
+
 /// Different mode in which the application can be.
 /// It dictates the reaction to event and what to display.
 #[derive(Clone)]
@@ -77,17 +94,13 @@ pub enum Mode {
     /// We'll be able to complete the input string with
     /// different kind of completed items (exec, goto, search)
     InputCompleted(CompletionKind),
-    /// Display the help
-    Jump,
+    /// Select a target and navigate to it
+    Navigable(Navigate),
     /// Confirmation is required before modification is made to existing files :
     /// delete, move, copy
     NeedConfirmation(ConfirmedAction),
     /// Preview a file content
     Preview,
-    /// Display a sort of stack of visited directories
-    History,
-    /// Display predefined shortcuts
-    Shortcut,
     /// Modes requiring an input that can't be completed
     InputSimple(InputKind),
 }
@@ -108,11 +121,11 @@ impl fmt::Display for Mode {
             Mode::InputCompleted(CompletionKind::Goto) => write!(f, "Goto  :  "),
             Mode::InputCompleted(CompletionKind::Search) => write!(f, "Search:  "),
             Mode::InputCompleted(CompletionKind::Nothing) => write!(f, "Nothing:  "),
-            Mode::Jump => write!(f, "Jump  :  "),
-            Mode::History => write!(f, "History :"),
+            Mode::Navigable(Navigate::Jump) => write!(f, "Jump  :  "),
+            Mode::Navigable(Navigate::History) => write!(f, "History :"),
+            Mode::Navigable(Navigate::Shortcut) => write!(f, "Shortcut :"),
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
             Mode::Preview => write!(f, "Preview : "),
-            Mode::Shortcut => write!(f, "Shortcut :"),
         }
     }
 }

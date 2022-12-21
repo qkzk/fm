@@ -9,6 +9,7 @@ use crate::fm_error::{FmError, FmResult};
 use crate::input::Input;
 use crate::mode::Mode;
 use crate::preview::Preview;
+use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
 use crate::visited::History;
 
@@ -57,7 +58,7 @@ impl Tab {
         let nvim_server = args.server;
         let mode = Mode::Normal;
         let line_index = 0;
-        let window = ContentWindow::new(path_content.files.len(), height);
+        let window = ContentWindow::new(path_content.content.len(), height);
         let input = Input::default();
         let completion = Completion::default();
         let must_quit = false;
@@ -103,7 +104,7 @@ impl Tab {
         self.line_index = 0;
         self.input.reset();
         self.path_content.reset_files()?;
-        self.window.reset(self.path_content.files.len());
+        self.window.reset(self.path_content.content.len());
         Ok(())
     }
 
@@ -113,13 +114,13 @@ impl Tab {
     pub fn go_to_child(&mut self) -> FmResult<()> {
         let childpath = self
             .path_content
-            .selected_file()
+            .selected()
             .ok_or_else(|| FmError::custom("go_to_child", "Empty directory"))?
             .path
             .clone();
         self.history.push(&childpath);
         self.path_content = PathContent::new(childpath, self.show_hidden)?;
-        self.window.reset(self.path_content.files.len());
+        self.window.reset(self.path_content.content.len());
         self.line_index = 0;
         self.input.cursor_start();
         Ok(())
@@ -149,14 +150,14 @@ impl Tab {
     pub fn set_pathcontent(&mut self, path: path::PathBuf) -> FmResult<()> {
         self.history.push(&path);
         self.path_content.change_directory(&path)?;
-        self.window.reset(self.path_content.files.len());
+        self.window.reset(self.path_content.content.len());
         self.line_index = 0;
         Ok(())
     }
 
     /// Set the window. Doesn't require the lenght to be known.
     pub fn set_window(&mut self) {
-        let len = self.path_content.files.len();
+        let len = self.path_content.content.len();
         self.window.reset(len);
     }
 
@@ -169,7 +170,7 @@ impl Tab {
     /// Returns the correct index jump target to a flagged files.
     pub fn find_jump_index(&self, jump_target: &path::Path) -> Option<usize> {
         self.path_content
-            .files
+            .content
             .iter()
             .position(|file| file.path == jump_target)
     }
@@ -183,7 +184,7 @@ impl Tab {
 
     /// Move the index one line down
     pub fn move_line_down(&mut self) {
-        let max_line = self.path_content.files.len();
+        let max_line = self.path_content.content.len();
         if max_line >= ContentWindow::WINDOW_MARGIN_TOP
             && self.line_index < max_line - ContentWindow::WINDOW_MARGIN_TOP
         {

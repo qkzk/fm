@@ -13,6 +13,7 @@ use crate::constant_strings_paths::PERMISSIONS_STR;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::git::git;
+use crate::impl_selectable_content;
 use crate::sort::SortKind;
 use crate::status::Status;
 
@@ -211,9 +212,9 @@ pub struct PathContent {
     /// The current path
     pub path: path::PathBuf,
     /// A vector of FileInfo with every file in current path
-    pub files: Vec<FileInfo>,
+    pub content: Vec<FileInfo>,
     /// The index of the selected file.
-    pub selected: usize,
+    pub index: usize,
     /// Do we display the hidden files ?
     pub show_hidden: bool,
     /// The kind of sort used to display the files.
@@ -232,16 +233,16 @@ impl PathContent {
         let mut files = Self::files(&path, show_hidden, filter.clone())?;
         let sort_kind = SortKind::default();
         sort_kind.sort(&mut files);
-        let selected: usize = 0;
+        let selected_index: usize = 0;
         if !files.is_empty() {
-            files[selected].select();
+            files[selected_index].select();
         }
         let used_space = get_used_space(&files);
 
         Ok(Self {
             path,
-            files,
-            selected,
+            content: files,
+            index: selected_index,
             show_hidden,
             sort_kind,
             filter,
@@ -250,13 +251,13 @@ impl PathContent {
     }
 
     pub fn change_directory(&mut self, path: &path::Path) -> FmResult<()> {
-        self.files = Self::files(path, self.show_hidden, self.filter.clone())?;
-        self.sort_kind.sort(&mut self.files);
-        self.selected = 0;
-        if !self.files.is_empty() {
-            self.files[0].select()
+        self.content = Self::files(path, self.show_hidden, self.filter.clone())?;
+        self.sort_kind.sort(&mut self.content);
+        self.index = 0;
+        if !self.content.is_empty() {
+            self.content[0].select()
         }
-        self.used_space = get_used_space(&self.files);
+        self.used_space = get_used_space(&self.content);
         self.path = path.to_path_buf();
         Ok(())
     }
@@ -304,20 +305,20 @@ impl PathContent {
 
     /// Sort the file with current key.
     pub fn sort(&mut self) {
-        self.sort_kind.sort(&mut self.files)
+        self.sort_kind.sort(&mut self.content)
     }
 
     /// Calculates the size of the owner column.
     fn owner_column_width(&self) -> usize {
         let owner_size_btreeset: std::collections::BTreeSet<usize> =
-            self.files.iter().map(|file| file.owner.len()).collect();
+            self.content.iter().map(|file| file.owner.len()).collect();
         *owner_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
     /// Calculates the size of the group column.
     fn group_column_width(&self) -> usize {
         let group_size_btreeset: std::collections::BTreeSet<usize> =
-            self.files.iter().map(|file| file.group.len()).collect();
+            self.content.iter().map(|file| file.group.len()).collect();
         *group_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
@@ -326,42 +327,24 @@ impl PathContent {
         if display_full {
             let owner_size = self.owner_column_width();
             let group_size = self.group_column_width();
-            self.files
+            self.content
                 .iter()
                 .map(|fileinfo| fileinfo.format(owner_size, group_size).unwrap_or_default())
                 .collect()
         } else {
-            self.files
+            self.content
                 .iter()
                 .map(|fileinfo| fileinfo.format_simple().unwrap_or_default())
                 .collect()
         }
     }
 
-    /// Select the next file, if any.
-    pub fn select_next(&mut self) {
-        if !self.files.is_empty() && self.selected < self.files.len() - 1 {
-            self.files[self.selected].unselect();
-            self.selected += 1;
-            self.files[self.selected].select();
-        }
-    }
-
-    /// Select the previous file, if any.
-    pub fn select_prev(&mut self) {
-        if self.selected > 0 {
-            self.files[self.selected].unselect();
-            self.selected -= 1;
-            self.files[self.selected].select();
-        }
-    }
-
     /// Select the file from a given index.
     pub fn select_index(&mut self, index: usize) {
-        if index < self.files.len() {
-            self.files[self.selected].unselect();
-            self.files[index].select();
-            self.selected = index;
+        if index < self.content.len() {
+            self.content[self.index].unselect();
+            self.content[index].select();
+            self.index = index;
         }
     }
 
@@ -369,29 +352,19 @@ impl PathContent {
     /// Reads and sort the content with current key.
     /// Select the first file if any.
     pub fn reset_files(&mut self) -> Result<(), FmError> {
-        self.files = Self::files(&self.path, self.show_hidden, self.filter.clone())?;
+        self.content = Self::files(&self.path, self.show_hidden, self.filter.clone())?;
         self.sort_kind = SortKind::default();
         self.sort();
-        self.selected = 0;
-        if !self.files.is_empty() {
-            self.files[self.selected].select();
+        self.index = 0;
+        if !self.content.is_empty() {
+            self.content[self.index].select();
         }
         Ok(())
     }
 
-    /// Return the Optional FileInfo
-    /// Since the FileInfo is borrowed it won't be mutable.
-    pub fn selected_file(&self) -> Option<&FileInfo> {
-        if self.files.is_empty() {
-            None
-        } else {
-            Some(&self.files[self.selected])
-        }
-    }
-
     /// Path of the currently selected file.
     pub fn selected_path_str(&self) -> Option<String> {
-        Some(self.selected_file()?.path.to_str()?.to_owned())
+        Some(self.selected()?.path.to_str()?.to_owned())
     }
 
     /// True if the path starts with a subpath.
@@ -403,14 +376,14 @@ impl PathContent {
     /// It may fails if the current path is empty, aka if nothing is selected.
     pub fn is_selected_dir(&self) -> FmResult<bool> {
         match self
-            .selected_file()
+            .selected()
             .ok_or_else(|| FmError::custom("is selected dir", "Empty directory"))?
             .file_kind
         {
             FileKind::Directory => Ok(true),
             FileKind::SymbolicLink => {
                 let dest = self
-                    .selected_file()
+                    .selected()
                     .ok_or_else(|| FmError::custom("is selected dir", "unreachable"))?
                     .read_dest()
                     .unwrap_or_default();
@@ -422,7 +395,7 @@ impl PathContent {
 
     /// True if the path is empty.
     pub fn is_empty(&self) -> bool {
-        self.files.is_empty()
+        self.content.is_empty()
     }
 
     /// Human readable string representation of the space used by _files_
@@ -437,11 +410,33 @@ impl PathContent {
         Ok(git(&self.path)?)
     }
 
-    /// Update the kind of sort
+    /// Update the kind of sort from a char typed by the user.
     pub fn update_sort_from_char(&mut self, c: char) {
         self.sort_kind.update_from_char(c)
     }
+
+    /// Unselect the current item.
+    /// Since we use a common trait to navigate the files,
+    /// this method is required.
+    pub fn unselect_current(&mut self) {
+        if self.is_empty() {
+            return;
+        }
+        self.content[self.index].unselect();
+    }
+
+    /// Select the current item.
+    /// Since we use a common trait to navigate the files,
+    /// this method is required.
+    pub fn select_current(&mut self) {
+        if self.is_empty() {
+            return;
+        }
+        self.content[self.index].select();
+    }
 }
+
+impl_selectable_content!(FileInfo, PathContent);
 
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
 /// effect.

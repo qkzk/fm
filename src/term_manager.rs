@@ -15,8 +15,9 @@ use crate::constant_strings_paths::{
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{FmError, FmResult};
-use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
+use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode, Navigate};
 use crate::preview::{Preview, TextKind, Window};
+use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 
@@ -60,14 +61,22 @@ struct WinTab<'a> {
 impl<'a> Draw for WinTab<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         match self.tab.mode {
-            Mode::Jump => self.jump_list(self.status, canvas),
-            Mode::History => self.history(self.tab, canvas),
+            Mode::Navigable(Navigate::Jump) => self.navigate(
+                canvas,
+                &self.status.flagged.content,
+                self.status.flagged.index,
+            ),
+            Mode::Navigable(Navigate::History) => {
+                self.navigate(canvas, &self.tab.history.content, self.tab.history.index)
+            }
+            Mode::Navigable(Navigate::Shortcut) => {
+                self.navigate(canvas, &self.tab.shortcut.content, self.tab.shortcut.index)
+            }
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
             Mode::Preview => self.preview(self.tab, canvas),
-            Mode::Shortcut => self.shortcuts(self.tab, canvas),
             Mode::InputSimple(InputKind::Marks(_)) => self.marks(self.status, self.tab, canvas),
             _ => self.files(self.status, self.tab, canvas),
         }?;
@@ -112,7 +121,7 @@ impl<'a> WinTab<'a> {
         match tab.mode {
             Mode::Normal => {
                 if !status.display_full {
-                    if let Some(file) = tab.path_content.selected_file() {
+                    if let Some(file) = tab.path_content.selected() {
                         let owner_size = file.owner.len();
                         let group_size = file.group.len();
                         let mut attr = fileinfo_attr(status, file, self.colors);
@@ -147,7 +156,7 @@ impl<'a> WinTab<'a> {
             Mode::Normal => {
                 vec![
                     format!("{} ", tab.path_content.path_to_str()?),
-                    format!("{} files ", tab.path_content.files.len()),
+                    format!("{} files ", tab.path_content.content.len()),
                     format!("{}  ", tab.path_content.used_space()),
                     format!("Avail: {}  ", disk_space),
                     format!("{}  ", &tab.path_content.git_string()?),
@@ -182,7 +191,7 @@ impl<'a> WinTab<'a> {
     }
 
     fn default_preview_first_line(tab: &Tab) -> Vec<String> {
-        match tab.path_content.selected_file() {
+        match tab.path_content.selected() {
             Some(fileinfo) => {
                 vec![
                     format!("{}", tab.mode.clone()),
@@ -216,9 +225,9 @@ impl<'a> WinTab<'a> {
     /// When there's too much files, only those around the selected one are
     /// displayed.
     fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let len = tab.path_content.files.len();
+        let len = tab.path_content.content.len();
         for (i, (file, string)) in std::iter::zip(
-            tab.path_content.files.iter(),
+            tab.path_content.content.iter(),
             tab.path_content.strings(status.display_full).iter(),
         )
         .enumerate()
@@ -241,10 +250,8 @@ impl<'a> WinTab<'a> {
         match tab.mode {
             Mode::Normal
             | Mode::InputSimple(InputKind::Marks(_))
-            | Mode::Preview
-            | Mode::Shortcut
-            | Mode::Jump
-            | Mode::History => {
+            | Mode::Navigable(_)
+            | Mode::Preview => {
                 canvas.show_cursor(false)?;
             }
             Mode::InputSimple(InputKind::Sort) => {
@@ -261,52 +268,17 @@ impl<'a> WinTab<'a> {
         Ok(())
     }
 
-    /// Display the possible jump destination from flagged files.
-    fn jump_list(&self, tabs: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
-        canvas.print(0, 0, "Jump to...")?;
-        for (row, path) in tabs.flagged.iter().enumerate() {
-            let mut attr = Attr::default();
-            if row == tabs.jump_index {
-                attr.effect |= Effect::REVERSE;
-            }
-            let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP,
-                4,
-                path.to_str()
-                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
-                attr,
-            );
-        }
-        Ok(())
-    }
-
-    /// Display the history of visited directories.
-    fn history(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    /// Display the possible destinations from a content.
+    fn navigate(
+        &self,
+        canvas: &mut dyn Canvas,
+        content: &Vec<std::path::PathBuf>,
+        index: usize,
+    ) -> FmResult<()> {
         canvas.print(0, 0, "Go to...")?;
-        for (row, path) in tab.history.visited.iter().rev().enumerate() {
+        for (row, path) in content.iter().enumerate() {
             let mut attr = Attr::default();
-            if tab.history.len() > tab.history.index
-                && row == tab.history.len() - tab.history.index - 1
-            {
-                attr.effect |= Effect::REVERSE;
-            }
-            canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP,
-                4,
-                path.to_str()
-                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
-                attr,
-            )?;
-        }
-        Ok(())
-    }
-
-    /// Display the predefined shortcuts.
-    fn shortcuts(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
-        canvas.print(0, 0, "Go to...")?;
-        for (row, path) in tab.shortcut.shortcuts.iter().enumerate() {
-            let mut attr = Attr::default();
-            if row == tab.shortcut.index {
+            if row == index {
                 attr.effect |= Effect::REVERSE;
             }
             let _ = canvas.print_with_attr(
@@ -342,7 +314,7 @@ impl<'a> WinTab<'a> {
         confirmed_mode: ConfirmedAction,
         canvas: &mut dyn Canvas,
     ) -> FmResult<()> {
-        for (row, path) in status.flagged.iter().enumerate() {
+        for (row, path) in status.flagged.content.iter().enumerate() {
             canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2,
                 4,

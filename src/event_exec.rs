@@ -2,7 +2,6 @@ use std::borrow::Borrow;
 use std::cmp::min;
 use std::fs;
 use std::path;
-use std::path::PathBuf;
 
 use crate::bulkrename::Bulkrename;
 use crate::completion::CompletionKind;
@@ -13,9 +12,11 @@ use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::mode::Navigate;
 use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
 use crate::opener::execute_in_child;
 use crate::preview::Preview;
+use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
@@ -59,10 +60,10 @@ impl EventExec {
     pub fn event_flag_all(status: &mut Status) -> FmResult<()> {
         status.tabs[status.index]
             .path_content
-            .files
+            .content
             .iter()
             .for_each(|file| {
-                status.flagged.insert(file.path.clone());
+                status.flagged.push(file.path.clone());
             });
         status.reset_tabs_view()
     }
@@ -72,54 +73,43 @@ impl EventExec {
     pub fn event_reverse_flags(status: &mut Status) -> FmResult<()> {
         status.tabs[status.index]
             .path_content
-            .files
+            .content
             .iter()
-            .for_each(|file| {
-                if status.flagged.contains(&file.path.clone()) {
-                    status.flagged.remove(&file.path.clone());
-                } else {
-                    status.flagged.insert(file.path.clone());
-                }
-            });
+            .for_each(|file| status.flagged.toggle(&file.path));
         status.reset_tabs_view()
     }
 
     /// Toggle a single flag and move down one row.
     pub fn event_toggle_flag(status: &mut Status) -> FmResult<()> {
-        let file = status.tabs[status.index]
-            .path_content
-            .selected_file()
-            .ok_or_else(|| FmError::custom("event toggle flag", "No selected file"))?;
-        status.toggle_flag_on_path(file.path.clone());
-        Self::event_down_one_row(status.selected());
+        if let Some(file) = status.selected().path_content.selected() {
+            let path = file.path.clone();
+            status.toggle_flag_on_path(&path);
+            Self::event_down_one_row(status.selected());
+        }
         Ok(())
     }
 
     /// Move to the next file in the jump list.
     pub fn event_jumplist_next(status: &mut Status) {
-        if status.jump_index < status.flagged.len() {
-            status.jump_index += 1;
-        }
+        status.flagged.next()
     }
 
     /// Move to the previous file in the jump list.
     pub fn event_jumplist_prev(status: &mut Status) {
-        if status.jump_index > 0 {
-            status.jump_index -= 1;
-        }
+        status.flagged.prev()
     }
 
     /// Change to CHMOD mode allowing to edit permissions of a file.
     pub fn event_chmod(status: &mut Status) -> FmResult<()> {
-        if status.selected().path_content.files.is_empty() {
+        if status.selected().path_content.content.is_empty() {
             return Ok(());
         }
         status.selected().mode = Mode::InputSimple(InputKind::Chmod);
         if status.flagged.is_empty() {
-            status.flagged.insert(
+            status.flagged.push(
                 status.tabs[status.index]
                     .path_content
-                    .selected_file()
+                    .selected()
                     .unwrap()
                     .path
                     .clone(),
@@ -132,8 +122,9 @@ impl EventExec {
     /// Does nothing if no file is flagged.
     pub fn event_jump(status: &mut Status) -> FmResult<()> {
         if !status.flagged.is_empty() {
-            status.jump_index = 0;
-            status.selected().mode = Mode::Jump
+            status.flagged.index = 0;
+            info!("entering jump mode");
+            status.selected().mode = Mode::Navigable(Navigate::Jump)
         }
         Ok(())
     }
@@ -170,7 +161,7 @@ impl EventExec {
 
     /// Creates a symlink of every flagged file to the current directory.
     pub fn event_symlink(status: &mut Status) -> FmResult<()> {
-        for oldpath in status.flagged.iter() {
+        for oldpath in status.flagged.content.iter() {
             let filename = oldpath
                 .as_path()
                 .file_name()
@@ -207,7 +198,7 @@ impl EventExec {
 
     /// Recursively delete all flagged files.
     pub fn exec_delete_files(status: &mut Status) -> FmResult<()> {
-        for pathbuf in status.flagged.iter() {
+        for pathbuf in status.flagged.content.iter() {
             if pathbuf.is_dir() {
                 std::fs::remove_dir_all(pathbuf)?;
             } else {
@@ -229,7 +220,7 @@ impl EventExec {
         let permissions: u32 =
             u32::from_str_radix(&status.selected().input.string(), 8).unwrap_or(0_u32);
         if permissions <= Status::MAX_PERMISSIONS {
-            for path in status.flagged.iter() {
+            for path in status.flagged.content.iter() {
                 Status::set_permissions(path.clone(), permissions)?
             }
             status.flagged.clear()
@@ -253,25 +244,22 @@ impl EventExec {
     /// If the user selected a directory, we jump inside it.
     /// Otherwise, we jump to the parent and select the file.
     pub fn exec_jump(status: &mut Status) -> FmResult<()> {
-        let jump_target = Self::find_jump_path(status);
-        let target_dir = match jump_target.parent() {
-            Some(parent) => parent,
-            None => &jump_target,
-        };
-        let tab = status.selected();
-        tab.input.clear();
-        tab.history.push(&target_dir.to_path_buf());
-        tab.path_content.change_directory(target_dir)?;
-        let index = tab.find_jump_index(&jump_target).unwrap_or_default();
-        tab.path_content.select_index(index);
-        tab.set_window();
-        tab.scroll_to(index);
+        if let Some(jump_target) = status.flagged.selected() {
+            let jump_target = jump_target.to_owned();
+            let target_dir = match jump_target.parent() {
+                Some(parent) => parent,
+                None => &jump_target,
+            };
+            let tab = status.selected();
+            tab.input.clear();
+            tab.history.push(&target_dir.to_path_buf());
+            tab.path_content.change_directory(target_dir)?;
+            let index = tab.find_jump_index(&jump_target).unwrap_or_default();
+            tab.path_content.select_index(index);
+            tab.set_window();
+            tab.scroll_to(index);
+        }
         Ok(())
-    }
-
-    fn find_jump_path(status: &Status) -> PathBuf {
-        let jump_list: Vec<&PathBuf> = status.flagged.iter().collect();
-        jump_list[status.jump_index].clone()
     }
 
     /// Execute a command requiring a confirmation (Delete, Move or Copy).
@@ -297,7 +285,7 @@ impl EventExec {
         tab.input.reset();
         tab.completion.reset();
         tab.path_content.reset_files()?;
-        tab.window.reset(tab.path_content.files.len());
+        tab.window.reset(tab.path_content.content.len());
         tab.mode = Mode::Normal;
         tab.preview = Preview::empty();
         Ok(())
@@ -307,7 +295,9 @@ impl EventExec {
     pub fn event_up_one_row(tab: &mut Tab) {
         match tab.mode {
             Mode::Normal => {
-                tab.path_content.select_prev();
+                tab.path_content.unselect_current();
+                tab.path_content.prev();
+                tab.path_content.select_current();
                 tab.move_line_up();
             }
             Mode::Preview => tab.line_index = tab.window.top,
@@ -320,7 +310,9 @@ impl EventExec {
     pub fn event_down_one_row(tab: &mut Tab) {
         match tab.mode {
             Mode::Normal => {
-                tab.path_content.select_next();
+                tab.path_content.unselect_current();
+                tab.path_content.next();
+                tab.path_content.select_current();
                 tab.move_line_down();
             }
             Mode::Preview => tab.line_index = tab.window.bottom,
@@ -363,7 +355,7 @@ impl EventExec {
     pub fn event_go_bottom(tab: &mut Tab) {
         let last_index: usize;
         if let Mode::Normal = tab.mode {
-            last_index = tab.path_content.files.len() - 1;
+            last_index = tab.path_content.content.len() - 1;
             tab.path_content.select_index(last_index);
         } else {
             last_index = tab.preview.len() - 1;
@@ -388,7 +380,7 @@ impl EventExec {
     pub fn event_page_down(tab: &mut Tab) {
         let down_index: usize;
         if let Mode::Normal = tab.mode {
-            down_index = min(tab.path_content.files.len() - 1, tab.line_index + 10);
+            down_index = min(tab.path_content.content.len() - 1, tab.line_index + 10);
             tab.path_content.select_index(down_index);
         } else {
             down_index = min(tab.preview.len() - 1, tab.line_index + 30)
@@ -419,11 +411,15 @@ impl EventExec {
     }
 
     /// Select the next element in history of visited files.
+    /// Watchout! Since the history is displayed in reverse order,
+    /// we call the "prev" method of the `History` instance instead.
     pub fn event_history_next(tab: &mut Tab) {
         tab.history.next()
     }
 
     /// Select the previous element in history of visited files.
+    /// Watchout! Since the history is displayed in reverse order,
+    /// we call the "next" method of the `History` instance instead.
     pub fn event_history_prev(tab: &mut Tab) {
         tab.history.prev()
     }
@@ -513,10 +509,10 @@ impl EventExec {
     /// more details on previewinga file.
     /// Does nothing if the directory is empty.
     pub fn event_preview(tab: &mut Tab) -> FmResult<()> {
-        if tab.path_content.files.is_empty() {
+        if tab.path_content.content.is_empty() {
             return Ok(());
         }
-        if let Some(file_info) = tab.path_content.selected_file() {
+        if let Some(file_info) = tab.path_content.selected() {
             if let FileKind::NormalFile = file_info.file_kind {
                 tab.mode = Mode::Preview;
                 tab.preview = Preview::new(file_info)?;
@@ -588,10 +584,10 @@ impl EventExec {
     /// If the user types an uppercase char, the sort is reverse.
     pub fn event_leave_sort(tab: &mut Tab, c: char) {
         tab.mode = Mode::Normal;
-        if tab.path_content.files.is_empty() {
+        if tab.path_content.content.is_empty() {
             return;
         }
-        tab.path_content.files[tab.line_index].unselect();
+        tab.path_content.content[tab.line_index].unselect();
         tab.path_content.update_sort_from_char(c);
         tab.path_content.sort();
         Self::event_go_top(tab);
@@ -609,7 +605,7 @@ impl EventExec {
         tab.path_content.show_hidden = !tab.path_content.show_hidden;
         tab.path_content.reset_files()?;
         tab.line_index = 0;
-        tab.window.reset(tab.path_content.files.len());
+        tab.window.reset(tab.path_content.content.len());
         Ok(())
     }
 
@@ -619,7 +615,7 @@ impl EventExec {
             status
                 .selected_non_mut()
                 .path_content
-                .selected_file()
+                .selected()
                 .ok_or_else(|| FmError::custom("event open file", "Empty directory"))?
                 .path
                 .clone(),
@@ -627,7 +623,7 @@ impl EventExec {
             Ok(_) => (),
             Err(e) => info!(
                 "Error opening {:?}: {:?}",
-                status.selected_non_mut().path_content.selected_file(),
+                status.selected_non_mut().path_content.selected(),
                 e
             ),
         }
@@ -667,7 +663,7 @@ impl EventExec {
     /// Enter the history mode, allowing to navigate to previously visited
     /// directory.
     pub fn event_history(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::History;
+        tab.mode = Mode::Navigable(Navigate::History);
         Ok(())
     }
 
@@ -675,7 +671,7 @@ impl EventExec {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn event_shortcut(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::Shortcut;
+        tab.mode = Mode::Navigable(Navigate::Shortcut);
         Ok(())
     }
 
@@ -683,7 +679,8 @@ impl EventExec {
     pub fn event_right_click(status: &mut Status, row: u16) -> FmResult<()> {
         if let Mode::Normal = status.selected_non_mut().mode {
             let tab = status.selected();
-            if tab.path_content.files.is_empty() || row as usize > tab.path_content.files.len() + 1
+            if tab.path_content.content.is_empty()
+                || row as usize > tab.path_content.content.len() + 1
             {
                 return Err(FmError::custom("event right click", "not found"));
             }
@@ -692,7 +689,7 @@ impl EventExec {
             tab.window.scroll_to(tab.line_index);
             if let FileKind::Directory = tab
                 .path_content
-                .selected_file()
+                .selected()
                 .ok_or_else(|| FmError::custom("event right click", "not found"))?
                 .file_kind
             {
@@ -715,7 +712,7 @@ impl EventExec {
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
     pub fn event_nvim_filepicker(tab: &mut Tab) -> FmResult<()> {
-        if tab.path_content.files.is_empty() {
+        if tab.path_content.content.is_empty() {
             info!("Called nvim filepicker in an empty directory.");
             return Ok(());
         }
@@ -740,7 +737,7 @@ impl EventExec {
 
     /// Copy the selected filename to the clipboard. Only the filename.
     pub fn event_filename_to_clipboard(tab: &Tab) -> FmResult<()> {
-        if let Some(file) = tab.path_content.selected_file() {
+        if let Some(file) = tab.path_content.selected() {
             let filename = file.filename.clone();
             let mut ctx = ClipboardContext::new()?;
             ctx.set_contents(filename)?;
@@ -770,11 +767,11 @@ impl EventExec {
 
     /// Move back in history to the last visited directory.
     pub fn event_back(tab: &mut Tab) -> FmResult<()> {
-        if tab.history.visited.len() <= 1 {
+        if tab.history.content.len() <= 1 {
             return Ok(());
         }
-        tab.history.visited.pop();
-        let last = tab.history.visited[tab.history.len() - 1].clone();
+        tab.history.content.pop();
+        let last = tab.history.content[tab.history.len() - 1].clone();
         tab.set_pathcontent(last)?;
 
         Ok(())
@@ -803,7 +800,7 @@ impl EventExec {
     /// We only tries to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
     pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
-        if tab.path_content.files.is_empty() {
+        if tab.path_content.content.is_empty() {
             return Err(FmError::custom("event rename", "Empty directory"));
         }
         fs::rename(
@@ -857,7 +854,7 @@ impl EventExec {
     /// be found.
     /// Optional parameters can be passed normally. ie. `"ls -lah"`
     pub fn exec_exec(tab: &mut Tab) -> FmResult<()> {
-        if tab.path_content.files.is_empty() {
+        if tab.path_content.content.is_empty() {
             return Err(FmError::custom("exec exec", "empty directory"));
         }
         let exec_command = tab.input.string();
@@ -914,7 +911,7 @@ impl EventExec {
     /// We move the selection to the first matching file.
     fn search_from(tab: &mut Tab, searched_name: String, mut next_index: usize) {
         let mut found = false;
-        for (index, file) in tab.path_content.files.iter().enumerate().skip(next_index) {
+        for (index, file) in tab.path_content.content.iter().enumerate().skip(next_index) {
             if file.filename.contains(&searched_name) {
                 next_index = index;
                 found = true;
@@ -926,7 +923,7 @@ impl EventExec {
             tab.line_index = next_index;
             tab.window.scroll_to(tab.line_index);
         } else {
-            for (index, file) in tab.path_content.files.iter().enumerate().take(next_index) {
+            for (index, file) in tab.path_content.content.iter().enumerate().take(next_index) {
                 if file.filename.starts_with(&searched_name) {
                     next_index = index;
                     found = true;
@@ -943,7 +940,7 @@ impl EventExec {
 
     pub fn event_search_next(tab: &mut Tab) -> FmResult<()> {
         if let Some(searched) = tab.searched.clone() {
-            let next_index = (tab.line_index + 1) % tab.path_content.files.len();
+            let next_index = (tab.line_index + 1) % tab.path_content.content.len();
             Self::search_from(tab, searched, next_index);
         } else {
         }
@@ -963,7 +960,7 @@ impl EventExec {
         tab.input.reset();
         tab.history.push(&path);
         tab.path_content = PathContent::new(path, tab.show_hidden)?;
-        tab.window.reset(tab.path_content.files.len());
+        tab.window.reset(tab.path_content.content.len());
         Ok(())
     }
 
@@ -971,7 +968,11 @@ impl EventExec {
     /// It may fail if the user has no permission to visit the path.
     pub fn exec_shortcut(tab: &mut Tab) -> FmResult<()> {
         tab.input.reset();
-        let path = tab.shortcut.selected();
+        let path = tab
+            .shortcut
+            .selected()
+            .ok_or_else(|| FmError::custom("exec shortcut", "empty shortcuts"))?
+            .to_owned();
         tab.history.push(&path);
         tab.path_content = PathContent::new(path, tab.show_hidden)?;
         Self::event_normal(tab)
@@ -984,7 +985,8 @@ impl EventExec {
         tab.path_content = PathContent::new(
             tab.history
                 .selected()
-                .ok_or_else(|| FmError::custom("exec history", "path unreachable"))?,
+                .ok_or_else(|| FmError::custom("exec history", "path unreachable"))?
+                .to_owned(),
             tab.show_hidden,
         )?;
         tab.history.drop_queue();
@@ -1006,9 +1008,11 @@ impl EventExec {
     pub fn event_move_up(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_up_one_row(status.selected()),
-            Mode::Jump => EventExec::event_jumplist_prev(status),
-            Mode::History => EventExec::event_history_prev(status.selected()),
-            Mode::Shortcut => EventExec::event_shortcut_prev(status.selected()),
+            Mode::Navigable(Navigate::Jump) => EventExec::event_jumplist_prev(status),
+            Mode::Navigable(Navigate::History) => EventExec::event_history_prev(status.selected()),
+            Mode::Navigable(Navigate::Shortcut) => {
+                EventExec::event_shortcut_prev(status.selected())
+            }
             Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
             }
@@ -1022,9 +1026,11 @@ impl EventExec {
     pub fn event_move_down(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_down_one_row(status.selected()),
-            Mode::Jump => EventExec::event_jumplist_next(status),
-            Mode::History => EventExec::event_history_next(status.selected()),
-            Mode::Shortcut => EventExec::event_shortcut_next(status.selected()),
+            Mode::Navigable(Navigate::Jump) => EventExec::event_jumplist_next(status),
+            Mode::Navigable(Navigate::History) => EventExec::event_history_next(status.selected()),
+            Mode::Navigable(Navigate::Shortcut) => {
+                EventExec::event_shortcut_next(status.selected())
+            }
             Mode::InputCompleted(_) => status.selected().completion.next(),
             _ => (),
         };
@@ -1130,14 +1136,14 @@ impl EventExec {
             Mode::InputSimple(InputKind::Chmod) => EventExec::exec_chmod(status)?,
             Mode::InputSimple(InputKind::RegexMatch) => EventExec::exec_regex(status)?,
             Mode::InputSimple(InputKind::Filter) => EventExec::exec_filter(status.selected())?,
-            Mode::Jump => EventExec::exec_jump(status)?,
+            Mode::Navigable(Navigate::Jump) => EventExec::exec_jump(status)?,
+            Mode::Navigable(Navigate::History) => EventExec::exec_history(status.selected())?,
+            Mode::Navigable(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::InputCompleted(CompletionKind::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(CompletionKind::Search) => {
                 EventExec::exec_search(status.selected())
             }
             Mode::InputCompleted(CompletionKind::Goto) => EventExec::exec_goto(status.selected())?,
-            Mode::History => EventExec::exec_history(status.selected())?,
-            Mode::Shortcut => EventExec::exec_shortcut(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
@@ -1203,7 +1209,7 @@ impl EventExec {
     pub fn event_thumbnail(tab: &mut Tab) -> FmResult<()> {
         if let Mode::Normal = tab.mode {
             tab.mode = Mode::Preview;
-            if let Some(file_info) = tab.path_content.selected_file() {
+            if let Some(file_info) = tab.path_content.selected() {
                 tab.preview = Preview::thumbnail(file_info.path.to_owned())?;
                 tab.window.reset(tab.preview.len());
             }
