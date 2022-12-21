@@ -15,7 +15,7 @@ use crate::constant_strings_paths::{
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{FmError, FmResult};
-use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
+use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode, Navigate};
 use crate::preview::{Preview, TextKind, Window};
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
@@ -61,14 +61,22 @@ struct WinTab<'a> {
 impl<'a> Draw for WinTab<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         match self.tab.mode {
-            Mode::Jump => self.jump_list(self.status, canvas),
-            Mode::History => self.history(self.tab, canvas),
+            Mode::Navigable(Navigate::Jump) => self.navigate(
+                canvas,
+                &self.status.flagged.content,
+                self.status.flagged.index,
+            ),
+            Mode::Navigable(Navigate::History) => {
+                self.navigate(canvas, &self.tab.history.content, self.tab.history.index)
+            }
+            Mode::Navigable(Navigate::Shortcut) => {
+                self.navigate(canvas, &self.tab.shortcut.content, self.tab.shortcut.index)
+            }
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
             Mode::Preview => self.preview(self.tab, canvas),
-            Mode::Shortcut => self.shortcuts(self.tab, canvas),
             Mode::InputSimple(InputKind::Marks(_)) => self.marks(self.status, self.tab, canvas),
             _ => self.files(self.status, self.tab, canvas),
         }?;
@@ -242,10 +250,8 @@ impl<'a> WinTab<'a> {
         match tab.mode {
             Mode::Normal
             | Mode::InputSimple(InputKind::Marks(_))
-            | Mode::Preview
-            | Mode::Shortcut
-            | Mode::Jump
-            | Mode::History => {
+            | Mode::Navigable(_)
+            | Mode::Preview => {
                 canvas.show_cursor(false)?;
             }
             Mode::InputSimple(InputKind::Sort) => {
@@ -262,52 +268,17 @@ impl<'a> WinTab<'a> {
         Ok(())
     }
 
-    /// Display the possible jump destination from flagged files.
-    fn jump_list(&self, tabs: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
-        canvas.print(0, 0, "Jump to...")?;
-        for (row, path) in tabs.flagged.content.iter().enumerate() {
-            let mut attr = Attr::default();
-            if row == tabs.flagged.index {
-                attr.effect |= Effect::REVERSE;
-            }
-            let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP,
-                4,
-                path.to_str()
-                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
-                attr,
-            );
-        }
-        Ok(())
-    }
-
-    /// Display the history of visited directories.
-    fn history(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    /// Display the possible destinations from a content.
+    fn navigate(
+        &self,
+        canvas: &mut dyn Canvas,
+        content: &Vec<std::path::PathBuf>,
+        index: usize,
+    ) -> FmResult<()> {
         canvas.print(0, 0, "Go to...")?;
-        for (row, path) in tab.history.content.iter().rev().enumerate() {
+        for (row, path) in content.iter().enumerate() {
             let mut attr = Attr::default();
-            if tab.history.len() > tab.history.index
-                && row == tab.history.len() - tab.history.index - 1
-            {
-                attr.effect |= Effect::REVERSE;
-            }
-            canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP,
-                4,
-                path.to_str()
-                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
-                attr,
-            )?;
-        }
-        Ok(())
-    }
-
-    /// Display the predefined shortcuts.
-    fn shortcuts(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
-        canvas.print(0, 0, "Go to...")?;
-        for (row, path) in tab.shortcut.content.iter().enumerate() {
-            let mut attr = Attr::default();
-            if row == tab.shortcut.index {
+            if row == index {
                 attr.effect |= Effect::REVERSE;
             }
             let _ = canvas.print_with_attr(

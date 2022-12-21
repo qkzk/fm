@@ -12,6 +12,7 @@ use crate::copy_move::CopyMove;
 use crate::fileinfo::{FileKind, PathContent};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::mode::Navigate;
 use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
 use crate::opener::execute_in_child;
 use crate::preview::Preview;
@@ -123,7 +124,7 @@ impl EventExec {
         if !status.flagged.is_empty() {
             status.flagged.index = 0;
             info!("entering jump mode");
-            status.selected().mode = Mode::Jump
+            status.selected().mode = Mode::Navigable(Navigate::Jump)
         }
         Ok(())
     }
@@ -413,14 +414,14 @@ impl EventExec {
     /// Watchout! Since the history is displayed in reverse order,
     /// we call the "prev" method of the `History` instance instead.
     pub fn event_history_next(tab: &mut Tab) {
-        tab.history.prev()
+        tab.history.next()
     }
 
     /// Select the previous element in history of visited files.
     /// Watchout! Since the history is displayed in reverse order,
     /// we call the "next" method of the `History` instance instead.
     pub fn event_history_prev(tab: &mut Tab) {
-        tab.history.next()
+        tab.history.prev()
     }
 
     /// Move to parent directory if there's one.
@@ -662,7 +663,7 @@ impl EventExec {
     /// Enter the history mode, allowing to navigate to previously visited
     /// directory.
     pub fn event_history(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::History;
+        tab.mode = Mode::Navigable(Navigate::History);
         Ok(())
     }
 
@@ -670,7 +671,7 @@ impl EventExec {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn event_shortcut(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::Shortcut;
+        tab.mode = Mode::Navigable(Navigate::Shortcut);
         Ok(())
     }
 
@@ -1007,9 +1008,11 @@ impl EventExec {
     pub fn event_move_up(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_up_one_row(status.selected()),
-            Mode::Jump => EventExec::event_jumplist_prev(status),
-            Mode::History => EventExec::event_history_prev(status.selected()),
-            Mode::Shortcut => EventExec::event_shortcut_prev(status.selected()),
+            Mode::Navigable(Navigate::Jump) => EventExec::event_jumplist_prev(status),
+            Mode::Navigable(Navigate::History) => EventExec::event_history_prev(status.selected()),
+            Mode::Navigable(Navigate::Shortcut) => {
+                EventExec::event_shortcut_prev(status.selected())
+            }
             Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
             }
@@ -1023,9 +1026,11 @@ impl EventExec {
     pub fn event_move_down(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_down_one_row(status.selected()),
-            Mode::Jump => EventExec::event_jumplist_next(status),
-            Mode::History => EventExec::event_history_next(status.selected()),
-            Mode::Shortcut => EventExec::event_shortcut_next(status.selected()),
+            Mode::Navigable(Navigate::Jump) => EventExec::event_jumplist_next(status),
+            Mode::Navigable(Navigate::History) => EventExec::event_history_next(status.selected()),
+            Mode::Navigable(Navigate::Shortcut) => {
+                EventExec::event_shortcut_next(status.selected())
+            }
             Mode::InputCompleted(_) => status.selected().completion.next(),
             _ => (),
         };
@@ -1131,14 +1136,14 @@ impl EventExec {
             Mode::InputSimple(InputKind::Chmod) => EventExec::exec_chmod(status)?,
             Mode::InputSimple(InputKind::RegexMatch) => EventExec::exec_regex(status)?,
             Mode::InputSimple(InputKind::Filter) => EventExec::exec_filter(status.selected())?,
-            Mode::Jump => EventExec::exec_jump(status)?,
+            Mode::Navigable(Navigate::Jump) => EventExec::exec_jump(status)?,
+            Mode::Navigable(Navigate::History) => EventExec::exec_history(status.selected())?,
+            Mode::Navigable(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::InputCompleted(CompletionKind::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(CompletionKind::Search) => {
                 EventExec::exec_search(status.selected())
             }
             Mode::InputCompleted(CompletionKind::Goto) => EventExec::exec_goto(status.selected())?,
-            Mode::History => EventExec::exec_history(status.selected())?,
-            Mode::Shortcut => EventExec::exec_shortcut(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview

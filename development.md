@@ -244,8 +244,8 @@
   - [x] harmonize code for multiple instances
   - [x] macro to impl auto
   - [x] struct for flagged. Use a vector instead of hashset... :(
+  - [x] regroup shortcut, history, jump, visited
   - [ ] derive
-  - [ ] regroup shortcut, history, jump, visited
 
 - [ ] Version 0.2.0 : tests
 
