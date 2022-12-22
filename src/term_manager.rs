@@ -91,7 +91,7 @@ impl<'a> WinTab<'a> {
         bg: Color::Default,
         effect: Effect::BOLD,
     };
-    const LINE_COLORS: [Attr; 6] = [
+    const FIRST_LINE_COLORS: [Attr; 6] = [
         color_to_attr(Color::Rgb(231, 162, 156)),
         color_to_attr(Color::Rgb(144, 172, 186)),
         color_to_attr(Color::Rgb(214, 125, 83)),
@@ -203,7 +203,7 @@ impl<'a> WinTab<'a> {
         canvas: &mut dyn Canvas,
     ) -> FmResult<()> {
         let mut col = 0;
-        for (text, attr) in std::iter::zip(strings.iter(), Self::LINE_COLORS.iter().cycle()) {
+        for (text, attr) in std::iter::zip(strings.iter(), Self::FIRST_LINE_COLORS.iter().cycle()) {
             canvas.print_with_attr(row, offset + col, text, *attr)?;
             col += text.len()
         }
@@ -213,10 +213,10 @@ impl<'a> WinTab<'a> {
     /// Displays the current directory content, one line per item like in
     /// `ls -l`.
     ///
-    /// Those files are always shown, which make it a little bit faster in;
-    /// normal (ie. default) mode.
-    /// When there's too much files, only those around the selected one are
-    /// displayed.
+    /// Only the files around the selected one are displayed.
+    /// We reverse the attributes of the selected one, underline the flagged files.
+    /// When we display a simpler version, the second line is used to display the
+    /// metadata of the selected file.
     fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         let len = tab.path_content.content.len();
         for (i, (file, string)) in std::iter::zip(
