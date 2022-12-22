@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{self, BufRead, BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -12,7 +12,7 @@ use crate::fm_error::{FmError, FmResult};
 /// It's a map between any char (except :) and a PathBuf.
 pub struct Marks {
     save_path: PathBuf,
-    marks: HashMap<char, PathBuf>,
+    marks: BTreeMap<char, PathBuf>,
 }
 
 impl Marks {
@@ -25,7 +25,7 @@ impl Marks {
     }
 
     fn read_from_file(save_path: PathBuf) -> Self {
-        let mut marks = HashMap::new();
+        let mut marks = BTreeMap::new();
         let mut must_save = false;
         if let Ok(lines) = read_lines(&save_path) {
             for line in lines {
