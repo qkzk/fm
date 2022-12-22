@@ -230,6 +230,12 @@
   - [x] regroup shortcut, history, jump, visited
   - [x] improve flagged complexity using binary search since the content is maintened sorted.
 
+### Version 0.1.5
+
+- [x] Fix scrolling in normal & preview modes
+- [x] refactor search next
+- [x] refactor display of selectable content
+
 ## TODO
 
 - [ ] remote control

@@ -8,6 +8,8 @@ pub trait SelectableContent<T> {
     fn next(&mut self);
     fn prev(&mut self);
     fn selected(&self) -> Option<&T>;
+    fn index(&self) -> usize;
+    fn content(&self) -> &Vec<T>;
 }
 
 /// Implement the `SelectableContent` for struct `$struc` with content type `$content_type`.
@@ -60,6 +62,16 @@ macro_rules! impl_selectable_content {
                     true => None,
                     false => Some(&self.content[self.index]),
                 }
+            }
+
+            /// Returns the index of the selected item.
+            fn index(&self) -> usize {
+                self.index
+            }
+
+            /// A reference to the content.
+            fn content(&self) -> &Vec<$content_type> {
+                &self.content
             }
         }
     };

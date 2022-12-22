@@ -1,4 +1,5 @@
 use std::cmp::min;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use image::Rgb;
@@ -61,17 +62,9 @@ struct WinTab<'a> {
 impl<'a> Draw for WinTab<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         match self.tab.mode {
-            Mode::Navigable(Navigate::Jump) => self.navigate(
-                canvas,
-                &self.status.flagged.content,
-                self.status.flagged.index,
-            ),
-            Mode::Navigable(Navigate::History) => {
-                self.navigate(canvas, &self.tab.history.content, self.tab.history.index)
-            }
-            Mode::Navigable(Navigate::Shortcut) => {
-                self.navigate(canvas, &self.tab.shortcut.content, self.tab.shortcut.index)
-            }
+            Mode::Navigable(Navigate::Jump) => self.destination(canvas, &self.status.flagged),
+            Mode::Navigable(Navigate::History) => self.destination(canvas, &self.tab.history),
+            Mode::Navigable(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
@@ -268,17 +261,16 @@ impl<'a> WinTab<'a> {
         Ok(())
     }
 
-    /// Display the possible destinations from a content.
-    fn navigate(
+    /// Display the possible destinations from a selectable content of PathBuf.
+    fn destination(
         &self,
         canvas: &mut dyn Canvas,
-        content: &[std::path::PathBuf],
-        index: usize,
+        selectable: &impl SelectableContent<PathBuf>,
     ) -> FmResult<()> {
         canvas.print(0, 0, "Go to...")?;
-        for (row, path) in content.iter().enumerate() {
+        for (row, path) in selectable.content().iter().enumerate() {
             let mut attr = Attr::default();
-            if row == index {
+            if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
             }
             let _ = canvas.print_with_attr(
@@ -291,7 +283,6 @@ impl<'a> WinTab<'a> {
         }
         Ok(())
     }
-
     /// Display the possible completion items. The currently selected one is
     /// reversed.
     fn completion(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
