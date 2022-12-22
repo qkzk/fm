@@ -25,7 +25,7 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 use log::info;
 
 /// Every kind of mutation of the application is defined here.
-/// It mutates `Status` or its children `tab`.
+/// It mutates `Status` or its children `Tab`.
 pub struct EventExec {}
 
 impl EventExec {
@@ -101,7 +101,7 @@ impl EventExec {
 
     /// Change to CHMOD mode allowing to edit permissions of a file.
     pub fn event_chmod(status: &mut Status) -> FmResult<()> {
-        if status.selected().path_content.content.is_empty() {
+        if status.selected().path_content.is_empty() {
             return Ok(());
         }
         status.selected().mode = Mode::InputSimple(InputKind::Chmod);
@@ -123,21 +123,20 @@ impl EventExec {
     pub fn event_jump(status: &mut Status) -> FmResult<()> {
         if !status.flagged.is_empty() {
             status.flagged.index = 0;
-            info!("entering jump mode");
             status.selected().mode = Mode::Navigable(Navigate::Jump)
         }
         Ok(())
     }
 
     /// Enter Marks new mode, allowing to bind a char to a path.
-    pub fn event_marks_new(status: &mut Status) -> FmResult<()> {
-        status.selected().mode = Mode::InputSimple(InputKind::Marks(MarkAction::New));
+    pub fn event_marks_new(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::InputSimple(InputKind::Marks(MarkAction::New));
         Ok(())
     }
 
     /// Enter Marks jump mode, allowing to jump to a marked file.
-    pub fn event_marks_jump(status: &mut Status) -> FmResult<()> {
-        status.selected().mode = Mode::InputSimple(InputKind::Marks(MarkAction::Jump));
+    pub fn event_marks_jump(tab: &mut Tab) -> FmResult<()> {
+        tab.mode = Mode::InputSimple(InputKind::Marks(MarkAction::Jump));
         Ok(())
     }
 

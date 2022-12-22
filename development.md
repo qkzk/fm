@@ -236,6 +236,10 @@
 - [x] refactor search next
 - [x] refactor display of selectable content
 
+### Version 0.1.6
+
+- [x] Prevent entering confirmed actions (copy, delete, move) if no file is flagged
+
 ## TODO
 
 - [ ] remote control
