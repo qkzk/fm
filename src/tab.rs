@@ -19,8 +19,6 @@ use crate::visited::History;
 pub struct Tab {
     /// The mode the application is currenty in
     pub mode: Mode,
-    /// The given index of a file.
-    pub line_index: usize,
     /// The indexes of displayed file
     pub window: ContentWindow,
     /// Files marked as flagged
@@ -57,7 +55,6 @@ impl Tab {
         let show_hidden = false;
         let nvim_server = args.server;
         let mode = Mode::Normal;
-        let line_index = 0;
         let window = ContentWindow::new(path_content.content.len(), height);
         let input = Input::default();
         let completion = Completion::default();
@@ -69,7 +66,6 @@ impl Tab {
         let searched = None;
         Ok(Self {
             mode,
-            line_index,
             window,
             input,
             path_content,
@@ -101,7 +97,6 @@ impl Tab {
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> FmResult<()> {
         self.path_content.filter = FilterKind::All;
-        self.line_index = 0;
         self.input.reset();
         self.path_content.reset_files()?;
         self.window.reset(self.path_content.content.len());
@@ -121,7 +116,6 @@ impl Tab {
         self.history.push(&childpath);
         self.path_content = PathContent::new(childpath, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
-        self.line_index = 0;
         self.input.cursor_start();
         Ok(())
     }
@@ -151,7 +145,6 @@ impl Tab {
         self.history.push(&path);
         self.path_content.change_directory(&path)?;
         self.window.reset(self.path_content.content.len());
-        self.line_index = 0;
         Ok(())
     }
 
@@ -163,7 +156,6 @@ impl Tab {
 
     /// Set the line index to `index` and scroll there.
     pub fn scroll_to(&mut self, index: usize) {
-        self.line_index = index;
         self.window.scroll_to(index);
     }
 
@@ -175,26 +167,14 @@ impl Tab {
             .position(|file| file.path == jump_target)
     }
 
-    /// Move the index one line up
-    pub fn move_line_up(&mut self) {
-        if self.line_index > 0 {
-            self.line_index -= 1;
-        }
-    }
-
-    /// Move the index one line down
-    pub fn move_line_down(&mut self) {
-        let max_line = self.path_content.content.len();
-        if max_line >= ContentWindow::WINDOW_MARGIN_TOP
-            && self.line_index < max_line - ContentWindow::WINDOW_MARGIN_TOP
-        {
-            self.line_index += 1;
-        }
-    }
-
     /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
     /// extend the vector with the mount points.
     pub fn refresh_shortcuts(&mut self, mount_points: &[&path::Path]) {
         self.shortcut.refresh(mount_points)
+    }
+
+    pub fn go_to_index(&mut self, index: usize) {
+        self.path_content.select_index(index);
+        self.window.scroll_to(index);
     }
 }

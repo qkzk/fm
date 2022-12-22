@@ -341,17 +341,15 @@ impl<'a> WinTab<'a> {
         Ok(())
     }
 
-    fn preview_line_numbers(
-        &self,
-        tab: &Tab,
-        line_index: usize,
-        row_index: usize,
+    fn print_line_number(
+        row_position_in_canvas: usize,
+        line_number_to_print: usize,
         canvas: &mut dyn Canvas,
     ) -> FmResult<usize> {
         Ok(canvas.print_with_attr(
-            row_index,
+            row_position_in_canvas,
             0,
-            &(line_index + 1 + tab.window.top).to_string(),
+            &line_number_to_print.to_string(),
             Self::ATTR_LINE_NR,
         )?)
     }
@@ -369,11 +367,11 @@ impl<'a> WinTab<'a> {
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
                 for (i, vec_line) in (*syntaxed).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
-                    self.preview_line_numbers(tab, i, row, canvas)?;
+                    let row_position = Self::calc_line_row(i, tab);
+                    Self::print_line_number(row_position, i + 1, canvas)?;
                     for token in vec_line.iter() {
                         //TODO! fix token print
-                        token.print(canvas, row, line_number_width)?;
+                        token.print(canvas, row_position, line_number_width)?;
                     }
                 }
             }

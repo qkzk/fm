@@ -1,4 +1,5 @@
 use std::fs::{metadata, read_dir, DirEntry, Metadata};
+use std::iter::Enumerate;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
 
@@ -342,7 +343,7 @@ impl PathContent {
     /// Select the file from a given index.
     pub fn select_index(&mut self, index: usize) {
         if index < self.content.len() {
-            self.content[self.index].unselect();
+            self.unselect_current();
             self.content[index].select();
             self.index = index;
         }
@@ -433,6 +434,11 @@ impl PathContent {
             return;
         }
         self.content[self.index].select();
+    }
+
+    /// Returns an enumeration of the files (`FileInfo`) in content.
+    pub fn enumerate(&mut self) -> Enumerate<std::slice::Iter<'_, FileInfo>> {
+        self.content.iter().enumerate()
     }
 }
 

@@ -298,12 +298,11 @@ impl EventExec {
                 tab.path_content.unselect_current();
                 tab.path_content.prev();
                 tab.path_content.select_current();
-                tab.move_line_up();
+                tab.window.scroll_up_one(tab.path_content.index)
             }
-            Mode::Preview => tab.line_index = tab.window.top,
+            Mode::Preview => tab.window.scroll_up_one(tab.window.top),
             _ => (),
         }
-        tab.window.scroll_up_one(tab.line_index);
     }
 
     /// Move down one row if possible.
@@ -313,20 +312,22 @@ impl EventExec {
                 tab.path_content.unselect_current();
                 tab.path_content.next();
                 tab.path_content.select_current();
-                tab.move_line_down();
+                tab.window.scroll_down_one(tab.path_content.index)
             }
-            Mode::Preview => tab.line_index = tab.window.bottom,
+            Mode::Preview => tab.window.scroll_down_one(tab.window.bottom),
             _ => (),
         }
-        tab.window.scroll_down_one(tab.line_index);
     }
 
     /// Move to the top of the current directory.
     pub fn event_go_top(tab: &mut Tab) {
-        if let Mode::Normal = tab.mode {
-            tab.path_content.select_index(0);
+        match tab.mode {
+            Mode::Normal => tab.path_content.select_index(0),
+            Mode::Preview => (),
+            _ => {
+                return;
+            }
         }
-        tab.line_index = 0;
         tab.window.scroll_to(0);
     }
 
@@ -334,34 +335,61 @@ impl EventExec {
     /// In other modes where vertical scrolling is possible (atm Preview),
     /// if moves up one page.
     pub fn event_page_up(tab: &mut Tab) {
-        let scroll_up: usize = if let Mode::Normal = tab.mode {
-            10
-        } else {
-            tab.height
-        };
-        let up_index = if tab.line_index > scroll_up {
-            tab.line_index - scroll_up
-        } else {
-            0
-        };
-        if let Mode::Normal = tab.mode {
-            tab.path_content.select_index(up_index);
+        match tab.mode {
+            Mode::Normal => {
+                let up_index = if tab.path_content.index > 10 {
+                    tab.path_content.index - 10
+                } else {
+                    0
+                };
+                tab.path_content.select_index(up_index);
+                tab.window.scroll_to(up_index)
+            }
+            Mode::Preview => {
+                if tab.window.top > 0 {
+                    let skip = min(tab.window.top, 30);
+                    tab.window.bottom -= skip;
+                    tab.window.top -= skip;
+                }
+            }
+            _ => (),
         }
-        tab.line_index = up_index;
-        tab.window.scroll_to(up_index);
     }
 
+    /// Move down 10 rows in normal mode.
+    /// In other modes where vertical scrolling is possible (atm Preview),
+    /// if moves down one page.
+    pub fn event_page_down(tab: &mut Tab) {
+        match tab.mode {
+            Mode::Normal => {
+                let down_index = min(
+                    tab.path_content.content.len() - 1,
+                    tab.path_content.index + 10,
+                );
+                tab.path_content.select_index(down_index);
+                tab.window.scroll_to(down_index);
+            }
+            Mode::Preview => {
+                if tab.window.bottom < tab.preview.len() {
+                    let skip = min(tab.preview.len() - tab.window.bottom, 30);
+                    tab.window.bottom += skip;
+                    tab.window.top += skip;
+                }
+            }
+            _ => (),
+        }
+    }
     /// Move to the bottom of current view.
     pub fn event_go_bottom(tab: &mut Tab) {
-        let last_index: usize;
-        if let Mode::Normal = tab.mode {
-            last_index = tab.path_content.content.len() - 1;
-            tab.path_content.select_index(last_index);
-        } else {
-            last_index = tab.preview.len() - 1;
+        match tab.mode {
+            Mode::Normal => {
+                let last_index = tab.path_content.content.len() - 1;
+                tab.path_content.select_index(last_index);
+                tab.window.scroll_to(last_index)
+            }
+            Mode::Preview => tab.window.scroll_to(tab.preview.len() - 1),
+            _ => (),
         }
-        tab.line_index = last_index;
-        tab.window.scroll_to(last_index);
     }
 
     /// Move the cursor to the start of line.
@@ -374,28 +402,13 @@ impl EventExec {
         tab.input.cursor_end()
     }
 
-    /// Move down 10 rows in normal mode.
-    /// In other modes where vertical scrolling is possible (atm Preview),
-    /// if moves down one page.
-    pub fn event_page_down(tab: &mut Tab) {
-        let down_index: usize;
-        if let Mode::Normal = tab.mode {
-            down_index = min(tab.path_content.content.len() - 1, tab.line_index + 10);
-            tab.path_content.select_index(down_index);
-        } else {
-            down_index = min(tab.preview.len() - 1, tab.line_index + 30)
-        }
-        tab.line_index = down_index;
-        tab.window.scroll_to(down_index);
-    }
-
     /// Select a given row, if there's something in it.
     pub fn event_select_row(status: &mut Status, row: u16) -> FmResult<()> {
         if let Mode::Normal = status.selected_non_mut().mode {
             let tab = status.selected();
-            tab.line_index = Self::row_to_index(row);
-            tab.path_content.select_index(tab.line_index);
-            tab.window.scroll_to(tab.line_index);
+            let index = Self::row_to_index(row);
+            tab.path_content.select_index(index);
+            tab.window.scroll_to(index);
         }
         Ok(())
     }
@@ -587,7 +600,7 @@ impl EventExec {
         if tab.path_content.content.is_empty() {
             return;
         }
-        tab.path_content.content[tab.line_index].unselect();
+        tab.path_content.unselect_current();
         tab.path_content.update_sort_from_char(c);
         tab.path_content.sort();
         Self::event_go_top(tab);
@@ -604,7 +617,6 @@ impl EventExec {
         tab.show_hidden = !tab.show_hidden;
         tab.path_content.show_hidden = !tab.path_content.show_hidden;
         tab.path_content.reset_files()?;
-        tab.line_index = 0;
         tab.window.reset(tab.path_content.content.len());
         Ok(())
     }
@@ -684,9 +696,9 @@ impl EventExec {
             {
                 return Err(FmError::custom("event right click", "not found"));
             }
-            tab.line_index = Self::row_to_index(row);
-            tab.path_content.select_index(tab.line_index);
-            tab.window.scroll_to(tab.line_index);
+            let index = Self::row_to_index(row);
+            tab.path_content.select_index(index);
+            tab.window.scroll_to(index);
             if let FileKind::Directory = tab
                 .path_content
                 .selected()
@@ -901,7 +913,7 @@ impl EventExec {
             return;
         }
         tab.searched = Some(searched.clone());
-        let next_index = tab.line_index;
+        let next_index = tab.path_content.index;
         Self::search_from(tab, searched, next_index);
     }
 
@@ -909,9 +921,11 @@ impl EventExec {
     /// from a starting position `next_index`.
     /// We search forward from that position and start again from top if nothing is found.
     /// We move the selection to the first matching file.
-    fn search_from(tab: &mut Tab, searched_name: String, mut next_index: usize) {
+    fn search_from(tab: &mut Tab, searched_name: String, current_index: usize) {
         let mut found = false;
-        for (index, file) in tab.path_content.content.iter().enumerate().skip(next_index) {
+        let mut next_index = current_index;
+        // search after current position
+        for (index, file) in tab.path_content.enumerate().skip(current_index) {
             if file.filename.contains(&searched_name) {
                 next_index = index;
                 found = true;
@@ -919,30 +933,27 @@ impl EventExec {
             };
         }
         if found {
-            tab.path_content.select_index(next_index);
-            tab.line_index = next_index;
-            tab.window.scroll_to(tab.line_index);
-        } else {
-            for (index, file) in tab.path_content.content.iter().enumerate().take(next_index) {
-                if file.filename.starts_with(&searched_name) {
-                    next_index = index;
-                    found = true;
-                    break;
-                };
-            }
-            if found {
-                tab.path_content.select_index(next_index);
-                tab.line_index = next_index;
-                tab.window.scroll_to(tab.line_index);
-            }
+            tab.go_to_index(next_index);
+            return;
+        }
+
+        // search from top
+        for (index, file) in tab.path_content.enumerate().take(current_index) {
+            if file.filename.contains(&searched_name) {
+                next_index = index;
+                found = true;
+                break;
+            };
+        }
+        if found {
+            tab.go_to_index(next_index)
         }
     }
 
     pub fn event_search_next(tab: &mut Tab) -> FmResult<()> {
         if let Some(searched) = tab.searched.clone() {
-            let next_index = (tab.line_index + 1) % tab.path_content.content.len();
+            let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
             Self::search_from(tab, searched, next_index);
-        } else {
         }
         Ok(())
     }

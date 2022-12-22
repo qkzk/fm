@@ -44,10 +44,11 @@ impl ContentWindow {
     /// Move the window one line up if possible.
     /// Does nothing if the index can't be reached.
     pub fn scroll_up_one(&mut self, index: usize) {
-        if index < self.top + Self::WINDOW_PADDING && self.top > 0 {
+        if (index < self.top + Self::WINDOW_PADDING || index > self.bottom) && self.top > 0 {
             self.top -= 1;
             self.bottom -= 1;
         }
+        self.scroll_to(index)
     }
 
     /// Move the window one line down if possible.
@@ -56,15 +57,12 @@ impl ContentWindow {
         if self.len < self.height {
             return;
         }
-        if self.must_scoll_down(index) {
+        if index < self.top || index > self.bottom - Self::WINDOW_PADDING {
             self.top += 1;
             self.bottom += 1;
         }
-    }
 
-    fn must_scoll_down(&self, index: usize) -> bool {
-        index > self.bottom - Self::WINDOW_PADDING
-            && self.bottom <= self.len - Self::WINDOW_MARGIN_TOP
+        self.scroll_to(index)
     }
 
     /// Reset the window to the first files of the current directory.
