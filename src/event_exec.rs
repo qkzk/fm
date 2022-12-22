@@ -229,17 +229,6 @@ impl EventExec {
         status.reset_tabs_view()
     }
 
-    fn _exec_confirmed_action(
-        status: &mut Status,
-        confirmed_action: ConfirmedAction,
-    ) -> FmResult<()> {
-        match confirmed_action {
-            ConfirmedAction::Delete => Self::exec_delete_files(status),
-            ConfirmedAction::Move => Self::exec_cut_paste(status),
-            ConfirmedAction::Copy => Self::exec_copy_paste(status),
-        }
-    }
-
     /// Execute a jump to the selected flagged file.
     /// If the user selected a directory, we jump inside it.
     /// Otherwise, we jump to the parent and select the file.
@@ -270,6 +259,17 @@ impl EventExec {
         Self::_exec_confirmed_action(status, confirmed_action)?;
         status.selected().mode = Mode::Normal;
         Ok(())
+    }
+
+    fn _exec_confirmed_action(
+        status: &mut Status,
+        confirmed_action: ConfirmedAction,
+    ) -> FmResult<()> {
+        match confirmed_action {
+            ConfirmedAction::Delete => Self::exec_delete_files(status),
+            ConfirmedAction::Move => Self::exec_cut_paste(status),
+            ConfirmedAction::Copy => Self::exec_copy_paste(status),
+        }
     }
 
     /// Select the first file matching the typed regex in current dir.
@@ -487,14 +487,26 @@ impl EventExec {
     }
 
     /// Enter a copy paste mode.
-    pub fn event_copy_paste(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::NeedConfirmation(ConfirmedAction::Copy);
+    /// A confirmation is asked before copying all flagged files to
+    /// the current directory.
+    /// Does nothing if no file is flagged.
+    pub fn event_copy_paste(status: &mut Status) -> FmResult<()> {
+        if status.flagged.is_empty() {
+            return Ok(());
+        }
+        status.selected().mode = Mode::NeedConfirmation(ConfirmedAction::Copy);
         Ok(())
     }
 
     /// Enter the 'move' mode.
-    pub fn event_cut_paste(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::NeedConfirmation(ConfirmedAction::Move);
+    /// A confirmation is asked before moving all flagged files to
+    /// the current directory.
+    /// Does nothing if no file is flagged.
+    pub fn event_cut_paste(status: &mut Status) -> FmResult<()> {
+        if status.flagged.is_empty() {
+            return Ok(());
+        }
+        status.selected().mode = Mode::NeedConfirmation(ConfirmedAction::Move);
         Ok(())
     }
 
@@ -536,9 +548,13 @@ impl EventExec {
     }
 
     /// Enter the delete mode.
-    /// A confirmation is then asked.
-    pub fn event_delete_file(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::NeedConfirmation(ConfirmedAction::Delete);
+    /// A confirmation is then asked before deleting all the flagged files.
+    /// Does nothing is no file is flagged.
+    pub fn event_delete_file(status: &mut Status) -> FmResult<()> {
+        if status.flagged.is_empty() {
+            return Ok(());
+        }
+        status.selected().mode = Mode::NeedConfirmation(ConfirmedAction::Delete);
         Ok(())
     }
 
