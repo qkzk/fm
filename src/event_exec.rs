@@ -135,8 +135,11 @@ impl EventExec {
     }
 
     /// Enter Marks jump mode, allowing to jump to a marked file.
-    pub fn event_marks_jump(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputKind::Marks(MarkAction::Jump));
+    pub fn event_marks_jump(status: &mut Status) -> FmResult<()> {
+        if status.marks.is_empty() {
+            return Ok(());
+        }
+        status.selected().mode = Mode::InputSimple(InputKind::Marks(MarkAction::Jump));
         Ok(())
     }
 

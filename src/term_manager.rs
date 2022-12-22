@@ -283,6 +283,7 @@ impl<'a> WinTab<'a> {
         }
         Ok(())
     }
+
     /// Display the possible completion items. The currently selected one is
     /// reversed.
     fn completion(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {

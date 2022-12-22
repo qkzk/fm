@@ -101,7 +101,7 @@ impl ActionMap {
             ActionMap::Home => EventExec::event_home(current_tab),
             ActionMap::Jump => EventExec::event_jump(status),
             ActionMap::KeyHome => EventExec::event_key_home(status),
-            ActionMap::MarksJump => EventExec::event_marks_jump(current_tab),
+            ActionMap::MarksJump => EventExec::event_marks_jump(status),
             ActionMap::MarksNew => EventExec::event_marks_new(current_tab),
             ActionMap::ModeNormal => EventExec::event_normal(current_tab),
             ActionMap::MoveDown => EventExec::event_move_down(status),

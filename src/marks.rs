@@ -9,13 +9,23 @@ use crate::constant_strings_paths::MARKS_FILEPATH;
 use crate::fm_error::{FmError, FmResult};
 
 /// Holds the marks created by the user.
-/// It's a map between any char (except :) and a PathBuf.
+/// It's an ordered map between any char (except :) and a PathBuf.
 pub struct Marks {
     save_path: PathBuf,
     marks: BTreeMap<char, PathBuf>,
 }
 
 impl Marks {
+    /// True if there's no marks yet
+    pub fn is_empty(&self) -> bool {
+        self.marks.is_empty()
+    }
+
+    /// The number of saved marks
+    pub fn len(&self) -> usize {
+        self.marks.len()
+    }
+
     /// Reads the marks stored in the config file (~/.config/fm/marks.cfg).
     /// If an invalid marks is read, only the valid ones are kept
     /// and the file is saved again.

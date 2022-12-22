@@ -239,6 +239,8 @@
 ### Version 0.1.6
 
 - [x] Prevent entering confirmed actions (copy, delete, move) if no file is flagged
+- [x] Improve saved marks display by using a BTreeMap, allowing sorting by char.
+- [x] Prevent entering jump marks mode if there's no mark to jump to
 
 ## TODO
 
@@ -256,6 +258,7 @@
 - [ ] display / event separation. use async and message passing between coroutines
 - [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
 - [ ] vim keys, harmonize keybinds with ranger
+- [ ] scrollable shortcuts, marks & history
 
 - [ ] Version 0.2.0 : tests
 
