@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::cmp::min;
 use std::fmt::Write as _;
 use std::io::{BufRead, BufReader, Read};
@@ -6,6 +7,7 @@ use std::panic;
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
 
+use ansi_to_tui::IntoText;
 use content_inspector::{inspect, ContentType};
 use image::imageops::FilterType;
 use image::{ImageBuffer, Rgb};
@@ -17,7 +19,7 @@ use tuikit::attr::{Attr, Color};
 
 use crate::compress::list_files;
 use crate::fileinfo::FileInfo;
-use crate::fm_error::FmResult;
+use crate::fm_error::{FmError, FmResult};
 
 /// Different kind of preview used to display some informaitons
 /// About the file.
@@ -32,6 +34,7 @@ pub enum Preview {
     Exif(ExifContent),
     Thumbnail(Pixels),
     Media(MediaContent),
+    Chafa(Chafa),
     Empty,
 }
 
@@ -86,7 +89,8 @@ impl Preview {
 
     /// Creates a thumbnail preview of the file.
     pub fn thumbnail(path: PathBuf) -> FmResult<Self> {
-        Ok(Self::Thumbnail(Pixels::new(path)?))
+        // Ok(Self::Thumbnail(Pixels::new(path)?))
+        Ok(Self::Chafa(Chafa::new(path)?))
     }
 
     /// Creates the help preview as if it was a text file.
@@ -112,6 +116,7 @@ impl Preview {
             Self::Thumbnail(_img) => 0,
             Self::Exif(exif_content) => exif_content.len(),
             Self::Media(media) => media.len(),
+            Self::Chafa(chafa) => chafa.len(),
         }
     }
 
@@ -478,6 +483,74 @@ impl Pixels {
     }
 }
 
+#[derive(Clone)]
+pub struct Chafa {
+    pub img_path: PathBuf,
+    content: Vec<Vec<SyntaxedString>>,
+    len: usize,
+}
+
+impl Chafa {
+    /// Creates a new chafa instance. It simply holds a path.
+    pub fn new(img_path: PathBuf) -> FmResult<Self> {
+        let chafa_strings = Self::read_chafa(img_path.clone())?;
+        let content = Self::parse(chafa_strings);
+        let len = content.len();
+        Ok(Self {
+            img_path,
+            content,
+            len,
+        })
+    }
+
+    pub fn read_chafa(img_path: PathBuf) -> FmResult<Vec<String>> {
+        if let Ok(output) = std::process::Command::new("chafa").arg(img_path).output() {
+            let s = String::from_utf8(output.stdout).unwrap_or_default();
+            Ok(s.lines().map(|s| s.to_owned()).collect())
+        } else {
+            Err(FmError::custom("read_chafa", "chafa returned an error"))
+        }
+    }
+
+    fn parse(chafa_content: Vec<String>) -> Vec<Vec<SyntaxedString>> {
+        let mut formatted_lines: Vec<Vec<SyntaxedString>> = vec![];
+        for line in chafa_content.iter() {
+            let mut syn_line = vec![];
+            let vec_span = line.into_text().unwrap_or_default().lines[0].clone().0;
+            let mut col = 0;
+            for span in vec_span.iter() {
+                let content: &str = span.content.borrow();
+                let style = span.style;
+                let fg = match style.fg {
+                    Some(fg) => tui_to_tuikit(fg),
+                    None => tuikit::attr::Color::default(),
+                };
+                let bg = match style.bg {
+                    Some(bg) => tui_to_tuikit(bg),
+                    None => tuikit::attr::Color::default(),
+                };
+                let syntaxed_string = SyntaxedString {
+                    col,
+                    content: content.to_owned(),
+                    attr: tuikit::attr::Attr {
+                        fg,
+                        bg,
+                        effect: tuikit::attr::Effect::empty(),
+                    },
+                };
+                col += content.len();
+                syn_line.push(syntaxed_string);
+            }
+            formatted_lines.push(syn_line)
+        }
+        formatted_lines
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+}
+
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
@@ -491,6 +564,21 @@ pub trait Window<T> {
 }
 
 impl Window<Vec<SyntaxedString>> for HLContent {
+    fn window(
+        &self,
+        top: usize,
+        bottom: usize,
+        length: usize,
+    ) -> std::iter::Take<Skip<Enumerate<Iter<'_, Vec<SyntaxedString>>>>> {
+        self.content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(length, bottom + 1))
+    }
+}
+
+impl Window<Vec<SyntaxedString>> for Chafa {
     fn window(
         &self,
         top: usize,
@@ -573,4 +661,28 @@ fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::th
     let result = panic::catch_unwind(f);
     panic::set_hook(prev_hook);
     result
+}
+
+fn tui_to_tuikit(color: tui::style::Color) -> tuikit::attr::Color {
+    match color {
+        tui::style::Color::Reset => tuikit::attr::Color::default(),
+        tui::style::Color::Black => tuikit::attr::Color::BLACK,
+        tui::style::Color::Red => tuikit::attr::Color::RED,
+        tui::style::Color::Green => tuikit::attr::Color::GREEN,
+        tui::style::Color::Yellow => tuikit::attr::Color::YELLOW,
+        tui::style::Color::Blue => tuikit::attr::Color::BLUE,
+        tui::style::Color::Magenta => tuikit::attr::Color::MAGENTA,
+        tui::style::Color::Cyan => tuikit::attr::Color::CYAN,
+        tui::style::Color::Gray => tuikit::attr::Color::Rgb(128, 128, 128),
+        tui::style::Color::DarkGray => tuikit::attr::Color::Rgb(196, 196, 196),
+        tui::style::Color::LightRed => tuikit::attr::Color::LIGHT_RED,
+        tui::style::Color::LightGreen => tuikit::attr::Color::LIGHT_GREEN,
+        tui::style::Color::LightYellow => tuikit::attr::Color::LIGHT_YELLOW,
+        tui::style::Color::LightBlue => tuikit::attr::Color::LIGHT_BLUE,
+        tui::style::Color::LightMagenta => tuikit::attr::Color::LIGHT_MAGENTA,
+        tui::style::Color::LightCyan => tuikit::attr::Color::LIGHT_CYAN,
+        tui::style::Color::White => tuikit::attr::Color::WHITE,
+        tui::style::Color::Rgb(r, g, b) => tuikit::attr::Color::Rgb(r, g, b),
+        tui::style::Color::Indexed(index) => tuikit::attr::Color::AnsiValue(index),
+    }
 }

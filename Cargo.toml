@@ -29,6 +29,7 @@ shellexpand = "2.1.2"
 fs_extra = "1.2.0"
 
 [dependencies]
+ansi-to-tui = "2.0.0"
 chrono = "0.4.22"
 clap = { version = "4.0.2", features = ["derive"] }
 compress-tools = "0.14.0"
@@ -53,5 +54,6 @@ strum = {version = "0.24.1", features = ["derive"]}
 strum_macros = "0.24.3"
 syntect = "5.0.0"
 sysinfo = "0.26.7"
+tui = "0.19.0"
 tuikit = "0.4.5"
 users = "0.11.0"

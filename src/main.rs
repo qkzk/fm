@@ -48,3 +48,50 @@ fn main() -> FmResult<()> {
     info!("fm is shutting down");
     Ok(())
 }
+
+fn main3() {
+    use std::io;
+    use tuikit::prelude::*;
+    let chafa = std::fs::read_to_string("/home/quentin/Documents/8x8.png").unwrap();
+    let term: Term<()> = Term::new().unwrap();
+    let _ = term.print(3, 0, "term before pause");
+    let _ = term.present();
+    while let Ok(event) = term.poll_event() {
+        match event {
+            Event::Key(_) => {
+                let _ = term.print(4, 0, "event before pause");
+                let _ = term.present();
+                break;
+            }
+            _ => (),
+        }
+    }
+    let _ = term.pause();
+    println!("{}", chafa);
+    let mut buffer = String::new();
+    let stdin = io::stdin(); // We get `Stdin` here.
+    stdin.read_line(&mut buffer).unwrap();
+    print!("\x1B[2J\x1B[1;1H");
+    let _ = term.restart();
+    let _ = term.clear();
+    let _ = term.print(5, 0, "term after pause");
+    let _ = term.present();
+    while let Ok(event) = term.poll_event() {
+        match event {
+            Event::Key(_) => {
+                break;
+            }
+            _ => (),
+        }
+    }
+}
+fn main4() {
+    use std::io::{stdout, Write};
+    use tuikit::raw::IntoRawMode;
+
+    let mut stdout = stdout().into_raw_mode().unwrap();
+
+    let text = std::fs::read_to_string("/home/quentin/chafa.txt").unwrap();
+
+    write!(stdout, "{}", text).unwrap();
+}

@@ -414,6 +414,16 @@ impl<'a> WinTab<'a> {
                     )?;
                 }
             }
+            Preview::Chafa(chafa) => {
+                for (i, vec_line) in (*chafa).window(tab.window.top, tab.window.bottom, length) {
+                    let row_position = Self::calc_line_row(i, tab);
+                    Self::print_line_number(row_position, i + 1, canvas)?;
+                    for token in vec_line.iter() {
+                        //TODO! fix token print
+                        token.print(canvas, row_position, line_number_width)?;
+                    }
+                }
+            }
             Preview::Text(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Exif(text) => impl_preview!(text, tab, length, canvas, line_number_width),
