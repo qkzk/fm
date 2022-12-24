@@ -260,10 +260,14 @@
 
 - [ ] vim keys, harmonize keybinds with ranger
 - [ ] scrollable shortcuts, marks & history
+- [ ] improve thumbnail with [chafa](https://hpjansson.org/chafa/) - [felix](https://github.com/kyoheiu/felix#usage)
+  - [x] use chafa
+  - [x] print in term
+  - [x] print in raw mode
+  - [ ] print with term: term...
 - [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
 - [ ] trash ?
 - [ ] zoxide support
-- [ ] improve thumbnail with [chafa](https://hpjansson.org/chafa/)
 
 - [ ] Version 0.2.0 : tests
 

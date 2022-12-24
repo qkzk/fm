@@ -168,5 +168,11 @@ impl From<serde_yaml::Error> for FmError {
     }
 }
 
+impl From<&std::io::Error> for FmError {
+    fn from(error: &std::io::Error) -> Self {
+        Self::new(ErrorVariant::IO, &error.to_string())
+    }
+}
+
 /// A Result with type `T` and `FmError`.
 pub type FmResult<T> = Result<T, FmError>;
