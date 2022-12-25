@@ -51,3 +51,9 @@ pub static HARDCODED_SHORTCUTS: [&str; 9] = [
     "/tmp",
     "/usr",
 ];
+/// Path to the trash folder
+pub static TRASH_FOLDER: &str = "~/.config/fm/trash/";
+/// Path the to the file holding original places of trashed_files
+pub static TRASH_FILE: &str = "~/.config/fm/trash_file";
+/// Path toe the temporary file used to write the trash file.
+pub static TRASH_FILE_TEMP: &str = "~/tmp/trash_file_temp";

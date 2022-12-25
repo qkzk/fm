@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::{self, BufRead, BufWriter, Write};
+use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use log::info;
 
 use crate::constant_strings_paths::MARKS_FILEPATH;
 use crate::fm_error::{FmError, FmResult};
+use crate::utils::read_lines;
 
 /// Holds the marks created by the user.
 /// It's an ordered map between any char (except :) and a PathBuf.
@@ -116,12 +116,4 @@ impl Marks {
     fn format_mark(ch: &char, path: &Path) -> String {
         format!("{}    {}", ch, path.to_string_lossy())
     }
-}
-
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
 }

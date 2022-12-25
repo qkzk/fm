@@ -242,6 +242,11 @@
 - [x] Improve saved marks display by using a BTreeMap, allowing sorting by char.
 - [x] Prevent entering jump marks mode if there's no mark to jump to
 
+### Version 0.1.7
+
+- [x] basic trash with custom format & spec
+- [ ] use [xdg trash](https://specifications.freedesktop.org/trash-spec/trashspec-latest.html)
+
 ## TODO
 
 - [ ] remote control

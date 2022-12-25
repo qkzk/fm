@@ -1,3 +1,4 @@
+use std::io::BufRead;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -68,4 +69,14 @@ pub fn drop_everything(
 /// Print the path on the stdout.
 pub fn print_on_quit(path_string: String) {
     println!("{}", path_string)
+}
+
+pub fn read_lines<P>(
+    filename: P,
+) -> std::io::Result<std::io::Lines<std::io::BufReader<std::fs::File>>>
+where
+    P: AsRef<std::path::Path>,
+{
+    let file = std::fs::File::open(filename)?;
+    Ok(std::io::BufReader::new(file).lines())
 }
