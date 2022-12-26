@@ -47,7 +47,7 @@ pub struct Status {
     skimer: Skimer,
     /// do we display one or two tabs ?
     pub dual_pane: bool,
-    system_info: System,
+    pub system_info: System,
     /// do we display all info or only the filenames ?
     pub display_full: bool,
     /// The opener used by the application.
@@ -78,7 +78,7 @@ impl Status {
         let mut tab = Tab::new(args, height)?;
         tab.shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
-        let trash = Trash::parse_trash_file(term.clone())?;
+        let trash = Trash::parse_info_trashs()?;
 
         Ok(Self {
             tabs: [tab.clone(), tab],

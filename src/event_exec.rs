@@ -3,6 +3,10 @@ use std::cmp::min;
 use std::fs;
 use std::path;
 
+use copypasta::{ClipboardContext, ClipboardProvider};
+use log::info;
+use sysinfo::SystemExt;
+
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
@@ -20,9 +24,7 @@ use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
-
-use copypasta::{ClipboardContext, ClipboardProvider};
-use log::info;
+use crate::utils::disk_used_by_path;
 
 /// Every kind of mutation of the application is defined here.
 /// It mutates `Status` or its children `Tab`.
@@ -1270,17 +1272,27 @@ impl EventExec {
     }
 
     pub fn event_trash_move_file(status: &mut Status) -> FmResult<()> {
+        let trash_mount_point = disk_used_by_path(
+            status.system_info.disks(),
+            &std::path::PathBuf::from(&status.trash.trash_folder_files),
+        );
+
         for flagged in status.flagged.content.iter() {
+            let origin_mount_point = disk_used_by_path(status.disks(), flagged);
+            if trash_mount_point != origin_mount_point {
+                continue;
+            }
             status.trash.trash(flagged.to_owned())?;
         }
+        status.flagged.clear();
+        status.selected().refresh_view()?;
         Ok(())
     }
 
     pub fn event_trash_restore_file(status: &mut Status) -> FmResult<()> {
-        let (origin, _) = status.trash.selected().unwrap();
-        status.trash.restore(origin.to_owned())?;
-        status.selected().refresh_view()?;
+        status.trash.restore()?;
         status.selected().mode = Mode::Normal;
+        status.selected().refresh_view()?;
         Ok(())
     }
 

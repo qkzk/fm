@@ -1,31 +1,34 @@
-use std::fs::{create_dir, remove_dir_all, rename, File, OpenOptions};
-use std::io::{prelude::*, BufRead, BufReader, BufWriter};
+use std::fs::{create_dir, read_dir, remove_dir_all};
+use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use chrono::{Local, NaiveDateTime};
 use log::info;
-use tuikit::term::Term;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 
-use crate::constant_strings_paths::{TRASH_FILE, TRASH_FILE_TEMP, TRASH_FOLDER};
-use crate::copy_move::{copy_move, CopyMove};
+use crate::constant_strings_paths::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO};
 use crate::fm_error::{FmError, FmResult};
 use crate::impl_selectable_content;
 use crate::utils::read_lines;
 
-static DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
+static TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
+
 #[derive(Debug, Clone)]
 pub struct TrashInfo {
-    path: PathBuf,
+    origin: PathBuf,
+    dest_name: String,
     deletion_date: String,
 }
 
 impl TrashInfo {
-    pub fn new(origin: &Path) -> Self {
+    pub fn new(origin: &Path, dest_name: &str) -> Self {
         let date = Local::now();
-        let deletion_date = format!("{}", date.format(DATETIME_FORMAT));
+        let deletion_date = format!("{}", date.format(TRASHINFO_DATETIME_FORMAT));
+        let dest_name = dest_name.to_owned();
         Self {
-            path: PathBuf::from(origin),
+            origin: PathBuf::from(origin),
+            dest_name,
             deletion_date,
         }
     }
@@ -36,261 +39,270 @@ impl TrashInfo {
 Path={}
 DeletionDate={}
 ",
-            path_to_string(&self.path)?,
+            path_to_string(&self.origin)?,
             self.deletion_date
         ))
     }
 
     pub fn write_trash_info(&self, dest: &Path) -> FmResult<()> {
-        let mut file = OpenOptions::new().write(true).open(dest)?;
-        if let Err(e) = writeln!(file, "{}", self.to_string()?) {
+        info!("writing trash_info {} for {:?}", self, dest);
+
+        // let mut file = OpenOptions::new().write(true).open(dest)?;
+        let mut file = std::fs::File::create(dest)?;
+        if let Err(e) = write!(file, "{}", self.to_string()?) {
             info!("Couldn't write to trash file: {}", e)
         }
         Ok(())
     }
 
-    pub fn from_trash_info_file(&self, trash_info_file: &Path) -> FmResult<Self> {
-        let mut p: Option<PathBuf> = None;
-        let mut d: Option<String> = None;
+    pub fn from_trash_info_file(trash_info_file: &Path) -> FmResult<Self> {
+        let mut option_path: Option<PathBuf> = None;
+        let mut option_deleted_time: Option<String> = None;
         let mut found_trash_info_line: bool = false;
-        if let Ok(lines) = read_lines(trash_info_file) {
-            for (index, line_result) in lines.enumerate() {
-                if let Ok(line) = line_result.as_ref() {
-                    if line.starts_with("[TrashInfo]") {
-                        if index == 0 {
-                            found_trash_info_line = true;
-                            continue;
-                        } else {
-                            return Err(FmError::custom(
-                                "from_trash_info_file",
-                                "[TrashInfo] was found after first line",
-                            ));
+        if let Some(dest_name) = trash_info_file.file_name() {
+            let dest_name = Self::remove_extension(dest_name.to_str().unwrap().to_owned())?;
+            if let Ok(lines) = read_lines(trash_info_file) {
+                for (index, line_result) in lines.enumerate() {
+                    if let Ok(line) = line_result.as_ref() {
+                        if line.starts_with("[TrashInfo]") {
+                            if index == 0 {
+                                found_trash_info_line = true;
+                                continue;
+                            } else {
+                                return trashinfo_error("[TrashInfo] was found after first line");
+                            }
                         }
-                    }
-                    if line.starts_with("Path=") && p.is_none() {
-                        if !found_trash_info_line {
-                            return Err(FmError::custom(
-                                "from_trash_info_file",
-                                "Found Path line before TrashInfo",
-                            ));
+                        if line.starts_with("Path=") && option_path.is_none() {
+                            if !found_trash_info_line {
+                                return trashinfo_error("Found Path line before TrashInfo");
+                            }
+                            let path_str = &line[6..];
+                            option_path = Some(PathBuf::from(path_str));
+                        } else if line.starts_with("DeletionDate=") && option_deleted_time.is_none()
+                        {
+                            if !found_trash_info_line {
+                                return trashinfo_error("Found DeletionDate line before TrashInfo");
+                            }
+                            let deletion_date_str = &line[13..];
+                            match parsed_date_from_path_info(deletion_date_str) {
+                                Ok(()) => (),
+                                Err(e) => return Err(e),
+                            }
+                            option_deleted_time = Some(deletion_date_str.to_owned())
                         }
-                        let path_str = &line[6..];
-                        p = Some(PathBuf::from(path_str));
-                    } else if line.starts_with("DeletionDate=") && d.is_none() {
-                        if !found_trash_info_line {
-                            return Err(FmError::custom(
-                                "from_trash_info_file",
-                                "Found DeletionDate line before TrashInfo",
-                            ));
-                        }
-                        let deletion_date_str = &line[13..];
-                        match parsed_date_from_path_info(&deletion_date_str) {
-                            Ok(()) => (),
-                            Err(e) => return Err(e),
-                        }
-                        d = Some(deletion_date_str.to_owned())
                     }
                 }
             }
+            match (option_path, option_deleted_time) {
+                (Some(origin), Some(deletion_date)) => Ok(Self {
+                    dest_name,
+                    deletion_date,
+                    origin,
+                }),
+                _ => trashinfo_error("Couldn't parse the trash info file"),
+            }
+        } else {
+            trashinfo_error("Couldn't parse the trash info filename")
         }
+    }
 
-        match (p, d) {
-            (Some(path), Some(deletion_date)) => Ok(Self {
-                deletion_date,
-                path,
-            }),
-            _ => Err(FmError::custom(
-                "from_trash_info_file",
-                "Couldn't parse the trash info file",
-            )),
+    fn remove_extension(mut destname: String) -> FmResult<String> {
+        if destname.ends_with(".trashinfo") {
+            destname.truncate(destname.len() - 10);
+            Ok(destname)
+        } else {
+            Err(FmError::custom(
+                "trahsinfo",
+                "filename doesn't contain .trashfino",
+            ))
         }
+    }
+}
+
+impl std::fmt::Display for TrashInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{} - trashed on {}",
+            path_to_string(&self.origin).unwrap_or_default(),
+            self.deletion_date
+        )
     }
 }
 
 #[derive(Clone)]
 pub struct Trash {
-    pub content: Vec<(PathBuf, PathBuf)>,
-    term: Arc<Term>,
+    pub content: Vec<TrashInfo>,
     index: usize,
-    trash_folder: String,
-    trash_file: String,
-    trash_file_temp: String,
+    pub trash_folder_files: String,
+    trash_folder_info: String,
 }
 
 impl Trash {
-    pub fn parse_trash_file(term: Arc<Term>) -> FmResult<Self> {
-        let trash_path = shellexpand::tilde(TRASH_FOLDER).to_string();
-        let trash_file = shellexpand::tilde(TRASH_FILE).to_string();
-        let trash_file_temp = shellexpand::tilde(TRASH_FILE_TEMP).to_string();
-        let mut content = vec![];
-        if let Ok(lines) = read_lines(&trash_file) {
-            for line_result in lines {
-                if let Ok(line) = line_result.as_ref() {
-                    let sp: Vec<&str> = line.split(':').collect();
-                    if sp.is_empty() || sp.len() < 2 {
-                        continue;
-                    }
-                    let origin = PathBuf::from(sp[0]);
-                    let dest = PathBuf::from(sp[1]);
-                    content.push((origin, dest));
-                }
-            }
-        }
-        Ok(Self {
-            content,
-            term,
-            index: 0,
-            trash_folder: trash_path,
-            trash_file,
-            trash_file_temp,
-        })
-    }
-
-    pub fn trash(&mut self, origin: PathBuf) -> FmResult<PathBuf> {
-        let mut dest = PathBuf::from(self.trash_folder.clone());
+    fn pick_dest_name(&self, origin: &Path) -> FmResult<String> {
         if let Some(file_name) = origin.file_name() {
-            if !self.contains(&origin) {
-                dest.push(file_name);
-                copy_move(
-                    CopyMove::Move,
-                    vec![origin.clone()],
-                    self.trash_folder.to_owned(),
-                    self.term.clone(),
-                )?;
-
-                self.content.push((origin.clone(), dest.clone()));
-                self.write_to_trash_file(origin.clone(), dest.clone())?;
-            }
-            info!("moved to trash {:?} -> {:?}", origin, dest);
-            Ok(dest)
-        } else {
-            Err(FmError::custom(
-                "trash",
-                &format!("couldn't trash {:?} - wrong filename", origin),
-            ))
-        }
-    }
-
-    fn contains(&self, origin: &Path) -> bool {
-        self.find_dest(origin).is_some()
-    }
-
-    fn find_dest(&self, origin: &Path) -> Option<&Path> {
-        for (o, d) in self.content.iter() {
-            if o == origin {
-                return Some(d);
-            }
-        }
-        None
-    }
-
-    fn write_to_trash_file(&self, origin: PathBuf, dest: PathBuf) -> FmResult<()> {
-        let mut file = OpenOptions::new()
-            .write(true)
-            .append(true)
-            .open(self.trash_file.clone())?;
-        if let Err(e) = writeln!(
-            file,
-            "{}:{}",
-            origin
+            let mut dest = file_name
                 .to_str()
-                .ok_or_else(|| FmError::custom("write_to_trash_file", "couldn't read origin"))?,
-            dest.to_str()
-                .ok_or_else(|| FmError::custom("write_to_trash_file", "couldn't read dest"))?,
-        ) {
-            info!("Couldn't write to trash file: {}", e)
+                .ok_or_else(|| {
+                    FmError::custom(
+                        "pick_dest_name",
+                        "Couldn't parse the origin filename into a string",
+                    )
+                })?
+                .to_owned();
+            let mut dest_path = PathBuf::from(&self.trash_folder_files);
+            dest_path.push(&dest);
+            while dest_path.exists() {
+                dest.push_str(&rand_string());
+                dest_path = PathBuf::from(&self.trash_folder_files);
+                dest_path.push(&dest);
+            }
+            return Ok(dest);
         }
-        Ok(())
+        Err(FmError::custom(
+            "pick_dest_name",
+            "Couldn't extract the filename",
+        ))
     }
 
-    pub fn restore(&mut self, origin: PathBuf) -> FmResult<()> {
-        let origin_str = path_to_string(&origin)?.to_owned();
-        if let Some(dest) = self.find_dest(&origin) {
-            let parent = find_parent_as_string(&origin)?;
-            if let Some(index) = self.found_in_trash_file(&origin_str) {
-                copy_move(
-                    CopyMove::Move,
-                    vec![dest.to_owned()],
-                    parent,
-                    self.term.clone(),
-                )?;
-                info!(
-                    "trash: restoring {:?} <- {:?} - index {}",
-                    origin, dest, index
-                );
-                self.remove_line_from_trash_file(index)?;
-                self.content.remove(index);
-            } else {
-                return Err(FmError::custom(
-                    "restore",
-                    &format!("Couldn't find {} in trash file", origin_str),
-                ));
+    pub fn parse_info_trashs() -> FmResult<Self> {
+        let trash_folder_files = shellexpand::tilde(TRASH_FOLDER_FILES).to_string();
+        let trash_folder_info = shellexpand::tilde(TRASH_FOLDER_INFO).to_string();
+        let index = 0;
+
+        match read_dir(&trash_folder_info) {
+            Ok(read_dir) => {
+                let content: Vec<TrashInfo> = read_dir
+                    .filter_map(|res_direntry| res_direntry.ok())
+                    .filter(|direntry| direntry.path().extension().is_some())
+                    .filter(|direntry| {
+                        direntry.path().extension().unwrap().to_str().unwrap() == "trashinfo"
+                    })
+                    .map(|direntry| TrashInfo::from_trash_info_file(&direntry.path()))
+                    .filter_map(|trashinfo_res| trashinfo_res.ok())
+                    .collect();
+
+                Ok(Self {
+                    content,
+                    index,
+                    trash_folder_files,
+                    trash_folder_info,
+                })
             }
-            Ok(())
-        } else {
-            Err(FmError::custom(
-                "restore",
-                &format!("Couldn't restore {}", origin_str),
-            ))
+            Err(error) => {
+                info!("Couldn't read path {} - {}", trash_folder_files, error);
+                Err(FmError::from(error))
+            }
         }
     }
 
-    fn found_in_trash_file(&self, origin_str: &str) -> Option<usize> {
-        if let Ok(lines) = read_lines(self.trash_file.clone()) {
-            for (index, line_result) in lines.enumerate() {
-                if let Ok(line) = line_result.as_ref() {
-                    let sp: Vec<&str> = line.split(':').collect();
-                    if sp.is_empty() {
-                        continue;
-                    }
-                    let origin_line = sp[0];
-                    if origin_line.starts_with(origin_str) {
-                        return Some(index);
-                    }
-                }
-            }
+    pub fn trash(&mut self, origin: PathBuf) -> FmResult<()> {
+        if origin.is_relative() {
+            return Err(FmError::custom("trash", "origin path shoudl be absolute"));
         }
-        None
-    }
 
-    fn remove_line_from_trash_file(&mut self, index: usize) -> FmResult<()> {
-        {
-            let file: File = File::open(self.trash_file.clone())?;
-            let out_file: File = File::create(self.trash_file_temp.clone())?;
+        let dest_file_name = self.pick_dest_name(&origin)?;
+        let trash_info = TrashInfo::new(&origin, &dest_file_name);
+        let mut trashfile_filename = PathBuf::from(&self.trash_folder_files);
+        trashfile_filename.push(&dest_file_name);
 
-            let reader = BufReader::new(&file);
-            let mut writer = BufWriter::new(&out_file);
+        let mut dest_trashinfo_name = dest_file_name.clone();
+        dest_trashinfo_name.push_str(".trashinfo");
+        let mut trashinfo_filename = PathBuf::from(&self.trash_folder_info);
+        trashinfo_filename.push(dest_trashinfo_name);
+        info!("moving to trash ... {:?} -> {:?}", origin, dest_file_name);
+        trash_info.write_trash_info(&trashinfo_filename)?;
 
-            for (i, line) in reader.lines().enumerate() {
-                let line = line.as_ref()?;
-                if i != index {
-                    writeln!(writer, "{}", line)?;
-                }
-            }
-        }
-        rename(self.trash_file_temp.clone(), self.trash_file.clone())?;
+        self.content.push(trash_info);
+
+        std::fs::rename(&origin, &trashfile_filename)?;
+
+        info!("moved to trash {:?} -> {:?}", origin, dest_file_name);
         Ok(())
     }
 
     pub fn empty_trash(&mut self) -> FmResult<()> {
-        remove_dir_all(self.trash_folder.clone())?;
-        create_dir(self.trash_folder.clone())?;
+        remove_dir_all(&self.trash_folder_files)?;
+        create_dir(&self.trash_folder_files)?;
+
+        remove_dir_all(&self.trash_folder_info)?;
+        create_dir(&self.trash_folder_info)?;
         let number_of_elements = self.content.len();
 
         self.content = vec![];
 
-        File::create(self.trash_file.clone())?;
         info!("Emptied the trash: {} elements removed", number_of_elements);
 
         Ok(())
     }
+
+    pub fn restore(&mut self) -> FmResult<()> {
+        let trashinfo = self.content[self.index].to_owned();
+
+        let origin = trashinfo.origin;
+        let dest_name = trashinfo.dest_name;
+        let parent = find_parent(&origin)?;
+
+        let mut info_name = dest_name.clone();
+        info_name.push_str(".trashinfo");
+
+        let mut trashed_file_content = PathBuf::from(&self.trash_folder_files);
+        trashed_file_content.push(&dest_name);
+
+        let mut trashed_file_info = PathBuf::from(&self.trash_folder_info);
+        trashed_file_info.push(&info_name);
+
+        if !trashed_file_content.exists() {
+            return Err(FmError::custom(
+                "trash restore",
+                "Couldn't find the trashed file",
+            ));
+        }
+
+        if !trashed_file_info.exists() {
+            return Err(FmError::custom(
+                "trash restore",
+                "Couldn't find the trashed file info",
+            ));
+        }
+
+        if !parent.exists() {
+            std::fs::create_dir_all(&parent)?
+        }
+
+        std::fs::rename(&trashed_file_content, &origin)?;
+        self.content.remove(self.index);
+        std::fs::remove_file(&trashed_file_info)?;
+        info!("trash: restored {:?} <- {:?}", origin, trashed_file_content);
+        Ok(())
+    }
 }
 
-pub type PathPair = (PathBuf, PathBuf);
+impl_selectable_content!(TrashInfo, Trash);
 
-impl_selectable_content!(PathPair, Trash);
+fn path_to_string(path: &Path) -> FmResult<&str> {
+    path.to_str()
+        .ok_or_else(|| FmError::custom("path_to_string", "couldn't parse origin into string"))
+}
 
-fn find_parent_as_string(path: &Path) -> FmResult<String> {
+fn parsed_date_from_path_info(ds: &str) -> FmResult<()> {
+    NaiveDateTime::parse_from_str(ds, TRASHINFO_DATETIME_FORMAT)?;
+    Ok(())
+}
+
+fn rand_string() -> String {
+    thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(2)
+        .map(char::from)
+        .collect()
+}
+
+fn trashinfo_error(msg: &str) -> FmResult<TrashInfo> {
+    Err(FmError::custom("trash", msg))
+}
+
+fn find_parent(path: &Path) -> FmResult<PathBuf> {
     Ok(path
         .parent()
         .ok_or_else(|| {
@@ -299,19 +311,5 @@ fn find_parent_as_string(path: &Path) -> FmResult<String> {
                 &format!("Couldn't find parent of {:?}", path),
             )
         })?
-        .to_str()
-        .ok_or_else(|| {
-            FmError::custom("find_parent_as_string", "couldn't parse parent into string")
-        })?
         .to_owned())
-}
-
-fn path_to_string(path: &Path) -> FmResult<&str> {
-    path.to_str()
-        .ok_or_else(|| FmError::custom("path_to_string", "couldn't parse origin into string"))
-}
-
-fn parsed_date_from_path_info(ds: &str) -> FmResult<()> {
-    NaiveDateTime::parse_from_str(ds, DATETIME_FORMAT)?;
-    Ok(())
 }

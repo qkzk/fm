@@ -18,7 +18,7 @@ pub fn init_term() -> FmResult<Term> {
     Ok(term)
 }
 
-fn disk_used_by_path<'a>(disks: &'a [Disk], path: &Path) -> Option<&'a Disk> {
+pub fn disk_used_by_path<'a>(disks: &'a [Disk], path: &Path) -> Option<&'a Disk> {
     let mut disks: Vec<&Disk> = disks.iter().collect();
     disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
     disks.reverse();

@@ -21,7 +21,7 @@ use crate::preview::{Preview, TextKind, Window};
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
-use crate::trash::PathPair;
+use crate::trash::TrashInfo;
 
 /// At least 100 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 100;
@@ -293,18 +293,21 @@ impl<'a> WinTab<'a> {
     fn trash(
         &self,
         canvas: &mut dyn Canvas,
-        selectable: &impl SelectableContent<PathPair>,
+        selectable: &impl SelectableContent<TrashInfo>,
     ) -> FmResult<()> {
-        canvas.print(0, 1, "Restore the selected file")?;
-        for (row, (origin, _dest)) in selectable.content().iter().enumerate() {
+        canvas.print(1, 0, "Restore the selected file")?;
+        for (row, trashinfo) in selectable.content().iter().enumerate() {
             let mut attr = Attr::default();
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
             }
-            let s = origin
-                .to_str()
-                .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?;
-            let _ = canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, s, attr);
+
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                &format!("{}", trashinfo),
+                attr,
+            );
         }
         Ok(())
     }
@@ -331,17 +334,31 @@ impl<'a> WinTab<'a> {
         confirmed_mode: NeedConfirmation,
         canvas: &mut dyn Canvas,
     ) -> FmResult<()> {
-        for (row, path) in status.flagged.content.iter().enumerate() {
-            canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP + 2,
-                4,
-                path.to_str()
-                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
-                Attr::default(),
-            )?;
-        }
         info!("confirmed action: {:?}", confirmed_mode);
-        let content = match confirmed_mode {
+        match confirmed_mode {
+            NeedConfirmation::EmptyTrash => {
+                for (row, trashinfo) in status.trash.content.iter().enumerate() {
+                    canvas.print_with_attr(
+                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                        4,
+                        &format!("{}", trashinfo),
+                        Attr::default(),
+                    )?;
+                }
+            }
+            NeedConfirmation::Copy | NeedConfirmation::Delete | NeedConfirmation::Move => {
+                for (row, path) in status.flagged.content.iter().enumerate() {
+                    canvas.print_with_attr(
+                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                        4,
+                        path.to_str()
+                            .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
+                        Attr::default(),
+                    )?;
+                }
+            }
+        }
+        let confirmation_string = match confirmed_mode {
             NeedConfirmation::Copy => {
                 format!(
                     "Files will be copied to {}",
@@ -354,7 +371,7 @@ impl<'a> WinTab<'a> {
             }
             NeedConfirmation::EmptyTrash => "Trash will be emptied".to_owned(),
         };
-        canvas.print_with_attr(2, 3, &content, Self::ATTR_YELLOW_BOLD)?;
+        canvas.print_with_attr(2, 3, &confirmation_string, Self::ATTR_YELLOW_BOLD)?;
 
         Ok(())
     }

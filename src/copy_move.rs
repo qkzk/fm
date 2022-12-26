@@ -5,6 +5,7 @@ use std::thread;
 
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
+use log::info;
 use notify_rust::Notification;
 use tuikit::prelude::{Attr, Color, Effect, Event, Term};
 
@@ -60,6 +61,7 @@ fn handle_progress_display(
 }
 
 /// Different kind of movement of files : copying or moving.
+#[derive(Debug)]
 pub enum CopyMove {
     Copy,
     Move,
@@ -102,8 +104,14 @@ pub fn copy_move(
             CopyMove::Copy => fs_extra::copy_items_with_progress,
             CopyMove::Move => fs_extra::move_items_with_progress,
         };
-        let transfered_bytes =
-            copier_mover(&sources, &dest, &options, handle_progress).unwrap_or_default();
+        let transfered_bytes = match copier_mover(&sources, &dest, &options, handle_progress) {
+            Ok(transfered_bytes) => transfered_bytes,
+            Err(e) => {
+                info!("copy move couldn't copy: {:?}", e);
+                0
+            }
+        };
+
         let _ = c_term.send_event(Event::User(()));
         let _ = notify(
             &format!("fm: {} finished", copy_or_move.verb()),
@@ -113,6 +121,11 @@ pub fn copy_move(
                 copy_or_move.preterit()
             ),
         );
+        info!(
+            "{} finished {}B",
+            copy_or_move.verb(),
+            human_size(transfered_bytes)
+        )
     });
     Ok(())
 }
