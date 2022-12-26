@@ -244,9 +244,6 @@
 
 ### Version 0.1.7
 
-- [x] basic trash with custom format & spec
-- [ ] use [xdg trash](https://specifications.freedesktop.org/trash-spec/trashspec-latest.html)
-
 ## TODO
 
 - [ ] remote control
@@ -271,8 +268,17 @@
   - [x] print in raw mode
   - [ ] print with term: term...
 - [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
-- [ ] trash ?
 - [ ] zoxide support
+
+### Version 0.1.7
+
+- [ ] Trash following [xdg trash](https://specifications.freedesktop.org/trash-spec/trashspec-latest.html)
+
+  - [x] trahinfo
+  - [x] recreate parents if needed
+  - [x] allow multiple files with same name to be trashed
+  - [x] allow strange bytes in char
+  - [ ] compatibiliy with other programs like trash-cli
 
 - [ ] Version 0.2.0 : tests
 

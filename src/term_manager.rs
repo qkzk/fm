@@ -63,10 +63,10 @@ struct WinTab<'a> {
 impl<'a> Draw for WinTab<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         match self.tab.mode {
-            Mode::Navigable(Navigate::Jump) => self.destination(canvas, &self.status.flagged),
-            Mode::Navigable(Navigate::History) => self.destination(canvas, &self.tab.history),
-            Mode::Navigable(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
-            Mode::Navigable(Navigate::Trash) => self.trash(canvas, &self.status.trash),
+            Mode::Navigate(Navigate::Jump) => self.destination(canvas, &self.status.flagged),
+            Mode::Navigate(Navigate::History) => self.destination(canvas, &self.tab.history),
+            Mode::Navigate(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
+            Mode::Navigate(Navigate::Trash) => self.trash(canvas, &self.status.trash),
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
@@ -249,7 +249,7 @@ impl<'a> WinTab<'a> {
         match tab.mode {
             Mode::Normal
             | Mode::InputSimple(InputSimple::Marks(_))
-            | Mode::Navigable(_)
+            | Mode::Navigate(_)
             | Mode::Preview => {
                 canvas.show_cursor(false)?;
             }

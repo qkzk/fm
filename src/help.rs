@@ -46,11 +46,16 @@ static HELP_TO_FORMAT: &str = "
 {FlagAll}:      flag all
 {ClearFlags}:      clear flags
 {ReverseFlags}:      reverse flags
-{CopyPaste}:      copy to current dir
-{CutPaste}:      move to current dir
-{DeleteFile}:      delete files
 {Symlink}:      symlink files
 {Bulkrename}:      bulkrename files
+{CopyPaste}:      copy to current dir
+{CutPaste}:      move to current dir
+{DeleteFile}:      delete files permanently
+{TrashMoveFile}:      move to trash
+
+- Trash -
+{TrashOpen}:       Open the trash (enter to restore, del clear)
+{TrashEmpty}:       Empty the trash
 
 - MODES - 
 {Chmod}:      CHMOD 

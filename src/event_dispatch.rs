@@ -3,7 +3,7 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::event_exec::EventExec;
 use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
-use crate::mode::{InputSimple, MarkAction, Mode};
+use crate::mode::{InputSimple, MarkAction, Mode, Navigate};
 use crate::status::Status;
 
 /// Struct which mutates `tabs.selected()..
@@ -79,7 +79,6 @@ impl EventDispatcher {
                     Some(event_char) => event_char.matcher(status),
                     None => Ok(()),
                 },
-                Mode::Preview | Mode::Navigable(_) => EventExec::event_normal(status.selected()),
                 Mode::NeedConfirmation(confirmed_action) => {
                     if c == 'y' {
                         let _ = EventExec::exec_confirmed_action(status, confirmed_action);
@@ -87,6 +86,10 @@ impl EventDispatcher {
                     EventExec::event_leave_need_confirmation(status.selected());
                     Ok(())
                 }
+                Mode::Navigate(Navigate::Trash) if c == 'x' => {
+                    EventExec::event_trash_remove_file(status)
+                }
+                Mode::Preview | Mode::Navigate(_) => EventExec::event_normal(status.selected()),
             },
             _ => Ok(()),
         }

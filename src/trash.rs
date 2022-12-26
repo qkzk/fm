@@ -14,6 +14,13 @@ use crate::utils::read_lines;
 
 static TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 
+/// Holds the information about a trashed file.
+/// Follow the specifications of .trashinfo files as described in
+/// [Trash freedesktop specs](https://specifications.freedesktop.org/trash-spec/trashspec-latest.html)
+/// It knows
+/// - where the file came from,
+/// - what name it was given when trashed,
+/// - when it was trashed
 #[derive(Debug, Clone)]
 pub struct TrashInfo {
     origin: PathBuf,
@@ -22,6 +29,8 @@ pub struct TrashInfo {
 }
 
 impl TrashInfo {
+    /// Returns a new `TrashInfo` instance.
+    /// The deletion_date is calculated on creation, before the file is actually trashed.
     pub fn new(origin: &Path, dest_name: &str) -> Self {
         let date = Local::now();
         let deletion_date = format!("{}", date.format(TRASHINFO_DATETIME_FORMAT));
@@ -44,6 +53,12 @@ DeletionDate={}
         ))
     }
 
+    /// Write itself into a .trashinfo file.
+    /// The format looks like :
+    ///
+    /// [TrashInfo]
+    /// Path=/home/quentin/Documents
+    /// DeletionDate=2022-12-31T22:45:55
     pub fn write_trash_info(&self, dest: &Path) -> FmResult<()> {
         info!("writing trash_info {} for {:?}", self, dest);
 
@@ -55,6 +70,18 @@ DeletionDate={}
         Ok(())
     }
 
+    // TODO! manage non ascii bytes
+    /// Reads a .trashinfo file and parse it into a new instance.
+    /// ATM some non bytes chars allowed in path aren't supported.
+    ///
+    /// Let say `Document.trashinfo` contains :
+    ///
+    /// [TrashInfo]
+    /// Path=/home/quentin/Documents
+    /// DeletionDate=2022-12-31T22:45:55
+    ///
+    /// It will be parsed into
+    /// TrashInfo { PathBuf::from("/home/quentin/Documents"), "Documents", "2022-12-31T22:45:55" }
     pub fn from_trash_info_file(trash_info_file: &Path) -> FmResult<Self> {
         let mut option_path: Option<PathBuf> = None;
         let mut option_deleted_time: Option<String> = None;
@@ -130,10 +157,14 @@ impl std::fmt::Display for TrashInfo {
     }
 }
 
+/// Represent a view of the trash.
+/// It's content is navigable so we use a Vector to hold the content.
 #[derive(Clone)]
 pub struct Trash {
+    /// Trashed files info.
     pub content: Vec<TrashInfo>,
     index: usize,
+    /// The path to the trashed files
     pub trash_folder_files: String,
     trash_folder_info: String,
 }
@@ -165,6 +196,8 @@ impl Trash {
         ))
     }
 
+    /// Parse the info files into a new instance.
+    /// Only the file we can parse are read.
     pub fn parse_info_trashs() -> FmResult<Self> {
         let trash_folder_files = shellexpand::tilde(TRASH_FOLDER_FILES).to_string();
         let trash_folder_info = shellexpand::tilde(TRASH_FOLDER_INFO).to_string();
@@ -196,6 +229,8 @@ impl Trash {
         }
     }
 
+    /// Move a file to the trash folder and create a new trash info file.
+    /// Add a new TrashInfo to the content.
     pub fn trash(&mut self, origin: PathBuf) -> FmResult<()> {
         if origin.is_relative() {
             return Err(FmError::custom("trash", "origin path shoudl be absolute"));
@@ -221,6 +256,9 @@ impl Trash {
         Ok(())
     }
 
+    /// Empty the trash, removing all the files and the trashinfo.
+    /// This action requires a confirmation.
+    /// Watchout, it may delete files that weren't parsed.
     pub fn empty_trash(&mut self) -> FmResult<()> {
         remove_dir_all(&self.trash_folder_files)?;
         create_dir(&self.trash_folder_files)?;
@@ -236,7 +274,7 @@ impl Trash {
         Ok(())
     }
 
-    pub fn restore(&mut self) -> FmResult<()> {
+    fn remove_selected_file(&mut self) -> FmResult<(PathBuf, PathBuf, PathBuf)> {
         let trashinfo = self.content[self.index].to_owned();
 
         let origin = trashinfo.origin;
@@ -266,14 +304,36 @@ impl Trash {
             ));
         }
 
+        self.content.remove(self.index);
+        std::fs::remove_file(&trashed_file_info)?;
+
+        Ok((origin, trashed_file_content, parent))
+    }
+
+    /// Restores a file from the trash to its previous directory.
+    /// If the parent (or ancestor) folder were deleted, it is recreated.
+    pub fn restore(&mut self) -> FmResult<()> {
+        let (origin, trashed_file_content, parent) = self.remove_selected_file()?;
         if !parent.exists() {
             std::fs::create_dir_all(&parent)?
         }
-
         std::fs::rename(&trashed_file_content, &origin)?;
-        self.content.remove(self.index);
-        std::fs::remove_file(&trashed_file_info)?;
         info!("trash: restored {:?} <- {:?}", origin, trashed_file_content);
+        Ok(())
+    }
+
+    /// Deletes a file permanently from the trash.
+    pub fn remove(&mut self) -> FmResult<()> {
+        if self.is_empty() {
+            return Ok(());
+        }
+
+        let (_, trashed_file_content, _) = self.remove_selected_file()?;
+
+        std::fs::remove_file(&trashed_file_content)?;
+        if self.index > 0 {
+            self.index -= 1
+        }
         Ok(())
     }
 }

@@ -101,7 +101,7 @@ pub enum Mode {
     /// different kind of completed items (exec, goto, search)
     InputCompleted(InputCompleted),
     /// Select a target and navigate to it
-    Navigable(Navigate),
+    Navigate(Navigate),
     /// Confirmation is required before modification is made to existing files :
     /// delete, move, copy
     NeedConfirmation(NeedConfirmation),
@@ -129,10 +129,10 @@ impl fmt::Display for Mode {
             Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
             Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
             Mode::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
-            Mode::Navigable(Navigate::Jump) => write!(f, "Jump  :  "),
-            Mode::Navigable(Navigate::History) => write!(f, "History :"),
-            Mode::Navigable(Navigate::Shortcut) => write!(f, "Shortcut :"),
-            Mode::Navigable(Navigate::Trash) => write!(f, "Trash    :"),
+            Mode::Navigate(Navigate::Jump) => write!(f, "Jump  :  "),
+            Mode::Navigate(Navigate::History) => write!(f, "History :"),
+            Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
+            Mode::Navigate(Navigate::Trash) => write!(f, "Trash    :"),
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
             Mode::Preview => write!(f, "Preview : "),
         }
