@@ -28,6 +28,7 @@ pub enum ErrorVariant {
     COMPRESSTOOLS,
     IMAGEERROR,
     SERDEYAML,
+    CHRONO,
     CUSTOM(String),
 }
 
@@ -171,6 +172,12 @@ impl From<serde_yaml::Error> for FmError {
 impl From<&std::io::Error> for FmError {
     fn from(error: &std::io::Error) -> Self {
         Self::new(ErrorVariant::IO, &error.to_string())
+    }
+}
+
+impl From<chrono::ParseError> for FmError {
+    fn from(error: chrono::ParseError) -> Self {
+        Self::new(ErrorVariant::CHRONO, &error.to_string())
     }
 }
 
