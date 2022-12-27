@@ -78,7 +78,7 @@ impl Status {
         let mut tab = Tab::new(args, height)?;
         tab.shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
-        let trash = Trash::parse_info_trashs()?;
+        let trash = Trash::new()?;
 
         Ok(Self {
             tabs: [tab.clone(), tab],

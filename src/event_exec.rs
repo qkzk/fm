@@ -1304,6 +1304,7 @@ impl EventExec {
     }
 
     pub fn event_trash_open(status: &mut Status) -> FmResult<()> {
+        status.trash.update()?;
         status.selected().mode = Mode::Navigate(Navigate::Trash);
         Ok(())
     }

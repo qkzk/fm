@@ -70,7 +70,6 @@ DeletionDate={}
         Ok(())
     }
 
-    // TODO! manage non ascii bytes
     /// Reads a .trashinfo file and parse it into a new instance.
     /// ATM some non bytes chars allowed in path aren't supported.
     ///
@@ -104,9 +103,7 @@ DeletionDate={}
                                 return trashinfo_error("Found Path line before TrashInfo");
                             }
                             let path_part = &line[5..];
-                            info!("from_trash_info_file: encoded url {}", path_part);
                             let cow_path_str = url_escape::decode(path_part);
-                            info!("from_trash_info_file: decoded url {}", cow_path_str);
                             let path_str = cow_path_str.as_ref();
                             option_path = Some(PathBuf::from(path_str));
                         } else if line.starts_with("DeletionDate=") && option_deleted_time.is_none()
@@ -125,14 +122,11 @@ DeletionDate={}
                 }
             }
             match (option_path, option_deleted_time) {
-                (Some(origin), Some(deletion_date)) => {
-                    info!("from_trash_info_file: {:?} parsed dest_name {} - deletion_date {} - origin {:?}", trash_info_file, dest_name, deletion_date, origin);
-                    Ok(Self {
-                        dest_name,
-                        deletion_date,
-                        origin,
-                    })
-                }
+                (Some(origin), Some(deletion_date)) => Ok(Self {
+                    dest_name,
+                    deletion_date,
+                    origin,
+                }),
                 _ => trashinfo_error("Couldn't parse the trash info file"),
             }
         } else {
@@ -203,14 +197,27 @@ impl Trash {
         ))
     }
 
-    /// Parse the info files into a new instance.
-    /// Only the file we can parse are read.
-    pub fn parse_info_trashs() -> FmResult<Self> {
+    /// Creates an empty view of the trash.
+    /// No file is read here, we wait for the user to open the trash first.
+    pub fn new() -> FmResult<Self> {
         let trash_folder_files = shellexpand::tilde(TRASH_FOLDER_FILES).to_string();
         let trash_folder_info = shellexpand::tilde(TRASH_FOLDER_INFO).to_string();
-        let index = 0;
+        create_if_not_exists(&trash_folder_files)?;
+        create_if_not_exists(&trash_folder_info)?;
 
-        match read_dir(&trash_folder_info) {
+        let index = 0;
+        let content = vec![];
+
+        Ok(Self {
+            content,
+            index,
+            trash_folder_files,
+            trash_folder_info,
+        })
+    }
+
+    fn parse_updated_content(trash_folder_info: &str) -> FmResult<Vec<TrashInfo>> {
+        match read_dir(trash_folder_info) {
             Ok(read_dir) => {
                 let content: Vec<TrashInfo> = read_dir
                     .filter_map(|res_direntry| res_direntry.ok())
@@ -222,18 +229,21 @@ impl Trash {
                     .filter_map(|trashinfo_res| trashinfo_res.ok())
                     .collect();
 
-                Ok(Self {
-                    content,
-                    index,
-                    trash_folder_files,
-                    trash_folder_info,
-                })
+                Ok(content)
             }
             Err(error) => {
-                info!("Couldn't read path {} - {}", trash_folder_files, error);
+                info!("Couldn't read path {:?} - {}", trash_folder_info, error);
                 Err(FmError::from(error))
             }
         }
+    }
+
+    /// Parse the info files into a new instance.
+    /// Only the file we can parse are read.
+    pub fn update(&mut self) -> FmResult<()> {
+        self.index = 0;
+        self.content = Self::parse_updated_content(&self.trash_folder_info)?;
+        Ok(())
     }
 
     /// Move a file to the trash folder and create a new trash info file.
@@ -384,4 +394,15 @@ fn find_parent(path: &Path) -> FmResult<PathBuf> {
             )
         })?
         .to_owned())
+}
+
+fn create_if_not_exists<P>(path: P) -> std::io::Result<()>
+where
+    std::path::PathBuf: From<P>,
+    P: std::convert::AsRef<std::path::Path> + std::marker::Copy,
+{
+    if !std::path::PathBuf::from(path).exists() {
+        std::fs::create_dir_all(path)?
+    }
+    Ok(())
 }
