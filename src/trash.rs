@@ -71,7 +71,6 @@ DeletionDate={}
     }
 
     /// Reads a .trashinfo file and parse it into a new instance.
-    /// ATM some non bytes chars allowed in path aren't supported.
     ///
     /// Let say `Document.trashinfo` contains :
     ///
@@ -250,7 +249,7 @@ impl Trash {
     /// Add a new TrashInfo to the content.
     pub fn trash(&mut self, origin: PathBuf) -> FmResult<()> {
         if origin.is_relative() {
-            return Err(FmError::custom("trash", "origin path shoudl be absolute"));
+            return Err(FmError::custom("trash", "origin path should be absolute"));
         }
 
         let dest_file_name = self.pick_dest_name(&origin)?;
@@ -262,7 +261,6 @@ impl Trash {
         dest_trashinfo_name.push_str(".trashinfo");
         let mut trashinfo_filename = PathBuf::from(&self.trash_folder_info);
         trashinfo_filename.push(dest_trashinfo_name);
-        info!("moving to trash ... {:?} -> {:?}", origin, dest_file_name);
         trash_info.write_trash_info(&trashinfo_filename)?;
 
         self.content.push(trash_info);
@@ -286,7 +284,10 @@ impl Trash {
 
         self.content = vec![];
 
-        info!("Emptied the trash: {} elements removed", number_of_elements);
+        info!(
+            "Emptied the trash: {} files permanently deleted",
+            number_of_elements
+        );
 
         Ok(())
     }
@@ -334,13 +335,7 @@ impl Trash {
         if !parent.exists() {
             std::fs::create_dir_all(&parent)?
         }
-        match std::fs::rename(&trashed_file_content, &origin) {
-            Ok(()) => info!(
-                "trash restore: restored {:?} <- {:?}",
-                origin, trashed_file_content
-            ),
-            Err(e) => info!("trash restore: rename error {:?}", e),
-        }
+        std::fs::rename(&trashed_file_content, &origin)?;
         Ok(())
     }
 
