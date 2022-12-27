@@ -244,6 +244,14 @@
 
 ### Version 0.1.7
 
+- [x] Trash following [xdg trash](https://specifications.freedesktop.org/trash-spec/trashspec-latest.html)
+
+  - [x] trahinfo
+  - [x] recreate parents if needed
+  - [x] allow multiple files with same name to be trashed
+  - [x] allow strange bytes in char
+  - [x] compatibiliy with other programs like trash-cli
+
 ## TODO
 
 - [ ] remote control
@@ -269,16 +277,6 @@
   - [ ] print with term: term...
 - [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
 - [ ] zoxide support
-
-### Version 0.1.7
-
-- [ ] Trash following [xdg trash](https://specifications.freedesktop.org/trash-spec/trashspec-latest.html)
-
-  - [x] trahinfo
-  - [x] recreate parents if needed
-  - [x] allow multiple files with same name to be trashed
-  - [x] allow strange bytes in char
-  - [ ] compatibiliy with other programs like trash-cli
 
 - [ ] Version 0.2.0 : tests
 

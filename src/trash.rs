@@ -44,11 +44,11 @@ impl TrashInfo {
 
     fn to_string(&self) -> FmResult<String> {
         Ok(format!(
-            "[TrashInfo]
+            "[Trash Info]
 Path={}
 DeletionDate={}
 ",
-            path_to_string(&self.origin)?,
+            url_escape::encode_fragment(path_to_string(&self.origin)?),
             self.deletion_date
         ))
     }
@@ -91,7 +91,7 @@ DeletionDate={}
             if let Ok(lines) = read_lines(trash_info_file) {
                 for (index, line_result) in lines.enumerate() {
                     if let Ok(line) = line_result.as_ref() {
-                        if line.starts_with("[TrashInfo]") {
+                        if line.starts_with("[Trash Info]") {
                             if index == 0 {
                                 found_trash_info_line = true;
                                 continue;
@@ -103,7 +103,11 @@ DeletionDate={}
                             if !found_trash_info_line {
                                 return trashinfo_error("Found Path line before TrashInfo");
                             }
-                            let path_str = &line[6..];
+                            let path_part = &line[5..];
+                            info!("from_trash_info_file: encoded url {}", path_part);
+                            let cow_path_str = url_escape::decode(path_part);
+                            info!("from_trash_info_file: decoded url {}", cow_path_str);
+                            let path_str = cow_path_str.as_ref();
                             option_path = Some(PathBuf::from(path_str));
                         } else if line.starts_with("DeletionDate=") && option_deleted_time.is_none()
                         {
@@ -121,11 +125,14 @@ DeletionDate={}
                 }
             }
             match (option_path, option_deleted_time) {
-                (Some(origin), Some(deletion_date)) => Ok(Self {
-                    dest_name,
-                    deletion_date,
-                    origin,
-                }),
+                (Some(origin), Some(deletion_date)) => {
+                    info!("from_trash_info_file: {:?} parsed dest_name {} - deletion_date {} - origin {:?}", trash_info_file, dest_name, deletion_date, origin);
+                    Ok(Self {
+                        dest_name,
+                        deletion_date,
+                        origin,
+                    })
+                }
                 _ => trashinfo_error("Couldn't parse the trash info file"),
             }
         } else {
@@ -317,8 +324,13 @@ impl Trash {
         if !parent.exists() {
             std::fs::create_dir_all(&parent)?
         }
-        std::fs::rename(&trashed_file_content, &origin)?;
-        info!("trash: restored {:?} <- {:?}", origin, trashed_file_content);
+        match std::fs::rename(&trashed_file_content, &origin) {
+            Ok(()) => info!(
+                "trash restore: restored {:?} <- {:?}",
+                origin, trashed_file_content
+            ),
+            Err(e) => info!("trash restore: rename error {:?}", e),
+        }
         Ok(())
     }
 
