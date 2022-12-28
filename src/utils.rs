@@ -1,3 +1,4 @@
+use std::io::BufRead;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -17,7 +18,7 @@ pub fn init_term() -> FmResult<Term> {
     Ok(term)
 }
 
-fn disk_used_by_path<'a>(disks: &'a [Disk], path: &Path) -> Option<&'a Disk> {
+pub fn disk_used_by_path<'a>(disks: &'a [Disk], path: &Path) -> Option<&'a Disk> {
     let mut disks: Vec<&Disk> = disks.iter().collect();
     disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
     disks.reverse();
@@ -68,4 +69,14 @@ pub fn drop_everything(
 /// Print the path on the stdout.
 pub fn print_on_quit(path_string: String) {
     println!("{}", path_string)
+}
+
+pub fn read_lines<P>(
+    filename: P,
+) -> std::io::Result<std::io::Lines<std::io::BufReader<std::fs::File>>>
+where
+    P: AsRef<std::path::Path>,
+{
+    let file = std::fs::File::open(filename)?;
+    Ok(std::io::BufReader::new(file).lines())
 }

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::completion::CompletionKind;
+use crate::completion::InputCompleted;
 
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.
@@ -16,16 +16,18 @@ pub enum MarkAction {
 /// Different kind of last edition command received requiring a confirmation.
 /// Copy, move and delete require a confirmation to prevent big mistakes.
 #[derive(Clone, Copy, Debug)]
-pub enum ConfirmedAction {
+pub enum NeedConfirmation {
     /// Copy flagged files
     Copy,
     /// Delete flagged files
     Delete,
     /// Move flagged files
     Move,
+    /// Empty Trash
+    EmptyTrash,
 }
 
-impl ConfirmedAction {
+impl NeedConfirmation {
     /// Offset before the cursor.
     /// Since we ask the user confirmation, we need to know how much space
     /// is needed.
@@ -34,16 +36,18 @@ impl ConfirmedAction {
             Self::Copy => 25,
             Self::Delete => 21,
             Self::Move => 25,
+            Self::EmptyTrash => 35,
         }
     }
 }
 
-impl std::fmt::Display for ConfirmedAction {
+impl std::fmt::Display for NeedConfirmation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Self::Delete => write!(f, "Delete files :"),
             Self::Move => write!(f, "Move files here :"),
             Self::Copy => write!(f, "Copy files here :"),
+            Self::EmptyTrash => write!(f, "Empty the trash ?"),
         }
     }
 }
@@ -54,7 +58,7 @@ impl std::fmt::Display for ConfirmedAction {
 /// A regex to match all files in current directory,
 /// a kind of sort, a mark name, a new mark or a filter.
 #[derive(Clone)]
-pub enum InputKind {
+pub enum InputSimple {
     /// Rename the selected file
     Rename,
     /// Change permissions of the selected file
@@ -83,6 +87,8 @@ pub enum Navigate {
     History,
     /// Navigate to a predefined shortcut
     Shortcut,
+    ///
+    Trash,
 }
 
 /// Different mode in which the application can be.
@@ -93,37 +99,40 @@ pub enum Mode {
     Normal,
     /// We'll be able to complete the input string with
     /// different kind of completed items (exec, goto, search)
-    InputCompleted(CompletionKind),
+    InputCompleted(InputCompleted),
     /// Select a target and navigate to it
-    Navigable(Navigate),
+    Navigate(Navigate),
     /// Confirmation is required before modification is made to existing files :
     /// delete, move, copy
-    NeedConfirmation(ConfirmedAction),
+    NeedConfirmation(NeedConfirmation),
     /// Preview a file content
     Preview,
     /// Modes requiring an input that can't be completed
-    InputSimple(InputKind),
+    InputSimple(InputSimple),
 }
 
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Mode::Normal => write!(f, "Normal:  "),
-            Mode::InputSimple(InputKind::Rename) => write!(f, "Rename:  "),
-            Mode::InputSimple(InputKind::Chmod) => write!(f, "Chmod:   "),
-            Mode::InputSimple(InputKind::Newfile) => write!(f, "Newfile: "),
-            Mode::InputSimple(InputKind::Newdir) => write!(f, "Newdir:  "),
-            Mode::InputSimple(InputKind::RegexMatch) => write!(f, "Regex:   "),
-            Mode::InputSimple(InputKind::Sort) => write!(f, "Sort: Kind Name Modif Size Ext Rev :"),
-            Mode::InputSimple(InputKind::Marks(_)) => write!(f, "Marks jump:"),
-            Mode::InputSimple(InputKind::Filter) => write!(f, "Filter:  "),
-            Mode::InputCompleted(CompletionKind::Exec) => write!(f, "Exec:    "),
-            Mode::InputCompleted(CompletionKind::Goto) => write!(f, "Goto  :  "),
-            Mode::InputCompleted(CompletionKind::Search) => write!(f, "Search:  "),
-            Mode::InputCompleted(CompletionKind::Nothing) => write!(f, "Nothing:  "),
-            Mode::Navigable(Navigate::Jump) => write!(f, "Jump  :  "),
-            Mode::Navigable(Navigate::History) => write!(f, "History :"),
-            Mode::Navigable(Navigate::Shortcut) => write!(f, "Shortcut :"),
+            Mode::InputSimple(InputSimple::Rename) => write!(f, "Rename:  "),
+            Mode::InputSimple(InputSimple::Chmod) => write!(f, "Chmod:   "),
+            Mode::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
+            Mode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
+            Mode::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
+            Mode::InputSimple(InputSimple::Sort) => {
+                write!(f, "Sort: Kind Name Modif Size Ext Rev :")
+            }
+            Mode::InputSimple(InputSimple::Marks(_)) => write!(f, "Marks jump:"),
+            Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
+            Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
+            Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
+            Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
+            Mode::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
+            Mode::Navigate(Navigate::Jump) => write!(f, "Jump  :  "),
+            Mode::Navigate(Navigate::History) => write!(f, "History :"),
+            Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
+            Mode::Navigate(Navigate::Trash) => write!(f, "Trash    :"),
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
             Mode::Preview => write!(f, "Preview : "),
         }

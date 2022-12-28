@@ -3,8 +3,12 @@ use std::cmp::min;
 use std::fs;
 use std::path;
 
+use copypasta::{ClipboardContext, ClipboardProvider};
+use log::info;
+use sysinfo::SystemExt;
+
 use crate::bulkrename::Bulkrename;
-use crate::completion::CompletionKind;
+use crate::completion::InputCompleted;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::RESERVED_ROWS;
@@ -13,16 +17,14 @@ use crate::fileinfo::{FileKind, PathContent};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::mode::Navigate;
-use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode};
+use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
 use crate::opener::execute_in_child;
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
-
-use copypasta::{ClipboardContext, ClipboardProvider};
-use log::info;
+use crate::utils::disk_used_by_path;
 
 /// Every kind of mutation of the application is defined here.
 /// It mutates `Status` or its children `Tab`.
@@ -104,7 +106,7 @@ impl EventExec {
         if status.selected().path_content.is_empty() {
             return Ok(());
         }
-        status.selected().mode = Mode::InputSimple(InputKind::Chmod);
+        status.selected().mode = Mode::InputSimple(InputSimple::Chmod);
         if status.flagged.is_empty() {
             status.flagged.push(
                 status.tabs[status.index]
@@ -123,14 +125,14 @@ impl EventExec {
     pub fn event_jump(status: &mut Status) -> FmResult<()> {
         if !status.flagged.is_empty() {
             status.flagged.index = 0;
-            status.selected().mode = Mode::Navigable(Navigate::Jump)
+            status.selected().mode = Mode::Navigate(Navigate::Jump)
         }
         Ok(())
     }
 
     /// Enter Marks new mode, allowing to bind a char to a path.
     pub fn event_marks_new(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputKind::Marks(MarkAction::New));
+        tab.mode = Mode::InputSimple(InputSimple::Marks(MarkAction::New));
         Ok(())
     }
 
@@ -139,7 +141,7 @@ impl EventExec {
         if status.marks.is_empty() {
             return Ok(());
         }
-        status.selected().mode = Mode::InputSimple(InputKind::Marks(MarkAction::Jump));
+        status.selected().mode = Mode::InputSimple(InputSimple::Marks(MarkAction::Jump));
         Ok(())
     }
 
@@ -256,7 +258,7 @@ impl EventExec {
     /// Execute a command requiring a confirmation (Delete, Move or Copy).
     pub fn exec_confirmed_action(
         status: &mut Status,
-        confirmed_action: ConfirmedAction,
+        confirmed_action: NeedConfirmation,
     ) -> FmResult<()> {
         Self::_exec_confirmed_action(status, confirmed_action)?;
         status.selected().mode = Mode::Normal;
@@ -265,12 +267,13 @@ impl EventExec {
 
     fn _exec_confirmed_action(
         status: &mut Status,
-        confirmed_action: ConfirmedAction,
+        confirmed_action: NeedConfirmation,
     ) -> FmResult<()> {
         match confirmed_action {
-            ConfirmedAction::Delete => Self::exec_delete_files(status),
-            ConfirmedAction::Move => Self::exec_cut_paste(status),
-            ConfirmedAction::Copy => Self::exec_copy_paste(status),
+            NeedConfirmation::Delete => Self::exec_delete_files(status),
+            NeedConfirmation::Move => Self::exec_cut_paste(status),
+            NeedConfirmation::Copy => Self::exec_copy_paste(status),
+            NeedConfirmation::EmptyTrash => Self::exec_trash_empty(status),
         }
     }
 
@@ -496,7 +499,7 @@ impl EventExec {
         if status.flagged.is_empty() {
             return Ok(());
         }
-        status.selected().mode = Mode::NeedConfirmation(ConfirmedAction::Copy);
+        status.selected().mode = Mode::NeedConfirmation(NeedConfirmation::Copy);
         Ok(())
     }
 
@@ -508,26 +511,26 @@ impl EventExec {
         if status.flagged.is_empty() {
             return Ok(());
         }
-        status.selected().mode = Mode::NeedConfirmation(ConfirmedAction::Move);
+        status.selected().mode = Mode::NeedConfirmation(NeedConfirmation::Move);
         Ok(())
     }
 
     /// Enter the new dir mode.
     pub fn event_new_dir(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputKind::Newdir);
+        tab.mode = Mode::InputSimple(InputSimple::Newdir);
         Ok(())
     }
 
     /// Enter the new file mode.
     pub fn event_new_file(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputKind::Newfile);
+        tab.mode = Mode::InputSimple(InputSimple::Newfile);
         Ok(())
     }
 
     /// Enter the execute mode. Most commands must be executed to allow for
     /// a confirmation.
     pub fn event_exec(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputCompleted(CompletionKind::Exec);
+        tab.mode = Mode::InputCompleted(InputCompleted::Exec);
         Ok(())
     }
 
@@ -556,7 +559,7 @@ impl EventExec {
         if status.flagged.is_empty() {
             return Ok(());
         }
-        status.selected().mode = Mode::NeedConfirmation(ConfirmedAction::Delete);
+        status.selected().mode = Mode::NeedConfirmation(NeedConfirmation::Delete);
         Ok(())
     }
 
@@ -575,20 +578,20 @@ impl EventExec {
     /// Matching items are displayed as you type them.
     pub fn event_search(tab: &mut Tab) -> FmResult<()> {
         tab.searched = None;
-        tab.mode = Mode::InputCompleted(CompletionKind::Search);
+        tab.mode = Mode::InputCompleted(InputCompleted::Search);
         Ok(())
     }
 
     /// Enter the regex mode.
     /// Every file matching the typed regex will be flagged.
     pub fn event_regex_match(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputKind::RegexMatch);
+        tab.mode = Mode::InputSimple(InputSimple::RegexMatch);
         Ok(())
     }
 
     /// Enter the sort mode, allowing the user to select a sort method.
     pub fn event_sort(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputKind::Sort);
+        tab.mode = Mode::InputSimple(InputSimple::Sort);
         Ok(())
     }
 
@@ -662,13 +665,13 @@ impl EventExec {
 
     /// Enter the rename mode.
     pub fn event_rename(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputKind::Rename);
+        tab.mode = Mode::InputSimple(InputSimple::Rename);
         Ok(())
     }
 
     /// Enter the goto mode where an user can type a path to jump to.
     pub fn event_goto(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputCompleted(CompletionKind::Goto);
+        tab.mode = Mode::InputCompleted(InputCompleted::Goto);
         tab.completion.reset();
         Ok(())
     }
@@ -693,7 +696,7 @@ impl EventExec {
     /// Enter the history mode, allowing to navigate to previously visited
     /// directory.
     pub fn event_history(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::Navigable(Navigate::History);
+        tab.mode = Mode::Navigate(Navigate::History);
         Ok(())
     }
 
@@ -701,7 +704,7 @@ impl EventExec {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn event_shortcut(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::Navigable(Navigate::Shortcut);
+        tab.mode = Mode::Navigate(Navigate::Shortcut);
         Ok(())
     }
 
@@ -791,7 +794,7 @@ impl EventExec {
     /// Enter the filter mode, where you can filter.
     /// See `crate::filter::Filter` for more details.
     pub fn event_filter(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputKind::Filter);
+        tab.mode = Mode::InputSimple(InputSimple::Filter);
         Ok(())
     }
 
@@ -1037,11 +1040,10 @@ impl EventExec {
     pub fn event_move_up(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_up_one_row(status.selected()),
-            Mode::Navigable(Navigate::Jump) => EventExec::event_jumplist_prev(status),
-            Mode::Navigable(Navigate::History) => EventExec::event_history_prev(status.selected()),
-            Mode::Navigable(Navigate::Shortcut) => {
-                EventExec::event_shortcut_prev(status.selected())
-            }
+            Mode::Navigate(Navigate::Jump) => EventExec::event_jumplist_prev(status),
+            Mode::Navigate(Navigate::History) => EventExec::event_history_prev(status.selected()),
+            Mode::Navigate(Navigate::Trash) => EventExec::event_trash_prev(status),
+            Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_prev(status.selected()),
             Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
             }
@@ -1055,11 +1057,10 @@ impl EventExec {
     pub fn event_move_down(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_down_one_row(status.selected()),
-            Mode::Navigable(Navigate::Jump) => EventExec::event_jumplist_next(status),
-            Mode::Navigable(Navigate::History) => EventExec::event_history_next(status.selected()),
-            Mode::Navigable(Navigate::Shortcut) => {
-                EventExec::event_shortcut_next(status.selected())
-            }
+            Mode::Navigate(Navigate::Jump) => EventExec::event_jumplist_next(status),
+            Mode::Navigate(Navigate::History) => EventExec::event_history_next(status.selected()),
+            Mode::Navigate(Navigate::Trash) => EventExec::event_trash_next(status),
+            Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_next(status.selected()),
             Mode::InputCompleted(_) => status.selected().completion.next(),
             _ => (),
         };
@@ -1159,26 +1160,27 @@ impl EventExec {
     /// Reset to normal mode afterwards.
     pub fn enter(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::InputSimple(InputKind::Rename) => EventExec::exec_rename(status.selected())?,
-            Mode::InputSimple(InputKind::Newfile) => EventExec::exec_newfile(status.selected())?,
-            Mode::InputSimple(InputKind::Newdir) => EventExec::exec_newdir(status.selected())?,
-            Mode::InputSimple(InputKind::Chmod) => EventExec::exec_chmod(status)?,
-            Mode::InputSimple(InputKind::RegexMatch) => EventExec::exec_regex(status)?,
-            Mode::InputSimple(InputKind::Filter) => EventExec::exec_filter(status.selected())?,
-            Mode::Navigable(Navigate::Jump) => EventExec::exec_jump(status)?,
-            Mode::Navigable(Navigate::History) => EventExec::exec_history(status.selected())?,
-            Mode::Navigable(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
-            Mode::InputCompleted(CompletionKind::Exec) => EventExec::exec_exec(status.selected())?,
-            Mode::InputCompleted(CompletionKind::Search) => {
+            Mode::InputSimple(InputSimple::Rename) => EventExec::exec_rename(status.selected())?,
+            Mode::InputSimple(InputSimple::Newfile) => EventExec::exec_newfile(status.selected())?,
+            Mode::InputSimple(InputSimple::Newdir) => EventExec::exec_newdir(status.selected())?,
+            Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,
+            Mode::InputSimple(InputSimple::RegexMatch) => EventExec::exec_regex(status)?,
+            Mode::InputSimple(InputSimple::Filter) => EventExec::exec_filter(status.selected())?,
+            Mode::Navigate(Navigate::Jump) => EventExec::exec_jump(status)?,
+            Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
+            Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
+            Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
+            Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
+            Mode::InputCompleted(InputCompleted::Search) => {
                 EventExec::exec_search(status.selected())
             }
-            Mode::InputCompleted(CompletionKind::Goto) => EventExec::exec_goto(status.selected())?,
+            Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
-            | Mode::InputCompleted(CompletionKind::Nothing)
-            | Mode::InputSimple(InputKind::Sort)
-            | Mode::InputSimple(InputKind::Marks(_)) => (),
+            | Mode::InputCompleted(InputCompleted::Nothing)
+            | Mode::InputSimple(InputSimple::Sort)
+            | Mode::InputSimple(InputSimple::Marks(_)) => (),
         };
 
         status.selected().input.reset();
@@ -1263,6 +1265,60 @@ impl EventExec {
 
     fn row_to_index(row: u16) -> usize {
         row as usize - RESERVED_ROWS
+    }
+
+    pub fn event_trash_move_file(status: &mut Status) -> FmResult<()> {
+        let trash_mount_point = disk_used_by_path(
+            status.system_info.disks(),
+            &std::path::PathBuf::from(&status.trash.trash_folder_files),
+        );
+
+        for flagged in status.flagged.content.iter() {
+            let origin_mount_point = disk_used_by_path(status.disks(), flagged);
+            if trash_mount_point != origin_mount_point {
+                continue;
+            }
+            status.trash.trash(flagged.to_owned())?;
+        }
+        status.flagged.clear();
+        status.selected().refresh_view()?;
+        Ok(())
+    }
+
+    pub fn event_trash_restore_file(status: &mut Status) -> FmResult<()> {
+        status.trash.restore()?;
+        status.selected().mode = Mode::Normal;
+        status.selected().refresh_view()?;
+        Ok(())
+    }
+
+    pub fn event_trash_empty(status: &mut Status) -> FmResult<()> {
+        status.selected().mode = Mode::NeedConfirmation(NeedConfirmation::EmptyTrash);
+        Ok(())
+    }
+
+    pub fn exec_trash_empty(status: &mut Status) -> FmResult<()> {
+        status.trash.empty_trash()?;
+        status.clear_flags_and_reset_view()?;
+        Ok(())
+    }
+
+    pub fn event_trash_open(status: &mut Status) -> FmResult<()> {
+        status.trash.update()?;
+        status.selected().mode = Mode::Navigate(Navigate::Trash);
+        Ok(())
+    }
+
+    pub fn event_trash_next(status: &mut Status) {
+        status.trash.next();
+    }
+
+    pub fn event_trash_prev(status: &mut Status) {
+        status.trash.prev();
+    }
+
+    pub fn event_trash_remove_file(status: &mut Status) -> FmResult<()> {
+        status.trash.remove()
     }
 }
 

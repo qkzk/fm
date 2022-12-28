@@ -242,6 +242,16 @@
 - [x] Improve saved marks display by using a BTreeMap, allowing sorting by char.
 - [x] Prevent entering jump marks mode if there's no mark to jump to
 
+### Version 0.1.7
+
+- [x] Trash respecting [trashspec](https://specifications.freedesktop.org/trash-spec/trashspec-latest.html)
+
+  - [x] trahinfo
+  - [x] recreate parents if needed
+  - [x] allow multiple files with same name to be trashed
+  - [x] allow strange bytes in path
+  - [x] compatibiliy with other programs like trash-cli
+
 ## TODO
 
 - [ ] remote control
@@ -260,10 +270,15 @@
 
 - [ ] vim keys, harmonize keybinds with ranger
 - [ ] scrollable shortcuts, marks & history
+- [ ] improve thumbnail with [chafa](https://hpjansson.org/chafa/) - [felix](https://github.com/kyoheiu/felix#usage)
+  - [x] use chafa
+  - [x] print in term
+  - [x] print in raw mode
+  - [ ] print with term: term...
 - [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
-- [ ] trash ?
+  - [ ] preview directory with tree view
+  - [ ] use as another display
 - [ ] zoxide support
-- [ ] improve thumbnail with [chafa](https://hpjansson.org/chafa/)
 
 - [ ] Version 0.2.0 : tests
 

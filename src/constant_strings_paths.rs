@@ -51,3 +51,7 @@ pub static HARDCODED_SHORTCUTS: [&str; 9] = [
     "/tmp",
     "/usr",
 ];
+/// Path to the trash folder files
+pub static TRASH_FOLDER_FILES: &str = "~/.local/share/Trash/files";
+/// Path to the trash folder info file
+pub static TRASH_FOLDER_INFO: &str = "~/.local/share/Trash/info";

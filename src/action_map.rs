@@ -67,6 +67,10 @@ pub enum ActionMap {
     ToggleDualPane,
     ToggleFlag,
     ToggleHidden,
+    TrashMoveFile,
+    TrashRestoreFile,
+    TrashEmpty,
+    TrashOpen,
 }
 
 impl ActionMap {
@@ -131,6 +135,10 @@ impl ActionMap {
             ActionMap::ToggleDualPane => EventExec::event_toggle_dualpane(status),
             ActionMap::ToggleFlag => EventExec::event_toggle_flag(status),
             ActionMap::ToggleHidden => EventExec::event_toggle_hidden(current_tab),
+            ActionMap::TrashMoveFile => EventExec::event_trash_move_file(status),
+            ActionMap::TrashRestoreFile => EventExec::event_trash_restore_file(status),
+            ActionMap::TrashEmpty => EventExec::exec_trash_empty(status),
+            ActionMap::TrashOpen => EventExec::event_trash_open(status),
 
             ActionMap::Nothing => Ok(()),
         }

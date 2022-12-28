@@ -3,7 +3,7 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::event_exec::EventExec;
 use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
-use crate::mode::{InputKind, MarkAction, Mode};
+use crate::mode::{InputSimple, MarkAction, Mode, Navigate};
 use crate::status::Status;
 
 /// Struct which mutates `tabs.selected()..
@@ -53,17 +53,17 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, key_char: Key) -> FmResult<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
-                Mode::InputSimple(InputKind::Marks(MarkAction::Jump)) => {
+                Mode::InputSimple(InputSimple::Marks(MarkAction::Jump)) => {
                     EventExec::exec_marks_jump(status, c)
                 }
-                Mode::InputSimple(InputKind::Marks(MarkAction::New)) => {
+                Mode::InputSimple(InputSimple::Marks(MarkAction::New)) => {
                     EventExec::exec_marks_new(status, c)
                 }
-                Mode::InputSimple(InputKind::Sort) => {
+                Mode::InputSimple(InputSimple::Sort) => {
                     EventExec::event_leave_sort(status.selected(), c);
                     Ok(())
                 }
-                Mode::InputSimple(InputKind::RegexMatch) => {
+                Mode::InputSimple(InputSimple::RegexMatch) => {
                     EventExec::event_text_insertion(status.selected(), c);
                     status.select_from_regex()?;
                     Ok(())
@@ -79,7 +79,6 @@ impl EventDispatcher {
                     Some(event_char) => event_char.matcher(status),
                     None => Ok(()),
                 },
-                Mode::Preview | Mode::Navigable(_) => EventExec::event_normal(status.selected()),
                 Mode::NeedConfirmation(confirmed_action) => {
                     if c == 'y' {
                         let _ = EventExec::exec_confirmed_action(status, confirmed_action);
@@ -87,6 +86,10 @@ impl EventDispatcher {
                     EventExec::event_leave_need_confirmation(status.selected());
                     Ok(())
                 }
+                Mode::Navigate(Navigate::Trash) if c == 'x' => {
+                    EventExec::event_trash_remove_file(status)
+                }
+                Mode::Preview | Mode::Navigate(_) => EventExec::event_normal(status.selected()),
             },
             _ => Ok(()),
         }

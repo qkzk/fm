@@ -850,7 +850,7 @@ dependencies = [
 
 [[package]]
 name = "fm-tui"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "chrono",
  "clap 4.0.2",
@@ -877,6 +877,7 @@ dependencies = [
  "syntect",
  "sysinfo",
  "tuikit",
+ "url-escape",
  "users",
 ]
 
@@ -1591,6 +1592,12 @@ dependencies = [
  "type1-encoding-parser",
  "unicode-normalization",
 ]
+
+[[package]]
+name = "percent-encoding"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
 name = "pin-project"
@@ -2660,6 +2667,15 @@ name = "unsafe-libyaml"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1e5fa573d8ac5f1a856f8d7be41d390ee973daf97c806b2c1a465e4e1406e68"
+
+[[package]]
+name = "url-escape"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44e0ce4d1246d075ca5abec4b41d33e87a6054d08e2366b63205665e950db218"
+dependencies = [
+ "percent-encoding",
+]
 
 [[package]]
 name = "users"

@@ -16,11 +16,12 @@ use crate::constant_strings_paths::{
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{FmError, FmResult};
-use crate::mode::{ConfirmedAction, InputKind, MarkAction, Mode, Navigate};
+use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::preview::{Preview, TextKind, Window};
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
+use crate::trash::TrashInfo;
 
 /// At least 100 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 100;
@@ -62,15 +63,16 @@ struct WinTab<'a> {
 impl<'a> Draw for WinTab<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         match self.tab.mode {
-            Mode::Navigable(Navigate::Jump) => self.destination(canvas, &self.status.flagged),
-            Mode::Navigable(Navigate::History) => self.destination(canvas, &self.tab.history),
-            Mode::Navigable(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
+            Mode::Navigate(Navigate::Jump) => self.destination(canvas, &self.status.flagged),
+            Mode::Navigate(Navigate::History) => self.destination(canvas, &self.tab.history),
+            Mode::Navigate(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
+            Mode::Navigate(Navigate::Trash) => self.trash(canvas, &self.status.trash),
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
             Mode::Preview => self.preview(self.tab, canvas),
-            Mode::InputSimple(InputKind::Marks(_)) => self.marks(self.status, self.tab, canvas),
+            Mode::InputSimple(InputSimple::Marks(_)) => self.marks(self.status, self.tab, canvas),
             _ => self.files(self.status, self.tab, canvas),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -135,7 +137,7 @@ impl<'a> WinTab<'a> {
                     )?;
                 }
             }
-            Mode::InputSimple(InputKind::Filter) => {
+            Mode::InputSimple(InputSimple::Filter) => {
                 canvas.print_with_attr(1, 0, FILTER_PRESENTATION, Self::ATTR_YELLOW_BOLD)?;
             }
             _ => (),
@@ -171,8 +173,12 @@ impl<'a> WinTab<'a> {
                 }
                 _ => Self::default_preview_first_line(tab),
             },
-            Mode::InputSimple(InputKind::Marks(MarkAction::Jump)) => vec!["Jump to...".to_owned()],
-            Mode::InputSimple(InputKind::Marks(MarkAction::New)) => vec!["Save mark...".to_owned()],
+            Mode::InputSimple(InputSimple::Marks(MarkAction::Jump)) => {
+                vec!["Jump to...".to_owned()]
+            }
+            Mode::InputSimple(InputSimple::Marks(MarkAction::New)) => {
+                vec!["Save mark...".to_owned()]
+            }
             _ => {
                 vec![
                     format!("{}", tab.mode.clone()),
@@ -242,12 +248,12 @@ impl<'a> WinTab<'a> {
     fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
             Mode::Normal
-            | Mode::InputSimple(InputKind::Marks(_))
-            | Mode::Navigable(_)
+            | Mode::InputSimple(InputSimple::Marks(_))
+            | Mode::Navigate(_)
             | Mode::Preview => {
                 canvas.show_cursor(false)?;
             }
-            Mode::InputSimple(InputKind::Sort) => {
+            Mode::InputSimple(InputSimple::Sort) => {
                 canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
             }
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
@@ -284,6 +290,28 @@ impl<'a> WinTab<'a> {
         Ok(())
     }
 
+    fn trash(
+        &self,
+        canvas: &mut dyn Canvas,
+        selectable: &impl SelectableContent<TrashInfo>,
+    ) -> FmResult<()> {
+        canvas.print(1, 0, "Restore the selected file")?;
+        for (row, trashinfo) in selectable.content().iter().enumerate() {
+            let mut attr = Attr::default();
+            if row == selectable.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                &format!("{}", trashinfo),
+                attr,
+            );
+        }
+        Ok(())
+    }
+
     /// Display the possible completion items. The currently selected one is
     /// reversed.
     fn completion(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
@@ -303,32 +331,47 @@ impl<'a> WinTab<'a> {
         &self,
         status: &Status,
         tab: &Tab,
-        confirmed_mode: ConfirmedAction,
+        confirmed_mode: NeedConfirmation,
         canvas: &mut dyn Canvas,
     ) -> FmResult<()> {
-        for (row, path) in status.flagged.content.iter().enumerate() {
-            canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP + 2,
-                4,
-                path.to_str()
-                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
-                Attr::default(),
-            )?;
-        }
         info!("confirmed action: {:?}", confirmed_mode);
-        let content = match confirmed_mode {
-            ConfirmedAction::Copy => {
+        match confirmed_mode {
+            NeedConfirmation::EmptyTrash => {
+                for (row, trashinfo) in status.trash.content.iter().enumerate() {
+                    canvas.print_with_attr(
+                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                        4,
+                        &format!("{}", trashinfo),
+                        Attr::default(),
+                    )?;
+                }
+            }
+            NeedConfirmation::Copy | NeedConfirmation::Delete | NeedConfirmation::Move => {
+                for (row, path) in status.flagged.content.iter().enumerate() {
+                    canvas.print_with_attr(
+                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                        4,
+                        path.to_str()
+                            .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
+                        Attr::default(),
+                    )?;
+                }
+            }
+        }
+        let confirmation_string = match confirmed_mode {
+            NeedConfirmation::Copy => {
                 format!(
                     "Files will be copied to {}",
                     tab.path_content.path_to_str()?
                 )
             }
-            ConfirmedAction::Delete => "Files will deleted permanently".to_owned(),
-            ConfirmedAction::Move => {
+            NeedConfirmation::Delete => "Files will deleted permanently".to_owned(),
+            NeedConfirmation::Move => {
                 format!("Files will be moved to {}", tab.path_content.path_to_str()?)
             }
+            NeedConfirmation::EmptyTrash => "Trash will be emptied".to_owned(),
         };
-        canvas.print_with_attr(2, 3, &content, Self::ATTR_YELLOW_BOLD)?;
+        canvas.print_with_attr(2, 3, &confirmation_string, Self::ATTR_YELLOW_BOLD)?;
 
         Ok(())
     }

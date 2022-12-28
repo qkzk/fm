@@ -19,6 +19,7 @@ use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
 use crate::skim::Skimer;
 use crate::tab::Tab;
+use crate::trash::Trash;
 use crate::utils::disk_space;
 
 /// Holds every mutable parameter of the application itself, except for
@@ -46,13 +47,15 @@ pub struct Status {
     skimer: Skimer,
     /// do we display one or two tabs ?
     pub dual_pane: bool,
-    system_info: System,
+    pub system_info: System,
     /// do we display all info or only the filenames ?
     pub display_full: bool,
     /// The opener used by the application.
     pub opener: Opener,
     /// The help string.
     pub help: String,
+    /// The trash
+    pub trash: Trash,
 }
 
 impl Status {
@@ -75,6 +78,7 @@ impl Status {
         let mut tab = Tab::new(args, height)?;
         tab.shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
+        let trash = Trash::new()?;
 
         Ok(Self {
             tabs: [tab.clone(), tab],
@@ -89,6 +93,7 @@ impl Status {
             display_full: true,
             opener,
             help,
+            trash,
         })
     }
 

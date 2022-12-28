@@ -6,7 +6,7 @@ use crate::mode::Mode;
 
 /// Different kind of completions
 #[derive(Clone, Default)]
-pub enum CompletionKind {
+pub enum InputCompleted {
     /// No completion needed
     #[default]
     Nothing,
@@ -22,7 +22,7 @@ pub enum CompletionKind {
 /// showing where the user is in the vec.
 #[derive(Clone, Default)]
 pub struct Completion {
-    pub kind: CompletionKind,
+    pub kind: InputCompleted,
     /// Possible completions
     pub proposals: Vec<String>,
     /// Which completion is selected by the user
@@ -34,7 +34,7 @@ impl Completion {
         if let Mode::InputCompleted(completion_kind) = mode {
             self.kind = completion_kind.clone()
         } else {
-            self.kind = CompletionKind::Nothing
+            self.kind = InputCompleted::Nothing
         }
     }
 
@@ -104,10 +104,10 @@ impl Completion {
         current_path: String,
     ) -> FmResult<()> {
         match self.kind {
-            CompletionKind::Exec => self.exec(input_string),
-            CompletionKind::Goto => self.goto(input_string, current_path),
-            CompletionKind::Search => self.search(input_string, path_content),
-            CompletionKind::Nothing => Ok(()),
+            InputCompleted::Exec => self.exec(input_string),
+            InputCompleted::Goto => self.goto(input_string, current_path),
+            InputCompleted::Search => self.search(input_string, path_content),
+            InputCompleted::Nothing => Ok(()),
         }
     }
 
