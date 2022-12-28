@@ -244,12 +244,12 @@
 
 ### Version 0.1.7
 
-- [x] Trash following [xdg trash](https://specifications.freedesktop.org/trash-spec/trashspec-latest.html)
+- [x] Trash respecting [trashspec](https://specifications.freedesktop.org/trash-spec/trashspec-latest.html)
 
   - [x] trahinfo
   - [x] recreate parents if needed
   - [x] allow multiple files with same name to be trashed
-  - [x] allow strange bytes in char
+  - [x] allow strange bytes in path
   - [x] compatibiliy with other programs like trash-cli
 
 ## TODO
@@ -276,6 +276,8 @@
   - [x] print in raw mode
   - [ ] print with term: term...
 - [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
+  - [ ] preview directory with tree view
+  - [ ] use as another display
 - [ ] zoxide support
 
 - [ ] Version 0.2.0 : tests
