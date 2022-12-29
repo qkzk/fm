@@ -543,10 +543,13 @@ impl EventExec {
             return Ok(());
         }
         if let Some(file_info) = tab.path_content.selected() {
-            if let FileKind::NormalFile = file_info.file_kind {
-                tab.mode = Mode::Preview;
-                tab.preview = Preview::new(file_info)?;
-                tab.window.reset(tab.preview.len());
+            match file_info.file_kind {
+                FileKind::Directory | FileKind::NormalFile => {
+                    tab.mode = Mode::Preview;
+                    tab.preview = Preview::new(file_info)?;
+                    tab.window.reset(tab.preview.len());
+                }
+                _ => (),
             }
         }
         Ok(())

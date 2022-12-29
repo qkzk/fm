@@ -461,6 +461,8 @@ impl<'a> WinTab<'a> {
             Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Exif(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Media(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Directory(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+
             Preview::Empty => (),
         }
         Ok(())

@@ -9,15 +9,17 @@ use std::slice::Iter;
 use content_inspector::{inspect, ContentType};
 use image::imageops::FilterType;
 use image::{ImageBuffer, Rgb};
+use log::info;
 use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
+use termtree::Tree;
 use tuikit::attr::{Attr, Color};
 
 use crate::compress::list_files;
-use crate::fileinfo::FileInfo;
-use crate::fm_error::FmResult;
+use crate::fileinfo::{FileInfo, FileKind};
+use crate::fm_error::{FmError, FmResult};
 
 /// Different kind of preview used to display some informaitons
 /// About the file.
@@ -32,6 +34,7 @@ pub enum Preview {
     Exif(ExifContent),
     Thumbnail(Pixels),
     Media(MediaContent),
+    Directory(Directory),
     Empty,
 }
 
@@ -49,6 +52,10 @@ impl Preview {
     /// Sometimes it reads the content of the file, sometimes it delegates
     /// it to the display method.
     pub fn new(file_info: &FileInfo) -> FmResult<Self> {
+        if let FileKind::Directory = file_info.file_kind {
+            info!("Preview a directory");
+            return Ok(Self::Directory(Directory::new(&file_info.path)?));
+        }
         match file_info.extension.to_lowercase().as_str() {
             e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
             e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
@@ -112,6 +119,7 @@ impl Preview {
             Self::Thumbnail(_img) => 0,
             Self::Exif(exif_content) => exif_content.len(),
             Self::Media(media) => media.len(),
+            Self::Directory(directory) => directory.len(),
         }
     }
 
@@ -478,6 +486,64 @@ impl Pixels {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Directory {
+    pub content: Vec<String>,
+    len: usize,
+}
+
+impl Directory {
+    pub fn new(path: &Path) -> FmResult<Self> {
+        let tree = tree(path.to_str().ok_or_else(|| {
+            FmError::custom("Directory Preview", "Can't parse the filename to str")
+        })?)?;
+        let tree_str = format!("{}", tree);
+        let tree_lines: Vec<String> = tree_str.lines().map(|s| s.to_owned()).collect();
+        let len = tree_lines.len();
+
+        Ok(Self {
+            content: tree_lines,
+            len,
+        })
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+}
+
+fn filename_as_string<P: AsRef<Path>>(p: P) -> String {
+    p.as_ref()
+        .file_name()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap_or_default()
+        .to_owned()
+}
+
+fn tree<P: AsRef<Path>>(p: P) -> std::io::Result<Tree<String>> {
+    let result = std::fs::read_dir(&p)?.filter_map(|e| e.ok()).fold(
+        Tree::new(filename_as_string(p.as_ref().canonicalize()?)),
+        |mut root, entry| {
+            if let Ok(dir) = entry.metadata() {
+                if dir.is_dir() {
+                    if let Ok(tree) = tree(entry.path()) {
+                        root.push(tree);
+                    }
+                } else {
+                    root.push(Tree::new(filename_as_string(entry.path())));
+                }
+            }
+            root
+        },
+    );
+    Ok(result)
+}
+
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
@@ -530,6 +596,7 @@ impl_window!(PdfContent, String);
 impl_window!(ZipContent, String);
 impl_window!(ExifContent, String);
 impl_window!(MediaContent, String);
+impl_window!(Directory, String);
 
 fn is_ext_zip(ext: &str) -> bool {
     matches!(
