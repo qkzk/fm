@@ -292,7 +292,7 @@ impl EventExec {
         tab.path_content.reset_files()?;
         tab.window.reset(tab.path_content.content.len());
         tab.mode = Mode::Normal;
-        tab.preview = Preview::empty();
+        tab.preview = Preview::new_empty();
         Ok(())
     }
 

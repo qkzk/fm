@@ -47,7 +47,8 @@ pub enum TextKind {
 impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
-    /// Creates a new preview instance based on the extension of the file.
+    /// Creates a new preview instance based on the filekind and the extension of
+    /// the file.
     /// Sometimes it reads the content of the file, sometimes it delegates
     /// it to the display method.
     pub fn new(file_info: &FileInfo) -> FmResult<Self> {
@@ -104,7 +105,7 @@ impl Preview {
     }
 
     /// Empty preview, holding nothing.
-    pub fn empty() -> Self {
+    pub fn new_empty() -> Self {
         Self::Empty
     }
 
@@ -136,13 +137,13 @@ impl Preview {
 #[derive(Clone, Default)]
 pub struct TextContent {
     pub kind: TextKind,
-    pub content: Box<Vec<String>>,
+    content: Vec<String>,
     length: usize,
 }
 
 impl TextContent {
     fn help(help: String) -> Self {
-        let content: Box<Vec<String>> = Box::new(help.split('\n').map(|s| s.to_owned()).collect());
+        let content: Vec<String> = help.split('\n').map(|s| s.to_owned()).collect();
         Self {
             kind: TextKind::HELP,
             length: content.len(),
@@ -152,12 +153,10 @@ impl TextContent {
 
     fn from_file(path: &Path) -> FmResult<Self> {
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
-        let content: Box<Vec<String>> = Box::new(
-            reader
-                .lines()
-                .map(|line| line.unwrap_or_else(|_| "".to_owned()))
-                .collect(),
-        );
+        let content: Vec<String> = reader
+            .lines()
+            .map(|line| line.unwrap_or_else(|_| "".to_owned()))
+            .collect();
         Ok(Self {
             kind: TextKind::TEXTFILE,
             length: content.len(),
@@ -174,7 +173,7 @@ impl TextContent {
 /// The file is colored propery and line numbers are shown.
 #[derive(Clone, Default)]
 pub struct HLContent {
-    pub content: Vec<Vec<SyntaxedString>>,
+    content: Vec<Vec<SyntaxedString>>,
     length: usize,
 }
 
@@ -183,7 +182,7 @@ impl HLContent {
     /// It may file if the file isn't properly formatted or the extension
     /// is wrong (ie. python content with .c extension).
     /// ATM only Solarized (dark) theme is supported.
-    pub fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> FmResult<Self> {
+    fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> FmResult<Self> {
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
         let raw_content: Vec<String> = reader
             .lines()
@@ -242,7 +241,7 @@ impl SyntaxedString {
     /// Parse a content and style into a `SyntaxedString`
     /// Only the foreground color is read, we don't the background nor
     /// the style (bold, italic, underline) defined in Syntect.
-    pub fn from_syntect(col: usize, content: String, style: Style) -> Self {
+    fn from_syntect(col: usize, content: String, style: Style) -> Self {
         let fg = style.foreground;
         let attr = Attr::from(Color::Rgb(fg.r, fg.g, fg.b));
         Self { col, content, attr }
@@ -267,7 +266,7 @@ impl SyntaxedString {
 pub struct BinaryContent {
     pub path: PathBuf,
     length: u64,
-    pub content: Box<Vec<Line>>,
+    content: Vec<Line>,
 }
 
 impl BinaryContent {
@@ -276,7 +275,7 @@ impl BinaryContent {
     fn new(file_info: &FileInfo) -> FmResult<Self> {
         let mut reader = BufReader::new(std::fs::File::open(file_info.path.clone())?);
         let mut buffer = [0; Self::LINE_WIDTH];
-        let mut content: Box<Vec<Line>> = Box::new(vec![]);
+        let mut content: Vec<Line> = vec![];
         while let Ok(nb_bytes_read) = reader.read(&mut buffer[..]) {
             if nb_bytes_read != Self::LINE_WIDTH {
                 content.push(Line::new((&buffer[0..nb_bytes_read]).into()));
@@ -344,7 +343,7 @@ impl Line {
 #[derive(Clone)]
 pub struct PdfContent {
     length: usize,
-    pub content: Vec<String>,
+    content: Vec<String>,
 }
 
 impl PdfContent {
@@ -377,7 +376,7 @@ impl PdfContent {
 #[derive(Clone)]
 pub struct ZipContent {
     length: usize,
-    pub content: Vec<String>,
+    content: Vec<String>,
 }
 
 impl ZipContent {
@@ -403,7 +402,7 @@ impl ZipContent {
 pub struct ExifContent {
     length: usize,
     /// The exif strings.
-    pub content: Vec<String>,
+    content: Vec<String>,
 }
 
 impl ExifContent {
@@ -443,7 +442,7 @@ impl ExifContent {
 pub struct MediaContent {
     length: usize,
     /// The media info details.
-    pub content: Vec<String>,
+    content: Vec<String>,
 }
 
 impl MediaContent {
@@ -474,7 +473,7 @@ pub struct Pixels {
 
 impl Pixels {
     /// Creates a new preview instance. It simply holds a path.
-    pub fn new(img_path: PathBuf) -> FmResult<Self> {
+    fn new(img_path: PathBuf) -> FmResult<Self> {
         Ok(Self { img_path })
     }
 
@@ -488,6 +487,9 @@ impl Pixels {
     }
 }
 
+/// Display a tree view of a directory.
+/// The "tree view" is calculated recursively. It may take some time
+/// if the directory has a lot of children.
 #[derive(Clone, Debug)]
 pub struct Directory {
     pub content: Vec<String>,
@@ -495,8 +497,8 @@ pub struct Directory {
 }
 
 impl Directory {
-    pub fn new(path: &Path) -> FmResult<Self> {
-        let tree = tree(path.to_str().ok_or_else(|| {
+    fn new(path: &Path) -> FmResult<Self> {
+        let tree = tree_view(path.to_str().ok_or_else(|| {
             FmError::custom("Directory Preview", "Can't parse the filename to str")
         })?)?;
         let tree_str = format!("{}", tree);
@@ -509,12 +511,8 @@ impl Directory {
         })
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.len
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
     }
 }
 
@@ -617,13 +615,13 @@ fn filename_as_string<P: AsRef<Path>>(p: P) -> String {
         .to_owned()
 }
 
-fn tree<P: AsRef<Path>>(p: P) -> std::io::Result<Tree<String>> {
+fn tree_view<P: AsRef<Path>>(p: P) -> std::io::Result<Tree<String>> {
     let result = std::fs::read_dir(&p)?.filter_map(|e| e.ok()).fold(
         Tree::new(filename_as_string(p.as_ref().canonicalize()?)),
         |mut root, entry| {
             if let Ok(dir) = entry.metadata() {
                 if dir.is_dir() {
-                    if let Ok(tree) = tree(entry.path()) {
+                    if let Ok(tree) = tree_view(entry.path()) {
                         root.push(tree);
                     }
                 } else {
