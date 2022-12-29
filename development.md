@@ -252,6 +252,9 @@
   - [x] allow strange bytes in path
   - [x] compatibiliy with other programs like trash-cli
 
+- [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
+  - [x] preview directory with tree view
+
 ## TODO
 
 - [ ] remote control
