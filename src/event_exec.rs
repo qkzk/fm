@@ -1270,6 +1270,11 @@ impl EventExec {
         row as usize - RESERVED_ROWS
     }
 
+    /// Move flagged files to the trash directory.
+    /// More information in the trash crate itself.
+    /// If the file is mounted on the $topdir of the trash (aka the $HOME mount point),
+    /// it is moved there.
+    /// Else, nothing is done.
     pub fn event_trash_move_file(status: &mut Status) -> FmResult<()> {
         let trash_mount_point = disk_used_by_path(
             status.system_info.disks(),
@@ -1288,6 +1293,8 @@ impl EventExec {
         Ok(())
     }
 
+    /// Restore a file from the trash if possible.
+    /// Parent folders are created on the file if needed.
     pub fn event_trash_restore_file(status: &mut Status) -> FmResult<()> {
         status.trash.restore()?;
         status.selected().mode = Mode::Normal;
@@ -1295,31 +1302,41 @@ impl EventExec {
         Ok(())
     }
 
+    /// Ask the user if he wants to empty the trash.
+    /// It requires a confimation before doing anything
     pub fn event_trash_empty(status: &mut Status) -> FmResult<()> {
         status.selected().mode = Mode::NeedConfirmation(NeedConfirmation::EmptyTrash);
         Ok(())
     }
 
+    /// Empty the trash folder permanently.
     pub fn exec_trash_empty(status: &mut Status) -> FmResult<()> {
         status.trash.empty_trash()?;
         status.clear_flags_and_reset_view()?;
         Ok(())
     }
 
+    /// Open the trash.
+    /// Displays a navigable content of the trash.
+    /// Each item can be restored or deleted.
+    /// Each opening refresh the trash content.
     pub fn event_trash_open(status: &mut Status) -> FmResult<()> {
         status.trash.update()?;
         status.selected().mode = Mode::Navigate(Navigate::Trash);
         Ok(())
     }
 
+    /// Select the next element in the trash folder
     pub fn event_trash_next(status: &mut Status) {
         status.trash.next();
     }
 
+    /// Select the previous element in the trash folder
     pub fn event_trash_prev(status: &mut Status) {
         status.trash.prev();
     }
 
+    /// Remove the selected element in the trash folder.
     pub fn event_trash_remove_file(status: &mut Status) -> FmResult<()> {
         status.trash.remove()
     }
