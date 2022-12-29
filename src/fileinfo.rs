@@ -548,7 +548,7 @@ pub fn human_size(bytes: u64) -> String {
 
 /// Extract the optional extension from a filename.
 /// Returns empty &str aka "" if the file has no extension.
-fn extract_extension(path: &path::Path) -> &str {
+pub fn extract_extension(path: &path::Path) -> &str {
     path.extension()
         .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default()

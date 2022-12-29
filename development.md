@@ -279,8 +279,9 @@
   - [x] print in raw mode
   - [ ] print with term: term...
 - [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
-  - [ ] preview directory with tree view
-  - [ ] use as another display
+  - [x] preview directory with tree view
+  - [x] use as another display
+  - [ ] navigation
 - [ ] zoxide support
 
 - [ ] Version 0.2.0 : tests

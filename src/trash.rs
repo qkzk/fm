@@ -62,7 +62,6 @@ DeletionDate={}
     pub fn write_trash_info(&self, dest: &Path) -> FmResult<()> {
         info!("writing trash_info {} for {:?}", self, dest);
 
-        // let mut file = OpenOptions::new().write(true).open(dest)?;
         let mut file = std::fs::File::create(dest)?;
         if let Err(e) = write!(file, "{}", self.to_string()?) {
             info!("Couldn't write to trash file: {}", e)

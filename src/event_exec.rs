@@ -648,13 +648,12 @@ impl EventExec {
     /// Open a file with custom opener.
     pub fn event_open_file(status: &mut Status) -> FmResult<()> {
         match status.opener.open(
-            status
+            &status
                 .selected_non_mut()
                 .path_content
                 .selected()
                 .ok_or_else(|| FmError::custom("event open file", "Empty directory"))?
-                .path
-                .clone(),
+                .path,
         ) {
             Ok(_) => (),
             Err(e) => info!(
