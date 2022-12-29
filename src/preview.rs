@@ -9,7 +9,6 @@ use std::slice::Iter;
 use content_inspector::{inspect, ContentType};
 use image::imageops::FilterType;
 use image::{ImageBuffer, Rgb};
-use log::info;
 use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
@@ -52,19 +51,22 @@ impl Preview {
     /// Sometimes it reads the content of the file, sometimes it delegates
     /// it to the display method.
     pub fn new(file_info: &FileInfo) -> FmResult<Self> {
-        if let FileKind::Directory = file_info.file_kind {
-            info!("Preview a directory");
-            return Ok(Self::Directory(Directory::new(&file_info.path)?));
-        }
-        match file_info.extension.to_lowercase().as_str() {
-            e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
-            e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
-            e if is_ext_image(e) => Ok(Self::Exif(ExifContent::new(&file_info.path)?)),
-            e if is_ext_media(e) => Ok(Self::Media(MediaContent::new(&file_info.path)?)),
-            e => match Self::preview_syntaxed(e, &file_info.path) {
-                Some(syntaxed_preview) => Ok(syntaxed_preview),
-                None => Self::preview_text_or_binary(file_info),
+        match file_info.file_kind {
+            FileKind::Directory => Ok(Self::Directory(Directory::new(&file_info.path)?)),
+            FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
+                e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
+                e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
+                e if is_ext_image(e) => Ok(Self::Exif(ExifContent::new(&file_info.path)?)),
+                e if is_ext_media(e) => Ok(Self::Media(MediaContent::new(&file_info.path)?)),
+                e => match Self::preview_syntaxed(e, &file_info.path) {
+                    Some(syntaxed_preview) => Ok(syntaxed_preview),
+                    None => Self::preview_text_or_binary(file_info),
+                },
             },
+            _ => Err(FmError::custom(
+                "new preview",
+                "Can't preview this filekind",
+            )),
         }
     }
 
@@ -516,34 +518,6 @@ impl Directory {
     }
 }
 
-fn filename_as_string<P: AsRef<Path>>(p: P) -> String {
-    p.as_ref()
-        .file_name()
-        .unwrap_or_default()
-        .to_str()
-        .unwrap_or_default()
-        .to_owned()
-}
-
-fn tree<P: AsRef<Path>>(p: P) -> std::io::Result<Tree<String>> {
-    let result = std::fs::read_dir(&p)?.filter_map(|e| e.ok()).fold(
-        Tree::new(filename_as_string(p.as_ref().canonicalize()?)),
-        |mut root, entry| {
-            if let Ok(dir) = entry.metadata() {
-                if dir.is_dir() {
-                    if let Ok(tree) = tree(entry.path()) {
-                        root.push(tree);
-                    }
-                } else {
-                    root.push(Tree::new(filename_as_string(entry.path())));
-                }
-            }
-            root
-        },
-    );
-    Ok(result)
-}
-
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
@@ -632,6 +606,34 @@ fn is_ext_media(ext: &str) -> bool {
 
 fn is_ext_pdf(ext: &str) -> bool {
     ext == "pdf"
+}
+
+fn filename_as_string<P: AsRef<Path>>(p: P) -> String {
+    p.as_ref()
+        .file_name()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap_or_default()
+        .to_owned()
+}
+
+fn tree<P: AsRef<Path>>(p: P) -> std::io::Result<Tree<String>> {
+    let result = std::fs::read_dir(&p)?.filter_map(|e| e.ok()).fold(
+        Tree::new(filename_as_string(p.as_ref().canonicalize()?)),
+        |mut root, entry| {
+            if let Ok(dir) = entry.metadata() {
+                if dir.is_dir() {
+                    if let Ok(tree) = tree(entry.path()) {
+                        root.push(tree);
+                    }
+                } else {
+                    root.push(Tree::new(filename_as_string(entry.path())));
+                }
+            }
+            root
+        },
+    );
+    Ok(result)
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
