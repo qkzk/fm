@@ -498,9 +498,12 @@ pub struct Directory {
 
 impl Directory {
     fn new(path: &Path) -> FmResult<Self> {
-        let tree = tree_view(path.to_str().ok_or_else(|| {
-            FmError::custom("Directory Preview", "Can't parse the filename to str")
-        })?)?;
+        let tree = tree_view(
+            path.to_str().ok_or_else(|| {
+                FmError::custom("Directory Preview", "Can't parse the filename to str")
+            })?,
+            10,
+        )?;
         let tree_str = format!("{}", tree);
         let tree_lines: Vec<String> = tree_str.lines().map(|s| s.to_owned()).collect();
         let len = tree_lines.len();
@@ -615,23 +618,24 @@ fn filename_as_string<P: AsRef<Path>>(p: P) -> String {
         .to_owned()
 }
 
-fn tree_view<P: AsRef<Path>>(p: P) -> std::io::Result<Tree<String>> {
-    let result = std::fs::read_dir(&p)?.filter_map(|e| e.ok()).fold(
+fn tree_view<P: AsRef<Path>>(p: P, max_depth: usize) -> std::io::Result<Tree<String>> {
+    Ok(std::fs::read_dir(&p)?.filter_map(|e| e.ok()).fold(
         Tree::new(filename_as_string(p.as_ref().canonicalize()?)),
         |mut root, entry| {
-            if let Ok(dir) = entry.metadata() {
-                if dir.is_dir() {
-                    if let Ok(tree) = tree_view(entry.path()) {
-                        root.push(tree);
+            if max_depth > 0 {
+                if let Ok(dir) = entry.metadata() {
+                    if dir.is_dir() {
+                        if let Ok(tree) = tree_view(entry.path(), max_depth - 1) {
+                            root.push(tree);
+                        }
+                    } else {
+                        root.push(Tree::new(filename_as_string(entry.path())));
                     }
-                } else {
-                    root.push(Tree::new(filename_as_string(entry.path())));
                 }
             }
             root
         },
-    );
-    Ok(result)
+    ))
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {

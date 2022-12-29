@@ -192,10 +192,14 @@ impl<'a> WinTab<'a> {
     fn default_preview_first_line(tab: &Tab) -> Vec<String> {
         match tab.path_content.selected() {
             Some(fileinfo) => {
-                vec![
+                let mut strings = vec![
                     format!("{}", tab.mode.clone()),
                     format!("{}", fileinfo.path.to_string_lossy()),
-                ]
+                ];
+                if !tab.preview.is_empty() {
+                    strings.push(format!(" {} / {}", tab.window.bottom, tab.preview.len()));
+                };
+                strings
             }
             None => vec!["".to_owned()],
         }
@@ -405,7 +409,6 @@ impl<'a> WinTab<'a> {
                     let row_position = Self::calc_line_row(i, tab);
                     Self::print_line_number(row_position, i + 1, canvas)?;
                     for token in vec_line.iter() {
-                        //TODO! fix token print
                         token.print(canvas, row_position, line_number_width)?;
                     }
                 }
@@ -422,7 +425,6 @@ impl<'a> WinTab<'a> {
                         &format_line_nr_hex(i + 1 + tab.window.top, line_number_width_hex),
                         Self::ATTR_LINE_NR,
                     )?;
-                    //TODO! Fix line print
                     line.print(canvas, row, line_number_width_hex + 1);
                 }
             }
