@@ -1,6 +1,6 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::path::{self, Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 
 use regex::Regex;
@@ -154,13 +154,13 @@ impl Status {
     fn create_tab_from_skim_output(&mut self, cow_path: &Arc<dyn SkimItem>) {
         let mut tab = self.selected().clone();
         let s_path = cow_path.output().to_string();
-        if let Ok(path) = fs::canonicalize(path::Path::new(&s_path)) {
+        if let Ok(path) = fs::canonicalize(Path::new(&s_path)) {
             if path.is_file() {
                 if let Some(parent) = path.parent() {
-                    let _ = tab.set_pathcontent(parent.to_path_buf());
+                    let _ = tab.set_pathcontent(parent);
                 }
             } else if path.is_dir() {
-                let _ = tab.set_pathcontent(path);
+                let _ = tab.set_pathcontent(&path);
                 self.tabs[self.index] = tab;
             }
         }
@@ -201,7 +201,10 @@ impl Status {
 
     /// Set the permissions of the flagged files according to a given permission.
     /// If the permission are invalid or if the user can't edit them, it may fail.
-    pub fn set_permissions(path: PathBuf, permissions: u32) -> FmResult<()> {
+    pub fn set_permissions<P>(path: P, permissions: u32) -> FmResult<()>
+    where
+        P: AsRef<Path>,
+    {
         Ok(std::fs::set_permissions(
             path,
             std::fs::Permissions::from_mode(permissions),

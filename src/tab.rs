@@ -141,9 +141,9 @@ impl Tab {
     /// Set the pathcontent to a new path.
     /// Reset the window.
     /// Add the last path to the history of visited paths.
-    pub fn set_pathcontent(&mut self, path: path::PathBuf) -> FmResult<()> {
-        self.history.push(&path);
-        self.path_content.change_directory(&path)?;
+    pub fn set_pathcontent(&mut self, path: &path::Path) -> FmResult<()> {
+        self.history.push(path);
+        self.path_content.change_directory(path)?;
         self.window.reset(self.path_content.content.len());
         Ok(())
     }

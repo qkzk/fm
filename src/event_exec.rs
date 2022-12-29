@@ -245,7 +245,7 @@ impl EventExec {
             };
             let tab = status.selected();
             tab.input.clear();
-            tab.history.push(&target_dir.to_path_buf());
+            tab.history.push(target_dir);
             tab.path_content.change_directory(target_dir)?;
             let index = tab.find_jump_index(&jump_target).unwrap_or_default();
             tab.path_content.select_index(index);
@@ -446,8 +446,9 @@ impl EventExec {
     /// Does
     /// Add the starting directory to history.
     pub fn event_move_to_parent(tab: &mut Tab) -> FmResult<()> {
-        if let Some(parent) = tab.path_content.path.parent() {
-            tab.set_pathcontent(parent.to_path_buf())?;
+        let path = tab.path_content.path.clone();
+        if let Some(parent) = path.parent() {
+            tab.set_pathcontent(parent)?;
         }
         Ok(())
     }
@@ -806,8 +807,9 @@ impl EventExec {
             return Ok(());
         }
         tab.history.content.pop();
-        let last = tab.history.content[tab.history.len() - 1].clone();
-        tab.set_pathcontent(last)?;
+        let index = tab.history.len() - 1;
+        let last = tab.history.content[index].clone();
+        tab.set_pathcontent(&last)?;
 
         Ok(())
     }
@@ -817,7 +819,7 @@ impl EventExec {
         let home_cow = shellexpand::tilde("~");
         let home: &str = home_cow.borrow();
         let path = std::fs::canonicalize(home)?;
-        tab.set_pathcontent(path)?;
+        tab.set_pathcontent(&path)?;
 
         Ok(())
     }
@@ -1285,7 +1287,7 @@ impl EventExec {
             if trash_mount_point != origin_mount_point {
                 continue;
             }
-            status.trash.trash(flagged.to_owned())?;
+            status.trash.trash(flagged)?;
         }
         status.flagged.clear();
         status.selected().refresh_view()?;

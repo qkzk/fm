@@ -428,18 +428,6 @@ impl<'a> WinTab<'a> {
                     line.print(canvas, row, line_number_width_hex + 1);
                 }
             }
-            Preview::Archive(text) => {
-                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
-                    canvas.print_with_attr(
-                        row,
-                        0,
-                        &(i + 1 + tab.window.top).to_string(),
-                        Self::ATTR_LINE_NR,
-                    )?;
-                    canvas.print(row, line_number_width + 3, line)?;
-                }
-            }
             Preview::Thumbnail(image) => {
                 let (width, height) = canvas.size()?;
 
@@ -459,11 +447,12 @@ impl<'a> WinTab<'a> {
                     )?;
                 }
             }
-            Preview::Text(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Archive(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Directory(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Exif(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Media(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Directory(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Text(text) => impl_preview!(text, tab, length, canvas, line_number_width),
 
             Preview::Empty => (),
         }

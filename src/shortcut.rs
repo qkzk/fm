@@ -42,8 +42,8 @@ impl Shortcut {
 
     /// Insert a shortcut to home directory of the current user.
     pub fn with_home_path(mut shortcuts: Vec<PathBuf>) -> Vec<PathBuf> {
-        if let Ok(pb) = PathBuf::from_str(shellexpand::tilde("~").borrow()) {
-            shortcuts.push(pb);
+        if let Ok(home_path) = PathBuf::from_str(shellexpand::tilde("~").borrow()) {
+            shortcuts.push(home_path);
         }
         shortcuts
     }

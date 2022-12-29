@@ -246,13 +246,13 @@ impl Trash {
 
     /// Move a file to the trash folder and create a new trash info file.
     /// Add a new TrashInfo to the content.
-    pub fn trash(&mut self, origin: PathBuf) -> FmResult<()> {
+    pub fn trash(&mut self, origin: &Path) -> FmResult<()> {
         if origin.is_relative() {
             return Err(FmError::custom("trash", "origin path should be absolute"));
         }
 
-        let dest_file_name = self.pick_dest_name(&origin)?;
-        let trash_info = TrashInfo::new(&origin, &dest_file_name);
+        let dest_file_name = self.pick_dest_name(origin)?;
+        let trash_info = TrashInfo::new(origin, &dest_file_name);
         let mut trashfile_filename = PathBuf::from(&self.trash_folder_files);
         trashfile_filename.push(&dest_file_name);
 
@@ -264,7 +264,7 @@ impl Trash {
 
         self.content.push(trash_info);
 
-        std::fs::rename(&origin, &trashfile_filename)?;
+        std::fs::rename(origin, &trashfile_filename)?;
 
         info!("moved to trash {:?} -> {:?}", origin, dest_file_name);
         Ok(())
