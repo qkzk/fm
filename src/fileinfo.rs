@@ -2,7 +2,7 @@ use std::fs::{metadata, read_dir, DirEntry, Metadata};
 use std::iter::Enumerate;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use chrono::offset::Local;
 use chrono::DateTime;
@@ -126,7 +126,7 @@ pub struct FileInfo {
 impl FileInfo {
     /// Reads every information about a file from its metadata and returs
     /// a new `FileInfo` object if we can create one.
-    pub fn new(direntry: &DirEntry, users_cache: &Arc<UsersCache>) -> FmResult<FileInfo> {
+    pub fn new(direntry: &DirEntry, users_cache: &Rc<UsersCache>) -> FmResult<FileInfo> {
         let metadata = direntry.metadata()?;
 
         let path = direntry.path();
@@ -224,7 +224,7 @@ pub struct PathContent {
     /// The filter use before displaying files
     pub filter: FilterKind,
     used_space: u64,
-    users_cache: Arc<UsersCache>,
+    users_cache: Rc<UsersCache>,
 }
 
 impl PathContent {
@@ -234,7 +234,7 @@ impl PathContent {
     pub fn new(
         path: &path::Path,
         show_hidden: bool,
-        users_cache: Arc<UsersCache>,
+        users_cache: Rc<UsersCache>,
     ) -> FmResult<Self> {
         let path = path.to_owned();
         let filter = FilterKind::All;
@@ -280,7 +280,7 @@ impl PathContent {
         path: &path::Path,
         show_hidden: bool,
         filter_kind: &FilterKind,
-        users_cache: &Arc<UsersCache>,
+        users_cache: &Rc<UsersCache>,
     ) -> FmResult<Vec<FileInfo>> {
         match read_dir(path) {
             Ok(read_dir) => {
@@ -527,7 +527,7 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 }
 
 /// Reads the owner name and returns it as a string.
-fn extract_owner(metadata: &Metadata, users_cache: &Arc<UsersCache>) -> FmResult<String> {
+fn extract_owner(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<String> {
     Ok(users_cache
         .get_user_by_uid(metadata.uid())
         .ok_or_else(|| FmError::custom("extract owner", "Couldn't read uid"))?
@@ -538,7 +538,7 @@ fn extract_owner(metadata: &Metadata, users_cache: &Arc<UsersCache>) -> FmResult
 }
 
 /// Reads the group name and returns it as a string.
-fn extract_group(metadata: &Metadata, users_cache: &Arc<UsersCache>) -> FmResult<String> {
+fn extract_group(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<String> {
     Ok(users_cache
         .get_group_by_gid(metadata.gid())
         .ok_or_else(|| FmError::custom("extract group", "Couldn't read gid"))?

@@ -1,5 +1,5 @@
 use std::path;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use users::UsersCache;
 
@@ -52,9 +52,9 @@ pub struct Tab {
 
 impl Tab {
     /// Creates a new tab from args and height.
-    pub fn new(args: Args, height: usize, users_cache: Arc<UsersCache>) -> FmResult<Self> {
+    pub fn new(args: Args, height: usize, users_cache: Rc<UsersCache>) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
-        let path_content = PathContent::new(&path, false, users_cache.clone())?;
+        let path_content = PathContent::new(&path, false, users_cache)?;
         let show_hidden = false;
         let nvim_server = args.server;
         let mode = Mode::Normal;

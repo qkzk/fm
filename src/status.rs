@@ -1,6 +1,7 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use regex::Regex;
@@ -79,14 +80,12 @@ impl Status {
             let sys = System::new_all();
             let opener =
                 load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
-            let users_cache = Arc::new(UsersCache::with_all_users());
-            let mut tab = Tab::new(args, height, users_cache.clone())?;
+            let users_cache = Rc::new(UsersCache::with_all_users());
+            let mut tab = Tab::new(args, height, users_cache)?;
             tab.shortcut
                 .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
 
             let trash = Trash::new()?;
-
-            drop(users_cache);
 
             Ok(Self {
                 tabs: [tab.clone(), tab],
