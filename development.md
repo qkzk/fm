@@ -252,6 +252,9 @@
   - [x] allow strange bytes in path
   - [x] compatibiliy with other programs like trash-cli
 
+- [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
+  - [x] preview directory with tree view
+
 ## TODO
 
 - [ ] remote control
@@ -276,9 +279,11 @@
   - [x] print in raw mode
   - [ ] print with term: term...
 - [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
-  - [ ] preview directory with tree view
-  - [ ] use as another display
+  - [x] preview directory with tree view
+  - [x] use as another display
+  - [ ] navigation
 - [ ] zoxide support
+- [ ] cache users & groups
 
 - [ ] Version 0.2.0 : tests
 

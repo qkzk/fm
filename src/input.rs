@@ -79,7 +79,7 @@ impl Input {
 
     /// Replace the content with the new content.
     /// Put the cursor at the end.
-    pub fn replace(&mut self, content: String) {
+    pub fn replace(&mut self, content: &str) {
         self.chars = content.chars().collect();
         self.cursor_index = self.len()
     }

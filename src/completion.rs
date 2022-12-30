@@ -67,11 +67,11 @@ impl Completion {
 
     /// Returns the currently selected proposition.
     /// Returns an empty string if `proposals` is empty.
-    pub fn current_proposition(&self) -> String {
+    pub fn current_proposition(&self) -> &str {
         if self.proposals.is_empty() {
-            return "".to_owned();
+            return "";
         }
-        self.proposals[self.index].to_owned()
+        &self.proposals[self.index]
     }
 
     /// Updates the proposition with a new `Vec`.
@@ -81,9 +81,9 @@ impl Completion {
         self.proposals = proposals;
     }
 
-    fn extend(&mut self, proposals: Vec<String>) {
+    fn extend(&mut self, proposals: &[String]) {
         self.index = 0;
-        self.proposals.extend_from_slice(&proposals)
+        self.proposals.extend_from_slice(proposals)
     }
 
     /// Empty the proposals `Vec`.
@@ -101,7 +101,7 @@ impl Completion {
         &mut self,
         input_string: &str,
         path_content: &PathContent,
-        current_path: String,
+        current_path: &str,
     ) -> FmResult<()> {
         match self.kind {
             InputCompleted::Exec => self.exec(input_string),
@@ -113,8 +113,8 @@ impl Completion {
 
     /// Goto completion.
     /// Looks for the valid path completing what the user typed.
-    fn goto(&mut self, input_string: &str, current_path: String) -> FmResult<()> {
-        self.update_from_input(input_string, &current_path);
+    fn goto(&mut self, input_string: &str, current_path: &str) -> FmResult<()> {
+        self.update_from_input(input_string, current_path);
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
             return Ok(());
@@ -146,14 +146,14 @@ impl Completion {
     fn extend_absolute_paths(&mut self, parent: &str, last_name: &str) {
         if let Ok(path) = std::fs::canonicalize(parent) {
             if let Ok(entries) = fs::read_dir(path) {
-                self.extend(Self::entries_matching_filename(entries, last_name))
+                self.extend(&Self::entries_matching_filename(entries, last_name))
             }
         }
     }
 
-    fn extend_relative_paths(&mut self, current_path: String, last_name: &str) {
+    fn extend_relative_paths(&mut self, current_path: &str, last_name: &str) {
         if let Ok(entries) = fs::read_dir(current_path) {
-            self.extend(Self::entries_matching_filename(entries, last_name))
+            self.extend(&Self::entries_matching_filename(entries, last_name))
         }
     }
 
@@ -168,24 +168,24 @@ impl Completion {
     /// Looks for programs in $PATH completing the one typed by the user.
     fn exec(&mut self, input_string: &str) -> FmResult<()> {
         let mut proposals: Vec<String> = vec![];
-        for path in std::env::var_os("PATH")
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default()
-            .split(':')
-            .filter(|path| std::path::Path::new(path).exists())
-        {
-            let comp: Vec<String> = fs::read_dir(path)?
-                .filter_map(|e| e.ok())
-                .filter(|e| {
-                    e.file_type().unwrap().is_file() && filename_startswith(e, input_string)
-                })
-                .map(|e| e.path().to_string_lossy().into_owned())
-                .collect();
-            proposals.extend(comp);
+        if let Some(paths) = std::env::var_os("PATH") {
+            for path in std::env::split_paths(&paths).filter(|path| path.exists()) {
+                proposals.extend(Self::find_completion_in_path(path, input_string)?);
+            }
         }
         self.update(proposals);
         Ok(())
+    }
+
+    fn find_completion_in_path(
+        path: std::path::PathBuf,
+        input_string: &str,
+    ) -> FmResult<Vec<String>> {
+        Ok(fs::read_dir(path)?
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().unwrap().is_file() && filename_startswith(e, input_string))
+            .map(|e| e.path().to_string_lossy().into_owned())
+            .collect())
     }
 
     /// Looks for file within current folder completing what the user typed.
@@ -207,7 +207,7 @@ fn filename_startswith(entry: &std::fs::DirEntry, pattern: &str) -> bool {
     entry
         .file_name()
         .to_string_lossy()
-        .into_owned()
+        .as_ref()
         .starts_with(pattern)
 }
 

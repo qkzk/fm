@@ -51,7 +51,7 @@ impl Tab {
     /// Creates a new tab from args and height.
     pub fn new(args: Args, height: usize) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
-        let path_content = PathContent::new(path.clone(), false)?;
+        let path_content = PathContent::new(&path, false)?;
         let show_hidden = false;
         let nvim_server = args.server;
         let mode = Mode::Normal;
@@ -84,11 +84,9 @@ impl Tab {
     /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> FmResult<()> {
         self.completion.set_kind(&self.mode);
-        self.completion.complete(
-            &self.input.string(),
-            &self.path_content,
-            self.path_str().unwrap_or_default(),
-        )
+        let current_path = self.path_str().unwrap_or_default().to_owned();
+        self.completion
+            .complete(&self.input.string(), &self.path_content, &current_path)
     }
 
     /// Refresh the current view.
@@ -107,13 +105,12 @@ impl Tab {
     /// Fail silently if the current directory is empty or if the selected
     /// file isn't a directory.
     pub fn go_to_child(&mut self) -> FmResult<()> {
-        let childpath = self
+        let childpath = &self
             .path_content
             .selected()
             .ok_or_else(|| FmError::custom("go_to_child", "Empty directory"))?
-            .path
-            .clone();
-        self.history.push(&childpath);
+            .path;
+        self.history.push(childpath);
         self.path_content = PathContent::new(childpath, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
         self.input.cursor_start();
@@ -134,16 +131,16 @@ impl Tab {
     }
 
     /// Returns a string of the current directory path.
-    pub fn path_str(&self) -> Option<String> {
-        Some(self.path_content.path.to_str()?.to_owned())
+    pub fn path_str(&self) -> Option<&str> {
+        self.path_content.path.to_str()
     }
 
     /// Set the pathcontent to a new path.
     /// Reset the window.
     /// Add the last path to the history of visited paths.
-    pub fn set_pathcontent(&mut self, path: path::PathBuf) -> FmResult<()> {
-        self.history.push(&path);
-        self.path_content.change_directory(&path)?;
+    pub fn set_pathcontent(&mut self, path: &path::Path) -> FmResult<()> {
+        self.history.push(path);
+        self.path_content.change_directory(path)?;
         self.window.reset(self.path_content.content.len());
         Ok(())
     }

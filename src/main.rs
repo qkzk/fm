@@ -42,9 +42,9 @@ fn main() -> FmResult<()> {
     }
 
     display.show_cursor()?;
-    let final_path = status.selected_path_str();
+    let final_path = status.selected_path_str().to_owned();
     drop_everything(term, event_dispatcher, event_reader, status, display);
-    print_on_quit(final_path);
+    print_on_quit(&final_path);
     info!("fm is shutting down");
     Ok(())
 }

@@ -229,20 +229,21 @@ impl PathContent {
     /// Reads the paths and creates a new `PathContent`.
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
-    pub fn new(path: path::PathBuf, show_hidden: bool) -> FmResult<Self> {
+    pub fn new(path: &path::Path, show_hidden: bool) -> FmResult<Self> {
+        let path = path.to_owned();
         let filter = FilterKind::All;
-        let mut files = Self::files(&path, show_hidden, filter.clone())?;
+        let mut content = Self::files(&path, show_hidden, &filter)?;
         let sort_kind = SortKind::default();
-        sort_kind.sort(&mut files);
+        sort_kind.sort(&mut content);
         let selected_index: usize = 0;
-        if !files.is_empty() {
-            files[selected_index].select();
+        if !content.is_empty() {
+            content[selected_index].select();
         }
-        let used_space = get_used_space(&files);
+        let used_space = get_used_space(&content);
 
         Ok(Self {
             path,
-            content: files,
+            content,
             index: selected_index,
             show_hidden,
             sort_kind,
@@ -252,7 +253,7 @@ impl PathContent {
     }
 
     pub fn change_directory(&mut self, path: &path::Path) -> FmResult<()> {
-        self.content = Self::files(path, self.show_hidden, self.filter.clone())?;
+        self.content = Self::files(path, self.show_hidden, &self.filter)?;
         self.sort_kind.sort(&mut self.content);
         self.index = 0;
         if !self.content.is_empty() {
@@ -268,7 +269,11 @@ impl PathContent {
         self.filter = filter
     }
 
-    fn files(path: &path::Path, show_hidden: bool, filter: FilterKind) -> FmResult<Vec<FileInfo>> {
+    fn files(
+        path: &path::Path,
+        show_hidden: bool,
+        filter_kind: &FilterKind,
+    ) -> FmResult<Vec<FileInfo>> {
         match read_dir(path) {
             Ok(read_dir) => {
                 let files: Vec<FileInfo> = if show_hidden {
@@ -276,7 +281,7 @@ impl PathContent {
                         .filter_map(|res_direntry| res_direntry.ok())
                         .map(|direntry| FileInfo::new(&direntry))
                         .filter_map(|res_file_entry| res_file_entry.ok())
-                        .filter(|fileinfo| filter.filter_by(fileinfo))
+                        .filter(|fileinfo| filter_kind.filter_by(fileinfo))
                         .collect()
                 } else {
                     read_dir
@@ -284,7 +289,7 @@ impl PathContent {
                         .filter(|e| is_not_hidden(e).unwrap_or(true))
                         .map(|direntry| FileInfo::new(&direntry))
                         .filter_map(|res_file_entry| res_file_entry.ok())
-                        .filter(|fileinfo| filter.filter_by(fileinfo))
+                        .filter(|fileinfo| filter_kind.filter_by(fileinfo))
                         .collect()
                 };
                 Ok(files)
@@ -353,7 +358,7 @@ impl PathContent {
     /// Reads and sort the content with current key.
     /// Select the first file if any.
     pub fn reset_files(&mut self) -> Result<(), FmError> {
-        self.content = Self::files(&self.path, self.show_hidden, self.filter.clone())?;
+        self.content = Self::files(&self.path, self.show_hidden, &self.filter)?;
         self.sort_kind = SortKind::default();
         self.sort();
         self.index = 0;
@@ -364,7 +369,7 @@ impl PathContent {
     }
 
     /// Path of the currently selected file.
-    pub fn selected_path_str(&self) -> Option<String> {
+    pub fn selected_path_string(&self) -> Option<String> {
         Some(self.selected()?.path.to_str()?.to_owned())
     }
 
@@ -510,24 +515,22 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 
 /// Reads the owner name and returns it as a string.
 fn extract_owner(metadata: &Metadata) -> FmResult<String> {
-    Ok(String::from(
-        get_user_by_uid(metadata.uid())
-            .ok_or_else(|| FmError::custom("owner", "Couldn't read uid"))?
-            .name()
-            .to_str()
-            .ok_or_else(|| FmError::custom("metadata", "Couldn't read owner name"))?,
-    ))
+    Ok(get_user_by_uid(metadata.uid())
+        .ok_or_else(|| FmError::custom("extract owner", "Couldn't read uid"))?
+        .name()
+        .to_str()
+        .ok_or_else(|| FmError::custom("extract owner", "Couldn't read owner name"))?
+        .to_owned())
 }
 
 /// Reads the group name and returns it as a string.
 fn extract_group(metadata: &Metadata) -> FmResult<String> {
-    Ok(String::from(
-        get_group_by_gid(metadata.gid())
-            .ok_or_else(|| FmError::custom("owner", "Couldn't read gid"))?
-            .name()
-            .to_str()
-            .ok_or_else(|| FmError::custom("metadata", "Couldn't read group name"))?,
-    ))
+    Ok(get_group_by_gid(metadata.gid())
+        .ok_or_else(|| FmError::custom("extract group", "Couldn't read gid"))?
+        .name()
+        .to_str()
+        .ok_or_else(|| FmError::custom("extract group", "Couldn't read group name"))?
+        .to_owned())
 }
 
 /// Returns the file size.
@@ -548,7 +551,7 @@ pub fn human_size(bytes: u64) -> String {
 
 /// Extract the optional extension from a filename.
 /// Returns empty &str aka "" if the file has no extension.
-fn extract_extension(path: &path::Path) -> &str {
+pub fn extract_extension(path: &path::Path) -> &str {
     path.extension()
         .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default()

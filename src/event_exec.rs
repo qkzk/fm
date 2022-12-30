@@ -156,10 +156,9 @@ impl EventExec {
     /// If the saved path is invalid, it does nothing but reset the view.
     pub fn exec_marks_jump(status: &mut Status, c: char) -> FmResult<()> {
         if let Some(path) = status.marks.get(c) {
-            let path = path.to_owned();
-            status.selected().history.push(&path);
-            status.selected().path_content = PathContent::new(path, status.selected().show_hidden)?;
-        };
+            let path = path.clone();
+            status.selected().set_pathcontent(&path)?
+        }
         Self::event_normal(status.selected())
     }
 
@@ -225,7 +224,7 @@ impl EventExec {
             u32::from_str_radix(&status.selected().input.string(), 8).unwrap_or(0_u32);
         if permissions <= Status::MAX_PERMISSIONS {
             for path in status.flagged.content.iter() {
-                Status::set_permissions(path.clone(), permissions)?
+                Status::set_permissions(path, permissions)?
             }
             status.flagged.clear()
         }
@@ -245,7 +244,7 @@ impl EventExec {
             };
             let tab = status.selected();
             tab.input.clear();
-            tab.history.push(&target_dir.to_path_buf());
+            tab.history.push(target_dir);
             tab.path_content.change_directory(target_dir)?;
             let index = tab.find_jump_index(&jump_target).unwrap_or_default();
             tab.path_content.select_index(index);
@@ -292,7 +291,7 @@ impl EventExec {
         tab.path_content.reset_files()?;
         tab.window.reset(tab.path_content.content.len());
         tab.mode = Mode::Normal;
-        tab.preview = Preview::empty();
+        tab.preview = Preview::new_empty();
         Ok(())
     }
 
@@ -446,8 +445,9 @@ impl EventExec {
     /// Does
     /// Add the starting directory to history.
     pub fn event_move_to_parent(tab: &mut Tab) -> FmResult<()> {
-        if let Some(parent) = tab.path_content.path.parent() {
-            tab.set_pathcontent(parent.to_path_buf())?;
+        let path = tab.path_content.path.clone();
+        if let Some(parent) = path.parent() {
+            tab.set_pathcontent(parent)?;
         }
         Ok(())
     }
@@ -543,10 +543,13 @@ impl EventExec {
             return Ok(());
         }
         if let Some(file_info) = tab.path_content.selected() {
-            if let FileKind::NormalFile = file_info.file_kind {
-                tab.mode = Mode::Preview;
-                tab.preview = Preview::new(file_info)?;
-                tab.window.reset(tab.preview.len());
+            match file_info.file_kind {
+                FileKind::Directory | FileKind::NormalFile => {
+                    tab.mode = Mode::Preview;
+                    tab.preview = Preview::new(file_info)?;
+                    tab.window.reset(tab.preview.len());
+                }
+                _ => (),
             }
         }
         Ok(())
@@ -569,7 +572,7 @@ impl EventExec {
         let help = status.help.clone();
         let tab = status.selected();
         tab.mode = Mode::Preview;
-        tab.preview = Preview::help(help);
+        tab.preview = Preview::help(&help);
         tab.window.reset(tab.preview.len());
         Ok(())
     }
@@ -645,13 +648,12 @@ impl EventExec {
     /// Open a file with custom opener.
     pub fn event_open_file(status: &mut Status) -> FmResult<()> {
         match status.opener.open(
-            status
+            &status
                 .selected_non_mut()
                 .path_content
                 .selected()
                 .ok_or_else(|| FmError::custom("event open file", "Empty directory"))?
-                .path
-                .clone(),
+                .path,
         ) {
             Ok(_) => (),
             Err(e) => info!(
@@ -751,7 +753,7 @@ impl EventExec {
         }
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         if let Ok(nvim_listen_address) = Self::nvim_listen_address(tab) {
-            if let Some(path_str) = tab.path_content.selected_path_str() {
+            if let Some(path_str) = tab.path_content.selected_path_string() {
                 let _ = execute_in_child(
                     NVIM_RPC_SENDER,
                     &vec![
@@ -782,7 +784,7 @@ impl EventExec {
 
     /// Copy the selected filepath to the clipboard. The absolute path.
     pub fn event_filepath_to_clipboard(tab: &Tab) -> FmResult<()> {
-        if let Some(filepath) = tab.path_content.selected_path_str() {
+        if let Some(filepath) = tab.path_content.selected_path_string() {
             let mut ctx = ClipboardContext::new()?;
             ctx.set_contents(filepath)?;
             // For some reason, it's not writen if you don't read it back...
@@ -804,8 +806,9 @@ impl EventExec {
             return Ok(());
         }
         tab.history.content.pop();
-        let last = tab.history.content[tab.history.len() - 1].clone();
-        tab.set_pathcontent(last)?;
+        let index = tab.history.len() - 1;
+        let last = tab.history.content[index].clone();
+        tab.set_pathcontent(&last)?;
 
         Ok(())
     }
@@ -815,7 +818,7 @@ impl EventExec {
         let home_cow = shellexpand::tilde("~");
         let home: &str = home_cow.borrow();
         let path = std::fs::canonicalize(home)?;
-        tab.set_pathcontent(path)?;
+        tab.set_pathcontent(&path)?;
 
         Ok(())
     }
@@ -838,7 +841,7 @@ impl EventExec {
         }
         fs::rename(
             tab.path_content
-                .selected_path_str()
+                .selected_path_string()
                 .ok_or_else(|| FmError::custom("exec rename", "File not found"))?,
             tab.path_content
                 .path
@@ -894,7 +897,7 @@ impl EventExec {
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         if std::path::Path::new(command).exists() {
-            let path = &tab.path_content.selected_path_str().ok_or_else(|| {
+            let path = &tab.path_content.selected_path_string().ok_or_else(|| {
                 FmError::custom("exec exec", &format!("can't find command {}", command))
             })?;
             args.push(path);
@@ -911,7 +914,7 @@ impl EventExec {
         let tab = status.selected_non_mut();
         execute_in_child(
             DEFAULT_DRAGNDROP,
-            &vec![&tab.path_content.selected_path_str().ok_or_else(|| {
+            &vec![&tab.path_content.selected_path_string().ok_or_else(|| {
                 FmError::custom(
                     "event drag n drop",
                     "can't find dragon-drop in the system. Is the application installed?",
@@ -935,19 +938,19 @@ impl EventExec {
         }
         tab.searched = Some(searched.clone());
         let next_index = tab.path_content.index;
-        Self::search_from(tab, searched, next_index);
+        Self::search_from(tab, &searched, next_index);
     }
 
     /// Search in current directory for an file whose name contains `searched_name`,
     /// from a starting position `next_index`.
     /// We search forward from that position and start again from top if nothing is found.
     /// We move the selection to the first matching file.
-    fn search_from(tab: &mut Tab, searched_name: String, current_index: usize) {
+    fn search_from(tab: &mut Tab, searched_name: &str, current_index: usize) {
         let mut found = false;
         let mut next_index = current_index;
         // search after current position
         for (index, file) in tab.path_content.enumerate().skip(current_index) {
-            if file.filename.contains(&searched_name) {
+            if file.filename.contains(searched_name) {
                 next_index = index;
                 found = true;
                 break;
@@ -960,7 +963,7 @@ impl EventExec {
 
         // search from top
         for (index, file) in tab.path_content.enumerate().take(current_index) {
-            if file.filename.contains(&searched_name) {
+            if file.filename.contains(searched_name) {
                 next_index = index;
                 found = true;
                 break;
@@ -974,7 +977,7 @@ impl EventExec {
     pub fn event_search_next(tab: &mut Tab) -> FmResult<()> {
         if let Some(searched) = tab.searched.clone() {
             let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
-            Self::search_from(tab, searched, next_index);
+            Self::search_from(tab, &searched, next_index);
         }
         Ok(())
     }
@@ -991,7 +994,7 @@ impl EventExec {
         let path = string_to_path(completed)?;
         tab.input.reset();
         tab.history.push(&path);
-        tab.path_content = PathContent::new(path, tab.show_hidden)?;
+        tab.path_content = PathContent::new(&path, tab.show_hidden)?;
         tab.window.reset(tab.path_content.content.len());
         Ok(())
     }
@@ -1003,9 +1006,8 @@ impl EventExec {
         let path = tab
             .shortcut
             .selected()
-            .ok_or_else(|| FmError::custom("exec shortcut", "empty shortcuts"))?
-            .to_owned();
-        tab.history.push(&path);
+            .ok_or_else(|| FmError::custom("exec shortcut", "empty shortcuts"))?;
+        tab.history.push(path);
         tab.path_content = PathContent::new(path, tab.show_hidden)?;
         Self::event_normal(tab)
     }
@@ -1017,8 +1019,7 @@ impl EventExec {
         tab.path_content = PathContent::new(
             tab.history
                 .selected()
-                .ok_or_else(|| FmError::custom("exec history", "path unreachable"))?
-                .to_owned(),
+                .ok_or_else(|| FmError::custom("exec history", "path unreachable"))?,
             tab.show_hidden,
         )?;
         tab.history.drop_queue();
@@ -1267,6 +1268,11 @@ impl EventExec {
         row as usize - RESERVED_ROWS
     }
 
+    /// Move flagged files to the trash directory.
+    /// More information in the trash crate itself.
+    /// If the file is mounted on the $topdir of the trash (aka the $HOME mount point),
+    /// it is moved there.
+    /// Else, nothing is done.
     pub fn event_trash_move_file(status: &mut Status) -> FmResult<()> {
         let trash_mount_point = disk_used_by_path(
             status.system_info.disks(),
@@ -1278,13 +1284,15 @@ impl EventExec {
             if trash_mount_point != origin_mount_point {
                 continue;
             }
-            status.trash.trash(flagged.to_owned())?;
+            status.trash.trash(flagged)?;
         }
         status.flagged.clear();
         status.selected().refresh_view()?;
         Ok(())
     }
 
+    /// Restore a file from the trash if possible.
+    /// Parent folders are created on the file if needed.
     pub fn event_trash_restore_file(status: &mut Status) -> FmResult<()> {
         status.trash.restore()?;
         status.selected().mode = Mode::Normal;
@@ -1292,37 +1300,47 @@ impl EventExec {
         Ok(())
     }
 
+    /// Ask the user if he wants to empty the trash.
+    /// It requires a confimation before doing anything
     pub fn event_trash_empty(status: &mut Status) -> FmResult<()> {
         status.selected().mode = Mode::NeedConfirmation(NeedConfirmation::EmptyTrash);
         Ok(())
     }
 
+    /// Empty the trash folder permanently.
     pub fn exec_trash_empty(status: &mut Status) -> FmResult<()> {
         status.trash.empty_trash()?;
         status.clear_flags_and_reset_view()?;
         Ok(())
     }
 
+    /// Open the trash.
+    /// Displays a navigable content of the trash.
+    /// Each item can be restored or deleted.
+    /// Each opening refresh the trash content.
     pub fn event_trash_open(status: &mut Status) -> FmResult<()> {
         status.trash.update()?;
         status.selected().mode = Mode::Navigate(Navigate::Trash);
         Ok(())
     }
 
+    /// Select the next element in the trash folder
     pub fn event_trash_next(status: &mut Status) {
         status.trash.next();
     }
 
+    /// Select the previous element in the trash folder
     pub fn event_trash_prev(status: &mut Status) {
         status.trash.prev();
     }
 
+    /// Remove the selected element in the trash folder.
     pub fn event_trash_remove_file(status: &mut Status) -> FmResult<()> {
         status.trash.remove()
     }
 }
 
-fn string_to_path(path_string: String) -> FmResult<path::PathBuf> {
+fn string_to_path(path_string: &str) -> FmResult<path::PathBuf> {
     let expanded_cow_path = shellexpand::tilde(&path_string);
     let expanded_target: &str = expanded_cow_path.borrow();
     Ok(std::fs::canonicalize(expanded_target)?)

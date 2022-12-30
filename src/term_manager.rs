@@ -107,9 +107,7 @@ impl<'a> WinTab<'a> {
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
     fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let first_row = self.create_first_row(tab, disk_space)?;
-        self.draw_colored_strings(0, 0, first_row, canvas)?;
-        Ok(())
+        self.draw_colored_strings(0, 0, self.create_first_row(tab, disk_space)?, canvas)
     }
 
     fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
@@ -150,7 +148,7 @@ impl<'a> WinTab<'a> {
         let first_row = match tab.mode {
             Mode::Normal => {
                 vec![
-                    format!("{} ", tab.path_content.path_to_str()?),
+                    format!("{} ", tab.path_content.path.display()),
                     format!("{} files ", tab.path_content.content.len()),
                     format!("{}  ", tab.path_content.used_space()),
                     format!("Avail: {}  ", disk_space),
@@ -192,10 +190,14 @@ impl<'a> WinTab<'a> {
     fn default_preview_first_line(tab: &Tab) -> Vec<String> {
         match tab.path_content.selected() {
             Some(fileinfo) => {
-                vec![
+                let mut strings = vec![
                     format!("{}", tab.mode.clone()),
                     format!("{}", fileinfo.path.to_string_lossy()),
-                ]
+                ];
+                if !tab.preview.is_empty() {
+                    strings.push(format!(" {} / {}", tab.window.bottom, tab.preview.len()));
+                };
+                strings
             }
             None => vec!["".to_owned()],
         }
@@ -405,7 +407,6 @@ impl<'a> WinTab<'a> {
                     let row_position = Self::calc_line_row(i, tab);
                     Self::print_line_number(row_position, i + 1, canvas)?;
                     for token in vec_line.iter() {
-                        //TODO! fix token print
                         token.print(canvas, row_position, line_number_width)?;
                     }
                 }
@@ -422,20 +423,7 @@ impl<'a> WinTab<'a> {
                         &format_line_nr_hex(i + 1 + tab.window.top, line_number_width_hex),
                         Self::ATTR_LINE_NR,
                     )?;
-                    //TODO! Fix line print
                     line.print(canvas, row, line_number_width_hex + 1);
-                }
-            }
-            Preview::Archive(text) => {
-                for (i, line) in (*text).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
-                    canvas.print_with_attr(
-                        row,
-                        0,
-                        &(i + 1 + tab.window.top).to_string(),
-                        Self::ATTR_LINE_NR,
-                    )?;
-                    canvas.print(row, line_number_width + 3, line)?;
                 }
             }
             Preview::Thumbnail(image) => {
@@ -457,10 +445,13 @@ impl<'a> WinTab<'a> {
                     )?;
                 }
             }
-            Preview::Text(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Archive(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Directory(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Exif(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Media(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Text(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+
             Preview::Empty => (),
         }
         Ok(())
@@ -529,9 +520,9 @@ impl Display {
         let (width, _) = self.term.term_size()?;
         let disk_spaces = status.disk_spaces_per_tab();
         if status.dual_pane && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self.draw_dual_pane(status, disk_spaces.0, disk_spaces.1)?
+            self.draw_dual_pane(status, &disk_spaces.0, &disk_spaces.1)?
         } else {
-            self.draw_single_pane(status, disk_spaces.0)?
+            self.draw_single_pane(status, &disk_spaces.0)?
         }
 
         Ok(self.term.present()?)
@@ -540,19 +531,19 @@ impl Display {
     fn draw_dual_pane(
         &mut self,
         status: &Status,
-        disk_space_tab_0: String,
-        disk_space_tab_1: String,
+        disk_space_tab_0: &str,
+        disk_space_tab_1: &str,
     ) -> FmResult<()> {
         let win_left = WinTab {
             status,
             tab: &status.tabs[0],
-            disk_space: &disk_space_tab_0,
+            disk_space: disk_space_tab_0,
             colors: &self.colors,
         };
         let win_right = WinTab {
             status,
             tab: &status.tabs[1],
-            disk_space: &disk_space_tab_1,
+            disk_space: disk_space_tab_1,
             colors: &self.colors,
         };
         let (left_border, right_border) = if status.index == 0 {
@@ -566,11 +557,11 @@ impl Display {
         Ok(self.term.draw(&hsplit)?)
     }
 
-    fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: String) -> FmResult<()> {
+    fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: &str) -> FmResult<()> {
         let win_left = WinTab {
             status,
             tab: &status.tabs[0],
-            disk_space: &disk_space_tab_0,
+            disk_space: disk_space_tab_0,
             colors: &self.colors,
         };
         let win = Win::new(&win_left)

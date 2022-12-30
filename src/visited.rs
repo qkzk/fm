@@ -18,9 +18,9 @@ pub struct History {
 impl History {
     /// Add a new path in the stack, without duplicates, and select the last
     /// one.
-    pub fn push(&mut self, path: &PathBuf) {
-        if !self.content.contains(path) {
-            self.content.push(path.to_owned());
+    pub fn push(&mut self, path: &std::path::Path) {
+        if !self.content.contains(&path.to_path_buf()) {
+            self.content.push(path.to_path_buf());
             self.index = self.len() - 1
         }
     }

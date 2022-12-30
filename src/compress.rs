@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use compress_tools::*;
 
@@ -9,11 +9,11 @@ use crate::fm_error::{FmError, FmResult};
 /// It may fail an return a `FmError` if the file has no parent,
 /// which should be impossible.
 /// It used `compress_tools` which is a wrapper around  `libarchive`.
-pub fn decompress(source: PathBuf) -> FmResult<()> {
+pub fn decompress(source: &Path) -> FmResult<()> {
     let parent = source
         .parent()
         .ok_or_else(|| FmError::custom("decompress", "source should have a parent"))?;
-    let file = File::open(&source)?;
+    let file = File::open(source)?;
     Ok(uncompress_archive(&file, parent, Ownership::Preserve)?)
 }
 

@@ -36,16 +36,17 @@ impl<'a> Bulkrename<'a> {
         let original_modification = Self::get_modified_date(&self.temp_file)?;
         self.open_temp_file_with_editor(opener)?;
 
-        Self::watch_modification_in_thread(self.temp_file.clone(), original_modification)?;
+        Self::watch_modification_in_thread(&self.temp_file, original_modification)?;
 
         self.rename_all(self.get_new_filenames()?)?;
         self.delete_temp_file()
     }
 
     fn watch_modification_in_thread(
-        filepath: PathBuf,
+        filepath: &Path,
         original_modification: SystemTime,
     ) -> FmResult<()> {
+        let filepath = filepath.to_owned();
         let handle = thread::spawn(move || loop {
             if Self::is_file_modified(&filepath, original_modification).unwrap_or(true) {
                 break;
@@ -91,7 +92,7 @@ impl<'a> Bulkrename<'a> {
     }
 
     fn open_temp_file_with_editor(&self, opener: &Opener) -> FmResult<()> {
-        opener.open(self.temp_file.clone())
+        opener.open(&self.temp_file)
     }
 
     fn is_file_modified(
@@ -104,17 +105,14 @@ impl<'a> Bulkrename<'a> {
 
     fn get_new_filenames(&self) -> FmResult<Vec<String>> {
         let file = std::fs::File::open(&self.temp_file)?;
-
         let reader = std::io::BufReader::new(file);
-        let mut new_names = vec![];
-        for line in reader.lines() {
-            let line2 = line?;
-            let line = line2.trim();
-            if line.is_empty() {
-                return Err(FmError::custom("new filenames", "empty filename"));
-            }
-            new_names.push(line2);
-        }
+
+        let new_names: Vec<String> = reader
+            .lines()
+            .flatten()
+            .map(|line| line.trim().to_owned())
+            .filter(|line| !line.is_empty())
+            .collect();
         if new_names.len() < self.original_filepath.len() {
             return Err(FmError::custom("new filenames", "not enough filenames"));
         }
@@ -122,8 +120,7 @@ impl<'a> Bulkrename<'a> {
     }
 
     fn delete_temp_file(&self) -> FmResult<()> {
-        let filepath = &self.temp_file;
-        std::fs::remove_file(filepath)?;
+        std::fs::remove_file(&self.temp_file)?;
         Ok(())
     }
 

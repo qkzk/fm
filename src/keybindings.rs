@@ -98,8 +98,7 @@ impl Bindings {
     /// Used to format the help string.
     pub fn keybind_reversed(&self) -> HashMap<String, String> {
         self.binds
-            .clone()
-            .into_iter()
+            .iter()
             .map(|(k, v)| (v.to_string(), format!("{:?}", k)))
             .collect()
     }

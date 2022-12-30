@@ -11,6 +11,7 @@ use crate::constant_strings_paths::{
     DEFAULT_AUDIO_OPENER, DEFAULT_IMAGE_OPENER, DEFAULT_OFFICE_OPENER, DEFAULT_OPENER,
     DEFAULT_READABLE_OPENER, DEFAULT_TEXT_OPENER, DEFAULT_VECTORIAL_OPENER, DEFAULT_VIDEO_OPENER,
 };
+use crate::fileinfo::extract_extension;
 use crate::fm_error::{FmError, FmResult};
 
 fn find_it<P>(exe_name: P) -> Option<PathBuf>
@@ -252,18 +253,11 @@ impl Opener {
     /// It may fail if the program changed after reading the config file.
     /// It may also fail if the program can't handle this kind of files.
     /// This is quite a tricky method, there's many possible failures.
-    pub fn open(&self, filepath: PathBuf) -> FmResult<()> {
+    pub fn open(&self, filepath: &Path) -> FmResult<()> {
         if filepath.is_dir() {
             return Err(FmError::custom("open", "Can't execute a directory"));
         }
-
-        let extension_os_string = filepath
-            .extension()
-            .ok_or_else(|| FmError::custom("open", "Unreadable extension"))?
-            .to_owned();
-        let extension = extension_os_string
-            .to_str()
-            .ok_or_else(|| FmError::custom("open", "Extension couldn't be parsed correctly"))?;
+        let extension = extract_extension(filepath);
         let open_info = self.get_opener(extension);
         if open_info.external_program.is_some() {
             self.open_with(
@@ -286,10 +280,12 @@ impl Opener {
         &self,
         program: &str,
         use_term: bool,
-        filepath: std::path::PathBuf,
+        filepath: &std::path::Path,
     ) -> FmResult<std::process::Child> {
-        let strpath = filepath.into_os_string().into_string()?;
-        let args = vec![program, &strpath];
+        let strpath = filepath
+            .to_str()
+            .ok_or_else(|| FmError::custom("open with", "Can't parse filepath to str"))?;
+        let args = vec![program, strpath];
         if use_term {
             self.open_terminal(args)
         } else {

@@ -13,11 +13,12 @@ use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
+use termtree::Tree;
 use tuikit::attr::{Attr, Color};
 
 use crate::compress::list_files;
-use crate::fileinfo::FileInfo;
-use crate::fm_error::FmResult;
+use crate::fileinfo::{FileInfo, FileKind};
+use crate::fm_error::{FmError, FmResult};
 
 /// Different kind of preview used to display some informaitons
 /// About the file.
@@ -32,6 +33,7 @@ pub enum Preview {
     Exif(ExifContent),
     Thumbnail(Pixels),
     Media(MediaContent),
+    Directory(Directory),
     Empty,
 }
 
@@ -45,19 +47,27 @@ pub enum TextKind {
 impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
-    /// Creates a new preview instance based on the extension of the file.
+    /// Creates a new preview instance based on the filekind and the extension of
+    /// the file.
     /// Sometimes it reads the content of the file, sometimes it delegates
     /// it to the display method.
     pub fn new(file_info: &FileInfo) -> FmResult<Self> {
-        match file_info.extension.to_lowercase().as_str() {
-            e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
-            e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
-            e if is_ext_image(e) => Ok(Self::Exif(ExifContent::new(&file_info.path)?)),
-            e if is_ext_media(e) => Ok(Self::Media(MediaContent::new(&file_info.path)?)),
-            e => match Self::preview_syntaxed(e, &file_info.path) {
-                Some(syntaxed_preview) => Ok(syntaxed_preview),
-                None => Self::preview_text_or_binary(file_info),
+        match file_info.file_kind {
+            FileKind::Directory => Ok(Self::Directory(Directory::new(&file_info.path)?)),
+            FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
+                e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
+                e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
+                e if is_ext_image(e) => Ok(Self::Exif(ExifContent::new(&file_info.path)?)),
+                e if is_ext_media(e) => Ok(Self::Media(MediaContent::new(&file_info.path)?)),
+                e => match Self::preview_syntaxed(e, &file_info.path) {
+                    Some(syntaxed_preview) => Ok(syntaxed_preview),
+                    None => Self::preview_text_or_binary(file_info),
+                },
             },
+            _ => Err(FmError::custom(
+                "new preview",
+                "Can't preview this filekind",
+            )),
         }
     }
 
@@ -90,12 +100,12 @@ impl Preview {
     }
 
     /// Creates the help preview as if it was a text file.
-    pub fn help(help: String) -> Self {
+    pub fn help(help: &str) -> Self {
         Self::Text(TextContent::help(help))
     }
 
     /// Empty preview, holding nothing.
-    pub fn empty() -> Self {
+    pub fn new_empty() -> Self {
         Self::Empty
     }
 
@@ -112,6 +122,7 @@ impl Preview {
             Self::Thumbnail(_img) => 0,
             Self::Exif(exif_content) => exif_content.len(),
             Self::Media(media) => media.len(),
+            Self::Directory(directory) => directory.len(),
         }
     }
 
@@ -126,13 +137,13 @@ impl Preview {
 #[derive(Clone, Default)]
 pub struct TextContent {
     pub kind: TextKind,
-    pub content: Box<Vec<String>>,
+    content: Vec<String>,
     length: usize,
 }
 
 impl TextContent {
-    fn help(help: String) -> Self {
-        let content: Box<Vec<String>> = Box::new(help.split('\n').map(|s| s.to_owned()).collect());
+    fn help(help: &str) -> Self {
+        let content: Vec<String> = help.split('\n').map(|s| s.to_owned()).collect();
         Self {
             kind: TextKind::HELP,
             length: content.len(),
@@ -142,12 +153,10 @@ impl TextContent {
 
     fn from_file(path: &Path) -> FmResult<Self> {
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
-        let content: Box<Vec<String>> = Box::new(
-            reader
-                .lines()
-                .map(|line| line.unwrap_or_else(|_| "".to_owned()))
-                .collect(),
-        );
+        let content: Vec<String> = reader
+            .lines()
+            .map(|line| line.unwrap_or_else(|_| "".to_owned()))
+            .collect();
         Ok(Self {
             kind: TextKind::TEXTFILE,
             length: content.len(),
@@ -164,7 +173,7 @@ impl TextContent {
 /// The file is colored propery and line numbers are shown.
 #[derive(Clone, Default)]
 pub struct HLContent {
-    pub content: Vec<Vec<SyntaxedString>>,
+    content: Vec<Vec<SyntaxedString>>,
     length: usize,
 }
 
@@ -173,7 +182,7 @@ impl HLContent {
     /// It may file if the file isn't properly formatted or the extension
     /// is wrong (ie. python content with .c extension).
     /// ATM only Solarized (dark) theme is supported.
-    pub fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> FmResult<Self> {
+    fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> FmResult<Self> {
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
         let raw_content: Vec<String> = reader
             .lines()
@@ -206,7 +215,7 @@ impl HLContent {
             let mut v_line = vec![];
             if let Ok(v) = highlighter.highlight_line(line, &syntax_set) {
                 for (style, token) in v.iter() {
-                    v_line.push(SyntaxedString::from_syntect(col, token.to_string(), *style));
+                    v_line.push(SyntaxedString::from_syntect(col, token, *style));
                     col += token.len();
                 }
             }
@@ -232,7 +241,8 @@ impl SyntaxedString {
     /// Parse a content and style into a `SyntaxedString`
     /// Only the foreground color is read, we don't the background nor
     /// the style (bold, italic, underline) defined in Syntect.
-    pub fn from_syntect(col: usize, content: String, style: Style) -> Self {
+    fn from_syntect(col: usize, content: &str, style: Style) -> Self {
+        let content = content.to_owned();
         let fg = style.foreground;
         let attr = Attr::from(Color::Rgb(fg.r, fg.g, fg.b));
         Self { col, content, attr }
@@ -257,7 +267,7 @@ impl SyntaxedString {
 pub struct BinaryContent {
     pub path: PathBuf,
     length: u64,
-    pub content: Box<Vec<Line>>,
+    content: Vec<Line>,
 }
 
 impl BinaryContent {
@@ -266,7 +276,7 @@ impl BinaryContent {
     fn new(file_info: &FileInfo) -> FmResult<Self> {
         let mut reader = BufReader::new(std::fs::File::open(file_info.path.clone())?);
         let mut buffer = [0; Self::LINE_WIDTH];
-        let mut content: Box<Vec<Line>> = Box::new(vec![]);
+        let mut content: Vec<Line> = vec![];
         while let Ok(nb_bytes_read) = reader.read(&mut buffer[..]) {
             if nb_bytes_read != Self::LINE_WIDTH {
                 content.push(Line::new((&buffer[0..nb_bytes_read]).into()));
@@ -334,7 +344,7 @@ impl Line {
 #[derive(Clone)]
 pub struct PdfContent {
     length: usize,
-    pub content: Vec<String>,
+    content: Vec<String>,
 }
 
 impl PdfContent {
@@ -367,7 +377,7 @@ impl PdfContent {
 #[derive(Clone)]
 pub struct ZipContent {
     length: usize,
-    pub content: Vec<String>,
+    content: Vec<String>,
 }
 
 impl ZipContent {
@@ -393,7 +403,7 @@ impl ZipContent {
 pub struct ExifContent {
     length: usize,
     /// The exif strings.
-    pub content: Vec<String>,
+    content: Vec<String>,
 }
 
 impl ExifContent {
@@ -433,7 +443,7 @@ impl ExifContent {
 pub struct MediaContent {
     length: usize,
     /// The media info details.
-    pub content: Vec<String>,
+    content: Vec<String>,
 }
 
 impl MediaContent {
@@ -464,7 +474,7 @@ pub struct Pixels {
 
 impl Pixels {
     /// Creates a new preview instance. It simply holds a path.
-    pub fn new(img_path: PathBuf) -> FmResult<Self> {
+    fn new(img_path: PathBuf) -> FmResult<Self> {
         Ok(Self { img_path })
     }
 
@@ -475,6 +485,35 @@ impl Pixels {
     pub fn resized_rgb8(&self, width: u32, height: u32) -> FmResult<ImageBuffer<Rgb<u8>, Vec<u8>>> {
         let img = image::open(&self.img_path)?;
         Ok(img.resize(width, height, FilterType::Nearest).to_rgb8())
+    }
+}
+
+/// Display a tree view of a directory.
+/// The "tree view" is calculated recursively. It may take some time
+/// if the directory has a lot of children.
+#[derive(Clone, Debug)]
+pub struct Directory {
+    pub content: Vec<String>,
+    len: usize,
+}
+
+impl Directory {
+    fn new(path: &Path) -> FmResult<Self> {
+        let tree = tree_view(
+            path.to_str().ok_or_else(|| {
+                FmError::custom("Directory Preview", "Can't parse the filename to str")
+            })?,
+            10,
+        )?;
+        let tree_str = format!("{}", tree);
+        let content: Vec<String> = tree_str.lines().map(|s| s.to_owned()).collect();
+        let len = content.len();
+
+        Ok(Self { content, len })
+    }
+
+    fn len(&self) -> usize {
+        self.len
     }
 }
 
@@ -530,6 +569,7 @@ impl_window!(PdfContent, String);
 impl_window!(ZipContent, String);
 impl_window!(ExifContent, String);
 impl_window!(MediaContent, String);
+impl_window!(Directory, String);
 
 fn is_ext_zip(ext: &str) -> bool {
     matches!(
@@ -565,6 +605,35 @@ fn is_ext_media(ext: &str) -> bool {
 
 fn is_ext_pdf(ext: &str) -> bool {
     ext == "pdf"
+}
+
+fn filename_as_string<P: AsRef<Path>>(p: P) -> String {
+    p.as_ref()
+        .file_name()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap_or_default()
+        .to_owned()
+}
+
+fn tree_view<P: AsRef<Path>>(p: P, max_depth: usize) -> std::io::Result<Tree<String>> {
+    Ok(std::fs::read_dir(&p)?.filter_map(|e| e.ok()).fold(
+        Tree::new(filename_as_string(p.as_ref().canonicalize()?)),
+        |mut root, entry| {
+            if max_depth > 0 {
+                if let Ok(dir) = entry.metadata() {
+                    if dir.is_dir() {
+                        if let Ok(tree) = tree_view(entry.path(), max_depth - 1) {
+                            root.push(tree);
+                        }
+                    } else {
+                        root.push(Tree::new(filename_as_string(entry.path())));
+                    }
+                }
+            }
+            root
+        },
+    ))
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
