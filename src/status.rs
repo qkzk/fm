@@ -75,34 +75,30 @@ impl Status {
         help: String,
     ) -> FmResult<Self> {
         // unsafe because of UsersCache::with_all_users
-        unsafe {
-            let terminal = config.terminal();
-            let sys = System::new_all();
-            let opener =
-                load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
-            let users_cache = Rc::new(UsersCache::with_all_users());
-            let mut tab = Tab::new(args, height, users_cache)?;
-            tab.shortcut
-                .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
+        let terminal = config.terminal();
+        let sys = System::new_all();
+        let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
+        let users_cache = unsafe { Rc::new(UsersCache::with_all_users()) };
+        let mut tab = Tab::new(args, height, users_cache)?;
+        tab.shortcut
+            .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
+        let trash = Trash::new()?;
 
-            let trash = Trash::new()?;
-
-            Ok(Self {
-                tabs: [tab.clone(), tab],
-                index: 0,
-                flagged: Flagged::default(),
-                marks: Marks::read_from_config_file(),
-                colors: ColorCache::default(),
-                skimer: Skimer::new(term.clone()),
-                term,
-                dual_pane: true,
-                system_info: sys,
-                display_full: true,
-                opener,
-                help,
-                trash,
-            })
-        }
+        Ok(Self {
+            tabs: [tab.clone(), tab],
+            index: 0,
+            flagged: Flagged::default(),
+            marks: Marks::read_from_config_file(),
+            colors: ColorCache::default(),
+            skimer: Skimer::new(term.clone()),
+            term,
+            dual_pane: true,
+            system_info: sys,
+            display_full: true,
+            opener,
+            help,
+            trash,
+        })
     }
 
     /// Select the other tab if two are displayed. Does nother otherwise.
