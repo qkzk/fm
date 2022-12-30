@@ -149,7 +149,7 @@ impl<'a> WinTab<'a> {
             Mode::Normal => {
                 vec![
                     format!("{} ", tab.path_content.path.display()),
-                    format!("{} files ", tab.path_content.content.len()),
+                    format!("{} files ", tab.path_content.true_len()),
                     format!("{}  ", tab.path_content.used_space()),
                     format!("Avail: {}  ", disk_space),
                     format!("{}  ", &tab.path_content.git_string()?),

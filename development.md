@@ -254,6 +254,9 @@
 
 - [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
   - [x] preview directory with tree view
+- [x] refactoring: remove many PathBuf, String, to_owned, clone... and other heap allocation.
+      I tried to use as many reference as I could.
+- [x] userscache. Cache users & group at launch. Refresh them when refreshing views.
 
 ## TODO
 
@@ -283,7 +286,7 @@
   - [x] use as another display
   - [ ] navigation
 - [ ] zoxide support
-- [ ] cache users & groups
+- [ ] show . & .. in normal display
 
 - [ ] Version 0.2.0 : tests
 

@@ -128,9 +128,29 @@ impl FileInfo {
     /// a new `FileInfo` object if we can create one.
     pub fn new(direntry: &DirEntry, users_cache: &Rc<UsersCache>) -> FmResult<FileInfo> {
         let metadata = direntry.metadata()?;
-
         let path = direntry.path();
         let filename = extract_filename(direntry)?;
+
+        Self::create_from_metadata_and_filename(&path, &metadata, filename, users_cache)
+    }
+
+    fn from_path_with_name(
+        path: &path::Path,
+        filename: &str,
+        users_cache: &Rc<UsersCache>,
+    ) -> FmResult<Self> {
+        let metadata = metadata(path)?;
+
+        Self::create_from_metadata_and_filename(path, &metadata, filename.to_owned(), users_cache)
+    }
+
+    fn create_from_metadata_and_filename(
+        path: &path::Path,
+        metadata: &Metadata,
+        filename: String,
+        users_cache: &Rc<UsersCache>,
+    ) -> FmResult<Self> {
+        let path = path.to_owned();
         let size = extract_file_size(&metadata);
         let file_size = human_size(size);
         let permissions = extract_permissions_string(&metadata)?;
@@ -160,7 +180,6 @@ impl FileInfo {
             kind_format,
         })
     }
-
     /// Format the file line.
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
@@ -282,9 +301,10 @@ impl PathContent {
         filter_kind: &FilterKind,
         users_cache: &Rc<UsersCache>,
     ) -> FmResult<Vec<FileInfo>> {
-        match read_dir(path) {
+        let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users_cache)?;
+        let true_files = match read_dir(path) {
             Ok(read_dir) => {
-                let files: Vec<FileInfo> = if show_hidden {
+                if show_hidden {
                     read_dir
                         .filter_map(|res_direntry| res_direntry.ok())
                         .map(|direntry| FileInfo::new(&direntry, users_cache))
@@ -299,13 +319,28 @@ impl PathContent {
                         .filter_map(|res_file_entry| res_file_entry.ok())
                         .filter(|fileinfo| filter_kind.filter_by(fileinfo))
                         .collect()
-                };
-                Ok(files)
+                }
             }
             Err(error) => {
                 info!("Couldn't read path {} - {}", path.to_string_lossy(), error);
-                Ok(vec![])
+                vec![]
             }
+        };
+        files.extend(true_files);
+        Ok(files)
+    }
+
+    fn create_dot_dotdot(
+        path: &path::Path,
+        users_cache: &Rc<UsersCache>,
+    ) -> FmResult<Vec<FileInfo>> {
+        let current = FileInfo::from_path_with_name(path, ".", users_cache)?;
+        match path.parent() {
+            Some(parent) => {
+                let parent = FileInfo::from_path_with_name(parent, "..", users_cache)?;
+                Ok(vec![current, parent])
+            }
+            None => Ok(vec![current]),
         }
     }
 
@@ -411,10 +446,11 @@ impl PathContent {
             _ => Ok(false),
         }
     }
-
-    /// True if the path is empty.
-    pub fn is_empty(&self) -> bool {
-        self.content.is_empty()
+    pub fn true_len(&self) -> usize {
+        match self.path.parent() {
+            Some(_) => self.content.len() - 2,
+            None => self.content.len() - 1,
+        }
     }
 
     /// Human readable string representation of the space used by _files_
