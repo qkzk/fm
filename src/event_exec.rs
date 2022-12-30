@@ -13,7 +13,7 @@ use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::RESERVED_ROWS;
 use crate::copy_move::CopyMove;
-use crate::fileinfo::{FileKind, PathContent};
+use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::mode::Navigate;
@@ -994,7 +994,7 @@ impl EventExec {
         let path = string_to_path(completed)?;
         tab.input.reset();
         tab.history.push(&path);
-        tab.path_content = PathContent::new(&path, tab.show_hidden)?;
+        tab.set_pathcontent(&path)?;
         tab.window.reset(tab.path_content.content.len());
         Ok(())
     }
@@ -1006,9 +1006,10 @@ impl EventExec {
         let path = tab
             .shortcut
             .selected()
-            .ok_or_else(|| FmError::custom("exec shortcut", "empty shortcuts"))?;
-        tab.history.push(path);
-        tab.path_content = PathContent::new(path, tab.show_hidden)?;
+            .ok_or_else(|| FmError::custom("exec shortcut", "empty shortcuts"))?
+            .clone();
+        tab.history.push(&path);
+        tab.set_pathcontent(&path)?;
         Self::event_normal(tab)
     }
 
@@ -1016,12 +1017,12 @@ impl EventExec {
     /// It may fail if the user has no permission to visit the path
     pub fn exec_history(tab: &mut Tab) -> FmResult<()> {
         tab.input.reset();
-        tab.path_content = PathContent::new(
-            tab.history
-                .selected()
-                .ok_or_else(|| FmError::custom("exec history", "path unreachable"))?,
-            tab.show_hidden,
-        )?;
+        let path = tab
+            .history
+            .selected()
+            .ok_or_else(|| FmError::custom("exec history", "path unreachable"))?
+            .clone();
+        tab.set_pathcontent(&path)?;
         tab.history.drop_queue();
         Self::event_normal(tab)
     }

@@ -1,4 +1,7 @@
 use std::path;
+use std::sync::Arc;
+
+use users::UsersCache;
 
 use crate::args::Args;
 use crate::completion::Completion;
@@ -45,13 +48,14 @@ pub struct Tab {
     pub shortcut: Shortcut,
     /// Last searched string
     pub searched: Option<String>,
+    pub users_cache: Arc<UsersCache>,
 }
 
 impl Tab {
     /// Creates a new tab from args and height.
-    pub fn new(args: Args, height: usize) -> FmResult<Self> {
+    pub fn new(args: Args, height: usize, users_cache: Arc<UsersCache>) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
-        let path_content = PathContent::new(&path, false)?;
+        let path_content = PathContent::new(&path, false, users_cache.clone())?;
         let show_hidden = false;
         let nvim_server = args.server;
         let mode = Mode::Normal;
@@ -78,6 +82,7 @@ impl Tab {
             history,
             shortcut,
             searched,
+            users_cache,
         })
     }
 
@@ -109,9 +114,10 @@ impl Tab {
             .path_content
             .selected()
             .ok_or_else(|| FmError::custom("go_to_child", "Empty directory"))?
-            .path;
+            .path
+            .clone();
         self.history.push(childpath);
-        self.path_content = PathContent::new(childpath, self.show_hidden)?;
+        self.set_pathcontent(childpath)?;
         self.window.reset(self.path_content.content.len());
         self.input.cursor_start();
         Ok(())
