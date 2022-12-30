@@ -156,10 +156,9 @@ impl EventExec {
     /// If the saved path is invalid, it does nothing but reset the view.
     pub fn exec_marks_jump(status: &mut Status, c: char) -> FmResult<()> {
         if let Some(path) = status.marks.get(c) {
-            let path = path.to_owned();
-            status.selected().history.push(&path);
-            status.selected().path_content = PathContent::new(path, status.selected().show_hidden)?;
-        };
+            let path = path.clone();
+            status.selected().set_pathcontent(&path)?
+        }
         Self::event_normal(status.selected())
     }
 
@@ -225,7 +224,7 @@ impl EventExec {
             u32::from_str_radix(&status.selected().input.string(), 8).unwrap_or(0_u32);
         if permissions <= Status::MAX_PERMISSIONS {
             for path in status.flagged.content.iter() {
-                Status::set_permissions(path.clone(), permissions)?
+                Status::set_permissions(path, permissions)?
             }
             status.flagged.clear()
         }
@@ -754,7 +753,7 @@ impl EventExec {
         }
         // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         if let Ok(nvim_listen_address) = Self::nvim_listen_address(tab) {
-            if let Some(path_str) = tab.path_content.selected_path_str() {
+            if let Some(path_str) = tab.path_content.selected_path_string() {
                 let _ = execute_in_child(
                     NVIM_RPC_SENDER,
                     &vec![
@@ -785,7 +784,7 @@ impl EventExec {
 
     /// Copy the selected filepath to the clipboard. The absolute path.
     pub fn event_filepath_to_clipboard(tab: &Tab) -> FmResult<()> {
-        if let Some(filepath) = tab.path_content.selected_path_str() {
+        if let Some(filepath) = tab.path_content.selected_path_string() {
             let mut ctx = ClipboardContext::new()?;
             ctx.set_contents(filepath)?;
             // For some reason, it's not writen if you don't read it back...
@@ -842,7 +841,7 @@ impl EventExec {
         }
         fs::rename(
             tab.path_content
-                .selected_path_str()
+                .selected_path_string()
                 .ok_or_else(|| FmError::custom("exec rename", "File not found"))?,
             tab.path_content
                 .path
@@ -898,7 +897,7 @@ impl EventExec {
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         if std::path::Path::new(command).exists() {
-            let path = &tab.path_content.selected_path_str().ok_or_else(|| {
+            let path = &tab.path_content.selected_path_string().ok_or_else(|| {
                 FmError::custom("exec exec", &format!("can't find command {}", command))
             })?;
             args.push(path);
@@ -915,7 +914,7 @@ impl EventExec {
         let tab = status.selected_non_mut();
         execute_in_child(
             DEFAULT_DRAGNDROP,
-            &vec![&tab.path_content.selected_path_str().ok_or_else(|| {
+            &vec![&tab.path_content.selected_path_string().ok_or_else(|| {
                 FmError::custom(
                     "event drag n drop",
                     "can't find dragon-drop in the system. Is the application installed?",
@@ -995,7 +994,7 @@ impl EventExec {
         let path = string_to_path(completed)?;
         tab.input.reset();
         tab.history.push(&path);
-        tab.path_content = PathContent::new(path, tab.show_hidden)?;
+        tab.path_content = PathContent::new(&path, tab.show_hidden)?;
         tab.window.reset(tab.path_content.content.len());
         Ok(())
     }
@@ -1007,9 +1006,8 @@ impl EventExec {
         let path = tab
             .shortcut
             .selected()
-            .ok_or_else(|| FmError::custom("exec shortcut", "empty shortcuts"))?
-            .to_owned();
-        tab.history.push(&path);
+            .ok_or_else(|| FmError::custom("exec shortcut", "empty shortcuts"))?;
+        tab.history.push(path);
         tab.path_content = PathContent::new(path, tab.show_hidden)?;
         Self::event_normal(tab)
     }
@@ -1021,8 +1019,7 @@ impl EventExec {
         tab.path_content = PathContent::new(
             tab.history
                 .selected()
-                .ok_or_else(|| FmError::custom("exec history", "path unreachable"))?
-                .to_owned(),
+                .ok_or_else(|| FmError::custom("exec history", "path unreachable"))?,
             tab.show_hidden,
         )?;
         tab.history.drop_queue();

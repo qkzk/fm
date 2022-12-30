@@ -51,7 +51,7 @@ impl Tab {
     /// Creates a new tab from args and height.
     pub fn new(args: Args, height: usize) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
-        let path_content = PathContent::new(path.clone(), false)?;
+        let path_content = PathContent::new(&path, false)?;
         let show_hidden = false;
         let nvim_server = args.server;
         let mode = Mode::Normal;
@@ -105,13 +105,12 @@ impl Tab {
     /// Fail silently if the current directory is empty or if the selected
     /// file isn't a directory.
     pub fn go_to_child(&mut self) -> FmResult<()> {
-        let childpath = self
+        let childpath = &self
             .path_content
             .selected()
             .ok_or_else(|| FmError::custom("go_to_child", "Empty directory"))?
-            .path
-            .clone();
-        self.history.push(&childpath);
+            .path;
+        self.history.push(childpath);
         self.path_content = PathContent::new(childpath, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
         self.input.cursor_start();

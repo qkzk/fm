@@ -107,9 +107,7 @@ impl<'a> WinTab<'a> {
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
     fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> FmResult<()> {
-        let first_row = self.create_first_row(tab, disk_space)?;
-        self.draw_colored_strings(0, 0, first_row, canvas)?;
-        Ok(())
+        self.draw_colored_strings(0, 0, self.create_first_row(tab, disk_space)?, canvas)
     }
 
     fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
@@ -150,7 +148,7 @@ impl<'a> WinTab<'a> {
         let first_row = match tab.mode {
             Mode::Normal => {
                 vec![
-                    format!("{} ", tab.path_content.path_to_str()?),
+                    format!("{} ", tab.path_content.path.display()),
                     format!("{} files ", tab.path_content.content.len()),
                     format!("{}  ", tab.path_content.used_space()),
                     format!("Avail: {}  ", disk_space),

@@ -283,6 +283,7 @@
   - [x] use as another display
   - [ ] navigation
 - [ ] zoxide support
+- [ ] cache users & groups
 
 - [ ] Version 0.2.0 : tests
 

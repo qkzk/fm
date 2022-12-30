@@ -506,13 +506,10 @@ impl Directory {
             10,
         )?;
         let tree_str = format!("{}", tree);
-        let tree_lines: Vec<String> = tree_str.lines().map(|s| s.to_owned()).collect();
-        let len = tree_lines.len();
+        let content: Vec<String> = tree_str.lines().map(|s| s.to_owned()).collect();
+        let len = content.len();
 
-        Ok(Self {
-            content: tree_lines,
-            len,
-        })
+        Ok(Self { content, len })
     }
 
     fn len(&self) -> usize {
