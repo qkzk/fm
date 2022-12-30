@@ -32,7 +32,8 @@ pub struct EventExec {}
 
 impl EventExec {
     /// Reset the selected tab view to the default.
-    pub fn refresh_selected_view(status: &mut Status) -> FmResult<()> {
+    pub fn refresh_status(status: &mut Status) -> FmResult<()> {
+        status.refresh_users()?;
         status.selected().refresh_view()
     }
 
@@ -48,7 +49,7 @@ impl EventExec {
             status.set_dual_pane(true);
         }
         status.selected().set_height(height);
-        Self::refresh_selected_view(status)?;
+        Self::refresh_status(status)?;
         Ok(())
     }
 
@@ -1235,7 +1236,7 @@ impl EventExec {
 
     /// Refresh the current view, reloading the files. Move the selection to top.
     pub fn event_refreshview(status: &mut Status) -> FmResult<()> {
-        Self::refresh_selected_view(status)
+        Self::refresh_status(status)
     }
 
     /// Open a thumbnail of an image, scaled up to the whole window.

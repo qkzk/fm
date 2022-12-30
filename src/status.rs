@@ -290,4 +290,13 @@ impl Status {
     pub fn selected_path_str(&self) -> &str {
         self.selected_non_mut().path_str().unwrap_or_default()
     }
+
+    /// Refresh the existing users.
+    pub fn refresh_users(&mut self) -> FmResult<()> {
+        let users_cache = Rc::new(unsafe { UsersCache::with_all_users() });
+        for tab in self.tabs.iter_mut() {
+            tab.refresh_users(users_cache.clone())?;
+        }
+        Ok(())
+    }
 }

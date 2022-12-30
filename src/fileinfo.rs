@@ -458,6 +458,12 @@ impl PathContent {
     pub fn enumerate(&mut self) -> Enumerate<std::slice::Iter<'_, FileInfo>> {
         self.content.iter().enumerate()
     }
+
+    /// Refresh the existing users.
+    pub fn refresh_users(&mut self, users_cache: Rc<UsersCache>) -> FmResult<()> {
+        self.users_cache = users_cache;
+        self.reset_files()
+    }
 }
 
 impl_selectable_content!(FileInfo, PathContent);

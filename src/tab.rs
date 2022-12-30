@@ -178,4 +178,9 @@ impl Tab {
         self.path_content.select_index(index);
         self.window.scroll_to(index);
     }
+
+    /// Refresh the existing users.
+    pub fn refresh_users(&mut self, users_cache: Rc<UsersCache>) -> FmResult<()> {
+        self.path_content.refresh_users(users_cache)
+    }
 }
