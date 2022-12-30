@@ -35,7 +35,7 @@ impl EventDispatcher {
             Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => {
                 EventExec::event_right_click(status, row)
             }
-            Event::User(_) => EventExec::refresh_selected_view(status),
+            Event::User(_) => EventExec::refresh_status(status),
             Event::Resize { width, height } => EventExec::resize(status, width, height),
             Event::Key(Key::Char(c)) => self.char(status, Key::Char(c)),
             Event::Key(key) => self.key_matcher(status, key),

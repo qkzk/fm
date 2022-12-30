@@ -1,4 +1,7 @@
 use std::path;
+use std::rc::Rc;
+
+use users::UsersCache;
 
 use crate::args::Args;
 use crate::completion::Completion;
@@ -49,9 +52,9 @@ pub struct Tab {
 
 impl Tab {
     /// Creates a new tab from args and height.
-    pub fn new(args: Args, height: usize) -> FmResult<Self> {
+    pub fn new(args: Args, height: usize, users_cache: Rc<UsersCache>) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
-        let path_content = PathContent::new(&path, false)?;
+        let path_content = PathContent::new(&path, false, users_cache)?;
         let show_hidden = false;
         let nvim_server = args.server;
         let mode = Mode::Normal;
@@ -109,9 +112,10 @@ impl Tab {
             .path_content
             .selected()
             .ok_or_else(|| FmError::custom("go_to_child", "Empty directory"))?
-            .path;
+            .path
+            .clone();
         self.history.push(childpath);
-        self.path_content = PathContent::new(childpath, self.show_hidden)?;
+        self.set_pathcontent(childpath)?;
         self.window.reset(self.path_content.content.len());
         self.input.cursor_start();
         Ok(())
@@ -173,5 +177,10 @@ impl Tab {
     pub fn go_to_index(&mut self, index: usize) {
         self.path_content.select_index(index);
         self.window.scroll_to(index);
+    }
+
+    /// Refresh the existing users.
+    pub fn refresh_users(&mut self, users_cache: Rc<UsersCache>) -> FmResult<()> {
+        self.path_content.refresh_users(users_cache)
     }
 }

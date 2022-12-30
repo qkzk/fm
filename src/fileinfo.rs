@@ -2,12 +2,13 @@ use std::fs::{metadata, read_dir, DirEntry, Metadata};
 use std::iter::Enumerate;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
+use std::rc::Rc;
 
 use chrono::offset::Local;
 use chrono::DateTime;
 use log::info;
 use tuikit::prelude::{Attr, Color, Effect};
-use users::{get_group_by_gid, get_user_by_uid};
+use users::{Groups, Users, UsersCache};
 
 use crate::config::{str_to_tuikit, Colors};
 use crate::constant_strings_paths::PERMISSIONS_STR;
@@ -125,7 +126,7 @@ pub struct FileInfo {
 impl FileInfo {
     /// Reads every information about a file from its metadata and returs
     /// a new `FileInfo` object if we can create one.
-    pub fn new(direntry: &DirEntry) -> FmResult<FileInfo> {
+    pub fn new(direntry: &DirEntry, users_cache: &Rc<UsersCache>) -> FmResult<FileInfo> {
         let metadata = direntry.metadata()?;
 
         let path = direntry.path();
@@ -133,8 +134,8 @@ impl FileInfo {
         let size = extract_file_size(&metadata);
         let file_size = human_size(size);
         let permissions = extract_permissions_string(&metadata)?;
-        let owner = extract_owner(&metadata)?;
-        let group = extract_group(&metadata)?;
+        let owner = extract_owner(&metadata, users_cache)?;
+        let group = extract_group(&metadata, users_cache)?;
         let system_time = extract_datetime(&metadata)?;
         let is_selected = false;
 
@@ -223,16 +224,21 @@ pub struct PathContent {
     /// The filter use before displaying files
     pub filter: FilterKind,
     used_space: u64,
+    users_cache: Rc<UsersCache>,
 }
 
 impl PathContent {
     /// Reads the paths and creates a new `PathContent`.
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
-    pub fn new(path: &path::Path, show_hidden: bool) -> FmResult<Self> {
+    pub fn new(
+        path: &path::Path,
+        show_hidden: bool,
+        users_cache: Rc<UsersCache>,
+    ) -> FmResult<Self> {
         let path = path.to_owned();
         let filter = FilterKind::All;
-        let mut content = Self::files(&path, show_hidden, &filter)?;
+        let mut content = Self::files(&path, show_hidden, &filter, &users_cache)?;
         let sort_kind = SortKind::default();
         sort_kind.sort(&mut content);
         let selected_index: usize = 0;
@@ -249,11 +255,12 @@ impl PathContent {
             sort_kind,
             filter,
             used_space,
+            users_cache,
         })
     }
 
     pub fn change_directory(&mut self, path: &path::Path) -> FmResult<()> {
-        self.content = Self::files(path, self.show_hidden, &self.filter)?;
+        self.content = Self::files(path, self.show_hidden, &self.filter, &self.users_cache)?;
         self.sort_kind.sort(&mut self.content);
         self.index = 0;
         if !self.content.is_empty() {
@@ -273,13 +280,14 @@ impl PathContent {
         path: &path::Path,
         show_hidden: bool,
         filter_kind: &FilterKind,
+        users_cache: &Rc<UsersCache>,
     ) -> FmResult<Vec<FileInfo>> {
         match read_dir(path) {
             Ok(read_dir) => {
                 let files: Vec<FileInfo> = if show_hidden {
                     read_dir
                         .filter_map(|res_direntry| res_direntry.ok())
-                        .map(|direntry| FileInfo::new(&direntry))
+                        .map(|direntry| FileInfo::new(&direntry, users_cache))
                         .filter_map(|res_file_entry| res_file_entry.ok())
                         .filter(|fileinfo| filter_kind.filter_by(fileinfo))
                         .collect()
@@ -287,7 +295,7 @@ impl PathContent {
                     read_dir
                         .filter_map(|res_direntry| res_direntry.ok())
                         .filter(|e| is_not_hidden(e).unwrap_or(true))
-                        .map(|direntry| FileInfo::new(&direntry))
+                        .map(|direntry| FileInfo::new(&direntry, users_cache))
                         .filter_map(|res_file_entry| res_file_entry.ok())
                         .filter(|fileinfo| filter_kind.filter_by(fileinfo))
                         .collect()
@@ -358,7 +366,12 @@ impl PathContent {
     /// Reads and sort the content with current key.
     /// Select the first file if any.
     pub fn reset_files(&mut self) -> Result<(), FmError> {
-        self.content = Self::files(&self.path, self.show_hidden, &self.filter)?;
+        self.content = Self::files(
+            &self.path,
+            self.show_hidden,
+            &self.filter,
+            &self.users_cache,
+        )?;
         self.sort_kind = SortKind::default();
         self.sort();
         self.index = 0;
@@ -445,6 +458,12 @@ impl PathContent {
     pub fn enumerate(&mut self) -> Enumerate<std::slice::Iter<'_, FileInfo>> {
         self.content.iter().enumerate()
     }
+
+    /// Refresh the existing users.
+    pub fn refresh_users(&mut self, users_cache: Rc<UsersCache>) -> FmResult<()> {
+        self.users_cache = users_cache;
+        self.reset_files()
+    }
 }
 
 impl_selectable_content!(FileInfo, PathContent);
@@ -514,8 +533,9 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 }
 
 /// Reads the owner name and returns it as a string.
-fn extract_owner(metadata: &Metadata) -> FmResult<String> {
-    Ok(get_user_by_uid(metadata.uid())
+fn extract_owner(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<String> {
+    Ok(users_cache
+        .get_user_by_uid(metadata.uid())
         .ok_or_else(|| FmError::custom("extract owner", "Couldn't read uid"))?
         .name()
         .to_str()
@@ -524,8 +544,9 @@ fn extract_owner(metadata: &Metadata) -> FmResult<String> {
 }
 
 /// Reads the group name and returns it as a string.
-fn extract_group(metadata: &Metadata) -> FmResult<String> {
-    Ok(get_group_by_gid(metadata.gid())
+fn extract_group(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<String> {
+    Ok(users_cache
+        .get_group_by_gid(metadata.gid())
         .ok_or_else(|| FmError::custom("extract group", "Couldn't read gid"))?
         .name()
         .to_str()

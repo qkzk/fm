@@ -1,12 +1,14 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use regex::Regex;
 use skim::SkimItem;
 use sysinfo::{Disk, DiskExt, System, SystemExt};
 use tuikit::term::Term;
+use users::UsersCache;
 
 use crate::args::Args;
 use crate::color_cache::ColorCache;
@@ -72,10 +74,12 @@ impl Status {
         term: Arc<Term>,
         help: String,
     ) -> FmResult<Self> {
+        // unsafe because of UsersCache::with_all_users
         let terminal = config.terminal();
         let sys = System::new_all();
         let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
-        let mut tab = Tab::new(args, height)?;
+        let users_cache = unsafe { Rc::new(UsersCache::with_all_users()) };
+        let mut tab = Tab::new(args, height, users_cache)?;
         tab.shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
         let trash = Trash::new()?;
@@ -122,8 +126,8 @@ impl Status {
 
     /// Reset the view of every tab.
     pub fn reset_tabs_view(&mut self) -> FmResult<()> {
-        for status in self.tabs.iter_mut() {
-            status.refresh_view()?
+        for tab in self.tabs.iter_mut() {
+            tab.refresh_view()?
         }
         Ok(())
     }
@@ -151,16 +155,15 @@ impl Status {
     }
 
     fn create_tab_from_skim_output(&mut self, cow_path: &Arc<dyn SkimItem>) {
-        let mut tab = self.selected().clone();
+        // let mut tab = self.selected().clone();
         let s_path = cow_path.output().to_string();
         if let Ok(path) = fs::canonicalize(Path::new(&s_path)) {
             if path.is_file() {
                 if let Some(parent) = path.parent() {
-                    let _ = tab.set_pathcontent(parent);
+                    let _ = self.selected().set_pathcontent(parent);
                 }
             } else if path.is_dir() {
-                let _ = tab.set_pathcontent(&path);
-                self.tabs[self.index] = tab;
+                let _ = self.selected().set_pathcontent(&path);
             }
         }
     }
@@ -192,9 +195,6 @@ impl Status {
     /// Empty the flagged files, reset the view of every tab.
     pub fn clear_flags_and_reset_view(&mut self) -> FmResult<()> {
         self.flagged.clear();
-        self.selected().path_content.reset_files()?;
-        let len = self.tabs[self.index].path_content.content.len();
-        self.selected().window.reset(len);
         self.reset_tabs_view()
     }
 
@@ -289,5 +289,14 @@ impl Status {
     /// Returns a string representing the current path in the selected tab.
     pub fn selected_path_str(&self) -> &str {
         self.selected_non_mut().path_str().unwrap_or_default()
+    }
+
+    /// Refresh the existing users.
+    pub fn refresh_users(&mut self) -> FmResult<()> {
+        let users_cache = Rc::new(unsafe { UsersCache::with_all_users() });
+        for tab in self.tabs.iter_mut() {
+            tab.refresh_users(users_cache.clone())?;
+        }
+        Ok(())
     }
 }

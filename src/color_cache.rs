@@ -7,16 +7,9 @@ use tuikit::attr::Color;
 /// Holds a map of extension name to color.
 /// Every extension is associated to a color which is only computed once
 /// per run. This trades a bit of memory for a bit of CPU.
+#[derive(Default)]
 pub struct ColorCache {
     cache: RefCell<HashMap<String, Color>>,
-}
-
-impl Default for ColorCache {
-    fn default() -> Self {
-        Self {
-            cache: RefCell::new(HashMap::new()),
-        }
-    }
 }
 
 impl ColorCache {
