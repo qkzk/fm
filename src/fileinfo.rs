@@ -510,24 +510,22 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 
 /// Reads the owner name and returns it as a string.
 fn extract_owner(metadata: &Metadata) -> FmResult<String> {
-    Ok(String::from(
-        get_user_by_uid(metadata.uid())
-            .ok_or_else(|| FmError::custom("owner", "Couldn't read uid"))?
-            .name()
-            .to_str()
-            .ok_or_else(|| FmError::custom("metadata", "Couldn't read owner name"))?,
-    ))
+    Ok(get_user_by_uid(metadata.uid())
+        .ok_or_else(|| FmError::custom("owner", "Couldn't read uid"))?
+        .name()
+        .to_str()
+        .ok_or_else(|| FmError::custom("metadata", "Couldn't read owner name"))?
+        .to_owned())
 }
 
 /// Reads the group name and returns it as a string.
 fn extract_group(metadata: &Metadata) -> FmResult<String> {
-    Ok(String::from(
-        get_group_by_gid(metadata.gid())
-            .ok_or_else(|| FmError::custom("owner", "Couldn't read gid"))?
-            .name()
-            .to_str()
-            .ok_or_else(|| FmError::custom("metadata", "Couldn't read group name"))?,
-    ))
+    Ok(get_group_by_gid(metadata.gid())
+        .ok_or_else(|| FmError::custom("owner", "Couldn't read gid"))?
+        .name()
+        .to_str()
+        .ok_or_else(|| FmError::custom("metadata", "Couldn't read group name"))?
+        .to_owned())
 }
 
 /// Returns the file size.
