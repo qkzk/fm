@@ -100,7 +100,7 @@ impl Preview {
     }
 
     /// Creates the help preview as if it was a text file.
-    pub fn help(help: String) -> Self {
+    pub fn help(help: &str) -> Self {
         Self::Text(TextContent::help(help))
     }
 
@@ -142,7 +142,7 @@ pub struct TextContent {
 }
 
 impl TextContent {
-    fn help(help: String) -> Self {
+    fn help(help: &str) -> Self {
         let content: Vec<String> = help.split('\n').map(|s| s.to_owned()).collect();
         Self {
             kind: TextKind::HELP,
@@ -215,7 +215,7 @@ impl HLContent {
             let mut v_line = vec![];
             if let Ok(v) = highlighter.highlight_line(line, &syntax_set) {
                 for (style, token) in v.iter() {
-                    v_line.push(SyntaxedString::from_syntect(col, token.to_string(), *style));
+                    v_line.push(SyntaxedString::from_syntect(col, token, *style));
                     col += token.len();
                 }
             }
@@ -241,7 +241,8 @@ impl SyntaxedString {
     /// Parse a content and style into a `SyntaxedString`
     /// Only the foreground color is read, we don't the background nor
     /// the style (bold, italic, underline) defined in Syntect.
-    fn from_syntect(col: usize, content: String, style: Style) -> Self {
+    fn from_syntect(col: usize, content: &str, style: Style) -> Self {
+        let content = content.to_owned();
         let fg = style.foreground;
         let attr = Attr::from(Color::Rgb(fg.r, fg.g, fg.b));
         Self { col, content, attr }

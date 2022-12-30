@@ -67,11 +67,11 @@ impl Completion {
 
     /// Returns the currently selected proposition.
     /// Returns an empty string if `proposals` is empty.
-    pub fn current_proposition(&self) -> String {
+    pub fn current_proposition(&self) -> &str {
         if self.proposals.is_empty() {
-            return "".to_owned();
+            return "";
         }
-        self.proposals[self.index].to_owned()
+        &self.proposals[self.index]
     }
 
     /// Updates the proposition with a new `Vec`.
@@ -101,7 +101,7 @@ impl Completion {
         &mut self,
         input_string: &str,
         path_content: &PathContent,
-        current_path: String,
+        current_path: &str,
     ) -> FmResult<()> {
         match self.kind {
             InputCompleted::Exec => self.exec(input_string),
@@ -113,8 +113,8 @@ impl Completion {
 
     /// Goto completion.
     /// Looks for the valid path completing what the user typed.
-    fn goto(&mut self, input_string: &str, current_path: String) -> FmResult<()> {
-        self.update_from_input(input_string, &current_path);
+    fn goto(&mut self, input_string: &str, current_path: &str) -> FmResult<()> {
+        self.update_from_input(input_string, current_path);
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
             return Ok(());
@@ -151,7 +151,7 @@ impl Completion {
         }
     }
 
-    fn extend_relative_paths(&mut self, current_path: String, last_name: &str) {
+    fn extend_relative_paths(&mut self, current_path: &str, last_name: &str) {
         if let Ok(entries) = fs::read_dir(current_path) {
             self.extend(Self::entries_matching_filename(entries, last_name))
         }
@@ -207,7 +207,7 @@ fn filename_startswith(entry: &std::fs::DirEntry, pattern: &str) -> bool {
     entry
         .file_name()
         .to_string_lossy()
-        .into_owned()
+        .as_ref()
         .starts_with(pattern)
 }
 

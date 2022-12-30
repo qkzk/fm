@@ -90,7 +90,7 @@ impl CopyMove {
 pub fn copy_move(
     copy_or_move: CopyMove,
     sources: Vec<PathBuf>,
-    dest: String,
+    dest: &str,
     term: Arc<Term>,
 ) -> FmResult<()> {
     let c_term = term.clone();
@@ -99,6 +99,7 @@ pub fn copy_move(
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&in_mem, &pb, &term, process_info)
     };
+    let dest = dest.to_owned();
     let _ = thread::spawn(move || {
         let copier_mover = match copy_or_move {
             CopyMove::Copy => fs_extra::copy_items_with_progress,

@@ -67,7 +67,7 @@ pub fn drop_everything(
 }
 
 /// Print the path on the stdout.
-pub fn print_on_quit(path_string: String) {
+pub fn print_on_quit(path_string: &str) {
     println!("{}", path_string)
 }
 

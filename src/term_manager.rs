@@ -522,9 +522,9 @@ impl Display {
         let (width, _) = self.term.term_size()?;
         let disk_spaces = status.disk_spaces_per_tab();
         if status.dual_pane && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self.draw_dual_pane(status, disk_spaces.0, disk_spaces.1)?
+            self.draw_dual_pane(status, &disk_spaces.0, &disk_spaces.1)?
         } else {
-            self.draw_single_pane(status, disk_spaces.0)?
+            self.draw_single_pane(status, &disk_spaces.0)?
         }
 
         Ok(self.term.present()?)
@@ -533,19 +533,19 @@ impl Display {
     fn draw_dual_pane(
         &mut self,
         status: &Status,
-        disk_space_tab_0: String,
-        disk_space_tab_1: String,
+        disk_space_tab_0: &str,
+        disk_space_tab_1: &str,
     ) -> FmResult<()> {
         let win_left = WinTab {
             status,
             tab: &status.tabs[0],
-            disk_space: &disk_space_tab_0,
+            disk_space: disk_space_tab_0,
             colors: &self.colors,
         };
         let win_right = WinTab {
             status,
             tab: &status.tabs[1],
-            disk_space: &disk_space_tab_1,
+            disk_space: disk_space_tab_1,
             colors: &self.colors,
         };
         let (left_border, right_border) = if status.index == 0 {
@@ -559,11 +559,11 @@ impl Display {
         Ok(self.term.draw(&hsplit)?)
     }
 
-    fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: String) -> FmResult<()> {
+    fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: &str) -> FmResult<()> {
         let win_left = WinTab {
             status,
             tab: &status.tabs[0],
-            disk_space: &disk_space_tab_0,
+            disk_space: disk_space_tab_0,
             colors: &self.colors,
         };
         let win = Win::new(&win_left)

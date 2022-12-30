@@ -573,7 +573,7 @@ impl EventExec {
         let help = status.help.clone();
         let tab = status.selected();
         tab.mode = Mode::Preview;
-        tab.preview = Preview::help(help);
+        tab.preview = Preview::help(&help);
         tab.window.reset(tab.preview.len());
         Ok(())
     }
@@ -939,19 +939,19 @@ impl EventExec {
         }
         tab.searched = Some(searched.clone());
         let next_index = tab.path_content.index;
-        Self::search_from(tab, searched, next_index);
+        Self::search_from(tab, &searched, next_index);
     }
 
     /// Search in current directory for an file whose name contains `searched_name`,
     /// from a starting position `next_index`.
     /// We search forward from that position and start again from top if nothing is found.
     /// We move the selection to the first matching file.
-    fn search_from(tab: &mut Tab, searched_name: String, current_index: usize) {
+    fn search_from(tab: &mut Tab, searched_name: &str, current_index: usize) {
         let mut found = false;
         let mut next_index = current_index;
         // search after current position
         for (index, file) in tab.path_content.enumerate().skip(current_index) {
-            if file.filename.contains(&searched_name) {
+            if file.filename.contains(searched_name) {
                 next_index = index;
                 found = true;
                 break;
@@ -964,7 +964,7 @@ impl EventExec {
 
         // search from top
         for (index, file) in tab.path_content.enumerate().take(current_index) {
-            if file.filename.contains(&searched_name) {
+            if file.filename.contains(searched_name) {
                 next_index = index;
                 found = true;
                 break;
@@ -978,7 +978,7 @@ impl EventExec {
     pub fn event_search_next(tab: &mut Tab) -> FmResult<()> {
         if let Some(searched) = tab.searched.clone() {
             let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
-            Self::search_from(tab, searched, next_index);
+            Self::search_from(tab, &searched, next_index);
         }
         Ok(())
     }
@@ -1343,7 +1343,7 @@ impl EventExec {
     }
 }
 
-fn string_to_path(path_string: String) -> FmResult<path::PathBuf> {
+fn string_to_path(path_string: &str) -> FmResult<path::PathBuf> {
     let expanded_cow_path = shellexpand::tilde(&path_string);
     let expanded_target: &str = expanded_cow_path.borrow();
     Ok(std::fs::canonicalize(expanded_target)?)

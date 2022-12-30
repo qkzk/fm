@@ -84,11 +84,9 @@ impl Tab {
     /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> FmResult<()> {
         self.completion.set_kind(&self.mode);
-        self.completion.complete(
-            &self.input.string(),
-            &self.path_content,
-            self.path_str().unwrap_or_default(),
-        )
+        let current_path = self.path_str().unwrap_or_default().to_owned();
+        self.completion
+            .complete(&self.input.string(), &self.path_content, &current_path)
     }
 
     /// Refresh the current view.
@@ -134,8 +132,8 @@ impl Tab {
     }
 
     /// Returns a string of the current directory path.
-    pub fn path_str(&self) -> Option<String> {
-        Some(self.path_content.path.to_str()?.to_owned())
+    pub fn path_str(&self) -> Option<&str> {
+        self.path_content.path.to_str()
     }
 
     /// Set the pathcontent to a new path.

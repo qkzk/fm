@@ -139,8 +139,7 @@ impl Status {
         for path in self
             .skimer
             .no_source(
-                &self
-                    .selected_non_mut()
+                self.selected_non_mut()
                     .path_str()
                     .ok_or_else(|| FmError::custom("skim", "skim error"))?,
             )
@@ -288,7 +287,7 @@ impl Status {
     }
 
     /// Returns a string representing the current path in the selected tab.
-    pub fn selected_path_str(&self) -> String {
+    pub fn selected_path_str(&self) -> &str {
         self.selected_non_mut().path_str().unwrap_or_default()
     }
 }
