@@ -48,7 +48,6 @@ pub struct Tab {
     pub shortcut: Shortcut,
     /// Last searched string
     pub searched: Option<String>,
-    pub users_cache: Arc<UsersCache>,
 }
 
 impl Tab {
@@ -82,7 +81,6 @@ impl Tab {
             history,
             shortcut,
             searched,
-            users_cache,
         })
     }
 

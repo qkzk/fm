@@ -57,8 +57,6 @@ pub struct Status {
     pub help: String,
     /// The trash
     pub trash: Trash,
-    /// users cache
-    pub users_cache: Arc<UsersCache>,
 }
 
 impl Status {
@@ -75,6 +73,7 @@ impl Status {
         term: Arc<Term>,
         help: String,
     ) -> FmResult<Self> {
+        // unsafe because of UsersCache::with_all_users
         unsafe {
             let terminal = config.terminal();
             let sys = System::new_all();
@@ -86,6 +85,8 @@ impl Status {
                 .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
 
             let trash = Trash::new()?;
+
+            drop(users_cache);
 
             Ok(Self {
                 tabs: [tab.clone(), tab],
@@ -101,7 +102,6 @@ impl Status {
                 opener,
                 help,
                 trash,
-                users_cache,
             })
         }
     }
