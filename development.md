@@ -252,8 +252,7 @@
   - [x] allow strange bytes in path
   - [x] compatibiliy with other programs like trash-cli
 
-- [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
-  - [x] preview directory with tree view
+- [x] preview directory with tree view [termtree](https://crates.io/crates/termtree)
 - [x] refactoring: remove many PathBuf, String, to_owned, clone... and other heap allocation.
       I tried to use as many reference as I could.
 - [x] userscache. Cache users & group at launch. Refresh them when refreshing views.
