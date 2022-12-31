@@ -258,6 +258,10 @@
 - [x] userscache. Cache users & group at launch. Refresh them when refreshing views.
 - [x] show . & .. in normal display
 
+### Version 0.1.8
+
+- [x] improve fuzzy finding by moving to the selected file
+
 ## TODO
 
 - [ ] remote control
