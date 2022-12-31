@@ -22,7 +22,7 @@ use crate::opener::{load_opener, Opener};
 use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::trash::Trash;
-use crate::utils::disk_space;
+use crate::utils::{disk_space, filename_from_path};
 
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.
@@ -137,35 +137,37 @@ impl Status {
         self.flagged.toggle(path)
     }
 
-    /// Replace the tab content with what was returned by skim.
-    /// It calls skim read its output, then replace the tab itself.
-    pub fn fill_tabs_with_skim(&mut self) -> FmResult<()> {
-        for path in self
+    /// Replace the tab content with the first result of skim.
+    /// It calls skim, reads its output, then update the tab content.
+    pub fn skim_output_to_tab(&mut self) -> FmResult<()> {
+        if let Some(skim_output) = self
             .skimer
             .no_source(
                 self.selected_non_mut()
                     .path_str()
                     .ok_or_else(|| FmError::custom("skim", "skim error"))?,
             )
-            .iter()
+            .first()
         {
-            self.create_tab_from_skim_output(path)
+            self._update_tab_from_skim_output(skim_output)?;
         }
         Ok(())
     }
 
-    fn create_tab_from_skim_output(&mut self, cow_path: &Arc<dyn SkimItem>) {
-        // let mut tab = self.selected().clone();
-        let s_path = cow_path.output().to_string();
-        if let Ok(path) = fs::canonicalize(Path::new(&s_path)) {
-            if path.is_file() {
-                if let Some(parent) = path.parent() {
-                    let _ = self.selected().set_pathcontent(parent);
-                }
-            } else if path.is_dir() {
-                let _ = self.selected().set_pathcontent(&path);
+    fn _update_tab_from_skim_output(&mut self, skim_outut: &Arc<dyn SkimItem>) -> FmResult<()> {
+        let path = fs::canonicalize(&skim_outut.output().to_string())?;
+        let tab = self.selected();
+        if path.is_file() {
+            if let Some(parent) = path.parent() {
+                tab.set_pathcontent(parent)?;
+                let filename = filename_from_path(&path)?;
+                tab.search_from(filename, 0);
             }
+        } else if path.is_dir() {
+            tab.set_pathcontent(&path)?;
         }
+
+        Ok(())
     }
 
     /// Returns a vector of path of files which are both flagged and in current

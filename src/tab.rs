@@ -183,4 +183,37 @@ impl Tab {
     pub fn refresh_users(&mut self, users_cache: Rc<UsersCache>) -> FmResult<()> {
         self.path_content.refresh_users(users_cache)
     }
+
+    /// Search in current directory for an file whose name contains `searched_name`,
+    /// from a starting position `next_index`.
+    /// We search forward from that position and start again from top if nothing is found.
+    /// We move the selection to the first matching file.
+    pub fn search_from(&mut self, searched_name: &str, current_index: usize) {
+        let mut found = false;
+        let mut next_index = current_index;
+        // search after current position
+        for (index, file) in self.path_content.enumerate().skip(current_index) {
+            if file.filename.contains(searched_name) {
+                next_index = index;
+                found = true;
+                break;
+            };
+        }
+        if found {
+            self.go_to_index(next_index);
+            return;
+        }
+
+        // search from top
+        for (index, file) in self.path_content.enumerate().take(current_index) {
+            if file.filename.contains(searched_name) {
+                next_index = index;
+                found = true;
+                break;
+            };
+        }
+        if found {
+            self.go_to_index(next_index)
+        }
+    }
 }

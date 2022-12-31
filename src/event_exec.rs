@@ -939,46 +939,13 @@ impl EventExec {
         }
         tab.searched = Some(searched.clone());
         let next_index = tab.path_content.index;
-        Self::search_from(tab, &searched, next_index);
-    }
-
-    /// Search in current directory for an file whose name contains `searched_name`,
-    /// from a starting position `next_index`.
-    /// We search forward from that position and start again from top if nothing is found.
-    /// We move the selection to the first matching file.
-    fn search_from(tab: &mut Tab, searched_name: &str, current_index: usize) {
-        let mut found = false;
-        let mut next_index = current_index;
-        // search after current position
-        for (index, file) in tab.path_content.enumerate().skip(current_index) {
-            if file.filename.contains(searched_name) {
-                next_index = index;
-                found = true;
-                break;
-            };
-        }
-        if found {
-            tab.go_to_index(next_index);
-            return;
-        }
-
-        // search from top
-        for (index, file) in tab.path_content.enumerate().take(current_index) {
-            if file.filename.contains(searched_name) {
-                next_index = index;
-                found = true;
-                break;
-            };
-        }
-        if found {
-            tab.go_to_index(next_index)
-        }
+        tab.search_from(&searched, next_index);
     }
 
     pub fn event_search_next(tab: &mut Tab) -> FmResult<()> {
         if let Some(searched) = tab.searched.clone() {
             let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
-            Self::search_from(tab, &searched, next_index);
+            tab.search_from(&searched, next_index);
         }
         Ok(())
     }
@@ -1215,7 +1182,7 @@ impl EventExec {
     /// Start a fuzzy find with skim.
     /// ATM idk how to avoid using the whole screen.
     pub fn event_fuzzyfind(status: &mut Status) -> FmResult<()> {
-        status.fill_tabs_with_skim()
+        status.skim_output_to_tab()
     }
 
     /// Copy the filename of the selected file in normal mode.

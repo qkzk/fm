@@ -7,7 +7,7 @@ use tuikit::term::Term;
 
 use crate::event_dispatch::EventDispatcher;
 use crate::fileinfo::human_size;
-use crate::fm_error::FmResult;
+use crate::fm_error::{FmError, FmResult};
 use crate::status::Status;
 use crate::term_manager::{Display, EventReader};
 
@@ -18,6 +18,11 @@ pub fn init_term() -> FmResult<Term> {
     Ok(term)
 }
 
+/// Returns the disk owning a path.
+/// None if the path can't be found.
+///
+/// We sort the disks by descending mount point size, then
+/// we return the first disk whose mount point match the path.
 pub fn disk_used_by_path<'a>(disks: &'a [Disk], path: &Path) -> Option<&'a Disk> {
     let mut disks: Vec<&Disk> = disks.iter().collect();
     disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
@@ -79,4 +84,13 @@ where
 {
     let file = std::fs::File::open(filename)?;
     Ok(std::io::BufReader::new(file).lines())
+}
+
+/// Extract a filename from a path reference.
+/// May fail if the filename isn't utf-8 compliant.
+pub fn filename_from_path(path: &std::path::Path) -> FmResult<&str> {
+    path.file_name()
+        .ok_or_else(|| FmError::custom("filename from path", "couldn't read the filename"))?
+        .to_str()
+        .ok_or_else(|| FmError::custom("filename from path", "couldn't parse the filename"))
 }
