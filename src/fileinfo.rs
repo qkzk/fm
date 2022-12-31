@@ -151,15 +151,15 @@ impl FileInfo {
         users_cache: &Rc<UsersCache>,
     ) -> FmResult<Self> {
         let path = path.to_owned();
-        let size = extract_file_size(&metadata);
+        let size = extract_file_size(metadata);
         let file_size = human_size(size);
-        let permissions = extract_permissions_string(&metadata)?;
-        let owner = extract_owner(&metadata, users_cache)?;
-        let group = extract_group(&metadata, users_cache)?;
-        let system_time = extract_datetime(&metadata)?;
+        let permissions = extract_permissions_string(metadata)?;
+        let owner = extract_owner(metadata, users_cache)?;
+        let group = extract_group(metadata, users_cache)?;
+        let system_time = extract_datetime(metadata)?;
         let is_selected = false;
 
-        let file_kind = FileKind::new(&metadata);
+        let file_kind = FileKind::new(metadata);
         let dir_symbol = file_kind.extract_dir_symbol();
         let extension = extract_extension(&path).into();
         let kind_format = filekind_and_filename(&filename, &file_kind);
@@ -302,29 +302,10 @@ impl PathContent {
         users_cache: &Rc<UsersCache>,
     ) -> FmResult<Vec<FileInfo>> {
         let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users_cache)?;
-        let true_files = match read_dir(path) {
-            Ok(read_dir) => {
-                if show_hidden {
-                    read_dir
-                        .filter_map(|res_direntry| res_direntry.ok())
-                        .map(|direntry| FileInfo::new(&direntry, users_cache))
-                        .filter_map(|res_file_entry| res_file_entry.ok())
-                        .filter(|fileinfo| filter_kind.filter_by(fileinfo))
-                        .collect()
-                } else {
-                    read_dir
-                        .filter_map(|res_direntry| res_direntry.ok())
-                        .filter(|e| is_not_hidden(e).unwrap_or(true))
-                        .map(|direntry| FileInfo::new(&direntry, users_cache))
-                        .filter_map(|res_file_entry| res_file_entry.ok())
-                        .filter(|fileinfo| filter_kind.filter_by(fileinfo))
-                        .collect()
-                }
-            }
-            Err(error) => {
-                info!("Couldn't read path {} - {}", path.to_string_lossy(), error);
-                vec![]
-            }
+        let true_files = if show_hidden {
+            Self::real_files_with_hidden(path, filter_kind, users_cache)?
+        } else {
+            Self::real_files_no_hidden(path, filter_kind, users_cache)?
         };
         files.extend(true_files);
         Ok(files)
@@ -341,6 +322,45 @@ impl PathContent {
                 Ok(vec![current, parent])
             }
             None => Ok(vec![current]),
+        }
+    }
+
+    fn real_files_with_hidden(
+        path: &path::Path,
+        filter_kind: &FilterKind,
+        users_cache: &Rc<UsersCache>,
+    ) -> FmResult<Vec<FileInfo>> {
+        match read_dir(path) {
+            Ok(readir) => Ok(readir
+                .filter_map(|res_direntry| res_direntry.ok())
+                .map(|direntry| FileInfo::new(&direntry, users_cache))
+                .filter_map(|res_file_entry| res_file_entry.ok())
+                .filter(|fileinfo| filter_kind.filter_by(fileinfo))
+                .collect()),
+            Err(error) => {
+                info!("Couldn't read path {} - {}", path.to_string_lossy(), error);
+                Ok(vec![])
+            }
+        }
+    }
+
+    fn real_files_no_hidden(
+        path: &path::Path,
+        filter_kind: &FilterKind,
+        users_cache: &Rc<UsersCache>,
+    ) -> FmResult<Vec<FileInfo>> {
+        match read_dir(path) {
+            Ok(readir) => Ok(readir
+                .filter_map(|res_direntry| res_direntry.ok())
+                .filter(|e| is_not_hidden(e).unwrap_or(true))
+                .map(|direntry| FileInfo::new(&direntry, users_cache))
+                .filter_map(|res_file_entry| res_file_entry.ok())
+                .filter(|fileinfo| filter_kind.filter_by(fileinfo))
+                .collect()),
+            Err(error) => {
+                info!("Couldn't read path {} - {}", path.to_string_lossy(), error);
+                Ok(vec![])
+            }
         }
     }
 

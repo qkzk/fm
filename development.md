@@ -257,6 +257,7 @@
 - [x] refactoring: remove many PathBuf, String, to_owned, clone... and other heap allocation.
       I tried to use as many reference as I could.
 - [x] userscache. Cache users & group at launch. Refresh them when refreshing views.
+- [x] show . & .. in normal display
 
 ## TODO
 
@@ -286,7 +287,6 @@
   - [x] use as another display
   - [ ] navigation
 - [ ] zoxide support
-- [ ] show . & .. in normal display
 
 - [ ] Version 0.2.0 : tests
 
