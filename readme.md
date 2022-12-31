@@ -67,6 +67,7 @@ If you added the [recommanded function](#cd-on-quit) to your bashrc/zshrc, simpl
 
 - Change display, removing details or displaying a single pane.
 - Preview most of files (text, highlighted code, binary, pdf, exif details, video/audio details, archives) with P
+- Display a tree view of directory by previewing it
 - Decompress an archive by opening it (o, enter, right click)
 - Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p
 - Rename a bunch of file with B. Flag files, B, edit the names and save the file. The renaming is done.
