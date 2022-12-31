@@ -116,7 +116,6 @@ Your current keybindings are shown. Here are the default ones.
 ```
 fm: a dired like file manager. Keybindings.
 
-
      Char('q'):      quit
      Char('h'):      help
 
@@ -144,6 +143,7 @@ fm: a dired like file manager. Keybindings.
      Char('M'):      mark current path
      Char('\''):     jump to a mark
      Ctrl('e'):      toggle metadata on files
+     Char('f'):      Search next matching element
      Ctrl('f'):      fuzzy finder
      Ctrl('r'):      refresh view
      Ctrl('c'):      copy filename to clipboard
@@ -155,11 +155,16 @@ fm: a dired like file manager. Keybindings.
      Char('*'):      flag all
      Char('u'):      clear flags
      Char('v'):      reverse flags
-     Char('c'):      copy to current dir
-     Char('p'):      move to current dir
-     Char('x'):      delete files
      Char('l'):      symlink files
      Char('B'):      bulkrename files
+     Char('c'):      copy to current dir
+     Char('p'):      move to current dir
+     Char('x'):      delete files permanently
+     Char('X'):      move to trash
+
+     - Trash -
+     Alt('o'):       Open the trash (enter to restore, del clear)
+     Alt('x'):       Empty the trash
 
      - MODES -
      Char('m'):      CHMOD
@@ -176,6 +181,8 @@ fm: a dired like file manager. Keybindings.
      Char('/'):      SEARCH
      Char('F'):      FILTER
          (by name "n name", by ext "e ext", only directories d or all for reset)
+     Enter:  Execute mode then NORMAL
+     Ctrl('q'):    NORMAL
 ```
 
 ## Configuration
