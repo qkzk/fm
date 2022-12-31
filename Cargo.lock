@@ -850,7 +850,7 @@ dependencies = [
 
 [[package]]
 name = "fm-tui"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "chrono",
  "clap 4.0.2",
@@ -2067,9 +2067,9 @@ checksum = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 
 [[package]]
 name = "skim-qkzk"
-version = "0.9.7"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d34303048c0481c3618a6790138c2fd48f26bfeeb4f303f50ef53b853585345f"
+checksum = "27e5bd89dc1b88889e0b7822f6c83f2d84cf7ba1a1fc1435cbb5984a6dd4cf10"
 dependencies = [
  "atty",
  "beef",
@@ -2593,9 +2593,9 @@ dependencies = [
 
 [[package]]
 name = "tuikit"
-version = "0.4.6"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "667c8e002675e76d98358d8869021793a472d28e3a50fbd750284a1d211abd09"
+checksum = "5e19c6ab038babee3d50c8c12ff8b910bdb2196f62278776422f50390d8e53d8"
 dependencies = [
  "bitflags",
  "lazy_static",
