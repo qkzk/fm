@@ -118,7 +118,7 @@ impl ActionMap {
             ActionMap::OpenFile => EventExec::event_open_file(status),
             ActionMap::PageDown => EventExec::page_down(status),
             ActionMap::PageUp => EventExec::page_up(status),
-            ActionMap::Preview => EventExec::event_preview(current_tab),
+            ActionMap::Preview => EventExec::event_preview(status),
             ActionMap::Quit => EventExec::event_quit(current_tab),
             ActionMap::RefreshView => EventExec::event_refreshview(status),
             ActionMap::RegexMatch => EventExec::event_regex_match(current_tab),

@@ -134,7 +134,9 @@ impl FileInfo {
         Self::create_from_metadata_and_filename(&path, &metadata, filename, users_cache)
     }
 
-    fn from_path_with_name(
+    /// Creates a fileinfo from a path and a filename.
+    /// The filename is used when we create the fileinfo for "." and ".." in every folder.
+    pub fn from_path_with_name(
         path: &path::Path,
         filename: &str,
         users_cache: &Rc<UsersCache>,
@@ -243,7 +245,7 @@ pub struct PathContent {
     /// The filter use before displaying files
     pub filter: FilterKind,
     used_space: u64,
-    users_cache: Rc<UsersCache>,
+    pub users_cache: Rc<UsersCache>,
 }
 
 impl PathContent {
@@ -527,6 +529,8 @@ impl_selectable_content!(FileInfo, PathContent);
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
 /// effect.
 /// Selected file is reversed.
+///
+/// TODO! can be refactored to only use 2 parameters by using the config_color from status
 pub fn fileinfo_attr(status: &Status, fileinfo: &FileInfo, colors: &Colors) -> Attr {
     let fg = match fileinfo.file_kind {
         FileKind::Directory => str_to_tuikit(&colors.directory),

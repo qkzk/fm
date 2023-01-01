@@ -445,8 +445,21 @@ impl<'a> WinTab<'a> {
                     )?;
                 }
             }
+            Preview::Directory(directory) => {
+                for (i, (prefix, colored_string)) in
+                    (directory).window(tab.window.top, tab.window.bottom, length)
+                {
+                    let row = Self::calc_line_row(i, tab);
+                    let col = canvas.print(row, line_number_width, prefix)?;
+                    canvas.print_with_attr(
+                        row,
+                        line_number_width + col + 1,
+                        &colored_string.text,
+                        colored_string.attr,
+                    )?;
+                }
+            }
             Preview::Archive(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Directory(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Exif(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Media(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),

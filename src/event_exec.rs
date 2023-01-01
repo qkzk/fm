@@ -539,16 +539,24 @@ impl EventExec {
     /// Every file can be previewed. See the `crate::enum::Preview` for
     /// more details on previewinga file.
     /// Does nothing if the directory is empty.
-    pub fn event_preview(tab: &mut Tab) -> FmResult<()> {
-        if tab.path_content.content.is_empty() {
+    pub fn event_preview(status: &mut Status) -> FmResult<()> {
+        if status.selected_non_mut().path_content.content.is_empty() {
             return Ok(());
         }
-        if let Some(file_info) = tab.path_content.selected() {
+        let unmutable_tab = status.selected_non_mut();
+        if let Some(file_info) = unmutable_tab.path_content.selected() {
+            let colors = &status.config_colors;
             match file_info.file_kind {
                 FileKind::Directory | FileKind::NormalFile => {
-                    tab.mode = Mode::Preview;
-                    tab.preview = Preview::new(file_info)?;
-                    tab.window.reset(tab.preview.len());
+                    let preview = Preview::new(
+                        file_info,
+                        &unmutable_tab.path_content.users_cache,
+                        status,
+                        colors,
+                    )?;
+                    status.selected().mode = Mode::Preview;
+                    status.selected().window.reset(preview.len());
+                    status.selected().preview = preview;
                 }
                 _ => (),
             }
@@ -847,7 +855,7 @@ impl EventExec {
             tab.path_content
                 .path
                 .to_path_buf()
-                .join(&sanitize_filename::sanitize(tab.input.string())),
+                .join(sanitize_filename::sanitize(tab.input.string())),
         )?;
         tab.refresh_view()
     }

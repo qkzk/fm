@@ -12,7 +12,7 @@ use users::UsersCache;
 
 use crate::args::Args;
 use crate::color_cache::ColorCache;
-use crate::config::Config;
+use crate::config::{Colors, Config};
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
 use crate::flagged::Flagged;
@@ -58,6 +58,7 @@ pub struct Status {
     pub help: String,
     /// The trash
     pub trash: Trash,
+    pub config_colors: Colors,
 }
 
 impl Status {
@@ -90,6 +91,7 @@ impl Status {
             flagged: Flagged::default(),
             marks: Marks::read_from_config_file(),
             colors: ColorCache::default(),
+            config_colors: config.colors,
             skimer: Skimer::new(term.clone()),
             term,
             dual_pane: true,
@@ -155,7 +157,7 @@ impl Status {
     }
 
     fn _update_tab_from_skim_output(&mut self, skim_outut: &Arc<dyn SkimItem>) -> FmResult<()> {
-        let path = fs::canonicalize(&skim_outut.output().to_string())?;
+        let path = fs::canonicalize(skim_outut.output().to_string())?;
         let tab = self.selected();
         if path.is_file() {
             if let Some(parent) = path.parent() {

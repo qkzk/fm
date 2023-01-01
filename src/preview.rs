@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::panic;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::slice::Iter;
 
 use content_inspector::{inspect, ContentType};
@@ -13,12 +14,15 @@ use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
-use termtree::Tree;
 use tuikit::attr::{Attr, Color};
+use users::UsersCache;
 
 use crate::compress::list_files;
+use crate::config::Colors;
 use crate::fileinfo::{FileInfo, FileKind};
 use crate::fm_error::{FmError, FmResult};
+use crate::status::Status;
+use crate::tree::{ColoredString, Tree};
 
 /// Different kind of preview used to display some informaitons
 /// About the file.
@@ -51,9 +55,19 @@ impl Preview {
     /// the file.
     /// Sometimes it reads the content of the file, sometimes it delegates
     /// it to the display method.
-    pub fn new(file_info: &FileInfo) -> FmResult<Self> {
+    pub fn new(
+        file_info: &FileInfo,
+        users_cache: &Rc<UsersCache>,
+        status: &Status,
+        colors: &Colors,
+    ) -> FmResult<Self> {
         match file_info.file_kind {
-            FileKind::Directory => Ok(Self::Directory(Directory::new(&file_info.path)?)),
+            FileKind::Directory => Ok(Self::Directory(Directory::new(
+                &file_info.path,
+                users_cache,
+                status,
+                colors,
+            )?)),
             FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
                 e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
                 e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
@@ -493,23 +507,27 @@ impl Pixels {
 /// if the directory has a lot of children.
 #[derive(Clone, Debug)]
 pub struct Directory {
-    pub content: Vec<String>,
+    pub content: Vec<(String, ColoredString)>,
     len: usize,
 }
 
 impl Directory {
-    fn new(path: &Path) -> FmResult<Self> {
-        let tree = tree_view(
-            path.to_str().ok_or_else(|| {
-                FmError::custom("Directory Preview", "Can't parse the filename to str")
-            })?,
-            10,
-        )?;
-        let tree_str = format!("{}", tree);
-        let content: Vec<String> = tree_str.lines().map(|s| s.to_owned()).collect();
-        let len = content.len();
-
-        Ok(Self { content, len })
+    /// Creates a new tree view of the directory.
+    /// We only hold the result here, since the tree itself has now usage atm.
+    ///
+    /// TODO! make it really navigable as other views.
+    pub fn new(
+        path: &Path,
+        users_cache: &Rc<UsersCache>,
+        status: &Status,
+        colors: &Colors,
+    ) -> FmResult<Self> {
+        let tree = Tree::from_path(path, 10, users_cache)?;
+        let content = tree.into_navigable_content(status, colors);
+        Ok(Self {
+            len: content.len(),
+            content,
+        })
     }
 
     fn len(&self) -> usize {
@@ -563,13 +581,15 @@ macro_rules! impl_window {
     };
 }
 
+type ColoredPair = (String, ColoredString);
+
 impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
 impl_window!(PdfContent, String);
 impl_window!(ZipContent, String);
 impl_window!(ExifContent, String);
 impl_window!(MediaContent, String);
-impl_window!(Directory, String);
+impl_window!(Directory, ColoredPair);
 
 fn is_ext_zip(ext: &str) -> bool {
     matches!(
@@ -605,35 +625,6 @@ fn is_ext_media(ext: &str) -> bool {
 
 fn is_ext_pdf(ext: &str) -> bool {
     ext == "pdf"
-}
-
-fn filename_as_string<P: AsRef<Path>>(p: P) -> String {
-    p.as_ref()
-        .file_name()
-        .unwrap_or_default()
-        .to_str()
-        .unwrap_or_default()
-        .to_owned()
-}
-
-fn tree_view<P: AsRef<Path>>(p: P, max_depth: usize) -> std::io::Result<Tree<String>> {
-    Ok(std::fs::read_dir(&p)?.filter_map(|e| e.ok()).fold(
-        Tree::new(filename_as_string(p.as_ref().canonicalize()?)),
-        |mut root, entry| {
-            if max_depth > 0 {
-                if let Ok(dir) = entry.metadata() {
-                    if dir.is_dir() {
-                        if let Ok(tree) = tree_view(entry.path(), max_depth - 1) {
-                            root.push(tree);
-                        }
-                    } else {
-                        root.push(Tree::new(filename_as_string(entry.path())));
-                    }
-                }
-            }
-            root
-        },
-    ))
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
