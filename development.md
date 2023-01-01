@@ -261,6 +261,7 @@
 ### Version 0.1.8
 
 - [x] improve fuzzy finding by moving to the selected file
+- [x] use latest version of skim-qkzk
 
 ## TODO
 
