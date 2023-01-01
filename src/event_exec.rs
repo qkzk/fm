@@ -703,7 +703,7 @@ impl EventExec {
         Ok(())
     }
 
-    /// Enter the shortcut mode, allowing to visite predefined shortcuts.
+    /// Enter the shortcut mode, allowing to visit predefined shortcuts.
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn event_shortcut(tab: &mut Tab) -> FmResult<()> {
