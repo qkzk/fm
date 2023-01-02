@@ -5,15 +5,17 @@ use users::UsersCache;
 
 use crate::args::Args;
 use crate::completion::Completion;
+use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::PathContent;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::input::Input;
 use crate::mode::Mode;
-use crate::preview::Preview;
+use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
+use crate::status::Status;
 use crate::visited::History;
 
 /// Holds every thing about the current tab of the application.
@@ -48,12 +50,15 @@ pub struct Tab {
     pub shortcut: Shortcut,
     /// Last searched string
     pub searched: Option<String>,
+    /// Optional tree view
+    pub tree: Directory,
 }
 
 impl Tab {
     /// Creates a new tab from args and height.
     pub fn new(args: Args, height: usize, users_cache: Rc<UsersCache>) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
+        let tree = Directory::empty(&path, &users_cache)?;
         let path_content = PathContent::new(&path, false, users_cache)?;
         let show_hidden = false;
         let nvim_server = args.server;
@@ -81,6 +86,7 @@ impl Tab {
             history,
             shortcut,
             searched,
+            tree,
         })
     }
 
@@ -215,5 +221,13 @@ impl Tab {
         if found {
             self.go_to_index(next_index)
         }
+    }
+
+    pub fn select_root_tree(&mut self) {
+        self.tree.select_root()
+    }
+
+    pub fn tree_select_next_sibling(&mut self, status: &Status, colors: &Colors) -> FmResult<()> {
+        self.tree.select_next_sibling(status, colors)
     }
 }

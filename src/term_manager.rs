@@ -73,6 +73,7 @@ impl<'a> Draw for WinTab<'a> {
             }
             Mode::Preview => self.preview(self.tab, canvas),
             Mode::InputSimple(InputSimple::Marks(_)) => self.marks(self.status, self.tab, canvas),
+            Mode::Tree => self.tree(self.status, self.tab, canvas),
             _ => self.files(self.status, self.tab, canvas),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -146,7 +147,7 @@ impl<'a> WinTab<'a> {
 
     fn create_first_row(&self, tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
         let first_row = match tab.mode {
-            Mode::Normal => {
+            Mode::Normal | Mode::Tree => {
                 vec![
                     format!("{} ", tab.path_content.path.display()),
                     format!("{} files ", tab.path_content.true_len()),
@@ -246,10 +247,31 @@ impl<'a> WinTab<'a> {
         Ok(())
     }
 
+    fn tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+        let line_number_width = 3;
+
+        for (i, (prefix, colored_string)) in
+            tab.tree
+                .window(tab.window.top, tab.window.bottom, tab.tree.content.len())
+        {
+            let row = Self::calc_line_row(i, tab);
+            let col = canvas.print(row, line_number_width, prefix)?;
+            canvas.print_with_attr(
+                row,
+                line_number_width + col + 1,
+                &colored_string.text,
+                colored_string.attr,
+            )?;
+        }
+        self.second_line(status, tab, canvas)?;
+        Ok(())
+    }
+
     /// Display a cursor in the top row, at a correct column.
     fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
             Mode::Normal
+            | Mode::Tree
             | Mode::InputSimple(InputSimple::Marks(_))
             | Mode::Navigate(_)
             | Mode::Preview => {

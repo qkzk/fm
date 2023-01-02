@@ -4,6 +4,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use log::info;
 use regex::Regex;
 use skim::SkimItem;
 use sysinfo::{Disk, DiskExt, System, SystemExt};
@@ -19,6 +20,7 @@ use crate::flagged::Flagged;
 use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
+use crate::preview::Directory;
 use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::trash::Trash;
@@ -301,6 +303,22 @@ impl Status {
         for tab in self.tabs.iter_mut() {
             tab.refresh_users(users_cache.clone())?;
         }
+        Ok(())
+    }
+
+    pub fn make_tree(&mut self) -> FmResult<()> {
+        info!("make tree");
+        let path = self.selected_non_mut().path_content.path.clone();
+        let users_cache = &self.selected_non_mut().path_content.users_cache;
+        let colors = &self.config_colors;
+        self.selected().tree = Directory::new(&path, users_cache, self, colors)?;
+        Ok(())
+    }
+
+    pub fn remove_tree(&mut self) -> FmResult<()> {
+        let path = self.selected_non_mut().path_content.path.clone();
+        let users_cache = &self.selected_non_mut().path_content.users_cache;
+        self.selected().tree = Directory::empty(&path, users_cache)?;
         Ok(())
     }
 }

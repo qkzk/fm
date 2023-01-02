@@ -1040,6 +1040,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_next(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_next(status.selected()),
             Mode::InputCompleted(_) => status.selected().completion.next(),
+            Mode::Tree => EventExec::event_next_sibling(status)?,
             _ => (),
         };
         Ok(())
@@ -1153,7 +1154,7 @@ impl EventExec {
                 EventExec::exec_search(status.selected())
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
-            Mode::Normal => EventExec::exec_file(status)?,
+            Mode::Normal | Mode::Tree => EventExec::exec_file(status)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
             | Mode::InputCompleted(InputCompleted::Nothing)
@@ -1314,6 +1315,20 @@ impl EventExec {
     /// Remove the selected element in the trash folder.
     pub fn event_trash_remove_file(status: &mut Status) -> FmResult<()> {
         status.trash.remove()
+    }
+
+    pub fn event_tree(status: &mut Status) -> FmResult<()> {
+        status.make_tree()?;
+        status.selected().mode = Mode::Tree;
+        let len = status.selected_non_mut().tree.len();
+        status.selected().window.reset(len);
+        Ok(())
+    }
+
+    pub fn event_next_sibling(status: &mut Status) -> FmResult<()> {
+        // let colors = status.config_colors.clone();
+        // status.selected().tree_select_next_sibling(status, &colors)
+        Ok(())
     }
 }
 

@@ -508,6 +508,8 @@ impl Pixels {
 #[derive(Clone, Debug)]
 pub struct Directory {
     pub content: Vec<(String, ColoredString)>,
+    pub tree: Tree,
+    pub position: Vec<usize>,
     len: usize,
 }
 
@@ -522,16 +524,66 @@ impl Directory {
         status: &Status,
         colors: &Colors,
     ) -> FmResult<Self> {
-        let tree = Tree::from_path(path, 10, users_cache)?;
+        let mut tree = Tree::from_path(path, 10, users_cache)?;
+        tree.select_root();
         let content = tree.into_navigable_content(status, colors);
         Ok(Self {
+            tree,
             len: content.len(),
             content,
+            position: vec![0],
         })
     }
 
-    fn len(&self) -> usize {
+    pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
+        Ok(Self {
+            tree: Tree::empty(path, users_cache)?,
+            len: 0,
+            content: vec![],
+            position: vec![0],
+        })
+    }
+
+    pub fn len(&self) -> usize {
         self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    pub fn select_root(&mut self) {
+        self.tree.select_root();
+        self.position = vec![0]
+    }
+
+    pub fn select_next_sibling(&mut self, status: &Status, colors: &Colors) -> FmResult<()> {
+        if self.position.is_empty() {
+            Err(FmError::custom(
+                "select_next_sibling",
+                "position shouldn't be empty",
+            ))
+        } else {
+            let mut tree = &mut self.tree;
+            let mut node = &mut tree.node;
+            node.unselect();
+            for (index, coord) in self.position.iter().enumerate() {
+                if *coord >= tree.leaves.len() {
+                    return Err(FmError::custom(
+                        "select_next_sibling",
+                        "position unreachable",
+                    ));
+                }
+                node = &mut tree.leaves[*coord].node;
+                node.unselect();
+                if index == self.position.len() - 1 {
+                    node.select()
+                }
+                tree = &mut tree.leaves[*coord];
+            }
+            self.content = self.tree.into_navigable_content(status, colors);
+            Ok(())
+        }
     }
 }
 

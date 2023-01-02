@@ -75,7 +75,7 @@ impl EventDispatcher {
                 Mode::InputCompleted(_) => {
                     EventExec::event_text_insert_and_complete(status.selected(), c)
                 }
-                Mode::Normal => match self.binds.get(&key_char) {
+                Mode::Normal | Mode::Tree => match self.binds.get(&key_char) {
                     Some(event_char) => event_char.matcher(status),
                     None => Ok(()),
                 },

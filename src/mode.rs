@@ -97,6 +97,8 @@ pub enum Navigate {
 pub enum Mode {
     /// Default mode: display the files
     Normal,
+    /// Display files in a tree
+    Tree,
     /// We'll be able to complete the input string with
     /// different kind of completed items (exec, goto, search)
     InputCompleted(InputCompleted),
@@ -115,6 +117,7 @@ impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Mode::Normal => write!(f, "Normal:  "),
+            Mode::Tree => write!(f, "Tree:    "),
             Mode::InputSimple(InputSimple::Rename) => write!(f, "Rename:  "),
             Mode::InputSimple(InputSimple::Chmod) => write!(f, "Chmod:   "),
             Mode::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),

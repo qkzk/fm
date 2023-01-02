@@ -2,6 +2,7 @@ use std::fs::read_dir;
 use std::path::Path;
 use std::rc::Rc;
 
+use log::info;
 use tuikit::attr::Attr;
 use users::UsersCache;
 
@@ -27,7 +28,7 @@ impl ColoredString {
 }
 
 #[derive(Clone, Debug)]
-enum Node {
+pub enum Node {
     Directory(FileInfo),
     File(FileInfo),
 }
@@ -41,9 +42,32 @@ impl Node {
     }
 
     fn attr(&self, status: &Status, colors: &Colors) -> Attr {
-        match self {
+        let mut attr = match self {
             Node::Directory(fileinfo) => fileinfo_attr(status, fileinfo, colors),
             Node::File(fileinfo) => fileinfo_attr(status, fileinfo, colors),
+        };
+        if match self {
+            Self::Directory(fileinfo) => fileinfo.is_selected,
+            Self::File(fileinfo) => fileinfo.is_selected,
+        } {
+            info!("node selected: {:?}", self);
+            attr.effect |= tuikit::attr::Effect::REVERSE
+        };
+
+        attr
+    }
+
+    pub fn select(&mut self) {
+        match self {
+            Self::Directory(fileinfo) => fileinfo.select(),
+            Self::File(fileinfo) => fileinfo.select(),
+        }
+    }
+
+    pub fn unselect(&mut self) {
+        match self {
+            Self::Directory(fileinfo) => fileinfo.unselect(),
+            Self::File(fileinfo) => fileinfo.unselect(),
         }
     }
 }
@@ -54,8 +78,8 @@ impl Node {
 /// and it can be long too.
 #[derive(Clone, Debug)]
 pub struct Tree {
-    node: Node,
-    leaves: Vec<Tree>,
+    pub node: Node,
+    pub leaves: Vec<Tree>,
 }
 
 impl Tree {
@@ -104,6 +128,28 @@ impl Tree {
         }
         Ok(Self { node, leaves })
     }
+
+    pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
+        let filename = filename_from_path(path)?;
+        let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
+        let node = Node::Directory(fileinfo);
+        Ok(Self {
+            node,
+            leaves: vec![],
+        })
+    }
+
+    pub fn select_root(&mut self) {
+        self.node.select()
+    }
+
+    pub fn unselect_root(&mut self) {
+        self.node.unselect()
+    }
+
+    pub fn select_node(&mut self) {}
+
+    pub fn unselect_node(&mut self) {}
 
     /// Depth first traversal of the tree.
     /// We navigate into the tree and format every element into a pair :

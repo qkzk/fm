@@ -71,6 +71,7 @@ pub enum ActionMap {
     TrashRestoreFile,
     TrashEmpty,
     TrashOpen,
+    Tree,
 }
 
 impl ActionMap {
@@ -139,6 +140,7 @@ impl ActionMap {
             ActionMap::TrashRestoreFile => EventExec::event_trash_restore_file(status),
             ActionMap::TrashEmpty => EventExec::exec_trash_empty(status),
             ActionMap::TrashOpen => EventExec::event_trash_open(status),
+            ActionMap::Tree => EventExec::event_tree(status),
 
             ActionMap::Nothing => Ok(()),
         }
