@@ -223,10 +223,27 @@ impl Tab {
     }
 
     pub fn select_root_tree(&mut self) {
+        self.tree.unselect_children();
         self.tree.select_root()
     }
 
+    pub fn tree_select_parent(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.unselect_children();
+        self.tree.select_parent(colors)
+    }
+
     pub fn tree_select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.unselect_children();
         self.tree.select_next_sibling(colors)
+    }
+
+    pub fn tree_select_prev_sibling(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.unselect_children();
+        self.tree.select_prev_sibling(colors)
+    }
+
+    pub fn tree_select_first_child(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.unselect_children();
+        self.tree.select_first_child(colors)
     }
 }

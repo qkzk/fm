@@ -1017,6 +1017,7 @@ impl EventExec {
             Mode::Navigate(Navigate::History) => EventExec::event_history_prev(status.selected()),
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_prev(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_prev(status.selected()),
+            Mode::Tree => EventExec::event_select_prev_sibling(status)?,
             Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
             }
@@ -1035,7 +1036,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_next(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_next(status.selected()),
             Mode::InputCompleted(_) => status.selected().completion.next(),
-            Mode::Tree => EventExec::event_next_sibling(status)?,
+            Mode::Tree => EventExec::event_select_next_sibling(status)?,
             _ => (),
         };
         Ok(())
@@ -1046,6 +1047,7 @@ impl EventExec {
     pub fn event_move_left(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::event_move_to_parent(status.selected()),
+            Mode::Tree => EventExec::event_select_parent(status),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_move_cursor_left(status.selected());
                 Ok(())
@@ -1060,6 +1062,7 @@ impl EventExec {
     pub fn event_move_right(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::exec_file(status),
+            Mode::Tree => EventExec::event_select_first_child(status),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_move_cursor_right(status.selected());
                 Ok(())
@@ -1320,9 +1323,24 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_next_sibling(status: &mut Status) -> FmResult<()> {
+    pub fn event_select_next_sibling(status: &mut Status) -> FmResult<()> {
         let colors = status.config_colors.clone();
         status.selected().tree_select_next_sibling(&colors)
+    }
+
+    pub fn event_select_first_child(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_select_first_child(&colors)
+    }
+
+    pub fn event_select_parent(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_select_parent(&colors)
+    }
+
+    pub fn event_select_prev_sibling(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_select_prev_sibling(&colors)
     }
 }
 

@@ -43,7 +43,7 @@ pub fn set_logger() -> FmResult<Handle> {
     let fixed_window_roller = FixedWindowRoller::builder()
         .build(&log_path, window_size)
         .unwrap();
-    let size_limit = 5 * 1024; // 5KB as max log file size to roll
+    let size_limit = 5 * 1024 * 1024; // 5MB as max log file size to roll
     let size_trigger = SizeTrigger::new(size_limit);
     let compound_policy =
         CompoundPolicy::new(Box::new(size_trigger), Box::new(fixed_window_roller));

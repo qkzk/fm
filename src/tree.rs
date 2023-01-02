@@ -49,7 +49,6 @@ impl Node {
             Self::Directory(fileinfo) => fileinfo.is_selected,
             Self::File(fileinfo) => fileinfo.is_selected,
         } {
-            info!("node selected: {:?}", self);
             attr.effect |= tuikit::attr::Effect::REVERSE
         };
 
@@ -79,6 +78,7 @@ impl Node {
 pub struct Tree {
     pub node: Node,
     pub leaves: Vec<Tree>,
+    pub position: Vec<usize>,
 }
 
 impl Tree {
@@ -125,7 +125,12 @@ impl Tree {
         } else {
             node = Node::File(fileinfo);
         }
-        Ok(Self { node, leaves })
+        let position = vec![0];
+        Ok(Self {
+            node,
+            leaves,
+            position,
+        })
     }
 
     pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
@@ -135,21 +140,109 @@ impl Tree {
         Ok(Self {
             node,
             leaves: vec![],
+            position: vec![0],
         })
     }
 
     pub fn select_root(&mut self) {
-        self.node.select()
+        self.node.select();
+        self.position = vec![0]
     }
 
-    pub fn unselect_root(&mut self) {
-        self.node.unselect()
+    pub fn unselect_children(&mut self) {
+        self.node.unselect();
+        for tree in self.leaves.iter_mut() {
+            tree.unselect_children()
+        }
     }
 
-    pub fn select_node(&mut self) {}
+    pub fn select_prev_sibling(&mut self) -> FmResult<()> {
+        if self.position.is_empty() {
+            self.position = vec![0]
+        } else {
+            let len = self.position.len();
+            self.position[len - 1] += 1;
+            let (depth, last_cord) = self.select_from_position()?;
+            self.position.truncate(depth);
+            self.position[depth - 1] = last_cord;
+        }
+        Ok(())
+    }
 
-    pub fn unselect_node(&mut self) {}
+    pub fn select_next_sibling(&mut self) -> FmResult<()> {
+        if self.position.is_empty() {
+            self.position = vec![0]
+        } else {
+            let len = self.position.len();
+            if self.position[len - 1] > 0 {
+                self.position[len - 1] -= 1;
+            }
+            let (depth, last_cord) = self.select_from_position()?;
+            self.position.truncate(depth);
+            self.position[depth - 1] = last_cord;
+        }
+        Ok(())
+    }
 
+    pub fn select_first_child(&mut self) -> FmResult<()> {
+        if self.position.is_empty() {
+            self.position = vec![0]
+        }
+        self.position.push(0);
+        let (depth, last_cord) = self.select_from_position()?;
+        self.position.truncate(depth);
+        self.position[depth - 1] = last_cord;
+        Ok(())
+    }
+
+    pub fn select_parent(&mut self) -> FmResult<()> {
+        if self.position.is_empty() {
+            self.position = vec![0];
+        } else {
+            self.position.pop();
+            if self.position.is_empty() {
+                self.position.push(0)
+            }
+            let (depth, last_cord) = self.select_from_position()?;
+            self.position.truncate(depth);
+            self.position[depth - 1] = last_cord;
+        }
+        Ok(())
+    }
+
+    fn select_from_position(&mut self) -> FmResult<(usize, usize)> {
+        // if self.position.len() == 1 {
+        //     self.node.select();
+        //     return Ok(1);
+        // }
+        let pos = self.position.clone();
+        let mut tree = self;
+        let mut reached_depth = 1;
+        let mut last_cord = 0;
+        for (depth, &coord) in pos.iter().enumerate() {
+            info!(
+                "select_from_position depth {} coord {} node {}",
+                depth,
+                coord,
+                tree.node.filename()
+            );
+            last_cord = coord;
+            if depth >= pos.len() - 1 {
+                break;
+            }
+            if tree.leaves.is_empty() {
+                break;
+            }
+            if coord >= tree.leaves.len() {
+                last_cord = tree.leaves.len() - 1;
+            }
+            tree = &mut tree.leaves[last_cord];
+            reached_depth += 1;
+        }
+        tree.node.select();
+        info!("reached_depth {}, last_cord {}", reached_depth, last_cord);
+        Ok((reached_depth, last_cord))
+    }
     /// Depth first traversal of the tree.
     /// We navigate into the tree and format every element into a pair :
     /// - a prefix, wich is a string made of glyphs displaying the tree,

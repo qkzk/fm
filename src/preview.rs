@@ -507,7 +507,6 @@ impl Pixels {
 pub struct Directory {
     pub content: Vec<(String, ColoredString)>,
     pub tree: Tree,
-    pub position: Vec<usize>,
     len: usize,
 }
 
@@ -524,7 +523,6 @@ impl Directory {
             tree,
             len: content.len(),
             content,
-            position: vec![0],
         })
     }
 
@@ -533,7 +531,6 @@ impl Directory {
             tree: Tree::empty(path, users_cache)?,
             len: 0,
             content: vec![],
-            position: vec![0],
         })
     }
 
@@ -547,36 +544,34 @@ impl Directory {
 
     pub fn select_root(&mut self) {
         self.tree.select_root();
-        self.position = vec![0]
+    }
+
+    pub fn unselect_children(&mut self) {
+        self.tree.unselect_children()
     }
 
     pub fn select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
-        if self.position.is_empty() {
-            Err(FmError::custom(
-                "select_next_sibling",
-                "position shouldn't be empty",
-            ))
-        } else {
-            let mut tree = &mut self.tree;
-            let mut node = &mut tree.node;
-            node.unselect();
-            for (index, coord) in self.position.iter().enumerate() {
-                if *coord >= tree.leaves.len() {
-                    return Err(FmError::custom(
-                        "select_next_sibling",
-                        "position unreachable",
-                    ));
-                }
-                node = &mut tree.leaves[*coord].node;
-                node.unselect();
-                if index == self.position.len() - 1 {
-                    node.select()
-                }
-                tree = &mut tree.leaves[*coord];
-            }
-            self.content = self.tree.into_navigable_content(colors);
-            Ok(())
-        }
+        self.tree.select_next_sibling()?;
+        self.content = self.tree.into_navigable_content(colors);
+        Ok(())
+    }
+
+    pub fn select_prev_sibling(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.select_prev_sibling()?;
+        self.content = self.tree.into_navigable_content(colors);
+        Ok(())
+    }
+
+    pub fn select_first_child(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.select_first_child()?;
+        self.content = self.tree.into_navigable_content(colors);
+        Ok(())
+    }
+
+    pub fn select_parent(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.select_parent()?;
+        self.content = self.tree.into_navigable_content(colors);
+        Ok(())
     }
 }
 
