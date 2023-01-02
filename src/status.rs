@@ -12,7 +12,6 @@ use tuikit::term::Term;
 use users::UsersCache;
 
 use crate::args::Args;
-use crate::color_cache::ColorCache;
 use crate::config::{Colors, Config};
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
@@ -45,7 +44,7 @@ pub struct Status {
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
     /// Colors for extension
-    pub colors: ColorCache,
+    // pub colors: ColorCache,
     /// terminal
     term: Arc<Term>,
     skimer: Skimer,
@@ -92,7 +91,7 @@ impl Status {
             index: 0,
             flagged: Flagged::default(),
             marks: Marks::read_from_config_file(),
-            colors: ColorCache::default(),
+            // colors: ColorCache::default(),
             config_colors: config.colors,
             skimer: Skimer::new(term.clone()),
             term,
@@ -310,8 +309,7 @@ impl Status {
         info!("make tree");
         let path = self.selected_non_mut().path_content.path.clone();
         let users_cache = &self.selected_non_mut().path_content.users_cache;
-        let colors = &self.config_colors;
-        self.selected().tree = Directory::new(&path, users_cache, self, colors)?;
+        self.selected().tree = Directory::new(&path, users_cache, self)?;
         Ok(())
     }
 

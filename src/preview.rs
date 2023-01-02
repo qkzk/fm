@@ -59,14 +59,12 @@ impl Preview {
         file_info: &FileInfo,
         users_cache: &Rc<UsersCache>,
         status: &Status,
-        colors: &Colors,
     ) -> FmResult<Self> {
         match file_info.file_kind {
             FileKind::Directory => Ok(Self::Directory(Directory::new(
                 &file_info.path,
                 users_cache,
                 status,
-                colors,
             )?)),
             FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
                 e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
@@ -518,15 +516,10 @@ impl Directory {
     /// We only hold the result here, since the tree itself has now usage atm.
     ///
     /// TODO! make it really navigable as other views.
-    pub fn new(
-        path: &Path,
-        users_cache: &Rc<UsersCache>,
-        status: &Status,
-        colors: &Colors,
-    ) -> FmResult<Self> {
+    pub fn new(path: &Path, users_cache: &Rc<UsersCache>, status: &Status) -> FmResult<Self> {
         let mut tree = Tree::from_path(path, 10, users_cache)?;
         tree.select_root();
-        let content = tree.into_navigable_content(status, colors);
+        let content = tree.into_navigable_content(&status.config_colors);
         Ok(Self {
             tree,
             len: content.len(),
@@ -557,7 +550,7 @@ impl Directory {
         self.position = vec![0]
     }
 
-    pub fn select_next_sibling(&mut self, status: &Status, colors: &Colors) -> FmResult<()> {
+    pub fn select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
         if self.position.is_empty() {
             Err(FmError::custom(
                 "select_next_sibling",
@@ -581,7 +574,7 @@ impl Directory {
                 }
                 tree = &mut tree.leaves[*coord];
             }
-            self.content = self.tree.into_navigable_content(status, colors);
+            self.content = self.tree.into_navigable_content(colors);
             Ok(())
         }
     }

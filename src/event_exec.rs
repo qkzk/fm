@@ -545,15 +545,10 @@ impl EventExec {
         }
         let unmutable_tab = status.selected_non_mut();
         if let Some(file_info) = unmutable_tab.path_content.selected() {
-            let colors = &status.config_colors;
             match file_info.file_kind {
                 FileKind::Directory | FileKind::NormalFile => {
-                    let preview = Preview::new(
-                        file_info,
-                        &unmutable_tab.path_content.users_cache,
-                        status,
-                        colors,
-                    )?;
+                    let preview =
+                        Preview::new(file_info, &unmutable_tab.path_content.users_cache, status)?;
                     status.selected().mode = Mode::Preview;
                     status.selected().window.reset(preview.len());
                     status.selected().preview = preview;
@@ -1326,9 +1321,8 @@ impl EventExec {
     }
 
     pub fn event_next_sibling(status: &mut Status) -> FmResult<()> {
-        // let colors = status.config_colors.clone();
-        // status.selected().tree_select_next_sibling(status, &colors)
-        Ok(())
+        let colors = status.config_colors.clone();
+        status.selected().tree_select_next_sibling(&colors)
     }
 }
 

@@ -28,7 +28,7 @@ fn main() -> FmResult<()> {
     let event_dispatcher = EventDispatcher::new(config.binds.clone());
     let event_reader = EventReader::new(term.clone());
     let help = Help::from_keybindings(&config.binds)?.help;
-    let mut display = Display::new(term.clone(), config.colors.clone());
+    let mut display = Display::new(term.clone());
     let mut status = Status::new(Args::parse(), config, display.height()?, term.clone(), help)?;
 
     while let Ok(event) = event_reader.poll_event() {

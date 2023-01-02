@@ -9,7 +9,6 @@ use tuikit::event::Event;
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
-use crate::config::Colors;
 use crate::constant_strings_paths::{
     FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
 };
@@ -57,7 +56,6 @@ struct WinTab<'a> {
     status: &'a Status,
     tab: &'a Tab,
     disk_space: &'a str,
-    colors: &'a Colors,
 }
 
 impl<'a> Draw for WinTab<'a> {
@@ -118,7 +116,7 @@ impl<'a> WinTab<'a> {
                     if let Some(file) = tab.path_content.selected() {
                         let owner_size = file.owner.len();
                         let group_size = file.group.len();
-                        let mut attr = fileinfo_attr(status, file, self.colors);
+                        let mut attr = fileinfo_attr(file, &status.config_colors);
                         attr.effect ^= Effect::REVERSE;
                         canvas.print_with_attr(
                             1,
@@ -237,7 +235,7 @@ impl<'a> WinTab<'a> {
         .skip(tab.window.top)
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
-            let mut attr = fileinfo_attr(status, file, self.colors);
+            let mut attr = fileinfo_attr(file, &status.config_colors);
             if status.flagged.contains(&file.path) {
                 attr.effect |= Effect::BOLD | Effect::UNDERLINE;
             }
@@ -513,7 +511,6 @@ pub struct Display {
     /// The Tuikit terminal attached to the display.
     /// It will print every symbol shown on screen.
     term: Arc<Term>,
-    colors: Colors,
 }
 
 impl Display {
@@ -521,8 +518,8 @@ impl Display {
     const INERT_BORDER: Attr = color_to_attr(Color::Default);
 
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
-    pub fn new(term: Arc<Term>, colors: Colors) -> Self {
-        Self { term, colors }
+    pub fn new(term: Arc<Term>) -> Self {
+        Self { term }
     }
 
     /// Used to force a display of the cursor before leaving the application.
@@ -573,13 +570,11 @@ impl Display {
             status,
             tab: &status.tabs[0],
             disk_space: disk_space_tab_0,
-            colors: &self.colors,
         };
         let win_right = WinTab {
             status,
             tab: &status.tabs[1],
             disk_space: disk_space_tab_1,
-            colors: &self.colors,
         };
         let (left_border, right_border) = if status.index == 0 {
             (Self::SELECTED_BORDER, Self::INERT_BORDER)
@@ -597,7 +592,6 @@ impl Display {
             status,
             tab: &status.tabs[0],
             disk_space: disk_space_tab_0,
-            colors: &self.colors,
         };
         let win = Win::new(&win_left)
             .border(true)

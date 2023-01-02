@@ -15,7 +15,6 @@ use crate::mode::Mode;
 use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
-use crate::status::Status;
 use crate::visited::History;
 
 /// Holds every thing about the current tab of the application.
@@ -227,7 +226,7 @@ impl Tab {
         self.tree.select_root()
     }
 
-    pub fn tree_select_next_sibling(&mut self, status: &Status, colors: &Colors) -> FmResult<()> {
-        self.tree.select_next_sibling(status, colors)
+    pub fn tree_select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.select_next_sibling(colors)
     }
 }

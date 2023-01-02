@@ -17,7 +17,6 @@ use crate::fm_error::{FmError, FmResult};
 use crate::git::git;
 use crate::impl_selectable_content;
 use crate::sort::SortKind;
-use crate::status::Status;
 
 /// Different kind of files
 #[derive(Debug, Clone, Copy)]
@@ -531,7 +530,7 @@ impl_selectable_content!(FileInfo, PathContent);
 /// Selected file is reversed.
 ///
 /// TODO! can be refactored to only use 2 parameters by using the config_color from status
-pub fn fileinfo_attr(status: &Status, fileinfo: &FileInfo, colors: &Colors) -> Attr {
+pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
     let fg = match fileinfo.file_kind {
         FileKind::Directory => str_to_tuikit(&colors.directory),
         FileKind::BlockDevice => str_to_tuikit(&colors.block),
@@ -539,7 +538,7 @@ pub fn fileinfo_attr(status: &Status, fileinfo: &FileInfo, colors: &Colors) -> A
         FileKind::Fifo => str_to_tuikit(&colors.fifo),
         FileKind::Socket => str_to_tuikit(&colors.socket),
         FileKind::SymbolicLink => str_to_tuikit(&colors.symlink),
-        _ => status.colors.extension_color(&fileinfo.extension),
+        _ => colors.color_cache.extension_color(&fileinfo.extension),
     };
 
     let effect = if fileinfo.is_selected {

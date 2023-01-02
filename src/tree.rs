@@ -9,7 +9,6 @@ use users::UsersCache;
 use crate::config::Colors;
 use crate::fileinfo::{fileinfo_attr, FileInfo, FileKind};
 use crate::fm_error::FmResult;
-use crate::status::Status;
 use crate::utils::filename_from_path;
 
 /// Holds a string and its display attributes.
@@ -41,10 +40,10 @@ impl Node {
         }
     }
 
-    fn attr(&self, status: &Status, colors: &Colors) -> Attr {
+    fn attr(&self, colors: &Colors) -> Attr {
         let mut attr = match self {
-            Node::Directory(fileinfo) => fileinfo_attr(status, fileinfo, colors),
-            Node::File(fileinfo) => fileinfo_attr(status, fileinfo, colors),
+            Node::Directory(fileinfo) => fileinfo_attr(fileinfo, colors),
+            Node::File(fileinfo) => fileinfo_attr(fileinfo, colors),
         };
         if match self {
             Self::Directory(fileinfo) => fileinfo.is_selected,
@@ -156,11 +155,7 @@ impl Tree {
     /// - a prefix, wich is a string made of glyphs displaying the tree,
     /// - a colored string to be colored relatively to the file type.
     /// Since we use the same colors everywhere, it's
-    pub fn into_navigable_content(
-        &self,
-        status: &Status,
-        colors: &Colors,
-    ) -> Vec<(String, ColoredString)> {
+    pub fn into_navigable_content(&self, colors: &Colors) -> Vec<(String, ColoredString)> {
         let mut stack = vec![];
         stack.push(("".to_owned(), self));
         let mut content = vec![];
@@ -172,7 +167,7 @@ impl Tree {
 
                 content.push((
                     prefix.to_owned(),
-                    ColoredString::new(current_node.filename(), current_node.attr(status, colors)),
+                    ColoredString::new(current_node.filename(), current_node.attr(colors)),
                 ));
 
                 let first_prefix = first_prefix(prefix.clone());
