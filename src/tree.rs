@@ -25,39 +25,32 @@ impl ColoredString {
     }
 }
 
+#[derive(Clone, Debug)]
+enum SimpleFileKind {
+    Directory,
+    File,
+}
 /// An element in a tree.
 /// Can be a directory or a file (other kind of file).
 /// Both hold a fileinfo
 #[derive(Clone, Debug)]
-pub enum Node {
-    Directory(FileInfo),
-    File(FileInfo),
+pub struct Node {
+    fileinfo: FileInfo,
+    kind: SimpleFileKind,
 }
 
 impl Node {
     fn filename(&self) -> String {
-        match self {
-            Node::Directory(fileinfo) => fileinfo.filename.to_owned(),
-            Node::File(fileinfo) => fileinfo.filename.to_owned(),
-        }
+        self.fileinfo.filename.to_owned()
     }
 
     fn filepath(&self) -> std::path::PathBuf {
-        match self {
-            Node::Directory(fileinfo) => fileinfo.path.to_owned(),
-            Node::File(fileinfo) => fileinfo.path.to_owned(),
-        }
+        self.fileinfo.path.to_owned()
     }
 
     fn attr(&self, colors: &Colors) -> Attr {
-        let mut attr = match self {
-            Node::Directory(fileinfo) => fileinfo_attr(fileinfo, colors),
-            Node::File(fileinfo) => fileinfo_attr(fileinfo, colors),
-        };
-        if match self {
-            Self::Directory(fileinfo) => fileinfo.is_selected,
-            Self::File(fileinfo) => fileinfo.is_selected,
-        } {
+        let mut attr = fileinfo_attr(&self.fileinfo, colors);
+        if self.fileinfo.is_selected {
             attr.effect |= tuikit::attr::Effect::REVERSE
         };
 
@@ -65,17 +58,11 @@ impl Node {
     }
 
     pub fn select(&mut self) {
-        match self {
-            Self::Directory(fileinfo) => fileinfo.select(),
-            Self::File(fileinfo) => fileinfo.select(),
-        }
+        self.fileinfo.select()
     }
 
     pub fn unselect(&mut self) {
-        match self {
-            Self::Directory(fileinfo) => fileinfo.unselect(),
-            Self::File(fileinfo) => fileinfo.unselect(),
-        }
+        self.fileinfo.unselect()
     }
 }
 
@@ -123,7 +110,10 @@ impl Tree {
                 let mut leaves = vec![];
                 let node: Node;
                 if let FileKind::Directory = fileinfo.file_kind {
-                    node = Node::Directory(fileinfo);
+                    node = Node {
+                        fileinfo,
+                        kind: SimpleFileKind::Directory,
+                    };
                     if max_depth > 0 {
                         for direntry in read_dir(path)?.filter_map(|d| d.ok()) {
                             if let Ok(leaf) =
@@ -134,7 +124,10 @@ impl Tree {
                         }
                     }
                 } else {
-                    node = Node::File(fileinfo);
+                    node = Node {
+                        fileinfo,
+                        kind: SimpleFileKind::File,
+                    };
                 }
                 let position = vec![0];
                 let selected = node.filepath();
@@ -152,7 +145,10 @@ impl Tree {
     pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
         let filename = filename_from_path(path)?;
         let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
-        let node = Node::Directory(fileinfo);
+        let node = Node {
+            fileinfo,
+            kind: SimpleFileKind::Directory,
+        };
         let leaves = vec![];
         let position = vec![0];
         let selected = node.filepath();

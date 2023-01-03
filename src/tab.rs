@@ -222,9 +222,9 @@ impl Tab {
         }
     }
 
-    pub fn select_root_tree(&mut self) {
+    pub fn tree_select_root(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
-        self.directory.select_root()
+        self.directory.select_root(colors)
     }
 
     pub fn tree_select_parent(&mut self, colors: &Colors) -> FmResult<()> {

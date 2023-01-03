@@ -542,8 +542,10 @@ impl Directory {
         self.len == 0
     }
 
-    pub fn select_root(&mut self) {
+    pub fn select_root(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.select_root();
+        self.content = self.tree.into_navigable_content(colors);
+        Ok(())
     }
 
     pub fn unselect_children(&mut self) {

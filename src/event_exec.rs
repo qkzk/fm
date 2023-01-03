@@ -1098,6 +1098,7 @@ impl EventExec {
     pub fn event_key_home(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_go_top(status.selected()),
+            Mode::Tree => EventExec::event_tree_go_to_root(status)?,
             _ => EventExec::event_cursor_home(status.selected()),
         };
         Ok(())
@@ -1173,7 +1174,7 @@ impl EventExec {
             Mode::InputCompleted(_) => {
                 EventExec::event_replace_input_with_completion(status.selected())
             }
-            Mode::Normal => status.next(),
+            Mode::Normal | Mode::Tree => status.next(),
             _ => (),
         };
         Ok(())
@@ -1181,9 +1182,10 @@ impl EventExec {
 
     /// Change tab in normal mode.
     pub fn backtab(status: &mut Status) -> FmResult<()> {
-        if let Mode::Normal = status.selected().mode {
-            status.prev()
-        }
+        match status.selected().mode {
+            Mode::Normal | Mode::Tree => status.prev(),
+            _ => (),
+        };
         Ok(())
     }
 
@@ -1324,6 +1326,11 @@ impl EventExec {
         Ok(())
     }
 
+    pub fn event_tree_go_to_root(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_select_root(&colors)
+    }
+
     pub fn event_select_next_sibling(status: &mut Status) -> FmResult<()> {
         let colors = status.config_colors.clone();
         status.selected().tree_select_next_sibling(&colors)
@@ -1345,7 +1352,13 @@ impl EventExec {
     }
 
     pub fn exec_tree(tab: &mut Tab) -> FmResult<()> {
-        let path = tab.directory.tree.current_path.clone();
+        let mut path = tab.directory.tree.current_path.clone();
+        if !path.is_dir() {
+            path = path
+                .parent()
+                .ok_or_else(|| FmError::custom("exec_tree", "path should have a parent"))?
+                .to_owned()
+        }
         tab.set_pathcontent(&path)?;
         tab.mode = Mode::Normal;
         tab.refresh_view()
