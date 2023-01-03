@@ -50,7 +50,7 @@ pub struct Tab {
     /// Last searched string
     pub searched: Option<String>,
     /// Optional tree view
-    pub tree: Directory,
+    pub directory: Directory,
 }
 
 impl Tab {
@@ -85,7 +85,7 @@ impl Tab {
             history,
             shortcut,
             searched,
-            tree,
+            directory: tree,
         })
     }
 
@@ -223,27 +223,27 @@ impl Tab {
     }
 
     pub fn select_root_tree(&mut self) {
-        self.tree.unselect_children();
-        self.tree.select_root()
+        self.directory.unselect_children();
+        self.directory.select_root()
     }
 
     pub fn tree_select_parent(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.unselect_children();
-        self.tree.select_parent(colors)
+        self.directory.unselect_children();
+        self.directory.select_parent(colors)
     }
 
     pub fn tree_select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.unselect_children();
-        self.tree.select_next_sibling(colors)
+        self.directory.unselect_children();
+        self.directory.select_next_sibling(colors)
     }
 
     pub fn tree_select_prev_sibling(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.unselect_children();
-        self.tree.select_prev_sibling(colors)
+        self.directory.unselect_children();
+        self.directory.select_prev_sibling(colors)
     }
 
     pub fn tree_select_first_child(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.unselect_children();
-        self.tree.select_first_child(colors)
+        self.directory.unselect_children();
+        self.directory.select_first_child(colors)
     }
 }

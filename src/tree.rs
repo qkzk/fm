@@ -40,6 +40,13 @@ impl Node {
         }
     }
 
+    fn filepath(&self) -> std::path::PathBuf {
+        match self {
+            Node::Directory(fileinfo) => fileinfo.path.to_owned(),
+            Node::File(fileinfo) => fileinfo.path.to_owned(),
+        }
+    }
+
     fn attr(&self, colors: &Colors) -> Attr {
         let mut attr = match self {
             Node::Directory(fileinfo) => fileinfo_attr(fileinfo, colors),
@@ -79,6 +86,7 @@ pub struct Tree {
     pub node: Node,
     pub leaves: Vec<Tree>,
     pub position: Vec<usize>,
+    pub current_path: std::path::PathBuf,
 }
 
 impl Tree {
@@ -126,10 +134,12 @@ impl Tree {
             node = Node::File(fileinfo);
         }
         let position = vec![0];
+        let selected = node.filepath();
         Ok(Self {
             node,
             leaves,
             position,
+            current_path: selected,
         })
     }
 
@@ -137,10 +147,14 @@ impl Tree {
         let filename = filename_from_path(path)?;
         let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
         let node = Node::Directory(fileinfo);
+        let leaves = vec![];
+        let position = vec![0];
+        let selected = node.filepath();
         Ok(Self {
             node,
-            leaves: vec![],
-            position: vec![0],
+            leaves,
+            position,
+            current_path: selected,
         })
     }
 
@@ -156,20 +170,20 @@ impl Tree {
         }
     }
 
-    pub fn select_prev_sibling(&mut self) -> FmResult<()> {
+    pub fn select_next_sibling(&mut self) -> FmResult<()> {
         if self.position.is_empty() {
             self.position = vec![0]
         } else {
             let len = self.position.len();
             self.position[len - 1] += 1;
-            let (depth, last_cord) = self.select_from_position()?;
-            self.position.truncate(depth);
-            self.position[depth - 1] = last_cord;
+            let (depth, last_cord, filepath) = self.select_from_position()?;
+            self.fix_position(depth, last_cord);
+            self.current_path = filepath;
         }
         Ok(())
     }
 
-    pub fn select_next_sibling(&mut self) -> FmResult<()> {
+    pub fn select_prev_sibling(&mut self) -> FmResult<()> {
         if self.position.is_empty() {
             self.position = vec![0]
         } else {
@@ -177,11 +191,16 @@ impl Tree {
             if self.position[len - 1] > 0 {
                 self.position[len - 1] -= 1;
             }
-            let (depth, last_cord) = self.select_from_position()?;
-            self.position.truncate(depth);
-            self.position[depth - 1] = last_cord;
+            let (depth, last_cord, filepath) = self.select_from_position()?;
+            self.fix_position(depth, last_cord);
+            self.current_path = filepath;
         }
         Ok(())
+    }
+
+    fn fix_position(&mut self, depth: usize, last_cord: usize) {
+        self.position.truncate(depth);
+        self.position[depth - 1] = last_cord;
     }
 
     pub fn select_first_child(&mut self) -> FmResult<()> {
@@ -189,9 +208,9 @@ impl Tree {
             self.position = vec![0]
         }
         self.position.push(0);
-        let (depth, last_cord) = self.select_from_position()?;
-        self.position.truncate(depth);
-        self.position[depth - 1] = last_cord;
+        let (depth, last_cord, filepath) = self.select_from_position()?;
+        self.fix_position(depth, last_cord);
+        self.current_path = filepath;
         Ok(())
     }
 
@@ -203,23 +222,20 @@ impl Tree {
             if self.position.is_empty() {
                 self.position.push(0)
             }
-            let (depth, last_cord) = self.select_from_position()?;
-            self.position.truncate(depth);
-            self.position[depth - 1] = last_cord;
+            let (depth, last_cord, filepath) = self.select_from_position()?;
+            self.fix_position(depth, last_cord);
+            self.current_path = filepath
         }
         Ok(())
     }
 
-    fn select_from_position(&mut self) -> FmResult<(usize, usize)> {
-        // if self.position.len() == 1 {
-        //     self.node.select();
-        //     return Ok(1);
-        // }
+    fn select_from_position(&mut self) -> FmResult<(usize, usize, std::path::PathBuf)> {
         let pos = self.position.clone();
         let mut tree = self;
         let mut reached_depth = 1;
         let mut last_cord = 0;
-        for (depth, &coord) in pos.iter().enumerate() {
+        info!("pos: {:?}", pos);
+        for (depth, &coord) in pos.iter().skip(1).enumerate() {
             info!(
                 "select_from_position depth {} coord {} node {}",
                 depth,
@@ -236,13 +252,18 @@ impl Tree {
             if coord >= tree.leaves.len() {
                 last_cord = tree.leaves.len() - 1;
             }
-            tree = &mut tree.leaves[last_cord];
+            for (l, leaf) in tree.leaves.iter().enumerate() {
+                info!("leaf {} - {}", l, leaf.node.filename());
+            }
+            let len = tree.leaves.len();
+            tree = &mut tree.leaves[len - 1 - last_cord];
             reached_depth += 1;
         }
         tree.node.select();
         info!("reached_depth {}, last_cord {}", reached_depth, last_cord);
-        Ok((reached_depth, last_cord))
+        Ok((reached_depth, last_cord, tree.node.filepath()))
     }
+
     /// Depth first traversal of the tree.
     /// We navigate into the tree and format every element into a pair :
     /// - a prefix, wich is a string made of glyphs displaying the tree,

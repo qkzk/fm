@@ -309,14 +309,14 @@ impl Status {
         info!("make tree");
         let path = self.selected_non_mut().path_content.path.clone();
         let users_cache = &self.selected_non_mut().path_content.users_cache;
-        self.selected().tree = Directory::new(&path, users_cache, self)?;
+        self.selected().directory = Directory::new(&path, users_cache, self)?;
         Ok(())
     }
 
     pub fn remove_tree(&mut self) -> FmResult<()> {
         let path = self.selected_non_mut().path_content.path.clone();
         let users_cache = &self.selected_non_mut().path_content.users_cache;
-        self.selected().tree = Directory::empty(&path, users_cache)?;
+        self.selected().directory = Directory::empty(&path, users_cache)?;
         Ok(())
     }
 }

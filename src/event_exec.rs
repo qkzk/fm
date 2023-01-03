@@ -1152,7 +1152,8 @@ impl EventExec {
                 EventExec::exec_search(status.selected())
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
-            Mode::Normal | Mode::Tree => EventExec::exec_file(status)?,
+            Mode::Normal => EventExec::exec_file(status)?,
+            Mode::Tree => EventExec::exec_tree(status.selected())?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
             | Mode::InputCompleted(InputCompleted::Nothing)
@@ -1318,7 +1319,7 @@ impl EventExec {
     pub fn event_tree(status: &mut Status) -> FmResult<()> {
         status.make_tree()?;
         status.selected().mode = Mode::Tree;
-        let len = status.selected_non_mut().tree.len();
+        let len = status.selected_non_mut().directory.len();
         status.selected().window.reset(len);
         Ok(())
     }
@@ -1341,6 +1342,13 @@ impl EventExec {
     pub fn event_select_prev_sibling(status: &mut Status) -> FmResult<()> {
         let colors = status.config_colors.clone();
         status.selected().tree_select_prev_sibling(&colors)
+    }
+
+    pub fn exec_tree(tab: &mut Tab) -> FmResult<()> {
+        let path = tab.directory.tree.current_path.clone();
+        tab.set_pathcontent(&path)?;
+        tab.mode = Mode::Normal;
+        tab.refresh_view()
     }
 }
 
