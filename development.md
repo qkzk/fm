@@ -304,6 +304,7 @@
   - [ ] enable most modes
   - [ ] enable most actions
     - [x] END move to last leaf
+    - [x] toggle flag and display flagged files
   - [ ] replace preview::directory by mode::tree
 
 - [ ] Version 0.2.0 : tests

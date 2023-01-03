@@ -84,10 +84,21 @@ impl EventExec {
 
     /// Toggle a single flag and move down one row.
     pub fn event_toggle_flag(status: &mut Status) -> FmResult<()> {
-        if let Some(file) = status.selected().path_content.selected() {
-            let path = file.path.clone();
-            status.toggle_flag_on_path(&path);
-            Self::event_down_one_row(status.selected());
+        let tab = status.selected_non_mut();
+
+        match tab.mode {
+            Mode::Normal => {
+                if let Some(file) = tab.path_content.selected() {
+                    let path = file.path.clone();
+                    status.toggle_flag_on_path(&path);
+                    Self::event_down_one_row(status.selected());
+                }
+            }
+            Mode::Tree => {
+                let path = tab.directory.tree.current_path.clone();
+                status.toggle_flag_on_path(&path);
+            }
+            _ => (),
         }
         Ok(())
     }

@@ -253,12 +253,11 @@ impl<'a> WinTab<'a> {
         for (i, (prefix, colored_string)) in tab.directory.window(top, bottom, len) {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
             let col = canvas.print(row, line_number_width, prefix)?;
-            canvas.print_with_attr(
-                row,
-                line_number_width + col + 1,
-                &colored_string.text,
-                colored_string.attr,
-            )?;
+            let mut attr = colored_string.attr;
+            if status.flagged.contains(&colored_string.path) {
+                attr.effect |= Effect::BOLD | Effect::UNDERLINE;
+            }
+            canvas.print_with_attr(row, line_number_width + col + 1, &colored_string.text, attr)?;
         }
         self.second_line(status, tab, canvas)?;
         Ok(())

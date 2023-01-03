@@ -17,11 +17,12 @@ pub struct ColoredString {
     pub text: String,
     /// A tuikit::attr::Attr (fg, bg, effect) to enhance the text.
     pub attr: Attr,
+    pub path: std::path::PathBuf,
 }
 
 impl ColoredString {
-    fn new(text: String, attr: Attr) -> Self {
-        Self { text, attr }
+    fn new(text: String, attr: Attr, path: std::path::PathBuf) -> Self {
+        Self { text, attr, path }
     }
 }
 
@@ -268,7 +269,11 @@ impl Tree {
 
                 content.push((
                     prefix.to_owned(),
-                    ColoredString::new(current_node.filename(), current_node.attr(colors)),
+                    ColoredString::new(
+                        current_node.filename(),
+                        current_node.attr(colors),
+                        current_node.filepath(),
+                    ),
                 ));
 
                 let first_prefix = first_prefix(prefix.clone());
