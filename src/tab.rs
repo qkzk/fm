@@ -246,4 +246,9 @@ impl Tab {
         self.directory.unselect_children();
         self.directory.select_first_child(colors)
     }
+
+    pub fn tree_go_to_bottom_leaf(&mut self, colors: &Colors) -> FmResult<()> {
+        self.directory.unselect_children();
+        self.directory.go_to_bottom_leaf(colors)
+    }
 }

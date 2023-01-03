@@ -93,6 +93,8 @@ impl Tree {
     /// up: previous sibling
     /// TODO!
     /// make it foldable
+    pub const MAX_DEPTH: usize = 10;
+
     pub fn from_path(
         path: &Path,
         max_depth: usize,
@@ -213,6 +215,14 @@ impl Tree {
             self.fix_position(depth, last_cord);
             self.current_path = filepath
         }
+        Ok(())
+    }
+
+    pub fn go_to_bottom_leaf(&mut self) -> FmResult<()> {
+        self.position = vec![usize::MAX; Self::MAX_DEPTH];
+        let (depth, last_cord, filepath) = self.select_from_position()?;
+        self.fix_position(depth, last_cord);
+        self.current_path = filepath;
         Ok(())
     }
 

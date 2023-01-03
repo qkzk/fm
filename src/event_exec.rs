@@ -1108,6 +1108,7 @@ impl EventExec {
     pub fn event_end(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_go_bottom(status.selected()),
+            Mode::Tree => EventExec::event_tree_go_to_bottom_leaf(status)?,
             _ => EventExec::event_cursor_end(status.selected()),
         };
         Ok(())
@@ -1349,6 +1350,11 @@ impl EventExec {
     pub fn event_select_prev_sibling(status: &mut Status) -> FmResult<()> {
         let colors = status.config_colors.clone();
         status.selected().tree_select_prev_sibling(&colors)
+    }
+
+    pub fn event_tree_go_to_bottom_leaf(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_go_to_bottom_leaf(&colors)
     }
 
     pub fn exec_tree(tab: &mut Tab) -> FmResult<()> {

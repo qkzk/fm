@@ -517,7 +517,7 @@ impl Directory {
     ///
     /// TODO! make it really navigable as other views.
     pub fn new(path: &Path, users_cache: &Rc<UsersCache>, status: &Status) -> FmResult<Self> {
-        let mut tree = Tree::from_path(path, 10, users_cache)?;
+        let mut tree = Tree::from_path(path, Tree::MAX_DEPTH, users_cache)?;
         tree.select_root();
         let (selected_index, content) = tree.into_navigable_content(&status.config_colors);
         Ok(Self {
@@ -575,6 +575,12 @@ impl Directory {
 
     pub fn select_parent(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.select_parent()?;
+        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        Ok(())
+    }
+
+    pub fn go_to_bottom_leaf(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.go_to_bottom_leaf()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
