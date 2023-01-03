@@ -2,7 +2,6 @@ use std::fs::read_dir;
 use std::path::Path;
 use std::rc::Rc;
 
-use log::info;
 use tuikit::attr::Attr;
 use users::UsersCache;
 
@@ -26,6 +25,9 @@ impl ColoredString {
     }
 }
 
+/// An element in a tree.
+/// Can be a directory or a file (other kind of file).
+/// Both hold a fileinfo
 #[derive(Clone, Debug)]
 pub enum Node {
     Directory(FileInfo),
@@ -116,31 +118,35 @@ impl Tree {
         users_cache: &Rc<UsersCache>,
     ) -> FmResult<Self> {
         let filename = filename_from_path(path)?;
-        let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
-        let mut leaves = vec![];
-        let node: Node;
-        if let FileKind::Directory = fileinfo.file_kind {
-            node = Node::Directory(fileinfo);
-            if max_depth > 0 {
-                for direntry in read_dir(path)?.filter_map(|d| d.ok()) {
-                    leaves.push(Self::from_path(
-                        &direntry.path(),
-                        max_depth - 1,
-                        users_cache,
-                    )?)
+        match FileInfo::from_path_with_name(path, filename, users_cache) {
+            Ok(fileinfo) => {
+                let mut leaves = vec![];
+                let node: Node;
+                if let FileKind::Directory = fileinfo.file_kind {
+                    node = Node::Directory(fileinfo);
+                    if max_depth > 0 {
+                        for direntry in read_dir(path)?.filter_map(|d| d.ok()) {
+                            if let Ok(leaf) =
+                                Self::from_path(&direntry.path(), max_depth - 1, users_cache)
+                            {
+                                leaves.push(leaf)
+                            }
+                        }
+                    }
+                } else {
+                    node = Node::File(fileinfo);
                 }
+                let position = vec![0];
+                let selected = node.filepath();
+                Ok(Self {
+                    node,
+                    leaves,
+                    position,
+                    current_path: selected,
+                })
             }
-        } else {
-            node = Node::File(fileinfo);
+            Err(e) => Err(e),
         }
-        let position = vec![0];
-        let selected = node.filepath();
-        Ok(Self {
-            node,
-            leaves,
-            position,
-            current_path: selected,
-        })
     }
 
     pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
@@ -199,8 +205,8 @@ impl Tree {
     }
 
     fn fix_position(&mut self, depth: usize, last_cord: usize) {
-        self.position.truncate(depth);
-        self.position[depth - 1] = last_cord;
+        self.position.truncate(depth + 1);
+        self.position[depth] = last_cord;
     }
 
     pub fn select_first_child(&mut self) -> FmResult<()> {
@@ -232,35 +238,21 @@ impl Tree {
     fn select_from_position(&mut self) -> FmResult<(usize, usize, std::path::PathBuf)> {
         let pos = self.position.clone();
         let mut tree = self;
-        let mut reached_depth = 1;
+        let mut reached_depth = 0;
         let mut last_cord = 0;
-        info!("pos: {:?}", pos);
         for (depth, &coord) in pos.iter().skip(1).enumerate() {
-            info!(
-                "select_from_position depth {} coord {} node {}",
-                depth,
-                coord,
-                tree.node.filename()
-            );
             last_cord = coord;
-            if depth >= pos.len() - 1 {
-                break;
-            }
-            if tree.leaves.is_empty() {
+            if depth > pos.len() || tree.leaves.is_empty() {
                 break;
             }
             if coord >= tree.leaves.len() {
                 last_cord = tree.leaves.len() - 1;
-            }
-            for (l, leaf) in tree.leaves.iter().enumerate() {
-                info!("leaf {} - {}", l, leaf.node.filename());
             }
             let len = tree.leaves.len();
             tree = &mut tree.leaves[len - 1 - last_cord];
             reached_depth += 1;
         }
         tree.node.select();
-        info!("reached_depth {}, last_cord {}", reached_depth, last_cord);
         Ok((reached_depth, last_cord, tree.node.filepath()))
     }
 
