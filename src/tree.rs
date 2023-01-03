@@ -31,15 +31,15 @@ impl ColoredString {
 /// Both hold a fileinfo
 #[derive(Clone, Debug)]
 pub struct Node {
-    fileinfo: FileInfo,
+    pub fileinfo: FileInfo,
 }
 
 impl Node {
-    fn filename(&self) -> String {
+    pub fn filename(&self) -> String {
         self.fileinfo.filename.to_owned()
     }
 
-    fn filepath(&self) -> std::path::PathBuf {
+    pub fn filepath(&self) -> std::path::PathBuf {
         self.fileinfo.path.to_owned()
     }
 
@@ -70,7 +70,7 @@ pub struct Tree {
     pub node: Node,
     pub leaves: Vec<Tree>,
     pub position: Vec<usize>,
-    pub current_path: std::path::PathBuf,
+    pub current_node: Node,
 }
 
 impl Tree {
@@ -121,12 +121,12 @@ impl Tree {
                     node = Node { fileinfo };
                 }
                 let position = vec![0];
-                let selected = node.filepath();
+                let selected = node.clone();
                 Ok(Self {
                     node,
                     leaves,
                     position,
-                    current_path: selected,
+                    current_node: selected,
                 })
             }
             Err(e) => Err(e),
@@ -139,12 +139,12 @@ impl Tree {
         let node = Node { fileinfo };
         let leaves = vec![];
         let position = vec![0];
-        let selected = node.filepath();
+        let selected = node.clone();
         Ok(Self {
             node,
             leaves,
             position,
-            current_path: selected,
+            current_node: selected,
         })
     }
 
@@ -166,9 +166,9 @@ impl Tree {
         } else {
             let len = self.position.len();
             self.position[len - 1] += 1;
-            let (depth, last_cord, filepath) = self.select_from_position()?;
+            let (depth, last_cord, node) = self.select_from_position()?;
             self.fix_position(depth, last_cord);
-            self.current_path = filepath;
+            self.current_node = node;
         }
         Ok(())
     }
@@ -181,9 +181,9 @@ impl Tree {
             if self.position[len - 1] > 0 {
                 self.position[len - 1] -= 1;
             }
-            let (depth, last_cord, filepath) = self.select_from_position()?;
+            let (depth, last_cord, node) = self.select_from_position()?;
             self.fix_position(depth, last_cord);
-            self.current_path = filepath;
+            self.current_node = node;
         }
         Ok(())
     }
@@ -198,9 +198,9 @@ impl Tree {
             self.position = vec![0]
         }
         self.position.push(0);
-        let (depth, last_cord, filepath) = self.select_from_position()?;
+        let (depth, last_cord, node) = self.select_from_position()?;
         self.fix_position(depth, last_cord);
-        self.current_path = filepath;
+        self.current_node = node;
         Ok(())
     }
 
@@ -212,22 +212,22 @@ impl Tree {
             if self.position.is_empty() {
                 self.position.push(0)
             }
-            let (depth, last_cord, filepath) = self.select_from_position()?;
+            let (depth, last_cord, node) = self.select_from_position()?;
             self.fix_position(depth, last_cord);
-            self.current_path = filepath
+            self.current_node = node
         }
         Ok(())
     }
 
     pub fn go_to_bottom_leaf(&mut self) -> FmResult<()> {
         self.position = vec![usize::MAX; Self::MAX_DEPTH];
-        let (depth, last_cord, filepath) = self.select_from_position()?;
+        let (depth, last_cord, node) = self.select_from_position()?;
         self.fix_position(depth, last_cord);
-        self.current_path = filepath;
+        self.current_node = node;
         Ok(())
     }
 
-    fn select_from_position(&mut self) -> FmResult<(usize, usize, std::path::PathBuf)> {
+    fn select_from_position(&mut self) -> FmResult<(usize, usize, Node)> {
         let pos = self.position.clone();
         let mut tree = self;
         let mut reached_depth = 0;
@@ -245,7 +245,7 @@ impl Tree {
             reached_depth += 1;
         }
         tree.node.select();
-        Ok((reached_depth, last_cord, tree.node.filepath()))
+        Ok((reached_depth, last_cord, tree.node.clone()))
     }
 
     /// Depth first traversal of the tree.

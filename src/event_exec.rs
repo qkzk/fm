@@ -95,7 +95,7 @@ impl EventExec {
                 }
             }
             Mode::Tree => {
-                let path = tab.directory.tree.current_path.clone();
+                let path = tab.directory.tree.current_node.filepath();
                 status.toggle_flag_on_path(&path);
             }
             _ => (),
@@ -555,17 +555,26 @@ impl EventExec {
             return Ok(());
         }
         let unmutable_tab = status.selected_non_mut();
-        if let Some(file_info) = unmutable_tab.path_content.selected() {
-            match file_info.file_kind {
-                FileKind::Directory | FileKind::NormalFile => {
-                    let preview =
-                        Preview::new(file_info, &unmutable_tab.path_content.users_cache, status)?;
-                    status.selected().mode = Mode::Preview;
-                    status.selected().window.reset(preview.len());
-                    status.selected().preview = preview;
+        let file_info = match unmutable_tab.mode {
+            Mode::Normal => {
+                if let Some(file_info) = unmutable_tab.path_content.selected() {
+                    file_info
+                } else {
+                    return Ok(());
                 }
-                _ => (),
             }
+            Mode::Tree => &unmutable_tab.directory.tree.current_node.fileinfo,
+            _ => return Ok(()),
+        };
+        match file_info.file_kind {
+            FileKind::Directory | FileKind::NormalFile => {
+                let preview =
+                    Preview::new(file_info, &unmutable_tab.path_content.users_cache, status)?;
+                status.selected().mode = Mode::Preview;
+                status.selected().window.reset(preview.len());
+                status.selected().preview = preview;
+            }
+            _ => (),
         }
         Ok(())
     }
@@ -1369,24 +1378,21 @@ impl EventExec {
     }
 
     pub fn exec_tree(tab: &mut Tab) -> FmResult<()> {
-        let path = tab.directory.tree.current_path.clone();
-        if !path.is_dir() {
-            let filename = path
-                .file_name()
-                .ok_or_else(|| FmError::custom("exec_tree", "path should have a filename"))?
-                .to_str()
-                .ok_or_else(|| FmError::custom("exec_tree", "path should have a filename"))?;
-            let parent = path
+        let node = tab.directory.tree.current_node.clone();
+        if !node.fileinfo.path.is_dir() {
+            let filename = node.filename();
+            let parent = node
+                .filepath()
                 .parent()
                 .ok_or_else(|| FmError::custom("exec_tree", "path should have a parent"))?
                 .to_owned();
             tab.set_pathcontent(&parent)?;
             tab.mode = Mode::Normal;
             tab.refresh_view()?;
-            tab.search_from(filename, 0);
+            tab.search_from(&filename, 0);
             Ok(())
         } else {
-            tab.set_pathcontent(&path)?;
+            tab.set_pathcontent(&node.filepath())?;
             tab.mode = Mode::Normal;
             tab.refresh_view()
         }
