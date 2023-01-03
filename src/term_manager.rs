@@ -248,12 +248,10 @@ impl<'a> WinTab<'a> {
     fn tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         let line_number_width = 3;
 
-        for (i, (prefix, colored_string)) in tab.directory.window(
-            tab.window.top,
-            tab.window.bottom,
-            tab.directory.content.len(),
-        ) {
-            let row = Self::calc_line_row(i, tab);
+        let (_, height) = canvas.size()?;
+        let (top, bottom, len) = tab.directory.calculate_tree_window(height);
+        for (i, (prefix, colored_string)) in tab.directory.window(top, bottom, len) {
+            let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
             let col = canvas.print(row, line_number_width, prefix)?;
             canvas.print_with_attr(
                 row,

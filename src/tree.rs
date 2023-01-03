@@ -25,18 +25,12 @@ impl ColoredString {
     }
 }
 
-#[derive(Clone, Debug)]
-enum SimpleFileKind {
-    Directory,
-    File,
-}
 /// An element in a tree.
 /// Can be a directory or a file (other kind of file).
 /// Both hold a fileinfo
 #[derive(Clone, Debug)]
 pub struct Node {
     fileinfo: FileInfo,
-    kind: SimpleFileKind,
 }
 
 impl Node {
@@ -110,10 +104,7 @@ impl Tree {
                 let mut leaves = vec![];
                 let node: Node;
                 if let FileKind::Directory = fileinfo.file_kind {
-                    node = Node {
-                        fileinfo,
-                        kind: SimpleFileKind::Directory,
-                    };
+                    node = Node { fileinfo };
                     if max_depth > 0 {
                         for direntry in read_dir(path)?.filter_map(|d| d.ok()) {
                             if let Ok(leaf) =
@@ -124,10 +115,7 @@ impl Tree {
                         }
                     }
                 } else {
-                    node = Node {
-                        fileinfo,
-                        kind: SimpleFileKind::File,
-                    };
+                    node = Node { fileinfo };
                 }
                 let position = vec![0];
                 let selected = node.filepath();
@@ -145,10 +133,7 @@ impl Tree {
     pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
         let filename = filename_from_path(path)?;
         let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
-        let node = Node {
-            fileinfo,
-            kind: SimpleFileKind::Directory,
-        };
+        let node = Node { fileinfo };
         let leaves = vec![];
         let position = vec![0];
         let selected = node.filepath();
@@ -257,15 +242,19 @@ impl Tree {
     /// - a prefix, wich is a string made of glyphs displaying the tree,
     /// - a colored string to be colored relatively to the file type.
     /// Since we use the same colors everywhere, it's
-    pub fn into_navigable_content(&self, colors: &Colors) -> Vec<(String, ColoredString)> {
+    pub fn into_navigable_content(&self, colors: &Colors) -> (usize, Vec<(String, ColoredString)>) {
         let mut stack = vec![];
         stack.push(("".to_owned(), self));
         let mut content = vec![];
         let mut current_node: Node;
+        let mut selected_index = 0;
 
         while !stack.is_empty() {
             if let Some((prefix, current)) = stack.pop() {
                 current_node = current.node.clone();
+                if current_node.fileinfo.is_selected {
+                    selected_index = content.len();
+                }
 
                 content.push((
                     prefix.to_owned(),
@@ -284,7 +273,7 @@ impl Tree {
                 }
             }
         }
-        content
+        (selected_index, content)
     }
 }
 

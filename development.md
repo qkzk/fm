@@ -292,6 +292,18 @@
   - [ ] navigation
 - [ ] zoxide support
 
+- [ ] Version 0.1.9 : tree view
+
+  - [x] display a tree view with T
+  - [x] navigate in the tree
+  - [x] enter a directory from the tree
+  - [x] enter a file:
+    - [x] enter parent
+    - [x] select the file
+  - [x] scrolling
+  - [ ] enable most modes
+  - [ ] enable most actions
+
 - [ ] Version 0.2.0 : tests
 
   - [ ] tests
