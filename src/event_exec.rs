@@ -796,13 +796,21 @@ impl EventExec {
 
     /// Copy the selected filename to the clipboard. Only the filename.
     pub fn event_filename_to_clipboard(tab: &Tab) -> FmResult<()> {
-        if let Some(file) = tab.path_content.selected() {
-            let filename = file.filename.clone();
-            let mut ctx = ClipboardContext::new()?;
-            ctx.set_contents(filename)?;
-            // For some reason, it's not writen if you don't read it back...
-            let _ = ctx.get_contents();
-        }
+        let filename = match tab.mode {
+            Mode::Normal => tab
+                .path_content
+                .selected()
+                .ok_or_else(|| FmError::custom("event_filename_to_clipboard", "no selected file"))?
+                .filename
+                .clone(),
+            Mode::Tree => tab.directory.tree.current_node.filename(),
+            _ => return Ok(()),
+        };
+        let mut ctx = ClipboardContext::new()?;
+        ctx.set_contents(filename)?;
+        // For some reason, it's not writen if you don't read it back...
+        let _ = ctx.get_contents();
+
         Ok(())
     }
 
@@ -1218,7 +1226,7 @@ impl EventExec {
 
     /// Copy the filename of the selected file in normal mode.
     pub fn event_copy_filename(status: &mut Status) -> FmResult<()> {
-        if let Mode::Normal = status.selected_non_mut().mode {
+        if let Mode::Normal | Mode::Tree = status.selected_non_mut().mode {
             return EventExec::event_filename_to_clipboard(status.selected());
         }
         Ok(())
