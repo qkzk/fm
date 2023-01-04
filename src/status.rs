@@ -147,7 +147,7 @@ impl Status {
             .skimer
             .no_source(
                 self.selected_non_mut()
-                    .path_str()
+                    .path_content_str()
                     .ok_or_else(|| FmError::custom("skim", "skim error"))?,
             )
             .first()
@@ -191,7 +191,7 @@ impl Status {
         let sources = self.flagged.content.clone();
         let dest = self
             .selected_non_mut()
-            .path_str()
+            .path_content_str()
             .ok_or_else(|| FmError::custom("cut or copy", "unreadable path"))?;
         copy_move(cut_or_copy, sources, dest, self.term.clone())?;
         self.clear_flags_and_reset_view()
@@ -293,7 +293,9 @@ impl Status {
 
     /// Returns a string representing the current path in the selected tab.
     pub fn selected_path_str(&self) -> &str {
-        self.selected_non_mut().path_str().unwrap_or_default()
+        self.selected_non_mut()
+            .path_content_str()
+            .unwrap_or_default()
     }
 
     /// Refresh the existing users.

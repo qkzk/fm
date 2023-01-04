@@ -552,30 +552,21 @@ impl EventExec {
     /// more details on previewinga file.
     /// Does nothing if the directory is empty.
     pub fn event_preview(status: &mut Status) -> FmResult<()> {
-        if status.selected_non_mut().path_content.content.is_empty() {
+        if status.selected_non_mut().path_content.is_empty() {
             return Ok(());
         }
         let unmutable_tab = status.selected_non_mut();
-        let file_info = match unmutable_tab.mode {
-            Mode::Normal => {
-                if let Some(file_info) = unmutable_tab.path_content.selected() {
-                    file_info
-                } else {
-                    return Ok(());
+        if let Some(file_info) = unmutable_tab.selected() {
+            match file_info.file_kind {
+                FileKind::Directory | FileKind::NormalFile => {
+                    let preview =
+                        Preview::new(file_info, &unmutable_tab.path_content.users_cache, status)?;
+                    status.selected().mode = Mode::Preview;
+                    status.selected().window.reset(preview.len());
+                    status.selected().preview = preview;
                 }
+                _ => (),
             }
-            Mode::Tree => &unmutable_tab.directory.tree.current_node.fileinfo,
-            _ => return Ok(()),
-        };
-        match file_info.file_kind {
-            FileKind::Directory | FileKind::NormalFile => {
-                let preview =
-                    Preview::new(file_info, &unmutable_tab.path_content.users_cache, status)?;
-                status.selected().mode = Mode::Preview;
-                status.selected().window.reset(preview.len());
-                status.selected().preview = preview;
-            }
-            _ => (),
         }
         Ok(())
     }
@@ -801,16 +792,11 @@ impl EventExec {
 
     /// Copy the selected filename to the clipboard. Only the filename.
     pub fn event_filename_to_clipboard(tab: &Tab) -> FmResult<()> {
-        let filename = match tab.mode {
-            Mode::Normal => tab
-                .path_content
-                .selected()
-                .ok_or_else(|| FmError::custom("event_filename_to_clipboard", "no selected file"))?
-                .filename
-                .clone(),
-            Mode::Tree => tab.directory.tree.current_node.filename(),
-            _ => return Ok(()),
-        };
+        let filename = tab
+            .selected()
+            .ok_or_else(|| FmError::custom("event_filename_to_clipboard", "no selected file"))?
+            .filename
+            .clone();
         let mut ctx = ClipboardContext::new()?;
         ctx.set_contents(filename)?;
         // For some reason, it's not writen if you don't read it back...
@@ -821,22 +807,14 @@ impl EventExec {
 
     /// Copy the selected filepath to the clipboard. The absolute path.
     pub fn event_filepath_to_clipboard(tab: &Tab) -> FmResult<()> {
-        let filepath = match tab.mode {
-            Mode::Normal => tab
-                .path_content
-                .selected_path_string()
-                .ok_or_else(|| FmError::custom("event_filename_to_clipboard", "no selected file"))?
-                .clone(),
-            Mode::Tree => tab
-                .directory
-                .tree
-                .current_node
-                .filepath()
-                .to_str()
-                .ok_or_else(|| FmError::custom("event_filename_to_clipboard", "no selected file"))?
-                .to_owned(),
-            _ => return Ok(()),
-        };
+        let filepath = tab
+            .selected()
+            .ok_or_else(|| FmError::custom("event_filepath_to_clipboard", "no selected file"))?
+            .path
+            .to_str()
+            .ok_or_else(|| FmError::custom("event_filepath_to_clipboard", "no selected file"))?
+            .to_owned();
+        info!("filepath: {}", filepath);
         let mut ctx = ClipboardContext::new()?;
         ctx.set_contents(filepath)?;
         // For some reason, it's not writen if you don't read it back...
@@ -1253,7 +1231,7 @@ impl EventExec {
 
     /// Copy the filepath of the selected file in normal mode.
     pub fn event_copy_filepath(status: &mut Status) -> FmResult<()> {
-        if let Mode::Normal = status.selected_non_mut().mode {
+        if let Mode::Normal | Mode::Tree = status.selected_non_mut().mode {
             return EventExec::event_filepath_to_clipboard(status.selected());
         }
         Ok(())
@@ -1266,11 +1244,12 @@ impl EventExec {
 
     /// Open a thumbnail of an image, scaled up to the whole window.
     pub fn event_thumbnail(tab: &mut Tab) -> FmResult<()> {
-        if let Mode::Normal = tab.mode {
-            tab.mode = Mode::Preview;
-            if let Some(file_info) = tab.path_content.selected() {
+        if let Mode::Normal | Mode::Tree = tab.mode {
+            if let Some(file_info) = tab.selected() {
+                info!("selected {:?}", file_info);
                 tab.preview = Preview::thumbnail(file_info.path.to_owned())?;
                 tab.window.reset(tab.preview.len());
+                tab.mode = Mode::Preview;
             }
         }
         Ok(())

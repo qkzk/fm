@@ -2,6 +2,7 @@ use std::fs::read_dir;
 use std::path::Path;
 use std::rc::Rc;
 
+use log::info;
 use tuikit::attr::Attr;
 use users::UsersCache;
 
@@ -253,6 +254,7 @@ impl Tree {
             reached_depth += 1;
         }
         tree.node.select();
+        info!("{:?}", tree.node);
         Ok((reached_depth, last_cord, tree.node.clone()))
     }
 

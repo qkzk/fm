@@ -7,7 +7,7 @@ use crate::args::Args;
 use crate::completion::Completion;
 use crate::config::Colors;
 use crate::content_window::ContentWindow;
-use crate::fileinfo::PathContent;
+use crate::fileinfo::{FileInfo, PathContent};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::input::Input;
@@ -92,7 +92,7 @@ impl Tab {
     /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> FmResult<()> {
         self.completion.set_kind(&self.mode);
-        let current_path = self.path_str().unwrap_or_default().to_owned();
+        let current_path = self.path_content_str().unwrap_or_default().to_owned();
         self.completion
             .complete(&self.input.string(), &self.path_content, &current_path)
     }
@@ -140,7 +140,7 @@ impl Tab {
     }
 
     /// Returns a string of the current directory path.
-    pub fn path_str(&self) -> Option<&str> {
+    pub fn path_content_str(&self) -> Option<&str> {
         self.path_content.path.to_str()
     }
 
@@ -250,5 +250,19 @@ impl Tab {
     pub fn tree_go_to_bottom_leaf(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
         self.directory.go_to_bottom_leaf(colors)
+    }
+
+    pub fn current_path(&mut self) -> &path::Path {
+        match self.mode {
+            Mode::Tree => &self.directory.tree.current_node.fileinfo.path,
+            _ => &self.path_content.path,
+        }
+    }
+
+    pub fn selected(&self) -> Option<&FileInfo> {
+        match self.mode {
+            Mode::Tree => Some(&self.directory.tree.current_node.fileinfo),
+            _ => self.path_content.selected(),
+        }
     }
 }
