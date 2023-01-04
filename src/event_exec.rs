@@ -1363,11 +1363,15 @@ impl EventExec {
     }
 
     pub fn event_tree(status: &mut Status) -> FmResult<()> {
-        status.make_tree()?;
-        status.selected().mode = Mode::Tree;
-        let len = status.selected_non_mut().directory.len();
-        status.selected().window.reset(len);
-        Ok(())
+        if let Mode::Tree = status.selected_non_mut().mode {
+            Self::event_normal(status.selected())
+        } else {
+            status.make_tree()?;
+            status.selected().mode = Mode::Tree;
+            let len = status.selected_non_mut().directory.len();
+            status.selected().window.reset(len);
+            Ok(())
+        }
     }
 
     pub fn event_tree_go_to_root(status: &mut Status) -> FmResult<()> {
