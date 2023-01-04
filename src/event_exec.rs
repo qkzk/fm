@@ -626,8 +626,12 @@ impl EventExec {
     /// Once a quit event is received, we change a flag and break the main loop.
     /// It's usefull to reset the cursor before leaving the application.
     pub fn event_quit(tab: &mut Tab) -> FmResult<()> {
-        tab.must_quit = true;
-        Ok(())
+        if let Mode::Tree = tab.mode {
+            Self::event_normal(tab)
+        } else {
+            tab.must_quit = true;
+            Ok(())
+        }
     }
 
     /// Reset the mode to normal.
