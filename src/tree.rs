@@ -24,6 +24,14 @@ impl ColoredString {
     fn new(text: String, attr: Attr, path: std::path::PathBuf) -> Self {
         Self { text, attr, path }
     }
+
+    fn from_node(current_node: &Node, colors: &Colors) -> Self {
+        Self::new(
+            current_node.filename(),
+            current_node.attr(colors),
+            current_node.filepath(),
+        )
+    }
 }
 
 /// An element in a tree.
@@ -257,23 +265,17 @@ impl Tree {
         let mut stack = vec![];
         stack.push(("".to_owned(), self));
         let mut content = vec![];
-        let mut current_node: Node;
         let mut selected_index = 0;
 
         while !stack.is_empty() {
             if let Some((prefix, current)) = stack.pop() {
-                current_node = current.node.clone();
-                if current_node.fileinfo.is_selected {
+                if current.node.fileinfo.is_selected {
                     selected_index = content.len();
                 }
 
                 content.push((
                     prefix.to_owned(),
-                    ColoredString::new(
-                        current_node.filename(),
-                        current_node.attr(colors),
-                        current_node.filepath(),
-                    ),
+                    ColoredString::from_node(&current.node, colors),
                 ));
 
                 let first_prefix = first_prefix(prefix.clone());

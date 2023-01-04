@@ -286,10 +286,6 @@
   - [x] print in term
   - [x] print in raw mode
   - [ ] print with term: term...
-- [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
-  - [x] preview directory with tree view
-  - [x] use as another display
-  - [ ] navigation
 - [ ] zoxide support
 
 - [ ] Version 0.1.9 : tree view
@@ -302,9 +298,11 @@
     - [x] select the file
   - [x] scrolling
   - [ ] enable most modes
+    - [ ] copy, cut, delete
   - [ ] enable most actions
     - [x] END move to last leaf
     - [x] toggle flag and display flagged files
+    - [x] copy filename, filepath
   - [ ] replace preview::directory by mode::tree
 
 - [ ] Version 0.2.0 : tests

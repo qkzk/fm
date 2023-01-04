@@ -181,7 +181,8 @@ impl EventExec {
                 .as_path()
                 .file_name()
                 .ok_or_else(|| FmError::custom("event symlink", "File not found"))?;
-            let newpath = status.tabs[status.index]
+            let newpath = status
+                .selected_non_mut()
                 .path_content
                 .path
                 .clone()
