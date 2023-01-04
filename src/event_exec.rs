@@ -816,12 +816,26 @@ impl EventExec {
 
     /// Copy the selected filepath to the clipboard. The absolute path.
     pub fn event_filepath_to_clipboard(tab: &Tab) -> FmResult<()> {
-        if let Some(filepath) = tab.path_content.selected_path_string() {
-            let mut ctx = ClipboardContext::new()?;
-            ctx.set_contents(filepath)?;
-            // For some reason, it's not writen if you don't read it back...
-            let _ = ctx.get_contents();
-        }
+        let filepath = match tab.mode {
+            Mode::Normal => tab
+                .path_content
+                .selected_path_string()
+                .ok_or_else(|| FmError::custom("event_filename_to_clipboard", "no selected file"))?
+                .clone(),
+            Mode::Tree => tab
+                .directory
+                .tree
+                .current_node
+                .filepath()
+                .to_str()
+                .ok_or_else(|| FmError::custom("event_filename_to_clipboard", "no selected file"))?
+                .to_owned(),
+            _ => return Ok(()),
+        };
+        let mut ctx = ClipboardContext::new()?;
+        ctx.set_contents(filepath)?;
+        // For some reason, it's not writen if you don't read it back...
+        let _ = ctx.get_contents();
         Ok(())
     }
 
