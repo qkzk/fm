@@ -120,14 +120,9 @@ impl EventExec {
         }
         status.selected().mode = Mode::InputSimple(InputSimple::Chmod);
         if status.flagged.is_empty() {
-            status.flagged.push(
-                status.tabs[status.index]
-                    .path_content
-                    .selected()
-                    .unwrap()
-                    .path
-                    .clone(),
-            );
+            status
+                .flagged
+                .push(status.tabs[status.index].selected().unwrap().path.clone());
         };
         status.reset_tabs_view()
     }
