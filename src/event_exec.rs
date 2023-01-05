@@ -34,7 +34,12 @@ impl EventExec {
     /// Reset the selected tab view to the default.
     pub fn refresh_status(status: &mut Status) -> FmResult<()> {
         status.refresh_users()?;
-        status.selected().refresh_view()
+        status.selected().refresh_view()?;
+        if let Mode::Tree = status.selected_non_mut().mode {
+            let colors = &status.config_colors.clone();
+            status.selected().make_tree(colors)?
+        }
+        Ok(())
     }
 
     /// When a rezise event occurs, we may hide the second panel if the width
