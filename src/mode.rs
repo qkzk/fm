@@ -60,7 +60,7 @@ impl std::fmt::Display for NeedConfirmation {
 #[derive(Clone)]
 pub enum InputSimple {
     /// Rename the selected file
-    Rename,
+    Rename(std::path::PathBuf),
     /// Change permissions of the selected file
     Chmod,
     /// Touch a new file
@@ -118,7 +118,7 @@ impl fmt::Display for Mode {
         match *self {
             Mode::Normal => write!(f, "Normal:  "),
             Mode::Tree => write!(f, "Tree:    "),
-            Mode::InputSimple(InputSimple::Rename) => write!(f, "Rename:  "),
+            Mode::InputSimple(InputSimple::Rename(_)) => write!(f, "Rename:  "),
             Mode::InputSimple(InputSimple::Chmod) => write!(f, "Chmod:   "),
             Mode::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
             Mode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),

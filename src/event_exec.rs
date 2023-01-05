@@ -683,7 +683,9 @@ impl EventExec {
 
     /// Enter the rename mode.
     pub fn event_rename(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputSimple::Rename);
+        if let Some(fileinfo) = tab.selected() {
+            tab.mode = Mode::InputSimple(InputSimple::Rename(fileinfo.path.clone()));
+        }
         Ok(())
     }
 
@@ -852,18 +854,15 @@ impl EventExec {
     /// We only tries to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
     pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
-        if tab.path_content.content.is_empty() {
-            return Err(FmError::custom("event rename", "Empty directory"));
+        if let Some(fileinfo) = tab.selected() {
+            info!("fileinfo {:?}", fileinfo);
+            let path = &fileinfo.path;
+            if let Some(parent) = path.parent() {
+                let new_name = parent.join(sanitize_filename::sanitize(tab.input.string()));
+                info!("new_name {:?}", new_name);
+                fs::rename(path, new_name)?;
+            }
         }
-        fs::rename(
-            tab.path_content
-                .selected_path_string()
-                .ok_or_else(|| FmError::custom("exec rename", "File not found"))?,
-            tab.path_content
-                .path
-                .to_path_buf()
-                .join(sanitize_filename::sanitize(tab.input.string())),
-        )?;
         tab.refresh_view()
     }
 
@@ -1160,8 +1159,8 @@ impl EventExec {
     /// In normal mode, it will open the file.
     /// Reset to normal mode afterwards.
     pub fn enter(status: &mut Status) -> FmResult<()> {
-        match status.selected().mode {
-            Mode::InputSimple(InputSimple::Rename) => EventExec::exec_rename(status.selected())?,
+        match status.selected_non_mut().mode {
+            Mode::InputSimple(InputSimple::Rename(_)) => EventExec::exec_rename(status.selected())?,
             Mode::InputSimple(InputSimple::Newfile) => EventExec::exec_newfile(status.selected())?,
             Mode::InputSimple(InputSimple::Newdir) => EventExec::exec_newdir(status.selected())?,
             Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,

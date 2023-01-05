@@ -146,7 +146,10 @@ impl Status {
             .skimer
             .no_source(
                 self.selected_non_mut()
-                    .path_content_str()
+                    .selected()
+                    .ok_or_else(|| FmError::custom("skim", "no selected file"))?
+                    .path
+                    .to_str()
                     .ok_or_else(|| FmError::custom("skim", "skim error"))?,
             )
             .first()
