@@ -298,12 +298,15 @@
     - [x] select the file
   - [x] scrolling
   - [ ] enable most modes
-    - [ ] copy, cut, delete
+    - [x] copy, cut, delete
   - [ ] enable most actions
     - [x] END move to last leaf
     - [x] toggle flag and display flagged files
     - [x] copy filename, filepath
-  - [ ] replace preview::directory by mode::tree
+  - [x] replace preview::directory by mode::tree
+  - [ ] search (bfs ?)
+  - [ ] filter (???)
+  - [ ] fold
 
 - [ ] Version 0.2.0 : tests
 
