@@ -458,11 +458,7 @@ impl EventExec {
     /// Does
     /// Add the starting directory to history.
     pub fn event_move_to_parent(tab: &mut Tab) -> FmResult<()> {
-        let path = tab.path_content.path.clone();
-        if let Some(parent) = path.parent() {
-            tab.set_pathcontent(parent)?;
-        }
-        Ok(())
+        tab.move_to_parent()
     }
 
     /// Move the cursor left one block.
@@ -920,11 +916,16 @@ impl EventExec {
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         if std::path::Path::new(command).exists() {
-            let path = &tab.selected().ok_or_else(|| {
-                FmError::custom("exec exec", &format!("can't find command {}", command))
-            })?.path.to_str().ok_or_else(|| {
-                FmError::custom("exec exec", &format!("can't find command {}", command))
-            })?;
+            let path = &tab
+                .selected()
+                .ok_or_else(|| {
+                    FmError::custom("exec exec", &format!("can't find command {}", command))
+                })?
+                .path
+                .to_str()
+                .ok_or_else(|| {
+                    FmError::custom("exec exec", &format!("can't find command {}", command))
+                })?;
             // let path = &tab.path_content.selected_path_string().ok_or_else(|| {
             //     FmError::custom("exec exec", &format!("can't find command {}", command))
             // })?;
@@ -1348,7 +1349,8 @@ impl EventExec {
         if let Mode::Tree = status.selected_non_mut().mode {
             Self::event_normal(status.selected())
         } else {
-            status.make_tree()?;
+            let colors = &status.config_colors.clone();
+            status.selected().make_tree(colors)?;
             status.selected().mode = Mode::Tree;
             let len = status.selected_non_mut().directory.len();
             status.selected().window.reset(len);

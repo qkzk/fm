@@ -64,7 +64,7 @@ impl Preview {
             FileKind::Directory => Ok(Self::Directory(Directory::new(
                 &file_info.path,
                 users_cache,
-                status,
+                &status.config_colors,
             )?)),
             FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
                 e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
@@ -516,10 +516,10 @@ impl Directory {
     /// We only hold the result here, since the tree itself has now usage atm.
     ///
     /// TODO! make it really navigable as other views.
-    pub fn new(path: &Path, users_cache: &Rc<UsersCache>, status: &Status) -> FmResult<Self> {
+    pub fn new(path: &Path, users_cache: &Rc<UsersCache>, colors: &Colors) -> FmResult<Self> {
         let mut tree = Tree::from_path(path, Tree::MAX_DEPTH, users_cache)?;
         tree.select_root();
-        let (selected_index, content) = tree.into_navigable_content(&status.config_colors);
+        let (selected_index, content) = tree.into_navigable_content(colors);
         Ok(Self {
             tree,
             len: content.len(),

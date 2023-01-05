@@ -227,8 +227,20 @@ impl Tab {
         self.directory.select_root(colors)
     }
 
+    pub fn move_to_parent(&mut self) -> FmResult<()> {
+        let path = self.path_content.path.clone();
+        if let Some(parent) = path.parent() {
+            self.set_pathcontent(parent)?;
+        }
+        Ok(())
+    }
+
     pub fn tree_select_parent(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
+        if self.directory.tree.position.len() <= 1 {
+            self.move_to_parent()?;
+            self.make_tree(colors)?
+        }
         self.directory.select_parent(colors)
     }
 
@@ -264,5 +276,12 @@ impl Tab {
             Mode::Tree => Some(&self.directory.tree.current_node.fileinfo),
             _ => self.path_content.selected(),
         }
+    }
+
+    pub fn make_tree(&mut self, colors: &Colors) -> FmResult<()> {
+        let path = self.path_content.path.clone();
+        let users_cache = &self.path_content.users_cache;
+        self.directory = Directory::new(&path, users_cache, colors)?;
+        Ok(())
     }
 }

@@ -4,7 +4,6 @@ use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use log::info;
 use regex::Regex;
 use skim::SkimItem;
 use sysinfo::{Disk, DiskExt, System, SystemExt};
@@ -304,14 +303,6 @@ impl Status {
         for tab in self.tabs.iter_mut() {
             tab.refresh_users(users_cache.clone())?;
         }
-        Ok(())
-    }
-
-    pub fn make_tree(&mut self) -> FmResult<()> {
-        info!("make tree");
-        let path = self.selected_non_mut().path_content.path.clone();
-        let users_cache = &self.selected_non_mut().path_content.users_cache;
-        self.selected().directory = Directory::new(&path, users_cache, self)?;
         Ok(())
     }
 
