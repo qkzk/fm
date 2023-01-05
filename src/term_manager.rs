@@ -129,7 +129,7 @@ impl<'a> WinTab<'a> {
                     canvas.print_with_attr(
                         1,
                         0,
-                        &format!("{}", &status.selected_non_mut().path_content.filter),
+                        &format!("{}", &status.selected_non_mut().filter),
                         Self::ATTR_YELLOW_BOLD,
                     )?;
                 }

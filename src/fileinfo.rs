@@ -241,8 +241,6 @@ pub struct PathContent {
     pub show_hidden: bool,
     /// The kind of sort used to display the files.
     sort_kind: SortKind,
-    /// The filter use before displaying files
-    pub filter: FilterKind,
     used_space: u64,
     pub users_cache: Rc<UsersCache>,
 }
@@ -255,10 +253,10 @@ impl PathContent {
         path: &path::Path,
         show_hidden: bool,
         users_cache: Rc<UsersCache>,
+        filter: &FilterKind,
     ) -> FmResult<Self> {
         let path = path.to_owned();
-        let filter = FilterKind::All;
-        let mut content = Self::files(&path, show_hidden, &filter, &users_cache)?;
+        let mut content = Self::files(&path, show_hidden, filter, &users_cache)?;
         let sort_kind = SortKind::default();
         sort_kind.sort(&mut content);
         let selected_index: usize = 0;
@@ -273,14 +271,13 @@ impl PathContent {
             index: selected_index,
             show_hidden,
             sort_kind,
-            filter,
             used_space,
             users_cache,
         })
     }
 
-    pub fn change_directory(&mut self, path: &path::Path) -> FmResult<()> {
-        self.content = Self::files(path, self.show_hidden, &self.filter, &self.users_cache)?;
+    pub fn change_directory(&mut self, path: &path::Path, filter: &FilterKind) -> FmResult<()> {
+        self.content = Self::files(path, self.show_hidden, filter, &self.users_cache)?;
         self.sort_kind.sort(&mut self.content);
         self.index = 0;
         if !self.content.is_empty() {
@@ -289,11 +286,6 @@ impl PathContent {
         self.used_space = get_used_space(&self.content);
         self.path = path.to_path_buf();
         Ok(())
-    }
-
-    /// Apply the filter.
-    pub fn set_filter(&mut self, filter: FilterKind) {
-        self.filter = filter
     }
 
     fn files(
@@ -421,13 +413,8 @@ impl PathContent {
     /// Reset the current file content.
     /// Reads and sort the content with current key.
     /// Select the first file if any.
-    pub fn reset_files(&mut self) -> Result<(), FmError> {
-        self.content = Self::files(
-            &self.path,
-            self.show_hidden,
-            &self.filter,
-            &self.users_cache,
-        )?;
+    pub fn reset_files(&mut self, filter: &FilterKind) -> Result<(), FmError> {
+        self.content = Self::files(&self.path, self.show_hidden, filter, &self.users_cache)?;
         self.sort_kind = SortKind::default();
         self.sort();
         self.index = 0;
@@ -517,9 +504,13 @@ impl PathContent {
     }
 
     /// Refresh the existing users.
-    pub fn refresh_users(&mut self, users_cache: Rc<UsersCache>) -> FmResult<()> {
+    pub fn refresh_users(
+        &mut self,
+        users_cache: Rc<UsersCache>,
+        filter: &FilterKind,
+    ) -> FmResult<()> {
         self.users_cache = users_cache;
-        self.reset_files()
+        self.reset_files(filter)
     }
 }
 

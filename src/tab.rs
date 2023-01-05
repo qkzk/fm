@@ -51,14 +51,17 @@ pub struct Tab {
     pub searched: Option<String>,
     /// Optional tree view
     pub directory: Directory,
+    /// The filter use before displaying files
+    pub filter: FilterKind,
 }
 
 impl Tab {
     /// Creates a new tab from args and height.
     pub fn new(args: Args, height: usize, users_cache: Rc<UsersCache>) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
-        let tree = Directory::empty(&path, &users_cache)?;
-        let path_content = PathContent::new(&path, false, users_cache)?;
+        let directory = Directory::empty(&path, &users_cache)?;
+        let filter = FilterKind::All;
+        let path_content = PathContent::new(&path, false, users_cache, &filter)?;
         let show_hidden = false;
         let nvim_server = args.server;
         let mode = Mode::Normal;
@@ -85,7 +88,8 @@ impl Tab {
             history,
             shortcut,
             searched,
-            directory: tree,
+            directory,
+            filter,
         })
     }
 
@@ -102,9 +106,9 @@ impl Tab {
     /// displayed files is reset.
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> FmResult<()> {
-        self.path_content.filter = FilterKind::All;
+        self.filter = FilterKind::All;
         self.input.reset();
-        self.path_content.reset_files()?;
+        self.path_content.reset_files(&self.filter)?;
         self.window.reset(self.path_content.content.len());
         Ok(())
     }
@@ -149,7 +153,7 @@ impl Tab {
     /// Add the last path to the history of visited paths.
     pub fn set_pathcontent(&mut self, path: &path::Path) -> FmResult<()> {
         self.history.push(path);
-        self.path_content.change_directory(path)?;
+        self.path_content.change_directory(path, &self.filter)?;
         self.window.reset(self.path_content.content.len());
         Ok(())
     }
@@ -158,6 +162,10 @@ impl Tab {
     pub fn set_window(&mut self) {
         let len = self.path_content.content.len();
         self.window.reset(len);
+    }
+    /// Apply the filter.
+    pub fn set_filter(&mut self, filter: FilterKind) {
+        self.filter = filter
     }
 
     /// Set the line index to `index` and scroll there.
@@ -186,7 +194,7 @@ impl Tab {
 
     /// Refresh the existing users.
     pub fn refresh_users(&mut self, users_cache: Rc<UsersCache>) -> FmResult<()> {
-        self.path_content.refresh_users(users_cache)
+        self.path_content.refresh_users(users_cache, &self.filter)
     }
 
     /// Search in current directory for an file whose name contains `searched_name`,
