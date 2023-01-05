@@ -135,7 +135,7 @@ impl ActionMap {
             ActionMap::Thumbnail => EventExec::event_thumbnail(current_tab),
             ActionMap::ToggleDualPane => EventExec::event_toggle_dualpane(status),
             ActionMap::ToggleFlag => EventExec::event_toggle_flag(status),
-            ActionMap::ToggleHidden => EventExec::event_toggle_hidden(current_tab),
+            ActionMap::ToggleHidden => EventExec::event_toggle_hidden(status),
             ActionMap::TrashMoveFile => EventExec::event_trash_move_file(status),
             ActionMap::TrashRestoreFile => EventExec::event_trash_restore_file(status),
             ActionMap::TrashEmpty => EventExec::exec_trash_empty(status),

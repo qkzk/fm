@@ -258,7 +258,8 @@ impl EventExec {
             let tab = status.selected();
             tab.input.clear();
             tab.history.push(target_dir);
-            tab.path_content.change_directory(target_dir, &tab.filter)?;
+            tab.path_content
+                .change_directory(target_dir, &tab.filter, tab.show_hidden)?;
             let index = tab.find_jump_index(&jump_target).unwrap_or_default();
             tab.path_content.select_index(index);
             tab.set_window();
@@ -301,7 +302,7 @@ impl EventExec {
     pub fn event_normal(tab: &mut Tab) -> FmResult<()> {
         tab.input.reset();
         tab.completion.reset();
-        tab.path_content.reset_files(&tab.filter)?;
+        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
         tab.window.reset(tab.path_content.content.len());
         tab.mode = Mode::Normal;
         tab.preview = Preview::new_empty();
@@ -654,11 +655,15 @@ impl EventExec {
     }
 
     /// Toggle the display of hidden files.
-    pub fn event_toggle_hidden(tab: &mut Tab) -> FmResult<()> {
+    pub fn event_toggle_hidden(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
         tab.show_hidden = !tab.show_hidden;
-        tab.path_content.show_hidden = !tab.path_content.show_hidden;
-        tab.path_content.reset_files(&tab.filter)?;
+        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
         tab.window.reset(tab.path_content.content.len());
+        if let Mode::Tree = tab.mode {
+            tab.make_tree(colors)?
+        }
         Ok(())
     }
 
@@ -1025,7 +1030,7 @@ impl EventExec {
         let filter = FilterKind::from_input(&tab.input.string());
         tab.set_filter(filter);
         tab.input.reset();
-        tab.path_content.reset_files(&tab.filter)?;
+        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
         Self::event_normal(tab)
     }
 
@@ -1345,6 +1350,7 @@ impl EventExec {
         if let Mode::Tree = status.selected_non_mut().mode {
             Self::event_normal(status.selected())
         } else {
+            status.display_full = true;
             let colors = &status.config_colors.clone();
             status.selected().make_tree(colors)?;
             status.selected().mode = Mode::Tree;

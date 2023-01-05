@@ -61,7 +61,8 @@ impl Tab {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
         let directory = Directory::empty(&path, &users_cache)?;
         let filter = FilterKind::All;
-        let path_content = PathContent::new(&path, false, users_cache, &filter)?;
+        let show_hidden = false;
+        let path_content = PathContent::new(&path, users_cache, &filter, show_hidden)?;
         let show_hidden = false;
         let nvim_server = args.server;
         let mode = Mode::Normal;
@@ -80,7 +81,6 @@ impl Tab {
             input,
             path_content,
             height,
-            show_hidden,
             nvim_server,
             completion,
             must_quit,
@@ -90,6 +90,7 @@ impl Tab {
             searched,
             directory,
             filter,
+            show_hidden,
         })
     }
 
@@ -108,7 +109,8 @@ impl Tab {
     pub fn refresh_view(&mut self) -> FmResult<()> {
         self.filter = FilterKind::All;
         self.input.reset();
-        self.path_content.reset_files(&self.filter)?;
+        self.path_content
+            .reset_files(&self.filter, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
         Ok(())
     }
@@ -153,7 +155,8 @@ impl Tab {
     /// Add the last path to the history of visited paths.
     pub fn set_pathcontent(&mut self, path: &path::Path) -> FmResult<()> {
         self.history.push(path);
-        self.path_content.change_directory(path, &self.filter)?;
+        self.path_content
+            .change_directory(path, &self.filter, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
         Ok(())
     }
@@ -194,7 +197,8 @@ impl Tab {
 
     /// Refresh the existing users.
     pub fn refresh_users(&mut self, users_cache: Rc<UsersCache>) -> FmResult<()> {
-        self.path_content.refresh_users(users_cache, &self.filter)
+        self.path_content
+            .refresh_users(users_cache, &self.filter, self.show_hidden)
     }
 
     /// Search in current directory for an file whose name contains `searched_name`,
@@ -304,7 +308,8 @@ impl Tab {
     pub fn make_tree(&mut self, colors: &Colors) -> FmResult<()> {
         let path = self.path_content.path.clone();
         let users_cache = &self.path_content.users_cache;
-        self.directory = Directory::new(&path, users_cache, colors)?;
+        self.directory =
+            Directory::new(&path, users_cache, colors, &self.filter, self.show_hidden)?;
         Ok(())
     }
 }

@@ -8,6 +8,7 @@ use users::UsersCache;
 
 use crate::config::Colors;
 use crate::fileinfo::{fileinfo_attr, FileInfo, FileKind};
+use crate::filter::FilterKind;
 use crate::fm_error::FmResult;
 use crate::utils::filename_from_path;
 
@@ -109,6 +110,8 @@ impl Tree {
         path: &Path,
         max_depth: usize,
         users_cache: &Rc<UsersCache>,
+        filter_kind: &FilterKind,
+        display_hidden: bool,
     ) -> FmResult<Self> {
         let filename = filename_from_path(path)?;
         match FileInfo::from_path_with_name(path, filename, users_cache) {
@@ -119,10 +122,19 @@ impl Tree {
                     node = Node { fileinfo };
                     if max_depth > 0 {
                         for direntry in read_dir(path)?.filter_map(|d| d.ok()) {
-                            if let Ok(leaf) =
-                                Self::from_path(&direntry.path(), max_depth - 1, users_cache)
-                            {
-                                leaves.push(leaf)
+                            if let Ok(leaf) = Self::from_path(
+                                &direntry.path(),
+                                max_depth - 1,
+                                users_cache,
+                                filter_kind,
+                                display_hidden,
+                            ) {
+                                let leaf_fileinfo = &leaf.node.fileinfo;
+                                if filter_kind.filter_by(leaf_fileinfo)
+                                    && (display_hidden || !leaf_fileinfo.is_hidden())
+                                {
+                                    leaves.push(leaf)
+                                }
                             }
                         }
                     }

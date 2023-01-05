@@ -111,7 +111,7 @@ impl<'a> WinTab<'a> {
 
     fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
-            Mode::Normal => {
+            Mode::Normal | Mode::Tree => {
                 if !status.display_full {
                     if let Some(file) = tab.path_content.selected() {
                         let owner_size = file.owner.len();

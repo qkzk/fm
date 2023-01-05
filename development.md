@@ -304,8 +304,9 @@
     - [x] toggle flag and display flagged files
     - [x] copy filename, filepath
   - [x] replace preview::directory by mode::tree
+  - [x] filter
+    - [ ] force display full in tree mode
   - [ ] search (bfs ?)
-  - [ ] filter (???)
   - [ ] fold
 
 - [ ] Version 0.2.0 : tests
