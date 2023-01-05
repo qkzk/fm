@@ -16,6 +16,7 @@ use crate::copy_move::CopyMove;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::mode::LastMode;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
 use crate::opener::execute_in_child;
@@ -687,9 +688,12 @@ impl EventExec {
     }
 
     /// Enter the rename mode.
+    /// Keep a track of the current mode to ensure we rename the correct file.
+    /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
+    /// not the selected file in the pathcontent.
     pub fn event_rename(tab: &mut Tab) -> FmResult<()> {
-        if let Some(fileinfo) = tab.selected() {
-            tab.mode = Mode::InputSimple(InputSimple::Rename(fileinfo.path.clone()));
+        if tab.selected().is_some() {
+            tab.mode = Mode::InputSimple(InputSimple::Rename(LastMode::from_mode(tab.mode)));
         }
         Ok(())
     }
@@ -858,16 +862,27 @@ impl EventExec {
     /// It uses the `fs::rename` function and has the same limitations.
     /// We only tries to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
-    pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
-        if let Some(fileinfo) = tab.selected() {
-            info!("fileinfo {:?}", fileinfo);
-            let path = &fileinfo.path;
-            if let Some(parent) = path.parent() {
-                let new_name = parent.join(sanitize_filename::sanitize(tab.input.string()));
-                info!("new_name {:?}", new_name);
-                fs::rename(path, new_name)?;
-            }
+    pub fn exec_rename(tab: &mut Tab, lastmode: LastMode) -> FmResult<()> {
+        let fileinfo = match lastmode {
+            LastMode::Tree => &tab.directory.tree.current_node.fileinfo,
+            LastMode::Other => tab
+                .path_content
+                .selected()
+                .ok_or_else(|| FmError::custom("rename", "couldnt parse selected"))?,
+        };
+
+        info!("fileinfo {:?}", fileinfo);
+        let original_path = &fileinfo.path;
+        if let Some(parent) = original_path.parent() {
+            let new_path = parent.join(sanitize_filename::sanitize(tab.input.string()));
+            info!(
+                "original: {} - new: {}",
+                original_path.display(),
+                new_path.display()
+            );
+            fs::rename(original_path, new_path)?;
         }
+
         tab.refresh_view()
     }
 
@@ -1165,7 +1180,9 @@ impl EventExec {
     /// Reset to normal mode afterwards.
     pub fn enter(status: &mut Status) -> FmResult<()> {
         match status.selected_non_mut().mode {
-            Mode::InputSimple(InputSimple::Rename(_)) => EventExec::exec_rename(status.selected())?,
+            Mode::InputSimple(InputSimple::Rename(last_mode)) => {
+                EventExec::exec_rename(status.selected(), last_mode)?
+            }
             Mode::InputSimple(InputSimple::Newfile) => EventExec::exec_newfile(status.selected())?,
             Mode::InputSimple(InputSimple::Newdir) => EventExec::exec_newdir(status.selected())?,
             Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,

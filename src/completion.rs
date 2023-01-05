@@ -5,7 +5,7 @@ use crate::fm_error::FmResult;
 use crate::mode::Mode;
 
 /// Different kind of completions
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Copy)]
 pub enum InputCompleted {
     /// No completion needed
     #[default]
@@ -32,7 +32,7 @@ pub struct Completion {
 impl Completion {
     pub fn set_kind(&mut self, mode: &Mode) {
         if let Mode::InputCompleted(completion_kind) = mode {
-            self.kind = completion_kind.clone()
+            self.kind = *completion_kind
         } else {
             self.kind = InputCompleted::Nothing
         }

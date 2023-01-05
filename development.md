@@ -297,7 +297,7 @@
     - [x] enter parent
     - [x] select the file
   - [x] scrolling
-    - [ ] last file should be at bottom, not top
+    - [x] last file can't be at top
   - [ ] enable most modes
     - [x] copy, cut, delete, trash
   - [ ] enable most actions
