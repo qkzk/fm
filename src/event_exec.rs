@@ -767,25 +767,20 @@ impl EventExec {
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
     pub fn event_nvim_filepicker(tab: &mut Tab) -> FmResult<()> {
-        if tab.path_content.content.is_empty() {
-            info!("Called nvim filepicker in an empty directory.");
-            return Ok(());
-        }
-        // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         if let Ok(nvim_listen_address) = Self::nvim_listen_address(tab) {
-            if let Some(path_str) = tab.path_content.selected_path_string() {
-                let _ = execute_in_child(
-                    NVIM_RPC_SENDER,
-                    &vec![
-                        "--remote-send",
-                        &format!("<esc>:e {}<cr><esc>:close<cr>", path_str),
-                        "--servername",
-                        &nvim_listen_address,
-                    ],
-                );
+            if let Some(fileinfo) = tab.selected() {
+                if let Some(path_str) = fileinfo.path.to_str() {
+                    let _ = execute_in_child(
+                        NVIM_RPC_SENDER,
+                        &vec![
+                            "--remote-send",
+                            &format!("<esc>:e {}<cr><esc>:close<cr>", path_str),
+                            "--servername",
+                            &nvim_listen_address,
+                        ],
+                    );
+                }
             }
-        } else {
-            info!("Nvim server not defined");
         }
         Ok(())
     }
