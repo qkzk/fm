@@ -45,7 +45,7 @@ keys:
   'q': Quit
   'r': Rename
   's': Shell
-  't': Thumbnail
+  't': Tree
   'u': ClearFlags
   'v': ReverseFlags
   'w': RegexMatch
@@ -58,7 +58,7 @@ keys:
   'shift-m': MarksNew
   'shift-o': Sort
   'shift-p': Preview
-  'shift-t': Tree
+  'shift-t': Thumbnail
   'ctrl-c': CopyFilename
   'ctrl-d': Delete
   'ctrl-e': DisplayFull

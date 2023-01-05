@@ -52,7 +52,7 @@ impl Bindings {
             (Key::Char('M'), ActionMap::MarksNew),
             (Key::Char('O'), ActionMap::Sort),
             (Key::Char('P'), ActionMap::Preview),
-            (Key::Char('T'), ActionMap::Tree),
+            (Key::Char('T'), ActionMap::Thumbnail),
             (Key::Char('X'), ActionMap::TrashMoveFile),
             (Key::Char('a'), ActionMap::ToggleHidden),
             (Key::Char('c'), ActionMap::CopyPaste),
@@ -71,6 +71,7 @@ impl Bindings {
             (Key::Char('q'), ActionMap::Quit),
             (Key::Char('r'), ActionMap::Rename),
             (Key::Char('s'), ActionMap::Shell),
+            (Key::Char('t'), ActionMap::Tree),
             (Key::Char('u'), ActionMap::ClearFlags),
             (Key::Char('v'), ActionMap::ReverseFlags),
             (Key::Char('w'), ActionMap::RegexMatch),
@@ -85,7 +86,6 @@ impl Bindings {
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
             (Key::Ctrl('q'), ActionMap::ModeNormal),
             (Key::Ctrl('r'), ActionMap::RefreshView),
-            (Key::Char('t'), ActionMap::Thumbnail),
         ]);
         Self { binds }
     }

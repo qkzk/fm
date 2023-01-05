@@ -549,13 +549,14 @@ impl EventExec {
         let unmutable_tab = status.selected_non_mut();
         if let Some(file_info) = unmutable_tab.selected() {
             match file_info.file_kind {
-                FileKind::Directory | FileKind::NormalFile => {
+                FileKind::NormalFile => {
                     let preview =
                         Preview::new(file_info, &unmutable_tab.path_content.users_cache, status)?;
                     status.selected().mode = Mode::Preview;
                     status.selected().window.reset(preview.len());
                     status.selected().preview = preview;
                 }
+                FileKind::Directory => Self::event_tree(status)?,
                 _ => (),
             }
         }
