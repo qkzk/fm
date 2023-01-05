@@ -7,7 +7,7 @@ use crate::args::Args;
 use crate::completion::Completion;
 use crate::config::Colors;
 use crate::content_window::ContentWindow;
-use crate::fileinfo::{FileInfo, PathContent};
+use crate::fileinfo::{FileInfo, FileKind, PathContent};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::input::Input;
@@ -268,6 +268,21 @@ impl Tab {
         match self.mode {
             Mode::Tree => &self.directory.tree.current_node.fileinfo.path,
             _ => &self.path_content.path,
+        }
+    }
+
+    pub fn directory_of_selected(&self) -> FmResult<&path::Path> {
+        match self.mode {
+            Mode::Tree => {
+                let fileinfo = &self.directory.tree.current_node.fileinfo;
+                match fileinfo.file_kind {
+                    FileKind::Directory => Ok(&self.directory.tree.current_node.fileinfo.path),
+                    _ => Ok(fileinfo.path.parent().ok_or_else(|| {
+                        FmError::custom("path of selected", "selected file should have a parent")
+                    })?),
+                }
+            }
+            _ => Ok(&self.path_content.path),
         }
     }
 

@@ -699,15 +699,11 @@ impl EventExec {
     /// is terminated first.
     pub fn event_shell(status: &mut Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        execute_in_child(
-            &status.opener.terminal.clone(),
-            &vec![
-                "-d",
-                tab.path_content.path.to_str().ok_or_else(|| {
-                    FmError::custom("event_shell", "Couldn't parse the path name")
-                })?,
-            ],
-        )?;
+        let path = tab
+            .directory_of_selected()?
+            .to_str()
+            .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
+        execute_in_child(&status.opener.terminal.clone(), &vec!["-d", path])?;
         Ok(())
     }
 
