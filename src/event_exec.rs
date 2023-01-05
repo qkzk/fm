@@ -920,9 +920,14 @@ impl EventExec {
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         if std::path::Path::new(command).exists() {
-            let path = &tab.path_content.selected_path_string().ok_or_else(|| {
+            let path = &tab.selected().ok_or_else(|| {
+                FmError::custom("exec exec", &format!("can't find command {}", command))
+            })?.path.to_str().ok_or_else(|| {
                 FmError::custom("exec exec", &format!("can't find command {}", command))
             })?;
+            // let path = &tab.path_content.selected_path_string().ok_or_else(|| {
+            //     FmError::custom("exec exec", &format!("can't find command {}", command))
+            // })?;
             args.push(path);
             execute_in_child(command, &args)?;
             tab.completion.reset();
