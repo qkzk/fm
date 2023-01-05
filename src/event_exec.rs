@@ -670,7 +670,6 @@ impl EventExec {
         match status.opener.open(
             &status
                 .selected_non_mut()
-                .path_content
                 .selected()
                 .ok_or_else(|| FmError::custom("event open file", "Empty directory"))?
                 .path,
