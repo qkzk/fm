@@ -297,15 +297,17 @@
     - [x] enter parent
     - [x] select the file
   - [x] scrolling
+    - [ ] last file should be at bottom, not top
   - [ ] enable most modes
-    - [x] copy, cut, delete
+    - [x] copy, cut, delete, trash
   - [ ] enable most actions
     - [x] END move to last leaf
     - [x] toggle flag and display flagged files
     - [x] copy filename, filepath
+    - [x] toggle hidden
   - [x] replace preview::directory by mode::tree
   - [x] filter
-    - [ ] force display full in tree mode
+    - [x] force display full in tree mode
   - [ ] search (bfs ?)
   - [ ] fold
 
