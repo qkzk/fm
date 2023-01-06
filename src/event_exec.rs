@@ -9,6 +9,7 @@ use sysinfo::SystemExt;
 
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
+use crate::config::Colors;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::RESERVED_ROWS;
@@ -596,7 +597,7 @@ impl EventExec {
     /// Matching items are displayed as you type them.
     pub fn event_search(tab: &mut Tab) -> FmResult<()> {
         tab.searched = None;
-        tab.mode = Mode::InputCompleted(InputCompleted::Search);
+        tab.mode = Mode::InputCompleted(InputCompleted::Search(LastMode::from_mode(tab.mode)));
         Ok(())
     }
 
@@ -974,7 +975,7 @@ impl EventExec {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn exec_search(tab: &mut Tab) {
+    pub fn exec_search(tab: &mut Tab, lastmode: LastMode, colors: &Colors) {
         let searched = tab.input.string();
         tab.input.reset();
         if searched.is_empty() {
@@ -982,8 +983,20 @@ impl EventExec {
             return;
         }
         tab.searched = Some(searched.clone());
-        let next_index = tab.path_content.index;
-        tab.search_from(&searched, next_index);
+        match lastmode {
+            LastMode::Tree => {
+                tab.directory.tree.unselect_children();
+                if tab.directory.tree.select_first_match(&searched) {
+                } else {
+                    tab.directory.tree.select_root()
+                }
+                tab.directory.make_preview(colors)
+            }
+            LastMode::Other => {
+                let next_index = tab.path_content.index;
+                tab.search_from(&searched, next_index);
+            }
+        }
     }
 
     pub fn event_search_next(tab: &mut Tab) -> FmResult<()> {
@@ -1179,8 +1192,10 @@ impl EventExec {
     /// In normal mode, it will open the file.
     /// Reset to normal mode afterwards.
     pub fn enter(status: &mut Status) -> FmResult<()> {
+        let mut mode_coming_from = None;
         match status.selected_non_mut().mode {
             Mode::InputSimple(InputSimple::Rename(last_mode)) => {
+                mode_coming_from = Some(last_mode);
                 EventExec::exec_rename(status.selected(), last_mode)?
             }
             Mode::InputSimple(InputSimple::Newfile) => EventExec::exec_newfile(status.selected())?,
@@ -1193,8 +1208,10 @@ impl EventExec {
             Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
-            Mode::InputCompleted(InputCompleted::Search) => {
-                EventExec::exec_search(status.selected())
+            Mode::InputCompleted(InputCompleted::Search(last_mode)) => {
+                mode_coming_from = Some(last_mode);
+                let colors = &status.config_colors.clone();
+                EventExec::exec_search(status.selected(), last_mode, colors)
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
@@ -1207,6 +1224,12 @@ impl EventExec {
         };
 
         status.selected().input.reset();
+        if let Some(last_mode) = mode_coming_from {
+            if let LastMode::Tree = last_mode {
+                status.selected().mode = Mode::Tree;
+                return Ok(());
+            }
+        }
         status.selected().mode = Mode::Normal;
         Ok(())
     }

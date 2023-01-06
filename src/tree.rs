@@ -306,6 +306,21 @@ impl Tree {
         }
         (selected_index, content)
     }
+
+    pub fn select_first_match(&mut self, key: &str) -> bool {
+        if self.node.filename().contains(key) {
+            self.node.select();
+            return true;
+        }
+
+        for tree in self.leaves.iter_mut() {
+            if tree.select_first_match(key) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
 
 fn first_prefix(mut prefix: String) -> String {

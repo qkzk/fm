@@ -595,6 +595,10 @@ impl Directory {
         Ok(())
     }
 
+    pub fn make_preview(&mut self, colors: &Colors) {
+        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+    }
+
     pub fn calculate_tree_window(&self, height: usize) -> (usize, usize, usize) {
         let length = self.content.len();
         let mut top = if self.selected_index < height {

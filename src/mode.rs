@@ -145,7 +145,7 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
             Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
-            Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
+            Mode::InputCompleted(InputCompleted::Search(_)) => write!(f, "Search:  "),
             Mode::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
             Mode::Navigate(Navigate::Jump) => write!(f, "Jump  :  "),
             Mode::Navigate(Navigate::History) => write!(f, "History :"),
