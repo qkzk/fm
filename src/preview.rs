@@ -526,8 +526,14 @@ impl Directory {
         filter_kind: &FilterKind,
         show_hidden: bool,
     ) -> FmResult<Self> {
-        let mut tree =
-            Tree::from_path(path, Tree::MAX_DEPTH, users_cache, filter_kind, show_hidden)?;
+        let mut tree = Tree::from_path(
+            path,
+            Tree::MAX_DEPTH,
+            users_cache,
+            filter_kind,
+            show_hidden,
+            vec![0],
+        )?;
         tree.select_root();
         let (selected_index, content) = tree.into_navigable_content(colors);
         Ok(Self {

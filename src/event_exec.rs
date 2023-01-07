@@ -975,26 +975,30 @@ impl EventExec {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn exec_search(tab: &mut Tab, lastmode: LastMode, colors: &Colors) {
+    pub fn exec_search(tab: &mut Tab, lastmode: LastMode, colors: &Colors) -> FmResult<()> {
         let searched = tab.input.string();
         tab.input.reset();
         if searched.is_empty() {
             tab.searched = None;
-            return;
+            return Ok(());
         }
         tab.searched = Some(searched.clone());
         match lastmode {
             LastMode::Tree => {
                 tab.directory.tree.unselect_children();
-                if tab.directory.tree.select_first_match(&searched) {
+                if let Some(position) = tab.directory.tree.select_first_match(&searched) {
+                    tab.directory.tree.position = position;
+                    tab.directory.tree.select_from_position()?;
                 } else {
                     tab.directory.tree.select_root()
-                }
-                tab.directory.make_preview(colors)
+                };
+                tab.directory.make_preview(colors);
+                Ok(())
             }
             LastMode::Other => {
                 let next_index = tab.path_content.index;
                 tab.search_from(&searched, next_index);
+                Ok(())
             }
         }
     }
@@ -1211,7 +1215,7 @@ impl EventExec {
             Mode::InputCompleted(InputCompleted::Search(last_mode)) => {
                 mode_coming_from = Some(last_mode);
                 let colors = &status.config_colors.clone();
-                EventExec::exec_search(status.selected(), last_mode, colors)
+                EventExec::exec_search(status.selected(), last_mode, colors)?
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
@@ -1224,11 +1228,9 @@ impl EventExec {
         };
 
         status.selected().input.reset();
-        if let Some(last_mode) = mode_coming_from {
-            if let LastMode::Tree = last_mode {
-                status.selected().mode = Mode::Tree;
-                return Ok(());
-            }
+        if let Some(LastMode::Tree) = mode_coming_from {
+            status.selected().mode = Mode::Tree;
+            return Ok(());
         }
         status.selected().mode = Mode::Normal;
         Ok(())

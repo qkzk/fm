@@ -7,7 +7,7 @@ use tuikit::attr::Attr;
 use users::UsersCache;
 
 use crate::config::Colors;
-use crate::fileinfo::{fileinfo_attr, FileInfo, FileKind};
+use crate::fileinfo::{fileinfo_attr, is_not_hidden, FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::fm_error::FmResult;
 use crate::utils::filename_from_path;
@@ -42,6 +42,7 @@ impl ColoredString {
 #[derive(Clone, Debug)]
 pub struct Node {
     pub fileinfo: FileInfo,
+    pub position: Vec<usize>,
 }
 
 impl Node {
@@ -91,20 +92,8 @@ impl Tree {
     /// Both (subfolder and files) ends in a collections of leaves.
     ///
     /// TODO!
-    /// The `users_cache` parameter isn't really used atm, we need it
-    /// to create `FileInfo` objects, which use this structure to determine
-    /// the FileKind (socket, device, char, block, normal file, directory etc.)
-    /// The FileKind is used to determine the color later on.
-    ///
-    /// TODO!
-    /// make it really navigable
-    /// left : -> parent
-    /// right: -> step into ?
-    /// down: next sibling
-    /// up: previous sibling
-    /// TODO!
     /// make it foldable
-    pub const MAX_DEPTH: usize = 10;
+    pub const MAX_DEPTH: usize = 7;
 
     pub fn from_path(
         path: &Path,
@@ -112,52 +101,85 @@ impl Tree {
         users_cache: &Rc<UsersCache>,
         filter_kind: &FilterKind,
         display_hidden: bool,
+        parent_position: Vec<usize>,
     ) -> FmResult<Self> {
-        let filename = filename_from_path(path)?;
-        match FileInfo::from_path_with_name(path, filename, users_cache) {
-            Ok(fileinfo) => {
-                let mut leaves = vec![];
-                let node: Node;
-                if let FileKind::Directory = fileinfo.file_kind {
-                    node = Node { fileinfo };
-                    if max_depth > 0 {
-                        for direntry in read_dir(path)?.filter_map(|d| d.ok()) {
-                            if let Ok(leaf) = Self::from_path(
-                                &direntry.path(),
-                                max_depth - 1,
-                                users_cache,
-                                filter_kind,
-                                display_hidden,
-                            ) {
-                                let leaf_fileinfo = &leaf.node.fileinfo;
-                                if filter_kind.filter_by(leaf_fileinfo)
-                                    && (display_hidden || !leaf_fileinfo.is_hidden())
-                                {
-                                    leaves.push(leaf)
-                                }
-                            }
-                        }
+        Self::create_tree_from_fileinfo(
+            FileInfo::from_path_with_name(path, filename_from_path(path)?, users_cache)?,
+            max_depth,
+            users_cache,
+            filter_kind,
+            display_hidden,
+            parent_position,
+        )
+    }
+
+    fn create_tree_from_fileinfo(
+        fileinfo: FileInfo,
+        max_depth: usize,
+        users_cache: &Rc<UsersCache>,
+        filter_kind: &FilterKind,
+        display_hidden: bool,
+        parent_position: Vec<usize>,
+    ) -> FmResult<Self> {
+        let mut leaves = vec![];
+        if let FileKind::Directory = fileinfo.file_kind {
+            if max_depth > 0 {
+                let files: Vec<FileInfo> = match read_dir(&fileinfo.path) {
+                    Ok(read_dir) => read_dir
+                        .filter_map(|direntry| direntry.ok())
+                        .filter(|direntry| {
+                            display_hidden || is_not_hidden(direntry).unwrap_or(true)
+                        })
+                        .map(|direntry| FileInfo::new(&direntry, users_cache))
+                        .filter_map(|fileinfo| fileinfo.ok())
+                        .filter(|fileinfo| filter_kind.filter_by(fileinfo))
+                        .collect(),
+                    Err(error) => {
+                        info!(
+                            "Couldn't read path {} - {}",
+                            fileinfo.path.to_string_lossy(),
+                            error
+                        );
+                        vec![]
                     }
-                } else {
-                    node = Node { fileinfo };
+                };
+
+                let len = files.len();
+                for (index, fileinfo) in files.iter().enumerate() {
+                    let mut position = parent_position.clone();
+                    position.push(len - index - 1);
+                    leaves.push(Self::create_tree_from_fileinfo(
+                        fileinfo.to_owned(),
+                        max_depth - 1,
+                        users_cache,
+                        filter_kind,
+                        display_hidden,
+                        position,
+                    )?)
                 }
-                let position = vec![0];
-                let selected = node.clone();
-                Ok(Self {
-                    node,
-                    leaves,
-                    position,
-                    current_node: selected,
-                })
             }
-            Err(e) => Err(e),
         }
+        let node = Node {
+            fileinfo,
+            position: parent_position,
+        };
+        let position = vec![0];
+        let selected = node.clone();
+        Ok(Self {
+            node,
+            leaves,
+            position,
+            current_node: selected,
+        })
     }
 
     pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
         let filename = filename_from_path(path)?;
         let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
-        let node = Node { fileinfo };
+        let node = Node {
+            fileinfo,
+            position: vec![0],
+        };
         let leaves = vec![];
         let position = vec![0];
         let selected = node.clone();
@@ -248,7 +270,7 @@ impl Tree {
         Ok(())
     }
 
-    fn select_from_position(&mut self) -> FmResult<(usize, usize, Node)> {
+    pub fn select_from_position(&mut self) -> FmResult<(usize, usize, Node)> {
         let pos = self.position.clone();
         let mut tree = self;
         let mut reached_depth = 0;
@@ -266,7 +288,6 @@ impl Tree {
             reached_depth += 1;
         }
         tree.node.select();
-        info!("{:?}", tree.node);
         Ok((reached_depth, last_cord, tree.node.clone()))
     }
 
@@ -307,19 +328,18 @@ impl Tree {
         (selected_index, content)
     }
 
-    pub fn select_first_match(&mut self, key: &str) -> bool {
-        if self.node.filename().contains(key) {
-            self.node.select();
-            return true;
+    pub fn select_first_match(&mut self, key: &str) -> Option<Vec<usize>> {
+        if self.node.fileinfo.filename.contains(key) {
+            return Some(self.node.position.clone());
         }
 
         for tree in self.leaves.iter_mut() {
-            if tree.select_first_match(key) {
-                return true;
+            if let Some(position) = tree.select_first_match(key) {
+                return Some(position);
             }
         }
 
-        return false;
+        None
     }
 }
 

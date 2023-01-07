@@ -553,7 +553,7 @@ pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
 }
 
 /// True if the file isn't hidden.
-fn is_not_hidden(entry: &DirEntry) -> FmResult<bool> {
+pub fn is_not_hidden(entry: &DirEntry) -> FmResult<bool> {
     Ok(entry
         .file_name()
         .into_string()
