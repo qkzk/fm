@@ -295,6 +295,9 @@ impl Tab {
     }
 
     /// Returns the directory owning the selected file.
+    /// In Tree mode, it's the current directory if the selected node is a directory,
+    /// its parent otherwise.
+    /// In normal mode it's the current working directory.
     pub fn directory_of_selected(&self) -> FmResult<&path::Path> {
         match self.mode {
             Mode::Tree => {

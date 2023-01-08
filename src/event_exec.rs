@@ -185,9 +185,7 @@ impl EventExec {
                 .ok_or_else(|| FmError::custom("event symlink", "File not found"))?;
             let newpath = status
                 .selected_non_mut()
-                .path_content
-                .path
-                .clone()
+                .directory_of_selected()?
                 .join(filename);
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }

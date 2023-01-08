@@ -306,6 +306,7 @@
     - [x] copy filename, filepath
     - [x] toggle hidden
     - [x] drag n drop
+    - [x] symlink
   - [x] disabled:
     - [x] regex match: would only in current root path
     - [x] sort: would require recursive sort of every directory
