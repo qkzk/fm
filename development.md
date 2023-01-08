@@ -305,6 +305,7 @@
     - [x] toggle flag and display flagged files
     - [x] copy filename, filepath
     - [x] toggle hidden
+    - [x] drag n drop
   - [x] replace preview::directory by mode::tree
   - [x] filter
     - [x] force display full in tree mode
