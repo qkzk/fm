@@ -604,13 +604,19 @@ impl EventExec {
     /// Enter the regex mode.
     /// Every file matching the typed regex will be flagged.
     pub fn event_regex_match(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputSimple::RegexMatch);
+        match tab.mode {
+            Mode::Tree => (),
+            _ => tab.mode = Mode::InputSimple(InputSimple::RegexMatch),
+        }
         Ok(())
     }
 
     /// Enter the sort mode, allowing the user to select a sort method.
     pub fn event_sort(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputSimple::Sort);
+        match tab.mode {
+            Mode::Tree => (),
+            _ => tab.mode = Mode::InputSimple(InputSimple::Sort),
+        }
         Ok(())
     }
 
@@ -1003,9 +1009,14 @@ impl EventExec {
     }
 
     pub fn event_search_next(tab: &mut Tab) -> FmResult<()> {
-        if let Some(searched) = tab.searched.clone() {
-            let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
-            tab.search_from(&searched, next_index);
+        match tab.mode {
+            Mode::Tree => (),
+            _ => {
+                if let Some(searched) = tab.searched.clone() {
+                    let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
+                    tab.search_from(&searched, next_index);
+                }
+            }
         }
         Ok(())
     }

@@ -298,19 +298,21 @@
     - [x] select the file
   - [x] scrolling
     - [x] last file can't be at top
-  - [ ] enable most modes
+  - [x] enable most modes
     - [x] copy, cut, delete, trash, search
-  - [ ] enable most actions
+  - [x] enable most actions
     - [x] END move to last leaf
     - [x] toggle flag and display flagged files
     - [x] copy filename, filepath
     - [x] toggle hidden
     - [x] drag n drop
+  - [x] disabled:
+    - [x] regex match: would only in current root path
+    - [x] sort: would require recursive sort of every directory
   - [x] replace preview::directory by mode::tree
   - [x] filter
     - [x] force display full in tree mode
   - [x] search simple: first result
-  - [ ] sort
   - [ ] fold
 
 - [ ] Version 0.2.0 : tests
