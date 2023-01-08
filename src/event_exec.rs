@@ -958,15 +958,14 @@ impl EventExec {
     /// It obviously requires the `dragon-drop` command to be installed.
     pub fn event_drag_n_drop(status: &mut Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        execute_in_child(
-            DEFAULT_DRAGNDROP,
-            &vec![&tab.path_content.selected_path_string().ok_or_else(|| {
-                FmError::custom(
-                    "event drag n drop",
-                    "can't find dragon-drop in the system. Is the application installed?",
-                )
-            })?],
-        )?;
+        if let Some(file) = tab.selected() {
+            let path_str = file
+                .path
+                .to_str()
+                .ok_or_else(|| FmError::custom("event drag n drop", "Couldn't read path"))?;
+
+            execute_in_child(DEFAULT_DRAGNDROP, &vec![path_str])?;
+        }
         Ok(())
     }
 

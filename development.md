@@ -299,7 +299,7 @@
   - [x] scrolling
     - [x] last file can't be at top
   - [ ] enable most modes
-    - [x] copy, cut, delete, trash
+    - [x] copy, cut, delete, trash, search
   - [ ] enable most actions
     - [x] END move to last leaf
     - [x] toggle flag and display flagged files
@@ -308,7 +308,8 @@
   - [x] replace preview::directory by mode::tree
   - [x] filter
     - [x] force display full in tree mode
-  - [ ] search (bfs ?)
+  - [x] search simple: first result
+  - [ ] sort
   - [ ] fold
 
 - [ ] Version 0.2.0 : tests
