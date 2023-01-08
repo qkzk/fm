@@ -190,6 +190,7 @@ impl Tab {
         self.shortcut.refresh(mount_points)
     }
 
+    /// Select the file at index and move the window to this file.
     pub fn go_to_index(&mut self, index: usize) {
         self.path_content.select_index(index);
         self.window.scroll_to(index);
