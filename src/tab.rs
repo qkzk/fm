@@ -23,6 +23,8 @@ use crate::visited::History;
 pub struct Tab {
     /// The mode the application is currenty in
     pub mode: Mode,
+    /// The mode previously set
+    pub previous_mode: Mode,
     /// The indexes of displayed file
     pub window: ContentWindow,
     /// Files marked as flagged
@@ -66,6 +68,7 @@ impl Tab {
         let show_hidden = false;
         let nvim_server = args.server;
         let mode = Mode::Normal;
+        let previous_mode = Mode::Normal;
         let window = ContentWindow::new(path_content.content.len(), height);
         let input = Input::default();
         let completion = Completion::default();
@@ -77,6 +80,7 @@ impl Tab {
         let searched = None;
         Ok(Self {
             mode,
+            previous_mode,
             window,
             input,
             path_content,
@@ -329,5 +333,10 @@ impl Tab {
         self.directory =
             Directory::new(&path, users_cache, colors, &self.filter, self.show_hidden)?;
         Ok(())
+    }
+
+    pub fn set_mode(&mut self, new_mode: Mode) {
+        self.previous_mode = self.mode;
+        self.mode = new_mode;
     }
 }

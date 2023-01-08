@@ -320,6 +320,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] print in raw mode
   - [ ] print with term: term...
 - [ ] zoxide support
+- [ ] Version 0.1.10 : keep track previous mode
 
 - [ ] Version 0.2.0 : tests
 
