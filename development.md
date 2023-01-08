@@ -263,6 +263,39 @@
 - [x] improve fuzzy finding by moving to the selected file
 - [x] use latest version of skim-qkzk
 
+### Version 0.1.9 : tree view
+
+New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
+
+- [x] display a tree view with T
+- [x] navigate in the tree
+- [x] enter a directory from the tree
+- [x] enter a file:
+  - [x] enter parent
+  - [x] select the file
+- [x] scrolling
+  - [x] last file can't be at top
+- [x] enable most modes
+  - [x] copy, cut, delete, trash, search
+- [x] enable most actions
+  - [x] END move to last leaf
+  - [x] toggle flag and display flagged files
+  - [x] copy filename, filepath
+  - [x] toggle hidden
+  - [x] drag n drop
+  - [x] symlink
+- [x] disabled:
+  - [x] regex match: would only in current root path
+  - [x] sort: would require recursive sort of every directory
+- [x] replace preview::directory by mode::tree
+- [x] filter
+  - [x] force display full in tree mode
+- [x] search simple: first result
+- [x] fold
+  - [x] fold a single directory
+  - [x] display a triangle to display folded status
+  - [x] unfold all, fold all
+
 ## TODO
 
 - [ ] remote control
@@ -286,10 +319,6 @@
   - [x] print in term
   - [x] print in raw mode
   - [ ] print with term: term...
-- [ ] navigable tree view [termtree](https://crates.io/crates/termtree)
-  - [x] preview directory with tree view
-  - [x] use as another display
-  - [ ] navigation
 - [ ] zoxide support
 
 - [ ] Version 0.2.0 : tests

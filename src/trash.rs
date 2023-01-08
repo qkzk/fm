@@ -334,7 +334,7 @@ impl Trash {
         if !parent.exists() {
             std::fs::create_dir_all(&parent)?
         }
-        std::fs::rename(&trashed_file_content, &origin)?;
+        std::fs::rename(trashed_file_content, origin)?;
         Ok(())
     }
 
@@ -346,7 +346,7 @@ impl Trash {
 
         let (_, trashed_file_content, _) = self.remove_selected_file()?;
 
-        std::fs::remove_file(&trashed_file_content)?;
+        std::fs::remove_file(trashed_file_content)?;
         if self.index > 0 {
             self.index -= 1
         }

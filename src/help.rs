@@ -57,7 +57,15 @@ static HELP_TO_FORMAT: &str = "
 {TrashOpen}:       Open the trash (enter to restore, del clear)
 {TrashEmpty}:       Empty the trash
 
+- Tree -
+Navigate as usual. Most actions works as in 'normal' view.
+{Tree}:      Toggle tree mode
+{TreeFold}:      Fold a node
+{TreeFoldAll}:       Fold every node
+{TreeUnFoldAll}:      Unfold every node
+ 
 - MODES - 
+{Tree}:      TREE
 {Chmod}:      CHMOD 
 {Exec}:      EXEC 
 {NewDir}:      NEWDIR 

@@ -9,6 +9,7 @@ use sysinfo::SystemExt;
 
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
+use crate::config::Colors;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::RESERVED_ROWS;
@@ -16,6 +17,7 @@ use crate::copy_move::CopyMove;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::mode::LastMode;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
 use crate::opener::execute_in_child;
@@ -34,7 +36,12 @@ impl EventExec {
     /// Reset the selected tab view to the default.
     pub fn refresh_status(status: &mut Status) -> FmResult<()> {
         status.refresh_users()?;
-        status.selected().refresh_view()
+        status.selected().refresh_view()?;
+        if let Mode::Tree = status.selected_non_mut().mode {
+            let colors = &status.config_colors.clone();
+            status.selected().make_tree(colors)?
+        }
+        Ok(())
     }
 
     /// When a rezise event occurs, we may hide the second panel if the width
@@ -84,10 +91,21 @@ impl EventExec {
 
     /// Toggle a single flag and move down one row.
     pub fn event_toggle_flag(status: &mut Status) -> FmResult<()> {
-        if let Some(file) = status.selected().path_content.selected() {
-            let path = file.path.clone();
-            status.toggle_flag_on_path(&path);
-            Self::event_down_one_row(status.selected());
+        let tab = status.selected_non_mut();
+
+        match tab.mode {
+            Mode::Normal => {
+                if let Some(file) = tab.path_content.selected() {
+                    let path = file.path.clone();
+                    status.toggle_flag_on_path(&path);
+                    Self::event_down_one_row(status.selected());
+                }
+            }
+            Mode::Tree => {
+                let path = tab.directory.tree.current_node.filepath();
+                status.toggle_flag_on_path(&path);
+            }
+            _ => (),
         }
         Ok(())
     }
@@ -109,14 +127,9 @@ impl EventExec {
         }
         status.selected().mode = Mode::InputSimple(InputSimple::Chmod);
         if status.flagged.is_empty() {
-            status.flagged.push(
-                status.tabs[status.index]
-                    .path_content
-                    .selected()
-                    .unwrap()
-                    .path
-                    .clone(),
-            );
+            status
+                .flagged
+                .push(status.tabs[status.index].selected().unwrap().path.clone());
         };
         status.reset_tabs_view()
     }
@@ -170,10 +183,9 @@ impl EventExec {
                 .as_path()
                 .file_name()
                 .ok_or_else(|| FmError::custom("event symlink", "File not found"))?;
-            let newpath = status.tabs[status.index]
-                .path_content
-                .path
-                .clone()
+            let newpath = status
+                .selected_non_mut()
+                .directory_of_selected()?
                 .join(filename);
             std::os::unix::fs::symlink(oldpath, newpath)?;
         }
@@ -246,7 +258,8 @@ impl EventExec {
             let tab = status.selected();
             tab.input.clear();
             tab.history.push(target_dir);
-            tab.path_content.change_directory(target_dir)?;
+            tab.path_content
+                .change_directory(target_dir, &tab.filter, tab.show_hidden)?;
             let index = tab.find_jump_index(&jump_target).unwrap_or_default();
             tab.path_content.select_index(index);
             tab.set_window();
@@ -289,7 +302,7 @@ impl EventExec {
     pub fn event_normal(tab: &mut Tab) -> FmResult<()> {
         tab.input.reset();
         tab.completion.reset();
-        tab.path_content.reset_files()?;
+        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
         tab.window.reset(tab.path_content.content.len());
         tab.mode = Mode::Normal;
         tab.preview = Preview::new_empty();
@@ -446,11 +459,7 @@ impl EventExec {
     /// Does
     /// Add the starting directory to history.
     pub fn event_move_to_parent(tab: &mut Tab) -> FmResult<()> {
-        let path = tab.path_content.path.clone();
-        if let Some(parent) = path.parent() {
-            tab.set_pathcontent(parent)?;
-        }
-        Ok(())
+        tab.move_to_parent()
     }
 
     /// Move the cursor left one block.
@@ -539,17 +548,21 @@ impl EventExec {
     /// Every file can be previewed. See the `crate::enum::Preview` for
     /// more details on previewinga file.
     /// Does nothing if the directory is empty.
-    pub fn event_preview(tab: &mut Tab) -> FmResult<()> {
-        if tab.path_content.content.is_empty() {
+    pub fn event_preview(status: &mut Status) -> FmResult<()> {
+        if status.selected_non_mut().path_content.is_empty() {
             return Ok(());
         }
-        if let Some(file_info) = tab.path_content.selected() {
+        let unmutable_tab = status.selected_non_mut();
+        if let Some(file_info) = unmutable_tab.selected() {
             match file_info.file_kind {
-                FileKind::Directory | FileKind::NormalFile => {
-                    tab.mode = Mode::Preview;
-                    tab.preview = Preview::new(file_info)?;
-                    tab.window.reset(tab.preview.len());
+                FileKind::NormalFile => {
+                    let preview =
+                        Preview::new(file_info, &unmutable_tab.path_content.users_cache, status)?;
+                    status.selected().mode = Mode::Preview;
+                    status.selected().window.reset(preview.len());
+                    status.selected().preview = preview;
                 }
+                FileKind::Directory => Self::event_tree(status)?,
                 _ => (),
             }
         }
@@ -582,28 +595,38 @@ impl EventExec {
     /// Matching items are displayed as you type them.
     pub fn event_search(tab: &mut Tab) -> FmResult<()> {
         tab.searched = None;
-        tab.mode = Mode::InputCompleted(InputCompleted::Search);
+        tab.mode = Mode::InputCompleted(InputCompleted::Search(LastMode::from_mode(tab.mode)));
         Ok(())
     }
 
     /// Enter the regex mode.
     /// Every file matching the typed regex will be flagged.
     pub fn event_regex_match(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputSimple::RegexMatch);
+        match tab.mode {
+            Mode::Tree => (),
+            _ => tab.mode = Mode::InputSimple(InputSimple::RegexMatch),
+        }
         Ok(())
     }
 
     /// Enter the sort mode, allowing the user to select a sort method.
     pub fn event_sort(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputSimple::Sort);
+        match tab.mode {
+            Mode::Tree => (),
+            _ => tab.mode = Mode::InputSimple(InputSimple::Sort),
+        }
         Ok(())
     }
 
     /// Once a quit event is received, we change a flag and break the main loop.
     /// It's usefull to reset the cursor before leaving the application.
     pub fn event_quit(tab: &mut Tab) -> FmResult<()> {
-        tab.must_quit = true;
-        Ok(())
+        if let Mode::Tree = tab.mode {
+            Self::event_normal(tab)
+        } else {
+            tab.must_quit = true;
+            Ok(())
+        }
     }
 
     /// Reset the mode to normal.
@@ -638,11 +661,15 @@ impl EventExec {
     }
 
     /// Toggle the display of hidden files.
-    pub fn event_toggle_hidden(tab: &mut Tab) -> FmResult<()> {
+    pub fn event_toggle_hidden(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
         tab.show_hidden = !tab.show_hidden;
-        tab.path_content.show_hidden = !tab.path_content.show_hidden;
-        tab.path_content.reset_files()?;
+        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
         tab.window.reset(tab.path_content.content.len());
+        if let Mode::Tree = tab.mode {
+            tab.make_tree(colors)?
+        }
         Ok(())
     }
 
@@ -651,7 +678,6 @@ impl EventExec {
         match status.opener.open(
             &status
                 .selected_non_mut()
-                .path_content
                 .selected()
                 .ok_or_else(|| FmError::custom("event open file", "Empty directory"))?
                 .path,
@@ -667,8 +693,13 @@ impl EventExec {
     }
 
     /// Enter the rename mode.
+    /// Keep a track of the current mode to ensure we rename the correct file.
+    /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
+    /// not the selected file in the pathcontent.
     pub fn event_rename(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputSimple::Rename);
+        if tab.selected().is_some() {
+            tab.mode = Mode::InputSimple(InputSimple::Rename(LastMode::from_mode(tab.mode)));
+        }
         Ok(())
     }
 
@@ -684,15 +715,11 @@ impl EventExec {
     /// is terminated first.
     pub fn event_shell(status: &mut Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        execute_in_child(
-            &status.opener.terminal.clone(),
-            &vec![
-                "-d",
-                tab.path_content.path.to_str().ok_or_else(|| {
-                    FmError::custom("event_shell", "Couldn't parse the path name")
-                })?,
-            ],
-        )?;
+        let path = tab
+            .directory_of_selected()?
+            .to_str()
+            .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
+        execute_in_child(&status.opener.terminal.clone(), &vec!["-d", path])?;
         Ok(())
     }
 
@@ -748,49 +775,53 @@ impl EventExec {
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
     pub fn event_nvim_filepicker(tab: &mut Tab) -> FmResult<()> {
-        if tab.path_content.content.is_empty() {
-            info!("Called nvim filepicker in an empty directory.");
-            return Ok(());
-        }
-        // "nvim-send --remote-send '<esc>:e readme.md<cr>' --servername 127.0.0.1:8888"
         if let Ok(nvim_listen_address) = Self::nvim_listen_address(tab) {
-            if let Some(path_str) = tab.path_content.selected_path_string() {
-                let _ = execute_in_child(
-                    NVIM_RPC_SENDER,
-                    &vec![
-                        "--remote-send",
-                        &format!("<esc>:e {}<cr><esc>:close<cr>", path_str),
-                        "--servername",
-                        &nvim_listen_address,
-                    ],
-                );
+            if let Some(fileinfo) = tab.selected() {
+                if let Some(path_str) = fileinfo.path.to_str() {
+                    let _ = execute_in_child(
+                        NVIM_RPC_SENDER,
+                        &vec![
+                            "--remote-send",
+                            &format!("<esc>:e {}<cr><esc>:close<cr>", path_str),
+                            "--servername",
+                            &nvim_listen_address,
+                        ],
+                    );
+                }
             }
-        } else {
-            info!("Nvim server not defined");
         }
         Ok(())
     }
 
     /// Copy the selected filename to the clipboard. Only the filename.
     pub fn event_filename_to_clipboard(tab: &Tab) -> FmResult<()> {
-        if let Some(file) = tab.path_content.selected() {
-            let filename = file.filename.clone();
-            let mut ctx = ClipboardContext::new()?;
-            ctx.set_contents(filename)?;
-            // For some reason, it's not writen if you don't read it back...
-            let _ = ctx.get_contents();
-        }
+        let filename = tab
+            .selected()
+            .ok_or_else(|| FmError::custom("event_filename_to_clipboard", "no selected file"))?
+            .filename
+            .clone();
+        let mut ctx = ClipboardContext::new()?;
+        ctx.set_contents(filename)?;
+        // For some reason, it's not writen if you don't read it back...
+        let _ = ctx.get_contents();
+
         Ok(())
     }
 
     /// Copy the selected filepath to the clipboard. The absolute path.
     pub fn event_filepath_to_clipboard(tab: &Tab) -> FmResult<()> {
-        if let Some(filepath) = tab.path_content.selected_path_string() {
-            let mut ctx = ClipboardContext::new()?;
-            ctx.set_contents(filepath)?;
-            // For some reason, it's not writen if you don't read it back...
-            let _ = ctx.get_contents();
-        }
+        let filepath = tab
+            .selected()
+            .ok_or_else(|| FmError::custom("event_filepath_to_clipboard", "no selected file"))?
+            .path
+            .to_str()
+            .ok_or_else(|| FmError::custom("event_filepath_to_clipboard", "no selected file"))?
+            .to_owned();
+        info!("filepath: {}", filepath);
+        let mut ctx = ClipboardContext::new()?;
+        ctx.set_contents(filepath)?;
+        // For some reason, it's not writen if you don't read it back...
+        let _ = ctx.get_contents();
         Ok(())
     }
 
@@ -836,19 +867,27 @@ impl EventExec {
     /// It uses the `fs::rename` function and has the same limitations.
     /// We only tries to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
-    pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
-        if tab.path_content.content.is_empty() {
-            return Err(FmError::custom("event rename", "Empty directory"));
+    pub fn exec_rename(tab: &mut Tab, lastmode: LastMode) -> FmResult<()> {
+        let fileinfo = match lastmode {
+            LastMode::Tree => &tab.directory.tree.current_node.fileinfo,
+            LastMode::Other => tab
+                .path_content
+                .selected()
+                .ok_or_else(|| FmError::custom("rename", "couldnt parse selected"))?,
+        };
+
+        info!("fileinfo {:?}", fileinfo);
+        let original_path = &fileinfo.path;
+        if let Some(parent) = original_path.parent() {
+            let new_path = parent.join(sanitize_filename::sanitize(tab.input.string()));
+            info!(
+                "original: {} - new: {}",
+                original_path.display(),
+                new_path.display()
+            );
+            fs::rename(original_path, new_path)?;
         }
-        fs::rename(
-            tab.path_content
-                .selected_path_string()
-                .ok_or_else(|| FmError::custom("exec rename", "File not found"))?,
-            tab.path_content
-                .path
-                .to_path_buf()
-                .join(&sanitize_filename::sanitize(tab.input.string())),
-        )?;
+
         tab.refresh_view()
     }
 
@@ -898,9 +937,19 @@ impl EventExec {
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         if std::path::Path::new(command).exists() {
-            let path = &tab.path_content.selected_path_string().ok_or_else(|| {
-                FmError::custom("exec exec", &format!("can't find command {}", command))
-            })?;
+            let path = &tab
+                .selected()
+                .ok_or_else(|| {
+                    FmError::custom("exec exec", &format!("can't find command {}", command))
+                })?
+                .path
+                .to_str()
+                .ok_or_else(|| {
+                    FmError::custom("exec exec", &format!("can't find command {}", command))
+                })?;
+            // let path = &tab.path_content.selected_path_string().ok_or_else(|| {
+            //     FmError::custom("exec exec", &format!("can't find command {}", command))
+            // })?;
             args.push(path);
             execute_in_child(command, &args)?;
             tab.completion.reset();
@@ -913,15 +962,14 @@ impl EventExec {
     /// It obviously requires the `dragon-drop` command to be installed.
     pub fn event_drag_n_drop(status: &mut Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        execute_in_child(
-            DEFAULT_DRAGNDROP,
-            &vec![&tab.path_content.selected_path_string().ok_or_else(|| {
-                FmError::custom(
-                    "event drag n drop",
-                    "can't find dragon-drop in the system. Is the application installed?",
-                )
-            })?],
-        )?;
+        if let Some(file) = tab.selected() {
+            let path_str = file
+                .path
+                .to_str()
+                .ok_or_else(|| FmError::custom("event drag n drop", "Couldn't read path"))?;
+
+            execute_in_child(DEFAULT_DRAGNDROP, &vec![path_str])?;
+        }
         Ok(())
     }
 
@@ -930,22 +978,43 @@ impl EventExec {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn exec_search(tab: &mut Tab) {
+    pub fn exec_search(tab: &mut Tab, lastmode: LastMode, colors: &Colors) -> FmResult<()> {
         let searched = tab.input.string();
         tab.input.reset();
         if searched.is_empty() {
             tab.searched = None;
-            return;
+            return Ok(());
         }
         tab.searched = Some(searched.clone());
-        let next_index = tab.path_content.index;
-        tab.search_from(&searched, next_index);
+        match lastmode {
+            LastMode::Tree => {
+                tab.directory.tree.unselect_children();
+                if let Some(position) = tab.directory.tree.select_first_match(&searched) {
+                    tab.directory.tree.position = position;
+                    tab.directory.tree.select_from_position()?;
+                } else {
+                    tab.directory.tree.select_root()
+                };
+                tab.directory.make_preview(colors);
+                Ok(())
+            }
+            LastMode::Other => {
+                let next_index = tab.path_content.index;
+                tab.search_from(&searched, next_index);
+                Ok(())
+            }
+        }
     }
 
     pub fn event_search_next(tab: &mut Tab) -> FmResult<()> {
-        if let Some(searched) = tab.searched.clone() {
-            let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
-            tab.search_from(&searched, next_index);
+        match tab.mode {
+            Mode::Tree => (),
+            _ => {
+                if let Some(searched) = tab.searched.clone() {
+                    let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
+                    tab.search_from(&searched, next_index);
+                }
+            }
         }
         Ok(())
     }
@@ -999,9 +1068,9 @@ impl EventExec {
     /// See `crate::filter` for more details.
     pub fn exec_filter(tab: &mut Tab) -> FmResult<()> {
         let filter = FilterKind::from_input(&tab.input.string());
-        tab.path_content.set_filter(filter);
+        tab.set_filter(filter);
         tab.input.reset();
-        tab.path_content.reset_files()?;
+        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
         Self::event_normal(tab)
     }
 
@@ -1014,6 +1083,7 @@ impl EventExec {
             Mode::Navigate(Navigate::History) => EventExec::event_history_prev(status.selected()),
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_prev(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_prev(status.selected()),
+            Mode::Tree => EventExec::event_select_prev_sibling(status)?,
             Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
             }
@@ -1032,6 +1102,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_next(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_next(status.selected()),
             Mode::InputCompleted(_) => status.selected().completion.next(),
+            Mode::Tree => EventExec::event_select_next_sibling(status)?,
             _ => (),
         };
         Ok(())
@@ -1042,6 +1113,7 @@ impl EventExec {
     pub fn event_move_left(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::event_move_to_parent(status.selected()),
+            Mode::Tree => EventExec::event_select_parent(status),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_move_cursor_left(status.selected());
                 Ok(())
@@ -1056,6 +1128,7 @@ impl EventExec {
     pub fn event_move_right(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::exec_file(status),
+            Mode::Tree => EventExec::event_select_first_child(status),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_move_cursor_right(status.selected());
                 Ok(())
@@ -1091,6 +1164,7 @@ impl EventExec {
     pub fn event_key_home(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_go_top(status.selected()),
+            Mode::Tree => EventExec::event_tree_go_to_root(status)?,
             _ => EventExec::event_cursor_home(status.selected()),
         };
         Ok(())
@@ -1100,6 +1174,7 @@ impl EventExec {
     pub fn event_end(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_go_bottom(status.selected()),
+            Mode::Tree => EventExec::event_tree_go_to_bottom_leaf(status)?,
             _ => EventExec::event_cursor_end(status.selected()),
         };
         Ok(())
@@ -1129,8 +1204,12 @@ impl EventExec {
     /// In normal mode, it will open the file.
     /// Reset to normal mode afterwards.
     pub fn enter(status: &mut Status) -> FmResult<()> {
-        match status.selected().mode {
-            Mode::InputSimple(InputSimple::Rename) => EventExec::exec_rename(status.selected())?,
+        let mut mode_coming_from = None;
+        match status.selected_non_mut().mode {
+            Mode::InputSimple(InputSimple::Rename(last_mode)) => {
+                mode_coming_from = Some(last_mode);
+                EventExec::exec_rename(status.selected(), last_mode)?
+            }
             Mode::InputSimple(InputSimple::Newfile) => EventExec::exec_newfile(status.selected())?,
             Mode::InputSimple(InputSimple::Newdir) => EventExec::exec_newdir(status.selected())?,
             Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,
@@ -1141,11 +1220,14 @@ impl EventExec {
             Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
-            Mode::InputCompleted(InputCompleted::Search) => {
-                EventExec::exec_search(status.selected())
+            Mode::InputCompleted(InputCompleted::Search(last_mode)) => {
+                mode_coming_from = Some(last_mode);
+                let colors = &status.config_colors.clone();
+                EventExec::exec_search(status.selected(), last_mode, colors)?
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
+            Mode::Tree => EventExec::exec_tree(status.selected())?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
             | Mode::InputCompleted(InputCompleted::Nothing)
@@ -1154,6 +1236,10 @@ impl EventExec {
         };
 
         status.selected().input.reset();
+        if let Some(LastMode::Tree) = mode_coming_from {
+            status.selected().mode = Mode::Tree;
+            return Ok(());
+        }
         status.selected().mode = Mode::Normal;
         Ok(())
     }
@@ -1165,7 +1251,7 @@ impl EventExec {
             Mode::InputCompleted(_) => {
                 EventExec::event_replace_input_with_completion(status.selected())
             }
-            Mode::Normal => status.next(),
+            Mode::Normal | Mode::Tree => status.next(),
             _ => (),
         };
         Ok(())
@@ -1173,9 +1259,10 @@ impl EventExec {
 
     /// Change tab in normal mode.
     pub fn backtab(status: &mut Status) -> FmResult<()> {
-        if let Mode::Normal = status.selected().mode {
-            status.prev()
-        }
+        match status.selected().mode {
+            Mode::Normal | Mode::Tree => status.prev(),
+            _ => (),
+        };
         Ok(())
     }
 
@@ -1187,7 +1274,7 @@ impl EventExec {
 
     /// Copy the filename of the selected file in normal mode.
     pub fn event_copy_filename(status: &mut Status) -> FmResult<()> {
-        if let Mode::Normal = status.selected_non_mut().mode {
+        if let Mode::Normal | Mode::Tree = status.selected_non_mut().mode {
             return EventExec::event_filename_to_clipboard(status.selected());
         }
         Ok(())
@@ -1195,7 +1282,7 @@ impl EventExec {
 
     /// Copy the filepath of the selected file in normal mode.
     pub fn event_copy_filepath(status: &mut Status) -> FmResult<()> {
-        if let Mode::Normal = status.selected_non_mut().mode {
+        if let Mode::Normal | Mode::Tree = status.selected_non_mut().mode {
             return EventExec::event_filepath_to_clipboard(status.selected());
         }
         Ok(())
@@ -1208,11 +1295,12 @@ impl EventExec {
 
     /// Open a thumbnail of an image, scaled up to the whole window.
     pub fn event_thumbnail(tab: &mut Tab) -> FmResult<()> {
-        if let Mode::Normal = tab.mode {
-            tab.mode = Mode::Preview;
-            if let Some(file_info) = tab.path_content.selected() {
+        if let Mode::Normal | Mode::Tree = tab.mode {
+            if let Some(file_info) = tab.selected() {
+                info!("selected {:?}", file_info);
                 tab.preview = Preview::thumbnail(file_info.path.to_owned())?;
                 tab.window.reset(tab.preview.len());
+                tab.mode = Mode::Preview;
             }
         }
         Ok(())
@@ -1306,6 +1394,114 @@ impl EventExec {
     /// Remove the selected element in the trash folder.
     pub fn event_trash_remove_file(status: &mut Status) -> FmResult<()> {
         status.trash.remove()
+    }
+
+    /// Creates a tree in every mode but "Tree".
+    /// It tree mode it will exit this view.
+    pub fn event_tree(status: &mut Status) -> FmResult<()> {
+        if let Mode::Tree = status.selected_non_mut().mode {
+            Self::event_normal(status.selected())
+        } else {
+            status.display_full = true;
+            let colors = &status.config_colors.clone();
+            status.selected().make_tree(colors)?;
+            status.selected().mode = Mode::Tree;
+            let len = status.selected_non_mut().directory.len();
+            status.selected().window.reset(len);
+            Ok(())
+        }
+    }
+
+    /// Fold the current node of the tree.
+    /// Has no effect on "file" nodes.
+    pub fn event_tree_fold(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
+
+        let (tree, _, _) = tab.directory.tree.explore_position();
+        tree.node.toggle_fold();
+        tab.directory.make_preview(colors);
+        Ok(())
+    }
+
+    /// Unfold every child node in the tree.
+    /// Recursively explore the tree and unfold every node.
+    /// Reset the display.
+    pub fn event_tree_unfold_all(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        status.selected().directory.tree.unfold_children();
+        status.selected().directory.make_preview(colors);
+        Ok(())
+    }
+
+    /// Fold every child node in the tree.
+    /// Recursively explore the tree and fold every node.
+    /// Reset the display.
+    pub fn event_tree_fold_all(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        status.selected().directory.tree.fold_children();
+        status.selected().directory.make_preview(colors);
+        Ok(())
+    }
+
+    /// Fold every child node in the tree.
+    /// Recursively explore the tree and fold every node. Reset the display. pub fn event_tree_fold_all(status: &mut Status) -> FmResult<()> { let colors = &status.config_colors.clone(); status.selected().directory.tree.fold_children(); status.selected().directory.make_preview(colors); Ok(()) }
+    pub fn event_tree_go_to_root(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_select_root(&colors)
+    }
+
+    /// Select the first child of the current node and reset the display.
+    pub fn event_select_first_child(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_select_first_child(&colors)
+    }
+
+    /// Select the parent of the current node and reset the display.
+    /// Move to the parent and reset the tree if we were in the root node.
+    pub fn event_select_parent(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_select_parent(&colors)
+    }
+
+    /// Select the next sibling of the current node and reset the display.
+    pub fn event_select_next_sibling(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_select_next_sibling(&colors)
+    }
+
+    /// Select the previous sibling of the current node and reset the display.
+    pub fn event_select_prev_sibling(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_select_prev_sibling(&colors)
+    }
+
+    /// Select the last leaf of the tree and reset the view.
+    pub fn event_tree_go_to_bottom_leaf(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_go_to_bottom_leaf(&colors)
+    }
+
+    /// Execute the selected node if it's a file else enter the directory.
+    pub fn exec_tree(tab: &mut Tab) -> FmResult<()> {
+        let node = tab.directory.tree.current_node.clone();
+        if !node.fileinfo.path.is_dir() {
+            let filename = node.filename();
+            let parent = node
+                .filepath()
+                .parent()
+                .ok_or_else(|| FmError::custom("exec_tree", "path should have a parent"))?
+                .to_owned();
+            tab.set_pathcontent(&parent)?;
+            tab.mode = Mode::Normal;
+            tab.refresh_view()?;
+            tab.search_from(&filename, 0);
+            Ok(())
+        } else {
+            tab.set_pathcontent(&node.filepath())?;
+            tab.mode = Mode::Normal;
+            tab.refresh_view()
+        }
     }
 }
 

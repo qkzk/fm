@@ -11,14 +11,14 @@ use tuikit::term::Term;
 use users::UsersCache;
 
 use crate::args::Args;
-use crate::color_cache::ColorCache;
-use crate::config::Config;
+use crate::config::{Colors, Config};
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
 use crate::flagged::Flagged;
 use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
+use crate::preview::Directory;
 use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::trash::Trash;
@@ -43,7 +43,7 @@ pub struct Status {
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
     /// Colors for extension
-    pub colors: ColorCache,
+    // pub colors: ColorCache,
     /// terminal
     term: Arc<Term>,
     skimer: Skimer,
@@ -58,6 +58,7 @@ pub struct Status {
     pub help: String,
     /// The trash
     pub trash: Trash,
+    pub config_colors: Colors,
 }
 
 impl Status {
@@ -89,7 +90,8 @@ impl Status {
             index: 0,
             flagged: Flagged::default(),
             marks: Marks::read_from_config_file(),
-            colors: ColorCache::default(),
+            // colors: ColorCache::default(),
+            config_colors: config.colors,
             skimer: Skimer::new(term.clone()),
             term,
             dual_pane: true,
@@ -144,7 +146,10 @@ impl Status {
             .skimer
             .no_source(
                 self.selected_non_mut()
-                    .path_str()
+                    .selected()
+                    .ok_or_else(|| FmError::custom("skim", "no selected file"))?
+                    .path
+                    .to_str()
                     .ok_or_else(|| FmError::custom("skim", "skim error"))?,
             )
             .first()
@@ -155,7 +160,7 @@ impl Status {
     }
 
     fn _update_tab_from_skim_output(&mut self, skim_outut: &Arc<dyn SkimItem>) -> FmResult<()> {
-        let path = fs::canonicalize(&skim_outut.output().to_string())?;
+        let path = fs::canonicalize(skim_outut.output().to_string())?;
         let tab = self.selected();
         if path.is_file() {
             if let Some(parent) = path.parent() {
@@ -188,7 +193,7 @@ impl Status {
         let sources = self.flagged.content.clone();
         let dest = self
             .selected_non_mut()
-            .path_str()
+            .path_content_str()
             .ok_or_else(|| FmError::custom("cut or copy", "unreadable path"))?;
         copy_move(cut_or_copy, sources, dest, self.term.clone())?;
         self.clear_flags_and_reset_view()
@@ -290,7 +295,9 @@ impl Status {
 
     /// Returns a string representing the current path in the selected tab.
     pub fn selected_path_str(&self) -> &str {
-        self.selected_non_mut().path_str().unwrap_or_default()
+        self.selected_non_mut()
+            .path_content_str()
+            .unwrap_or_default()
     }
 
     /// Refresh the existing users.
@@ -299,6 +306,13 @@ impl Status {
         for tab in self.tabs.iter_mut() {
             tab.refresh_users(users_cache.clone())?;
         }
+        Ok(())
+    }
+
+    pub fn remove_tree(&mut self) -> FmResult<()> {
+        let path = self.selected_non_mut().path_content.path.clone();
+        let users_cache = &self.selected_non_mut().path_content.users_cache;
+        self.selected().directory = Directory::empty(&path, users_cache)?;
         Ok(())
     }
 }

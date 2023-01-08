@@ -17,7 +17,7 @@ use crate::fm_error::{FmError, FmResult};
 use crate::git::git;
 use crate::impl_selectable_content;
 use crate::sort::SortKind;
-use crate::status::Status;
+use crate::utils::filename_from_path;
 
 /// Different kind of files
 #[derive(Debug, Clone, Copy)]
@@ -134,7 +134,9 @@ impl FileInfo {
         Self::create_from_metadata_and_filename(&path, &metadata, filename, users_cache)
     }
 
-    fn from_path_with_name(
+    /// Creates a fileinfo from a path and a filename.
+    /// The filename is used when we create the fileinfo for "." and ".." in every folder.
+    pub fn from_path_with_name(
         path: &path::Path,
         filename: &str,
         users_cache: &Rc<UsersCache>,
@@ -223,6 +225,10 @@ impl FileInfo {
     pub fn unselect(&mut self) {
         self.is_selected = false;
     }
+
+    pub fn is_hidden(&self) -> bool {
+        self.filename.starts_with('.')
+    }
 }
 
 /// Holds the information about file in the current directory.
@@ -236,14 +242,10 @@ pub struct PathContent {
     pub content: Vec<FileInfo>,
     /// The index of the selected file.
     pub index: usize,
-    /// Do we display the hidden files ?
-    pub show_hidden: bool,
     /// The kind of sort used to display the files.
     sort_kind: SortKind,
-    /// The filter use before displaying files
-    pub filter: FilterKind,
     used_space: u64,
-    users_cache: Rc<UsersCache>,
+    pub users_cache: Rc<UsersCache>,
 }
 
 impl PathContent {
@@ -252,12 +254,12 @@ impl PathContent {
     /// Selects the first file if any.
     pub fn new(
         path: &path::Path,
-        show_hidden: bool,
         users_cache: Rc<UsersCache>,
+        filter: &FilterKind,
+        show_hidden: bool,
     ) -> FmResult<Self> {
         let path = path.to_owned();
-        let filter = FilterKind::All;
-        let mut content = Self::files(&path, show_hidden, &filter, &users_cache)?;
+        let mut content = Self::files(&path, show_hidden, filter, &users_cache)?;
         let sort_kind = SortKind::default();
         sort_kind.sort(&mut content);
         let selected_index: usize = 0;
@@ -270,16 +272,19 @@ impl PathContent {
             path,
             content,
             index: selected_index,
-            show_hidden,
             sort_kind,
-            filter,
             used_space,
             users_cache,
         })
     }
 
-    pub fn change_directory(&mut self, path: &path::Path) -> FmResult<()> {
-        self.content = Self::files(path, self.show_hidden, &self.filter, &self.users_cache)?;
+    pub fn change_directory(
+        &mut self,
+        path: &path::Path,
+        filter: &FilterKind,
+        show_hidden: bool,
+    ) -> FmResult<()> {
+        self.content = Self::files(path, show_hidden, filter, &self.users_cache)?;
         self.sort_kind.sort(&mut self.content);
         self.index = 0;
         if !self.content.is_empty() {
@@ -290,11 +295,6 @@ impl PathContent {
         Ok(())
     }
 
-    /// Apply the filter.
-    pub fn set_filter(&mut self, filter: FilterKind) {
-        self.filter = filter
-    }
-
     fn files(
         path: &path::Path,
         show_hidden: bool,
@@ -302,12 +302,12 @@ impl PathContent {
         users_cache: &Rc<UsersCache>,
     ) -> FmResult<Vec<FileInfo>> {
         let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users_cache)?;
-        let true_files = if show_hidden {
-            Self::real_files_with_hidden(path, filter_kind, users_cache)?
-        } else {
-            Self::real_files_no_hidden(path, filter_kind, users_cache)?
-        };
-        files.extend(true_files);
+
+        let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users_cache)?;
+        if let Some(true_files) = files_collection(&fileinfo, users_cache, show_hidden, filter_kind)
+        {
+            files.extend(true_files);
+        }
         Ok(files)
     }
 
@@ -322,45 +322,6 @@ impl PathContent {
                 Ok(vec![current, parent])
             }
             None => Ok(vec![current]),
-        }
-    }
-
-    fn real_files_with_hidden(
-        path: &path::Path,
-        filter_kind: &FilterKind,
-        users_cache: &Rc<UsersCache>,
-    ) -> FmResult<Vec<FileInfo>> {
-        match read_dir(path) {
-            Ok(readir) => Ok(readir
-                .filter_map(|res_direntry| res_direntry.ok())
-                .map(|direntry| FileInfo::new(&direntry, users_cache))
-                .filter_map(|res_file_entry| res_file_entry.ok())
-                .filter(|fileinfo| filter_kind.filter_by(fileinfo))
-                .collect()),
-            Err(error) => {
-                info!("Couldn't read path {} - {}", path.to_string_lossy(), error);
-                Ok(vec![])
-            }
-        }
-    }
-
-    fn real_files_no_hidden(
-        path: &path::Path,
-        filter_kind: &FilterKind,
-        users_cache: &Rc<UsersCache>,
-    ) -> FmResult<Vec<FileInfo>> {
-        match read_dir(path) {
-            Ok(readir) => Ok(readir
-                .filter_map(|res_direntry| res_direntry.ok())
-                .filter(|e| is_not_hidden(e).unwrap_or(true))
-                .map(|direntry| FileInfo::new(&direntry, users_cache))
-                .filter_map(|res_file_entry| res_file_entry.ok())
-                .filter(|fileinfo| filter_kind.filter_by(fileinfo))
-                .collect()),
-            Err(error) => {
-                info!("Couldn't read path {} - {}", path.to_string_lossy(), error);
-                Ok(vec![])
-            }
         }
     }
 
@@ -420,13 +381,8 @@ impl PathContent {
     /// Reset the current file content.
     /// Reads and sort the content with current key.
     /// Select the first file if any.
-    pub fn reset_files(&mut self) -> Result<(), FmError> {
-        self.content = Self::files(
-            &self.path,
-            self.show_hidden,
-            &self.filter,
-            &self.users_cache,
-        )?;
+    pub fn reset_files(&mut self, filter: &FilterKind, show_hidden: bool) -> Result<(), FmError> {
+        self.content = Self::files(&self.path, show_hidden, filter, &self.users_cache)?;
         self.sort_kind = SortKind::default();
         self.sort();
         self.index = 0;
@@ -516,9 +472,14 @@ impl PathContent {
     }
 
     /// Refresh the existing users.
-    pub fn refresh_users(&mut self, users_cache: Rc<UsersCache>) -> FmResult<()> {
+    pub fn refresh_users(
+        &mut self,
+        users_cache: Rc<UsersCache>,
+        filter: &FilterKind,
+        show_hidden: bool,
+    ) -> FmResult<()> {
         self.users_cache = users_cache;
-        self.reset_files()
+        self.reset_files(filter, show_hidden)
     }
 }
 
@@ -527,7 +488,9 @@ impl_selectable_content!(FileInfo, PathContent);
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
 /// effect.
 /// Selected file is reversed.
-pub fn fileinfo_attr(status: &Status, fileinfo: &FileInfo, colors: &Colors) -> Attr {
+///
+/// TODO! can be refactored to only use 2 parameters by using the config_color from status
+pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
     let fg = match fileinfo.file_kind {
         FileKind::Directory => str_to_tuikit(&colors.directory),
         FileKind::BlockDevice => str_to_tuikit(&colors.block),
@@ -535,7 +498,7 @@ pub fn fileinfo_attr(status: &Status, fileinfo: &FileInfo, colors: &Colors) -> A
         FileKind::Fifo => str_to_tuikit(&colors.fifo),
         FileKind::Socket => str_to_tuikit(&colors.socket),
         FileKind::SymbolicLink => str_to_tuikit(&colors.symlink),
-        _ => status.colors.extension_color(&fileinfo.extension),
+        _ => colors.color_cache.extension_color(&fileinfo.extension),
     };
 
     let effect = if fileinfo.is_selected {
@@ -552,7 +515,7 @@ pub fn fileinfo_attr(status: &Status, fileinfo: &FileInfo, colors: &Colors) -> A
 }
 
 /// True if the file isn't hidden.
-fn is_not_hidden(entry: &DirEntry) -> FmResult<bool> {
+pub fn is_not_hidden(entry: &DirEntry) -> FmResult<bool> {
     Ok(entry
         .file_name()
         .into_string()
@@ -643,4 +606,34 @@ fn filekind_and_filename(filename: &str, file_kind: &FileKind) -> String {
     s.push(file_kind.sortable_char());
     s.push_str(filename);
     s
+}
+
+/// Creates an optional vector of fileinfo contained in a file.
+/// Files are filtered by filterkind and the display hidden flag.
+/// Returns None if there's no file.
+pub fn files_collection(
+    fileinfo: &FileInfo,
+    users_cache: &Rc<UsersCache>,
+    show_hidden: bool,
+    filter_kind: &FilterKind,
+) -> Option<Vec<FileInfo>> {
+    match read_dir(&fileinfo.path) {
+        Ok(read_dir) => Some(
+            read_dir
+                .filter_map(|direntry| direntry.ok())
+                .filter(|direntry| show_hidden || is_not_hidden(direntry).unwrap_or(true))
+                .map(|direntry| FileInfo::new(&direntry, users_cache))
+                .filter_map(|fileinfo| fileinfo.ok())
+                .filter(|fileinfo| filter_kind.filter_by(fileinfo))
+                .collect(),
+        ),
+        Err(error) => {
+            info!(
+                "Couldn't read path {} - {}",
+                fileinfo.path.to_string_lossy(),
+                error
+            );
+            None
+        }
+    }
 }

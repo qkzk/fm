@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::panic;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::slice::Iter;
 
 use content_inspector::{inspect, ContentType};
@@ -13,12 +14,16 @@ use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
-use termtree::Tree;
 use tuikit::attr::{Attr, Color};
+use users::UsersCache;
 
 use crate::compress::list_files;
+use crate::config::Colors;
 use crate::fileinfo::{FileInfo, FileKind};
+use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::status::Status;
+use crate::tree::{ColoredString, Tree};
 
 /// Different kind of preview used to display some informaitons
 /// About the file.
@@ -51,9 +56,19 @@ impl Preview {
     /// the file.
     /// Sometimes it reads the content of the file, sometimes it delegates
     /// it to the display method.
-    pub fn new(file_info: &FileInfo) -> FmResult<Self> {
+    pub fn new(
+        file_info: &FileInfo,
+        users_cache: &Rc<UsersCache>,
+        status: &Status,
+    ) -> FmResult<Self> {
         match file_info.file_kind {
-            FileKind::Directory => Ok(Self::Directory(Directory::new(&file_info.path)?)),
+            FileKind::Directory => Ok(Self::Directory(Directory::new(
+                &file_info.path,
+                users_cache,
+                &status.config_colors,
+                &status.selected_non_mut().filter,
+                status.selected_non_mut().show_hidden,
+            )?)),
             FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
                 e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
                 e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
@@ -493,27 +508,134 @@ impl Pixels {
 /// if the directory has a lot of children.
 #[derive(Clone, Debug)]
 pub struct Directory {
-    pub content: Vec<String>,
+    pub content: Vec<(String, ColoredString)>,
+    pub tree: Tree,
     len: usize,
+    pub selected_index: usize,
 }
 
 impl Directory {
-    fn new(path: &Path) -> FmResult<Self> {
-        let tree = tree_view(
-            path.to_str().ok_or_else(|| {
-                FmError::custom("Directory Preview", "Can't parse the filename to str")
-            })?,
-            10,
+    /// Creates a new tree view of the directory.
+    /// We only hold the result here, since the tree itself has now usage atm.
+    pub fn new(
+        path: &Path,
+        users_cache: &Rc<UsersCache>,
+        colors: &Colors,
+        filter_kind: &FilterKind,
+        show_hidden: bool,
+    ) -> FmResult<Self> {
+        let mut tree = Tree::from_path(
+            path,
+            Tree::MAX_DEPTH,
+            users_cache,
+            filter_kind,
+            show_hidden,
+            vec![0],
         )?;
-        let tree_str = format!("{}", tree);
-        let content: Vec<String> = tree_str.lines().map(|s| s.to_owned()).collect();
-        let len = content.len();
-
-        Ok(Self { content, len })
+        tree.select_root();
+        let (selected_index, content) = tree.into_navigable_content(colors);
+        Ok(Self {
+            tree,
+            len: content.len(),
+            content,
+            selected_index,
+        })
     }
 
-    fn len(&self) -> usize {
+    /// Creates an empty directory preview.
+    pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
+        Ok(Self {
+            tree: Tree::empty(path, users_cache)?,
+            len: 0,
+            content: vec![],
+            selected_index: 0,
+        })
+    }
+
+    /// Number of displayed lines.
+    pub fn len(&self) -> usize {
         self.len
+    }
+
+    /// True if there's no lines in preview.
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    /// Select the root node and reset the view.
+    pub fn select_root(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.select_root();
+        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        Ok(())
+    }
+
+    /// Unselect every child node.
+    pub fn unselect_children(&mut self) {
+        self.tree.unselect_children()
+    }
+
+    /// Select the next sibling if any.
+    pub fn select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.select_next_sibling()?;
+        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        Ok(())
+    }
+
+    /// Select the previous sibling if any.
+    pub fn select_prev_sibling(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.select_prev_sibling()?;
+        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        Ok(())
+    }
+
+    /// Select the first child, if any.
+    pub fn select_first_child(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.select_first_child()?;
+        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        Ok(())
+    }
+
+    /// Select the parent of current node.
+    pub fn select_parent(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.select_parent()?;
+        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        Ok(())
+    }
+
+    /// Select the last leaf of the tree (ie the last line.)
+    pub fn go_to_bottom_leaf(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.go_to_bottom_leaf()?;
+        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        Ok(())
+    }
+
+    /// Make a preview of the tree.
+    pub fn make_preview(&mut self, colors: &Colors) {
+        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+    }
+
+    /// Calculates the top, bottom and lenght of the view, depending on which element
+    /// is selected and the size of the window used to display.
+    pub fn calculate_tree_window(&self, height: usize) -> (usize, usize, usize) {
+        let length = self.content.len();
+        let mut top = if self.selected_index < height {
+            0
+        } else {
+            self.selected_index
+        };
+        let mut bottom = if self.selected_index < height {
+            height
+        } else {
+            self.selected_index + height
+        };
+
+        let padding = std::cmp::max(10, height / 2);
+        if self.selected_index > height {
+            top -= padding;
+            bottom += padding;
+        }
+
+        (top, bottom, length)
     }
 }
 
@@ -563,13 +685,15 @@ macro_rules! impl_window {
     };
 }
 
+type ColoredPair = (String, ColoredString);
+
 impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
 impl_window!(PdfContent, String);
 impl_window!(ZipContent, String);
 impl_window!(ExifContent, String);
 impl_window!(MediaContent, String);
-impl_window!(Directory, String);
+impl_window!(Directory, ColoredPair);
 
 fn is_ext_zip(ext: &str) -> bool {
     matches!(
@@ -605,35 +729,6 @@ fn is_ext_media(ext: &str) -> bool {
 
 fn is_ext_pdf(ext: &str) -> bool {
     ext == "pdf"
-}
-
-fn filename_as_string<P: AsRef<Path>>(p: P) -> String {
-    p.as_ref()
-        .file_name()
-        .unwrap_or_default()
-        .to_str()
-        .unwrap_or_default()
-        .to_owned()
-}
-
-fn tree_view<P: AsRef<Path>>(p: P, max_depth: usize) -> std::io::Result<Tree<String>> {
-    Ok(std::fs::read_dir(&p)?.filter_map(|e| e.ok()).fold(
-        Tree::new(filename_as_string(p.as_ref().canonicalize()?)),
-        |mut root, entry| {
-            if max_depth > 0 {
-                if let Ok(dir) = entry.metadata() {
-                    if dir.is_dir() {
-                        if let Ok(tree) = tree_view(entry.path(), max_depth - 1) {
-                            root.push(tree);
-                        }
-                    } else {
-                        root.push(Tree::new(filename_as_string(entry.path())));
-                    }
-                }
-            }
-            root
-        },
-    ))
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {

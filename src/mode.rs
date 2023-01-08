@@ -5,7 +5,7 @@ use crate::completion::InputCompleted;
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.
 /// In both case, we'll have to listen to the next char typed.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum MarkAction {
     /// Jump to a selected mark (ie a path associated to a char)
     Jump,
@@ -52,15 +52,30 @@ impl std::fmt::Display for NeedConfirmation {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum LastMode {
+    Tree,
+    Other,
+}
+
+impl LastMode {
+    pub fn from_mode(mode: Mode) -> Self {
+        match mode {
+            Mode::Tree => Self::Tree,
+            _ => Self::Other,
+        }
+    }
+}
+
 /// Different modes in which the user is expeted to type something.
 /// It may be a new filename, a mode (aka an octal permission),
 /// the name of a new file, of a new directory,
 /// A regex to match all files in current directory,
 /// a kind of sort, a mark name, a new mark or a filter.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum InputSimple {
     /// Rename the selected file
-    Rename,
+    Rename(LastMode),
     /// Change permissions of the selected file
     Chmod,
     /// Touch a new file
@@ -79,7 +94,7 @@ pub enum InputSimple {
 
 /// Different modes in which we display a bunch of possible destinations.
 /// In all those mode we can select a destination and move there.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Navigate {
     /// Navigate to a flagged file
     Jump,
@@ -93,10 +108,12 @@ pub enum Navigate {
 
 /// Different mode in which the application can be.
 /// It dictates the reaction to event and what to display.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Mode {
     /// Default mode: display the files
     Normal,
+    /// Display files in a tree
+    Tree,
     /// We'll be able to complete the input string with
     /// different kind of completed items (exec, goto, search)
     InputCompleted(InputCompleted),
@@ -115,7 +132,8 @@ impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Mode::Normal => write!(f, "Normal:  "),
-            Mode::InputSimple(InputSimple::Rename) => write!(f, "Rename:  "),
+            Mode::Tree => write!(f, "Tree:    "),
+            Mode::InputSimple(InputSimple::Rename(_)) => write!(f, "Rename:  "),
             Mode::InputSimple(InputSimple::Chmod) => write!(f, "Chmod:   "),
             Mode::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
             Mode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
@@ -127,7 +145,7 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
             Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
-            Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
+            Mode::InputCompleted(InputCompleted::Search(_)) => write!(f, "Search:  "),
             Mode::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
             Mode::Navigate(Navigate::Jump) => write!(f, "Jump  :  "),
             Mode::Navigate(Navigate::History) => write!(f, "History :"),

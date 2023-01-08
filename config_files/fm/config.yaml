@@ -45,6 +45,7 @@ keys:
   'q': Quit
   'r': Rename
   's': Shell
+  't': Tree
   'u': ClearFlags
   'v': ReverseFlags
   'w': RegexMatch

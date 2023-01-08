@@ -9,14 +9,13 @@ use tuikit::event::Event;
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
-use crate::config::Colors;
 use crate::constant_strings_paths::{
     FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{FmError, FmResult};
-use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
+use crate::mode::{InputSimple, LastMode, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::preview::{Preview, TextKind, Window};
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
@@ -57,7 +56,6 @@ struct WinTab<'a> {
     status: &'a Status,
     tab: &'a Tab,
     disk_space: &'a str,
-    colors: &'a Colors,
 }
 
 impl<'a> Draw for WinTab<'a> {
@@ -67,12 +65,17 @@ impl<'a> Draw for WinTab<'a> {
             Mode::Navigate(Navigate::History) => self.destination(canvas, &self.tab.history),
             Mode::Navigate(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
             Mode::Navigate(Navigate::Trash) => self.trash(canvas, &self.status.trash),
-            Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
+            Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::Preview => self.preview(self.tab, canvas),
             Mode::InputSimple(InputSimple::Marks(_)) => self.marks(self.status, self.tab, canvas),
+            Mode::InputSimple(InputSimple::Rename(last_mode)) => match last_mode {
+                LastMode::Tree => self.tree(self.status, self.tab, canvas),
+                LastMode::Other => self.files(self.status, self.tab, canvas),
+            },
+            Mode::Tree => self.tree(self.status, self.tab, canvas),
             _ => self.files(self.status, self.tab, canvas),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -112,12 +115,12 @@ impl<'a> WinTab<'a> {
 
     fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
-            Mode::Normal => {
+            Mode::Normal | Mode::Tree => {
                 if !status.display_full {
                     if let Some(file) = tab.path_content.selected() {
                         let owner_size = file.owner.len();
                         let group_size = file.group.len();
-                        let mut attr = fileinfo_attr(status, file, self.colors);
+                        let mut attr = fileinfo_attr(file, &status.config_colors);
                         attr.effect ^= Effect::REVERSE;
                         canvas.print_with_attr(
                             1,
@@ -130,7 +133,7 @@ impl<'a> WinTab<'a> {
                     canvas.print_with_attr(
                         1,
                         0,
-                        &format!("{}", &status.selected_non_mut().path_content.filter),
+                        &format!("{}", &status.selected_non_mut().filter),
                         Self::ATTR_YELLOW_BOLD,
                     )?;
                 }
@@ -146,7 +149,7 @@ impl<'a> WinTab<'a> {
 
     fn create_first_row(&self, tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
         let first_row = match tab.mode {
-            Mode::Normal => {
+            Mode::Normal | Mode::Tree => {
                 vec![
                     format!("{} ", tab.path_content.path.display()),
                     format!("{} files ", tab.path_content.true_len()),
@@ -236,7 +239,7 @@ impl<'a> WinTab<'a> {
         .skip(tab.window.top)
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
-            let mut attr = fileinfo_attr(status, file, self.colors);
+            let mut attr = fileinfo_attr(file, &status.config_colors);
             if status.flagged.contains(&file.path) {
                 attr.effect |= Effect::BOLD | Effect::UNDERLINE;
             }
@@ -246,10 +249,29 @@ impl<'a> WinTab<'a> {
         Ok(())
     }
 
+    fn tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+        let line_number_width = 3;
+
+        let (_, height) = canvas.size()?;
+        let (top, bottom, len) = tab.directory.calculate_tree_window(height);
+        for (i, (prefix, colored_string)) in tab.directory.window(top, bottom, len) {
+            let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
+            let col = canvas.print(row, line_number_width, prefix)?;
+            let mut attr = colored_string.attr;
+            if status.flagged.contains(&colored_string.path) {
+                attr.effect |= Effect::BOLD | Effect::UNDERLINE;
+            }
+            canvas.print_with_attr(row, line_number_width + col + 1, &colored_string.text, attr)?;
+        }
+        self.second_line(status, tab, canvas)?;
+        Ok(())
+    }
+
     /// Display a cursor in the top row, at a correct column.
     fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
             Mode::Normal
+            | Mode::Tree
             | Mode::InputSimple(InputSimple::Marks(_))
             | Mode::Navigate(_)
             | Mode::Preview => {
@@ -445,8 +467,21 @@ impl<'a> WinTab<'a> {
                     )?;
                 }
             }
+            Preview::Directory(directory) => {
+                for (i, (prefix, colored_string)) in
+                    (directory).window(tab.window.top, tab.window.bottom, length)
+                {
+                    let row = Self::calc_line_row(i, tab);
+                    let col = canvas.print(row, line_number_width, prefix)?;
+                    canvas.print_with_attr(
+                        row,
+                        line_number_width + col + 1,
+                        &colored_string.text,
+                        colored_string.attr,
+                    )?;
+                }
+            }
             Preview::Archive(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Directory(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Exif(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Media(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
@@ -478,7 +513,6 @@ pub struct Display {
     /// The Tuikit terminal attached to the display.
     /// It will print every symbol shown on screen.
     term: Arc<Term>,
-    colors: Colors,
 }
 
 impl Display {
@@ -486,8 +520,8 @@ impl Display {
     const INERT_BORDER: Attr = color_to_attr(Color::Default);
 
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
-    pub fn new(term: Arc<Term>, colors: Colors) -> Self {
-        Self { term, colors }
+    pub fn new(term: Arc<Term>) -> Self {
+        Self { term }
     }
 
     /// Used to force a display of the cursor before leaving the application.
@@ -538,13 +572,11 @@ impl Display {
             status,
             tab: &status.tabs[0],
             disk_space: disk_space_tab_0,
-            colors: &self.colors,
         };
         let win_right = WinTab {
             status,
             tab: &status.tabs[1],
             disk_space: disk_space_tab_1,
-            colors: &self.colors,
         };
         let (left_border, right_border) = if status.index == 0 {
             (Self::SELECTED_BORDER, Self::INERT_BORDER)
@@ -562,7 +594,6 @@ impl Display {
             status,
             tab: &status.tabs[0],
             disk_space: disk_space_tab_0,
-            colors: &self.colors,
         };
         let win = Win::new(&win_left)
             .border(true)

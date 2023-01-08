@@ -3,6 +3,7 @@ use std::{fs::File, path};
 use serde_yaml;
 use tuikit::attr::Color;
 
+use crate::color_cache::ColorCache;
 use crate::constant_strings_paths::DEFAULT_TERMINAL_APPLICATION;
 use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
@@ -70,6 +71,7 @@ pub struct Colors {
     pub socket: String,
     /// Color for `symlink` files.
     pub symlink: String,
+    pub color_cache: ColorCache,
 }
 
 impl Colors {
@@ -102,6 +104,7 @@ impl Colors {
             fifo: "blue".to_owned(),
             socket: "cyan".to_owned(),
             symlink: "magenta".to_owned(),
+            color_cache: ColorCache::default(),
         }
     }
 }

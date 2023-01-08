@@ -71,6 +71,10 @@ pub enum ActionMap {
     TrashRestoreFile,
     TrashEmpty,
     TrashOpen,
+    Tree,
+    TreeFold,
+    TreeUnFoldAll,
+    TreeFoldAll,
 }
 
 impl ActionMap {
@@ -118,7 +122,7 @@ impl ActionMap {
             ActionMap::OpenFile => EventExec::event_open_file(status),
             ActionMap::PageDown => EventExec::page_down(status),
             ActionMap::PageUp => EventExec::page_up(status),
-            ActionMap::Preview => EventExec::event_preview(current_tab),
+            ActionMap::Preview => EventExec::event_preview(status),
             ActionMap::Quit => EventExec::event_quit(current_tab),
             ActionMap::RefreshView => EventExec::event_refreshview(status),
             ActionMap::RegexMatch => EventExec::event_regex_match(current_tab),
@@ -134,11 +138,15 @@ impl ActionMap {
             ActionMap::Thumbnail => EventExec::event_thumbnail(current_tab),
             ActionMap::ToggleDualPane => EventExec::event_toggle_dualpane(status),
             ActionMap::ToggleFlag => EventExec::event_toggle_flag(status),
-            ActionMap::ToggleHidden => EventExec::event_toggle_hidden(current_tab),
+            ActionMap::ToggleHidden => EventExec::event_toggle_hidden(status),
             ActionMap::TrashMoveFile => EventExec::event_trash_move_file(status),
             ActionMap::TrashRestoreFile => EventExec::event_trash_restore_file(status),
             ActionMap::TrashEmpty => EventExec::exec_trash_empty(status),
             ActionMap::TrashOpen => EventExec::event_trash_open(status),
+            ActionMap::Tree => EventExec::event_tree(status),
+            ActionMap::TreeFold => EventExec::event_tree_fold(status),
+            ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(status),
+            ActionMap::TreeUnFoldAll => EventExec::event_tree_unfold_all(status),
 
             ActionMap::Nothing => Ok(()),
         }

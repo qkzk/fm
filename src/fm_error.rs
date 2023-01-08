@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fmt;
 
 use fs_extra::error::Error as FsExtraError;
-use log::{info, SetLoggerError};
+use log::SetLoggerError;
 use notify_rust::error::Error as NotifyError;
 use strfmt::FmtError;
 use tuikit::error::TuikitError;
@@ -42,7 +42,6 @@ pub struct FmError {
 impl FmError {
     /// Creates a new `FmError` with a variant and a message.
     pub fn new(variant: ErrorVariant, msg: &str) -> Self {
-        info!("FmError. Variant: {:?} - msg: {}", variant, msg);
         Self {
             variant,
             details: msg.to_string(),

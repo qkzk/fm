@@ -2,10 +2,10 @@ use std::fs::{self, ReadDir};
 
 use crate::fileinfo::PathContent;
 use crate::fm_error::FmResult;
-use crate::mode::Mode;
+use crate::mode::{LastMode, Mode};
 
 /// Different kind of completions
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Copy)]
 pub enum InputCompleted {
     /// No completion needed
     #[default]
@@ -13,7 +13,7 @@ pub enum InputCompleted {
     /// Complete a directory path in filesystem
     Goto,
     /// Complete a filename from current directory
-    Search,
+    Search(LastMode),
     /// Complete an executable name from $PATH
     Exec,
 }
@@ -32,7 +32,7 @@ pub struct Completion {
 impl Completion {
     pub fn set_kind(&mut self, mode: &Mode) {
         if let Mode::InputCompleted(completion_kind) = mode {
-            self.kind = completion_kind.clone()
+            self.kind = *completion_kind
         } else {
             self.kind = InputCompleted::Nothing
         }
@@ -106,7 +106,7 @@ impl Completion {
         match self.kind {
             InputCompleted::Exec => self.exec(input_string),
             InputCompleted::Goto => self.goto(input_string, current_path),
-            InputCompleted::Search => self.search(input_string, path_content),
+            InputCompleted::Search(_) => self.search(input_string, path_content),
             InputCompleted::Nothing => Ok(()),
         }
     }
