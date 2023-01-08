@@ -52,21 +52,6 @@ impl std::fmt::Display for NeedConfirmation {
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum LastMode {
-    Tree,
-    Other,
-}
-
-impl LastMode {
-    pub fn from_mode(mode: Mode) -> Self {
-        match mode {
-            Mode::Tree => Self::Tree,
-            _ => Self::Other,
-        }
-    }
-}
-
 /// Different modes in which the user is expeted to type something.
 /// It may be a new filename, a mode (aka an octal permission),
 /// the name of a new file, of a new directory,
@@ -75,7 +60,7 @@ impl LastMode {
 #[derive(Clone, Copy)]
 pub enum InputSimple {
     /// Rename the selected file
-    Rename(LastMode),
+    Rename,
     /// Change permissions of the selected file
     Chmod,
     /// Touch a new file
@@ -133,7 +118,7 @@ impl fmt::Display for Mode {
         match *self {
             Mode::Normal => write!(f, "Normal:  "),
             Mode::Tree => write!(f, "Tree:    "),
-            Mode::InputSimple(InputSimple::Rename(_)) => write!(f, "Rename:  "),
+            Mode::InputSimple(InputSimple::Rename) => write!(f, "Rename:  "),
             Mode::InputSimple(InputSimple::Chmod) => write!(f, "Chmod:   "),
             Mode::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
             Mode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
@@ -145,7 +130,7 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
             Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
-            Mode::InputCompleted(InputCompleted::Search(_)) => write!(f, "Search:  "),
+            Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
             Mode::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
             Mode::Navigate(Navigate::Jump) => write!(f, "Jump  :  "),
             Mode::Navigate(Navigate::History) => write!(f, "History :"),

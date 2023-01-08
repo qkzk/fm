@@ -44,12 +44,12 @@ pub static HARDCODED_SHORTCUTS: [&str; 9] = [
     "/",
     "/dev",
     "/etc",
-    "/media",
     "/mnt",
     "/opt",
     "/run/media",
     "/tmp",
     "/usr",
+    "/var",
 ];
 /// Path to the trash folder files
 pub static TRASH_FOLDER_FILES: &str = "~/.local/share/Trash/files";

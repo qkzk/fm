@@ -116,6 +116,8 @@ impl Tab {
         self.path_content
             .reset_files(&self.filter, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
+        self.preview = Preview::new_empty();
+        self.completion.reset();
         Ok(())
     }
 
@@ -338,5 +340,10 @@ impl Tab {
     pub fn set_mode(&mut self, new_mode: Mode) {
         self.previous_mode = self.mode;
         self.mode = new_mode;
+    }
+
+    pub fn reset_mode(&mut self) {
+        self.mode = self.previous_mode;
+        self.previous_mode = Mode::Normal;
     }
 }

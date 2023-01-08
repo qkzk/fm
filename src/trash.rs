@@ -292,6 +292,12 @@ impl Trash {
     }
 
     fn remove_selected_file(&mut self) -> FmResult<(PathBuf, PathBuf, PathBuf)> {
+        if self.is_empty() {
+            return Err(FmError::custom(
+                "remove selected file",
+                "Can't restore from an empty trash",
+            ));
+        }
         let trashinfo = self.content[self.index].to_owned();
 
         let origin = trashinfo.origin;
@@ -330,6 +336,9 @@ impl Trash {
     /// Restores a file from the trash to its previous directory.
     /// If the parent (or ancestor) folder were deleted, it is recreated.
     pub fn restore(&mut self) -> FmResult<()> {
+        if self.is_empty() {
+            return Ok(());
+        }
         let (origin, trashed_file_content, parent) = self.remove_selected_file()?;
         if !parent.exists() {
             std::fs::create_dir_all(&parent)?

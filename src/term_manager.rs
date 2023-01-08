@@ -15,7 +15,7 @@ use crate::constant_strings_paths::{
 use crate::content_window::ContentWindow;
 use crate::fileinfo::fileinfo_attr;
 use crate::fm_error::{FmError, FmResult};
-use crate::mode::{InputSimple, LastMode, MarkAction, Mode, Navigate, NeedConfirmation};
+use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::preview::{Preview, TextKind, Window};
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
@@ -71,12 +71,16 @@ impl<'a> Draw for WinTab<'a> {
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::Preview => self.preview(self.tab, canvas),
             Mode::InputSimple(InputSimple::Marks(_)) => self.marks(self.status, self.tab, canvas),
-            Mode::InputSimple(InputSimple::Rename(last_mode)) => match last_mode {
-                LastMode::Tree => self.tree(self.status, self.tab, canvas),
-                LastMode::Other => self.files(self.status, self.tab, canvas),
+            Mode::InputSimple(InputSimple::Rename) => match self.tab.previous_mode {
+                Mode::Tree => self.tree(self.status, self.tab, canvas),
+                _ => self.files(self.status, self.tab, canvas),
             },
             Mode::Tree => self.tree(self.status, self.tab, canvas),
-            _ => self.files(self.status, self.tab, canvas),
+            Mode::Normal => self.files(self.status, self.tab, canvas),
+            _ => match self.tab.previous_mode {
+                Mode::Tree => self.tree(self.status, self.tab, canvas),
+                _ => self.files(self.status, self.tab, canvas),
+            },
         }?;
         self.cursor(self.tab, canvas)?;
         self.first_line(self.tab, self.disk_space, canvas)?;
