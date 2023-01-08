@@ -17,6 +17,7 @@ use crate::fm_error::{FmError, FmResult};
 use crate::git::git;
 use crate::impl_selectable_content;
 use crate::sort::SortKind;
+use crate::utils::filename_from_path;
 
 /// Different kind of files
 #[derive(Debug, Clone, Copy)]
@@ -301,11 +302,9 @@ impl PathContent {
         users_cache: &Rc<UsersCache>,
     ) -> FmResult<Vec<FileInfo>> {
         let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users_cache)?;
-        let true_files = if show_hidden {
-            Self::real_files_with_hidden(path, filter_kind, users_cache)?
-        } else {
-            Self::real_files_no_hidden(path, filter_kind, users_cache)?
-        };
+
+        let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users_cache)?;
+        let true_files = files_collection(&fileinfo, users_cache, show_hidden, filter_kind);
         files.extend(true_files);
         Ok(files)
     }
@@ -321,45 +320,6 @@ impl PathContent {
                 Ok(vec![current, parent])
             }
             None => Ok(vec![current]),
-        }
-    }
-
-    fn real_files_with_hidden(
-        path: &path::Path,
-        filter_kind: &FilterKind,
-        users_cache: &Rc<UsersCache>,
-    ) -> FmResult<Vec<FileInfo>> {
-        match read_dir(path) {
-            Ok(readir) => Ok(readir
-                .filter_map(|res_direntry| res_direntry.ok())
-                .map(|direntry| FileInfo::new(&direntry, users_cache))
-                .filter_map(|res_file_entry| res_file_entry.ok())
-                .filter(|fileinfo| filter_kind.filter_by(fileinfo))
-                .collect()),
-            Err(error) => {
-                info!("Couldn't read path {} - {}", path.to_string_lossy(), error);
-                Ok(vec![])
-            }
-        }
-    }
-
-    fn real_files_no_hidden(
-        path: &path::Path,
-        filter_kind: &FilterKind,
-        users_cache: &Rc<UsersCache>,
-    ) -> FmResult<Vec<FileInfo>> {
-        match read_dir(path) {
-            Ok(readir) => Ok(readir
-                .filter_map(|res_direntry| res_direntry.ok())
-                .filter(|e| is_not_hidden(e).unwrap_or(true))
-                .map(|direntry| FileInfo::new(&direntry, users_cache))
-                .filter_map(|res_file_entry| res_file_entry.ok())
-                .filter(|fileinfo| filter_kind.filter_by(fileinfo))
-                .collect()),
-            Err(error) => {
-                info!("Couldn't read path {} - {}", path.to_string_lossy(), error);
-                Ok(vec![])
-            }
         }
     }
 
@@ -644,4 +604,29 @@ fn filekind_and_filename(filename: &str, file_kind: &FileKind) -> String {
     s.push(file_kind.sortable_char());
     s.push_str(filename);
     s
+}
+
+pub fn files_collection(
+    fileinfo: &FileInfo,
+    users_cache: &Rc<UsersCache>,
+    display_hidden: bool,
+    filter_kind: &FilterKind,
+) -> Vec<FileInfo> {
+    match read_dir(&fileinfo.path) {
+        Ok(read_dir) => read_dir
+            .filter_map(|direntry| direntry.ok())
+            .filter(|direntry| display_hidden || is_not_hidden(direntry).unwrap_or(true))
+            .map(|direntry| FileInfo::new(&direntry, users_cache))
+            .filter_map(|fileinfo| fileinfo.ok())
+            .filter(|fileinfo| filter_kind.filter_by(fileinfo))
+            .collect(),
+        Err(error) => {
+            info!(
+                "Couldn't read path {} - {}",
+                fileinfo.path.to_string_lossy(),
+                error
+            );
+            vec![]
+        }
+    }
 }
