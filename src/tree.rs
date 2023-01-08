@@ -98,7 +98,7 @@ impl Tree {
         max_depth: usize,
         users_cache: &Rc<UsersCache>,
         filter_kind: &FilterKind,
-        display_hidden: bool,
+        show_hidden: bool,
         parent_position: Vec<usize>,
     ) -> FmResult<Self> {
         Self::create_tree_from_fileinfo(
@@ -106,7 +106,7 @@ impl Tree {
             max_depth,
             users_cache,
             filter_kind,
-            display_hidden,
+            show_hidden,
             parent_position,
         )
     }

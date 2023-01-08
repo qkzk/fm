@@ -606,16 +606,18 @@ fn filekind_and_filename(filename: &str, file_kind: &FileKind) -> String {
     s
 }
 
+/// Creates a vector of fileinfo contained in a file.
+/// Files are filtered by filterkind and the display hidden flag.
 pub fn files_collection(
     fileinfo: &FileInfo,
     users_cache: &Rc<UsersCache>,
-    display_hidden: bool,
+    show_hidden: bool,
     filter_kind: &FilterKind,
 ) -> Vec<FileInfo> {
     match read_dir(&fileinfo.path) {
         Ok(read_dir) => read_dir
             .filter_map(|direntry| direntry.ok())
-            .filter(|direntry| display_hidden || is_not_hidden(direntry).unwrap_or(true))
+            .filter(|direntry| show_hidden || is_not_hidden(direntry).unwrap_or(true))
             .map(|direntry| FileInfo::new(&direntry, users_cache))
             .filter_map(|fileinfo| fileinfo.ok())
             .filter(|fileinfo| filter_kind.filter_by(fileinfo))
