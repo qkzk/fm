@@ -1398,6 +1398,8 @@ impl EventExec {
         status.trash.remove()
     }
 
+    /// Creates a tree in every mode but "Tree".
+    /// It tree mode it will exit this view.
     pub fn event_tree(status: &mut Status) -> FmResult<()> {
         if let Mode::Tree = status.selected_non_mut().mode {
             Self::event_normal(status.selected())
@@ -1412,36 +1414,77 @@ impl EventExec {
         }
     }
 
+    /// Fold the current node of the tree.
+    /// Has no effect on "file" nodes.
+    pub fn event_tree_fold(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
+
+        let (tree, _, _) = tab.directory.tree.explore_position();
+        tree.node.toggle_fold();
+        tab.directory.make_preview(colors);
+        Ok(())
+    }
+
+    /// Unfold every child node in the tree.
+    /// Recursively explore the tree and unfold every node.
+    /// Reset the display.
+    pub fn event_tree_unfold_all(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        status.selected().directory.tree.unfold_children();
+        status.selected().directory.make_preview(colors);
+        Ok(())
+    }
+
+    /// Fold every child node in the tree.
+    /// Recursively explore the tree and fold every node.
+    /// Reset the display.
+    pub fn event_tree_fold_all(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        status.selected().directory.tree.fold_children();
+        status.selected().directory.make_preview(colors);
+        Ok(())
+    }
+
+    /// Fold every child node in the tree.
+    /// Recursively explore the tree and fold every node. Reset the display. pub fn event_tree_fold_all(status: &mut Status) -> FmResult<()> { let colors = &status.config_colors.clone(); status.selected().directory.tree.fold_children(); status.selected().directory.make_preview(colors); Ok(()) }
     pub fn event_tree_go_to_root(status: &mut Status) -> FmResult<()> {
         let colors = status.config_colors.clone();
         status.selected().tree_select_root(&colors)
     }
 
-    pub fn event_select_next_sibling(status: &mut Status) -> FmResult<()> {
-        let colors = status.config_colors.clone();
-        status.selected().tree_select_next_sibling(&colors)
-    }
-
+    /// Select the first child of the current node and reset the display.
     pub fn event_select_first_child(status: &mut Status) -> FmResult<()> {
         let colors = status.config_colors.clone();
         status.selected().tree_select_first_child(&colors)
     }
 
+    /// Select the parent of the current node and reset the display.
+    /// Move to the parent and reset the tree if we were in the root node.
     pub fn event_select_parent(status: &mut Status) -> FmResult<()> {
         let colors = status.config_colors.clone();
         status.selected().tree_select_parent(&colors)
     }
 
+    /// Select the next sibling of the current node and reset the display.
+    pub fn event_select_next_sibling(status: &mut Status) -> FmResult<()> {
+        let colors = status.config_colors.clone();
+        status.selected().tree_select_next_sibling(&colors)
+    }
+
+    /// Select the previous sibling of the current node and reset the display.
     pub fn event_select_prev_sibling(status: &mut Status) -> FmResult<()> {
         let colors = status.config_colors.clone();
         status.selected().tree_select_prev_sibling(&colors)
     }
 
+    /// Select the last leaf of the tree and reset the view.
     pub fn event_tree_go_to_bottom_leaf(status: &mut Status) -> FmResult<()> {
         let colors = status.config_colors.clone();
         status.selected().tree_go_to_bottom_leaf(&colors)
     }
 
+    /// Execute the selected node if it's a file else enter the directory.
     pub fn exec_tree(tab: &mut Tab) -> FmResult<()> {
         let node = tab.directory.tree.current_node.clone();
         if !node.fileinfo.path.is_dir() {

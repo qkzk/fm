@@ -72,6 +72,9 @@ pub enum ActionMap {
     TrashEmpty,
     TrashOpen,
     Tree,
+    TreeFold,
+    TreeUnFoldAll,
+    TreeFoldAll,
 }
 
 impl ActionMap {
@@ -141,6 +144,9 @@ impl ActionMap {
             ActionMap::TrashEmpty => EventExec::exec_trash_empty(status),
             ActionMap::TrashOpen => EventExec::event_trash_open(status),
             ActionMap::Tree => EventExec::event_tree(status),
+            ActionMap::TreeFold => EventExec::event_tree_fold(status),
+            ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(status),
+            ActionMap::TreeUnFoldAll => EventExec::event_tree_unfold_all(status),
 
             ActionMap::Nothing => Ok(()),
         }

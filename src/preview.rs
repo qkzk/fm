@@ -517,8 +517,6 @@ pub struct Directory {
 impl Directory {
     /// Creates a new tree view of the directory.
     /// We only hold the result here, since the tree itself has now usage atm.
-    ///
-    /// TODO! make it really navigable as other views.
     pub fn new(
         path: &Path,
         users_cache: &Rc<UsersCache>,
@@ -544,6 +542,7 @@ impl Directory {
         })
     }
 
+    /// Creates an empty directory preview.
     pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
         Ok(Self {
             tree: Tree::empty(path, users_cache)?,
@@ -553,58 +552,70 @@ impl Directory {
         })
     }
 
+    /// Number of displayed lines.
     pub fn len(&self) -> usize {
         self.len
     }
 
+    /// True if there's no lines in preview.
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
 
+    /// Select the root node and reset the view.
     pub fn select_root(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.select_root();
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
 
+    /// Unselect every child node.
     pub fn unselect_children(&mut self) {
         self.tree.unselect_children()
     }
 
+    /// Select the next sibling if any.
     pub fn select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.select_next_sibling()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
 
+    /// Select the previous sibling if any.
     pub fn select_prev_sibling(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.select_prev_sibling()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
 
+    /// Select the first child, if any.
     pub fn select_first_child(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.select_first_child()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
 
+    /// Select the parent of current node.
     pub fn select_parent(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.select_parent()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
 
+    /// Select the last leaf of the tree (ie the last line.)
     pub fn go_to_bottom_leaf(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.go_to_bottom_leaf()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
 
+    /// Make a preview of the tree.
     pub fn make_preview(&mut self, colors: &Colors) {
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
     }
 
+    /// Calculates the top, bottom and lenght of the view, depending on which element
+    /// is selected and the size of the window used to display.
     pub fn calculate_tree_window(&self, height: usize) -> (usize, usize, usize) {
         let length = self.content.len();
         let mut top = if self.selected_index < height {

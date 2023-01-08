@@ -313,7 +313,10 @@
   - [x] filter
     - [x] force display full in tree mode
   - [x] search simple: first result
-  - [ ] fold
+  - [x] fold
+    - [x] fold a single directory
+    - [x] display a triangle to display folded status
+    - [x] unfold all, fold all
 
 - [ ] Version 0.2.0 : tests
 

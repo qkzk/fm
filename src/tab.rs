@@ -234,11 +234,13 @@ impl Tab {
         }
     }
 
+    /// Select the root node of the tree.
     pub fn tree_select_root(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
         self.directory.select_root(colors)
     }
 
+    /// Move to the parent of current path
     pub fn move_to_parent(&mut self) -> FmResult<()> {
         let path = self.path_content.path.clone();
         if let Some(parent) = path.parent() {
@@ -247,6 +249,8 @@ impl Tab {
         Ok(())
     }
 
+    /// Select the parent of current node.
+    /// If we were at the root node, move to the parent and make a new tree.
     pub fn tree_select_parent(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
         if self.directory.tree.position.len() <= 1 {
@@ -256,26 +260,33 @@ impl Tab {
         self.directory.select_parent(colors)
     }
 
+    /// Select the next sibling.
     pub fn tree_select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
         self.directory.select_next_sibling(colors)
     }
 
+    /// Select the previous siblging
     pub fn tree_select_prev_sibling(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
         self.directory.select_prev_sibling(colors)
     }
 
+    /// Select the first child if any.
     pub fn tree_select_first_child(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
         self.directory.select_first_child(colors)
     }
 
+    /// Go to the last leaf.
     pub fn tree_go_to_bottom_leaf(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
         self.directory.go_to_bottom_leaf(colors)
     }
 
+    /// Returns the current path.
+    /// It Tree mode, it's the path of the selected node.
+    /// Else, it's the current path of pathcontent.
     pub fn current_path(&mut self) -> &path::Path {
         match self.mode {
             Mode::Tree => &self.directory.tree.current_node.fileinfo.path,
@@ -283,6 +294,7 @@ impl Tab {
         }
     }
 
+    /// Returns the directory owning the selected file.
     pub fn directory_of_selected(&self) -> FmResult<&path::Path> {
         match self.mode {
             Mode::Tree => {
@@ -298,6 +310,7 @@ impl Tab {
         }
     }
 
+    /// Optional Fileinfo of the selected element.
     pub fn selected(&self) -> Option<&FileInfo> {
         match self.mode {
             Mode::Tree => Some(&self.directory.tree.current_node.fileinfo),
@@ -305,6 +318,7 @@ impl Tab {
         }
     }
 
+    /// Makes a new tree of the current path.
     pub fn make_tree(&mut self, colors: &Colors) -> FmResult<()> {
         let path = self.path_content.path.clone();
         let users_cache = &self.path_content.users_cache;
