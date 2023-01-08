@@ -9,7 +9,6 @@ use sysinfo::SystemExt;
 
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
-use crate::config::Colors;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::RESERVED_ROWS;
@@ -885,7 +884,7 @@ impl EventExec {
 
     /// Execute a rename of the selected file.
     /// It uses the `fs::rename` function and has the same limitations.
-    /// We only tries to rename in the same directory, so it shouldn't be a problem.
+    /// We only try to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
     pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
         let fileinfo = match tab.previous_mode {
@@ -896,12 +895,11 @@ impl EventExec {
                 .ok_or_else(|| FmError::custom("rename", "couldnt parse selected"))?,
         };
 
-        info!("fileinfo {:?}", fileinfo);
         let original_path = &fileinfo.path;
         if let Some(parent) = original_path.parent() {
             let new_path = parent.join(sanitize_filename::sanitize(tab.input.string()));
             info!(
-                "original: {} - new: {}",
+                "renaming: original: {} - new: {}",
                 original_path.display(),
                 new_path.display()
             );
@@ -998,7 +996,9 @@ impl EventExec {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn exec_search(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+    pub fn exec_search(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
         let searched = tab.input.string();
         tab.input.reset();
         if searched.is_empty() {
@@ -1224,6 +1224,7 @@ impl EventExec {
     /// In normal mode, it will open the file.
     /// Reset to normal mode afterwards.
     pub fn event_enter(status: &mut Status) -> FmResult<()> {
+        let mut must_refresh = true;
         match status.selected_non_mut().mode {
             Mode::InputSimple(InputSimple::Rename) => EventExec::exec_rename(status.selected())?,
             Mode::InputSimple(InputSimple::Newfile) => EventExec::exec_newfile(status.selected())?,
@@ -1237,11 +1238,8 @@ impl EventExec {
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
-                let colors = &status.config_colors.clone();
-                EventExec::exec_search(status.selected(), colors)?;
-                status.selected().input.reset();
-                status.selected().reset_mode();
-                return Ok(());
+                EventExec::exec_search(status)?;
+                must_refresh = false;
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
@@ -1255,7 +1253,9 @@ impl EventExec {
 
         status.selected().input.reset();
         status.selected().reset_mode();
-        Self::refresh_status(status)?;
+        if must_refresh {
+            Self::refresh_status(status)?;
+        }
         Ok(())
     }
 
