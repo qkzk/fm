@@ -304,8 +304,10 @@ impl PathContent {
         let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users_cache)?;
 
         let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users_cache)?;
-        let true_files = files_collection(&fileinfo, users_cache, show_hidden, filter_kind);
-        files.extend(true_files);
+        if let Some(true_files) = files_collection(&fileinfo, users_cache, show_hidden, filter_kind)
+        {
+            files.extend(true_files);
+        }
         Ok(files)
     }
 
@@ -606,29 +608,32 @@ fn filekind_and_filename(filename: &str, file_kind: &FileKind) -> String {
     s
 }
 
-/// Creates a vector of fileinfo contained in a file.
+/// Creates an optional vector of fileinfo contained in a file.
 /// Files are filtered by filterkind and the display hidden flag.
+/// Returns None if there's no file.
 pub fn files_collection(
     fileinfo: &FileInfo,
     users_cache: &Rc<UsersCache>,
     show_hidden: bool,
     filter_kind: &FilterKind,
-) -> Vec<FileInfo> {
+) -> Option<Vec<FileInfo>> {
     match read_dir(&fileinfo.path) {
-        Ok(read_dir) => read_dir
-            .filter_map(|direntry| direntry.ok())
-            .filter(|direntry| show_hidden || is_not_hidden(direntry).unwrap_or(true))
-            .map(|direntry| FileInfo::new(&direntry, users_cache))
-            .filter_map(|fileinfo| fileinfo.ok())
-            .filter(|fileinfo| filter_kind.filter_by(fileinfo))
-            .collect(),
+        Ok(read_dir) => Some(
+            read_dir
+                .filter_map(|direntry| direntry.ok())
+                .filter(|direntry| show_hidden || is_not_hidden(direntry).unwrap_or(true))
+                .map(|direntry| FileInfo::new(&direntry, users_cache))
+                .filter_map(|fileinfo| fileinfo.ok())
+                .filter(|fileinfo| filter_kind.filter_by(fileinfo))
+                .collect(),
+        ),
         Err(error) => {
             info!(
                 "Couldn't read path {} - {}",
                 fileinfo.path.to_string_lossy(),
                 error
             );
-            vec![]
+            None
         }
     }
 }

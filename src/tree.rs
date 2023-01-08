@@ -122,20 +122,22 @@ impl Tree {
         let mut leaves = vec![];
         if let FileKind::Directory = fileinfo.file_kind {
             if max_depth > 0 {
-                let files = files_collection(&fileinfo, users_cache, display_hidden, filter_kind);
-
-                let len = files.len();
-                for (index, fileinfo) in files.iter().enumerate() {
-                    let mut position = parent_position.clone();
-                    position.push(len - index - 1);
-                    leaves.push(Self::create_tree_from_fileinfo(
-                        fileinfo.to_owned(),
-                        max_depth - 1,
-                        users_cache,
-                        filter_kind,
-                        display_hidden,
-                        position,
-                    )?)
+                if let Some(files) =
+                    files_collection(&fileinfo, users_cache, display_hidden, filter_kind)
+                {
+                    let len = files.len();
+                    for (index, fileinfo) in files.iter().enumerate() {
+                        let mut position = parent_position.clone();
+                        position.push(len - index - 1);
+                        leaves.push(Self::create_tree_from_fileinfo(
+                            fileinfo.to_owned(),
+                            max_depth - 1,
+                            users_cache,
+                            filter_kind,
+                            display_hidden,
+                            position,
+                        )?)
+                    }
                 }
             }
         }
