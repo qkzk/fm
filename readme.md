@@ -77,6 +77,7 @@ If you added the [recommanded function](#cd-on-quit) to your bashrc/zshrc, simpl
 - Detect removable disks automatically and jump to them in a few keystrokes (G, up, enter)
 - Drag and drop files (requires dragon-drop installed) with Alt+D
 - Trash a file with X, open the trash with Alt+o. x to remove permanently, enter to restore. Wipe the trash with Alt+x.
+- Toggle the tree view with t. Fold folders with z. Unfold every folder with Z, fold every folder with Alt+z.
 
 Most of those features are inspired by ranger and alternatives (Midnight commander), the look and feel by dired.
 

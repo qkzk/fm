@@ -13,7 +13,7 @@ use crate::constant_strings_paths::{
     FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
 };
 use crate::content_window::ContentWindow;
-use crate::fileinfo::fileinfo_attr;
+use crate::fileinfo::{fileinfo_attr, FileInfo};
 use crate::fm_error::{FmError, FmResult};
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::preview::{Preview, TextKind, Window};
@@ -119,27 +119,18 @@ impl<'a> WinTab<'a> {
 
     fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
-            Mode::Normal | Mode::Tree => {
+            Mode::Normal => {
                 if !status.display_full {
-                    if let Some(file) = tab.path_content.selected() {
-                        let owner_size = file.owner.len();
-                        let group_size = file.group.len();
-                        let mut attr = fileinfo_attr(file, &status.config_colors);
-                        attr.effect ^= Effect::REVERSE;
-                        canvas.print_with_attr(
-                            1,
-                            0,
-                            &file.format(owner_size, group_size)?,
-                            attr,
-                        )?;
+                    if let Some(file) = tab.selected() {
+                        self.second_line_detailed(file, status, canvas)?;
                     }
                 } else {
-                    canvas.print_with_attr(
-                        1,
-                        0,
-                        &format!("{}", &status.selected_non_mut().filter),
-                        Self::ATTR_YELLOW_BOLD,
-                    )?;
+                    self.second_line_simple(status, canvas)?;
+                }
+            }
+            Mode::Tree => {
+                if let Some(file) = tab.selected() {
+                    self.second_line_detailed(file, status, canvas)?;
                 }
             }
             Mode::InputSimple(InputSimple::Filter) => {
@@ -149,6 +140,28 @@ impl<'a> WinTab<'a> {
         }
 
         Ok(())
+    }
+
+    fn second_line_detailed(
+        &self,
+        file: &FileInfo,
+        status: &Status,
+        canvas: &mut dyn Canvas,
+    ) -> FmResult<usize> {
+        let owner_size = file.owner.len();
+        let group_size = file.group.len();
+        let mut attr = fileinfo_attr(file, &status.config_colors);
+        attr.effect ^= Effect::REVERSE;
+        Ok(canvas.print_with_attr(1, 0, &file.format(owner_size, group_size)?, attr)?)
+    }
+
+    fn second_line_simple(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<usize> {
+        Ok(canvas.print_with_attr(
+            1,
+            0,
+            &format!("{}", &status.selected_non_mut().filter),
+            Self::ATTR_YELLOW_BOLD,
+        )?)
     }
 
     fn create_first_row(&self, tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
