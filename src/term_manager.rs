@@ -232,8 +232,7 @@ impl<'a> WinTab<'a> {
     ) -> FmResult<()> {
         let mut col = 0;
         for (text, attr) in std::iter::zip(strings.iter(), Self::FIRST_LINE_COLORS.iter().cycle()) {
-            canvas.print_with_attr(row, offset + col, text, *attr)?;
-            col += text.len()
+            col += canvas.print_with_attr(row, offset + col, text, *attr)?;
         }
         Ok(())
     }
