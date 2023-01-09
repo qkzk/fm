@@ -625,10 +625,7 @@ impl EventExec {
 
     /// Enter the sort mode, allowing the user to select a sort method.
     pub fn event_sort(tab: &mut Tab) -> FmResult<()> {
-        match tab.mode {
-            Mode::Tree => (),
-            _ => tab.set_mode(Mode::InputSimple(InputSimple::Sort)),
-        }
+        tab.set_mode(Mode::InputSimple(InputSimple::Sort));
         Ok(())
     }
 
@@ -658,16 +655,30 @@ impl EventExec {
     /// by extension.
     /// The first letter is used to identify the method.
     /// If the user types an uppercase char, the sort is reverse.
-    pub fn event_leave_sort(tab: &mut Tab, c: char) {
-        tab.set_mode(Mode::Normal);
-        if tab.path_content.content.is_empty() {
-            return;
+    pub fn event_leave_sort(status: &mut Status, c: char) -> FmResult<()> {
+        if status.selected_non_mut().path_content.content.is_empty() {
+            return Ok(());
         }
-        tab.path_content.unselect_current();
-        tab.path_content.update_sort_from_char(c);
-        tab.path_content.sort();
-        Self::event_go_top(tab);
-        tab.path_content.select_index(0)
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
+        tab.reset_mode();
+        match tab.mode {
+            Mode::Normal => {
+                tab.path_content.unselect_current();
+                tab.path_content.update_sort_from_char(c);
+                tab.path_content.sort();
+                Self::event_go_top(tab);
+                tab.path_content.select_index(0);
+            }
+            Mode::Tree => {
+                tab.directory.tree.update_sort_from_char(c);
+                tab.directory.tree.sort();
+                tab.tree_select_root(colors)?;
+                tab.directory.tree.into_navigable_content(colors);
+            }
+            _ => (),
+        }
+        Ok(())
     }
 
     /// Insert a char in the input string.

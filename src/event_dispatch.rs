@@ -59,10 +59,7 @@ impl EventDispatcher {
                 Mode::InputSimple(InputSimple::Marks(MarkAction::New)) => {
                     EventExec::exec_marks_new(status, c)
                 }
-                Mode::InputSimple(InputSimple::Sort) => {
-                    EventExec::event_leave_sort(status.selected(), c);
-                    Ok(())
-                }
+                Mode::InputSimple(InputSimple::Sort) => EventExec::event_leave_sort(status, c),
                 Mode::InputSimple(InputSimple::RegexMatch) => {
                     EventExec::event_text_insertion(status.selected(), c);
                     status.select_from_regex()?;
