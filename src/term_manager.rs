@@ -519,8 +519,8 @@ impl<'a> WinTab<'a> {
         Ok(())
     }
 
-    fn calc_line_row(i: usize, status: &Tab) -> usize {
-        i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top
+    fn calc_line_row(i: usize, tab: &Tab) -> usize {
+        i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top
     }
 }
 
