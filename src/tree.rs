@@ -346,7 +346,7 @@ impl Tree {
     /// Select the node at a given position.
     /// Returns the reached depth, the last index and a copy of the node itself.
     pub fn select_from_position(&mut self) -> FmResult<(usize, usize, Node)> {
-        let (tree, reached_depth, last_cord) = self.explore_position();
+        let (tree, reached_depth, last_cord) = self.explore_position(true);
         tree.node.select();
         Ok((reached_depth, last_cord, tree.node.clone()))
     }
@@ -406,20 +406,26 @@ impl Tree {
         None
     }
 
+    // TODO! refactor to return the new position vector and use it.
     /// Recursively explore the tree while only selecting the
     /// node from the position.
     /// Returns the reached tree, the reached depth and the last index.
     /// It may be used to fix the position.
     /// position is a vector of node indexes. At each step, we select the
     /// existing node.
-    /// TODO! refactor to return the new position vector and use it.
-    pub fn explore_position(&mut self) -> (&mut Tree, usize, usize) {
+    /// If `unfold` is set to true, it will unfold the trees as it traverses
+    /// them.
+    /// Since this method is used to fold every node, this parameter is required.
+    pub fn explore_position(&mut self, unfold: bool) -> (&mut Tree, usize, usize) {
         let mut tree = self;
         let pos = tree.position.clone();
         let mut last_cord = 0;
         let mut reached_depth = 0;
 
         for (depth, &coord) in pos.iter().skip(1).enumerate() {
+            if unfold {
+                tree.node.folded = false;
+            }
             last_cord = coord;
             if depth > pos.len() || tree.leaves.is_empty() {
                 break;

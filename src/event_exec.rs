@@ -1448,7 +1448,7 @@ impl EventExec {
         let colors = &status.config_colors.clone();
         let tab = status.selected();
 
-        let (tree, _, _) = tab.directory.tree.explore_position();
+        let (tree, _, _) = tab.directory.tree.explore_position(false);
         tree.node.toggle_fold();
         tab.directory.make_preview(colors);
         Ok(())
