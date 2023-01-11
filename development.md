@@ -296,6 +296,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display a triangle to display folded status
   - [x] unfold all, fold all
 
+### Version 0.1.10 : keep track previous mode
+
+- [x] return to previous mode when executing (ie. pressing Enter) or leaving a mode which mutates the content (like sort).
+- [x] tree: sort.
+
 ## TODO
 
 - [ ] remote control
@@ -317,11 +322,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] vim keys, harmonize keybinds with ranger
 - [ ] zoxide support
-
-- [ ] Version 0.1.10 : keep track previous mode
-
-  - [x] return to previous mode when executing (ie. pressing Enter) or leaving a mode which mutates the content (like sort).
-  - [x] tree: sort.
 
 - [ ] Version 0.1.11 : window for mode displaying info (completion, marks, shortcut, jump)
 
