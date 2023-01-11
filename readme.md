@@ -167,7 +167,15 @@ fm: a dired like file manager. Keybindings.
      Alt('o'):       Open the trash (enter to restore, del clear)
      Alt('x'):       Empty the trash
 
+     - Tree -
+     Navigate as usual. Most actions works as in 'normal' view.
+     Char('T'):      Toggle tree mode
+     Char('z'):      Fold a node
+     Alt('z'):       Fold every node
+     Char('Z'):      Unfold every node
+
      - MODES -
+     Char('T'):      TREE
      Char('m'):      CHMOD
      Char('e'):      EXEC
      Char('d'):      NEWDIR
