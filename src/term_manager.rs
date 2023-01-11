@@ -13,9 +13,9 @@ use crate::constant_strings_paths::{
     FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
 };
 use crate::content_window::ContentWindow;
-use crate::fileinfo::fileinfo_attr;
+use crate::fileinfo::{fileinfo_attr, FileInfo};
 use crate::fm_error::{FmError, FmResult};
-use crate::mode::{InputSimple, LastMode, MarkAction, Mode, Navigate, NeedConfirmation};
+use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::preview::{Preview, TextKind, Window};
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
@@ -71,12 +71,16 @@ impl<'a> Draw for WinTab<'a> {
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::Preview => self.preview(self.tab, canvas),
             Mode::InputSimple(InputSimple::Marks(_)) => self.marks(self.status, self.tab, canvas),
-            Mode::InputSimple(InputSimple::Rename(last_mode)) => match last_mode {
-                LastMode::Tree => self.tree(self.status, self.tab, canvas),
-                LastMode::Other => self.files(self.status, self.tab, canvas),
+            Mode::InputSimple(InputSimple::Rename) => match self.tab.previous_mode {
+                Mode::Tree => self.tree(self.status, self.tab, canvas),
+                _ => self.files(self.status, self.tab, canvas),
             },
             Mode::Tree => self.tree(self.status, self.tab, canvas),
-            _ => self.files(self.status, self.tab, canvas),
+            Mode::Normal => self.files(self.status, self.tab, canvas),
+            _ => match self.tab.previous_mode {
+                Mode::Tree => self.tree(self.status, self.tab, canvas),
+                _ => self.files(self.status, self.tab, canvas),
+            },
         }?;
         self.cursor(self.tab, canvas)?;
         self.first_line(self.tab, self.disk_space, canvas)?;
@@ -115,27 +119,18 @@ impl<'a> WinTab<'a> {
 
     fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         match tab.mode {
-            Mode::Normal | Mode::Tree => {
+            Mode::Normal => {
                 if !status.display_full {
-                    if let Some(file) = tab.path_content.selected() {
-                        let owner_size = file.owner.len();
-                        let group_size = file.group.len();
-                        let mut attr = fileinfo_attr(file, &status.config_colors);
-                        attr.effect ^= Effect::REVERSE;
-                        canvas.print_with_attr(
-                            1,
-                            0,
-                            &file.format(owner_size, group_size)?,
-                            attr,
-                        )?;
+                    if let Some(file) = tab.selected() {
+                        self.second_line_detailed(file, status, canvas)?;
                     }
                 } else {
-                    canvas.print_with_attr(
-                        1,
-                        0,
-                        &format!("{}", &status.selected_non_mut().filter),
-                        Self::ATTR_YELLOW_BOLD,
-                    )?;
+                    self.second_line_simple(status, canvas)?;
+                }
+            }
+            Mode::Tree => {
+                if let Some(file) = tab.selected() {
+                    self.second_line_detailed(file, status, canvas)?;
                 }
             }
             Mode::InputSimple(InputSimple::Filter) => {
@@ -145,6 +140,28 @@ impl<'a> WinTab<'a> {
         }
 
         Ok(())
+    }
+
+    fn second_line_detailed(
+        &self,
+        file: &FileInfo,
+        status: &Status,
+        canvas: &mut dyn Canvas,
+    ) -> FmResult<usize> {
+        let owner_size = file.owner.len();
+        let group_size = file.group.len();
+        let mut attr = fileinfo_attr(file, &status.config_colors);
+        attr.effect ^= Effect::REVERSE;
+        Ok(canvas.print_with_attr(1, 0, &file.format(owner_size, group_size)?, attr)?)
+    }
+
+    fn second_line_simple(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<usize> {
+        Ok(canvas.print_with_attr(
+            1,
+            0,
+            &format!("{}", &status.selected_non_mut().filter),
+            Self::ATTR_YELLOW_BOLD,
+        )?)
     }
 
     fn create_first_row(&self, tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
@@ -215,8 +232,7 @@ impl<'a> WinTab<'a> {
     ) -> FmResult<()> {
         let mut col = 0;
         for (text, attr) in std::iter::zip(strings.iter(), Self::FIRST_LINE_COLORS.iter().cycle()) {
-            canvas.print_with_attr(row, offset + col, text, *attr)?;
-            col += text.len()
+            col += canvas.print_with_attr(row, offset + col, text, *attr)?;
         }
         Ok(())
     }
@@ -502,8 +518,8 @@ impl<'a> WinTab<'a> {
         Ok(())
     }
 
-    fn calc_line_row(i: usize, status: &Tab) -> usize {
-        i + ContentWindow::WINDOW_MARGIN_TOP - status.window.top
+    fn calc_line_row(i: usize, tab: &Tab) -> usize {
+        i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top
     }
 }
 

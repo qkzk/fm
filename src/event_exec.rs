@@ -9,7 +9,6 @@ use sysinfo::SystemExt;
 
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
-use crate::config::Colors;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::RESERVED_ROWS;
@@ -17,7 +16,6 @@ use crate::copy_move::CopyMove;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
-use crate::mode::LastMode;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
 use crate::opener::execute_in_child;
@@ -125,7 +123,9 @@ impl EventExec {
         if status.selected().path_content.is_empty() {
             return Ok(());
         }
-        status.selected().mode = Mode::InputSimple(InputSimple::Chmod);
+        status
+            .selected()
+            .set_mode(Mode::InputSimple(InputSimple::Chmod));
         if status.flagged.is_empty() {
             status
                 .flagged
@@ -139,14 +139,14 @@ impl EventExec {
     pub fn event_jump(status: &mut Status) -> FmResult<()> {
         if !status.flagged.is_empty() {
             status.flagged.index = 0;
-            status.selected().mode = Mode::Navigate(Navigate::Jump)
+            status.selected().set_mode(Mode::Navigate(Navigate::Jump))
         }
         Ok(())
     }
 
     /// Enter Marks new mode, allowing to bind a char to a path.
     pub fn event_marks_new(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputSimple::Marks(MarkAction::New));
+        tab.set_mode(Mode::InputSimple(InputSimple::Marks(MarkAction::New)));
         Ok(())
     }
 
@@ -155,7 +155,9 @@ impl EventExec {
         if status.marks.is_empty() {
             return Ok(());
         }
-        status.selected().mode = Mode::InputSimple(InputSimple::Marks(MarkAction::Jump));
+        status
+            .selected()
+            .set_mode(Mode::InputSimple(InputSimple::Marks(MarkAction::Jump)));
         Ok(())
     }
 
@@ -163,7 +165,9 @@ impl EventExec {
     pub fn exec_marks_new(status: &mut Status, c: char) -> FmResult<()> {
         let path = status.selected().path_content.path.clone();
         status.marks.new_mark(c, path)?;
-        Self::event_normal(status.selected())
+        Self::event_normal(status.selected())?;
+        status.selected().reset_mode();
+        Self::refresh_status(status)
     }
 
     /// Execute a jump to a mark, moving to a valid path.
@@ -173,7 +177,9 @@ impl EventExec {
             let path = path.clone();
             status.selected().set_pathcontent(&path)?
         }
-        Self::event_normal(status.selected())
+        Self::event_normal(status.selected())?;
+        status.selected().reset_mode();
+        Self::refresh_status(status)
     }
 
     /// Creates a symlink of every flagged file to the current directory.
@@ -221,7 +227,9 @@ impl EventExec {
                 std::fs::remove_file(pathbuf)?;
             }
         }
-        status.clear_flags_and_reset_view()
+        status.selected().reset_mode();
+        status.clear_flags_and_reset_view()?;
+        Self::refresh_status(status)
     }
 
     /// Change permission of the flagged files.
@@ -274,7 +282,7 @@ impl EventExec {
         confirmed_action: NeedConfirmation,
     ) -> FmResult<()> {
         Self::_exec_confirmed_action(status, confirmed_action)?;
-        status.selected().mode = Mode::Normal;
+        status.selected().set_mode(Mode::Normal);
         Ok(())
     }
 
@@ -299,14 +307,14 @@ impl EventExec {
 
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
+    pub fn event_reset_mode(tab: &mut Tab) -> FmResult<()> {
+        tab.reset_mode();
+        tab.refresh_view()
+    }
+
+    /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn event_normal(tab: &mut Tab) -> FmResult<()> {
-        tab.input.reset();
-        tab.completion.reset();
-        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
-        tab.window.reset(tab.path_content.content.len());
-        tab.mode = Mode::Normal;
-        tab.preview = Preview::new_empty();
-        Ok(())
+        tab.refresh_view()
     }
 
     /// Move up one row if possible.
@@ -352,7 +360,7 @@ impl EventExec {
     /// Move up 10 rows in normal mode.
     /// In other modes where vertical scrolling is possible (atm Preview),
     /// if moves up one page.
-    pub fn event_page_up(tab: &mut Tab) {
+    pub fn page_up(tab: &mut Tab) {
         match tab.mode {
             Mode::Normal => {
                 let up_index = if tab.path_content.index > 10 {
@@ -377,7 +385,7 @@ impl EventExec {
     /// Move down 10 rows in normal mode.
     /// In other modes where vertical scrolling is possible (atm Preview),
     /// if moves down one page.
-    pub fn event_page_down(tab: &mut Tab) {
+    pub fn page_down(tab: &mut Tab) {
         match tab.mode {
             Mode::Normal => {
                 let down_index = min(
@@ -509,7 +517,9 @@ impl EventExec {
         if status.flagged.is_empty() {
             return Ok(());
         }
-        status.selected().mode = Mode::NeedConfirmation(NeedConfirmation::Copy);
+        status
+            .selected()
+            .set_mode(Mode::NeedConfirmation(NeedConfirmation::Copy));
         Ok(())
     }
 
@@ -521,26 +531,28 @@ impl EventExec {
         if status.flagged.is_empty() {
             return Ok(());
         }
-        status.selected().mode = Mode::NeedConfirmation(NeedConfirmation::Move);
+        status
+            .selected()
+            .set_mode(Mode::NeedConfirmation(NeedConfirmation::Move));
         Ok(())
     }
 
     /// Enter the new dir mode.
     pub fn event_new_dir(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputSimple::Newdir);
+        tab.set_mode(Mode::InputSimple(InputSimple::Newdir));
         Ok(())
     }
 
     /// Enter the new file mode.
     pub fn event_new_file(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputSimple::Newfile);
+        tab.set_mode(Mode::InputSimple(InputSimple::Newfile));
         Ok(())
     }
 
     /// Enter the execute mode. Most commands must be executed to allow for
     /// a confirmation.
     pub fn event_exec(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputCompleted(InputCompleted::Exec);
+        tab.set_mode(Mode::InputCompleted(InputCompleted::Exec));
         Ok(())
     }
 
@@ -558,7 +570,7 @@ impl EventExec {
                 FileKind::NormalFile => {
                     let preview =
                         Preview::new(file_info, &unmutable_tab.path_content.users_cache, status)?;
-                    status.selected().mode = Mode::Preview;
+                    status.selected().set_mode(Mode::Preview);
                     status.selected().window.reset(preview.len());
                     status.selected().preview = preview;
                 }
@@ -576,7 +588,9 @@ impl EventExec {
         if status.flagged.is_empty() {
             return Ok(());
         }
-        status.selected().mode = Mode::NeedConfirmation(NeedConfirmation::Delete);
+        status
+            .selected()
+            .set_mode(Mode::NeedConfirmation(NeedConfirmation::Delete));
         Ok(())
     }
 
@@ -585,7 +599,7 @@ impl EventExec {
     pub fn event_help(status: &mut Status) -> FmResult<()> {
         let help = status.help.clone();
         let tab = status.selected();
-        tab.mode = Mode::Preview;
+        tab.set_mode(Mode::Preview);
         tab.preview = Preview::help(&help);
         tab.window.reset(tab.preview.len());
         Ok(())
@@ -595,7 +609,7 @@ impl EventExec {
     /// Matching items are displayed as you type them.
     pub fn event_search(tab: &mut Tab) -> FmResult<()> {
         tab.searched = None;
-        tab.mode = Mode::InputCompleted(InputCompleted::Search(LastMode::from_mode(tab.mode)));
+        tab.set_mode(Mode::InputCompleted(InputCompleted::Search));
         Ok(())
     }
 
@@ -604,17 +618,14 @@ impl EventExec {
     pub fn event_regex_match(tab: &mut Tab) -> FmResult<()> {
         match tab.mode {
             Mode::Tree => (),
-            _ => tab.mode = Mode::InputSimple(InputSimple::RegexMatch),
+            _ => tab.set_mode(Mode::InputSimple(InputSimple::RegexMatch)),
         }
         Ok(())
     }
 
     /// Enter the sort mode, allowing the user to select a sort method.
     pub fn event_sort(tab: &mut Tab) -> FmResult<()> {
-        match tab.mode {
-            Mode::Tree => (),
-            _ => tab.mode = Mode::InputSimple(InputSimple::Sort),
-        }
+        tab.set_mode(Mode::InputSimple(InputSimple::Sort));
         Ok(())
     }
 
@@ -622,16 +633,17 @@ impl EventExec {
     /// It's usefull to reset the cursor before leaving the application.
     pub fn event_quit(tab: &mut Tab) -> FmResult<()> {
         if let Mode::Tree = tab.mode {
-            Self::event_normal(tab)
+            Self::event_normal(tab)?;
+            tab.set_mode(Mode::Normal)
         } else {
             tab.must_quit = true;
-            Ok(())
         }
+        Ok(())
     }
 
     /// Reset the mode to normal.
     pub fn event_leave_need_confirmation(tab: &mut Tab) {
-        tab.mode = Mode::Normal;
+        tab.reset_mode();
     }
 
     /// Sort the file with given criteria
@@ -643,16 +655,30 @@ impl EventExec {
     /// by extension.
     /// The first letter is used to identify the method.
     /// If the user types an uppercase char, the sort is reverse.
-    pub fn event_leave_sort(tab: &mut Tab, c: char) {
-        tab.mode = Mode::Normal;
-        if tab.path_content.content.is_empty() {
-            return;
+    pub fn event_leave_sort(status: &mut Status, c: char) -> FmResult<()> {
+        if status.selected_non_mut().path_content.content.is_empty() {
+            return Ok(());
         }
-        tab.path_content.unselect_current();
-        tab.path_content.update_sort_from_char(c);
-        tab.path_content.sort();
-        Self::event_go_top(tab);
-        tab.path_content.select_index(0)
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
+        tab.reset_mode();
+        match tab.mode {
+            Mode::Normal => {
+                tab.path_content.unselect_current();
+                tab.path_content.update_sort_from_char(c);
+                tab.path_content.sort();
+                Self::event_go_top(tab);
+                tab.path_content.select_index(0);
+            }
+            Mode::Tree => {
+                tab.directory.tree.update_sort_from_char(c);
+                tab.directory.tree.sort();
+                tab.tree_select_root(colors)?;
+                tab.directory.tree.into_navigable_content(colors);
+            }
+            _ => (),
+        }
+        Ok(())
     }
 
     /// Insert a char in the input string.
@@ -698,14 +724,14 @@ impl EventExec {
     /// not the selected file in the pathcontent.
     pub fn event_rename(tab: &mut Tab) -> FmResult<()> {
         if tab.selected().is_some() {
-            tab.mode = Mode::InputSimple(InputSimple::Rename(LastMode::from_mode(tab.mode)));
+            tab.set_mode(Mode::InputSimple(InputSimple::Rename));
         }
         Ok(())
     }
 
     /// Enter the goto mode where an user can type a path to jump to.
     pub fn event_goto(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputCompleted(InputCompleted::Goto);
+        tab.set_mode(Mode::InputCompleted(InputCompleted::Goto));
         tab.completion.reset();
         Ok(())
     }
@@ -726,7 +752,7 @@ impl EventExec {
     /// Enter the history mode, allowing to navigate to previously visited
     /// directory.
     pub fn event_history(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::Navigate(Navigate::History);
+        tab.set_mode(Mode::Navigate(Navigate::History));
         Ok(())
     }
 
@@ -734,7 +760,7 @@ impl EventExec {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn event_shortcut(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::Navigate(Navigate::Shortcut);
+        tab.set_mode(Mode::Navigate(Navigate::Shortcut));
         Ok(())
     }
 
@@ -795,31 +821,30 @@ impl EventExec {
 
     /// Copy the selected filename to the clipboard. Only the filename.
     pub fn event_filename_to_clipboard(tab: &Tab) -> FmResult<()> {
-        let filename = tab
-            .selected()
-            .ok_or_else(|| FmError::custom("event_filename_to_clipboard", "no selected file"))?
-            .filename
-            .clone();
-        let mut ctx = ClipboardContext::new()?;
-        ctx.set_contents(filename)?;
-        // For some reason, it's not writen if you don't read it back...
-        let _ = ctx.get_contents();
-
-        Ok(())
+        Self::set_clipboard(
+            tab.selected()
+                .ok_or_else(|| FmError::custom("event_filename_to_clipboard", "no selected file"))?
+                .filename
+                .clone(),
+        )
     }
 
     /// Copy the selected filepath to the clipboard. The absolute path.
     pub fn event_filepath_to_clipboard(tab: &Tab) -> FmResult<()> {
-        let filepath = tab
-            .selected()
-            .ok_or_else(|| FmError::custom("event_filepath_to_clipboard", "no selected file"))?
-            .path
-            .to_str()
-            .ok_or_else(|| FmError::custom("event_filepath_to_clipboard", "no selected file"))?
-            .to_owned();
-        info!("filepath: {}", filepath);
+        Self::set_clipboard(
+            tab.selected()
+                .ok_or_else(|| FmError::custom("event_filepath_to_clipboard", "no selected file"))?
+                .path
+                .to_str()
+                .ok_or_else(|| FmError::custom("event_filepath_to_clipboard", "no selected file"))?
+                .to_owned(),
+        )
+    }
+
+    fn set_clipboard(content: String) -> FmResult<()> {
+        info!("copied to clipboard: {}", content);
         let mut ctx = ClipboardContext::new()?;
-        ctx.set_contents(filepath)?;
+        ctx.set_contents(content)?;
         // For some reason, it's not writen if you don't read it back...
         let _ = ctx.get_contents();
         Ok(())
@@ -828,19 +853,24 @@ impl EventExec {
     /// Enter the filter mode, where you can filter.
     /// See `crate::filter::Filter` for more details.
     pub fn event_filter(tab: &mut Tab) -> FmResult<()> {
-        tab.mode = Mode::InputSimple(InputSimple::Filter);
+        tab.set_mode(Mode::InputSimple(InputSimple::Filter));
         Ok(())
     }
 
     /// Move back in history to the last visited directory.
-    pub fn event_back(tab: &mut Tab) -> FmResult<()> {
-        if tab.history.content.len() <= 1 {
+    pub fn event_back(status: &mut Status) -> FmResult<()> {
+        if status.selected_non_mut().history.content.len() <= 1 {
             return Ok(());
         }
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
         tab.history.content.pop();
-        let index = tab.history.len() - 1;
-        let last = tab.history.content[index].clone();
+        let last_index = tab.history.len() - 1;
+        let last = tab.history.content[last_index].clone();
         tab.set_pathcontent(&last)?;
+        if let Mode::Tree = tab.mode {
+            tab.make_tree(colors)?
+        }
 
         Ok(())
     }
@@ -865,23 +895,22 @@ impl EventExec {
 
     /// Execute a rename of the selected file.
     /// It uses the `fs::rename` function and has the same limitations.
-    /// We only tries to rename in the same directory, so it shouldn't be a problem.
+    /// We only try to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
-    pub fn exec_rename(tab: &mut Tab, lastmode: LastMode) -> FmResult<()> {
-        let fileinfo = match lastmode {
-            LastMode::Tree => &tab.directory.tree.current_node.fileinfo,
-            LastMode::Other => tab
+    pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
+        let fileinfo = match tab.previous_mode {
+            Mode::Tree => &tab.directory.tree.current_node.fileinfo,
+            _ => tab
                 .path_content
                 .selected()
                 .ok_or_else(|| FmError::custom("rename", "couldnt parse selected"))?,
         };
 
-        info!("fileinfo {:?}", fileinfo);
         let original_path = &fileinfo.path;
         if let Some(parent) = original_path.parent() {
             let new_path = parent.join(sanitize_filename::sanitize(tab.input.string()));
             info!(
-                "original: {} - new: {}",
+                "renaming: original: {} - new: {}",
                 original_path.display(),
                 new_path.display()
             );
@@ -978,7 +1007,9 @@ impl EventExec {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn exec_search(tab: &mut Tab, lastmode: LastMode, colors: &Colors) -> FmResult<()> {
+    pub fn exec_search(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
         let searched = tab.input.string();
         tab.input.reset();
         if searched.is_empty() {
@@ -986,8 +1017,8 @@ impl EventExec {
             return Ok(());
         }
         tab.searched = Some(searched.clone());
-        match lastmode {
-            LastMode::Tree => {
+        match tab.previous_mode {
+            Mode::Tree => {
                 tab.directory.tree.unselect_children();
                 if let Some(position) = tab.directory.tree.select_first_match(&searched) {
                     tab.directory.tree.position = position;
@@ -998,7 +1029,7 @@ impl EventExec {
                 tab.directory.make_preview(colors);
                 Ok(())
             }
-            LastMode::Other => {
+            _ => {
                 let next_index = tab.path_content.index;
                 tab.search_from(&searched, next_index);
                 Ok(())
@@ -1181,18 +1212,18 @@ impl EventExec {
     }
 
     /// Move up 10 lines in normal mode and preview.
-    pub fn page_up(status: &mut Status) -> FmResult<()> {
+    pub fn event_page_up(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview => EventExec::event_page_up(status.selected()),
+            Mode::Normal | Mode::Preview => EventExec::page_up(status.selected()),
             _ => (),
         };
         Ok(())
     }
 
     /// Move down 10 lines in normal & preview mode.
-    pub fn page_down(status: &mut Status) -> FmResult<()> {
+    pub fn event_page_down(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview => EventExec::event_page_down(status.selected()),
+            Mode::Normal | Mode::Preview => EventExec::page_down(status.selected()),
             _ => (),
         };
         Ok(())
@@ -1203,13 +1234,10 @@ impl EventExec {
     /// related action.
     /// In normal mode, it will open the file.
     /// Reset to normal mode afterwards.
-    pub fn enter(status: &mut Status) -> FmResult<()> {
-        let mut mode_coming_from = None;
+    pub fn event_enter(status: &mut Status) -> FmResult<()> {
+        let mut must_refresh = true;
         match status.selected_non_mut().mode {
-            Mode::InputSimple(InputSimple::Rename(last_mode)) => {
-                mode_coming_from = Some(last_mode);
-                EventExec::exec_rename(status.selected(), last_mode)?
-            }
+            Mode::InputSimple(InputSimple::Rename) => EventExec::exec_rename(status.selected())?,
             Mode::InputSimple(InputSimple::Newfile) => EventExec::exec_newfile(status.selected())?,
             Mode::InputSimple(InputSimple::Newdir) => EventExec::exec_newdir(status.selected())?,
             Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,
@@ -1220,10 +1248,9 @@ impl EventExec {
             Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
-            Mode::InputCompleted(InputCompleted::Search(last_mode)) => {
-                mode_coming_from = Some(last_mode);
-                let colors = &status.config_colors.clone();
-                EventExec::exec_search(status.selected(), last_mode, colors)?
+            Mode::InputCompleted(InputCompleted::Search) => {
+                EventExec::exec_search(status)?;
+                must_refresh = false;
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
@@ -1236,17 +1263,16 @@ impl EventExec {
         };
 
         status.selected().input.reset();
-        if let Some(LastMode::Tree) = mode_coming_from {
-            status.selected().mode = Mode::Tree;
-            return Ok(());
+        status.selected().reset_mode();
+        if must_refresh {
+            Self::refresh_status(status)?;
         }
-        status.selected().mode = Mode::Normal;
         Ok(())
     }
 
     /// Change tab in normal mode with dual pane displayed,
     /// insert a completion in modes allowing completion.
-    pub fn tab(status: &mut Status) -> FmResult<()> {
+    pub fn event_tab(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::InputCompleted(_) => {
                 EventExec::event_replace_input_with_completion(status.selected())
@@ -1300,7 +1326,7 @@ impl EventExec {
                 info!("selected {:?}", file_info);
                 tab.preview = Preview::thumbnail(file_info.path.to_owned())?;
                 tab.window.reset(tab.preview.len());
-                tab.mode = Mode::Preview;
+                tab.set_mode(Mode::Preview);
             }
         }
         Ok(())
@@ -1352,7 +1378,7 @@ impl EventExec {
     /// Parent folders are created on the file if needed.
     pub fn event_trash_restore_file(status: &mut Status) -> FmResult<()> {
         status.trash.restore()?;
-        status.selected().mode = Mode::Normal;
+        status.selected().reset_mode();
         status.selected().refresh_view()?;
         Ok(())
     }
@@ -1360,13 +1386,16 @@ impl EventExec {
     /// Ask the user if he wants to empty the trash.
     /// It requires a confimation before doing anything
     pub fn event_trash_empty(status: &mut Status) -> FmResult<()> {
-        status.selected().mode = Mode::NeedConfirmation(NeedConfirmation::EmptyTrash);
+        status
+            .selected()
+            .set_mode(Mode::NeedConfirmation(NeedConfirmation::EmptyTrash));
         Ok(())
     }
 
     /// Empty the trash folder permanently.
     pub fn exec_trash_empty(status: &mut Status) -> FmResult<()> {
         status.trash.empty_trash()?;
+        status.selected().reset_mode();
         status.clear_flags_and_reset_view()?;
         Ok(())
     }
@@ -1377,7 +1406,7 @@ impl EventExec {
     /// Each opening refresh the trash content.
     pub fn event_trash_open(status: &mut Status) -> FmResult<()> {
         status.trash.update()?;
-        status.selected().mode = Mode::Navigate(Navigate::Trash);
+        status.selected().set_mode(Mode::Navigate(Navigate::Trash));
         Ok(())
     }
 
@@ -1400,16 +1429,17 @@ impl EventExec {
     /// It tree mode it will exit this view.
     pub fn event_tree(status: &mut Status) -> FmResult<()> {
         if let Mode::Tree = status.selected_non_mut().mode {
-            Self::event_normal(status.selected())
+            Self::event_normal(status.selected())?;
+            status.selected().set_mode(Mode::Normal)
         } else {
             status.display_full = true;
             let colors = &status.config_colors.clone();
             status.selected().make_tree(colors)?;
-            status.selected().mode = Mode::Tree;
+            status.selected().set_mode(Mode::Tree);
             let len = status.selected_non_mut().directory.len();
             status.selected().window.reset(len);
-            Ok(())
         }
+        Ok(())
     }
 
     /// Fold the current node of the tree.
@@ -1418,7 +1448,7 @@ impl EventExec {
         let colors = &status.config_colors.clone();
         let tab = status.selected();
 
-        let (tree, _, _) = tab.directory.tree.explore_position();
+        let (tree, _, _) = tab.directory.tree.explore_position(false);
         tree.node.toggle_fold();
         tab.directory.make_preview(colors);
         Ok(())
@@ -1493,13 +1523,13 @@ impl EventExec {
                 .ok_or_else(|| FmError::custom("exec_tree", "path should have a parent"))?
                 .to_owned();
             tab.set_pathcontent(&parent)?;
-            tab.mode = Mode::Normal;
+            tab.set_mode(Mode::Normal);
             tab.refresh_view()?;
             tab.search_from(&filename, 0);
             Ok(())
         } else {
             tab.set_pathcontent(&node.filepath())?;
-            tab.mode = Mode::Normal;
+            tab.set_mode(Mode::Normal);
             tab.refresh_view()
         }
     }

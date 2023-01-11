@@ -8,6 +8,7 @@ use crate::config::Colors;
 use crate::fileinfo::{fileinfo_attr, files_collection, FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::fm_error::FmResult;
+use crate::sort::SortKind;
 use crate::utils::filename_from_path;
 
 /// Holds a string and its display attributes.
@@ -17,6 +18,7 @@ pub struct ColoredString {
     pub text: String,
     /// A tuikit::attr::Attr (fg, bg, effect) to enhance the text.
     pub attr: Attr,
+    /// The complete path of this string.
     pub path: std::path::PathBuf,
 }
 
@@ -99,6 +101,7 @@ pub struct Tree {
     pub leaves: Vec<Tree>,
     pub position: Vec<usize>,
     pub current_node: Node,
+    sort_kind: SortKind,
 }
 
 impl Tree {
@@ -131,6 +134,11 @@ impl Tree {
         )
     }
 
+    /// A reference to the holded node fileinfo.
+    pub fn file(&self) -> &FileInfo {
+        &self.node.fileinfo
+    }
+
     fn create_tree_from_fileinfo(
         fileinfo: FileInfo,
         max_depth: usize,
@@ -139,13 +147,15 @@ impl Tree {
         display_hidden: bool,
         parent_position: Vec<usize>,
     ) -> FmResult<Self> {
+        let sort_kind = SortKind::tree_default();
         let mut leaves = vec![];
         if let FileKind::Directory = fileinfo.file_kind {
             if max_depth > 0 {
-                if let Some(files) =
+                if let Some(mut files) =
                     files_collection(&fileinfo, users_cache, display_hidden, filter_kind)
                 {
                     let len = files.len();
+                    sort_kind.sort(&mut files);
                     for (index, fileinfo) in files.iter().enumerate() {
                         let mut position = parent_position.clone();
                         position.push(len - index - 1);
@@ -174,7 +184,21 @@ impl Tree {
             leaves,
             position,
             current_node,
+            sort_kind,
         })
+    }
+
+    /// Sort the leaves with current sort kind.
+    pub fn sort(&mut self) {
+        let sort_kind = self.sort_kind.clone();
+        self.sort_tree_by_kind(&sort_kind);
+    }
+
+    fn sort_tree_by_kind(&mut self, sort_kind: &SortKind) {
+        sort_kind.sort_tree(&mut self.leaves);
+        for tree in self.leaves.iter_mut() {
+            tree.sort_tree_by_kind(&sort_kind);
+        }
     }
 
     /// Creates an empty tree. Used when the user changes the CWD and hasn't displayed
@@ -190,13 +214,19 @@ impl Tree {
         };
         let leaves = vec![];
         let position = vec![0];
-        let selected = node.clone();
+        let current_node = node.clone();
+        let sort_kind = SortKind::tree_default();
         Ok(Self {
             node,
             leaves,
             position,
-            current_node: selected,
+            current_node,
+            sort_kind,
         })
+    }
+
+    pub fn update_sort_from_char(&mut self, c: char) {
+        self.sort_kind.update_from_char(c)
     }
 
     /// Select the root node of the tree.
@@ -316,7 +346,7 @@ impl Tree {
     /// Select the node at a given position.
     /// Returns the reached depth, the last index and a copy of the node itself.
     pub fn select_from_position(&mut self) -> FmResult<(usize, usize, Node)> {
-        let (tree, reached_depth, last_cord) = self.explore_position();
+        let (tree, reached_depth, last_cord) = self.explore_position(true);
         tree.node.select();
         Ok((reached_depth, last_cord, tree.node.clone()))
     }
@@ -376,20 +406,26 @@ impl Tree {
         None
     }
 
+    // TODO! refactor to return the new position vector and use it.
     /// Recursively explore the tree while only selecting the
     /// node from the position.
     /// Returns the reached tree, the reached depth and the last index.
     /// It may be used to fix the position.
     /// position is a vector of node indexes. At each step, we select the
     /// existing node.
-    /// TODO! refactor to return the new position vector and use it.
-    pub fn explore_position(&mut self) -> (&mut Tree, usize, usize) {
+    /// If `unfold` is set to true, it will unfold the trees as it traverses
+    /// them.
+    /// Since this method is used to fold every node, this parameter is required.
+    pub fn explore_position(&mut self, unfold: bool) -> (&mut Tree, usize, usize) {
         let mut tree = self;
         let pos = tree.position.clone();
         let mut last_cord = 0;
         let mut reached_depth = 0;
 
         for (depth, &coord) in pos.iter().skip(1).enumerate() {
+            if unfold {
+                tree.node.folded = false;
+            }
             last_cord = coord;
             if depth > pos.len() || tree.leaves.is_empty() {
                 break;

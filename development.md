@@ -296,9 +296,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display a triangle to display folded status
   - [x] unfold all, fold all
 
+### Version 0.1.10 : keep track previous mode
+
+- [x] return to previous mode when executing (ie. pressing Enter) or leaving a mode which mutates the content (like sort).
+- [x] tree: sort.
+
 ## TODO
 
 - [ ] remote control
+
   - [x] filepicker
         requires the nvim-remote rust crate installed
   - [ ] listen to stdin (rcv etc.)
@@ -309,17 +315,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - https://neovim.io/doc/user/api.html
   - [ ] $NVIM_LISTEN_ADDRESS isn't always set on nbim startup ; can be set from nvim before running... then sent to fm with some args
   - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
+
 - [ ] display / event separation. use async and message passing between coroutines
+
 - [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
 
 - [ ] vim keys, harmonize keybinds with ranger
-- [ ] scrollable shortcuts, marks & history
-- [ ] improve thumbnail with [chafa](https://hpjansson.org/chafa/) - [felix](https://github.com/kyoheiu/felix#usage)
-  - [x] use chafa
-  - [x] print in term
-  - [x] print in raw mode
-  - [ ] print with term: term...
 - [ ] zoxide support
+
+- [ ] Version 0.1.11 : window for mode displaying info (completion, marks, shortcut, jump)
+
+- [ ] Version 0.1.12 : scrollable shortcuts, marks & history
 
 - [ ] Version 0.2.0 : tests
 
@@ -358,6 +364,18 @@ All of this stuff can be done easily through a shell command or automatically. I
   - google drive
 
   or just use sshfs...
+
+### Thumbnails with chafa
+
+- [ ] improve thumbnail with [chafa](https://hpjansson.org/chafa/) - [felix](https://github.com/kyoheiu/felix#usage)
+
+  - [x] use chafa
+  - [x] print in term
+  - [x] print in raw mode
+  - [ ] print with term: term...
+
+  Can't make it work in tuikit. We need the whole chafa output into tuikit attr
+  It's too much work and it will be too slow for such a gadget.
 
 ## Sources
 
