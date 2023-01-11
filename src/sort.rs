@@ -89,7 +89,7 @@ impl SortKind {
         F: for<'a> Fn(&'a T) -> &'a K,
         K: Ord,
     {
-        slice.sort_by(|a, b| f(a).cmp(f(b)))
+        slice.sort_unstable_by(|a, b| f(a).cmp(f(b)))
     }
 
     /// Use Higher Rank Trait Bounds
@@ -102,7 +102,7 @@ impl SortKind {
         F: for<'a> Fn(&'a T) -> &'a K,
         K: Ord,
     {
-        slice.sort_by(|a, b| Ordering::reverse(f(a).cmp(f(b))))
+        slice.sort_unstable_by(|a, b| Ordering::reverse(f(a).cmp(f(b))))
     }
 
     // TODO! refactor both methods.
