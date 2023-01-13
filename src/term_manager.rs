@@ -25,6 +25,21 @@ use crate::trash::TrashInfo;
 /// At least 100 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 100;
 
+const FIRST_LINE_COLORS: [Attr; 6] = [
+    color_to_attr(Color::Rgb(231, 162, 156)),
+    color_to_attr(Color::Rgb(144, 172, 186)),
+    color_to_attr(Color::Rgb(214, 125, 83)),
+    color_to_attr(Color::Rgb(91, 152, 119)),
+    color_to_attr(Color::Rgb(152, 87, 137)),
+    color_to_attr(Color::Rgb(230, 189, 87)),
+];
+
+const ATTR_YELLOW_BOLD: Attr = Attr {
+    fg: Color::YELLOW,
+    bg: Color::Default,
+    effect: Effect::BOLD,
+};
+
 /// Simple struct to read the events.
 pub struct EventReader {
     term: Arc<Term>,
@@ -46,7 +61,7 @@ impl EventReader {
 macro_rules! impl_preview {
     ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident) => {
         for (i, line) in (*$text).window($tab.window.top, $tab.window.bottom, $length) {
-            let row = Self::calc_line_row(i, $tab);
+            let row = calc_line_row(i, $tab);
             $canvas.print(row, $line_number_width + 3, line)?;
         }
     };
@@ -60,6 +75,7 @@ struct WinMain<'a> {
 
 impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+        canvas.clear()?;
         match self.tab.mode {
             Mode::Preview => self.preview(self.tab, canvas),
             Mode::Tree => self.tree(self.status, self.tab, canvas),
@@ -78,19 +94,6 @@ impl<'a> Widget for WinMain<'a> {}
 
 impl<'a> WinMain<'a> {
     const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
-    const ATTR_YELLOW_BOLD: Attr = Attr {
-        fg: Color::YELLOW,
-        bg: Color::Default,
-        effect: Effect::BOLD,
-    };
-    const FIRST_LINE_COLORS: [Attr; 6] = [
-        color_to_attr(Color::Rgb(231, 162, 156)),
-        color_to_attr(Color::Rgb(144, 172, 186)),
-        color_to_attr(Color::Rgb(214, 125, 83)),
-        color_to_attr(Color::Rgb(91, 152, 119)),
-        color_to_attr(Color::Rgb(152, 87, 137)),
-        color_to_attr(Color::Rgb(230, 189, 87)),
-    ];
 
     fn new(status: &'a Status, index: usize, disk_space: &'a str) -> Self {
         Self {
@@ -106,7 +109,7 @@ impl<'a> WinMain<'a> {
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
     fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> FmResult<()> {
-        self.draw_colored_strings(0, 0, self.create_first_row(tab, disk_space)?, canvas)
+        draw_colored_strings(0, 0, self.create_first_row(tab, disk_space)?, canvas)
     }
 
     fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
@@ -126,7 +129,7 @@ impl<'a> WinMain<'a> {
                 }
             }
             Mode::InputSimple(InputSimple::Filter) => {
-                canvas.print_with_attr(1, 0, FILTER_PRESENTATION, Self::ATTR_YELLOW_BOLD)?;
+                canvas.print_with_attr(1, 0, FILTER_PRESENTATION, ATTR_YELLOW_BOLD)?;
             }
             _ => (),
         }
@@ -152,7 +155,7 @@ impl<'a> WinMain<'a> {
             1,
             0,
             &format!("{}", &status.selected_non_mut().filter),
-            Self::ATTR_YELLOW_BOLD,
+            ATTR_YELLOW_BOLD,
         )?)
     }
 
@@ -210,20 +213,6 @@ impl<'a> WinMain<'a> {
             }
             None => vec!["".to_owned()],
         }
-    }
-
-    fn draw_colored_strings(
-        &self,
-        row: usize,
-        offset: usize,
-        strings: Vec<String>,
-        canvas: &mut dyn Canvas,
-    ) -> FmResult<()> {
-        let mut col = 0;
-        for (text, attr) in std::iter::zip(strings.iter(), Self::FIRST_LINE_COLORS.iter().cycle()) {
-            col += canvas.print_with_attr(row, offset + col, text, *attr)?;
-        }
-        Ok(())
     }
 
     /// Displays the current directory content, one line per item like in
@@ -298,7 +287,7 @@ impl<'a> WinMain<'a> {
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
                 for (i, vec_line) in (*syntaxed).window(tab.window.top, tab.window.bottom, length) {
-                    let row_position = Self::calc_line_row(i, tab);
+                    let row_position = calc_line_row(i, tab);
                     Self::print_line_number(row_position, i + 1, canvas)?;
                     for token in vec_line.iter() {
                         token.print(canvas, row_position, line_number_width)?;
@@ -309,7 +298,7 @@ impl<'a> WinMain<'a> {
                 let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
                 for (i, line) in (*bin).window(tab.window.top, tab.window.bottom, length) {
-                    let row = Self::calc_line_row(i, tab);
+                    let row = calc_line_row(i, tab);
 
                     canvas.print_with_attr(
                         row,
@@ -343,7 +332,7 @@ impl<'a> WinMain<'a> {
                 for (i, (prefix, colored_string)) in
                     (directory).window(tab.window.top, tab.window.bottom, length)
                 {
-                    let row = Self::calc_line_row(i, tab);
+                    let row = calc_line_row(i, tab);
                     let col = canvas.print(row, line_number_width, prefix)?;
                     canvas.print_with_attr(
                         row,
@@ -363,10 +352,6 @@ impl<'a> WinMain<'a> {
         }
         Ok(())
     }
-
-    fn calc_line_row(i: usize, tab: &Tab) -> usize {
-        i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top
-    }
 }
 
 struct WinSecondary<'a> {
@@ -375,6 +360,7 @@ struct WinSecondary<'a> {
 }
 impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+        canvas.clear()?;
         match self.tab.mode {
             Mode::Navigate(Navigate::Jump) => self.destination(canvas, &self.status.flagged),
             Mode::Navigate(Navigate::History) => self.destination(canvas, &self.tab.history),
@@ -394,22 +380,9 @@ impl<'a> Draw for WinSecondary<'a> {
 }
 
 impl<'a> WinSecondary<'a> {
-    const ATTR_YELLOW_BOLD: Attr = Attr {
-        fg: Color::YELLOW,
-        bg: Color::Default,
-        effect: Effect::BOLD,
-    };
     const EDIT_BOX_OFFSET: usize = 9;
     const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
     const SORT_CURSOR_OFFSET: usize = 37;
-    const FIRST_LINE_COLORS: [Attr; 6] = [
-        color_to_attr(Color::Rgb(231, 162, 156)),
-        color_to_attr(Color::Rgb(144, 172, 186)),
-        color_to_attr(Color::Rgb(214, 125, 83)),
-        color_to_attr(Color::Rgb(91, 152, 119)),
-        color_to_attr(Color::Rgb(152, 87, 137)),
-        color_to_attr(Color::Rgb(230, 189, 87)),
-    ];
 
     fn new(status: &'a Status, index: usize) -> Self {
         Self {
@@ -419,7 +392,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn first_line(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
-        self.draw_colored_strings(0, 0, self.create_first_row(tab)?, canvas)
+        draw_colored_strings(0, 0, self.create_first_row(tab)?, canvas)
     }
 
     fn create_first_row(&self, tab: &Tab) -> FmResult<Vec<String>> {
@@ -441,19 +414,6 @@ impl<'a> WinSecondary<'a> {
             }
         };
         Ok(first_row)
-    }
-    fn draw_colored_strings(
-        &self,
-        row: usize,
-        offset: usize,
-        strings: Vec<String>,
-        canvas: &mut dyn Canvas,
-    ) -> FmResult<()> {
-        let mut col = 0;
-        for (text, attr) in std::iter::zip(strings.iter(), Self::FIRST_LINE_COLORS.iter().cycle()) {
-            col += canvas.print_with_attr(row, offset + col, text, *attr)?;
-        }
-        Ok(())
     }
 
     /// Display the possible completion items. The currently selected one is
@@ -544,7 +504,7 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
 
         for (i, line) in status.marks.as_strings().iter().enumerate() {
-            let row = Self::calc_line_row(i, tab) + 2;
+            let row = calc_line_row(i, tab) + 2;
             canvas.print(row, 3, line)?;
         }
         Ok(())
@@ -594,13 +554,9 @@ impl<'a> WinSecondary<'a> {
             }
             NeedConfirmation::EmptyTrash => "Trash will be emptied".to_owned(),
         };
-        canvas.print_with_attr(2, 3, &confirmation_string, Self::ATTR_YELLOW_BOLD)?;
+        canvas.print_with_attr(2, 3, &confirmation_string, ATTR_YELLOW_BOLD)?;
 
         Ok(())
-    }
-
-    fn calc_line_row(i: usize, tab: &Tab) -> usize {
-        i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top
     }
 }
 
@@ -649,6 +605,7 @@ impl Display {
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
     pub fn display_all(&mut self, status: &Status) -> FmResult<()> {
+        self.hide_old_cursor()?;
         self.term.clear()?;
 
         let (width, _) = self.term.term_size()?;
@@ -660,6 +617,12 @@ impl Display {
         }
 
         Ok(self.term.present()?)
+    }
+
+    fn hide_old_cursor(&self) -> FmResult<()> {
+        self.term.set_cursor(0, 0)?;
+        self.term.show_cursor(false)?;
+        Ok(())
     }
 
     fn draw_dual_pane(
@@ -781,6 +744,23 @@ const fn pixel_position(i: usize, width: u32) -> (usize, usize) {
     let col = 2 * (i % width as usize);
     let row = i / width as usize + 3;
     (row, col)
+}
+
+fn draw_colored_strings(
+    row: usize,
+    offset: usize,
+    strings: Vec<String>,
+    canvas: &mut dyn Canvas,
+) -> FmResult<()> {
+    let mut col = 0;
+    for (text, attr) in std::iter::zip(strings.iter(), FIRST_LINE_COLORS.iter().cycle()) {
+        col += canvas.print_with_attr(row, offset + col, text, *attr)?;
+    }
+    Ok(())
+}
+
+fn calc_line_row(i: usize, tab: &Tab) -> usize {
+    i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top
 }
 
 fn print_pixel(
