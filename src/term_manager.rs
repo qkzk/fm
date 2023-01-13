@@ -571,6 +571,7 @@ pub struct Display {
 impl Display {
     const SELECTED_BORDER: Attr = color_to_attr(Color::LIGHT_BLUE);
     const INERT_BORDER: Attr = color_to_attr(Color::Default);
+    const MAX_PERCENT_SECOND_WINDOW: usize = 50;
 
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>) -> Self {
@@ -631,20 +632,22 @@ impl Display {
         } else {
             (Self::INERT_BORDER, Self::SELECTED_BORDER)
         };
-        let percent_left = match &status.tabs[0].mode {
-            Mode::Tree | Mode::Normal | Mode::Preview => 0,
-            _ => 50,
+        let percent_left = if status.tabs[0].need_second_window() {
+            Self::MAX_PERCENT_SECOND_WINDOW
+        } else {
+            0
         };
-        let percent_right = match &status.tabs[1].mode {
-            Mode::Tree | Mode::Normal | Mode::Preview => 0,
-            _ => 50,
+        let percent_right = if status.tabs[1].need_second_window() {
+            Self::MAX_PERCENT_SECOND_WINDOW
+        } else {
+            0
         };
         let hsplit = HSplit::default()
             .split(
                 VSplit::default()
                     .split(
                         Win::new(&win_main_left)
-                            .basis(100 - percent_left)
+                            .basis(Size::Percent(100 - percent_left))
                             .shrink(4)
                             .border(true)
                             .border_attr(left_border),
@@ -661,7 +664,7 @@ impl Display {
                 VSplit::default()
                     .split(
                         Win::new(&win_main_right)
-                            .basis(100 - percent_right)
+                            .basis(Size::Percent(100 - percent_right))
                             .shrink(4)
                             .border(true)
                             .border_attr(right_border),
@@ -680,9 +683,10 @@ impl Display {
     fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: &str) -> FmResult<()> {
         let win_main_left = WinMain::new(status, 0, disk_space_tab_0);
         let win_second_left = WinSecondary::new(status, 0);
-        let percent_left = match &status.tabs[0].mode {
-            Mode::Tree | Mode::Normal | Mode::Preview => 0,
-            _ => 50,
+        let percent_left = if status.tabs[0].need_second_window() {
+            Self::MAX_PERCENT_SECOND_WINDOW
+        } else {
+            0
         };
         let win = VSplit::default()
             .split(
