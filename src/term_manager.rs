@@ -52,192 +52,13 @@ macro_rules! impl_preview {
     };
 }
 
-struct WinTemp<'a> {
-    status: &'a Status,
-    tab: &'a Tab,
-}
-impl<'a> Draw for WinTemp<'a> {
-    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        match self.tab.mode {
-            Mode::Navigate(Navigate::Jump) => self.destination(canvas, &self.status.flagged),
-            Mode::Navigate(Navigate::History) => self.destination(canvas, &self.tab.history),
-            Mode::Navigate(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
-            Mode::Navigate(Navigate::Trash) => self.trash(canvas, &self.status.trash),
-            Mode::NeedConfirmation(confirmed_mode) => {
-                self.confirmation(self.status, self.tab, confirmed_mode, canvas)
-            }
-            Mode::InputCompleted(_) => self.completion(self.tab, canvas),
-            Mode::InputSimple(InputSimple::Marks(_)) => self.marks(self.status, self.tab, canvas),
-            _ => Ok(()),
-        }?;
-        self.cursor(self.tab, canvas)?;
-        Ok(())
-    }
-}
-
-impl<'a> WinTemp<'a> {
-    const ATTR_YELLOW_BOLD: Attr = Attr {
-        fg: Color::YELLOW,
-        bg: Color::Default,
-        effect: Effect::BOLD,
-    };
-    const EDIT_BOX_OFFSET: usize = 9;
-    const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
-    const SORT_CURSOR_OFFSET: usize = 37;
-    fn calc_line_row(i: usize, tab: &Tab) -> usize {
-        i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top
-    }
-    /// Display the possible completion items. The currently selected one is
-    /// reversed.
-    fn completion(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
-        canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
-        for (row, candidate) in tab.completion.proposals.iter().enumerate() {
-            let mut attr = Attr::default();
-            if row == tab.completion.index {
-                attr.effect |= Effect::REVERSE;
-            }
-            canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, candidate, attr)?;
-        }
-        Ok(())
-    }
-    /// Display a cursor in the top row, at a correct column.
-    fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
-        match tab.mode {
-            Mode::Normal
-            | Mode::Tree
-            | Mode::InputSimple(InputSimple::Marks(_))
-            | Mode::Navigate(_)
-            | Mode::Preview => {
-                canvas.show_cursor(false)?;
-            }
-            Mode::InputSimple(InputSimple::Sort) => {
-                canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
-            }
-            Mode::InputSimple(_) | Mode::InputCompleted(_) => {
-                canvas.show_cursor(true)?;
-                canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
-            }
-            Mode::NeedConfirmation(confirmed_action) => {
-                canvas.set_cursor(0, confirmed_action.cursor_offset())?;
-            }
-        }
-        Ok(())
-    }
-
-    /// Display the possible destinations from a selectable content of PathBuf.
-    fn destination(
-        &self,
-        canvas: &mut dyn Canvas,
-        selectable: &impl SelectableContent<PathBuf>,
-    ) -> FmResult<()> {
-        canvas.print(0, 0, "Go to...")?;
-        for (row, path) in selectable.content().iter().enumerate() {
-            let mut attr = Attr::default();
-            if row == selectable.index() {
-                attr.effect |= Effect::REVERSE;
-            }
-            let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP,
-                4,
-                path.to_str()
-                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
-                attr,
-            );
-        }
-        Ok(())
-    }
-
-    fn trash(
-        &self,
-        canvas: &mut dyn Canvas,
-        selectable: &impl SelectableContent<TrashInfo>,
-    ) -> FmResult<()> {
-        canvas.print(1, 0, "Restore the selected file")?;
-        for (row, trashinfo) in selectable.content().iter().enumerate() {
-            let mut attr = Attr::default();
-            if row == selectable.index() {
-                attr.effect |= Effect::REVERSE;
-            }
-
-            let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP,
-                4,
-                &format!("{}", trashinfo),
-                attr,
-            );
-        }
-        Ok(())
-    }
-
-    fn marks(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
-        canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
-
-        for (i, line) in status.marks.as_strings().iter().enumerate() {
-            let row = Self::calc_line_row(i, tab) + 2;
-            canvas.print(row, 3, line)?;
-        }
-        Ok(())
-    }
-    /// Display a list of edited (deleted, copied, moved) files for confirmation
-    fn confirmation(
-        &self,
-        status: &Status,
-        tab: &Tab,
-        confirmed_mode: NeedConfirmation,
-        canvas: &mut dyn Canvas,
-    ) -> FmResult<()> {
-        info!("confirmed action: {:?}", confirmed_mode);
-        match confirmed_mode {
-            NeedConfirmation::EmptyTrash => {
-                for (row, trashinfo) in status.trash.content.iter().enumerate() {
-                    canvas.print_with_attr(
-                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
-                        4,
-                        &format!("{}", trashinfo),
-                        Attr::default(),
-                    )?;
-                }
-            }
-            NeedConfirmation::Copy | NeedConfirmation::Delete | NeedConfirmation::Move => {
-                for (row, path) in status.flagged.content.iter().enumerate() {
-                    canvas.print_with_attr(
-                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
-                        4,
-                        path.to_str()
-                            .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
-                        Attr::default(),
-                    )?;
-                }
-            }
-        }
-        let confirmation_string = match confirmed_mode {
-            NeedConfirmation::Copy => {
-                format!(
-                    "Files will be copied to {}",
-                    tab.path_content.path_to_str()?
-                )
-            }
-            NeedConfirmation::Delete => "Files will deleted permanently".to_owned(),
-            NeedConfirmation::Move => {
-                format!("Files will be moved to {}", tab.path_content.path_to_str()?)
-            }
-            NeedConfirmation::EmptyTrash => "Trash will be emptied".to_owned(),
-        };
-        canvas.print_with_attr(2, 3, &confirmation_string, Self::ATTR_YELLOW_BOLD)?;
-
-        Ok(())
-    }
-}
-
-impl<'a> Widget for WinTemp<'a> {}
-
-struct WinTab<'a> {
+struct WinMain<'a> {
     status: &'a Status,
     tab: &'a Tab,
     disk_space: &'a str,
 }
 
-impl<'a> Draw for WinTab<'a> {
+impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         match self.tab.mode {
             Mode::Preview => self.preview(self.tab, canvas),
@@ -253,9 +74,9 @@ impl<'a> Draw for WinTab<'a> {
     }
 }
 
-impl<'a> Widget for WinTab<'a> {}
+impl<'a> Widget for WinMain<'a> {}
 
-impl<'a> WinTab<'a> {
+impl<'a> WinMain<'a> {
     const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
     const ATTR_YELLOW_BOLD: Attr = Attr {
         fg: Color::YELLOW,
@@ -270,6 +91,15 @@ impl<'a> WinTab<'a> {
         color_to_attr(Color::Rgb(152, 87, 137)),
         color_to_attr(Color::Rgb(230, 189, 87)),
     ];
+
+    fn new(status: &'a Status, index: usize, disk_space: &'a str) -> Self {
+        Self {
+            status,
+            tab: &status.tabs[index],
+            disk_space,
+        }
+    }
+
     /// Display the top line on terminal.
     /// Its content depends on the mode.
     /// In normal mode we display the path and number of files.
@@ -541,6 +371,195 @@ impl<'a> WinTab<'a> {
         i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top
     }
 }
+
+struct WinSecondary<'a> {
+    status: &'a Status,
+    tab: &'a Tab,
+}
+impl<'a> Draw for WinSecondary<'a> {
+    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+        match self.tab.mode {
+            Mode::Navigate(Navigate::Jump) => self.destination(canvas, &self.status.flagged),
+            Mode::Navigate(Navigate::History) => self.destination(canvas, &self.tab.history),
+            Mode::Navigate(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
+            Mode::Navigate(Navigate::Trash) => self.trash(canvas, &self.status.trash),
+            Mode::NeedConfirmation(confirmed_mode) => {
+                self.confirmation(self.status, self.tab, confirmed_mode, canvas)
+            }
+            Mode::InputCompleted(_) => self.completion(self.tab, canvas),
+            Mode::InputSimple(InputSimple::Marks(_)) => self.marks(self.status, self.tab, canvas),
+            _ => Ok(()),
+        }?;
+        self.cursor(self.tab, canvas)?;
+        Ok(())
+    }
+}
+
+impl<'a> WinSecondary<'a> {
+    const ATTR_YELLOW_BOLD: Attr = Attr {
+        fg: Color::YELLOW,
+        bg: Color::Default,
+        effect: Effect::BOLD,
+    };
+    const EDIT_BOX_OFFSET: usize = 9;
+    const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
+    const SORT_CURSOR_OFFSET: usize = 37;
+
+    fn new(status: &'a Status, index: usize) -> Self {
+        Self {
+            status,
+            tab: &status.tabs[index],
+        }
+    }
+
+    /// Display the possible completion items. The currently selected one is
+    /// reversed.
+    fn completion(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+        canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
+        for (row, candidate) in tab.completion.proposals.iter().enumerate() {
+            let mut attr = Attr::default();
+            if row == tab.completion.index {
+                attr.effect |= Effect::REVERSE;
+            }
+            canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, candidate, attr)?;
+        }
+        Ok(())
+    }
+    /// Display a cursor in the top row, at a correct column.
+    fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+        match tab.mode {
+            Mode::Normal
+            | Mode::Tree
+            | Mode::InputSimple(InputSimple::Marks(_))
+            | Mode::Navigate(_)
+            | Mode::Preview => {
+                canvas.show_cursor(false)?;
+            }
+            Mode::InputSimple(InputSimple::Sort) => {
+                canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
+            }
+            Mode::InputSimple(_) | Mode::InputCompleted(_) => {
+                canvas.show_cursor(true)?;
+                canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
+            }
+            Mode::NeedConfirmation(confirmed_action) => {
+                canvas.set_cursor(0, confirmed_action.cursor_offset())?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Display the possible destinations from a selectable content of PathBuf.
+    fn destination(
+        &self,
+        canvas: &mut dyn Canvas,
+        selectable: &impl SelectableContent<PathBuf>,
+    ) -> FmResult<()> {
+        canvas.print(0, 0, "Go to...")?;
+        for (row, path) in selectable.content().iter().enumerate() {
+            let mut attr = Attr::default();
+            if row == selectable.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                path.to_str()
+                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
+                attr,
+            );
+        }
+        Ok(())
+    }
+
+    fn trash(
+        &self,
+        canvas: &mut dyn Canvas,
+        selectable: &impl SelectableContent<TrashInfo>,
+    ) -> FmResult<()> {
+        canvas.print(1, 0, "Restore the selected file")?;
+        for (row, trashinfo) in selectable.content().iter().enumerate() {
+            let mut attr = Attr::default();
+            if row == selectable.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                &format!("{}", trashinfo),
+                attr,
+            );
+        }
+        Ok(())
+    }
+
+    fn marks(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+        canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
+
+        for (i, line) in status.marks.as_strings().iter().enumerate() {
+            let row = Self::calc_line_row(i, tab) + 2;
+            canvas.print(row, 3, line)?;
+        }
+        Ok(())
+    }
+    /// Display a list of edited (deleted, copied, moved) files for confirmation
+    fn confirmation(
+        &self,
+        status: &Status,
+        tab: &Tab,
+        confirmed_mode: NeedConfirmation,
+        canvas: &mut dyn Canvas,
+    ) -> FmResult<()> {
+        info!("confirmed action: {:?}", confirmed_mode);
+        match confirmed_mode {
+            NeedConfirmation::EmptyTrash => {
+                for (row, trashinfo) in status.trash.content.iter().enumerate() {
+                    canvas.print_with_attr(
+                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                        4,
+                        &format!("{}", trashinfo),
+                        Attr::default(),
+                    )?;
+                }
+            }
+            NeedConfirmation::Copy | NeedConfirmation::Delete | NeedConfirmation::Move => {
+                for (row, path) in status.flagged.content.iter().enumerate() {
+                    canvas.print_with_attr(
+                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                        4,
+                        path.to_str()
+                            .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
+                        Attr::default(),
+                    )?;
+                }
+            }
+        }
+        let confirmation_string = match confirmed_mode {
+            NeedConfirmation::Copy => {
+                format!(
+                    "Files will be copied to {}",
+                    tab.path_content.path_to_str()?
+                )
+            }
+            NeedConfirmation::Delete => "Files will deleted permanently".to_owned(),
+            NeedConfirmation::Move => {
+                format!("Files will be moved to {}", tab.path_content.path_to_str()?)
+            }
+            NeedConfirmation::EmptyTrash => "Trash will be emptied".to_owned(),
+        };
+        canvas.print_with_attr(2, 3, &confirmation_string, Self::ATTR_YELLOW_BOLD)?;
+
+        Ok(())
+    }
+
+    fn calc_line_row(i: usize, tab: &Tab) -> usize {
+        i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top
+    }
+}
+
+impl<'a> Widget for WinSecondary<'a> {}
+
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.
 pub struct Display {
@@ -602,24 +621,11 @@ impl Display {
         disk_space_tab_0: &str,
         disk_space_tab_1: &str,
     ) -> FmResult<()> {
-        let win_left = WinTab {
-            status,
-            tab: &status.tabs[0],
-            disk_space: disk_space_tab_0,
-        };
-        let win_temp_left = WinTemp {
-            status,
-            tab: &status.tabs[0],
-        };
-        let win_right = WinTab {
-            status,
-            tab: &status.tabs[1],
-            disk_space: disk_space_tab_1,
-        };
-        let win_temp_right = WinTemp {
-            status,
-            tab: &status.tabs[1],
-        };
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0);
+        let win_main_right = WinMain::new(status, 1, disk_space_tab_1);
+        let win_second_left = WinSecondary::new(status, 0);
+        let win_second_right = WinSecondary::new(status, 1);
+
         let (left_border, right_border) = if status.index == 0 {
             (Self::SELECTED_BORDER, Self::INERT_BORDER)
         } else {
@@ -637,14 +643,14 @@ impl Display {
             .split(
                 VSplit::default()
                     .split(
-                        Win::new(&win_left)
+                        Win::new(&win_main_left)
                             .basis(100 - percent_left)
                             .shrink(4)
                             .border(true)
                             .border_attr(left_border),
                     )
                     .split(
-                        Win::new(&win_temp_left)
+                        Win::new(&win_second_left)
                             .basis(Size::Percent(percent_left))
                             .shrink(0)
                             .border(true)
@@ -654,14 +660,14 @@ impl Display {
             .split(
                 VSplit::default()
                     .split(
-                        Win::new(&win_right)
+                        Win::new(&win_main_right)
                             .basis(100 - percent_right)
                             .shrink(4)
                             .border(true)
                             .border_attr(right_border),
                     )
                     .split(
-                        Win::new(&win_temp_right)
+                        Win::new(&win_second_right)
                             .basis(Size::Percent(percent_right))
                             .shrink(0)
                             .border(true)
@@ -672,30 +678,22 @@ impl Display {
     }
 
     fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: &str) -> FmResult<()> {
-        let win_left = WinTab {
-            status,
-            tab: &status.tabs[0],
-            disk_space: disk_space_tab_0,
-        };
-
-        let win_temp_left = WinTemp {
-            status,
-            tab: &status.tabs[0],
-        };
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0);
+        let win_second_left = WinSecondary::new(status, 0);
         let percent_left = match &status.tabs[0].mode {
             Mode::Tree | Mode::Normal | Mode::Preview => 0,
             _ => 50,
         };
         let win = VSplit::default()
             .split(
-                Win::new(&win_left)
+                Win::new(&win_main_left)
                     .basis(100 - percent_left)
                     .shrink(4)
                     .border(true)
                     .border_attr(Self::SELECTED_BORDER),
             )
             .split(
-                Win::new(&win_temp_left)
+                Win::new(&win_second_left)
                     .basis(Size::Percent(percent_left))
                     .shrink(0)
                     .border(true)
