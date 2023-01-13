@@ -574,7 +574,6 @@ pub struct Display {
 impl Display {
     const SELECTED_BORDER: Attr = color_to_attr(Color::LIGHT_BLUE);
     const INERT_BORDER: Attr = color_to_attr(Color::Default);
-    const MAX_PERCENT_SECOND_WINDOW: usize = 50;
 
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>) -> Self {
@@ -625,35 +624,36 @@ impl Display {
         Ok(self.term.present()?)
     }
 
-    fn percent_for_second_window(tab: &Tab) -> usize {
+    fn size_for_second_window(&self, tab: &Tab) -> FmResult<usize> {
         if tab.need_second_window() {
-            Self::MAX_PERCENT_SECOND_WINDOW
+            Ok(self.height()? / 2)
         } else {
-            0
+            Ok(0)
         }
     }
 
     fn vertical_split<'a>(
+        &self,
         win_main: &'a WinMain,
         win_secondary: &'a WinSecondary,
         border: Attr,
-        percent: usize,
-    ) -> VSplit<'a> {
-        VSplit::default()
+        size: usize,
+    ) -> FmResult<VSplit<'a>> {
+        Ok(VSplit::default()
             .split(
                 Win::new(win_main)
-                    .basis(Size::Percent(100 - percent))
+                    .basis(self.height()? - size)
                     .shrink(4)
                     .border(true)
                     .border_attr(border),
             )
             .split(
                 Win::new(win_secondary)
-                    .basis(Size::Percent(percent))
+                    .basis(size)
                     .shrink(0)
                     .border(true)
                     .border_attr(border),
-            )
+            ))
     }
 
     fn borders(&self, status: &Status) -> (Attr, Attr) {
@@ -675,34 +675,34 @@ impl Display {
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let (border_left, border_right) = self.borders(status);
-        let percent_left = Self::percent_for_second_window(&status.tabs[0]);
-        let percent_right = Self::percent_for_second_window(&status.tabs[1]);
+        let percent_left = self.size_for_second_window(&status.tabs[0])?;
+        let percent_right = self.size_for_second_window(&status.tabs[1])?;
         let hsplit = HSplit::default()
-            .split(Self::vertical_split(
+            .split(self.vertical_split(
                 &win_main_left,
                 &win_second_left,
                 border_left,
                 percent_left,
-            ))
-            .split(Self::vertical_split(
+            )?)
+            .split(self.vertical_split(
                 &win_main_right,
                 &win_second_right,
                 border_right,
                 percent_right,
-            ));
+            )?);
         Ok(self.term.draw(&hsplit)?)
     }
 
     fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: &str) -> FmResult<()> {
         let win_main_left = WinMain::new(status, 0, disk_space_tab_0);
         let win_second_left = WinSecondary::new(status, 0);
-        let percent_left = Self::percent_for_second_window(&status.tabs[0]);
-        let win = Self::vertical_split(
+        let percent_left = self.size_for_second_window(&status.tabs[0])?;
+        let win = self.vertical_split(
             &win_main_left,
             &win_second_left,
             Self::SELECTED_BORDER,
             percent_left,
-        );
+        )?;
         Ok(self.term.draw(&win)?)
     }
 
