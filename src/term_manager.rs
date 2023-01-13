@@ -167,9 +167,6 @@ impl<'a> WinMain<'a> {
                     format!("{}  ", &tab.path_content.git_string()?),
                 ]
             }
-            Mode::NeedConfirmation(confirmed_action) => {
-                vec![format!("{} (y/n)", confirmed_action)]
-            }
             Mode::Preview => match &tab.preview {
                 Preview::Text(text_content) => {
                     if matches!(text_content.kind, TextKind::HELP) {
@@ -183,18 +180,18 @@ impl<'a> WinMain<'a> {
                 }
                 _ => Self::default_preview_first_line(tab),
             },
-            Mode::InputSimple(InputSimple::Marks(MarkAction::Jump)) => {
-                vec!["Jump to...".to_owned()]
-            }
-            Mode::InputSimple(InputSimple::Marks(MarkAction::New)) => {
-                vec!["Save mark...".to_owned()]
-            }
-            _ => {
-                vec![
-                    format!("{}", tab.mode.clone()),
-                    format!("{}", tab.input.string()),
-                ]
-            }
+            _ => match tab.previous_mode {
+                Mode::Normal | Mode::Tree => {
+                    vec![
+                        format!("{} ", tab.path_content.path.display()),
+                        format!("{} files ", tab.path_content.true_len()),
+                        format!("{}  ", tab.path_content.used_space()),
+                        format!("Avail: {}  ", disk_space),
+                        format!("{}  ", &tab.path_content.git_string()?),
+                    ]
+                }
+                _ => vec![],
+            },
         };
         Ok(first_row)
     }
@@ -391,6 +388,7 @@ impl<'a> Draw for WinSecondary<'a> {
             _ => Ok(()),
         }?;
         self.cursor(self.tab, canvas)?;
+        self.first_line(self.tab, canvas)?;
         Ok(())
     }
 }
@@ -404,12 +402,58 @@ impl<'a> WinSecondary<'a> {
     const EDIT_BOX_OFFSET: usize = 9;
     const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
     const SORT_CURSOR_OFFSET: usize = 37;
+    const FIRST_LINE_COLORS: [Attr; 6] = [
+        color_to_attr(Color::Rgb(231, 162, 156)),
+        color_to_attr(Color::Rgb(144, 172, 186)),
+        color_to_attr(Color::Rgb(214, 125, 83)),
+        color_to_attr(Color::Rgb(91, 152, 119)),
+        color_to_attr(Color::Rgb(152, 87, 137)),
+        color_to_attr(Color::Rgb(230, 189, 87)),
+    ];
 
     fn new(status: &'a Status, index: usize) -> Self {
         Self {
             status,
             tab: &status.tabs[index],
         }
+    }
+
+    fn first_line(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+        self.draw_colored_strings(0, 0, self.create_first_row(tab)?, canvas)
+    }
+
+    fn create_first_row(&self, tab: &Tab) -> FmResult<Vec<String>> {
+        let first_row = match tab.mode {
+            Mode::NeedConfirmation(confirmed_action) => {
+                vec![format!("{} (y/n)", confirmed_action)]
+            }
+            Mode::InputSimple(InputSimple::Marks(MarkAction::Jump)) => {
+                vec!["Jump to...".to_owned()]
+            }
+            Mode::InputSimple(InputSimple::Marks(MarkAction::New)) => {
+                vec!["Save mark...".to_owned()]
+            }
+            _ => {
+                vec![
+                    format!("{}", tab.mode.clone()),
+                    format!("{}", tab.input.string()),
+                ]
+            }
+        };
+        Ok(first_row)
+    }
+    fn draw_colored_strings(
+        &self,
+        row: usize,
+        offset: usize,
+        strings: Vec<String>,
+        canvas: &mut dyn Canvas,
+    ) -> FmResult<()> {
+        let mut col = 0;
+        for (text, attr) in std::iter::zip(strings.iter(), Self::FIRST_LINE_COLORS.iter().cycle()) {
+            col += canvas.print_with_attr(row, offset + col, text, *attr)?;
+        }
+        Ok(())
     }
 
     /// Display the possible completion items. The currently selected one is
@@ -436,6 +480,7 @@ impl<'a> WinSecondary<'a> {
                 canvas.show_cursor(false)?;
             }
             Mode::InputSimple(InputSimple::Sort) => {
+                canvas.show_cursor(true)?;
                 canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
             }
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
@@ -443,6 +488,7 @@ impl<'a> WinSecondary<'a> {
                 canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
             }
             Mode::NeedConfirmation(confirmed_action) => {
+                canvas.show_cursor(true)?;
                 canvas.set_cursor(0, confirmed_action.cursor_offset())?;
             }
         }
