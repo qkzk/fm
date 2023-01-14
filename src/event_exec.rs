@@ -453,8 +453,9 @@ impl EventExec {
                 let index = Self::row_to_index(row) + 1;
                 tab.directory.tree.unselect_children();
                 tab.directory.tree.position = tab.directory.tree.position_from_index(index);
-                tab.directory.tree.select_from_position()?;
-                tab.directory.make_preview(colors)
+                let (_, _, node) = tab.directory.tree.select_from_position()?;
+                tab.directory.make_preview(colors);
+                tab.directory.tree.current_node = node;
             }
             _ => (),
         }
@@ -787,29 +788,11 @@ impl EventExec {
     }
 
     /// A right click opens a file or a directory.
-    pub fn event_right_click(status: &mut Status, row: u16) -> FmResult<()> {
-        if let Mode::Normal = status.selected_non_mut().mode {
-            let tab = status.selected();
-            if tab.path_content.content.is_empty()
-                || row as usize > tab.path_content.content.len() + 1
-            {
-                return Err(FmError::custom("event right click", "not found"));
-            }
-            let index = Self::row_to_index(row);
-            tab.path_content.select_index(index);
-            tab.window.scroll_to(index);
-            if let FileKind::Directory = tab
-                .path_content
-                .selected()
-                .ok_or_else(|| FmError::custom("event right click", "not found"))?
-                .file_kind
-            {
-                Self::exec_file(status)
-            } else {
-                Self::event_open_file(status)
-            }
-        } else {
-            Ok(())
+    pub fn event_right_click(status: &mut Status) -> FmResult<()> {
+        match status.selected().mode {
+            Mode::Normal => Self::exec_file(status),
+            Mode::Tree => Self::exec_tree(status),
+            _ => Ok(()),
         }
     }
 
@@ -1276,7 +1259,7 @@ impl EventExec {
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
-            Mode::Tree => EventExec::exec_tree(status.selected())?,
+            Mode::Tree => EventExec::exec_tree(status)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
             | Mode::InputCompleted(InputCompleted::Nothing)
@@ -1535,24 +1518,16 @@ impl EventExec {
     }
 
     /// Execute the selected node if it's a file else enter the directory.
-    pub fn exec_tree(tab: &mut Tab) -> FmResult<()> {
+    pub fn exec_tree(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
         let node = tab.directory.tree.current_node.clone();
         if !node.fileinfo.path.is_dir() {
-            let filename = node.filename();
-            let parent = node
-                .filepath()
-                .parent()
-                .ok_or_else(|| FmError::custom("exec_tree", "path should have a parent"))?
-                .to_owned();
-            tab.set_pathcontent(&parent)?;
-            tab.set_mode(Mode::Normal);
-            tab.refresh_view()?;
-            tab.search_from(&filename, 0);
-            Ok(())
+            Self::event_open_file(status)
         } else {
-            tab.set_pathcontent(&node.filepath())?;
-            tab.set_mode(Mode::Normal);
-            tab.refresh_view()
+            tab.set_pathcontent(&node.fileinfo.path)?;
+            tab.make_tree(colors)?;
+            Ok(())
         }
     }
 }

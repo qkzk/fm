@@ -42,7 +42,8 @@ impl EventDispatcher {
             Event::Key(Key::SingleClick(MouseButton::Right, row, col))
             | Event::Key(Key::DoubleClick(MouseButton::Left, row, col)) => {
                 EventExec::event_select_pane(status, col)?;
-                EventExec::event_right_click(status, row)
+                EventExec::event_select_row(status, row)?;
+                EventExec::event_right_click(status)
             }
             Event::User(_) => EventExec::refresh_status(status),
             Event::Resize { width, height } => EventExec::resize(status, width, height),
