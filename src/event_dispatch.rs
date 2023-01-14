@@ -96,7 +96,10 @@ impl EventDispatcher {
                 Mode::Navigate(Navigate::Trash) if c == 'x' => {
                     EventExec::event_trash_remove_file(status)
                 }
-                Mode::Preview | Mode::Navigate(_) => EventExec::event_normal(status.selected()),
+                Mode::Preview | Mode::Navigate(_) => {
+                    status.selected().set_mode(Mode::Normal);
+                    EventExec::event_normal(status.selected())
+                }
             },
             _ => Ok(()),
         }
