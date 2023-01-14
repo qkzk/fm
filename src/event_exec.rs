@@ -664,7 +664,8 @@ impl EventExec {
         Ok(())
     }
 
-    /// Reset the mode to normal.
+    /// Leave a mode requiring a confirmation without doing anything.
+    /// Reset the mode to the previous mode.
     pub fn event_leave_need_confirmation(tab: &mut Tab) {
         tab.reset_mode();
     }
