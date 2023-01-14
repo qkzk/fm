@@ -27,8 +27,14 @@ impl EventDispatcher {
     /// which needs to know those keybindings.
     pub fn dispatch(&self, status: &mut Status, ev: Event) -> FmResult<()> {
         match ev {
-            Event::Key(Key::WheelUp(_, _, _)) => EventExec::event_move_up(status),
-            Event::Key(Key::WheelDown(_, _, _)) => EventExec::event_move_down(status),
+            Event::Key(Key::WheelUp(_, col, _)) => {
+                EventExec::event_select_pane(status, col)?;
+                EventExec::event_move_up(status)
+            }
+            Event::Key(Key::WheelDown(_, col, _)) => {
+                EventExec::event_select_pane(status, col)?;
+                EventExec::event_move_down(status)
+            }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
                 EventExec::event_select_pane(status, col)?;
                 EventExec::event_select_row(status.selected(), row)
