@@ -1103,12 +1103,18 @@ impl EventExec {
 
     /// Apply a filter to the displayed files.
     /// See `crate::filter` for more details.
-    pub fn exec_filter(tab: &mut Tab) -> FmResult<()> {
+    pub fn exec_filter(status: &mut Status) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
         let filter = FilterKind::from_input(&tab.input.string());
         tab.set_filter(filter);
         tab.input.reset();
         tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
-        Self::event_normal(tab)
+        if let Mode::Tree = tab.previous_mode {
+            tab.make_tree(colors)?;
+        }
+        tab.window.reset(tab.path_content.content.len());
+        Ok(())
     }
 
     /// Move up one row in modes allowing movement.
@@ -1248,15 +1254,18 @@ impl EventExec {
             Mode::InputSimple(InputSimple::Newdir) => EventExec::exec_newdir(status.selected())?,
             Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,
             Mode::InputSimple(InputSimple::RegexMatch) => EventExec::exec_regex(status)?,
-            Mode::InputSimple(InputSimple::Filter) => EventExec::exec_filter(status.selected())?,
+            Mode::InputSimple(InputSimple::Filter) => {
+                must_refresh = false;
+                EventExec::exec_filter(status)?
+            }
             Mode::Navigate(Navigate::Jump) => EventExec::exec_jump(status)?,
             Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
             Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
-                EventExec::exec_search(status)?;
                 must_refresh = false;
+                EventExec::exec_search(status)?
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,

@@ -334,7 +334,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] vim keys, harmonize keybinds with ranger
 - [ ] zoxide support
 
-- [ ] Version 0.1.12 : scrollable shortcuts, marks & history
+- [ ] Version 0.1.12 :
+
+  - [x] FIX: filter aren't applied at all
+  - [ ] scrollable shortcuts, marks & history
+  - [ ] luks encryption
 
 - [ ] Version 0.2.0 : tests
 
