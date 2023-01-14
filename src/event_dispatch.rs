@@ -37,7 +37,7 @@ impl EventDispatcher {
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
                 EventExec::event_select_pane(status, col)?;
-                EventExec::event_select_row(status.selected(), row)
+                EventExec::event_select_row(status, row)
             }
             Event::Key(Key::SingleClick(MouseButton::Right, row, col))
             | Event::Key(Key::DoubleClick(MouseButton::Left, row, col)) => {

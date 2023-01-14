@@ -440,11 +440,23 @@ impl EventExec {
     }
 
     /// Select a given row, if there's something in it.
-    pub fn event_select_row(tab: &mut Tab, row: u16) -> FmResult<()> {
-        if let Mode::Normal = tab.mode {
-            let index = Self::row_to_index(row);
-            tab.path_content.select_index(index);
-            tab.window.scroll_to(index);
+    pub fn event_select_row(status: &mut Status, row: u16) -> FmResult<()> {
+        let colors = &status.config_colors.clone();
+        let tab = status.selected();
+        match tab.mode {
+            Mode::Normal => {
+                let index = Self::row_to_index(row);
+                tab.path_content.select_index(index);
+                tab.window.scroll_to(index);
+            }
+            Mode::Tree => {
+                let index = Self::row_to_index(row) + 1;
+                tab.directory.tree.unselect_children();
+                tab.directory.tree.position = tab.directory.tree.position_from_index(index);
+                tab.directory.tree.select_from_position()?;
+                tab.directory.make_preview(colors)
+            }
+            _ => (),
         }
         Ok(())
     }

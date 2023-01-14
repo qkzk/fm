@@ -439,6 +439,29 @@ impl Tree {
         }
         (tree, reached_depth, last_cord)
     }
+
+    pub fn position_from_index(&self, index: usize) -> Vec<usize> {
+        let mut stack = vec![];
+        stack.push(self);
+
+        let mut visited = self;
+        let mut counter = 0;
+        while !stack.is_empty() {
+            if let Some(current) = stack.pop() {
+                counter += 1;
+                visited = current;
+                if counter == index {
+                    break;
+                }
+                if !current.node.folded {
+                    for leaf in current.leaves.iter() {
+                        stack.push(leaf);
+                    }
+                }
+            }
+        }
+        visited.node.position.clone()
+    }
 }
 
 fn first_prefix(mut prefix: String) -> String {

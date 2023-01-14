@@ -328,7 +328,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] window for mode displaying info (completion, marks, shortcut, jump)
   - [x] clicks on right pane should select it first
   - [x] doucle click left = right click : open file
-  - [ ] wheel select pane
+  - [x] wheel select pane
+  - [ ] enable mouse in tree mode
+    - [x] wheel -> next/prev sibling (somewhat okay)
+    - [ ] left/right
 
 - [ ] Version 0.1.12 : scrollable shortcuts, marks & history
 
