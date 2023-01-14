@@ -346,4 +346,8 @@ impl Tab {
         self.mode = self.previous_mode;
         self.previous_mode = Mode::Normal;
     }
+
+    pub fn need_second_window(&self) -> bool {
+        !matches!(self.mode, Mode::Normal | Mode::Tree | Mode::Preview)
+    }
 }

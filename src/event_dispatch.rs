@@ -27,13 +27,23 @@ impl EventDispatcher {
     /// which needs to know those keybindings.
     pub fn dispatch(&self, status: &mut Status, ev: Event) -> FmResult<()> {
         match ev {
-            Event::Key(Key::WheelUp(_, _, _)) => EventExec::event_move_up(status),
-            Event::Key(Key::WheelDown(_, _, _)) => EventExec::event_move_down(status),
-            Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => {
+            Event::Key(Key::WheelUp(_, col, _)) => {
+                EventExec::event_select_pane(status, col)?;
+                EventExec::event_move_up(status)
+            }
+            Event::Key(Key::WheelDown(_, col, _)) => {
+                EventExec::event_select_pane(status, col)?;
+                EventExec::event_move_down(status)
+            }
+            Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
+                EventExec::event_select_pane(status, col)?;
                 EventExec::event_select_row(status, row)
             }
-            Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => {
-                EventExec::event_right_click(status, row)
+            Event::Key(Key::SingleClick(MouseButton::Right, row, col))
+            | Event::Key(Key::DoubleClick(MouseButton::Left, row, col)) => {
+                EventExec::event_select_pane(status, col)?;
+                EventExec::event_select_row(status, row)?;
+                EventExec::event_right_click(status)
             }
             Event::User(_) => EventExec::refresh_status(status),
             Event::Resize { width, height } => EventExec::resize(status, width, height),
@@ -86,7 +96,10 @@ impl EventDispatcher {
                 Mode::Navigate(Navigate::Trash) if c == 'x' => {
                     EventExec::event_trash_remove_file(status)
                 }
-                Mode::Preview | Mode::Navigate(_) => EventExec::event_normal(status.selected()),
+                Mode::Preview | Mode::Navigate(_) => {
+                    status.selected().set_mode(Mode::Normal);
+                    EventExec::event_normal(status.selected())
+                }
             },
             _ => Ok(()),
         }

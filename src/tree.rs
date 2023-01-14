@@ -197,7 +197,7 @@ impl Tree {
     fn sort_tree_by_kind(&mut self, sort_kind: &SortKind) {
         sort_kind.sort_tree(&mut self.leaves);
         for tree in self.leaves.iter_mut() {
-            tree.sort_tree_by_kind(&sort_kind);
+            tree.sort_tree_by_kind(sort_kind);
         }
     }
 
@@ -438,6 +438,29 @@ impl Tree {
             reached_depth += 1;
         }
         (tree, reached_depth, last_cord)
+    }
+
+    pub fn position_from_index(&self, index: usize) -> Vec<usize> {
+        let mut stack = vec![];
+        stack.push(self);
+
+        let mut visited = self;
+        let mut counter = 0;
+        while !stack.is_empty() {
+            if let Some(current) = stack.pop() {
+                counter += 1;
+                visited = current;
+                if counter == index {
+                    break;
+                }
+                if !current.node.folded {
+                    for leaf in current.leaves.iter() {
+                        stack.push(leaf);
+                    }
+                }
+            }
+        }
+        visited.node.position.clone()
     }
 }
 
