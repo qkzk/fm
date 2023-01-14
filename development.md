@@ -323,7 +323,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] vim keys, harmonize keybinds with ranger
 - [ ] zoxide support
 
-- [ ] Version 0.1.11 : window for mode displaying info (completion, marks, shortcut, jump)
+- Version 0.1.11 :
+
+  - [x] window for mode displaying info (completion, marks, shortcut, jump)
+  - [x] clicks on right pane should select it first
 
 - [ ] Version 0.1.12 : scrollable shortcuts, marks & history
 

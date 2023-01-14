@@ -428,10 +428,20 @@ impl EventExec {
         tab.input.cursor_end()
     }
 
+    /// Select the left or right tab depending on where the user clicked.
+    pub fn event_select_pane(status: &mut Status, col: u16) -> FmResult<()> {
+        let (width, _) = status.term_size()?;
+        if (col as usize) < width / 2 {
+            status.select_tab(0)?;
+        } else {
+            status.select_tab(1)?;
+        };
+        Ok(())
+    }
+
     /// Select a given row, if there's something in it.
-    pub fn event_select_row(status: &mut Status, row: u16) -> FmResult<()> {
-        if let Mode::Normal = status.selected_non_mut().mode {
-            let tab = status.selected();
+    pub fn event_select_row(tab: &mut Tab, row: u16) -> FmResult<()> {
+        if let Mode::Normal = tab.mode {
             let index = Self::row_to_index(row);
             tab.path_content.select_index(index);
             tab.window.scroll_to(index);

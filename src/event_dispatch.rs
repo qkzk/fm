@@ -29,10 +29,12 @@ impl EventDispatcher {
         match ev {
             Event::Key(Key::WheelUp(_, _, _)) => EventExec::event_move_up(status),
             Event::Key(Key::WheelDown(_, _, _)) => EventExec::event_move_down(status),
-            Event::Key(Key::SingleClick(MouseButton::Left, row, _)) => {
-                EventExec::event_select_row(status, row)
+            Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
+                EventExec::event_select_pane(status, col)?;
+                EventExec::event_select_row(status.selected(), row)
             }
-            Event::Key(Key::SingleClick(MouseButton::Right, row, _)) => {
+            Event::Key(Key::SingleClick(MouseButton::Right, row, col)) => {
+                EventExec::event_select_pane(status, col)?;
                 EventExec::event_right_click(status, row)
             }
             Event::User(_) => EventExec::refresh_status(status),
