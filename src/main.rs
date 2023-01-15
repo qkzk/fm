@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use clap::Parser;
+use fm::luks::CryptoDevice;
 use log::info;
 
 use fm::args::Args;
@@ -18,7 +19,7 @@ use fm::utils::{drop_everything, init_term, print_on_quit};
 /// Init the status and display and listen to events (keyboard, mouse, resize, custom...).
 /// The application is redrawn after every event.
 /// When the user issues a quit event, the main loop is broken and we reset the cursor.
-fn main() -> FmResult<()> {
+fn main2() -> FmResult<()> {
     set_logger()?;
     info!("fm is starting");
 
@@ -46,5 +47,21 @@ fn main() -> FmResult<()> {
     drop_everything(term, event_dispatcher, event_reader, status, display);
     print_on_quit(&final_path);
     info!("fm is shutting down");
+    Ok(())
+}
+
+fn main() -> FmResult<()> {
+    use fm::luks::{filter_crypto_devices_lines, get_devices};
+
+    let ret_val = get_devices()?;
+    println!("{:?}", ret_val);
+    let output = filter_crypto_devices_lines(ret_val);
+    println!("{:?}", output);
+    let mut crypto_device = CryptoDevice::from_line(&output[0])?;
+    crypto_device.set_sudo_password("123");
+    crypto_device.set_luks_passphrase("123");
+    println!("{:?}", crypto_device);
+    crypto_device.open_mount("quentin")?;
+
     Ok(())
 }

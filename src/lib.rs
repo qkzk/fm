@@ -19,6 +19,7 @@ pub mod help;
 pub mod input;
 pub mod keybindings;
 pub mod log;
+pub mod luks;
 pub mod marks;
 pub mod mode;
 pub mod opener;
