@@ -344,6 +344,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] luks encryption
 
     ```bash
+    lsblk                                       # dump all partition names
     sudo cryptsetup luksDump /dev/sdb           # dump toutes les infos du device
     sudo cryptsetup luksUUID /dev/sdb           # seulement l'UUID du disque, pour meilleur nom
     sudo cryptsetup luksOpen /dev/sdb test_luks # ouvre (decrypt) le device /dev/mapper/test_luks
