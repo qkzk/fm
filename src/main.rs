@@ -50,20 +50,28 @@ fn main2() -> FmResult<()> {
 }
 
 fn main() -> FmResult<()> {
+    use users::{get_current_uid, get_user_by_uid};
+
     use fm::cryptsetup::{filter_crypto_devices_lines, get_devices, CryptoDevice, PasswordHolder};
 
     let ret_val = get_devices()?;
-    println!("{:?}", ret_val);
-    let output = filter_crypto_devices_lines(ret_val);
+    println!("{}", ret_val);
+    let output = filter_crypto_devices_lines(ret_val, "crypto");
     println!("{:?}", output);
     let mut crypto_device = CryptoDevice::from_line(&output[0])?;
-    let mut password_holder = PasswordHolder::default();
-    password_holder.set_sudo_password("aze");
-    password_holder.set_cryptsetup_password("aze");
+    let password_holder = PasswordHolder::default()
+        .with_sudo("aze")
+        .with_cryptsetup("aze");
+    let user = get_user_by_uid(get_current_uid())
+        .ok_or_else(|| fm::fm_error::FmError::custom("username", "couldn't read username"))?;
+    let username = user
+        .name()
+        .to_str()
+        .ok_or_else(|| fm::fm_error::FmError::custom("username", "couldn't read username"))?;
     println!("{:?}", crypto_device);
     println!(
         "mounted ? {}",
-        crypto_device.open_mount("quentin", &password_holder)?
+        crypto_device.open_mount(&username, &password_holder)?
     );
     // println!(
     //     "unmounted ? {}",

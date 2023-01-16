@@ -10,12 +10,14 @@ pub struct PasswordHolder {
 }
 
 impl PasswordHolder {
-    pub fn set_sudo_password(&mut self, password: &str) {
-        self.sudo = Some(password.to_owned())
+    pub fn with_sudo(mut self, password: &str) -> Self {
+        self.sudo = Some(password.to_owned());
+        self
     }
 
-    pub fn set_cryptsetup_password(&mut self, passphrase: &str) {
-        self.cryptsetup = Some(passphrase.to_owned())
+    pub fn with_cryptsetup(mut self, passphrase: &str) -> Self {
+        self.cryptsetup = Some(passphrase.to_owned());
+        self
     }
 
     pub fn cryptsetup(&self) -> FmResult<String> {
@@ -50,15 +52,15 @@ pub fn get_devices() -> FmResult<String> {
 
 /// Parse the output of an lsblk detailed output and filter the line
 /// Containing "crypto" aka Luks encrypted crypto devices
-pub fn filter_crypto_devices_lines(output: String) -> Vec<String> {
+pub fn filter_crypto_devices_lines(output: String, key: &str) -> Vec<String> {
     output
         .lines()
-        .filter(|line| line.contains("crypto"))
+        .filter(|line| line.contains(key))
         .map(|line| line.into())
         .collect()
 }
 
-fn run_sudo_command_with_password(args: &[String], password: &str) -> FmResult<(String, String)> {
+fn sudo_password(args: &[String], password: &str) -> FmResult<(String, String)> {
     println!("sudo {:?}", args);
     let mut child = Command::new("sudo")
         .args(args)
@@ -81,7 +83,7 @@ fn run_sudo_command_with_password(args: &[String], password: &str) -> FmResult<(
     ))
 }
 
-fn run_sudo_command(args: &[String]) -> FmResult<(String, String)> {
+fn sudo(args: &[String]) -> FmResult<(String, String)> {
     println!("sudo {:?}", args);
     let child = Command::new("sudo")
         .args(args)
@@ -137,14 +139,14 @@ impl CryptoDevice {
         Ok(())
     }
 
-    pub fn is_already_mounted(&self) -> bool {
+    pub fn is_mounted(&self) -> bool {
         self.mountpoints.is_some()
     }
 
     fn format_luksopen_parameters(&self) -> [String; 4] {
         [
             "cryptsetup".to_owned(),
-            "luksOpen".to_owned(),
+            "open".to_owned(),
             self.path.clone(),
             self.uuid.clone(),
         ]
@@ -158,11 +160,9 @@ impl CryptoDevice {
         ]
     }
 
-    fn format_mount_parameters(&self, username: &str) -> [String; 5] {
+    fn format_mount_parameters(&self, username: &str) -> [String; 3] {
         [
             "mount".to_owned(),
-            "-t".to_owned(),
-            "ext4".to_owned(), // TODO! other fs ???
             format!("/dev/mapper/{}", self.uuid),
             format!("/run/media/{}/{}", username, self.uuid),
         ]
@@ -184,60 +184,58 @@ impl CryptoDevice {
     }
 
     pub fn open_mount(&mut self, username: &str, passwords: &PasswordHolder) -> FmResult<bool> {
-        if self.is_already_mounted() {
+        if self.is_mounted() {
             Err(FmError::custom(
                 "luks open mount",
                 "device is already mounted",
             ))
         } else {
             // sudo
-            let output = run_sudo_command_with_password(
+            let output = sudo_password(
                 &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
                 &passwords.sudo()?,
             )?;
             println!("stdout: {}\nstderr: {}", output.0, output.1);
             // open
-            let output = run_sudo_command_with_password(
-                &self.format_luksopen_parameters(),
-                &passwords.cryptsetup()?,
-            )?;
+            let output =
+                sudo_password(&self.format_luksopen_parameters(), &passwords.cryptsetup()?)?;
             println!("stdout: {}\nstderr: {}", output.0, output.1);
             // mkdir
-            let output = run_sudo_command(&self.format_mkdir_parameters(username))?;
+            let output = sudo(&self.format_mkdir_parameters(username))?;
             println!("stdout: {}\nstderr: {}", output.0, output.1);
             // mount
-            let output = run_sudo_command(&self.format_mount_parameters(username))?;
+            let output = sudo(&self.format_mount_parameters(username))?;
             println!("stdout: {}\nstderr: {}", output.0, output.1);
             // sudo -t
-            run_sudo_command(&["-k".to_owned()])?;
-            std::thread::sleep(std::time::Duration::from_secs(5));
-            self.update_from_line(&filter_crypto_devices_lines(get_devices()?)[0])?;
-            Ok(self.is_already_mounted())
+            sudo(&["-k".to_owned()])?;
+            println!("wait a few seconds...");
+            std::thread::sleep(std::time::Duration::from_secs(10));
+            let mut block = Self::default();
+            block.update_from_line(&filter_crypto_devices_lines(get_devices()?, &self.uuid)[0])?;
+            Ok(block.is_mounted())
         }
     }
 
     pub fn umount_close(&mut self, username: &str, passwords: &PasswordHolder) -> FmResult<bool> {
-        if self.is_already_mounted() {
-            Err(FmError::custom("luks unmount close", "device isnt mounted"))
-        } else {
-            // sudo
-            let output = run_sudo_command_with_password(
-                &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
-                &passwords.sudo()?,
-            )?;
-            println!("stdout: {}\nstderr: {}", output.0, output.1);
-            // unmount
-            let output = run_sudo_command(&self.format_umount_parameters(username))?;
-            println!("stdout: {}\nstderr: {}", output.0, output.1);
-            // close
-            let output = run_sudo_command(&self.format_luksclose_parameters())?;
-            println!("stdout: {}\nstderr: {}", output.0, output.1);
-            // sudo -t
-            let output = run_sudo_command(&["-k".to_owned()])?;
-            println!("stdout: {}\nstderr: {}", output.0, output.1);
-            std::thread::sleep(std::time::Duration::from_secs(5));
-            self.update_from_line(&filter_crypto_devices_lines(get_devices()?)[0])?;
-            Ok(!self.is_already_mounted())
-        }
+        // sudo
+        let output = sudo_password(
+            &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
+            &passwords.sudo()?,
+        )?;
+        println!("stdout: {}\nstderr: {}", output.0, output.1);
+        // unmount
+        let output = sudo(&self.format_umount_parameters(username))?;
+        println!("stdout: {}\nstderr: {}", output.0, output.1);
+        // close
+        let output = sudo(&self.format_luksclose_parameters())?;
+        println!("stdout: {}\nstderr: {}", output.0, output.1);
+        // sudo -t
+        let output = sudo(&["-k".to_owned()])?;
+        println!("stdout: {}\nstderr: {}", output.0, output.1);
+        println!("wait a few seconds...");
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        let mut block = Self::default();
+        block.update_from_line(&filter_crypto_devices_lines(get_devices()?, &self.uuid)[0])?;
+        Ok(!block.is_mounted())
     }
 }
