@@ -363,6 +363,19 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
     la lib https://crates.io/crates/libcryptsetup-rs ne semble pas fonctionner
 
+    - [ ] fix is mounted
+    - [ ] ask passwords -> store them safely
+    - [ ] display devices with statuses
+          o m /dev/sdb LUKS -> /run/media/quentin/e2838de1-018a-44a9-bcc2-121a04251a31
+          c u /dev/sdb
+
+      m: open mount (ask password if needed)
+      u: umount (ask password if needed)
+      o: open (if mounted)
+
+    - [ ] action -> open_mount
+    - [ ] action -> umount_close
+
 - [ ] Version 0.2.0 : tests
 
   - [ ] tests
