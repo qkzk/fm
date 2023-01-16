@@ -78,44 +78,5 @@ fn main() -> FmResult<()> {
     //     crypto_device.umount_close("quentin", &password_holder)?
     // );
 
-    // std::env::set_var("SUDO_ASKPASS", "/usr/lib/ssh/ssh-askpass");
-    // let mut child = Command::new("sudo")
-    //     .args(&["-S", "ls"])
-    //     .stdin(Stdio::piped())
-    //     .stdout(Stdio::piped())
-    //     .stderr(Stdio::piped())
-    //     .spawn()?;
-    // let stdin = child.stdin.as_mut().expect("Failed to open stdin");
-    // stdin
-    //     .write_all("aze\n".as_bytes())
-    //     .expect("Failed to write to stdin");
-    // drop(stdin);
-    // let output = child.wait_with_output()?;
-    // println!(
-    //     "status {:?} out {:?} err {:?}",
-    //     output.status,
-    //     String::from_utf8_lossy(&output.stdout),
-    //     String::from_utf8_lossy(&output.stderr)
-    // );
-    //
-    // let mut child = Command::new("sudo")
-    //     .args(&["cryptsetup", "luksOpen", "/dev/sdb", "test_luks"])
-    //     .stdin(Stdio::piped())
-    //     .stdout(Stdio::piped())
-    //     .stderr(Stdio::piped())
-    //     .spawn()?;
-    // let stdin = child.stdin.as_mut().expect("Failed to open stdin");
-    // stdin
-    //     .write_all("aze\n".as_bytes())
-    //     .expect("Failed to write to stdin");
-    // drop(stdin);
-    //
-    // let output = child.wait_with_output()?;
-    // println!(
-    //     "status {:?} out {:?} err {:?}",
-    //     output.status,
-    //     String::from_utf8_lossy(&output.stdout),
-    //     String::from_utf8_lossy(&output.stderr)
-    // );
     Ok(())
 }

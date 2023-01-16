@@ -52,6 +52,13 @@ impl std::fmt::Display for NeedConfirmation {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum EncryptedDrive {
+    PickDevices,
+    OpenMount,
+    UmountClose,
+}
+
 /// Different modes in which the user is expeted to type something.
 /// It may be a new filename, a mode (aka an octal permission),
 /// the name of a new file, of a new directory,
@@ -75,6 +82,8 @@ pub enum InputSimple {
     Marks(MarkAction),
     /// Filter by extension, name, directory or no filter
     Filter,
+    ///
+    EncryptedDrive(EncryptedDrive),
 }
 
 /// Different modes in which we display a bunch of possible destinations.
@@ -125,6 +134,9 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
             Mode::InputSimple(InputSimple::Sort) => {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
+            }
+            Mode::InputSimple(InputSimple::EncryptedDrive(EncryptedDrive)) => {
+                write!(f, "{:?}", EncryptedDrive)
             }
             Mode::InputSimple(InputSimple::Marks(_)) => write!(f, "Marks jump:"),
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),

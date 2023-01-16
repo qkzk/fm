@@ -14,6 +14,7 @@ use crate::args::Args;
 use crate::config::{Colors, Config};
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
+use crate::cryptsetup::{filter_crypto_devices_lines, get_devices, CryptoDevice};
 use crate::flagged::Flagged;
 use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
@@ -59,6 +60,7 @@ pub struct Status {
     /// The trash
     pub trash: Trash,
     pub config_colors: Colors,
+    pub encrypted_devices: Option<Vec<CryptoDevice>>,
 }
 
 impl Status {
@@ -84,6 +86,7 @@ impl Status {
         tab.shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
         let trash = Trash::new()?;
+        let encrypted_devices = None;
 
         Ok(Self {
             tabs: [tab.clone(), tab],
@@ -100,6 +103,7 @@ impl Status {
             opener,
             help,
             trash,
+            encrypted_devices,
         })
     }
 
@@ -314,5 +318,20 @@ impl Status {
         let users_cache = &self.selected_non_mut().path_content.users_cache;
         self.selected().directory = Directory::empty(&path, users_cache)?;
         Ok(())
+    }
+
+    pub fn read_encrypted_devices(&mut self) -> FmResult<()> {
+        self.encrypted_devices = Some(
+            filter_crypto_devices_lines(get_devices()?, "crypto")
+                .iter()
+                .map(|line| CryptoDevice::from_line(line))
+                .filter_map(|r| r.ok())
+                .collect(),
+        );
+        Ok(())
+    }
+
+    pub fn drop_encrypted_devices(&mut self) {
+        self.encrypted_devices = None;
     }
 }

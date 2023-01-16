@@ -15,7 +15,7 @@ use crate::constant_strings_paths::{
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, FileInfo};
 use crate::fm_error::{FmError, FmResult};
-use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
+use crate::mode::{EncryptedDrive, InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::preview::{Preview, TextKind, Window};
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
@@ -371,6 +371,9 @@ impl<'a> Draw for WinSecondary<'a> {
             }
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::InputSimple(InputSimple::Marks(_)) => self.marks(self.status, self.tab, canvas),
+            Mode::InputSimple(InputSimple::EncryptedDrive(EncryptedDrive::PickDevices)) => {
+                self.encrypted_devices(self.status, self.tab, canvas)
+            }
             _ => Ok(()),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -506,6 +509,22 @@ impl<'a> WinSecondary<'a> {
         for (i, line) in status.marks.as_strings().iter().enumerate() {
             let row = calc_line_row(i, tab) + 2;
             canvas.print(row, 3, line)?;
+        }
+        Ok(())
+    }
+
+    fn encrypted_devices(
+        &self,
+        status: &Status,
+        tab: &Tab,
+        canvas: &mut dyn Canvas,
+    ) -> FmResult<()> {
+        canvas.print_with_attr(2, 1, "encrypted devices", Self::ATTR_YELLOW)?;
+        if let Some(encrypted_devices) = status.encrypted_devices {
+            for (i, device) in encrypted_devices.iter().enumerate() {
+                let row = calc_line_row(i, tab) + 2;
+                canvas.print(row, 3, device.as_string())?;
+            }
         }
         Ok(())
     }

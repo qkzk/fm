@@ -16,6 +16,7 @@ use crate::copy_move::CopyMove;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::mode::EncryptedDrive;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
 use crate::opener::execute_in_child;
@@ -1275,6 +1276,7 @@ impl EventExec {
             | Mode::InputCompleted(InputCompleted::Nothing)
             | Mode::InputSimple(InputSimple::Sort)
             | Mode::InputSimple(InputSimple::Marks(_)) => (),
+            Mode::InputSimple(InputSimple::EncryptedDrive(_)) => (),
         };
 
         status.selected().input.reset();
@@ -1539,6 +1541,15 @@ impl EventExec {
             tab.make_tree(colors)?;
             Ok(())
         }
+    }
+
+    pub fn event_encrypted_drive(status: &mut Status) -> FmResult<()> {
+        status
+            .selected()
+            .set_mode(Mode::InputSimple(InputSimple::EncryptedDrive(
+                EncryptedDrive::PickDevices,
+            )));
+        Ok(())
     }
 }
 

@@ -10,16 +10,19 @@ pub struct PasswordHolder {
 }
 
 impl PasswordHolder {
+    /// Set the sudo password
     pub fn with_sudo(mut self, password: &str) -> Self {
         self.sudo = Some(password.to_owned());
         self
     }
 
+    /// Set the cryptsetup password
     pub fn with_cryptsetup(mut self, passphrase: &str) -> Self {
         self.cryptsetup = Some(passphrase.to_owned());
         self
     }
 
+    /// Reads the cryptsetup password
     pub fn cryptsetup(&self) -> FmResult<String> {
         Ok(self
             .cryptsetup
@@ -27,6 +30,7 @@ impl PasswordHolder {
             .ok_or_else(|| FmError::custom("PasswordHolder", "sudo password isn't set"))?)
     }
 
+    /// Reads the sudo password
     pub fn sudo(&self) -> FmResult<String> {
         Ok(self
             .sudo
@@ -60,6 +64,8 @@ pub fn filter_crypto_devices_lines(output: String, key: &str) -> Vec<String> {
         .collect()
 }
 
+/// run a sudo command requiring a password (generally to establish the password.)
+/// Since I can't send 2 passwords at a time, it will only work with the sudo password
 fn sudo_password(args: &[String], password: &str) -> FmResult<(String, String)> {
     println!("sudo {:?}", args);
     let mut child = Command::new("sudo")
@@ -83,6 +89,8 @@ fn sudo_password(args: &[String], password: &str) -> FmResult<(String, String)> 
     ))
 }
 
+/// Run a passwordless sudo command.
+/// Returns stdout & stderr
 fn sudo(args: &[String]) -> FmResult<(String, String)> {
     println!("sudo {:?}", args);
     let child = Command::new("sudo")
@@ -139,10 +147,6 @@ impl CryptoDevice {
         Ok(())
     }
 
-    pub fn is_mounted(&self) -> bool {
-        self.mountpoints.is_some()
-    }
-
     fn format_luksopen_parameters(&self) -> [String; 4] {
         [
             "cryptsetup".to_owned(),
@@ -184,7 +188,7 @@ impl CryptoDevice {
     }
 
     pub fn open_mount(&mut self, username: &str, passwords: &PasswordHolder) -> FmResult<bool> {
-        if self.is_mounted() {
+        if self.is_mounted()? {
             Err(FmError::custom(
                 "luks open mount",
                 "device is already mounted",
@@ -210,9 +214,7 @@ impl CryptoDevice {
             sudo(&["-k".to_owned()])?;
             println!("wait a few seconds...");
             std::thread::sleep(std::time::Duration::from_secs(10));
-            let mut block = Self::default();
-            block.update_from_line(&filter_crypto_devices_lines(get_devices()?, &self.uuid)[0])?;
-            Ok(block.is_mounted())
+            self.is_mounted()
         }
     }
 
@@ -234,8 +236,12 @@ impl CryptoDevice {
         println!("stdout: {}\nstderr: {}", output.0, output.1);
         println!("wait a few seconds...");
         std::thread::sleep(std::time::Duration::from_secs(5));
+        Ok(!self.is_mounted()?)
+    }
+
+    pub fn is_mounted(&self) -> FmResult<bool> {
         let mut block = Self::default();
         block.update_from_line(&filter_crypto_devices_lines(get_devices()?, &self.uuid)[0])?;
-        Ok(!block.is_mounted())
+        Ok(block.mountpoints.is_some())
     }
 }
