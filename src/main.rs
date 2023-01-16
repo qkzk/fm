@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use clap::Parser;
-use fm::luks::{CryptoDevice, PasswordHolder};
 use log::info;
 
 use fm::args::Args;
@@ -51,16 +50,13 @@ fn main2() -> FmResult<()> {
 }
 
 fn main() -> FmResult<()> {
-    // use std::io::Write;
-    // use std::process::{Command, Stdio};
-
-    use fm::luks::{filter_crypto_devices_lines, get_devices};
+    use fm::cryptsetup::{filter_crypto_devices_lines, get_devices, CryptoDevice, PasswordHolder};
 
     let ret_val = get_devices()?;
     println!("{:?}", ret_val);
     let output = filter_crypto_devices_lines(ret_val);
     println!("{:?}", output);
-    let crypto_device = CryptoDevice::from_line(&output[0])?;
+    let mut crypto_device = CryptoDevice::from_line(&output[0])?;
     let mut password_holder = PasswordHolder::default();
     password_holder.set_sudo_password("aze");
     password_holder.set_cryptsetup_password("aze");

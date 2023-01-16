@@ -58,8 +58,8 @@ pub fn filter_crypto_devices_lines(output: String) -> Vec<String> {
         .collect()
 }
 
-fn run_privileged_command(args: &[String], password: &str) -> FmResult<(String, String)> {
-    println!("sudo, {:?}", args);
+fn run_sudo_command_with_password(args: &[String], password: &str) -> FmResult<(String, String)> {
+    println!("sudo {:?}", args);
     let mut child = Command::new("sudo")
         .args(args)
         .stdin(Stdio::piped())
@@ -81,9 +81,9 @@ fn run_privileged_command(args: &[String], password: &str) -> FmResult<(String, 
     ))
 }
 
-fn run_command(command: &str, args: &[String]) -> FmResult<(String, String)> {
-    println!("{}, {:?}", command, args);
-    let child = Command::new(command)
+fn run_sudo_command(args: &[String]) -> FmResult<(String, String)> {
+    println!("sudo {:?}", args);
+    let child = Command::new("sudo")
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -108,6 +108,12 @@ pub struct CryptoDevice {
 impl CryptoDevice {
     /// Parse the output of a lsblk formated line into a struct
     pub fn from_line(line: &str) -> FmResult<Self> {
+        let mut crypo_device = Self::default();
+        crypo_device.update_from_line(line)?;
+        Ok(crypo_device)
+    }
+
+    fn update_from_line(&mut self, line: &str) -> FmResult<()> {
         let mut strings = line.split_whitespace();
         let mut params: Vec<Option<String>> = vec![None; 5];
         let mut count = 0;
@@ -115,21 +121,20 @@ impl CryptoDevice {
             params[count] = Some(param.to_owned());
             count += 1;
         }
-        Ok(Self {
-            fs_type: params
-                .remove(0)
-                .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?,
-            path: params
-                .remove(0)
-                .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?,
-            uuid: params
-                .remove(0)
-                .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?,
-            fs_ver: params
-                .remove(0)
-                .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?,
-            mountpoints: params.remove(0),
-        })
+        self.fs_type = params
+            .remove(0)
+            .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?;
+        self.path = params
+            .remove(0)
+            .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?;
+        self.uuid = params
+            .remove(0)
+            .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?;
+        self.fs_ver = params
+            .remove(0)
+            .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?;
+        self.mountpoints = params.remove(0);
+        Ok(())
     }
 
     pub fn is_already_mounted(&self) -> bool {
@@ -159,14 +164,14 @@ impl CryptoDevice {
             "-t".to_owned(),
             "ext4".to_owned(), // TODO! other fs ???
             format!("/dev/mapper/{}", self.uuid),
-            format!("/run/media/mapper/{}/{}", username, self.uuid),
+            format!("/run/media/{}/{}", username, self.uuid),
         ]
     }
 
     fn format_umount_parameters(&self, username: &str) -> [String; 2] {
         [
             "umount".to_owned(),
-            format!("/run/media/mapper/{}/{}", username, self.uuid),
+            format!("/run/media/{}/{}", username, self.uuid),
         ]
     }
 
@@ -178,7 +183,7 @@ impl CryptoDevice {
         ]
     }
 
-    pub fn open_mount(&self, username: &str, passwords: &PasswordHolder) -> FmResult<()> {
+    pub fn open_mount(&mut self, username: &str, passwords: &PasswordHolder) -> FmResult<bool> {
         if self.is_already_mounted() {
             Err(FmError::custom(
                 "luks open mount",
@@ -186,14 +191,43 @@ impl CryptoDevice {
             ))
         } else {
             // sudo
-            run_privileged_command(&["-S".to_owned(), "ls".to_owned()], &passwords.sudo()?)?;
+            run_sudo_command_with_password(
+                &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
+                &passwords.sudo()?,
+            )?;
             // open
-            run_privileged_command(&self.format_luksopen_parameters(), &passwords.cryptsetup()?)?;
+            run_sudo_command_with_password(
+                &self.format_luksopen_parameters(),
+                &passwords.cryptsetup()?,
+            )?;
             // mkdir
-            run_command("sudo", &self.format_mkdir_parameters(username))?;
+            run_sudo_command(&self.format_mkdir_parameters(username))?;
             // mount
-            run_command("sudo", &self.format_mount_parameters(username))?;
-            Ok(())
+            run_sudo_command(&self.format_mount_parameters(username))?;
+            // sudo -t
+            run_sudo_command(&["-t".to_owned()])?;
+            self.update_from_line(&filter_crypto_devices_lines(get_devices()?)[0])?;
+            Ok(self.is_already_mounted())
+        }
+    }
+
+    pub fn umount_close(&mut self, username: &str, passwords: &PasswordHolder) -> FmResult<bool> {
+        if self.is_already_mounted() {
+            Err(FmError::custom("luks unmount close", "device isnt mounted"))
+        } else {
+            // sudo
+            run_sudo_command_with_password(
+                &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
+                &passwords.sudo()?,
+            )?;
+            // unmount
+            run_sudo_command(&self.format_umount_parameters(username))?;
+            // close
+            run_sudo_command(&self.format_luksclose_parameters())?;
+            // sudo -t
+            run_sudo_command(&["-t".to_owned()])?;
+            self.update_from_line(&filter_crypto_devices_lines(get_devices()?)[0])?;
+            Ok(!self.is_already_mounted())
         }
     }
 }
