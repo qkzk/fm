@@ -61,7 +61,14 @@ fn main() -> FmResult<()> {
     password_holder.set_sudo_password("aze");
     password_holder.set_cryptsetup_password("aze");
     println!("{:?}", crypto_device);
-    crypto_device.open_mount("quentin", &password_holder)?;
+    println!(
+        "mounted ? {}",
+        crypto_device.open_mount("quentin", &password_holder)?
+    );
+    // println!(
+    //     "unmounted ? {}",
+    //     crypto_device.umount_close("quentin", &password_holder)?
+    // );
 
     // std::env::set_var("SUDO_ASKPASS", "/usr/lib/ssh/ssh-askpass");
     // let mut child = Command::new("sudo")
