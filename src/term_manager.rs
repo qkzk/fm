@@ -522,7 +522,11 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(2, 1, "encrypted devices", Self::ATTR_YELLOW)?;
         for (i, device) in status.encrypted_devices.content.iter().enumerate() {
             let row = calc_line_row(i, tab) + 2;
-            canvas.print(row, 3, &device.cryptdevice.as_string()?)?;
+            let mut attr = Attr::default();
+            if i == status.encrypted_devices.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            canvas.print_with_attr(row, 3, &device.cryptdevice.as_string()?, attr)?;
         }
         Ok(())
     }

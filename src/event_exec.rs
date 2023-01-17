@@ -1127,6 +1127,9 @@ impl EventExec {
             Mode::Navigate(Navigate::History) => EventExec::event_history_prev(status.selected()),
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_prev(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_prev(status.selected()),
+            Mode::Navigate(Navigate::EncryptedDrive) => {
+                EventExec::event_encrypted_drive_prev(status)
+            }
             Mode::Tree => EventExec::event_select_prev_sibling(status)?,
             Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
@@ -1145,6 +1148,9 @@ impl EventExec {
             Mode::Navigate(Navigate::History) => EventExec::event_history_next(status.selected()),
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_next(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_next(status.selected()),
+            Mode::Navigate(Navigate::EncryptedDrive) => {
+                EventExec::event_encrypted_drive_next(status)
+            }
             Mode::InputCompleted(_) => status.selected().completion.next(),
             Mode::Tree => EventExec::event_select_next_sibling(status)?,
             _ => (),
@@ -1260,15 +1266,13 @@ impl EventExec {
                 EventExec::exec_filter(status)?
             }
             Mode::InputSimple(InputSimple::Password(password_kind)) => {
-                EventExec::exec_password_store(status, password_kind)?
+                EventExec::exec_store_password(status, password_kind)?
             }
             Mode::Navigate(Navigate::Jump) => EventExec::exec_jump(status)?,
             Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
             Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
-            Mode::Navigate(Navigate::EncryptedDrive) => {
-                EventExec::event_toggle_encrypted_drive(status)?
-            }
+            Mode::Navigate(Navigate::EncryptedDrive) => (),
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
@@ -1552,21 +1556,45 @@ impl EventExec {
         status
             .selected()
             .set_mode(Mode::Navigate(Navigate::EncryptedDrive));
+        status.encrypted_devices.update()
+    }
+
+    pub fn event_mount_encrypted_drive(status: &mut Status) -> FmResult<()> {
+        if !status.encrypted_devices.can_mount() {
+            Self::event_ask_password(status, PasswordKind::SUDO)?;
+            Self::event_ask_password(status, PasswordKind::CRYPTSETUP)?;
+        }
+        status.encrypted_devices.mount_selected()
+    }
+
+    pub fn event_umount_encrypted_drive(status: &mut Status) -> FmResult<()> {
+        if status.encrypted_devices.can_umount() {
+            Self::event_ask_password(status, PasswordKind::SUDO)?;
+        }
+        status.encrypted_devices.umount_selected()
+    }
+
+    pub fn event_ask_password(status: &mut Status, password_kind: PasswordKind) -> FmResult<()> {
+        status
+            .selected()
+            .set_mode(Mode::InputSimple(InputSimple::Password(password_kind)));
         Ok(())
     }
 
-    pub fn event_toggle_encrypted_drive(_status: &mut Status) -> FmResult<()> {
-        Ok(())
-    }
-
-    pub fn exec_password_store(status: &mut Status, password_kind: PasswordKind) -> FmResult<()> {
+    pub fn exec_store_password(status: &mut Status, password_kind: PasswordKind) -> FmResult<()> {
         let password = status.selected_non_mut().input.string();
         status
             .encrypted_devices
             .set_password(password_kind, password);
-        status.selected().reset_mode();
-        status.clear_flags_and_reset_view()?;
         Ok(())
+    }
+
+    pub fn event_encrypted_drive_next(status: &mut Status) {
+        status.encrypted_devices.next()
+    }
+
+    pub fn event_encrypted_drive_prev(status: &mut Status) {
+        status.encrypted_devices.prev()
     }
 }
 

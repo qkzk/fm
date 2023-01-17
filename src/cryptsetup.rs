@@ -3,6 +3,7 @@ use std::process::{Command, Stdio};
 
 use crate::fm_error::{FmError, FmResult};
 use crate::impl_selectable_content;
+use crate::utils::current_username;
 
 #[derive(Debug, Clone, Copy)]
 pub enum PasswordKind {
@@ -337,6 +338,32 @@ impl DeviceOpener {
                 .password_holder
                 .set_cryptsetup(password),
         }
+    }
+
+    pub fn mount_selected(&mut self) -> FmResult<()> {
+        let username = current_username()?;
+        let passwords = self.content[self.index].password_holder.clone();
+        self.content[self.index]
+            .cryptdevice
+            .open_mount(&username, &passwords)?;
+        Ok(())
+    }
+
+    pub fn umount_selected(&mut self) -> FmResult<()> {
+        let username = current_username()?;
+        let passwords = self.content[self.index].password_holder.clone();
+        self.content[self.index]
+            .cryptdevice
+            .umount_close(&username, &passwords)?;
+        Ok(())
+    }
+
+    pub fn can_mount(&self) -> bool {
+        self.content[self.index].password_holder.can_mount()
+    }
+
+    pub fn can_umount(&self) -> bool {
+        self.content[self.index].password_holder.can_umount()
     }
 }
 
