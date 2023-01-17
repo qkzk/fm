@@ -1561,18 +1561,9 @@ impl EventExec {
 
     pub fn exec_password_store(status: &mut Status, password_kind: PasswordKind) -> FmResult<()> {
         let password = status.selected_non_mut().input.string();
-        if let Some(devices) = &mut status.encrypted_devices {
-            match password_kind {
-                PasswordKind::SUDO(index) => {
-                    let device_opener = &mut devices[index];
-                    device_opener.password_holder.set_sudo(password)
-                }
-                PasswordKind::CRYPTSETUP(index) => {
-                    let device_opener = &mut devices[index];
-                    device_opener.password_holder.set_cryptsetup(password)
-                }
-            }
-        }
+        status
+            .encrypted_devices
+            .set_password(password_kind, password);
         status.selected().reset_mode();
         status.clear_flags_and_reset_view()?;
         Ok(())

@@ -2,18 +2,19 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use crate::fm_error::{FmError, FmResult};
+use crate::impl_selectable_content;
 
 #[derive(Debug, Clone, Copy)]
 pub enum PasswordKind {
-    SUDO(usize),
-    CRYPTSETUP(usize),
+    SUDO,
+    CRYPTSETUP,
 }
 
 impl std::fmt::Display for PasswordKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let asker = match self {
-            Self::SUDO(_) => "sudo",
-            Self::CRYPTSETUP(_) => "cryptsetup",
+            Self::SUDO => "sudo",
+            Self::CRYPTSETUP => "cryptsetup",
         };
         write!(f, "{}", asker)
     }
@@ -60,6 +61,14 @@ impl PasswordHolder {
             .sudo
             .clone()
             .ok_or_else(|| FmError::custom("PasswordHolder", "sudo password isn't set"))?)
+    }
+
+    pub fn can_mount(&self) -> bool {
+        self.sudo.is_some() && self.cryptsetup.is_some()
+    }
+
+    pub fn can_umount(&self) -> bool {
+        self.sudo.is_some()
     }
 }
 
@@ -290,12 +299,12 @@ impl CryptoDevice {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct DeviceOpener {
+pub struct Device {
     pub cryptdevice: CryptoDevice,
     pub password_holder: PasswordHolder,
 }
 
-impl DeviceOpener {
+impl Device {
     pub fn from_line(line: &str) -> FmResult<Self> {
         Ok(Self {
             cryptdevice: CryptoDevice::from_line(line)?,
@@ -303,3 +312,32 @@ impl DeviceOpener {
         })
     }
 }
+
+#[derive(Debug, Clone, Default)]
+pub struct DeviceOpener {
+    pub content: Vec<Device>,
+    index: usize,
+}
+
+impl DeviceOpener {
+    pub fn update(&mut self) -> FmResult<()> {
+        self.content = filter_crypto_devices_lines(get_devices()?, "crypto")
+            .iter()
+            .map(|line| Device::from_line(line))
+            .filter_map(|r| r.ok())
+            .collect();
+        self.index = 0;
+        Ok(())
+    }
+
+    pub fn set_password(&mut self, password_kind: PasswordKind, password: String) {
+        match password_kind {
+            PasswordKind::SUDO => self.content[self.index].password_holder.set_sudo(password),
+            PasswordKind::CRYPTSETUP => self.content[self.index]
+                .password_holder
+                .set_cryptsetup(password),
+        }
+    }
+}
+
+impl_selectable_content!(Device, DeviceOpener);

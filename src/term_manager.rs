@@ -520,11 +520,9 @@ impl<'a> WinSecondary<'a> {
         canvas: &mut dyn Canvas,
     ) -> FmResult<()> {
         canvas.print_with_attr(2, 1, "encrypted devices", Self::ATTR_YELLOW)?;
-        if let Some(encrypted_devices) = &status.encrypted_devices {
-            for (i, device) in encrypted_devices.iter().enumerate() {
-                let row = calc_line_row(i, tab) + 2;
-                canvas.print(row, 3, &device.cryptdevice.as_string()?)?;
-            }
+        for (i, device) in status.encrypted_devices.content.iter().enumerate() {
+            let row = calc_line_row(i, tab) + 2;
+            canvas.print(row, 3, &device.cryptdevice.as_string()?)?;
         }
         Ok(())
     }
