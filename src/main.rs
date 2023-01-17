@@ -69,10 +69,8 @@ fn _main() -> FmResult<()> {
         .to_str()
         .ok_or_else(|| fm::fm_error::FmError::custom("username", "couldn't read username"))?;
     println!("{:?}", crypto_device);
-    println!(
-        "mounted ? {}",
-        crypto_device.open_mount(&username, &password_holder)?
-    );
+    crypto_device.open_mount(&username, &password_holder)?;
+
     // println!(
     //     "unmounted ? {}",
     //     crypto_device.umount_close("quentin", &password_holder)?

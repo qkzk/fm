@@ -1,6 +1,8 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
+use log::info;
+
 use crate::fm_error::{FmError, FmResult};
 use crate::impl_selectable_content;
 use crate::utils::current_username;
@@ -11,11 +13,17 @@ pub enum PasswordKind {
     CRYPTSETUP,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum EncryptedAction {
+    MOUNT,
+    UMOUNT,
+}
+
 impl std::fmt::Display for PasswordKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let asker = match self {
-            Self::SUDO => "sudo",
-            Self::CRYPTSETUP => "cryptsetup",
+            Self::SUDO => "sudo   ",
+            Self::CRYPTSETUP => "device ",
         };
         write!(f, "{}", asker)
     }
@@ -65,6 +73,7 @@ impl PasswordHolder {
     }
 
     pub fn has_sudo(&self) -> bool {
+        info!("has sudo ? {:?}", self);
         self.sudo.is_some()
     }
 
@@ -101,7 +110,7 @@ pub fn filter_crypto_devices_lines(output: String, key: &str) -> Vec<String> {
 /// run a sudo command requiring a password (generally to establish the password.)
 /// Since I can't send 2 passwords at a time, it will only work with the sudo password
 fn sudo_password(args: &[String], password: &str) -> FmResult<(String, String)> {
-    println!("sudo {:?}", args);
+    info!("sudo {:?}", args);
     let mut child = Command::new("sudo")
         .args(args)
         .stdin(Stdio::piped())
@@ -126,7 +135,7 @@ fn sudo_password(args: &[String], password: &str) -> FmResult<(String, String)> 
 /// Run a passwordless sudo command.
 /// Returns stdout & stderr
 fn sudo(args: &[String]) -> FmResult<(String, String)> {
-    println!("sudo {:?}", args);
+    info!("sudo {:?}", args);
     let child = Command::new("sudo")
         .args(args)
         .stdin(Stdio::piped())
@@ -221,7 +230,7 @@ impl CryptoDevice {
         ]
     }
 
-    pub fn open_mount(&mut self, username: &str, passwords: &PasswordHolder) -> FmResult<bool> {
+    pub fn open_mount(&mut self, username: &str, passwords: &PasswordHolder) -> FmResult<()> {
         if self.is_mounted()? {
             Err(FmError::custom(
                 "luks open mount",
@@ -233,44 +242,40 @@ impl CryptoDevice {
                 &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
                 &passwords.sudo()?,
             )?;
-            println!("stdout: {}\nstderr: {}", output.0, output.1);
+            info!("stdout: {}\nstderr: {}", output.0, output.1);
             // open
             let output =
                 sudo_password(&self.format_luksopen_parameters(), &passwords.cryptsetup()?)?;
-            println!("stdout: {}\nstderr: {}", output.0, output.1);
+            info!("stdout: {}\nstderr: {}", output.0, output.1);
             // mkdir
             let output = sudo(&self.format_mkdir_parameters(username))?;
-            println!("stdout: {}\nstderr: {}", output.0, output.1);
+            info!("stdout: {}\nstderr: {}", output.0, output.1);
             // mount
             let output = sudo(&self.format_mount_parameters(username))?;
-            println!("stdout: {}\nstderr: {}", output.0, output.1);
+            info!("stdout: {}\nstderr: {}", output.0, output.1);
             // sudo -t
             sudo(&["-k".to_owned()])?;
-            println!("wait a few seconds...");
-            std::thread::sleep(std::time::Duration::from_secs(10));
-            self.is_mounted()
+            Ok(())
         }
     }
 
-    pub fn umount_close(&mut self, username: &str, passwords: &PasswordHolder) -> FmResult<bool> {
+    pub fn umount_close(&mut self, username: &str, passwords: &PasswordHolder) -> FmResult<()> {
         // sudo
         let output = sudo_password(
             &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
             &passwords.sudo()?,
         )?;
-        println!("stdout: {}\nstderr: {}", output.0, output.1);
+        info!("stdout: {}\nstderr: {}", output.0, output.1);
         // unmount
         let output = sudo(&self.format_umount_parameters(username))?;
-        println!("stdout: {}\nstderr: {}", output.0, output.1);
+        info!("stdout: {}\nstderr: {}", output.0, output.1);
         // close
         let output = sudo(&self.format_luksclose_parameters())?;
-        println!("stdout: {}\nstderr: {}", output.0, output.1);
+        info!("stdout: {}\nstderr: {}", output.0, output.1);
         // sudo -t
         let output = sudo(&["-k".to_owned()])?;
-        println!("stdout: {}\nstderr: {}", output.0, output.1);
-        println!("wait a few seconds...");
-        std::thread::sleep(std::time::Duration::from_secs(5));
-        Ok(!self.is_mounted()?)
+        info!("stdout: {}\nstderr: {}", output.0, output.1);
+        Ok(())
     }
 
     pub fn is_mounted(&self) -> FmResult<bool> {
@@ -287,8 +292,7 @@ impl CryptoDevice {
         let is_mounted = self.is_mounted()?;
         let mounted_char = if is_mounted { 'm' } else { 'u' };
         let opened_char = if self.is_opened()? { 'o' } else { 'c' };
-        let address = "/dev/sdb";
-        let mut s = format!("{} {} {}", mounted_char, opened_char, address);
+        let mut s = format!("{} {} {}", mounted_char, opened_char, self.path);
 
         if let Some(mountpoints) = &self.mountpoints {
             s.push_str(" -> ");

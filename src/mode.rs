@@ -1,6 +1,7 @@
 use std::fmt;
 
-use crate::{completion::InputCompleted, cryptsetup::PasswordKind};
+use crate::completion::InputCompleted;
+use crate::cryptsetup::{EncryptedAction, PasswordKind};
 
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.
@@ -76,7 +77,7 @@ pub enum InputSimple {
     /// Filter by extension, name, directory or no filter
     Filter,
     ///
-    Password(PasswordKind),
+    Password(PasswordKind, EncryptedAction),
 }
 
 /// Different modes in which we display a bunch of possible destinations.
@@ -132,8 +133,8 @@ impl fmt::Display for Mode {
             }
             Mode::InputSimple(InputSimple::Marks(_)) => write!(f, "Marks jump:"),
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
-            Mode::InputSimple(InputSimple::Password(password_kind)) => {
-                write!(f, "Password for {}", password_kind)
+            Mode::InputSimple(InputSimple::Password(password_kind, _)) => {
+                write!(f, "{}", password_kind)
             }
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
             Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),

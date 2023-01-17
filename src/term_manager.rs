@@ -386,6 +386,7 @@ impl<'a> WinSecondary<'a> {
     const EDIT_BOX_OFFSET: usize = 9;
     const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
     const SORT_CURSOR_OFFSET: usize = 37;
+    const PASSWORD_CURSOR_OFFSET: usize = 7;
 
     fn new(status: &'a Status, index: usize) -> Self {
         Self {
@@ -408,6 +409,9 @@ impl<'a> WinSecondary<'a> {
             }
             Mode::InputSimple(InputSimple::Marks(MarkAction::New)) => {
                 vec!["Save mark...".to_owned()]
+            }
+            Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action)) => {
+                vec![format!("{}", password_kind), tab.input.password()]
             }
             _ => {
                 vec![
@@ -445,6 +449,10 @@ impl<'a> WinSecondary<'a> {
             Mode::InputSimple(InputSimple::Sort) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
+            }
+            Mode::InputSimple(InputSimple::Password(_, _)) => {
+                canvas.show_cursor(true)?;
+                canvas.set_cursor(0, Self::PASSWORD_CURSOR_OFFSET + tab.input.cursor_index)?;
             }
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 canvas.show_cursor(true)?;
