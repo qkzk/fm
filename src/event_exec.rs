@@ -1560,18 +1560,21 @@ impl EventExec {
     }
 
     pub fn event_mount_encrypted_drive(status: &mut Status) -> FmResult<()> {
-        if !status.encrypted_devices.can_mount() {
-            Self::event_ask_password(status, PasswordKind::SUDO)?;
-            Self::event_ask_password(status, PasswordKind::CRYPTSETUP)?;
+        if !status.encrypted_devices.has_sudo() {
+            Self::event_ask_password(status, PasswordKind::SUDO)
+        } else if !status.encrypted_devices.has_cryptsetup() {
+            Self::event_ask_password(status, PasswordKind::CRYPTSETUP)
+        } else {
+            status.encrypted_devices.mount_selected()
         }
-        status.encrypted_devices.mount_selected()
     }
 
     pub fn event_umount_encrypted_drive(status: &mut Status) -> FmResult<()> {
-        if status.encrypted_devices.can_umount() {
-            Self::event_ask_password(status, PasswordKind::SUDO)?;
+        if status.encrypted_devices.has_sudo() {
+            Self::event_ask_password(status, PasswordKind::SUDO)
+        } else {
+            status.encrypted_devices.umount_selected()
         }
-        status.encrypted_devices.umount_selected()
     }
 
     pub fn event_ask_password(status: &mut Status, password_kind: PasswordKind) -> FmResult<()> {
@@ -1586,6 +1589,7 @@ impl EventExec {
         status
             .encrypted_devices
             .set_password(password_kind, password);
+        status.selected().reset_mode();
         Ok(())
     }
 

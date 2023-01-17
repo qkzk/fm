@@ -64,12 +64,12 @@ impl PasswordHolder {
             .ok_or_else(|| FmError::custom("PasswordHolder", "sudo password isn't set"))?)
     }
 
-    pub fn can_mount(&self) -> bool {
-        self.sudo.is_some() && self.cryptsetup.is_some()
+    pub fn has_sudo(&self) -> bool {
+        self.sudo.is_some()
     }
 
-    pub fn can_umount(&self) -> bool {
-        self.sudo.is_some()
+    pub fn has_cryptsetup(&self) -> bool {
+        self.cryptsetup.is_some()
     }
 }
 
@@ -358,12 +358,12 @@ impl DeviceOpener {
         Ok(())
     }
 
-    pub fn can_mount(&self) -> bool {
-        self.content[self.index].password_holder.can_mount()
+    pub fn has_sudo(&self) -> bool {
+        self.content[self.index].password_holder.has_sudo()
     }
 
-    pub fn can_umount(&self) -> bool {
-        self.content[self.index].password_holder.can_umount()
+    pub fn has_cryptsetup(&self) -> bool {
+        self.content[self.index].password_holder.has_cryptsetup()
     }
 }
 
