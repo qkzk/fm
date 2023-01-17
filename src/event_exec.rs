@@ -1259,10 +1259,16 @@ impl EventExec {
                 must_refresh = false;
                 EventExec::exec_filter(status)?
             }
+            Mode::InputSimple(InputSimple::Password(password_kind)) => {
+                EventExec::exec_password_store(status, password_kind)?
+            }
             Mode::Navigate(Navigate::Jump) => EventExec::exec_jump(status)?,
             Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
             Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
+            Mode::Navigate(Navigate::EncryptedDrive(_)) => {
+                EventExec::event_toggle_encrypted_drive(status)?
+            }
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
@@ -1276,7 +1282,6 @@ impl EventExec {
             | Mode::InputCompleted(InputCompleted::Nothing)
             | Mode::InputSimple(InputSimple::Sort)
             | Mode::InputSimple(InputSimple::Marks(_)) => (),
-            Mode::InputSimple(InputSimple::EncryptedDrive(_)) => (),
         };
 
         status.selected().input.reset();
@@ -1546,9 +1551,13 @@ impl EventExec {
     pub fn event_encrypted_drive(status: &mut Status) -> FmResult<()> {
         status
             .selected()
-            .set_mode(Mode::InputSimple(InputSimple::EncryptedDrive(
+            .set_mode(Mode::Navigate(Navigate::EncryptedDrive(
                 EncryptedDrive::PickDevices,
             )));
+        Ok(())
+    }
+
+    pub fn event_toggle_encrypted_drive(_status: &mut Status) -> FmResult<()> {
         Ok(())
     }
 }

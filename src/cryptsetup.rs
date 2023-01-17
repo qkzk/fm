@@ -3,6 +3,22 @@ use std::process::{Command, Stdio};
 
 use crate::fm_error::{FmError, FmResult};
 
+#[derive(Debug, Clone, Copy)]
+pub enum PasswordKind {
+    SUDO,
+    CRYPTSETUP,
+}
+
+impl std::fmt::Display for PasswordKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let asker = match self {
+            Self::SUDO => "sudo",
+            Self::CRYPTSETUP => "cryptsetup",
+        };
+        write!(f, "{}", asker)
+    }
+}
+
 #[derive(Default)]
 pub struct PasswordHolder {
     sudo: Option<String>,
@@ -27,7 +43,7 @@ impl PasswordHolder {
         Ok(self
             .cryptsetup
             .clone()
-            .ok_or_else(|| FmError::custom("PasswordHolder", "sudo password isn't set"))?)
+            .ok_or_else(|| FmError::custom("PasswordHolder", "cryptsetup password isn't set"))?)
     }
 
     /// Reads the sudo password
@@ -243,5 +259,24 @@ impl CryptoDevice {
         let mut block = Self::default();
         block.update_from_line(&filter_crypto_devices_lines(get_devices()?, &self.uuid)[0])?;
         Ok(block.mountpoints.is_some())
+    }
+
+    pub fn is_opened(&self) -> FmResult<bool> {
+        Ok(true)
+    }
+
+    pub fn as_string(&self) -> FmResult<String> {
+        let is_mounted = self.is_mounted()?;
+        let mounted_char = if is_mounted { 'm' } else { 'u' };
+        let opened_char = if self.is_opened()? { 'o' } else { 'c' };
+        let address = "/dev/sdb";
+        let mut s = format!("{} {} {}", mounted_char, opened_char, address);
+
+        if let Some(mountpoints) = &self.mountpoints {
+            s.push_str(" -> ");
+            s.push_str(&mountpoints);
+        }
+
+        Ok(s)
     }
 }

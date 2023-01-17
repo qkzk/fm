@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::completion::InputCompleted;
+use crate::{completion::InputCompleted, cryptsetup::PasswordKind};
 
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.
@@ -83,7 +83,7 @@ pub enum InputSimple {
     /// Filter by extension, name, directory or no filter
     Filter,
     ///
-    EncryptedDrive(EncryptedDrive),
+    Password(PasswordKind),
 }
 
 /// Different modes in which we display a bunch of possible destinations.
@@ -98,6 +98,8 @@ pub enum Navigate {
     Shortcut,
     ///
     Trash,
+    ///
+    EncryptedDrive(EncryptedDrive),
 }
 
 /// Different mode in which the application can be.
@@ -135,11 +137,11 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Sort) => {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }
-            Mode::InputSimple(InputSimple::EncryptedDrive(EncryptedDrive)) => {
-                write!(f, "{:?}", EncryptedDrive)
-            }
             Mode::InputSimple(InputSimple::Marks(_)) => write!(f, "Marks jump:"),
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
+            Mode::InputSimple(InputSimple::Password(password_kind)) => {
+                write!(f, "Password for {}", password_kind)
+            }
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
             Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
             Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
@@ -148,6 +150,9 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::History) => write!(f, "History :"),
             Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
             Mode::Navigate(Navigate::Trash) => write!(f, "Trash    :"),
+            Mode::Navigate(Navigate::EncryptedDrive(encrypted_drive)) => {
+                write!(f, "{:?}", encrypted_drive)
+            }
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
             Mode::Preview => write!(f, "Preview : "),
         }

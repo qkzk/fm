@@ -366,14 +366,14 @@ impl<'a> Draw for WinSecondary<'a> {
             Mode::Navigate(Navigate::History) => self.destination(canvas, &self.tab.history),
             Mode::Navigate(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
             Mode::Navigate(Navigate::Trash) => self.trash(canvas, &self.status.trash),
+            Mode::Navigate(Navigate::EncryptedDrive(EncryptedDrive::PickDevices)) => {
+                self.encrypted_devices(self.status, self.tab, canvas)
+            }
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::InputSimple(InputSimple::Marks(_)) => self.marks(self.status, self.tab, canvas),
-            Mode::InputSimple(InputSimple::EncryptedDrive(EncryptedDrive::PickDevices)) => {
-                self.encrypted_devices(self.status, self.tab, canvas)
-            }
             _ => Ok(()),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -520,10 +520,10 @@ impl<'a> WinSecondary<'a> {
         canvas: &mut dyn Canvas,
     ) -> FmResult<()> {
         canvas.print_with_attr(2, 1, "encrypted devices", Self::ATTR_YELLOW)?;
-        if let Some(encrypted_devices) = status.encrypted_devices {
+        if let Some(encrypted_devices) = &status.encrypted_devices {
             for (i, device) in encrypted_devices.iter().enumerate() {
                 let row = calc_line_row(i, tab) + 2;
-                canvas.print(row, 3, device.as_string())?;
+                canvas.print(row, 3, &device.as_string()?)?;
             }
         }
         Ok(())
