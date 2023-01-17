@@ -265,6 +265,7 @@ impl Status {
     pub fn refresh_disks(&mut self) {
         // the fast variant, which doesn't check if the disks have changed.
         // self.system_info.refresh_disks();
+
         // the slow variant, which check if the disks have changed.
         self.system_info.refresh_disks_list();
         let disks = self.system_info.disks();

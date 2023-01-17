@@ -2,6 +2,7 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use log::info;
+use sysinfo::{DiskExt, System, SystemExt};
 
 use crate::fm_error::{FmError, FmResult};
 use crate::impl_selectable_content;
@@ -231,18 +232,17 @@ impl CryptoDevice {
     }
 
     pub fn open_mount(&mut self, username: &str, passwords: &PasswordHolder) -> FmResult<()> {
-        if self.is_mounted()? {
+        if self.mount_point().is_some() {
             Err(FmError::custom(
                 "luks open mount",
                 "device is already mounted",
             ))
         } else {
             // sudo
-            let output = sudo_password(
+            sudo_password(
                 &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
                 &passwords.sudo()?,
             )?;
-            info!("stdout: {}\nstderr: {}", output.0, output.1);
             // open
             let output =
                 sudo_password(&self.format_luksopen_parameters(), &passwords.cryptsetup()?)?;
@@ -261,11 +261,10 @@ impl CryptoDevice {
 
     pub fn umount_close(&mut self, username: &str, passwords: &PasswordHolder) -> FmResult<()> {
         // sudo
-        let output = sudo_password(
+        sudo_password(
             &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
             &passwords.sudo()?,
         )?;
-        info!("stdout: {}\nstderr: {}", output.0, output.1);
         // unmount
         let output = sudo(&self.format_umount_parameters(username))?;
         info!("stdout: {}\nstderr: {}", output.0, output.1);
@@ -278,28 +277,25 @@ impl CryptoDevice {
         Ok(())
     }
 
-    pub fn is_mounted(&self) -> FmResult<bool> {
-        let mut block = Self::default();
-        block.update_from_line(&filter_crypto_devices_lines(get_devices()?, &self.uuid)[0])?;
-        Ok(block.mountpoints.is_some())
-    }
-
-    pub fn is_opened(&self) -> FmResult<bool> {
-        Ok(true)
+    fn mount_point(&self) -> Option<String> {
+        let system_info = System::new_all();
+        system_info
+            .disks()
+            .iter()
+            .map(|d| d.mount_point())
+            .map(|p| p.to_str())
+            .filter(|s| s.is_some())
+            .map(|s| s.unwrap().to_owned())
+            .filter(|s| s.contains(&self.uuid))
+            .next()
     }
 
     pub fn as_string(&self) -> FmResult<String> {
-        let is_mounted = self.is_mounted()?;
-        let mounted_char = if is_mounted { 'm' } else { 'u' };
-        let opened_char = if self.is_opened()? { 'o' } else { 'c' };
-        let mut s = format!("{} {} {}", mounted_char, opened_char, self.path);
-
-        if let Some(mountpoints) = &self.mountpoints {
-            s.push_str(" -> ");
-            s.push_str(&mountpoints);
-        }
-
-        Ok(s)
+        Ok(if let Some(mount_point) = self.mount_point() {
+            format!("{} -> {}", self.path, mount_point)
+        } else {
+            format!("{} - not mounted", self.path)
+        })
     }
 }
 
