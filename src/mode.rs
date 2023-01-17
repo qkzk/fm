@@ -52,13 +52,6 @@ impl std::fmt::Display for NeedConfirmation {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum EncryptedDrive {
-    PickDevices,
-    OpenMount,
-    UmountClose,
-}
-
 /// Different modes in which the user is expeted to type something.
 /// It may be a new filename, a mode (aka an octal permission),
 /// the name of a new file, of a new directory,
@@ -99,7 +92,7 @@ pub enum Navigate {
     ///
     Trash,
     ///
-    EncryptedDrive(EncryptedDrive),
+    EncryptedDrive,
 }
 
 /// Different mode in which the application can be.
@@ -150,8 +143,8 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::History) => write!(f, "History :"),
             Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
             Mode::Navigate(Navigate::Trash) => write!(f, "Trash    :"),
-            Mode::Navigate(Navigate::EncryptedDrive(encrypted_drive)) => {
-                write!(f, "{:?}", encrypted_drive)
+            Mode::Navigate(Navigate::EncryptedDrive) => {
+                write!(f, "Encrypted devices :")
             }
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
             Mode::Preview => write!(f, "Preview : "),

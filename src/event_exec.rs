@@ -13,10 +13,10 @@ use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::RESERVED_ROWS;
 use crate::copy_move::CopyMove;
+use crate::cryptsetup::PasswordKind;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
-use crate::mode::EncryptedDrive;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
 use crate::opener::execute_in_child;
@@ -1266,7 +1266,7 @@ impl EventExec {
             Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
             Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
-            Mode::Navigate(Navigate::EncryptedDrive(_)) => {
+            Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_toggle_encrypted_drive(status)?
             }
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
@@ -1551,13 +1551,30 @@ impl EventExec {
     pub fn event_encrypted_drive(status: &mut Status) -> FmResult<()> {
         status
             .selected()
-            .set_mode(Mode::Navigate(Navigate::EncryptedDrive(
-                EncryptedDrive::PickDevices,
-            )));
+            .set_mode(Mode::Navigate(Navigate::EncryptedDrive));
         Ok(())
     }
 
     pub fn event_toggle_encrypted_drive(_status: &mut Status) -> FmResult<()> {
+        Ok(())
+    }
+
+    pub fn exec_password_store(status: &mut Status, password_kind: PasswordKind) -> FmResult<()> {
+        let password = status.selected_non_mut().input.string();
+        if let Some(devices) = &mut status.encrypted_devices {
+            match password_kind {
+                PasswordKind::SUDO(index) => {
+                    let device_opener = &mut devices[index];
+                    device_opener.password_holder.set_sudo(password)
+                }
+                PasswordKind::CRYPTSETUP(index) => {
+                    let device_opener = &mut devices[index];
+                    device_opener.password_holder.set_cryptsetup(password)
+                }
+            }
+        }
+        status.selected().reset_mode();
+        status.clear_flags_and_reset_view()?;
         Ok(())
     }
 }

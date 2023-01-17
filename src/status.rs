@@ -14,7 +14,7 @@ use crate::args::Args;
 use crate::config::{Colors, Config};
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
-use crate::cryptsetup::{filter_crypto_devices_lines, get_devices, CryptoDevice};
+use crate::cryptsetup::{filter_crypto_devices_lines, get_devices, DeviceOpener};
 use crate::flagged::Flagged;
 use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
@@ -60,7 +60,7 @@ pub struct Status {
     /// The trash
     pub trash: Trash,
     pub config_colors: Colors,
-    pub encrypted_devices: Option<Vec<CryptoDevice>>,
+    pub encrypted_devices: Option<Vec<DeviceOpener>>,
 }
 
 impl Status {
@@ -324,7 +324,7 @@ impl Status {
         self.encrypted_devices = Some(
             filter_crypto_devices_lines(get_devices()?, "crypto")
                 .iter()
-                .map(|line| CryptoDevice::from_line(line))
+                .map(|line| DeviceOpener::from_line(line))
                 .filter_map(|r| r.ok())
                 .collect(),
         );

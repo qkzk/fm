@@ -27,7 +27,7 @@ pub struct Tab {
     pub previous_mode: Mode,
     /// The indexes of displayed file
     pub window: ContentWindow,
-    /// Files marked as flagged
+    /// The typed input by the user
     pub input: Input,
     /// Files in current path
     pub path_content: PathContent,

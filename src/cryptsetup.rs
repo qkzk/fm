@@ -5,21 +5,21 @@ use crate::fm_error::{FmError, FmResult};
 
 #[derive(Debug, Clone, Copy)]
 pub enum PasswordKind {
-    SUDO,
-    CRYPTSETUP,
+    SUDO(usize),
+    CRYPTSETUP(usize),
 }
 
 impl std::fmt::Display for PasswordKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let asker = match self {
-            Self::SUDO => "sudo",
-            Self::CRYPTSETUP => "cryptsetup",
+            Self::SUDO(_) => "sudo",
+            Self::CRYPTSETUP(_) => "cryptsetup",
         };
         write!(f, "{}", asker)
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Debug)]
 pub struct PasswordHolder {
     sudo: Option<String>,
     cryptsetup: Option<String>,
@@ -36,6 +36,14 @@ impl PasswordHolder {
     pub fn with_cryptsetup(mut self, passphrase: &str) -> Self {
         self.cryptsetup = Some(passphrase.to_owned());
         self
+    }
+
+    pub fn set_sudo(&mut self, password: String) {
+        self.sudo = Some(password)
+    }
+
+    pub fn set_cryptsetup(&mut self, passphrase: String) {
+        self.cryptsetup = Some(passphrase)
     }
 
     /// Reads the cryptsetup password
@@ -122,7 +130,7 @@ fn sudo(args: &[String]) -> FmResult<(String, String)> {
     ))
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct CryptoDevice {
     fs_type: String,
     path: String,
@@ -278,5 +286,20 @@ impl CryptoDevice {
         }
 
         Ok(s)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DeviceOpener {
+    pub cryptdevice: CryptoDevice,
+    pub password_holder: PasswordHolder,
+}
+
+impl DeviceOpener {
+    pub fn from_line(line: &str) -> FmResult<Self> {
+        Ok(Self {
+            cryptdevice: CryptoDevice::from_line(line)?,
+            password_holder: PasswordHolder::default(),
+        })
     }
 }
