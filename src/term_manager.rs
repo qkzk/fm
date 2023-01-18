@@ -527,14 +527,25 @@ impl<'a> WinSecondary<'a> {
         tab: &Tab,
         canvas: &mut dyn Canvas,
     ) -> FmResult<()> {
-        canvas.print_with_attr(2, 1, "encrypted devices", Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(2, 3, "m: mount    --   u: unmount", Self::ATTR_YELLOW)?;
         for (i, device) in status.encrypted_devices.content.iter().enumerate() {
             let row = calc_line_row(i, tab) + 2;
-            let mut attr = Attr::default();
+            let mut not_mounted_attr = Attr::default();
+            let mut mounted_attr = Attr::from(Color::BLUE);
             if i == status.encrypted_devices.index() {
-                attr.effect |= Effect::REVERSE;
+                not_mounted_attr.effect |= Effect::REVERSE;
+                mounted_attr.effect |= Effect::REVERSE;
             }
-            canvas.print_with_attr(row, 3, &device.cryptdevice.as_string()?, attr)?;
+            if status.encrypted_devices.content[i].cryptdevice.is_mounted() {
+                canvas.print_with_attr(row, 3, &device.cryptdevice.as_string()?, mounted_attr)?;
+            } else {
+                canvas.print_with_attr(
+                    row,
+                    3,
+                    &device.cryptdevice.as_string()?,
+                    not_mounted_attr,
+                )?;
+            }
         }
         Ok(())
     }

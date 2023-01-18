@@ -1564,6 +1564,9 @@ impl EventExec {
     }
 
     pub fn event_encrypted_drive(status: &mut Status) -> FmResult<()> {
+        if status.encrypted_devices.is_empty() {
+            status.encrypted_devices.update()?;
+        }
         status
             .selected()
             .set_mode(Mode::Navigate(Navigate::EncryptedDrive));

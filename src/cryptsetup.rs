@@ -8,12 +8,14 @@ use crate::fm_error::{FmError, FmResult};
 use crate::impl_selectable_content;
 use crate::utils::current_username;
 
+/// Different kind of password
 #[derive(Debug, Clone, Copy)]
 pub enum PasswordKind {
     SUDO,
     CRYPTSETUP,
 }
 
+/// Possible actions on encrypted drives
 #[derive(Debug, Clone, Copy)]
 pub enum EncryptedAction {
     MOUNT,
@@ -30,6 +32,7 @@ impl std::fmt::Display for PasswordKind {
     }
 }
 
+/// Holds passwords allowing to mount or unmount an encrypted drive.
 #[derive(Default, Clone, Debug)]
 pub struct PasswordHolder {
     sudo: Option<String>,
@@ -37,52 +40,37 @@ pub struct PasswordHolder {
 }
 
 impl PasswordHolder {
-    /// Set the sudo password
-    pub fn with_sudo(mut self, password: &str) -> Self {
-        self.sudo = Some(password.to_owned());
-        self
-    }
-
-    /// Set the cryptsetup password
-    pub fn with_cryptsetup(mut self, passphrase: &str) -> Self {
-        self.cryptsetup = Some(passphrase.to_owned());
-        self
-    }
-
-    pub fn set_sudo(&mut self, password: String) {
+    fn set_sudo(&mut self, password: String) {
         self.sudo = Some(password)
     }
 
-    pub fn set_cryptsetup(&mut self, passphrase: String) {
+    fn set_cryptsetup(&mut self, passphrase: String) {
         self.cryptsetup = Some(passphrase)
     }
 
     /// Reads the cryptsetup password
-    pub fn cryptsetup(&self) -> FmResult<String> {
-        Ok(self
-            .cryptsetup
+    fn cryptsetup(&self) -> FmResult<String> {
+        self.cryptsetup
             .clone()
-            .ok_or_else(|| FmError::custom("PasswordHolder", "cryptsetup password isn't set"))?)
+            .ok_or_else(|| FmError::custom("PasswordHolder", "cryptsetup password isn't set"))
     }
 
     /// Reads the sudo password
-    pub fn sudo(&self) -> FmResult<String> {
-        Ok(self
-            .sudo
+    fn sudo(&self) -> FmResult<String> {
+        self.sudo
             .clone()
-            .ok_or_else(|| FmError::custom("PasswordHolder", "sudo password isn't set"))?)
+            .ok_or_else(|| FmError::custom("PasswordHolder", "sudo password isn't set"))
     }
 
-    pub fn has_sudo(&self) -> bool {
-        info!("has sudo ? {:?}", self);
+    fn has_sudo(&self) -> bool {
         self.sudo.is_some()
     }
 
-    pub fn has_cryptsetup(&self) -> bool {
+    fn has_cryptsetup(&self) -> bool {
         self.cryptsetup.is_some()
     }
 
-    pub fn reset(&mut self) {
+    fn reset(&mut self) {
         self.sudo = None;
         self.cryptsetup = None;
     }
@@ -94,7 +82,7 @@ impl PasswordHolder {
 /// lsblk -l -o FSTYPE,PATH,UUID,FSVER,MOUNTPOINT,PARTLABEL
 /// ```
 /// as a String.
-pub fn get_devices() -> FmResult<String> {
+fn get_devices() -> FmResult<String> {
     let output = Command::new("lsblk")
         .args(&vec!["-l", "-o", "FSTYPE,PATH,UUID,FSVER,MOUNTPOINT"])
         .stdin(Stdio::null())
@@ -105,7 +93,7 @@ pub fn get_devices() -> FmResult<String> {
 
 /// Parse the output of an lsblk detailed output and filter the line
 /// Containing "crypto" aka Luks encrypted crypto devices
-pub fn filter_crypto_devices_lines(output: String, key: &str) -> Vec<String> {
+fn filter_crypto_devices_lines(output: String, key: &str) -> Vec<String> {
     output
         .lines()
         .filter(|line| line.contains(key))
@@ -128,8 +116,7 @@ fn sudo_password(args: &[String], password: &str) -> FmResult<(bool, String, Str
         .stdin
         .as_mut()
         .ok_or_else(|| FmError::custom("run_privileged_command", "couldn't open child stdin"))?;
-    child_stdin.write_all(&format!("{}\n", password).as_bytes())?;
-    drop(child_stdin);
+    child_stdin.write_all(format!("{}\n", password).as_bytes())?;
 
     let output = child.wait_with_output()?;
     Ok((
@@ -157,6 +144,8 @@ fn sudo(args: &[String]) -> FmResult<(bool, String, String)> {
     ))
 }
 
+/// Represent an encrypted device.
+/// Those attributes comes from cryptsetup.
 #[derive(Debug, Default, Clone)]
 pub struct CryptoDevice {
     fs_type: String,
@@ -168,19 +157,17 @@ pub struct CryptoDevice {
 
 impl CryptoDevice {
     /// Parse the output of a lsblk formated line into a struct
-    pub fn from_line(line: &str) -> FmResult<Self> {
+    fn from_line(line: &str) -> FmResult<Self> {
         let mut crypo_device = Self::default();
         crypo_device.update_from_line(line)?;
         Ok(crypo_device)
     }
 
     fn update_from_line(&mut self, line: &str) -> FmResult<()> {
-        let mut strings = line.split_whitespace();
+        let strings = line.split_whitespace();
         let mut params: Vec<Option<String>> = vec![None; 5];
-        let mut count = 0;
-        while let Some(param) = strings.next() {
+        for (count, param) in strings.enumerate() {
             params[count] = Some(param.to_owned());
-            count += 1;
         }
         self.fs_type = params
             .remove(0)
@@ -238,7 +225,7 @@ impl CryptoDevice {
         ]
     }
 
-    pub fn open_mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> FmResult<bool> {
+    fn open_mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> FmResult<bool> {
         if self.mount_point().is_some() {
             Err(FmError::custom(
                 "luks open mount",
@@ -278,11 +265,7 @@ impl CryptoDevice {
         }
     }
 
-    pub fn umount_close(
-        &mut self,
-        username: &str,
-        passwords: &mut PasswordHolder,
-    ) -> FmResult<bool> {
+    fn umount_close(&mut self, username: &str, passwords: &mut PasswordHolder) -> FmResult<bool> {
         // sudo
         let (success, _, _) = sudo_password(
             &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
@@ -292,11 +275,8 @@ impl CryptoDevice {
             return Ok(false);
         }
         // unmount
-        let (success, stdout, stderr) = sudo(&self.format_umount_parameters(username))?;
+        let (_, stdout, stderr) = sudo(&self.format_umount_parameters(username))?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
-        if !success {
-            return Ok(false);
-        }
         // close
         let (success, stdout, stderr) = sudo(&self.format_luksclose_parameters())?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
@@ -318,10 +298,17 @@ impl CryptoDevice {
             .map(|p| p.to_str())
             .filter(|s| s.is_some())
             .map(|s| s.unwrap().to_owned())
-            .filter(|s| s.contains(&self.uuid))
-            .next()
+            .find(|s| s.contains(&self.uuid))
     }
 
+    /// True if there's a mount point for this drive.
+    /// It's only valid if we mounted the device since it requires
+    /// the uuid to be in the mount point.
+    pub fn is_mounted(&self) -> bool {
+        self.mount_point().is_some()
+    }
+
+    /// String representation of the device.
     pub fn as_string(&self) -> FmResult<String> {
         Ok(if let Some(mount_point) = self.mount_point() {
             format!("{} -> {}", self.path, mount_point)
@@ -331,6 +318,7 @@ impl CryptoDevice {
     }
 }
 
+/// Holds the device itself and its passwords.
 #[derive(Debug, Clone, Default)]
 pub struct Device {
     pub cryptdevice: CryptoDevice,
@@ -338,6 +326,7 @@ pub struct Device {
 }
 
 impl Device {
+    /// Reads a device from  a line of text from cryptsetup.
     pub fn from_line(line: &str) -> FmResult<Self> {
         Ok(Self {
             cryptdevice: CryptoDevice::from_line(line)?,
@@ -346,6 +335,9 @@ impl Device {
     }
 }
 
+/// Holds a list of devices and an index.
+/// It's a navigable content so the index follows the selection
+/// of the user.
 #[derive(Debug, Clone, Default)]
 pub struct DeviceOpener {
     pub content: Vec<Device>,
@@ -353,6 +345,7 @@ pub struct DeviceOpener {
 }
 
 impl DeviceOpener {
+    /// Updates itself from the output of cryptsetup.
     pub fn update(&mut self) -> FmResult<()> {
         self.content = filter_crypto_devices_lines(get_devices()?, "crypto")
             .iter()
@@ -363,6 +356,7 @@ impl DeviceOpener {
         Ok(())
     }
 
+    /// Set a password for the selected device.
     pub fn set_password(&mut self, password_kind: PasswordKind, password: String) {
         match password_kind {
             PasswordKind::SUDO => self.content[self.index].password_holder.set_sudo(password),
@@ -372,6 +366,7 @@ impl DeviceOpener {
         }
     }
 
+    /// Open and mount the selected device.
     pub fn mount_selected(&mut self) -> FmResult<()> {
         let username = current_username()?;
         let mut passwords = self.content[self.index].password_holder.clone();
@@ -386,6 +381,7 @@ impl DeviceOpener {
         Ok(())
     }
 
+    /// Unmount and close the selected device.
     pub fn umount_selected(&mut self) -> FmResult<()> {
         let username = current_username()?;
         let mut passwords = self.content[self.index].password_holder.clone();
@@ -422,10 +418,12 @@ impl DeviceOpener {
         Ok(())
     }
 
+    /// True if the selected device has sudo password.
     pub fn has_sudo(&self) -> bool {
         self.content[self.index].password_holder.has_sudo()
     }
 
+    /// True if the selected device has cryptsetup passphrase.
     pub fn has_cryptsetup(&self) -> bool {
         self.content[self.index].password_holder.has_cryptsetup()
     }

@@ -77,6 +77,8 @@ Navigate as usual. Most actions works as in 'normal' view.
 {Sort}:      SORT
 {History}:      HISTORY
 {Shortcut}:      SHORTCUT
+{EncryptedDrive}:      ENCRYPTED DRIVE
+    (m: open & mount,  u: unmount & close)
 {Search}:      SEARCH
 {Filter}:      FILTER 
     (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
