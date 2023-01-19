@@ -312,6 +312,20 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] left/right
 - [x] FIX: quit from preview is weird
 
+### Version 0.1.13 :
+
+- [x] luks encryption
+
+  Open & mount, umount & close luks encrypted partitions.
+
+  - [x] menu with Shift+e
+  - [x] mount with m
+  - [x] unmount with u
+
+  ask for a sudo password and luks passphrase.
+
+  _should_ work with other kind of encryption. Can't test it since I don't have another disk for that purpose...
+
 ## TODO
 
 - [ ] remote control
@@ -338,30 +352,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
   - [x] FIX: filter aren't applied at all
   - [ ] scrollable shortcuts, marks & history
-
-- [ ] Version 0.1.13 :
-
-  - [ ] luks encryption
-
-    ```bash
-    lsblk                                       # dump all partition names
-    sudo cryptsetup luksDump /dev/sdb           # dump toutes les infos du device
-    sudo cryptsetup luksUUID /dev/sdb           # seulement l'UUID du disque, pour meilleur nom
-    sudo cryptsetup luksOpen /dev/sdb test_luks # ouvre (decrypt) le device /dev/mapper/test_luks
-    sudo mkdir /run/media/quentin/test_luks     # crée le point de montage
-    sudo mount -t ext4 /dev/mapper/test_luks /run/media/quentin/test_luks
-                                                # monte le disque
-    sudo umount /run/media/quentin/test_luks    # démonte le disque
-    sudo cryptsetup luksClose test_luks         # ferme = encrypte le disque
-    ```
-
-    problèmes :
-
-    1. exécution aveugle de commands shell
-    2. doit connaitre le device avant (comment fait nemo ?)
-    3. doit executer des commandes privilégiées donc demander un sudo
-
-    la lib https://crates.io/crates/libcryptsetup-rs ne semble pas fonctionner
 
 - [ ] Version 0.2.0 : tests
 

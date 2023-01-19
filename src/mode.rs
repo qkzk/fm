@@ -1,6 +1,7 @@
 use std::fmt;
 
 use crate::completion::InputCompleted;
+use crate::cryptsetup::{EncryptedAction, PasswordKind};
 
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.
@@ -75,6 +76,8 @@ pub enum InputSimple {
     Marks(MarkAction),
     /// Filter by extension, name, directory or no filter
     Filter,
+    ///
+    Password(PasswordKind, EncryptedAction),
 }
 
 /// Different modes in which we display a bunch of possible destinations.
@@ -89,6 +92,8 @@ pub enum Navigate {
     Shortcut,
     ///
     Trash,
+    ///
+    EncryptedDrive,
 }
 
 /// Different mode in which the application can be.
@@ -128,6 +133,9 @@ impl fmt::Display for Mode {
             }
             Mode::InputSimple(InputSimple::Marks(_)) => write!(f, "Marks jump:"),
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
+            Mode::InputSimple(InputSimple::Password(password_kind, _)) => {
+                write!(f, "{}", password_kind)
+            }
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
             Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
             Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
@@ -136,6 +144,9 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::History) => write!(f, "History :"),
             Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
             Mode::Navigate(Navigate::Trash) => write!(f, "Trash    :"),
+            Mode::Navigate(Navigate::EncryptedDrive) => {
+                write!(f, "Encrypted devices :")
+            }
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
             Mode::Preview => write!(f, "Preview : "),
         }

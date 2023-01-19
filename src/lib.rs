@@ -8,6 +8,7 @@ pub mod config;
 pub mod constant_strings_paths;
 pub mod content_window;
 pub mod copy_move;
+pub mod cryptsetup;
 pub mod event_dispatch;
 pub mod event_exec;
 pub mod fileinfo;

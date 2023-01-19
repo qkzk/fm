@@ -77,6 +77,7 @@ impl Bindings {
             (Key::Char('w'), ActionMap::RegexMatch),
             (Key::Char('x'), ActionMap::DeleteFile),
             (Key::Char('z'), ActionMap::TreeFold),
+            (Key::Char('E'), ActionMap::EncryptedDrive),
             (Key::Char('Z'), ActionMap::TreeUnFoldAll),
             (Key::Alt('z'), ActionMap::TreeFoldAll),
             (Key::Alt('d'), ActionMap::DragNDrop),

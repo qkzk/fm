@@ -14,6 +14,7 @@ use crate::args::Args;
 use crate::config::{Colors, Config};
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
+use crate::cryptsetup::DeviceOpener;
 use crate::flagged::Flagged;
 use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
@@ -59,6 +60,7 @@ pub struct Status {
     /// The trash
     pub trash: Trash,
     pub config_colors: Colors,
+    pub encrypted_devices: DeviceOpener,
 }
 
 impl Status {
@@ -84,6 +86,7 @@ impl Status {
         tab.shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
         let trash = Trash::new()?;
+        let encrypted_devices = DeviceOpener::default();
 
         Ok(Self {
             tabs: [tab.clone(), tab],
@@ -100,6 +103,7 @@ impl Status {
             opener,
             help,
             trash,
+            encrypted_devices,
         })
     }
 
@@ -261,6 +265,7 @@ impl Status {
     pub fn refresh_disks(&mut self) {
         // the fast variant, which doesn't check if the disks have changed.
         // self.system_info.refresh_disks();
+
         // the slow variant, which check if the disks have changed.
         self.system_info.refresh_disks_list();
         let disks = self.system_info.disks();
@@ -313,6 +318,11 @@ impl Status {
         let path = self.selected_non_mut().path_content.path.clone();
         let users_cache = &self.selected_non_mut().path_content.users_cache;
         self.selected().directory = Directory::empty(&path, users_cache)?;
+        Ok(())
+    }
+
+    pub fn read_encrypted_devices(&mut self) -> FmResult<()> {
+        self.encrypted_devices.update()?;
         Ok(())
     }
 }

@@ -29,6 +29,7 @@ pub enum ErrorVariant {
     IMAGEERROR,
     SERDEYAML,
     CHRONO,
+    UTF8ERROR,
     CUSTOM(String),
 }
 
@@ -177,6 +178,12 @@ impl From<&std::io::Error> for FmError {
 impl From<chrono::ParseError> for FmError {
     fn from(error: chrono::ParseError) -> Self {
         Self::new(ErrorVariant::CHRONO, &error.to_string())
+    }
+}
+
+impl From<std::string::FromUtf8Error> for FmError {
+    fn from(error: std::string::FromUtf8Error) -> Self {
+        Self::new(ErrorVariant::UTF8ERROR, &error.to_string())
     }
 }
 

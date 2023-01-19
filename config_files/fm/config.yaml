@@ -52,6 +52,7 @@ keys:
   'x': DeleteFile
   'shift-b': Bulkrename
   'shift-d': ToggleDualPane
+  'shift-e': EncryptedDrive
   'shift-f': Filter
   'shift-g': Shortcut
   'shift-h': History

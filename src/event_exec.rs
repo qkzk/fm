@@ -13,6 +13,8 @@ use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::RESERVED_ROWS;
 use crate::copy_move::CopyMove;
+use crate::cryptsetup::EncryptedAction;
+use crate::cryptsetup::PasswordKind;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
@@ -1126,6 +1128,9 @@ impl EventExec {
             Mode::Navigate(Navigate::History) => EventExec::event_history_prev(status.selected()),
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_prev(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_prev(status.selected()),
+            Mode::Navigate(Navigate::EncryptedDrive) => {
+                EventExec::event_encrypted_drive_prev(status)
+            }
             Mode::Tree => EventExec::event_select_prev_sibling(status)?,
             Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
@@ -1144,6 +1149,9 @@ impl EventExec {
             Mode::Navigate(Navigate::History) => EventExec::event_history_next(status.selected()),
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_next(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_next(status.selected()),
+            Mode::Navigate(Navigate::EncryptedDrive) => {
+                EventExec::event_encrypted_drive_next(status)
+            }
             Mode::InputCompleted(_) => status.selected().completion.next(),
             Mode::Tree => EventExec::event_select_next_sibling(status)?,
             _ => (),
@@ -1248,6 +1256,7 @@ impl EventExec {
     /// Reset to normal mode afterwards.
     pub fn event_enter(status: &mut Status) -> FmResult<()> {
         let mut must_refresh = true;
+        let mut must_reset_mode = true;
         match status.selected_non_mut().mode {
             Mode::InputSimple(InputSimple::Rename) => EventExec::exec_rename(status.selected())?,
             Mode::InputSimple(InputSimple::Newfile) => EventExec::exec_newfile(status.selected())?,
@@ -1258,10 +1267,20 @@ impl EventExec {
                 must_refresh = false;
                 EventExec::exec_filter(status)?
             }
+            Mode::InputSimple(InputSimple::Password(password_kind, encrypted_action)) => {
+                must_refresh = false;
+                must_reset_mode = false;
+                EventExec::exec_store_password(status, password_kind)?;
+                match encrypted_action {
+                    EncryptedAction::MOUNT => EventExec::event_mount_encrypted_drive(status)?,
+                    EncryptedAction::UMOUNT => EventExec::event_umount_encrypted_drive(status)?,
+                }
+            }
             Mode::Navigate(Navigate::Jump) => EventExec::exec_jump(status)?,
             Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
             Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
+            Mode::Navigate(Navigate::EncryptedDrive) => (),
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
@@ -1278,7 +1297,9 @@ impl EventExec {
         };
 
         status.selected().input.reset();
-        status.selected().reset_mode();
+        if must_reset_mode {
+            status.selected().reset_mode();
+        }
         if must_refresh {
             Self::refresh_status(status)?;
         }
@@ -1331,6 +1352,7 @@ impl EventExec {
 
     /// Refresh the current view, reloading the files. Move the selection to top.
     pub fn event_refreshview(status: &mut Status) -> FmResult<()> {
+        status.encrypted_devices.update()?;
         Self::refresh_status(status)
     }
 
@@ -1539,6 +1561,76 @@ impl EventExec {
             tab.make_tree(colors)?;
             Ok(())
         }
+    }
+
+    /// Enter the encrypted device menu, allowing the user to mount/umount
+    /// a luks encrypted device.
+    pub fn event_encrypted_drive(status: &mut Status) -> FmResult<()> {
+        if status.encrypted_devices.is_empty() {
+            status.encrypted_devices.update()?;
+        }
+        status
+            .selected()
+            .set_mode(Mode::Navigate(Navigate::EncryptedDrive));
+        Ok(())
+    }
+
+    /// Mount the selected encrypted device. Will ask first for sudo password and
+    /// passphrase.
+    /// Those passwords are always dropped immediatly after the commands are run.
+    pub fn event_mount_encrypted_drive(status: &mut Status) -> FmResult<()> {
+        if !status.encrypted_devices.has_sudo() {
+            Self::event_ask_password(status, PasswordKind::SUDO, EncryptedAction::MOUNT)
+        } else if !status.encrypted_devices.has_cryptsetup() {
+            Self::event_ask_password(status, PasswordKind::CRYPTSETUP, EncryptedAction::MOUNT)
+        } else {
+            status.encrypted_devices.mount_selected()
+        }
+    }
+
+    /// Unmount the selected device.
+    /// Will ask first for a sudo password which is immediatly forgotten.
+    pub fn event_umount_encrypted_drive(status: &mut Status) -> FmResult<()> {
+        if !status.encrypted_devices.has_sudo() {
+            Self::event_ask_password(status, PasswordKind::SUDO, EncryptedAction::UMOUNT)
+        } else {
+            status.encrypted_devices.umount_selected()
+        }
+    }
+
+    /// Ask for a password of some kind (sudo or device passphrase).
+    pub fn event_ask_password(
+        status: &mut Status,
+        password_kind: PasswordKind,
+        encrypted_action: EncryptedAction,
+    ) -> FmResult<()> {
+        status
+            .selected()
+            .set_mode(Mode::InputSimple(InputSimple::Password(
+                password_kind,
+                encrypted_action,
+            )));
+        Ok(())
+    }
+
+    /// Store a password of some kind (sudo or device passphrase).
+    pub fn exec_store_password(status: &mut Status, password_kind: PasswordKind) -> FmResult<()> {
+        let password = status.selected_non_mut().input.string();
+        status
+            .encrypted_devices
+            .set_password(password_kind, password);
+        status.selected().reset_mode();
+        Ok(())
+    }
+
+    /// Select the next encrypted device
+    pub fn event_encrypted_drive_next(status: &mut Status) {
+        status.encrypted_devices.next()
+    }
+
+    /// Select the previous encrypted device.
+    pub fn event_encrypted_drive_prev(status: &mut Status) {
+        status.encrypted_devices.prev()
     }
 }
 

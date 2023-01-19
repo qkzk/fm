@@ -96,6 +96,12 @@ impl EventDispatcher {
                 Mode::Navigate(Navigate::Trash) if c == 'x' => {
                     EventExec::event_trash_remove_file(status)
                 }
+                Mode::Navigate(Navigate::EncryptedDrive) if c == 'm' => {
+                    EventExec::event_mount_encrypted_drive(status)
+                }
+                Mode::Navigate(Navigate::EncryptedDrive) if c == 'u' => {
+                    EventExec::event_umount_encrypted_drive(status)
+                }
                 Mode::Preview | Mode::Navigate(_) => {
                     status.selected().set_mode(Mode::Normal);
                     EventExec::event_normal(status.selected())

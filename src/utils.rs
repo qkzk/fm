@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
+use users::{get_current_uid, get_user_by_uid};
 
 use crate::event_dispatch::EventDispatcher;
 use crate::fileinfo::human_size;
@@ -93,4 +94,14 @@ pub fn filename_from_path(path: &std::path::Path) -> FmResult<&str> {
         .ok_or_else(|| FmError::custom("filename from path", "couldn't read the filename"))?
         .to_str()
         .ok_or_else(|| FmError::custom("filename from path", "couldn't parse the filename"))
+}
+
+pub fn current_username() -> FmResult<String> {
+    let user = get_user_by_uid(get_current_uid())
+        .ok_or_else(|| FmError::custom("username", "couldn't read username"))?;
+    Ok(user
+        .name()
+        .to_str()
+        .ok_or_else(|| FmError::custom("username", "couldn't read username"))?
+        .to_owned())
 }
