@@ -78,6 +78,7 @@ If you added the [recommanded function](#cd-on-quit) to your bashrc/zshrc, simpl
 - Drag and drop files (requires dragon-drop installed) with Alt+D
 - Trash a file with X, open the trash with Alt+o. x to remove permanently, enter to restore. Wipe the trash with Alt+x.
 - Toggle the tree view with t. Fold folders with z. Unfold every folder with Z, fold every folder with Alt+z.
+- Open and mount encrypted devices. Open the menu with Shift+e, mount with m, unmount with u.
 
 Most of those features are inspired by ranger and alternatives (Midnight commander), the look and feel by dired.
 
@@ -188,6 +189,8 @@ fm: a dired like file manager. Keybindings.
      Char('H'):      HISTORY
      Char('G'):      SHORTCUT
      Char('/'):      SEARCH
+     Char('E'):      ENCRYPTED DRIVE
+         (m: open & mount,  u: unmount & close)
      Char('F'):      FILTER
          (by name "n name", by ext "e ext", only directories d or all for reset)
      Enter:  Execute mode then NORMAL

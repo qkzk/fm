@@ -1563,6 +1563,8 @@ impl EventExec {
         }
     }
 
+    /// Enter the encrypted device menu, allowing the user to mount/umount
+    /// a luks encrypted device.
     pub fn event_encrypted_drive(status: &mut Status) -> FmResult<()> {
         if status.encrypted_devices.is_empty() {
             status.encrypted_devices.update()?;
@@ -1573,6 +1575,9 @@ impl EventExec {
         Ok(())
     }
 
+    /// Mount the selected encrypted device. Will ask first for sudo password and
+    /// passphrase.
+    /// Those passwords are always dropped immediatly after the commands are run.
     pub fn event_mount_encrypted_drive(status: &mut Status) -> FmResult<()> {
         if !status.encrypted_devices.has_sudo() {
             Self::event_ask_password(status, PasswordKind::SUDO, EncryptedAction::MOUNT)
@@ -1583,6 +1588,8 @@ impl EventExec {
         }
     }
 
+    /// Unmount the selected device.
+    /// Will ask first for a sudo password which is immediatly forgotten.
     pub fn event_umount_encrypted_drive(status: &mut Status) -> FmResult<()> {
         if !status.encrypted_devices.has_sudo() {
             Self::event_ask_password(status, PasswordKind::SUDO, EncryptedAction::UMOUNT)
@@ -1591,6 +1598,7 @@ impl EventExec {
         }
     }
 
+    /// Ask for a password of some kind (sudo or device passphrase).
     pub fn event_ask_password(
         status: &mut Status,
         password_kind: PasswordKind,
@@ -1605,20 +1613,22 @@ impl EventExec {
         Ok(())
     }
 
+    /// Store a password of some kind (sudo or device passphrase).
     pub fn exec_store_password(status: &mut Status, password_kind: PasswordKind) -> FmResult<()> {
         let password = status.selected_non_mut().input.string();
         status
             .encrypted_devices
             .set_password(password_kind, password);
-        info!("encrypted_devices {:?}", status.encrypted_devices);
         status.selected().reset_mode();
         Ok(())
     }
 
+    /// Select the next encrypted device
     pub fn event_encrypted_drive_next(status: &mut Status) {
         status.encrypted_devices.next()
     }
 
+    /// Select the previous encrypted device.
     pub fn event_encrypted_drive_prev(status: &mut Status) {
         status.encrypted_devices.prev()
     }

@@ -153,6 +153,7 @@ pub struct CryptoDevice {
     uuid: String,
     fs_ver: String,
     mountpoints: Option<String>,
+    device_name: Option<String>,
 }
 
 impl CryptoDevice {
@@ -198,7 +199,13 @@ impl CryptoDevice {
         [
             "mkdir".to_owned(),
             "-p".to_owned(),
-            format!("/run/media/{}/{}", username, self.uuid),
+            format!(
+                "/run/media/{}/{}",
+                username,
+                self.device_name
+                    .clone()
+                    .unwrap_or_else(|| self.uuid.clone())
+            ),
         ]
     }
 
@@ -206,14 +213,26 @@ impl CryptoDevice {
         [
             "mount".to_owned(),
             format!("/dev/mapper/{}", self.uuid),
-            format!("/run/media/{}/{}", username, self.uuid),
+            format!(
+                "/run/media/{}/{}",
+                username,
+                self.device_name
+                    .clone()
+                    .unwrap_or_else(|| self.uuid.clone())
+            ),
         ]
     }
 
     fn format_umount_parameters(&self, username: &str) -> [String; 2] {
         [
             "umount".to_owned(),
-            format!("/run/media/{}/{}", username, self.uuid),
+            format!(
+                "/run/media/{}/{}",
+                username,
+                self.device_name
+                    .clone()
+                    .unwrap_or_else(|| self.uuid.clone())
+            ),
         ]
     }
 
@@ -221,72 +240,10 @@ impl CryptoDevice {
         [
             "cryptsetup".to_owned(),
             "luksClose".to_owned(),
-            self.uuid.to_owned(),
+            self.device_name
+                .clone()
+                .unwrap_or_else(|| self.uuid.clone()),
         ]
-    }
-
-    fn open_mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> FmResult<bool> {
-        if self.is_mounted() {
-            Err(FmError::custom(
-                "luks open mount",
-                "device is already mounted",
-            ))
-        } else {
-            // sudo
-            let (success, _, _) = sudo_password(
-                &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
-                &passwords.sudo()?,
-            )?;
-            if !success {
-                return Ok(false);
-            }
-            // open
-            let (success, stdout, stderr) =
-                sudo_password(&self.format_luksopen_parameters(), &passwords.cryptsetup()?)?;
-            info!("stdout: {}\nstderr: {}", stdout, stderr);
-            if !success {
-                return Ok(false);
-            }
-            // mkdir
-            let (success, stdout, stderr) = sudo(&self.format_mkdir_parameters(username))?;
-            info!("stdout: {}\nstderr: {}", stdout, stderr);
-            if !success {
-                return Ok(false);
-            }
-            // mount
-            let (success, stdout, stderr) = sudo(&self.format_mount_parameters(username))?;
-            info!("stdout: {}\nstderr: {}", stdout, stderr);
-            if !success {
-                return Ok(false);
-            }
-            // sudo -k
-            sudo(&["-k".to_owned()])?;
-            Ok(success)
-        }
-    }
-
-    fn umount_close(&mut self, username: &str, passwords: &mut PasswordHolder) -> FmResult<bool> {
-        // sudo
-        let (success, _, _) = sudo_password(
-            &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
-            &passwords.sudo()?,
-        )?;
-        if !success {
-            return Ok(false);
-        }
-        // unmount
-        let (_, stdout, stderr) = sudo(&self.format_umount_parameters(username))?;
-        info!("stdout: {}\nstderr: {}", stdout, stderr);
-        // close
-        let (success, stdout, stderr) = sudo(&self.format_luksclose_parameters())?;
-        info!("stdout: {}\nstderr: {}", stdout, stderr);
-        if !success {
-            return Ok(false);
-        }
-        // sudo -k
-        let (success, stdout, stderr) = sudo(&["-k".to_owned()])?;
-        info!("stdout: {}\nstderr: {}", stdout, stderr);
-        Ok(success)
     }
 
     fn mount_point(&self) -> Option<String> {
@@ -308,13 +265,14 @@ impl CryptoDevice {
         self.mount_point().is_some()
     }
 
-    pub fn is_open(&self) -> FmResult<bool> {
+    fn set_device_name(&mut self) -> FmResult<()> {
         let child = Command::new("lsblk")
             .arg("-l")
             .arg("-n")
             .arg(self.path.clone())
-            .stdin(Stdio::null())
-            .stderr(Stdio::null())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()?;
         let output = child.wait_with_output()?;
         info!(
@@ -323,7 +281,17 @@ impl CryptoDevice {
             String::from_utf8(output.stderr)?
         );
         let output = String::from_utf8(output.stdout)?;
-        Ok(output.lines().count() > 1)
+        if let Some(s) = output.lines().nth(1) {
+            self.device_name = Some(
+                s.split_whitespace()
+                    .next()
+                    .ok_or_else(|| FmError::custom("mapped point", "shouldn't be empty"))?
+                    .to_owned(),
+            );
+        } else {
+            self.device_name = None;
+        }
+        Ok(())
     }
 
     /// String representation of the device.
@@ -333,6 +301,73 @@ impl CryptoDevice {
         } else {
             format!("{} - not mounted", self.path)
         })
+    }
+
+    fn open_mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> FmResult<bool> {
+        self.set_device_name()?;
+        if self.is_mounted() {
+            Err(FmError::custom(
+                "luks open mount",
+                "device is already mounted",
+            ))
+        } else {
+            // sudo
+            let (success, _, _) = sudo_password(
+                &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
+                &passwords.sudo()?,
+            )?;
+            if !success {
+                return Ok(false);
+            }
+            // open
+            let (success, stdout, stderr) =
+                sudo_password(&self.format_luksopen_parameters(), &passwords.cryptsetup()?)?;
+            info!("stdout: {}\nstderr: {}", stdout, stderr);
+            if !success {
+                return Ok(false);
+            }
+            self.set_device_name()?;
+            // mkdir
+            let (success, stdout, stderr) = sudo(&self.format_mkdir_parameters(username))?;
+            info!("stdout: {}\nstderr: {}", stdout, stderr);
+            if !success {
+                return Ok(false);
+            }
+            // mount
+            let (success, stdout, stderr) = sudo(&self.format_mount_parameters(username))?;
+            info!("stdout: {}\nstderr: {}", stdout, stderr);
+            if !success {
+                return Ok(false);
+            }
+            // sudo -k
+            sudo(&["-k".to_owned()])?;
+            Ok(success)
+        }
+    }
+
+    fn umount_close(&mut self, username: &str, passwords: &mut PasswordHolder) -> FmResult<bool> {
+        self.set_device_name()?;
+        // sudo
+        let (success, _, _) = sudo_password(
+            &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
+            &passwords.sudo()?,
+        )?;
+        if !success {
+            return Ok(false);
+        }
+        // unmount
+        let (_, stdout, stderr) = sudo(&self.format_umount_parameters(username))?;
+        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        // close
+        let (success, stdout, stderr) = sudo(&self.format_luksclose_parameters())?;
+        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        if !success {
+            return Ok(false);
+        }
+        // sudo -k
+        let (success, stdout, stderr) = sudo(&["-k".to_owned()])?;
+        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        Ok(success)
     }
 }
 
@@ -392,9 +427,9 @@ impl DeviceOpener {
             .cryptdevice
             .open_mount(&username, &mut passwords)?;
         if !success {
-            self.content[self.index].password_holder.reset();
             Self::reset_faillock()?
         }
+        self.content[self.index].password_holder.reset();
         Self::drop_sudo()?;
         Ok(())
     }
@@ -407,9 +442,9 @@ impl DeviceOpener {
             .cryptdevice
             .umount_close(&username, &mut passwords)?;
         if !success {
-            self.content[self.index].password_holder.reset();
             Self::reset_faillock()?
         }
+        self.content[self.index].password_holder.reset();
         Self::drop_sudo()?;
         Ok(())
     }
