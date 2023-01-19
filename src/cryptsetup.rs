@@ -226,7 +226,7 @@ impl CryptoDevice {
     }
 
     fn open_mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> FmResult<bool> {
-        if self.mount_point().is_some() {
+        if self.is_mounted() {
             Err(FmError::custom(
                 "luks open mount",
                 "device is already mounted",
@@ -306,6 +306,24 @@ impl CryptoDevice {
     /// the uuid to be in the mount point.
     pub fn is_mounted(&self) -> bool {
         self.mount_point().is_some()
+    }
+
+    pub fn is_open(&self) -> FmResult<bool> {
+        let child = Command::new("lsblk")
+            .arg("-l")
+            .arg("-n")
+            .arg(self.path.clone())
+            .stdin(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()?;
+        let output = child.wait_with_output()?;
+        info!(
+            "is opened ? output of lsblk\nstdout: {}\nstderr{}",
+            String::from_utf8(output.stdout.clone())?,
+            String::from_utf8(output.stderr)?
+        );
+        let output = String::from_utf8(output.stdout)?;
+        Ok(output.lines().count() > 1)
     }
 
     /// String representation of the device.
