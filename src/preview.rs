@@ -10,6 +10,7 @@ use std::slice::Iter;
 use content_inspector::{inspect, ContentType};
 use image::imageops::FilterType;
 use image::{ImageBuffer, Rgb};
+use log::info;
 use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
@@ -576,15 +577,40 @@ impl Directory {
 
     /// Select the next sibling if any.
     pub fn select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.select_next_sibling()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        if self.selected_index < self.content.len() {
+            self.selected_index += 1;
+        }
+        // self.tree.select_next_sibling()?;
+        self.tree.position = self.tree.position_from_index(self.selected_index);
+        info!(
+            "index: {} position {:?}",
+            self.selected_index, self.tree.position
+        );
+        self.tree.unselect_children();
+        let (_, _, node) = self.tree.select_from_position()?;
+        self.tree.current_node = node;
+        let res: usize;
+        (res, self.content) = self.tree.into_navigable_content(colors);
+        info!("res {}, index {}", res, self.selected_index);
         Ok(())
     }
 
     /// Select the previous sibling if any.
     pub fn select_prev_sibling(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.select_prev_sibling()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        if self.selected_index > 0 {
+            self.selected_index -= 1;
+        }
+        self.tree.position = self.tree.position_from_index(self.selected_index);
+        info!(
+            "index: {} position {:?}",
+            self.selected_index, self.tree.position
+        );
+        self.tree.unselect_children();
+        self.tree.select_from_position()?;
+        // self.tree.select_prev_sibling()?;
+        let res: usize;
+        (res, self.content) = self.tree.into_navigable_content(colors);
+        info!("res {}, index {}", res, self.selected_index);
         Ok(())
     }
 
