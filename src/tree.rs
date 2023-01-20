@@ -55,6 +55,7 @@ pub struct Node {
     pub position: Vec<usize>,
     folded: bool,
     is_dir: bool,
+    index: Option<usize>,
 }
 
 impl Node {
@@ -176,6 +177,7 @@ impl Tree {
             fileinfo,
             position: parent_position,
             folded: false,
+            index: None,
         };
         let position = vec![0];
         let current_node = node.clone();
@@ -211,6 +213,7 @@ impl Tree {
             position: vec![0],
             folded: false,
             is_dir: false,
+            index: None,
         };
         let leaves = vec![];
         let position = vec![0];
@@ -287,6 +290,8 @@ impl Tree {
             let len = self.position.len();
             if self.position[len - 1] > 0 {
                 self.position[len - 1] -= 1;
+            } else {
+                self.select_parent()?
             }
             let (depth, last_cord, node) = self.select_from_position()?;
             self.fix_position(depth, last_cord);
@@ -356,18 +361,24 @@ impl Tree {
     /// - a prefix, wich is a string made of glyphs displaying the tree,
     /// - a colored string to be colored relatively to the file type.
     /// Since we use the same colors everywhere, it's
-    pub fn into_navigable_content(&self, colors: &Colors) -> (usize, Vec<(String, ColoredString)>) {
+    pub fn into_navigable_content(
+        &mut self,
+        colors: &Colors,
+    ) -> (usize, Vec<(String, ColoredString)>) {
         let mut stack = vec![];
         stack.push(("".to_owned(), self));
         let mut content = vec![];
         let mut selected_index = 0;
 
+        let mut index = 0;
         while !stack.is_empty() {
             if let Some((prefix, current)) = stack.pop() {
                 if current.node.fileinfo.is_selected {
                     selected_index = content.len();
                 }
 
+                current.node.index = Some(index);
+                index += 1;
                 content.push((
                     prefix.to_owned(),
                     ColoredString::from_node(&current.node, colors),
@@ -377,7 +388,7 @@ impl Tree {
                 let other_prefix = other_prefix(prefix);
 
                 if !current.node.folded {
-                    for (index, leaf) in current.leaves.iter().enumerate() {
+                    for (index, leaf) in current.leaves.iter_mut().enumerate() {
                         if index == 0 {
                             stack.push((first_prefix.clone(), leaf));
                         } else {
