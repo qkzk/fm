@@ -644,21 +644,16 @@ impl Directory {
     /// is selected and the size of the window used to display.
     pub fn calculate_tree_window(&self, height: usize) -> (usize, usize, usize) {
         let length = self.content.len();
-        let mut top = if self.selected_index < height - 1 {
-            0
-        } else {
-            self.selected_index - 1
-        };
-        let mut bottom = if self.selected_index < height - 1 {
-            height - 1
-        } else {
-            self.selected_index + height - 1
-        };
 
-        let padding = std::cmp::max(10, height / 2);
-        if self.selected_index >= height - 1 {
-            top -= padding;
-            bottom += padding;
+        let top: usize;
+        let bottom: usize;
+        if self.selected_index < height - 1 {
+            top = 0;
+            bottom = height - 1;
+        } else {
+            let padding = std::cmp::max(10, height / 2);
+            top = self.selected_index - 1 - padding;
+            bottom = self.selected_index + height - 1 + padding;
         }
 
         (top, bottom, length)
