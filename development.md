@@ -312,6 +312,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] left/right
 - [x] FIX: quit from preview is weird
 
+### Version 0.1.12 :
+
+- [x] FIX: filter aren't applied at all
+
 ### Version 0.1.13 :
 
 - [x] luks encryption
@@ -325,6 +329,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   ask for a sudo password and luks passphrase.
 
   _should_ work with other kind of encryption. Can't test it since I don't have another disk for that purpose...
+
+### Version 0.1.14 :
+
+- [ ] improve tree navigation
+
+  - [ ] up & down can jump to the node immediatly below in the view
+  - [ ] BUG: when a node is folded, it jumps into its leaves
 
 ## TODO
 
@@ -348,10 +359,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] vim keys, harmonize keybinds with ranger
 - [ ] zoxide support
 
-- [ ] Version 0.1.12 :
-
-  - [x] FIX: filter aren't applied at all
-  - [ ] scrollable shortcuts, marks & history
+- [ ] scrollable shortcuts, marks & history
 
 - [ ] Version 0.2.0 : tests
 

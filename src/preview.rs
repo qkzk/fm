@@ -575,12 +575,35 @@ impl Directory {
         self.tree.unselect_children()
     }
 
-    /// Select the next sibling if any.
-    pub fn select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
-        if self.selected_index < self.content.len() {
-            self.selected_index += 1;
+    /// Select the "next" element of the tree if any.
+    /// This is the element immediatly below the current one.
+    pub fn select_next(&mut self, colors: &Colors) -> FmResult<()> {
+        let step = 1;
+        if self.selected_index + step < self.content.len() {
+            self.selected_index += step;
         }
-        // self.tree.select_next_sibling()?;
+        self.tree.position = self.tree.position_from_index(self.selected_index);
+        self.tree.unselect_children();
+        let (_, _, node) = self.tree.select_from_position()?;
+        self.tree.current_node = node;
+        let res: usize;
+        (res, self.content) = self.tree.into_navigable_content(colors);
+        info!(
+            "index: {} res: {} position {:?} node {}",
+            self.selected_index,
+            res,
+            self.tree.position,
+            self.tree.current_node.filename()
+        );
+        Ok(())
+    }
+
+    /// Select the previous sibling if any.
+    /// This is the element immediatly below the current one.
+    pub fn select_prev(&mut self, colors: &Colors) -> FmResult<()> {
+        if self.selected_index > 0 {
+            self.selected_index -= 1;
+        }
         self.tree.position = self.tree.position_from_index(self.selected_index);
         info!(
             "index: {} position {:?}",
@@ -591,26 +614,13 @@ impl Directory {
         self.tree.current_node = node;
         let res: usize;
         (res, self.content) = self.tree.into_navigable_content(colors);
-        info!("res {}, index {}", res, self.selected_index);
-        Ok(())
-    }
-
-    /// Select the previous sibling if any.
-    pub fn select_prev_sibling(&mut self, colors: &Colors) -> FmResult<()> {
-        if self.selected_index > 0 {
-            self.selected_index -= 1;
-        }
-        self.tree.position = self.tree.position_from_index(self.selected_index);
         info!(
-            "index: {} position {:?}",
-            self.selected_index, self.tree.position
+            "index: {} res: {} position {:?} node {}",
+            self.selected_index,
+            res,
+            self.tree.position,
+            self.tree.current_node.filename()
         );
-        self.tree.unselect_children();
-        self.tree.select_from_position()?;
-        // self.tree.select_prev_sibling()?;
-        let res: usize;
-        (res, self.content) = self.tree.into_navigable_content(colors);
-        info!("res {}, index {}", res, self.selected_index);
         Ok(())
     }
 
