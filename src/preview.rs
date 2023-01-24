@@ -10,7 +10,6 @@ use std::slice::Iter;
 use content_inspector::{inspect, ContentType};
 use image::imageops::FilterType;
 use image::{ImageBuffer, Rgb};
-use log::info;
 use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
@@ -578,23 +577,10 @@ impl Directory {
     /// Select the "next" element of the tree if any.
     /// This is the element immediatly below the current one.
     pub fn select_next(&mut self, colors: &Colors) -> FmResult<()> {
-        let step = 1;
-        if self.selected_index + step < self.content.len() {
-            self.selected_index += step;
+        if self.selected_index + 1 < self.content.len() {
+            self.selected_index += 1;
         }
-        self.tree.position = self.tree.position_from_index(self.selected_index);
-        let (_, _, node) = self.tree.select_from_position()?;
-        self.tree.current_node = node;
-        let res: usize;
-        (res, self.content) = self.tree.into_navigable_content(colors);
-        info!(
-            "index: {} res: {} position {:?} node {}",
-            self.selected_index,
-            res,
-            self.tree.position,
-            self.tree.current_node.filename()
-        );
-        Ok(())
+        self.update_tree_from_index(colors)
     }
 
     /// Select the previous sibling if any.
@@ -603,22 +589,14 @@ impl Directory {
         if self.selected_index > 0 {
             self.selected_index -= 1;
         }
+        self.update_tree_from_index(colors)
+    }
+
+    fn update_tree_from_index(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.position = self.tree.position_from_index(self.selected_index);
-        info!(
-            "index: {} position {:?}",
-            self.selected_index, self.tree.position
-        );
         let (_, _, node) = self.tree.select_from_position()?;
         self.tree.current_node = node;
-        let res: usize;
-        (res, self.content) = self.tree.into_navigable_content(colors);
-        info!(
-            "index: {} res: {} position {:?} node {}",
-            self.selected_index,
-            res,
-            self.tree.position,
-            self.tree.current_node.filename()
-        );
+        (_, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
 
