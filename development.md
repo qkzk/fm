@@ -358,6 +358,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] scrollable shortcuts, marks & history
 
+- [ ] Version 0.1.15 :
+
+  - [x] Alt+c opens the config file
+  - [x] Add a shortcut to the config folder
+
 - [ ] Version 0.2.0 : tests
 
   - [ ] tests
