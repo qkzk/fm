@@ -583,7 +583,6 @@ impl Directory {
             self.selected_index += step;
         }
         self.tree.position = self.tree.position_from_index(self.selected_index);
-        self.tree.unselect_children();
         let (_, _, node) = self.tree.select_from_position()?;
         self.tree.current_node = node;
         let res: usize;
@@ -609,7 +608,6 @@ impl Directory {
             "index: {} position {:?}",
             self.selected_index, self.tree.position
         );
-        self.tree.unselect_children();
         let (_, _, node) = self.tree.select_from_position()?;
         self.tree.current_node = node;
         let res: usize;

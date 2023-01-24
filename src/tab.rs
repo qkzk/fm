@@ -268,13 +268,13 @@ impl Tab {
     }
 
     /// Select the next sibling.
-    pub fn tree_select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_select_next(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
         self.directory.select_next(colors)
     }
 
     /// Select the previous siblging
-    pub fn tree_select_prev_sibling(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_select_prev(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
         self.directory.select_prev(colors)
     }

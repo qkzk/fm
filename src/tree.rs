@@ -56,7 +56,6 @@ pub struct Node {
     pub folded: bool,
     is_dir: bool,
     index: Option<usize>,
-    pub nb_leaves: usize,
 }
 
 impl Node {
@@ -179,7 +178,6 @@ impl Tree {
             position: parent_position,
             folded: false,
             index: None,
-            nb_leaves: leaves.len(),
         };
         let position = vec![0];
         let current_node = node.clone();
@@ -216,7 +214,6 @@ impl Tree {
             folded: false,
             is_dir: false,
             index: None,
-            nb_leaves: 0,
         };
         let leaves = vec![];
         let position = vec![0];
