@@ -1131,7 +1131,7 @@ impl EventExec {
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_prev(status)
             }
-            Mode::Tree => EventExec::event_select_prev_sibling(status)?,
+            Mode::Tree => EventExec::event_select_prev(status)?,
             Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
             }
@@ -1153,7 +1153,7 @@ impl EventExec {
                 EventExec::event_encrypted_drive_next(status)
             }
             Mode::InputCompleted(_) => status.selected().completion.next(),
-            Mode::Tree => EventExec::event_select_next_sibling(status)?,
+            Mode::Tree => EventExec::event_select_next(status)?,
             _ => (),
         };
         Ok(())
@@ -1488,7 +1488,7 @@ impl EventExec {
         let (tree, _, _) = tab.directory.tree.explore_position(false);
         tree.node.toggle_fold();
         tab.directory.make_preview(colors);
-        Ok(())
+        Self::event_select_next(status)
     }
 
     /// Unfold every child node in the tree.
@@ -1531,16 +1531,16 @@ impl EventExec {
         status.selected().tree_select_parent(&colors)
     }
 
-    /// Select the next sibling of the current node and reset the display.
-    pub fn event_select_next_sibling(status: &mut Status) -> FmResult<()> {
+    /// Select the next sibling of the current node.
+    pub fn event_select_next(status: &mut Status) -> FmResult<()> {
         let colors = status.config_colors.clone();
-        status.selected().tree_select_next_sibling(&colors)
+        status.selected().tree_select_next(&colors)
     }
 
-    /// Select the previous sibling of the current node and reset the display.
-    pub fn event_select_prev_sibling(status: &mut Status) -> FmResult<()> {
+    /// Select the previous sibling of the current node.
+    pub fn event_select_prev(status: &mut Status) -> FmResult<()> {
         let colors = status.config_colors.clone();
-        status.selected().tree_select_prev_sibling(&colors)
+        status.selected().tree_select_prev(&colors)
     }
 
     /// Select the last leaf of the tree and reset the view.

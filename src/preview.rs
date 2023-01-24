@@ -574,17 +574,29 @@ impl Directory {
         self.tree.unselect_children()
     }
 
-    /// Select the next sibling if any.
-    pub fn select_next_sibling(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.select_next_sibling()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-        Ok(())
+    /// Select the "next" element of the tree if any.
+    /// This is the element immediatly below the current one.
+    pub fn select_next(&mut self, colors: &Colors) -> FmResult<()> {
+        if self.selected_index + 1 < self.content.len() {
+            self.selected_index += 1;
+        }
+        self.update_tree_from_index(colors)
     }
 
     /// Select the previous sibling if any.
-    pub fn select_prev_sibling(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.select_prev_sibling()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+    /// This is the element immediatly below the current one.
+    pub fn select_prev(&mut self, colors: &Colors) -> FmResult<()> {
+        if self.selected_index > 0 {
+            self.selected_index -= 1;
+        }
+        self.update_tree_from_index(colors)
+    }
+
+    fn update_tree_from_index(&mut self, colors: &Colors) -> FmResult<()> {
+        self.tree.position = self.tree.position_from_index(self.selected_index);
+        let (_, _, node) = self.tree.select_from_position()?;
+        self.tree.current_node = node;
+        (_, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
 
@@ -618,21 +630,16 @@ impl Directory {
     /// is selected and the size of the window used to display.
     pub fn calculate_tree_window(&self, height: usize) -> (usize, usize, usize) {
         let length = self.content.len();
-        let mut top = if self.selected_index < height {
-            0
-        } else {
-            self.selected_index
-        };
-        let mut bottom = if self.selected_index < height {
-            height
-        } else {
-            self.selected_index + height
-        };
 
-        let padding = std::cmp::max(10, height / 2);
-        if self.selected_index > height {
-            top -= padding;
-            bottom += padding;
+        let top: usize;
+        let bottom: usize;
+        if self.selected_index < height - 1 {
+            top = 0;
+            bottom = height - 1;
+        } else {
+            let padding = std::cmp::max(10, height / 2);
+            top = self.selected_index - 1 - padding;
+            bottom = self.selected_index + height - 1 + padding;
         }
 
         (top, bottom, length)
