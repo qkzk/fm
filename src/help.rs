@@ -40,6 +40,7 @@ static HELP_TO_FORMAT: &str = "
 {CopyFilename}:      copy filename to clipboard
 {CopyFilepath}:      copy filepath to clipboard
 {DragNDrop}:       dragon-drop selected file
+{OpenConfig}:       open the config file
 
 - Action on flagged files - 
 {ToggleFlag}:      toggle flag on a file 

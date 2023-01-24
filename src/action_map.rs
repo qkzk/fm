@@ -76,6 +76,7 @@ pub enum ActionMap {
     TreeFold,
     TreeUnFoldAll,
     TreeFoldAll,
+    OpenConfig,
 }
 
 impl ActionMap {
@@ -149,6 +150,7 @@ impl ActionMap {
             ActionMap::TreeFold => EventExec::event_tree_fold(status),
             ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(status),
             ActionMap::TreeUnFoldAll => EventExec::event_tree_unfold_all(status),
+            ActionMap::OpenConfig => EventExec::event_open_config(status),
 
             ActionMap::Nothing => Ok(()),
         }

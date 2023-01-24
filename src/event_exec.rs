@@ -9,6 +9,7 @@ use sysinfo::SystemExt;
 
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
+use crate::constant_strings_paths::CONFIG_PATH;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::RESERVED_ROWS;
@@ -1631,6 +1632,17 @@ impl EventExec {
     /// Select the previous encrypted device.
     pub fn event_encrypted_drive_prev(status: &mut Status) {
         status.encrypted_devices.prev()
+    }
+
+    /// Open the config file.
+    pub fn event_open_config(status: &mut Status) -> FmResult<()> {
+        match status.opener.open(&path::PathBuf::from(
+            shellexpand::tilde(CONFIG_PATH).to_string(),
+        )) {
+            Ok(_) => (),
+            Err(e) => info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
+        }
+        Ok(())
     }
 }
 

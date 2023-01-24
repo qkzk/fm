@@ -151,6 +151,7 @@ fm: a dired like file manager. Keybindings.
      Ctrl('c'):      copy filename to clipboard
      Ctrl('p'):      copy filepath to clipboard
      Alt('d'):       dragon-drop selected file
+     Alt('c'):       open the config file
 
      - Action on flagged files -
      Char(' '):      toggle flag on a file

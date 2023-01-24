@@ -81,6 +81,7 @@ impl Bindings {
             (Key::Char('Z'), ActionMap::TreeUnFoldAll),
             (Key::Alt('z'), ActionMap::TreeFoldAll),
             (Key::Alt('d'), ActionMap::DragNDrop),
+            (Key::Alt('c'), ActionMap::OpenConfig),
             (Key::Alt('x'), ActionMap::TrashEmpty),
             (Key::Alt('o'), ActionMap::TrashOpen),
             (Key::Ctrl('c'), ActionMap::CopyFilename),
