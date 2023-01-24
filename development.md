@@ -332,10 +332,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Version 0.1.14 :
 
-- [ ] improve tree navigation
-
-  - [ ] up & down can jump to the node immediatly below in the view
-  - [ ] BUG: when a node is folded, it jumps into its leaves
+- [x] improve tree navigation: up & down can jump to the node immediatly below in the view
 
 ## TODO
 
