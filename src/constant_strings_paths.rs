@@ -1,5 +1,7 @@
 /// Configuration file path
 pub static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
+/// Configuration file path
+pub static CONFIG_FOLDER: &str = "~/.config/fm";
 /// Default terminal application used when openening a program in shell or starting a new shell
 pub static DEFAULT_TERMINAL_APPLICATION: &str = "st";
 /// Log file path. Rotating file logs are created in the same directeroy
