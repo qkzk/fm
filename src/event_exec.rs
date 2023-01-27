@@ -1589,6 +1589,20 @@ impl EventExec {
         }
     }
 
+    /// Move to the selected crypted device mount point.
+    pub fn event_move_to_encrypted_drive(status: &mut Status) -> FmResult<()> {
+        if let Some(device) = status.encrypted_devices.selected() {
+            if let Some(mount_point) = device.cryptdevice.mount_point() {
+                let tab = status.selected();
+                let path = path::PathBuf::from(mount_point);
+                tab.history.push(&path);
+                tab.set_pathcontent(&path)?;
+                Self::event_normal(tab)?
+            }
+        }
+        Ok(())
+    }
+
     /// Unmount the selected device.
     /// Will ask first for a sudo password which is immediatly forgotten.
     pub fn event_umount_encrypted_drive(status: &mut Status) -> FmResult<()> {

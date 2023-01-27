@@ -246,7 +246,7 @@ impl CryptoDevice {
         ]
     }
 
-    fn mount_point(&self) -> Option<String> {
+    pub fn mount_point(&self) -> Option<String> {
         let system_info = System::new_all();
         system_info
             .disks()

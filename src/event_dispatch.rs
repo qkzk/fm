@@ -99,6 +99,9 @@ impl EventDispatcher {
                 Mode::Navigate(Navigate::EncryptedDrive) if c == 'm' => {
                     EventExec::event_mount_encrypted_drive(status)
                 }
+                Mode::Navigate(Navigate::EncryptedDrive) if c == 'g' => {
+                    EventExec::event_move_to_encrypted_drive(status)
+                }
                 Mode::Navigate(Navigate::EncryptedDrive) if c == 'u' => {
                     EventExec::event_umount_encrypted_drive(status)
                 }
