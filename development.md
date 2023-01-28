@@ -334,6 +334,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] improve tree navigation: up & down can jump to the node immediatly below in the view
 
+### Version 0.1.15 :
+
+- [x] Alt+c opens the config file
+- [x] Add a shortcut to the config folder
+- [x] use g to go to the mounted encrypted drive
+
 ## TODO
 
 - [ ] remote control
@@ -357,11 +363,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] zoxide support
 
 - [ ] scrollable shortcuts, marks & history
-
-- [ ] Version 0.1.15 :
-
-  - [x] Alt+c opens the config file
-  - [x] Add a shortcut to the config folder
 
 - [ ] Version 0.2.0 : tests
 
