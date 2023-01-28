@@ -20,10 +20,7 @@ fn create_log_folder(log_path: &str) -> FmResult<String> {
     let parent = path_buf.parent().ok_or_else(|| {
         FmError::custom(
             "create log folder",
-            &format!(
-                "Couldn't create log folder. LOGPATH {} should have a parent",
-                LOG_PATH
-            ),
+            &format!("Couldn't create log folder. LOG_PATH {LOG_PATH} should have a parent",),
         )
     })?;
     std::fs::create_dir_all(parent)?;

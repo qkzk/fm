@@ -74,7 +74,7 @@ pub fn drop_everything(
 
 /// Print the path on the stdout.
 pub fn print_on_quit(path_string: &str) {
-    println!("{}", path_string)
+    println!("{path_string}")
 }
 
 pub fn read_lines<P>(

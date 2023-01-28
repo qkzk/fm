@@ -196,7 +196,7 @@ impl Tree {
         sort_kind: &SortKind,
         parent_position: Vec<usize>,
     ) -> FmResult<Vec<Tree>> {
-        if max_depth <= 0 {
+        if max_depth == 0 {
             return Ok(vec![]);
         }
         let mut leaves = vec![];

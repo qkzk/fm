@@ -816,7 +816,7 @@ impl EventExec {
                 NVIM_RPC_SENDER,
                 &vec![
                     "--remote-send",
-                    &format!("<esc>:e {}<cr><esc>:close<cr>", path_str),
+                    &format!("<esc>:e {path_str}<cr><esc>:close<cr>"),
                     "--servername",
                     &nvim_listen_address,
                 ],
@@ -975,12 +975,12 @@ impl EventExec {
             let path = &tab
                 .selected()
                 .ok_or_else(|| {
-                    FmError::custom("exec exec", &format!("can't find command {}", command))
+                    FmError::custom("exec exec", &format!("can't find command {command}"))
                 })?
                 .path
                 .to_str()
                 .ok_or_else(|| {
-                    FmError::custom("exec exec", &format!("can't find command {}", command))
+                    FmError::custom("exec exec", &format!("can't find command {command}"))
                 })?;
             // let path = &tab.path_content.selected_path_string().ok_or_else(|| {
             //     FmError::custom("exec exec", &format!("can't find command {}", command))

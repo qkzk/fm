@@ -62,8 +62,8 @@ impl Display for FilterKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Directory => write!(f, "Filter: Directory only"),
-            Self::Extension(s) => write!(f, "Filter: by extension \"{}\"", s),
-            Self::Name(s) => write!(f, "Filter: by name \"{}\"", s),
+            Self::Extension(s) => write!(f, "Filter: by extension \"{s}\""),
+            Self::Name(s) => write!(f, "Filter: by name \"{s}\""),
             Self::All => write!(f, ""),
         }
     }

@@ -65,7 +65,7 @@ impl Marks {
         if sp.len() <= 1 {
             return Err(FmError::custom(
                 "marks: parse_line",
-                &format!("Invalid mark line: {}", line),
+                &format!("Invalid mark line: {line}"),
             ));
         }
         if let Some(ch) = sp[0].chars().next() {
@@ -74,7 +74,7 @@ impl Marks {
         } else {
             Err(FmError::custom(
                 "marks: parse line",
-                &format!("Invalid first character in: {}", line),
+                &format!("Invalid first character in: {line}"),
             ))
         }
     }

@@ -28,7 +28,7 @@ impl std::fmt::Display for PasswordKind {
             Self::SUDO => "sudo   ",
             Self::CRYPTSETUP => "device ",
         };
-        write!(f, "{}", asker)
+        write!(f, "{asker}")
     }
 }
 
@@ -116,7 +116,7 @@ fn sudo_password(args: &[String], password: &str) -> FmResult<(bool, String, Str
         .stdin
         .as_mut()
         .ok_or_else(|| FmError::custom("run_privileged_command", "couldn't open child stdin"))?;
-    child_stdin.write_all(format!("{}\n", password).as_bytes())?;
+    child_stdin.write_all(format!("{password}\n").as_bytes())?;
 
     let output = child.wait_with_output()?;
     Ok((

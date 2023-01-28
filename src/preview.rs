@@ -336,7 +336,7 @@ impl Line {
     fn format(&self) -> String {
         let mut s = "".to_owned();
         for (i, byte) in self.line.iter().enumerate() {
-            let _ = write!(s, "{:02x}", byte);
+            let _ = write!(s, "{byte:02x}");
             if i % 2 == 1 {
                 s.push(' ');
             }

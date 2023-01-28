@@ -105,7 +105,7 @@ impl Bindings {
     pub fn keybind_reversed(&self) -> HashMap<String, String> {
         self.binds
             .iter()
-            .map(|(k, v)| (v.to_string(), format!("{:?}", k)))
+            .map(|(k, v)| (v.to_string(), format!("{k:?}")))
             .collect()
     }
 

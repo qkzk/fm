@@ -206,7 +206,7 @@ impl OpenerInfo {
             }),
             _ => Err(FmError::custom(
                 "internal",
-                &format!("unsupported extension_kind: {:?}", extension_kind),
+                &format!("unsupported extension_kind: {extension_kind:?}"),
             )),
         }
     }

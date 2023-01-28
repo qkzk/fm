@@ -163,7 +163,7 @@ impl<'a> WinMain<'a> {
                     format!("{} ", tab.path_content.path.display()),
                     format!("{} files ", tab.path_content.true_len()),
                     format!("{}  ", tab.path_content.used_space()),
-                    format!("Avail: {}  ", disk_space),
+                    format!("Avail: {disk_space}  "),
                     format!("{}  ", &tab.path_content.git_string()?),
                 ]
             }
@@ -186,7 +186,7 @@ impl<'a> WinMain<'a> {
                         format!("{} ", tab.path_content.path.display()),
                         format!("{} files ", tab.path_content.true_len()),
                         format!("{}  ", tab.path_content.used_space()),
-                        format!("Avail: {}  ", disk_space),
+                        format!("Avail: {disk_space}  "),
                         format!("{}  ", &tab.path_content.git_string()?),
                     ]
                 }
@@ -399,7 +399,7 @@ impl<'a> WinSecondary<'a> {
     fn create_first_row(&self, tab: &Tab) -> FmResult<Vec<String>> {
         let first_row = match tab.mode {
             Mode::NeedConfirmation(confirmed_action) => {
-                vec![format!("{} (y/n)", confirmed_action)]
+                vec![format!("{confirmed_action} (y/n)")]
             }
             Mode::InputSimple(InputSimple::Marks(MarkAction::Jump)) => {
                 vec!["Jump to...".to_owned()]
@@ -408,7 +408,7 @@ impl<'a> WinSecondary<'a> {
                 vec!["Save mark...".to_owned()]
             }
             Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action)) => {
-                vec![format!("{}", password_kind), tab.input.password()]
+                vec![format!("{password_kind}"), tab.input.password()]
             }
             _ => {
                 vec![
@@ -501,7 +501,7 @@ impl<'a> WinSecondary<'a> {
             let _ = canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                &format!("{}", trashinfo),
+                &format!("{trashinfo}"),
                 attr,
             );
         }
@@ -562,7 +562,7 @@ impl<'a> WinSecondary<'a> {
                     canvas.print_with_attr(
                         row + ContentWindow::WINDOW_MARGIN_TOP + 2,
                         4,
-                        &format!("{}", trashinfo),
+                        &format!("{trashinfo}"),
                         Attr::default(),
                     )?;
                 }
@@ -751,7 +751,7 @@ impl Display {
 }
 
 fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
-    format!("{:0width$x}", line_nr)
+    format!("{line_nr:0width$x}")
 }
 
 const fn color_to_attr(color: Color) -> Attr {

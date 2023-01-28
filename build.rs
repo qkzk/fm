@@ -18,6 +18,6 @@ fn main() {
 
     match fs_extra::dir::copy(default_config_files, config_folder, &copy_options) {
         Ok(_) => (),
-        Err(e) => eprintln!("{:?}", e),
+        Err(e) => eprintln!("{e:?}"),
     }
 }

@@ -391,7 +391,7 @@ fn find_parent(path: &Path) -> FmResult<PathBuf> {
         .ok_or_else(|| {
             FmError::custom(
                 "find_parent_as_string",
-                &format!("Couldn't find parent of {:?}", path),
+                &format!("Couldn't find parent of {path:?}"),
             )
         })?
         .to_owned())

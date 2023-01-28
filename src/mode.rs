@@ -134,7 +134,7 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Marks(_)) => write!(f, "Marks jump:"),
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
             Mode::InputSimple(InputSimple::Password(password_kind, _)) => {
-                write!(f, "{}", password_kind)
+                write!(f, "{password_kind}")
             }
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
             Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
