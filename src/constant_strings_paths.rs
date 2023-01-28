@@ -1,15 +1,21 @@
+/// Configuration folder path
+pub static CONFIG_FOLDER: &str = "~/.config/fm";
 /// Configuration file path
 pub static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
-/// Configuration file path
-pub static CONFIG_FOLDER: &str = "~/.config/fm";
-/// Default terminal application used when openening a program in shell or starting a new shell
-pub static DEFAULT_TERMINAL_APPLICATION: &str = "st";
+/// Filepath of the opener config file
+pub static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
+/// Path to the trash folder files
+pub static TRASH_FOLDER_FILES: &str = "~/.local/share/Trash/files";
+/// Path to the trash folder info file
+pub static TRASH_FOLDER_INFO: &str = "~/.local/share/Trash/info";
 /// Log file path. Rotating file logs are created in the same directeroy
 pub static LOG_PATH: &str = "~/.config/fm/fm{}";
 /// File where marks are stored.
 pub static MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 /// Temporary folder used when bulkrenaming files
 pub static TMP_FOLDER_PATH: &str = "/tmp";
+/// Default terminal application used when openening a program in shell or starting a new shell
+pub static DEFAULT_TERMINAL_APPLICATION: &str = "st";
 /// Opener used to play audio files. Does it require a terminal ?
 pub static DEFAULT_AUDIO_OPENER: (&str, bool) = ("mocp", true);
 /// Program used to to display images. Does it require a terminal ?
@@ -26,8 +32,6 @@ pub static DEFAULT_OPENER: (&str, bool) = ("xdg-open", false);
 pub static DEFAULT_VECTORIAL_OPENER: (&str, bool) = ("inkscape", false);
 /// Program used to open videos. Does it require a terminal ?
 pub static DEFAULT_VIDEO_OPENER: (&str, bool) = ("mpv", false);
-/// Filepath of the opener config file
-pub static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
 /// Default program used to drag and drop files
 pub static DEFAULT_DRAGNDROP: &str = "dragon-drop";
 /// Array of text representation of a file permissions.
@@ -53,7 +57,3 @@ pub static HARDCODED_SHORTCUTS: [&str; 9] = [
     "/usr",
     "/var",
 ];
-/// Path to the trash folder files
-pub static TRASH_FOLDER_FILES: &str = "~/.local/share/Trash/files";
-/// Path to the trash folder info file
-pub static TRASH_FOLDER_INFO: &str = "~/.local/share/Trash/info";
