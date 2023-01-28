@@ -87,35 +87,33 @@ DeletionDate={}
             let dest_name = Self::remove_extension(dest_name.to_str().unwrap().to_owned())?;
             if let Ok(lines) = read_lines(trash_info_file) {
                 for (index, line_result) in lines.enumerate() {
-                    if let Ok(line) = line_result.as_ref() {
-                        if line.starts_with("[Trash Info]") {
-                            if index == 0 {
-                                found_trash_info_line = true;
-                                continue;
-                            } else {
-                                return trashinfo_error("[TrashInfo] was found after first line");
-                            }
+                    let Ok(line) = line_result.as_ref() else { continue };
+                    if line.starts_with("[Trash Info]") {
+                        if index == 0 {
+                            found_trash_info_line = true;
+                            continue;
+                        } else {
+                            return trashinfo_error("[TrashInfo] was found after first line");
                         }
-                        if line.starts_with("Path=") && option_path.is_none() {
-                            if !found_trash_info_line {
-                                return trashinfo_error("Found Path line before TrashInfo");
-                            }
-                            let path_part = &line[5..];
-                            let cow_path_str = url_escape::decode(path_part);
-                            let path_str = cow_path_str.as_ref();
-                            option_path = Some(PathBuf::from(path_str));
-                        } else if line.starts_with("DeletionDate=") && option_deleted_time.is_none()
-                        {
-                            if !found_trash_info_line {
-                                return trashinfo_error("Found DeletionDate line before TrashInfo");
-                            }
-                            let deletion_date_str = &line[13..];
-                            match parsed_date_from_path_info(deletion_date_str) {
-                                Ok(()) => (),
-                                Err(e) => return Err(e),
-                            }
-                            option_deleted_time = Some(deletion_date_str.to_owned())
+                    }
+                    if line.starts_with("Path=") && option_path.is_none() {
+                        if !found_trash_info_line {
+                            return trashinfo_error("Found Path line before TrashInfo");
                         }
+                        let path_part = &line[5..];
+                        let cow_path_str = url_escape::decode(path_part);
+                        let path_str = cow_path_str.as_ref();
+                        option_path = Some(PathBuf::from(path_str));
+                    } else if line.starts_with("DeletionDate=") && option_deleted_time.is_none() {
+                        if !found_trash_info_line {
+                            return trashinfo_error("Found DeletionDate line before TrashInfo");
+                        }
+                        let deletion_date_str = &line[13..];
+                        match parsed_date_from_path_info(deletion_date_str) {
+                            Ok(()) => (),
+                            Err(e) => return Err(e),
+                        }
+                        option_deleted_time = Some(deletion_date_str.to_owned())
                     }
                 }
             }

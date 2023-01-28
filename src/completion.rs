@@ -144,11 +144,9 @@ impl Completion {
     }
 
     fn extend_absolute_paths(&mut self, parent: &str, last_name: &str) {
-        if let Ok(path) = std::fs::canonicalize(parent) {
-            if let Ok(entries) = fs::read_dir(path) {
-                self.extend(&Self::entries_matching_filename(entries, last_name))
-            }
-        }
+        let Ok(path) = std::fs::canonicalize(parent) else { return };
+        let Ok(entries) = fs::read_dir(path) else { return };
+        self.extend(&Self::entries_matching_filename(entries, last_name))
     }
 
     fn extend_relative_paths(&mut self, current_path: &str, last_name: &str) {

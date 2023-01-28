@@ -47,11 +47,8 @@ impl FilterKind {
     }
 
     fn filter_by_name(fileinfo: &FileInfo, filename: &str) -> bool {
-        if let Ok(re) = Regex::new(filename) {
-            re.is_match(&fileinfo.filename)
-        } else {
-            false
-        }
+        let Ok(re) = Regex::new(filename) else { return false };
+        re.is_match(&fileinfo.filename)
     }
 
     fn filter_directory(fileinfo: &FileInfo) -> bool {
