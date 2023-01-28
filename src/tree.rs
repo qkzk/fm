@@ -90,6 +90,16 @@ impl Node {
     pub fn toggle_fold(&mut self) {
         self.folded = !self.folded;
     }
+
+    fn from_fileinfo(fileinfo: FileInfo, parent_position: Vec<usize>) -> Self {
+        Self {
+            is_dir: matches!(fileinfo.file_kind, FileKind::Directory),
+            fileinfo,
+            position: parent_position,
+            folded: false,
+            index: None,
+        }
+    }
 }
 
 /// Holds a recursive view of a directory.
@@ -135,6 +145,13 @@ impl Tree {
         )
     }
 
+    /// Clear every vector attributes of the tree.
+    /// It's used to free some unused memory.
+    pub fn clear(&mut self) {
+        self.leaves = vec![];
+        self.position = vec![];
+    }
+
     /// A reference to the holded node fileinfo.
     pub fn file(&self) -> &FileInfo {
         &self.node.fileinfo
@@ -172,13 +189,7 @@ impl Tree {
                 }
             }
         }
-        let node = Node {
-            is_dir: matches!(fileinfo.file_kind, FileKind::Directory),
-            fileinfo,
-            position: parent_position,
-            folded: false,
-            index: None,
-        };
+        let node = Node::from_fileinfo(fileinfo, parent_position);
         let position = vec![0];
         let current_node = node.clone();
         Ok(Self {

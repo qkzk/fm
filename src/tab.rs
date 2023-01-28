@@ -118,6 +118,7 @@ impl Tab {
         self.window.reset(self.path_content.content.len());
         self.preview = Preview::new_empty();
         self.completion.reset();
+        self.directory.clear();
         Ok(())
     }
 

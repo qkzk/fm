@@ -364,6 +364,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] scrollable shortcuts, marks & history
 
+- [ ] Version 0.1.16 : fix completion & filter in tree
+
+  - [ ] BUG: when searching from tree mode, it only completes with level 1 elements, not nested ones.
+  - [ ] BUG: when filtering in free mode, only the level 1 matching elements are displayed
+
 - [ ] Version 0.2.0 : tests
 
   - [ ] tests

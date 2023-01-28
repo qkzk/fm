@@ -935,7 +935,7 @@ dependencies = [
 
 [[package]]
 name = "fm-tui"
-version = "0.1.15"
+version = "0.1.16"
 dependencies = [
  "chrono",
  "clap 4.0.32",

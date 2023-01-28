@@ -552,6 +552,14 @@ impl Directory {
         })
     }
 
+    /// Reset the attributes to default one and free some unused memory.
+    pub fn clear(&mut self) {
+        self.len = 0;
+        self.content = vec![];
+        self.selected_index = 0;
+        self.tree.clear();
+    }
+
     /// Number of displayed lines.
     pub fn len(&self) -> usize {
         self.len
@@ -592,7 +600,7 @@ impl Directory {
         self.update_tree_from_index(colors)
     }
 
-    fn update_tree_from_index(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn update_tree_from_index(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.position = self.tree.position_from_index(self.selected_index);
         let (_, _, node) = self.tree.select_from_position()?;
         self.tree.current_node = node;
