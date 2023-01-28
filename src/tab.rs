@@ -251,10 +251,8 @@ impl Tab {
     /// Move to the parent of current path
     pub fn move_to_parent(&mut self) -> FmResult<()> {
         let path = self.path_content.path.clone();
-        if let Some(parent) = path.parent() {
-            self.set_pathcontent(parent)?;
-        }
-        Ok(())
+        let Some(parent) = path.parent() else { return Ok(()) };
+        self.set_pathcontent(parent)
     }
 
     /// Select the parent of current node.

@@ -166,29 +166,15 @@ impl Tree {
         parent_position: Vec<usize>,
     ) -> FmResult<Self> {
         let sort_kind = SortKind::tree_default();
-        let mut leaves = vec![];
-        if let FileKind::Directory = fileinfo.file_kind {
-            if max_depth > 0 {
-                if let Some(mut files) =
-                    files_collection(&fileinfo, users_cache, display_hidden, filter_kind)
-                {
-                    let len = files.len();
-                    sort_kind.sort(&mut files);
-                    for (index, fileinfo) in files.iter().enumerate() {
-                        let mut position = parent_position.clone();
-                        position.push(len - index - 1);
-                        leaves.push(Self::create_tree_from_fileinfo(
-                            fileinfo.to_owned(),
-                            max_depth - 1,
-                            users_cache,
-                            filter_kind,
-                            display_hidden,
-                            position,
-                        )?)
-                    }
-                }
-            }
-        }
+        let leaves = Self::make_leaves(
+            &fileinfo,
+            max_depth,
+            users_cache,
+            display_hidden,
+            filter_kind,
+            &sort_kind,
+            parent_position.clone(),
+        )?;
         let node = Node::from_fileinfo(fileinfo, parent_position);
         let position = vec![0];
         let current_node = node.clone();
@@ -199,6 +185,40 @@ impl Tree {
             current_node,
             sort_kind,
         })
+    }
+
+    fn make_leaves(
+        fileinfo: &FileInfo,
+        max_depth: usize,
+        users_cache: &Rc<UsersCache>,
+        display_hidden: bool,
+        filter_kind: &FilterKind,
+        sort_kind: &SortKind,
+        parent_position: Vec<usize>,
+    ) -> FmResult<Vec<Tree>> {
+        if max_depth <= 0 {
+            return Ok(vec![]);
+        }
+        let mut leaves = vec![];
+        let FileKind::Directory = fileinfo.file_kind else { return Ok(vec![]) };
+        let Some(mut files) =
+                files_collection(fileinfo, users_cache, display_hidden, filter_kind)
+            else { return Ok(leaves) };
+        sort_kind.sort(&mut files);
+        for (index, fileinfo) in files.iter().enumerate() {
+            let mut position = parent_position.clone();
+            position.push(files.len() - index - 1);
+            leaves.push(Self::create_tree_from_fileinfo(
+                fileinfo.to_owned(),
+                max_depth - 1,
+                users_cache,
+                filter_kind,
+                display_hidden,
+                position,
+            )?)
+        }
+
+        Ok(leaves)
     }
 
     /// Sort the leaves with current sort kind.
@@ -383,28 +403,27 @@ impl Tree {
 
         let mut index = 0;
         while !stack.is_empty() {
-            if let Some((prefix, current)) = stack.pop() {
-                if current.node.fileinfo.is_selected {
-                    selected_index = content.len();
-                }
+            let Some((prefix, current)) = stack.pop() else { continue };
+            if current.node.fileinfo.is_selected {
+                selected_index = content.len();
+            }
 
-                current.node.index = Some(index);
-                index += 1;
-                content.push((
-                    prefix.to_owned(),
-                    ColoredString::from_node(&current.node, colors),
-                ));
+            current.node.index = Some(index);
+            index += 1;
+            content.push((
+                prefix.to_owned(),
+                ColoredString::from_node(&current.node, colors),
+            ));
 
-                let first_prefix = first_prefix(prefix.clone());
-                let other_prefix = other_prefix(prefix);
+            let first_prefix = first_prefix(prefix.clone());
+            let other_prefix = other_prefix(prefix);
 
-                if !current.node.folded {
-                    for (index, leaf) in current.leaves.iter_mut().enumerate() {
-                        if index == 0 {
-                            stack.push((first_prefix.clone(), leaf));
-                        } else {
-                            stack.push((other_prefix.clone(), leaf))
-                        }
+            if !current.node.folded {
+                for (index, leaf) in current.leaves.iter_mut().enumerate() {
+                    if index == 0 {
+                        stack.push((first_prefix.clone(), leaf));
+                    } else {
+                        stack.push((other_prefix.clone(), leaf))
                     }
                 }
             }
@@ -412,7 +431,7 @@ impl Tree {
         (selected_index, content)
     }
 
-    /// Select the first node matching a char.
+    /// Select the first node matching a key.
     /// We use a breath first search algorithm to ensure we select the less deep one.
     pub fn select_first_match(&mut self, key: &str) -> Option<Vec<usize>> {
         if self.node.fileinfo.filename.contains(key) {
@@ -420,9 +439,8 @@ impl Tree {
         }
 
         for tree in self.leaves.iter_mut() {
-            if let Some(position) = tree.select_first_match(key) {
-                return Some(position);
-            }
+            let Some(position) = tree.select_first_match(key) else { continue };
+            return Some(position);
         }
 
         None
@@ -468,20 +486,19 @@ impl Tree {
 
         let mut visited = self;
         let mut counter = 0;
-        while !stack.is_empty() {
-            if let Some(current) = stack.pop() {
-                counter += 1;
-                visited = current;
-                if counter == index {
-                    break;
-                }
-                if !current.node.folded {
-                    for leaf in current.leaves.iter() {
-                        stack.push(leaf);
-                    }
+        while let Some(current) = stack.pop() {
+            counter += 1;
+            visited = current;
+            if counter == index {
+                break;
+            }
+            if !current.node.folded {
+                for leaf in current.leaves.iter() {
+                    stack.push(leaf);
                 }
             }
         }
+
         visited.node.position.clone()
     }
 }

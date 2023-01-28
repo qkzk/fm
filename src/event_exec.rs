@@ -96,11 +96,10 @@ impl EventExec {
 
         match tab.mode {
             Mode::Normal => {
-                if let Some(file) = tab.path_content.selected() {
-                    let path = file.path.clone();
-                    status.toggle_flag_on_path(&path);
-                    Self::event_down_one_row(status.selected());
-                }
+                let Some(file) = tab.path_content.selected() else { return Ok(()) };
+                let path = file.path.clone();
+                status.toggle_flag_on_path(&path);
+                Self::event_down_one_row(status.selected());
             }
             Mode::Tree => {
                 let path = tab.directory.tree.current_node.filepath();
@@ -260,22 +259,22 @@ impl EventExec {
     /// If the user selected a directory, we jump inside it.
     /// Otherwise, we jump to the parent and select the file.
     pub fn exec_jump(status: &mut Status) -> FmResult<()> {
-        if let Some(jump_target) = status.flagged.selected() {
-            let jump_target = jump_target.to_owned();
-            let target_dir = match jump_target.parent() {
-                Some(parent) => parent,
-                None => &jump_target,
-            };
-            let tab = status.selected();
-            tab.input.clear();
-            tab.history.push(target_dir);
-            tab.path_content
-                .change_directory(target_dir, &tab.filter, tab.show_hidden)?;
-            let index = tab.find_jump_index(&jump_target).unwrap_or_default();
-            tab.path_content.select_index(index);
-            tab.set_window();
-            tab.scroll_to(index);
-        }
+        let Some(jump_target) = status.flagged.selected() else { return Ok(()) };
+        let jump_target = jump_target.to_owned();
+        let target_dir = match jump_target.parent() {
+            Some(parent) => parent,
+            None => &jump_target,
+        };
+        let tab = status.selected();
+        tab.input.clear();
+        tab.history.push(target_dir);
+        tab.path_content
+            .change_directory(target_dir, &tab.filter, tab.show_hidden)?;
+        let index = tab.find_jump_index(&jump_target).unwrap_or_default();
+        tab.path_content.select_index(index);
+        tab.set_window();
+        tab.scroll_to(index);
+
         Ok(())
     }
 
@@ -591,19 +590,19 @@ impl EventExec {
             return Ok(());
         }
         let unmutable_tab = status.selected_non_mut();
-        if let Some(file_info) = unmutable_tab.selected() {
-            match file_info.file_kind {
-                FileKind::NormalFile => {
-                    let preview =
-                        Preview::new(file_info, &unmutable_tab.path_content.users_cache, status)?;
-                    status.selected().set_mode(Mode::Preview);
-                    status.selected().window.reset(preview.len());
-                    status.selected().preview = preview;
-                }
-                FileKind::Directory => Self::event_tree(status)?,
-                _ => (),
+        let Some(file_info) = unmutable_tab.selected() else { return Ok(()) };
+        match file_info.file_kind {
+            FileKind::NormalFile => {
+                let preview =
+                    Preview::new(file_info, &unmutable_tab.path_content.users_cache, status)?;
+                status.selected().set_mode(Mode::Preview);
+                status.selected().window.reset(preview.len());
+                status.selected().preview = preview;
             }
+            FileKind::Directory => Self::event_tree(status)?,
+            _ => (),
         }
+
         Ok(())
     }
 
@@ -998,14 +997,13 @@ impl EventExec {
     /// It obviously requires the `dragon-drop` command to be installed.
     pub fn event_drag_n_drop(status: &mut Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        if let Some(file) = tab.selected() {
-            let path_str = file
-                .path
-                .to_str()
-                .ok_or_else(|| FmError::custom("event drag n drop", "Couldn't read path"))?;
+        let Some(file) = tab.selected() else { return Ok(()) };
+        let path_str = file
+            .path
+            .to_str()
+            .ok_or_else(|| FmError::custom("event drag n drop", "Couldn't read path"))?;
 
-            execute_in_child(DEFAULT_DRAGNDROP, &vec![path_str])?;
-        }
+        execute_in_child(DEFAULT_DRAGNDROP, &vec![path_str])?;
         Ok(())
     }
 
@@ -1048,10 +1046,9 @@ impl EventExec {
         match tab.mode {
             Mode::Tree => (),
             _ => {
-                if let Some(searched) = tab.searched.clone() {
-                    let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
-                    tab.search_from(&searched, next_index);
-                }
+                let Some(searched) = tab.searched.clone() else { return Ok(()) };
+                let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
+                tab.search_from(&searched, next_index);
             }
         }
         Ok(())
@@ -1358,12 +1355,11 @@ impl EventExec {
     /// Open a thumbnail of an image, scaled up to the whole window.
     pub fn event_thumbnail(tab: &mut Tab) -> FmResult<()> {
         if let Mode::Normal | Mode::Tree = tab.mode {
-            if let Some(file_info) = tab.selected() {
-                info!("selected {:?}", file_info);
-                tab.preview = Preview::thumbnail(file_info.path.to_owned())?;
-                tab.window.reset(tab.preview.len());
-                tab.set_mode(Mode::Preview);
-            }
+            let Some(file_info) = tab.selected() else { return Ok(())};
+            info!("selected {:?}", file_info);
+            tab.preview = Preview::thumbnail(file_info.path.to_owned())?;
+            tab.window.reset(tab.preview.len());
+            tab.set_mode(Mode::Preview);
         }
         Ok(())
     }

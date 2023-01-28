@@ -108,33 +108,30 @@ impl<'a> WinMain<'a> {
     /// In normal mode we display the path and number of files.
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
+    /// Returns the result of the number of printed chars.
     fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> FmResult<()> {
         draw_colored_strings(0, 0, self.create_first_row(tab, disk_space)?, canvas)
     }
 
-    fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<usize> {
         match tab.mode {
             Mode::Normal => {
                 if !status.display_full {
-                    if let Some(file) = tab.selected() {
-                        self.second_line_detailed(file, status, canvas)?;
-                    }
+                    let Some(file) = tab.selected() else { return Ok(0) };
+                    self.second_line_detailed(file, status, canvas)
                 } else {
-                    self.second_line_simple(status, canvas)?;
+                    self.second_line_simple(status, canvas)
                 }
             }
             Mode::Tree => {
-                if let Some(file) = tab.selected() {
-                    self.second_line_detailed(file, status, canvas)?;
-                }
+                let Some(file) = tab.selected() else { return Ok(0) };
+                self.second_line_detailed(file, status, canvas)
             }
             Mode::InputSimple(InputSimple::Filter) => {
-                canvas.print_with_attr(1, 0, FILTER_PRESENTATION, ATTR_YELLOW_BOLD)?;
+                Ok(canvas.print_with_attr(1, 0, FILTER_PRESENTATION, ATTR_YELLOW_BOLD)?)
             }
-            _ => (),
+            _ => Ok(0),
         }
-
-        Ok(())
     }
 
     fn second_line_detailed(

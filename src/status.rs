@@ -146,32 +146,26 @@ impl Status {
     /// Replace the tab content with the first result of skim.
     /// It calls skim, reads its output, then update the tab content.
     pub fn skim_output_to_tab(&mut self) -> FmResult<()> {
-        if let Some(skim_output) = self
-            .skimer
-            .no_source(
-                self.selected_non_mut()
-                    .selected()
-                    .ok_or_else(|| FmError::custom("skim", "no selected file"))?
-                    .path
-                    .to_str()
-                    .ok_or_else(|| FmError::custom("skim", "skim error"))?,
-            )
-            .first()
-        {
-            self._update_tab_from_skim_output(skim_output)?;
-        }
-        Ok(())
+        let skim = self.skimer.no_source(
+            self.selected_non_mut()
+                .selected()
+                .ok_or_else(|| FmError::custom("skim", "no selected file"))?
+                .path
+                .to_str()
+                .ok_or_else(|| FmError::custom("skim", "skim error"))?,
+        );
+        let Some(output) = skim.first() else {return Ok(())};
+        self._update_tab_from_skim_output(output)
     }
 
     fn _update_tab_from_skim_output(&mut self, skim_outut: &Arc<dyn SkimItem>) -> FmResult<()> {
         let path = fs::canonicalize(skim_outut.output().to_string())?;
         let tab = self.selected();
         if path.is_file() {
-            if let Some(parent) = path.parent() {
-                tab.set_pathcontent(parent)?;
-                let filename = filename_from_path(&path)?;
-                tab.search_from(filename, 0);
-            }
+            let Some(parent) = path.parent() else { return Ok(()) };
+            tab.set_pathcontent(parent)?;
+            let filename = filename_from_path(&path)?;
+            tab.search_from(filename, 0);
         } else if path.is_dir() {
             tab.set_pathcontent(&path)?;
         }
