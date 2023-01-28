@@ -80,13 +80,11 @@ impl<'a> Bulkrename<'a> {
     fn write_original_names(&self) -> FmResult<()> {
         let mut file = std::fs::File::create(&self.temp_file)?;
         for path in self.original_filepath.iter() {
-            if let Some(os_filename) = path.file_name() {
-                if let Some(filename) = os_filename.to_str() {
-                    let b = filename.as_bytes();
-                    file.write_all(b)?;
-                    file.write_all(&[b'\n'])?;
-                }
-            }
+            let Some(os_filename) = path.file_name() else { return Ok(()) };
+            let Some(filename) = os_filename.to_str() else {return Ok(()) };
+            let b = filename.as_bytes();
+            file.write_all(b)?;
+            file.write_all(&[b'\n'])?;
         }
         Ok(())
     }

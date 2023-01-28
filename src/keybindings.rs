@@ -114,13 +114,10 @@ impl Bindings {
     /// An unknown or poorly formated key will be ignored.
     pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
         for yaml_key in yaml.as_mapping().unwrap().keys() {
-            if let Some(key_string) = yaml_key.as_str() {
-                if let Some(keymap) = from_keyname(key_string) {
-                    if let Some(action_str) = yaml[yaml_key].as_str() {
-                        self.binds.insert(keymap, ActionMap::from_str(action_str)?);
-                    }
-                }
-            }
+            let Some(key_string) = yaml_key.as_str() else { return Ok(()) };
+            let Some(keymap) = from_keyname(key_string) else {return Ok(())};
+            let Some(action_str) = yaml[yaml_key].as_str() else { return Ok(())};
+            self.binds.insert(keymap, ActionMap::from_str(action_str)?);
         }
         Ok(())
     }

@@ -811,19 +811,17 @@ impl EventExec {
     /// It requires the "nvim-send" application to be in $PATH.
     pub fn event_nvim_filepicker(tab: &mut Tab) -> FmResult<()> {
         if let Ok(nvim_listen_address) = Self::nvim_listen_address(tab) {
-            if let Some(fileinfo) = tab.selected() {
-                if let Some(path_str) = fileinfo.path.to_str() {
-                    let _ = execute_in_child(
-                        NVIM_RPC_SENDER,
-                        &vec![
-                            "--remote-send",
-                            &format!("<esc>:e {}<cr><esc>:close<cr>", path_str),
-                            "--servername",
-                            &nvim_listen_address,
-                        ],
-                    );
-                }
-            }
+            let Some(fileinfo) = tab.selected() else { return Ok(()) };
+            let Some(path_str) = fileinfo.path.to_str() else { return Ok(()) };
+            let _ = execute_in_child(
+                NVIM_RPC_SENDER,
+                &vec![
+                    "--remote-send",
+                    &format!("<esc>:e {}<cr><esc>:close<cr>", path_str),
+                    "--servername",
+                    &nvim_listen_address,
+                ],
+            );
         }
         Ok(())
     }
@@ -1591,16 +1589,13 @@ impl EventExec {
 
     /// Move to the selected crypted device mount point.
     pub fn event_move_to_encrypted_drive(status: &mut Status) -> FmResult<()> {
-        if let Some(device) = status.encrypted_devices.selected() {
-            if let Some(mount_point) = device.cryptdevice.mount_point() {
-                let tab = status.selected();
-                let path = path::PathBuf::from(mount_point);
-                tab.history.push(&path);
-                tab.set_pathcontent(&path)?;
-                Self::event_normal(tab)?
-            }
-        }
-        Ok(())
+        let Some(device) = status.encrypted_devices.selected() else { return Ok(()) };
+        let Some(mount_point) = device.cryptdevice.mount_point() else { return Ok(())};
+        let tab = status.selected();
+        let path = path::PathBuf::from(mount_point);
+        tab.history.push(&path);
+        tab.set_pathcontent(&path)?;
+        Self::event_normal(tab)
     }
 
     /// Unmount the selected device.
