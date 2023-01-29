@@ -368,6 +368,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
   - [ ] BUG: when searching from tree mode, it only completes with level 1 elements, not nested ones.
   - [ ] BUG: when filtering in free mode, only the level 1 matching elements are displayed
+  - [ ] BUG: can't parse gid for nfs mounts
+
+- [ ] Version 0.1.50 : safety
+
+  - [ ] command::execute in child: prevent it from crashing main app
+  - [ ] preview of big files (or whatever file) should only read chunk of the file,
+        not the whole thing
+        or should it ?
 
 - [ ] Version 0.2.0 : tests
 
