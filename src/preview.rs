@@ -157,6 +157,8 @@ pub struct TextContent {
 }
 
 impl TextContent {
+    const SIZE_LIMIT: usize = 1048576;
+
     fn help(help: &str) -> Self {
         let content: Vec<String> = help.split('\n').map(|s| s.to_owned()).collect();
         Self {
@@ -170,6 +172,7 @@ impl TextContent {
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
         let content: Vec<String> = reader
             .lines()
+            .take(Self::SIZE_LIMIT)
             .map(|line| line.unwrap_or_else(|_| "".to_owned()))
             .collect();
         Ok(Self {
@@ -193,6 +196,8 @@ pub struct HLContent {
 }
 
 impl HLContent {
+    const SIZE_LIMIT: usize = 1048576;
+
     /// Creates a new displayable content of a syntect supported file.
     /// It may file if the file isn't properly formatted or the extension
     /// is wrong (ie. python content with .c extension).
@@ -201,6 +206,7 @@ impl HLContent {
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
         let raw_content: Vec<String> = reader
             .lines()
+            .take(Self::SIZE_LIMIT)
             .map(|line| line.unwrap_or_else(|_| "".to_owned()))
             .collect();
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref);
@@ -278,6 +284,7 @@ impl SyntaxedString {
 /// Holds a preview of a binary content.
 /// It doesn't try to respect endianness.
 /// The lines are formatted to display 16 bytes.
+/// The number of lines is truncated to $2^20 = 1048576$.
 #[derive(Clone)]
 pub struct BinaryContent {
     pub path: PathBuf,
@@ -287,6 +294,7 @@ pub struct BinaryContent {
 
 impl BinaryContent {
     const LINE_WIDTH: usize = 16;
+    const SIZE_LIMIT: usize = 1048576;
 
     fn new(file_info: &FileInfo) -> FmResult<Self> {
         let mut reader = BufReader::new(std::fs::File::open(file_info.path.clone())?);
@@ -298,6 +306,9 @@ impl BinaryContent {
                 break;
             } else {
                 content.push(Line::new(buffer.into()));
+            }
+            if content.len() >= Self::SIZE_LIMIT {
+                break;
             }
         }
 
@@ -363,11 +374,14 @@ pub struct PdfContent {
 }
 
 impl PdfContent {
+    const SIZE_LIMIT: usize = 1048576;
+
     fn new(path: &Path) -> Self {
         let result = catch_unwind_silent(|| {
             if let Ok(content_string) = pdf_extract::extract_text(path) {
                 content_string
                     .split_whitespace()
+                    .take(Self::SIZE_LIMIT)
                     .map(|s| s.to_owned())
                     .collect()
             } else {
