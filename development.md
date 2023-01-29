@@ -368,6 +368,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
   - [x] FIX: can't parse uid gid if they only exists on a remote machine. See https://serverfault.com/questions/514118/mapping-uid-and-gid-of-local-user-to-the-mounted-nfs-share
         for a fix.
+  - [x] FIX: truncate file size in preview mode.
   - [ ] BUG: when searching from tree mode, it only completes with level 1 elements, not nested ones.
   - [ ] BUG: when filtering in free mode, only the level 1 matching elements are displayed
 
