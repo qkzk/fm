@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::rc::Rc;
 
+use memuse::DynamicUsage;
 use tuikit::attr::Attr;
 use users::UsersCache;
 
@@ -25,6 +26,10 @@ pub struct ColoredString {
 impl ColoredString {
     fn new(text: String, attr: Attr, path: std::path::PathBuf) -> Self {
         Self { text, attr, path }
+    }
+
+    pub fn dynamic_usage(&self) -> usize {
+        self.text.dynamic_usage() + 8 * 3 * 3 + self.path.to_str().unwrap().dynamic_usage()
     }
 
     fn from_node(current_node: &Node, colors: &Colors) -> Self {
@@ -59,6 +64,9 @@ pub struct Node {
 }
 
 impl Node {
+    pub fn dynamic_usage(&self) -> usize {
+        self.fileinfo.dynamic_usage() + self.position.dynamic_usage() + 1 + 1 + 8
+    }
     /// Returns a copy of the filename.
     pub fn filename(&self) -> String {
         self.fileinfo.filename.to_owned()
@@ -120,7 +128,14 @@ impl Tree {
     /// ATM it's a constant, in future versions it may change
     /// It may be better to stop the recursion when too much file
     /// are present and the exploration is slow.
-    pub const MAX_DEPTH: usize = 7;
+    pub const MAX_DEPTH: usize = 5;
+
+    pub fn dynamic_usage(&self) -> usize {
+        self.node.dynamic_usage()
+            + self.leaves.iter().map(|t| t.dynamic_usage()).sum::<usize>()
+            + self.position.dynamic_usage()
+            + self.current_node.dynamic_usage()
+    }
 
     /// Recursively explore every subfolder to a certain depth.
     /// We start from `path` and add this node first.

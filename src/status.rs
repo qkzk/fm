@@ -107,6 +107,10 @@ impl Status {
         })
     }
 
+    pub fn dynamic_usage(&self) -> usize {
+        self.config_colors.dynamic_usage()
+    }
+
     /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn next(&mut self) {
         if !self.dual_pane {

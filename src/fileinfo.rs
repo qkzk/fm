@@ -7,6 +7,7 @@ use std::rc::Rc;
 use chrono::offset::Local;
 use chrono::DateTime;
 use log::info;
+use memuse::DynamicUsage;
 use tuikit::prelude::{Attr, Color, Effect};
 use users::{Groups, Users, UsersCache};
 
@@ -134,6 +135,20 @@ impl FileInfo {
         Self::create_from_metadata_and_filename(&path, &metadata, filename, users_cache)
     }
 
+    pub fn dynamic_usage(&self) -> usize {
+        self.path.as_os_str().to_str().unwrap().dynamic_usage()
+            + self.filename.dynamic_usage()
+            + self.size.dynamic_usage()
+            + self.file_size.dynamic_usage()
+            + self.dir_symbol.dynamic_usage()
+            + self.permissions.dynamic_usage()
+            + self.owner.dynamic_usage()
+            + self.group.dynamic_usage()
+            + self.system_time.dynamic_usage()
+            + self.is_selected.dynamic_usage()
+            + self.extension.dynamic_usage()
+            + self.kind_format.dynamic_usage()
+    }
     /// Creates a fileinfo from a path and a filename.
     /// The filename is used when we create the fileinfo for "." and ".." in every folder.
     pub fn from_path_with_name(
@@ -276,6 +291,10 @@ impl PathContent {
             used_space,
             users_cache,
         })
+    }
+
+    pub fn dynamic_usage(&self) -> usize {
+        self.content.iter().map(|f| f.dynamic_usage()).sum()
     }
 
     pub fn change_directory(

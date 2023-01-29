@@ -10,6 +10,7 @@ use std::slice::Iter;
 use content_inspector::{inspect, ContentType};
 use image::imageops::FilterType;
 use image::{ImageBuffer, Rgb};
+use memuse::DynamicUsage;
 use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
@@ -554,6 +555,14 @@ impl Directory {
             content,
             selected_index,
         })
+    }
+
+    pub fn dynamic_usage(&self) -> usize {
+        self.content
+            .iter()
+            .map(|(s, c)| s.dynamic_usage() + c.dynamic_usage())
+            .sum::<usize>()
+            + self.tree.dynamic_usage()
     }
 
     /// Creates an empty directory preview.

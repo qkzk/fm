@@ -1,5 +1,6 @@
 use std::{fs::File, path};
 
+use memuse::DynamicUsage;
 use serde_yaml;
 use tuikit::attr::Color;
 
@@ -94,6 +95,16 @@ impl Colors {
         if let Some(symlink) = yaml["symlink"].as_str().map(|s| s.to_string()) {
             self.symlink = symlink;
         }
+    }
+
+    pub fn dynamic_usage(&self) -> usize {
+        self.directory.dynamic_usage()
+            + self.block.dynamic_usage()
+            + self.char.dynamic_usage()
+            + self.fifo.dynamic_usage()
+            + self.socket.dynamic_usage()
+            + self.symlink.dynamic_usage()
+            + self.color_cache.dynamic_usage()
     }
 
     fn new() -> Self {

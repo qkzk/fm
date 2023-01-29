@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::Hasher;
 
+use memuse::DynamicUsage;
 use tuikit::attr::Color;
 
 /// Holds a map of extension name to color.
@@ -16,14 +17,21 @@ impl ColorCache {
     /// Returns a color for any possible extension.
     /// The color is cached within the struct, avoiding multiple calculations.
     pub fn extension_color(&self, extension: &str) -> Color {
-        let mut cache = self.cache.borrow_mut();
-        if let Some(color) = cache.get(extension) {
+        if let Some(color) = self.cache.borrow().get(extension) {
             color.to_owned()
         } else {
             let color = extension_color(extension);
-            cache.insert(extension.to_owned(), color);
+            self.cache.borrow_mut().insert(extension.to_owned(), color);
             color
         }
+    }
+
+    pub fn dynamic_usage(&self) -> usize {
+        self.cache
+            .borrow()
+            .iter()
+            .map(|(s, _)| s.to_owned().dynamic_usage() + 8 * 3)
+            .sum()
     }
 }
 

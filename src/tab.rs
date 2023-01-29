@@ -1,6 +1,7 @@
 use std::path;
 use std::rc::Rc;
 
+use memuse::DynamicUsage;
 use users::UsersCache;
 
 use crate::args::Args;
@@ -113,11 +114,14 @@ impl Tab {
     pub fn refresh_view(&mut self) -> FmResult<()> {
         self.filter = FilterKind::All;
         self.input.reset();
+        eprintln!("pathcontent uses {}", self.path_content.dynamic_usage());
         self.path_content
             .reset_files(&self.filter, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
         self.preview = Preview::new_empty();
         self.completion.reset();
+
+        eprintln!("directory uses {}", self.directory.dynamic_usage());
         self.directory.clear();
         Ok(())
     }
