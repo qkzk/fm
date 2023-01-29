@@ -552,25 +552,31 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 }
 
 /// Reads the owner name and returns it as a string.
+/// If it's not possible to get the owner name (happens if the owner exists on a remote machine but not on host),
+/// it returns the uid as a  `Result<String>`.
 fn extract_owner(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<String> {
-    Ok(users_cache
-        .get_user_by_uid(metadata.uid())
-        .ok_or_else(|| FmError::custom("extract owner", "Couldn't read uid"))?
-        .name()
-        .to_str()
-        .ok_or_else(|| FmError::custom("extract owner", "Couldn't read owner name"))?
-        .to_owned())
+    match users_cache.get_user_by_uid(metadata.uid()) {
+        Some(uid) => Ok(uid
+            .name()
+            .to_str()
+            .ok_or_else(|| FmError::custom("extract owner", "Couldn't parse owner name"))?
+            .to_owned()),
+        None => Ok(format!("{}", metadata.uid())),
+    }
 }
 
 /// Reads the group name and returns it as a string.
+/// If it's not possible to get the group name (happens if the group exists on a remote machine but not on host),
+/// it returns the gid as a  `Result<String>`.
 fn extract_group(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<String> {
-    Ok(users_cache
-        .get_group_by_gid(metadata.gid())
-        .ok_or_else(|| FmError::custom("extract group", "Couldn't read gid"))?
-        .name()
-        .to_str()
-        .ok_or_else(|| FmError::custom("extract group", "Couldn't read group name"))?
-        .to_owned())
+    match users_cache.get_group_by_gid(metadata.gid()) {
+        Some(gid) => Ok(gid
+            .name()
+            .to_str()
+            .ok_or_else(|| FmError::custom("extract group", "Couldn't parse group name"))?
+            .to_owned()),
+        None => Ok(format!("{}", metadata.gid())),
+    }
 }
 
 /// Returns the file size.

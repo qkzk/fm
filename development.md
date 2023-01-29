@@ -366,16 +366,21 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] Version 0.1.16 : fix completion & filter in tree
 
+  - [x] FIX: can't parse uid gid if they only exists on a remote machine. See https://serverfault.com/questions/514118/mapping-uid-and-gid-of-local-user-to-the-mounted-nfs-share
+        for a fix.
   - [ ] BUG: when searching from tree mode, it only completes with level 1 elements, not nested ones.
   - [ ] BUG: when filtering in free mode, only the level 1 matching elements are displayed
-  - [ ] BUG: can't parse gid for nfs mounts
 
 - [ ] Version 0.1.50 : safety
 
   - [ ] command::execute in child: prevent it from crashing main app
   - [ ] preview of big files (or whatever file) should only read chunk of the file,
-        not the whole thing
+        not the whole thing. Previewing a 5gB iso file uses up to 15gB of ram, which will crash any system.
         or should it ?
+        Simple solutions:
+
+        - only reads a buffer
+        - limit to xxx filesize
 
 - [ ] Version 0.2.0 : tests
 
