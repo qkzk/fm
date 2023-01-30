@@ -60,12 +60,13 @@ impl Preview {
         file_info: &FileInfo,
         users_cache: &Rc<UsersCache>,
         status: &Status,
+        colors: &Colors,
     ) -> FmResult<Self> {
         match file_info.file_kind {
             FileKind::Directory => Ok(Self::Directory(Directory::new(
                 &file_info.path,
                 users_cache,
-                &status.config_colors,
+                colors,
                 &status.selected_non_mut().filter,
                 status.selected_non_mut().show_hidden,
             )?)),

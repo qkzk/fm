@@ -11,7 +11,6 @@ use tuikit::term::Term;
 use users::UsersCache;
 
 use crate::args::Args;
-use crate::config::{Colors, Config};
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::DeviceOpener;
@@ -59,7 +58,6 @@ pub struct Status {
     pub help: String,
     /// The trash
     pub trash: Trash,
-    pub config_colors: Colors,
     pub encrypted_devices: DeviceOpener,
 }
 
@@ -72,13 +70,12 @@ impl Status {
     /// of the terminal, the formated help string).
     pub fn new(
         args: Args,
-        config: Config,
         height: usize,
         term: Arc<Term>,
         help: String,
+        terminal: &str,
     ) -> FmResult<Self> {
         // unsafe because of UsersCache::with_all_users
-        let terminal = config.terminal();
         let sys = System::new_all();
         let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
         let users_cache = unsafe { Rc::new(UsersCache::with_all_users()) };
@@ -93,8 +90,6 @@ impl Status {
             index: 0,
             flagged: Flagged::default(),
             marks: Marks::read_from_config_file(),
-            // colors: ColorCache::default(),
-            config_colors: config.colors,
             skimer: Skimer::new(term.clone()),
             term,
             dual_pane: true,
