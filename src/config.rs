@@ -104,7 +104,6 @@ impl Colors {
             + self.fifo.dynamic_usage()
             + self.socket.dynamic_usage()
             + self.symlink.dynamic_usage()
-            + self.color_cache.dynamic_usage()
     }
 
     fn new() -> Self {

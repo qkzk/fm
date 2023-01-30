@@ -83,7 +83,7 @@ impl ActionMap {
     /// Makes the junction between `Actions` and `Events`.
     /// Every Action links to a different `EventExec` method.
     pub fn matcher(&self, status: &mut Status) -> FmResult<()> {
-        eprintln!("status color uses {}", status.dynamic_usage());
+        eprintln!("status uses {}", status.dynamic_usage());
         let current_tab = status.selected();
         match *self {
             ActionMap::Back => EventExec::event_back(status),

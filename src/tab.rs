@@ -1,7 +1,6 @@
 use std::path;
 use std::rc::Rc;
 
-use memuse::DynamicUsage;
 use users::UsersCache;
 
 use crate::args::Args;

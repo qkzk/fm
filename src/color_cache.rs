@@ -17,21 +17,19 @@ impl ColorCache {
     /// Returns a color for any possible extension.
     /// The color is cached within the struct, avoiding multiple calculations.
     pub fn extension_color(&self, extension: &str) -> Color {
-        if let Some(color) = self.cache.borrow().get(extension) {
+        let mut cache = self.cache.borrow_mut();
+        if let Some(color) = cache.get(extension) {
             color.to_owned()
         } else {
             let color = extension_color(extension);
-            self.cache.borrow_mut().insert(extension.to_owned(), color);
+            cache.insert(extension.to_owned(), color);
+            let size: usize = cache
+                .iter()
+                .map(|(s, _)| s.to_owned().dynamic_usage() + 8 * 3)
+                .sum();
+            eprintln!("color uses: {}", size);
             color
         }
-    }
-
-    pub fn dynamic_usage(&self) -> usize {
-        self.cache
-            .borrow()
-            .iter()
-            .map(|(s, _)| s.to_owned().dynamic_usage() + 8 * 3)
-            .sum()
     }
 }
 
