@@ -372,8 +372,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] BUG: when searching from tree mode, it only completes with level 1 elements, not nested ones.
   - [ ] BUG: when filtering in free mode, only the level 1 matching elements are displayed
 
-- [ ] Version 0.1.50 : safety
+- [ ] Version 0.1.50 : safety & memory usage
 
+  - [ ] there's a memory leak somewhere
   - [ ] command::execute in child: prevent it from crashing main app
   - [ ] preview of big files (or whatever file) should only read chunk of the file,
         not the whole thing. Previewing a 5gB iso file uses up to 15gB of ram, which will crash any system.
