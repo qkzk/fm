@@ -30,11 +30,11 @@ impl EventDispatcher {
         match ev {
             Event::Key(Key::WheelUp(_, col, _)) => {
                 EventExec::event_select_pane(status, col)?;
-                EventExec::event_move_up(status, colors)
+                EventExec::event_move_up(status)
             }
             Event::Key(Key::WheelDown(_, col, _)) => {
                 EventExec::event_select_pane(status, col)?;
-                EventExec::event_move_down(status, colors)
+                EventExec::event_move_down(status)
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
                 EventExec::event_select_pane(status, col)?;

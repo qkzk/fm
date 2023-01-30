@@ -146,6 +146,20 @@ impl FileInfo {
         Self::create_from_metadata_and_filename(path, &metadata, filename.to_owned(), users_cache)
     }
 
+    pub fn from_path(path: &path::Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
+        let metadata = metadata(path)?;
+        Self::create_from_metadata_and_filename(
+            path,
+            &metadata,
+            path.file_name()
+                .unwrap_or_default()
+                .to_str()
+                .unwrap_or_default()
+                .to_owned(),
+            users_cache,
+        )
+    }
+
     fn create_from_metadata_and_filename(
         path: &path::Path,
         metadata: &Metadata,

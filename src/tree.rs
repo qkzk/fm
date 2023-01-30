@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::rc::Rc;
 
-use tuikit::attr::Attr;
+use tuikit::attr::{Attr, Effect};
 use users::UsersCache;
 
 use crate::config::Colors;
@@ -20,17 +20,41 @@ pub struct ColoredString {
     pub attr: Attr,
     /// The complete path of this string.
     pub path: std::path::PathBuf,
+    pub parent_index: usize,
+    pub folded: bool,
 }
 
 impl ColoredString {
-    fn new(text: String, attr: Attr, path: std::path::PathBuf) -> Self {
-        Self { text, attr, path }
+    fn new(
+        text: String,
+        attr: Attr,
+        path: std::path::PathBuf,
+        parent_index: usize,
+        folded: bool,
+    ) -> Self {
+        Self {
+            text,
+            attr,
+            path,
+            parent_index,
+            folded,
+        }
     }
 
-    fn from_node(current_node: &Node, colors: &Colors) -> Self {
+    pub fn set_parent_index(&mut self, parent_index: usize) {
+        self.parent_index = parent_index
+    }
+
+    pub fn from_node(current_node: &Node, colors: &Colors, parent_index: usize) -> Self {
         let mut text = Self::fold_symbols(current_node);
         text.push_str(&current_node.filename());
-        Self::new(text, current_node.attr(colors), current_node.filepath())
+        Self::new(
+            text,
+            current_node.attr(colors),
+            current_node.filepath(),
+            parent_index,
+            false,
+        )
     }
 
     fn fold_symbols(current_node: &Node) -> String {
@@ -44,6 +68,18 @@ impl ColoredString {
         }
         .to_owned()
     }
+
+    pub fn select(&mut self) {
+        self.attr.effect |= Effect::REVERSE;
+    }
+
+    pub fn unselect(&mut self) {
+        self.attr.effect = Effect::empty()
+    }
+
+    pub fn toggle_fold(&mut self) {
+        self.folded = !self.folded
+    }
 }
 
 /// An element in a tree.
@@ -55,7 +91,7 @@ pub struct Node {
     pub position: Vec<usize>,
     pub folded: bool,
     is_dir: bool,
-    index: Option<usize>,
+    pub index: Option<usize>,
 }
 
 impl Node {
@@ -387,50 +423,6 @@ impl Tree {
         Ok((reached_depth, last_cord, tree.node.clone()))
     }
 
-    /// Depth first traversal of the tree.
-    /// We navigate into the tree and format every element into a pair :
-    /// - a prefix, wich is a string made of glyphs displaying the tree,
-    /// - a colored string to be colored relatively to the file type.
-    /// Since we use the same colors everywhere, it's
-    pub fn into_navigable_content(
-        &mut self,
-        colors: &Colors,
-    ) -> (usize, Vec<(String, ColoredString)>) {
-        let mut stack = vec![];
-        stack.push(("".to_owned(), self));
-        let mut content = vec![];
-        let mut selected_index = 0;
-
-        let mut index = 0;
-        while !stack.is_empty() {
-            let Some((prefix, current)) = stack.pop() else { continue };
-            if current.node.fileinfo.is_selected {
-                selected_index = content.len();
-            }
-
-            current.node.index = Some(index);
-            index += 1;
-            content.push((
-                prefix.to_owned(),
-                ColoredString::from_node(&current.node, colors),
-            ));
-
-            let first_prefix = first_prefix(prefix.clone());
-            let other_prefix = other_prefix(prefix);
-
-            if !current.node.folded {
-                for (index, leaf) in current.leaves.iter_mut().enumerate() {
-                    if index == 0 {
-                        stack.push((first_prefix.clone(), leaf));
-                    } else {
-                        stack.push((other_prefix.clone(), leaf))
-                    }
-                }
-            }
-        }
-        (selected_index, content)
-    }
-
     /// Select the first node matching a key.
     /// We use a breath first search algorithm to ensure we select the less deep one.
     pub fn select_first_match(&mut self, key: &str) -> Option<Vec<usize>> {
@@ -501,20 +493,4 @@ impl Tree {
 
         visited.node.position.clone()
     }
-}
-
-fn first_prefix(mut prefix: String) -> String {
-    prefix.push(' ');
-    prefix = prefix.replace("└──", "   ");
-    prefix = prefix.replace("├──", "│  ");
-    prefix.push_str("└──");
-    prefix
-}
-
-fn other_prefix(mut prefix: String) -> String {
-    prefix.push(' ');
-    prefix = prefix.replace("└──", "   ");
-    prefix = prefix.replace("├──", "│  ");
-    prefix.push_str("├──");
-    prefix
 }

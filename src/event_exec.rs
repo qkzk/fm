@@ -17,6 +17,8 @@ use crate::content_window::RESERVED_ROWS;
 use crate::copy_move::CopyMove;
 use crate::cryptsetup::EncryptedAction;
 use crate::cryptsetup::PasswordKind;
+// use crate::fileinfo;
+use crate::fileinfo::FileInfo;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
@@ -107,7 +109,7 @@ impl EventExec {
                 Self::event_down_one_row(status.selected());
             }
             Mode::Tree => {
-                let path = tab.directory.tree.current_node.filepath();
+                let path = tab.directory.selected_path();
                 status.toggle_flag_on_path(&path);
             }
             _ => (),
@@ -459,11 +461,14 @@ impl EventExec {
             }
             Mode::Tree => {
                 let index = Self::row_to_index(row) + 1;
-                tab.directory.tree.unselect_children();
-                tab.directory.tree.position = tab.directory.tree.position_from_index(index);
-                let (_, _, node) = tab.directory.tree.select_from_position()?;
-                tab.directory.make_preview(colors);
-                tab.directory.tree.current_node = node;
+                tab.directory
+                    .select_by_index(index, &tab.path_content.users_cache);
+
+                // tab.directory.tree.unselect_children();
+                // tab.directory.tree.position = tab.directory.tree.position_from_index(index);
+                // let (_, _, node) = tab.directory.tree.select_from_position()?;
+                // tab.directory.make_preview(colors);
+                // tab.directory.tree.current_node = node;
             }
             _ => (),
         }
@@ -706,10 +711,11 @@ impl EventExec {
                 tab.path_content.select_index(0);
             }
             Mode::Tree => {
-                tab.directory.tree.update_sort_from_char(c);
-                tab.directory.tree.sort();
-                tab.tree_select_root(colors)?;
-                tab.directory.tree.into_navigable_content(colors);
+                todo!()
+                // tab.directory.tree.update_sort_from_char(c);
+                // tab.directory.tree.sort();
+                // tab.tree_select_root(colors)?;
+                // tab.directory.tree.into_navigable_content(colors);
             }
             _ => (),
         }
@@ -775,8 +781,9 @@ impl EventExec {
     /// is terminated first.
     pub fn event_shell(status: &mut Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        let path = tab
-            .directory_of_selected()?
+        let path = tab.directory_of_selected()?;
+
+        let path = path
             .to_str()
             .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
         execute_in_child(&status.opener.terminal.clone(), &vec!["-d", path])?;
@@ -912,7 +919,12 @@ impl EventExec {
     /// Filename is sanitized before processing.
     pub fn exec_rename(tab: &mut Tab) -> FmResult<()> {
         let fileinfo = match tab.previous_mode {
-            Mode::Tree => &tab.directory.tree.current_node.fileinfo,
+            Mode::Tree => {
+                todo!()
+                // let path = tab.directory.selected_path();
+                // &FileInfo::from_path(&path, &tab.path_content.users_cache)?
+                // &tab.directory.tree.current_node.fileinfo,
+            }
             _ => tab
                 .path_content
                 .selected()
@@ -1030,15 +1042,16 @@ impl EventExec {
         tab.searched = Some(searched.clone());
         match tab.previous_mode {
             Mode::Tree => {
-                tab.directory.tree.unselect_children();
-                if let Some(position) = tab.directory.tree.select_first_match(&searched) {
-                    tab.directory.tree.position = position;
-                    tab.directory.tree.select_from_position()?;
-                } else {
-                    tab.directory.tree.select_root()
-                };
-                tab.directory.make_preview(colors);
-                Ok(())
+                todo!();
+                // tab.directory.unselect_children();
+                // if let Some(position) = tab.directory.tree.select_first_match(&searched) {
+                //     tab.directory.tree.position = position;
+                //     tab.directory.tree.select_from_position()?;
+                // } else {
+                //     tab.directory.tree.select_root()
+                // };
+                // tab.directory.make_preview(colors);
+                // Ok(())
             }
             _ => {
                 let next_index = tab.path_content.index;
@@ -1122,7 +1135,7 @@ impl EventExec {
 
     /// Move up one row in modes allowing movement.
     /// Does nothing if the selected item is already the first in list.
-    pub fn event_move_up(status: &mut Status, colors: &Colors) -> FmResult<()> {
+    pub fn event_move_up(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_up_one_row(status.selected()),
             Mode::Navigate(Navigate::Jump) => EventExec::event_jumplist_prev(status),
@@ -1132,7 +1145,7 @@ impl EventExec {
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_prev(status)
             }
-            Mode::Tree => EventExec::event_select_prev(status, colors)?,
+            Mode::Tree => EventExec::event_select_prev(status)?,
             Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
             }
@@ -1143,7 +1156,7 @@ impl EventExec {
 
     /// Move down one row in modes allowing movements.
     /// Does nothing if the user is already at the bottom.
-    pub fn event_move_down(status: &mut Status, colors: &Colors) -> FmResult<()> {
+    pub fn event_move_down(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_down_one_row(status.selected()),
             Mode::Navigate(Navigate::Jump) => EventExec::event_jumplist_next(status),
@@ -1154,7 +1167,7 @@ impl EventExec {
                 EventExec::event_encrypted_drive_next(status)
             }
             Mode::InputCompleted(_) => status.selected().completion.next(),
-            Mode::Tree => EventExec::event_select_next(status, colors)?,
+            Mode::Tree => EventExec::event_select_next(status)?,
             _ => (),
         };
         Ok(())
@@ -1177,10 +1190,10 @@ impl EventExec {
 
     /// Move to child if any or open a regular file in normal mode.
     /// Move the cursor one char to right in mode requiring text input.
-    pub fn event_move_right(status: &mut Status, colors: &Colors) -> FmResult<()> {
+    pub fn event_move_right(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::exec_file(status),
-            Mode::Tree => EventExec::event_select_first_child(status, colors),
+            Mode::Tree => EventExec::event_select_first_child(status),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_move_cursor_right(status.selected());
                 Ok(())
@@ -1223,10 +1236,10 @@ impl EventExec {
     }
 
     /// Move to the bottom in any mode.
-    pub fn event_end(status: &mut Status, colors: &Colors) -> FmResult<()> {
+    pub fn event_end(status: &mut Status) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_go_bottom(status.selected()),
-            Mode::Tree => EventExec::event_tree_go_to_bottom_leaf(status, colors)?,
+            Mode::Tree => EventExec::event_tree_go_to_bottom_leaf(status)?,
             _ => EventExec::event_cursor_end(status.selected()),
         };
         Ok(())
@@ -1482,29 +1495,37 @@ impl EventExec {
     /// Has no effect on "file" nodes.
     pub fn event_tree_fold(status: &mut Status, colors: &Colors) -> FmResult<()> {
         let tab = status.selected();
+        tab.directory.content[tab.directory.selected_index]
+            .1
+            .toggle_fold();
+        Ok(())
 
-        let (tree, _, _) = tab.directory.tree.explore_position(false);
-        tree.node.toggle_fold();
-        tab.directory.make_preview(colors);
-        Self::event_select_next(status, colors)
+        // let tab = status.selected();
+        //
+        // let (tree, _, _) = tab.directory.tree.explore_position(false);
+        // tree.node.toggle_fold();
+        // tab.directory.make_preview(colors);
+        // Self::event_select_next(status, colors)
     }
 
     /// Unfold every child node in the tree.
     /// Recursively explore the tree and unfold every node.
     /// Reset the display.
     pub fn event_tree_unfold_all(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().directory.tree.unfold_children();
-        status.selected().directory.make_preview(colors);
-        Ok(())
+        todo!()
+        // status.selected().directory.tree.unfold_children();
+        // status.selected().directory.make_preview(colors);
+        // Ok(())
     }
 
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node.
     /// Reset the display.
     pub fn event_tree_fold_all(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().directory.tree.fold_children();
-        status.selected().directory.make_preview(colors);
-        Ok(())
+        todo!()
+        // status.selected().directory.tree.fold_children();
+        // status.selected().directory.make_preview(colors);
+        // Ok(())
     }
 
     /// Fold every child node in the tree.
@@ -1514,8 +1535,8 @@ impl EventExec {
     }
 
     /// Select the first child of the current node and reset the display.
-    pub fn event_select_first_child(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_select_first_child(colors)
+    pub fn event_select_first_child(status: &mut Status) -> FmResult<()> {
+        status.selected().tree_select_first_child()
     }
 
     /// Select the parent of the current node and reset the display.
@@ -1525,28 +1546,32 @@ impl EventExec {
     }
 
     /// Select the next sibling of the current node.
-    pub fn event_select_next(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_select_next(colors)
+    pub fn event_select_next(status: &mut Status) -> FmResult<()> {
+        status.selected().tree_select_next()
     }
 
     /// Select the previous sibling of the current node.
-    pub fn event_select_prev(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_select_prev(colors)
+    pub fn event_select_prev(status: &mut Status) -> FmResult<()> {
+        status.selected().tree_select_prev()
     }
 
     /// Select the last leaf of the tree and reset the view.
-    pub fn event_tree_go_to_bottom_leaf(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_go_to_bottom_leaf(colors)
+    pub fn event_tree_go_to_bottom_leaf(status: &mut Status) -> FmResult<()> {
+        status.selected().tree_go_to_bottom_leaf()
     }
 
     /// Execute the selected node if it's a file else enter the directory.
     pub fn exec_tree(status: &mut Status, colors: &Colors) -> FmResult<()> {
         let tab = status.selected();
-        let node = tab.directory.tree.current_node.clone();
-        if !node.fileinfo.path.is_dir() {
+        let fileinfo = FileInfo::from_path(
+            &tab.directory.selected_path(),
+            &tab.path_content.users_cache,
+        )?;
+        // let node = tab.directory.tree.current_node.clone();
+        if !fileinfo.path.is_dir() {
             Self::event_open_file(status)
         } else {
-            tab.set_pathcontent(&node.fileinfo.path)?;
+            tab.set_pathcontent(&fileinfo.path)?;
             tab.make_tree(colors)?;
             Ok(())
         }

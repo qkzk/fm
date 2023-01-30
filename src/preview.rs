@@ -524,9 +524,10 @@ impl Pixels {
 #[derive(Clone, Debug)]
 pub struct Directory {
     pub content: Vec<(String, ColoredString)>,
-    pub tree: Tree,
+    // pub tree: Tree,
     len: usize,
     pub selected_index: usize,
+    pub selected_fileinfo: FileInfo,
 }
 
 impl Directory {
@@ -548,22 +549,26 @@ impl Directory {
             vec![0],
         )?;
         tree.select_root();
-        let (selected_index, content) = tree.into_navigable_content(colors);
+        let (selected_index, content) = Self::into_navigable_content(&mut tree, colors);
+        let selected_fileinfo = FileInfo::from_path(path, users_cache)?;
         Ok(Self {
-            tree,
+            // tree,
             len: content.len(),
             content,
             selected_index,
+            selected_fileinfo,
         })
     }
 
     /// Creates an empty directory preview.
     pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
+        let selected_fileinfo = FileInfo::from_path(path, users_cache)?;
         Ok(Self {
-            tree: Tree::empty(path, users_cache)?,
+            // tree: Tree::empty(path, users_cache)?,
             len: 0,
             content: vec![],
             selected_index: 0,
+            selected_fileinfo,
         })
     }
 
@@ -572,7 +577,7 @@ impl Directory {
         self.len = 0;
         self.content = vec![];
         self.selected_index = 0;
-        self.tree.clear();
+        // self.tree.clear();
     }
 
     /// Number of displayed lines.
@@ -585,68 +590,68 @@ impl Directory {
         self.len == 0
     }
 
+    pub fn selected_path(&self) -> PathBuf {
+        self.content[self.selected_index].1.path.clone()
+    }
+
+    pub fn select_by_index(&mut self, index: usize, users_cache: &Rc<UsersCache>) {
+        if index >= self.content.len() {
+            return;
+        }
+        self.selected_index = index;
+        self.unselect_children();
+        self.content[index].1.select();
+        self.selected_fileinfo =
+            FileInfo::from_path(&self.content[index].1.path, users_cache).unwrap()
+    }
+
+    pub fn unselect_children(&mut self) {
+        for child in self.content.iter_mut() {
+            child.1.unselect()
+        }
+    }
+
     /// Select the root node and reset the view.
-    pub fn select_root(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.select_root();
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+    pub fn select_root(&mut self, colors: &Colors, users_cache: &Rc<UsersCache>) -> FmResult<()> {
+        // self.tree.select_root();
+        self.select_by_index(0, users_cache);
+        // (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
 
     /// Unselect every child node.
-    pub fn unselect_children(&mut self) {
-        self.tree.unselect_children()
-    }
+    // pub fn unselect_children(&mut self) {
+    //     self.tree.unselect_children()
+    // }
 
     /// Select the "next" element of the tree if any.
     /// This is the element immediatly below the current one.
-    pub fn select_next(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn select_next(&mut self, users_cache: &Rc<UsersCache>) -> FmResult<()> {
         if self.selected_index + 1 < self.content.len() {
             self.selected_index += 1;
+            self.select_by_index(self.selected_index, users_cache)
         }
-        self.update_tree_from_index(colors)
+        Ok(())
+        // self.update_tree_from_index(colors)
     }
 
     /// Select the previous sibling if any.
     /// This is the element immediatly below the current one.
-    pub fn select_prev(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn select_prev(&mut self, users_cache: &Rc<UsersCache>) -> FmResult<()> {
         if self.selected_index > 0 {
             self.selected_index -= 1;
+            self.select_by_index(self.selected_index, users_cache)
         }
-        self.update_tree_from_index(colors)
-    }
-
-    pub fn update_tree_from_index(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.position = self.tree.position_from_index(self.selected_index);
-        let (_, _, node) = self.tree.select_from_position()?;
-        self.tree.current_node = node;
-        (_, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
-    }
-
-    /// Select the first child, if any.
-    pub fn select_first_child(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.select_first_child()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-        Ok(())
-    }
-
-    /// Select the parent of current node.
-    pub fn select_parent(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.select_parent()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-        Ok(())
+        // self.update_tree_from_index(colors)
     }
 
     /// Select the last leaf of the tree (ie the last line.)
-    pub fn go_to_bottom_leaf(&mut self, colors: &Colors) -> FmResult<()> {
-        self.tree.go_to_bottom_leaf()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+    pub fn go_to_bottom_leaf(&mut self, users_cache: &Rc<UsersCache>) -> FmResult<()> {
+        // self.tree.go_to_bottom_leaf()?;
+        // (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        self.select_by_index(self.content.len() - 1, users_cache);
         Ok(())
-    }
-
-    /// Make a preview of the tree.
-    pub fn make_preview(&mut self, colors: &Colors) {
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
     }
 
     /// Calculates the top, bottom and lenght of the view, depending on which element
@@ -666,6 +671,50 @@ impl Directory {
         }
 
         (top, bottom, length)
+    }
+
+    /// Depth first traversal of the tree.
+    /// We navigate into the tree and format every element into a pair :
+    /// - a prefix, wich is a string made of glyphs displaying the tree,
+    /// - a colored string to be colored relatively to the file type.
+    /// Since we use the same colors everywhere, it's
+    pub fn into_navigable_content(
+        tree: &mut Tree,
+        colors: &Colors,
+    ) -> (usize, Vec<(String, ColoredString)>) {
+        let mut stack = vec![];
+        stack.push(("".to_owned(), tree, 0));
+        let mut content = vec![];
+        let mut selected_index = 0;
+
+        let mut index = 0;
+        while !stack.is_empty() {
+            let Some((prefix, current, parent_index)) = stack.pop() else { continue };
+            if current.node.fileinfo.is_selected {
+                selected_index = content.len();
+            }
+
+            current.node.index = Some(index);
+            content.push((
+                prefix.to_owned(),
+                ColoredString::from_node(&current.node, colors, parent_index),
+            ));
+
+            let first_prefix = first_prefix(prefix.clone());
+            let other_prefix = other_prefix(prefix);
+
+            if !current.node.folded {
+                for (child_index, leaf) in current.leaves.iter_mut().enumerate() {
+                    if child_index == 0 {
+                        stack.push((first_prefix.clone(), leaf, index));
+                    } else {
+                        stack.push((other_prefix.clone(), leaf, index))
+                    }
+                }
+            }
+            index += 1;
+        }
+        (selected_index, content)
     }
 }
 
@@ -767,4 +816,20 @@ fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::th
     let result = panic::catch_unwind(f);
     panic::set_hook(prev_hook);
     result
+}
+
+fn first_prefix(mut prefix: String) -> String {
+    prefix.push(' ');
+    prefix = prefix.replace("└──", "   ");
+    prefix = prefix.replace("├──", "│  ");
+    prefix.push_str("└──");
+    prefix
+}
+
+fn other_prefix(mut prefix: String) -> String {
+    prefix.push(' ');
+    prefix = prefix.replace("└──", "   ");
+    prefix = prefix.replace("├──", "│  ");
+    prefix.push_str("├──");
+    prefix
 }

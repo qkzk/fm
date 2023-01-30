@@ -245,7 +245,8 @@ impl Tab {
     /// Select the root node of the tree.
     pub fn tree_select_root(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
-        self.directory.select_root(colors)
+        self.directory
+            .select_root(colors, &self.path_content.users_cache)
     }
 
     /// Move to the parent of current path
@@ -259,35 +260,42 @@ impl Tab {
     /// If we were at the root node, move to the parent and make a new tree.
     pub fn tree_select_parent(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
-        if self.directory.tree.position.len() <= 1 {
+        if self.directory.selected_index == 0 {
             self.move_to_parent()?;
             self.make_tree(colors)?
         }
-        self.directory.select_parent(colors)
+        let parent_index = self.directory.content[self.directory.selected_index]
+            .1
+            .parent_index;
+
+        self.directory
+            .select_by_index(parent_index, &self.path_content.users_cache);
+        Ok(())
+        // self.directory.select_parent(colors, &self.path_content.users_cache)
     }
 
     /// Select the next sibling.
-    pub fn tree_select_next(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_select_next(&mut self) -> FmResult<()> {
         self.directory.unselect_children();
-        self.directory.select_next(colors)
+        self.directory.select_next(&self.path_content.users_cache)
     }
 
     /// Select the previous siblging
-    pub fn tree_select_prev(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_select_prev(&mut self) -> FmResult<()> {
         self.directory.unselect_children();
-        self.directory.select_prev(colors)
+        self.directory.select_prev(&self.path_content.users_cache)
     }
 
     /// Select the first child if any.
-    pub fn tree_select_first_child(&mut self, colors: &Colors) -> FmResult<()> {
-        self.directory.unselect_children();
-        self.directory.select_first_child(colors)
+    pub fn tree_select_first_child(&mut self) -> FmResult<()> {
+        self.tree_select_next()
     }
 
     /// Go to the last leaf.
-    pub fn tree_go_to_bottom_leaf(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_go_to_bottom_leaf(&mut self) -> FmResult<()> {
         self.directory.unselect_children();
-        self.directory.go_to_bottom_leaf(colors)
+        self.directory
+            .go_to_bottom_leaf(&self.path_content.users_cache)
     }
 
     /// Returns the current path.
@@ -295,7 +303,7 @@ impl Tab {
     /// Else, it's the current path of pathcontent.
     pub fn current_path(&mut self) -> &path::Path {
         match self.mode {
-            Mode::Tree => &self.directory.tree.current_node.fileinfo.path,
+            Mode::Tree => &self.directory.content[self.directory.selected_index].1.path,
             _ => &self.path_content.path,
         }
     }
@@ -304,25 +312,34 @@ impl Tab {
     /// In Tree mode, it's the current directory if the selected node is a directory,
     /// its parent otherwise.
     /// In normal mode it's the current working directory.
-    pub fn directory_of_selected(&self) -> FmResult<&path::Path> {
+    pub fn directory_of_selected(&self) -> FmResult<path::PathBuf> {
         match self.mode {
             Mode::Tree => {
-                let fileinfo = &self.directory.tree.current_node.fileinfo;
+                // let fileinfo = &self.directory.tree.current_node.fileinfo;
+                let path = &self.directory.content[self.directory.selected_index].1.path;
+                let fileinfo = FileInfo::from_path(path, &self.path_content.users_cache)?;
                 match fileinfo.file_kind {
-                    FileKind::Directory => Ok(&self.directory.tree.current_node.fileinfo.path),
-                    _ => Ok(fileinfo.path.parent().ok_or_else(|| {
-                        FmError::custom("path of selected", "selected file should have a parent")
-                    })?),
+                    FileKind::Directory => Ok(path.to_owned()),
+                    _ => Ok(fileinfo
+                        .path
+                        .parent()
+                        .ok_or_else(|| {
+                            FmError::custom(
+                                "path of selected",
+                                "selected file should have a parent",
+                            )
+                        })?
+                        .to_owned()),
                 }
             }
-            _ => Ok(&self.path_content.path),
+            _ => Ok(self.path_content.path.clone()),
         }
     }
 
     /// Optional Fileinfo of the selected element.
     pub fn selected(&self) -> Option<&FileInfo> {
         match self.mode {
-            Mode::Tree => Some(&self.directory.tree.current_node.fileinfo),
+            Mode::Tree => Some(&self.directory.selected_fileinfo),
             _ => self.path_content.selected(),
         }
     }
