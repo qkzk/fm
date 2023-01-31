@@ -242,9 +242,15 @@ impl<'a> WinMain<'a> {
         let line_number_width = 3;
 
         let (_, height) = canvas.size()?;
-        let (top, bottom, len) = tab.directory.calculate_tree_window(height);
-        for (i, (prefix, colored_string)) in tab.directory.window(top, bottom, len) {
-            let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
+        let (selected_index, win) = tab.directory.window();
+        let skip = if selected_index < 10 {
+            0
+        } else {
+            selected_index - 10
+        };
+
+        for (i, (prefix, colored_string)) in win.iter().skip(skip).take(height) {
+            let row = i + ContentWindow::WINDOW_MARGIN_TOP - skip;
             let col = canvas.print(row, line_number_width, prefix)?;
             let mut attr = colored_string.attr;
             if status.flagged.contains(&colored_string.path) {
@@ -324,18 +330,19 @@ impl<'a> WinMain<'a> {
                 }
             }
             Preview::Directory(directory) => {
-                for (i, (prefix, colored_string)) in
-                    (directory).window(tab.window.top, tab.window.bottom, length)
-                {
-                    let row = calc_line_row(i, tab);
-                    let col = canvas.print(row, line_number_width, prefix)?;
-                    canvas.print_with_attr(
-                        row,
-                        line_number_width + col + 1,
-                        &colored_string.text,
-                        colored_string.attr,
-                    )?;
-                }
+                todo!()
+                // for (i, (prefix, colored_string)) in
+                //     (directory).window(tab.window.top, tab.window.bottom, length)
+                // {
+                //     let row = calc_line_row(i, tab);
+                //     let col = canvas.print(row, line_number_width, prefix)?;
+                //     canvas.print_with_attr(
+                //         row,
+                //         line_number_width + col + 1,
+                //         &colored_string.text,
+                //         colored_string.attr,
+                //     )?;
+                // }
             }
             Preview::Archive(text) => impl_preview!(text, tab, length, canvas, line_number_width),
             Preview::Exif(text) => impl_preview!(text, tab, length, canvas, line_number_width),

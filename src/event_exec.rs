@@ -1495,9 +1495,11 @@ impl EventExec {
     /// Has no effect on "file" nodes.
     pub fn event_tree_fold(status: &mut Status, colors: &Colors) -> FmResult<()> {
         let tab = status.selected();
-        tab.directory.content[tab.directory.selected_index]
-            .1
-            .toggle_fold();
+        if let Mode::Tree = tab.mode {
+            tab.directory.content[tab.directory.selected_index]
+                .1
+                .toggle_fold();
+        }
         Ok(())
 
         // let tab = status.selected();

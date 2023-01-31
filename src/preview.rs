@@ -688,33 +688,51 @@ impl Directory {
         let mut selected_index = 0;
 
         let mut index = 0;
-        while !stack.is_empty() {
-            let Some((prefix, current, parent_index)) = stack.pop() else { continue };
+        while let Some((prefix, current, parent_index)) = stack.pop() {
             if current.node.fileinfo.is_selected {
                 selected_index = content.len();
             }
 
             current.node.index = Some(index);
             content.push((
-                prefix.to_owned(),
-                ColoredString::from_node(&current.node, colors, parent_index),
+                prefix.clone(),
+                ColoredString::from_node(&current.node, colors, parent_index, current.leaves.len()),
             ));
 
             let first_prefix = first_prefix(prefix.clone());
             let other_prefix = other_prefix(prefix);
 
-            if !current.node.folded {
-                for (child_index, leaf) in current.leaves.iter_mut().enumerate() {
-                    if child_index == 0 {
-                        stack.push((first_prefix.clone(), leaf, index));
-                    } else {
-                        stack.push((other_prefix.clone(), leaf, index))
-                    }
+            for (child_index, leaf) in current.leaves.iter_mut().enumerate() {
+                if child_index == 0 {
+                    stack.push((first_prefix.clone(), leaf, index));
+                } else {
+                    stack.push((other_prefix.clone(), leaf, index))
                 }
             }
             index += 1;
         }
         (selected_index, content)
+    }
+
+    pub fn window(&self) -> (usize, Vec<(usize, &ColoredPair)>) {
+        let length = self.content.len();
+        let mut win = vec![];
+        let mut display_index = 0;
+        let mut content_index = 0;
+        let mut selected_display_index = 0;
+
+        while content_index < length {
+            if display_index == self.selected_index {
+                selected_display_index = content_index;
+            }
+            win.push((display_index, &self.content[content_index]));
+            if self.content[content_index].1.folded {
+                content_index += self.content[content_index].1.nb_children
+            };
+            content_index += 1;
+            display_index += 1;
+        }
+        (selected_display_index, win)
     }
 }
 
@@ -736,7 +754,7 @@ impl Window<Vec<SyntaxedString>> for HLContent {
         top: usize,
         bottom: usize,
         length: usize,
-    ) -> std::iter::Take<Skip<Enumerate<Iter<'_, Vec<SyntaxedString>>>>> {
+    ) -> Take<Skip<Enumerate<Iter<'_, Vec<SyntaxedString>>>>> {
         self.content
             .iter()
             .enumerate()
@@ -744,6 +762,21 @@ impl Window<Vec<SyntaxedString>> for HLContent {
             .take(min(length, bottom + 1))
     }
 }
+
+// impl Window<(String, ColoredString)> for Directory {
+//     fn window(
+//         &self,
+//         top: usize,
+//         bottom: usize,
+//         length: usize,
+//     ) -> Take<Skip<Enumerate<Iter<'_, (String, ColoredString)>>>> {
+//         self.content
+//             .iter()
+//             .enumerate()
+//             .skip(top)
+//             .take(min(length, bottom + 1))
+//     }
+// }
 
 macro_rules! impl_window {
     ($t:ident, $u:ident) => {
@@ -772,7 +805,7 @@ impl_window!(PdfContent, String);
 impl_window!(ZipContent, String);
 impl_window!(ExifContent, String);
 impl_window!(MediaContent, String);
-impl_window!(Directory, ColoredPair);
+// impl_window!(Directory, ColoredPair);
 
 fn is_ext_zip(ext: &str) -> bool {
     matches!(

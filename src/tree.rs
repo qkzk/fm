@@ -22,6 +22,7 @@ pub struct ColoredString {
     pub path: std::path::PathBuf,
     pub parent_index: usize,
     pub folded: bool,
+    pub nb_children: usize,
 }
 
 impl ColoredString {
@@ -31,6 +32,7 @@ impl ColoredString {
         path: std::path::PathBuf,
         parent_index: usize,
         folded: bool,
+        nb_children: usize,
     ) -> Self {
         Self {
             text,
@@ -38,6 +40,7 @@ impl ColoredString {
             path,
             parent_index,
             folded,
+            nb_children,
         }
     }
 
@@ -45,7 +48,12 @@ impl ColoredString {
         self.parent_index = parent_index
     }
 
-    pub fn from_node(current_node: &Node, colors: &Colors, parent_index: usize) -> Self {
+    pub fn from_node(
+        current_node: &Node,
+        colors: &Colors,
+        parent_index: usize,
+        nb_children: usize,
+    ) -> Self {
         let mut text = Self::fold_symbols(current_node);
         text.push_str(&current_node.filename());
         Self::new(
@@ -54,6 +62,7 @@ impl ColoredString {
             current_node.filepath(),
             parent_index,
             false,
+            nb_children,
         )
     }
 
@@ -92,6 +101,7 @@ pub struct Node {
     pub folded: bool,
     is_dir: bool,
     pub index: Option<usize>,
+    pub nb_descendant: usize,
 }
 
 impl Node {
@@ -134,6 +144,7 @@ impl Node {
             position: parent_position,
             folded: false,
             index: None,
+            nb_descendant: 0,
         }
     }
 }
@@ -281,6 +292,7 @@ impl Tree {
             folded: false,
             is_dir: false,
             index: None,
+            nb_descendant: 0,
         };
         let leaves = vec![];
         let position = vec![0];
