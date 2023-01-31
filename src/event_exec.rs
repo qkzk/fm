@@ -1543,10 +1543,10 @@ impl EventExec {
     pub fn exec_tree(status: &mut Status, colors: &Colors) -> FmResult<()> {
         let tab = status.selected();
         let node = tab.directory.tree.current_node.clone();
-        if !node.fileinfo.path.is_dir() {
+        if !node.is_dir {
             Self::event_open_file(status)
         } else {
-            tab.set_pathcontent(&node.fileinfo.path)?;
+            tab.set_pathcontent(&node.filepath())?;
             tab.make_tree(colors)?;
             Ok(())
         }

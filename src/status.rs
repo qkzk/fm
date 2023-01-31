@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use regex::Regex;
 use skim::SkimItem;
-use sysinfo::{Disk, DiskExt, System, SystemExt};
+use sysinfo::{Disk, DiskExt, RefreshKind, System, SystemExt};
 use tuikit::term::Term;
 use users::UsersCache;
 
@@ -75,7 +75,7 @@ impl Status {
         terminal: &str,
     ) -> FmResult<Self> {
         // unsafe because of UsersCache::with_all_users
-        let sys = System::new_all();
+        let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
         let users_cache = unsafe { UsersCache::with_all_users() };
         let mut tab = Tab::new(args.clone(), height, users_cache)?;

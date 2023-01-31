@@ -145,6 +145,17 @@ impl FileInfo {
         Self::create_from_metadata_and_filename(path, &metadata, filename.to_owned(), users_cache)
     }
 
+    pub fn from_path(path: &path::Path, users_cache: &UsersCache) -> FmResult<Self> {
+        let metadata = metadata(path)?;
+        let filename = path
+            .file_name()
+            .ok_or_else(|| FmError::custom("from path", "couldn't read filenale"))?
+            .to_str()
+            .ok_or_else(|| FmError::custom("from path", "couldn't parse filenale"))?
+            .to_owned();
+        Self::create_from_metadata_and_filename(path, &metadata, filename, users_cache)
+    }
+
     fn create_from_metadata_and_filename(
         path: &path::Path,
         metadata: &Metadata,
