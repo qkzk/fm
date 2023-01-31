@@ -1,7 +1,6 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
-use std::rc::Rc;
 use std::sync::Arc;
 
 use regex::Regex;
@@ -78,15 +77,20 @@ impl Status {
         // unsafe because of UsersCache::with_all_users
         let sys = System::new_all();
         let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
-        let users_cache = unsafe { Rc::new(UsersCache::with_all_users()) };
-        let mut tab = Tab::new(args, height, users_cache)?;
+        let users_cache = unsafe { UsersCache::with_all_users() };
+        let mut tab = Tab::new(args.clone(), height, users_cache)?;
         tab.shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
-        let trash = Trash::new()?;
         let encrypted_devices = DeviceOpener::default();
 
+        let users_cache2 = unsafe { UsersCache::with_all_users() };
+        let mut tab2 = Tab::new(args, height, users_cache2)?;
+        tab2.shortcut
+            .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
+        let trash = Trash::new()?;
+
         Ok(Self {
-            tabs: [tab.clone(), tab],
+            tabs: [tab2, tab],
             index: 0,
             flagged: Flagged::default(),
             marks: Marks::read_from_config_file(),
@@ -296,9 +300,9 @@ impl Status {
 
     /// Refresh the existing users.
     pub fn refresh_users(&mut self) -> FmResult<()> {
-        let users_cache = Rc::new(unsafe { UsersCache::with_all_users() });
         for tab in self.tabs.iter_mut() {
-            tab.refresh_users(users_cache.clone())?;
+            let users_cache = unsafe { UsersCache::with_all_users() };
+            tab.refresh_users(users_cache)?;
         }
         Ok(())
     }

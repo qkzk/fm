@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::rc::Rc;
 
 use tuikit::attr::Attr;
 use users::UsersCache;
@@ -130,7 +129,7 @@ impl Tree {
     pub fn from_path(
         path: &Path,
         max_depth: usize,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
         filter_kind: &FilterKind,
         show_hidden: bool,
         parent_position: Vec<usize>,
@@ -160,7 +159,7 @@ impl Tree {
     fn create_tree_from_fileinfo(
         fileinfo: FileInfo,
         max_depth: usize,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
         filter_kind: &FilterKind,
         display_hidden: bool,
         parent_position: Vec<usize>,
@@ -190,7 +189,7 @@ impl Tree {
     fn make_leaves(
         fileinfo: &FileInfo,
         max_depth: usize,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
         display_hidden: bool,
         filter_kind: &FilterKind,
         sort_kind: &SortKind,
@@ -236,7 +235,7 @@ impl Tree {
 
     /// Creates an empty tree. Used when the user changes the CWD and hasn't displayed
     /// a tree yet.
-    pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
+    pub fn empty(path: &Path, users_cache: &UsersCache) -> FmResult<Self> {
         let filename = filename_from_path(path)?;
         let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
         let node = Node {

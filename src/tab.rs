@@ -1,5 +1,4 @@
 use std::path;
-use std::rc::Rc;
 
 use users::UsersCache;
 
@@ -19,7 +18,6 @@ use crate::visited::History;
 
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
-#[derive(Clone)]
 pub struct Tab {
     /// The mode the application is currenty in
     pub mode: Mode,
@@ -59,7 +57,7 @@ pub struct Tab {
 
 impl Tab {
     /// Creates a new tab from args and height.
-    pub fn new(args: Args, height: usize, users_cache: Rc<UsersCache>) -> FmResult<Self> {
+    pub fn new(args: Args, height: usize, users_cache: UsersCache) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
         let directory = Directory::empty(&path, &users_cache)?;
         let filter = FilterKind::All;
@@ -204,7 +202,7 @@ impl Tab {
     }
 
     /// Refresh the existing users.
-    pub fn refresh_users(&mut self, users_cache: Rc<UsersCache>) -> FmResult<()> {
+    pub fn refresh_users(&mut self, users_cache: UsersCache) -> FmResult<()> {
         self.path_content
             .refresh_users(users_cache, &self.filter, self.show_hidden)
     }

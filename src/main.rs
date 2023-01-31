@@ -36,7 +36,8 @@ fn main() -> FmResult<()> {
         help,
         &config.terminal,
     )?;
-    let colors = config.colors;
+    let colors = config.colors.clone();
+    drop(config);
 
     while let Ok(event) = event_reader.poll_event() {
         event_dispatcher.dispatch(&mut status, event, &colors)?;

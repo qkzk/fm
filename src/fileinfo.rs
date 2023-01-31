@@ -2,7 +2,6 @@ use std::fs::{metadata, read_dir, DirEntry, Metadata};
 use std::iter::Enumerate;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
-use std::rc::Rc;
 
 use chrono::offset::Local;
 use chrono::DateTime;
@@ -126,7 +125,7 @@ pub struct FileInfo {
 impl FileInfo {
     /// Reads every information about a file from its metadata and returs
     /// a new `FileInfo` object if we can create one.
-    pub fn new(direntry: &DirEntry, users_cache: &Rc<UsersCache>) -> FmResult<FileInfo> {
+    pub fn new(direntry: &DirEntry, users_cache: &UsersCache) -> FmResult<FileInfo> {
         let metadata = direntry.metadata()?;
         let path = direntry.path();
         let filename = extract_filename(direntry)?;
@@ -139,7 +138,7 @@ impl FileInfo {
     pub fn from_path_with_name(
         path: &path::Path,
         filename: &str,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
     ) -> FmResult<Self> {
         let metadata = metadata(path)?;
 
@@ -150,7 +149,7 @@ impl FileInfo {
         path: &path::Path,
         metadata: &Metadata,
         filename: String,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
     ) -> FmResult<Self> {
         let path = path.to_owned();
         let size = extract_file_size(metadata);
@@ -234,7 +233,6 @@ impl FileInfo {
 /// Holds the information about file in the current directory.
 /// We know about the current path, the files themselves, the selected index,
 /// the "display all files including hidden" flag and the key to sort files.
-#[derive(Clone)]
 pub struct PathContent {
     /// The current path
     pub path: path::PathBuf,
@@ -245,7 +243,7 @@ pub struct PathContent {
     /// The kind of sort used to display the files.
     sort_kind: SortKind,
     used_space: u64,
-    pub users_cache: Rc<UsersCache>,
+    pub users_cache: UsersCache,
 }
 
 impl PathContent {
@@ -254,7 +252,7 @@ impl PathContent {
     /// Selects the first file if any.
     pub fn new(
         path: &path::Path,
-        users_cache: Rc<UsersCache>,
+        users_cache: UsersCache,
         filter: &FilterKind,
         show_hidden: bool,
     ) -> FmResult<Self> {
@@ -299,7 +297,7 @@ impl PathContent {
         path: &path::Path,
         show_hidden: bool,
         filter_kind: &FilterKind,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
     ) -> FmResult<Vec<FileInfo>> {
         let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users_cache)?;
 
@@ -311,10 +309,7 @@ impl PathContent {
         Ok(files)
     }
 
-    fn create_dot_dotdot(
-        path: &path::Path,
-        users_cache: &Rc<UsersCache>,
-    ) -> FmResult<Vec<FileInfo>> {
+    fn create_dot_dotdot(path: &path::Path, users_cache: &UsersCache) -> FmResult<Vec<FileInfo>> {
         let current = FileInfo::from_path_with_name(path, ".", users_cache)?;
         match path.parent() {
             Some(parent) => {
@@ -474,7 +469,7 @@ impl PathContent {
     /// Refresh the existing users.
     pub fn refresh_users(
         &mut self,
-        users_cache: Rc<UsersCache>,
+        users_cache: UsersCache,
         filter: &FilterKind,
         show_hidden: bool,
     ) -> FmResult<()> {
@@ -554,7 +549,7 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 /// Reads the owner name and returns it as a string.
 /// If it's not possible to get the owner name (happens if the owner exists on a remote machine but not on host),
 /// it returns the uid as a  `Result<String>`.
-fn extract_owner(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<String> {
+fn extract_owner(metadata: &Metadata, users_cache: &UsersCache) -> FmResult<String> {
     match users_cache.get_user_by_uid(metadata.uid()) {
         Some(uid) => Ok(uid
             .name()
@@ -568,7 +563,7 @@ fn extract_owner(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<
 /// Reads the group name and returns it as a string.
 /// If it's not possible to get the group name (happens if the group exists on a remote machine but not on host),
 /// it returns the gid as a  `Result<String>`.
-fn extract_group(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<String> {
+fn extract_group(metadata: &Metadata, users_cache: &UsersCache) -> FmResult<String> {
     match users_cache.get_group_by_gid(metadata.gid()) {
         Some(gid) => Ok(gid
             .name()
@@ -619,7 +614,7 @@ fn filekind_and_filename(filename: &str, file_kind: &FileKind) -> String {
 /// Returns None if there's no file.
 pub fn files_collection(
     fileinfo: &FileInfo,
-    users_cache: &Rc<UsersCache>,
+    users_cache: &UsersCache,
     show_hidden: bool,
     filter_kind: &FilterKind,
 ) -> Option<Vec<FileInfo>> {

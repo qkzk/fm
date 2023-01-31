@@ -4,7 +4,6 @@ use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::panic;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::slice::Iter;
 
 use content_inspector::{inspect, ContentType};
@@ -58,7 +57,7 @@ impl Preview {
     /// it to the display method.
     pub fn new(
         file_info: &FileInfo,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
         status: &Status,
         colors: &Colors,
     ) -> FmResult<Self> {
@@ -534,7 +533,7 @@ impl Directory {
     /// We only hold the result here, since the tree itself has now usage atm.
     pub fn new(
         path: &Path,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
         colors: &Colors,
         filter_kind: &FilterKind,
         show_hidden: bool,
@@ -558,7 +557,7 @@ impl Directory {
     }
 
     /// Creates an empty directory preview.
-    pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
+    pub fn empty(path: &Path, users_cache: &UsersCache) -> FmResult<Self> {
         Ok(Self {
             tree: Tree::empty(path, users_cache)?,
             len: 0,
