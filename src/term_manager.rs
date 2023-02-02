@@ -219,20 +219,35 @@ impl<'a> WinMain<'a> {
     /// metadata of the selected file.
     fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         let len = tab.path_content.content.len();
-        for (i, (file, string)) in std::iter::zip(
-            tab.path_content.content.iter(),
-            tab.path_content.strings(status.display_full).iter(),
-        )
-        .enumerate()
-        .take(min(len, tab.window.bottom + 1))
-        .skip(tab.window.top)
+        let group_size: usize;
+        let owner_size: usize;
+        if status.display_full {
+            group_size = tab.path_content.group_column_width();
+            owner_size = tab.path_content.owner_column_width();
+        } else {
+            group_size = 0;
+            owner_size = 0;
+        }
+
+        for (i, file) in tab
+            .path_content
+            .content
+            .iter()
+            .enumerate()
+            .take(min(len, tab.window.bottom + 1))
+            .skip(tab.window.top)
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
             let mut attr = fileinfo_attr(file, self.colors);
+            let string = if status.display_full {
+                file.format(owner_size, group_size)?
+            } else {
+                file.format_simple()?
+            };
             if status.flagged.contains(&file.path) {
                 attr.effect |= Effect::BOLD | Effect::UNDERLINE;
             }
-            canvas.print_with_attr(row, 0, string, attr)?;
+            canvas.print_with_attr(row, 0, &string, attr)?;
         }
         self.second_line(status, tab, canvas)?;
         Ok(())

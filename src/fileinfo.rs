@@ -215,7 +215,7 @@ impl FileInfo {
         Ok(repr)
     }
 
-    fn format_simple(&self) -> FmResult<String> {
+    pub fn format_simple(&self) -> FmResult<String> {
         Ok(self.filename.to_owned())
     }
 
@@ -345,34 +345,17 @@ impl PathContent {
     }
 
     /// Calculates the size of the owner column.
-    fn owner_column_width(&self) -> usize {
+    pub fn owner_column_width(&self) -> usize {
         let owner_size_btreeset: std::collections::BTreeSet<usize> =
             self.content.iter().map(|file| file.owner.len()).collect();
         *owner_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
     /// Calculates the size of the group column.
-    fn group_column_width(&self) -> usize {
+    pub fn group_column_width(&self) -> usize {
         let group_size_btreeset: std::collections::BTreeSet<usize> =
             self.content.iter().map(|file| file.group.len()).collect();
         *group_size_btreeset.iter().next_back().unwrap_or(&1)
-    }
-
-    /// Returns a vector of displayable strings for every file.
-    pub fn strings(&self, display_full: bool) -> Vec<String> {
-        if display_full {
-            let owner_size = self.owner_column_width();
-            let group_size = self.group_column_width();
-            self.content
-                .iter()
-                .map(|fileinfo| fileinfo.format(owner_size, group_size).unwrap_or_default())
-                .collect()
-        } else {
-            self.content
-                .iter()
-                .map(|fileinfo| fileinfo.format_simple().unwrap_or_default())
-                .collect()
-        }
     }
 
     /// Select the file from a given index.
