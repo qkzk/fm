@@ -49,7 +49,6 @@ pub struct Node {
     pub position: Vec<usize>,
     pub folded: bool,
     pub is_dir: bool,
-    index: Option<usize>,
 }
 
 impl Node {
@@ -91,7 +90,6 @@ impl Node {
             fileinfo,
             position: parent_position,
             folded: false,
-            index: None,
         }
     }
 }
@@ -242,7 +240,6 @@ impl Tree {
             position: vec![0],
             folded: false,
             is_dir: false,
-            index: None,
         };
         let leaves = vec![];
         let position = vec![0];
@@ -394,35 +391,30 @@ impl Tree {
         &mut self,
         colors: &Colors,
     ) -> (usize, Vec<(String, ColoredString)>) {
-        let mut stack = vec![];
-        stack.push(("".to_owned(), self));
+        let mut stack = vec![("".to_owned(), self)];
         let mut content = vec![];
         let mut selected_index = 0;
 
-        let mut index = 0;
-        while !stack.is_empty() {
-            let Some((prefix, current)) = stack.pop() else { continue };
+        while let Some((prefix, current)) = stack.pop() {
             if current.node.fileinfo.is_selected {
                 selected_index = content.len();
             }
 
-            current.node.index = Some(index);
-            index += 1;
             content.push((
                 prefix.to_owned(),
                 ColoredString::from_node(&current.node, colors),
             ));
 
-            let first_prefix = first_prefix(prefix.clone());
-            let other_prefix = other_prefix(prefix);
-
             if !current.node.folded {
-                for (index, leaf) in current.leaves.iter_mut().enumerate() {
-                    if index == 0 {
-                        stack.push((first_prefix.clone(), leaf));
-                    } else {
-                        stack.push((other_prefix.clone(), leaf))
-                    }
+                let first_prefix = first_prefix(prefix.clone());
+                let other_prefix = other_prefix(prefix);
+
+                let mut leaves = current.leaves.iter_mut();
+                let Some(first_leaf) = leaves.next() else { continue; };
+                stack.push((first_prefix.clone(), first_leaf));
+
+                for leaf in leaves {
+                    stack.push((other_prefix.clone(), leaf));
                 }
             }
         }
