@@ -428,7 +428,7 @@ impl Tree {
             return Some(self.node.position.clone());
         }
 
-        for tree in self.leaves.iter_mut() {
+        for tree in self.leaves.iter_mut().rev() {
             let Some(position) = tree.select_first_match(key) else { continue };
             return Some(position);
         }

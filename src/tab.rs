@@ -3,7 +3,7 @@ use std::path;
 use users::UsersCache;
 
 use crate::args::Args;
-use crate::completion::Completion;
+use crate::completion::{Completion, InputCompleted};
 use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{FileInfo, FileKind, PathContent};
@@ -98,10 +98,29 @@ impl Tab {
 
     /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> FmResult<()> {
-        self.completion.set_kind(&self.mode);
-        let current_path = self.path_content_str().unwrap_or_default().to_owned();
-        self.completion
-            .complete(&self.input.string(), &self.path_content, &current_path)
+        // self.completion.set_kind(&self.mode);
+        match self.mode {
+            Mode::InputCompleted(InputCompleted::Goto) => {
+                let current_path = self.path_content_str().unwrap_or_default().to_owned();
+                self.completion.goto(&self.input.string(), &current_path)
+            }
+            Mode::InputCompleted(InputCompleted::Exec) => {
+                self.completion.exec(&self.input.string())
+            }
+            Mode::InputCompleted(InputCompleted::Search)
+                if matches!(self.previous_mode, Mode::Normal) =>
+            {
+                self.completion
+                    .search_from_normal(&self.input.string(), &self.path_content)
+            }
+            Mode::InputCompleted(InputCompleted::Search)
+                if matches!(self.previous_mode, Mode::Tree) =>
+            {
+                self.completion
+                    .search_from_tree(&self.input.string(), &self.directory.content)
+            }
+            _ => Ok(()),
+        }
     }
 
     /// Refresh the current view.
