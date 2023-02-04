@@ -1033,7 +1033,8 @@ impl EventExec {
                 tab.directory.tree.unselect_children();
                 if let Some(position) = tab.directory.tree.select_first_match(&searched) {
                     tab.directory.tree.position = position;
-                    tab.directory.tree.select_from_position()?;
+                    (_, _, tab.directory.tree.current_node) =
+                        tab.directory.tree.select_from_position()?;
                 } else {
                     tab.directory.tree.select_root()
                 };
