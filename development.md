@@ -373,6 +373,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: when searching from tree mode, it only completes with level 1 elements, not nested ones.
   - [x] FIX: when exiting search in tree mode, second line isn't updated
   - [ ] BUG: when filtering in tree mode, only the level 1 matching elements are displayed
+        Tricky one. How to filter for extension or name in tree mode ?
+        How to know if a child match the current node...
 
 - [ ] Version 0.1.50 : safety & memory usage
 
