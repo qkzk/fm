@@ -374,6 +374,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: when exiting search in tree mode, second line isn't updated
   - [x] FIX: when filtering in tree mode, only the level 1 matching elements are displayed
         Decided to keep directories when filtering in tree mode. Those are excluded when filtering in normal mode.
+  - [x] Tree: move 10 rows at a time
 
 - [ ] Version 0.1.50 : safety & memory usage
 

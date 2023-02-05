@@ -1133,7 +1133,7 @@ impl EventExec {
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_prev(status)
             }
-            Mode::Tree => EventExec::event_select_prev(status, colors)?,
+            Mode::Tree => EventExec::event_select_prev(status.selected(), colors)?,
             Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
             }
@@ -1155,7 +1155,7 @@ impl EventExec {
                 EventExec::event_encrypted_drive_next(status)
             }
             Mode::InputCompleted(_) => status.selected().completion.next(),
-            Mode::Tree => EventExec::event_select_next(status, colors)?,
+            Mode::Tree => EventExec::event_select_next(status.selected(), colors)?,
             _ => (),
         };
         Ok(())
@@ -1234,18 +1234,20 @@ impl EventExec {
     }
 
     /// Move up 10 lines in normal mode and preview.
-    pub fn event_page_up(status: &mut Status) -> FmResult<()> {
+    pub fn event_page_up(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::page_up(status.selected()),
+            Mode::Tree => EventExec::event_tree_page_up(status.selected(), colors)?,
             _ => (),
         };
         Ok(())
     }
 
     /// Move down 10 lines in normal & preview mode.
-    pub fn event_page_down(status: &mut Status) -> FmResult<()> {
+    pub fn event_page_down(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::page_down(status.selected()),
+            Mode::Tree => EventExec::event_tree_page_down(status.selected(), colors)?,
             _ => (),
         };
         Ok(())
@@ -1481,13 +1483,11 @@ impl EventExec {
 
     /// Fold the current node of the tree.
     /// Has no effect on "file" nodes.
-    pub fn event_tree_fold(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        let tab = status.selected();
-
+    pub fn event_tree_fold(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
         let (tree, _, _) = tab.directory.tree.explore_position(false);
         tree.node.toggle_fold();
         tab.directory.make_preview(colors);
-        Self::event_select_next(status, colors)
+        Self::event_select_next(tab, colors)
     }
 
     /// Unfold every child node in the tree.
@@ -1526,13 +1526,23 @@ impl EventExec {
     }
 
     /// Select the next sibling of the current node.
-    pub fn event_select_next(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_select_next(colors)
+    pub fn event_select_next(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.tree_select_next(colors)
     }
 
     /// Select the previous sibling of the current node.
-    pub fn event_select_prev(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_select_prev(colors)
+    pub fn event_select_prev(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.tree_select_prev(colors)
+    }
+
+    /// Move up 10 lines in the tree
+    pub fn event_tree_page_up(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.tree_page_up(colors)
+    }
+
+    /// Move down 10 lines in the tree
+    pub fn event_tree_page_down(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.tree_page_down(colors)
     }
 
     /// Select the last leaf of the tree and reset the view.

@@ -602,7 +602,7 @@ impl Directory {
         if self.selected_index + 1 < self.content.len() {
             self.selected_index += 1;
         }
-        self.update_tree_from_index(colors)
+        self.update_tree_position_from_index(colors)
     }
 
     /// Select the previous sibling if any.
@@ -611,10 +611,30 @@ impl Directory {
         if self.selected_index > 0 {
             self.selected_index -= 1;
         }
-        self.update_tree_from_index(colors)
+        self.update_tree_position_from_index(colors)
     }
 
-    pub fn update_tree_from_index(&mut self, colors: &Colors) -> FmResult<()> {
+    /// Move up 10 times.
+    pub fn page_up(&mut self, colors: &Colors) -> FmResult<()> {
+        if self.selected_index > 10 {
+            self.selected_index -= 10;
+        } else {
+            self.selected_index = 1;
+        }
+        self.update_tree_position_from_index(colors)
+    }
+
+    /// Move down 10 times
+    pub fn page_down(&mut self, colors: &Colors) -> FmResult<()> {
+        self.selected_index += 10;
+        if self.selected_index >= self.content.len() {
+            self.selected_index = self.content.len() - 1;
+        }
+        self.update_tree_position_from_index(colors)
+    }
+
+    /// Update the position of the selected element from its index.
+    pub fn update_tree_position_from_index(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.position = self.tree.position_from_index(self.selected_index);
         let (_, _, node) = self.tree.select_from_position()?;
         self.tree.current_node = node;

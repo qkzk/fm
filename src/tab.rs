@@ -283,6 +283,18 @@ impl Tab {
         self.directory.select_parent(colors)
     }
 
+    /// Move down 10 times in the tree
+    pub fn tree_page_down(&mut self, colors: &Colors) -> FmResult<()> {
+        self.directory.unselect_children();
+        self.directory.page_down(colors)
+    }
+
+    /// Move up 10 times in the tree
+    pub fn tree_page_up(&mut self, colors: &Colors) -> FmResult<()> {
+        self.directory.unselect_children();
+        self.directory.page_up(colors)
+    }
+
     /// Select the next sibling.
     pub fn tree_select_next(&mut self, colors: &Colors) -> FmResult<()> {
         self.directory.unselect_children();
@@ -353,16 +365,21 @@ impl Tab {
         Ok(())
     }
 
+    /// Set a new mode and save the last one
     pub fn set_mode(&mut self, new_mode: Mode) {
         self.previous_mode = self.mode;
         self.mode = new_mode;
     }
 
+    /// Reset the last mode.
+    /// The last mode is set to normal again.
     pub fn reset_mode(&mut self) {
         self.mode = self.previous_mode;
         self.previous_mode = Mode::Normal;
     }
 
+    /// Returns true if the current mode requires 2 windows.
+    /// Only Tree, Normal & Preview doesn't require 2 windows.
     pub fn need_second_window(&self) -> bool {
         !matches!(self.mode, Mode::Normal | Mode::Tree | Mode::Preview)
     }
