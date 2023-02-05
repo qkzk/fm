@@ -33,22 +33,26 @@ impl FilterKind {
     /// Apply the selected filter to the file list.
     /// It's a "key" used by the Filter method to hold the files matching this
     /// filter.
-    pub fn filter_by(&self, fileinfo: &FileInfo) -> bool {
+    pub fn filter_by(&self, fileinfo: &FileInfo, keep_dirs: bool) -> bool {
         match self {
-            Self::Extension(ext) => Self::filter_by_extension(fileinfo, ext),
-            Self::Name(filename) => Self::filter_by_name(fileinfo, filename),
+            Self::Extension(ext) => Self::filter_by_extension(fileinfo, ext, keep_dirs),
+            Self::Name(filename) => Self::filter_by_name(fileinfo, filename, keep_dirs),
             Self::Directory => Self::filter_directory(fileinfo),
             Self::All => true,
         }
     }
 
-    fn filter_by_extension(fileinfo: &FileInfo, ext: &str) -> bool {
-        fileinfo.extension == ext
+    fn filter_by_extension(fileinfo: &FileInfo, ext: &str, keep_dirs: bool) -> bool {
+        fileinfo.extension == ext || keep_dirs && fileinfo.is_dir()
     }
 
-    fn filter_by_name(fileinfo: &FileInfo, filename: &str) -> bool {
-        let Ok(re) = Regex::new(filename) else { return false };
-        re.is_match(&fileinfo.filename)
+    fn filter_by_name(fileinfo: &FileInfo, filename: &str, keep_dirs: bool) -> bool {
+        if keep_dirs && fileinfo.is_dir() {
+            true
+        } else {
+            let Ok(re) = Regex::new(filename) else { return false };
+            re.is_match(&fileinfo.filename)
+        }
     }
 
     fn filter_directory(fileinfo: &FileInfo) -> bool {

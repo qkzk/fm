@@ -193,7 +193,7 @@ impl Tree {
         }
         let FileKind::Directory = fileinfo.file_kind else { return Ok(vec![]) };
         let Some(mut files) =
-                files_collection(fileinfo, users_cache, display_hidden, filter_kind)
+                files_collection(fileinfo, users_cache, display_hidden, filter_kind, true)
             else { return Ok(vec![]) };
         sort_kind.sort(&mut files);
         let leaves = files

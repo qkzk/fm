@@ -239,6 +239,10 @@ impl FileInfo {
     pub fn is_hidden(&self) -> bool {
         self.filename.starts_with('.')
     }
+
+    pub fn is_dir(&self) -> bool {
+        self.path.is_dir()
+    }
 }
 
 /// Holds the information about file in the current directory.
@@ -313,7 +317,8 @@ impl PathContent {
         let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users_cache)?;
 
         let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users_cache)?;
-        if let Some(true_files) = files_collection(&fileinfo, users_cache, show_hidden, filter_kind)
+        if let Some(true_files) =
+            files_collection(&fileinfo, users_cache, show_hidden, filter_kind, false)
         {
             files.extend(true_files);
         }
@@ -611,6 +616,7 @@ pub fn files_collection(
     users_cache: &UsersCache,
     show_hidden: bool,
     filter_kind: &FilterKind,
+    keep_dir: bool,
 ) -> Option<Vec<FileInfo>> {
     match read_dir(&fileinfo.path) {
         Ok(read_dir) => Some(
@@ -619,7 +625,7 @@ pub fn files_collection(
                 .filter(|direntry| show_hidden || is_not_hidden(direntry).unwrap_or(true))
                 .map(|direntry| FileInfo::new(&direntry, users_cache))
                 .filter_map(|fileinfo| fileinfo.ok())
-                .filter(|fileinfo| filter_kind.filter_by(fileinfo))
+                .filter(|fileinfo| filter_kind.filter_by(fileinfo, keep_dir))
                 .collect(),
         ),
         Err(error) => {
