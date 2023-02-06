@@ -29,12 +29,20 @@ fn main() -> FmResult<()> {
     let event_reader = EventReader::new(term.clone());
     let help = Help::from_keybindings(&config.binds)?.help;
     let mut display = Display::new(term.clone());
-    let mut status = Status::new(Args::parse(), config, display.height()?, term.clone(), help)?;
+    let mut status = Status::new(
+        Args::parse(),
+        display.height()?,
+        term.clone(),
+        help,
+        &config.terminal,
+    )?;
+    let colors = config.colors.clone();
+    drop(config);
 
     while let Ok(event) = event_reader.poll_event() {
-        event_dispatcher.dispatch(&mut status, event)?;
+        event_dispatcher.dispatch(&mut status, event, &colors)?;
         status.refresh_disks();
-        display.display_all(&status)?;
+        display.display_all(&status, &colors)?;
 
         if status.selected_non_mut().must_quit() {
             break;

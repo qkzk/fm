@@ -9,6 +9,7 @@ use tuikit::event::Event;
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
+use crate::config::Colors;
 use crate::constant_strings_paths::{
     FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
 };
@@ -71,6 +72,7 @@ struct WinMain<'a> {
     status: &'a Status,
     tab: &'a Tab,
     disk_space: &'a str,
+    colors: &'a Colors,
 }
 
 impl<'a> Draw for WinMain<'a> {
@@ -95,11 +97,12 @@ impl<'a> Widget for WinMain<'a> {}
 impl<'a> WinMain<'a> {
     const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
 
-    fn new(status: &'a Status, index: usize, disk_space: &'a str) -> Self {
+    fn new(status: &'a Status, index: usize, disk_space: &'a str, colors: &'a Colors) -> Self {
         Self {
             status,
             tab: &status.tabs[index],
             disk_space,
+            colors,
         }
     }
 
@@ -118,14 +121,14 @@ impl<'a> WinMain<'a> {
             Mode::Normal => {
                 if !status.display_full {
                     let Some(file) = tab.selected() else { return Ok(0) };
-                    self.second_line_detailed(file, status, canvas)
+                    self.second_line_detailed(file, canvas)
                 } else {
                     self.second_line_simple(status, canvas)
                 }
             }
             Mode::Tree => {
                 let Some(file) = tab.selected() else { return Ok(0) };
-                self.second_line_detailed(file, status, canvas)
+                self.second_line_detailed(file, canvas)
             }
             Mode::InputSimple(InputSimple::Filter) => {
                 Ok(canvas.print_with_attr(1, 0, FILTER_PRESENTATION, ATTR_YELLOW_BOLD)?)
@@ -134,15 +137,10 @@ impl<'a> WinMain<'a> {
         }
     }
 
-    fn second_line_detailed(
-        &self,
-        file: &FileInfo,
-        status: &Status,
-        canvas: &mut dyn Canvas,
-    ) -> FmResult<usize> {
+    fn second_line_detailed(&self, file: &FileInfo, canvas: &mut dyn Canvas) -> FmResult<usize> {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
-        let mut attr = fileinfo_attr(file, &status.config_colors);
+        let mut attr = fileinfo_attr(file, self.colors);
         attr.effect ^= Effect::REVERSE;
         Ok(canvas.print_with_attr(1, 0, &file.format(owner_size, group_size)?, attr)?)
     }
@@ -221,20 +219,35 @@ impl<'a> WinMain<'a> {
     /// metadata of the selected file.
     fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         let len = tab.path_content.content.len();
-        for (i, (file, string)) in std::iter::zip(
-            tab.path_content.content.iter(),
-            tab.path_content.strings(status.display_full).iter(),
-        )
-        .enumerate()
-        .take(min(len, tab.window.bottom + 1))
-        .skip(tab.window.top)
+        let group_size: usize;
+        let owner_size: usize;
+        if status.display_full {
+            group_size = tab.path_content.group_column_width();
+            owner_size = tab.path_content.owner_column_width();
+        } else {
+            group_size = 0;
+            owner_size = 0;
+        }
+
+        for (i, file) in tab
+            .path_content
+            .content
+            .iter()
+            .enumerate()
+            .take(min(len, tab.window.bottom + 1))
+            .skip(tab.window.top)
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
-            let mut attr = fileinfo_attr(file, &status.config_colors);
+            let mut attr = fileinfo_attr(file, self.colors);
+            let string = if status.display_full {
+                file.format(owner_size, group_size)?
+            } else {
+                file.format_simple()?
+            };
             if status.flagged.contains(&file.path) {
                 attr.effect |= Effect::BOLD | Effect::UNDERLINE;
             }
-            canvas.print_with_attr(row, 0, string, attr)?;
+            canvas.print_with_attr(row, 0, &string, attr)?;
         }
         self.second_line(status, tab, canvas)?;
         Ok(())
@@ -646,16 +659,16 @@ impl Display {
     /// The preview in preview mode.
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
-    pub fn display_all(&mut self, status: &Status) -> FmResult<()> {
+    pub fn display_all(&mut self, status: &Status, colors: &Colors) -> FmResult<()> {
         self.hide_cursor()?;
         self.term.clear()?;
 
         let (width, _) = self.term.term_size()?;
         let disk_spaces = status.disk_spaces_per_tab();
         if status.dual_pane && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self.draw_dual_pane(status, &disk_spaces.0, &disk_spaces.1)?
+            self.draw_dual_pane(status, &disk_spaces.0, &disk_spaces.1, colors)?
         } else {
-            self.draw_single_pane(status, &disk_spaces.0)?
+            self.draw_single_pane(status, &disk_spaces.0, colors)?
         }
 
         Ok(self.term.present()?)
@@ -706,9 +719,10 @@ impl Display {
         status: &Status,
         disk_space_tab_0: &str,
         disk_space_tab_1: &str,
+        colors: &Colors,
     ) -> FmResult<()> {
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0);
-        let win_main_right = WinMain::new(status, 1, disk_space_tab_1);
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors);
+        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let (border_left, border_right) = self.borders(status);
@@ -730,8 +744,13 @@ impl Display {
         Ok(self.term.draw(&hsplit)?)
     }
 
-    fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: &str) -> FmResult<()> {
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0);
+    fn draw_single_pane(
+        &mut self,
+        status: &Status,
+        disk_space_tab_0: &str,
+        colors: &Colors,
+    ) -> FmResult<()> {
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let win = self.vertical_split(

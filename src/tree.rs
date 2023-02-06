@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::rc::Rc;
 
 use tuikit::attr::Attr;
 use users::UsersCache;
@@ -28,21 +27,16 @@ impl ColoredString {
     }
 
     fn from_node(current_node: &Node, colors: &Colors) -> Self {
-        let mut text = Self::fold_symbols(current_node);
-        text.push_str(&current_node.filename());
-        Self::new(text, current_node.attr(colors), current_node.filepath())
-    }
-
-    fn fold_symbols(current_node: &Node) -> String {
-        if current_node.is_dir {
-            match current_node.folded {
-                true => "▸ ",
-                false => "▾ ",
+        let text = if current_node.is_dir {
+            if current_node.folded {
+                format!("▸ {}", &current_node.fileinfo.filename)
+            } else {
+                format!("▾ {}", &current_node.fileinfo.filename)
             }
         } else {
-            ""
-        }
-        .to_owned()
+            current_node.filename()
+        };
+        Self::new(text, current_node.attr(colors), current_node.filepath())
     }
 }
 
@@ -54,8 +48,7 @@ pub struct Node {
     pub fileinfo: FileInfo,
     pub position: Vec<usize>,
     pub folded: bool,
-    is_dir: bool,
-    index: Option<usize>,
+    pub is_dir: bool,
 }
 
 impl Node {
@@ -97,7 +90,6 @@ impl Node {
             fileinfo,
             position: parent_position,
             folded: false,
-            index: None,
         }
     }
 }
@@ -130,7 +122,7 @@ impl Tree {
     pub fn from_path(
         path: &Path,
         max_depth: usize,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
         filter_kind: &FilterKind,
         show_hidden: bool,
         parent_position: Vec<usize>,
@@ -160,7 +152,7 @@ impl Tree {
     fn create_tree_from_fileinfo(
         fileinfo: FileInfo,
         max_depth: usize,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
         filter_kind: &FilterKind,
         display_hidden: bool,
         parent_position: Vec<usize>,
@@ -190,7 +182,7 @@ impl Tree {
     fn make_leaves(
         fileinfo: &FileInfo,
         max_depth: usize,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
         display_hidden: bool,
         filter_kind: &FilterKind,
         sort_kind: &SortKind,
@@ -199,24 +191,28 @@ impl Tree {
         if max_depth == 0 {
             return Ok(vec![]);
         }
-        let mut leaves = vec![];
         let FileKind::Directory = fileinfo.file_kind else { return Ok(vec![]) };
         let Some(mut files) =
-                files_collection(fileinfo, users_cache, display_hidden, filter_kind)
-            else { return Ok(leaves) };
+                files_collection(fileinfo, users_cache, display_hidden, filter_kind, true)
+            else { return Ok(vec![]) };
         sort_kind.sort(&mut files);
-        for (index, fileinfo) in files.iter().enumerate() {
-            let mut position = parent_position.clone();
-            position.push(files.len() - index - 1);
-            leaves.push(Self::create_tree_from_fileinfo(
-                fileinfo.to_owned(),
-                max_depth - 1,
-                users_cache,
-                filter_kind,
-                display_hidden,
-                position,
-            )?)
-        }
+        let leaves = files
+            .iter()
+            .enumerate()
+            .map(|(index, fileinfo)| {
+                let mut position = parent_position.clone();
+                position.push(files.len() - index - 1);
+                Self::create_tree_from_fileinfo(
+                    fileinfo.to_owned(),
+                    max_depth - 1,
+                    users_cache,
+                    filter_kind,
+                    display_hidden,
+                    position,
+                )
+                .unwrap()
+            })
+            .collect();
 
         Ok(leaves)
     }
@@ -236,7 +232,7 @@ impl Tree {
 
     /// Creates an empty tree. Used when the user changes the CWD and hasn't displayed
     /// a tree yet.
-    pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
+    pub fn empty(path: &Path, users_cache: &UsersCache) -> FmResult<Self> {
         let filename = filename_from_path(path)?;
         let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
         let node = Node {
@@ -244,7 +240,6 @@ impl Tree {
             position: vec![0],
             folded: false,
             is_dir: false,
-            index: None,
         };
         let leaves = vec![];
         let position = vec![0];
@@ -396,35 +391,30 @@ impl Tree {
         &mut self,
         colors: &Colors,
     ) -> (usize, Vec<(String, ColoredString)>) {
-        let mut stack = vec![];
-        stack.push(("".to_owned(), self));
+        let mut stack = vec![("".to_owned(), self)];
         let mut content = vec![];
         let mut selected_index = 0;
 
-        let mut index = 0;
-        while !stack.is_empty() {
-            let Some((prefix, current)) = stack.pop() else { continue };
+        while let Some((prefix, current)) = stack.pop() {
             if current.node.fileinfo.is_selected {
                 selected_index = content.len();
             }
 
-            current.node.index = Some(index);
-            index += 1;
             content.push((
                 prefix.to_owned(),
                 ColoredString::from_node(&current.node, colors),
             ));
 
-            let first_prefix = first_prefix(prefix.clone());
-            let other_prefix = other_prefix(prefix);
-
             if !current.node.folded {
-                for (index, leaf) in current.leaves.iter_mut().enumerate() {
-                    if index == 0 {
-                        stack.push((first_prefix.clone(), leaf));
-                    } else {
-                        stack.push((other_prefix.clone(), leaf))
-                    }
+                let first_prefix = first_prefix(prefix.clone());
+                let other_prefix = other_prefix(prefix);
+
+                let mut leaves = current.leaves.iter_mut();
+                let Some(first_leaf) = leaves.next() else { continue; };
+                stack.push((first_prefix.clone(), first_leaf));
+
+                for leaf in leaves {
+                    stack.push((other_prefix.clone(), leaf));
                 }
             }
         }
@@ -438,7 +428,7 @@ impl Tree {
             return Some(self.node.position.clone());
         }
 
-        for tree in self.leaves.iter_mut() {
+        for tree in self.leaves.iter_mut().rev() {
             let Some(position) = tree.select_first_match(key) else { continue };
             return Some(position);
         }

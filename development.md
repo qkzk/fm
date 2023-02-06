@@ -369,8 +369,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: can't parse uid gid if they only exists on a remote machine. See https://serverfault.com/questions/514118/mapping-uid-and-gid-of-local-user-to-the-mounted-nfs-share
         for a fix.
   - [x] FIX: truncate file size in preview mode.
-  - [ ] BUG: when searching from tree mode, it only completes with level 1 elements, not nested ones.
-  - [ ] BUG: when filtering in free mode, only the level 1 matching elements are displayed
+  - [x] FIX: in tree mode search is backward
+  - [x] FIX: when searching from tree mode, it only completes with level 1 elements, not nested ones.
+  - [x] FIX: when exiting search in tree mode, second line isn't updated
+  - [x] FIX: when filtering in tree mode, only the level 1 matching elements are displayed
+        Decided to keep directories when filtering in tree mode. Those are excluded when filtering in normal mode.
+  - [x] Tree: move 10 rows at a time
 
 - [ ] Version 0.1.50 : safety & memory usage
 

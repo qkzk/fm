@@ -2,7 +2,6 @@ use std::fs::{metadata, read_dir, DirEntry, Metadata};
 use std::iter::Enumerate;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
-use std::rc::Rc;
 
 use chrono::offset::Local;
 use chrono::DateTime;
@@ -126,7 +125,7 @@ pub struct FileInfo {
 impl FileInfo {
     /// Reads every information about a file from its metadata and returs
     /// a new `FileInfo` object if we can create one.
-    pub fn new(direntry: &DirEntry, users_cache: &Rc<UsersCache>) -> FmResult<FileInfo> {
+    pub fn new(direntry: &DirEntry, users_cache: &UsersCache) -> FmResult<FileInfo> {
         let metadata = direntry.metadata()?;
         let path = direntry.path();
         let filename = extract_filename(direntry)?;
@@ -139,18 +138,29 @@ impl FileInfo {
     pub fn from_path_with_name(
         path: &path::Path,
         filename: &str,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
     ) -> FmResult<Self> {
         let metadata = metadata(path)?;
 
         Self::create_from_metadata_and_filename(path, &metadata, filename.to_owned(), users_cache)
     }
 
+    pub fn from_path(path: &path::Path, users_cache: &UsersCache) -> FmResult<Self> {
+        let metadata = metadata(path)?;
+        let filename = path
+            .file_name()
+            .ok_or_else(|| FmError::custom("from path", "couldn't read filenale"))?
+            .to_str()
+            .ok_or_else(|| FmError::custom("from path", "couldn't parse filenale"))?
+            .to_owned();
+        Self::create_from_metadata_and_filename(path, &metadata, filename, users_cache)
+    }
+
     fn create_from_metadata_and_filename(
         path: &path::Path,
         metadata: &Metadata,
         filename: String,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
     ) -> FmResult<Self> {
         let path = path.to_owned();
         let size = extract_file_size(metadata);
@@ -205,7 +215,7 @@ impl FileInfo {
         Ok(repr)
     }
 
-    fn format_simple(&self) -> FmResult<String> {
+    pub fn format_simple(&self) -> FmResult<String> {
         Ok(self.filename.to_owned())
     }
 
@@ -229,12 +239,15 @@ impl FileInfo {
     pub fn is_hidden(&self) -> bool {
         self.filename.starts_with('.')
     }
+
+    pub fn is_dir(&self) -> bool {
+        self.path.is_dir()
+    }
 }
 
 /// Holds the information about file in the current directory.
 /// We know about the current path, the files themselves, the selected index,
 /// the "display all files including hidden" flag and the key to sort files.
-#[derive(Clone)]
 pub struct PathContent {
     /// The current path
     pub path: path::PathBuf,
@@ -245,7 +258,7 @@ pub struct PathContent {
     /// The kind of sort used to display the files.
     sort_kind: SortKind,
     used_space: u64,
-    pub users_cache: Rc<UsersCache>,
+    pub users_cache: UsersCache,
 }
 
 impl PathContent {
@@ -254,7 +267,7 @@ impl PathContent {
     /// Selects the first file if any.
     pub fn new(
         path: &path::Path,
-        users_cache: Rc<UsersCache>,
+        users_cache: UsersCache,
         filter: &FilterKind,
         show_hidden: bool,
     ) -> FmResult<Self> {
@@ -299,22 +312,20 @@ impl PathContent {
         path: &path::Path,
         show_hidden: bool,
         filter_kind: &FilterKind,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
     ) -> FmResult<Vec<FileInfo>> {
         let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users_cache)?;
 
         let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users_cache)?;
-        if let Some(true_files) = files_collection(&fileinfo, users_cache, show_hidden, filter_kind)
+        if let Some(true_files) =
+            files_collection(&fileinfo, users_cache, show_hidden, filter_kind, false)
         {
             files.extend(true_files);
         }
         Ok(files)
     }
 
-    fn create_dot_dotdot(
-        path: &path::Path,
-        users_cache: &Rc<UsersCache>,
-    ) -> FmResult<Vec<FileInfo>> {
+    fn create_dot_dotdot(path: &path::Path, users_cache: &UsersCache) -> FmResult<Vec<FileInfo>> {
         let current = FileInfo::from_path_with_name(path, ".", users_cache)?;
         match path.parent() {
             Some(parent) => {
@@ -339,34 +350,17 @@ impl PathContent {
     }
 
     /// Calculates the size of the owner column.
-    fn owner_column_width(&self) -> usize {
+    pub fn owner_column_width(&self) -> usize {
         let owner_size_btreeset: std::collections::BTreeSet<usize> =
             self.content.iter().map(|file| file.owner.len()).collect();
         *owner_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
     /// Calculates the size of the group column.
-    fn group_column_width(&self) -> usize {
+    pub fn group_column_width(&self) -> usize {
         let group_size_btreeset: std::collections::BTreeSet<usize> =
             self.content.iter().map(|file| file.group.len()).collect();
         *group_size_btreeset.iter().next_back().unwrap_or(&1)
-    }
-
-    /// Returns a vector of displayable strings for every file.
-    pub fn strings(&self, display_full: bool) -> Vec<String> {
-        if display_full {
-            let owner_size = self.owner_column_width();
-            let group_size = self.group_column_width();
-            self.content
-                .iter()
-                .map(|fileinfo| fileinfo.format(owner_size, group_size).unwrap_or_default())
-                .collect()
-        } else {
-            self.content
-                .iter()
-                .map(|fileinfo| fileinfo.format_simple().unwrap_or_default())
-                .collect()
-        }
     }
 
     /// Select the file from a given index.
@@ -474,7 +468,7 @@ impl PathContent {
     /// Refresh the existing users.
     pub fn refresh_users(
         &mut self,
-        users_cache: Rc<UsersCache>,
+        users_cache: UsersCache,
         filter: &FilterKind,
         show_hidden: bool,
     ) -> FmResult<()> {
@@ -554,7 +548,7 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 /// Reads the owner name and returns it as a string.
 /// If it's not possible to get the owner name (happens if the owner exists on a remote machine but not on host),
 /// it returns the uid as a  `Result<String>`.
-fn extract_owner(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<String> {
+fn extract_owner(metadata: &Metadata, users_cache: &UsersCache) -> FmResult<String> {
     match users_cache.get_user_by_uid(metadata.uid()) {
         Some(uid) => Ok(uid
             .name()
@@ -568,7 +562,7 @@ fn extract_owner(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<
 /// Reads the group name and returns it as a string.
 /// If it's not possible to get the group name (happens if the group exists on a remote machine but not on host),
 /// it returns the gid as a  `Result<String>`.
-fn extract_group(metadata: &Metadata, users_cache: &Rc<UsersCache>) -> FmResult<String> {
+fn extract_group(metadata: &Metadata, users_cache: &UsersCache) -> FmResult<String> {
     match users_cache.get_group_by_gid(metadata.gid()) {
         Some(gid) => Ok(gid
             .name()
@@ -619,9 +613,10 @@ fn filekind_and_filename(filename: &str, file_kind: &FileKind) -> String {
 /// Returns None if there's no file.
 pub fn files_collection(
     fileinfo: &FileInfo,
-    users_cache: &Rc<UsersCache>,
+    users_cache: &UsersCache,
     show_hidden: bool,
     filter_kind: &FilterKind,
+    keep_dir: bool,
 ) -> Option<Vec<FileInfo>> {
     match read_dir(&fileinfo.path) {
         Ok(read_dir) => Some(
@@ -630,7 +625,7 @@ pub fn files_collection(
                 .filter(|direntry| show_hidden || is_not_hidden(direntry).unwrap_or(true))
                 .map(|direntry| FileInfo::new(&direntry, users_cache))
                 .filter_map(|fileinfo| fileinfo.ok())
-                .filter(|fileinfo| filter_kind.filter_by(fileinfo))
+                .filter(|fileinfo| filter_kind.filter_by(fileinfo, keep_dir))
                 .collect(),
         ),
         Err(error) => {

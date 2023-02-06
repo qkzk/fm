@@ -1,10 +1,9 @@
 use std::path;
-use std::rc::Rc;
 
 use users::UsersCache;
 
 use crate::args::Args;
-use crate::completion::Completion;
+use crate::completion::{Completion, InputCompleted};
 use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{FileInfo, FileKind, PathContent};
@@ -19,7 +18,6 @@ use crate::visited::History;
 
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
-#[derive(Clone)]
 pub struct Tab {
     /// The mode the application is currenty in
     pub mode: Mode,
@@ -59,7 +57,7 @@ pub struct Tab {
 
 impl Tab {
     /// Creates a new tab from args and height.
-    pub fn new(args: Args, height: usize, users_cache: Rc<UsersCache>) -> FmResult<Self> {
+    pub fn new(args: Args, height: usize, users_cache: UsersCache) -> FmResult<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
         let directory = Directory::empty(&path, &users_cache)?;
         let filter = FilterKind::All;
@@ -100,10 +98,29 @@ impl Tab {
 
     /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> FmResult<()> {
-        self.completion.set_kind(&self.mode);
-        let current_path = self.path_content_str().unwrap_or_default().to_owned();
-        self.completion
-            .complete(&self.input.string(), &self.path_content, &current_path)
+        // self.completion.set_kind(&self.mode);
+        match self.mode {
+            Mode::InputCompleted(InputCompleted::Goto) => {
+                let current_path = self.path_content_str().unwrap_or_default().to_owned();
+                self.completion.goto(&self.input.string(), &current_path)
+            }
+            Mode::InputCompleted(InputCompleted::Exec) => {
+                self.completion.exec(&self.input.string())
+            }
+            Mode::InputCompleted(InputCompleted::Search)
+                if matches!(self.previous_mode, Mode::Normal) =>
+            {
+                self.completion
+                    .search_from_normal(&self.input.string(), &self.path_content)
+            }
+            Mode::InputCompleted(InputCompleted::Search)
+                if matches!(self.previous_mode, Mode::Tree) =>
+            {
+                self.completion
+                    .search_from_tree(&self.input.string(), &self.directory.content)
+            }
+            _ => Ok(()),
+        }
     }
 
     /// Refresh the current view.
@@ -204,7 +221,7 @@ impl Tab {
     }
 
     /// Refresh the existing users.
-    pub fn refresh_users(&mut self, users_cache: Rc<UsersCache>) -> FmResult<()> {
+    pub fn refresh_users(&mut self, users_cache: UsersCache) -> FmResult<()> {
         self.path_content
             .refresh_users(users_cache, &self.filter, self.show_hidden)
     }
@@ -264,6 +281,18 @@ impl Tab {
             self.make_tree(colors)?
         }
         self.directory.select_parent(colors)
+    }
+
+    /// Move down 10 times in the tree
+    pub fn tree_page_down(&mut self, colors: &Colors) -> FmResult<()> {
+        self.directory.unselect_children();
+        self.directory.page_down(colors)
+    }
+
+    /// Move up 10 times in the tree
+    pub fn tree_page_up(&mut self, colors: &Colors) -> FmResult<()> {
+        self.directory.unselect_children();
+        self.directory.page_up(colors)
     }
 
     /// Select the next sibling.
@@ -336,16 +365,21 @@ impl Tab {
         Ok(())
     }
 
+    /// Set a new mode and save the last one
     pub fn set_mode(&mut self, new_mode: Mode) {
         self.previous_mode = self.mode;
         self.mode = new_mode;
     }
 
+    /// Reset the last mode.
+    /// The last mode is set to normal again.
     pub fn reset_mode(&mut self) {
         self.mode = self.previous_mode;
         self.previous_mode = Mode::Normal;
     }
 
+    /// Returns true if the current mode requires 2 windows.
+    /// Only Tree, Normal & Preview doesn't require 2 windows.
     pub fn need_second_window(&self) -> bool {
         !matches!(self.mode, Mode::Normal | Mode::Tree | Mode::Preview)
     }

@@ -9,6 +9,7 @@ use sysinfo::SystemExt;
 
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
+use crate::config::Colors;
 use crate::constant_strings_paths::CONFIG_PATH;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
 use crate::constant_strings_paths::NVIM_RPC_SENDER;
@@ -35,11 +36,10 @@ pub struct EventExec {}
 
 impl EventExec {
     /// Reset the selected tab view to the default.
-    pub fn refresh_status(status: &mut Status) -> FmResult<()> {
+    pub fn refresh_status(status: &mut Status, colors: &Colors) -> FmResult<()> {
         status.refresh_users()?;
         status.selected().refresh_view()?;
         if let Mode::Tree = status.selected_non_mut().mode {
-            let colors = &status.config_colors.clone();
             status.selected().make_tree(colors)?
         }
         Ok(())
@@ -49,7 +49,12 @@ impl EventExec {
     /// isn't sufficiant to display enough information.
     /// We also need to know the new height of the terminal to start scrolling
     /// up or down.
-    pub fn resize(status: &mut Status, width: usize, height: usize) -> FmResult<()> {
+    pub fn resize(
+        status: &mut Status,
+        width: usize,
+        height: usize,
+        colors: &Colors,
+    ) -> FmResult<()> {
         if width < MIN_WIDTH_FOR_DUAL_PANE {
             status.select_tab(0)?;
             status.set_dual_pane(false);
@@ -57,7 +62,7 @@ impl EventExec {
             status.set_dual_pane(true);
         }
         status.selected().set_height(height);
-        Self::refresh_status(status)?;
+        Self::refresh_status(status, colors)?;
         Ok(())
     }
 
@@ -164,24 +169,24 @@ impl EventExec {
     }
 
     /// Execute a new mark, saving it to a config file for futher use.
-    pub fn exec_marks_new(status: &mut Status, c: char) -> FmResult<()> {
+    pub fn exec_marks_new(status: &mut Status, c: char, colors: &Colors) -> FmResult<()> {
         let path = status.selected().path_content.path.clone();
         status.marks.new_mark(c, path)?;
         Self::event_normal(status.selected())?;
         status.selected().reset_mode();
-        Self::refresh_status(status)
+        Self::refresh_status(status, colors)
     }
 
     /// Execute a jump to a mark, moving to a valid path.
     /// If the saved path is invalid, it does nothing but reset the view.
-    pub fn exec_marks_jump(status: &mut Status, c: char) -> FmResult<()> {
+    pub fn exec_marks_jump(status: &mut Status, c: char, colors: &Colors) -> FmResult<()> {
         if let Some(path) = status.marks.get(c) {
             let path = path.clone();
             status.selected().set_pathcontent(&path)?
         }
         Self::event_normal(status.selected())?;
         status.selected().reset_mode();
-        Self::refresh_status(status)
+        Self::refresh_status(status, colors)
     }
 
     /// Creates a symlink of every flagged file to the current directory.
@@ -221,7 +226,7 @@ impl EventExec {
     }
 
     /// Recursively delete all flagged files.
-    pub fn exec_delete_files(status: &mut Status) -> FmResult<()> {
+    pub fn exec_delete_files(status: &mut Status, colors: &Colors) -> FmResult<()> {
         for pathbuf in status.flagged.content.iter() {
             if pathbuf.is_dir() {
                 std::fs::remove_dir_all(pathbuf)?;
@@ -231,7 +236,7 @@ impl EventExec {
         }
         status.selected().reset_mode();
         status.clear_flags_and_reset_view()?;
-        Self::refresh_status(status)
+        Self::refresh_status(status, colors)
     }
 
     /// Change permission of the flagged files.
@@ -282,8 +287,9 @@ impl EventExec {
     pub fn exec_confirmed_action(
         status: &mut Status,
         confirmed_action: NeedConfirmation,
+        colors: &Colors,
     ) -> FmResult<()> {
-        Self::_exec_confirmed_action(status, confirmed_action)?;
+        Self::_exec_confirmed_action(status, confirmed_action, colors)?;
         status.selected().set_mode(Mode::Normal);
         Ok(())
     }
@@ -291,9 +297,10 @@ impl EventExec {
     fn _exec_confirmed_action(
         status: &mut Status,
         confirmed_action: NeedConfirmation,
+        colors: &Colors,
     ) -> FmResult<()> {
         match confirmed_action {
-            NeedConfirmation::Delete => Self::exec_delete_files(status),
+            NeedConfirmation::Delete => Self::exec_delete_files(status, colors),
             NeedConfirmation::Move => Self::exec_cut_paste(status),
             NeedConfirmation::Copy => Self::exec_copy_paste(status),
             NeedConfirmation::EmptyTrash => Self::exec_trash_empty(status),
@@ -442,8 +449,7 @@ impl EventExec {
     }
 
     /// Select a given row, if there's something in it.
-    pub fn event_select_row(status: &mut Status, row: u16) -> FmResult<()> {
-        let colors = &status.config_colors.clone();
+    pub fn event_select_row(status: &mut Status, row: u16, colors: &Colors) -> FmResult<()> {
         let tab = status.selected();
         match tab.mode {
             Mode::Normal => {
@@ -585,7 +591,7 @@ impl EventExec {
     /// Every file can be previewed. See the `crate::enum::Preview` for
     /// more details on previewinga file.
     /// Does nothing if the directory is empty.
-    pub fn event_preview(status: &mut Status) -> FmResult<()> {
+    pub fn event_preview(status: &mut Status, colors: &Colors) -> FmResult<()> {
         if status.selected_non_mut().path_content.is_empty() {
             return Ok(());
         }
@@ -593,13 +599,17 @@ impl EventExec {
         let Some(file_info) = unmutable_tab.selected() else { return Ok(()) };
         match file_info.file_kind {
             FileKind::NormalFile => {
-                let preview =
-                    Preview::new(file_info, &unmutable_tab.path_content.users_cache, status)?;
+                let preview = Preview::new(
+                    file_info,
+                    &unmutable_tab.path_content.users_cache,
+                    status,
+                    colors,
+                )?;
                 status.selected().set_mode(Mode::Preview);
                 status.selected().window.reset(preview.len());
                 status.selected().preview = preview;
             }
-            FileKind::Directory => Self::event_tree(status)?,
+            FileKind::Directory => Self::event_tree(status, colors)?,
             _ => (),
         }
 
@@ -681,11 +691,10 @@ impl EventExec {
     /// by extension.
     /// The first letter is used to identify the method.
     /// If the user types an uppercase char, the sort is reverse.
-    pub fn event_leave_sort(status: &mut Status, c: char) -> FmResult<()> {
+    pub fn event_leave_sort(status: &mut Status, c: char, colors: &Colors) -> FmResult<()> {
         if status.selected_non_mut().path_content.content.is_empty() {
             return Ok(());
         }
-        let colors = &status.config_colors.clone();
         let tab = status.selected();
         tab.reset_mode();
         match tab.mode {
@@ -713,8 +722,7 @@ impl EventExec {
     }
 
     /// Toggle the display of hidden files.
-    pub fn event_toggle_hidden(status: &mut Status) -> FmResult<()> {
-        let colors = &status.config_colors.clone();
+    pub fn event_toggle_hidden(status: &mut Status, colors: &Colors) -> FmResult<()> {
         let tab = status.selected();
         tab.show_hidden = !tab.show_hidden;
         tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
@@ -791,10 +799,10 @@ impl EventExec {
     }
 
     /// A right click opens a file or a directory.
-    pub fn event_right_click(status: &mut Status) -> FmResult<()> {
+    pub fn event_right_click(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => Self::exec_file(status),
-            Mode::Tree => Self::exec_tree(status),
+            Mode::Tree => Self::exec_tree(status, colors),
             _ => Ok(()),
         }
     }
@@ -864,11 +872,10 @@ impl EventExec {
     }
 
     /// Move back in history to the last visited directory.
-    pub fn event_back(status: &mut Status) -> FmResult<()> {
+    pub fn event_back(status: &mut Status, colors: &Colors) -> FmResult<()> {
         if status.selected_non_mut().history.content.len() <= 1 {
             return Ok(());
         }
-        let colors = &status.config_colors.clone();
         let tab = status.selected();
         tab.history.content.pop();
         let last_index = tab.history.len() - 1;
@@ -1012,8 +1019,7 @@ impl EventExec {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn exec_search(status: &mut Status) -> FmResult<()> {
-        let colors = &status.config_colors.clone();
+    pub fn exec_search(status: &mut Status, colors: &Colors) -> FmResult<()> {
         let tab = status.selected();
         let searched = tab.input.string();
         tab.input.reset();
@@ -1027,7 +1033,8 @@ impl EventExec {
                 tab.directory.tree.unselect_children();
                 if let Some(position) = tab.directory.tree.select_first_match(&searched) {
                     tab.directory.tree.position = position;
-                    tab.directory.tree.select_from_position()?;
+                    (_, _, tab.directory.tree.current_node) =
+                        tab.directory.tree.select_from_position()?;
                 } else {
                     tab.directory.tree.select_root()
                 };
@@ -1101,8 +1108,7 @@ impl EventExec {
 
     /// Apply a filter to the displayed files.
     /// See `crate::filter` for more details.
-    pub fn exec_filter(status: &mut Status) -> FmResult<()> {
-        let colors = &status.config_colors.clone();
+    pub fn exec_filter(status: &mut Status, colors: &Colors) -> FmResult<()> {
         let tab = status.selected();
         let filter = FilterKind::from_input(&tab.input.string());
         tab.set_filter(filter);
@@ -1117,7 +1123,7 @@ impl EventExec {
 
     /// Move up one row in modes allowing movement.
     /// Does nothing if the selected item is already the first in list.
-    pub fn event_move_up(status: &mut Status) -> FmResult<()> {
+    pub fn event_move_up(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_up_one_row(status.selected()),
             Mode::Navigate(Navigate::Jump) => EventExec::event_jumplist_prev(status),
@@ -1127,7 +1133,7 @@ impl EventExec {
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_prev(status)
             }
-            Mode::Tree => EventExec::event_select_prev(status)?,
+            Mode::Tree => EventExec::event_select_prev(status.selected(), colors)?,
             Mode::InputCompleted(_) => {
                 status.selected().completion.prev();
             }
@@ -1138,7 +1144,7 @@ impl EventExec {
 
     /// Move down one row in modes allowing movements.
     /// Does nothing if the user is already at the bottom.
-    pub fn event_move_down(status: &mut Status) -> FmResult<()> {
+    pub fn event_move_down(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_down_one_row(status.selected()),
             Mode::Navigate(Navigate::Jump) => EventExec::event_jumplist_next(status),
@@ -1149,7 +1155,7 @@ impl EventExec {
                 EventExec::event_encrypted_drive_next(status)
             }
             Mode::InputCompleted(_) => status.selected().completion.next(),
-            Mode::Tree => EventExec::event_select_next(status)?,
+            Mode::Tree => EventExec::event_select_next(status.selected(), colors)?,
             _ => (),
         };
         Ok(())
@@ -1157,10 +1163,10 @@ impl EventExec {
 
     /// Move to parent in normal mode,
     /// move left one char in mode requiring text input.
-    pub fn event_move_left(status: &mut Status) -> FmResult<()> {
+    pub fn event_move_left(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::event_move_to_parent(status.selected()),
-            Mode::Tree => EventExec::event_select_parent(status),
+            Mode::Tree => EventExec::event_select_parent(status, colors),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_move_cursor_left(status.selected());
                 Ok(())
@@ -1172,10 +1178,10 @@ impl EventExec {
 
     /// Move to child if any or open a regular file in normal mode.
     /// Move the cursor one char to right in mode requiring text input.
-    pub fn event_move_right(status: &mut Status) -> FmResult<()> {
+    pub fn event_move_right(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::exec_file(status),
-            Mode::Tree => EventExec::event_select_first_child(status),
+            Mode::Tree => EventExec::event_select_first_child(status, colors),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_move_cursor_right(status.selected());
                 Ok(())
@@ -1208,38 +1214,40 @@ impl EventExec {
     }
 
     /// Move to leftmost char in mode allowing edition.
-    pub fn event_key_home(status: &mut Status) -> FmResult<()> {
+    pub fn event_key_home(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_go_top(status.selected()),
-            Mode::Tree => EventExec::event_tree_go_to_root(status)?,
+            Mode::Tree => EventExec::event_tree_go_to_root(status, colors)?,
             _ => EventExec::event_cursor_home(status.selected()),
         };
         Ok(())
     }
 
     /// Move to the bottom in any mode.
-    pub fn event_end(status: &mut Status) -> FmResult<()> {
+    pub fn event_end(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_go_bottom(status.selected()),
-            Mode::Tree => EventExec::event_tree_go_to_bottom_leaf(status)?,
+            Mode::Tree => EventExec::event_tree_go_to_bottom_leaf(status, colors)?,
             _ => EventExec::event_cursor_end(status.selected()),
         };
         Ok(())
     }
 
     /// Move up 10 lines in normal mode and preview.
-    pub fn event_page_up(status: &mut Status) -> FmResult<()> {
+    pub fn event_page_up(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::page_up(status.selected()),
+            Mode::Tree => EventExec::event_tree_page_up(status.selected(), colors)?,
             _ => (),
         };
         Ok(())
     }
 
     /// Move down 10 lines in normal & preview mode.
-    pub fn event_page_down(status: &mut Status) -> FmResult<()> {
+    pub fn event_page_down(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::page_down(status.selected()),
+            Mode::Tree => EventExec::event_tree_page_down(status.selected(), colors)?,
             _ => (),
         };
         Ok(())
@@ -1250,7 +1258,7 @@ impl EventExec {
     /// related action.
     /// In normal mode, it will open the file.
     /// Reset to normal mode afterwards.
-    pub fn event_enter(status: &mut Status) -> FmResult<()> {
+    pub fn event_enter(status: &mut Status, colors: &Colors) -> FmResult<()> {
         let mut must_refresh = true;
         let mut must_reset_mode = true;
         match status.selected_non_mut().mode {
@@ -1261,7 +1269,7 @@ impl EventExec {
             Mode::InputSimple(InputSimple::RegexMatch) => EventExec::exec_regex(status)?,
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
-                EventExec::exec_filter(status)?
+                EventExec::exec_filter(status, colors)?
             }
             Mode::InputSimple(InputSimple::Password(password_kind, encrypted_action)) => {
                 must_refresh = false;
@@ -1280,11 +1288,11 @@ impl EventExec {
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
-                EventExec::exec_search(status)?
+                EventExec::exec_search(status, colors)?
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
             Mode::Normal => EventExec::exec_file(status)?,
-            Mode::Tree => EventExec::exec_tree(status)?,
+            Mode::Tree => EventExec::exec_tree(status, colors)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
             | Mode::InputCompleted(InputCompleted::Nothing)
@@ -1297,7 +1305,7 @@ impl EventExec {
             status.selected().reset_mode();
         }
         if must_refresh {
-            Self::refresh_status(status)?;
+            Self::refresh_status(status, colors)?;
         }
         Ok(())
     }
@@ -1347,9 +1355,9 @@ impl EventExec {
     }
 
     /// Refresh the current view, reloading the files. Move the selection to top.
-    pub fn event_refreshview(status: &mut Status) -> FmResult<()> {
+    pub fn event_refreshview(status: &mut Status, colors: &Colors) -> FmResult<()> {
         status.encrypted_devices.update()?;
-        Self::refresh_status(status)
+        Self::refresh_status(status, colors)
     }
 
     /// Open a thumbnail of an image, scaled up to the whole window.
@@ -1459,13 +1467,12 @@ impl EventExec {
 
     /// Creates a tree in every mode but "Tree".
     /// It tree mode it will exit this view.
-    pub fn event_tree(status: &mut Status) -> FmResult<()> {
+    pub fn event_tree(status: &mut Status, colors: &Colors) -> FmResult<()> {
         if let Mode::Tree = status.selected_non_mut().mode {
             Self::event_normal(status.selected())?;
             status.selected().set_mode(Mode::Normal)
         } else {
             status.display_full = true;
-            let colors = &status.config_colors.clone();
             status.selected().make_tree(colors)?;
             status.selected().set_mode(Mode::Tree);
             let len = status.selected_non_mut().directory.len();
@@ -1476,21 +1483,17 @@ impl EventExec {
 
     /// Fold the current node of the tree.
     /// Has no effect on "file" nodes.
-    pub fn event_tree_fold(status: &mut Status) -> FmResult<()> {
-        let colors = &status.config_colors.clone();
-        let tab = status.selected();
-
+    pub fn event_tree_fold(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
         let (tree, _, _) = tab.directory.tree.explore_position(false);
         tree.node.toggle_fold();
         tab.directory.make_preview(colors);
-        Self::event_select_next(status)
+        Self::event_select_next(tab, colors)
     }
 
     /// Unfold every child node in the tree.
     /// Recursively explore the tree and unfold every node.
     /// Reset the display.
-    pub fn event_tree_unfold_all(status: &mut Status) -> FmResult<()> {
-        let colors = &status.config_colors.clone();
+    pub fn event_tree_unfold_all(status: &mut Status, colors: &Colors) -> FmResult<()> {
         status.selected().directory.tree.unfold_children();
         status.selected().directory.make_preview(colors);
         Ok(())
@@ -1499,8 +1502,7 @@ impl EventExec {
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node.
     /// Reset the display.
-    pub fn event_tree_fold_all(status: &mut Status) -> FmResult<()> {
-        let colors = &status.config_colors.clone();
+    pub fn event_tree_fold_all(status: &mut Status, colors: &Colors) -> FmResult<()> {
         status.selected().directory.tree.fold_children();
         status.selected().directory.make_preview(colors);
         Ok(())
@@ -1508,51 +1510,54 @@ impl EventExec {
 
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node. Reset the display. pub fn event_tree_fold_all(status: &mut Status) -> FmResult<()> { let colors = &status.config_colors.clone(); status.selected().directory.tree.fold_children(); status.selected().directory.make_preview(colors); Ok(()) }
-    pub fn event_tree_go_to_root(status: &mut Status) -> FmResult<()> {
-        let colors = status.config_colors.clone();
-        status.selected().tree_select_root(&colors)
+    pub fn event_tree_go_to_root(status: &mut Status, colors: &Colors) -> FmResult<()> {
+        status.selected().tree_select_root(colors)
     }
 
     /// Select the first child of the current node and reset the display.
-    pub fn event_select_first_child(status: &mut Status) -> FmResult<()> {
-        let colors = status.config_colors.clone();
-        status.selected().tree_select_first_child(&colors)
+    pub fn event_select_first_child(status: &mut Status, colors: &Colors) -> FmResult<()> {
+        status.selected().tree_select_first_child(colors)
     }
 
     /// Select the parent of the current node and reset the display.
     /// Move to the parent and reset the tree if we were in the root node.
-    pub fn event_select_parent(status: &mut Status) -> FmResult<()> {
-        let colors = status.config_colors.clone();
-        status.selected().tree_select_parent(&colors)
+    pub fn event_select_parent(status: &mut Status, colors: &Colors) -> FmResult<()> {
+        status.selected().tree_select_parent(colors)
     }
 
     /// Select the next sibling of the current node.
-    pub fn event_select_next(status: &mut Status) -> FmResult<()> {
-        let colors = status.config_colors.clone();
-        status.selected().tree_select_next(&colors)
+    pub fn event_select_next(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.tree_select_next(colors)
     }
 
     /// Select the previous sibling of the current node.
-    pub fn event_select_prev(status: &mut Status) -> FmResult<()> {
-        let colors = status.config_colors.clone();
-        status.selected().tree_select_prev(&colors)
+    pub fn event_select_prev(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.tree_select_prev(colors)
+    }
+
+    /// Move up 10 lines in the tree
+    pub fn event_tree_page_up(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.tree_page_up(colors)
+    }
+
+    /// Move down 10 lines in the tree
+    pub fn event_tree_page_down(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.tree_page_down(colors)
     }
 
     /// Select the last leaf of the tree and reset the view.
-    pub fn event_tree_go_to_bottom_leaf(status: &mut Status) -> FmResult<()> {
-        let colors = status.config_colors.clone();
-        status.selected().tree_go_to_bottom_leaf(&colors)
+    pub fn event_tree_go_to_bottom_leaf(status: &mut Status, colors: &Colors) -> FmResult<()> {
+        status.selected().tree_go_to_bottom_leaf(colors)
     }
 
     /// Execute the selected node if it's a file else enter the directory.
-    pub fn exec_tree(status: &mut Status) -> FmResult<()> {
-        let colors = &status.config_colors.clone();
+    pub fn exec_tree(status: &mut Status, colors: &Colors) -> FmResult<()> {
         let tab = status.selected();
         let node = tab.directory.tree.current_node.clone();
-        if !node.fileinfo.path.is_dir() {
+        if !node.is_dir {
             Self::event_open_file(status)
         } else {
-            tab.set_pathcontent(&node.fileinfo.path)?;
+            tab.set_pathcontent(&node.filepath())?;
             tab.make_tree(colors)?;
             Ok(())
         }

@@ -3,6 +3,7 @@ use std::fs::{self, ReadDir};
 use crate::fileinfo::PathContent;
 use crate::fm_error::FmResult;
 use crate::mode::Mode;
+use crate::tree::ColoredString;
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
@@ -22,7 +23,7 @@ pub enum InputCompleted {
 /// showing where the user is in the vec.
 #[derive(Clone, Default)]
 pub struct Completion {
-    pub kind: InputCompleted,
+    kind: InputCompleted,
     /// Possible completions
     pub proposals: Vec<String>,
     /// Which completion is selected by the user
@@ -93,27 +94,9 @@ impl Completion {
         self.proposals.clear();
     }
 
-    /// Fill the completions items from some parameters, depending on the mode.
-    /// In Exec mode, we search for executable in $PATH starting with what the user typed.
-    /// In Goto mode, we search for valid absolute & relative paths starting with what the user typed.
-    /// In Search mode, we search for filenames in current directory starting with what the user typed.
-    pub fn complete(
-        &mut self,
-        input_string: &str,
-        path_content: &PathContent,
-        current_path: &str,
-    ) -> FmResult<()> {
-        match self.kind {
-            InputCompleted::Exec => self.exec(input_string),
-            InputCompleted::Goto => self.goto(input_string, current_path),
-            InputCompleted::Search => self.search(input_string, path_content),
-            InputCompleted::Nothing => Ok(()),
-        }
-    }
-
     /// Goto completion.
     /// Looks for the valid path completing what the user typed.
-    fn goto(&mut self, input_string: &str, current_path: &str) -> FmResult<()> {
+    pub fn goto(&mut self, input_string: &str, current_path: &str) -> FmResult<()> {
         self.update_from_input(input_string, current_path);
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
@@ -164,7 +147,7 @@ impl Completion {
     }
 
     /// Looks for programs in $PATH completing the one typed by the user.
-    fn exec(&mut self, input_string: &str) -> FmResult<()> {
+    pub fn exec(&mut self, input_string: &str) -> FmResult<()> {
         let mut proposals: Vec<String> = vec![];
         if let Some(paths) = std::env::var_os("PATH") {
             for path in std::env::split_paths(&paths).filter(|path| path.exists()) {
@@ -187,7 +170,11 @@ impl Completion {
     }
 
     /// Looks for file within current folder completing what the user typed.
-    fn search(&mut self, input_string: &str, path_content: &PathContent) -> FmResult<()> {
+    pub fn search_from_normal(
+        &mut self,
+        input_string: &str,
+        path_content: &PathContent,
+    ) -> FmResult<()> {
         self.update(
             path_content
                 .content
@@ -196,6 +183,26 @@ impl Completion {
                 .map(|f| f.filename.clone())
                 .collect(),
         );
+        Ok(())
+    }
+
+    /// Looks for file within tree completing what the user typed.
+    pub fn search_from_tree(
+        &mut self,
+        input_string: &str,
+        content: &[(String, ColoredString)],
+    ) -> FmResult<()> {
+        self.update(
+            content
+                .iter()
+                .filter(|(_, s)| s.text.contains(input_string))
+                .map(|(_, s)| {
+                    let text = s.text.replace("▸ ", "");
+                    text.replace("▾ ", "")
+                })
+                .collect(),
+        );
+
         Ok(())
     }
 }

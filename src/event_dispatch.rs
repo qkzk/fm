@@ -1,5 +1,6 @@
 use tuikit::prelude::{Event, Key, MouseButton};
 
+use crate::config::Colors;
 use crate::event_exec::EventExec;
 use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
@@ -25,51 +26,53 @@ impl EventDispatcher {
     /// Only non keyboard events are dealt here directly.
     /// Keyboard events are configurable and are sent to specific functions
     /// which needs to know those keybindings.
-    pub fn dispatch(&self, status: &mut Status, ev: Event) -> FmResult<()> {
+    pub fn dispatch(&self, status: &mut Status, ev: Event, colors: &Colors) -> FmResult<()> {
         match ev {
             Event::Key(Key::WheelUp(_, col, _)) => {
                 EventExec::event_select_pane(status, col)?;
-                EventExec::event_move_up(status)
+                EventExec::event_move_up(status, colors)
             }
             Event::Key(Key::WheelDown(_, col, _)) => {
                 EventExec::event_select_pane(status, col)?;
-                EventExec::event_move_down(status)
+                EventExec::event_move_down(status, colors)
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
                 EventExec::event_select_pane(status, col)?;
-                EventExec::event_select_row(status, row)
+                EventExec::event_select_row(status, row, colors)
             }
             Event::Key(Key::SingleClick(MouseButton::Right, row, col))
             | Event::Key(Key::DoubleClick(MouseButton::Left, row, col)) => {
                 EventExec::event_select_pane(status, col)?;
-                EventExec::event_select_row(status, row)?;
-                EventExec::event_right_click(status)
+                EventExec::event_select_row(status, row, colors)?;
+                EventExec::event_right_click(status, colors)
             }
-            Event::User(_) => EventExec::refresh_status(status),
-            Event::Resize { width, height } => EventExec::resize(status, width, height),
-            Event::Key(Key::Char(c)) => self.char(status, Key::Char(c)),
-            Event::Key(key) => self.key_matcher(status, key),
+            Event::User(_) => EventExec::refresh_status(status, colors),
+            Event::Resize { width, height } => EventExec::resize(status, width, height, colors),
+            Event::Key(Key::Char(c)) => self.char(status, Key::Char(c), colors),
+            Event::Key(key) => self.key_matcher(status, key, colors),
             _ => Ok(()),
         }
     }
 
-    fn key_matcher(&self, status: &mut Status, key: Key) -> FmResult<()> {
+    fn key_matcher(&self, status: &mut Status, key: Key, colors: &Colors) -> FmResult<()> {
         match self.binds.get(&key) {
-            Some(action) => action.matcher(status),
+            Some(action) => action.matcher(status, colors),
             None => Ok(()),
         }
     }
 
-    fn char(&self, status: &mut Status, key_char: Key) -> FmResult<()> {
+    fn char(&self, status: &mut Status, key_char: Key, colors: &Colors) -> FmResult<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
                 Mode::InputSimple(InputSimple::Marks(MarkAction::Jump)) => {
-                    EventExec::exec_marks_jump(status, c)
+                    EventExec::exec_marks_jump(status, c, colors)
                 }
                 Mode::InputSimple(InputSimple::Marks(MarkAction::New)) => {
-                    EventExec::exec_marks_new(status, c)
+                    EventExec::exec_marks_new(status, c, colors)
                 }
-                Mode::InputSimple(InputSimple::Sort) => EventExec::event_leave_sort(status, c),
+                Mode::InputSimple(InputSimple::Sort) => {
+                    EventExec::event_leave_sort(status, c, colors)
+                }
                 Mode::InputSimple(InputSimple::RegexMatch) => {
                     EventExec::event_text_insertion(status.selected(), c);
                     status.select_from_regex()?;
@@ -83,12 +86,12 @@ impl EventDispatcher {
                     EventExec::event_text_insert_and_complete(status.selected(), c)
                 }
                 Mode::Normal | Mode::Tree => match self.binds.get(&key_char) {
-                    Some(event_char) => event_char.matcher(status),
+                    Some(event_char) => event_char.matcher(status, colors),
                     None => Ok(()),
                 },
                 Mode::NeedConfirmation(confirmed_action) => {
                     if c == 'y' {
-                        let _ = EventExec::exec_confirmed_action(status, confirmed_action);
+                        let _ = EventExec::exec_confirmed_action(status, confirmed_action, colors);
                     }
                     EventExec::event_leave_need_confirmation(status.selected());
                     Ok(())

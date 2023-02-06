@@ -4,7 +4,6 @@ use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::panic;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::slice::Iter;
 
 use content_inspector::{inspect, ContentType};
@@ -58,14 +57,15 @@ impl Preview {
     /// it to the display method.
     pub fn new(
         file_info: &FileInfo,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
         status: &Status,
+        colors: &Colors,
     ) -> FmResult<Self> {
         match file_info.file_kind {
             FileKind::Directory => Ok(Self::Directory(Directory::new(
                 &file_info.path,
                 users_cache,
-                &status.config_colors,
+                colors,
                 &status.selected_non_mut().filter,
                 status.selected_non_mut().show_hidden,
             )?)),
@@ -533,7 +533,7 @@ impl Directory {
     /// We only hold the result here, since the tree itself has now usage atm.
     pub fn new(
         path: &Path,
-        users_cache: &Rc<UsersCache>,
+        users_cache: &UsersCache,
         colors: &Colors,
         filter_kind: &FilterKind,
         show_hidden: bool,
@@ -557,7 +557,7 @@ impl Directory {
     }
 
     /// Creates an empty directory preview.
-    pub fn empty(path: &Path, users_cache: &Rc<UsersCache>) -> FmResult<Self> {
+    pub fn empty(path: &Path, users_cache: &UsersCache) -> FmResult<Self> {
         Ok(Self {
             tree: Tree::empty(path, users_cache)?,
             len: 0,
@@ -602,7 +602,7 @@ impl Directory {
         if self.selected_index + 1 < self.content.len() {
             self.selected_index += 1;
         }
-        self.update_tree_from_index(colors)
+        self.update_tree_position_from_index(colors)
     }
 
     /// Select the previous sibling if any.
@@ -611,10 +611,30 @@ impl Directory {
         if self.selected_index > 0 {
             self.selected_index -= 1;
         }
-        self.update_tree_from_index(colors)
+        self.update_tree_position_from_index(colors)
     }
 
-    pub fn update_tree_from_index(&mut self, colors: &Colors) -> FmResult<()> {
+    /// Move up 10 times.
+    pub fn page_up(&mut self, colors: &Colors) -> FmResult<()> {
+        if self.selected_index > 10 {
+            self.selected_index -= 10;
+        } else {
+            self.selected_index = 1;
+        }
+        self.update_tree_position_from_index(colors)
+    }
+
+    /// Move down 10 times
+    pub fn page_down(&mut self, colors: &Colors) -> FmResult<()> {
+        self.selected_index += 10;
+        if self.selected_index >= self.content.len() {
+            self.selected_index = self.content.len() - 1;
+        }
+        self.update_tree_position_from_index(colors)
+    }
+
+    /// Update the position of the selected element from its index.
+    pub fn update_tree_position_from_index(&mut self, colors: &Colors) -> FmResult<()> {
         self.tree.position = self.tree.position_from_index(self.selected_index);
         let (_, _, node) = self.tree.select_from_position()?;
         self.tree.current_node = node;

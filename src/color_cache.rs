@@ -38,7 +38,7 @@ fn color(coords: usize) -> Color {
         .unwrap()
 }
 
-fn extension_color(extension: &str) -> Color {
+pub fn extension_color(extension: &str) -> Color {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     hasher.write(extension.as_bytes());
     color(hasher.finish() as usize)

@@ -1,5 +1,6 @@
 use strum_macros::{Display, EnumString};
 
+use crate::config::Colors;
 use crate::event_exec::EventExec;
 use crate::fm_error::FmResult;
 use crate::status::Status;
@@ -82,10 +83,10 @@ pub enum ActionMap {
 impl ActionMap {
     /// Makes the junction between `Actions` and `Events`.
     /// Every Action links to a different `EventExec` method.
-    pub fn matcher(&self, status: &mut Status) -> FmResult<()> {
+    pub fn matcher(&self, status: &mut Status, colors: &Colors) -> FmResult<()> {
         let current_tab = status.selected();
         match *self {
-            ActionMap::Back => EventExec::event_back(status),
+            ActionMap::Back => EventExec::event_back(status, colors),
             ActionMap::BackTab => EventExec::backtab(status),
             ActionMap::Backspace => EventExec::event_backspace(status),
             ActionMap::Bulkrename => EventExec::event_bulkrename(status),
@@ -100,8 +101,8 @@ impl ActionMap {
             ActionMap::DisplayFull => EventExec::event_toggle_display_full(status),
             ActionMap::DragNDrop => EventExec::event_drag_n_drop(status),
             ActionMap::EncryptedDrive => EventExec::event_encrypted_drive(status),
-            ActionMap::End => EventExec::event_end(status),
-            ActionMap::Enter => EventExec::event_enter(status),
+            ActionMap::End => EventExec::event_end(status, colors),
+            ActionMap::Enter => EventExec::event_enter(status, colors),
             ActionMap::Exec => EventExec::event_exec(current_tab),
             ActionMap::Filter => EventExec::event_filter(current_tab),
             ActionMap::FlagAll => EventExec::event_flag_all(status),
@@ -111,23 +112,23 @@ impl ActionMap {
             ActionMap::History => EventExec::event_history(current_tab),
             ActionMap::Home => EventExec::event_home(current_tab),
             ActionMap::Jump => EventExec::event_jump(status),
-            ActionMap::KeyHome => EventExec::event_key_home(status),
+            ActionMap::KeyHome => EventExec::event_key_home(status, colors),
             ActionMap::MarksJump => EventExec::event_marks_jump(status),
             ActionMap::MarksNew => EventExec::event_marks_new(current_tab),
             ActionMap::ModeNormal => EventExec::event_reset_mode(current_tab),
-            ActionMap::MoveDown => EventExec::event_move_down(status),
-            ActionMap::MoveLeft => EventExec::event_move_left(status),
-            ActionMap::MoveRight => EventExec::event_move_right(status),
-            ActionMap::MoveUp => EventExec::event_move_up(status),
+            ActionMap::MoveDown => EventExec::event_move_down(status, colors),
+            ActionMap::MoveLeft => EventExec::event_move_left(status, colors),
+            ActionMap::MoveRight => EventExec::event_move_right(status, colors),
+            ActionMap::MoveUp => EventExec::event_move_up(status, colors),
             ActionMap::NewDir => EventExec::event_new_dir(current_tab),
             ActionMap::NewFile => EventExec::event_new_file(current_tab),
             ActionMap::NvimFilepicker => EventExec::event_nvim_filepicker(current_tab),
             ActionMap::OpenFile => EventExec::event_open_file(status),
-            ActionMap::PageDown => EventExec::event_page_down(status),
-            ActionMap::PageUp => EventExec::event_page_up(status),
-            ActionMap::Preview => EventExec::event_preview(status),
+            ActionMap::PageDown => EventExec::event_page_down(status, colors),
+            ActionMap::PageUp => EventExec::event_page_up(status, colors),
+            ActionMap::Preview => EventExec::event_preview(status, colors),
             ActionMap::Quit => EventExec::event_quit(current_tab),
-            ActionMap::RefreshView => EventExec::event_refreshview(status),
+            ActionMap::RefreshView => EventExec::event_refreshview(status, colors),
             ActionMap::RegexMatch => EventExec::event_regex_match(current_tab),
             ActionMap::Rename => EventExec::event_rename(current_tab),
             ActionMap::ReverseFlags => EventExec::event_reverse_flags(status),
@@ -141,15 +142,15 @@ impl ActionMap {
             ActionMap::Thumbnail => EventExec::event_thumbnail(current_tab),
             ActionMap::ToggleDualPane => EventExec::event_toggle_dualpane(status),
             ActionMap::ToggleFlag => EventExec::event_toggle_flag(status),
-            ActionMap::ToggleHidden => EventExec::event_toggle_hidden(status),
+            ActionMap::ToggleHidden => EventExec::event_toggle_hidden(status, colors),
             ActionMap::TrashMoveFile => EventExec::event_trash_move_file(status),
             ActionMap::TrashRestoreFile => EventExec::event_trash_restore_file(status),
             ActionMap::TrashEmpty => EventExec::exec_trash_empty(status),
             ActionMap::TrashOpen => EventExec::event_trash_open(status),
-            ActionMap::Tree => EventExec::event_tree(status),
-            ActionMap::TreeFold => EventExec::event_tree_fold(status),
-            ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(status),
-            ActionMap::TreeUnFoldAll => EventExec::event_tree_unfold_all(status),
+            ActionMap::Tree => EventExec::event_tree(status, colors),
+            ActionMap::TreeFold => EventExec::event_tree_fold(current_tab, colors),
+            ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(status, colors),
+            ActionMap::TreeUnFoldAll => EventExec::event_tree_unfold_all(status, colors),
             ActionMap::OpenConfig => EventExec::event_open_config(status),
 
             ActionMap::Nothing => Ok(()),
