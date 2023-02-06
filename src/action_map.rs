@@ -149,8 +149,8 @@ impl ActionMap {
             ActionMap::TrashOpen => EventExec::event_trash_open(status),
             ActionMap::Tree => EventExec::event_tree(status, colors),
             ActionMap::TreeFold => EventExec::event_tree_fold(current_tab, colors),
-            ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(status, colors),
-            ActionMap::TreeUnFoldAll => EventExec::event_tree_unfold_all(status, colors),
+            ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(current_tab, colors),
+            ActionMap::TreeUnFoldAll => EventExec::event_tree_unfold_all(current_tab, colors),
             ActionMap::OpenConfig => EventExec::event_open_config(status),
 
             ActionMap::Nothing => Ok(()),

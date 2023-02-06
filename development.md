@@ -340,6 +340,18 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Add a shortcut to the config folder
 - [x] use g to go to the mounted encrypted drive
 
+### Version 0.1.16 : fix completion & filter in tree
+
+- [x] FIX: can't parse uid gid if they only exists on a remote machine. See https://serverfault.com/questions/514118/mapping-uid-and-gid-of-local-user-to-the-mounted-nfs-share
+      for a fix.
+- [x] FIX: truncate file size in preview mode.
+- [x] FIX: in tree mode search is backward
+- [x] FIX: when searching from tree mode, it only completes with level 1 elements, not nested ones.
+- [x] FIX: when exiting search in tree mode, second line isn't updated
+- [x] FIX: when filtering in tree mode, only the level 1 matching elements are displayed
+      Decided to keep directories when filtering in tree mode. Those are excluded when filtering in normal mode.
+- [x] Tree: move 10 rows at a time
+
 ## TODO
 
 - [ ] remote control
@@ -364,17 +376,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] scrollable shortcuts, marks & history
 
-- [ ] Version 0.1.16 : fix completion & filter in tree
+- [ ] Version 0.1.17 : refactor tree exploration
 
-  - [x] FIX: can't parse uid gid if they only exists on a remote machine. See https://serverfault.com/questions/514118/mapping-uid-and-gid-of-local-user-to-the-mounted-nfs-share
-        for a fix.
-  - [x] FIX: truncate file size in preview mode.
-  - [x] FIX: in tree mode search is backward
-  - [x] FIX: when searching from tree mode, it only completes with level 1 elements, not nested ones.
-  - [x] FIX: when exiting search in tree mode, second line isn't updated
-  - [x] FIX: when filtering in tree mode, only the level 1 matching elements are displayed
-        Decided to keep directories when filtering in tree mode. Those are excluded when filtering in normal mode.
-  - [x] Tree: move 10 rows at a time
+  - [ ] Vec<position> : line number -> position
+  - [ ] stop exploration at fixed height
+  - [ ] if reach end of positions, restart exploring from this point untill we have enough lines
+  - [ ] boolean variable : tree fully explored
 
 - [ ] Version 0.1.50 : safety & memory usage
 

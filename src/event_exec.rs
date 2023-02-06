@@ -1164,11 +1164,12 @@ impl EventExec {
     /// Move to parent in normal mode,
     /// move left one char in mode requiring text input.
     pub fn event_move_left(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        match status.selected().mode {
-            Mode::Normal => EventExec::event_move_to_parent(status.selected()),
-            Mode::Tree => EventExec::event_select_parent(status, colors),
+        let tab = status.selected();
+        match tab.mode {
+            Mode::Normal => EventExec::event_move_to_parent(tab),
+            Mode::Tree => EventExec::event_select_parent(tab, colors),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
-                EventExec::event_move_cursor_left(status.selected());
+                EventExec::event_move_cursor_left(tab);
                 Ok(())
             }
 
@@ -1181,7 +1182,7 @@ impl EventExec {
     pub fn event_move_right(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::exec_file(status),
-            Mode::Tree => EventExec::event_select_first_child(status, colors),
+            Mode::Tree => EventExec::event_select_first_child(status.selected(), colors),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_move_cursor_right(status.selected());
                 Ok(())
@@ -1215,20 +1216,22 @@ impl EventExec {
 
     /// Move to leftmost char in mode allowing edition.
     pub fn event_key_home(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        match status.selected().mode {
-            Mode::Normal | Mode::Preview => EventExec::event_go_top(status.selected()),
-            Mode::Tree => EventExec::event_tree_go_to_root(status, colors)?,
-            _ => EventExec::event_cursor_home(status.selected()),
+        let tab = status.selected();
+        match tab.mode {
+            Mode::Normal | Mode::Preview => EventExec::event_go_top(tab),
+            Mode::Tree => EventExec::event_tree_go_to_root(tab, colors)?,
+            _ => EventExec::event_cursor_home(tab),
         };
         Ok(())
     }
 
     /// Move to the bottom in any mode.
     pub fn event_end(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        match status.selected().mode {
-            Mode::Normal | Mode::Preview => EventExec::event_go_bottom(status.selected()),
-            Mode::Tree => EventExec::event_tree_go_to_bottom_leaf(status, colors)?,
-            _ => EventExec::event_cursor_end(status.selected()),
+        let tab = status.selected();
+        match tab.mode {
+            Mode::Normal | Mode::Preview => EventExec::event_go_bottom(tab),
+            Mode::Tree => EventExec::event_tree_go_to_bottom_leaf(tab, colors)?,
+            _ => EventExec::event_cursor_end(tab),
         };
         Ok(())
     }
@@ -1493,61 +1496,68 @@ impl EventExec {
     /// Unfold every child node in the tree.
     /// Recursively explore the tree and unfold every node.
     /// Reset the display.
-    pub fn event_tree_unfold_all(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().directory.tree.unfold_children();
-        status.selected().directory.make_preview(colors);
+    pub fn event_tree_unfold_all(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.unfold_children();
+        tab.directory.make_preview(colors);
         Ok(())
     }
 
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node.
     /// Reset the display.
-    pub fn event_tree_fold_all(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().directory.tree.fold_children();
-        status.selected().directory.make_preview(colors);
+    pub fn event_tree_fold_all(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.fold_children();
+        tab.directory.make_preview(colors);
         Ok(())
     }
 
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node. Reset the display. pub fn event_tree_fold_all(status: &mut Status) -> FmResult<()> { let colors = &status.config_colors.clone(); status.selected().directory.tree.fold_children(); status.selected().directory.make_preview(colors); Ok(()) }
-    pub fn event_tree_go_to_root(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_select_root(colors)
+    pub fn event_tree_go_to_root(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.reset_required_height();
+        tab.tree_select_root(colors)
     }
 
     /// Select the first child of the current node and reset the display.
-    pub fn event_select_first_child(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_select_first_child(colors)
+    pub fn event_select_first_child(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.increase_required_height();
+        tab.tree_select_first_child(colors)
     }
 
     /// Select the parent of the current node and reset the display.
     /// Move to the parent and reset the tree if we were in the root node.
-    pub fn event_select_parent(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_select_parent(colors)
+    pub fn event_select_parent(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.tree_select_parent(colors)
     }
 
     /// Select the next sibling of the current node.
     pub fn event_select_next(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.increase_required_height();
         tab.tree_select_next(colors)
     }
 
     /// Select the previous sibling of the current node.
     pub fn event_select_prev(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.decrease_required_height();
         tab.tree_select_prev(colors)
     }
 
     /// Move up 10 lines in the tree
     pub fn event_tree_page_up(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.decrease_required_height_by_ten();
         tab.tree_page_up(colors)
     }
 
     /// Move down 10 lines in the tree
     pub fn event_tree_page_down(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.increase_required_height_by_ten();
         tab.tree_page_down(colors)
     }
 
     /// Select the last leaf of the tree and reset the view.
-    pub fn event_tree_go_to_bottom_leaf(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_go_to_bottom_leaf(colors)
+    pub fn event_tree_go_to_bottom_leaf(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.set_required_height(usize::MAX);
+        tab.tree_go_to_bottom_leaf(colors)
     }
 
     /// Execute the selected node if it's a file else enter the directory.
