@@ -20,6 +20,7 @@ use crate::cryptsetup::PasswordKind;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::git::git_root;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
 use crate::opener::execute_in_child;
@@ -1661,6 +1662,20 @@ impl EventExec {
         )) {
             Ok(_) => (),
             Err(e) => info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
+        }
+        Ok(())
+    }
+
+    /// Move to the git root. Does nothing outside of a git repository.
+    pub fn event_git_root(tab: &mut Tab) -> FmResult<()> {
+        let Ok(git_root) = git_root() else { return Ok(()) };
+
+        let path = &path::PathBuf::from(git_root);
+
+        if path.exists() {
+            tab.set_pathcontent(path)?;
+            Self::event_normal(tab)?;
+            tab.reset_mode();
         }
         Ok(())
     }

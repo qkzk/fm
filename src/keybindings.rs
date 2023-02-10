@@ -88,6 +88,7 @@ impl Bindings {
             (Key::Ctrl('d'), ActionMap::Delete),
             (Key::Ctrl('e'), ActionMap::DisplayFull),
             (Key::Ctrl('f'), ActionMap::FuzzyFind),
+            (Key::Ctrl('g'), ActionMap::GitRoot),
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
             (Key::Ctrl('q'), ActionMap::ModeNormal),
             (Key::Ctrl('r'), ActionMap::RefreshView),

@@ -41,6 +41,7 @@ static HELP_TO_FORMAT: &str = "
 {CopyFilepath}:      copy filepath to clipboard
 {DragNDrop}:       dragon-drop selected file
 {OpenConfig}:       open the config file
+{GitRoot}:      move to git root
 
 - Action on flagged files - 
 {ToggleFlag}:      toggle flag on a file 
