@@ -114,7 +114,7 @@ impl Tree {
     /// It may be better to stop the recursion when too much file
     /// are present and the exploration is slow.
     pub const MAX_DEPTH: usize = 7;
-    pub const MAX_HEIGHT: usize = 80;
+    pub const REQUIRED_HEIGHT: usize = 80;
 
     /// Set the required height to a given value.
     /// The required height is used to stop filling the view content.
@@ -136,13 +136,13 @@ impl Tree {
     /// Reset the required height to its default value : Self::MAX_HEIGHT
     /// The required height is used to stop filling the view content.
     pub fn reset_required_height(&mut self) {
-        self.required_height = Self::MAX_HEIGHT
+        self.required_height = Self::REQUIRED_HEIGHT
     }
 
     /// Decrement the required height if possible.
     /// The required height is used to stop filling the view content.
     pub fn decrease_required_height(&mut self) {
-        if self.required_height > Self::MAX_HEIGHT {
+        if self.required_height > Self::REQUIRED_HEIGHT {
             self.required_height -= 1;
         }
     }
@@ -150,7 +150,7 @@ impl Tree {
     /// Decrease the required height by 10 if possible
     /// The required height is used to stop filling the view content.
     pub fn decrease_required_height_by_ten(&mut self) {
-        if self.required_height >= Self::MAX_HEIGHT + 10 {
+        if self.required_height >= Self::REQUIRED_HEIGHT + 10 {
             self.required_height -= 10;
         }
     }
@@ -217,7 +217,7 @@ impl Tree {
             position,
             current_node,
             sort_kind,
-            required_height: Self::MAX_HEIGHT,
+            required_height: Self::REQUIRED_HEIGHT,
         })
     }
 

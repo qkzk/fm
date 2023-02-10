@@ -382,6 +382,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] stop exploration at fixed height
   - [ ] if reach end of positions, restart exploring from this point untill we have enough lines
   - [ ] boolean variable : tree fully explored
+  - [ ] git root : cd to git root
 
 - [ ] Version 0.1.50 : safety & memory usage
 
