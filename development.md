@@ -373,13 +373,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] vim keys, harmonize keybinds with ranger
 - [ ] zoxide support
+- [ ] make navigable content scrollable
 
-- [ ] scrollable shortcuts, marks & history
-
-- [ ] Version 0.1.17 : git root & tree mode
+- [ ] Version 0.1.17 : git root, tree mode, navigable marks
 
   - [x] git root : cd to git root
   - [x] tree: use the length of the screen to avoid parsing non displayed lines
+  - [x] navigate in marks
 
 - [ ] Version 0.1.50 : safety & memory usage
 
