@@ -72,11 +72,9 @@ pub enum InputSimple {
     RegexMatch,
     /// Change the type of sort
     Sort,
-    /// Jump to a saved mark
-    Marks(MarkAction),
     /// Filter by extension, name, directory or no filter
     Filter,
-    ///
+    /// Input a password (chars a replaced by *)
     Password(PasswordKind, EncryptedAction),
 }
 
@@ -90,10 +88,12 @@ pub enum Navigate {
     History,
     /// Navigate to a predefined shortcut
     Shortcut,
-    ///
+    /// Manipulate a trash file
     Trash,
-    ///
+    /// Manipulate an encrypted device
     EncryptedDrive,
+    /// Jump to a saved mark
+    Marks(MarkAction),
 }
 
 /// Different mode in which the application can be.
@@ -131,7 +131,7 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Sort) => {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }
-            Mode::InputSimple(InputSimple::Marks(_)) => write!(f, "Marks jump:"),
+            Mode::Navigate(Navigate::Marks(_)) => write!(f, "Marks jump:"),
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
             Mode::InputSimple(InputSimple::Password(password_kind, _)) => {
                 write!(f, "{password_kind}")

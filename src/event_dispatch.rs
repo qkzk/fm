@@ -64,12 +64,6 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, key_char: Key, colors: &Colors) -> FmResult<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
-                Mode::InputSimple(InputSimple::Marks(MarkAction::Jump)) => {
-                    EventExec::exec_marks_jump(status, c, colors)
-                }
-                Mode::InputSimple(InputSimple::Marks(MarkAction::New)) => {
-                    EventExec::exec_marks_new(status, c, colors)
-                }
                 Mode::InputSimple(InputSimple::Sort) => {
                     EventExec::event_leave_sort(status, c, colors)
                 }
@@ -107,6 +101,12 @@ impl EventDispatcher {
                 }
                 Mode::Navigate(Navigate::EncryptedDrive) if c == 'u' => {
                     EventExec::event_umount_encrypted_drive(status)
+                }
+                Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
+                    EventExec::exec_marks_jump(status, c, colors)
+                }
+                Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
+                    EventExec::exec_marks_new(status, c, colors)
                 }
                 Mode::Preview | Mode::Navigate(_) => {
                     status.selected().set_mode(Mode::Normal);
