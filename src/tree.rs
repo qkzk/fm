@@ -429,7 +429,10 @@ impl Tree {
     /// We navigate into the tree and format every element into a pair :
     /// - a prefix, wich is a string made of glyphs displaying the tree,
     /// - a colored string to be colored relatively to the file type.
-    /// Since we use the same colors everywhere, it's
+    /// This method has to parse all the content until the bottom of screen
+    /// is reached. There's no way atm to avoid parsing the first lines
+    /// since the "prefix" (straight lines at left of screen) can reach
+    /// the whole screen.
     pub fn into_navigable_content(
         &mut self,
         colors: &Colors,

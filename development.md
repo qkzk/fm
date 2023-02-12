@@ -376,13 +376,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] scrollable shortcuts, marks & history
 
-- [ ] Version 0.1.17 : refactor tree exploration
+- [ ] Version 0.1.17 : git root & tree mode
 
-  - [ ] Vec<position> : line number -> position
-  - [ ] stop exploration at fixed height
-  - [ ] if reach end of positions, restart exploring from this point untill we have enough lines
-  - [ ] boolean variable : tree fully explored
-  - [ ] git root : cd to git root
+  - [x] git root : cd to git root
+  - [x] tree: use the length of the screen to avoid parsing non displayed lines
 
 - [ ] Version 0.1.50 : safety & memory usage
 
