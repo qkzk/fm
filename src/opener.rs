@@ -6,11 +6,11 @@ use std::process::Command;
 use log::info;
 use serde_yaml;
 
-use crate::compress::decompress;
 use crate::constant_strings_paths::{
     DEFAULT_AUDIO_OPENER, DEFAULT_IMAGE_OPENER, DEFAULT_OFFICE_OPENER, DEFAULT_OPENER,
     DEFAULT_READABLE_OPENER, DEFAULT_TEXT_OPENER, DEFAULT_VECTORIAL_OPENER, DEFAULT_VIDEO_OPENER,
 };
+use crate::decompress::decompress;
 use crate::fileinfo::extract_extension;
 use crate::fm_error::{FmError, FmResult};
 

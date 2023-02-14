@@ -16,8 +16,8 @@ use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
-use crate::compress::list_files;
 use crate::config::Colors;
+use crate::decompress::list_files;
 use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
