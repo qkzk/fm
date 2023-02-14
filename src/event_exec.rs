@@ -10,7 +10,7 @@ use sysinfo::SystemExt;
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
 use crate::compress::{
-    compressed_deflate, compressed_gzip, compressed_zip, compressed_zlib, CompressionMethod,
+    compress_deflate, compress_gzip, compress_zip, compress_zlib, CompressionMethod,
 };
 use crate::config::Colors;
 use crate::constant_strings_paths::CONFIG_PATH;
@@ -1751,19 +1751,19 @@ impl EventExec {
         match status.compression.selected() {
             Some(CompressionMethod::DEFLATE) => {
                 let archive_name = "archive.tar.gz".to_owned();
-                compressed_gzip(archive_name, files)
+                compress_gzip(archive_name, files)
             }
             Some(CompressionMethod::GZ) => {
                 let archive_name = "archive.tar.gz".to_owned();
-                compressed_deflate(archive_name, files)
+                compress_deflate(archive_name, files)
             }
             Some(CompressionMethod::ZLIB) => {
                 let archive_name = "archive.tar.xz".to_owned();
-                compressed_zlib(archive_name, files)
+                compress_zlib(archive_name, files)
             }
             Some(CompressionMethod::ZIP) => {
                 let archive_name = "archive.zip".to_owned();
-                compressed_zip(archive_name, files)
+                compress_zip(archive_name, files)
             }
             None => Ok(()),
         }

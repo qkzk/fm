@@ -42,6 +42,7 @@ kamadak-exif = "0.5.5"
 log = { version = "0.4.0", features = ["std"] }
 log4rs = {version = "1.2.0", features = ["rolling_file_appender", "compound_policy", "size_trigger", "fixed_window_roller"] }
 notify-rust = "4.5.10"
+pathdiff = "0.2.1"
 pdf-extract = "0.6.4"
 rand = "0.8.5"
 regex = "1.6.0"
@@ -58,3 +59,4 @@ tar = "0.4.38"
 tuikit = "0.5.0"
 url-escape = "0.1.1"
 users = "0.11.0"
+zip = "0.6.4"

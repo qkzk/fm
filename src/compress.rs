@@ -40,7 +40,7 @@ impl CompressionPicker {
 
 impl_selectable_content!(CompressionMethod, CompressionPicker);
 
-pub fn compressed_gzip(archive_name: String, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+pub fn compress_gzip(archive_name: String, files: Vec<std::path::PathBuf>) -> FmResult<()> {
     let compressed_file = File::create(archive_name)?;
     let mut encoder = GzEncoder::new(compressed_file, Compression::default());
 
@@ -62,7 +62,7 @@ pub fn compressed_gzip(archive_name: String, files: Vec<std::path::PathBuf>) -> 
     Ok(())
 }
 
-pub fn compressed_deflate(archive_name: String, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+pub fn compress_deflate(archive_name: String, files: Vec<std::path::PathBuf>) -> FmResult<()> {
     let compressed_file = File::create(archive_name)?;
     let mut encoder = DeflateEncoder::new(compressed_file, Compression::default());
 
@@ -84,7 +84,7 @@ pub fn compressed_deflate(archive_name: String, files: Vec<std::path::PathBuf>) 
     Ok(())
 }
 
-pub fn compressed_zlib(archive_name: String, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+pub fn compress_zlib(archive_name: String, files: Vec<std::path::PathBuf>) -> FmResult<()> {
     let compressed_file = File::create(archive_name)?;
     let mut encoder = ZlibEncoder::new(compressed_file, Compression::default());
 
@@ -106,12 +106,15 @@ pub fn compressed_zlib(archive_name: String, files: Vec<std::path::PathBuf>) -> 
     Ok(())
 }
 
-pub fn compressed_zip(archive_name: String, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+pub fn compress_zip(archive_name: String, files: Vec<std::path::PathBuf>) -> FmResult<()> {
     let archive = std::fs::File::create(&archive_name).unwrap();
     let mut zip = zip::ZipWriter::new(archive);
     for file in files.iter() {
+        zip.start_file(
+            file.to_str().unwrap(),
+            FileOptions::default().compression_method(zip::CompressionMethod::Bzip2),
+        )?;
         let mut buffer = Vec::new();
-        zip.start_file(file.to_str().unwrap(), FileOptions::default())?;
         let mut content = File::open(file)?;
         content.read_to_end(&mut buffer)?;
         zip.write_all(&buffer)?;
