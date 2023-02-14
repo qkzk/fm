@@ -54,6 +54,7 @@ static HELP_TO_FORMAT: &str = "
 {CutPaste}:      move to current dir
 {DeleteFile}:      delete files permanently
 {TrashMoveFile}:      move to trash
+{Compress}:      compress into an archive
 
 - Trash -
 {TrashOpen}:       Open the trash (enter to restore, del clear)

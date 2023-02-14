@@ -380,19 +380,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] git root : cd to git root
   - [x] tree: use the length of the screen to avoid parsing non displayed lines
   - [x] navigate in marks
-  - [ ] compress flagged files
-
-    No encryption method provided
-
-    - [ ] choose compression method from a menu
-    - [ ] implement different kind of compression
-    - [ ] pick the right crates:
-      - zip (zip)
-      - tar:
-        - xz (xz ?)
-        - gzip (flate2 / flate3)
-        - bzip2 (lzw)
-      - 7z (sevenz-rust)
+  - [x] compress flagged files: method is chosen from a list of compression method.
 
 - [ ] Version 0.1.50 : safety & memory usage
 
