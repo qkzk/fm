@@ -18,7 +18,7 @@ use fm::utils::{drop_everything, init_term, print_on_quit};
 /// Init the status and display and listen to events (keyboard, mouse, resize, custom...).
 /// The application is redrawn after every event.
 /// When the user issues a quit event, the main loop is broken and we reset the cursor.
-fn main() -> FmResult<()> {
+fn main2() -> FmResult<()> {
     set_logger()?;
     info!("fm is starting");
 
@@ -55,4 +55,17 @@ fn main() -> FmResult<()> {
     print_on_quit(&final_path);
     info!("fm is shutting down");
     Ok(())
+}
+
+fn main() -> FmResult<()> {
+    use fm::compress::compressed_gzip;
+    use std::path::PathBuf;
+
+    compressed_gzip(
+        "archive.tar.gz".to_owned(),
+        vec![
+            PathBuf::from("compress_example/2022_nsi_metropole_j1_reseau_1.png"),
+            PathBuf::from("compress_example/2022_nsi_metropole_j1_correction.pdf"),
+        ],
+    )
 }
