@@ -10,6 +10,7 @@ use tuikit::term::Term;
 use users::UsersCache;
 
 use crate::args::Args;
+use crate::compress::CompressionPicker;
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::DeviceOpener;
@@ -57,7 +58,10 @@ pub struct Status {
     pub help: String,
     /// The trash
     pub trash: Trash,
+    /// Encrypted devices opener
     pub encrypted_devices: DeviceOpener,
+    /// Compression methods
+    pub compression: CompressionPicker,
 }
 
 impl Status {
@@ -88,6 +92,7 @@ impl Status {
         tab2.shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
         let trash = Trash::new()?;
+        let compression = CompressionPicker::new();
 
         Ok(Self {
             tabs: [tab2, tab],
@@ -103,6 +108,7 @@ impl Status {
             help,
             trash,
             encrypted_devices,
+            compression,
         })
     }
 

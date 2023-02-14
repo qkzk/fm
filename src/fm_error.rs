@@ -30,6 +30,7 @@ pub enum ErrorVariant {
     SERDEYAML,
     CHRONO,
     UTF8ERROR,
+    ZIPERROR,
     CUSTOM(String),
 }
 
@@ -184,6 +185,12 @@ impl From<chrono::ParseError> for FmError {
 impl From<std::string::FromUtf8Error> for FmError {
     fn from(error: std::string::FromUtf8Error) -> Self {
         Self::new(ErrorVariant::UTF8ERROR, &error.to_string())
+    }
+}
+
+impl From<zip::result::ZipError> for FmError {
+    fn from(error: zip::result::ZipError) -> Self {
+        Self::new(ErrorVariant::ZIPERROR, &error.to_string())
     }
 }
 

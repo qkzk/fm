@@ -94,6 +94,8 @@ pub enum Navigate {
     EncryptedDrive,
     /// Jump to a saved mark
     Marks(MarkAction),
+    /// Pick a compression method
+    Compress,
 }
 
 /// Different mode in which the application can be.
@@ -144,6 +146,7 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::History) => write!(f, "History :"),
             Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
             Mode::Navigate(Navigate::Trash) => write!(f, "Trash    :"),
+            Mode::Navigate(Navigate::Compress) => write!(f, "Compress :"),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 write!(f, "Encrypted devices :")
             }

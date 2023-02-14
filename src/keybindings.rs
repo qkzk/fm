@@ -45,6 +45,7 @@ impl Bindings {
             (Key::Char('-'), ActionMap::Back),
             (Key::Char('~'), ActionMap::Home),
             (Key::Char('B'), ActionMap::Bulkrename),
+            (Key::Char('C'), ActionMap::Compress),
             (Key::Char('D'), ActionMap::ToggleDualPane),
             (Key::Char('F'), ActionMap::Filter),
             (Key::Char('G'), ActionMap::Shortcut),

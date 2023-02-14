@@ -17,6 +17,7 @@ pub enum ActionMap {
     Bulkrename,
     Chmod,
     ClearFlags,
+    Compress,
     CopyFilename,
     CopyFilepath,
     CopyPaste,
@@ -50,6 +51,7 @@ pub enum ActionMap {
     NewFile,
     Nothing,
     NvimFilepicker,
+    OpenConfig,
     OpenFile,
     PageDown,
     PageUp,
@@ -78,7 +80,6 @@ pub enum ActionMap {
     TreeFold,
     TreeUnFoldAll,
     TreeFoldAll,
-    OpenConfig,
 }
 
 impl ActionMap {
@@ -93,6 +94,7 @@ impl ActionMap {
             ActionMap::Bulkrename => EventExec::event_bulkrename(status),
             ActionMap::Chmod => EventExec::event_chmod(status),
             ActionMap::ClearFlags => EventExec::event_clear_flags(status),
+            ActionMap::Compress => EventExec::event_compress(status),
             ActionMap::CopyFilename => EventExec::event_copy_filename(status),
             ActionMap::CopyFilepath => EventExec::event_copy_filepath(status),
             ActionMap::CopyPaste => EventExec::event_copy_paste(status),

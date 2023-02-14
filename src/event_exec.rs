@@ -9,6 +9,9 @@ use sysinfo::SystemExt;
 
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
+use crate::compress::{
+    compressed_deflate, compressed_gzip, compressed_zip, compressed_zlib, CompressionMethod,
+};
 use crate::config::Colors;
 use crate::constant_strings_paths::CONFIG_PATH;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
@@ -1170,6 +1173,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_prev(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_prev(status.selected()),
             Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_prev(status),
+            Mode::Navigate(Navigate::Compress) => EventExec::event_compression_prev(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_prev(status)
             }
@@ -1192,6 +1196,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_next(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_next(status.selected()),
             Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_next(status),
+            Mode::Navigate(Navigate::Compress) => EventExec::event_compression_next(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_next(status)
             }
@@ -1347,6 +1352,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
                 EventExec::exec_marks_jump_selected(status)?
             }
+            Mode::Navigate(Navigate::Compress) => EventExec::exec_compress(status)?,
         };
 
         status.selected().input.reset();
@@ -1723,6 +1729,52 @@ impl EventExec {
             tab.reset_mode();
         }
         Ok(())
+    }
+
+    pub fn event_compress(status: &mut Status) -> FmResult<()> {
+        status
+            .selected()
+            .set_mode(Mode::Navigate(Navigate::Compress));
+        Ok(())
+    }
+
+    pub fn exec_compress(status: &mut Status) -> FmResult<()> {
+        let cwd = std::env::current_dir()?;
+        let files = status
+            .flagged
+            .content
+            .iter()
+            .map(|abs_path| pathdiff::diff_paths(abs_path, &cwd))
+            .filter(|p| p.is_some())
+            .map(|p| p.unwrap())
+            .collect();
+        match status.compression.selected() {
+            Some(CompressionMethod::DEFLATE) => {
+                let archive_name = "archive.tar.gz".to_owned();
+                compressed_gzip(archive_name, files)
+            }
+            Some(CompressionMethod::GZ) => {
+                let archive_name = "archive.tar.gz".to_owned();
+                compressed_deflate(archive_name, files)
+            }
+            Some(CompressionMethod::ZLIB) => {
+                let archive_name = "archive.tar.xz".to_owned();
+                compressed_zlib(archive_name, files)
+            }
+            Some(CompressionMethod::ZIP) => {
+                let archive_name = "archive.zip".to_owned();
+                compressed_zip(archive_name, files)
+            }
+            None => Ok(()),
+        }
+    }
+
+    pub fn event_compression_prev(status: &mut Status) {
+        status.compression.prev()
+    }
+
+    pub fn event_compression_next(status: &mut Status) {
+        status.compression.next()
     }
 }
 
