@@ -9,9 +9,6 @@ use sysinfo::SystemExt;
 
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
-use crate::compress::{
-    compress_deflate, compress_gzip, compress_zip, compress_zlib, CompressionMethod,
-};
 use crate::config::Colors;
 use crate::constant_strings_paths::CONFIG_PATH;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
@@ -1731,6 +1728,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Enter compression mode
     pub fn event_compress(status: &mut Status) -> FmResult<()> {
         status
             .selected()
@@ -1738,35 +1736,19 @@ impl EventExec {
         Ok(())
     }
 
+    /// Compress the flagged files into an archive.
+    /// Compression method is chosen by the user
     pub fn exec_compress(status: &mut Status) -> FmResult<()> {
         let cwd = std::env::current_dir()?;
-        let files = status
+        let files_with_relative_paths = status
             .flagged
             .content
             .iter()
             .map(|abs_path| pathdiff::diff_paths(abs_path, &cwd))
-            .filter(|p| p.is_some())
-            .map(|p| p.unwrap())
+            .filter(|rel_path| rel_path.is_some())
+            .map(|rel_path| rel_path.unwrap())
             .collect();
-        match status.compression.selected() {
-            Some(CompressionMethod::DEFLATE) => {
-                let archive_name = "archive.tar.gz".to_owned();
-                compress_gzip(archive_name, files)
-            }
-            Some(CompressionMethod::GZ) => {
-                let archive_name = "archive.tar.gz".to_owned();
-                compress_deflate(archive_name, files)
-            }
-            Some(CompressionMethod::ZLIB) => {
-                let archive_name = "archive.tar.xz".to_owned();
-                compress_zlib(archive_name, files)
-            }
-            Some(CompressionMethod::ZIP) => {
-                let archive_name = "archive.zip".to_owned();
-                compress_zip(archive_name, files)
-            }
-            None => Ok(()),
-        }
+        status.compression.compress(files_with_relative_paths)
     }
 
     pub fn event_compression_prev(status: &mut Status) {
