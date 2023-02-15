@@ -26,9 +26,8 @@ pub struct Compresser {
     pub index: usize,
 }
 
-impl Compresser {
-    /// Creates a new compresser.
-    pub fn new() -> Self {
+impl Default for Compresser {
+    fn default() -> Self {
         Self {
             content: vec![
                 CompressionMethod::ZIP,
@@ -40,7 +39,9 @@ impl Compresser {
             index: 0,
         }
     }
+}
 
+impl Compresser {
     /// Archive the files with tar and compress them with the selected method.
     /// The compression method is chosen by the user.
     pub fn compress(&self, files: Vec<std::path::PathBuf>) -> FmResult<()> {
@@ -63,9 +64,9 @@ impl Compresser {
             let mut archive = Builder::new(&mut encoder);
             for file in files.iter() {
                 if file.is_dir() {
-                    archive.append_dir_all(&file, &file)?;
+                    archive.append_dir_all(file, file)?;
                 } else {
-                    archive.append_path(&file)?;
+                    archive.append_path(file)?;
                 }
             }
         }
@@ -85,9 +86,9 @@ impl Compresser {
             let mut archive = Builder::new(&mut encoder);
             for file in files.iter() {
                 if file.is_dir() {
-                    archive.append_dir_all(&file, &file)?;
+                    archive.append_dir_all(file, file)?;
                 } else {
-                    archive.append_path(&file)?;
+                    archive.append_path(file)?;
                 }
             }
         }
@@ -107,9 +108,9 @@ impl Compresser {
             let mut archive = Builder::new(&mut encoder);
             for file in files.iter() {
                 if file.is_dir() {
-                    archive.append_dir_all(&file, &file)?;
+                    archive.append_dir_all(file, file)?;
                 } else {
-                    archive.append_path(&file)?;
+                    archive.append_path(file)?;
                 }
             }
         }
@@ -121,7 +122,7 @@ impl Compresser {
     }
 
     fn compress_zip(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
-        let archive = std::fs::File::create(&archive_name).unwrap();
+        let archive = std::fs::File::create(archive_name).unwrap();
         let mut zip = zip::ZipWriter::new(archive);
         for file in files.iter() {
             zip.start_file(
@@ -147,9 +148,9 @@ impl Compresser {
             let mut archive = Builder::new(&mut encoder);
             for file in files.iter() {
                 if file.is_dir() {
-                    archive.append_dir_all(&file, &file)?;
+                    archive.append_dir_all(file, file)?;
                 } else {
-                    archive.append_path(&file)?;
+                    archive.append_path(file)?;
                 }
             }
         }

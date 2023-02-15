@@ -1744,9 +1744,7 @@ impl EventExec {
             .flagged
             .content
             .iter()
-            .map(|abs_path| pathdiff::diff_paths(abs_path, &cwd))
-            .filter(|rel_path| rel_path.is_some())
-            .map(|rel_path| rel_path.unwrap())
+            .filter_map(|abs_path| pathdiff::diff_paths(abs_path, &cwd))
             .collect();
         status.compression.compress(files_with_relative_paths)
     }

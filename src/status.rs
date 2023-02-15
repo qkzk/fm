@@ -92,7 +92,7 @@ impl Status {
         tab2.shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
         let trash = Trash::new()?;
-        let compression = Compresser::new();
+        let compression = Compresser::default();
 
         Ok(Self {
             tabs: [tab2, tab],
