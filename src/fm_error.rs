@@ -31,6 +31,7 @@ pub enum ErrorVariant {
     CHRONO,
     UTF8ERROR,
     ZIPERROR,
+    LZMAERROR,
     CUSTOM(String),
 }
 
@@ -191,6 +192,12 @@ impl From<std::string::FromUtf8Error> for FmError {
 impl From<zip::result::ZipError> for FmError {
     fn from(error: zip::result::ZipError) -> Self {
         Self::new(ErrorVariant::ZIPERROR, &error.to_string())
+    }
+}
+
+impl From<lzma::LzmaError> for FmError {
+    fn from(error: lzma::LzmaError) -> Self {
+        Self::new(ErrorVariant::LZMAERROR, &error.to_string())
     }
 }
 
