@@ -381,7 +381,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] tree: use the length of the screen to avoid parsing non displayed lines
   - [x] navigate in marks
   - [x] compress flagged files: method is chosen from a list of compression method.
-  - [ ] decompress any archive, not only zips...
+  - [x] decompress any archive we can create
 
 - [ ] Version 0.1.50 : safety & memory usage
 

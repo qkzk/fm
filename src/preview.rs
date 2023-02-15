@@ -17,7 +17,7 @@ use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
 use crate::config::Colors;
-use crate::decompress::list_files;
+use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
@@ -411,7 +411,7 @@ pub struct ZipContent {
 
 impl ZipContent {
     fn new(path: &Path) -> FmResult<Self> {
-        let content = list_files(path)?;
+        let content = list_files_zip(path)?;
 
         Ok(Self {
             length: content.len(),
