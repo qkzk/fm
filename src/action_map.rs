@@ -1,4 +1,4 @@
-use strum_macros::{Display, EnumString};
+use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::config::Colors;
 use crate::event_exec::EventExec;
@@ -9,7 +9,7 @@ use crate::status::Status;
 /// All those actions are mapped to a key and this enum
 /// makes the junction between received Key events and
 /// actions in the application.
-#[derive(Clone, Debug, Display, EnumString)]
+#[derive(Clone, Debug, Display, EnumString, EnumIter)]
 pub enum ActionMap {
     Back,
     BackTab,
@@ -17,6 +17,7 @@ pub enum ActionMap {
     Bulkrename,
     Chmod,
     ClearFlags,
+    Command,
     Compress,
     CopyFilename,
     CopyFilepath,
@@ -94,6 +95,7 @@ impl ActionMap {
             ActionMap::Bulkrename => EventExec::event_bulkrename(status),
             ActionMap::Chmod => EventExec::event_chmod(status),
             ActionMap::ClearFlags => EventExec::event_clear_flags(status),
+            ActionMap::Command => EventExec::event_command(current_tab),
             ActionMap::Compress => EventExec::event_compress(status),
             ActionMap::CopyFilename => EventExec::event_copy_filename(status),
             ActionMap::CopyFilepath => EventExec::event_copy_filepath(status),

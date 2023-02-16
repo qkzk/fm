@@ -83,6 +83,7 @@ Navigate as usual. Most actions works as in 'normal' view.
 {EncryptedDrive}:      ENCRYPTED DRIVE
     (m: open & mount,  u: unmount & close)
 {Search}:      SEARCH
+{Command}:      COMMAND
 {Filter}:      FILTER 
     (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
 {Enter}:  Execute mode then NORMAL

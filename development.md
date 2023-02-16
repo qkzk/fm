@@ -382,6 +382,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] navigate in marks
   - [x] compress flagged files: method is chosen from a list of compression method.
   - [x] decompress any archive we can create
+  - [x] command mode with :
+        some commands does nothing :(
 
 - [ ] Version 0.1.50 : safety & memory usage
 

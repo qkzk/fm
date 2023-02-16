@@ -2,11 +2,13 @@ use std::borrow::Borrow;
 use std::cmp::min;
 use std::fs;
 use std::path;
+use std::str::FromStr;
 
 use copypasta::{ClipboardContext, ClipboardProvider};
 use log::info;
 use sysinfo::SystemExt;
 
+use crate::action_map::ActionMap;
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
@@ -1337,6 +1339,9 @@ impl EventExec {
                 EventExec::exec_search(status, colors)?
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
+            Mode::InputCompleted(InputCompleted::Command) => {
+                EventExec::exec_command(status, colors)?
+            }
             Mode::Normal => EventExec::exec_file(status)?,
             Mode::Tree => EventExec::exec_tree(status, colors)?,
             Mode::NeedConfirmation(_)
@@ -1755,6 +1760,18 @@ impl EventExec {
 
     pub fn event_compression_next(status: &mut Status) {
         status.compression.next()
+    }
+
+    pub fn event_command(tab: &mut Tab) -> FmResult<()> {
+        tab.set_mode(Mode::InputCompleted(InputCompleted::Command));
+        tab.completion.reset();
+        Ok(())
+    }
+
+    pub fn exec_command(status: &mut Status, colors: &Colors) -> FmResult<()> {
+        let command_str = status.selected_non_mut().completion.current_proposition();
+        let Ok(command) = ActionMap::from_str(command_str) else { return Ok(()) };
+        command.matcher(status, colors)
     }
 }
 
