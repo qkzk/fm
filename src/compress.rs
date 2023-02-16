@@ -7,7 +7,6 @@ use crate::impl_selectable_content;
 use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
 use flate2::Compression;
 use lzma::LzmaWriter;
-use tar::Builder;
 use zip::write::FileOptions;
 
 /// Different kind of compression methods
@@ -67,21 +66,26 @@ impl Compresser {
         }
     }
 
+    fn make_tar<W>(files: Vec<std::path::PathBuf>, mut archive: tar::Builder<W>) -> FmResult<()>
+    where
+        W: Write,
+    {
+        for file in files.iter() {
+            if file.is_dir() {
+                archive.append_dir_all(file, file)?;
+            } else {
+                archive.append_path(file)?;
+            }
+        }
+        Ok(())
+    }
+
     fn compress_gzip(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
         let compressed_file = std::fs::File::create(archive_name)?;
         let mut encoder = GzEncoder::new(compressed_file, Compression::default());
 
-        {
-            // Create tar archive and compress files
-            let mut archive = Builder::new(&mut encoder);
-            for file in files.iter() {
-                if file.is_dir() {
-                    archive.append_dir_all(file, file)?;
-                } else {
-                    archive.append_path(file)?;
-                }
-            }
-        }
+        // Create tar archive and compress files
+        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
 
         // Finish Gzip file
         encoder.finish()?;
@@ -93,17 +97,8 @@ impl Compresser {
         let compressed_file = std::fs::File::create(archive_name)?;
         let mut encoder = DeflateEncoder::new(compressed_file, Compression::default());
 
-        {
-            // Create tar archive and compress files
-            let mut archive = Builder::new(&mut encoder);
-            for file in files.iter() {
-                if file.is_dir() {
-                    archive.append_dir_all(file, file)?;
-                } else {
-                    archive.append_path(file)?;
-                }
-            }
-        }
+        // Create tar archive and compress files
+        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
 
         // Finish deflate file
         encoder.finish()?;
@@ -115,19 +110,23 @@ impl Compresser {
         let compressed_file = std::fs::File::create(archive_name)?;
         let mut encoder = ZlibEncoder::new(compressed_file, Compression::default());
 
-        {
-            // Create tar archive and compress files
-            let mut archive = Builder::new(&mut encoder);
-            for file in files.iter() {
-                if file.is_dir() {
-                    archive.append_dir_all(file, file)?;
-                } else {
-                    archive.append_path(file)?;
-                }
-            }
-        }
+        // Create tar archive and compress files
+        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
 
         // Finish zlib file
+        encoder.finish()?;
+
+        Ok(())
+    }
+
+    fn compress_lzma(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+        let compressed_file = std::fs::File::create(archive_name)?;
+        let mut encoder = LzmaWriter::new_compressor(compressed_file, 6)?;
+
+        // Create tar archive and compress files
+        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
+
+        // Finish lzma file
         encoder.finish()?;
 
         Ok(())
@@ -149,27 +148,6 @@ impl Compresser {
 
         // Finish zip file
         zip.finish()?;
-        Ok(())
-    }
-
-    fn compress_lzma(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
-        let compressed_file = std::fs::File::create(archive_name)?;
-        let mut encoder = LzmaWriter::new_compressor(compressed_file, 6)?;
-        {
-            // Create tar archive and compress files
-            let mut archive = Builder::new(&mut encoder);
-            for file in files.iter() {
-                if file.is_dir() {
-                    archive.append_dir_all(file, file)?;
-                } else {
-                    archive.append_path(file)?;
-                }
-            }
-        }
-
-        // Finish lzma file
-        encoder.finish()?;
-
         Ok(())
     }
 }
