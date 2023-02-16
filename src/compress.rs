@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::io::prelude::*;
 use std::io::Write;
 
@@ -19,6 +20,17 @@ pub enum CompressionMethod {
     LZMA,
 }
 
+impl Display for CompressionMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::ZIP => write!(f, "ZIP:     archive.zip"),
+            Self::DEFLATE => write!(f, "DEFLATE: archive.tar.gz"),
+            Self::LZMA => write!(f, "LZMA:    archive.tar.xz"),
+            Self::GZ => write!(f, "GZ:      archive.tar.gz"),
+            Self::ZLIB => write!(f, "ZLIB:    archive.tar.xz"),
+        }
+    }
+}
 /// Holds a vector of CompressionMethod and a few methods to compress some files.
 #[derive(Debug)]
 pub struct Compresser {
@@ -32,8 +44,8 @@ impl Default for Compresser {
             content: vec![
                 CompressionMethod::ZIP,
                 CompressionMethod::LZMA,
-                CompressionMethod::GZ,
                 CompressionMethod::ZLIB,
+                CompressionMethod::GZ,
                 CompressionMethod::DEFLATE,
             ],
             index: 0,

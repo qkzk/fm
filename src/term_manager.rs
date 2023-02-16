@@ -528,7 +528,12 @@ impl<'a> WinSecondary<'a> {
         canvas: &mut dyn Canvas,
         selectable: &impl SelectableContent<CompressionMethod>,
     ) -> FmResult<()> {
-        canvas.print(1, 0, "Pick a compression method")?;
+        canvas.print_with_attr(
+            1,
+            0,
+            "Archive and compress the flagged files. Pick a compression algorithm.",
+            Self::ATTR_YELLOW,
+        )?;
         for (row, compression_method) in selectable.content().iter().enumerate() {
             let mut attr = Attr::default();
             if row == selectable.index() {
@@ -538,7 +543,7 @@ impl<'a> WinSecondary<'a> {
             let _ = canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                &format!("{compression_method:?}"),
+                &format!("{compression_method}"),
                 attr,
             );
         }
