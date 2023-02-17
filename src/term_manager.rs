@@ -429,7 +429,7 @@ impl<'a> WinSecondary<'a> {
                 let mut completion_strings = vec![format!("{}", &tab.mode), tab.input.string()];
                 if let Some(completion) = tab.completion.complete_input_string(&tab.input.string())
                 {
-                    completion_strings.push(completion)
+                    completion_strings.push(completion.to_owned())
                 }
                 completion_strings
             }

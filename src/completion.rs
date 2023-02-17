@@ -227,13 +227,8 @@ impl Completion {
     /// Complete the input string with current_proposition if possible.
     /// Returns the optional last chars of the current_proposition.
     /// If the current_proposition doesn't start with input_string, it returns None.
-    pub fn complete_input_string(&self, input_string: &str) -> Option<String> {
-        let s = self.current_proposition();
-        if s.starts_with(input_string) {
-            Some(s[input_string.len()..].to_string())
-        } else {
-            None
-        }
+    pub fn complete_input_string(&self, input_string: &str) -> Option<&str> {
+        self.current_proposition().strip_prefix(input_string)
     }
 }
 
