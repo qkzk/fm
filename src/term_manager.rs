@@ -425,6 +425,14 @@ impl<'a> WinSecondary<'a> {
             Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action)) => {
                 vec![format!("{password_kind}"), tab.input.password()]
             }
+            Mode::InputCompleted(_) => {
+                let mut completion_strings = vec![format!("{}", &tab.mode), tab.input.string()];
+                if let Some(completion) = tab.completion.complete_input_string(&tab.input.string())
+                {
+                    completion_strings.push(completion)
+                }
+                completion_strings
+            }
             _ => {
                 vec![
                     format!("{}", tab.mode.clone()),

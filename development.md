@@ -387,6 +387,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] make navigable content scrollable
 - [ ] temporary marks
 - [ ] context switch
+- [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
+
+- [ ] Version 0.1.18 : ???
+
+  - [x] preview completion in another color
 
 - [ ] Version 0.1.50 : safety & memory usage
 
