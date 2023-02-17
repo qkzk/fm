@@ -361,7 +361,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] decompress any archive we can create
 - [x] command mode with ":" and a command. (ie `:ClearFlags`). Command are completed.
       some commands does nothing :(
-- [x] lazygit integration: open a terminal with lazygit in current path. Obviously (lazygit)[https://github.com/jesseduffield/lazygit] should be installed.
+- [x] lazygit integration: open a terminal with lazygit in current path. Obviously [lazygit](https://github.com/jesseduffield/lazygit) should be installed.
 
 ## TODO
 

@@ -982,7 +982,7 @@ dependencies = [
 
 [[package]]
 name = "fm-tui"
-version = "0.1.17"
+version = "0.1.18"
 dependencies = [
  "chrono",
  "clap 4.0.32",
