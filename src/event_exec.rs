@@ -820,7 +820,7 @@ impl EventExec {
             .directory_of_selected()?
             .to_str()
             .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
-        execute_in_child(&status.opener.terminal.clone(), &vec!["-d", path])?;
+        execute_in_child(&status.opener.terminal, &vec!["-d", path])?;
         Ok(())
     }
 
@@ -1719,6 +1719,17 @@ impl EventExec {
         Ok(())
     }
 
+    /// Open a new terminal in current path with lazygit (required, obviously).
+    pub fn event_lazygit(status: &mut Status) -> FmResult<()> {
+        let tab = status.selected_non_mut();
+        let path = tab
+            .directory_of_selected()?
+            .to_str()
+            .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
+        execute_in_child(&status.opener.terminal, &vec!["-d", path, "-e", "lazygit"])?;
+        Ok(())
+    }
+
     /// Move to the git root. Does nothing outside of a git repository.
     pub fn event_git_root(tab: &mut Tab) -> FmResult<()> {
         let Ok(git_root) = git_root() else { return Ok(()) };
@@ -1742,7 +1753,8 @@ impl EventExec {
     }
 
     /// Compress the flagged files into an archive.
-    /// Compression method is chosen by the user
+    /// Compression method is chosen by the user.
+    /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
     pub fn exec_compress(status: &mut Status) -> FmResult<()> {
         let cwd = std::env::current_dir()?;
         let files_with_relative_paths = status
@@ -1754,20 +1766,28 @@ impl EventExec {
         status.compression.compress(files_with_relative_paths)
     }
 
+    /// Select previous compression method
     pub fn event_compression_prev(status: &mut Status) {
         status.compression.prev()
     }
 
+    /// Select next compression method
     pub fn event_compression_next(status: &mut Status) {
         status.compression.next()
     }
 
+    /// Enter command mode in which you can type any valid command.
+    /// Some commands does nothing as they require to be executed from a specific
+    /// context.
     pub fn event_command(tab: &mut Tab) -> FmResult<()> {
         tab.set_mode(Mode::InputCompleted(InputCompleted::Command));
         tab.completion.reset();
         Ok(())
     }
 
+    /// Execute the selected command.
+    /// Some commands does nothing as they require to be executed from a specific
+    /// context.
     pub fn exec_command(status: &mut Status, colors: &Colors) -> FmResult<()> {
         let command_str = status.selected_non_mut().completion.current_proposition();
         let Ok(command) = ActionMap::from_str(command_str) else { return Ok(()) };

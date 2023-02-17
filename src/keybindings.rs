@@ -66,6 +66,7 @@ impl Bindings {
             (Key::Char('i'), ActionMap::NvimFilepicker),
             (Key::Char('j'), ActionMap::Jump),
             (Key::Char('l'), ActionMap::Symlink),
+            (Key::Char('L'), ActionMap::Lazygit),
             (Key::Char('m'), ActionMap::Chmod),
             (Key::Char('n'), ActionMap::NewFile),
             (Key::Char('o'), ActionMap::OpenFile),

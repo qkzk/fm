@@ -42,6 +42,7 @@ static HELP_TO_FORMAT: &str = "
 {DragNDrop}:       dragon-drop selected file
 {OpenConfig}:       open the config file
 {GitRoot}:      move to git root
+{Lazygit}:      open a new terminal with lazygit
 
 - Action on flagged files - 
 {ToggleFlag}:      toggle flag on a file 
