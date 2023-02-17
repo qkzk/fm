@@ -352,6 +352,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       Decided to keep directories when filtering in tree mode. Those are excluded when filtering in normal mode.
 - [x] Tree: move 10 rows at a time
 
+### Version 0.1.17 : git root, navigable marks, compression/decompression, command mode, lazygit
+
+- [x] git root: cd to git root
+- [x] tree: use the length of the screen to avoid parsing non displayed lines
+- [x] navigate in marks: pick a mark and jump to it with enter
+- [x] compress flagged files: pick a compression algorithm from a list.
+- [x] decompress any archive we can create
+- [x] command mode with ":" and a command. (ie `:ClearFlags`). Command are completed.
+      some commands does nothing :(
+- [x] lazygit integration: open a terminal with lazygit in current path. Obviously (lazygit)[https://github.com/jesseduffield/lazygit] should be installed.
+
 ## TODO
 
 - [ ] remote control
@@ -374,17 +385,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] vim keys, harmonize keybinds with ranger
 - [ ] zoxide support
 - [ ] make navigable content scrollable
-
-- [ ] Version 0.1.17 : git root, tree mode, navigable marks
-
-  - [x] git root : cd to git root
-  - [x] tree: use the length of the screen to avoid parsing non displayed lines
-  - [x] navigate in marks
-  - [x] compress flagged files: method is chosen from a list of compression method.
-  - [x] decompress any archive we can create
-  - [x] command mode with ":"
-        some commands does nothing :(
-  - [x] lazygit integration : open a terminal with lazygit
+- [ ] temporary marks
+- [ ] context switch
 
 - [ ] Version 0.1.50 : safety & memory usage
 
