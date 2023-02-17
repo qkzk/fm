@@ -1,29 +1,155 @@
-use std::fs::File;
-use std::path::Path;
+use std::fmt::Display;
+use std::io::prelude::*;
+use std::io::Write;
 
-use compress_tools::*;
+use crate::fm_error::FmResult;
+use crate::impl_selectable_content;
+use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
+use flate2::Compression;
+use lzma::LzmaWriter;
+use zip::write::FileOptions;
 
-use crate::fm_error::{FmError, FmResult};
-
-/// Decompress a compressed file into its parent directory.
-/// It may fail an return a `FmError` if the file has no parent,
-/// which should be impossible.
-/// It used `compress_tools` which is a wrapper around  `libarchive`.
-pub fn decompress(source: &Path) -> FmResult<()> {
-    let parent = source
-        .parent()
-        .ok_or_else(|| FmError::custom("decompress", "source should have a parent"))?;
-    let file = File::open(source)?;
-    Ok(uncompress_archive(&file, parent, Ownership::Preserve)?)
+/// Different kind of compression methods
+#[derive(Debug)]
+pub enum CompressionMethod {
+    ZIP,
+    DEFLATE,
+    GZ,
+    ZLIB,
+    LZMA,
 }
 
-/// Returns a list of compressed files within the archive.
-/// it may fail if the file can't be opened or if libarchive
-/// can't read it.
-pub fn list_files<P>(source: P) -> FmResult<Vec<String>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(source)?;
-    Ok(list_archive_files(file)?)
+impl Display for CompressionMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::ZIP => write!(f, "ZIP:     archive.zip"),
+            Self::DEFLATE => write!(f, "DEFLATE: archive.tar.gz"),
+            Self::LZMA => write!(f, "LZMA:    archive.tar.xz"),
+            Self::GZ => write!(f, "GZ:      archive.tar.gz"),
+            Self::ZLIB => write!(f, "ZLIB:    archive.tar.xz"),
+        }
+    }
 }
+/// Holds a vector of CompressionMethod and a few methods to compress some files.
+#[derive(Debug)]
+pub struct Compresser {
+    content: Vec<CompressionMethod>,
+    pub index: usize,
+}
+
+impl Default for Compresser {
+    fn default() -> Self {
+        Self {
+            content: vec![
+                CompressionMethod::ZIP,
+                CompressionMethod::LZMA,
+                CompressionMethod::ZLIB,
+                CompressionMethod::GZ,
+                CompressionMethod::DEFLATE,
+            ],
+            index: 0,
+        }
+    }
+}
+
+impl Compresser {
+    /// Archive the files with tar and compress them with the selected method.
+    /// The compression method is chosen by the user.
+    pub fn compress(&self, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+        let Some(selected) = self.selected() else { return Ok(()) };
+        match selected {
+            CompressionMethod::DEFLATE => Self::compress_deflate("archive.tar.gz", files),
+            CompressionMethod::GZ => Self::compress_gzip("archive.tar.gz", files),
+            CompressionMethod::ZLIB => Self::compress_zlib("archive.tar.xz", files),
+            CompressionMethod::ZIP => Self::compress_zip("archive.zip", files),
+            CompressionMethod::LZMA => Self::compress_lzma("archive.tar.xz", files),
+        }
+    }
+
+    fn make_tar<W>(files: Vec<std::path::PathBuf>, mut archive: tar::Builder<W>) -> FmResult<()>
+    where
+        W: Write,
+    {
+        for file in files.iter() {
+            if file.is_dir() {
+                archive.append_dir_all(file, file)?;
+            } else {
+                archive.append_path(file)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn compress_gzip(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+        let compressed_file = std::fs::File::create(archive_name)?;
+        let mut encoder = GzEncoder::new(compressed_file, Compression::default());
+
+        // Create tar archive and compress files
+        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
+
+        // Finish Gzip file
+        encoder.finish()?;
+
+        Ok(())
+    }
+
+    fn compress_deflate(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+        let compressed_file = std::fs::File::create(archive_name)?;
+        let mut encoder = DeflateEncoder::new(compressed_file, Compression::default());
+
+        // Create tar archive and compress files
+        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
+
+        // Finish deflate file
+        encoder.finish()?;
+
+        Ok(())
+    }
+
+    fn compress_zlib(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+        let compressed_file = std::fs::File::create(archive_name)?;
+        let mut encoder = ZlibEncoder::new(compressed_file, Compression::default());
+
+        // Create tar archive and compress files
+        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
+
+        // Finish zlib file
+        encoder.finish()?;
+
+        Ok(())
+    }
+
+    fn compress_lzma(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+        let compressed_file = std::fs::File::create(archive_name)?;
+        let mut encoder = LzmaWriter::new_compressor(compressed_file, 6)?;
+
+        // Create tar archive and compress files
+        Self::make_tar(files, tar::Builder::new(&mut encoder))?;
+
+        // Finish lzma file
+        encoder.finish()?;
+
+        Ok(())
+    }
+
+    fn compress_zip(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+        let archive = std::fs::File::create(archive_name).unwrap();
+        let mut zip = zip::ZipWriter::new(archive);
+        for file in files.iter() {
+            zip.start_file(
+                file.to_str().unwrap(),
+                FileOptions::default().compression_method(zip::CompressionMethod::Bzip2),
+            )?;
+            let mut buffer = Vec::new();
+            let mut content = std::fs::File::open(file)?;
+            content.read_to_end(&mut buffer)?;
+            zip.write_all(&buffer)?;
+        }
+
+        // Finish zip file
+        zip.finish()?;
+        Ok(())
+    }
+}
+
+impl_selectable_content!(CompressionMethod, Compresser);

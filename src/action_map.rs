@@ -1,4 +1,4 @@
-use strum_macros::{Display, EnumString};
+use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::config::Colors;
 use crate::event_exec::EventExec;
@@ -9,7 +9,7 @@ use crate::status::Status;
 /// All those actions are mapped to a key and this enum
 /// makes the junction between received Key events and
 /// actions in the application.
-#[derive(Clone, Debug, Display, EnumString)]
+#[derive(Clone, Debug, Display, EnumString, EnumIter)]
 pub enum ActionMap {
     Back,
     BackTab,
@@ -17,6 +17,8 @@ pub enum ActionMap {
     Bulkrename,
     Chmod,
     ClearFlags,
+    Command,
+    Compress,
     CopyFilename,
     CopyFilepath,
     CopyPaste,
@@ -32,12 +34,14 @@ pub enum ActionMap {
     Filter,
     FlagAll,
     FuzzyFind,
+    GitRoot,
     Goto,
     Help,
     History,
     Home,
     Jump,
     KeyHome,
+    Lazygit,
     MarksJump,
     MarksNew,
     ModeNormal,
@@ -49,6 +53,7 @@ pub enum ActionMap {
     NewFile,
     Nothing,
     NvimFilepicker,
+    OpenConfig,
     OpenFile,
     PageDown,
     PageUp,
@@ -77,7 +82,6 @@ pub enum ActionMap {
     TreeFold,
     TreeUnFoldAll,
     TreeFoldAll,
-    OpenConfig,
 }
 
 impl ActionMap {
@@ -92,6 +96,8 @@ impl ActionMap {
             ActionMap::Bulkrename => EventExec::event_bulkrename(status),
             ActionMap::Chmod => EventExec::event_chmod(status),
             ActionMap::ClearFlags => EventExec::event_clear_flags(status),
+            ActionMap::Command => EventExec::event_command(current_tab),
+            ActionMap::Compress => EventExec::event_compress(status),
             ActionMap::CopyFilename => EventExec::event_copy_filename(status),
             ActionMap::CopyFilepath => EventExec::event_copy_filepath(status),
             ActionMap::CopyPaste => EventExec::event_copy_paste(status),
@@ -107,10 +113,12 @@ impl ActionMap {
             ActionMap::Filter => EventExec::event_filter(current_tab),
             ActionMap::FlagAll => EventExec::event_flag_all(status),
             ActionMap::FuzzyFind => EventExec::event_fuzzyfind(status),
+            ActionMap::GitRoot => EventExec::event_git_root(current_tab),
             ActionMap::Goto => EventExec::event_goto(current_tab),
             ActionMap::Help => EventExec::event_help(status),
             ActionMap::History => EventExec::event_history(current_tab),
             ActionMap::Home => EventExec::event_home(current_tab),
+            ActionMap::Lazygit => EventExec::event_lazygit(status),
             ActionMap::Jump => EventExec::event_jump(status),
             ActionMap::KeyHome => EventExec::event_key_home(status, colors),
             ActionMap::MarksJump => EventExec::event_marks_jump(status),
@@ -149,8 +157,8 @@ impl ActionMap {
             ActionMap::TrashOpen => EventExec::event_trash_open(status),
             ActionMap::Tree => EventExec::event_tree(status, colors),
             ActionMap::TreeFold => EventExec::event_tree_fold(current_tab, colors),
-            ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(status, colors),
-            ActionMap::TreeUnFoldAll => EventExec::event_tree_unfold_all(status, colors),
+            ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(current_tab, colors),
+            ActionMap::TreeUnFoldAll => EventExec::event_tree_unfold_all(current_tab, colors),
             ActionMap::OpenConfig => EventExec::event_open_config(status),
 
             ActionMap::Nothing => Ok(()),

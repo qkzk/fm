@@ -2,11 +2,13 @@ use std::borrow::Borrow;
 use std::cmp::min;
 use std::fs;
 use std::path;
+use std::str::FromStr;
 
 use copypasta::{ClipboardContext, ClipboardProvider};
 use log::info;
 use sysinfo::SystemExt;
 
+use crate::action_map::ActionMap;
 use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
@@ -20,6 +22,7 @@ use crate::cryptsetup::PasswordKind;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::git::git_root;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
 use crate::opener::execute_in_child;
@@ -153,7 +156,7 @@ impl EventExec {
 
     /// Enter Marks new mode, allowing to bind a char to a path.
     pub fn event_marks_new(tab: &mut Tab) -> FmResult<()> {
-        tab.set_mode(Mode::InputSimple(InputSimple::Marks(MarkAction::New)));
+        tab.set_mode(Mode::Navigate(Navigate::Marks(MarkAction::New)));
         Ok(())
     }
 
@@ -164,7 +167,36 @@ impl EventExec {
         }
         status
             .selected()
-            .set_mode(Mode::InputSimple(InputSimple::Marks(MarkAction::Jump)));
+            .set_mode(Mode::Navigate(Navigate::Marks(MarkAction::Jump)));
+        Ok(())
+    }
+
+    /// Jump to the current mark.
+    pub fn exec_marks_jump_selected(status: &mut Status) -> FmResult<()> {
+        let marks = status.marks.clone();
+        let tab = status.selected();
+        if let Some((_, path)) = marks.selected() {
+            tab.history.push(path);
+            tab.set_pathcontent(path)?;
+            tab.window.reset(tab.path_content.content.len());
+            tab.input.reset();
+        }
+        Ok(())
+    }
+
+    /// Update the selected mark with the current path.
+    /// Doesn't change its char.
+    /// If it doesn't fail, a new pair will be set with (oldchar, new path).
+    pub fn exec_marks_update_selected(status: &mut Status) -> FmResult<()> {
+        let marks = status.marks.clone();
+        let len = status.selected_non_mut().path_content.content.len();
+        if let Some((ch, _)) = marks.selected() {
+            if let Some(path_str) = status.selected_non_mut().path_content_str() {
+                status.marks.new_mark(*ch, path::PathBuf::from(path_str))?;
+            }
+            status.selected().window.reset(len);
+            status.selected().input.reset();
+        }
         Ok(())
     }
 
@@ -181,7 +213,6 @@ impl EventExec {
     /// If the saved path is invalid, it does nothing but reset the view.
     pub fn exec_marks_jump(status: &mut Status, c: char, colors: &Colors) -> FmResult<()> {
         if let Some(path) = status.marks.get(c) {
-            let path = path.clone();
             status.selected().set_pathcontent(&path)?
         }
         Self::event_normal(status.selected())?;
@@ -478,6 +509,16 @@ impl EventExec {
     /// Select the previous shortcut.
     pub fn event_shortcut_prev(tab: &mut Tab) {
         tab.shortcut.prev()
+    }
+
+    /// Select the next shortcut.
+    pub fn event_marks_next(status: &mut Status) {
+        status.marks.next()
+    }
+
+    /// Select the previous shortcut.
+    pub fn event_marks_prev(status: &mut Status) {
+        status.marks.prev()
     }
 
     /// Select the next element in history of visited files.
@@ -779,7 +820,7 @@ impl EventExec {
             .directory_of_selected()?
             .to_str()
             .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
-        execute_in_child(&status.opener.terminal.clone(), &vec!["-d", path])?;
+        execute_in_child(&status.opener.terminal, &vec!["-d", path])?;
         Ok(())
     }
 
@@ -1130,6 +1171,8 @@ impl EventExec {
             Mode::Navigate(Navigate::History) => EventExec::event_history_prev(status.selected()),
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_prev(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_prev(status.selected()),
+            Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_prev(status),
+            Mode::Navigate(Navigate::Compress) => EventExec::event_compression_prev(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_prev(status)
             }
@@ -1151,6 +1194,8 @@ impl EventExec {
             Mode::Navigate(Navigate::History) => EventExec::event_history_next(status.selected()),
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_next(status),
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_next(status.selected()),
+            Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_next(status),
+            Mode::Navigate(Navigate::Compress) => EventExec::event_compression_next(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_next(status)
             }
@@ -1164,11 +1209,12 @@ impl EventExec {
     /// Move to parent in normal mode,
     /// move left one char in mode requiring text input.
     pub fn event_move_left(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        match status.selected().mode {
-            Mode::Normal => EventExec::event_move_to_parent(status.selected()),
-            Mode::Tree => EventExec::event_select_parent(status, colors),
+        let tab = status.selected();
+        match tab.mode {
+            Mode::Normal => EventExec::event_move_to_parent(tab),
+            Mode::Tree => EventExec::event_select_parent(tab, colors),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
-                EventExec::event_move_cursor_left(status.selected());
+                EventExec::event_move_cursor_left(tab);
                 Ok(())
             }
 
@@ -1181,7 +1227,7 @@ impl EventExec {
     pub fn event_move_right(status: &mut Status, colors: &Colors) -> FmResult<()> {
         match status.selected().mode {
             Mode::Normal => EventExec::exec_file(status),
-            Mode::Tree => EventExec::event_select_first_child(status, colors),
+            Mode::Tree => EventExec::event_select_first_child(status.selected(), colors),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 EventExec::event_move_cursor_right(status.selected());
                 Ok(())
@@ -1215,20 +1261,22 @@ impl EventExec {
 
     /// Move to leftmost char in mode allowing edition.
     pub fn event_key_home(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        match status.selected().mode {
-            Mode::Normal | Mode::Preview => EventExec::event_go_top(status.selected()),
-            Mode::Tree => EventExec::event_tree_go_to_root(status, colors)?,
-            _ => EventExec::event_cursor_home(status.selected()),
+        let tab = status.selected();
+        match tab.mode {
+            Mode::Normal | Mode::Preview => EventExec::event_go_top(tab),
+            Mode::Tree => EventExec::event_tree_go_to_root(tab, colors)?,
+            _ => EventExec::event_cursor_home(tab),
         };
         Ok(())
     }
 
     /// Move to the bottom in any mode.
     pub fn event_end(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        match status.selected().mode {
-            Mode::Normal | Mode::Preview => EventExec::event_go_bottom(status.selected()),
-            Mode::Tree => EventExec::event_tree_go_to_bottom_leaf(status, colors)?,
-            _ => EventExec::event_cursor_end(status.selected()),
+        let tab = status.selected();
+        match tab.mode {
+            Mode::Normal | Mode::Preview => EventExec::event_go_bottom(tab),
+            Mode::Tree => EventExec::event_tree_go_to_bottom_leaf(tab, colors)?,
+            _ => EventExec::event_cursor_end(tab),
         };
         Ok(())
     }
@@ -1291,13 +1339,22 @@ impl EventExec {
                 EventExec::exec_search(status, colors)?
             }
             Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
+            Mode::InputCompleted(InputCompleted::Command) => {
+                EventExec::exec_command(status, colors)?
+            }
             Mode::Normal => EventExec::exec_file(status)?,
             Mode::Tree => EventExec::exec_tree(status, colors)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
             | Mode::InputCompleted(InputCompleted::Nothing)
-            | Mode::InputSimple(InputSimple::Sort)
-            | Mode::InputSimple(InputSimple::Marks(_)) => (),
+            | Mode::InputSimple(InputSimple::Sort) => (),
+            Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
+                EventExec::exec_marks_update_selected(status)?
+            }
+            Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
+                EventExec::exec_marks_jump_selected(status)?
+            }
+            Mode::Navigate(Navigate::Compress) => EventExec::exec_compress(status)?,
         };
 
         status.selected().input.reset();
@@ -1493,61 +1550,68 @@ impl EventExec {
     /// Unfold every child node in the tree.
     /// Recursively explore the tree and unfold every node.
     /// Reset the display.
-    pub fn event_tree_unfold_all(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().directory.tree.unfold_children();
-        status.selected().directory.make_preview(colors);
+    pub fn event_tree_unfold_all(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.unfold_children();
+        tab.directory.make_preview(colors);
         Ok(())
     }
 
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node.
     /// Reset the display.
-    pub fn event_tree_fold_all(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().directory.tree.fold_children();
-        status.selected().directory.make_preview(colors);
+    pub fn event_tree_fold_all(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.fold_children();
+        tab.directory.make_preview(colors);
         Ok(())
     }
 
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node. Reset the display. pub fn event_tree_fold_all(status: &mut Status) -> FmResult<()> { let colors = &status.config_colors.clone(); status.selected().directory.tree.fold_children(); status.selected().directory.make_preview(colors); Ok(()) }
-    pub fn event_tree_go_to_root(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_select_root(colors)
+    pub fn event_tree_go_to_root(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.reset_required_height();
+        tab.tree_select_root(colors)
     }
 
     /// Select the first child of the current node and reset the display.
-    pub fn event_select_first_child(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_select_first_child(colors)
+    pub fn event_select_first_child(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.increase_required_height();
+        tab.tree_select_first_child(colors)
     }
 
     /// Select the parent of the current node and reset the display.
     /// Move to the parent and reset the tree if we were in the root node.
-    pub fn event_select_parent(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_select_parent(colors)
+    pub fn event_select_parent(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.tree_select_parent(colors)
     }
 
     /// Select the next sibling of the current node.
     pub fn event_select_next(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.increase_required_height();
         tab.tree_select_next(colors)
     }
 
     /// Select the previous sibling of the current node.
     pub fn event_select_prev(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.decrease_required_height();
         tab.tree_select_prev(colors)
     }
 
     /// Move up 10 lines in the tree
     pub fn event_tree_page_up(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.decrease_required_height_by_ten();
         tab.tree_page_up(colors)
     }
 
     /// Move down 10 lines in the tree
     pub fn event_tree_page_down(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.increase_required_height_by_ten();
         tab.tree_page_down(colors)
     }
 
     /// Select the last leaf of the tree and reset the view.
-    pub fn event_tree_go_to_bottom_leaf(status: &mut Status, colors: &Colors) -> FmResult<()> {
-        status.selected().tree_go_to_bottom_leaf(colors)
+    pub fn event_tree_go_to_bottom_leaf(tab: &mut Tab, colors: &Colors) -> FmResult<()> {
+        tab.directory.tree.set_required_height(usize::MAX);
+        tab.tree_go_to_bottom_leaf(colors)
     }
 
     /// Execute the selected node if it's a file else enter the directory.
@@ -1653,6 +1717,81 @@ impl EventExec {
             Err(e) => info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
         }
         Ok(())
+    }
+
+    /// Open a new terminal in current path with lazygit (required, obviously).
+    pub fn event_lazygit(status: &mut Status) -> FmResult<()> {
+        let tab = status.selected_non_mut();
+        let path = tab
+            .directory_of_selected()?
+            .to_str()
+            .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
+        execute_in_child(&status.opener.terminal, &vec!["-d", path, "-e", "lazygit"])?;
+        Ok(())
+    }
+
+    /// Move to the git root. Does nothing outside of a git repository.
+    pub fn event_git_root(tab: &mut Tab) -> FmResult<()> {
+        let Ok(git_root) = git_root() else { return Ok(()) };
+
+        let path = &path::PathBuf::from(git_root);
+
+        if path.exists() {
+            tab.set_pathcontent(path)?;
+            Self::event_normal(tab)?;
+            tab.reset_mode();
+        }
+        Ok(())
+    }
+
+    /// Enter compression mode
+    pub fn event_compress(status: &mut Status) -> FmResult<()> {
+        status
+            .selected()
+            .set_mode(Mode::Navigate(Navigate::Compress));
+        Ok(())
+    }
+
+    /// Compress the flagged files into an archive.
+    /// Compression method is chosen by the user.
+    /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
+    pub fn exec_compress(status: &mut Status) -> FmResult<()> {
+        let cwd = std::env::current_dir()?;
+        let files_with_relative_paths = status
+            .flagged
+            .content
+            .iter()
+            .filter_map(|abs_path| pathdiff::diff_paths(abs_path, &cwd))
+            .collect();
+        status.compression.compress(files_with_relative_paths)
+    }
+
+    /// Select previous compression method
+    pub fn event_compression_prev(status: &mut Status) {
+        status.compression.prev()
+    }
+
+    /// Select next compression method
+    pub fn event_compression_next(status: &mut Status) {
+        status.compression.next()
+    }
+
+    /// Enter command mode in which you can type any valid command.
+    /// Some commands does nothing as they require to be executed from a specific
+    /// context.
+    pub fn event_command(tab: &mut Tab) -> FmResult<()> {
+        tab.set_mode(Mode::InputCompleted(InputCompleted::Command));
+        tab.completion.reset();
+        Ok(())
+    }
+
+    /// Execute the selected command.
+    /// Some commands does nothing as they require to be executed from a specific
+    /// context.
+    pub fn exec_command(status: &mut Status, colors: &Colors) -> FmResult<()> {
+        let command_str = status.selected_non_mut().completion.current_proposition();
+        let Ok(command) = ActionMap::from_str(command_str) else { return Ok(()) };
+        command.matcher(status, colors)
     }
 }
 

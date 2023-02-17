@@ -25,11 +25,12 @@ pub enum ErrorVariant {
     NOTIFY,
     FMT,
     STRUM,
-    COMPRESSTOOLS,
     IMAGEERROR,
     SERDEYAML,
     CHRONO,
     UTF8ERROR,
+    ZIPERROR,
+    LZMAERROR,
     CUSTOM(String),
 }
 
@@ -151,12 +152,6 @@ impl From<strum::ParseError> for FmError {
     }
 }
 
-impl From<compress_tools::Error> for FmError {
-    fn from(error: compress_tools::Error) -> Self {
-        Self::new(ErrorVariant::COMPRESSTOOLS, &error.to_string())
-    }
-}
-
 impl From<image::error::ImageError> for FmError {
     fn from(error: image::error::ImageError) -> Self {
         Self::new(ErrorVariant::IMAGEERROR, &error.to_string())
@@ -184,6 +179,18 @@ impl From<chrono::ParseError> for FmError {
 impl From<std::string::FromUtf8Error> for FmError {
     fn from(error: std::string::FromUtf8Error) -> Self {
         Self::new(ErrorVariant::UTF8ERROR, &error.to_string())
+    }
+}
+
+impl From<zip::result::ZipError> for FmError {
+    fn from(error: zip::result::ZipError) -> Self {
+        Self::new(ErrorVariant::ZIPERROR, &error.to_string())
+    }
+}
+
+impl From<lzma::LzmaError> for FmError {
+    fn from(error: lzma::LzmaError) -> Self {
+        Self::new(ErrorVariant::LZMAERROR, &error.to_string())
     }
 }
 

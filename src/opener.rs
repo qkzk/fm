@@ -6,11 +6,11 @@ use std::process::Command;
 use log::info;
 use serde_yaml;
 
-use crate::compress::decompress;
 use crate::constant_strings_paths::{
     DEFAULT_AUDIO_OPENER, DEFAULT_IMAGE_OPENER, DEFAULT_OFFICE_OPENER, DEFAULT_OPENER,
     DEFAULT_READABLE_OPENER, DEFAULT_TEXT_OPENER, DEFAULT_VECTORIAL_OPENER, DEFAULT_VIDEO_OPENER,
 };
+use crate::decompress::{decompress_gz, decompress_xz, decompress_zip};
 use crate::fileinfo::extract_extension;
 use crate::fm_error::{FmError, FmResult};
 
@@ -70,10 +70,13 @@ impl ExtensionKind {
 
             "pdf" | "epub" => Self::Readable,
 
-            "lzip" | "lzma" | "rar" | "tgz" | "zip" | "gzip" | "bzip2" | "xz" | "7z" => {
-                Self::Internal(InternalVariant::Decompress)
-            }
+            "zip" => Self::Internal(InternalVariant::DecompressZip),
 
+            "xz" | "7z" => Self::Internal(InternalVariant::DecompressXz),
+
+            "lzip" | "lzma" | "rar" | "tgz" | "gz" | "bzip2" => {
+                Self::Internal(InternalVariant::DecompressGz)
+            }
             _ => Self::Default,
         }
     }
@@ -120,8 +123,18 @@ impl OpenerAssociation {
                     OpenerInfo::external(DEFAULT_VIDEO_OPENER),
                 ),
                 (
-                    ExtensionKind::Internal(InternalVariant::Decompress),
-                    OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::Decompress))
+                    ExtensionKind::Internal(InternalVariant::DecompressZip),
+                    OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressZip))
+                        .unwrap(),
+                ),
+                (
+                    ExtensionKind::Internal(InternalVariant::DecompressGz),
+                    OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressGz))
+                        .unwrap(),
+                ),
+                (
+                    ExtensionKind::Internal(InternalVariant::DecompressXz),
+                    OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressXz))
                         .unwrap(),
                 ),
             ]),
@@ -172,7 +185,9 @@ impl OpenerAssociation {
 /// libarchive internally.
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum InternalVariant {
-    Decompress,
+    DecompressZip,
+    DecompressXz,
+    DecompressGz,
 }
 
 /// A way to open one kind of files.
@@ -267,7 +282,9 @@ impl Opener {
             )?;
         } else {
             match open_info.internal_variant.as_ref().unwrap() {
-                InternalVariant::Decompress => decompress(filepath)?,
+                InternalVariant::DecompressZip => decompress_zip(filepath)?,
+                InternalVariant::DecompressXz => decompress_xz(filepath)?,
+                InternalVariant::DecompressGz => decompress_gz(filepath)?,
             };
         }
         Ok(())

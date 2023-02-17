@@ -1,5 +1,7 @@
 use std::fs::{self, ReadDir};
 
+use strum::IntoEnumIterator;
+
 use crate::fileinfo::PathContent;
 use crate::fm_error::FmResult;
 use crate::mode::Mode;
@@ -17,6 +19,8 @@ pub enum InputCompleted {
     Search,
     /// Complete an executable name from $PATH
     Exec,
+    /// Command
+    Command,
 }
 
 /// Holds a `Vec<String>` of possible completions and an `usize` index
@@ -154,6 +158,20 @@ impl Completion {
                 proposals.extend(Self::find_completion_in_path(path, input_string)?);
             }
         }
+        self.update(proposals);
+        Ok(())
+    }
+
+    pub fn command(&mut self, input_string: &str) -> FmResult<()> {
+        let proposals = crate::action_map::ActionMap::iter()
+            .filter(|command| {
+                command
+                    .to_string()
+                    .to_lowercase()
+                    .contains(&input_string.to_lowercase())
+            })
+            .map(|command| command.to_string())
+            .collect();
         self.update(proposals);
         Ok(())
     }

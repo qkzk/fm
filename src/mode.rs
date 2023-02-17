@@ -72,11 +72,9 @@ pub enum InputSimple {
     RegexMatch,
     /// Change the type of sort
     Sort,
-    /// Jump to a saved mark
-    Marks(MarkAction),
     /// Filter by extension, name, directory or no filter
     Filter,
-    ///
+    /// Input a password (chars a replaced by *)
     Password(PasswordKind, EncryptedAction),
 }
 
@@ -90,10 +88,14 @@ pub enum Navigate {
     History,
     /// Navigate to a predefined shortcut
     Shortcut,
-    ///
+    /// Manipulate a trash file
     Trash,
-    ///
+    /// Manipulate an encrypted device
     EncryptedDrive,
+    /// Jump to a saved mark
+    Marks(MarkAction),
+    /// Pick a compression method
+    Compress,
 }
 
 /// Different mode in which the application can be.
@@ -131,7 +133,7 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Sort) => {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }
-            Mode::InputSimple(InputSimple::Marks(_)) => write!(f, "Marks jump:"),
+            Mode::Navigate(Navigate::Marks(_)) => write!(f, "Marks jump:"),
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
             Mode::InputSimple(InputSimple::Password(password_kind, _)) => {
                 write!(f, "{password_kind}")
@@ -140,10 +142,12 @@ impl fmt::Display for Mode {
             Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
             Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
             Mode::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
+            Mode::InputCompleted(InputCompleted::Command) => write!(f, "Command:  "),
             Mode::Navigate(Navigate::Jump) => write!(f, "Jump  :  "),
             Mode::Navigate(Navigate::History) => write!(f, "History :"),
             Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
             Mode::Navigate(Navigate::Trash) => write!(f, "Trash    :"),
+            Mode::Navigate(Navigate::Compress) => write!(f, "Compress :"),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 write!(f, "Encrypted devices :")
             }

@@ -105,6 +105,7 @@ pub struct Tree {
     pub position: Vec<usize>,
     pub current_node: Node,
     sort_kind: SortKind,
+    required_height: usize,
 }
 
 impl Tree {
@@ -113,6 +114,46 @@ impl Tree {
     /// It may be better to stop the recursion when too much file
     /// are present and the exploration is slow.
     pub const MAX_DEPTH: usize = 7;
+    pub const REQUIRED_HEIGHT: usize = 80;
+
+    /// Set the required height to a given value.
+    /// The required height is used to stop filling the view content.
+    pub fn set_required_height(&mut self, height: usize) {
+        self.required_height = height
+    }
+
+    /// The required height is used to stop filling the view content.
+    pub fn increase_required_height(&mut self) {
+        self.required_height += 1;
+    }
+
+    /// Add 10 to the required height.
+    /// The required height is used to stop filling the view content.
+    pub fn increase_required_height_by_ten(&mut self) {
+        self.required_height += 10;
+    }
+
+    /// Reset the required height to its default value : Self::MAX_HEIGHT
+    /// The required height is used to stop filling the view content.
+    pub fn reset_required_height(&mut self) {
+        self.required_height = Self::REQUIRED_HEIGHT
+    }
+
+    /// Decrement the required height if possible.
+    /// The required height is used to stop filling the view content.
+    pub fn decrease_required_height(&mut self) {
+        if self.required_height > Self::REQUIRED_HEIGHT {
+            self.required_height -= 1;
+        }
+    }
+
+    /// Decrease the required height by 10 if possible
+    /// The required height is used to stop filling the view content.
+    pub fn decrease_required_height_by_ten(&mut self) {
+        if self.required_height >= Self::REQUIRED_HEIGHT + 10 {
+            self.required_height -= 10;
+        }
+    }
 
     /// Recursively explore every subfolder to a certain depth.
     /// We start from `path` and add this node first.
@@ -176,6 +217,7 @@ impl Tree {
             position,
             current_node,
             sort_kind,
+            required_height: Self::REQUIRED_HEIGHT,
         })
     }
 
@@ -251,6 +293,7 @@ impl Tree {
             position,
             current_node,
             sort_kind,
+            required_height: 0,
         })
     }
 
@@ -386,11 +429,15 @@ impl Tree {
     /// We navigate into the tree and format every element into a pair :
     /// - a prefix, wich is a string made of glyphs displaying the tree,
     /// - a colored string to be colored relatively to the file type.
-    /// Since we use the same colors everywhere, it's
+    /// This method has to parse all the content until the bottom of screen
+    /// is reached. There's no way atm to avoid parsing the first lines
+    /// since the "prefix" (straight lines at left of screen) can reach
+    /// the whole screen.
     pub fn into_navigable_content(
         &mut self,
         colors: &Colors,
     ) -> (usize, Vec<(String, ColoredString)>) {
+        let required_height = self.required_height;
         let mut stack = vec![("".to_owned(), self)];
         let mut content = vec![];
         let mut selected_index = 0;
@@ -416,6 +463,9 @@ impl Tree {
                 for leaf in leaves {
                     stack.push((other_prefix.clone(), leaf));
                 }
+            }
+            if content.len() > required_height {
+                break;
             }
         }
         (selected_index, content)

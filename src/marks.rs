@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
@@ -6,24 +6,29 @@ use log::info;
 
 use crate::constant_strings_paths::MARKS_FILEPATH;
 use crate::fm_error::{FmError, FmResult};
+use crate::impl_selectable_content;
 use crate::utils::read_lines;
 
 /// Holds the marks created by the user.
 /// It's an ordered map between any char (except :) and a PathBuf.
+#[derive(Clone)]
 pub struct Marks {
     save_path: PathBuf,
-    marks: BTreeMap<char, PathBuf>,
+    content: Vec<(char, PathBuf)>,
+    /// The currently selected shortcut
+    pub index: usize,
+    used_chars: BTreeSet<char>,
 }
 
 impl Marks {
     /// True if there's no marks yet
     pub fn is_empty(&self) -> bool {
-        self.marks.is_empty()
+        self.content.is_empty()
     }
 
     /// The number of saved marks
     pub fn len(&self) -> usize {
-        self.marks.len()
+        self.content.len()
     }
 
     /// Reads the marks stored in the config file (~/.config/fm/marks.cfg).
@@ -35,18 +40,27 @@ impl Marks {
     }
 
     fn read_from_file(save_path: PathBuf) -> Self {
-        let mut marks = BTreeMap::new();
+        let mut content = vec![];
         let mut must_save = false;
+        let mut used_chars = BTreeSet::new();
         if let Ok(lines) = read_lines(&save_path) {
             for line in lines {
                 if let Ok((ch, path)) = Self::parse_line(line) {
-                    marks.insert(ch, path);
+                    if !used_chars.contains(&ch) {
+                        content.push((ch, path));
+                        used_chars.insert(ch);
+                    }
                 } else {
                     must_save = true;
                 }
             }
         }
-        let marks = Self { save_path, marks };
+        let marks = Self {
+            save_path,
+            content,
+            index: 0,
+            used_chars,
+        };
         if must_save {
             info!("Wrong marks found, will save it again");
             let _ = marks.save_marks();
@@ -55,8 +69,13 @@ impl Marks {
     }
 
     /// Returns an optional marks associated to a char bind.
-    pub fn get(&self, ch: char) -> Option<&PathBuf> {
-        self.marks.get(&ch)
+    pub fn get(&self, key: char) -> Option<PathBuf> {
+        for (ch, dest) in self.content.iter() {
+            if &key == ch {
+                return Some(dest.clone());
+            }
+        }
+        None
     }
 
     fn parse_line(line: Result<String, io::Error>) -> FmResult<(char, PathBuf)> {
@@ -80,19 +99,32 @@ impl Marks {
     }
 
     /// Store a new mark in the config file.
-    /// All the marks are saved again.
+    /// If an update is done, the marks are saved again.
     pub fn new_mark(&mut self, ch: char, path: PathBuf) -> FmResult<()> {
         if ch == ':' {
             return Err(FmError::custom("new_mark", "':' can't be used as a mark"));
         }
-        self.marks.insert(ch, path);
+        if self.used_chars.contains(&ch) {
+            let mut found_index = None;
+            for (index, (k, _)) in self.content.iter().enumerate() {
+                if *k == ch {
+                    found_index = Some(index);
+                    break;
+                }
+            }
+            let Some(found_index) = found_index else {return Ok(())};
+            self.content[found_index] = (ch, path);
+        } else {
+            self.content.push((ch, path))
+        }
+
         self.save_marks()
     }
 
     fn save_marks(&self) -> FmResult<()> {
         let file = std::fs::File::create(&self.save_path)?;
         let mut buf = BufWriter::new(file);
-        for (ch, path) in self.marks.iter() {
+        for (ch, path) in self.content.iter() {
             writeln!(buf, "{}:{}", ch, Self::path_as_string(path)?)?;
         }
         Ok(())
@@ -107,7 +139,7 @@ impl Marks {
 
     /// Returns a vector of strings like "d: /dev" for every mark.
     pub fn as_strings(&self) -> Vec<String> {
-        self.marks
+        self.content
             .iter()
             .map(|(ch, path)| Self::format_mark(ch, path))
             .collect()
@@ -117,3 +149,6 @@ impl Marks {
         format!("{}    {}", ch, path.to_string_lossy())
     }
 }
+
+type Pair = (char, PathBuf);
+impl_selectable_content!(Pair, Marks);

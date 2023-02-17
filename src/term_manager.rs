@@ -9,6 +9,7 @@ use tuikit::event::Event;
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
+use crate::compress::CompressionMethod;
 use crate::config::Colors;
 use crate::constant_strings_paths::{
     FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
@@ -376,14 +377,15 @@ impl<'a> Draw for WinSecondary<'a> {
             Mode::Navigate(Navigate::History) => self.destination(canvas, &self.tab.history),
             Mode::Navigate(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
             Mode::Navigate(Navigate::Trash) => self.trash(canvas, &self.status.trash),
+            Mode::Navigate(Navigate::Compress) => self.compress(canvas, &self.status.compression),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 self.encrypted_devices(self.status, self.tab, canvas)
             }
+            Mode::Navigate(Navigate::Marks(_)) => self.marks(self.status, self.tab, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
-            Mode::InputSimple(InputSimple::Marks(_)) => self.marks(self.status, self.tab, canvas),
             _ => Ok(()),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -414,10 +416,10 @@ impl<'a> WinSecondary<'a> {
             Mode::NeedConfirmation(confirmed_action) => {
                 vec![format!("{confirmed_action} (y/n)")]
             }
-            Mode::InputSimple(InputSimple::Marks(MarkAction::Jump)) => {
+            Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
                 vec!["Jump to...".to_owned()]
             }
-            Mode::InputSimple(InputSimple::Marks(MarkAction::New)) => {
+            Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
                 vec!["Save mark...".to_owned()]
             }
             Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action)) => {
@@ -451,7 +453,7 @@ impl<'a> WinSecondary<'a> {
         match tab.mode {
             Mode::Normal
             | Mode::Tree
-            | Mode::InputSimple(InputSimple::Marks(_))
+            | Mode::Navigate(Navigate::Marks(_))
             | Mode::Navigate(_)
             | Mode::Preview => {
                 canvas.show_cursor(false)?;
@@ -521,12 +523,43 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
+    fn compress(
+        &self,
+        canvas: &mut dyn Canvas,
+        selectable: &impl SelectableContent<CompressionMethod>,
+    ) -> FmResult<()> {
+        canvas.print_with_attr(
+            1,
+            0,
+            "Archive and compress the flagged files. Pick a compression algorithm.",
+            Self::ATTR_YELLOW,
+        )?;
+        for (row, compression_method) in selectable.content().iter().enumerate() {
+            let mut attr = Attr::default();
+            if row == selectable.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                &format!("{compression_method}"),
+                attr,
+            );
+        }
+        Ok(())
+    }
+
     fn marks(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
         canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
 
         for (i, line) in status.marks.as_strings().iter().enumerate() {
             let row = calc_line_row(i, tab) + 2;
-            canvas.print(row, 3, line)?;
+            let mut attr = Attr::default();
+            if i == status.marks.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            canvas.print_with_attr(row, 3, line, attr)?;
         }
         Ok(())
     }

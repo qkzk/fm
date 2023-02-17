@@ -41,6 +41,8 @@ static HELP_TO_FORMAT: &str = "
 {CopyFilepath}:      copy filepath to clipboard
 {DragNDrop}:       dragon-drop selected file
 {OpenConfig}:       open the config file
+{GitRoot}:      move to git root
+{Lazygit}:      open a new terminal with lazygit
 
 - Action on flagged files - 
 {ToggleFlag}:      toggle flag on a file 
@@ -53,6 +55,7 @@ static HELP_TO_FORMAT: &str = "
 {CutPaste}:      move to current dir
 {DeleteFile}:      delete files permanently
 {TrashMoveFile}:      move to trash
+{Compress}:      compress into an archive
 
 - Trash -
 {TrashOpen}:       Open the trash (enter to restore, del clear)
@@ -81,6 +84,7 @@ Navigate as usual. Most actions works as in 'normal' view.
 {EncryptedDrive}:      ENCRYPTED DRIVE
     (m: open & mount,  u: unmount & close)
 {Search}:      SEARCH
+{Command}:      COMMAND
 {Filter}:      FILTER 
     (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
 {Enter}:  Execute mode then NORMAL

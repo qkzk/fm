@@ -9,6 +9,8 @@ use std::fmt::Write as _;
 use std::path::Path;
 use std::process;
 
+use crate::fm_error::{FmError, FmResult};
+
 struct GitStatus {
     branch: Option<String>,
     ahead: i64,
@@ -144,4 +146,20 @@ pub fn git(path: &Path) -> Result<String, Box<dyn Error>> {
     git_string.push(')');
 
     Ok(git_string)
+}
+
+/// Returns the git root.
+/// Returns an error outside of a git repository.
+pub fn git_root() -> FmResult<String> {
+    let output = process::Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .stdin(process::Stdio::null())
+        .stderr(process::Stdio::null())
+        .output()?;
+
+    if !output.status.success() {
+        // We're most likely not in a Git repo
+        return Err(FmError::custom("git root", "git command returned an error"));
+    }
+    Ok(String::from_utf8(output.stdout)?.trim().to_owned())
 }

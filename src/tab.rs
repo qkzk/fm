@@ -119,6 +119,9 @@ impl Tab {
                 self.completion
                     .search_from_tree(&self.input.string(), &self.directory.content)
             }
+            Mode::InputCompleted(InputCompleted::Command) => {
+                self.completion.command(&self.input.string())
+            }
             _ => Ok(()),
         }
     }
