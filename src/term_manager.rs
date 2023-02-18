@@ -155,44 +155,21 @@ impl<'a> WinMain<'a> {
         )?)
     }
 
-    fn create_first_row(&self, tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
-        let first_row = match tab.mode {
-            Mode::Normal | Mode::Tree => {
-                vec![
-                    format!("{} ", tab.path_content.path.display()),
-                    format!("{} files ", tab.path_content.true_len()),
-                    format!("{}  ", tab.path_content.used_space()),
-                    format!("Avail: {disk_space}  "),
-                    format!("{}  ", &tab.path_content.git_string()?),
-                ]
-            }
-            Mode::Preview => match &tab.preview {
-                Preview::Text(text_content) => {
-                    if matches!(text_content.kind, TextKind::HELP) {
-                        vec![
-                            HELP_FIRST_SENTENCE.to_owned(),
-                            HELP_SECOND_SENTENCE.to_owned(),
-                        ]
-                    } else {
-                        Self::default_preview_first_line(tab)
-                    }
-                }
-                _ => Self::default_preview_first_line(tab),
-            },
-            _ => match tab.previous_mode {
-                Mode::Normal | Mode::Tree => {
-                    vec![
-                        format!("{} ", tab.path_content.path.display()),
-                        format!("{} files ", tab.path_content.true_len()),
-                        format!("{}  ", tab.path_content.used_space()),
-                        format!("Avail: {disk_space}  "),
-                        format!("{}  ", &tab.path_content.git_string()?),
-                    ]
-                }
-                _ => vec![],
-            },
-        };
-        Ok(first_row)
+    fn normal_first_row(tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
+        Ok(vec![
+            format!("{} ", tab.path_content.path.display()),
+            format!("{} files ", tab.path_content.true_len()),
+            format!("{}  ", tab.path_content.used_space()),
+            format!("Avail: {disk_space}  "),
+            format!("{}  ", &tab.path_content.git_string()?),
+        ])
+    }
+
+    fn help_first_row() -> Vec<String> {
+        vec![
+            HELP_FIRST_SENTENCE.to_owned(),
+            HELP_SECOND_SENTENCE.to_owned(),
+        ]
     }
 
     fn default_preview_first_line(tab: &Tab) -> Vec<String> {
@@ -209,6 +186,27 @@ impl<'a> WinMain<'a> {
             }
             None => vec!["".to_owned()],
         }
+    }
+
+    fn create_first_row(&self, tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
+        let first_row = match tab.mode {
+            Mode::Normal | Mode::Tree => Self::normal_first_row(tab, disk_space)?,
+            Mode::Preview => match &tab.preview {
+                Preview::Text(text_content) => {
+                    if matches!(text_content.kind, TextKind::HELP) {
+                        Self::help_first_row()
+                    } else {
+                        Self::default_preview_first_line(tab)
+                    }
+                }
+                _ => Self::default_preview_first_line(tab),
+            },
+            _ => match tab.previous_mode {
+                Mode::Normal | Mode::Tree => Self::normal_first_row(tab, disk_space)?,
+                _ => vec![],
+            },
+        };
+        Ok(first_row)
     }
 
     /// Displays the current directory content, one line per item like in

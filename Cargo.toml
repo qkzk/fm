@@ -12,7 +12,7 @@ categories = ["command-line-utilities", "filesystem", "os::unix-apis"]
 documentation = "https://docs.rs/fm-tui/latest/"
 
 [profile.release]
-strip = true  # Automatically strip symbols from the binary.
+# strip = true  # Automatically strip symbols from the binary.
 lto = true # instructs the linker to optimize at the link stage.
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -40,7 +40,7 @@ indicatif = { version = "0.17.1", features= ["in_memory"] }
 kamadak-exif = "0.5.5"
 log = { version = "0.4.0", features = ["std"] }
 log4rs = {version = "1.2.0", features = ["rolling_file_appender", "compound_policy", "size_trigger", "fixed_window_roller"] }
-notify-rust = "4.5.10"
+# notify-rust = "4.5.10"
 pathdiff = "0.2.1"
 pdf-extract = "0.6.4"
 rand = "0.8.5"
