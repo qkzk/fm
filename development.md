@@ -392,6 +392,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Version 0.1.18 : ???
 
   - [x] preview completion in another color
+  - [x] use notify-send instead of a crate to lower binary size
 
 - [ ] Version 0.1.50 : safety & memory usage
 
