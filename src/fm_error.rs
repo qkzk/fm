@@ -23,7 +23,6 @@ pub enum ErrorVariant {
     EXIF,
     FMT,
     STRUM,
-    IMAGEERROR,
     SERDEYAML,
     CHRONO,
     UTF8ERROR,
@@ -141,12 +140,6 @@ impl From<FmtError> for FmError {
 impl From<strum::ParseError> for FmError {
     fn from(error: strum::ParseError) -> Self {
         Self::new(ErrorVariant::STRUM, &error.to_string())
-    }
-}
-
-impl From<image::error::ImageError> for FmError {
-    fn from(error: image::error::ImageError) -> Self {
-        Self::new(ErrorVariant::IMAGEERROR, &error.to_string())
     }
 }
 

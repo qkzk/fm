@@ -2,7 +2,6 @@ use std::cmp::min;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use image::Rgb;
 use log::info;
 use tuikit::attr::*;
 use tuikit::event::Event;
@@ -74,6 +73,7 @@ struct WinMain<'a> {
     tab: &'a Tab,
     disk_space: &'a str,
     colors: &'a Colors,
+    x_position: usize,
 }
 
 impl<'a> Draw for WinMain<'a> {
@@ -98,12 +98,19 @@ impl<'a> Widget for WinMain<'a> {}
 impl<'a> WinMain<'a> {
     const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
 
-    fn new(status: &'a Status, index: usize, disk_space: &'a str, colors: &'a Colors) -> Self {
+    fn new(
+        status: &'a Status,
+        index: usize,
+        disk_space: &'a str,
+        colors: &'a Colors,
+        abs: usize,
+    ) -> Self {
         Self {
             status,
             tab: &status.tabs[index],
             disk_space,
             colors,
+            x_position: abs,
         }
     }
 
@@ -320,22 +327,12 @@ impl<'a> WinMain<'a> {
             }
             Preview::Thumbnail(image) => {
                 let (width, height) = canvas.size()?;
-
-                if let Ok(scaled_image) = (*image).resized_rgb8(width as u32 / 2, height as u32 - 3)
-                {
-                    let (width, _) = scaled_image.dimensions();
-                    for (i, pixel) in scaled_image.pixels().enumerate() {
-                        let (r, g, b) = pixel_values(pixel);
-                        let (row, col) = pixel_position(i, width);
-                        print_pixel(canvas, row, col, r, g, b)?;
-                    }
-                } else {
-                    canvas.print(
-                        3,
-                        3,
-                        &format!("Not a displayable image: {:?}", image.img_path),
-                    )?;
-                }
+                image.ueberzug(
+                    self.x_position as u16 + 1,
+                    3,
+                    width as u16,
+                    height as u16 - 2,
+                );
             }
             Preview::Directory(directory) => {
                 for (i, (prefix, colored_string)) in
@@ -760,8 +757,9 @@ impl Display {
         disk_space_tab_1: &str,
         colors: &Colors,
     ) -> FmResult<()> {
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors);
-        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors);
+        let (width, _) = self.term.term_size()?;
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0);
+        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors, width / 2);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let (border_left, border_right) = self.borders(status);
@@ -789,7 +787,7 @@ impl Display {
         disk_space_tab_0: &str,
         colors: &Colors,
     ) -> FmResult<()> {
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors);
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let win = self.vertical_split(
@@ -819,18 +817,6 @@ const fn color_to_attr(color: Color) -> Attr {
         effect: Effect::empty(),
     }
 }
-
-const fn pixel_values(pixel: &Rgb<u8>) -> (u8, u8, u8) {
-    let [r, g, b] = pixel.0;
-    (r, g, b)
-}
-
-const fn pixel_position(i: usize, width: u32) -> (usize, usize) {
-    let col = 2 * (i % width as usize);
-    let row = i / width as usize + 3;
-    (row, col)
-}
-
 fn draw_colored_strings(
     row: usize,
     offset: usize,
@@ -846,25 +832,4 @@ fn draw_colored_strings(
 
 fn calc_line_row(i: usize, tab: &Tab) -> usize {
     i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top
-}
-
-fn print_pixel(
-    canvas: &mut dyn Canvas,
-    row: usize,
-    col: usize,
-    r: u8,
-    g: u8,
-    b: u8,
-) -> FmResult<()> {
-    canvas.print_with_attr(
-        row,
-        col,
-        "██",
-        Attr {
-            fg: Color::Rgb(r, g, b),
-            bg: Color::Rgb(r, g, b),
-            ..Default::default()
-        },
-    )?;
-    Ok(())
 }

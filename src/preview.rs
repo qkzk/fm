@@ -7,8 +7,6 @@ use std::path::{Path, PathBuf};
 use std::slice::Iter;
 
 use content_inspector::{inspect, ContentType};
-use image::imageops::FilterType;
-use image::{ImageBuffer, Rgb};
 use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
@@ -23,11 +21,11 @@ use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::status::Status;
 use crate::tree::{ColoredString, Tree};
+use crate::utils::filename_from_path;
 
 /// Different kind of preview used to display some informaitons
 /// About the file.
 /// We check if it's an archive first, then a pdf file, an image, a media file
-#[derive(Clone)]
 pub enum Preview {
     Syntaxed(HLContent),
     Text(TextContent),
@@ -35,7 +33,7 @@ pub enum Preview {
     Pdf(PdfContent),
     Archive(ZipContent),
     Exif(ExifContent),
-    Thumbnail(Pixels),
+    Thumbnail(Ueberzug),
     Media(MediaContent),
     Directory(Directory),
     Empty,
@@ -111,7 +109,7 @@ impl Preview {
 
     /// Creates a thumbnail preview of the file.
     pub fn thumbnail(path: PathBuf) -> FmResult<Self> {
-        Ok(Self::Thumbnail(Pixels::new(path)?))
+        Ok(Self::Thumbnail(Ueberzug::new(path)?))
     }
 
     /// Creates the help preview as if it was a text file.
@@ -495,25 +493,45 @@ impl MediaContent {
     }
 }
 
-/// Holds a path to an image and a method to convert it into an ugly thumbnail.
-#[derive(Clone)]
-pub struct Pixels {
-    pub img_path: PathBuf,
+/// Holds a path, a filename and an instance of ueberzug::Ueberzug.
+/// The ueberzug instance is hold as long as the preview is displayed as long as
+/// the preview isn't reset.
+pub struct Ueberzug {
+    path: String,
+    filename: String,
+    ueberzug: ueberzug::Ueberzug,
 }
 
-impl Pixels {
+impl Ueberzug {
     /// Creates a new preview instance. It simply holds a path.
     fn new(img_path: PathBuf) -> FmResult<Self> {
-        Ok(Self { img_path })
+        let filename = filename_from_path(&img_path)?.to_owned();
+        let path = img_path
+            .to_str()
+            .ok_or_else(|| FmError::custom("Pixels", "Couldn't parse the path into a string"))?
+            .to_owned();
+        let ueber = ueberzug::Ueberzug::new();
+        Ok(Self {
+            path,
+            filename,
+            ueberzug: ueber,
+        })
     }
 
-    /// Tries to scale down the image to be displayed in the terminal canvas.
-    /// Fastest algorithm is used (nearest neighbor) since the result is always
-    /// ugly nonetheless.
-    /// It may be fun to show to non geek users :)
-    pub fn resized_rgb8(&self, width: u32, height: u32) -> FmResult<ImageBuffer<Rgb<u8>, Vec<u8>>> {
-        let img = image::open(&self.img_path)?;
-        Ok(img.resize(width, height, FilterType::Nearest).to_rgb8())
+    /// Draw the image with ueberzug in the current window.
+    /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
+    /// The whole struct instance is dropped when the preview is reset and the image is deleted.
+    pub fn ueberzug(&self, x: u16, y: u16, width: u16, height: u16) {
+        self.ueberzug.draw(&ueberzug::UeConf {
+            identifier: &self.filename,
+            path: &self.path,
+            x,
+            y,
+            width: Some(width),
+            height: Some(height),
+            scaler: Some(ueberzug::Scalers::FitContain),
+            ..Default::default()
+        });
     }
 }
 
