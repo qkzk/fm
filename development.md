@@ -380,8 +380,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] display / event separation. use async and message passing between coroutines
 
-- [ ] @ranger [ueberzug-rs](https://github.com/Adit-Chauhan/Ueberzug-rs) @[termimage](https://rawcdn.githack.com/nabijaczleweli/termimage/doc/termimage/index.html)
-
 - [ ] vim keys, harmonize keybinds with ranger
 - [ ] zoxide support
 - [ ] make navigable content scrollable
@@ -393,6 +391,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
   - [x] preview completion in another color
   - [x] use notify-send instead of a crate to lower binary size
+  - [x] use ueberzug instead of ugly thumbnail. Requires ueberzug to be installed.
 
 - [ ] Version 0.1.50 : safety & memory usage
 
