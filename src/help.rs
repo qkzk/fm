@@ -23,12 +23,13 @@ static HELP_TO_FORMAT: &str = "
 
 - Actions -
 {ToggleDualPane}:      toggle dual pane - if the width is sufficiant
+{TogglePreviewSecond}:       toggle a preview on the second pane
 {ToggleHidden}:      toggle hidden
 {Shell}:      shell in current directory
 {OpenFile}:      open the selected file
 {NvimFilepicker}:      open in current nvim session
 {Preview}:      preview this file
-{Thumbnail}:      display a thumbnail of an image with ueberzug
+{Thumbnail}:       display a thumbnail of an image with ueberzug
 {Back}:      move back to previous dir
 {Home}:      move to $HOME
 {MarksNew}:      mark current path
