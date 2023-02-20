@@ -392,6 +392,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] preview completion in another color
   - [x] use notify-send instead of a crate to lower binary size
   - [x] use ueberzug instead of ugly thumbnail. Requires ueberzug to be installed.
+  - [x] use second pane for preview, update auto
+    - [ ] BUG: second pane preview has wrong size
 
 - [ ] Version 0.1.50 : safety & memory usage
 

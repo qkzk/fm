@@ -30,27 +30,32 @@ impl EventDispatcher {
         match ev {
             Event::Key(Key::WheelUp(_, col, _)) => {
                 EventExec::event_select_pane(status, col)?;
-                EventExec::event_move_up(status, colors)
+                EventExec::event_move_up(status, colors)?;
             }
             Event::Key(Key::WheelDown(_, col, _)) => {
                 EventExec::event_select_pane(status, col)?;
-                EventExec::event_move_down(status, colors)
+                EventExec::event_move_down(status, colors)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
                 EventExec::event_select_pane(status, col)?;
-                EventExec::event_select_row(status, row, colors)
+                EventExec::event_select_row(status, row, colors)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Right, row, col))
             | Event::Key(Key::DoubleClick(MouseButton::Left, row, col)) => {
                 EventExec::event_select_pane(status, col)?;
                 EventExec::event_select_row(status, row, colors)?;
-                EventExec::event_right_click(status, colors)
+                EventExec::event_right_click(status, colors)?;
             }
-            Event::User(_) => EventExec::refresh_status(status, colors),
-            Event::Resize { width, height } => EventExec::resize(status, width, height, colors),
-            Event::Key(Key::Char(c)) => self.char(status, Key::Char(c), colors),
-            Event::Key(key) => self.key_matcher(status, key, colors),
-            _ => Ok(()),
+            Event::User(_) => EventExec::refresh_status(status, colors)?,
+            Event::Resize { width, height } => EventExec::resize(status, width, height, colors)?,
+            Event::Key(Key::Char(c)) => self.char(status, Key::Char(c), colors)?,
+            Event::Key(key) => self.key_matcher(status, key, colors)?,
+            _ => (),
+        };
+        if status.dual_pane && status.preview_second {
+            status.force_preview(colors)
+        } else {
+            Ok(())
         }
     }
 

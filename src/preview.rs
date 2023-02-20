@@ -494,8 +494,10 @@ impl MediaContent {
 }
 
 /// Holds a path, a filename and an instance of ueberzug::Ueberzug.
-/// The ueberzug instance is hold as long as the preview is displayed as long as
-/// the preview isn't reset.
+/// The ueberzug instance is held as long as the preview is displayed.
+/// When the preview is reset, the instance is dropped and the image is erased.
+/// Positonning the image is tricky since tuikit doesn't know where it's drawed in the terminal:
+/// the preview can't be placed correctly in embeded terminals.
 pub struct Ueberzug {
     path: String,
     filename: String,

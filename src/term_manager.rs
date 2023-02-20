@@ -74,11 +74,17 @@ struct WinMain<'a> {
     disk_space: &'a str,
     colors: &'a Colors,
     x_position: usize,
+    is_second: bool,
 }
 
 impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
+        if self.status.dual_pane && self.is_second && self.status.preview_second {
+            self.preview(&self.status.tabs[0], canvas)?;
+            self.first_line(&self.status.tabs[0], self.disk_space, canvas)?;
+            return Ok(());
+        }
         match self.tab.mode {
             Mode::Preview => self.preview(self.tab, canvas),
             Mode::Tree => self.tree(self.status, self.tab, canvas),
@@ -104,6 +110,7 @@ impl<'a> WinMain<'a> {
         disk_space: &'a str,
         colors: &'a Colors,
         abs: usize,
+        is_second: bool,
     ) -> Self {
         Self {
             status,
@@ -111,6 +118,7 @@ impl<'a> WinMain<'a> {
             disk_space,
             colors,
             x_position: abs,
+            is_second,
         }
     }
 
@@ -758,8 +766,8 @@ impl Display {
         colors: &Colors,
     ) -> FmResult<()> {
         let (width, _) = self.term.term_size()?;
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0);
-        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors, width / 2);
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0, false);
+        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors, width / 2, true);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let (border_left, border_right) = self.borders(status);
@@ -787,7 +795,7 @@ impl Display {
         disk_space_tab_0: &str,
         colors: &Colors,
     ) -> FmResult<()> {
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0);
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0, false);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let win = self.vertical_split(

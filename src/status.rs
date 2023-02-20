@@ -11,6 +11,7 @@ use users::UsersCache;
 
 use crate::args::Args;
 use crate::compress::Compresser;
+use crate::config::Colors;
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::DeviceOpener;
@@ -18,7 +19,7 @@ use crate::flagged::Flagged;
 use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
-use crate::preview::Directory;
+use crate::preview::{Directory, Preview};
 use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::trash::Trash;
@@ -52,6 +53,8 @@ pub struct Status {
     pub system_info: System,
     /// do we display all info or only the filenames ?
     pub display_full: bool,
+    /// use the second pane to preview auto
+    pub preview_second: bool,
     /// The opener used by the application.
     pub opener: Opener,
     /// The help string.
@@ -102,6 +105,7 @@ impl Status {
             skimer: Skimer::new(term.clone()),
             term,
             dual_pane: true,
+            preview_second: false,
             system_info: sys,
             display_full: true,
             opener,
@@ -322,6 +326,15 @@ impl Status {
 
     pub fn read_encrypted_devices(&mut self) -> FmResult<()> {
         self.encrypted_devices.update()?;
+        Ok(())
+    }
+
+    pub fn force_preview(&mut self, colors: &Colors) -> FmResult<()> {
+        let fileinfo = &self.tabs[0]
+            .selected()
+            .ok_or_else(|| FmError::custom("force preview", "No file to select"))?;
+        let users_cache = &self.tabs[0].path_content.users_cache;
+        self.tabs[0].preview = Preview::new(fileinfo, users_cache, self, colors)?;
         Ok(())
     }
 }

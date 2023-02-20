@@ -1793,6 +1793,11 @@ impl EventExec {
         let Ok(command) = ActionMap::from_str(command_str) else { return Ok(()) };
         command.matcher(status, colors)
     }
+
+    pub fn event_toggle_preview_second(status: &mut Status) -> FmResult<()> {
+        status.preview_second = !status.preview_second;
+        Ok(())
+    }
 }
 
 fn string_to_path(path_string: &str) -> FmResult<path::PathBuf> {
