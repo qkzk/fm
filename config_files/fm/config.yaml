@@ -59,7 +59,7 @@ keys:
   'shift-m': MarksNew
   'shift-o': Sort
   'shift-p': Preview
-  'shift-t': Thumbnail
+  'shift-t': MediaInfo
   'ctrl-c': CopyFilename
   'ctrl-d': Delete
   'ctrl-e': DisplayFull

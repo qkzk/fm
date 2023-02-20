@@ -113,7 +113,7 @@ impl Tree {
     /// ATM it's a constant, in future versions it may change
     /// It may be better to stop the recursion when too much file
     /// are present and the exploration is slow.
-    pub const MAX_DEPTH: usize = 7;
+    pub const MAX_DEPTH: usize = 5;
     pub const REQUIRED_HEIGHT: usize = 80;
 
     /// Set the required height to a given value.

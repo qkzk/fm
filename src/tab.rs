@@ -363,8 +363,14 @@ impl Tab {
     pub fn make_tree(&mut self, colors: &Colors) -> FmResult<()> {
         let path = self.path_content.path.clone();
         let users_cache = &self.path_content.users_cache;
-        self.directory =
-            Directory::new(&path, users_cache, colors, &self.filter, self.show_hidden)?;
+        self.directory = Directory::new(
+            &path,
+            users_cache,
+            colors,
+            &self.filter,
+            self.show_hidden,
+            None,
+        )?;
         Ok(())
     }
 

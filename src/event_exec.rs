@@ -1417,12 +1417,12 @@ impl EventExec {
         Self::refresh_status(status, colors)
     }
 
-    /// Open a thumbnail of an image, scaled up to the whole window.
-    pub fn event_thumbnail(tab: &mut Tab) -> FmResult<()> {
+    /// Display mediainfo defails of an image
+    pub fn event_mediainfo(tab: &mut Tab) -> FmResult<()> {
         if let Mode::Normal | Mode::Tree = tab.mode {
             let Some(file_info) = tab.selected() else { return Ok(())};
             info!("selected {:?}", file_info);
-            tab.preview = Preview::thumbnail(file_info.path.to_owned())?;
+            tab.preview = Preview::mediainfo(&file_info.path)?;
             tab.window.reset(tab.preview.len());
             tab.set_mode(Mode::Preview);
         }

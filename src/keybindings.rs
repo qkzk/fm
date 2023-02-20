@@ -54,7 +54,7 @@ impl Bindings {
             (Key::Char('M'), ActionMap::MarksNew),
             (Key::Char('O'), ActionMap::Sort),
             (Key::Char('P'), ActionMap::Preview),
-            (Key::Char('T'), ActionMap::Thumbnail),
+            (Key::Char('T'), ActionMap::MediaInfo),
             (Key::Char('X'), ActionMap::TrashMoveFile),
             (Key::Char('a'), ActionMap::ToggleHidden),
             (Key::Char('c'), ActionMap::CopyPaste),

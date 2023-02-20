@@ -29,7 +29,7 @@ static HELP_TO_FORMAT: &str = "
 {OpenFile}:      open the selected file
 {NvimFilepicker}:      open in current nvim session
 {Preview}:      preview this file
-{Thumbnail}:       display a thumbnail of an image with ueberzug
+{MediaInfo}:       display a thumbnail of an image with ueberzug
 {Back}:      move back to previous dir
 {Home}:      move to $HOME
 {MarksNew}:      mark current path

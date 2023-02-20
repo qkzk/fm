@@ -20,7 +20,6 @@ pub enum ErrorVariant {
     FSEXTRA,
     ZIP,
     LOGGER,
-    EXIF,
     FMT,
     STRUM,
     SERDEYAML,
@@ -122,12 +121,6 @@ impl From<SetLoggerError> for FmError {
 impl From<Box<dyn Error>> for FmError {
     fn from(error: Box<dyn Error>) -> Self {
         Self::new(ErrorVariant::BOXED, &error.to_string())
-    }
-}
-
-impl From<exif::Error> for FmError {
-    fn from(error: exif::Error) -> Self {
-        Self::new(ErrorVariant::EXIF, &error.to_string())
     }
 }
 

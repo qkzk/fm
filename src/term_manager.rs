@@ -338,12 +338,12 @@ impl<'a> WinMain<'a> {
                     line.print(canvas, row, line_number_width_hex + 1);
                 }
             }
-            Preview::Thumbnail(image) => {
+            Preview::Ueberzug(image) => {
                 let (width, height) = canvas.size()?;
                 image.ueberzug(
-                    self.x_position as u16 + 1,
+                    self.x_position as u16 + 2,
                     3,
-                    width as u16,
+                    width as u16 - 2,
                     height as u16 - 2,
                 );
             }
@@ -362,9 +362,6 @@ impl<'a> WinMain<'a> {
                 }
             }
             Preview::Archive(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window)
-            }
-            Preview::Exif(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window)
             }
             Preview::Media(text) => {

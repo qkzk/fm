@@ -394,6 +394,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] use ueberzug instead of ugly thumbnail. Requires ueberzug to be installed.
   - [x] use second pane for preview, update auto
     - [x] FIX: second pane preview has wrong size
+  - [x] improve directory preview by limiting depth
+  - [x] preview videos with a thumbnail (created with ffmpeg)
+  - [x] use media info for audio
 
 - [ ] Version 0.1.50 : safety & memory usage
 
