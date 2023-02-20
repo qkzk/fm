@@ -60,8 +60,8 @@ impl EventReader {
 }
 
 macro_rules! impl_preview {
-    ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident) => {
-        for (i, line) in (*$text).window($tab.window.top, $tab.window.bottom, $length) {
+    ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident, $window:ident) => {
+        for (i, line) in (*$text).window($window.top, $window.bottom, $length) {
             let row = calc_line_row(i, $tab);
             $canvas.print(row, $line_number_width + 3, line)?;
         }
@@ -81,12 +81,17 @@ impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
         if self.status.dual_pane && self.is_second && self.status.preview_second {
-            self.preview(&self.status.tabs[0], canvas)?;
+            let (_, height) = canvas.size()?;
+            self.preview(
+                &self.status.tabs[0],
+                &self.status.tabs[0].preview.window_for_second_pane(height),
+                canvas,
+            )?;
             self.first_line(&self.status.tabs[0], self.disk_space, canvas)?;
             return Ok(());
         }
         match self.tab.mode {
-            Mode::Preview => self.preview(self.tab, canvas),
+            Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
             Mode::Tree => self.tree(self.status, self.tab, canvas),
             Mode::Normal => self.files(self.status, self.tab, canvas),
             _ => match self.tab.previous_mode {
@@ -305,12 +310,12 @@ impl<'a> WinMain<'a> {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn preview(&self, tab: &Tab, window: &ContentWindow, canvas: &mut dyn Canvas) -> FmResult<()> {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
-                for (i, vec_line) in (*syntaxed).window(tab.window.top, tab.window.bottom, length) {
+                for (i, vec_line) in (*syntaxed).window(window.top, window.bottom, length) {
                     let row_position = calc_line_row(i, tab);
                     Self::print_line_number(row_position, i + 1, canvas)?;
                     for token in vec_line.iter() {
@@ -321,13 +326,13 @@ impl<'a> WinMain<'a> {
             Preview::Binary(bin) => {
                 let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
-                for (i, line) in (*bin).window(tab.window.top, tab.window.bottom, length) {
+                for (i, line) in (*bin).window(window.top, window.bottom, length) {
                     let row = calc_line_row(i, tab);
 
                     canvas.print_with_attr(
                         row,
                         0,
-                        &format_line_nr_hex(i + 1 + tab.window.top, line_number_width_hex),
+                        &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
                         Self::ATTR_LINE_NR,
                     )?;
                     line.print(canvas, row, line_number_width_hex + 1);
@@ -344,7 +349,7 @@ impl<'a> WinMain<'a> {
             }
             Preview::Directory(directory) => {
                 for (i, (prefix, colored_string)) in
-                    (directory).window(tab.window.top, tab.window.bottom, length)
+                    (directory).window(window.top, window.bottom, length)
                 {
                     let row = calc_line_row(i, tab);
                     let col = canvas.print(row, line_number_width, prefix)?;
@@ -356,11 +361,21 @@ impl<'a> WinMain<'a> {
                     )?;
                 }
             }
-            Preview::Archive(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Exif(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Media(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Text(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Archive(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
+            Preview::Exif(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
+            Preview::Media(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
+            Preview::Pdf(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
+            Preview::Text(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
 
             Preview::Empty => (),
         }

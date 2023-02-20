@@ -15,6 +15,7 @@ use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
 use crate::config::Colors;
+use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
@@ -82,6 +83,11 @@ impl Preview {
                 "Can't preview this filekind",
             )),
         }
+    }
+
+    /// Creates a new, static window used when we display a preview in the second pane
+    pub fn window_for_second_pane(&self, height: usize) -> ContentWindow {
+        ContentWindow::new(self.len(), height)
     }
 
     fn preview_syntaxed(ext: &str, path: &Path) -> Option<Self> {
