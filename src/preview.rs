@@ -385,6 +385,8 @@ impl PdfContent {
 
     fn new(path: &Path) -> Self {
         let result = catch_unwind_silent(|| {
+            // TODO! remove this when pdf_extract replaces println! whith dlog.
+            let _print_gag = gag::Gag::stdout().unwrap();
             if let Ok(content_string) = pdf_extract::extract_text(path) {
                 content_string
                     .split_whitespace()
@@ -418,7 +420,7 @@ pub struct ZipContent {
 
 impl ZipContent {
     fn new(path: &Path) -> FmResult<Self> {
-        let content = list_files_zip(path)?;
+        let content = list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]);
 
         Ok(Self {
             length: content.len(),

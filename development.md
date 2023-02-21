@@ -397,6 +397,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] improve directory preview by limiting depth
   - [x] preview videos with a thumbnail (created with ffmpeg)
   - [x] use media info for audio
+  - [x] remove some attributes from FileInfo, lowering its size.
+  - [x] FIX: sometimes pdf_extract prints to stdout. A fix is proposed in a PR, atm we'll use Gag to redirect stdout.
+  - [x] FIX: prevent invalid zips from crashing the app while previewing
 
 - [ ] Version 0.1.50 : safety & memory usage
 

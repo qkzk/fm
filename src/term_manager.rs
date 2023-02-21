@@ -62,7 +62,7 @@ impl EventReader {
 macro_rules! impl_preview {
     ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident, $window:ident) => {
         for (i, line) in (*$text).window($window.top, $window.bottom, $length) {
-            let row = calc_line_row(i, $tab);
+            let row = calc_line_row(i, $window);
             $canvas.print(row, $line_number_width + 3, line)?;
         }
     };
@@ -316,7 +316,7 @@ impl<'a> WinMain<'a> {
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
                 for (i, vec_line) in (*syntaxed).window(window.top, window.bottom, length) {
-                    let row_position = calc_line_row(i, tab);
+                    let row_position = calc_line_row(i, window);
                     Self::print_line_number(row_position, i + 1, canvas)?;
                     for token in vec_line.iter() {
                         token.print(canvas, row_position, line_number_width)?;
@@ -327,7 +327,7 @@ impl<'a> WinMain<'a> {
                 let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
                 for (i, line) in (*bin).window(window.top, window.bottom, length) {
-                    let row = calc_line_row(i, tab);
+                    let row = calc_line_row(i, &window);
 
                     canvas.print_with_attr(
                         row,
@@ -351,7 +351,7 @@ impl<'a> WinMain<'a> {
                 for (i, (prefix, colored_string)) in
                     (directory).window(window.top, window.bottom, length)
                 {
-                    let row = calc_line_row(i, tab);
+                    let row = calc_line_row(i, &window);
                     let col = canvas.print(row, line_number_width, prefix)?;
                     canvas.print_with_attr(
                         row,
@@ -577,7 +577,7 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
 
         for (i, line) in status.marks.as_strings().iter().enumerate() {
-            let row = calc_line_row(i, tab) + 2;
+            let row = calc_line_row(i, &tab.window) + 2;
             let mut attr = Attr::default();
             if i == status.marks.index() {
                 attr.effect |= Effect::REVERSE;
@@ -595,7 +595,7 @@ impl<'a> WinSecondary<'a> {
     ) -> FmResult<()> {
         canvas.print_with_attr(2, 3, "m: mount    --   u: unmount", Self::ATTR_YELLOW)?;
         for (i, device) in status.encrypted_devices.content.iter().enumerate() {
-            let row = calc_line_row(i, tab) + 2;
+            let row = calc_line_row(i, &tab.window) + 2;
             let mut not_mounted_attr = Attr::default();
             let mut mounted_attr = Attr::from(Color::BLUE);
             if i == status.encrypted_devices.index() {
@@ -850,6 +850,6 @@ fn draw_colored_strings(
     Ok(())
 }
 
-fn calc_line_row(i: usize, tab: &Tab) -> usize {
-    i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top
+fn calc_line_row(i: usize, window: &ContentWindow) -> usize {
+    i + ContentWindow::WINDOW_MARGIN_TOP - window.top
 }
