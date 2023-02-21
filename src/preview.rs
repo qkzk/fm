@@ -410,8 +410,8 @@ impl PdfContent {
     }
 }
 
-/// Holds a list of file of an archive as returned by `compress_tools::list_files`.
-/// It may fail if the archive can't be read properly.
+/// Holds a list of file of an archive as returned by `ZipArchive::file_names`.
+/// A generic error message prevent it from returning an error.
 #[derive(Clone)]
 pub struct ZipContent {
     length: usize,

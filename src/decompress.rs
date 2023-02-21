@@ -49,17 +49,13 @@ pub fn decompress_xz(source: &Path) -> FmResult<()> {
     Ok(())
 }
 
+/// List files contained in a ZIP file.
+/// Will return an error if the ZIP file is corrupted.
 pub fn list_files_zip<P>(source: P) -> FmResult<Vec<String>>
 where
     P: AsRef<Path>,
 {
     let file = File::open(source)?;
-    let mut content = vec![];
-    let mut zip = zip::ZipArchive::new(file)?;
-
-    for i in 0..zip.len() {
-        let file = zip.by_index(i)?;
-        content.push(file.name().to_owned());
-    }
-    Ok(content)
+    let zip = zip::ZipArchive::new(file)?;
+    Ok(zip.file_names().map(|f| f.to_owned()).collect())
 }
