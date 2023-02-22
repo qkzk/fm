@@ -1,5 +1,6 @@
 use std::cmp::min;
 use std::fmt::Write as _;
+use std::fs::metadata;
 use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::panic;
@@ -95,6 +96,13 @@ impl Preview {
     }
 
     fn preview_syntaxed(ext: &str, path: &Path) -> Option<Self> {
+        if let Ok(metadata) = metadata(path) {
+            if metadata.len() > HLContent::SIZE_LIMIT as u64 {
+                return None;
+            }
+        } else {
+            return None;
+        };
         let ss = SyntaxSet::load_defaults_nonewlines();
         ss.find_syntax_by_extension(ext).map(|syntax| {
             Self::Syntaxed(HLContent::new(path, ss.clone(), syntax).unwrap_or_default())
@@ -203,7 +211,7 @@ pub struct HLContent {
 }
 
 impl HLContent {
-    const SIZE_LIMIT: usize = 1048576;
+    const SIZE_LIMIT: usize = 32768;
 
     /// Creates a new displayable content of a syntect supported file.
     /// It may file if the file isn't properly formatted or the extension

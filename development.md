@@ -400,6 +400,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] remove some attributes from FileInfo, lowering its size.
   - [x] FIX: sometimes pdf_extract prints to stdout. A fix is proposed in a PR, atm we'll use Gag to redirect stdout.
   - [x] FIX: prevent invalid zips from crashing the app while previewing
+  - [x] FIX: preview of big highlighted source file is slow. Fix it by preventing those preview for files larger than 32kiB.
 
 - [ ] Version 0.1.50 : safety & memory usage
 
