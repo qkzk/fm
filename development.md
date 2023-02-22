@@ -402,6 +402,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: prevent invalid zips from crashing the app while previewing
   - [x] FIX: preview of big highlighted source file is slow. Fix it by preventing those preview for files larger than 32kiB.
   - [x] display the number of flagged files
+  - [x] improve preview first line
 
 - [ ] Version 0.1.50 : safety & memory usage
 

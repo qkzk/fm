@@ -81,13 +81,7 @@ impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
         if self.status.dual_pane && self.is_second && self.status.preview_second {
-            let (_, height) = canvas.size()?;
-            self.preview(
-                &self.status.tabs[0],
-                &self.status.tabs[0].preview.window_for_second_pane(height),
-                canvas,
-            )?;
-            self.first_line(&self.status.tabs[0], self.disk_space, canvas)?;
+            self.preview_as_second_pane(canvas)?;
             return Ok(());
         }
         match self.tab.mode {
@@ -125,6 +119,14 @@ impl<'a> WinMain<'a> {
             x_position: abs,
             is_second,
         }
+    }
+
+    fn preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> FmResult<()> {
+        let tab = &self.status.tabs[0];
+        let (_, height) = canvas.size()?;
+        self.preview(tab, &tab.preview.window_for_second_pane(height), canvas)?;
+        draw_colored_strings(0, 0, self.default_preview_first_line(tab), canvas)?;
+        Ok(())
     }
 
     /// Display the top line on terminal.
@@ -193,19 +195,15 @@ impl<'a> WinMain<'a> {
         ]
     }
 
-    fn default_preview_first_line(&self) -> Vec<String> {
-        match self.tab.path_content.selected() {
+    fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
+        match tab.path_content.selected() {
             Some(fileinfo) => {
                 let mut strings = vec![
-                    format!("{}", self.tab.mode.clone()),
+                    "Preview  ".to_owned(),
                     format!("{}", fileinfo.path.to_string_lossy()),
                 ];
-                if !self.tab.preview.is_empty() {
-                    strings.push(format!(
-                        " {} / {}",
-                        self.tab.window.bottom,
-                        self.tab.preview.len()
-                    ));
+                if !tab.preview.is_empty() {
+                    strings.push(format!(" {} / {}", tab.window.bottom, tab.preview.len()));
                 };
                 strings
             }
@@ -221,10 +219,10 @@ impl<'a> WinMain<'a> {
                     if matches!(text_content.kind, TextKind::HELP) {
                         Self::help_first_row()
                     } else {
-                        self.default_preview_first_line()
+                        self.default_preview_first_line(tab)
                     }
                 }
-                _ => self.default_preview_first_line(),
+                _ => self.default_preview_first_line(tab),
             },
             _ => match self.tab.previous_mode {
                 Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
