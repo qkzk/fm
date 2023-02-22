@@ -175,13 +175,14 @@ impl<'a> WinMain<'a> {
         )?)
     }
 
-    fn normal_first_row(tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
+    fn normal_first_row(&self, disk_space: &str) -> FmResult<Vec<String>> {
         Ok(vec![
-            format!("{} ", tab.path_content.path.display()),
-            format!("{} files ", tab.path_content.true_len()),
-            format!("{}  ", tab.path_content.used_space()),
+            format!("{} ", self.tab.path_content.path.display()),
+            format!("{} files ", self.tab.path_content.true_len()),
+            format!("{}  ", self.tab.path_content.used_space()),
             format!("Avail: {disk_space}  "),
-            format!("{}  ", &tab.path_content.git_string()?),
+            format!("{}  ", &self.tab.path_content.git_string()?),
+            format!("{} flags", &self.status.flagged.len()),
         ])
     }
 
@@ -192,15 +193,19 @@ impl<'a> WinMain<'a> {
         ]
     }
 
-    fn default_preview_first_line(tab: &Tab) -> Vec<String> {
-        match tab.path_content.selected() {
+    fn default_preview_first_line(&self) -> Vec<String> {
+        match self.tab.path_content.selected() {
             Some(fileinfo) => {
                 let mut strings = vec![
-                    format!("{}", tab.mode.clone()),
+                    format!("{}", self.tab.mode.clone()),
                     format!("{}", fileinfo.path.to_string_lossy()),
                 ];
-                if !tab.preview.is_empty() {
-                    strings.push(format!(" {} / {}", tab.window.bottom, tab.preview.len()));
+                if !self.tab.preview.is_empty() {
+                    strings.push(format!(
+                        " {} / {}",
+                        self.tab.window.bottom,
+                        self.tab.preview.len()
+                    ));
                 };
                 strings
             }
@@ -210,19 +215,19 @@ impl<'a> WinMain<'a> {
 
     fn create_first_row(&self, tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
         let first_row = match tab.mode {
-            Mode::Normal | Mode::Tree => Self::normal_first_row(tab, disk_space)?,
+            Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
             Mode::Preview => match &tab.preview {
                 Preview::Text(text_content) => {
                     if matches!(text_content.kind, TextKind::HELP) {
                         Self::help_first_row()
                     } else {
-                        Self::default_preview_first_line(tab)
+                        self.default_preview_first_line()
                     }
                 }
-                _ => Self::default_preview_first_line(tab),
+                _ => self.default_preview_first_line(),
             },
-            _ => match tab.previous_mode {
-                Mode::Normal | Mode::Tree => Self::normal_first_row(tab, disk_space)?,
+            _ => match self.tab.previous_mode {
+                Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
                 _ => vec![],
             },
         };
