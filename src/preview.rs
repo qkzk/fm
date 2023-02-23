@@ -74,7 +74,7 @@ impl Preview {
                 Some(2),
             )?)),
             FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
-                e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
+                e if is_ext_compressed(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
                 e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
                 e if is_ext_image(e) => Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?)),
                 e if is_ext_audio(e) => Ok(Self::Media(MediaContent::new(&file_info.path)?)),
@@ -781,7 +781,7 @@ impl_window!(ZipContent, String);
 impl_window!(MediaContent, String);
 impl_window!(Directory, ColoredPair);
 
-fn is_ext_zip(ext: &str) -> bool {
+fn is_ext_compressed(ext: &str) -> bool {
     matches!(
         ext,
         "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
