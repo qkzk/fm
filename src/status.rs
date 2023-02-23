@@ -334,7 +334,8 @@ impl Status {
             .selected()
             .ok_or_else(|| FmError::custom("force preview", "No file to select"))?;
         let users_cache = &self.tabs[0].path_content.users_cache;
-        self.tabs[0].preview = Preview::new(fileinfo, users_cache, self, colors)?;
+        self.tabs[0].preview =
+            Preview::new(fileinfo, users_cache, self, colors).unwrap_or_default();
         Ok(())
     }
 }

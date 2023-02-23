@@ -645,7 +645,8 @@ impl EventExec {
                     &unmutable_tab.path_content.users_cache,
                     status,
                     colors,
-                )?;
+                )
+                .unwrap_or_default();
                 status.selected().set_mode(Mode::Preview);
                 status.selected().window.reset(preview.len());
                 status.selected().preview = preview;

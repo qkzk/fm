@@ -29,6 +29,7 @@ use crate::utils::filename_from_path;
 /// Different kind of preview used to display some informaitons
 /// About the file.
 /// We check if it's an archive first, then a pdf file, an image, a media file
+#[derive(Default)]
 pub enum Preview {
     Syntaxed(HLContent),
     Text(TextContent),
@@ -38,6 +39,7 @@ pub enum Preview {
     Ueberzug(Ueberzug),
     Media(MediaContent),
     Directory(Directory),
+    #[default]
     Empty,
 }
 

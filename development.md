@@ -403,6 +403,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: preview of big highlighted source file is slow. Fix it by preventing those preview for files larger than 32kiB.
   - [x] display the number of flagged files
   - [x] improve preview first line
+  - [x] FIX: previewing a file without read permission crashes. Use Empty preview as default.
 
 - [ ] Version 0.1.50 : safety & memory usage
 
