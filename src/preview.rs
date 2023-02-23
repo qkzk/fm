@@ -17,6 +17,7 @@ use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
 use crate::config::Colors;
+use crate::constant_strings_paths::THUMBNAIL_PATH;
 use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
@@ -127,7 +128,7 @@ impl Preview {
             && inspect(buffer) == ContentType::BINARY
     }
 
-    /// Creates a thumbnail preview of the file.
+    /// Returns mediainfo of a media file.
     pub fn mediainfo(path: &Path) -> FmResult<Self> {
         Ok(Self::Media(MediaContent::new(path)?))
     }
@@ -269,7 +270,6 @@ impl HLContent {
 /// This struct does the parsing.
 #[derive(Clone)]
 pub struct SyntaxedString {
-    // row: usize,
     col: usize,
     content: String,
     attr: Attr,
@@ -482,8 +482,6 @@ pub struct Ueberzug {
     filename: String,
     ueberzug: ueberzug::Ueberzug,
 }
-
-static THUMBNAIL_PATH: &str = "/tmp/thumbnail.png";
 
 impl Ueberzug {
     fn image(img_path: &Path) -> FmResult<Self> {

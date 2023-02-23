@@ -46,6 +46,9 @@ pub static NVIM_RPC_SENDER: &str = "nvim-send";
 /// Filter presentation for the second line
 pub static FILTER_PRESENTATION: &str =
     "By name: n expr, by ext: e expr, only directories: d, reset: a";
+/// Video thumbnails
+pub static THUMBNAIL_PATH: &str = "/tmp/thumbnail.png";
+/// Array of hardcoded shortcuts with standard *nix paths.
 pub static HARDCODED_SHORTCUTS: [&str; 9] = [
     "/",
     "/dev",
