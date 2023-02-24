@@ -1,5 +1,6 @@
 use std::cmp::min;
 use std::fmt::Write as _;
+use std::fs::metadata;
 use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::panic;
@@ -7,8 +8,7 @@ use std::path::{Path, PathBuf};
 use std::slice::Iter;
 
 use content_inspector::{inspect, ContentType};
-use image::imageops::FilterType;
-use image::{ImageBuffer, Rgb};
+use log::info;
 use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
@@ -17,27 +17,30 @@ use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
 use crate::config::Colors;
+use crate::constant_strings_paths::THUMBNAIL_PATH;
+use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::status::Status;
 use crate::tree::{ColoredString, Tree};
+use crate::utils::filename_from_path;
 
 /// Different kind of preview used to display some informaitons
 /// About the file.
 /// We check if it's an archive first, then a pdf file, an image, a media file
-#[derive(Clone)]
+#[derive(Default)]
 pub enum Preview {
     Syntaxed(HLContent),
     Text(TextContent),
     Binary(BinaryContent),
     Pdf(PdfContent),
     Archive(ZipContent),
-    Exif(ExifContent),
-    Thumbnail(Pixels),
+    Ueberzug(Ueberzug),
     Media(MediaContent),
     Directory(Directory),
+    #[default]
     Empty,
 }
 
@@ -68,12 +71,16 @@ impl Preview {
                 colors,
                 &status.selected_non_mut().filter,
                 status.selected_non_mut().show_hidden,
+                Some(2),
             )?)),
             FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
-                e if is_ext_zip(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
+                e if is_ext_compressed(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
                 e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
-                e if is_ext_image(e) => Ok(Self::Exif(ExifContent::new(&file_info.path)?)),
-                e if is_ext_media(e) => Ok(Self::Media(MediaContent::new(&file_info.path)?)),
+                e if is_ext_image(e) => Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?)),
+                e if is_ext_audio(e) => Ok(Self::Media(MediaContent::new(&file_info.path)?)),
+                e if is_ext_video(e) => {
+                    Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
+                }
                 e => match Self::preview_syntaxed(e, &file_info.path) {
                     Some(syntaxed_preview) => Ok(syntaxed_preview),
                     None => Self::preview_text_or_binary(file_info),
@@ -86,7 +93,19 @@ impl Preview {
         }
     }
 
+    /// Creates a new, static window used when we display a preview in the second pane
+    pub fn window_for_second_pane(&self, height: usize) -> ContentWindow {
+        ContentWindow::new(self.len(), height)
+    }
+
     fn preview_syntaxed(ext: &str, path: &Path) -> Option<Self> {
+        if let Ok(metadata) = metadata(path) {
+            if metadata.len() > HLContent::SIZE_LIMIT as u64 {
+                return None;
+            }
+        } else {
+            return None;
+        };
         let ss = SyntaxSet::load_defaults_nonewlines();
         ss.find_syntax_by_extension(ext).map(|syntax| {
             Self::Syntaxed(HLContent::new(path, ss.clone(), syntax).unwrap_or_default())
@@ -104,14 +123,14 @@ impl Preview {
     }
 
     fn is_binary(file_info: &FileInfo, file: &mut std::fs::File, buffer: &mut [u8]) -> bool {
-        file_info.size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
+        file_info.size().unwrap_or_default() >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
             && file.read_exact(buffer).is_ok()
             && inspect(buffer) == ContentType::BINARY
     }
 
-    /// Creates a thumbnail preview of the file.
-    pub fn thumbnail(path: PathBuf) -> FmResult<Self> {
-        Ok(Self::Thumbnail(Pixels::new(path)?))
+    /// Returns mediainfo of a media file.
+    pub fn mediainfo(path: &Path) -> FmResult<Self> {
+        Ok(Self::Media(MediaContent::new(path)?))
     }
 
     /// Creates the help preview as if it was a text file.
@@ -134,8 +153,7 @@ impl Preview {
             Self::Binary(binary) => binary.len(),
             Self::Pdf(pdf) => pdf.len(),
             Self::Archive(zip) => zip.len(),
-            Self::Thumbnail(_img) => 0,
-            Self::Exif(exif_content) => exif_content.len(),
+            Self::Ueberzug(_img) => 0,
             Self::Media(media) => media.len(),
             Self::Directory(directory) => directory.len(),
         }
@@ -196,7 +214,7 @@ pub struct HLContent {
 }
 
 impl HLContent {
-    const SIZE_LIMIT: usize = 1048576;
+    const SIZE_LIMIT: usize = 32768;
 
     /// Creates a new displayable content of a syntect supported file.
     /// It may file if the file isn't properly formatted or the extension
@@ -252,7 +270,6 @@ impl HLContent {
 /// This struct does the parsing.
 #[derive(Clone)]
 pub struct SyntaxedString {
-    // row: usize,
     col: usize,
     content: String,
     attr: Attr,
@@ -314,7 +331,7 @@ impl BinaryContent {
 
         Ok(Self {
             path: file_info.path.clone(),
-            length: file_info.size / Self::LINE_WIDTH as u64,
+            length: file_info.size().unwrap_or_default() / Self::LINE_WIDTH as u64,
             content,
         })
     }
@@ -378,6 +395,8 @@ impl PdfContent {
 
     fn new(path: &Path) -> Self {
         let result = catch_unwind_silent(|| {
+            // TODO! remove this when pdf_extract replaces println! whith dlog.
+            let _print_gag = gag::Gag::stdout().unwrap();
             if let Ok(content_string) = pdf_extract::extract_text(path) {
                 content_string
                     .split_whitespace()
@@ -401,8 +420,8 @@ impl PdfContent {
     }
 }
 
-/// Holds a list of file of an archive as returned by `compress_tools::list_files`.
-/// It may fail if the archive can't be read properly.
+/// Holds a list of file of an archive as returned by `ZipArchive::file_names`.
+/// A generic error message prevent it from returning an error.
 #[derive(Clone)]
 pub struct ZipContent {
     length: usize,
@@ -411,54 +430,12 @@ pub struct ZipContent {
 
 impl ZipContent {
     fn new(path: &Path) -> FmResult<Self> {
-        let content = list_files_zip(path)?;
+        let content = list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]);
 
         Ok(Self {
             length: content.len(),
             content,
         })
-    }
-
-    fn len(&self) -> usize {
-        self.length
-    }
-}
-
-/// Holds the exif content of an image.
-/// Since displaying a thumbnail is ugly and idk how to bind ueberzug into
-/// tuikit, it's preferable.
-/// At least it's an easy way to display informations about an image.
-#[derive(Clone)]
-pub struct ExifContent {
-    length: usize,
-    /// The exif strings.
-    content: Vec<String>,
-}
-
-impl ExifContent {
-    fn new(path: &Path) -> FmResult<Self> {
-        let mut bufreader = BufReader::new(std::fs::File::open(path)?);
-        let content: Vec<String> =
-            if let Ok(exif) = exif::Reader::new().read_from_container(&mut bufreader) {
-                exif.fields()
-                    .map(|f| Self::format_exif_field(f, &exif))
-                    .collect()
-            } else {
-                vec![]
-            };
-        Ok(Self {
-            length: content.len(),
-            content,
-        })
-    }
-
-    fn format_exif_field(f: &exif::Field, exif: &exif::Exif) -> String {
-        format!(
-            "{} {} {}",
-            f.tag,
-            f.ifd_num,
-            f.display_value().with_unit(exif)
-        )
     }
 
     fn len(&self) -> usize {
@@ -495,25 +472,80 @@ impl MediaContent {
     }
 }
 
-/// Holds a path to an image and a method to convert it into an ugly thumbnail.
-#[derive(Clone)]
-pub struct Pixels {
-    pub img_path: PathBuf,
+/// Holds a path, a filename and an instance of ueberzug::Ueberzug.
+/// The ueberzug instance is held as long as the preview is displayed.
+/// When the preview is reset, the instance is dropped and the image is erased.
+/// Positonning the image is tricky since tuikit doesn't know where it's drawed in the terminal:
+/// the preview can't be placed correctly in embeded terminals.
+pub struct Ueberzug {
+    path: String,
+    filename: String,
+    ueberzug: ueberzug::Ueberzug,
 }
 
-impl Pixels {
-    /// Creates a new preview instance. It simply holds a path.
-    fn new(img_path: PathBuf) -> FmResult<Self> {
-        Ok(Self { img_path })
+impl Ueberzug {
+    fn image(img_path: &Path) -> FmResult<Self> {
+        let filename = filename_from_path(img_path)?.to_owned();
+        let path = img_path
+            .to_str()
+            .ok_or_else(|| FmError::custom("ueberzug", "Couldn't parse the path into a string"))?
+            .to_owned();
+        Ok(Self {
+            path,
+            filename,
+            ueberzug: ueberzug::Ueberzug::new(),
+        })
     }
 
-    /// Tries to scale down the image to be displayed in the terminal canvas.
-    /// Fastest algorithm is used (nearest neighbor) since the result is always
-    /// ugly nonetheless.
-    /// It may be fun to show to non geek users :)
-    pub fn resized_rgb8(&self, width: u32, height: u32) -> FmResult<ImageBuffer<Rgb<u8>, Vec<u8>>> {
-        let img = image::open(&self.img_path)?;
-        Ok(img.resize(width, height, FilterType::Nearest).to_rgb8())
+    fn video_thumbnail(video_path: &Path) -> FmResult<Self> {
+        Self::make_thumbnail(video_path)?;
+        Ok(Self {
+            path: THUMBNAIL_PATH.to_owned(),
+            filename: "thumbnail".to_owned(),
+            ueberzug: ueberzug::Ueberzug::new(),
+        })
+    }
+
+    fn make_thumbnail(video_path: &Path) -> FmResult<()> {
+        let path_str = video_path.to_str().ok_or_else(|| {
+            FmError::custom("make_thumbnail", "Couldn't parse the path into a string")
+        })?;
+        let output = std::process::Command::new("ffmpeg")
+            .args([
+                "-i",
+                path_str,
+                "-vf",
+                "thumbnail",
+                "-frames:v",
+                "1",
+                THUMBNAIL_PATH,
+                "-y",
+            ])
+            .output()?;
+        if !output.stderr.is_empty() {
+            info!(
+                "ffmpeg thumbnail output: {} {}",
+                String::from_utf8(output.stdout).unwrap_or_default(),
+                String::from_utf8(output.stderr).unwrap_or_default()
+            );
+        }
+        Ok(())
+    }
+
+    /// Draw the image with ueberzug in the current window.
+    /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
+    /// The whole struct instance is dropped when the preview is reset and the image is deleted.
+    pub fn ueberzug(&self, x: u16, y: u16, width: u16, height: u16) {
+        self.ueberzug.draw(&ueberzug::UeConf {
+            identifier: &self.filename,
+            path: &self.path,
+            x,
+            y,
+            width: Some(width),
+            height: Some(height),
+            scaler: Some(ueberzug::Scalers::FitContain),
+            ..Default::default()
+        });
     }
 }
 
@@ -537,10 +569,16 @@ impl Directory {
         colors: &Colors,
         filter_kind: &FilterKind,
         show_hidden: bool,
+        max_depth: Option<usize>,
     ) -> FmResult<Self> {
+        let max_depth = match max_depth {
+            Some(max_depth) => max_depth,
+            None => Tree::MAX_DEPTH,
+        };
+
         let mut tree = Tree::from_path(
             path,
-            Tree::MAX_DEPTH,
+            max_depth,
             users_cache,
             filter_kind,
             show_hidden,
@@ -740,11 +778,10 @@ impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
 impl_window!(PdfContent, String);
 impl_window!(ZipContent, String);
-impl_window!(ExifContent, String);
 impl_window!(MediaContent, String);
 impl_window!(Directory, ColoredPair);
 
-fn is_ext_zip(ext: &str) -> bool {
+fn is_ext_compressed(ext: &str) -> bool {
     matches!(
         ext,
         "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
@@ -754,17 +791,14 @@ fn is_ext_image(ext: &str) -> bool {
     matches!(ext, "png" | "jpg" | "jpeg" | "tiff" | "heif")
 }
 
-fn is_ext_media(ext: &str) -> bool {
+fn is_ext_audio(ext: &str) -> bool {
     matches!(
         ext,
-        "mkv"
-            | "ogg"
+        "ogg"
             | "ogm"
             | "riff"
-            | "mpeg"
             | "mp2"
             | "mp3"
-            | "mp4"
             | "wm"
             | "qt"
             | "ac3"
@@ -772,8 +806,11 @@ fn is_ext_media(ext: &str) -> bool {
             | "aac"
             | "mac"
             | "flac"
-            | "avi"
     )
+}
+
+fn is_ext_video(ext: &str) -> bool {
+    matches!(ext, "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg")
 }
 
 fn is_ext_pdf(ext: &str) -> bool {

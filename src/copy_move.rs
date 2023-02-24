@@ -6,11 +6,12 @@ use std::thread;
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use log::info;
-use notify_rust::Notification;
+// use notify_rust::Notification;
 use tuikit::prelude::{Attr, Color, Effect, Event, Term};
 
 use crate::fileinfo::human_size;
 use crate::fm_error::FmResult;
+use crate::opener::execute_in_child;
 
 fn setup(
     action: String,
@@ -114,14 +115,12 @@ pub fn copy_move(
         };
 
         let _ = c_term.send_event(Event::User(()));
-        let _ = notify(
-            &format!("fm: {} finished", copy_or_move.verb()),
-            &format!(
-                "{}B {}",
-                human_size(transfered_bytes),
-                copy_or_move.preterit()
-            ),
-        );
+        let _ = notify(&format!(
+            "fm: {} finished {}B {}",
+            copy_or_move.verb(),
+            human_size(transfered_bytes),
+            copy_or_move.preterit()
+        ));
         info!(
             "{} finished {}B",
             copy_or_move.verb(),
@@ -132,7 +131,8 @@ pub fn copy_move(
 }
 
 /// Send a notification to the desktop.
-pub fn notify(summary: &str, body: &str) -> FmResult<()> {
-    Notification::new().summary(summary).body(body).show()?;
+/// Requires "notify-send" to be installed.
+pub fn notify(text: &str) -> FmResult<()> {
+    execute_in_child("notify-send", &vec![text])?;
     Ok(())
 }

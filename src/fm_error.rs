@@ -4,7 +4,6 @@ use std::fmt;
 
 use fs_extra::error::Error as FsExtraError;
 use log::SetLoggerError;
-use notify_rust::error::Error as NotifyError;
 use strfmt::FmtError;
 use tuikit::error::TuikitError;
 
@@ -21,11 +20,8 @@ pub enum ErrorVariant {
     FSEXTRA,
     ZIP,
     LOGGER,
-    EXIF,
-    NOTIFY,
     FMT,
     STRUM,
-    IMAGEERROR,
     SERDEYAML,
     CHRONO,
     UTF8ERROR,
@@ -128,18 +124,6 @@ impl From<Box<dyn Error>> for FmError {
     }
 }
 
-impl From<exif::Error> for FmError {
-    fn from(error: exif::Error) -> Self {
-        Self::new(ErrorVariant::EXIF, &error.to_string())
-    }
-}
-
-impl From<NotifyError> for FmError {
-    fn from(error: NotifyError) -> Self {
-        Self::new(ErrorVariant::NOTIFY, &error.to_string())
-    }
-}
-
 impl From<FmtError> for FmError {
     fn from(error: FmtError) -> Self {
         Self::new(ErrorVariant::FMT, &error.to_string())
@@ -149,12 +133,6 @@ impl From<FmtError> for FmError {
 impl From<strum::ParseError> for FmError {
     fn from(error: strum::ParseError) -> Self {
         Self::new(ErrorVariant::STRUM, &error.to_string())
-    }
-}
-
-impl From<image::error::ImageError> for FmError {
-    fn from(error: image::error::ImageError) -> Self {
-        Self::new(ErrorVariant::IMAGEERROR, &error.to_string())
     }
 }
 

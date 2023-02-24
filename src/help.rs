@@ -23,25 +23,26 @@ static HELP_TO_FORMAT: &str = "
 
 - Actions -
 {ToggleDualPane}:      toggle dual pane - if the width is sufficiant
+{TogglePreviewSecond}:       toggle a preview on the second pane
+{ToggleDisplayFull}:      toggle metadata on files
 {ToggleHidden}:      toggle hidden
 {Shell}:      shell in current directory
 {OpenFile}:      open the selected file
 {NvimFilepicker}:      open in current nvim session
 {Preview}:      preview this file
-{Thumbnail}:      display a thumbnail of an image
+{MediaInfo}:       display a thumbnail of an image with ueberzug
 {Back}:      move back to previous dir
 {Home}:      move to $HOME
 {MarksNew}:      mark current path
 {MarksJump}:     jump to a mark
-{DisplayFull}:      toggle metadata on files
 {SearchNext}:      Search next matching element
 {FuzzyFind}:      fuzzy finder
 {RefreshView}:      refresh view
 {CopyFilename}:      copy filename to clipboard
 {CopyFilepath}:      copy filepath to clipboard
+{GitRoot}:      move to git root
 {DragNDrop}:       dragon-drop selected file
 {OpenConfig}:       open the config file
-{GitRoot}:      move to git root
 {Lazygit}:      open a new terminal with lazygit
 
 - Action on flagged files - 

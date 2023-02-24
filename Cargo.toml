@@ -1,6 +1,6 @@
 [package]
 name = "fm-tui"
-version = "0.1.17"
+version = "0.1.18"
 authors = ["Quentin Konieczko <qu3nt1n@gmail.com>"]
 edition = "2021"
 license-file = "LICENSE.txt"
@@ -35,12 +35,10 @@ content_inspector = "0.2.4"
 copypasta = "0.8.1"
 flate2 = "1.0"
 fs_extra = "1.2.0"
-image = "0.24.5"
+gag = "1.0.0"
 indicatif = { version = "0.17.1", features= ["in_memory"] }
-kamadak-exif = "0.5.5"
 log = { version = "0.4.0", features = ["std"] }
 log4rs = {version = "1.2.0", features = ["rolling_file_appender", "compound_policy", "size_trigger", "fixed_window_roller"] }
-notify-rust = "4.5.10"
 pathdiff = "0.2.1"
 pdf-extract = "0.6.4"
 rand = "0.8.5"
@@ -60,3 +58,4 @@ tuikit = "0.5.0"
 url-escape = "0.1.1"
 users = "0.11.0"
 zip = "0.6.4"
+ueberzug = "0.1.0"

@@ -87,7 +87,7 @@ impl SortKind {
     fn sort_by_key_hrtb<T, F, K>(slice: &mut [T], f: F)
     where
         F: for<'a> Fn(&'a T) -> &'a K,
-        K: Ord,
+        K: Ord + ?Sized,
     {
         slice.sort_unstable_by(|a, b| f(a).cmp(f(b)))
     }
@@ -100,7 +100,7 @@ impl SortKind {
     fn reversed_sort_by_key_hrtb<T, F, K>(slice: &mut [T], f: F)
     where
         F: for<'a> Fn(&'a T) -> &'a K,
-        K: Ord,
+        K: Ord + ?Sized,
     {
         slice.sort_unstable_by(|a, b| Ordering::reverse(f(a).cmp(f(b))))
     }

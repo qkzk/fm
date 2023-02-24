@@ -11,6 +11,7 @@ use users::UsersCache;
 
 use crate::args::Args;
 use crate::compress::Compresser;
+use crate::config::Colors;
 use crate::constant_strings_paths::OPENER_PATH;
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::DeviceOpener;
@@ -18,9 +19,10 @@ use crate::flagged::Flagged;
 use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
-use crate::preview::Directory;
+use crate::preview::{Directory, Preview};
 use crate::skim::Skimer;
 use crate::tab::Tab;
+use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::trash::Trash;
 use crate::utils::{disk_space, filename_from_path};
 
@@ -52,6 +54,8 @@ pub struct Status {
     pub system_info: System,
     /// do we display all info or only the filenames ?
     pub display_full: bool,
+    /// use the second pane to preview auto
+    pub preview_second: bool,
     /// The opener used by the application.
     pub opener: Opener,
     /// The help string.
@@ -102,6 +106,7 @@ impl Status {
             skimer: Skimer::new(term.clone()),
             term,
             dual_pane: true,
+            preview_second: false,
             system_info: sys,
             display_full: true,
             opener,
@@ -251,11 +256,6 @@ impl Status {
         }
     }
 
-    /// Set dual pane mode to true or false.
-    pub fn set_dual_pane(&mut self, dual_pane: bool) {
-        self.dual_pane = dual_pane;
-    }
-
     /// Refresh every disk information.
     /// It also refreshes the disk list, which is usefull to detect removable medias.
     /// It may be very slow...
@@ -313,6 +313,7 @@ impl Status {
         Ok(())
     }
 
+    /// Drop the current tree, replace it with an empty one.
     pub fn remove_tree(&mut self) -> FmResult<()> {
         let path = self.selected_non_mut().path_content.path.clone();
         let users_cache = &self.selected_non_mut().path_content.users_cache;
@@ -320,8 +321,31 @@ impl Status {
         Ok(())
     }
 
+    /// Updates the encrypted devices
     pub fn read_encrypted_devices(&mut self) -> FmResult<()> {
         self.encrypted_devices.update()?;
+        Ok(())
+    }
+
+    /// Force a preview on the second pane
+    pub fn force_preview(&mut self, colors: &Colors) -> FmResult<()> {
+        let fileinfo = &self.tabs[0]
+            .selected()
+            .ok_or_else(|| FmError::custom("force preview", "No file to select"))?;
+        let users_cache = &self.tabs[0].path_content.users_cache;
+        self.tabs[0].preview =
+            Preview::new(fileinfo, users_cache, self, colors).unwrap_or_default();
+        Ok(())
+    }
+
+    /// Set dual pane if the term is big enough
+    pub fn set_dual_pane_if_wide_enough(&mut self, width: usize) -> FmResult<()> {
+        if width < MIN_WIDTH_FOR_DUAL_PANE {
+            self.select_tab(0)?;
+            self.dual_pane = false;
+        } else {
+            self.dual_pane = true;
+        }
         Ok(())
     }
 }

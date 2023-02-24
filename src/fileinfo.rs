@@ -96,14 +96,8 @@ pub struct FileInfo {
     pub path: path::PathBuf,
     /// Filename
     pub filename: String,
-    /// size (nb of bytes) of the file
-    pub size: u64,
     /// File size as a `String`, already human formated.
     pub file_size: String,
-    /// First symbol displaying the kind of file.
-    pub dir_symbol: char,
-    /// Str formatted permissions like rwxr..rw.
-    pub permissions: String,
     /// Owner name of the file.
     pub owner: String,
     /// Group name of the file.
@@ -126,11 +120,10 @@ impl FileInfo {
     /// Reads every information about a file from its metadata and returs
     /// a new `FileInfo` object if we can create one.
     pub fn new(direntry: &DirEntry, users_cache: &UsersCache) -> FmResult<FileInfo> {
-        let metadata = direntry.metadata()?;
         let path = direntry.path();
         let filename = extract_filename(direntry)?;
 
-        Self::create_from_metadata_and_filename(&path, &metadata, filename, users_cache)
+        Self::create_from_metadata_and_filename(&path, filename, users_cache)
     }
 
     /// Creates a fileinfo from a path and a filename.
@@ -140,49 +133,52 @@ impl FileInfo {
         filename: &str,
         users_cache: &UsersCache,
     ) -> FmResult<Self> {
-        let metadata = metadata(path)?;
-
-        Self::create_from_metadata_and_filename(path, &metadata, filename.to_owned(), users_cache)
+        Self::create_from_metadata_and_filename(path, filename.to_owned(), users_cache)
     }
 
     pub fn from_path(path: &path::Path, users_cache: &UsersCache) -> FmResult<Self> {
-        let metadata = metadata(path)?;
         let filename = path
             .file_name()
             .ok_or_else(|| FmError::custom("from path", "couldn't read filenale"))?
             .to_str()
             .ok_or_else(|| FmError::custom("from path", "couldn't parse filenale"))?
             .to_owned();
-        Self::create_from_metadata_and_filename(path, &metadata, filename, users_cache)
+        Self::create_from_metadata_and_filename(path, filename, users_cache)
+    }
+
+    fn metadata(&self) -> FmResult<std::fs::Metadata> {
+        Ok(metadata(&self.path)?)
+    }
+
+    pub fn size(&self) -> FmResult<u64> {
+        Ok(extract_file_size(&self.metadata()?))
+    }
+
+    pub fn permissions(&self) -> FmResult<String> {
+        Ok(extract_permissions_string(&self.metadata()?))
     }
 
     fn create_from_metadata_and_filename(
         path: &path::Path,
-        metadata: &Metadata,
         filename: String,
         users_cache: &UsersCache,
     ) -> FmResult<Self> {
+        let metadata = metadata(path)?;
         let path = path.to_owned();
-        let size = extract_file_size(metadata);
-        let file_size = human_size(size);
-        let permissions = extract_permissions_string(metadata)?;
-        let owner = extract_owner(metadata, users_cache)?;
-        let group = extract_group(metadata, users_cache)?;
-        let system_time = extract_datetime(metadata)?;
+        let owner = extract_owner(&metadata, users_cache)?;
+        let group = extract_group(&metadata, users_cache)?;
+        let system_time = extract_datetime(&metadata)?;
         let is_selected = false;
+        let file_size = human_size(extract_file_size(&metadata));
 
-        let file_kind = FileKind::new(metadata);
-        let dir_symbol = file_kind.extract_dir_symbol();
+        let file_kind = FileKind::new(&metadata);
         let extension = extract_extension(&path).into();
         let kind_format = filekind_and_filename(&filename, &file_kind);
 
         Ok(FileInfo {
             path,
             filename,
-            size,
             file_size,
-            dir_symbol,
-            permissions,
             owner,
             group,
             system_time,
@@ -198,8 +194,8 @@ impl FileInfo {
     pub fn format(&self, owner_col_width: usize, group_col_width: usize) -> FmResult<String> {
         let mut repr = format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time} {filename}",
-            dir_symbol = self.dir_symbol,
-            permissions = self.permissions,
+            dir_symbol = self.dir_symbol(),
+            permissions = self.permissions()?,
             file_size = self.file_size,
             owner = self.owner,
             owner_col_width = owner_col_width,
@@ -213,6 +209,10 @@ impl FileInfo {
             repr.push_str(&self.read_dest().unwrap_or_else(|| "Broken link".to_owned()));
         }
         Ok(repr)
+    }
+
+    pub fn dir_symbol(&self) -> char {
+        self.file_kind.extract_dir_symbol()
     }
 
     pub fn format_simple(&self) -> FmResult<String> {
@@ -482,8 +482,6 @@ impl_selectable_content!(FileInfo, PathContent);
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
 /// effect.
 /// Selected file is reversed.
-///
-/// TODO! can be refactored to only use 2 parameters by using the config_color from status
 pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
     let fg = match fileinfo.file_kind {
         FileKind::Directory => str_to_tuikit(&colors.directory),
@@ -528,7 +526,7 @@ fn extract_filename(direntry: &DirEntry) -> FmResult<String> {
 }
 
 /// Reads the permission and converts them into a string.
-fn extract_permissions_string(metadata: &Metadata) -> FmResult<String> {
+fn extract_permissions_string(metadata: &Metadata) -> String {
     let mut perm = String::with_capacity(9);
     let mode = (metadata.mode() & 511) as usize;
     let s_o = convert_octal_mode(mode >> 6);
@@ -537,7 +535,7 @@ fn extract_permissions_string(metadata: &Metadata) -> FmResult<String> {
     perm.push_str(s_o);
     perm.push_str(s_a);
     perm.push_str(s_g);
-    Ok(perm)
+    perm
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`
@@ -598,7 +596,7 @@ pub fn extract_extension(path: &path::Path) -> &str {
 }
 
 fn get_used_space(files: &[FileInfo]) -> u64 {
-    files.iter().map(|f| f.size).sum()
+    files.iter().map(|f| f.size().unwrap_or_default()).sum()
 }
 
 fn filekind_and_filename(filename: &str, file_kind: &FileKind) -> String {

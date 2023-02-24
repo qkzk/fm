@@ -223,6 +223,13 @@ impl Completion {
 
         Ok(())
     }
+
+    /// Complete the input string with current_proposition if possible.
+    /// Returns the optional last chars of the current_proposition.
+    /// If the current_proposition doesn't start with input_string, it returns None.
+    pub fn complete_input_string(&self, input_string: &str) -> Option<&str> {
+        self.current_proposition().strip_prefix(input_string)
+    }
 }
 
 /// true if the filename starts with a pattern

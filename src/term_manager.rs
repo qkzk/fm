@@ -2,7 +2,6 @@ use std::cmp::min;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use image::Rgb;
 use log::info;
 use tuikit::attr::*;
 use tuikit::event::Event;
@@ -24,8 +23,8 @@ use crate::status::Status;
 use crate::tab::Tab;
 use crate::trash::TrashInfo;
 
-/// At least 100 chars width to display 2 tabs.
-pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 100;
+/// At least 120 chars width to display 2 tabs.
+pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
 
 const FIRST_LINE_COLORS: [Attr; 6] = [
     color_to_attr(Color::Rgb(231, 162, 156)),
@@ -61,9 +60,9 @@ impl EventReader {
 }
 
 macro_rules! impl_preview {
-    ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident) => {
-        for (i, line) in (*$text).window($tab.window.top, $tab.window.bottom, $length) {
-            let row = calc_line_row(i, $tab);
+    ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident, $window:ident) => {
+        for (i, line) in (*$text).window($window.top, $window.bottom, $length) {
+            let row = calc_line_row(i, $window);
             $canvas.print(row, $line_number_width + 3, line)?;
         }
     };
@@ -74,13 +73,19 @@ struct WinMain<'a> {
     tab: &'a Tab,
     disk_space: &'a str,
     colors: &'a Colors,
+    x_position: usize,
+    is_second: bool,
 }
 
 impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
+        if self.status.dual_pane && self.is_second && self.status.preview_second {
+            self.preview_as_second_pane(canvas)?;
+            return Ok(());
+        }
         match self.tab.mode {
-            Mode::Preview => self.preview(self.tab, canvas),
+            Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
             Mode::Tree => self.tree(self.status, self.tab, canvas),
             Mode::Normal => self.files(self.status, self.tab, canvas),
             _ => match self.tab.previous_mode {
@@ -98,13 +103,30 @@ impl<'a> Widget for WinMain<'a> {}
 impl<'a> WinMain<'a> {
     const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
 
-    fn new(status: &'a Status, index: usize, disk_space: &'a str, colors: &'a Colors) -> Self {
+    fn new(
+        status: &'a Status,
+        index: usize,
+        disk_space: &'a str,
+        colors: &'a Colors,
+        abs: usize,
+        is_second: bool,
+    ) -> Self {
         Self {
             status,
             tab: &status.tabs[index],
             disk_space,
             colors,
+            x_position: abs,
+            is_second,
         }
+    }
+
+    fn preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> FmResult<()> {
+        let tab = &self.status.tabs[0];
+        let (_, height) = canvas.size()?;
+        self.preview(tab, &tab.preview.window_for_second_pane(height), canvas)?;
+        draw_colored_strings(0, 0, self.default_preview_first_line(tab), canvas)?;
+        Ok(())
     }
 
     /// Display the top line on terminal.
@@ -155,51 +177,29 @@ impl<'a> WinMain<'a> {
         )?)
     }
 
-    fn create_first_row(&self, tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
-        let first_row = match tab.mode {
-            Mode::Normal | Mode::Tree => {
-                vec![
-                    format!("{} ", tab.path_content.path.display()),
-                    format!("{} files ", tab.path_content.true_len()),
-                    format!("{}  ", tab.path_content.used_space()),
-                    format!("Avail: {disk_space}  "),
-                    format!("{}  ", &tab.path_content.git_string()?),
-                ]
-            }
-            Mode::Preview => match &tab.preview {
-                Preview::Text(text_content) => {
-                    if matches!(text_content.kind, TextKind::HELP) {
-                        vec![
-                            HELP_FIRST_SENTENCE.to_owned(),
-                            HELP_SECOND_SENTENCE.to_owned(),
-                        ]
-                    } else {
-                        Self::default_preview_first_line(tab)
-                    }
-                }
-                _ => Self::default_preview_first_line(tab),
-            },
-            _ => match tab.previous_mode {
-                Mode::Normal | Mode::Tree => {
-                    vec![
-                        format!("{} ", tab.path_content.path.display()),
-                        format!("{} files ", tab.path_content.true_len()),
-                        format!("{}  ", tab.path_content.used_space()),
-                        format!("Avail: {disk_space}  "),
-                        format!("{}  ", &tab.path_content.git_string()?),
-                    ]
-                }
-                _ => vec![],
-            },
-        };
-        Ok(first_row)
+    fn normal_first_row(&self, disk_space: &str) -> FmResult<Vec<String>> {
+        Ok(vec![
+            format!("{} ", self.tab.path_content.path.display()),
+            format!("{} files ", self.tab.path_content.true_len()),
+            format!("{}  ", self.tab.path_content.used_space()),
+            format!("Avail: {disk_space}  "),
+            format!("{}  ", &self.tab.path_content.git_string()?),
+            format!("{} flags", &self.status.flagged.len()),
+        ])
     }
 
-    fn default_preview_first_line(tab: &Tab) -> Vec<String> {
+    fn help_first_row() -> Vec<String> {
+        vec![
+            HELP_FIRST_SENTENCE.to_owned(),
+            HELP_SECOND_SENTENCE.to_owned(),
+        ]
+    }
+
+    fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
         match tab.path_content.selected() {
             Some(fileinfo) => {
                 let mut strings = vec![
-                    format!("{}", tab.mode.clone()),
+                    "Preview  ".to_owned(),
                     format!("{}", fileinfo.path.to_string_lossy()),
                 ];
                 if !tab.preview.is_empty() {
@@ -209,6 +209,27 @@ impl<'a> WinMain<'a> {
             }
             None => vec!["".to_owned()],
         }
+    }
+
+    fn create_first_row(&self, tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
+        let first_row = match tab.mode {
+            Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
+            Mode::Preview => match &tab.preview {
+                Preview::Text(text_content) => {
+                    if matches!(text_content.kind, TextKind::HELP) {
+                        Self::help_first_row()
+                    } else {
+                        self.default_preview_first_line(tab)
+                    }
+                }
+                _ => self.default_preview_first_line(tab),
+            },
+            _ => match self.tab.previous_mode {
+                Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
+                _ => vec![],
+            },
+        };
+        Ok(first_row)
     }
 
     /// Displays the current directory content, one line per item like in
@@ -292,13 +313,13 @@ impl<'a> WinMain<'a> {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn preview(&self, tab: &Tab, window: &ContentWindow, canvas: &mut dyn Canvas) -> FmResult<()> {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
-                for (i, vec_line) in (*syntaxed).window(tab.window.top, tab.window.bottom, length) {
-                    let row_position = calc_line_row(i, tab);
+                for (i, vec_line) in (*syntaxed).window(window.top, window.bottom, length) {
+                    let row_position = calc_line_row(i, window);
                     Self::print_line_number(row_position, i + 1, canvas)?;
                     for token in vec_line.iter() {
                         token.print(canvas, row_position, line_number_width)?;
@@ -308,42 +329,32 @@ impl<'a> WinMain<'a> {
             Preview::Binary(bin) => {
                 let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
-                for (i, line) in (*bin).window(tab.window.top, tab.window.bottom, length) {
-                    let row = calc_line_row(i, tab);
+                for (i, line) in (*bin).window(window.top, window.bottom, length) {
+                    let row = calc_line_row(i, window);
 
                     canvas.print_with_attr(
                         row,
                         0,
-                        &format_line_nr_hex(i + 1 + tab.window.top, line_number_width_hex),
+                        &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
                         Self::ATTR_LINE_NR,
                     )?;
                     line.print(canvas, row, line_number_width_hex + 1);
                 }
             }
-            Preview::Thumbnail(image) => {
+            Preview::Ueberzug(image) => {
                 let (width, height) = canvas.size()?;
-
-                if let Ok(scaled_image) = (*image).resized_rgb8(width as u32 / 2, height as u32 - 3)
-                {
-                    let (width, _) = scaled_image.dimensions();
-                    for (i, pixel) in scaled_image.pixels().enumerate() {
-                        let (r, g, b) = pixel_values(pixel);
-                        let (row, col) = pixel_position(i, width);
-                        print_pixel(canvas, row, col, r, g, b)?;
-                    }
-                } else {
-                    canvas.print(
-                        3,
-                        3,
-                        &format!("Not a displayable image: {:?}", image.img_path),
-                    )?;
-                }
+                image.ueberzug(
+                    self.x_position as u16 + 2,
+                    3,
+                    width as u16 - 2,
+                    height as u16 - 2,
+                );
             }
             Preview::Directory(directory) => {
                 for (i, (prefix, colored_string)) in
-                    (directory).window(tab.window.top, tab.window.bottom, length)
+                    (directory).window(window.top, window.bottom, length)
                 {
-                    let row = calc_line_row(i, tab);
+                    let row = calc_line_row(i, window);
                     let col = canvas.print(row, line_number_width, prefix)?;
                     canvas.print_with_attr(
                         row,
@@ -353,11 +364,18 @@ impl<'a> WinMain<'a> {
                     )?;
                 }
             }
-            Preview::Archive(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Exif(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Media(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Pdf(text) => impl_preview!(text, tab, length, canvas, line_number_width),
-            Preview::Text(text) => impl_preview!(text, tab, length, canvas, line_number_width),
+            Preview::Archive(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
+            Preview::Media(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
+            Preview::Pdf(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
+            Preview::Text(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
 
             Preview::Empty => (),
         }
@@ -424,6 +442,14 @@ impl<'a> WinSecondary<'a> {
             }
             Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action)) => {
                 vec![format!("{password_kind}"), tab.input.password()]
+            }
+            Mode::InputCompleted(_) => {
+                let mut completion_strings = vec![format!("{}", &tab.mode), tab.input.string()];
+                if let Some(completion) = tab.completion.complete_input_string(&tab.input.string())
+                {
+                    completion_strings.push(completion.to_owned())
+                }
+                completion_strings
             }
             _ => {
                 vec![
@@ -554,7 +580,7 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
 
         for (i, line) in status.marks.as_strings().iter().enumerate() {
-            let row = calc_line_row(i, tab) + 2;
+            let row = calc_line_row(i, &tab.window) + 2;
             let mut attr = Attr::default();
             if i == status.marks.index() {
                 attr.effect |= Effect::REVERSE;
@@ -572,7 +598,7 @@ impl<'a> WinSecondary<'a> {
     ) -> FmResult<()> {
         canvas.print_with_attr(2, 3, "m: mount    --   u: unmount", Self::ATTR_YELLOW)?;
         for (i, device) in status.encrypted_devices.content.iter().enumerate() {
-            let row = calc_line_row(i, tab) + 2;
+            let row = calc_line_row(i, &tab.window) + 2;
             let mut not_mounted_attr = Attr::default();
             let mut mounted_attr = Attr::from(Color::BLUE);
             if i == status.encrypted_devices.index() {
@@ -754,8 +780,9 @@ impl Display {
         disk_space_tab_1: &str,
         colors: &Colors,
     ) -> FmResult<()> {
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors);
-        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors);
+        let (width, _) = self.term.term_size()?;
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0, false);
+        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors, width / 2, true);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let (border_left, border_right) = self.borders(status);
@@ -783,7 +810,7 @@ impl Display {
         disk_space_tab_0: &str,
         colors: &Colors,
     ) -> FmResult<()> {
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors);
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0, false);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let win = self.vertical_split(
@@ -813,18 +840,6 @@ const fn color_to_attr(color: Color) -> Attr {
         effect: Effect::empty(),
     }
 }
-
-const fn pixel_values(pixel: &Rgb<u8>) -> (u8, u8, u8) {
-    let [r, g, b] = pixel.0;
-    (r, g, b)
-}
-
-const fn pixel_position(i: usize, width: u32) -> (usize, usize) {
-    let col = 2 * (i % width as usize);
-    let row = i / width as usize + 3;
-    (row, col)
-}
-
 fn draw_colored_strings(
     row: usize,
     offset: usize,
@@ -838,27 +853,6 @@ fn draw_colored_strings(
     Ok(())
 }
 
-fn calc_line_row(i: usize, tab: &Tab) -> usize {
-    i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top
-}
-
-fn print_pixel(
-    canvas: &mut dyn Canvas,
-    row: usize,
-    col: usize,
-    r: u8,
-    g: u8,
-    b: u8,
-) -> FmResult<()> {
-    canvas.print_with_attr(
-        row,
-        col,
-        "██",
-        Attr {
-            fg: Color::Rgb(r, g, b),
-            bg: Color::Rgb(r, g, b),
-            ..Default::default()
-        },
-    )?;
-    Ok(())
+fn calc_line_row(i: usize, window: &ContentWindow) -> usize {
+    i + ContentWindow::WINDOW_MARGIN_TOP - window.top
 }

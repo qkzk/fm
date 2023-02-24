@@ -30,7 +30,6 @@ use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
-use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::utils::disk_used_by_path;
 
 /// Every kind of mutation of the application is defined here.
@@ -58,12 +57,7 @@ impl EventExec {
         height: usize,
         colors: &Colors,
     ) -> FmResult<()> {
-        if width < MIN_WIDTH_FOR_DUAL_PANE {
-            status.select_tab(0)?;
-            status.set_dual_pane(false);
-        } else {
-            status.set_dual_pane(true);
-        }
+        status.set_dual_pane_if_wide_enough(width)?;
         status.selected().set_height(height);
         Self::refresh_status(status, colors)?;
         Ok(())
@@ -645,7 +639,8 @@ impl EventExec {
                     &unmutable_tab.path_content.users_cache,
                     status,
                     colors,
-                )?;
+                )
+                .unwrap_or_default();
                 status.selected().set_mode(Mode::Preview);
                 status.selected().window.reset(preview.len());
                 status.selected().preview = preview;
@@ -1417,12 +1412,12 @@ impl EventExec {
         Self::refresh_status(status, colors)
     }
 
-    /// Open a thumbnail of an image, scaled up to the whole window.
-    pub fn event_thumbnail(tab: &mut Tab) -> FmResult<()> {
+    /// Display mediainfo defails of an image
+    pub fn event_mediainfo(tab: &mut Tab) -> FmResult<()> {
         if let Mode::Normal | Mode::Tree = tab.mode {
             let Some(file_info) = tab.selected() else { return Ok(())};
             info!("selected {:?}", file_info);
-            tab.preview = Preview::thumbnail(file_info.path.to_owned())?;
+            tab.preview = Preview::mediainfo(&file_info.path)?;
             tab.window.reset(tab.preview.len());
             tab.set_mode(Mode::Preview);
         }
@@ -1792,6 +1787,11 @@ impl EventExec {
         let command_str = status.selected_non_mut().completion.current_proposition();
         let Ok(command) = ActionMap::from_str(command_str) else { return Ok(()) };
         command.matcher(status, colors)
+    }
+
+    pub fn event_toggle_preview_second(status: &mut Status) -> FmResult<()> {
+        status.preview_second = !status.preview_second;
+        Ok(())
     }
 }
 
