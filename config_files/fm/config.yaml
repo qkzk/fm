@@ -51,8 +51,6 @@ keys:
   'w': RegexMatch
   'x': DeleteFile
   'shift-b': Bulkrename
-  'shift-d': ToggleDualPane
-  'shift-e': EncryptedDrive
   'shift-f': Filter
   'shift-g': Shortcut
   'shift-h': History
@@ -62,9 +60,12 @@ keys:
   'shift-t': MediaInfo
   'ctrl-c': CopyFilename
   'ctrl-d': Delete
-  'ctrl-e': DisplayFull
+  'ctrl-e': EncryptedDrive
   'ctrl-f': FuzzyFind
   'ctrl-p': CopyFilepath
   'ctrl-q': ModeNormal
   'ctrl-r': RefreshView
   'alt-d': DragNDrop
+  'alt-e': ToggleDisplayFull
+  'alt-p': TogglePreviewSecond
+  'alt-f': ToggleDualPane

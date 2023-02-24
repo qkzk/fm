@@ -404,6 +404,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display the number of flagged files
   - [x] improve preview first line
   - [x] FIX: previewing a file without read permission crashes. Use Empty preview as default.
+  - [x] regroup display settings keybindings under alt+char
+  - [x] restrain second pane to 120+ chars wide terminals
 
 - [ ] Version 0.1.50 : safety & memory usage
 

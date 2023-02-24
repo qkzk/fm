@@ -30,7 +30,6 @@ use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
-use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::utils::disk_used_by_path;
 
 /// Every kind of mutation of the application is defined here.
@@ -58,12 +57,7 @@ impl EventExec {
         height: usize,
         colors: &Colors,
     ) -> FmResult<()> {
-        if width < MIN_WIDTH_FOR_DUAL_PANE {
-            status.select_tab(0)?;
-            status.set_dual_pane(false);
-        } else {
-            status.set_dual_pane(true);
-        }
+        status.set_dual_pane_if_wide_enough(width)?;
         status.selected().set_height(height);
         Self::refresh_status(status, colors)?;
         Ok(())

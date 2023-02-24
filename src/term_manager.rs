@@ -23,8 +23,8 @@ use crate::status::Status;
 use crate::tab::Tab;
 use crate::trash::TrashInfo;
 
-/// At least 100 chars width to display 2 tabs.
-pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 100;
+/// At least 120 chars width to display 2 tabs.
+pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
 
 const FIRST_LINE_COLORS: [Attr; 6] = [
     color_to_attr(Color::Rgb(231, 162, 156)),
@@ -330,7 +330,7 @@ impl<'a> WinMain<'a> {
                 let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
                 for (i, line) in (*bin).window(window.top, window.bottom, length) {
-                    let row = calc_line_row(i, &window);
+                    let row = calc_line_row(i, window);
 
                     canvas.print_with_attr(
                         row,
@@ -354,7 +354,7 @@ impl<'a> WinMain<'a> {
                 for (i, (prefix, colored_string)) in
                     (directory).window(window.top, window.bottom, length)
                 {
-                    let row = calc_line_row(i, &window);
+                    let row = calc_line_row(i, window);
                     let col = canvas.print(row, line_number_width, prefix)?;
                     canvas.print_with_attr(
                         row,
