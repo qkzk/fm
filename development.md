@@ -363,6 +363,26 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       some commands does nothing :(
 - [x] lazygit integration: open a terminal with lazygit in current path. Obviously [lazygit](https://github.com/jesseduffield/lazygit) should be installed.
 
+### Version 0.1.18 : ???
+
+- [x] preview completion in another color
+- [x] use notify-send instead of a crate to lower binary size
+- [x] use ueberzug instead of ugly thumbnail. Requires ueberzug to be installed.
+- [x] use second pane for preview, update auto
+  - [x] FIX: second pane preview has wrong size
+- [x] improve directory preview by limiting depth
+- [x] preview videos with a thumbnail (created with ffmpeg)
+- [x] use media info for audio
+- [x] remove some attributes from FileInfo, lowering its size.
+- [x] FIX: sometimes pdf_extract prints to stdout. A fix is proposed in a PR, atm we'll use Gag to redirect stdout.
+- [x] FIX: prevent invalid zips from crashing the app while previewing
+- [x] FIX: preview of big highlighted source file is slow. Fix it by preventing those preview for files larger than 32kiB.
+- [x] display the number of flagged files
+- [x] improve preview first line
+- [x] FIX: previewing a file without read permission crashes. Use Empty preview as default.
+- [x] regroup display settings keybindings under alt+char
+- [x] restrain second pane to 120+ chars wide terminals
+
 ## TODO
 
 - [ ] remote control
@@ -386,26 +406,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] temporary marks
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
-
-- [ ] Version 0.1.18 : ???
-
-  - [x] preview completion in another color
-  - [x] use notify-send instead of a crate to lower binary size
-  - [x] use ueberzug instead of ugly thumbnail. Requires ueberzug to be installed.
-  - [x] use second pane for preview, update auto
-    - [x] FIX: second pane preview has wrong size
-  - [x] improve directory preview by limiting depth
-  - [x] preview videos with a thumbnail (created with ffmpeg)
-  - [x] use media info for audio
-  - [x] remove some attributes from FileInfo, lowering its size.
-  - [x] FIX: sometimes pdf_extract prints to stdout. A fix is proposed in a PR, atm we'll use Gag to redirect stdout.
-  - [x] FIX: prevent invalid zips from crashing the app while previewing
-  - [x] FIX: preview of big highlighted source file is slow. Fix it by preventing those preview for files larger than 32kiB.
-  - [x] display the number of flagged files
-  - [x] improve preview first line
-  - [x] FIX: previewing a file without read permission crashes. Use Empty preview as default.
-  - [x] regroup display settings keybindings under alt+char
-  - [x] restrain second pane to 120+ chars wide terminals
 
 - [ ] Version 0.1.50 : safety & memory usage
 
