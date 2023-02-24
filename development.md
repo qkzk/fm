@@ -407,6 +407,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
 
+- [ ] Version 0.1.19
+
+  - [ ] use preview from bat in skim
+
 - [ ] Version 0.1.50 : safety & memory usage
 
   - [ ] there's a memory leak somewhere

@@ -20,7 +20,7 @@ impl Skimer {
     /// as a vec of skimitems.
     pub fn no_source(&self, path_str: &str) -> Vec<Arc<dyn SkimItem>> {
         self.skim
-            .run_internal(None, path_str.to_owned())
+            .run_internal(None, path_str.to_owned(), Some("bat {} --color=always"))
             .map(|out| out.selected_items)
             .unwrap_or_else(Vec::new)
     }
