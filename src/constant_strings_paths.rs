@@ -60,3 +60,4 @@ pub static HARDCODED_SHORTCUTS: [&str; 9] = [
     "/usr",
     "/var",
 ];
+pub static BAT_EXECUTABLE: &str = "bat {} --color=always";
