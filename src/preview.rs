@@ -17,7 +17,7 @@ use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
 use crate::config::Colors;
-use crate::constant_strings_paths::{MONOKAI_THEMESET_PATH, THUMBNAIL_PATH};
+use crate::constant_strings_paths::{MONOKAI_THEME_PATH, THUMBNAIL_PATH};
 use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
@@ -244,9 +244,9 @@ impl HLContent {
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
     ) -> FmResult<Vec<Vec<SyntaxedString>>> {
-        let theme_set = ThemeSet::get_theme(MONOKAI_THEMESET_PATH)?;
+        let theme = ThemeSet::get_theme(MONOKAI_THEME_PATH)?;
         let mut highlighted_content = vec![];
-        let mut highlighter = HighlightLines::new(syntax_ref, &theme_set);
+        let mut highlighter = HighlightLines::new(syntax_ref, &theme);
 
         for line in raw_content.iter() {
             let mut col = 0;
