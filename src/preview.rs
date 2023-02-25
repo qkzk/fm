@@ -1,6 +1,7 @@
 use std::cmp::min;
 use std::fmt::Write as _;
 use std::fs::metadata;
+use std::io::Cursor;
 use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::panic;
@@ -17,7 +18,7 @@ use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
 use crate::config::Colors;
-use crate::constant_strings_paths::{MONOKAI_THEME_PATH, THUMBNAIL_PATH};
+use crate::constant_strings_paths::THUMBNAIL_PATH;
 use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
@@ -244,7 +245,10 @@ impl HLContent {
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
     ) -> FmResult<Vec<Vec<SyntaxedString>>> {
-        let theme = ThemeSet::get_theme(MONOKAI_THEME_PATH)?;
+        let mut monokai = BufReader::new(Cursor::new(include_bytes!(
+            "../assets/themes/Monokai_Extended.tmTheme"
+        )));
+        let theme = ThemeSet::load_from_reader(&mut monokai)?;
         let mut highlighted_content = vec![];
         let mut highlighter = HighlightLines::new(syntax_ref, &theme);
 
