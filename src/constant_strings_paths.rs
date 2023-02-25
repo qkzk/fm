@@ -60,3 +60,5 @@ pub static HARDCODED_SHORTCUTS: [&str; 9] = [
     "/usr",
     "/var",
 ];
+/// Monokai themset used to preview highlighted text
+pub static MONOKAI_THEMESET_PATH: &str = "assets/themes/Monokai_Extended.tmTheme";

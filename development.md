@@ -409,7 +409,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] Version 0.1.19
 
-  - [ ] use preview from bat in skim
+  - [x] use preview from bat in skim. Obviously, it requires bat to be installed
+  - [x] uniform themeset with skim: use monokai theme from [jonschlinkert](https://github.com/jonschlinkert/sublime-monokai-extended)
 
 - [ ] Version 0.1.50 : safety & memory usage
 

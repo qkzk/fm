@@ -27,6 +27,7 @@ pub enum ErrorVariant {
     UTF8ERROR,
     ZIPERROR,
     LZMAERROR,
+    SYNTECT,
     CUSTOM(String),
 }
 
@@ -169,6 +170,12 @@ impl From<zip::result::ZipError> for FmError {
 impl From<lzma::LzmaError> for FmError {
     fn from(error: lzma::LzmaError) -> Self {
         Self::new(ErrorVariant::LZMAERROR, &error.to_string())
+    }
+}
+
+impl From<syntect::LoadingError> for FmError {
+    fn from(error: syntect::LoadingError) -> Self {
+        Self::new(ErrorVariant::SYNTECT, &error.to_string())
     }
 }
 

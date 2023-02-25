@@ -17,7 +17,7 @@ use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
 use crate::config::Colors;
-use crate::constant_strings_paths::THUMBNAIL_PATH;
+use crate::constant_strings_paths::{MONOKAI_THEMESET_PATH, THUMBNAIL_PATH};
 use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
@@ -227,7 +227,7 @@ impl HLContent {
             .take(Self::SIZE_LIMIT)
             .map(|line| line.unwrap_or_else(|_| "".to_owned()))
             .collect();
-        let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref);
+        let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
 
         Ok(Self {
             length: highlighted_content.len(),
@@ -243,11 +243,10 @@ impl HLContent {
         raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
-    ) -> Vec<Vec<SyntaxedString>> {
-        let theme_set = ThemeSet::load_defaults();
+    ) -> FmResult<Vec<Vec<SyntaxedString>>> {
+        let theme_set = ThemeSet::get_theme(MONOKAI_THEMESET_PATH)?;
         let mut highlighted_content = vec![];
-        let mut highlighter =
-            HighlightLines::new(syntax_ref, &theme_set.themes["Solarized (dark)"]);
+        let mut highlighter = HighlightLines::new(syntax_ref, &theme_set);
 
         for line in raw_content.iter() {
             let mut col = 0;
@@ -261,7 +260,7 @@ impl HLContent {
             highlighted_content.push(v_line)
         }
 
-        highlighted_content
+        Ok(highlighted_content)
     }
 }
 
