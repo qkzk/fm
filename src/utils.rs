@@ -105,3 +105,15 @@ pub fn current_username() -> FmResult<String> {
         .ok_or_else(|| FmError::custom("username", "couldn't read username"))?
         .to_owned())
 }
+
+pub fn is_program_in_path(program: &str) -> bool {
+    if let Ok(path) = std::env::var("PATH") {
+        for p in path.split(':') {
+            let p_str = format!("{p}/{program}");
+            if std::fs::metadata(p_str).is_ok() {
+                return true;
+            }
+        }
+    }
+    false
+}

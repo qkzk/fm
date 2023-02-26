@@ -815,7 +815,9 @@ impl EventExec {
             .directory_of_selected()?
             .to_str()
             .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
-        execute_in_child(&status.opener.terminal, &vec!["-d", path])?;
+        info!("event shell {}", status.opener.terminal);
+        std::env::set_current_dir(path)?;
+        execute_in_child(&status.opener.terminal, &vec![])?;
         Ok(())
     }
 

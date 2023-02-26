@@ -321,6 +321,7 @@ impl Opener {
 
     // TODO: use terminal specific parameters instead of -e for all terminals
     fn open_terminal(&self, mut args: Vec<&str>) -> FmResult<std::process::Child> {
+        info!("terminal: {}", self.terminal);
         args.insert(0, "-e");
         execute_in_child(&self.terminal, &args)
     }
@@ -334,10 +335,7 @@ impl Opener {
 /// Execute a command with options in a fork.
 /// Returns an handle to the child process.
 pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
-    info!(
-        "execute_in_child. executable: {}, arguments: {:?}",
-        exe, args
-    );
+    info!("execute_in_child. executable: {exe}, arguments: {args:?}",);
     Ok(Command::new(exe).args(args).spawn()?)
 }
 

@@ -8,6 +8,7 @@ use crate::color_cache::ColorCache;
 use crate::constant_strings_paths::DEFAULT_TERMINAL_APPLICATION;
 use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
+use crate::utils::is_program_in_path;
 
 /// Holds every configurable aspect of the application.
 /// All attributes are hardcoded then updated from optional values
@@ -154,4 +155,12 @@ pub fn load_config(path: &str) -> FmResult<Config> {
     }
 
     Ok(config)
+}
+
+pub fn set_terminal(config: &Config) -> FmResult<&str> {
+    let mut terminal_command = std::env!("TERM");
+    if !is_program_in_path(terminal_command) {
+        terminal_command = &config.terminal;
+    }
+    Ok(terminal_command)
 }
