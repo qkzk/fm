@@ -33,18 +33,31 @@ impl Config {
             binds: Bindings::default(),
         })
     }
-
-    /// The terminal name
-    pub fn terminal(&self) -> &str {
-        &self.terminal
-    }
-
     /// Updates the config from  a configuration content.
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
         self.colors.update_from_config(&yaml["colors"]);
         self.binds.update_from_config(&yaml["keys"])?;
-        self.terminal = set_terminal(yaml)?;
+        self.terminal = Self::set_terminal(&yaml["terminal"])?;
         Ok(())
+    }
+
+    /// First we try to use the current terminal. If it's a fake one (ie. inside neovim float term),
+    /// we look for the configured one,
+    /// else we use the hardcoded one.
+    fn set_terminal(yaml: &serde_yaml::value::Value) -> FmResult<String> {
+        let terminal_currently_used = std::env::var("TERM").unwrap_or_default();
+        if !terminal_currently_used.is_empty() && is_program_in_path(&terminal_currently_used) {
+            Ok(terminal_currently_used)
+        } else if let Some(configured_terminal) = yaml.as_str() {
+            Ok(configured_terminal.to_owned())
+        } else {
+            Ok(DEFAULT_TERMINAL_APPLICATION.to_owned())
+        }
+    }
+
+    /// The terminal name
+    pub fn terminal(&self) -> &str {
+        &self.terminal
     }
 }
 
@@ -147,15 +160,4 @@ pub fn load_config(path: &str) -> FmResult<Config> {
     }
 
     Ok(config)
-}
-
-fn set_terminal(yaml: &serde_yaml::value::Value) -> FmResult<String> {
-    let terminal_currently_used = std::env::var("TERM").unwrap_or_default();
-    if !terminal_currently_used.is_empty() && is_program_in_path(&terminal_currently_used) {
-        Ok(terminal_currently_used)
-    } else if let Some(configured_terminal) = yaml["terminal"].as_str() {
-        Ok(configured_terminal.to_owned())
-    } else {
-        Ok(DEFAULT_TERMINAL_APPLICATION.to_owned())
-    }
 }
