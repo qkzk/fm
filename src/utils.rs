@@ -77,6 +77,7 @@ pub fn print_on_quit(path_string: &str) {
     println!("{path_string}")
 }
 
+/// Returns the buffered lines from a text file.
 pub fn read_lines<P>(
     filename: P,
 ) -> std::io::Result<std::io::Lines<std::io::BufReader<std::fs::File>>>
