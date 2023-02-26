@@ -44,7 +44,7 @@ fn main() -> FmResult<()> {
         status.refresh_disks();
         display.display_all(&status, &colors)?;
 
-        if status.selected_non_mut().must_quit() {
+        if status.must_quit() {
             break;
         };
     }

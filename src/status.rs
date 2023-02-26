@@ -86,20 +86,22 @@ impl Status {
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
         let users_cache = unsafe { UsersCache::with_all_users() };
-        let mut tab = Tab::new(args.clone(), height, users_cache)?;
-        tab.shortcut
+        let mut right_tab = Tab::new(args.clone(), height, users_cache)?;
+        right_tab
+            .shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
         let encrypted_devices = DeviceOpener::default();
 
         let users_cache2 = unsafe { UsersCache::with_all_users() };
-        let mut tab2 = Tab::new(args, height, users_cache2)?;
-        tab2.shortcut
+        let mut left_tab = Tab::new(args, height, users_cache2)?;
+        left_tab
+            .shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
         let trash = Trash::new()?;
         let compression = Compresser::default();
 
         Ok(Self {
-            tabs: [tab2, tab],
+            tabs: [left_tab, right_tab],
             index: 0,
             flagged: Flagged::default(),
             marks: Marks::read_from_config_file(),
@@ -347,5 +349,10 @@ impl Status {
             self.dual_pane = true;
         }
         Ok(())
+    }
+
+    /// True if a quit event was registered in the selected tab.
+    pub fn must_quit(&self) -> bool {
+        self.selected_non_mut().must_quit()
     }
 }
