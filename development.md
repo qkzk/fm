@@ -414,6 +414,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] uniform themeset with skim: use monokai theme from [jonschlinkert](https://github.com/jonschlinkert/sublime-monokai-extended)
   - [x] event shell & open with terminal: use $TERM if possible, otherwise use the configured terminal application.
         we guess that the user prefers the terminal he's currently using above the configured one. It may change in the future.
+  - [x] refactor config creation
+  - [x] shorten long names in first line
 
 - [ ] Version 0.1.50 : safety & memory usage
 

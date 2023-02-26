@@ -636,3 +636,36 @@ pub fn files_collection(
         }
     }
 }
+
+const MAX_PATH_ELEM_SIZE: usize = 50;
+
+/// Shorten a path to be displayed in [`MAX_PATH_ELEM_SIZE`] chars or less.
+/// Each element of the path is shortened if needed.
+pub fn shorten_path(path: &path::Path, size: Option<usize>) -> FmResult<String> {
+    let size = match size {
+        Some(size) => size,
+        None => MAX_PATH_ELEM_SIZE,
+    };
+    let path_string = path
+        .to_str()
+        .ok_or_else(|| FmError::custom("summarize", "couldn't parse the path"))?
+        .to_owned();
+
+    if path_string.len() < size {
+        return Ok(path_string);
+    }
+
+    let splitted_path: Vec<_> = path_string.split('/').collect();
+    let size_per_elem = std::cmp::max(1, size / (splitted_path.len() + 1)) + 1;
+    let shortened_elems: Vec<_> = splitted_path
+        .iter()
+        .filter_map(|p| {
+            if p.len() <= size_per_elem {
+                Some(*p)
+            } else {
+                p.get(0..size_per_elem)
+            }
+        })
+        .collect();
+    Ok(shortened_elems.join("/"))
+}

@@ -14,7 +14,7 @@ use crate::constant_strings_paths::{
     FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
 };
 use crate::content_window::ContentWindow;
-use crate::fileinfo::{fileinfo_attr, FileInfo};
+use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
 use crate::fm_error::{FmError, FmResult};
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::preview::{Preview, TextKind, Window};
@@ -179,7 +179,7 @@ impl<'a> WinMain<'a> {
 
     fn normal_first_row(&self, disk_space: &str) -> FmResult<Vec<String>> {
         Ok(vec![
-            format!("{} ", self.tab.path_content.path.display()),
+            format!("{} ", shorten_path(&self.tab.path_content.path, None)?),
             format!("{} files ", self.tab.path_content.true_len()),
             format!("{}  ", self.tab.path_content.used_space()),
             format!("Avail: {disk_space}  "),
