@@ -96,6 +96,7 @@ pub fn filename_from_path(path: &std::path::Path) -> FmResult<&str> {
         .ok_or_else(|| FmError::custom("filename from path", "couldn't parse the filename"))
 }
 
+/// Get the current username as a String.
 pub fn current_username() -> FmResult<String> {
     let user = get_user_by_uid(get_current_uid())
         .ok_or_else(|| FmError::custom("username", "couldn't read username"))?;
@@ -106,11 +107,12 @@ pub fn current_username() -> FmResult<String> {
         .to_owned())
 }
 
+/// True iff the command is available in $PATH.
 pub fn is_program_in_path(program: &str) -> bool {
     if let Ok(path) = std::env::var("PATH") {
         for p in path.split(':') {
-            let p_str = format!("{p}/{program}");
-            if std::fs::metadata(p_str).is_ok() {
+            let p_str = &format!("{p}/{program}");
+            if std::path::Path::new(p_str).exists() {
                 return true;
             }
         }
