@@ -61,3 +61,4 @@ pub static HARDCODED_SHORTCUTS: [&str; 9] = [
     "/var",
 ];
 pub static BAT_EXECUTABLE: &str = "bat {} --color=always";
+pub static CAT_EXECUTABLE: &str = "cat {}";
