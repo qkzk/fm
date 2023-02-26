@@ -410,8 +410,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Version 0.1.19
 
   - [x] use preview from bat in skim. Obviously, it requires bat to be installed
+  - [x] preview with cat if bat isn't installed.
   - [x] uniform themeset with skim: use monokai theme from [jonschlinkert](https://github.com/jonschlinkert/sublime-monokai-extended)
-  - [x] event shell: use $TERM if possible, otherwise use the configured terminal application.
+  - [x] event shell & open with terminal: use $TERM if possible, otherwise use the configured terminal application.
+        we guess that the user prefers the terminal he's currently using above the configured one. It may change in the future.
 
 - [ ] Version 0.1.50 : safety & memory usage
 
