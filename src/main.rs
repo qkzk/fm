@@ -4,7 +4,7 @@ use clap::Parser;
 use log::info;
 
 use fm::args::Args;
-use fm::config::{load_config, set_terminal};
+use fm::config::load_config;
 use fm::constant_strings_paths::CONFIG_PATH;
 use fm::event_dispatch::EventDispatcher;
 use fm::fm_error::FmResult;
@@ -29,13 +29,12 @@ fn main() -> FmResult<()> {
     let event_reader = EventReader::new(term.clone());
     let help = Help::from_keybindings(&config.binds)?.help;
     let mut display = Display::new(term.clone());
-    let terminal_command = set_terminal(&config)?;
     let mut status = Status::new(
         Args::parse(),
         display.height()?,
         term.clone(),
         help,
-        terminal_command,
+        &config.terminal,
     )?;
     let colors = config.colors.clone();
     drop(config);

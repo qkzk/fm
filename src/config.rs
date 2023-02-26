@@ -26,12 +26,12 @@ pub struct Config {
 
 impl Config {
     /// Returns a default config with hardcoded values.
-    fn new() -> Self {
-        Self {
+    fn new() -> FmResult<Self> {
+        Ok(Self {
             colors: Colors::default(),
             terminal: DEFAULT_TERMINAL_APPLICATION.to_owned(),
             binds: Bindings::default(),
-        }
+        })
     }
 
     /// The terminal name
@@ -42,18 +42,9 @@ impl Config {
     /// Updates the config from  a configuration content.
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
         self.colors.update_from_config(&yaml["colors"]);
-        // self.keybindings.update_from_config(&yaml["keybindings"])?;
         self.binds.update_from_config(&yaml["keys"])?;
-        if let Some(terminal) = yaml["terminal"].as_str().map(|s| s.to_string()) {
-            self.terminal = terminal;
-        }
+        self.terminal = set_terminal(yaml)?.to_owned();
         Ok(())
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -73,6 +64,7 @@ pub struct Colors {
     pub socket: String,
     /// Color for `symlink` files.
     pub symlink: String,
+    /// Colors for normal files, depending of extension
     pub color_cache: ColorCache,
 }
 
@@ -146,7 +138,7 @@ pub fn str_to_tuikit(color: &str) -> Color {
 ///
 /// 2. configured values from `~/.config/fm/config_file_name.yaml` if those files exists.
 pub fn load_config(path: &str) -> FmResult<Config> {
-    let mut config = Config::default();
+    let mut config = Config::new()?;
 
     if let Ok(file) = File::open(path::Path::new(&shellexpand::tilde(path).to_string())) {
         if let Ok(yaml) = serde_yaml::from_reader(file) {
@@ -157,10 +149,13 @@ pub fn load_config(path: &str) -> FmResult<Config> {
     Ok(config)
 }
 
-pub fn set_terminal(config: &Config) -> FmResult<&str> {
-    let mut terminal_command = std::env!("TERM");
-    if !is_program_in_path(terminal_command) {
-        terminal_command = &config.terminal;
+fn set_terminal(yaml: &serde_yaml::value::Value) -> FmResult<&str> {
+    let terminal_currently_used = std::env!("TERM");
+    if is_program_in_path(terminal_currently_used) {
+        Ok(terminal_currently_used)
+    } else if let Some(configured_terminal) = yaml["terminal"].as_str() {
+        Ok(configured_terminal)
+    } else {
+        Ok(DEFAULT_TERMINAL_APPLICATION)
     }
-    Ok(terminal_command)
 }

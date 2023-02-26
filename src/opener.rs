@@ -321,7 +321,6 @@ impl Opener {
 
     // TODO: use terminal specific parameters instead of -e for all terminals
     fn open_terminal(&self, mut args: Vec<&str>) -> FmResult<std::process::Child> {
-        info!("terminal: {}", self.terminal);
         args.insert(0, "-e");
         execute_in_child(&self.terminal, &args)
     }
