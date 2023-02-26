@@ -31,6 +31,7 @@ use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::utils::disk_used_by_path;
+use crate::utils::is_program_in_path;
 
 /// Every kind of mutation of the application is defined here.
 /// It mutates `Status` or its children `Tab`.
@@ -855,20 +856,30 @@ impl EventExec {
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
     pub fn event_nvim_filepicker(tab: &mut Tab) -> FmResult<()> {
-        if let Ok(nvim_listen_address) = Self::nvim_listen_address(tab) {
-            let Some(fileinfo) = tab.selected() else { return Ok(()) };
-            let Some(path_str) = fileinfo.path.to_str() else { return Ok(()) };
-            let _ = execute_in_child(
-                NVIM_RPC_SENDER,
-                &vec![
-                    "--remote-send",
-                    &format!("<esc>:e {path_str}<cr><esc>:close<cr>"),
-                    "--servername",
-                    &nvim_listen_address,
-                ],
-            );
-        }
+        if !is_program_in_path(NVIM_RPC_SENDER) {
+            return Ok(());
+        };
+        Self::reset_nvim_listen_address(tab);
+        if tab.nvim_server.is_empty() {
+            return Ok(());
+        };
+        let Some(fileinfo) = tab.selected() else { return Ok(()) };
+        let Some(path_str) = fileinfo.path.to_str() else { return Ok(()) };
+        Self::open_in_current_neovim(path_str, &tab.nvim_server);
+
         Ok(())
+    }
+
+    fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
+        let _ = execute_in_child(
+            NVIM_RPC_SENDER,
+            &vec![
+                "--remote-send",
+                &format!("<esc>:e {path_str}<cr><esc>:close<cr>"),
+                "--servername",
+                nvim_server,
+            ],
+        );
     }
 
     /// Copy the selected filename to the clipboard. Only the filename.
@@ -936,12 +947,12 @@ impl EventExec {
         Ok(())
     }
 
-    fn nvim_listen_address(tab: &Tab) -> Result<String, std::env::VarError> {
+    fn reset_nvim_listen_address(tab: &mut Tab) {
         if !tab.nvim_server.is_empty() {
-            Ok(tab.nvim_server.clone())
-        } else {
-            std::env::var("NVIM_LISTEN_ADDRESS")
+            return;
         }
+        let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") else { return; };
+        tab.nvim_server = nvim_listen_address;
     }
 
     /// Execute a rename of the selected file.
