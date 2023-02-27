@@ -62,3 +62,5 @@ pub static HARDCODED_SHORTCUTS: [&str; 9] = [
 ];
 pub static BAT_EXECUTABLE: &str = "bat {} --color=always";
 pub static CAT_EXECUTABLE: &str = "cat {}";
+pub static RG_EXECUTABLE: &str = "rg --line-number \"{}\"";
+pub static GREP_EXECUTABLE: &str = "grep -rI --line-number \"{}\"";

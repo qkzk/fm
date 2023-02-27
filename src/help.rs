@@ -37,6 +37,7 @@ static HELP_TO_FORMAT: &str = "
 {MarksJump}:     jump to a mark
 {SearchNext}:      Search next matching element
 {FuzzyFind}:      fuzzy finder
+{FuzzyFindLine}:      fuzzy finder for line
 {RefreshView}:      refresh view
 {CopyFilename}:      copy filename to clipboard
 {CopyFilepath}:      copy filepath to clipboard

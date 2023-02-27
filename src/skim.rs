@@ -1,7 +1,9 @@
 use skim::prelude::*;
 use tuikit::term::Term;
 
-use crate::constant_strings_paths::{BAT_EXECUTABLE, CAT_EXECUTABLE};
+use crate::constant_strings_paths::{
+    BAT_EXECUTABLE, CAT_EXECUTABLE, GREP_EXECUTABLE, RG_EXECUTABLE,
+};
 use crate::utils::is_program_in_path;
 
 /// Used to call skim, a clone of fzf.
@@ -9,6 +11,7 @@ use crate::utils::is_program_in_path;
 pub struct Skimer {
     skim: Skim,
     previewer: String,
+    file_matcher: String,
 }
 
 impl Skimer {
@@ -19,6 +22,7 @@ impl Skimer {
         Self {
             skim: Skim::new_from_term(term),
             previewer: Self::select_previewer().to_owned(),
+            file_matcher: Self::select_file_matcher().to_owned(),
         }
     }
 
@@ -31,14 +35,35 @@ impl Skimer {
         }
     }
 
+    fn select_file_matcher<'a>() -> &'a str {
+        let Some(rg) = RG_EXECUTABLE.split_whitespace().into_iter().next() else { return CAT_EXECUTABLE; };
+        if is_program_in_path(rg) {
+            RG_EXECUTABLE
+        } else {
+            GREP_EXECUTABLE
+        }
+    }
+
     /// Call skim on its term.
     /// Once the user has selected a file, it will returns its results
     /// as a vec of skimitems.
     /// The preview is enabled by default and we assume the previewer won't be uninstalled during the lifetime
     /// of the application.
-    pub fn no_source(&self, path_str: &str) -> Vec<Arc<dyn SkimItem>> {
+    pub fn search_filename(&self, path_str: &str) -> Vec<Arc<dyn SkimItem>> {
         self.skim
-            .run_internal(None, path_str.to_owned(), Some(&self.previewer))
+            .run_internal(None, path_str.to_owned(), Some(&self.previewer), None)
+            .map(|out| out.selected_items)
+            .unwrap_or_else(Vec::new)
+    }
+
+    pub fn search_line_in_file(&self) -> Vec<Arc<dyn SkimItem>> {
+        self.skim
+            .run_internal(
+                None,
+                "".to_owned(),
+                None,
+                Some(self.file_matcher.to_owned()),
+            )
             .map(|out| out.selected_items)
             .unwrap_or_else(Vec::new)
     }

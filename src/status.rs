@@ -158,7 +158,7 @@ impl Status {
     /// Replace the tab content with the first result of skim.
     /// It calls skim, reads its output, then update the tab content.
     pub fn skim_output_to_tab(&mut self) -> FmResult<()> {
-        let skim = self.skimer.no_source(
+        let skim = self.skimer.search_filename(
             self.selected_non_mut()
                 .selected()
                 .ok_or_else(|| FmError::custom("skim", "no selected file"))?
@@ -170,8 +170,31 @@ impl Status {
         self._update_tab_from_skim_output(output)
     }
 
-    fn _update_tab_from_skim_output(&mut self, skim_outut: &Arc<dyn SkimItem>) -> FmResult<()> {
-        let path = fs::canonicalize(skim_outut.output().to_string())?;
+    /// Replace the tab content with the first result of skim.
+    /// It calls skim, reads its output, then update the tab content.
+    /// The output is splited at `:` since we only care about the path, not the line number.
+    pub fn skim_line_output_to_tab(&mut self) -> FmResult<()> {
+        let skim = self.skimer.search_line_in_file();
+        let Some(output) = skim.first() else {return Ok(())};
+        self._update_tab_from_skim_line_output(output)
+    }
+
+    fn _update_tab_from_skim_line_output(
+        &mut self,
+        skim_output: &Arc<dyn SkimItem>,
+    ) -> FmResult<()> {
+        let output_str = skim_output.output().to_string();
+        let Some(filename) = output_str.split(':').next() else { return Ok(());};
+        let path = fs::canonicalize(filename)?;
+        self._replace_path_by_skim_output(path)
+    }
+
+    fn _update_tab_from_skim_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> FmResult<()> {
+        let path = fs::canonicalize(skim_output.output().to_string())?;
+        self._replace_path_by_skim_output(path)
+    }
+
+    fn _replace_path_by_skim_output(&mut self, path: std::path::PathBuf) -> FmResult<()> {
         let tab = self.selected();
         if path.is_file() {
             let Some(parent) = path.parent() else { return Ok(()) };

@@ -1398,9 +1398,13 @@ impl EventExec {
     }
 
     /// Start a fuzzy find with skim.
-    /// ATM idk how to avoid using the whole screen.
     pub fn event_fuzzyfind(status: &mut Status) -> FmResult<()> {
         status.skim_output_to_tab()
+    }
+
+    /// Start a fuzzy find for a specific line with skim.
+    pub fn event_fuzzyfind_line(status: &mut Status) -> FmResult<()> {
+        status.skim_line_output_to_tab()
     }
 
     /// Copy the filename of the selected file in normal mode.

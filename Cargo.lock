@@ -1926,9 +1926,9 @@ checksum = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 
 [[package]]
 name = "skim-qkzk"
-version = "0.9.11"
+version = "0.9.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c8d79d62dddbd6d730d2ff2ef862ddc330b0ab6a92228c324be888db384eac5"
+checksum = "ca4c3bcd3a72b5925fa30dae1e8ac51f8cf02f94c3dcb63e7f6136023c403374"
 dependencies = [
  "atty",
  "beef",

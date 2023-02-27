@@ -416,6 +416,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
         we guess that the user prefers the terminal he's currently using above the configured one. It may change in the future.
   - [x] refactor config creation
   - [x] shorten long names in first line
+  - [x] use skim to search for specific line in file
 
 - [ ] Version 0.1.50 : safety & memory usage
 

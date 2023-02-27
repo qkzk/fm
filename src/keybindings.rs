@@ -92,6 +92,7 @@ impl Bindings {
             (Key::Ctrl('c'), ActionMap::CopyFilename),
             (Key::Ctrl('d'), ActionMap::Delete),
             (Key::Ctrl('f'), ActionMap::FuzzyFind),
+            (Key::Ctrl('s'), ActionMap::FuzzyFindLine),
             (Key::Ctrl('g'), ActionMap::GitRoot),
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
             (Key::Ctrl('q'), ActionMap::ModeNormal),
