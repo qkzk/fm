@@ -51,6 +51,7 @@ impl Bindings {
             (Key::Char('F'), ActionMap::Filter),
             (Key::Char('G'), ActionMap::Shortcut),
             (Key::Char('H'), ActionMap::History),
+            (Key::Char('I'), ActionMap::NvimSetAddress),
             (Key::Char('M'), ActionMap::MarksNew),
             (Key::Char('O'), ActionMap::Sort),
             (Key::Char('P'), ActionMap::Preview),

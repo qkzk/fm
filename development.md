@@ -417,6 +417,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] refactor config creation
   - [x] shorten long names in first line
   - [x] use skim to search for specific line in file
+  - [x] manually setup a neovim server with shift+i. Get the server address with `echo serverstart()`.
 
 - [ ] Version 0.1.50 : safety & memory usage
 

@@ -286,6 +286,12 @@ impl EventExec {
         status.reset_tabs_view()
     }
 
+    pub fn exec_set_neovim_address(status: &mut Status) -> FmResult<()> {
+        status.nvim_server = status.selected_non_mut().input.string();
+        status.selected().reset_mode();
+        Ok(())
+    }
+
     /// Execute a jump to the selected flagged file.
     /// If the user selected a directory, we jump inside it.
     /// Otherwise, we jump to the parent and select the file.
@@ -855,18 +861,27 @@ impl EventExec {
     /// If no RPC server were provided at launch time - which may happen for
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
-    pub fn event_nvim_filepicker(tab: &mut Tab) -> FmResult<()> {
+    pub fn event_nvim_filepicker(status: &mut Status) -> FmResult<()> {
         if !is_program_in_path(NVIM_RPC_SENDER) {
             return Ok(());
         };
-        Self::reset_nvim_listen_address(tab);
-        if tab.nvim_server.is_empty() {
+        Self::read_nvim_listen_address_if_needed(status);
+        if status.nvim_server.is_empty() {
             return Ok(());
         };
+        let nvim_server = status.nvim_server.clone();
+        let tab = status.selected();
         let Some(fileinfo) = tab.selected() else { return Ok(()) };
         let Some(path_str) = fileinfo.path.to_str() else { return Ok(()) };
-        Self::open_in_current_neovim(path_str, &tab.nvim_server);
+        Self::open_in_current_neovim(path_str, &nvim_server);
 
+        Ok(())
+    }
+
+    pub fn event_set_nvim_server(status: &mut Status) -> FmResult<()> {
+        status
+            .selected()
+            .set_mode(Mode::InputSimple(InputSimple::SetNvimAddress));
         Ok(())
     }
 
@@ -875,7 +890,7 @@ impl EventExec {
             NVIM_RPC_SENDER,
             &vec![
                 "--remote-send",
-                &format!("<esc>:e {path_str}<cr><esc>:close<cr>"),
+                &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>"),
                 "--servername",
                 nvim_server,
             ],
@@ -947,12 +962,12 @@ impl EventExec {
         Ok(())
     }
 
-    fn reset_nvim_listen_address(tab: &mut Tab) {
-        if !tab.nvim_server.is_empty() {
+    fn read_nvim_listen_address_if_needed(status: &mut Status) {
+        if !status.nvim_server.is_empty() {
             return;
         }
         let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") else { return; };
-        tab.nvim_server = nvim_listen_address;
+        status.nvim_server = nvim_listen_address;
     }
 
     /// Execute a rename of the selected file.
@@ -1323,6 +1338,9 @@ impl EventExec {
             Mode::InputSimple(InputSimple::Newdir) => EventExec::exec_newdir(status.selected())?,
             Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,
             Mode::InputSimple(InputSimple::RegexMatch) => EventExec::exec_regex(status)?,
+            Mode::InputSimple(InputSimple::SetNvimAddress) => {
+                EventExec::exec_set_neovim_address(status)?
+            }
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
                 EventExec::exec_filter(status, colors)?

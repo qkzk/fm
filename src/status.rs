@@ -66,6 +66,8 @@ pub struct Status {
     pub encrypted_devices: DeviceOpener,
     /// Compression methods
     pub compression: Compresser,
+    /// NVIM RPC server address
+    pub nvim_server: String,
 }
 
 impl Status {
@@ -86,6 +88,7 @@ impl Status {
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
         let users_cache = unsafe { UsersCache::with_all_users() };
+        let nvim_server = args.server.clone();
         let mut right_tab = Tab::new(args.clone(), height, users_cache)?;
         right_tab
             .shortcut
@@ -116,6 +119,7 @@ impl Status {
             trash,
             encrypted_devices,
             compression,
+            nvim_server,
         })
     }
 

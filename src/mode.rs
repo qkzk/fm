@@ -74,6 +74,8 @@ pub enum InputSimple {
     Sort,
     /// Filter by extension, name, directory or no filter
     Filter,
+    /// Set a new neovim RPC address
+    SetNvimAddress,
     /// Input a password (chars a replaced by *)
     Password(PasswordKind, EncryptedAction),
 }
@@ -130,6 +132,7 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
             Mode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
             Mode::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
+            Mode::InputSimple(InputSimple::SetNvimAddress) => write!(f, "Neovim:  "),
             Mode::InputSimple(InputSimple::Sort) => {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }

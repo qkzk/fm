@@ -29,6 +29,7 @@ static HELP_TO_FORMAT: &str = "
 {Shell}:      shell in current directory
 {OpenFile}:      open the selected file
 {NvimFilepicker}:      open in current nvim session
+{NvimSetAddress}:      setup the nvim rpc address
 {Preview}:      preview this file
 {MediaInfo}:       display a thumbnail of an image with ueberzug
 {Back}:      move back to previous dir
