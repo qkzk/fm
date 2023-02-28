@@ -27,20 +27,16 @@ impl Skimer {
     }
 
     fn select_previewer<'a>() -> &'a str {
-        let Some(bat) = BAT_EXECUTABLE.split_whitespace().into_iter().next() else { return CAT_EXECUTABLE; };
-        if is_program_in_path(bat) {
-            BAT_EXECUTABLE
-        } else {
-            CAT_EXECUTABLE
+        match BAT_EXECUTABLE.split_whitespace().into_iter().next() {
+            Some(bat) if is_program_in_path(bat) => BAT_EXECUTABLE,
+            _ => CAT_EXECUTABLE,
         }
     }
 
     fn select_file_matcher<'a>() -> &'a str {
-        let Some(rg) = RG_EXECUTABLE.split_whitespace().into_iter().next() else { return CAT_EXECUTABLE; };
-        if is_program_in_path(rg) {
-            RG_EXECUTABLE
-        } else {
-            GREP_EXECUTABLE
+        match RG_EXECUTABLE.split_whitespace().into_iter().next() {
+            Some(rg) if is_program_in_path(rg) => RG_EXECUTABLE,
+            _ => GREP_EXECUTABLE,
         }
     }
 
