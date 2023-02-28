@@ -21,19 +21,12 @@ impl Skimer {
     pub fn new(term: Arc<Term>) -> Self {
         Self {
             skim: Skim::new_from_term(term),
-            previewer: Self::select_installed_or_default(BAT_EXECUTABLE, CAT_EXECUTABLE).to_owned(),
-            file_matcher: Self::select_installed_or_default(RG_EXECUTABLE, GREP_EXECUTABLE)
+            previewer: pick_first_installed(&[BAT_EXECUTABLE, CAT_EXECUTABLE])
+                .expect("Skimer new: at least a previewer should be installed")
                 .to_owned(),
-        }
-    }
-
-    fn select_installed_or_default<'a>(
-        candidate_program: &'a str,
-        default_program: &'a str,
-    ) -> &'a str {
-        match candidate_program.split_whitespace().into_iter().next() {
-            Some(program) if is_program_in_path(program) => candidate_program,
-            _ => default_program,
+            file_matcher: pick_first_installed(&[RG_EXECUTABLE, GREP_EXECUTABLE])
+                .expect("Skimer new: at least a line matcher should be installed")
+                .to_owned(),
         }
     }
 
@@ -60,4 +53,14 @@ impl Skimer {
             .map(|out| out.selected_items)
             .unwrap_or_else(Vec::new)
     }
+}
+
+fn pick_first_installed<'a>(commands: &'a [&'a str]) -> Option<&'a str> {
+    for command in commands {
+        let Some(program) = command.split_whitespace().into_iter().next() else { continue };
+        if is_program_in_path(program) {
+            return Some(command);
+        }
+    }
+    None
 }
