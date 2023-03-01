@@ -418,6 +418,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] shorten long names in first line
   - [x] use skim to search for specific line in file
   - [x] manually setup a neovim server with shift+i. Get the server address with `echo serverstart()`.
+  - [ ] diff of first 2 selected files in second panel
+  - [ ] wallpaper aka [nnn](https://github.com/jarun/nnn/blob/master/plugins/wallpaper)
+  - [ ] bulknew
+  - [ ] pushbullet ?
+  - [ ] moc queue management
 
 - [ ] Version 0.1.50 : safety & memory usage
 
@@ -468,18 +473,6 @@ All of this stuff can be done easily through a shell command or automatically. I
   - google drive
 
   or just use sshfs...
-
-### Thumbnails with chafa
-
-- [ ] improve thumbnail with [chafa](https://hpjansson.org/chafa/) - [felix](https://github.com/kyoheiu/felix#usage)
-
-  - [x] use chafa
-  - [x] print in term
-  - [x] print in raw mode
-  - [ ] print with term: term...
-
-  Can't make it work in tuikit. We need the whole chafa output into tuikit attr
-  It's too much work and it will be too slow for such a gadget.
 
 ## Sources
 
