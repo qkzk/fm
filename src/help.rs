@@ -31,7 +31,7 @@ static HELP_TO_FORMAT: &str = "
 {NvimFilepicker}:      open in current nvim session
 {NvimSetAddress}:      setup the nvim rpc address
 {Preview}:      preview this file
-{MediaInfo}:       display a thumbnail of an image with ueberzug
+{MediaInfo}:       display infos about a media file
 {Back}:      move back to previous dir
 {Home}:      move to $HOME
 {MarksNew}:      mark current path
