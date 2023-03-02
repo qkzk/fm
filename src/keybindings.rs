@@ -57,6 +57,7 @@ impl Bindings {
             (Key::Char('P'), ActionMap::Preview),
             (Key::Char('T'), ActionMap::MediaInfo),
             (Key::Char('X'), ActionMap::TrashMoveFile),
+            (Key::Char('W'), ActionMap::SetWallpaper),
             (Key::Char('a'), ActionMap::ToggleHidden),
             (Key::Char('c'), ActionMap::CopyPaste),
             (Key::Char('d'), ActionMap::NewDir),

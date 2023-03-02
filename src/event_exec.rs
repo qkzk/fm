@@ -1824,8 +1824,17 @@ impl EventExec {
         command.matcher(status, colors)
     }
 
+    /// Toggle the second pane between preview & normal mode (files).
     pub fn event_toggle_preview_second(status: &mut Status) -> FmResult<()> {
         status.preview_second = !status.preview_second;
+        Ok(())
+    }
+
+    /// Set the current selected file as wallpaper with `nitrogen`.
+    /// Requires `nitrogen` to be installed.
+    pub fn event_set_wallpaper(tab: &mut Tab) -> FmResult<()> {
+        let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
+        let _ = execute_in_child("nitrogen", &vec!["--set-zoom-fill", "--save", &path_str]);
         Ok(())
     }
 }
