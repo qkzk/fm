@@ -100,6 +100,10 @@ impl Bindings {
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
             (Key::Ctrl('q'), ActionMap::ModeNormal),
             (Key::Ctrl('r'), ActionMap::RefreshView),
+            (Key::CtrlUp, ActionMap::MocpAddToPlayList),
+            (Key::CtrlDown, ActionMap::MocpTogglePause),
+            (Key::CtrlRight, ActionMap::MocpNext),
+            (Key::CtrlLeft, ActionMap::MocpPrevious),
         ]);
         Self { binds }
     }

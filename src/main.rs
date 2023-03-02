@@ -42,6 +42,10 @@ fn main() -> FmResult<()> {
     while let Ok(event) = event_reader.poll_event() {
         event_dispatcher.dispatch(&mut status, event, &colors)?;
         status.refresh_disks();
+        if status.force_clear {
+            display.force_clear()?;
+            status.force_clear = false;
+        }
         display.display_all(&status, &colors)?;
 
         if status.must_quit() {

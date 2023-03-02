@@ -94,6 +94,13 @@ Navigate as usual. Most actions works as in 'normal' view.
     (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
 {Enter}:  Execute mode then NORMAL
 {ModeNormal}:    NORMAL
+
+- MOC -
+Control MOC from your TUI
+{MocpAddToPlayList}:          Add a file or folder to the playlist
+{MocpPrevious}         Previous song
+{MocpTogglePause}:        Toggle play/pause. Start MOC if needed
+{MocpNext}        Next song
 ";
 
 /// Holds the help string, formated with current keybindings.

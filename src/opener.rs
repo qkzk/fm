@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use log::info;
 use serde_yaml;
@@ -336,6 +336,25 @@ impl Opener {
 pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
     info!("execute_in_child. executable: {exe}, arguments: {args:?}",);
     Ok(Command::new(exe).args(args).spawn()?)
+}
+
+pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> FmResult<String> {
+    info!("execute_and_capture_output. executable: {exe}, arguments: {args:?}",);
+    let child = Command::new(exe)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+    let output = child.wait_with_output()?;
+    if output.status.success() {
+        Ok(String::from_utf8(output.stdout)?)
+    } else {
+        Err(FmError::custom(
+            "execute_and_capture_output",
+            "Command didn't finished correctly",
+        ))
+    }
 }
 
 /// Returns the opener created from opener file with the given terminal

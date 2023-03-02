@@ -733,6 +733,13 @@ impl Display {
         Ok(self.term.present()?)
     }
 
+    pub fn force_clear(&mut self) -> FmResult<()> {
+        self.hide_cursor()?;
+        self.term.clear()?;
+        self.term.present()?;
+        Ok(())
+    }
+
     fn size_for_second_window(&self, tab: &Tab) -> FmResult<usize> {
         if tab.need_second_window() {
             Ok(self.height()? / 2)

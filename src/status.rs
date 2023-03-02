@@ -68,6 +68,7 @@ pub struct Status {
     pub compression: Compresser,
     /// NVIM RPC server address
     pub nvim_server: String,
+    pub force_clear: bool,
 }
 
 impl Status {
@@ -102,6 +103,7 @@ impl Status {
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
         let trash = Trash::new()?;
         let compression = Compresser::default();
+        let force_clear = false;
 
         Ok(Self {
             tabs: [left_tab, right_tab],
@@ -120,6 +122,7 @@ impl Status {
             encrypted_devices,
             compression,
             nvim_server,
+            force_clear,
         })
     }
 
@@ -381,5 +384,9 @@ impl Status {
     /// True if a quit event was registered in the selected tab.
     pub fn must_quit(&self) -> bool {
         self.selected_non_mut().must_quit()
+    }
+
+    pub fn force_clear(&mut self) {
+        self.force_clear = true;
     }
 }

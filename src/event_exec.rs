@@ -25,6 +25,7 @@ use crate::fm_error::{FmError, FmResult};
 use crate::git::git_root;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
+use crate::opener::execute_and_capture_output;
 use crate::opener::execute_in_child;
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
@@ -40,6 +41,7 @@ pub struct EventExec {}
 impl EventExec {
     /// Reset the selected tab view to the default.
     pub fn refresh_status(status: &mut Status, colors: &Colors) -> FmResult<()> {
+        status.force_clear();
         status.refresh_users()?;
         status.selected().refresh_view()?;
         if let Mode::Tree = status.selected_non_mut().mode {
@@ -1837,9 +1839,65 @@ impl EventExec {
 
     /// Set the current selected file as wallpaper with `nitrogen`.
     /// Requires `nitrogen` to be installed.
-    pub fn event_set_wallpaper(tab: &mut Tab) -> FmResult<()> {
+    pub fn event_set_wallpaper(tab: &Tab) -> FmResult<()> {
         let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
         let _ = execute_in_child("nitrogen", &vec!["--set-zoom-fill", "--save", &path_str]);
+        Ok(())
+    }
+
+    /// Add a song or a folder to MOC playlist. Start it first...
+    pub fn event_mocp_add_to_playlist(tab: &Tab) -> FmResult<()> {
+        let _ = execute_in_child("mocp", &vec!["-S"]);
+        let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
+        info!("mocp add to playlist {path_str:?}");
+        let _ = execute_in_child("mocp", &vec!["-a", &path_str]);
+        Ok(())
+    }
+
+    /// Toggle play/pause on MOC.
+    /// Starts the server if needed, preventing the output to fill the screen.
+    /// Then toggle play/pause
+    pub fn event_mocp_toggle_pause(status: &mut Status) -> FmResult<()> {
+        info!("mocp toggle pause");
+        match execute_and_capture_output("mocp", &vec!["-i"]) {
+            Ok(stdout) => {
+                // server is runing
+                if stdout.contains("STOP") {
+                    // music is stopped, start playing music
+                    let _ = execute_and_capture_output("mocp", &vec!["-p"]);
+                } else {
+                    // music is playing or paused, toggle play/pause
+                    let _ = execute_and_capture_output("mocp", &vec!["-G"]);
+                }
+            }
+            Err(e) => {
+                status.force_clear();
+                info!("mocp -i error:\n{e:?}");
+                // server is stopped, start it.
+                let c = execute_in_child("mocp", &vec!["-S"]);
+                let Ok(mut c) = c else {
+                    // it shouldn't fail, something is wrong. It's better not to do anything.
+                    return Ok(())
+                };
+                let _ = c.wait();
+                // start playing music
+                let _ = execute_and_capture_output("mocp", &vec!["-p"]);
+            }
+        }
+        Ok(())
+    }
+
+    /// Skip to the next song in MOC
+    pub fn event_mocp_next() -> FmResult<()> {
+        info!("mocp next");
+        let _ = execute_in_child("mocp", &vec!["-f"]);
+        Ok(())
+    }
+
+    /// Go to the previous song in MOC
+    pub fn event_mocp_previous() -> FmResult<()> {
+        info!("mocp previous");
+        let _ = execute_in_child("mocp", &vec!["-r"]);
         Ok(())
     }
 }
