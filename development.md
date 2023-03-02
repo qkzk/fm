@@ -418,9 +418,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] shorten long names in first line
   - [x] use skim to search for specific line in file
   - [x] manually setup a neovim server with shift+i. Get the server address with `echo serverstart()`.
-  - [ ] diff of first 2 selected files in second panel
   - [x] wallpaper aka [nnn](https://github.com/jarun/nnn/blob/master/plugins/wallpaper)
-  - [x] bulknew
+  - [x] bulknew: create a bulk of new files in current dir with ctrl+b
+  - [ ] diff of first 2 selected files in second panel
   - [ ] pushbullet ?
   - [ ] moc queue management
 
