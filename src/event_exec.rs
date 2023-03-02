@@ -235,7 +235,12 @@ impl EventExec {
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.
     pub fn event_bulkrename(status: &mut Status) -> FmResult<()> {
-        Bulkrename::new(status.filtered_flagged_files())?.rename(&status.opener)?;
+        Bulkrename::renamer(status.filtered_flagged_files())?.rename(&status.opener)?;
+        status.selected().refresh_view()
+    }
+
+    pub fn event_bulknew(status: &mut Status) -> FmResult<()> {
+        Bulkrename::creator(status.selected_path_str())?.create(&status.opener)?;
         status.selected().refresh_view()
     }
 

@@ -1,3 +1,4 @@
+use log::info;
 use rand::Rng;
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -13,16 +14,28 @@ use crate::opener::Opener;
 /// temporary file is used to modify them.
 /// This feature is a poor clone of ranger's one.
 pub struct Bulkrename<'a> {
-    original_filepath: Vec<&'a Path>,
+    original_filepath: Option<Vec<&'a Path>>,
+    parent_dir: Option<&'a str>,
     temp_file: PathBuf,
 }
 
 impl<'a> Bulkrename<'a> {
     /// Creates a new Bulkrename instance.
-    pub fn new(original_filepath: Vec<&'a Path>) -> FmResult<Self> {
+    pub fn renamer(original_filepath: Vec<&'a Path>) -> FmResult<Self> {
         let temp_file = Self::generate_random_filepath()?;
         Ok(Self {
-            original_filepath,
+            original_filepath: Some(original_filepath),
+            parent_dir: None,
+            temp_file,
+        })
+    }
+
+    pub fn creator(path_str: &'a str) -> FmResult<Self> {
+        let temp_file = Self::generate_random_filepath()?;
+        info!("created {temp_file:?}");
+        Ok(Self {
+            original_filepath: None,
+            parent_dir: Some(path_str),
             temp_file,
         })
     }
@@ -39,6 +52,17 @@ impl<'a> Bulkrename<'a> {
         Self::watch_modification_in_thread(&self.temp_file, original_modification)?;
 
         self.rename_all(self.get_new_filenames()?)?;
+        self.delete_temp_file()
+    }
+
+    pub fn create(&mut self, opener: &Opener) -> FmResult<()> {
+        self.create_random_file()?;
+        let original_modification = Self::get_modified_date(&self.temp_file)?;
+        self.open_temp_file_with_editor(opener)?;
+
+        Self::watch_modification_in_thread(&self.temp_file, original_modification)?;
+
+        self.create_all(self.get_new_filenames()?)?;
         self.delete_temp_file()
     }
 
@@ -77,9 +101,15 @@ impl<'a> Bulkrename<'a> {
         Ok(filepath)
     }
 
+    fn create_random_file(&self) -> FmResult<()> {
+        std::fs::File::create(&self.temp_file)?;
+        Ok(())
+    }
+
     fn write_original_names(&self) -> FmResult<()> {
         let mut file = std::fs::File::create(&self.temp_file)?;
-        for path in self.original_filepath.iter() {
+
+        for path in self.original_filepath.clone().unwrap().iter() {
             let Some(os_filename) = path.file_name() else { return Ok(()) };
             let Some(filename) = os_filename.to_str() else {return Ok(()) };
             let b = filename.as_bytes();
@@ -90,6 +120,7 @@ impl<'a> Bulkrename<'a> {
     }
 
     fn open_temp_file_with_editor(&self, opener: &Opener) -> FmResult<()> {
+        info!("opengin {:?}", self.temp_file);
         opener.open(&self.temp_file)
     }
 
@@ -111,8 +142,10 @@ impl<'a> Bulkrename<'a> {
             .map(|line| line.trim().to_owned())
             .filter(|line| !line.is_empty())
             .collect();
-        if new_names.len() < self.original_filepath.len() {
-            return Err(FmError::custom("new filenames", "not enough filenames"));
+        if let Some(original_filepath) = self.original_filepath.clone() {
+            if new_names.len() < original_filepath.len() {
+                return Err(FmError::custom("new filenames", "not enough filenames"));
+            }
         }
         Ok(new_names)
     }
@@ -123,8 +156,25 @@ impl<'a> Bulkrename<'a> {
     }
 
     fn rename_all(&self, new_filenames: Vec<String>) -> FmResult<()> {
-        for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
+        for (path, filename) in self
+            .original_filepath
+            .clone()
+            .unwrap()
+            .iter()
+            .zip(new_filenames.iter())
+        {
             self.rename_file(path, &sanitize_filename::sanitize(filename))?
+        }
+        Ok(())
+    }
+
+    fn create_all(&self, new_filenames: Vec<String>) -> FmResult<()> {
+        for filename in new_filenames.iter() {
+            let filename = sanitize_filename::sanitize(filename);
+            let mut new_path = std::path::PathBuf::from(self.parent_dir.unwrap());
+            new_path.push(filename);
+            info!("creating: {new_path:?}");
+            std::fs::File::create(new_path)?;
         }
         Ok(())
     }

@@ -420,7 +420,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] manually setup a neovim server with shift+i. Get the server address with `echo serverstart()`.
   - [ ] diff of first 2 selected files in second panel
   - [x] wallpaper aka [nnn](https://github.com/jarun/nnn/blob/master/plugins/wallpaper)
-        `nitrogen --set-zoom-fill --save`
   - [ ] bulknew
   - [ ] pushbullet ?
   - [ ] moc queue management

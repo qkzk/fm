@@ -46,6 +46,7 @@ impl Bindings {
             (Key::Char('~'), ActionMap::Home),
             (Key::Char(':'), ActionMap::Command),
             (Key::Char('B'), ActionMap::Bulkrename),
+            (Key::Ctrl('b'), ActionMap::Bulknew),
             (Key::Char('C'), ActionMap::Compress),
             (Key::Char('E'), ActionMap::EncryptedDrive),
             (Key::Char('F'), ActionMap::Filter),
