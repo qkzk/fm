@@ -427,6 +427,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] diff of first 2 selected files in second panel
   - [ ] pushbullet ?
 
+- [ ] Version 0.1.20
+
+- [ ] sub window / menu for completion / selection.
+  1. enter selectable mode
+  2. chose an action
+  3. confirm
+
 - [ ] Version 0.1.50 : safety & memory usage
 
   - [ ] there's a memory leak somewhere
