@@ -409,8 +409,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] Version 0.1.19
 
-  - [x] use preview from bat in skim. Obviously, it requires bat to be installed
-  - [x] preview with cat if bat isn't installed.
+  - [x] skim: use preview from bat.
+  - [x] skim: preview with cat if bat isn't installed.
   - [x] uniform themeset with skim: use monokai theme from [jonschlinkert](https://github.com/jonschlinkert/sublime-monokai-extended)
   - [x] event shell & open with terminal: use $TERM if possible, otherwise use the configured terminal application.
         we guess that the user prefers the terminal he's currently using above the configured one. It may change in the future.
@@ -419,7 +419,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] use skim to search for specific line in file
   - [x] manually setup a neovim server with shift+i. Get the server address with `echo serverstart()`.
   - [x] wallpaper aka [nnn](https://github.com/jarun/nnn/blob/master/plugins/wallpaper)
-  - [x] bulknew: create a bulk of new files in current dir with ctrl+b
+  - [x] bulk: use a menu for rename, files creation, directories creation
   - [x] moc queue management
     - [x] start mocp if not running
     - [x] add file to playlist
@@ -430,6 +430,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Version 0.1.20
 
 - [ ] sub window / menu for completion / selection.
+
   1. enter selectable mode
   2. chose an action
   3. confirm
