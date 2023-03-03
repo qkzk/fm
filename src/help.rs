@@ -54,8 +54,6 @@ static HELP_TO_FORMAT: &str = "
 {ClearFlags}:      clear flags
 {ReverseFlags}:      reverse flags
 {Symlink}:      symlink files
-{Bulkrename}:      bulkrename files
-{Bulkrename}:      bulkrename files
 {Bulk}:      bulknew files
 {CopyPaste}:      copy to current dir
 {CutPaste}:      move to current dir

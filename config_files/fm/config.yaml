@@ -50,7 +50,7 @@ keys:
   'v': ReverseFlags
   'w': RegexMatch
   'x': DeleteFile
-  'shift-b': Bulkrename
+  'shift-b': Bulk
   'shift-f': Filter
   'shift-g': Shortcut
   'shift-h': History

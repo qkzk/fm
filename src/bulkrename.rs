@@ -194,14 +194,16 @@ pub struct Bulk {
     index: usize,
 }
 
-impl Bulk {
-    pub fn default() -> Self {
+impl Default for Bulk {
+    fn default() -> Self {
         Self {
             content: vec!["Rename".to_owned(), "New".to_owned()],
             index: 0,
         }
     }
+}
 
+impl Bulk {
     pub fn execute_bulk(&self, status: &Status) -> FmResult<()> {
         if self.index == 0 {
             Bulkrename::renamer(status.filtered_flagged_files())?.rename(&status.opener)

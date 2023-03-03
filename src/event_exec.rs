@@ -9,7 +9,6 @@ use log::info;
 use sysinfo::SystemExt;
 
 use crate::action_map::ActionMap;
-use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
 use crate::constant_strings_paths::CONFIG_PATH;
@@ -236,17 +235,8 @@ impl EventExec {
     /// Enter bulkrename mode, opening a random temp file where the user
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.
-    pub fn event_bulkrename(status: &mut Status) -> FmResult<()> {
-        Bulkrename::renamer(status.filtered_flagged_files())?.rename(&status.opener)?;
-        status.selected().refresh_view()
-    }
-
-    pub fn event_bulknew(status: &mut Status) -> FmResult<()> {
-        Bulkrename::creator(status.selected_path_str())?.create(&status.opener)?;
-        status.selected().refresh_view()
-    }
-
     pub fn event_bulk(status: &mut Status) -> FmResult<()> {
+        status.selected().set_mode(Mode::Navigate(Navigate::Bulk));
         status.selected().refresh_view()
     }
 
@@ -1219,6 +1209,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_prev(status.selected()),
             Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_prev(status),
             Mode::Navigate(Navigate::Compress) => EventExec::event_compression_prev(status),
+            Mode::Navigate(Navigate::Bulk) => EventExec::event_bulk_prev(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_prev(status)
             }
@@ -1242,6 +1233,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_next(status.selected()),
             Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_next(status),
             Mode::Navigate(Navigate::Compress) => EventExec::event_compression_next(status),
+            Mode::Navigate(Navigate::Bulk) => EventExec::event_bulk_next(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_next(status)
             }
