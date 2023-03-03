@@ -23,9 +23,9 @@ use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
 use crate::git::git_root;
+use crate::mocp::Mocp;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
-use crate::opener::execute_and_capture_output;
 use crate::opener::execute_in_child;
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
@@ -1847,58 +1847,24 @@ impl EventExec {
 
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn event_mocp_add_to_playlist(tab: &Tab) -> FmResult<()> {
-        let _ = execute_in_child("mocp", &vec!["-S"]);
-        let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
-        info!("mocp add to playlist {path_str:?}");
-        let _ = execute_in_child("mocp", &vec!["-a", &path_str]);
-        Ok(())
+        Mocp::add_to_playlist(tab)
     }
 
     /// Toggle play/pause on MOC.
     /// Starts the server if needed, preventing the output to fill the screen.
     /// Then toggle play/pause
     pub fn event_mocp_toggle_pause(status: &mut Status) -> FmResult<()> {
-        info!("mocp toggle pause");
-        match execute_and_capture_output("mocp", &vec!["-i"]) {
-            Ok(stdout) => {
-                // server is runing
-                if stdout.contains("STOP") {
-                    // music is stopped, start playing music
-                    let _ = execute_and_capture_output("mocp", &vec!["-p"]);
-                } else {
-                    // music is playing or paused, toggle play/pause
-                    let _ = execute_and_capture_output("mocp", &vec!["-G"]);
-                }
-            }
-            Err(e) => {
-                status.force_clear();
-                info!("mocp -i error:\n{e:?}");
-                // server is stopped, start it.
-                let c = execute_in_child("mocp", &vec!["-S"]);
-                let Ok(mut c) = c else {
-                    // it shouldn't fail, something is wrong. It's better not to do anything.
-                    return Ok(())
-                };
-                let _ = c.wait();
-                // start playing music
-                let _ = execute_and_capture_output("mocp", &vec!["-p"]);
-            }
-        }
-        Ok(())
+        Mocp::toggle_pause(status)
     }
 
     /// Skip to the next song in MOC
     pub fn event_mocp_next() -> FmResult<()> {
-        info!("mocp next");
-        let _ = execute_in_child("mocp", &vec!["-f"]);
-        Ok(())
+        Mocp::next()
     }
 
     /// Go to the previous song in MOC
     pub fn event_mocp_previous() -> FmResult<()> {
-        info!("mocp previous");
-        let _ = execute_in_child("mocp", &vec!["-r"]);
-        Ok(())
+        Mocp::previous()
     }
 }
 
