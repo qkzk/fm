@@ -396,6 +396,7 @@ impl<'a> Draw for WinSecondary<'a> {
             Mode::Navigate(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
             Mode::Navigate(Navigate::Trash) => self.trash(canvas, &self.status.trash),
             Mode::Navigate(Navigate::Compress) => self.compress(canvas, &self.status.compression),
+            Mode::Navigate(Navigate::Bulk) => self.bulk(canvas, &self.status.bulk),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 self.encrypted_devices(self.status, self.tab, canvas)
             }
@@ -523,6 +524,22 @@ impl<'a> WinSecondary<'a> {
                     .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
                 attr,
             );
+        }
+        Ok(())
+    }
+
+    fn bulk(
+        &self,
+        canvas: &mut dyn Canvas,
+        selectable: &impl SelectableContent<String>,
+    ) -> FmResult<()> {
+        canvas.print(0, 0, "Action...")?;
+        for (row, text) in selectable.content().iter().enumerate() {
+            let mut attr = Attr::default();
+            if row == selectable.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            let _ = canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr);
         }
         Ok(())
     }

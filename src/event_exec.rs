@@ -246,6 +246,22 @@ impl EventExec {
         status.selected().refresh_view()
     }
 
+    pub fn event_bulk(status: &mut Status) -> FmResult<()> {
+        status.selected().refresh_view()
+    }
+
+    pub fn event_bulk_prev(status: &mut Status) {
+        status.bulk.prev()
+    }
+
+    pub fn event_bulk_next(status: &mut Status) {
+        status.bulk.next()
+    }
+
+    pub fn exec_bulk(status: &mut Status) -> FmResult<()> {
+        status.bulk.execute_bulk(status)
+    }
+
     /// Copy the flagged file to current directory.
     /// A progress bar is displayed and a notification is sent once it's done.
     pub fn exec_copy_paste(status: &mut Status) -> FmResult<()> {
@@ -1365,6 +1381,7 @@ impl EventExec {
             Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
             Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
+            Mode::Navigate(Navigate::Bulk) => EventExec::exec_bulk(status)?,
             Mode::Navigate(Navigate::EncryptedDrive) => (),
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {

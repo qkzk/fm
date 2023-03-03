@@ -10,6 +10,7 @@ use tuikit::term::Term;
 use users::UsersCache;
 
 use crate::args::Args;
+use crate::bulkrename::Bulk;
 use crate::compress::Compresser;
 use crate::config::Colors;
 use crate::constant_strings_paths::OPENER_PATH;
@@ -69,6 +70,7 @@ pub struct Status {
     /// NVIM RPC server address
     pub nvim_server: String,
     pub force_clear: bool,
+    pub bulk: Bulk,
 }
 
 impl Status {
@@ -104,6 +106,7 @@ impl Status {
         let trash = Trash::new()?;
         let compression = Compresser::default();
         let force_clear = false;
+        let bulk = Bulk::default();
 
         Ok(Self {
             tabs: [left_tab, right_tab],
@@ -123,6 +126,7 @@ impl Status {
             compression,
             nvim_server,
             force_clear,
+            bulk,
         })
     }
 

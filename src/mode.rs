@@ -98,6 +98,8 @@ pub enum Navigate {
     Marks(MarkAction),
     /// Pick a compression method
     Compress,
+    ///
+    Bulk,
 }
 
 /// Different mode in which the application can be.
@@ -150,6 +152,7 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::History) => write!(f, "History :"),
             Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
             Mode::Navigate(Navigate::Trash) => write!(f, "Trash    :"),
+            Mode::Navigate(Navigate::Bulk) => write!(f, "Bulk     :"),
             Mode::Navigate(Navigate::Compress) => write!(f, "Compress :"),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 write!(f, "Encrypted devices :")

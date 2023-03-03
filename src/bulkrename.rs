@@ -7,7 +7,9 @@ use std::time::{Duration, SystemTime};
 
 use crate::constant_strings_paths::TMP_FOLDER_PATH;
 use crate::fm_error::{FmError, FmResult};
+use crate::impl_selectable_content;
 use crate::opener::Opener;
+use crate::status::Status;
 
 /// Struct holding informations about files about to be renamed.
 /// We only need to know which are the original filenames and which
@@ -186,3 +188,27 @@ impl<'a> Bulkrename<'a> {
         Ok(())
     }
 }
+
+pub struct Bulk {
+    pub content: Vec<String>,
+    index: usize,
+}
+
+impl Bulk {
+    pub fn default() -> Self {
+        Self {
+            content: vec!["Rename".to_owned(), "New".to_owned()],
+            index: 0,
+        }
+    }
+
+    pub fn execute_bulk(&self, status: &Status) -> FmResult<()> {
+        if self.index == 0 {
+            Bulkrename::renamer(status.filtered_flagged_files())?.rename(&status.opener)
+        } else {
+            Bulkrename::creator(status.selected_path_str())?.create(&status.opener)
+        }
+    }
+}
+
+impl_selectable_content!(String, Bulk);
