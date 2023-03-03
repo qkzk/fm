@@ -152,7 +152,9 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::History) => write!(f, "History :"),
             Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
             Mode::Navigate(Navigate::Trash) => write!(f, "Trash :"),
-            Mode::Navigate(Navigate::Bulk) => write!(f, "Bulkrename or Bulk new files"),
+            Mode::Navigate(Navigate::Bulk) => {
+                write!(f, "Bulk: rename flagged files or create new files")
+            }
             Mode::Navigate(Navigate::Compress) => write!(f, "Compress :"),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 write!(f, "Encrypted devices :")

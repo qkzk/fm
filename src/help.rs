@@ -54,7 +54,6 @@ static HELP_TO_FORMAT: &str = "
 {ClearFlags}:      clear flags
 {ReverseFlags}:      reverse flags
 {Symlink}:      symlink files
-{Bulk}:      bulknew files
 {CopyPaste}:      copy to current dir
 {CutPaste}:      move to current dir
 {DeleteFile}:      delete files permanently
@@ -89,6 +88,7 @@ Navigate as usual. Most actions works as in 'normal' view.
     (m: open & mount,  u: unmount & close)
 {Search}:      SEARCH
 {Command}:      COMMAND
+{Bulk}:      BULK
 {Filter}:      FILTER 
     (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
 {Enter}:  Execute mode then NORMAL
