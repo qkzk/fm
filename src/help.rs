@@ -46,6 +46,7 @@ static HELP_TO_FORMAT: &str = "
 {OpenConfig}:       open the config file
 {Lazygit}:      open a new terminal with lazygit
 {SetWallpaper}:      set the selected file as wallpaper with nitrogen
+{Diff}:      display the diff of the first 2 flagged files
 
 - Action on flagged files - 
 {ToggleFlag}:      toggle flag on a file 

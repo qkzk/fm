@@ -24,6 +24,7 @@ use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::opener::execute_and_capture_output_without_check;
 use crate::status::Status;
 use crate::tree::{ColoredString, Tree};
 use crate::utils::filename_from_path;
@@ -41,6 +42,7 @@ pub enum Preview {
     Ueberzug(Ueberzug),
     Media(MediaContent),
     Directory(Directory),
+    Diff(Diff),
     #[default]
     Empty,
 }
@@ -134,6 +136,10 @@ impl Preview {
         Ok(Self::Media(MediaContent::new(path)?))
     }
 
+    pub fn diff(first_path: &str, second_path: &str) -> FmResult<Self> {
+        Ok(Self::Diff(Diff::new(first_path, second_path)?))
+    }
+
     /// Creates the help preview as if it was a text file.
     pub fn help(help: &str) -> Self {
         Self::Text(TextContent::help(help))
@@ -157,6 +163,7 @@ impl Preview {
             Self::Ueberzug(_img) => 0,
             Self::Media(media) => media.len(),
             Self::Directory(directory) => directory.len(),
+            Self::Diff(diff) => diff.len(),
         }
     }
 
@@ -729,6 +736,31 @@ impl Directory {
     }
 }
 
+pub struct Diff {
+    pub content: Vec<String>,
+    length: usize,
+}
+
+impl Diff {
+    pub fn new(first_path: &str, second_path: &str) -> FmResult<Self> {
+        let content: Vec<String> =
+            execute_and_capture_output_without_check("diff", &vec![first_path, second_path])?
+                .lines()
+                .map(|s| s.to_owned())
+                .collect();
+        info!("diff:\n{content:?}");
+
+        Ok(Self {
+            length: content.len(),
+            content,
+        })
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
@@ -783,6 +815,7 @@ impl_window!(PdfContent, String);
 impl_window!(ZipContent, String);
 impl_window!(MediaContent, String);
 impl_window!(Directory, ColoredPair);
+impl_window!(Diff, String);
 
 fn is_ext_compressed(ext: &str) -> bool {
     matches!(

@@ -376,6 +376,9 @@ impl<'a> WinMain<'a> {
             Preview::Text(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window)
             }
+            Preview::Diff(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
 
             Preview::Empty => (),
         }

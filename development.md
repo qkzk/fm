@@ -406,6 +406,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] temporary marks
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
+- [ ] pushbullet ?
 
 - [ ] Version 0.1.19
 
@@ -426,10 +427,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] next, previous song
   - [x] integrate gitroot into shortcuts, remove as a keybinding
   - [x] FIX: trash empty should be confirmed
-  - [ ] diff of first 2 selected files in second panel
-  - [ ] pushbullet ?
+  - [x] diff of first 2 selected files in second panel
 
 - [ ] Version 0.1.20
+
+  - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
 
 - [ ] sub window / menu for completion / selection.
 

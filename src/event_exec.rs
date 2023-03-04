@@ -1476,6 +1476,21 @@ impl EventExec {
         Ok(())
     }
 
+    pub fn event_diff(status: &mut Status) -> FmResult<()> {
+        if status.flagged.len() < 2 {
+            return Ok(());
+        };
+        if let Mode::Normal | Mode::Tree = status.selected_non_mut().mode {
+            let first_path = &status.flagged.content[0].to_str().unwrap();
+            let second_path = &status.flagged.content[1].to_str().unwrap();
+            status.selected().preview = Preview::diff(first_path, second_path)?;
+            let tab = status.selected();
+            tab.window.reset(tab.preview.len());
+            tab.set_mode(Mode::Preview);
+        }
+        Ok(())
+    }
+
     /// Toggle between a full display (aka ls -lah) or a simple mode (only the
     /// filenames).
     pub fn event_toggle_display_full(status: &mut Status) -> FmResult<()> {

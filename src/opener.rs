@@ -357,6 +357,18 @@ pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> FmResult<Strin
     }
 }
 
+pub fn execute_and_capture_output_without_check(exe: &str, args: &Vec<&str>) -> FmResult<String> {
+    info!("execute_and_capture_output_without_check. executable: {exe}, arguments: {args:?}",);
+    let child = Command::new(exe)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+    let output = child.wait_with_output()?;
+    Ok(String::from_utf8(output.stdout)?)
+}
+
 /// Returns the opener created from opener file with the given terminal
 /// application name.
 /// It may fail if the file can't be read.

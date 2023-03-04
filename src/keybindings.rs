@@ -47,6 +47,7 @@ impl Bindings {
             (Key::Char(':'), ActionMap::Command),
             (Key::Char('B'), ActionMap::Bulk),
             (Key::Char('C'), ActionMap::Compress),
+            (Key::Char('D'), ActionMap::Diff),
             (Key::Char('E'), ActionMap::EncryptedDrive),
             (Key::Char('F'), ActionMap::Filter),
             (Key::Char('G'), ActionMap::Shortcut),
