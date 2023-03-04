@@ -98,7 +98,7 @@ pub enum Navigate {
     Marks(MarkAction),
     /// Pick a compression method
     Compress,
-    ///
+    /// Bulk rename, new files, new directories
     Bulk,
 }
 
