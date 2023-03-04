@@ -21,7 +21,6 @@ use crate::cryptsetup::PasswordKind;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
-use crate::git::git_root;
 use crate::mocp::Mocp;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
@@ -852,6 +851,8 @@ impl EventExec {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn event_shortcut(tab: &mut Tab) -> FmResult<()> {
+        std::env::set_current_dir(tab.current_path())?;
+        tab.shortcut.update_git_root();
         tab.set_mode(Mode::Navigate(Navigate::Shortcut));
         Ok(())
     }
@@ -1773,20 +1774,6 @@ impl EventExec {
             .to_str()
             .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
         execute_in_child(&status.opener.terminal, &vec!["-d", path, "-e", "lazygit"])?;
-        Ok(())
-    }
-
-    /// Move to the git root. Does nothing outside of a git repository.
-    pub fn event_git_root(tab: &mut Tab) -> FmResult<()> {
-        let Ok(git_root) = git_root() else { return Ok(()) };
-
-        let path = &path::PathBuf::from(git_root);
-
-        if path.exists() {
-            tab.set_pathcontent(path)?;
-            Self::event_normal(tab)?;
-            tab.reset_mode();
-        }
         Ok(())
     }
 

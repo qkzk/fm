@@ -424,6 +424,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] start mocp if not running
     - [x] add file to playlist
     - [x] next, previous song
+  - [x] integrate gitroot into shortcuts, remove as a keybinding
+  - [x] FIX: trash empty should be confirmed
   - [ ] diff of first 2 selected files in second panel
   - [ ] pushbullet ?
 

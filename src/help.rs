@@ -42,7 +42,6 @@ static HELP_TO_FORMAT: &str = "
 {RefreshView}:      refresh view
 {CopyFilename}:      copy filename to clipboard
 {CopyFilepath}:      copy filepath to clipboard
-{GitRoot}:      move to git root
 {DragNDrop}:       dragon-drop selected file
 {OpenConfig}:       open the config file
 {Lazygit}:      open a new terminal with lazygit

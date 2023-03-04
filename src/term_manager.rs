@@ -549,7 +549,11 @@ impl<'a> WinSecondary<'a> {
         canvas: &mut dyn Canvas,
         selectable: &impl SelectableContent<TrashInfo>,
     ) -> FmResult<()> {
-        canvas.print(1, 0, "Restore the selected file")?;
+        canvas.print(
+            1,
+            0,
+            "Enter: restore the selected file - x: delete permanently",
+        )?;
         for (row, trashinfo) in selectable.content().iter().enumerate() {
             let mut attr = Attr::default();
             if row == selectable.index() {
