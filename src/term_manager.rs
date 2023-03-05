@@ -8,6 +8,7 @@ use tuikit::event::Event;
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
+use crate::completion::InputCompleted;
 use crate::compress::CompressionMethod;
 use crate::config::Colors;
 use crate::constant_strings_paths::{
@@ -437,7 +438,7 @@ impl<'a> WinSecondary<'a> {
     fn create_first_row(&self, tab: &Tab) -> FmResult<Vec<String>> {
         let first_row = match tab.mode {
             Mode::NeedConfirmation(confirmed_action) => {
-                vec![format!("{confirmed_action} (y/n)")]
+                vec![format!("{confirmed_action}"), " (y/n)".to_owned()]
             }
             Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
                 vec!["Jump to...".to_owned()]
@@ -448,11 +449,20 @@ impl<'a> WinSecondary<'a> {
             Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action)) => {
                 vec![format!("{password_kind}"), tab.input.password()]
             }
-            Mode::InputCompleted(_) => {
+            Mode::InputCompleted(mode) => {
                 let mut completion_strings = vec![format!("{}", &tab.mode), tab.input.string()];
                 if let Some(completion) = tab.completion.complete_input_string(&tab.input.string())
                 {
                     completion_strings.push(completion.to_owned())
+                }
+                if let InputCompleted::Exec = mode {
+                    let selected_path = &tab
+                        .selected()
+                        .ok_or_else(|| FmError::custom("create_first_row", "can't parse path"))?
+                        .path;
+                    let selected_path = format!(" {}", selected_path.display());
+
+                    completion_strings.push(selected_path);
                 }
                 completion_strings
             }

@@ -436,8 +436,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] Allow configuration from a config file
     - [ ] allow non tui like wttr, diff, bat, tail -n etc.
     - [ ] more options like "use flagged files" for diff
-    - [ ] exec multiple flagged files
-    - [ ] display full command before execution
+
+  - [ ] exec multiple flagged files
+  - [x] display full command before execution
 
   - [x] changing folder (`set_pathcontent`) should set the cwd too... but it has no effect on commands
   - [x] FIX: code, subl etc. won't show in exec completion
