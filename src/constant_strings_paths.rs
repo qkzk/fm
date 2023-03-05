@@ -4,6 +4,8 @@ pub static CONFIG_FOLDER: &str = "~/.config/fm";
 pub static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 /// Filepath of the opener config file
 pub static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
+/// Filepath of the TUIS configuration file
+pub static TUIS_PATH: &str = "~/.config/fm/tuis.yaml";
 /// Path to the trash folder files
 pub static TRASH_FOLDER_FILES: &str = "~/.local/share/Trash/files";
 /// Path to the trash folder info file

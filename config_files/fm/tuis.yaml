@@ -1,0 +1,10 @@
+lazygit:
+  cwd: true
+ncdu:
+  cwd: true
+htop:
+  cwd: false
+btop:
+  cwd: false
+glances:
+  cwd: false

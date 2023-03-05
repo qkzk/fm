@@ -619,7 +619,7 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
 
         let tab = status.selected_non_mut();
-        for (i, line) in status.shell_menu.content.iter().enumerate() {
+        for (i, (line, _)) in status.shell_menu.content.iter().enumerate() {
             let row = calc_line_row(i, &tab.window) + 2;
             let mut attr = Attr::default();
             if i == status.shell_menu.index() {

@@ -4,7 +4,6 @@ use serde_yaml;
 use tuikit::attr::Color;
 
 use crate::color_cache::ColorCache;
-// use crate::color_cache::extension_color;
 use crate::constant_strings_paths::DEFAULT_TERMINAL_APPLICATION;
 use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;

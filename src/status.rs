@@ -13,7 +13,7 @@ use crate::args::Args;
 use crate::bulkrename::Bulk;
 use crate::compress::Compresser;
 use crate::config::Colors;
-use crate::constant_strings_paths::OPENER_PATH;
+use crate::constant_strings_paths::{OPENER_PATH, TUIS_PATH};
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::DeviceOpener;
 use crate::flagged::Flagged;
@@ -21,7 +21,7 @@ use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
 use crate::preview::{Directory, Preview};
-use crate::shell_menu::ShellMenu;
+use crate::shell_menu::{load_shell_menu, ShellMenu};
 use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
@@ -109,7 +109,7 @@ impl Status {
         let compression = Compresser::default();
         let force_clear = false;
         let bulk = Bulk::default();
-        let shell_menu = ShellMenu::default();
+        let shell_menu = load_shell_menu(TUIS_PATH)?;
 
         Ok(Self {
             tabs: [left_tab, right_tab],
