@@ -404,6 +404,7 @@ impl<'a> Draw for WinSecondary<'a> {
                 self.encrypted_devices(self.status, self.tab, canvas)
             }
             Mode::Navigate(Navigate::Marks(_)) => self.marks(self.status, self.tab, canvas),
+            Mode::Navigate(Navigate::ShellMenu) => self.shell_menu(self.status, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
@@ -607,6 +608,21 @@ impl<'a> WinSecondary<'a> {
             let row = calc_line_row(i, &tab.window) + 2;
             let mut attr = Attr::default();
             if i == status.marks.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            canvas.print_with_attr(row, 3, line, attr)?;
+        }
+        Ok(())
+    }
+
+    fn shell_menu(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
+        canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
+
+        let tab = status.selected_non_mut();
+        for (i, line) in status.shell_menu.content.iter().enumerate() {
+            let row = calc_line_row(i, &tab.window) + 2;
+            let mut attr = Attr::default();
+            if i == status.shell_menu.index() {
                 attr.effect |= Effect::REVERSE;
             }
             canvas.print_with_attr(row, 3, line, attr)?;

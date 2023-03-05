@@ -44,7 +44,6 @@ static HELP_TO_FORMAT: &str = "
 {CopyFilepath}:      copy filepath to clipboard
 {DragNDrop}:       dragon-drop selected file
 {OpenConfig}:       open the config file
-{Lazygit}:      open a new terminal with lazygit
 {SetWallpaper}:      set the selected file as wallpaper with nitrogen
 {Diff}:      display the diff of the first 2 flagged files
 
@@ -89,6 +88,7 @@ Navigate as usual. Most actions works as in 'normal' view.
 {Search}:      SEARCH
 {Command}:      COMMAND
 {Bulk}:      BULK
+{ShellMenu}:      SHELL MENU
 {Filter}:      FILTER 
     (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
 {Enter}:  Execute mode then NORMAL

@@ -428,6 +428,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] integrate gitroot into shortcuts, remove as a keybinding
   - [x] FIX: trash empty should be confirmed
   - [x] diff of first 2 selected files in second panel
+  - [x] NCDU, Lazygit, htop etc. from a menu with S.
+
+    - [awesome tuis](https://github.com/rothgar/awesome-tuis)
+
+    - [x] Remove lazygit as a separate command
+    - [ ] Allow configuration from config file
+
+  - [ ] changing folder (`set_pathcontent`) should set the cwd too.
 
 - [ ] Version 0.1.20
 

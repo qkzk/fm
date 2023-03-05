@@ -181,6 +181,7 @@ impl Tab {
         self.path_content
             .change_directory(path, &self.filter, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
+        std::env::set_current_dir(path)?;
         Ok(())
     }
 

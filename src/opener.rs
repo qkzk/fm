@@ -338,6 +338,48 @@ pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::C
     Ok(Command::new(exe).args(args).spawn()?)
 }
 
+/// Execute a command with options in a fork.
+/// Returns an handle to the child process.
+/// Branch stdin, stderr and stdout to /dev/null
+pub fn execute_in_child_without_output(
+    exe: &str,
+    args: &Vec<&str>,
+) -> FmResult<std::process::Child> {
+    info!("execute_in_child_without_output. executable: {exe}, arguments: {args:?}",);
+    Ok(Command::new(exe)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?)
+}
+
+pub fn execute_in_child_without_output_with_path<P>(
+    exe: &str,
+    path: P,
+    args: Option<&Vec<&str>>,
+) -> FmResult<std::process::Child>
+where
+    P: AsRef<Path>,
+{
+    info!("execute_in_child_without_output_with_path. executable: {exe}, arguments: {args:?}",);
+    let mut params = &vec![];
+    if let Some(args) = args {
+        params = args;
+    }
+    Ok(Command::new(exe)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .current_dir(path)
+        .args(params)
+        .spawn()?)
+}
+/// Execute a command with options in a fork.
+/// Wait for termination and return either :
+/// `Ok(stdout)` if the status code is 0
+/// or `Err(FmError::custom(..., ...))` otherwise.
+/// Branch stdin and stderr to /dev/null
 pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> FmResult<String> {
     info!("execute_and_capture_output. executable: {exe}, arguments: {args:?}",);
     let child = Command::new(exe)
@@ -357,6 +399,9 @@ pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> FmResult<Strin
     }
 }
 
+/// Execute a command with options in a fork.
+/// Wait for termination and return either `Ok(stdout)`.
+/// Branch stdin and stderr to /dev/null
 pub fn execute_and_capture_output_without_check(exe: &str, args: &Vec<&str>) -> FmResult<String> {
     info!("execute_and_capture_output_without_check. executable: {exe}, arguments: {args:?}",);
     let child = Command::new(exe)

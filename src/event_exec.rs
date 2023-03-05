@@ -25,6 +25,7 @@ use crate::mocp::Mocp;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
 use crate::opener::execute_in_child;
+use crate::opener::execute_in_child_without_output_with_path;
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
@@ -247,8 +248,22 @@ impl EventExec {
         status.bulk.next()
     }
 
+    pub fn event_shell_menu_prev(status: &mut Status) {
+        info!("shell menu prev");
+        status.shell_menu.prev()
+    }
+
+    pub fn event_shell_menu_next(status: &mut Status) {
+        info!("shell menu next");
+        status.shell_menu.next()
+    }
+
     pub fn exec_bulk(status: &mut Status) -> FmResult<()> {
         status.bulk.execute_bulk(status)
+    }
+
+    pub fn exec_shellmenu(status: &mut Status) -> FmResult<()> {
+        status.shell_menu.execute(status)
     }
 
     /// Copy the flagged file to current directory.
@@ -830,16 +845,17 @@ impl EventExec {
     /// is terminated first.
     pub fn event_shell(status: &mut Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        let path = tab
-            .directory_of_selected()?
-            .to_str()
-            .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
-        info!("event shell {}", status.opener.terminal);
-        std::env::set_current_dir(path)?;
-        execute_in_child(&status.opener.terminal, &vec![])?;
+        let path = tab.directory_of_selected()?;
+        execute_in_child_without_output_with_path(&status.opener.terminal, path, None)?;
         Ok(())
     }
 
+    /// Enter the history mode, allowing to navigate to previously visited
+    /// directory.
+    pub fn event_shell_menu(tab: &mut Tab) -> FmResult<()> {
+        tab.set_mode(Mode::Navigate(Navigate::ShellMenu));
+        Ok(())
+    }
     /// Enter the history mode, allowing to navigate to previously visited
     /// directory.
     pub fn event_history(tab: &mut Tab) -> FmResult<()> {
@@ -1211,6 +1227,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_prev(status),
             Mode::Navigate(Navigate::Compress) => EventExec::event_compression_prev(status),
             Mode::Navigate(Navigate::Bulk) => EventExec::event_bulk_prev(status),
+            Mode::Navigate(Navigate::ShellMenu) => EventExec::event_shell_menu_prev(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_prev(status)
             }
@@ -1235,6 +1252,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_next(status),
             Mode::Navigate(Navigate::Compress) => EventExec::event_compression_next(status),
             Mode::Navigate(Navigate::Bulk) => EventExec::event_bulk_next(status),
+            Mode::Navigate(Navigate::ShellMenu) => EventExec::event_shell_menu_next(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_next(status)
             }
@@ -1375,6 +1393,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
             Mode::Navigate(Navigate::Bulk) => EventExec::exec_bulk(status)?,
+            Mode::Navigate(Navigate::ShellMenu) => EventExec::exec_shellmenu(status)?,
             Mode::Navigate(Navigate::EncryptedDrive) => (),
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
@@ -1778,17 +1797,6 @@ impl EventExec {
             Ok(_) => (),
             Err(e) => info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
         }
-        Ok(())
-    }
-
-    /// Open a new terminal in current path with lazygit (required, obviously).
-    pub fn event_lazygit(status: &mut Status) -> FmResult<()> {
-        let tab = status.selected_non_mut();
-        let path = tab
-            .directory_of_selected()?
-            .to_str()
-            .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
-        execute_in_child(&status.opener.terminal, &vec!["-d", path, "-e", "lazygit"])?;
         Ok(())
     }
 

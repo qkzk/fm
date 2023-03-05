@@ -21,6 +21,7 @@ use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
 use crate::preview::{Directory, Preview};
+use crate::shell_menu::ShellMenu;
 use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
@@ -71,6 +72,7 @@ pub struct Status {
     pub nvim_server: String,
     pub force_clear: bool,
     pub bulk: Bulk,
+    pub shell_menu: ShellMenu,
 }
 
 impl Status {
@@ -107,6 +109,7 @@ impl Status {
         let compression = Compresser::default();
         let force_clear = false;
         let bulk = Bulk::default();
+        let shell_menu = ShellMenu::default();
 
         Ok(Self {
             tabs: [left_tab, right_tab],
@@ -127,6 +130,7 @@ impl Status {
             nvim_server,
             force_clear,
             bulk,
+            shell_menu,
         })
     }
 
