@@ -450,6 +450,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] update readme & animation
   - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
   - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
+  - [ ] allow pipe in execution
 
 - [ ] sub window / menu for completion / selection.
 
