@@ -46,7 +46,7 @@ impl<'a> Bulkrename<'a> {
     /// The tempory file is opened with our `Opener` crate, allowing us
     /// to use the default text file editor.
     /// Filenames are sanitized before processing.
-    pub fn rename(&mut self, opener: &Opener) -> FmResult<()> {
+    fn rename(&mut self, opener: &Opener) -> FmResult<()> {
         self.write_original_names()?;
         let original_modification = Self::get_modified_date(&self.temp_file)?;
         self.open_temp_file_with_editor(opener)?;
@@ -57,7 +57,7 @@ impl<'a> Bulkrename<'a> {
         self.delete_temp_file()
     }
 
-    pub fn create_files(&mut self, opener: &Opener) -> FmResult<()> {
+    fn create_files(&mut self, opener: &Opener) -> FmResult<()> {
         self.create_random_file()?;
         let original_modification = Self::get_modified_date(&self.temp_file)?;
         self.open_temp_file_with_editor(opener)?;
@@ -65,17 +65,6 @@ impl<'a> Bulkrename<'a> {
         Self::watch_modification_in_thread(&self.temp_file, original_modification)?;
 
         self.create_all_files(self.get_new_filenames()?)?;
-        self.delete_temp_file()
-    }
-
-    pub fn create_folders(&mut self, opener: &Opener) -> FmResult<()> {
-        self.create_random_file()?;
-        let original_modification = Self::get_modified_date(&self.temp_file)?;
-        self.open_temp_file_with_editor(opener)?;
-
-        Self::watch_modification_in_thread(&self.temp_file, original_modification)?;
-
-        self.create_all_folders(self.get_new_filenames()?)?;
         self.delete_temp_file()
     }
 
@@ -133,7 +122,7 @@ impl<'a> Bulkrename<'a> {
     }
 
     fn open_temp_file_with_editor(&self, opener: &Opener) -> FmResult<()> {
-        info!("opengin {:?}", self.temp_file);
+        info!("opening tempory file {:?}", self.temp_file);
         opener.open(&self.temp_file)
     }
 
@@ -183,22 +172,22 @@ impl<'a> Bulkrename<'a> {
 
     fn create_all_files(&self, new_filenames: Vec<String>) -> FmResult<()> {
         for filename in new_filenames.iter() {
-            let filename = sanitize_filename::sanitize(filename);
+            // let filename = sanitize_filename::sanitize(filename);
             let mut new_path = std::path::PathBuf::from(self.parent_dir.unwrap());
-            new_path.push(filename);
-            info!("creating: {new_path:?}");
-            std::fs::File::create(new_path)?;
-        }
-        Ok(())
-    }
-
-    fn create_all_folders(&self, new_filenames: Vec<String>) -> FmResult<()> {
-        for filename in new_filenames.iter() {
-            let filename = sanitize_filename::sanitize(filename);
-            let mut new_path = std::path::PathBuf::from(self.parent_dir.unwrap());
-            new_path.push(filename);
-            info!("creating: {new_path:?}");
-            let _ = std::fs::create_dir(new_path);
+            if !filename.ends_with('/') {
+                new_path.push(filename);
+                let Some(parent) = new_path.parent() else { return Ok(()); };
+                info!("Bulk new files. Creating parent: {}", parent.display());
+                if std::fs::create_dir_all(parent).is_err() {
+                    return Ok(());
+                };
+                info!("creating: {new_path:?}");
+                std::fs::File::create(new_path)?;
+            } else {
+                new_path.push(filename);
+                info!("Bulk creating dir: {}", new_path.display());
+                std::fs::create_dir_all(new_path)?;
+            }
         }
         Ok(())
     }
@@ -220,9 +209,8 @@ impl Default for Bulk {
     fn default() -> Self {
         Self {
             content: vec![
-                "Rename".to_owned(),
-                "New files".to_owned(),
-                "New folders".to_owned(),
+                "Rename files".to_owned(),
+                "New files or folders. End folder with a slash '/'".to_owned(),
             ],
             index: 0,
         }
@@ -238,7 +226,6 @@ impl Bulk {
         match self.index {
             0 => Bulkrename::renamer(status.filtered_flagged_files())?.rename(&status.opener),
             1 => Bulkrename::creator(status.selected_path_str())?.create_files(&status.opener),
-            2 => Bulkrename::creator(status.selected_path_str())?.create_folders(&status.opener),
             _ => Ok(()),
         }
     }
