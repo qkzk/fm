@@ -22,7 +22,11 @@ fn main() -> FmResult<()> {
     set_logger()?;
     info!("fm is starting");
 
-    let config = load_config(CONFIG_PATH)?;
+    let Ok(config) = load_config(CONFIG_PATH) else {
+        eprintln!("Couldn't load the config file at {CONFIG_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/config.yaml for an example.");
+        info!("Couldn't read the config file {CONFIG_PATH}");
+        std::process::exit(1);
+    };
     info!("config loaded");
     let term = Arc::new(init_term()?);
     let event_dispatcher = EventDispatcher::new(config.binds.clone());

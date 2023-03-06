@@ -5,7 +5,7 @@ use std::borrow::Borrow;
 /// The destination is `~/.config/fm`.
 /// If there's already some configuration files, no overwrite is done.
 fn main() {
-    let Ok(mut default_config_files) = std::env::current_dir() else { 
+    let Ok(mut default_config_files) = std::env::current_dir() else {
         eprintln!("Environment variable $PWD should be set. Couldn't find the source folder.");
         return
     };

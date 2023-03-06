@@ -3,6 +3,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::Arc;
 
+use log::info;
 use regex::Regex;
 use skim::SkimItem;
 use sysinfo::{Disk, DiskExt, RefreshKind, System, SystemExt};
@@ -89,27 +90,38 @@ impl Status {
         help: String,
         terminal: &str,
     ) -> FmResult<Self> {
-        // unsafe because of UsersCache::with_all_users
+        let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| {
+            eprintln!("Couldn't read the opener config file at {OPENER_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/opener.yaml for an example. Using default.");
+            info!("Couldn't read opener file at {OPENER_PATH}. Using default.");
+            Opener::new(terminal)
+        });
+        let Ok(shell_menu) = load_shell_menu(TUIS_PATH) else {
+            eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example"); 
+            info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");
+            std::process::exit(1);
+        };
+
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
-        let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
-        let users_cache = unsafe { UsersCache::with_all_users() };
         let nvim_server = args.server.clone();
+        let encrypted_devices = DeviceOpener::default();
+        let trash = Trash::new()?;
+        let compression = Compresser::default();
+        let force_clear = false;
+        let bulk = Bulk::default();
+
+        // unsafe because of UsersCache::with_all_users
+        let users_cache = unsafe { UsersCache::with_all_users() };
         let mut right_tab = Tab::new(args.clone(), height, users_cache)?;
         right_tab
             .shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
-        let encrypted_devices = DeviceOpener::default();
 
+        // unsafe because of UsersCache::with_all_users
         let users_cache2 = unsafe { UsersCache::with_all_users() };
         let mut left_tab = Tab::new(args, height, users_cache2)?;
         left_tab
             .shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
-        let trash = Trash::new()?;
-        let compression = Compresser::default();
-        let force_clear = false;
-        let bulk = Bulk::default();
-        let shell_menu = load_shell_menu(TUIS_PATH)?;
 
         Ok(Self {
             tabs: [left_tab, right_tab],
