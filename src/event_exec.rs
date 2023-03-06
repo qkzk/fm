@@ -237,7 +237,7 @@ impl EventExec {
     /// Once the temp file is saved, those file names are changed.
     pub fn event_bulk(status: &mut Status) -> FmResult<()> {
         status.selected().set_mode(Mode::Navigate(Navigate::Bulk));
-        status.selected().refresh_view()
+        Ok(())
     }
 
     pub fn event_bulk_prev(status: &mut Status) {
