@@ -463,6 +463,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [ ] opening (???)
       - [ ] open in nvim (???)
 
+    - [ ] replace FmResult & FmError by anyhow since I'm already using it...
+
 - [ ] Version 0.1.20
 
   - [ ] build option to force reset of config file, warn the user at first start
