@@ -28,6 +28,7 @@ pub enum ErrorVariant {
     ZIPERROR,
     LZMAERROR,
     SYNTECT,
+    ANYHOW,
     CUSTOM(String),
 }
 
@@ -116,6 +117,12 @@ impl From<FsExtraError> for FmError {
 impl From<SetLoggerError> for FmError {
     fn from(error: SetLoggerError) -> Self {
         Self::new(ErrorVariant::LOGGER, &error.to_string())
+    }
+}
+
+impl From<anyhow::Error> for FmError {
+    fn from(error: anyhow::Error) -> Self {
+        Self::new(ErrorVariant::ANYHOW, &error.to_string())
     }
 }
 

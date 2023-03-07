@@ -1,0 +1,36 @@
+appenders:
+  normal_logger:
+    kind: rolling_file
+    path: "$ENV{HOME}/.config/fm/log/fm.log"
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S)} - {h({l})}: {m} - {f}:{L}{n}"
+    policy:
+      trigger:
+        kind: size
+        limit: 50kb
+      roller:
+        kind: fixed_window
+        base: 1
+        count: 10
+        pattern: "$ENV{HOME}/.config/fm/log/fm{}.log"
+  action_logger:
+    kind: rolling_file
+    path: "$ENV{HOME}/.config/fm/log/action_logger.log"
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S)} - {h({l})}: {m}{n}"
+    policy:
+      trigger:
+        kind: size
+        limit: 50kb
+      roller:
+        kind: delete
+root:
+  level: info
+  appenders:
+    - normal_logger
+loggers:
+  special:
+    level: info
+    appenders:
+      - action_logger
+    additive: false

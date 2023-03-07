@@ -29,6 +29,7 @@ shellexpand = "2.1.2"
 fs_extra = "1.2.0"
 
 [dependencies]
+anyhow = "1.0.28"
 chrono = "0.4.22"
 clap = { version = "4.0.2", features = ["derive"] }
 content_inspector = "0.2.4"

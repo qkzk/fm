@@ -64,7 +64,7 @@ impl<'a> Bulkrename<'a> {
 
         Self::watch_modification_in_thread(&self.temp_file, original_modification)?;
 
-        self.create_all_files(self.get_new_filenames()?)?;
+        self.create_all_files(&self.get_new_filenames()?)?;
         self.delete_temp_file()
     }
 
@@ -158,6 +158,7 @@ impl<'a> Bulkrename<'a> {
     }
 
     fn rename_all(&self, new_filenames: Vec<String>) -> FmResult<()> {
+        let mut counter = 0;
         for (path, filename) in self
             .original_filepath
             .clone()
@@ -165,30 +166,39 @@ impl<'a> Bulkrename<'a> {
             .iter()
             .zip(new_filenames.iter())
         {
-            self.rename_file(path, &sanitize_filename::sanitize(filename))?
+            let new_name = sanitize_filename::sanitize(filename);
+            self.rename_file(path, &new_name)?;
+            counter += 1;
+            info!(target: "special", "Bulk renamed {path} to {new_name}", path=path.display())
         }
+        info!(target: "special", "Bulk renamed {counter} files");
         Ok(())
     }
 
-    fn create_all_files(&self, new_filenames: Vec<String>) -> FmResult<()> {
+    fn create_all_files(&self, new_filenames: &Vec<String>) -> FmResult<()> {
+        let mut counter = 0;
         for filename in new_filenames.iter() {
-            // let filename = sanitize_filename::sanitize(filename);
             let mut new_path = std::path::PathBuf::from(self.parent_dir.unwrap());
             if !filename.ends_with('/') {
                 new_path.push(filename);
                 let Some(parent) = new_path.parent() else { return Ok(()); };
                 info!("Bulk new files. Creating parent: {}", parent.display());
                 if std::fs::create_dir_all(parent).is_err() {
-                    return Ok(());
+                    continue;
                 };
                 info!("creating: {new_path:?}");
-                std::fs::File::create(new_path)?;
+                std::fs::File::create(&new_path)?;
+                info!(target:"special", "Bulk created {new_path}", new_path=new_path.display());
+                counter += 1;
             } else {
                 new_path.push(filename);
                 info!("Bulk creating dir: {}", new_path.display());
-                std::fs::create_dir_all(new_path)?;
+                std::fs::create_dir_all(&new_path)?;
+                info!(target:"special", "Bulk created {new_path}", new_path=new_path.display());
+                counter += 1;
             }
         }
+        info!(target: "special", "Bulk created {counter} files");
         Ok(())
     }
 
