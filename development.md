@@ -443,10 +443,28 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: code, subl etc. won't show in exec completion
     - [x] when executable are filtered only files are kept, not symbolink links.
   - [x] better error messages when a config file can't be loaded
+  - [ ] messages to display what was made after executing an action
+
+    - [x] improve logging configuration, config from a yaml file moved at build to `$HOME/.config/fm/logging_config.yaml`
+    - [x] use 2 separate loggers, normal and for specific actions
+    - [ ] log specific actions
+
+      - [x] bulk creation
+      - [ ] move, copy, delete
+      - [ ] new dir, new file
+      - [ ] symlinks creation
+      - [ ] trash add, trash delete, trash empty
+
+      - [ ] marks creation (?)
+      - [ ] set wallpaper (?)
+      - [ ] mocp add to playlist (?)
+
+      - [ ] execution (???)
+      - [ ] opening (???)
+      - [ ] open in nvim (???)
 
 - [ ] Version 0.1.20
 
-  - [ ] messages to display what was made after executing an action
   - [ ] build option to force reset of config file, warn the user at first start
   - [ ] update readme & animation
   - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
