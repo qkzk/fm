@@ -12,7 +12,8 @@ use crate::completion::InputCompleted;
 use crate::compress::CompressionMethod;
 use crate::config::Colors;
 use crate::constant_strings_paths::{
-    FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE,
+    FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
+    LOG_SECOND_SENTENCE,
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
@@ -196,6 +197,13 @@ impl<'a> WinMain<'a> {
         ]
     }
 
+    fn log_first_row() -> Vec<String> {
+        vec![
+            LOG_FIRST_SENTENCE.to_owned(),
+            LOG_SECOND_SENTENCE.to_owned(),
+        ]
+    }
+
     fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
         match tab.path_content.selected() {
             Some(fileinfo) => {
@@ -216,13 +224,11 @@ impl<'a> WinMain<'a> {
         let first_row = match tab.mode {
             Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
             Mode::Preview => match &tab.preview {
-                Preview::Text(text_content) => {
-                    if matches!(text_content.kind, TextKind::HELP) {
-                        Self::help_first_row()
-                    } else {
-                        self.default_preview_first_line(tab)
-                    }
-                }
+                Preview::Text(text_content) => match text_content.kind {
+                    TextKind::HELP => Self::help_first_row(),
+                    TextKind::LOG => Self::log_first_row(),
+                    _ => self.default_preview_first_line(tab),
+                },
                 _ => self.default_preview_first_line(tab),
             },
             _ => match self.tab.previous_mode {

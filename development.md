@@ -447,13 +447,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
     - [x] improve logging configuration, config from a yaml file moved at build to `$HOME/.config/fm/logging_config.yaml`
     - [x] use 2 separate loggers, normal and for specific actions
+    - [x] display logs
     - [ ] log specific actions
 
       - [x] bulk creation
-      - [ ] move, copy, delete
-      - [ ] new dir, new file
-      - [ ] symlinks creation
-      - [ ] trash add, trash delete, trash empty
+      - [x] move, copy, delete
+      - [x] new dir, new file
+      - [x] symlinks creation
+      - [x] trash add, trash delete, trash empty
 
       - [ ] marks creation (?)
       - [ ] set wallpaper (?)

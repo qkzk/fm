@@ -120,3 +120,19 @@ pub fn is_program_in_path(program: &str) -> bool {
     }
     false
 }
+
+/// Extract the last `line_nr` lines of a string.
+/// It's really ugly.
+/// Be carefull not to use it on very big strings.
+pub fn extract_last_lines_poorly(content: String, line_nr: usize) -> Vec<String> {
+    content
+        .lines()
+        .into_iter()
+        .rev()
+        .take(line_nr)
+        .collect::<Vec<_>>()
+        .iter()
+        .map(|line| line.to_string())
+        .rev()
+        .collect()
+}

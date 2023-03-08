@@ -21,6 +21,7 @@ use crate::cryptsetup::PasswordKind;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::log::read_log;
 use crate::mocp::Mocp;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
@@ -218,16 +219,17 @@ impl EventExec {
 
     /// Creates a symlink of every flagged file to the current directory.
     pub fn event_symlink(status: &mut Status) -> FmResult<()> {
-        for oldpath in status.flagged.content.iter() {
-            let filename = oldpath
+        for original_file in status.flagged.content.iter() {
+            let filename = original_file
                 .as_path()
                 .file_name()
                 .ok_or_else(|| FmError::custom("event symlink", "File not found"))?;
-            let newpath = status
+            let link = status
                 .selected_non_mut()
                 .directory_of_selected()?
                 .join(filename);
-            std::os::unix::fs::symlink(oldpath, newpath)?;
+            std::os::unix::fs::symlink(original_file, &link)?;
+            info!(target: "special", "Symlink {link} links to {original_file}", original_file=original_file.display(), link=link.display());
         }
         status.clear_flags_and_reset_view()
     }
@@ -710,6 +712,15 @@ impl EventExec {
         Ok(())
     }
 
+    pub fn event_log(status: &mut Status) -> FmResult<()> {
+        let log = read_log(30)?;
+        let tab = status.selected();
+        tab.set_mode(Mode::Preview);
+        tab.preview = Preview::log(log);
+        tab.window.reset(tab.preview.len());
+        Ok(())
+    }
+
     /// Enter the search mode.
     /// Matching items are displayed as you type them.
     pub fn event_search(tab: &mut Tab) -> FmResult<()> {
@@ -1021,6 +1032,11 @@ impl EventExec {
                 original_path.display(),
                 new_path.display()
             );
+            info!(target: "special",
+                "renaming: original: {} - new: {}",
+                original_path.display(),
+                new_path.display()
+            );
             fs::rename(original_path, new_path)?;
         }
 
@@ -1028,35 +1044,33 @@ impl EventExec {
     }
 
     /// Creates a new file with input string as name.
-    /// We use `fs::File::create` internally, so if the file already exists,
-    /// it will be overwritten.
+    /// Nothing is done if the file already exists.
     /// Filename is sanitized before processing.
     pub fn exec_newfile(tab: &mut Tab) -> FmResult<()> {
-        fs::File::create(
-            tab.path_content
-                .path
-                .join(sanitize_filename::sanitize(tab.input.string())),
-        )?;
+        let path = tab
+            .path_content
+            .path
+            .join(sanitize_filename::sanitize(tab.input.string()));
+        if !path.exists() {
+            fs::File::create(&path)?;
+            info!(target: "special", "New file: {path}", path=path.display());
+        }
         tab.refresh_view()
     }
 
     /// Creates a new directory with input string as name.
+    /// Nothing is done if the directory already exists.
     /// We use `fs::create_dir` internally so it will fail if the input string
-    /// is not an end point in the file system.
-    /// ie. the user can create `newdir` but not `newdir/newfolder`.
-    /// It will also fail if the directory already exists.
+    /// ie. the user can create `newdir` or `newdir/newfolder`.
     /// Directory name is sanitized before processing.
     pub fn exec_newdir(tab: &mut Tab) -> FmResult<()> {
-        match fs::create_dir(
-            tab.path_content
-                .path
-                .join(sanitize_filename::sanitize(tab.input.string())),
-        ) {
-            Ok(()) => (),
-            Err(e) => match e.kind() {
-                std::io::ErrorKind::AlreadyExists => (),
-                _ => return Err(FmError::from(e)),
-            },
+        let path = tab
+            .path_content
+            .path
+            .join(sanitize_filename::sanitize(tab.input.string()));
+        if !path.exists() {
+            fs::create_dir_all(&path)?;
+            info!(target: "special", "New directory: {path}", path=path.display());
         }
         tab.refresh_view()
     }

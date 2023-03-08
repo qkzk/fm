@@ -50,6 +50,7 @@ pub enum Preview {
 #[derive(Clone, Default)]
 pub enum TextKind {
     HELP,
+    LOG,
     #[default]
     TEXTFILE,
 }
@@ -145,6 +146,10 @@ impl Preview {
         Self::Text(TextContent::help(help))
     }
 
+    pub fn log(log: Vec<String>) -> Self {
+        Self::Text(TextContent::log(log))
+    }
+
     /// Empty preview, holding nothing.
     pub fn new_empty() -> Self {
         Self::Empty
@@ -189,6 +194,14 @@ impl TextContent {
         let content: Vec<String> = help.split('\n').map(|s| s.to_owned()).collect();
         Self {
             kind: TextKind::HELP,
+            length: content.len(),
+            content,
+        }
+    }
+
+    fn log(content: Vec<String>) -> Self {
+        Self {
+            kind: TextKind::LOG,
             length: content.len(),
             content,
         }
