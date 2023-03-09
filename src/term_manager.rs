@@ -25,6 +25,13 @@ use crate::status::Status;
 use crate::tab::Tab;
 use crate::trash::TrashInfo;
 
+macro_rules! enumerated_colored_iter {
+    ($t:ident) => {
+        std::iter::zip($t.content().iter().enumerate(), MENU_COLORS.iter().cycle())
+            .map(|((a, b), c)| (a, b, c))
+    };
+}
+
 /// At least 120 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
 
@@ -35,6 +42,19 @@ const FIRST_LINE_COLORS: [Attr; 6] = [
     color_to_attr(Color::Rgb(91, 152, 119)),
     color_to_attr(Color::Rgb(152, 87, 137)),
     color_to_attr(Color::Rgb(230, 189, 87)),
+];
+
+const MENU_COLORS: [Attr; 10] = [
+    color_to_attr(Color::Rgb(236, 250, 250)),
+    color_to_attr(Color::Rgb(221, 242, 209)),
+    color_to_attr(Color::Rgb(205, 235, 197)),
+    color_to_attr(Color::Rgb(190, 227, 186)),
+    color_to_attr(Color::Rgb(174, 220, 174)),
+    color_to_attr(Color::Rgb(159, 212, 163)),
+    color_to_attr(Color::Rgb(174, 220, 174)),
+    color_to_attr(Color::Rgb(190, 227, 186)),
+    color_to_attr(Color::Rgb(205, 235, 197)),
+    color_to_attr(Color::Rgb(221, 242, 209)),
 ];
 
 const ATTR_YELLOW_BOLD: Attr = Attr {
@@ -410,7 +430,7 @@ impl<'a> Draw for WinSecondary<'a> {
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 self.encrypted_devices(self.status, self.tab, canvas)
             }
-            Mode::Navigate(Navigate::Marks(_)) => self.marks(self.status, self.tab, canvas),
+            Mode::Navigate(Navigate::Marks(_)) => self.marks(self.status, canvas),
             Mode::Navigate(Navigate::ShellMenu) => self.shell_menu(self.status, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
@@ -532,8 +552,8 @@ impl<'a> WinSecondary<'a> {
         selectable: &impl SelectableContent<PathBuf>,
     ) -> FmResult<()> {
         canvas.print(0, 0, "Go to...")?;
-        for (row, path) in selectable.content().iter().enumerate() {
-            let mut attr = Attr::default();
+        for (row, path, attr) in enumerated_colored_iter!(selectable) {
+            let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
             }
@@ -554,8 +574,8 @@ impl<'a> WinSecondary<'a> {
         selectable: &impl SelectableContent<String>,
     ) -> FmResult<()> {
         canvas.print(0, 0, "Action...")?;
-        for (row, text) in selectable.content().iter().enumerate() {
-            let mut attr = Attr::default();
+        for (row, text, attr) in enumerated_colored_iter!(selectable) {
+            let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
             }
@@ -574,12 +594,11 @@ impl<'a> WinSecondary<'a> {
             0,
             "Enter: restore the selected file - x: delete permanently",
         )?;
-        for (row, trashinfo) in selectable.content().iter().enumerate() {
-            let mut attr = Attr::default();
+        for (row, trashinfo, attr) in enumerated_colored_iter!(selectable) {
+            let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
             }
-
             let _ = canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
@@ -601,8 +620,8 @@ impl<'a> WinSecondary<'a> {
             "Archive and compress the flagged files. Pick a compression algorithm.",
             Self::ATTR_YELLOW,
         )?;
-        for (row, compression_method) in selectable.content().iter().enumerate() {
-            let mut attr = Attr::default();
+        for (row, compression_method, attr) in enumerated_colored_iter!(selectable) {
+            let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
             }
@@ -617,16 +636,19 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn marks(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn marks(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
         canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
 
-        for (i, line) in status.marks.as_strings().iter().enumerate() {
-            let row = calc_line_row(i, &tab.window) + 2;
-            let mut attr = Attr::default();
-            if i == status.marks.index() {
+        for ((row, line), attr) in std::iter::zip(
+            status.marks.as_strings().iter().enumerate(),
+            MENU_COLORS.iter().cycle(),
+        ) {
+            let mut attr = *attr;
+            if row == status.marks.index() {
                 attr.effect |= Effect::REVERSE;
             }
-            canvas.print_with_attr(row, 3, line, attr)?;
+
+            canvas.print_with_attr(row + 4, 3, line, attr)?;
         }
         Ok(())
     }
@@ -635,13 +657,17 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
 
         let tab = status.selected_non_mut();
-        for (i, (line, _)) in status.shell_menu.content.iter().enumerate() {
-            let row = calc_line_row(i, &tab.window) + 2;
-            let mut attr = Attr::default();
-            if i == status.shell_menu.index() {
+        for ((row, (command, _)), attr) in std::iter::zip(
+            status.shell_menu.content.iter().enumerate(),
+            MENU_COLORS.iter().cycle(),
+        ) {
+            let mut attr = *attr;
+            if row == status.shell_menu.index() {
                 attr.effect |= Effect::REVERSE;
             }
-            canvas.print_with_attr(row, 3, line, attr)?;
+            let row = calc_line_row(row, &tab.window) + 2;
+
+            canvas.print_with_attr(row, 3, command, attr)?;
         }
         Ok(())
     }

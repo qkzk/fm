@@ -464,6 +464,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [ ] opening (???)
       - [ ] open in nvim (???)
 
+  - [x] colors in menus. Use a repeated gradient of lime colors in menus
+
 - [ ] Version 0.1.20
 
   - [ ] replace FmResult & FmError by anyhow since I'm already using it...
