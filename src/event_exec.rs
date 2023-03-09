@@ -712,12 +712,13 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn event_log(status: &mut Status) -> FmResult<()> {
-        let log = read_log(30)?;
-        let tab = status.selected();
+    /// Display the last actions impacting the file tree
+    pub fn event_log(tab: &mut Tab) -> FmResult<()> {
+        let log = read_log()?;
         tab.set_mode(Mode::Preview);
         tab.preview = Preview::log(log);
         tab.window.reset(tab.preview.len());
+        Self::event_go_bottom(tab);
         Ok(())
     }
 

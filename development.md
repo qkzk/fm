@@ -464,10 +464,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [ ] opening (???)
       - [ ] open in nvim (???)
 
-    - [ ] replace FmResult & FmError by anyhow since I'm already using it...
-
 - [ ] Version 0.1.20
 
+  - [ ] replace FmResult & FmError by anyhow since I'm already using it...
   - [ ] build option to force reset of config file, warn the user at first start
   - [ ] update readme & animation
   - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.

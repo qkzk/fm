@@ -126,7 +126,7 @@ impl ActionMap {
             ActionMap::FuzzyFindLine => EventExec::event_fuzzyfind_line(status),
             ActionMap::Goto => EventExec::event_goto(current_tab),
             ActionMap::Help => EventExec::event_help(status),
-            ActionMap::Log => EventExec::event_log(status),
+            ActionMap::Log => EventExec::event_log(current_tab),
             ActionMap::History => EventExec::event_history(current_tab),
             ActionMap::Home => EventExec::event_home(current_tab),
             ActionMap::MocpAddToPlayList => EventExec::event_mocp_add_to_playlist(current_tab),
