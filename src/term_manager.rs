@@ -211,8 +211,10 @@ impl<'a> WinMain<'a> {
     }
 
     fn help_first_row() -> Vec<String> {
+        let version = std::env!("CARGO_PKG_VERSION");
         vec![
             HELP_FIRST_SENTENCE.to_owned(),
+            format!("Version: {version} "),
             HELP_SECOND_SENTENCE.to_owned(),
         ]
     }

@@ -457,6 +457,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] Version 0.1.20
 
+  - [ ] display version in help
   - [ ] exec multiple flagged files
   - [ ] shell menu
 
