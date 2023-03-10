@@ -57,7 +57,7 @@ impl Skimer {
 
 fn pick_first_installed<'a>(commands: &'a [&'a str]) -> Option<&'a str> {
     for command in commands {
-        let Some(program) = command.split_whitespace().into_iter().next() else { continue };
+        let Some(program) = command.split_whitespace().next() else { continue };
         if is_program_in_path(program) {
             return Some(command);
         }

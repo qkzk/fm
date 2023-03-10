@@ -175,7 +175,7 @@ impl<'a> Bulkrename<'a> {
         Ok(())
     }
 
-    fn create_all_files(&self, new_filenames: &Vec<String>) -> FmResult<()> {
+    fn create_all_files(&self, new_filenames: &[String]) -> FmResult<()> {
         let mut counter = 0;
         for filename in new_filenames.iter() {
             let mut new_path = std::path::PathBuf::from(self.parent_dir.unwrap());

@@ -434,16 +434,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
     - [x] Remove lazygit as a separate command
     - [x] Allow configuration from a config file
-    - [ ] allow non tui like wttr, diff, bat, tail -n etc.
-    - [ ] more options like "use flagged files" for diff
 
-  - [ ] exec multiple flagged files
   - [x] display full command before execution
   - [x] changing folder (`set_pathcontent`) should set the cwd too... but it has no effect on commands
   - [x] FIX: code, subl etc. won't show in exec completion
     - [x] when executable are filtered only files are kept, not symbolink links.
   - [x] better error messages when a config file can't be loaded
-  - [ ] messages to display what was made after executing an action
+  - [x] messages to display what was made after executing an action
 
     - [x] improve logging configuration, config from a yaml file moved at build to `$HOME/.config/fm/logging_config.yaml`
     - [x] use 2 separate loggers, normal and for specific actions
@@ -456,17 +453,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] symlinks creation
       - [x] trash add, trash delete, trash empty
 
-      - [ ] marks creation (?)
-      - [ ] set wallpaper (?)
-      - [ ] mocp add to playlist (?)
-
-      - [ ] execution (???)
-      - [ ] opening (???)
-      - [ ] open in nvim (???)
-
   - [x] colors in menus. Use a repeated gradient of lime colors in menus
 
 - [ ] Version 0.1.20
+
+  - [ ] exec multiple flagged files
+  - [ ] shell menu
+
+    - [ ] allow non tui like wttr, diff, bat, tail -n etc.
+    - [ ] more options like "use flagged files" for diff
 
   - [ ] replace FmResult & FmError by anyhow since I'm already using it...
   - [ ] build option to force reset of config file, warn the user at first start
