@@ -383,6 +383,53 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] regroup display settings keybindings under alt+char
 - [x] restrain second pane to 120+ chars wide terminals
 
+### Version 0.1.19
+
+- [x] skim: use preview from bat.
+- [x] skim: preview with cat if bat isn't installed.
+- [x] uniform themeset with skim: use monokai theme from [jonschlinkert](https://github.com/jonschlinkert/sublime-monokai-extended)
+- [x] event shell & open with terminal: use $TERM if possible, otherwise use the configured terminal application.
+      we guess that the user prefers the terminal he's currently using above the configured one. It may change in the future.
+- [x] refactor config creation
+- [x] shorten long names in first line
+- [x] use skim to search for specific line in file
+- [x] manually setup a neovim server with shift+i. Get the server address with `echo serverstart()`.
+- [x] wallpaper aka [nnn](https://github.com/jarun/nnn/blob/master/plugins/wallpaper)
+- [x] bulk: use a menu for rename, files creation, directories creation
+- [x] moc queue management
+  - [x] start mocp if not running
+  - [x] add file to playlist
+  - [x] next, previous song
+- [x] integrate gitroot into shortcuts, remove as a keybinding
+- [x] FIX: trash empty should be confirmed
+- [x] diff of first 2 selected files in second panel
+- [x] Launch NCDU, Lazygit, htop in current folder from a menu with 'S'.
+
+  - [awesome tuis](https://github.com/rothgar/awesome-tuis)
+
+  - [x] Remove lazygit as a separate command
+  - [x] Allow configuration from a config file
+
+- [x] display full command before execution
+- [x] changing folder (`set_pathcontent`) should set the cwd too... but it has no effect on commands
+- [x] FIX: code, subl etc. won't show in exec completion
+  - [x] when executable are filtered only files are kept, not symbolink links.
+- [x] better error messages when a config file can't be loaded
+- [x] messages to display what was made after executing an action
+
+  - [x] improve logging configuration, config from a yaml file moved at build to `$HOME/.config/fm/logging_config.yaml`
+  - [x] use 2 separate loggers, normal and for specific actions
+  - [x] display logs
+  - [ ] log specific actions
+
+    - [x] bulk creation
+    - [x] move, copy, delete
+    - [x] new dir, new file
+    - [x] symlinks creation
+    - [x] trash add, trash delete, trash empty
+
+- [x] colors in menus. Use a repeated gradient of lime colors in menus
+
 ## TODO
 
 - [ ] remote control
@@ -407,53 +454,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
 - [ ] pushbullet ?
-
-- [ ] Version 0.1.19
-
-  - [x] skim: use preview from bat.
-  - [x] skim: preview with cat if bat isn't installed.
-  - [x] uniform themeset with skim: use monokai theme from [jonschlinkert](https://github.com/jonschlinkert/sublime-monokai-extended)
-  - [x] event shell & open with terminal: use $TERM if possible, otherwise use the configured terminal application.
-        we guess that the user prefers the terminal he's currently using above the configured one. It may change in the future.
-  - [x] refactor config creation
-  - [x] shorten long names in first line
-  - [x] use skim to search for specific line in file
-  - [x] manually setup a neovim server with shift+i. Get the server address with `echo serverstart()`.
-  - [x] wallpaper aka [nnn](https://github.com/jarun/nnn/blob/master/plugins/wallpaper)
-  - [x] bulk: use a menu for rename, files creation, directories creation
-  - [x] moc queue management
-    - [x] start mocp if not running
-    - [x] add file to playlist
-    - [x] next, previous song
-  - [x] integrate gitroot into shortcuts, remove as a keybinding
-  - [x] FIX: trash empty should be confirmed
-  - [x] diff of first 2 selected files in second panel
-  - [x] Launch NCDU, Lazygit, htop in current folder from a menu with 'S'.
-
-    - [awesome tuis](https://github.com/rothgar/awesome-tuis)
-
-    - [x] Remove lazygit as a separate command
-    - [x] Allow configuration from a config file
-
-  - [x] display full command before execution
-  - [x] changing folder (`set_pathcontent`) should set the cwd too... but it has no effect on commands
-  - [x] FIX: code, subl etc. won't show in exec completion
-    - [x] when executable are filtered only files are kept, not symbolink links.
-  - [x] better error messages when a config file can't be loaded
-  - [x] messages to display what was made after executing an action
-
-    - [x] improve logging configuration, config from a yaml file moved at build to `$HOME/.config/fm/logging_config.yaml`
-    - [x] use 2 separate loggers, normal and for specific actions
-    - [x] display logs
-    - [ ] log specific actions
-
-      - [x] bulk creation
-      - [x] move, copy, delete
-      - [x] new dir, new file
-      - [x] symlinks creation
-      - [x] trash add, trash delete, trash empty
-
-  - [x] colors in menus. Use a repeated gradient of lime colors in menus
 
 - [ ] Version 0.1.20
 
