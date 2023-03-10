@@ -4,6 +4,12 @@ pub static CONFIG_FOLDER: &str = "~/.config/fm";
 pub static CONFIG_PATH: &str = "~/.config/fm/config.yaml";
 /// Filepath of the opener config file
 pub static OPENER_PATH: &str = "~/.config/fm/opener.yaml";
+/// Filepath of the TUIS configuration file
+pub static TUIS_PATH: &str = "~/.config/fm/tuis.yaml";
+/// Filepath of the LOG configuration file
+pub static LOG_CONFIG_PATH: &str = "~/.config/fm/logging_config.yaml";
+/// Path to the action log file
+pub static ACTION_LOG_PATH: &str = "~/.config/fm/log/action_logger.log";
 /// Path to the trash folder files
 pub static TRASH_FOLDER_FILES: &str = "~/.local/share/Trash/files";
 /// Path to the trash folder info file
@@ -41,6 +47,10 @@ pub static PERMISSIONS_STR: [&str; 8] = ["---", "--x", "-w-", "-wx", "r--", "r-x
 pub static HELP_FIRST_SENTENCE: &str = "fm: a dired / ranger like file manager. ";
 /// Description of the content below, aka the help itself.
 pub static HELP_SECOND_SENTENCE: &str = "Keybindings";
+/// Description of the content below, aka the action log file
+pub static LOG_FIRST_SENTENCE: &str = "Logs: ";
+/// Description of the content below, aka what is logged there.
+pub static LOG_SECOND_SENTENCE: &str = "Last actions affecting the file tree";
 /// nvim-send is a rust program which can send commands to neovim
 pub static NVIM_RPC_SENDER: &str = "nvim-send";
 /// Filter presentation for the second line
@@ -60,3 +70,7 @@ pub static HARDCODED_SHORTCUTS: [&str; 9] = [
     "/usr",
     "/var",
 ];
+pub static BAT_EXECUTABLE: &str = "bat {} --color=always";
+pub static CAT_EXECUTABLE: &str = "cat {}";
+pub static RG_EXECUTABLE: &str = "rg --line-number \"{}\"";
+pub static GREP_EXECUTABLE: &str = "grep -rI --line-number \"{}\"";

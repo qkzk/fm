@@ -3,6 +3,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::Arc;
 
+use log::info;
 use regex::Regex;
 use skim::SkimItem;
 use sysinfo::{Disk, DiskExt, RefreshKind, System, SystemExt};
@@ -10,9 +11,10 @@ use tuikit::term::Term;
 use users::UsersCache;
 
 use crate::args::Args;
+use crate::bulkrename::Bulk;
 use crate::compress::Compresser;
 use crate::config::Colors;
-use crate::constant_strings_paths::OPENER_PATH;
+use crate::constant_strings_paths::{OPENER_PATH, TUIS_PATH};
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::DeviceOpener;
 use crate::flagged::Flagged;
@@ -20,6 +22,7 @@ use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
 use crate::preview::{Directory, Preview};
+use crate::shell_menu::{load_shell_menu, ShellMenu};
 use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
@@ -66,6 +69,11 @@ pub struct Status {
     pub encrypted_devices: DeviceOpener,
     /// Compression methods
     pub compression: Compresser,
+    /// NVIM RPC server address
+    pub nvim_server: String,
+    pub force_clear: bool,
+    pub bulk: Bulk,
+    pub shell_menu: ShellMenu,
 }
 
 impl Status {
@@ -82,24 +90,41 @@ impl Status {
         help: String,
         terminal: &str,
     ) -> FmResult<Self> {
-        // unsafe because of UsersCache::with_all_users
-        let sys = System::new_with_specifics(RefreshKind::new().with_disks());
-        let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| Opener::new(terminal));
-        let users_cache = unsafe { UsersCache::with_all_users() };
-        let mut tab = Tab::new(args.clone(), height, users_cache)?;
-        tab.shortcut
-            .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
-        let encrypted_devices = DeviceOpener::default();
+        let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| {
+            eprintln!("Couldn't read the opener config file at {OPENER_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/opener.yaml for an example. Using default.");
+            info!("Couldn't read opener file at {OPENER_PATH}. Using default.");
+            Opener::new(terminal)
+        });
+        let Ok(shell_menu) = load_shell_menu(TUIS_PATH) else {
+            eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example"); 
+            info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");
+            std::process::exit(1);
+        };
 
-        let users_cache2 = unsafe { UsersCache::with_all_users() };
-        let mut tab2 = Tab::new(args, height, users_cache2)?;
-        tab2.shortcut
-            .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
+        let sys = System::new_with_specifics(RefreshKind::new().with_disks());
+        let nvim_server = args.server.clone();
+        let encrypted_devices = DeviceOpener::default();
         let trash = Trash::new()?;
         let compression = Compresser::default();
+        let force_clear = false;
+        let bulk = Bulk::default();
+
+        // unsafe because of UsersCache::with_all_users
+        let users_cache = unsafe { UsersCache::with_all_users() };
+        let mut right_tab = Tab::new(args.clone(), height, users_cache)?;
+        right_tab
+            .shortcut
+            .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
+
+        // unsafe because of UsersCache::with_all_users
+        let users_cache2 = unsafe { UsersCache::with_all_users() };
+        let mut left_tab = Tab::new(args, height, users_cache2)?;
+        left_tab
+            .shortcut
+            .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
 
         Ok(Self {
-            tabs: [tab2, tab],
+            tabs: [left_tab, right_tab],
             index: 0,
             flagged: Flagged::default(),
             marks: Marks::read_from_config_file(),
@@ -114,6 +139,10 @@ impl Status {
             trash,
             encrypted_devices,
             compression,
+            nvim_server,
+            force_clear,
+            bulk,
+            shell_menu,
         })
     }
 
@@ -156,7 +185,7 @@ impl Status {
     /// Replace the tab content with the first result of skim.
     /// It calls skim, reads its output, then update the tab content.
     pub fn skim_output_to_tab(&mut self) -> FmResult<()> {
-        let skim = self.skimer.no_source(
+        let skim = self.skimer.search_filename(
             self.selected_non_mut()
                 .selected()
                 .ok_or_else(|| FmError::custom("skim", "no selected file"))?
@@ -168,8 +197,31 @@ impl Status {
         self._update_tab_from_skim_output(output)
     }
 
-    fn _update_tab_from_skim_output(&mut self, skim_outut: &Arc<dyn SkimItem>) -> FmResult<()> {
-        let path = fs::canonicalize(skim_outut.output().to_string())?;
+    /// Replace the tab content with the first result of skim.
+    /// It calls skim, reads its output, then update the tab content.
+    /// The output is splited at `:` since we only care about the path, not the line number.
+    pub fn skim_line_output_to_tab(&mut self) -> FmResult<()> {
+        let skim = self.skimer.search_line_in_file();
+        let Some(output) = skim.first() else {return Ok(())};
+        self._update_tab_from_skim_line_output(output)
+    }
+
+    fn _update_tab_from_skim_line_output(
+        &mut self,
+        skim_output: &Arc<dyn SkimItem>,
+    ) -> FmResult<()> {
+        let output_str = skim_output.output().to_string();
+        let Some(filename) = output_str.split(':').next() else { return Ok(());};
+        let path = fs::canonicalize(filename)?;
+        self._replace_path_by_skim_output(path)
+    }
+
+    fn _update_tab_from_skim_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> FmResult<()> {
+        let path = fs::canonicalize(skim_output.output().to_string())?;
+        self._replace_path_by_skim_output(path)
+    }
+
+    fn _replace_path_by_skim_output(&mut self, path: std::path::PathBuf) -> FmResult<()> {
         let tab = self.selected();
         if path.is_file() {
             let Some(parent) = path.parent() else { return Ok(()) };
@@ -347,5 +399,14 @@ impl Status {
             self.dual_pane = true;
         }
         Ok(())
+    }
+
+    /// True if a quit event was registered in the selected tab.
+    pub fn must_quit(&self) -> bool {
+        self.selected_non_mut().must_quit()
+    }
+
+    pub fn force_clear(&mut self) {
+        self.force_clear = true;
     }
 }

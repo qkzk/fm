@@ -9,7 +9,7 @@ use fm::constant_strings_paths::CONFIG_PATH;
 use fm::event_dispatch::EventDispatcher;
 use fm::fm_error::FmResult;
 use fm::help::Help;
-use fm::log::set_logger;
+use fm::log::set_loggers;
 use fm::status::Status;
 use fm::term_manager::{Display, EventReader};
 use fm::utils::{drop_everything, init_term, print_on_quit};
@@ -19,10 +19,15 @@ use fm::utils::{drop_everything, init_term, print_on_quit};
 /// The application is redrawn after every event.
 /// When the user issues a quit event, the main loop is broken and we reset the cursor.
 fn main() -> FmResult<()> {
-    set_logger()?;
+    set_loggers()?;
+
     info!("fm is starting");
 
-    let config = load_config(CONFIG_PATH)?;
+    let Ok(config) = load_config(CONFIG_PATH) else {
+        eprintln!("Couldn't load the config file at {CONFIG_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/config.yaml for an example.");
+        info!("Couldn't read the config file {CONFIG_PATH}");
+        std::process::exit(1);
+    };
     info!("config loaded");
     let term = Arc::new(init_term()?);
     let event_dispatcher = EventDispatcher::new(config.binds.clone());
@@ -39,12 +44,18 @@ fn main() -> FmResult<()> {
     let colors = config.colors.clone();
     drop(config);
 
+    info!(target: "special", "config dropped");
+
     while let Ok(event) = event_reader.poll_event() {
         event_dispatcher.dispatch(&mut status, event, &colors)?;
         status.refresh_disks();
+        if status.force_clear {
+            display.force_clear()?;
+            status.force_clear = false;
+        }
         display.display_all(&status, &colors)?;
 
-        if status.selected_non_mut().must_quit() {
+        if status.must_quit() {
             break;
         };
     }

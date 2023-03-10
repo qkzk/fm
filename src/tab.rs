@@ -33,8 +33,6 @@ pub struct Tab {
     pub height: usize,
     /// read from command line
     pub show_hidden: bool,
-    /// NVIM RPC server address
-    pub nvim_server: String,
     /// Completion list and index in it.
     pub completion: Completion,
     /// True if the user issued a quit event (`Key::Char('q')` by default).
@@ -64,7 +62,6 @@ impl Tab {
         let show_hidden = false;
         let path_content = PathContent::new(&path, users_cache, &filter, show_hidden)?;
         let show_hidden = false;
-        let nvim_server = args.server;
         let mode = Mode::Normal;
         let previous_mode = Mode::Normal;
         let window = ContentWindow::new(path_content.content.len(), height);
@@ -83,7 +80,6 @@ impl Tab {
             input,
             path_content,
             height,
-            nvim_server,
             completion,
             must_quit,
             preview,
@@ -185,6 +181,7 @@ impl Tab {
         self.path_content
             .change_directory(path, &self.filter, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
+        std::env::set_current_dir(path)?;
         Ok(())
     }
 

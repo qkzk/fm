@@ -265,6 +265,7 @@ impl Trash {
         std::fs::rename(origin, &trashfile_filename)?;
 
         info!("moved to trash {:?} -> {:?}", origin, dest_file_name);
+        info!(target:"special", "moved to trash {:?} -> {:?}", origin, dest_file_name);
         Ok(())
     }
 
@@ -281,6 +282,10 @@ impl Trash {
 
         self.content = vec![];
 
+        info!(target: "special",
+            "Emptied the trash: {} files permanently deleted",
+            number_of_elements
+        );
         info!(
             "Emptied the trash: {} files permanently deleted",
             number_of_elements
@@ -341,7 +346,8 @@ impl Trash {
         if !parent.exists() {
             std::fs::create_dir_all(&parent)?
         }
-        std::fs::rename(trashed_file_content, origin)?;
+        std::fs::rename(trashed_file_content, &origin)?;
+        info!(target: "special", "Trash restored: {origin}", origin=origin.display());
         Ok(())
     }
 
@@ -353,10 +359,15 @@ impl Trash {
 
         let (_, trashed_file_content, _) = self.remove_selected_file()?;
 
-        std::fs::remove_file(trashed_file_content)?;
+        std::fs::remove_file(&trashed_file_content)?;
         if self.index > 0 {
             self.index -= 1
         }
+        info!(
+            target: "special",
+            "Trash removed {trashed_file_content}",
+            trashed_file_content = trashed_file_content.display()
+        );
         Ok(())
     }
 }

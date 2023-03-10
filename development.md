@@ -383,6 +383,53 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] regroup display settings keybindings under alt+char
 - [x] restrain second pane to 120+ chars wide terminals
 
+### Version 0.1.19
+
+- [x] skim: use preview from bat.
+- [x] skim: preview with cat if bat isn't installed.
+- [x] uniform themeset with skim: use monokai theme from [jonschlinkert](https://github.com/jonschlinkert/sublime-monokai-extended)
+- [x] event shell & open with terminal: use $TERM if possible, otherwise use the configured terminal application.
+      we guess that the user prefers the terminal he's currently using above the configured one. It may change in the future.
+- [x] refactor config creation
+- [x] shorten long names in first line
+- [x] use skim to search for specific line in file
+- [x] manually setup a neovim server with shift+i. Get the server address with `echo serverstart()`.
+- [x] wallpaper aka [nnn](https://github.com/jarun/nnn/blob/master/plugins/wallpaper)
+- [x] bulk: use a menu for rename, files creation, directories creation
+- [x] moc queue management
+  - [x] start mocp if not running
+  - [x] add file to playlist
+  - [x] next, previous song
+- [x] integrate gitroot into shortcuts, remove as a keybinding
+- [x] FIX: trash empty should be confirmed
+- [x] diff of first 2 selected files in second panel
+- [x] Launch NCDU, Lazygit, htop in current folder from a menu with 'S'.
+
+  - [awesome tuis](https://github.com/rothgar/awesome-tuis)
+
+  - [x] Remove lazygit as a separate command
+  - [x] Allow configuration from a config file
+
+- [x] display full command before execution
+- [x] changing folder (`set_pathcontent`) should set the cwd too... but it has no effect on commands
+- [x] FIX: code, subl etc. won't show in exec completion
+  - [x] when executable are filtered only files are kept, not symbolink links.
+- [x] better error messages when a config file can't be loaded
+- [x] messages to display what was made after executing an action
+
+  - [x] improve logging configuration, config from a yaml file moved at build to `$HOME/.config/fm/logging_config.yaml`
+  - [x] use 2 separate loggers, normal and for specific actions
+  - [x] display logs
+  - [ ] log specific actions
+
+    - [x] bulk creation
+    - [x] move, copy, delete
+    - [x] new dir, new file
+    - [x] symlinks creation
+    - [x] trash add, trash delete, trash empty
+
+- [x] colors in menus. Use a repeated gradient of lime colors in menus
+
 ## TODO
 
 - [ ] remote control
@@ -406,6 +453,28 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] temporary marks
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
+- [ ] pushbullet ?
+
+- [ ] Version 0.1.20
+
+  - [ ] exec multiple flagged files
+  - [ ] shell menu
+
+    - [ ] allow non tui like wttr, diff, bat, tail -n etc.
+    - [ ] more options like "use flagged files" for diff
+
+  - [ ] replace FmResult & FmError by anyhow since I'm already using it...
+  - [ ] build option to force reset of config file, warn the user at first start
+  - [ ] update readme & animation
+  - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
+  - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
+  - [ ] allow pipe in execution
+
+- [ ] sub window / menu for completion / selection.
+
+  1. enter selectable mode
+  2. chose an action
+  3. confirm
 
 - [ ] Version 0.1.50 : safety & memory usage
 
@@ -435,9 +504,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ## BUGS
 
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
-- [ ] log0, log1, log2 are created by log4rs in source folder
-  - [x] using absolute path, files are created in the right place
-  - [ ] the default file is still `log{}` instead of `log0`...
 
 ## Won't do
 
@@ -456,18 +522,6 @@ All of this stuff can be done easily through a shell command or automatically. I
   - google drive
 
   or just use sshfs...
-
-### Thumbnails with chafa
-
-- [ ] improve thumbnail with [chafa](https://hpjansson.org/chafa/) - [felix](https://github.com/kyoheiu/felix#usage)
-
-  - [x] use chafa
-  - [x] print in term
-  - [x] print in raw mode
-  - [ ] print with term: term...
-
-  Can't make it work in tuikit. We need the whole chafa output into tuikit attr
-  It's too much work and it will be too slow for such a gadget.
 
 ## Sources
 

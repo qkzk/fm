@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use log::info;
 use serde_yaml;
@@ -334,11 +334,84 @@ impl Opener {
 /// Execute a command with options in a fork.
 /// Returns an handle to the child process.
 pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
-    info!(
-        "execute_in_child. executable: {}, arguments: {:?}",
-        exe, args
-    );
+    info!("execute_in_child. executable: {exe}, arguments: {args:?}",);
     Ok(Command::new(exe).args(args).spawn()?)
+}
+
+/// Execute a command with options in a fork.
+/// Returns an handle to the child process.
+/// Branch stdin, stderr and stdout to /dev/null
+pub fn execute_in_child_without_output(
+    exe: &str,
+    args: &Vec<&str>,
+) -> FmResult<std::process::Child> {
+    info!("execute_in_child_without_output. executable: {exe}, arguments: {args:?}",);
+    Ok(Command::new(exe)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?)
+}
+
+pub fn execute_in_child_without_output_with_path<P>(
+    exe: &str,
+    path: P,
+    args: Option<&Vec<&str>>,
+) -> FmResult<std::process::Child>
+where
+    P: AsRef<Path>,
+{
+    info!("execute_in_child_without_output_with_path. executable: {exe}, arguments: {args:?}",);
+    let mut params = &vec![];
+    if let Some(args) = args {
+        params = args;
+    }
+    Ok(Command::new(exe)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .current_dir(path)
+        .args(params)
+        .spawn()?)
+}
+/// Execute a command with options in a fork.
+/// Wait for termination and return either :
+/// `Ok(stdout)` if the status code is 0
+/// or `Err(FmError::custom(..., ...))` otherwise.
+/// Branch stdin and stderr to /dev/null
+pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> FmResult<String> {
+    info!("execute_and_capture_output. executable: {exe}, arguments: {args:?}",);
+    let child = Command::new(exe)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+    let output = child.wait_with_output()?;
+    if output.status.success() {
+        Ok(String::from_utf8(output.stdout)?)
+    } else {
+        Err(FmError::custom(
+            "execute_and_capture_output",
+            "Command didn't finished correctly",
+        ))
+    }
+}
+
+/// Execute a command with options in a fork.
+/// Wait for termination and return either `Ok(stdout)`.
+/// Branch stdin and stderr to /dev/null
+pub fn execute_and_capture_output_without_check(exe: &str, args: &Vec<&str>) -> FmResult<String> {
+    info!("execute_and_capture_output_without_check. executable: {exe}, arguments: {args:?}",);
+    let child = Command::new(exe)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+    let output = child.wait_with_output()?;
+    Ok(String::from_utf8(output.stdout)?)
 }
 
 /// Returns the opener created from opener file with the given terminal

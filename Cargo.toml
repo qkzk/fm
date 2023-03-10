@@ -1,6 +1,6 @@
 [package]
 name = "fm-tui"
-version = "0.1.18"
+version = "0.1.19"
 authors = ["Quentin Konieczko <qu3nt1n@gmail.com>"]
 edition = "2021"
 license-file = "LICENSE.txt"
@@ -29,6 +29,7 @@ shellexpand = "2.1.2"
 fs_extra = "1.2.0"
 
 [dependencies]
+anyhow = "1.0.28"
 chrono = "0.4.22"
 clap = { version = "4.0.2", features = ["derive"] }
 content_inspector = "0.2.4"
@@ -47,7 +48,7 @@ rust-lzma = "0.5.1"
 sanitize-filename = "0.4.0"
 serde_yaml = "0.9.13"
 shellexpand = "2.1.2"
-skim-qkzk = "0.9.9"
+skim-qkzk = "0.9.12"
 strfmt = "0.2.2"
 strum = {version = "0.24.1", features = ["derive"]}
 strum_macros = "0.24.3"

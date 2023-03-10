@@ -29,21 +29,23 @@ static HELP_TO_FORMAT: &str = "
 {Shell}:      shell in current directory
 {OpenFile}:      open the selected file
 {NvimFilepicker}:      open in current nvim session
+{NvimSetAddress}:      setup the nvim rpc address
 {Preview}:      preview this file
-{MediaInfo}:       display a thumbnail of an image with ueberzug
+{MediaInfo}:       display infos about a media file
 {Back}:      move back to previous dir
 {Home}:      move to $HOME
 {MarksNew}:      mark current path
 {MarksJump}:     jump to a mark
 {SearchNext}:      Search next matching element
 {FuzzyFind}:      fuzzy finder
+{FuzzyFindLine}:      fuzzy finder for line
 {RefreshView}:      refresh view
 {CopyFilename}:      copy filename to clipboard
 {CopyFilepath}:      copy filepath to clipboard
-{GitRoot}:      move to git root
 {DragNDrop}:       dragon-drop selected file
 {OpenConfig}:       open the config file
-{Lazygit}:      open a new terminal with lazygit
+{SetWallpaper}:      set the selected file as wallpaper with nitrogen
+{Diff}:      display the diff of the first 2 flagged files
 
 - Action on flagged files - 
 {ToggleFlag}:      toggle flag on a file 
@@ -51,7 +53,6 @@ static HELP_TO_FORMAT: &str = "
 {ClearFlags}:      clear flags
 {ReverseFlags}:      reverse flags
 {Symlink}:      symlink files
-{Bulkrename}:      bulkrename files
 {CopyPaste}:      copy to current dir
 {CutPaste}:      move to current dir
 {DeleteFile}:      delete files permanently
@@ -86,10 +87,19 @@ Navigate as usual. Most actions works as in 'normal' view.
     (m: open & mount,  u: unmount & close)
 {Search}:      SEARCH
 {Command}:      COMMAND
+{Bulk}:      BULK
+{ShellMenu}:      SHELL MENU
 {Filter}:      FILTER 
     (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
 {Enter}:  Execute mode then NORMAL
 {ModeNormal}:    NORMAL
+
+- MOC -
+Control MOC from your TUI
+{MocpAddToPlayList}:          Add a file or folder to the playlist
+{MocpPrevious}         Previous song
+{MocpTogglePause}:        Toggle play/pause. Start MOC if needed
+{MocpNext}        Next song
 ";
 
 /// Holds the help string, formated with current keybindings.

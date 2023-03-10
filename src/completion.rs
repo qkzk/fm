@@ -182,7 +182,7 @@ impl Completion {
     ) -> FmResult<Vec<String>> {
         Ok(fs::read_dir(path)?
             .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().unwrap().is_file() && filename_startswith(e, input_string))
+            .filter(|e| file_match_input(e, input_string))
             .map(|e| e.path().to_string_lossy().into_owned())
             .collect())
     }
@@ -230,6 +230,11 @@ impl Completion {
     pub fn complete_input_string(&self, input_string: &str) -> Option<&str> {
         self.current_proposition().strip_prefix(input_string)
     }
+}
+
+fn file_match_input(dir_entry: &std::fs::DirEntry, input_string: &str) -> bool {
+    let Ok(file_type) = dir_entry.file_type() else { return false;};
+    (file_type.is_file() || file_type.is_symlink()) && filename_startswith(dir_entry, input_string)
 }
 
 /// true if the filename starts with a pattern

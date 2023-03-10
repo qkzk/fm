@@ -1,6 +1,7 @@
 use std::cmp::min;
 use std::fmt::Write as _;
 use std::fs::metadata;
+use std::io::Cursor;
 use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::panic;
@@ -23,6 +24,7 @@ use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
+use crate::opener::execute_and_capture_output_without_check;
 use crate::status::Status;
 use crate::tree::{ColoredString, Tree};
 use crate::utils::filename_from_path;
@@ -40,6 +42,7 @@ pub enum Preview {
     Ueberzug(Ueberzug),
     Media(MediaContent),
     Directory(Directory),
+    Diff(Diff),
     #[default]
     Empty,
 }
@@ -47,6 +50,7 @@ pub enum Preview {
 #[derive(Clone, Default)]
 pub enum TextKind {
     HELP,
+    LOG,
     #[default]
     TEXTFILE,
 }
@@ -133,9 +137,17 @@ impl Preview {
         Ok(Self::Media(MediaContent::new(path)?))
     }
 
+    pub fn diff(first_path: &str, second_path: &str) -> FmResult<Self> {
+        Ok(Self::Diff(Diff::new(first_path, second_path)?))
+    }
+
     /// Creates the help preview as if it was a text file.
     pub fn help(help: &str) -> Self {
         Self::Text(TextContent::help(help))
+    }
+
+    pub fn log(log: Vec<String>) -> Self {
+        Self::Text(TextContent::log(log))
     }
 
     /// Empty preview, holding nothing.
@@ -156,6 +168,7 @@ impl Preview {
             Self::Ueberzug(_img) => 0,
             Self::Media(media) => media.len(),
             Self::Directory(directory) => directory.len(),
+            Self::Diff(diff) => diff.len(),
         }
     }
 
@@ -181,6 +194,14 @@ impl TextContent {
         let content: Vec<String> = help.split('\n').map(|s| s.to_owned()).collect();
         Self {
             kind: TextKind::HELP,
+            length: content.len(),
+            content,
+        }
+    }
+
+    fn log(content: Vec<String>) -> Self {
+        Self {
+            kind: TextKind::LOG,
             length: content.len(),
             content,
         }
@@ -227,7 +248,7 @@ impl HLContent {
             .take(Self::SIZE_LIMIT)
             .map(|line| line.unwrap_or_else(|_| "".to_owned()))
             .collect();
-        let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref);
+        let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
 
         Ok(Self {
             length: highlighted_content.len(),
@@ -243,11 +264,13 @@ impl HLContent {
         raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
-    ) -> Vec<Vec<SyntaxedString>> {
-        let theme_set = ThemeSet::load_defaults();
+    ) -> FmResult<Vec<Vec<SyntaxedString>>> {
+        let mut monokai = BufReader::new(Cursor::new(include_bytes!(
+            "../assets/themes/Monokai_Extended.tmTheme"
+        )));
+        let theme = ThemeSet::load_from_reader(&mut monokai)?;
         let mut highlighted_content = vec![];
-        let mut highlighter =
-            HighlightLines::new(syntax_ref, &theme_set.themes["Solarized (dark)"]);
+        let mut highlighter = HighlightLines::new(syntax_ref, &theme);
 
         for line in raw_content.iter() {
             let mut col = 0;
@@ -261,7 +284,7 @@ impl HLContent {
             highlighted_content.push(v_line)
         }
 
-        highlighted_content
+        Ok(highlighted_content)
     }
 }
 
@@ -726,6 +749,31 @@ impl Directory {
     }
 }
 
+pub struct Diff {
+    pub content: Vec<String>,
+    length: usize,
+}
+
+impl Diff {
+    pub fn new(first_path: &str, second_path: &str) -> FmResult<Self> {
+        let content: Vec<String> =
+            execute_and_capture_output_without_check("diff", &vec![first_path, second_path])?
+                .lines()
+                .map(|s| s.to_owned())
+                .collect();
+        info!("diff:\n{content:?}");
+
+        Ok(Self {
+            length: content.len(),
+            content,
+        })
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
@@ -780,6 +828,7 @@ impl_window!(PdfContent, String);
 impl_window!(ZipContent, String);
 impl_window!(MediaContent, String);
 impl_window!(Directory, ColoredPair);
+impl_window!(Diff, String);
 
 fn is_ext_compressed(ext: &str) -> bool {
     matches!(

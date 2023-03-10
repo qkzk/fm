@@ -74,6 +74,8 @@ pub enum InputSimple {
     Sort,
     /// Filter by extension, name, directory or no filter
     Filter,
+    /// Set a new neovim RPC address
+    SetNvimAddress,
     /// Input a password (chars a replaced by *)
     Password(PasswordKind, EncryptedAction),
 }
@@ -96,6 +98,10 @@ pub enum Navigate {
     Marks(MarkAction),
     /// Pick a compression method
     Compress,
+    /// Bulk rename, new files, new directories
+    Bulk,
+    /// Shell menu applications. Start a new shell with this application.
+    ShellMenu,
 }
 
 /// Different mode in which the application can be.
@@ -130,10 +136,10 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
             Mode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
             Mode::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
+            Mode::InputSimple(InputSimple::SetNvimAddress) => write!(f, "Neovim:  "),
             Mode::InputSimple(InputSimple::Sort) => {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }
-            Mode::Navigate(Navigate::Marks(_)) => write!(f, "Marks jump:"),
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
             Mode::InputSimple(InputSimple::Password(password_kind, _)) => {
                 write!(f, "{password_kind}")
@@ -143,10 +149,17 @@ impl fmt::Display for Mode {
             Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
             Mode::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
             Mode::InputCompleted(InputCompleted::Command) => write!(f, "Command:  "),
+            Mode::Navigate(Navigate::Marks(_)) => write!(f, "Marks jump:"),
             Mode::Navigate(Navigate::Jump) => write!(f, "Jump  :  "),
             Mode::Navigate(Navigate::History) => write!(f, "History :"),
             Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
-            Mode::Navigate(Navigate::Trash) => write!(f, "Trash    :"),
+            Mode::Navigate(Navigate::Trash) => write!(f, "Trash :"),
+            Mode::Navigate(Navigate::ShellMenu) => {
+                write!(f, "Start a new shell running a command:")
+            }
+            Mode::Navigate(Navigate::Bulk) => {
+                write!(f, "Bulk: rename flagged files or create new files")
+            }
             Mode::Navigate(Navigate::Compress) => write!(f, "Compress :"),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 write!(f, "Encrypted devices :")

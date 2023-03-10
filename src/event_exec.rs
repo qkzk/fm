@@ -9,7 +9,6 @@ use log::info;
 use sysinfo::SystemExt;
 
 use crate::action_map::ActionMap;
-use crate::bulkrename::Bulkrename;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
 use crate::constant_strings_paths::CONFIG_PATH;
@@ -22,15 +21,18 @@ use crate::cryptsetup::PasswordKind;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::fm_error::{FmError, FmResult};
-use crate::git::git_root;
+use crate::log::read_log;
+use crate::mocp::Mocp;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
 use crate::opener::execute_in_child;
+use crate::opener::execute_in_child_without_output_with_path;
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::utils::disk_used_by_path;
+use crate::utils::is_program_in_path;
 
 /// Every kind of mutation of the application is defined here.
 /// It mutates `Status` or its children `Tab`.
@@ -39,6 +41,7 @@ pub struct EventExec {}
 impl EventExec {
     /// Reset the selected tab view to the default.
     pub fn refresh_status(status: &mut Status, colors: &Colors) -> FmResult<()> {
+        status.force_clear();
         status.refresh_users()?;
         status.selected().refresh_view()?;
         if let Mode::Tree = status.selected_non_mut().mode {
@@ -216,16 +219,17 @@ impl EventExec {
 
     /// Creates a symlink of every flagged file to the current directory.
     pub fn event_symlink(status: &mut Status) -> FmResult<()> {
-        for oldpath in status.flagged.content.iter() {
-            let filename = oldpath
+        for original_file in status.flagged.content.iter() {
+            let filename = original_file
                 .as_path()
                 .file_name()
                 .ok_or_else(|| FmError::custom("event symlink", "File not found"))?;
-            let newpath = status
+            let link = status
                 .selected_non_mut()
                 .directory_of_selected()?
                 .join(filename);
-            std::os::unix::fs::symlink(oldpath, newpath)?;
+            std::os::unix::fs::symlink(original_file, &link)?;
+            info!(target: "special", "Symlink {link} links to {original_file}", original_file=original_file.display(), link=link.display());
         }
         status.clear_flags_and_reset_view()
     }
@@ -233,9 +237,35 @@ impl EventExec {
     /// Enter bulkrename mode, opening a random temp file where the user
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.
-    pub fn event_bulkrename(status: &mut Status) -> FmResult<()> {
-        Bulkrename::new(status.filtered_flagged_files())?.rename(&status.opener)?;
-        status.selected().refresh_view()
+    pub fn event_bulk(status: &mut Status) -> FmResult<()> {
+        status.selected().set_mode(Mode::Navigate(Navigate::Bulk));
+        Ok(())
+    }
+
+    pub fn event_bulk_prev(status: &mut Status) {
+        status.bulk.prev()
+    }
+
+    pub fn event_bulk_next(status: &mut Status) {
+        status.bulk.next()
+    }
+
+    pub fn event_shell_menu_prev(status: &mut Status) {
+        info!("shell menu prev");
+        status.shell_menu.prev()
+    }
+
+    pub fn event_shell_menu_next(status: &mut Status) {
+        info!("shell menu next");
+        status.shell_menu.next()
+    }
+
+    pub fn exec_bulk(status: &mut Status) -> FmResult<()> {
+        status.bulk.execute_bulk(status)
+    }
+
+    pub fn exec_shellmenu(status: &mut Status) -> FmResult<()> {
+        status.shell_menu.execute(status)
     }
 
     /// Copy the flagged file to current directory.
@@ -283,6 +313,12 @@ impl EventExec {
         }
         status.selected().refresh_view()?;
         status.reset_tabs_view()
+    }
+
+    pub fn exec_set_neovim_address(status: &mut Status) -> FmResult<()> {
+        status.nvim_server = status.selected_non_mut().input.string();
+        status.selected().reset_mode();
+        Ok(())
     }
 
     /// Execute a jump to the selected flagged file.
@@ -676,6 +712,16 @@ impl EventExec {
         Ok(())
     }
 
+    /// Display the last actions impacting the file tree
+    pub fn event_log(tab: &mut Tab) -> FmResult<()> {
+        let log = read_log()?;
+        tab.set_mode(Mode::Preview);
+        tab.preview = Preview::log(log);
+        tab.window.reset(tab.preview.len());
+        Self::event_go_bottom(tab);
+        Ok(())
+    }
+
     /// Enter the search mode.
     /// Matching items are displayed as you type them.
     pub fn event_search(tab: &mut Tab) -> FmResult<()> {
@@ -811,14 +857,17 @@ impl EventExec {
     /// is terminated first.
     pub fn event_shell(status: &mut Status) -> FmResult<()> {
         let tab = status.selected_non_mut();
-        let path = tab
-            .directory_of_selected()?
-            .to_str()
-            .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
-        execute_in_child(&status.opener.terminal, &vec!["-d", path])?;
+        let path = tab.directory_of_selected()?;
+        execute_in_child_without_output_with_path(&status.opener.terminal, path, None)?;
         Ok(())
     }
 
+    /// Enter the history mode, allowing to navigate to previously visited
+    /// directory.
+    pub fn event_shell_menu(tab: &mut Tab) -> FmResult<()> {
+        tab.set_mode(Mode::Navigate(Navigate::ShellMenu));
+        Ok(())
+    }
     /// Enter the history mode, allowing to navigate to previously visited
     /// directory.
     pub fn event_history(tab: &mut Tab) -> FmResult<()> {
@@ -830,6 +879,8 @@ impl EventExec {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn event_shortcut(tab: &mut Tab) -> FmResult<()> {
+        std::env::set_current_dir(tab.current_path())?;
+        tab.shortcut.update_git_root();
         tab.set_mode(Mode::Navigate(Navigate::Shortcut));
         Ok(())
     }
@@ -852,21 +903,40 @@ impl EventExec {
     /// If no RPC server were provided at launch time - which may happen for
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
-    pub fn event_nvim_filepicker(tab: &mut Tab) -> FmResult<()> {
-        if let Ok(nvim_listen_address) = Self::nvim_listen_address(tab) {
-            let Some(fileinfo) = tab.selected() else { return Ok(()) };
-            let Some(path_str) = fileinfo.path.to_str() else { return Ok(()) };
-            let _ = execute_in_child(
-                NVIM_RPC_SENDER,
-                &vec![
-                    "--remote-send",
-                    &format!("<esc>:e {path_str}<cr><esc>:close<cr>"),
-                    "--servername",
-                    &nvim_listen_address,
-                ],
-            );
-        }
+    pub fn event_nvim_filepicker(status: &mut Status) -> FmResult<()> {
+        if !is_program_in_path(NVIM_RPC_SENDER) {
+            return Ok(());
+        };
+        Self::read_nvim_listen_address_if_needed(status);
+        if status.nvim_server.is_empty() {
+            return Ok(());
+        };
+        let nvim_server = status.nvim_server.clone();
+        let tab = status.selected();
+        let Some(fileinfo) = tab.selected() else { return Ok(()) };
+        let Some(path_str) = fileinfo.path.to_str() else { return Ok(()) };
+        Self::open_in_current_neovim(path_str, &nvim_server);
+
         Ok(())
+    }
+
+    pub fn event_set_nvim_server(status: &mut Status) -> FmResult<()> {
+        status
+            .selected()
+            .set_mode(Mode::InputSimple(InputSimple::SetNvimAddress));
+        Ok(())
+    }
+
+    fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
+        let _ = execute_in_child(
+            NVIM_RPC_SENDER,
+            &vec![
+                "--remote-send",
+                &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>"),
+                "--servername",
+                nvim_server,
+            ],
+        );
     }
 
     /// Copy the selected filename to the clipboard. Only the filename.
@@ -934,12 +1004,12 @@ impl EventExec {
         Ok(())
     }
 
-    fn nvim_listen_address(tab: &Tab) -> Result<String, std::env::VarError> {
-        if !tab.nvim_server.is_empty() {
-            Ok(tab.nvim_server.clone())
-        } else {
-            std::env::var("NVIM_LISTEN_ADDRESS")
+    fn read_nvim_listen_address_if_needed(status: &mut Status) {
+        if !status.nvim_server.is_empty() {
+            return;
         }
+        let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") else { return; };
+        status.nvim_server = nvim_listen_address;
     }
 
     /// Execute a rename of the selected file.
@@ -963,6 +1033,11 @@ impl EventExec {
                 original_path.display(),
                 new_path.display()
             );
+            info!(target: "special",
+                "renaming: original: {} - new: {}",
+                original_path.display(),
+                new_path.display()
+            );
             fs::rename(original_path, new_path)?;
         }
 
@@ -970,35 +1045,33 @@ impl EventExec {
     }
 
     /// Creates a new file with input string as name.
-    /// We use `fs::File::create` internally, so if the file already exists,
-    /// it will be overwritten.
+    /// Nothing is done if the file already exists.
     /// Filename is sanitized before processing.
     pub fn exec_newfile(tab: &mut Tab) -> FmResult<()> {
-        fs::File::create(
-            tab.path_content
-                .path
-                .join(sanitize_filename::sanitize(tab.input.string())),
-        )?;
+        let path = tab
+            .path_content
+            .path
+            .join(sanitize_filename::sanitize(tab.input.string()));
+        if !path.exists() {
+            fs::File::create(&path)?;
+            info!(target: "special", "New file: {path}", path=path.display());
+        }
         tab.refresh_view()
     }
 
     /// Creates a new directory with input string as name.
+    /// Nothing is done if the directory already exists.
     /// We use `fs::create_dir` internally so it will fail if the input string
-    /// is not an end point in the file system.
-    /// ie. the user can create `newdir` but not `newdir/newfolder`.
-    /// It will also fail if the directory already exists.
+    /// ie. the user can create `newdir` or `newdir/newfolder`.
     /// Directory name is sanitized before processing.
     pub fn exec_newdir(tab: &mut Tab) -> FmResult<()> {
-        match fs::create_dir(
-            tab.path_content
-                .path
-                .join(sanitize_filename::sanitize(tab.input.string())),
-        ) {
-            Ok(()) => (),
-            Err(e) => match e.kind() {
-                std::io::ErrorKind::AlreadyExists => (),
-                _ => return Err(FmError::from(e)),
-            },
+        let path = tab
+            .path_content
+            .path
+            .join(sanitize_filename::sanitize(tab.input.string()));
+        if !path.exists() {
+            fs::create_dir_all(&path)?;
+            info!(target: "special", "New directory: {path}", path=path.display());
         }
         tab.refresh_view()
     }
@@ -1168,6 +1241,8 @@ impl EventExec {
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_prev(status.selected()),
             Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_prev(status),
             Mode::Navigate(Navigate::Compress) => EventExec::event_compression_prev(status),
+            Mode::Navigate(Navigate::Bulk) => EventExec::event_bulk_prev(status),
+            Mode::Navigate(Navigate::ShellMenu) => EventExec::event_shell_menu_prev(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_prev(status)
             }
@@ -1191,6 +1266,8 @@ impl EventExec {
             Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_next(status.selected()),
             Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_next(status),
             Mode::Navigate(Navigate::Compress) => EventExec::event_compression_next(status),
+            Mode::Navigate(Navigate::Bulk) => EventExec::event_bulk_next(status),
+            Mode::Navigate(Navigate::ShellMenu) => EventExec::event_shell_menu_next(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_next(status)
             }
@@ -1310,6 +1387,9 @@ impl EventExec {
             Mode::InputSimple(InputSimple::Newdir) => EventExec::exec_newdir(status.selected())?,
             Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,
             Mode::InputSimple(InputSimple::RegexMatch) => EventExec::exec_regex(status)?,
+            Mode::InputSimple(InputSimple::SetNvimAddress) => {
+                EventExec::exec_set_neovim_address(status)?
+            }
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
                 EventExec::exec_filter(status, colors)?
@@ -1327,6 +1407,8 @@ impl EventExec {
             Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
             Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
+            Mode::Navigate(Navigate::Bulk) => EventExec::exec_bulk(status)?,
+            Mode::Navigate(Navigate::ShellMenu) => EventExec::exec_shellmenu(status)?,
             Mode::Navigate(Navigate::EncryptedDrive) => (),
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
@@ -1385,9 +1467,13 @@ impl EventExec {
     }
 
     /// Start a fuzzy find with skim.
-    /// ATM idk how to avoid using the whole screen.
     pub fn event_fuzzyfind(status: &mut Status) -> FmResult<()> {
         status.skim_output_to_tab()
+    }
+
+    /// Start a fuzzy find for a specific line with skim.
+    pub fn event_fuzzyfind_line(status: &mut Status) -> FmResult<()> {
+        status.skim_line_output_to_tab()
     }
 
     /// Copy the filename of the selected file in normal mode.
@@ -1418,6 +1504,21 @@ impl EventExec {
             let Some(file_info) = tab.selected() else { return Ok(())};
             info!("selected {:?}", file_info);
             tab.preview = Preview::mediainfo(&file_info.path)?;
+            tab.window.reset(tab.preview.len());
+            tab.set_mode(Mode::Preview);
+        }
+        Ok(())
+    }
+
+    pub fn event_diff(status: &mut Status) -> FmResult<()> {
+        if status.flagged.len() < 2 {
+            return Ok(());
+        };
+        if let Mode::Normal | Mode::Tree = status.selected_non_mut().mode {
+            let first_path = &status.flagged.content[0].to_str().unwrap();
+            let second_path = &status.flagged.content[1].to_str().unwrap();
+            status.selected().preview = Preview::diff(first_path, second_path)?;
+            let tab = status.selected();
             tab.window.reset(tab.preview.len());
             tab.set_mode(Mode::Preview);
         }
@@ -1714,31 +1815,6 @@ impl EventExec {
         Ok(())
     }
 
-    /// Open a new terminal in current path with lazygit (required, obviously).
-    pub fn event_lazygit(status: &mut Status) -> FmResult<()> {
-        let tab = status.selected_non_mut();
-        let path = tab
-            .directory_of_selected()?
-            .to_str()
-            .ok_or_else(|| FmError::custom("event_shell", "Couldn't parse the directory"))?;
-        execute_in_child(&status.opener.terminal, &vec!["-d", path, "-e", "lazygit"])?;
-        Ok(())
-    }
-
-    /// Move to the git root. Does nothing outside of a git repository.
-    pub fn event_git_root(tab: &mut Tab) -> FmResult<()> {
-        let Ok(git_root) = git_root() else { return Ok(()) };
-
-        let path = &path::PathBuf::from(git_root);
-
-        if path.exists() {
-            tab.set_pathcontent(path)?;
-            Self::event_normal(tab)?;
-            tab.reset_mode();
-        }
-        Ok(())
-    }
-
     /// Enter compression mode
     pub fn event_compress(status: &mut Status) -> FmResult<()> {
         status
@@ -1789,9 +1865,40 @@ impl EventExec {
         command.matcher(status, colors)
     }
 
+    /// Toggle the second pane between preview & normal mode (files).
     pub fn event_toggle_preview_second(status: &mut Status) -> FmResult<()> {
         status.preview_second = !status.preview_second;
         Ok(())
+    }
+
+    /// Set the current selected file as wallpaper with `nitrogen`.
+    /// Requires `nitrogen` to be installed.
+    pub fn event_set_wallpaper(tab: &Tab) -> FmResult<()> {
+        let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
+        let _ = execute_in_child("nitrogen", &vec!["--set-zoom-fill", "--save", &path_str]);
+        Ok(())
+    }
+
+    /// Add a song or a folder to MOC playlist. Start it first...
+    pub fn event_mocp_add_to_playlist(tab: &Tab) -> FmResult<()> {
+        Mocp::add_to_playlist(tab)
+    }
+
+    /// Toggle play/pause on MOC.
+    /// Starts the server if needed, preventing the output to fill the screen.
+    /// Then toggle play/pause
+    pub fn event_mocp_toggle_pause(status: &mut Status) -> FmResult<()> {
+        Mocp::toggle_pause(status)
+    }
+
+    /// Skip to the next song in MOC
+    pub fn event_mocp_next() -> FmResult<()> {
+        Mocp::next()
+    }
+
+    /// Go to the previous song in MOC
+    pub fn event_mocp_previous() -> FmResult<()> {
+        Mocp::previous()
     }
 }
 

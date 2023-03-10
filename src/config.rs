@@ -4,10 +4,10 @@ use serde_yaml;
 use tuikit::attr::Color;
 
 use crate::color_cache::ColorCache;
-// use crate::color_cache::extension_color;
 use crate::constant_strings_paths::DEFAULT_TERMINAL_APPLICATION;
 use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
+use crate::utils::is_program_in_path;
 
 /// Holds every configurable aspect of the application.
 /// All attributes are hardcoded then updated from optional values
@@ -25,34 +25,38 @@ pub struct Config {
 
 impl Config {
     /// Returns a default config with hardcoded values.
-    fn new() -> Self {
-        Self {
+    fn new() -> FmResult<Self> {
+        Ok(Self {
             colors: Colors::default(),
             terminal: DEFAULT_TERMINAL_APPLICATION.to_owned(),
             binds: Bindings::default(),
+        })
+    }
+    /// Updates the config from  a configuration content.
+    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
+        self.colors.update_from_config(&yaml["colors"]);
+        self.binds.update_from_config(&yaml["keys"])?;
+        self.terminal = Self::set_terminal(&yaml["terminal"])?;
+        Ok(())
+    }
+
+    /// First we try to use the current terminal. If it's a fake one (ie. inside neovim float term),
+    /// we look for the configured one,
+    /// else we use the hardcoded one.
+    fn set_terminal(yaml: &serde_yaml::value::Value) -> FmResult<String> {
+        let terminal_currently_used = std::env::var("TERM").unwrap_or_default();
+        if !terminal_currently_used.is_empty() && is_program_in_path(&terminal_currently_used) {
+            Ok(terminal_currently_used)
+        } else if let Some(configured_terminal) = yaml.as_str() {
+            Ok(configured_terminal.to_owned())
+        } else {
+            Ok(DEFAULT_TERMINAL_APPLICATION.to_owned())
         }
     }
 
     /// The terminal name
     pub fn terminal(&self) -> &str {
         &self.terminal
-    }
-
-    /// Updates the config from  a configuration content.
-    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
-        self.colors.update_from_config(&yaml["colors"]);
-        // self.keybindings.update_from_config(&yaml["keybindings"])?;
-        self.binds.update_from_config(&yaml["keys"])?;
-        if let Some(terminal) = yaml["terminal"].as_str().map(|s| s.to_string()) {
-            self.terminal = terminal;
-        }
-        Ok(())
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -72,6 +76,7 @@ pub struct Colors {
     pub socket: String,
     /// Color for `symlink` files.
     pub symlink: String,
+    /// Colors for normal files, depending of extension
     pub color_cache: ColorCache,
 }
 
@@ -145,7 +150,7 @@ pub fn str_to_tuikit(color: &str) -> Color {
 ///
 /// 2. configured values from `~/.config/fm/config_file_name.yaml` if those files exists.
 pub fn load_config(path: &str) -> FmResult<Config> {
-    let mut config = Config::default();
+    let mut config = Config::new()?;
 
     if let Ok(file) = File::open(path::Path::new(&shellexpand::tilde(path).to_string())) {
         if let Ok(yaml) = serde_yaml::from_reader(file) {

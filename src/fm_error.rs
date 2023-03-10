@@ -27,6 +27,8 @@ pub enum ErrorVariant {
     UTF8ERROR,
     ZIPERROR,
     LZMAERROR,
+    SYNTECT,
+    ANYHOW,
     CUSTOM(String),
 }
 
@@ -118,6 +120,12 @@ impl From<SetLoggerError> for FmError {
     }
 }
 
+impl From<anyhow::Error> for FmError {
+    fn from(error: anyhow::Error) -> Self {
+        Self::new(ErrorVariant::ANYHOW, &error.to_string())
+    }
+}
+
 impl From<Box<dyn Error>> for FmError {
     fn from(error: Box<dyn Error>) -> Self {
         Self::new(ErrorVariant::BOXED, &error.to_string())
@@ -169,6 +177,12 @@ impl From<zip::result::ZipError> for FmError {
 impl From<lzma::LzmaError> for FmError {
     fn from(error: lzma::LzmaError) -> Self {
         Self::new(ErrorVariant::LZMAERROR, &error.to_string())
+    }
+}
+
+impl From<syntect::LoadingError> for FmError {
+    fn from(error: syntect::LoadingError) -> Self {
+        Self::new(ErrorVariant::SYNTECT, &error.to_string())
     }
 }
 

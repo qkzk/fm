@@ -125,6 +125,11 @@ pub fn copy_move(
             "{} finished {}B",
             copy_or_move.verb(),
             human_size(transfered_bytes)
+        );
+        info!(target: "special",
+            "{} finished {}B",
+            copy_or_move.verb(),
+            human_size(transfered_bytes)
         )
     });
     Ok(())
@@ -132,7 +137,7 @@ pub fn copy_move(
 
 /// Send a notification to the desktop.
 /// Requires "notify-send" to be installed.
-pub fn notify(text: &str) -> FmResult<()> {
+fn notify(text: &str) -> FmResult<()> {
     execute_in_child("notify-send", &vec![text])?;
     Ok(())
 }
