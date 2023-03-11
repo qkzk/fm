@@ -36,7 +36,7 @@ static HELP_TO_FORMAT: &str = "
 {Home}:      move to $HOME
 {MarksNew}:      mark current path
 {MarksJump}:     jump to a mark
-{SearchNext}:      Search next matching element
+{SearchNext}:      search next matching element
 {FuzzyFind}:      fuzzy finder
 {FuzzyFindLine}:      fuzzy finder for line
 {RefreshView}:      refresh view
@@ -45,19 +45,19 @@ static HELP_TO_FORMAT: &str = "
 {DragNDrop}:       dragon-drop selected file
 {OpenConfig}:       open the config file
 {SetWallpaper}:      set the selected file as wallpaper with nitrogen
-{Diff}:      display the diff of the first 2 flagged files
 
 - Action on flagged files - 
 {ToggleFlag}:      toggle flag on a file 
 {FlagAll}:      flag all
 {ClearFlags}:      clear flags
 {ReverseFlags}:      reverse flags
-{Symlink}:      symlink files
+{Symlink}:      symlink to current dir
 {CopyPaste}:      copy to current dir
 {CutPaste}:      move to current dir
 {DeleteFile}:      delete files permanently
 {TrashMoveFile}:      move to trash
 {Compress}:      compress into an archive
+{Diff}:      display the diff of the first 2 flagged files
 
 - Trash -
 {TrashOpen}:       Open the trash (enter to restore, del clear)
