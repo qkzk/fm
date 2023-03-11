@@ -256,6 +256,17 @@ You can configure :
   Open the menu with `S` and pick the desired one. It will only work with a TUI application like HTOP,
   not a CLI application like bat.
 
+## External dependencies
+
+Most of the openers and tui applications are configurable from config files. Some are hardcode since their command is quite specific or if I couldn't find a workaround.
+
+- [Cryptsetup](https://gitlab.com/cryptsetup/cryptsetup): decrypt & mount encrypted devices
+- [Nitrogen](https://github.com/l3ib/nitrogen/): set up a wallpaper
+- [MOC](https://moc.daper.net/) Music On Console allows you to play music from your terminal
+- [Dragon-Drop](https://github.com/mwh/dragon) drag-and-drop a file from a terminal to a GUI application.
+- [Nvim-Send](https://github.com/alopatindev/nvim-send) send commands to a remote NVIM instance. Used for the filepicker.
+- [Ueberzug](https://github.com/LalleSX/ueberzug) display images in your terminal. Used to preview images. This one may be tricky to install from source since the original maintener nuked his project. It's still available in many package managers.
+
 ## Contribution
 
 Any help is appreciated.
