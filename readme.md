@@ -109,6 +109,17 @@ function f() {
   fi
 }
 ```
+For fish users, this is the function to add to your `config.fish`
+
+```bash
+function f
+  # start the fm filemanager, enabling cd on quit.
+  set dest (fm $argv)
+  if not test -z $dest
+    cd $dest
+  end
+end
+```
 
 ## Default keybindings
 
