@@ -458,7 +458,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Version 0.1.20
 
   - [x] display version in help
-  - [x] replace FmResult & FmError by anyhow since I'm already using it...
+  - [x] replace FmResult & FmError by anyhow
+  - [x] update the readme
+  - [ ] update the animation
   - [ ] exec multiple flagged files
   - [ ] shell menu
 
@@ -466,7 +468,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] more options like "use flagged files" for diff
 
   - [ ] build option to force reset of config file, warn the user at first start
-  - [ ] update readme & animation
   - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
   - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
   - [ ] allow pipe in execution
