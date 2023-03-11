@@ -3,6 +3,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::Arc;
 
+use anyhow::{anyhow, Context, Result};
 use log::info;
 use regex::Regex;
 use skim::SkimItem;
@@ -18,7 +19,6 @@ use crate::constant_strings_paths::{OPENER_PATH, TUIS_PATH};
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::DeviceOpener;
 use crate::flagged::Flagged;
-use crate::fm_error::{FmError, FmResult};
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
 use crate::preview::{Directory, Preview};
@@ -89,7 +89,7 @@ impl Status {
         term: Arc<Term>,
         help: String,
         terminal: &str,
-    ) -> FmResult<Self> {
+    ) -> Result<Self> {
         let opener = load_opener(OPENER_PATH, terminal).unwrap_or_else(|_| {
             eprintln!("Couldn't read the opener config file at {OPENER_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/opener.yaml for an example. Using default.");
             info!("Couldn't read opener file at {OPENER_PATH}. Using default.");
@@ -170,7 +170,7 @@ impl Status {
     }
 
     /// Reset the view of every tab.
-    pub fn reset_tabs_view(&mut self) -> FmResult<()> {
+    pub fn reset_tabs_view(&mut self) -> Result<()> {
         for tab in self.tabs.iter_mut() {
             tab.refresh_view()?
         }
@@ -184,14 +184,14 @@ impl Status {
 
     /// Replace the tab content with the first result of skim.
     /// It calls skim, reads its output, then update the tab content.
-    pub fn skim_output_to_tab(&mut self) -> FmResult<()> {
+    pub fn skim_output_to_tab(&mut self) -> Result<()> {
         let skim = self.skimer.search_filename(
             self.selected_non_mut()
                 .selected()
-                .ok_or_else(|| FmError::custom("skim", "no selected file"))?
+                .context("skim: no selected file")?
                 .path
                 .to_str()
-                .ok_or_else(|| FmError::custom("skim", "skim error"))?,
+                .context("skim error")?,
         );
         let Some(output) = skim.first() else {return Ok(())};
         self._update_tab_from_skim_output(output)
@@ -200,28 +200,25 @@ impl Status {
     /// Replace the tab content with the first result of skim.
     /// It calls skim, reads its output, then update the tab content.
     /// The output is splited at `:` since we only care about the path, not the line number.
-    pub fn skim_line_output_to_tab(&mut self) -> FmResult<()> {
+    pub fn skim_line_output_to_tab(&mut self) -> Result<()> {
         let skim = self.skimer.search_line_in_file();
         let Some(output) = skim.first() else {return Ok(())};
         self._update_tab_from_skim_line_output(output)
     }
 
-    fn _update_tab_from_skim_line_output(
-        &mut self,
-        skim_output: &Arc<dyn SkimItem>,
-    ) -> FmResult<()> {
+    fn _update_tab_from_skim_line_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {
         let output_str = skim_output.output().to_string();
         let Some(filename) = output_str.split(':').next() else { return Ok(());};
         let path = fs::canonicalize(filename)?;
         self._replace_path_by_skim_output(path)
     }
 
-    fn _update_tab_from_skim_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> FmResult<()> {
+    fn _update_tab_from_skim_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {
         let path = fs::canonicalize(skim_output.output().to_string())?;
         self._replace_path_by_skim_output(path)
     }
 
-    fn _replace_path_by_skim_output(&mut self, path: std::path::PathBuf) -> FmResult<()> {
+    fn _replace_path_by_skim_output(&mut self, path: std::path::PathBuf) -> Result<()> {
         let tab = self.selected();
         if path.is_file() {
             let Some(parent) = path.parent() else { return Ok(()) };
@@ -249,25 +246,25 @@ impl Status {
     /// Execute a move or a copy of the flagged files to current directory.
     /// A progress bar is displayed (invisible for small files) and a notification
     /// is sent every time, even for 0 bytes files...
-    pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> FmResult<()> {
+    pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
         let sources = self.flagged.content.clone();
         let dest = self
             .selected_non_mut()
             .path_content_str()
-            .ok_or_else(|| FmError::custom("cut or copy", "unreadable path"))?;
+            .context("cut or copy: unreadable path")?;
         copy_move(cut_or_copy, sources, dest, self.term.clone())?;
         self.clear_flags_and_reset_view()
     }
 
     /// Empty the flagged files, reset the view of every tab.
-    pub fn clear_flags_and_reset_view(&mut self) -> FmResult<()> {
+    pub fn clear_flags_and_reset_view(&mut self) -> Result<()> {
         self.flagged.clear();
         self.reset_tabs_view()
     }
 
     /// Set the permissions of the flagged files according to a given permission.
     /// If the permission are invalid or if the user can't edit them, it may fail.
-    pub fn set_permissions<P>(path: P, permissions: u32) -> FmResult<()>
+    pub fn set_permissions<P>(path: P, permissions: u32) -> Result<()>
     where
         P: AsRef<Path>,
     {
@@ -296,11 +293,12 @@ impl Status {
     /// It's deprecated and is left mostly because I'm not sure I want
     /// tabs & panes... and I haven't fully decided yet.
     /// Since I'm lazy and don't want to write it twice, it's left here.
-    pub fn select_tab(&mut self, index: usize) -> FmResult<()> {
+    pub fn select_tab(&mut self, index: usize) -> Result<()> {
         if index >= self.tabs.len() {
-            Err(FmError::custom(
-                "select tab",
-                &format!("Only {} tabs. Can't select tab {}", self.tabs.len(), index),
+            Err(anyhow!(
+                "Only {} tabs. Can't select tab {}",
+                self.tabs.len(),
+                index
             ))
         } else {
             self.index = index;
@@ -345,7 +343,7 @@ impl Status {
     }
 
     /// Returns the sice of the terminal (width, height)
-    pub fn term_size(&self) -> FmResult<(usize, usize)> {
+    pub fn term_size(&self) -> Result<(usize, usize)> {
         Ok(self.term.term_size()?)
     }
 
@@ -357,7 +355,7 @@ impl Status {
     }
 
     /// Refresh the existing users.
-    pub fn refresh_users(&mut self) -> FmResult<()> {
+    pub fn refresh_users(&mut self) -> Result<()> {
         for tab in self.tabs.iter_mut() {
             let users_cache = unsafe { UsersCache::with_all_users() };
             tab.refresh_users(users_cache)?;
@@ -366,7 +364,7 @@ impl Status {
     }
 
     /// Drop the current tree, replace it with an empty one.
-    pub fn remove_tree(&mut self) -> FmResult<()> {
+    pub fn remove_tree(&mut self) -> Result<()> {
         let path = self.selected_non_mut().path_content.path.clone();
         let users_cache = &self.selected_non_mut().path_content.users_cache;
         self.selected().directory = Directory::empty(&path, users_cache)?;
@@ -374,16 +372,16 @@ impl Status {
     }
 
     /// Updates the encrypted devices
-    pub fn read_encrypted_devices(&mut self) -> FmResult<()> {
+    pub fn read_encrypted_devices(&mut self) -> Result<()> {
         self.encrypted_devices.update()?;
         Ok(())
     }
 
     /// Force a preview on the second pane
-    pub fn force_preview(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn force_preview(&mut self, colors: &Colors) -> Result<()> {
         let fileinfo = &self.tabs[0]
             .selected()
-            .ok_or_else(|| FmError::custom("force preview", "No file to select"))?;
+            .context("force preview: No file to select")?;
         let users_cache = &self.tabs[0].path_content.users_cache;
         self.tabs[0].preview =
             Preview::new(fileinfo, users_cache, self, colors).unwrap_or_default();
@@ -391,7 +389,7 @@ impl Status {
     }
 
     /// Set dual pane if the term is big enough
-    pub fn set_dual_pane_if_wide_enough(&mut self, width: usize) -> FmResult<()> {
+    pub fn set_dual_pane_if_wide_enough(&mut self, width: usize) -> Result<()> {
         if width < MIN_WIDTH_FOR_DUAL_PANE {
             self.select_tab(0)?;
             self.dual_pane = false;

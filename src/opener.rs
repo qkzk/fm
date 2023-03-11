@@ -3,6 +3,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use anyhow::{anyhow, Context, Result};
 use log::info;
 use serde_yaml;
 
@@ -12,7 +13,6 @@ use crate::constant_strings_paths::{
 };
 use crate::decompress::{decompress_gz, decompress_xz, decompress_zip};
 use crate::fileinfo::extract_extension;
-use crate::fm_error::{FmError, FmResult};
 
 fn find_it<P>(exe_name: P) -> Option<PathBuf>
 where
@@ -212,16 +212,15 @@ impl OpenerInfo {
         }
     }
 
-    fn internal(extension_kind: ExtensionKind) -> FmResult<Self> {
+    fn internal(extension_kind: ExtensionKind) -> Result<Self> {
         match extension_kind {
             ExtensionKind::Internal(internal) => Ok(Self {
                 external_program: None,
                 internal_variant: Some(internal),
                 use_term: false,
             }),
-            _ => Err(FmError::custom(
-                "internal",
-                &format!("unsupported extension_kind: {extension_kind:?}"),
+            _ => Err(anyhow!(
+                "internal: unsupported extension_kind: {extension_kind:?}"
             )),
         }
     }
@@ -268,9 +267,9 @@ impl Opener {
     /// It may fail if the program changed after reading the config file.
     /// It may also fail if the program can't handle this kind of files.
     /// This is quite a tricky method, there's many possible failures.
-    pub fn open(&self, filepath: &Path) -> FmResult<()> {
+    pub fn open(&self, filepath: &Path) -> Result<()> {
         if filepath.is_dir() {
-            return Err(FmError::custom("open", "Can't execute a directory"));
+            return Err(anyhow!("open! can't execute a directory"));
         }
         let extension = extract_extension(filepath);
         let open_info = self.get_opener(extension);
@@ -298,10 +297,10 @@ impl Opener {
         program: &str,
         use_term: bool,
         filepath: &std::path::Path,
-    ) -> FmResult<std::process::Child> {
+    ) -> Result<std::process::Child> {
         let strpath = filepath
             .to_str()
-            .ok_or_else(|| FmError::custom("open with", "Can't parse filepath to str"))?;
+            .context("open with: can't parse filepath to str")?;
         let args = vec![program, strpath];
         if use_term {
             self.open_terminal(args)
@@ -314,13 +313,13 @@ impl Opener {
         self.opener_association.update_from_file(yaml)
     }
 
-    fn open_directly(&self, mut args: Vec<&str>) -> FmResult<std::process::Child> {
+    fn open_directly(&self, mut args: Vec<&str>) -> Result<std::process::Child> {
         let executable = args.remove(0);
         execute_in_child(executable, &args)
     }
 
     // TODO: use terminal specific parameters instead of -e for all terminals
-    fn open_terminal(&self, mut args: Vec<&str>) -> FmResult<std::process::Child> {
+    fn open_terminal(&self, mut args: Vec<&str>) -> Result<std::process::Child> {
         args.insert(0, "-e");
         execute_in_child(&self.terminal, &args)
     }
@@ -333,7 +332,7 @@ impl Opener {
 
 /// Execute a command with options in a fork.
 /// Returns an handle to the child process.
-pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::Child> {
+pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> Result<std::process::Child> {
     info!("execute_in_child. executable: {exe}, arguments: {args:?}",);
     Ok(Command::new(exe).args(args).spawn()?)
 }
@@ -341,10 +340,7 @@ pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> FmResult<std::process::C
 /// Execute a command with options in a fork.
 /// Returns an handle to the child process.
 /// Branch stdin, stderr and stdout to /dev/null
-pub fn execute_in_child_without_output(
-    exe: &str,
-    args: &Vec<&str>,
-) -> FmResult<std::process::Child> {
+pub fn execute_in_child_without_output(exe: &str, args: &Vec<&str>) -> Result<std::process::Child> {
     info!("execute_in_child_without_output. executable: {exe}, arguments: {args:?}",);
     Ok(Command::new(exe)
         .args(args)
@@ -358,7 +354,7 @@ pub fn execute_in_child_without_output_with_path<P>(
     exe: &str,
     path: P,
     args: Option<&Vec<&str>>,
-) -> FmResult<std::process::Child>
+) -> Result<std::process::Child>
 where
     P: AsRef<Path>,
 {
@@ -380,7 +376,7 @@ where
 /// `Ok(stdout)` if the status code is 0
 /// or `Err(FmError::custom(..., ...))` otherwise.
 /// Branch stdin and stderr to /dev/null
-pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> FmResult<String> {
+pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> Result<String> {
     info!("execute_and_capture_output. executable: {exe}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)
@@ -392,9 +388,8 @@ pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> FmResult<Strin
     if output.status.success() {
         Ok(String::from_utf8(output.stdout)?)
     } else {
-        Err(FmError::custom(
-            "execute_and_capture_output",
-            "Command didn't finished correctly",
+        Err(anyhow!(
+            "execute_and_capture_output: command didn't finished correctly",
         ))
     }
 }
@@ -402,7 +397,7 @@ pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> FmResult<Strin
 /// Execute a command with options in a fork.
 /// Wait for termination and return either `Ok(stdout)`.
 /// Branch stdin and stderr to /dev/null
-pub fn execute_and_capture_output_without_check(exe: &str, args: &Vec<&str>) -> FmResult<String> {
+pub fn execute_and_capture_output_without_check(exe: &str, args: &Vec<&str>) -> Result<String> {
     info!("execute_and_capture_output_without_check. executable: {exe}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)
@@ -417,7 +412,7 @@ pub fn execute_and_capture_output_without_check(exe: &str, args: &Vec<&str>) -> 
 /// Returns the opener created from opener file with the given terminal
 /// application name.
 /// It may fail if the file can't be read.
-pub fn load_opener(path: &str, terminal: &str) -> FmResult<Opener> {
+pub fn load_opener(path: &str, terminal: &str) -> Result<Opener> {
     let mut opener = Opener::new(terminal);
     let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
     let yaml = serde_yaml::from_reader(file)?;

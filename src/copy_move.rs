@@ -3,21 +3,20 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
 
+use anyhow::Result;
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use log::info;
-// use notify_rust::Notification;
 use tuikit::prelude::{Attr, Color, Effect, Event, Term};
 
 use crate::fileinfo::human_size;
-use crate::fm_error::FmResult;
 use crate::opener::execute_in_child;
 
 fn setup(
     action: String,
     height: usize,
     width: usize,
-) -> FmResult<(InMemoryTerm, ProgressBar, fs_extra::dir::CopyOptions)> {
+) -> Result<(InMemoryTerm, ProgressBar, fs_extra::dir::CopyOptions)> {
     let in_mem = InMemoryTerm::new(height as u16, width as u16);
     let pb = ProgressBar::with_draw_target(
         Some(100),
@@ -93,7 +92,7 @@ pub fn copy_move(
     sources: Vec<PathBuf>,
     dest: &str,
     term: Arc<Term>,
-) -> FmResult<()> {
+) -> Result<()> {
     let c_term = term.clone();
     let (height, width) = term.term_size()?;
     let (in_mem, pb, options) = setup(copy_or_move.verb().to_owned(), height, width)?;
@@ -137,7 +136,7 @@ pub fn copy_move(
 
 /// Send a notification to the desktop.
 /// Requires "notify-send" to be installed.
-fn notify(text: &str) -> FmResult<()> {
+fn notify(text: &str) -> Result<()> {
     execute_in_child("notify-send", &vec![text])?;
     Ok(())
 }

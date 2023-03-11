@@ -2,7 +2,8 @@ use std::fmt::Display;
 use std::io::prelude::*;
 use std::io::Write;
 
-use crate::fm_error::FmResult;
+use anyhow::Result;
+
 use crate::impl_selectable_content;
 use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
 use flate2::Compression;
@@ -55,7 +56,7 @@ impl Default for Compresser {
 impl Compresser {
     /// Archive the files with tar and compress them with the selected method.
     /// The compression method is chosen by the user.
-    pub fn compress(&self, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+    pub fn compress(&self, files: Vec<std::path::PathBuf>) -> Result<()> {
         let Some(selected) = self.selected() else { return Ok(()) };
         match selected {
             CompressionMethod::DEFLATE => Self::compress_deflate("archive.tar.gz", files),
@@ -66,7 +67,7 @@ impl Compresser {
         }
     }
 
-    fn make_tar<W>(files: Vec<std::path::PathBuf>, mut archive: tar::Builder<W>) -> FmResult<()>
+    fn make_tar<W>(files: Vec<std::path::PathBuf>, mut archive: tar::Builder<W>) -> Result<()>
     where
         W: Write,
     {
@@ -80,7 +81,7 @@ impl Compresser {
         Ok(())
     }
 
-    fn compress_gzip(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+    fn compress_gzip(archive_name: &str, files: Vec<std::path::PathBuf>) -> Result<()> {
         let compressed_file = std::fs::File::create(archive_name)?;
         let mut encoder = GzEncoder::new(compressed_file, Compression::default());
 
@@ -93,7 +94,7 @@ impl Compresser {
         Ok(())
     }
 
-    fn compress_deflate(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+    fn compress_deflate(archive_name: &str, files: Vec<std::path::PathBuf>) -> Result<()> {
         let compressed_file = std::fs::File::create(archive_name)?;
         let mut encoder = DeflateEncoder::new(compressed_file, Compression::default());
 
@@ -106,7 +107,7 @@ impl Compresser {
         Ok(())
     }
 
-    fn compress_zlib(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+    fn compress_zlib(archive_name: &str, files: Vec<std::path::PathBuf>) -> Result<()> {
         let compressed_file = std::fs::File::create(archive_name)?;
         let mut encoder = ZlibEncoder::new(compressed_file, Compression::default());
 
@@ -119,7 +120,7 @@ impl Compresser {
         Ok(())
     }
 
-    fn compress_lzma(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+    fn compress_lzma(archive_name: &str, files: Vec<std::path::PathBuf>) -> Result<()> {
         let compressed_file = std::fs::File::create(archive_name)?;
         let mut encoder = LzmaWriter::new_compressor(compressed_file, 6)?;
 
@@ -132,7 +133,7 @@ impl Compresser {
         Ok(())
     }
 
-    fn compress_zip(archive_name: &str, files: Vec<std::path::PathBuf>) -> FmResult<()> {
+    fn compress_zip(archive_name: &str, files: Vec<std::path::PathBuf>) -> Result<()> {
         let archive = std::fs::File::create(archive_name).unwrap();
         let mut zip = zip::ZipWriter::new(archive);
         for file in files.iter() {

@@ -2,18 +2,19 @@ use std::io::BufRead;
 use std::path::Path;
 use std::sync::Arc;
 
+use anyhow::{Context, Result};
 use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 use users::{get_current_uid, get_user_by_uid};
 
 use crate::event_dispatch::EventDispatcher;
 use crate::fileinfo::human_size;
-use crate::fm_error::{FmError, FmResult};
+// use crate::fm_error::{FmError, FmResult};
 use crate::status::Status;
 use crate::term_manager::{Display, EventReader};
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
-pub fn init_term() -> FmResult<Term> {
+pub fn init_term() -> Result<Term> {
     let term: Term<()> = Term::new()?;
     term.enable_mouse_support()?;
     Ok(term)
@@ -90,21 +91,20 @@ where
 
 /// Extract a filename from a path reference.
 /// May fail if the filename isn't utf-8 compliant.
-pub fn filename_from_path(path: &std::path::Path) -> FmResult<&str> {
+pub fn filename_from_path(path: &std::path::Path) -> Result<&str> {
     path.file_name()
-        .ok_or_else(|| FmError::custom("filename from path", "couldn't read the filename"))?
+        .context("couldn't read the filename")?
         .to_str()
-        .ok_or_else(|| FmError::custom("filename from path", "couldn't parse the filename"))
+        .context("couldn't parse the filename")
 }
 
 /// Get the current username as a String.
-pub fn current_username() -> FmResult<String> {
-    let user = get_user_by_uid(get_current_uid())
-        .ok_or_else(|| FmError::custom("username", "couldn't read username"))?;
+pub fn current_username() -> Result<String> {
+    let user = get_user_by_uid(get_current_uid()).context("Couldn't read username")?;
     Ok(user
         .name()
         .to_str()
-        .ok_or_else(|| FmError::custom("username", "couldn't read username"))?
+        .context("Couldn't read username")?
         .to_owned())
 }
 

@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
 
+use anyhow::Result;
 use tuikit::prelude::{from_keyname, Key};
 
 use crate::action_map::ActionMap;
-use crate::fm_error::FmResult;
 
 /// Holds an hashmap between keys and actions.
 #[derive(Clone, Debug)]
@@ -125,7 +125,7 @@ impl Bindings {
     /// Update the binds from a config file.
     /// It may fail (and leave keybinding intact) if the file isn't formated properly.
     /// An unknown or poorly formated key will be ignored.
-    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
+    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> Result<()> {
         for yaml_key in yaml.as_mapping().unwrap().keys() {
             let Some(key_string) = yaml_key.as_str() else { return Ok(()) };
             let Some(keymap) = from_keyname(key_string) else {return Ok(())};

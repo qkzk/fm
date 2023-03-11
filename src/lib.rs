@@ -15,7 +15,6 @@ pub mod event_exec;
 pub mod fileinfo;
 pub mod filter;
 pub mod flagged;
-pub mod fm_error;
 pub mod git;
 pub mod help;
 pub mod input;

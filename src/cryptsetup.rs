@@ -1,10 +1,10 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
+use anyhow::{anyhow, Context, Result};
 use log::info;
 use sysinfo::{DiskExt, System, SystemExt};
 
-use crate::fm_error::{FmError, FmResult};
 use crate::impl_selectable_content;
 use crate::utils::current_username;
 
@@ -49,17 +49,17 @@ impl PasswordHolder {
     }
 
     /// Reads the cryptsetup password
-    fn cryptsetup(&self) -> FmResult<String> {
+    fn cryptsetup(&self) -> Result<String> {
         self.cryptsetup
             .clone()
-            .ok_or_else(|| FmError::custom("PasswordHolder", "cryptsetup password isn't set"))
+            .context("PasswordHolder: cryptsetup password isn't set")
     }
 
     /// Reads the sudo password
-    fn sudo(&self) -> FmResult<String> {
+    fn sudo(&self) -> Result<String> {
         self.sudo
             .clone()
-            .ok_or_else(|| FmError::custom("PasswordHolder", "sudo password isn't set"))
+            .context("PasswordHolder: sudo password isn't set")
     }
 
     fn has_sudo(&self) -> bool {
@@ -82,7 +82,7 @@ impl PasswordHolder {
 /// lsblk -l -o FSTYPE,PATH,UUID,FSVER,MOUNTPOINT,PARTLABEL
 /// ```
 /// as a String.
-fn get_devices() -> FmResult<String> {
+fn get_devices() -> Result<String> {
     let output = Command::new("lsblk")
         .args(&vec!["-l", "-o", "FSTYPE,PATH,UUID,FSVER,MOUNTPOINT"])
         .stdin(Stdio::null())
@@ -103,7 +103,7 @@ fn filter_crypto_devices_lines(output: String, key: &str) -> Vec<String> {
 
 /// run a sudo command requiring a password (generally to establish the password.)
 /// Since I can't send 2 passwords at a time, it will only work with the sudo password
-fn sudo_password(args: &[String], password: &str) -> FmResult<(bool, String, String)> {
+fn sudo_password(args: &[String], password: &str) -> Result<(bool, String, String)> {
     info!("sudo {:?}", args);
     let mut child = Command::new("sudo")
         .args(args)
@@ -115,7 +115,7 @@ fn sudo_password(args: &[String], password: &str) -> FmResult<(bool, String, Str
     let child_stdin = child
         .stdin
         .as_mut()
-        .ok_or_else(|| FmError::custom("run_privileged_command", "couldn't open child stdin"))?;
+        .context("run_privileged_command: couldn't open child stdin")?;
     child_stdin.write_all(format!("{password}\n").as_bytes())?;
 
     let output = child.wait_with_output()?;
@@ -128,7 +128,7 @@ fn sudo_password(args: &[String], password: &str) -> FmResult<(bool, String, Str
 
 /// Run a passwordless sudo command.
 /// Returns stdout & stderr
-fn sudo(args: &[String]) -> FmResult<(bool, String, String)> {
+fn sudo(args: &[String]) -> Result<(bool, String, String)> {
     info!("sudo {:?}", args);
     let child = Command::new("sudo")
         .args(args)
@@ -158,13 +158,13 @@ pub struct CryptoDevice {
 
 impl CryptoDevice {
     /// Parse the output of a lsblk formated line into a struct
-    fn from_line(line: &str) -> FmResult<Self> {
+    fn from_line(line: &str) -> Result<Self> {
         let mut crypo_device = Self::default();
         crypo_device.update_from_line(line)?;
         Ok(crypo_device)
     }
 
-    fn update_from_line(&mut self, line: &str) -> FmResult<()> {
+    fn update_from_line(&mut self, line: &str) -> Result<()> {
         let strings = line.split_whitespace();
         let mut params: Vec<Option<String>> = vec![None; 5];
         for (count, param) in strings.enumerate() {
@@ -172,16 +172,16 @@ impl CryptoDevice {
         }
         self.fs_type = params
             .remove(0)
-            .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?;
+            .context("CryptoDevice: parameter shouldn't be None")?;
         self.path = params
             .remove(0)
-            .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?;
+            .context("CryptoDevice: parameter shouldn't be None")?;
         self.uuid = params
             .remove(0)
-            .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?;
+            .context("CryptoDevice: parameter shouldn't be None")?;
         self.fs_ver = params
             .remove(0)
-            .ok_or_else(|| FmError::custom("CryptoDevice", "parameter shouldn't be None"))?;
+            .context("CryptoDevice: parameter shouldn't be None")?;
         self.mountpoints = params.remove(0);
         Ok(())
     }
@@ -265,7 +265,7 @@ impl CryptoDevice {
         self.mount_point().is_some()
     }
 
-    fn set_device_name(&mut self) -> FmResult<()> {
+    fn set_device_name(&mut self) -> Result<()> {
         let child = Command::new("lsblk")
             .arg("-l")
             .arg("-n")
@@ -285,7 +285,7 @@ impl CryptoDevice {
             self.device_name = Some(
                 s.split_whitespace()
                     .next()
-                    .ok_or_else(|| FmError::custom("mapped point", "shouldn't be empty"))?
+                    .context("mapped point: shouldn't be empty")?
                     .to_owned(),
             );
         } else {
@@ -295,7 +295,7 @@ impl CryptoDevice {
     }
 
     /// String representation of the device.
-    pub fn as_string(&self) -> FmResult<String> {
+    pub fn as_string(&self) -> Result<String> {
         Ok(if let Some(mount_point) = self.mount_point() {
             format!("{} -> {}", self.path, mount_point)
         } else {
@@ -303,13 +303,10 @@ impl CryptoDevice {
         })
     }
 
-    fn open_mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> FmResult<bool> {
+    fn open_mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
         self.set_device_name()?;
         if self.is_mounted() {
-            Err(FmError::custom(
-                "luks open mount",
-                "device is already mounted",
-            ))
+            Err(anyhow!("luks open mount: device is already mounted"))
         } else {
             // sudo
             let (success, _, _) = sudo_password(
@@ -345,7 +342,7 @@ impl CryptoDevice {
         }
     }
 
-    fn umount_close(&mut self, username: &str, passwords: &mut PasswordHolder) -> FmResult<bool> {
+    fn umount_close(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
         self.set_device_name()?;
         // sudo
         let (success, _, _) = sudo_password(
@@ -380,7 +377,7 @@ pub struct Device {
 
 impl Device {
     /// Reads a device from  a line of text from cryptsetup.
-    pub fn from_line(line: &str) -> FmResult<Self> {
+    pub fn from_line(line: &str) -> Result<Self> {
         Ok(Self {
             cryptdevice: CryptoDevice::from_line(line)?,
             password_holder: PasswordHolder::default(),
@@ -399,7 +396,7 @@ pub struct DeviceOpener {
 
 impl DeviceOpener {
     /// Updates itself from the output of cryptsetup.
-    pub fn update(&mut self) -> FmResult<()> {
+    pub fn update(&mut self) -> Result<()> {
         self.content = filter_crypto_devices_lines(get_devices()?, "crypto")
             .iter()
             .map(|line| Device::from_line(line))
@@ -420,7 +417,7 @@ impl DeviceOpener {
     }
 
     /// Open and mount the selected device.
-    pub fn mount_selected(&mut self) -> FmResult<()> {
+    pub fn mount_selected(&mut self) -> Result<()> {
         let username = current_username()?;
         let mut passwords = self.content[self.index].password_holder.clone();
         let success = self.content[self.index]
@@ -435,7 +432,7 @@ impl DeviceOpener {
     }
 
     /// Unmount and close the selected device.
-    pub fn umount_selected(&mut self) -> FmResult<()> {
+    pub fn umount_selected(&mut self) -> Result<()> {
         let username = current_username()?;
         let mut passwords = self.content[self.index].password_holder.clone();
         let success = self.content[self.index]
@@ -449,7 +446,7 @@ impl DeviceOpener {
         Ok(())
     }
 
-    fn reset_faillock() -> FmResult<()> {
+    fn reset_faillock() -> Result<()> {
         Command::new("faillock")
             .arg("--user")
             .arg(current_username()?)
@@ -461,7 +458,7 @@ impl DeviceOpener {
         Ok(())
     }
 
-    fn drop_sudo() -> FmResult<()> {
+    fn drop_sudo() -> Result<()> {
         Command::new("sudo")
             .arg("-k")
             .stdin(Stdio::null())

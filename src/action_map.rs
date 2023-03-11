@@ -1,8 +1,8 @@
+use anyhow::Result;
 use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::config::Colors;
 use crate::event_exec::EventExec;
-use crate::fm_error::FmResult;
 use crate::status::Status;
 
 /// Different kind of action which can be mapped to a key.
@@ -96,7 +96,7 @@ pub enum ActionMap {
 impl ActionMap {
     /// Makes the junction between `Actions` and `Events`.
     /// Every Action links to a different `EventExec` method.
-    pub fn matcher(&self, status: &mut Status, colors: &Colors) -> FmResult<()> {
+    pub fn matcher(&self, status: &mut Status, colors: &Colors) -> Result<()> {
         let current_tab = status.selected();
         match *self {
             ActionMap::Back => EventExec::event_back(status, colors),

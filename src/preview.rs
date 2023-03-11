@@ -8,6 +8,7 @@ use std::panic;
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
 
+use anyhow::{anyhow, Context, Result};
 use content_inspector::{inspect, ContentType};
 use log::info;
 use pdf_extract;
@@ -23,7 +24,6 @@ use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
-use crate::fm_error::{FmError, FmResult};
 use crate::opener::execute_and_capture_output_without_check;
 use crate::status::Status;
 use crate::tree::{ColoredString, Tree};
@@ -67,7 +67,7 @@ impl Preview {
         users_cache: &UsersCache,
         status: &Status,
         colors: &Colors,
-    ) -> FmResult<Self> {
+    ) -> Result<Self> {
         match file_info.file_kind {
             FileKind::Directory => Ok(Self::Directory(Directory::new(
                 &file_info.path,
@@ -90,10 +90,7 @@ impl Preview {
                     None => Self::preview_text_or_binary(file_info),
                 },
             },
-            _ => Err(FmError::custom(
-                "new preview",
-                "Can't preview this filekind",
-            )),
+            _ => Err(anyhow!("new preview: can't preview this filekind",)),
         }
     }
 
@@ -116,7 +113,7 @@ impl Preview {
         })
     }
 
-    fn preview_text_or_binary(file_info: &FileInfo) -> FmResult<Self> {
+    fn preview_text_or_binary(file_info: &FileInfo) -> Result<Self> {
         let mut file = std::fs::File::open(file_info.path.clone())?;
         let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
         if Self::is_binary(file_info, &mut file, &mut buffer) {
@@ -133,11 +130,11 @@ impl Preview {
     }
 
     /// Returns mediainfo of a media file.
-    pub fn mediainfo(path: &Path) -> FmResult<Self> {
+    pub fn mediainfo(path: &Path) -> Result<Self> {
         Ok(Self::Media(MediaContent::new(path)?))
     }
 
-    pub fn diff(first_path: &str, second_path: &str) -> FmResult<Self> {
+    pub fn diff(first_path: &str, second_path: &str) -> Result<Self> {
         Ok(Self::Diff(Diff::new(first_path, second_path)?))
     }
 
@@ -207,7 +204,7 @@ impl TextContent {
         }
     }
 
-    fn from_file(path: &Path) -> FmResult<Self> {
+    fn from_file(path: &Path) -> Result<Self> {
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
         let content: Vec<String> = reader
             .lines()
@@ -241,7 +238,7 @@ impl HLContent {
     /// It may file if the file isn't properly formatted or the extension
     /// is wrong (ie. python content with .c extension).
     /// ATM only Solarized (dark) theme is supported.
-    fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> FmResult<Self> {
+    fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
         let reader = std::io::BufReader::new(std::fs::File::open(path)?);
         let raw_content: Vec<String> = reader
             .lines()
@@ -264,7 +261,7 @@ impl HLContent {
         raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
-    ) -> FmResult<Vec<Vec<SyntaxedString>>> {
+    ) -> Result<Vec<Vec<SyntaxedString>>> {
         let mut monokai = BufReader::new(Cursor::new(include_bytes!(
             "../assets/themes/Monokai_Extended.tmTheme"
         )));
@@ -315,7 +312,7 @@ impl SyntaxedString {
         canvas: &mut dyn tuikit::canvas::Canvas,
         row: usize,
         offset: usize,
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         canvas.print_with_attr(row, self.col + offset + 2, &self.content, self.attr)?;
         Ok(())
     }
@@ -336,7 +333,7 @@ impl BinaryContent {
     const LINE_WIDTH: usize = 16;
     const SIZE_LIMIT: usize = 1048576;
 
-    fn new(file_info: &FileInfo) -> FmResult<Self> {
+    fn new(file_info: &FileInfo) -> Result<Self> {
         let mut reader = BufReader::new(std::fs::File::open(file_info.path.clone())?);
         let mut buffer = [0; Self::LINE_WIDTH];
         let mut content: Vec<Line> = vec![];
@@ -452,7 +449,7 @@ pub struct ZipContent {
 }
 
 impl ZipContent {
-    fn new(path: &Path) -> FmResult<Self> {
+    fn new(path: &Path) -> Result<Self> {
         let content = list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]);
 
         Ok(Self {
@@ -476,7 +473,7 @@ pub struct MediaContent {
 }
 
 impl MediaContent {
-    fn new(path: &Path) -> FmResult<Self> {
+    fn new(path: &Path) -> Result<Self> {
         let content: Vec<String>;
         if let Ok(output) = std::process::Command::new("mediainfo").arg(path).output() {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
@@ -507,11 +504,11 @@ pub struct Ueberzug {
 }
 
 impl Ueberzug {
-    fn image(img_path: &Path) -> FmResult<Self> {
+    fn image(img_path: &Path) -> Result<Self> {
         let filename = filename_from_path(img_path)?.to_owned();
         let path = img_path
             .to_str()
-            .ok_or_else(|| FmError::custom("ueberzug", "Couldn't parse the path into a string"))?
+            .context("ueberzug: couldn't parse the path into a string")?
             .to_owned();
         Ok(Self {
             path,
@@ -520,7 +517,7 @@ impl Ueberzug {
         })
     }
 
-    fn video_thumbnail(video_path: &Path) -> FmResult<Self> {
+    fn video_thumbnail(video_path: &Path) -> Result<Self> {
         Self::make_thumbnail(video_path)?;
         Ok(Self {
             path: THUMBNAIL_PATH.to_owned(),
@@ -529,10 +526,10 @@ impl Ueberzug {
         })
     }
 
-    fn make_thumbnail(video_path: &Path) -> FmResult<()> {
-        let path_str = video_path.to_str().ok_or_else(|| {
-            FmError::custom("make_thumbnail", "Couldn't parse the path into a string")
-        })?;
+    fn make_thumbnail(video_path: &Path) -> Result<()> {
+        let path_str = video_path
+            .to_str()
+            .context("make_thumbnail: couldn't parse the path into a string")?;
         let output = std::process::Command::new("ffmpeg")
             .args([
                 "-i",
@@ -593,7 +590,7 @@ impl Directory {
         filter_kind: &FilterKind,
         show_hidden: bool,
         max_depth: Option<usize>,
-    ) -> FmResult<Self> {
+    ) -> Result<Self> {
         let max_depth = match max_depth {
             Some(max_depth) => max_depth,
             None => Tree::MAX_DEPTH,
@@ -618,7 +615,7 @@ impl Directory {
     }
 
     /// Creates an empty directory preview.
-    pub fn empty(path: &Path, users_cache: &UsersCache) -> FmResult<Self> {
+    pub fn empty(path: &Path, users_cache: &UsersCache) -> Result<Self> {
         Ok(Self {
             tree: Tree::empty(path, users_cache)?,
             len: 0,
@@ -646,7 +643,7 @@ impl Directory {
     }
 
     /// Select the root node and reset the view.
-    pub fn select_root(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn select_root(&mut self, colors: &Colors) -> Result<()> {
         self.tree.select_root();
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
@@ -659,7 +656,7 @@ impl Directory {
 
     /// Select the "next" element of the tree if any.
     /// This is the element immediatly below the current one.
-    pub fn select_next(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn select_next(&mut self, colors: &Colors) -> Result<()> {
         if self.selected_index + 1 < self.content.len() {
             self.selected_index += 1;
         }
@@ -668,7 +665,7 @@ impl Directory {
 
     /// Select the previous sibling if any.
     /// This is the element immediatly below the current one.
-    pub fn select_prev(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn select_prev(&mut self, colors: &Colors) -> Result<()> {
         if self.selected_index > 0 {
             self.selected_index -= 1;
         }
@@ -676,7 +673,7 @@ impl Directory {
     }
 
     /// Move up 10 times.
-    pub fn page_up(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn page_up(&mut self, colors: &Colors) -> Result<()> {
         if self.selected_index > 10 {
             self.selected_index -= 10;
         } else {
@@ -686,7 +683,7 @@ impl Directory {
     }
 
     /// Move down 10 times
-    pub fn page_down(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn page_down(&mut self, colors: &Colors) -> Result<()> {
         self.selected_index += 10;
         if self.selected_index >= self.content.len() {
             self.selected_index = self.content.len() - 1;
@@ -695,7 +692,7 @@ impl Directory {
     }
 
     /// Update the position of the selected element from its index.
-    pub fn update_tree_position_from_index(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn update_tree_position_from_index(&mut self, colors: &Colors) -> Result<()> {
         self.tree.position = self.tree.position_from_index(self.selected_index);
         let (_, _, node) = self.tree.select_from_position()?;
         self.tree.current_node = node;
@@ -704,21 +701,21 @@ impl Directory {
     }
 
     /// Select the first child, if any.
-    pub fn select_first_child(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn select_first_child(&mut self, colors: &Colors) -> Result<()> {
         self.tree.select_first_child()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
 
     /// Select the parent of current node.
-    pub fn select_parent(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn select_parent(&mut self, colors: &Colors) -> Result<()> {
         self.tree.select_parent()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
     }
 
     /// Select the last leaf of the tree (ie the last line.)
-    pub fn go_to_bottom_leaf(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn go_to_bottom_leaf(&mut self, colors: &Colors) -> Result<()> {
         self.tree.go_to_bottom_leaf()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
         Ok(())
@@ -755,7 +752,7 @@ pub struct Diff {
 }
 
 impl Diff {
-    pub fn new(first_path: &str, second_path: &str) -> FmResult<Self> {
+    pub fn new(first_path: &str, second_path: &str) -> Result<Self> {
         let content: Vec<String> =
             execute_and_capture_output_without_check("diff", &vec![first_path, second_path])?
                 .lines()

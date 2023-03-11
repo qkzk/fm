@@ -1,6 +1,6 @@
+use anyhow::Result;
 use strfmt::strfmt;
 
-use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
 
 /// Help message to be displayed when help key is pressed.
@@ -112,7 +112,7 @@ impl Help {
     /// Creates an Help instance from keybindings.
     /// If multiple keybindings are bound to the same action, the last one
     /// is displayed.
-    pub fn from_keybindings(binds: &Bindings) -> FmResult<Self> {
+    pub fn from_keybindings(binds: &Bindings) -> Result<Self> {
         let help = strfmt(HELP_TO_FORMAT, &binds.keybind_reversed())?;
         Ok(Self { help })
     }

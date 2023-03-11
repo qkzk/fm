@@ -4,12 +4,10 @@
 // Copied from https://github.com/9ary/gitprompt-rs/blob/master/src/main.rs
 // Couldn't use without forking and I'm lazy.
 
-use std::error::Error;
+use anyhow::{anyhow, Context, Result};
 use std::fmt::Write as _;
 use std::path::Path;
 use std::process;
-
-use crate::fm_error::{FmError, FmResult};
 
 struct GitStatus {
     branch: Option<String>,
@@ -79,7 +77,7 @@ fn parse_porcelain2(data: String) -> Option<GitStatus> {
 
 /// Returns a string representation of the git status of this path.
 /// Will return an empty string if we're not in a git repository.
-pub fn git(path: &Path) -> Result<String, Box<dyn Error>> {
+pub fn git(path: &Path) -> Result<String> {
     if std::env::set_current_dir(path).is_err() {
         // The path may not exist. It should never happen.
         return Ok("".to_owned());
@@ -101,9 +99,9 @@ pub fn git(path: &Path) -> Result<String, Box<dyn Error>> {
     }
     let status = String::from_utf8(output.stdout)
         .ok()
-        .ok_or("Invalid UTF-8 while decoding Git output")?;
+        .context("Invalid UTF-8 while decoding Git output")?;
 
-    let status = parse_porcelain2(status).ok_or("Error while parsing Git output")?;
+    let status = parse_porcelain2(status).context("Error while parsing Git output")?;
 
     let mut git_string = String::new();
 
@@ -150,7 +148,7 @@ pub fn git(path: &Path) -> Result<String, Box<dyn Error>> {
 
 /// Returns the git root.
 /// Returns an error outside of a git repository.
-pub fn git_root() -> FmResult<String> {
+pub fn git_root() -> Result<String> {
     let output = process::Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
         .stdin(process::Stdio::null())
@@ -159,7 +157,7 @@ pub fn git_root() -> FmResult<String> {
 
     if !output.status.success() {
         // We're most likely not in a Git repo
-        return Err(FmError::custom("git root", "git command returned an error"));
+        return Err(anyhow!("git root: git command returned an error"));
     }
     Ok(String::from_utf8(output.stdout)?.trim().to_owned())
 }

@@ -2,6 +2,7 @@ use std::cmp::min;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::{Context, Result};
 use log::info;
 use tuikit::attr::*;
 use tuikit::event::Event;
@@ -17,7 +18,6 @@ use crate::constant_strings_paths::{
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
-use crate::fm_error::{FmError, FmResult};
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::preview::{Preview, TextKind, Window};
 use crate::selectable_content::SelectableContent;
@@ -76,7 +76,7 @@ impl EventReader {
 
     /// Returns the events as they're received. Wait indefinitely for a new one.
     /// We should spend most of the application life here, doing nothing :)
-    pub fn poll_event(&self) -> FmResult<Event> {
+    pub fn poll_event(&self) -> Result<Event> {
         Ok(self.term.poll_event()?)
     }
 }
@@ -143,7 +143,7 @@ impl<'a> WinMain<'a> {
         }
     }
 
-    fn preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let tab = &self.status.tabs[0];
         let (_, height) = canvas.size()?;
         self.preview(tab, &tab.preview.window_for_second_pane(height), canvas)?;
@@ -157,11 +157,11 @@ impl<'a> WinMain<'a> {
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
     /// Returns the result of the number of printed chars.
-    fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> Result<()> {
         draw_colored_strings(0, 0, self.create_first_row(tab, disk_space)?, canvas)
     }
 
-    fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<usize> {
+    fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<usize> {
         match tab.mode {
             Mode::Normal => {
                 if !status.display_full {
@@ -182,7 +182,7 @@ impl<'a> WinMain<'a> {
         }
     }
 
-    fn second_line_detailed(&self, file: &FileInfo, canvas: &mut dyn Canvas) -> FmResult<usize> {
+    fn second_line_detailed(&self, file: &FileInfo, canvas: &mut dyn Canvas) -> Result<usize> {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
         let mut attr = fileinfo_attr(file, self.colors);
@@ -190,7 +190,7 @@ impl<'a> WinMain<'a> {
         Ok(canvas.print_with_attr(1, 0, &file.format(owner_size, group_size)?, attr)?)
     }
 
-    fn second_line_simple(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<usize> {
+    fn second_line_simple(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<usize> {
         Ok(canvas.print_with_attr(
             1,
             0,
@@ -199,7 +199,7 @@ impl<'a> WinMain<'a> {
         )?)
     }
 
-    fn normal_first_row(&self, disk_space: &str) -> FmResult<Vec<String>> {
+    fn normal_first_row(&self, disk_space: &str) -> Result<Vec<String>> {
         Ok(vec![
             format!("{} ", shorten_path(&self.tab.path_content.path, None)?),
             format!("{} files ", self.tab.path_content.true_len()),
@@ -242,7 +242,7 @@ impl<'a> WinMain<'a> {
         }
     }
 
-    fn create_first_row(&self, tab: &Tab, disk_space: &str) -> FmResult<Vec<String>> {
+    fn create_first_row(&self, tab: &Tab, disk_space: &str) -> Result<Vec<String>> {
         let first_row = match tab.mode {
             Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
             Mode::Preview => match &tab.preview {
@@ -268,7 +268,7 @@ impl<'a> WinMain<'a> {
     /// We reverse the attributes of the selected one, underline the flagged files.
     /// When we display a simpler version, the second line is used to display the
     /// metadata of the selected file.
-    fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         let len = tab.path_content.content.len();
         let group_size: usize;
         let owner_size: usize;
@@ -304,7 +304,7 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         let line_number_width = 3;
 
         let (_, height) = canvas.size()?;
@@ -326,7 +326,7 @@ impl<'a> WinMain<'a> {
         row_position_in_canvas: usize,
         line_number_to_print: usize,
         canvas: &mut dyn Canvas,
-    ) -> FmResult<usize> {
+    ) -> Result<usize> {
         Ok(canvas.print_with_attr(
             row_position_in_canvas,
             0,
@@ -342,7 +342,7 @@ impl<'a> WinMain<'a> {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&self, tab: &Tab, window: &ContentWindow, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn preview(&self, tab: &Tab, window: &ContentWindow, canvas: &mut dyn Canvas) -> Result<()> {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
         match &tab.preview {
@@ -459,11 +459,11 @@ impl<'a> WinSecondary<'a> {
         }
     }
 
-    fn first_line(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn first_line(&self, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         draw_colored_strings(0, 0, self.create_first_row(tab)?, canvas)
     }
 
-    fn create_first_row(&self, tab: &Tab) -> FmResult<Vec<String>> {
+    fn create_first_row(&self, tab: &Tab) -> Result<Vec<String>> {
         let first_row = match tab.mode {
             Mode::NeedConfirmation(confirmed_action) => {
                 vec![format!("{confirmed_action}"), " (y/n)".to_owned()]
@@ -484,10 +484,7 @@ impl<'a> WinSecondary<'a> {
                     completion_strings.push(completion.to_owned())
                 }
                 if let InputCompleted::Exec = mode {
-                    let selected_path = &tab
-                        .selected()
-                        .ok_or_else(|| FmError::custom("create_first_row", "can't parse path"))?
-                        .path;
+                    let selected_path = &tab.selected().context("can't parse path")?.path;
                     let selected_path = format!(" {}", selected_path.display());
 
                     completion_strings.push(selected_path);
@@ -506,7 +503,7 @@ impl<'a> WinSecondary<'a> {
 
     /// Display the possible completion items. The currently selected one is
     /// reversed.
-    fn completion(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn completion(&self, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
         for (row, candidate) in tab.completion.proposals.iter().enumerate() {
             let mut attr = Attr::default();
@@ -518,7 +515,7 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
     /// Display a cursor in the top row, at a correct column.
-    fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         match tab.mode {
             Mode::Normal
             | Mode::Tree
@@ -552,7 +549,7 @@ impl<'a> WinSecondary<'a> {
         &self,
         canvas: &mut dyn Canvas,
         selectable: &impl SelectableContent<PathBuf>,
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         canvas.print(0, 0, "Go to...")?;
         for (row, path, attr) in enumerated_colored_iter!(selectable) {
             let mut attr = *attr;
@@ -562,8 +559,7 @@ impl<'a> WinSecondary<'a> {
             let _ = canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                path.to_str()
-                    .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
+                path.to_str().context("Unreadable filename")?,
                 attr,
             );
         }
@@ -574,7 +570,7 @@ impl<'a> WinSecondary<'a> {
         &self,
         canvas: &mut dyn Canvas,
         selectable: &impl SelectableContent<String>,
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         canvas.print(0, 0, "Action...")?;
         for (row, text, attr) in enumerated_colored_iter!(selectable) {
             let mut attr = *attr;
@@ -590,7 +586,7 @@ impl<'a> WinSecondary<'a> {
         &self,
         canvas: &mut dyn Canvas,
         selectable: &impl SelectableContent<TrashInfo>,
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         canvas.print(
             1,
             0,
@@ -615,7 +611,7 @@ impl<'a> WinSecondary<'a> {
         &self,
         canvas: &mut dyn Canvas,
         selectable: &impl SelectableContent<CompressionMethod>,
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         canvas.print_with_attr(
             1,
             0,
@@ -638,7 +634,7 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn marks(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn marks(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
 
         for ((row, line), attr) in std::iter::zip(
@@ -655,7 +651,7 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn shell_menu(&self, status: &Status, canvas: &mut dyn Canvas) -> FmResult<()> {
+    fn shell_menu(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
 
         let tab = status.selected_non_mut();
@@ -674,12 +670,7 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn encrypted_devices(
-        &self,
-        status: &Status,
-        tab: &Tab,
-        canvas: &mut dyn Canvas,
-    ) -> FmResult<()> {
+    fn encrypted_devices(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.print_with_attr(2, 3, "m: mount    --   u: unmount", Self::ATTR_YELLOW)?;
         for (i, device) in status.encrypted_devices.content.iter().enumerate() {
             let row = calc_line_row(i, &tab.window) + 2;
@@ -710,7 +701,7 @@ impl<'a> WinSecondary<'a> {
         tab: &Tab,
         confirmed_mode: NeedConfirmation,
         canvas: &mut dyn Canvas,
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         info!("confirmed action: {:?}", confirmed_mode);
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => {
@@ -728,8 +719,7 @@ impl<'a> WinSecondary<'a> {
                     canvas.print_with_attr(
                         row + ContentWindow::WINDOW_MARGIN_TOP + 2,
                         4,
-                        path.to_str()
-                            .ok_or_else(|| FmError::custom("display", "Unreadable filename"))?,
+                        path.to_str().context("Unreadable filename")?,
                         Attr::default(),
                     )?;
                 }
@@ -776,11 +766,11 @@ impl Display {
     /// Used to force a display of the cursor before leaving the application.
     /// Most of the times we don't need a cursor and it's hidden. We have to
     /// do it unless the shell won't display a cursor anymore.
-    pub fn show_cursor(&self) -> FmResult<()> {
+    pub fn show_cursor(&self) -> Result<()> {
         Ok(self.term.show_cursor(true)?)
     }
 
-    fn hide_cursor(&self) -> FmResult<()> {
+    fn hide_cursor(&self) -> Result<()> {
         self.term.set_cursor(0, 0)?;
         Ok(self.term.show_cursor(false)?)
     }
@@ -802,7 +792,7 @@ impl Display {
     /// The preview in preview mode.
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
-    pub fn display_all(&mut self, status: &Status, colors: &Colors) -> FmResult<()> {
+    pub fn display_all(&mut self, status: &Status, colors: &Colors) -> Result<()> {
         self.hide_cursor()?;
         self.term.clear()?;
 
@@ -817,14 +807,14 @@ impl Display {
         Ok(self.term.present()?)
     }
 
-    pub fn force_clear(&mut self) -> FmResult<()> {
+    pub fn force_clear(&mut self) -> Result<()> {
         self.hide_cursor()?;
         self.term.clear()?;
         self.term.present()?;
         Ok(())
     }
 
-    fn size_for_second_window(&self, tab: &Tab) -> FmResult<usize> {
+    fn size_for_second_window(&self, tab: &Tab) -> Result<usize> {
         if tab.need_second_window() {
             Ok(self.height()? / 2)
         } else {
@@ -838,7 +828,7 @@ impl Display {
         win_secondary: &'a WinSecondary,
         border: Attr,
         size: usize,
-    ) -> FmResult<VSplit<'a>> {
+    ) -> Result<VSplit<'a>> {
         Ok(VSplit::default()
             .split(
                 Win::new(win_main)
@@ -870,7 +860,7 @@ impl Display {
         disk_space_tab_0: &str,
         disk_space_tab_1: &str,
         colors: &Colors,
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         let (width, _) = self.term.term_size()?;
         let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0, false);
         let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors, width / 2, true);
@@ -900,7 +890,7 @@ impl Display {
         status: &Status,
         disk_space_tab_0: &str,
         colors: &Colors,
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0, false);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
@@ -914,7 +904,7 @@ impl Display {
     }
 
     /// Reads and returns the `tuikit::term::Term` height.
-    pub fn height(&self) -> FmResult<usize> {
+    pub fn height(&self) -> Result<usize> {
         let (_, height) = self.term.term_size()?;
         Ok(height)
     }
@@ -936,7 +926,7 @@ fn draw_colored_strings(
     offset: usize,
     strings: Vec<String>,
     canvas: &mut dyn Canvas,
-) -> FmResult<()> {
+) -> Result<()> {
     let mut col = 0;
     for (text, attr) in std::iter::zip(strings.iter(), FIRST_LINE_COLORS.iter().cycle()) {
         col += canvas.print_with_attr(row, offset + col, text, *attr)?;

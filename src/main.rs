@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Result;
 use clap::Parser;
 use log::info;
 
@@ -7,7 +8,7 @@ use fm::args::Args;
 use fm::config::load_config;
 use fm::constant_strings_paths::CONFIG_PATH;
 use fm::event_dispatch::EventDispatcher;
-use fm::fm_error::FmResult;
+// use fm::fm_error::FmResult;
 use fm::help::Help;
 use fm::log::set_loggers;
 use fm::status::Status;
@@ -18,7 +19,7 @@ use fm::utils::{drop_everything, init_term, print_on_quit};
 /// Init the status and display and listen to events (keyboard, mouse, resize, custom...).
 /// The application is redrawn after every event.
 /// When the user issues a quit event, the main loop is broken and we reset the cursor.
-fn main() -> FmResult<()> {
+fn main() -> Result<()> {
     set_loggers()?;
 
     info!("fm is starting");

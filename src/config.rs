@@ -1,11 +1,11 @@
 use std::{fs::File, path};
 
+use anyhow::Result;
 use serde_yaml;
 use tuikit::attr::Color;
 
 use crate::color_cache::ColorCache;
 use crate::constant_strings_paths::DEFAULT_TERMINAL_APPLICATION;
-use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
 use crate::utils::is_program_in_path;
 
@@ -25,7 +25,7 @@ pub struct Config {
 
 impl Config {
     /// Returns a default config with hardcoded values.
-    fn new() -> FmResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             colors: Colors::default(),
             terminal: DEFAULT_TERMINAL_APPLICATION.to_owned(),
@@ -33,7 +33,7 @@ impl Config {
         })
     }
     /// Updates the config from  a configuration content.
-    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
+    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> Result<()> {
         self.colors.update_from_config(&yaml["colors"]);
         self.binds.update_from_config(&yaml["keys"])?;
         self.terminal = Self::set_terminal(&yaml["terminal"])?;
@@ -43,7 +43,7 @@ impl Config {
     /// First we try to use the current terminal. If it's a fake one (ie. inside neovim float term),
     /// we look for the configured one,
     /// else we use the hardcoded one.
-    fn set_terminal(yaml: &serde_yaml::value::Value) -> FmResult<String> {
+    fn set_terminal(yaml: &serde_yaml::value::Value) -> Result<String> {
         let terminal_currently_used = std::env::var("TERM").unwrap_or_default();
         if !terminal_currently_used.is_empty() && is_program_in_path(&terminal_currently_used) {
             Ok(terminal_currently_used)
@@ -149,7 +149,7 @@ pub fn str_to_tuikit(color: &str) -> Color {
 /// 1. hardcoded values
 ///
 /// 2. configured values from `~/.config/fm/config_file_name.yaml` if those files exists.
-pub fn load_config(path: &str) -> FmResult<Config> {
+pub fn load_config(path: &str) -> Result<Config> {
     let mut config = Config::new()?;
 
     if let Ok(file) = File::open(path::Path::new(&shellexpand::tilde(path).to_string())) {

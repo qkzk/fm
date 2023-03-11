@@ -1,8 +1,8 @@
+use anyhow::Result;
 use tuikit::prelude::{Event, Key, MouseButton};
 
 use crate::config::Colors;
 use crate::event_exec::EventExec;
-use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate};
 use crate::status::Status;
@@ -26,7 +26,7 @@ impl EventDispatcher {
     /// Only non keyboard events are dealt here directly.
     /// Keyboard events are configurable and are sent to specific functions
     /// which needs to know those keybindings.
-    pub fn dispatch(&self, status: &mut Status, ev: Event, colors: &Colors) -> FmResult<()> {
+    pub fn dispatch(&self, status: &mut Status, ev: Event, colors: &Colors) -> Result<()> {
         match ev {
             Event::Key(Key::WheelUp(_, col, _)) => {
                 EventExec::event_select_pane(status, col)?;
@@ -59,14 +59,14 @@ impl EventDispatcher {
         }
     }
 
-    fn key_matcher(&self, status: &mut Status, key: Key, colors: &Colors) -> FmResult<()> {
+    fn key_matcher(&self, status: &mut Status, key: Key, colors: &Colors) -> Result<()> {
         match self.binds.get(&key) {
             Some(action) => action.matcher(status, colors),
             None => Ok(()),
         }
     }
 
-    fn char(&self, status: &mut Status, key_char: Key, colors: &Colors) -> FmResult<()> {
+    fn char(&self, status: &mut Status, key_char: Key, colors: &Colors) -> Result<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
                 Mode::InputSimple(InputSimple::Sort) => {
