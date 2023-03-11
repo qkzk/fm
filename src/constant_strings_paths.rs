@@ -51,8 +51,6 @@ pub static HELP_SECOND_SENTENCE: &str = "Keybindings";
 pub static LOG_FIRST_SENTENCE: &str = "Logs: ";
 /// Description of the content below, aka what is logged there.
 pub static LOG_SECOND_SENTENCE: &str = "Last actions affecting the file tree";
-/// nvim-send is a rust program which can send commands to neovim
-pub static NVIM_RPC_SENDER: &str = "nvim-send";
 /// Filter presentation for the second line
 pub static FILTER_PRESENTATION: &str =
     "By name: n expr, by ext: e expr, only directories: d, reset: a";

@@ -14,7 +14,6 @@ use crate::completion::InputCompleted;
 use crate::config::Colors;
 use crate::constant_strings_paths::CONFIG_PATH;
 use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
-use crate::constant_strings_paths::NVIM_RPC_SENDER;
 use crate::content_window::RESERVED_ROWS;
 use crate::copy_move::CopyMove;
 use crate::cryptsetup::EncryptedAction;
@@ -25,6 +24,7 @@ use crate::log::read_log;
 use crate::mocp::Mocp;
 use crate::mode::Navigate;
 use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
+use crate::nvim::nvim;
 use crate::opener::execute_in_child;
 use crate::opener::execute_in_child_without_output_with_path;
 use crate::preview::Preview;
@@ -32,7 +32,6 @@ use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::utils::disk_used_by_path;
-use crate::utils::is_program_in_path;
 
 /// Every kind of mutation of the application is defined here.
 /// It mutates `Status` or its children `Tab`.
@@ -899,9 +898,6 @@ impl EventExec {
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
     pub fn event_nvim_filepicker(status: &mut Status) -> Result<()> {
-        if !is_program_in_path(NVIM_RPC_SENDER) {
-            return Ok(());
-        };
         Self::read_nvim_listen_address_if_needed(status);
         if status.nvim_server.is_empty() {
             return Ok(());
@@ -923,15 +919,8 @@ impl EventExec {
     }
 
     fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
-        let _ = execute_in_child(
-            NVIM_RPC_SENDER,
-            &vec![
-                "--remote-send",
-                &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>"),
-                "--servername",
-                nvim_server,
-            ],
-        );
+        let command = &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>");
+        let _ = nvim(nvim_server, command);
     }
 
     /// Copy the selected filename to the clipboard. Only the filename.

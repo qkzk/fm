@@ -23,6 +23,7 @@ pub mod log;
 pub mod marks;
 pub mod mocp;
 pub mod mode;
+pub mod nvim;
 pub mod opener;
 pub mod preview;
 pub mod selectable_content;

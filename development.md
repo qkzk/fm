@@ -460,6 +460,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display version in help
   - [x] replace FmResult & FmError by anyhow
   - [x] update the readme
+  - [x] replace nvim-send by internal implemention
   - [ ] update the animation
   - [ ] exec multiple flagged files
   - [ ] shell menu
