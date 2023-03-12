@@ -12,26 +12,24 @@ use sysinfo::SystemExt;
 use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
-use crate::constant_strings_paths::CONFIG_PATH;
-use crate::constant_strings_paths::DEFAULT_DRAGNDROP;
+use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
 use crate::content_window::RESERVED_ROWS;
 use crate::copy_move::CopyMove;
-use crate::cryptsetup::EncryptedAction;
-use crate::cryptsetup::PasswordKind;
+use crate::cryptsetup::BlockDeviceAction;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
+use crate::iso::IsoMounter;
 use crate::log::read_log;
 use crate::mocp::Mocp;
-use crate::mode::Navigate;
-use crate::mode::{InputSimple, MarkAction, Mode, NeedConfirmation};
+use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::nvim::nvim;
-use crate::opener::execute_in_child;
-use crate::opener::execute_in_child_without_output_with_path;
+use crate::opener::{execute_in_child, execute_in_child_without_output_with_path, InternalVariant};
+use crate::password::{PasswordKind, PasswordUsage};
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
-use crate::utils::disk_used_by_path;
+use crate::utils::{current_username, disk_used_by_path};
 
 /// Every kind of mutation of the application is defined here.
 /// It mutates `Status` or its children `Tab`.
@@ -811,19 +809,24 @@ impl EventExec {
 
     /// Open a file with custom opener.
     pub fn event_open_file(status: &mut Status) -> Result<()> {
-        match status.opener.open(
-            &status
-                .selected_non_mut()
-                .selected()
-                .context("event open file, Empty directory")?
-                .path,
-        ) {
-            Ok(_) => (),
-            Err(e) => info!(
-                "Error opening {:?}: {:?}",
-                status.selected_non_mut().path_content.selected(),
-                e
-            ),
+        let filepath = &status
+            .selected_non_mut()
+            .selected()
+            .context("event open file, Empty directory")?
+            .path
+            .clone();
+        let opener = status.opener.open_info(filepath);
+        if let Some(InternalVariant::NotSupported) = opener.internal_variant.as_ref() {
+            Self::event_mount_iso_drive(status)?;
+        } else {
+            match status.opener.open(filepath) {
+                Ok(_) => (),
+                Err(e) => info!(
+                    "Error opening {:?}: {:?}",
+                    status.selected_non_mut().path_content.selected(),
+                    e
+                ),
+            }
         }
         Ok(())
     }
@@ -1374,13 +1377,25 @@ impl EventExec {
                 must_refresh = false;
                 EventExec::exec_filter(status, colors)?
             }
-            Mode::InputSimple(InputSimple::Password(password_kind, encrypted_action)) => {
+            Mode::InputSimple(InputSimple::Password(
+                password_kind,
+                encrypted_action,
+                password_dest,
+            )) => {
                 must_refresh = false;
                 must_reset_mode = false;
-                EventExec::exec_store_password(status, password_kind)?;
-                match encrypted_action {
-                    EncryptedAction::MOUNT => EventExec::event_mount_encrypted_drive(status)?,
-                    EncryptedAction::UMOUNT => EventExec::event_umount_encrypted_drive(status)?,
+                EventExec::exec_store_password(status, password_kind, password_dest)?;
+                match password_dest {
+                    PasswordUsage::ISO => match encrypted_action {
+                        BlockDeviceAction::MOUNT => EventExec::event_mount_iso_drive(status)?,
+                        BlockDeviceAction::UMOUNT => EventExec::event_umount_iso_drive(status)?,
+                    },
+                    PasswordUsage::CRYPTSETUP => match encrypted_action {
+                        BlockDeviceAction::MOUNT => EventExec::event_mount_encrypted_drive(status)?,
+                        BlockDeviceAction::UMOUNT => {
+                            EventExec::event_umount_encrypted_drive(status)?
+                        }
+                    },
                 }
             }
             Mode::Navigate(Navigate::Jump) => EventExec::exec_jump(status)?,
@@ -1390,6 +1405,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Bulk) => EventExec::exec_bulk(status)?,
             Mode::Navigate(Navigate::ShellMenu) => EventExec::exec_shellmenu(status)?,
             Mode::Navigate(Navigate::EncryptedDrive) => (),
+            Mode::Navigate(Navigate::IsoDevice) => (),
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
@@ -1715,14 +1731,72 @@ impl EventExec {
         Ok(())
     }
 
+    /// Mount the currently selected file (which should be an .iso file) to
+    /// `/run/media/$CURRENT_USER/fm_iso`
+    /// Ask a sudo password first if needed. It should always be the case.
+    pub fn event_mount_iso_drive(status: &mut Status) -> Result<()> {
+        let path = status.selected_path_str().to_owned();
+        if status.iso_mounter.is_none() {
+            status.iso_mounter = Some(IsoMounter::from_path(path));
+        }
+        if let Some(ref mut iso_mounter) = status.iso_mounter {
+            if !iso_mounter.has_sudo() {
+                Self::event_ask_password(
+                    status,
+                    PasswordKind::SUDO,
+                    BlockDeviceAction::MOUNT,
+                    PasswordUsage::ISO,
+                )?;
+            } else {
+                iso_mounter.mount(&current_username()?)?;
+                info!("iso mounter mounted {iso_mounter:?}");
+                info!(
+                    target: "special",
+                    "iso :\n{}",
+                    iso_mounter.iso_device.as_string(),
+                );
+                status.iso_mounter = None;
+            };
+        }
+        Ok(())
+    }
+
+    /// Currently unused.
+    /// Umount an iso device.
+    pub fn event_umount_iso_drive(status: &mut Status) -> Result<()> {
+        if let Some(ref mut iso_mounter) = status.iso_mounter {
+            if !iso_mounter.has_sudo() {
+                Self::event_ask_password(
+                    status,
+                    PasswordKind::SUDO,
+                    BlockDeviceAction::UMOUNT,
+                    PasswordUsage::ISO,
+                )?;
+            } else {
+                iso_mounter.umount(&current_username()?)?;
+            };
+        }
+        Ok(())
+    }
+
     /// Mount the selected encrypted device. Will ask first for sudo password and
     /// passphrase.
     /// Those passwords are always dropped immediatly after the commands are run.
     pub fn event_mount_encrypted_drive(status: &mut Status) -> Result<()> {
         if !status.encrypted_devices.has_sudo() {
-            Self::event_ask_password(status, PasswordKind::SUDO, EncryptedAction::MOUNT)
+            Self::event_ask_password(
+                status,
+                PasswordKind::SUDO,
+                BlockDeviceAction::MOUNT,
+                PasswordUsage::CRYPTSETUP,
+            )
         } else if !status.encrypted_devices.has_cryptsetup() {
-            Self::event_ask_password(status, PasswordKind::CRYPTSETUP, EncryptedAction::MOUNT)
+            Self::event_ask_password(
+                status,
+                PasswordKind::CRYPTSETUP,
+                BlockDeviceAction::MOUNT,
+                PasswordUsage::CRYPTSETUP,
+            )
         } else {
             status.encrypted_devices.mount_selected()
         }
@@ -1743,7 +1817,12 @@ impl EventExec {
     /// Will ask first for a sudo password which is immediatly forgotten.
     pub fn event_umount_encrypted_drive(status: &mut Status) -> Result<()> {
         if !status.encrypted_devices.has_sudo() {
-            Self::event_ask_password(status, PasswordKind::SUDO, EncryptedAction::UMOUNT)
+            Self::event_ask_password(
+                status,
+                PasswordKind::SUDO,
+                BlockDeviceAction::UMOUNT,
+                PasswordUsage::CRYPTSETUP,
+            )
         } else {
             status.encrypted_devices.umount_selected()
         }
@@ -1753,23 +1832,40 @@ impl EventExec {
     pub fn event_ask_password(
         status: &mut Status,
         password_kind: PasswordKind,
-        encrypted_action: EncryptedAction,
+        encrypted_action: BlockDeviceAction,
+        password_dest: PasswordUsage,
     ) -> Result<()> {
         status
             .selected()
             .set_mode(Mode::InputSimple(InputSimple::Password(
                 password_kind,
                 encrypted_action,
+                password_dest,
             )));
         Ok(())
     }
 
     /// Store a password of some kind (sudo or device passphrase).
-    pub fn exec_store_password(status: &mut Status, password_kind: PasswordKind) -> Result<()> {
+    pub fn exec_store_password(
+        status: &mut Status,
+        password_kind: PasswordKind,
+        password_dest: PasswordUsage,
+    ) -> Result<()> {
         let password = status.selected_non_mut().input.string();
-        status
-            .encrypted_devices
-            .set_password(password_kind, password);
+        match password_dest {
+            PasswordUsage::ISO => {
+                if let Some(ref mut iso_mounter) = status.iso_mounter {
+                    info!("iso_mounter bfore: {iso_mounter:?}");
+                    iso_mounter.set_password(password_kind, password);
+                    info!("iso_mounter after: {iso_mounter:?}");
+                }
+            }
+            PasswordUsage::CRYPTSETUP => {
+                status
+                    .encrypted_devices
+                    .set_password(password_kind, password);
+            }
+        }
         status.selected().reset_mode();
         Ok(())
     }

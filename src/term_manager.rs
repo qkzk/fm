@@ -474,7 +474,7 @@ impl<'a> WinSecondary<'a> {
             Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
                 vec!["Save mark...".to_owned()]
             }
-            Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action)) => {
+            Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action, _)) => {
                 vec![format!("{password_kind}"), tab.input.password()]
             }
             Mode::InputCompleted(mode) => {
@@ -528,7 +528,7 @@ impl<'a> WinSecondary<'a> {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
             }
-            Mode::InputSimple(InputSimple::Password(_, _)) => {
+            Mode::InputSimple(InputSimple::Password(_, _, _)) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, Self::PASSWORD_CURSOR_OFFSET + tab.input.cursor_index)?;
             }
@@ -807,6 +807,7 @@ impl Display {
         Ok(self.term.present()?)
     }
 
+    /// Hide the curose, clear the terminal and present.
     pub fn force_clear(&mut self) -> Result<()> {
         self.hide_cursor()?;
         self.term.clear()?;

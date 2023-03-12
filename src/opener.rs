@@ -47,7 +47,7 @@ pub enum ExtensionKind {
 // TODO: move those associations to a config file
 impl ExtensionKind {
     fn parse(ext: &str) -> Self {
-        match ext {
+        match ext.to_lowercase().as_str() {
             "avif" | "bmp" | "gif" | "png" | "jpg" | "jpeg" | "pgm" | "ppm" | "webp" | "tiff" => {
                 Self::Bitmap
             }
@@ -76,6 +76,14 @@ impl ExtensionKind {
 
             "lzip" | "lzma" | "rar" | "tgz" | "gz" | "bzip2" => {
                 Self::Internal(InternalVariant::DecompressGz)
+            }
+            // iso files can't be mounted without more information than we hold in this enum :
+            // we need to be able to change the status of the application to ask for a sudo password.
+            // we can't use the "basic" opener to mount them.
+            // ATM this is the only extension we can't open, it may change in the future.
+            "iso" => {
+                info!("extension kind iso");
+                Self::Internal(InternalVariant::NotSupported)
             }
             _ => Self::Default,
         }
@@ -137,6 +145,11 @@ impl OpenerAssociation {
                     OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressXz))
                         .unwrap(),
                 ),
+                (
+                    ExtensionKind::Internal(InternalVariant::NotSupported),
+                    OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::NotSupported))
+                        .unwrap(),
+                ),
             ]),
         }
     }
@@ -188,6 +201,7 @@ pub enum InternalVariant {
     DecompressZip,
     DecompressXz,
     DecompressGz,
+    NotSupported,
 }
 
 /// A way to open one kind of files.
@@ -284,9 +298,19 @@ impl Opener {
                 InternalVariant::DecompressZip => decompress_zip(filepath)?,
                 InternalVariant::DecompressXz => decompress_xz(filepath)?,
                 InternalVariant::DecompressGz => decompress_gz(filepath)?,
+                InternalVariant::NotSupported => (),
             };
         }
         Ok(())
+    }
+
+    /// Returns the open info about this file.
+    /// It's used to check if the file can be opened without specific actions or not.
+    /// This opener can't mutate the status and can't ask for a sudo password.
+    /// Some files requires root to be opened (ie. ISO files which are mounted).
+    pub fn open_info(&self, filepath: &Path) -> &OpenerInfo {
+        let extension = extract_extension(filepath);
+        self.get_opener(extension)
     }
 
     /// Open a file with a given program.

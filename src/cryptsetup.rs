@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
@@ -6,74 +5,14 @@ use log::info;
 use sysinfo::{DiskExt, System, SystemExt};
 
 use crate::impl_selectable_content;
+use crate::password::{sudo, sudo_password, PasswordHolder, PasswordKind};
 use crate::utils::current_username;
-
-/// Different kind of password
-#[derive(Debug, Clone, Copy)]
-pub enum PasswordKind {
-    SUDO,
-    CRYPTSETUP,
-}
 
 /// Possible actions on encrypted drives
 #[derive(Debug, Clone, Copy)]
-pub enum EncryptedAction {
+pub enum BlockDeviceAction {
     MOUNT,
     UMOUNT,
-}
-
-impl std::fmt::Display for PasswordKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let asker = match self {
-            Self::SUDO => "sudo   ",
-            Self::CRYPTSETUP => "device ",
-        };
-        write!(f, "{asker}")
-    }
-}
-
-/// Holds passwords allowing to mount or unmount an encrypted drive.
-#[derive(Default, Clone, Debug)]
-pub struct PasswordHolder {
-    sudo: Option<String>,
-    cryptsetup: Option<String>,
-}
-
-impl PasswordHolder {
-    fn set_sudo(&mut self, password: String) {
-        self.sudo = Some(password)
-    }
-
-    fn set_cryptsetup(&mut self, passphrase: String) {
-        self.cryptsetup = Some(passphrase)
-    }
-
-    /// Reads the cryptsetup password
-    fn cryptsetup(&self) -> Result<String> {
-        self.cryptsetup
-            .clone()
-            .context("PasswordHolder: cryptsetup password isn't set")
-    }
-
-    /// Reads the sudo password
-    fn sudo(&self) -> Result<String> {
-        self.sudo
-            .clone()
-            .context("PasswordHolder: sudo password isn't set")
-    }
-
-    fn has_sudo(&self) -> bool {
-        self.sudo.is_some()
-    }
-
-    fn has_cryptsetup(&self) -> bool {
-        self.cryptsetup.is_some()
-    }
-
-    fn reset(&mut self) {
-        self.sudo = None;
-        self.cryptsetup = None;
-    }
 }
 
 /// get devices list from lsblk
@@ -99,49 +38,6 @@ fn filter_crypto_devices_lines(output: String, key: &str) -> Vec<String> {
         .filter(|line| line.contains(key))
         .map(|line| line.into())
         .collect()
-}
-
-/// run a sudo command requiring a password (generally to establish the password.)
-/// Since I can't send 2 passwords at a time, it will only work with the sudo password
-fn sudo_password(args: &[String], password: &str) -> Result<(bool, String, String)> {
-    info!("sudo {:?}", args);
-    let mut child = Command::new("sudo")
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let child_stdin = child
-        .stdin
-        .as_mut()
-        .context("run_privileged_command: couldn't open child stdin")?;
-    child_stdin.write_all(format!("{password}\n").as_bytes())?;
-
-    let output = child.wait_with_output()?;
-    Ok((
-        output.status.success(),
-        String::from_utf8(output.stdout)?,
-        String::from_utf8(output.stderr)?,
-    ))
-}
-
-/// Run a passwordless sudo command.
-/// Returns stdout & stderr
-fn sudo(args: &[String]) -> Result<(bool, String, String)> {
-    info!("sudo {:?}", args);
-    let child = Command::new("sudo")
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-    let output = child.wait_with_output()?;
-    Ok((
-        output.status.success(),
-        String::from_utf8(output.stdout)?,
-        String::from_utf8(output.stderr)?,
-    ))
 }
 
 /// Represent an encrypted device.
@@ -370,12 +266,12 @@ impl CryptoDevice {
 
 /// Holds the device itself and its passwords.
 #[derive(Debug, Clone, Default)]
-pub struct Device {
+pub struct CryptoDeviceMounter {
     pub cryptdevice: CryptoDevice,
     pub password_holder: PasswordHolder,
 }
 
-impl Device {
+impl CryptoDeviceMounter {
     /// Reads a device from  a line of text from cryptsetup.
     pub fn from_line(line: &str) -> Result<Self> {
         Ok(Self {
@@ -389,17 +285,17 @@ impl Device {
 /// It's a navigable content so the index follows the selection
 /// of the user.
 #[derive(Debug, Clone, Default)]
-pub struct DeviceOpener {
-    pub content: Vec<Device>,
+pub struct CryptoDeviceOpener {
+    pub content: Vec<CryptoDeviceMounter>,
     index: usize,
 }
 
-impl DeviceOpener {
+impl CryptoDeviceOpener {
     /// Updates itself from the output of cryptsetup.
     pub fn update(&mut self) -> Result<()> {
         self.content = filter_crypto_devices_lines(get_devices()?, "crypto")
             .iter()
-            .map(|line| Device::from_line(line))
+            .map(|line| CryptoDeviceMounter::from_line(line))
             .filter_map(|r| r.ok())
             .collect();
         self.index = 0;
@@ -479,4 +375,4 @@ impl DeviceOpener {
     }
 }
 
-impl_selectable_content!(Device, DeviceOpener);
+impl_selectable_content!(CryptoDeviceMounter, CryptoDeviceOpener);

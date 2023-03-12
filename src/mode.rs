@@ -1,7 +1,8 @@
 use std::fmt;
 
 use crate::completion::InputCompleted;
-use crate::cryptsetup::{EncryptedAction, PasswordKind};
+use crate::cryptsetup::BlockDeviceAction;
+use crate::password::{PasswordKind, PasswordUsage};
 
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.
@@ -77,7 +78,7 @@ pub enum InputSimple {
     /// Set a new neovim RPC address
     SetNvimAddress,
     /// Input a password (chars a replaced by *)
-    Password(PasswordKind, EncryptedAction),
+    Password(PasswordKind, BlockDeviceAction, PasswordUsage),
 }
 
 /// Different modes in which we display a bunch of possible destinations.
@@ -94,6 +95,7 @@ pub enum Navigate {
     Trash,
     /// Manipulate an encrypted device
     EncryptedDrive,
+    IsoDevice,
     /// Jump to a saved mark
     Marks(MarkAction),
     /// Pick a compression method
@@ -141,7 +143,7 @@ impl fmt::Display for Mode {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
-            Mode::InputSimple(InputSimple::Password(password_kind, _)) => {
+            Mode::InputSimple(InputSimple::Password(password_kind, _, _)) => {
                 write!(f, "{password_kind}")
             }
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
@@ -163,6 +165,9 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::Compress) => write!(f, "Compress :"),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 write!(f, "Encrypted devices :")
+            }
+            Mode::Navigate(Navigate::IsoDevice) => {
+                write!(f, "Iso image :")
             }
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
             Mode::Preview => write!(f, "Preview : "),

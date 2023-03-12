@@ -461,6 +461,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] replace FmResult & FmError by anyhow
   - [x] update the readme
   - [x] replace nvim-send by internal implemention
+  - [x] mount an iso file by opening it
+    - [x] recognize iso files
+    - [x] mkdir /run/media/$USER/fm_iso
+    - [x] sudo mount -o loop /path/filename.iso /run/media/$USER/fm_iso
+  - [ ] refactor cryptdevice and iso_file
+    - [ ] common trait between both
+    - [ ] mode to handle those mounts. ATM it's all over the place...
+    - [ ] allow mounting some other devices
+    - [ ] list non mounted devices, list all mount points
+    - [ ] act on them
   - [ ] update the animation
   - [ ] exec multiple flagged files
   - [ ] shell menu

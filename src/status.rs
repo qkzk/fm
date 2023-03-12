@@ -17,8 +17,9 @@ use crate::compress::Compresser;
 use crate::config::Colors;
 use crate::constant_strings_paths::{OPENER_PATH, TUIS_PATH};
 use crate::copy_move::{copy_move, CopyMove};
-use crate::cryptsetup::DeviceOpener;
+use crate::cryptsetup::CryptoDeviceOpener;
 use crate::flagged::Flagged;
+use crate::iso::IsoMounter;
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
 use crate::preview::{Directory, Preview};
@@ -66,7 +67,9 @@ pub struct Status {
     /// The trash
     pub trash: Trash,
     /// Encrypted devices opener
-    pub encrypted_devices: DeviceOpener,
+    pub encrypted_devices: CryptoDeviceOpener,
+    /// Iso mounter. Set to None by default, dropped ASAP
+    pub iso_mounter: Option<IsoMounter>,
     /// Compression methods
     pub compression: Compresser,
     /// NVIM RPC server address
@@ -103,7 +106,7 @@ impl Status {
 
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let nvim_server = args.server.clone();
-        let encrypted_devices = DeviceOpener::default();
+        let encrypted_devices = CryptoDeviceOpener::default();
         let trash = Trash::new()?;
         let compression = Compresser::default();
         let force_clear = false;
@@ -122,6 +125,7 @@ impl Status {
         left_tab
             .shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
+        let iso_mounter = None;
 
         Ok(Self {
             tabs: [left_tab, right_tab],
@@ -143,6 +147,7 @@ impl Status {
             force_clear,
             bulk,
             shell_menu,
+            iso_mounter,
         })
     }
 
@@ -404,6 +409,9 @@ impl Status {
         self.selected_non_mut().must_quit()
     }
 
+    /// Set a "force clear" flag to true, which will reset the display.
+    /// It's used when some command or whatever may pollute the terminal.
+    /// We ensure to clear it before displaying again.
     pub fn force_clear(&mut self) {
         self.force_clear = true;
     }
