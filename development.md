@@ -465,8 +465,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] recognize iso files
     - [x] mkdir /run/media/$USER/fm_iso
     - [x] sudo mount -o loop /path/filename.iso /run/media/$USER/fm_iso
+  - [x] preview the content of a iso file. Require the application isoinfo
   - [ ] refactor cryptdevice and iso_file
-    - [ ] common trait between both
+    - [x] common trait between both
     - [ ] mode to handle those mounts. ATM it's all over the place...
     - [ ] allow mounting some other devices
     - [ ] list non mounted devices, list all mount points
