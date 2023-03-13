@@ -22,6 +22,7 @@ use crate::iso::IsoMounter;
 use crate::log::read_log;
 use crate::mocp::Mocp;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
+use crate::mount_help::MountHelper;
 use crate::nvim::nvim;
 use crate::opener::{execute_in_child, execute_in_child_without_output_with_path, InternalVariant};
 use crate::password::{PasswordKind, PasswordUsage};
@@ -1753,7 +1754,7 @@ impl EventExec {
                 info!(
                     target: "special",
                     "iso :\n{}",
-                    iso_mounter.iso_device.as_string(),
+                    iso_mounter.iso_device.as_string()?,
                 );
                 status.iso_mounter = None;
             };

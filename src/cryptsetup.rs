@@ -5,6 +5,7 @@ use log::info;
 use sysinfo::{DiskExt, System, SystemExt};
 
 use crate::impl_selectable_content;
+use crate::mount_help::MountHelper;
 use crate::password::{sudo, sudo_password, PasswordHolder, PasswordKind};
 use crate::utils::current_username;
 
@@ -90,48 +91,6 @@ impl CryptoDevice {
             self.uuid.clone(),
         ]
     }
-
-    fn format_mkdir_parameters(&self, username: &str) -> [String; 3] {
-        [
-            "mkdir".to_owned(),
-            "-p".to_owned(),
-            format!(
-                "/run/media/{}/{}",
-                username,
-                self.device_name
-                    .clone()
-                    .unwrap_or_else(|| self.uuid.clone())
-            ),
-        ]
-    }
-
-    fn format_mount_parameters(&self, username: &str) -> [String; 3] {
-        [
-            "mount".to_owned(),
-            format!("/dev/mapper/{}", self.uuid),
-            format!(
-                "/run/media/{}/{}",
-                username,
-                self.device_name
-                    .clone()
-                    .unwrap_or_else(|| self.uuid.clone())
-            ),
-        ]
-    }
-
-    fn format_umount_parameters(&self, username: &str) -> [String; 2] {
-        [
-            "umount".to_owned(),
-            format!(
-                "/run/media/{}/{}",
-                username,
-                self.device_name
-                    .clone()
-                    .unwrap_or_else(|| self.uuid.clone())
-            ),
-        ]
-    }
-
     fn format_luksclose_parameters(&self) -> [String; 3] {
         [
             "cryptsetup".to_owned(),
@@ -152,13 +111,6 @@ impl CryptoDevice {
             .filter(|s| s.is_some())
             .map(|s| s.unwrap().to_owned())
             .find(|s| s.contains(&self.uuid))
-    }
-
-    /// True if there's a mount point for this drive.
-    /// It's only valid if we mounted the device since it requires
-    /// the uuid to be in the mount point.
-    pub fn is_mounted(&self) -> bool {
-        self.mount_point().is_some()
     }
 
     fn set_device_name(&mut self) -> Result<()> {
@@ -190,16 +142,7 @@ impl CryptoDevice {
         Ok(())
     }
 
-    /// String representation of the device.
-    pub fn as_string(&self) -> Result<String> {
-        Ok(if let Some(mount_point) = self.mount_point() {
-            format!("{} -> {}", self.path, mount_point)
-        } else {
-            format!("{} - not mounted", self.path)
-        })
-    }
-
-    fn open_mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
+    fn open_mount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
         self.set_device_name()?;
         if self.is_mounted() {
             Err(anyhow!("luks open mount: device is already mounted"))
@@ -207,50 +150,26 @@ impl CryptoDevice {
             // sudo
             let (success, _, _) = sudo_password(
                 &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
-                &passwords.sudo()?,
+                &password.sudo()?,
             )?;
             if !success {
                 return Ok(false);
             }
             // open
             let (success, stdout, stderr) =
-                sudo_password(&self.format_luksopen_parameters(), &passwords.cryptsetup()?)?;
+                sudo_password(&self.format_luksopen_parameters(), &password.cryptsetup()?)?;
             info!("stdout: {}\nstderr: {}", stdout, stderr);
             if !success {
                 return Ok(false);
             }
-            self.set_device_name()?;
-            // mkdir
-            let (success, stdout, stderr) = sudo(&self.format_mkdir_parameters(username))?;
-            info!("stdout: {}\nstderr: {}", stdout, stderr);
-            if !success {
-                return Ok(false);
-            }
-            // mount
-            let (success, stdout, stderr) = sudo(&self.format_mount_parameters(username))?;
-            info!("stdout: {}\nstderr: {}", stdout, stderr);
-            if !success {
-                return Ok(false);
-            }
-            // sudo -k
-            sudo(&["-k".to_owned()])?;
-            Ok(success)
+            self.mount(username, password)
         }
     }
 
-    fn umount_close(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
-        self.set_device_name()?;
-        // sudo
-        let (success, _, _) = sudo_password(
-            &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
-            &passwords.sudo()?,
-        )?;
-        if !success {
+    fn umount_close(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
+        if !self.umount(username, password)? {
             return Ok(false);
         }
-        // unmount
-        let (_, stdout, stderr) = sudo(&self.format_umount_parameters(username))?;
-        info!("stdout: {}\nstderr: {}", stdout, stderr);
         // close
         let (success, stdout, stderr) = sudo(&self.format_luksclose_parameters())?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
@@ -261,6 +180,101 @@ impl CryptoDevice {
         let (success, stdout, stderr) = sudo(&["-k".to_owned()])?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         Ok(success)
+    }
+}
+
+impl MountHelper for CryptoDevice {
+    fn format_mkdir_parameters(&self, username: &str) -> [String; 3] {
+        [
+            "mkdir".to_owned(),
+            "-p".to_owned(),
+            format!(
+                "/run/media/{}/{}",
+                username,
+                self.device_name
+                    .clone()
+                    .unwrap_or_else(|| self.uuid.clone())
+            ),
+        ]
+    }
+
+    fn format_mount_parameters(&mut self, username: &str) -> Vec<String> {
+        vec![
+            "mount".to_owned(),
+            format!("/dev/mapper/{}", self.uuid),
+            format!(
+                "/run/media/{}/{}",
+                username,
+                self.device_name
+                    .clone()
+                    .unwrap_or_else(|| self.uuid.clone())
+            ),
+        ]
+    }
+
+    fn format_umount_parameters(&self, username: &str) -> Vec<String> {
+        vec![
+            "umount".to_owned(),
+            format!(
+                "/run/media/{}/{}",
+                username,
+                self.device_name
+                    .clone()
+                    .unwrap_or_else(|| self.uuid.clone())
+            ),
+        ]
+    }
+
+    /// True if there's a mount point for this drive.
+    /// It's only valid if we mounted the device since it requires
+    /// the uuid to be in the mount point.
+    fn is_mounted(&self) -> bool {
+        self.mount_point().is_some()
+    }
+
+    fn mount(&mut self, username: &str, _: &mut PasswordHolder) -> Result<bool> {
+        self.set_device_name()?;
+        // mkdir
+        let (success, stdout, stderr) = sudo(&self.format_mkdir_parameters(username))?;
+        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        if !success {
+            return Ok(false);
+        }
+        // mount
+        let (success, stdout, stderr) = sudo(&self.format_mount_parameters(username))?;
+        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        if !success {
+            return Ok(false);
+        }
+        // sudo -k
+        sudo(&["-k".to_owned()])?;
+        Ok(success)
+    }
+
+    fn umount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
+        self.set_device_name()?;
+        // sudo
+        let (success, _, _) = sudo_password(
+            &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
+            &password.sudo()?,
+        )?;
+        if !success {
+            return Ok(false);
+        }
+        // unmount
+        let (_, stdout, stderr) = sudo(&self.format_umount_parameters(username))?;
+        info!("stdout: {}\nstderr: {}", stdout, stderr);
+
+        Ok(true)
+    }
+
+    /// String representation of the device.
+    fn as_string(&self) -> Result<String> {
+        Ok(if let Some(mount_point) = self.mount_point() {
+            format!("{} -> {}", self.path, mount_point)
+        } else {
+            format!("{} - not mounted", self.path)
+        })
     }
 }
 

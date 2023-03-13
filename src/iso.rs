@@ -1,7 +1,10 @@
 use anyhow::{anyhow, Result};
 use log::info;
 
-use crate::password::{sudo, sudo_password, PasswordHolder, PasswordKind};
+use crate::{
+    mount_help::MountHelper,
+    password::{sudo, sudo_password, PasswordHolder, PasswordKind},
+};
 
 /// Used to mount an iso file as a loop device.
 /// Holds info about its source (`path`) and optional mountpoint (`mountpoints`).
@@ -29,7 +32,9 @@ impl IsoDevice {
     fn mountpoints(&self, username: &str) -> String {
         format!("/run/media/{}/{}", username, Self::FILENAME)
     }
+}
 
+impl MountHelper for IsoDevice {
     fn format_mkdir_parameters(&self, username: &str) -> [String; 3] {
         [
             "mkdir".to_owned(),
@@ -38,10 +43,10 @@ impl IsoDevice {
         ]
     }
 
-    fn format_mount_parameters(&mut self, username: &str) -> [String; 5] {
+    fn format_mount_parameters(&mut self, username: &str) -> Vec<String> {
         let mountpoints = self.mountpoints(username);
         self.mountpoints = Some(mountpoints.clone());
-        [
+        vec![
             "mount".to_owned(),
             "-o".to_owned(),
             "loop".to_owned(),
@@ -50,20 +55,15 @@ impl IsoDevice {
         ]
     }
 
-    fn format_umount_parameters(&self, username: &str) -> [String; 2] {
-        [
+    fn format_umount_parameters(&self, username: &str) -> Vec<String> {
+        vec![
             "umount".to_owned(),
             format!("/run/media/{}/{}", username, self.mountpoints(username),),
         ]
     }
 
-    /// String representation of the device.
-    pub fn as_string(&self) -> String {
-        if let Some(ref mount_point) = self.mountpoints {
-            format!("mounted {}\nto {}", self.path, mount_point)
-        } else {
-            format!("not mounted {}", self.path)
-        }
+    fn is_mounted(&self) -> bool {
+        self.is_mounted
     }
 
     fn umount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
@@ -116,6 +116,15 @@ impl IsoDevice {
             }
             sudo(&["-k".to_owned()])?;
             Ok(last_success)
+        }
+    }
+
+    /// String representation of the device.
+    fn as_string(&self) -> Result<String> {
+        if let Some(ref mount_point) = self.mountpoints {
+            Ok(format!("mounted {}\nto {}", self.path, mount_point))
+        } else {
+            Ok(format!("not mounted {}", self.path))
         }
     }
 }

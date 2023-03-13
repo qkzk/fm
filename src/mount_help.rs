@@ -1,0 +1,27 @@
+use anyhow::Result;
+
+use crate::password::PasswordHolder;
+
+/// Bunch of methods used to mount / unmount a block device or a device image file.
+pub trait MountHelper {
+    /// Parameters used to `sudo mkdir mountpoint`
+    fn format_mkdir_parameters(&self, username: &str) -> [String; 3];
+
+    /// Parameters used to mount the device
+    fn format_mount_parameters(&mut self, username: &str) -> Vec<String>;
+
+    /// Parameters used to umount the device
+    fn format_umount_parameters(&self, username: &str) -> Vec<String>;
+
+    /// True if the device is mounted
+    fn is_mounted(&self) -> bool;
+
+    /// Mount the device
+    fn mount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool>;
+
+    /// Unmount the device
+    fn umount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool>;
+
+    /// String representation of the device
+    fn as_string(&self) -> Result<String>;
+}

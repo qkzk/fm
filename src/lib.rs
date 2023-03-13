@@ -24,6 +24,7 @@ pub mod log;
 pub mod marks;
 pub mod mocp;
 pub mod mode;
+pub mod mount_help;
 pub mod nvim;
 pub mod opener;
 pub mod password;
