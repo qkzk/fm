@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -8,6 +9,7 @@ use log::info;
 use regex::Regex;
 use skim::SkimItem;
 use sysinfo::{Disk, DiskExt, RefreshKind, System, SystemExt};
+use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 use users::UsersCache;
 
@@ -209,6 +211,21 @@ impl Status {
         let skim = self.skimer.search_line_in_file();
         let Some(output) = skim.first() else {return Ok(())};
         self._update_tab_from_skim_line_output(output)
+    }
+
+    /// Run a command directly from help.
+    /// Search a command in skim, if it's a keybinding, run it directly.
+    /// If the result can't be parsed, nothing is done.
+    pub fn skim_find_keybinding(&mut self) -> Result<()> {
+        let skim = self.skimer.search_in_text(self.help.clone());
+        let Some(output) = skim.first() else { return Ok(()) };
+        let line = output.output().into_owned();
+        let Some(keyname_from_help) = line.split(':').next() else { return Ok(()) };
+        let Some(keyname_readable) = parse_keyname(keyname_from_help) else { return Ok(()) };
+        let Some(key) = from_keyname(&keyname_readable) else { return Ok(()) };
+        let event = Event::Key(key);
+        let _ = self.term.borrow_mut().send_event(event);
+        Ok(())
     }
 
     fn _update_tab_from_skim_line_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {
@@ -414,5 +431,28 @@ impl Status {
     /// We ensure to clear it before displaying again.
     pub fn force_clear(&mut self) {
         self.force_clear = true;
+    }
+}
+
+fn parse_keyname(keyname: &str) -> Option<String> {
+    let mut split = keyname.split('(');
+    let Some(mutator) = split.next() else { return None; };
+    let mut mutator = mutator.to_lowercase();
+    let Some(param) = split.next() else { return Some(mutator) };
+    let mut param = param.to_owned();
+    mutator = mutator.replace("char", "");
+    param = param.replace([')', '\''], "");
+    if param.chars().all(char::is_uppercase) {
+        if mutator.is_empty() {
+            mutator = "shift".to_owned();
+        } else {
+            mutator = format!("{mutator}-shift");
+        }
+    }
+
+    if mutator.is_empty() {
+        Some(param)
+    } else {
+        Some(format!("{mutator}-{param}"))
     }
 }

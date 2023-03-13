@@ -42,6 +42,8 @@ impl Skimer {
             .unwrap_or_else(Vec::new)
     }
 
+    /// Call skim on its term.
+    /// Returns the file whose line match a pattern from current folder using ripgrep or grep.
     pub fn search_line_in_file(&self) -> Vec<Arc<dyn SkimItem>> {
         self.skim
             .run_internal(
@@ -52,6 +54,36 @@ impl Skimer {
             )
             .map(|out| out.selected_items)
             .unwrap_or_else(Vec::new)
+    }
+
+    /// Search in a text content, splitted by line.
+    /// Returns the selected line.
+    pub fn search_in_text(&self, text: String) -> Vec<Arc<dyn SkimItem>> {
+        let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
+        for line in text.lines().rev() {
+            let _ = tx_item.send(Arc::new(StringWrapper {
+                inner: line.to_string(),
+            }));
+        }
+        drop(tx_item); // so that skim could know when to stop waiting for more items.
+        self.skim
+            .run_internal(Some(rx_item), "".to_owned(), None, None)
+            .map(|out| out.selected_items)
+            .unwrap_or_else(Vec::new)
+    }
+}
+
+struct StringWrapper {
+    inner: String,
+}
+
+impl SkimItem for StringWrapper {
+    fn text(&self) -> Cow<str> {
+        Cow::Borrowed(&self.inner)
+    }
+
+    fn preview(&self, _context: PreviewContext) -> ItemPreview {
+        ItemPreview::Text(self.inner.clone())
     }
 }
 

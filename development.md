@@ -466,6 +466,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] mkdir /run/media/$USER/fm_iso
     - [x] sudo mount -o loop /path/filename.iso /run/media/$USER/fm_iso
   - [x] preview the content of a iso file. Require the application isoinfo
+  - [x] fuzzy finder for keybindings with alt+h. The found keybinding will be run immediatly.
   - [ ] refactor cryptdevice and iso_file
     - [x] common trait between both
     - [ ] mode to handle those mounts. ATM it's all over the place...
@@ -483,6 +484,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
   - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
   - [ ] allow pipe in execution
+  - [ ] search in preview or in help
 
 - [ ] sub window / menu for completion / selection.
 

@@ -1473,6 +1473,11 @@ impl EventExec {
         status.skim_line_output_to_tab()
     }
 
+    /// Start a fuzzy find for a specific line with skim.
+    pub fn event_fuzzyfind_help(status: &mut Status) -> Result<()> {
+        status.skim_find_keybinding()
+    }
+
     /// Copy the filename of the selected file in normal mode.
     pub fn event_copy_filename(status: &mut Status) -> Result<()> {
         if let Mode::Normal | Mode::Tree = status.selected_non_mut().mode {

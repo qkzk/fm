@@ -39,6 +39,7 @@ static HELP_TO_FORMAT: &str = "
 {SearchNext}:      search next matching element
 {FuzzyFind}:      fuzzy finder
 {FuzzyFindLine}:      fuzzy finder for line
+{FuzzyFindHelp}:     fuzzy finder from help
 {RefreshView}:      refresh view
 {CopyFilename}:      copy filename to clipboard
 {CopyFilepath}:      copy filepath to clipboard
@@ -97,7 +98,7 @@ Navigate as usual. Most actions works as in 'normal' view.
 - MOC -
 Control MOC from your TUI
 {MocpAddToPlayList}:          Add a file or folder to the playlist
-{MocpPrevious}         Previous song
+{MocpPrevious}:        Previous song
 {MocpTogglePause}:        Toggle play/pause. Start MOC if needed
 {MocpNext}        Next song
 ";
