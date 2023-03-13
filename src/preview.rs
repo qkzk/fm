@@ -42,6 +42,7 @@ pub enum Preview {
     Ueberzug(Ueberzug),
     Media(MediaContent),
     Directory(Directory),
+    Iso(Iso),
     Diff(Diff),
     #[default]
     Empty,
@@ -85,6 +86,7 @@ impl Preview {
                 e if is_ext_video(e) => {
                     Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
                 }
+                e if is_ext_iso(e) => Ok(Self::Iso(Iso::new(&file_info.path)?)),
                 e => match Self::preview_syntaxed(e, &file_info.path) {
                     Some(syntaxed_preview) => Ok(syntaxed_preview),
                     None => Self::preview_text_or_binary(file_info),
@@ -166,6 +168,7 @@ impl Preview {
             Self::Media(media) => media.len(),
             Self::Directory(directory) => directory.len(),
             Self::Diff(diff) => diff.len(),
+            Self::Iso(iso) => iso.len(),
         }
     }
 
@@ -771,6 +774,32 @@ impl Diff {
     }
 }
 
+pub struct Iso {
+    pub content: Vec<String>,
+    length: usize,
+}
+
+impl Iso {
+    fn new(path: &Path) -> Result<Self> {
+        let path = path.to_str().context("couldn't parse the path")?;
+        let content: Vec<String> =
+            execute_and_capture_output_without_check("isoinfo", &vec!["-l", "-i", path])?
+                .lines()
+                .map(|s| s.to_owned())
+                .collect();
+        info!("isofino:\n{content:?}");
+
+        Ok(Self {
+            length: content.len(),
+            content,
+        })
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
@@ -826,6 +855,7 @@ impl_window!(ZipContent, String);
 impl_window!(MediaContent, String);
 impl_window!(Directory, ColoredPair);
 impl_window!(Diff, String);
+impl_window!(Iso, String);
 
 fn is_ext_compressed(ext: &str) -> bool {
     matches!(
@@ -861,6 +891,10 @@ fn is_ext_video(ext: &str) -> bool {
 
 fn is_ext_pdf(ext: &str) -> bool {
     ext == "pdf"
+}
+
+fn is_ext_iso(ext: &str) -> bool {
+    ext == "iso"
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {

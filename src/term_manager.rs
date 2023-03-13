@@ -409,6 +409,9 @@ impl<'a> WinMain<'a> {
             Preview::Diff(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window)
             }
+            Preview::Iso(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
 
             Preview::Empty => (),
         }
