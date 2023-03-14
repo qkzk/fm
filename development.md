@@ -466,7 +466,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] mkdir /run/media/$USER/fm_iso
     - [x] sudo mount -o loop /path/filename.iso /run/media/$USER/fm_iso
   - [x] preview the content of a iso file. Require the application isoinfo
-  - [x] fuzzy finder for keybindings with alt+h. The found keybinding will be run immediatly.
+  - [x] fuzzy finder for keybindings with alt+h. The found keybinding will be run immediatly
+  - [x] rename: use current name instead of empty string
   - [ ] refactor cryptdevice and iso_file
     - [x] common trait between both
     - [ ] mode to handle those mounts. ATM it's all over the place...

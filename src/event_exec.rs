@@ -30,6 +30,7 @@ use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
+use crate::utils::filename_from_path;
 use crate::utils::{current_username, disk_used_by_path};
 
 /// Every kind of mutation of the application is defined here.
@@ -838,6 +839,17 @@ impl EventExec {
     /// not the selected file in the pathcontent.
     pub fn event_rename(tab: &mut Tab) -> Result<()> {
         if tab.selected().is_some() {
+            let old_name = match tab.mode {
+                Mode::Tree => tab.directory.tree.current_node.filename(),
+                _ => filename_from_path(
+                    &tab.path_content
+                        .selected()
+                        .context("Event rename: no file in current directory")?
+                        .path,
+                )?
+                .to_owned(),
+            };
+            tab.input.replace(&old_name);
             tab.set_mode(Mode::InputSimple(InputSimple::Rename));
         }
         Ok(())
