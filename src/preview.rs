@@ -864,7 +864,7 @@ fn is_ext_compressed(ext: &str) -> bool {
     )
 }
 fn is_ext_image(ext: &str) -> bool {
-    matches!(ext, "png" | "jpg" | "jpeg" | "tiff" | "heif")
+    matches!(ext, "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif")
 }
 
 fn is_ext_audio(ext: &str) -> bool {
