@@ -22,6 +22,7 @@ use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::CryptoDeviceOpener;
 use crate::flagged::Flagged;
 use crate::iso::IsoMounter;
+// use crate::keybindings::to_keyname;
 use crate::marks::Marks;
 use crate::opener::{load_opener, Opener};
 use crate::preview::{Directory, Preview};
@@ -220,9 +221,9 @@ impl Status {
         let skim = self.skimer.search_in_text(self.help.clone());
         let Some(output) = skim.first() else { return Ok(()) };
         let line = output.output().into_owned();
-        let Some(keyname_from_help) = line.split(':').next() else { return Ok(()) };
-        let Some(keyname_readable) = parse_keyname(keyname_from_help) else { return Ok(()) };
-        let Some(key) = from_keyname(&keyname_readable) else { return Ok(()) };
+        let Some(keybind) = line.split(':').next() else { return Ok(()) };
+        let Some(keyname) = parse_keyname(keybind) else { return Ok(()) };
+        let Some(key) = from_keyname(&keyname) else { return Ok(()) };
         let event = Event::Key(key);
         let _ = self.term.borrow_mut().send_event(event);
         Ok(())
