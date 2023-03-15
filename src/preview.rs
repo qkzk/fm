@@ -91,6 +91,9 @@ impl Preview {
                     Ok(Self::notebook(&file_info.path)
                         .context("Preview: Couldn't parse notebook")?)
                 }
+                e if is_ext_doc(e) => {
+                    Ok(Self::doc(&file_info.path).context("Preview: Couldn't parse doc")?)
+                }
                 e => match Self::preview_syntaxed(e, &file_info.path) {
                     Some(syntaxed_preview) => Ok(syntaxed_preview),
                     None => Self::preview_text_or_binary(file_info),
@@ -124,6 +127,19 @@ impl Preview {
         let output = execute_and_capture_output_without_check(
             "jupyter",
             &vec!["nbconvert", "--to", "markdown", path_str, "--stdout"],
+        )
+        .ok()?;
+        let ss = SyntaxSet::load_defaults_nonewlines();
+        ss.find_syntax_by_extension("md").map(|syntax| {
+            Self::Syntaxed(HLContent::from_str(&output, ss.clone(), syntax).unwrap_or_default())
+        })
+    }
+
+    fn doc(path: &Path) -> Option<Self> {
+        let path_str = path.to_str()?;
+        let output = execute_and_capture_output_without_check(
+            "pandoc",
+            &vec!["-s", "-t", "markdown", "--", path_str],
         )
         .ok()?;
         let ss = SyntaxSet::load_defaults_nonewlines();
@@ -928,6 +944,10 @@ fn is_ext_iso(ext: &str) -> bool {
 
 fn is_ext_notebook(ext: &str) -> bool {
     ext == "ipynb"
+}
+
+fn is_ext_doc(ext: &str) -> bool {
+    matches!(ext, "doc" | "docx" | "odt" | "sxw")
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
