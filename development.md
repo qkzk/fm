@@ -490,7 +490,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] preview font with fontimage like [ranger](https://github.com/ranger/ranger/blob/46660c277c2ceb7c7c41ffce794d68f8f559030f/ranger/data/scope.sh#L207-L225)
   - [ ] preview doc with pandoc or odt2txt [ranger](https://github.com/ranger/ranger/blob/46660c277c2ceb7c7c41ffce794d68f8f559030f/ranger/data/scope.sh#L84-L93)
   - [ ] preview html as **code** or ~rendered~ ???
-  - [ ] preview notebooks
+  - [x] preview notebooks
 
 - [ ] sub window / menu for completion / selection.
 

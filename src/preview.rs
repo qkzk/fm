@@ -87,6 +87,10 @@ impl Preview {
                     Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
                 }
                 e if is_ext_iso(e) => Ok(Self::Iso(Iso::new(&file_info.path)?)),
+                e if is_ext_notebook(e) => {
+                    Ok(Self::notebook(&file_info.path)
+                        .context("Preview: Couldn't parse notebook")?)
+                }
                 e => match Self::preview_syntaxed(e, &file_info.path) {
                     Some(syntaxed_preview) => Ok(syntaxed_preview),
                     None => Self::preview_text_or_binary(file_info),
@@ -112,6 +116,19 @@ impl Preview {
         let ss = SyntaxSet::load_defaults_nonewlines();
         ss.find_syntax_by_extension(ext).map(|syntax| {
             Self::Syntaxed(HLContent::new(path, ss.clone(), syntax).unwrap_or_default())
+        })
+    }
+
+    fn notebook(path: &Path) -> Option<Self> {
+        let path_str = path.to_str()?;
+        let output = execute_and_capture_output_without_check(
+            "jupyter",
+            &vec!["nbconvert", "--to", "markdown", path_str, "--stdout"],
+        )
+        .ok()?;
+        let ss = SyntaxSet::load_defaults_nonewlines();
+        ss.find_syntax_by_extension("md").map(|syntax| {
+            Self::Syntaxed(HLContent::from_str(&output, ss.clone(), syntax).unwrap_or_default())
         })
     }
 
@@ -250,6 +267,15 @@ impl HLContent {
             .collect();
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
 
+        Ok(Self {
+            length: highlighted_content.len(),
+            content: highlighted_content,
+        })
+    }
+
+    fn from_str(text: &str, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
+        let raw_content = text.lines().map(|s| s.to_owned()).collect();
+        let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
         Ok(Self {
             length: highlighted_content.len(),
             content: highlighted_content,
@@ -898,6 +924,10 @@ fn is_ext_pdf(ext: &str) -> bool {
 
 fn is_ext_iso(ext: &str) -> bool {
     ext == "iso"
+}
+
+fn is_ext_notebook(ext: &str) -> bool {
+    ext == "ipynb"
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {

@@ -264,6 +264,7 @@ Most of the openers and tui applications are configurable from config files. Som
 - [Dragon-Drop](https://github.com/mwh/dragon) drag-and-drop a file from a terminal to a GUI application.
 - [Ueberzug](https://github.com/LalleSX/ueberzug) display images in your terminal. Used to preview images. This one may be tricky to install from source since the original maintener nuked his project. It's still available in many package managers.
 - [isoinfo](https://command-not-found.com/isoinfo) allow the content preview of an iso file
+- [jupyter](https://jupyter.org/) preview jupyter notebooks by converting them to markdown
 
 ## Contribution
 
