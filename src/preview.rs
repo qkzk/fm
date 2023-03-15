@@ -86,6 +86,10 @@ impl Preview {
                 e if is_ext_video(e) => {
                     Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
                 }
+                e if is_ext_font(e) => {
+                    Ok(Self::Ueberzug(Ueberzug::font_thumbnail(&file_info.path)?))
+                }
+                e if is_ext_svg(e) => Ok(Self::Ueberzug(Ueberzug::svg_thumbnail(&file_info.path)?)),
                 e if is_ext_iso(e) => Ok(Self::Iso(Iso::new(&file_info.path)?)),
                 e if is_ext_notebook(e) => {
                     Ok(Self::notebook(&file_info.path)
@@ -562,16 +566,30 @@ impl Ueberzug {
         })
     }
 
-    fn video_thumbnail(video_path: &Path) -> Result<Self> {
-        Self::make_thumbnail(video_path)?;
-        Ok(Self {
+    fn thumbnail() -> Self {
+        Self {
             path: THUMBNAIL_PATH.to_owned(),
             filename: "thumbnail".to_owned(),
             ueberzug: ueberzug::Ueberzug::new(),
-        })
+        }
     }
 
-    fn make_thumbnail(video_path: &Path) -> Result<()> {
+    fn video_thumbnail(video_path: &Path) -> Result<Self> {
+        Self::make_video_thumbnail(video_path)?;
+        Ok(Self::thumbnail())
+    }
+
+    fn font_thumbnail(font_path: &Path) -> Result<Self> {
+        Self::make_font_thumbnail(font_path)?;
+        Ok(Self::thumbnail())
+    }
+
+    fn svg_thumbnail(svg_path: &Path) -> Result<Self> {
+        Self::make_svg_thumbnail(svg_path)?;
+        Ok(Self::thumbnail())
+    }
+
+    fn make_video_thumbnail(video_path: &Path) -> Result<()> {
         let path_str = video_path
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
@@ -586,6 +604,40 @@ impl Ueberzug {
                 THUMBNAIL_PATH,
                 "-y",
             ])
+            .output()?;
+        if !output.stderr.is_empty() {
+            info!(
+                "ffmpeg thumbnail output: {} {}",
+                String::from_utf8(output.stdout).unwrap_or_default(),
+                String::from_utf8(output.stderr).unwrap_or_default()
+            );
+        }
+        Ok(())
+    }
+
+    fn make_font_thumbnail(font_path: &Path) -> Result<()> {
+        let path_str = font_path
+            .to_str()
+            .context("make_thumbnail: couldn't parse the path into a string")?;
+        let output = std::process::Command::new("fontimage")
+            .args(["-o", THUMBNAIL_PATH, path_str])
+            .output()?;
+        if !output.stderr.is_empty() {
+            info!(
+                "fontimage thumbnail output: {} {}",
+                String::from_utf8(output.stdout).unwrap_or_default(),
+                String::from_utf8(output.stderr).unwrap_or_default()
+            );
+        }
+        Ok(())
+    }
+
+    fn make_svg_thumbnail(svg_path: &Path) -> Result<()> {
+        let path_str = svg_path
+            .to_str()
+            .context("make_thumbnail: couldn't parse the path into a string")?;
+        let output = std::process::Command::new("rsvg-convert")
+            .args(["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH])
             .output()?;
         if !output.stderr.is_empty() {
             info!(
@@ -932,6 +984,14 @@ fn is_ext_audio(ext: &str) -> bool {
 
 fn is_ext_video(ext: &str) -> bool {
     matches!(ext, "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg")
+}
+
+fn is_ext_font(ext: &str) -> bool {
+    matches!(ext, "ttf")
+}
+
+fn is_ext_svg(ext: &str) -> bool {
+    matches!(ext, "svg")
 }
 
 fn is_ext_pdf(ext: &str) -> bool {

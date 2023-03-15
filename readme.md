@@ -266,6 +266,8 @@ Most of the openers and tui applications are configurable from config files. Som
 - [isoinfo](https://command-not-found.com/isoinfo) allow the content preview of an iso file
 - [jupyter](https://jupyter.org/) preview jupyter notebooks by converting them to markdown
 - [pandoc](https://pandoc.org) preview open documents by converting them to markdown with pandoc
+- [fontimage](https://fontforge.org/docs/fontutils/fontimage.html) preview fonts by creating a thumbnail
+- [rsvg-convert](https://github.com/brion/librsvg) preview svg by creating a thumbnail
 
 ## Contribution
 
