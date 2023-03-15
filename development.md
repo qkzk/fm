@@ -486,10 +486,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
   - [ ] allow pipe in execution
   - [ ] search in preview or in help
-  - [x] preview SVG like [ranger](https://github.com/ranger/ranger/pull/2537/files) does
-  - [x] preview font with fontimage like [ranger](https://github.com/ranger/ranger/blob/46660c277c2ceb7c7c41ffce794d68f8f559030f/ranger/data/scope.sh#L207-L225)
-  - [x] preview doc with pandoc or odt2txt [ranger](https://github.com/ranger/ranger/blob/46660c277c2ceb7c7c41ffce794d68f8f559030f/ranger/data/scope.sh#L84-L93)
-  - [x] preview notebooks
+  - [x] Preview more filetypes - inspired by ranger
+    - [x] preview SVG like [ranger](https://github.com/ranger/ranger/pull/2537/files) does
+    - [x] preview font with fontimage like [ranger](https://github.com/ranger/ranger/blob/46660c277c2ceb7c7c41ffce794d68f8f559030f/ranger/data/scope.sh#L207-L225)
+    - [x] preview doc with pandoc or odt2txt [ranger](https://github.com/ranger/ranger/blob/46660c277c2ceb7c7c41ffce794d68f8f559030f/ranger/data/scope.sh#L84-L93)
+    - [x] preview notebooks
 
 - [ ] sub window / menu for completion / selection.
 
