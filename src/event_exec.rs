@@ -1978,6 +1978,11 @@ impl EventExec {
         Mocp::add_to_playlist(tab)
     }
 
+    /// Add a song or a folder to MOC playlist. Start it first...
+    pub fn event_mocp_go_to_song(tab: &mut Tab) -> Result<()> {
+        Mocp::go_to_song(tab)
+    }
+
     /// Toggle play/pause on MOC.
     /// Starts the server if needed, preventing the output to fill the screen.
     /// Then toggle play/pause

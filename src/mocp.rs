@@ -1,7 +1,9 @@
 use anyhow::Result;
 use log::info;
 
-use crate::opener::{execute_and_capture_output, execute_in_child};
+use crate::opener::{
+    execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
+};
 use crate::status::Status;
 use crate::tab::Tab;
 
@@ -23,6 +25,18 @@ impl Mocp {
         let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
         info!("mocp add to playlist {path_str:?}");
         let _ = execute_in_child("mocp", &vec!["-a", &path_str]);
+        Ok(())
+    }
+
+    /// Move to the currently playing song.
+    pub fn go_to_song(tab: &mut Tab) -> Result<()> {
+        let output = execute_and_capture_output_without_check("mocp", &vec!["-Q", "%file"])?;
+        let filepath = std::path::PathBuf::from(output.trim());
+        let Some(parent) = filepath.parent() else { return Ok(()) };
+        let Some(filename) = filepath.file_name() else { return Ok(()) };
+        let Some(filename) = filename.to_str() else { return Ok(()) };
+        tab.set_pathcontent(parent)?;
+        tab.search_from(filename, 0);
         Ok(())
     }
 

@@ -97,10 +97,11 @@ Navigate as usual. Most actions works as in 'normal' view.
 
 - MOC -
 Control MOC from your TUI
-{MocpAddToPlayList}:          Add a file or folder to the playlist
-{MocpPrevious}:        Previous song
-{MocpTogglePause}:        Toggle play/pause. Start MOC if needed
-{MocpNext}        Next song
+{MocpAddToPlayList}:          MOCP: Add a file or folder to the playlist
+{MocpPrevious}:        MOCP: Previous song
+{MocpTogglePause}:        MOCP: Toggle play/pause.
+{MocpNext}:       MOCP: Next song
+{MocpGoToSong}:        MOCP: Go to currently playing song 
 ";
 
 /// Holds the help string, formated with current keybindings.
