@@ -468,6 +468,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] preview the content of a iso file. Require the application isoinfo
   - [x] fuzzy finder for keybindings with alt+h. The found keybinding will be run immediatly
   - [x] rename: use current name instead of empty string
+  - [x] don't fail at first error in config.yaml. Allow parsing continuation.
   - [ ] refactor cryptdevice and iso_file
     - [x] common trait between both
     - [ ] mode to handle those mounts. ATM it's all over the place...

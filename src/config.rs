@@ -35,7 +35,7 @@ impl Config {
     /// Updates the config from  a configuration content.
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> Result<()> {
         self.colors.update_from_config(&yaml["colors"]);
-        self.binds.update_from_config(&yaml["keys"])?;
+        self.binds.update_from_config(&yaml["keys"]);
         self.terminal = Self::set_terminal(&yaml["terminal"])?;
         Ok(())
     }
