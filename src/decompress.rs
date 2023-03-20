@@ -5,8 +5,6 @@ use std::path::Path;
 use tar::Archive;
 
 /// Decompress a zipped compressed file into its parent directory.
-/// It may fail an return a `FmError` if the file has no parent,
-/// which should be impossible.
 pub fn decompress_zip(source: &Path) -> Result<()> {
     let file = File::open(source)?;
     let mut zip = zip::ZipArchive::new(file)?;
@@ -20,8 +18,6 @@ pub fn decompress_zip(source: &Path) -> Result<()> {
 }
 
 /// Decompress a gz compressed file into its parent directory.
-/// It may fail an return a `FmError` if the file has no parent,
-/// which should be impossible.
 pub fn decompress_gz(source: &Path) -> Result<()> {
     let tar_gz = File::open(source)?;
     let tar = GzDecoder::new(tar_gz);
@@ -35,8 +31,6 @@ pub fn decompress_gz(source: &Path) -> Result<()> {
 }
 
 /// Decompress a zlib compressed file into its parent directory.
-/// It may fail an return a `FmError` if the file has no parent,
-/// which should be impossible.
 pub fn decompress_xz(source: &Path) -> Result<()> {
     let tar_xz = File::open(source)?;
     let tar = ZlibDecoder::new(tar_xz);

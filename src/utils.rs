@@ -9,7 +9,6 @@ use users::{get_current_uid, get_user_by_uid};
 
 use crate::event_dispatch::EventDispatcher;
 use crate::fileinfo::human_size;
-// use crate::fm_error::{FmError, FmResult};
 use crate::status::Status;
 use crate::term_manager::{Display, EventReader};
 

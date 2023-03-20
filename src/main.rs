@@ -8,7 +8,6 @@ use fm::args::Args;
 use fm::config::load_config;
 use fm::constant_strings_paths::CONFIG_PATH;
 use fm::event_dispatch::EventDispatcher;
-// use fm::fm_error::FmResult;
 use fm::help::Help;
 use fm::log::set_loggers;
 use fm::status::Status;

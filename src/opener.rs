@@ -398,7 +398,7 @@ where
 /// Execute a command with options in a fork.
 /// Wait for termination and return either :
 /// `Ok(stdout)` if the status code is 0
-/// or `Err(FmError::custom(..., ...))` otherwise.
+/// an Error otherwise
 /// Branch stdin and stderr to /dev/null
 pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> Result<String> {
     info!("execute_and_capture_output. executable: {exe}, arguments: {args:?}",);
