@@ -6,6 +6,7 @@ use std::process::{Command, Stdio};
 use anyhow::{anyhow, Context, Result};
 use log::info;
 use serde_yaml;
+use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::constant_strings_paths::{
@@ -163,7 +164,8 @@ impl OpenerAssociation {
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
 
-        for s in EnumIter::enum_iter!(ExtensionKind) {
+        for s in ExtensionKind::iter() {
+            let s = s.to_string();
             if !associations.contains_key(&s) {
                 associations.insert(s, "".to_owned());
             }
