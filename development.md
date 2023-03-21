@@ -493,6 +493,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] preview doc with pandoc or odt2txt [ranger](https://github.com/ranger/ranger/blob/46660c277c2ceb7c7c41ffce794d68f8f559030f/ranger/data/scope.sh#L84-L93)
     - [x] preview notebooks
   - [x] mocp go to song: `mocp -Q %file` with alt+enter (lack of a better keybinding)
+  - [x] display openers in help
 
 - [ ] sub window / menu for completion / selection.
 
