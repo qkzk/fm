@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::env;
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -166,9 +167,7 @@ impl OpenerAssociation {
 
         for s in ExtensionKind::iter() {
             let s = s.to_string();
-            if !associations.contains_key(&s) {
-                associations.insert(s, "".to_owned());
-            }
+            associations.entry(s).or_insert_with(|| "".to_owned());
         }
         associations
     }
@@ -265,13 +264,16 @@ impl OpenerInfo {
             yaml.get("use_term")?.as_bool()?,
         )))
     }
+}
 
-    fn to_string(&self) -> String {
-        if let Some(external) = &self.external_program {
-            external.to_owned()
+impl fmt::Display for OpenerInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> std::fmt::Result {
+        let s = if let Some(external) = &self.external_program {
+            external
         } else {
-            "".to_owned()
-        }
+            ""
+        };
+        write!(f, "{s}")
     }
 }
 

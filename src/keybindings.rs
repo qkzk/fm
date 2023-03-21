@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
 
-use anyhow::Result;
 use tuikit::prelude::{from_keyname, Key};
 
 use crate::action_map::ActionMap;
