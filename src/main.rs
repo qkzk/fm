@@ -70,14 +70,14 @@ fn main2() -> Result<()> {
 
 fn main() -> Result<()> {
     let term = Arc::new(init_term()?);
+    // CLICOLOR_FORCE=1 COLORTERM="truecolor" duf > duf.txt
     let s = std::fs::read_to_string("/home/quentin/duf.txt")?;
 
-    // let s = "│ [94m/[0m          │ 219.5G │ 135.0G │  [92m73.3G[0m │ [93m 61.5%[0m │ [37mext4[0m │ [37m/dev/sda7[0m  │";
     for (row, line) in s.lines().enumerate() {
         fm::skim::print_ansi_str(line, &term, Some(0), Some(row))?;
     }
     term.present()?;
-    while let Ok(ev) = term.poll_event() {}
+    while let Ok(_ev) = term.poll_event() {}
 
     Ok(())
 }
