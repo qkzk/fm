@@ -19,7 +19,7 @@ use fm::utils::{drop_everything, init_term, print_on_quit};
 /// Init the status and display and listen to events (keyboard, mouse, resize, custom...).
 /// The application is redrawn after every event.
 /// When the user issues a quit event, the main loop is broken and we reset the cursor.
-fn main() -> Result<()> {
+fn main2() -> Result<()> {
     set_loggers()?;
 
     info!("fm is starting");
@@ -65,5 +65,16 @@ fn main() -> Result<()> {
     drop_everything(term, event_dispatcher, event_reader, status, display);
     print_on_quit(&final_path);
     info!("fm is shutting down");
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    let term = Arc::new(init_term()?);
+    // let s = "\x1B[35mA\x1B[mB";
+    let s = "│ [94m/[0m          │ 219.5G │ 135.0G │  [92m73.3G[0m │ [93m 61.5%[0m │ [37mext4[0m │ [37m/dev/sda7[0m  │";
+    fm::skim::print_ansi_str(s, &term, Some(0), Some(0))?;
+    term.present()?;
+    while let Ok(ev) = term.poll_event() {}
+
     Ok(())
 }

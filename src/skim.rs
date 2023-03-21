@@ -96,3 +96,24 @@ fn pick_first_installed<'a>(commands: &'a [&'a str]) -> Option<&'a str> {
     }
     None
 }
+
+/// Print an ANSI escaped with corresponding colors.
+pub fn print_ansi_str(
+    text: &str,
+    term: &Arc<tuikit::term::Term>,
+    col: Option<usize>,
+    row: Option<usize>,
+) -> anyhow::Result<()> {
+    let mut col = match col {
+        Some(col) => col,
+        None => 0,
+    };
+    let row = match row {
+        Some(row) => row,
+        None => 0,
+    };
+    for (chr, attr) in skim::AnsiString::parse(text).iter() {
+        col += term.print_with_attr(row, col, &chr.to_string(), attr)?;
+    }
+    Ok(())
+}
