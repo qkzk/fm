@@ -2,11 +2,12 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
+use fm::opener::{load_opener, Opener};
 use log::info;
 
 use fm::args::Args;
 use fm::config::load_config;
-use fm::constant_strings_paths::CONFIG_PATH;
+use fm::constant_strings_paths::{CONFIG_PATH, OPENER_PATH};
 use fm::event_dispatch::EventDispatcher;
 use fm::help::Help;
 use fm::log::set_loggers;
@@ -32,15 +33,14 @@ fn main() -> Result<()> {
     let term = Arc::new(init_term()?);
     let event_dispatcher = EventDispatcher::new(config.binds.clone());
     let event_reader = EventReader::new(term.clone());
-    let help = Help::from_keybindings(&config.binds)?.help;
+    let opener = load_opener(OPENER_PATH, &config.terminal).unwrap_or_else(|_| {
+            eprintln!("Couldn't read the opener config file at {OPENER_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/opener.yaml for an example. Using default.");
+            info!("Couldn't read opener file at {OPENER_PATH}. Using default.");
+            Opener::new(&config.terminal)
+        });
+    let help = Help::from_keybindings(&config.binds, &opener)?.help;
     let mut display = Display::new(term.clone());
-    let mut status = Status::new(
-        Args::parse(),
-        display.height()?,
-        term.clone(),
-        help,
-        &config.terminal,
-    )?;
+    let mut status = Status::new(Args::parse(), display.height()?, term.clone(), help, opener)?;
     let colors = config.colors.clone();
     drop(config);
 

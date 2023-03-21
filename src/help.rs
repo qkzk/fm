@@ -2,6 +2,7 @@ use anyhow::Result;
 use strfmt::strfmt;
 
 use crate::keybindings::Bindings;
+use crate::opener::Opener;
 
 /// Help message to be displayed when help key is pressed.
 /// Default help key is `'h'`.
@@ -27,7 +28,17 @@ static HELP_TO_FORMAT: &str = "
 {ToggleDisplayFull}:      toggle metadata on files
 {ToggleHidden}:      toggle hidden
 {Shell}:      shell in current directory
-{OpenFile}:      open the selected file
+{OpenFile}:      open the selected file with :
+    - default       {Default}
+    - audio         {Audio}
+    - images        {Bitmap}
+    - office        {Office}
+    - pdf, ebooks   {Readable}
+    - text          {Text}
+    - video         {Video}
+    - vectorials    {Vectorial}
+    - compressed files are decompressed
+    - iso images are mounted
 {NvimFilepicker}:      open in current nvim session
 {NvimSetAddress}:      setup the nvim rpc address
 {Preview}:      preview this file
@@ -114,8 +125,12 @@ impl Help {
     /// Creates an Help instance from keybindings.
     /// If multiple keybindings are bound to the same action, the last one
     /// is displayed.
-    pub fn from_keybindings(binds: &Bindings) -> Result<Self> {
-        let help = strfmt(HELP_TO_FORMAT, &binds.keybind_reversed())?;
+    pub fn from_keybindings(binds: &Bindings, opener: &Opener) -> Result<Self> {
+        let mut strings = binds.keybind_reversed();
+        let openers = opener.opener_association.as_map_of_strings();
+        log::info!("{openers:?}");
+        strings.extend(openers);
+        let help = strfmt(HELP_TO_FORMAT, &strings)?;
         Ok(Self { help })
     }
 }

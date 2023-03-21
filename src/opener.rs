@@ -6,6 +6,7 @@ use std::process::{Command, Stdio};
 use anyhow::{anyhow, Context, Result};
 use log::info;
 use serde_yaml;
+use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::constant_strings_paths::{
     DEFAULT_AUDIO_OPENER, DEFAULT_IMAGE_OPENER, DEFAULT_OFFICE_OPENER, DEFAULT_OPENER,
@@ -31,8 +32,9 @@ where
 }
 
 /// Different kind of extensions for default openers.
-#[derive(Clone, Hash, Eq, PartialEq, Debug)]
+#[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
 pub enum ExtensionKind {
+    #[default]
     Audio,
     Bitmap,
     Office,
@@ -153,6 +155,21 @@ impl OpenerAssociation {
             ]),
         }
     }
+
+    pub fn as_map_of_strings(&self) -> std::collections::HashMap<String, String> {
+        let mut associations: std::collections::HashMap<String, String> = self
+            .association
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+
+        for s in EnumIter::enum_iter!(ExtensionKind) {
+            if !associations.contains_key(&s) {
+                associations.insert(s, "".to_owned());
+            }
+        }
+        associations
+    }
 }
 
 macro_rules! open_file_with {
@@ -196,8 +213,9 @@ impl OpenerAssociation {
 /// Some kind of files are "opened" using internal methods.
 /// ATM only one kind of files is supported, compressed ones, which use
 /// libarchive internally.
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug, Default)]
 pub enum InternalVariant {
+    #[default]
     DecompressZip,
     DecompressXz,
     DecompressGz,
@@ -244,6 +262,14 @@ impl OpenerInfo {
             yaml.get("opener")?.as_str()?,
             yaml.get("use_term")?.as_bool()?,
         )))
+    }
+
+    fn to_string(&self) -> String {
+        if let Some(external) = &self.external_program {
+            external.to_owned()
+        } else {
+            "".to_owned()
+        }
     }
 }
 
