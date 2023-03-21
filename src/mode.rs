@@ -104,6 +104,8 @@ pub enum Navigate {
     Bulk,
     /// Shell menu applications. Start a new shell with this application.
     ShellMenu,
+    /// Cli info
+    CliInfo,
 }
 
 /// Different mode in which the application can be.
@@ -169,6 +171,7 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::IsoDevice) => {
                 write!(f, "Iso image :")
             }
+            Mode::Navigate(Navigate::CliInfo) => write!(f, "Display infos :"),
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
             Mode::Preview => write!(f, "Preview : "),
         }

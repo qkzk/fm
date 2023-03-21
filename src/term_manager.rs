@@ -394,6 +394,15 @@ impl<'a> WinMain<'a> {
                     )?;
                 }
             }
+            Preview::ColoredText(colored_text) => {
+                for (i, line) in colored_text.window(window.top, window.bottom, length) {
+                    let row = calc_line_row(i, window);
+                    let mut col = 3;
+                    for (chr, attr) in skim::AnsiString::parse(line).iter() {
+                        col += canvas.print_with_attr(row, col, &chr.to_string(), attr)?;
+                    }
+                }
+            }
             Preview::Archive(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window)
             }
@@ -438,6 +447,7 @@ impl<'a> Draw for WinSecondary<'a> {
             }
             Mode::Navigate(Navigate::Marks(_)) => self.marks(self.status, canvas),
             Mode::Navigate(Navigate::ShellMenu) => self.shell_menu(self.status, canvas),
+            Mode::Navigate(Navigate::CliInfo) => self.cli_info(self.status, canvas),
             Mode::NeedConfirmation(confirmed_mode) => {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
@@ -661,6 +671,25 @@ impl<'a> WinSecondary<'a> {
         let tab = status.selected_non_mut();
         for ((row, (command, _)), attr) in std::iter::zip(
             status.shell_menu.content.iter().enumerate(),
+            MENU_COLORS.iter().cycle(),
+        ) {
+            let mut attr = *attr;
+            if row == status.shell_menu.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            let row = calc_line_row(row, &tab.window) + 2;
+
+            canvas.print_with_attr(row, 3, command, attr)?;
+        }
+        Ok(())
+    }
+
+    fn cli_info(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
+
+        let tab = status.selected_non_mut();
+        for ((row, command), attr) in std::iter::zip(
+            status.cli_info.content.iter().enumerate(),
             MENU_COLORS.iter().cycle(),
         ) {
             let mut attr = *attr;

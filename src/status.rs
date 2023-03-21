@@ -15,6 +15,7 @@ use users::UsersCache;
 
 use crate::args::Args;
 use crate::bulkrename::Bulk;
+use crate::cli_info::CliInfo;
 use crate::compress::Compresser;
 use crate::config::Colors;
 use crate::constant_strings_paths::TUIS_PATH;
@@ -79,6 +80,7 @@ pub struct Status {
     pub force_clear: bool,
     pub bulk: Bulk,
     pub shell_menu: ShellMenu,
+    pub cli_info: CliInfo,
 }
 
 impl Status {
@@ -100,6 +102,7 @@ impl Status {
             info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");
             std::process::exit(1);
         };
+        let cli_info = CliInfo::default();
 
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let nvim_server = args.server.clone();
@@ -145,6 +148,7 @@ impl Status {
             bulk,
             shell_menu,
             iso_mounter,
+            cli_info,
         })
     }
 

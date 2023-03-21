@@ -44,6 +44,7 @@ pub enum Preview {
     Directory(Directory),
     Iso(Iso),
     Diff(Diff),
+    ColoredText(ColoredText),
     #[default]
     Empty,
 }
@@ -186,6 +187,10 @@ impl Preview {
         Self::Text(TextContent::log(log))
     }
 
+    pub fn cli_info(output: &String) -> Self {
+        Self::ColoredText(ColoredText::new(output))
+    }
+
     /// Empty preview, holding nothing.
     pub fn new_empty() -> Self {
         Self::Empty
@@ -206,6 +211,7 @@ impl Preview {
             Self::Directory(directory) => directory.len(),
             Self::Diff(diff) => diff.len(),
             Self::Iso(iso) => iso.len(),
+            Self::ColoredText(text) => text.len(),
         }
     }
 
@@ -654,6 +660,31 @@ impl Ueberzug {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct ColoredText {
+    pub content: Vec<String>,
+    len: usize,
+    pub selected_index: usize,
+}
+
+impl ColoredText {
+    pub fn len(&self) -> usize {
+        self.content.len()
+    }
+
+    pub fn new(output: &str) -> Self {
+        let content: Vec<String> = output.lines().map(|l| l.to_owned()).collect();
+        let len = content.len();
+        info!("preview len {len}");
+        let selected_index = 0;
+        Self {
+            content,
+            len,
+            selected_index,
+        }
+    }
+}
+
 /// Display a tree view of a directory.
 /// The "tree view" is calculated recursively. It may take some time
 /// if the directory has a lot of children.
@@ -938,6 +969,7 @@ impl_window!(MediaContent, String);
 impl_window!(Directory, ColoredPair);
 impl_window!(Diff, String);
 impl_window!(Iso, String);
+impl_window!(ColoredText, String);
 
 fn is_ext_compressed(ext: &str) -> bool {
     matches!(

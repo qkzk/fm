@@ -88,6 +88,7 @@ impl Bindings {
             (Key::Alt('e'), ActionMap::ToggleDisplayFull),
             (Key::Alt('f'), ActionMap::ToggleDualPane),
             (Key::Alt('h'), ActionMap::FuzzyFindHelp),
+            (Key::Alt('i'), ActionMap::CliInfo),
             (Key::Alt('l'), ActionMap::Log),
             (Key::Alt('p'), ActionMap::TogglePreviewSecond),
             (Key::Alt('c'), ActionMap::OpenConfig),

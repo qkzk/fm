@@ -1,6 +1,7 @@
 pub mod action_map;
 pub mod args;
 pub mod bulkrename;
+pub mod cli_info;
 pub mod color_cache;
 pub mod completion;
 pub mod compress;

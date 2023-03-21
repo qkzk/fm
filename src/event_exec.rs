@@ -262,6 +262,16 @@ impl EventExec {
         status.shell_menu.execute(status)
     }
 
+    pub fn exec_cli_info(status: &mut Status) -> Result<()> {
+        let output = status.cli_info.execute(status)?;
+        info!("output {output}");
+        let preview = Preview::cli_info(&output);
+        status.selected().window.reset(preview.len());
+        status.selected().preview = preview;
+        status.selected().set_mode(Mode::Preview);
+        Ok(())
+    }
+
     /// Copy the flagged file to current directory.
     /// A progress bar is displayed and a notification is sent once it's done.
     pub fn exec_copy_paste(status: &mut Status) -> Result<()> {
@@ -872,12 +882,21 @@ impl EventExec {
         Ok(())
     }
 
-    /// Enter the history mode, allowing to navigate to previously visited
-    /// directory.
+    /// Enter the shell menu mode. You can pick a TUI application to be run
     pub fn event_shell_menu(tab: &mut Tab) -> Result<()> {
         tab.set_mode(Mode::Navigate(Navigate::ShellMenu));
         Ok(())
     }
+
+    /// Enter the cli info mode. You can pick a Text application to be
+    /// displayed/
+    pub fn event_cli_info(status: &mut Status) -> Result<()> {
+        status
+            .selected()
+            .set_mode(Mode::Navigate(Navigate::CliInfo));
+        Ok(())
+    }
+
     /// Enter the history mode, allowing to navigate to previously visited
     /// directory.
     pub fn event_history(tab: &mut Tab) -> Result<()> {
@@ -1417,6 +1436,11 @@ impl EventExec {
             Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
             Mode::Navigate(Navigate::Bulk) => EventExec::exec_bulk(status)?,
             Mode::Navigate(Navigate::ShellMenu) => EventExec::exec_shellmenu(status)?,
+            Mode::Navigate(Navigate::CliInfo) => {
+                status.selected().refresh_view()?;
+                EventExec::exec_cli_info(status)?;
+                info!("mode: {}", status.selected_non_mut().mode);
+            }
             Mode::Navigate(Navigate::EncryptedDrive) => (),
             Mode::Navigate(Navigate::IsoDevice) => (),
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
