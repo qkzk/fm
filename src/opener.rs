@@ -158,6 +158,8 @@ impl OpenerAssociation {
         }
     }
 
+    /// Converts itself into an hashmap of strings.
+    /// Used to include openers in the help
     pub fn as_map_of_strings(&self) -> std::collections::HashMap<String, String> {
         let mut associations: std::collections::HashMap<String, String> = self
             .association
