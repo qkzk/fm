@@ -693,7 +693,7 @@ impl<'a> WinSecondary<'a> {
             MENU_COLORS.iter().cycle(),
         ) {
             let mut attr = *attr;
-            if row == status.shell_menu.index() {
+            if row == status.cli_info.index() {
                 attr.effect |= Effect::REVERSE;
             }
             let row = calc_line_row(row, &tab.window) + 2;

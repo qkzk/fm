@@ -669,13 +669,13 @@ pub struct ColoredText {
 
 impl ColoredText {
     pub fn len(&self) -> usize {
-        self.content.len()
+        self.len
     }
 
+    /// Make a new previewed colored text.
     pub fn new(output: &str) -> Self {
-        let content: Vec<String> = output.lines().map(|l| l.to_owned()).collect();
+        let content: Vec<String> = output.lines().map(|line| line.to_owned()).collect();
         let len = content.len();
-        info!("preview len {len}");
         let selected_index = 0;
         Self {
             content,

@@ -245,13 +245,19 @@ impl EventExec {
     }
 
     pub fn event_shell_menu_prev(status: &mut Status) {
-        info!("shell menu prev");
         status.shell_menu.prev()
     }
 
     pub fn event_shell_menu_next(status: &mut Status) {
-        info!("shell menu next");
         status.shell_menu.next()
+    }
+
+    pub fn event_cli_info_prev(status: &mut Status) {
+        status.cli_info.prev()
+    }
+
+    pub fn event_cli_info_next(status: &mut Status) {
+        status.cli_info.next()
     }
 
     pub fn exec_bulk(status: &mut Status) -> Result<()> {
@@ -264,11 +270,11 @@ impl EventExec {
 
     pub fn exec_cli_info(status: &mut Status) -> Result<()> {
         let output = status.cli_info.execute(status)?;
-        info!("output {output}");
+        info!("output\n{output}");
+        status.selected().set_mode(Mode::Preview);
         let preview = Preview::cli_info(&output);
         status.selected().window.reset(preview.len());
         status.selected().preview = preview;
-        status.selected().set_mode(Mode::Preview);
         Ok(())
     }
 
@@ -1258,6 +1264,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Compress) => EventExec::event_compression_prev(status),
             Mode::Navigate(Navigate::Bulk) => EventExec::event_bulk_prev(status),
             Mode::Navigate(Navigate::ShellMenu) => EventExec::event_shell_menu_prev(status),
+            Mode::Navigate(Navigate::CliInfo) => EventExec::event_cli_info_prev(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_prev(status)
             }
@@ -1283,6 +1290,7 @@ impl EventExec {
             Mode::Navigate(Navigate::Compress) => EventExec::event_compression_next(status),
             Mode::Navigate(Navigate::Bulk) => EventExec::event_bulk_next(status),
             Mode::Navigate(Navigate::ShellMenu) => EventExec::event_shell_menu_next(status),
+            Mode::Navigate(Navigate::CliInfo) => EventExec::event_cli_info_next(status),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 EventExec::event_encrypted_drive_next(status)
             }
@@ -1437,7 +1445,9 @@ impl EventExec {
             Mode::Navigate(Navigate::Bulk) => EventExec::exec_bulk(status)?,
             Mode::Navigate(Navigate::ShellMenu) => EventExec::exec_shellmenu(status)?,
             Mode::Navigate(Navigate::CliInfo) => {
-                status.selected().refresh_view()?;
+                // status.selected().refresh_view()?;
+                must_refresh = false;
+                must_reset_mode = false;
                 EventExec::exec_cli_info(status)?;
                 info!("mode: {}", status.selected_non_mut().mode);
             }
