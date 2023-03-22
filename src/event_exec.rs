@@ -269,7 +269,7 @@ impl EventExec {
     }
 
     pub fn exec_cli_info(status: &mut Status) -> Result<()> {
-        let output = status.cli_info.execute(status)?;
+        let output = status.cli_info.execute()?;
         info!("output\n{output}");
         status.selected().set_mode(Mode::Preview);
         let preview = Preview::cli_info(&output);

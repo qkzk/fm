@@ -187,7 +187,7 @@ impl Preview {
         Self::Text(TextContent::log(log))
     }
 
-    pub fn cli_info(output: &String) -> Self {
+    pub fn cli_info(output: &str) -> Self {
         Self::ColoredText(ColoredText::new(output))
     }
 
@@ -670,6 +670,10 @@ pub struct ColoredText {
 impl ColoredText {
     pub fn len(&self) -> usize {
         self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
 
     /// Make a new previewed colored text.

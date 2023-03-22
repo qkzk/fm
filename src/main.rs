@@ -67,17 +67,3 @@ fn main() -> Result<()> {
     info!("fm is shutting down");
     Ok(())
 }
-
-fn main2() -> Result<()> {
-    let term = Arc::new(init_term()?);
-    // CLICOLOR_FORCE=1 COLORTERM="truecolor" duf > duf.txt
-    let s = std::fs::read_to_string("/home/quentin/duf.txt")?;
-
-    for (row, line) in s.lines().enumerate() {
-        fm::skim::print_ansi_str(line, &term, Some(0), Some(row))?;
-    }
-    term.present()?;
-    while let Ok(_ev) = term.poll_event() {}
-
-    Ok(())
-}

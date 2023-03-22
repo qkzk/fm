@@ -104,14 +104,8 @@ pub fn print_ansi_str(
     col: Option<usize>,
     row: Option<usize>,
 ) -> anyhow::Result<()> {
-    let mut col = match col {
-        Some(col) => col,
-        None => 0,
-    };
-    let row = match row {
-        Some(row) => row,
-        None => 0,
-    };
+    let mut col = col.unwrap_or(0);
+    let row = row.unwrap_or(0);
     for (chr, attr) in skim::AnsiString::parse(text).iter() {
         col += term.print_with_attr(row, col, &chr.to_string(), attr)?;
     }
