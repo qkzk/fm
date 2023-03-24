@@ -191,9 +191,10 @@ impl EventExec {
 
     /// Execute a jump to a mark, moving to a valid path.
     /// If the saved path is invalid, it does nothing but reset the view.
-    pub fn exec_marks_jump(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
+    pub fn exec_marks_jump_char(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
         if let Some(path) = status.marks.get(c) {
-            status.selected().set_pathcontent(&path)?
+            status.selected().set_pathcontent(&path)?;
+            status.selected().history.push(&path);
         }
         Self::event_normal(status.selected())?;
         status.selected().reset_mode();
@@ -1425,7 +1426,7 @@ impl EventExec {
         status.skim_line_output_to_tab()
     }
 
-    /// Start a fuzzy find for a specific line with skim.
+    /// Start a fuzzy find for a keybinding with skim.
     pub fn event_fuzzyfind_help(status: &mut Status) -> Result<()> {
         status.skim_find_keybinding()
     }
@@ -1452,7 +1453,7 @@ impl EventExec {
         Self::refresh_status(status, colors)
     }
 
-    /// Display mediainfo defails of an image
+    /// Display mediainfo details of an image
     pub fn event_mediainfo(tab: &mut Tab) -> Result<()> {
         if let Mode::Normal | Mode::Tree = tab.mode {
             let Some(file_info) = tab.selected() else { return Ok(())};
@@ -1464,6 +1465,7 @@ impl EventExec {
         Ok(())
     }
 
+    /// Display a diff between the first 2 flagged files or dir.
     pub fn event_diff(status: &mut Status) -> Result<()> {
         if status.flagged.len() < 2 {
             return Ok(());
@@ -1522,7 +1524,7 @@ impl EventExec {
     }
 
     /// Restore a file from the trash if possible.
-    /// Parent folders are created on the file if needed.
+    /// Parent folders are created if needed.
     pub fn event_trash_restore_file(status: &mut Status) -> Result<()> {
         status.trash.restore()?;
         status.selected().reset_mode();
@@ -1540,7 +1542,7 @@ impl EventExec {
     }
 
     /// Empty the trash folder permanently.
-    pub fn exec_trash_empty(status: &mut Status) -> Result<()> {
+    fn exec_trash_empty(status: &mut Status) -> Result<()> {
         status.trash.empty_trash()?;
         status.selected().reset_mode();
         status.clear_flags_and_reset_view()?;
@@ -1606,7 +1608,7 @@ impl EventExec {
     }
 
     /// Fold every child node in the tree.
-    /// Recursively explore the tree and fold every node. Reset the display. pub fn event_tree_fold_all(status: &mut Status) -> Result<()> { let colors = &status.config_colors.clone(); status.selected().directory.tree.fold_children(); status.selected().directory.make_preview(colors); Ok(()) }
+    /// Recursively explore the tree and fold every node. Reset the display.
     pub fn event_tree_go_to_root(tab: &mut Tab, colors: &Colors) -> Result<()> {
         tab.directory.tree.reset_required_height();
         tab.tree_select_root(colors)
@@ -1857,7 +1859,7 @@ impl EventExec {
     /// Compress the flagged files into an archive.
     /// Compression method is chosen by the user.
     /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
-    pub fn exec_compress(status: &mut Status) -> Result<()> {
+    fn exec_compress(status: &mut Status) -> Result<()> {
         let cwd = std::env::current_dir()?;
         let files_with_relative_paths = status
             .flagged

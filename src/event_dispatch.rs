@@ -108,7 +108,7 @@ impl EventDispatcher {
                     EventExec::event_umount_encrypted_drive(status)
                 }
                 Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
-                    EventExec::exec_marks_jump(status, c, colors)
+                    EventExec::exec_marks_jump_char(status, c, colors)
                 }
                 Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
                     EventExec::exec_marks_new(status, c, colors)
