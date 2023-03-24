@@ -30,8 +30,7 @@ use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
-use crate::utils::filename_from_path;
-use crate::utils::{current_username, disk_used_by_path};
+use crate::utils::{current_username, disk_used_by_path, filename_from_path};
 
 /// Every kind of mutation of the application is defined here.
 /// It mutates `Status` or its children `Tab`.
@@ -291,7 +290,7 @@ impl EventExec {
         status.reset_tabs_view()
     }
 
-    pub fn exec_set_neovim_address(status: &mut Status) -> Result<()> {
+    pub fn exec_set_nvim_addr(status: &mut Status) -> Result<()> {
         status.nvim_server = status.selected_non_mut().input.string();
         status.selected().reset_mode();
         Ok(())
@@ -887,7 +886,7 @@ impl EventExec {
     pub fn event_set_nvim_server(status: &mut Status) -> Result<()> {
         status
             .selected()
-            .set_mode(Mode::InputSimple(InputSimple::SetNvimAddress));
+            .set_mode(Mode::InputSimple(InputSimple::SetNvimAddr));
         Ok(())
     }
 
@@ -1336,33 +1335,16 @@ impl EventExec {
             Mode::InputSimple(InputSimple::Newdir) => EventExec::exec_newdir(status.selected())?,
             Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,
             Mode::InputSimple(InputSimple::RegexMatch) => EventExec::exec_regex(status)?,
-            Mode::InputSimple(InputSimple::SetNvimAddress) => {
-                EventExec::exec_set_neovim_address(status)?
-            }
+            Mode::InputSimple(InputSimple::SetNvimAddr) => EventExec::exec_set_nvim_addr(status)?,
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
                 EventExec::exec_filter(status, colors)?
             }
-            Mode::InputSimple(InputSimple::Password(
-                password_kind,
-                encrypted_action,
-                password_dest,
-            )) => {
+            Mode::InputSimple(InputSimple::Password(kind, action, dest)) => {
                 must_refresh = false;
                 must_reset_mode = false;
-                EventExec::exec_store_password(status, password_kind, password_dest)?;
-                match password_dest {
-                    PasswordUsage::ISO => match encrypted_action {
-                        BlockDeviceAction::MOUNT => EventExec::event_mount_iso_drive(status)?,
-                        BlockDeviceAction::UMOUNT => EventExec::event_umount_iso_drive(status)?,
-                    },
-                    PasswordUsage::CRYPTSETUP => match encrypted_action {
-                        BlockDeviceAction::MOUNT => EventExec::event_mount_encrypted_drive(status)?,
-                        BlockDeviceAction::UMOUNT => {
-                            EventExec::event_umount_encrypted_drive(status)?
-                        }
-                    },
-                }
+                EventExec::exec_store_password(status, kind, dest)?;
+                EventExec::dispatch_password(status, dest, action)?;
             }
             Mode::Navigate(Navigate::Jump) => EventExec::exec_jump(status)?,
             Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
@@ -1371,7 +1353,6 @@ impl EventExec {
             Mode::Navigate(Navigate::Bulk) => EventExec::exec_bulk(status)?,
             Mode::Navigate(Navigate::ShellMenu) => EventExec::exec_shellmenu(status)?,
             Mode::Navigate(Navigate::CliInfo) => {
-                // status.selected().refresh_view()?;
                 must_refresh = false;
                 must_reset_mode = false;
                 EventExec::exec_cli_info(status)?;
@@ -1814,7 +1795,7 @@ impl EventExec {
     }
 
     /// Store a password of some kind (sudo or device passphrase).
-    pub fn exec_store_password(
+    fn exec_store_password(
         status: &mut Status,
         password_kind: PasswordKind,
         password_dest: PasswordUsage,
@@ -1836,6 +1817,23 @@ impl EventExec {
         }
         status.selected().reset_mode();
         Ok(())
+    }
+
+    fn dispatch_password(
+        status: &mut Status,
+        dest: PasswordUsage,
+        action: BlockDeviceAction,
+    ) -> Result<()> {
+        match dest {
+            PasswordUsage::ISO => match action {
+                BlockDeviceAction::MOUNT => EventExec::event_mount_iso_drive(status),
+                BlockDeviceAction::UMOUNT => EventExec::event_umount_iso_drive(status),
+            },
+            PasswordUsage::CRYPTSETUP => match action {
+                BlockDeviceAction::MOUNT => EventExec::event_mount_encrypted_drive(status),
+                BlockDeviceAction::UMOUNT => EventExec::event_umount_encrypted_drive(status),
+            },
+        }
     }
 
     /// Open the config file.
