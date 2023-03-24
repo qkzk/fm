@@ -24,7 +24,7 @@ impl Default for CliInfo {
         let index = 0;
         let commands = HashMap::from([
             ("duf", vec!["duf"]),
-            ("inxi", vec!["inxi", "-Fxxxcz"]),
+            ("inxi", vec!["inxi", "-FB", "--color"]),
             ("neofetch", vec!["neofetch"]),
             ("lsusb", vec!["lsusb"]),
         ]);
