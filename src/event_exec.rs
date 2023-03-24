@@ -152,7 +152,7 @@ impl EventExec {
     }
 
     /// Jump to the current mark.
-    pub fn exec_marks_jump_selected(status: &mut Status) -> Result<()> {
+    pub fn exec_marks_jump(status: &mut Status) -> Result<()> {
         let marks = status.marks.clone();
         let tab = status.selected();
         if let Some((_, path)) = marks.selected() {
@@ -167,7 +167,7 @@ impl EventExec {
     /// Update the selected mark with the current path.
     /// Doesn't change its char.
     /// If it doesn't fail, a new pair will be set with (oldchar, new path).
-    pub fn exec_marks_update_selected(status: &mut Status) -> Result<()> {
+    pub fn exec_marks_update(status: &mut Status) -> Result<()> {
         let marks = status.marks.clone();
         let len = status.selected_non_mut().path_content.content.len();
         if let Some((ch, _)) = marks.selected() {
@@ -1356,10 +1356,16 @@ impl EventExec {
                 must_refresh = false;
                 must_reset_mode = false;
                 EventExec::exec_cli_info(status)?;
-                info!("mode: {}", status.selected_non_mut().mode);
             }
             Mode::Navigate(Navigate::EncryptedDrive) => (),
             Mode::Navigate(Navigate::IsoDevice) => (),
+            Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
+                EventExec::exec_marks_update(status)?
+            }
+            Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
+                EventExec::exec_marks_jump(status)?
+            }
+            Mode::Navigate(Navigate::Compress) => EventExec::exec_compress(status)?,
             Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
@@ -1375,13 +1381,6 @@ impl EventExec {
             | Mode::Preview
             | Mode::InputCompleted(InputCompleted::Nothing)
             | Mode::InputSimple(InputSimple::Sort) => (),
-            Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
-                EventExec::exec_marks_update_selected(status)?
-            }
-            Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
-                EventExec::exec_marks_jump_selected(status)?
-            }
-            Mode::Navigate(Navigate::Compress) => EventExec::exec_compress(status)?,
         };
 
         status.selected().input.reset();
