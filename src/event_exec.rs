@@ -109,16 +109,6 @@ impl EventExec {
         Ok(())
     }
 
-    /// Move to the next file in the jump list.
-    pub fn event_jumplist_next(status: &mut Status) {
-        status.flagged.next()
-    }
-
-    /// Move to the previous file in the jump list.
-    pub fn event_jumplist_prev(status: &mut Status) {
-        status.flagged.prev()
-    }
-
     /// Change to CHMOD mode allowing to edit permissions of a file.
     pub fn event_chmod(status: &mut Status) -> Result<()> {
         if status.selected().path_content.is_empty() {
@@ -234,30 +224,6 @@ impl EventExec {
     pub fn event_bulk(status: &mut Status) -> Result<()> {
         status.selected().set_mode(Mode::Navigate(Navigate::Bulk));
         Ok(())
-    }
-
-    pub fn event_bulk_prev(status: &mut Status) {
-        status.bulk.prev()
-    }
-
-    pub fn event_bulk_next(status: &mut Status) {
-        status.bulk.next()
-    }
-
-    pub fn event_shell_menu_prev(status: &mut Status) {
-        status.shell_menu.prev()
-    }
-
-    pub fn event_shell_menu_next(status: &mut Status) {
-        status.shell_menu.next()
-    }
-
-    pub fn event_cli_info_prev(status: &mut Status) {
-        status.cli_info.prev()
-    }
-
-    pub fn event_cli_info_next(status: &mut Status) {
-        status.cli_info.next()
     }
 
     pub fn exec_bulk(status: &mut Status) -> Result<()> {
@@ -539,40 +505,6 @@ impl EventExec {
             _ => (),
         }
         Ok(())
-    }
-
-    /// Select the next shortcut.
-    pub fn event_shortcut_next(tab: &mut Tab) {
-        tab.shortcut.next()
-    }
-
-    /// Select the previous shortcut.
-    pub fn event_shortcut_prev(tab: &mut Tab) {
-        tab.shortcut.prev()
-    }
-
-    /// Select the next shortcut.
-    pub fn event_marks_next(status: &mut Status) {
-        status.marks.next()
-    }
-
-    /// Select the previous shortcut.
-    pub fn event_marks_prev(status: &mut Status) {
-        status.marks.prev()
-    }
-
-    /// Select the next element in history of visited files.
-    /// Watchout! Since the history is displayed in reverse order,
-    /// we call the "prev" method of the `History` instance instead.
-    pub fn event_history_next(tab: &mut Tab) {
-        tab.history.next()
-    }
-
-    /// Select the previous element in history of visited files.
-    /// Watchout! Since the history is displayed in reverse order,
-    /// we call the "next" method of the `History` instance instead.
-    pub fn event_history_prev(tab: &mut Tab) {
-        tab.history.prev()
     }
 
     /// Move to parent directory if there's one.
@@ -1256,22 +1188,18 @@ impl EventExec {
     pub fn event_move_up(status: &mut Status, colors: &Colors) -> Result<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_up_one_row(status.selected()),
-            Mode::Navigate(Navigate::Jump) => EventExec::event_jumplist_prev(status),
-            Mode::Navigate(Navigate::History) => EventExec::event_history_prev(status.selected()),
-            Mode::Navigate(Navigate::Trash) => EventExec::event_trash_prev(status),
-            Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_prev(status.selected()),
-            Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_prev(status),
-            Mode::Navigate(Navigate::Compress) => EventExec::event_compression_prev(status),
-            Mode::Navigate(Navigate::Bulk) => EventExec::event_bulk_prev(status),
-            Mode::Navigate(Navigate::ShellMenu) => EventExec::event_shell_menu_prev(status),
-            Mode::Navigate(Navigate::CliInfo) => EventExec::event_cli_info_prev(status),
-            Mode::Navigate(Navigate::EncryptedDrive) => {
-                EventExec::event_encrypted_drive_prev(status)
-            }
+            Mode::Navigate(Navigate::Jump) => status.flagged.prev(),
+            Mode::Navigate(Navigate::History) => status.selected().history.prev(),
+            Mode::Navigate(Navigate::Trash) => status.trash.prev(),
+            Mode::Navigate(Navigate::Shortcut) => status.selected().shortcut.prev(),
+            Mode::Navigate(Navigate::Marks(_)) => status.marks.prev(),
+            Mode::Navigate(Navigate::Compress) => status.compression.prev(),
+            Mode::Navigate(Navigate::Bulk) => status.bulk.prev(),
+            Mode::Navigate(Navigate::ShellMenu) => status.shell_menu.prev(),
+            Mode::Navigate(Navigate::CliInfo) => status.cli_info.prev(),
+            Mode::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.prev(),
+            Mode::InputCompleted(_) => status.selected().completion.prev(),
             Mode::Tree => EventExec::event_select_prev(status.selected(), colors)?,
-            Mode::InputCompleted(_) => {
-                status.selected().completion.prev();
-            }
             _ => (),
         };
         Ok(())
@@ -1282,18 +1210,16 @@ impl EventExec {
     pub fn event_move_down(status: &mut Status, colors: &Colors) -> Result<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => EventExec::event_down_one_row(status.selected()),
-            Mode::Navigate(Navigate::Jump) => EventExec::event_jumplist_next(status),
-            Mode::Navigate(Navigate::History) => EventExec::event_history_next(status.selected()),
-            Mode::Navigate(Navigate::Trash) => EventExec::event_trash_next(status),
-            Mode::Navigate(Navigate::Shortcut) => EventExec::event_shortcut_next(status.selected()),
-            Mode::Navigate(Navigate::Marks(_)) => EventExec::event_marks_next(status),
-            Mode::Navigate(Navigate::Compress) => EventExec::event_compression_next(status),
-            Mode::Navigate(Navigate::Bulk) => EventExec::event_bulk_next(status),
-            Mode::Navigate(Navigate::ShellMenu) => EventExec::event_shell_menu_next(status),
-            Mode::Navigate(Navigate::CliInfo) => EventExec::event_cli_info_next(status),
-            Mode::Navigate(Navigate::EncryptedDrive) => {
-                EventExec::event_encrypted_drive_next(status)
-            }
+            Mode::Navigate(Navigate::Jump) => status.flagged.next(),
+            Mode::Navigate(Navigate::History) => status.selected().history.next(),
+            Mode::Navigate(Navigate::Trash) => status.trash.next(),
+            Mode::Navigate(Navigate::Shortcut) => status.selected().shortcut.next(),
+            Mode::Navigate(Navigate::Marks(_)) => status.marks.next(),
+            Mode::Navigate(Navigate::Compress) => status.compression.next(),
+            Mode::Navigate(Navigate::Bulk) => status.bulk.next(),
+            Mode::Navigate(Navigate::ShellMenu) => status.shell_menu.next(),
+            Mode::Navigate(Navigate::CliInfo) => status.cli_info.next(),
+            Mode::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
             Mode::InputCompleted(_) => status.selected().completion.next(),
             Mode::Tree => EventExec::event_select_next(status.selected(), colors)?,
             _ => (),
@@ -1651,16 +1577,6 @@ impl EventExec {
         Ok(())
     }
 
-    /// Select the next element in the trash folder
-    pub fn event_trash_next(status: &mut Status) {
-        status.trash.next();
-    }
-
-    /// Select the previous element in the trash folder
-    pub fn event_trash_prev(status: &mut Status) {
-        status.trash.prev();
-    }
-
     /// Remove the selected element in the trash folder.
     pub fn event_trash_remove_file(status: &mut Status) -> Result<()> {
         status.trash.remove()
@@ -1922,16 +1838,6 @@ impl EventExec {
         Ok(())
     }
 
-    /// Select the next encrypted device
-    pub fn event_encrypted_drive_next(status: &mut Status) {
-        status.encrypted_devices.next()
-    }
-
-    /// Select the previous encrypted device.
-    pub fn event_encrypted_drive_prev(status: &mut Status) {
-        status.encrypted_devices.prev()
-    }
-
     /// Open the config file.
     pub fn event_open_config(status: &mut Status) -> Result<()> {
         match status.opener.open(&path::PathBuf::from(
@@ -1963,16 +1869,6 @@ impl EventExec {
             .filter_map(|abs_path| pathdiff::diff_paths(abs_path, &cwd))
             .collect();
         status.compression.compress(files_with_relative_paths)
-    }
-
-    /// Select previous compression method
-    pub fn event_compression_prev(status: &mut Status) {
-        status.compression.prev()
-    }
-
-    /// Select next compression method
-    pub fn event_compression_next(status: &mut Status) {
-        status.compression.next()
     }
 
     /// Enter command mode in which you can type any valid command.
