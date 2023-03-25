@@ -1,5 +1,6 @@
 use std::path;
 
+use anyhow::{Context, Result};
 use users::UsersCache;
 
 use crate::args::Args;
@@ -8,7 +9,6 @@ use crate::config::Colors;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{FileInfo, FileKind, PathContent};
 use crate::filter::FilterKind;
-use crate::fm_error::{FmError, FmResult};
 use crate::input::Input;
 use crate::mode::Mode;
 use crate::preview::{Directory, Preview};
@@ -55,7 +55,7 @@ pub struct Tab {
 
 impl Tab {
     /// Creates a new tab from args and height.
-    pub fn new(args: Args, height: usize, users_cache: UsersCache) -> FmResult<Self> {
+    pub fn new(args: Args, height: usize, users_cache: UsersCache) -> Result<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
         let directory = Directory::empty(&path, &users_cache)?;
         let filter = FilterKind::All;
@@ -93,7 +93,7 @@ impl Tab {
     }
 
     /// Fill the input string with the currently selected completion.
-    pub fn fill_completion(&mut self) -> FmResult<()> {
+    pub fn fill_completion(&mut self) -> Result<()> {
         // self.completion.set_kind(&self.mode);
         match self.mode {
             Mode::InputCompleted(InputCompleted::Goto) => {
@@ -126,7 +126,7 @@ impl Tab {
     /// Input string is emptied, the files are read again, the window of
     /// displayed files is reset.
     /// The first file is selected.
-    pub fn refresh_view(&mut self) -> FmResult<()> {
+    pub fn refresh_view(&mut self) -> Result<()> {
         self.filter = FilterKind::All;
         self.input.reset();
         self.path_content
@@ -141,11 +141,11 @@ impl Tab {
     /// Move to the currently selected directory.
     /// Fail silently if the current directory is empty or if the selected
     /// file isn't a directory.
-    pub fn go_to_child(&mut self) -> FmResult<()> {
+    pub fn go_to_child(&mut self) -> Result<()> {
         let childpath = &self
             .path_content
             .selected()
-            .ok_or_else(|| FmError::custom("go_to_child", "Empty directory"))?
+            .context("Empty directory")?
             .path
             .clone();
         self.history.push(childpath);
@@ -176,7 +176,7 @@ impl Tab {
     /// Set the pathcontent to a new path.
     /// Reset the window.
     /// Add the last path to the history of visited paths.
-    pub fn set_pathcontent(&mut self, path: &path::Path) -> FmResult<()> {
+    pub fn set_pathcontent(&mut self, path: &path::Path) -> Result<()> {
         self.history.push(path);
         self.path_content
             .change_directory(path, &self.filter, self.show_hidden)?;
@@ -200,14 +200,6 @@ impl Tab {
         self.window.scroll_to(index);
     }
 
-    /// Returns the correct index jump target to a flagged files.
-    pub fn find_jump_index(&self, jump_target: &path::Path) -> Option<usize> {
-        self.path_content
-            .content
-            .iter()
-            .position(|file| file.path == jump_target)
-    }
-
     /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
     /// extend the vector with the mount points.
     pub fn refresh_shortcuts(&mut self, mount_points: &[&path::Path]) {
@@ -221,7 +213,7 @@ impl Tab {
     }
 
     /// Refresh the existing users.
-    pub fn refresh_users(&mut self, users_cache: UsersCache) -> FmResult<()> {
+    pub fn refresh_users(&mut self, users_cache: UsersCache) -> Result<()> {
         self.path_content
             .refresh_users(users_cache, &self.filter, self.show_hidden)
     }
@@ -260,13 +252,13 @@ impl Tab {
     }
 
     /// Select the root node of the tree.
-    pub fn tree_select_root(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_select_root(&mut self, colors: &Colors) -> Result<()> {
         self.directory.unselect_children();
         self.directory.select_root(colors)
     }
 
     /// Move to the parent of current path
-    pub fn move_to_parent(&mut self) -> FmResult<()> {
+    pub fn move_to_parent(&mut self) -> Result<()> {
         let path = self.path_content.path.clone();
         let Some(parent) = path.parent() else { return Ok(()) };
         self.set_pathcontent(parent)
@@ -274,7 +266,7 @@ impl Tab {
 
     /// Select the parent of current node.
     /// If we were at the root node, move to the parent and make a new tree.
-    pub fn tree_select_parent(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_select_parent(&mut self, colors: &Colors) -> Result<()> {
         self.directory.unselect_children();
         if self.directory.tree.position.len() <= 1 {
             self.move_to_parent()?;
@@ -284,37 +276,37 @@ impl Tab {
     }
 
     /// Move down 10 times in the tree
-    pub fn tree_page_down(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_page_down(&mut self, colors: &Colors) -> Result<()> {
         self.directory.unselect_children();
         self.directory.page_down(colors)
     }
 
     /// Move up 10 times in the tree
-    pub fn tree_page_up(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_page_up(&mut self, colors: &Colors) -> Result<()> {
         self.directory.unselect_children();
         self.directory.page_up(colors)
     }
 
     /// Select the next sibling.
-    pub fn tree_select_next(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_select_next(&mut self, colors: &Colors) -> Result<()> {
         self.directory.unselect_children();
         self.directory.select_next(colors)
     }
 
     /// Select the previous siblging
-    pub fn tree_select_prev(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_select_prev(&mut self, colors: &Colors) -> Result<()> {
         self.directory.unselect_children();
         self.directory.select_prev(colors)
     }
 
     /// Select the first child if any.
-    pub fn tree_select_first_child(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_select_first_child(&mut self, colors: &Colors) -> Result<()> {
         self.directory.unselect_children();
         self.directory.select_first_child(colors)
     }
 
     /// Go to the last leaf.
-    pub fn tree_go_to_bottom_leaf(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn tree_go_to_bottom_leaf(&mut self, colors: &Colors) -> Result<()> {
         self.directory.unselect_children();
         self.directory.go_to_bottom_leaf(colors)
     }
@@ -333,15 +325,16 @@ impl Tab {
     /// In Tree mode, it's the current directory if the selected node is a directory,
     /// its parent otherwise.
     /// In normal mode it's the current working directory.
-    pub fn directory_of_selected(&self) -> FmResult<&path::Path> {
+    pub fn directory_of_selected(&self) -> Result<&path::Path> {
         match self.mode {
             Mode::Tree => {
                 let fileinfo = &self.directory.tree.current_node.fileinfo;
                 match fileinfo.file_kind {
                     FileKind::Directory => Ok(&self.directory.tree.current_node.fileinfo.path),
-                    _ => Ok(fileinfo.path.parent().ok_or_else(|| {
-                        FmError::custom("path of selected", "selected file should have a parent")
-                    })?),
+                    _ => Ok(fileinfo
+                        .path
+                        .parent()
+                        .context("selected file should have a parent")?),
                 }
             }
             _ => Ok(&self.path_content.path),
@@ -357,7 +350,7 @@ impl Tab {
     }
 
     /// Makes a new tree of the current path.
-    pub fn make_tree(&mut self, colors: &Colors) -> FmResult<()> {
+    pub fn make_tree(&mut self, colors: &Colors) -> Result<()> {
         let path = self.path_content.path.clone();
         let users_cache = &self.path_content.users_cache;
         self.directory = Directory::new(

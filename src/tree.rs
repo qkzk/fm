@@ -1,12 +1,12 @@
 use std::path::Path;
 
+use anyhow::Result;
 use tuikit::attr::Attr;
 use users::UsersCache;
 
 use crate::config::Colors;
 use crate::fileinfo::{fileinfo_attr, files_collection, FileInfo, FileKind};
 use crate::filter::FilterKind;
-use crate::fm_error::FmResult;
 use crate::sort::SortKind;
 use crate::utils::filename_from_path;
 
@@ -167,7 +167,7 @@ impl Tree {
         filter_kind: &FilterKind,
         show_hidden: bool,
         parent_position: Vec<usize>,
-    ) -> FmResult<Self> {
+    ) -> Result<Self> {
         Self::create_tree_from_fileinfo(
             FileInfo::from_path_with_name(path, filename_from_path(path)?, users_cache)?,
             max_depth,
@@ -197,7 +197,7 @@ impl Tree {
         filter_kind: &FilterKind,
         display_hidden: bool,
         parent_position: Vec<usize>,
-    ) -> FmResult<Self> {
+    ) -> Result<Self> {
         let sort_kind = SortKind::tree_default();
         let leaves = Self::make_leaves(
             &fileinfo,
@@ -229,7 +229,7 @@ impl Tree {
         filter_kind: &FilterKind,
         sort_kind: &SortKind,
         parent_position: Vec<usize>,
-    ) -> FmResult<Vec<Tree>> {
+    ) -> Result<Vec<Tree>> {
         if max_depth == 0 {
             return Ok(vec![]);
         }
@@ -274,7 +274,7 @@ impl Tree {
 
     /// Creates an empty tree. Used when the user changes the CWD and hasn't displayed
     /// a tree yet.
-    pub fn empty(path: &Path, users_cache: &UsersCache) -> FmResult<Self> {
+    pub fn empty(path: &Path, users_cache: &UsersCache) -> Result<Self> {
         let filename = filename_from_path(path)?;
         let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
         let node = Node {
@@ -335,7 +335,7 @@ impl Tree {
     /// Sibling have the same parents (ie. are in the same directory).
     /// Since the position may be wrong (aka the current node is already the last child of
     /// it's parent) we have to adjust the postion afterwards.
-    pub fn select_next_sibling(&mut self) -> FmResult<()> {
+    pub fn select_next_sibling(&mut self) -> Result<()> {
         if self.position.is_empty() {
             self.position = vec![0]
         } else {
@@ -352,7 +352,7 @@ impl Tree {
     /// Sibling have the same parents (ie. are in the same directory).
     /// Since the position may be wrong (aka the current node is already the first child of
     /// it's parent) we have to adjust the postion afterwards.
-    pub fn select_prev_sibling(&mut self) -> FmResult<()> {
+    pub fn select_prev_sibling(&mut self) -> Result<()> {
         if self.position.is_empty() {
             self.position = vec![0]
         } else {
@@ -376,7 +376,7 @@ impl Tree {
 
     /// Select the first child of a current node.
     /// Does nothing if the node has no child.
-    pub fn select_first_child(&mut self) -> FmResult<()> {
+    pub fn select_first_child(&mut self) -> Result<()> {
         if self.position.is_empty() {
             self.position = vec![0]
         }
@@ -389,7 +389,7 @@ impl Tree {
 
     /// Move to the parent of current node.
     /// If the parent is the root node, it will do nothing.
-    pub fn select_parent(&mut self) -> FmResult<()> {
+    pub fn select_parent(&mut self) -> Result<()> {
         if self.position.is_empty() {
             self.position = vec![0];
         } else {
@@ -409,7 +409,7 @@ impl Tree {
     /// at every step.
     /// We first create a position with max value (usize::MAX) and max size (Self::MAX_DEPTH).
     /// Then we select this node and adjust the position.
-    pub fn go_to_bottom_leaf(&mut self) -> FmResult<()> {
+    pub fn go_to_bottom_leaf(&mut self) -> Result<()> {
         self.position = vec![usize::MAX; Self::MAX_DEPTH];
         let (depth, last_cord, node) = self.select_from_position()?;
         self.fix_position(depth, last_cord);
@@ -419,7 +419,7 @@ impl Tree {
 
     /// Select the node at a given position.
     /// Returns the reached depth, the last index and a copy of the node itself.
-    pub fn select_from_position(&mut self) -> FmResult<(usize, usize, Node)> {
+    pub fn select_from_position(&mut self) -> Result<(usize, usize, Node)> {
         let (tree, reached_depth, last_cord) = self.explore_position(true);
         tree.node.select();
         Ok((reached_depth, last_cord, tree.node.clone()))

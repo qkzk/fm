@@ -1,9 +1,9 @@
 use std::fs::{self, ReadDir};
 
+use anyhow::Result;
 use strum::IntoEnumIterator;
 
 use crate::fileinfo::PathContent;
-use crate::fm_error::FmResult;
 use crate::mode::Mode;
 use crate::tree::ColoredString;
 
@@ -100,7 +100,7 @@ impl Completion {
 
     /// Goto completion.
     /// Looks for the valid path completing what the user typed.
-    pub fn goto(&mut self, input_string: &str, current_path: &str) -> FmResult<()> {
+    pub fn goto(&mut self, input_string: &str, current_path: &str) -> Result<()> {
         self.update_from_input(input_string, current_path);
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
@@ -151,7 +151,7 @@ impl Completion {
     }
 
     /// Looks for programs in $PATH completing the one typed by the user.
-    pub fn exec(&mut self, input_string: &str) -> FmResult<()> {
+    pub fn exec(&mut self, input_string: &str) -> Result<()> {
         let mut proposals: Vec<String> = vec![];
         if let Some(paths) = std::env::var_os("PATH") {
             for path in std::env::split_paths(&paths).filter(|path| path.exists()) {
@@ -162,7 +162,7 @@ impl Completion {
         Ok(())
     }
 
-    pub fn command(&mut self, input_string: &str) -> FmResult<()> {
+    pub fn command(&mut self, input_string: &str) -> Result<()> {
         let proposals = crate::action_map::ActionMap::iter()
             .filter(|command| {
                 command
@@ -179,7 +179,7 @@ impl Completion {
     fn find_completion_in_path(
         path: std::path::PathBuf,
         input_string: &str,
-    ) -> FmResult<Vec<String>> {
+    ) -> Result<Vec<String>> {
         Ok(fs::read_dir(path)?
             .filter_map(|e| e.ok())
             .filter(|e| file_match_input(e, input_string))
@@ -192,7 +192,7 @@ impl Completion {
         &mut self,
         input_string: &str,
         path_content: &PathContent,
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         self.update(
             path_content
                 .content
@@ -209,7 +209,7 @@ impl Completion {
         &mut self,
         input_string: &str,
         content: &[(String, ColoredString)],
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         self.update(
             content
                 .iter()

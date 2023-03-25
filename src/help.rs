@@ -1,7 +1,8 @@
+use anyhow::Result;
 use strfmt::strfmt;
 
-use crate::fm_error::FmResult;
 use crate::keybindings::Bindings;
+use crate::opener::Opener;
 
 /// Help message to be displayed when help key is pressed.
 /// Default help key is `'h'`.
@@ -27,7 +28,17 @@ static HELP_TO_FORMAT: &str = "
 {ToggleDisplayFull}:      toggle metadata on files
 {ToggleHidden}:      toggle hidden
 {Shell}:      shell in current directory
-{OpenFile}:      open the selected file
+{OpenFile}:      open the selected file with :
+    - default       {Default}
+    - audio         {Audio}
+    - images        {Bitmap}
+    - office        {Office}
+    - pdf, ebooks   {Readable}
+    - text          {Text}
+    - video         {Video}
+    - vectorials    {Vectorial}
+    - compressed files are decompressed
+    - iso images are mounted
 {NvimFilepicker}:      open in current nvim session
 {NvimSetAddress}:      setup the nvim rpc address
 {Preview}:      preview this file
@@ -36,28 +47,29 @@ static HELP_TO_FORMAT: &str = "
 {Home}:      move to $HOME
 {MarksNew}:      mark current path
 {MarksJump}:     jump to a mark
-{SearchNext}:      Search next matching element
+{SearchNext}:      search next matching element
 {FuzzyFind}:      fuzzy finder
 {FuzzyFindLine}:      fuzzy finder for line
+{FuzzyFindHelp}:     fuzzy finder from help
 {RefreshView}:      refresh view
 {CopyFilename}:      copy filename to clipboard
 {CopyFilepath}:      copy filepath to clipboard
 {DragNDrop}:       dragon-drop selected file
 {OpenConfig}:       open the config file
 {SetWallpaper}:      set the selected file as wallpaper with nitrogen
-{Diff}:      display the diff of the first 2 flagged files
 
 - Action on flagged files - 
 {ToggleFlag}:      toggle flag on a file 
 {FlagAll}:      flag all
 {ClearFlags}:      clear flags
 {ReverseFlags}:      reverse flags
-{Symlink}:      symlink files
+{Symlink}:      symlink to current dir
 {CopyPaste}:      copy to current dir
 {CutPaste}:      move to current dir
 {DeleteFile}:      delete files permanently
 {TrashMoveFile}:      move to trash
 {Compress}:      compress into an archive
+{Diff}:      display the diff of the first 2 flagged files
 
 - Trash -
 {TrashOpen}:       Open the trash (enter to restore, del clear)
@@ -96,10 +108,11 @@ Navigate as usual. Most actions works as in 'normal' view.
 
 - MOC -
 Control MOC from your TUI
-{MocpAddToPlayList}:          Add a file or folder to the playlist
-{MocpPrevious}         Previous song
-{MocpTogglePause}:        Toggle play/pause. Start MOC if needed
-{MocpNext}        Next song
+{MocpAddToPlayList}:          MOCP: Add a file or folder to the playlist
+{MocpPrevious}:        MOCP: Previous song
+{MocpTogglePause}:        MOCP: Toggle play/pause.
+{MocpNext}:       MOCP: Next song
+{MocpGoToSong}:        MOCP: Go to currently playing song 
 ";
 
 /// Holds the help string, formated with current keybindings.
@@ -112,8 +125,12 @@ impl Help {
     /// Creates an Help instance from keybindings.
     /// If multiple keybindings are bound to the same action, the last one
     /// is displayed.
-    pub fn from_keybindings(binds: &Bindings) -> FmResult<Self> {
-        let help = strfmt(HELP_TO_FORMAT, &binds.keybind_reversed())?;
+    pub fn from_keybindings(binds: &Bindings, opener: &Opener) -> Result<Self> {
+        let mut strings = binds.keybind_reversed();
+        let openers = opener.opener_association.as_map_of_strings();
+        log::info!("{openers:?}");
+        strings.extend(openers);
+        let help = strfmt(HELP_TO_FORMAT, &strings)?;
         Ok(Self { help })
     }
 }

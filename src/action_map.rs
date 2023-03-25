@@ -1,8 +1,8 @@
+use anyhow::Result;
 use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::config::Colors;
 use crate::event_exec::EventExec;
-use crate::fm_error::FmResult;
 use crate::status::Status;
 
 /// Different kind of action which can be mapped to a key.
@@ -17,6 +17,7 @@ pub enum ActionMap {
     Bulk,
     Chmod,
     ClearFlags,
+    CliInfo,
     Command,
     Compress,
     CopyFilename,
@@ -36,6 +37,7 @@ pub enum ActionMap {
     FlagAll,
     FuzzyFind,
     FuzzyFindLine,
+    FuzzyFindHelp,
     Goto,
     Help,
     History,
@@ -75,6 +77,7 @@ pub enum ActionMap {
     Symlink,
     Tab,
     MocpAddToPlayList,
+    MocpGoToSong,
     MocpTogglePause,
     MocpNext,
     MocpPrevious,
@@ -96,7 +99,7 @@ pub enum ActionMap {
 impl ActionMap {
     /// Makes the junction between `Actions` and `Events`.
     /// Every Action links to a different `EventExec` method.
-    pub fn matcher(&self, status: &mut Status, colors: &Colors) -> FmResult<()> {
+    pub fn matcher(&self, status: &mut Status, colors: &Colors) -> Result<()> {
         let current_tab = status.selected();
         match *self {
             ActionMap::Back => EventExec::event_back(status, colors),
@@ -105,6 +108,7 @@ impl ActionMap {
             ActionMap::Bulk => EventExec::event_bulk(status),
             ActionMap::Chmod => EventExec::event_chmod(status),
             ActionMap::ClearFlags => EventExec::event_clear_flags(status),
+            ActionMap::CliInfo => EventExec::event_cli_info(status),
             ActionMap::Command => EventExec::event_command(current_tab),
             ActionMap::Compress => EventExec::event_compress(status),
             ActionMap::CopyFilename => EventExec::event_copy_filename(status),
@@ -124,12 +128,14 @@ impl ActionMap {
             ActionMap::FlagAll => EventExec::event_flag_all(status),
             ActionMap::FuzzyFind => EventExec::event_fuzzyfind(status),
             ActionMap::FuzzyFindLine => EventExec::event_fuzzyfind_line(status),
+            ActionMap::FuzzyFindHelp => EventExec::event_fuzzyfind_help(status),
             ActionMap::Goto => EventExec::event_goto(current_tab),
             ActionMap::Help => EventExec::event_help(status),
             ActionMap::Log => EventExec::event_log(current_tab),
             ActionMap::History => EventExec::event_history(current_tab),
             ActionMap::Home => EventExec::event_home(current_tab),
             ActionMap::MocpAddToPlayList => EventExec::event_mocp_add_to_playlist(current_tab),
+            ActionMap::MocpGoToSong => EventExec::event_mocp_go_to_song(current_tab),
             ActionMap::MocpTogglePause => EventExec::event_mocp_toggle_pause(status),
             ActionMap::MocpNext => EventExec::event_mocp_next(),
             ActionMap::MocpPrevious => EventExec::event_mocp_previous(),

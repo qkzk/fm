@@ -1,7 +1,8 @@
 use std::fmt;
 
 use crate::completion::InputCompleted;
-use crate::cryptsetup::{EncryptedAction, PasswordKind};
+use crate::cryptsetup::BlockDeviceAction;
+use crate::password::{PasswordKind, PasswordUsage};
 
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.
@@ -75,9 +76,9 @@ pub enum InputSimple {
     /// Filter by extension, name, directory or no filter
     Filter,
     /// Set a new neovim RPC address
-    SetNvimAddress,
+    SetNvimAddr,
     /// Input a password (chars a replaced by *)
-    Password(PasswordKind, EncryptedAction),
+    Password(PasswordKind, BlockDeviceAction, PasswordUsage),
 }
 
 /// Different modes in which we display a bunch of possible destinations.
@@ -94,6 +95,7 @@ pub enum Navigate {
     Trash,
     /// Manipulate an encrypted device
     EncryptedDrive,
+    IsoDevice,
     /// Jump to a saved mark
     Marks(MarkAction),
     /// Pick a compression method
@@ -102,6 +104,8 @@ pub enum Navigate {
     Bulk,
     /// Shell menu applications. Start a new shell with this application.
     ShellMenu,
+    /// Cli info
+    CliInfo,
 }
 
 /// Different mode in which the application can be.
@@ -136,12 +140,12 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
             Mode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
             Mode::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
-            Mode::InputSimple(InputSimple::SetNvimAddress) => write!(f, "Neovim:  "),
+            Mode::InputSimple(InputSimple::SetNvimAddr) => write!(f, "Neovim:  "),
             Mode::InputSimple(InputSimple::Sort) => {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
-            Mode::InputSimple(InputSimple::Password(password_kind, _)) => {
+            Mode::InputSimple(InputSimple::Password(password_kind, _, _)) => {
                 write!(f, "{password_kind}")
             }
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
@@ -164,6 +168,10 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 write!(f, "Encrypted devices :")
             }
+            Mode::Navigate(Navigate::IsoDevice) => {
+                write!(f, "Iso image :")
+            }
+            Mode::Navigate(Navigate::CliInfo) => write!(f, "Display infos :"),
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
             Mode::Preview => write!(f, "Preview : "),
         }

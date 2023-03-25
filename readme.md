@@ -51,17 +51,20 @@ If you added the [recommanded function](#cd-on-quit) to your bashrc/zshrc, simpl
 
 ## Features
 
+Some features depends on external programs to keep fm from being really bloated.
+
 - Navigate with the arrows or the mouse (left select, right open, wheel)
 - Open a file with o, enter or right click
 - Execute a file with a custom command with e
 - Copy / move / symlinks / delete with c, p, s, x
 - Create files, directory, rename with n, d, r
 - Open a new shell in this directory with s
+- Start a configured TUI application with S
 - Flag a bunch of file, change panel with TAB and move/copy them !
 - Many ways to jump somewhere :
 
   - g: type the full address (with completion enabled),
-  - G: a predefined shortcut (default root folders, home and mount points),
+  - G: a predefined shortcut (default root folders, home and mount points, gitroot, config folder),
   - j: by jumping to a flagged file,
   - ': by creating your own marks and jumping to them
 
@@ -69,16 +72,24 @@ If you added the [recommanded function](#cd-on-quit) to your bashrc/zshrc, simpl
 - Preview most of files (text, highlighted code, binary, pdf, exif details, video/audio details, archives) with P
 - Display a tree view of directory by previewing it
 - Decompress an archive by opening it (o, enter, right click)
+- Compress flagged files with C. Pick the desired algorithm from a menu.
 - Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p
-- Rename a bunch of file with B. Flag files, B, edit the names and save the file. The renaming is done.
+- Rename or create a bunch of file with B. Flag files, B, edit the names and save the file. The renaming is done.
+  You can create nested files with `a/b/c` which will create every intermediate folder if needed.
 - Use the integrated fuzzy finder (forked version of skim, an fzf clone) with Ctrl+f to navigate quickly
+- The same fuzzy finder can find specific lines in files with Ctrl+s
 - Filter the view (by extension, name, directory only, all files) with F
 - Find files with / (with completion), flag files matching a regex with w
 - Detect removable disks automatically and jump to them in a few keystrokes (G, up, enter)
 - Drag and drop files (requires dragon-drop installed) with Alt+D
 - Trash a file with X, open the trash with Alt+o. x to remove permanently, enter to restore. Wipe the trash with Alt+x.
-- Toggle the tree view with t. Fold folders with z. Unfold every folder with Z, fold every folder with Alt+z.
+- Toggle the tree view with t. Fold selected folder with z. Unfold every folder with Z, fold every folder with Alt+z.
 - Open and mount encrypted devices. Open the menu with Shift+e, mount with m, unmount with u.
+- diff the first two files / folders with D.
+- Enter preview mode with Alt+P. Every file is previewed in the second pane.
+- Contol MOCP with Ctrl+arrows. Ctrl+Left, Ctrl+Right: previous or next song. Ctrl+Down: Toggle pause. Ctrl+Up: add current folder to playlist
+- Set the selected image as wallpaper with W.
+- _Experimental_ enter "command mode" with ':'. Type the name of a command and it will be executed.
 
 Most of those features are inspired by ranger and alternatives (Midnight commander), the look and feel by dired.
 
@@ -91,8 +102,6 @@ is provided.
 It should always work, even outside of neovim.
 
 It's also possible to pass the RPC server address with `fm -s address`.
-
-This feature requires `nvim-send` to be installed (`cargo install nvim-send`)
 
 ## cd on quit
 
@@ -109,6 +118,7 @@ function f() {
   fi
 }
 ```
+
 For fish users, this is the function to add to your `config.fish`
 
 ```bash
@@ -127,7 +137,7 @@ Press `h` by default to display the help.
 Your current keybindings are shown. Here are the default ones.
 
 ```
-fm: a dired like file manager. Keybindings.
+
 
      Char('q'):      quit
      Char('h'):      help
@@ -144,37 +154,42 @@ fm: a dired like file manager. Keybindings.
      Tab:            cycle tab
 
      - Actions -
-     Char('D'):      toggle dual pane - if the width is sufficiant
+     Alt('f'):      toggle dual pane - if the width is sufficiant
+     Alt('p'):       toggle a preview on the second pane
+     Alt('e'):      toggle metadata on files
      Char('a'):      toggle hidden
      Char('s'):      shell in current directory
      Char('o'):      open the selected file
      Char('i'):      open in current nvim session
+     Char('I'):      setup the nvim rpc address
      Char('P'):      preview this file
-     Char('T'):      display a thumbnail of an image
+     Char('T'):       display infos about a media file
      Char('-'):      move back to previous dir
      Char('~'):      move to $HOME
      Char('M'):      mark current path
      Char('\''):     jump to a mark
-     Ctrl('e'):      toggle metadata on files
-     Char('f'):      Search next matching element
+     Char('f'):      search next matching element
      Ctrl('f'):      fuzzy finder
+     Ctrl('s'):      fuzzy finder for line
      Ctrl('r'):      refresh view
      Ctrl('c'):      copy filename to clipboard
      Ctrl('p'):      copy filepath to clipboard
      Alt('d'):       dragon-drop selected file
      Alt('c'):       open the config file
+     Char('W'):      set the selected file as wallpaper with nitrogen
 
      - Action on flagged files -
      Char(' '):      toggle flag on a file
      Char('*'):      flag all
      Char('u'):      clear flags
      Char('v'):      reverse flags
-     Char('l'):      symlink files
-     Char('B'):      bulkrename files
+     Char('l'):      symlink to current dir
      Char('c'):      copy to current dir
      Char('p'):      move to current dir
      Char('x'):      delete files permanently
      Char('X'):      move to trash
+     Char('C'):      compress into an archive
+     Char('D'):      display the diff of the first 2 flagged files
 
      - Trash -
      Alt('o'):       Open the trash (enter to restore, del clear)
@@ -182,13 +197,13 @@ fm: a dired like file manager. Keybindings.
 
      - Tree -
      Navigate as usual. Most actions works as in 'normal' view.
-     Char('T'):      Toggle tree mode
+     Char('t'):      Toggle tree mode
      Char('z'):      Fold a node
      Alt('z'):       Fold every node
      Char('Z'):      Unfold every node
 
      - MODES -
-     Char('T'):      TREE
+     Char('t'):      TREE
      Char('m'):      CHMOD
      Char('e'):      EXEC
      Char('d'):      NEWDIR
@@ -200,13 +215,23 @@ fm: a dired like file manager. Keybindings.
      Char('O'):      SORT
      Char('H'):      HISTORY
      Char('G'):      SHORTCUT
-     Char('/'):      SEARCH
      Char('E'):      ENCRYPTED DRIVE
          (m: open & mount,  u: unmount & close)
+     Char('/'):      SEARCH
+     Char(':'):      COMMAND
+     Char('B'):      BULK
+     Char('S'):      SHELL MENU
      Char('F'):      FILTER
          (by name "n name", by ext "e ext", only directories d or all for reset)
      Enter:  Execute mode then NORMAL
      Ctrl('q'):    NORMAL
+
+     - MOC -
+     Control MOC from your TUI
+     CtrlUp:          Add a file or folder to the playlist
+     CtrlLeft         Previous song
+     CtrlDown:        Toggle play/pause. Start MOC if needed
+     CtrlRight        Next song
 ```
 
 ## Configuration
@@ -225,6 +250,24 @@ You can configure :
 - **Marks**. Users can save about 100 differents marks to jump to, they're saved
   in your marks.config file. It's easier to let fm manage your marks, but if
   you made a mess or want to start over, simply delete the file or a single line.
+- **TUI applications**. Some classic TUI applications like htop, glances, btop, lazygit are already there.
+  Open the menu with `S` and pick the desired one. It will only work with a TUI application like HTOP,
+  not a CLI application like bat.
+
+## External dependencies
+
+Most of the openers and tui applications are configurable from config files. Some are hardcode since their command is quite specific or if I couldn't find a workaround.
+
+- [Cryptsetup](https://gitlab.com/cryptsetup/cryptsetup): decrypt & mount encrypted devices
+- [Nitrogen](https://github.com/l3ib/nitrogen/): set up a wallpaper
+- [MOC](https://moc.daper.net/) Music On Console allows you to play music from your terminal
+- [Dragon-Drop](https://github.com/mwh/dragon) drag-and-drop a file from a terminal to a GUI application.
+- [Ueberzug](https://github.com/LalleSX/ueberzug) display images in your terminal. Used to preview images. This one may be tricky to install from source since the original maintener nuked his project. It's still available in many package managers.
+- [isoinfo](https://command-not-found.com/isoinfo) allow the content preview of an iso file
+- [jupyter](https://jupyter.org/) preview jupyter notebooks by converting them to markdown
+- [pandoc](https://pandoc.org) preview open documents by converting them to markdown with pandoc
+- [fontimage](https://fontforge.org/docs/fontutils/fontimage.html) preview fonts by creating a thumbnail
+- [rsvg-convert](https://github.com/brion/librsvg) preview svg by creating a thumbnail
 
 ## Contribution
 

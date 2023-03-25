@@ -1,7 +1,9 @@
+use anyhow::Result;
 use log::info;
 
-use crate::fm_error::FmResult;
-use crate::opener::{execute_and_capture_output, execute_in_child};
+use crate::opener::{
+    execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
+};
 use crate::status::Status;
 use crate::tab::Tab;
 
@@ -18,7 +20,7 @@ pub struct Mocp {}
 
 impl Mocp {
     /// Add a song or a folder to MOC playlist. Start it first...
-    pub fn add_to_playlist(tab: &Tab) -> FmResult<()> {
+    pub fn add_to_playlist(tab: &Tab) -> Result<()> {
         let _ = execute_in_child("mocp", &vec!["-S"]);
         let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
         info!("mocp add to playlist {path_str:?}");
@@ -26,10 +28,22 @@ impl Mocp {
         Ok(())
     }
 
+    /// Move to the currently playing song.
+    pub fn go_to_song(tab: &mut Tab) -> Result<()> {
+        let output = execute_and_capture_output_without_check("mocp", &vec!["-Q", "%file"])?;
+        let filepath = std::path::PathBuf::from(output.trim());
+        let Some(parent) = filepath.parent() else { return Ok(()) };
+        let Some(filename) = filepath.file_name() else { return Ok(()) };
+        let Some(filename) = filename.to_str() else { return Ok(()) };
+        tab.set_pathcontent(parent)?;
+        tab.search_from(filename, 0);
+        Ok(())
+    }
+
     /// Toggle play/pause on MOC.
     /// Starts the server if needed, preventing the output to fill the screen.
     /// Then toggle play/pause
-    pub fn toggle_pause(status: &mut Status) -> FmResult<()> {
+    pub fn toggle_pause(status: &mut Status) -> Result<()> {
         info!("mocp toggle pause");
         match execute_and_capture_output("mocp", &vec!["-i"]) {
             Ok(stdout) => {
@@ -60,14 +74,14 @@ impl Mocp {
     }
 
     /// Skip to the next song in MOC
-    pub fn next() -> FmResult<()> {
+    pub fn next() -> Result<()> {
         info!("mocp next");
         let _ = execute_in_child("mocp", &vec!["-f"]);
         Ok(())
     }
 
     /// Go to the previous song in MOC
-    pub fn previous() -> FmResult<()> {
+    pub fn previous() -> Result<()> {
         info!("mocp previous");
         let _ = execute_in_child("mocp", &vec!["-r"]);
         Ok(())

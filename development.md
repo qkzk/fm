@@ -430,6 +430,29 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] colors in menus. Use a repeated gradient of lime colors in menus
 
+### Version 0.1.20
+
+- [x] display version in help
+- [x] replace FmResult & FmError by anyhow
+- [x] update the readme
+- [x] replace nvim-send by internal implemention
+- [x] mount an iso file by opening it
+  - [x] recognize iso files
+  - [x] mkdir /run/media/$USER/fm_iso
+  - [x] sudo mount -o loop /path/filename.iso /run/media/$USER/fm_iso
+- [x] preview the content of a iso file. Require the application isoinfo
+- [x] fuzzy finder for keybindings with alt+h. The found keybinding will be run immediatly
+- [x] rename: use current name instead of empty string
+- [x] don't fail at first error in config.yaml. Allow parsing continuation.
+- [x] common trait between cryptdevice and iso_file
+- [x] Preview more filetypes - inspired by ranger
+  - [x] preview SVG like [ranger](https://github.com/ranger/ranger/pull/2537/files) does
+  - [x] preview font with fontimage like [ranger](https://github.com/ranger/ranger/blob/46660c277c2ceb7c7c41ffce794d68f8f559030f/ranger/data/scope.sh#L207-L225)
+  - [x] preview doc with pandoc or odt2txt [ranger](https://github.com/ranger/ranger/blob/46660c277c2ceb7c7c41ffce794d68f8f559030f/ranger/data/scope.sh#L84-L93)
+  - [x] preview notebooks
+- [x] mocp go to song: `mocp -Q %file` with alt+enter (lack of a better keybinding)
+- [x] display openers in help
+
 ## TODO
 
 - [ ] remote control
@@ -455,20 +478,22 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
 - [ ] pushbullet ?
 
-- [ ] Version 0.1.20
-
+  - [ ] update the animation
   - [ ] exec multiple flagged files
   - [ ] shell menu
 
     - [ ] allow non tui like wttr, diff, bat, tail -n etc.
     - [ ] more options like "use flagged files" for diff
 
-  - [ ] replace FmResult & FmError by anyhow since I'm already using it...
   - [ ] build option to force reset of config file, warn the user at first start
-  - [ ] update readme & animation
   - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
   - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
   - [ ] allow pipe in execution
+  - [ ] refactor cryptdevice and iso_file
+    - [ ] mode to handle those mounts. ATM it's all over the place...
+    - [ ] allow mounting some other devices
+    - [ ] list non mounted devices, list all mount points
+    - [ ] act on them
 
 - [ ] sub window / menu for completion / selection.
 

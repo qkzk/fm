@@ -5,7 +5,6 @@ use std::string::ToString;
 use tuikit::prelude::{from_keyname, Key};
 
 use crate::action_map::ActionMap;
-use crate::fm_error::FmResult;
 
 /// Holds an hashmap between keys and actions.
 #[derive(Clone, Debug)]
@@ -88,6 +87,8 @@ impl Bindings {
             (Key::Alt('d'), ActionMap::DragNDrop),
             (Key::Alt('e'), ActionMap::ToggleDisplayFull),
             (Key::Alt('f'), ActionMap::ToggleDualPane),
+            (Key::Alt('h'), ActionMap::FuzzyFindHelp),
+            (Key::Alt('i'), ActionMap::CliInfo),
             (Key::Alt('l'), ActionMap::Log),
             (Key::Alt('p'), ActionMap::TogglePreviewSecond),
             (Key::Alt('c'), ActionMap::OpenConfig),
@@ -100,6 +101,7 @@ impl Bindings {
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
             (Key::Ctrl('q'), ActionMap::ModeNormal),
             (Key::Ctrl('r'), ActionMap::RefreshView),
+            (Key::AltEnter, ActionMap::MocpGoToSong),
             (Key::CtrlUp, ActionMap::MocpAddToPlayList),
             (Key::CtrlDown, ActionMap::MocpTogglePause),
             (Key::CtrlRight, ActionMap::MocpNext),
@@ -125,13 +127,22 @@ impl Bindings {
     /// Update the binds from a config file.
     /// It may fail (and leave keybinding intact) if the file isn't formated properly.
     /// An unknown or poorly formated key will be ignored.
-    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> FmResult<()> {
+    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
         for yaml_key in yaml.as_mapping().unwrap().keys() {
-            let Some(key_string) = yaml_key.as_str() else { return Ok(()) };
-            let Some(keymap) = from_keyname(key_string) else {return Ok(())};
-            let Some(action_str) = yaml[yaml_key].as_str() else { return Ok(())};
-            self.binds.insert(keymap, ActionMap::from_str(action_str)?);
+            let Some(key_string) = yaml_key.as_str() else { 
+                log::info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
+                continue;
+            };
+            let Some(keymap) = from_keyname(key_string) else {
+                log::info!("~/.config/fm/config.yaml: Keybinding {key_string} is unknown");
+                continue;
+            };
+            let Some(action_str) = yaml[yaml_key].as_str() else { continue; };
+            let Ok(action) = ActionMap::from_str(action_str) else { 
+                log::info!("~/.config/fm/config.yaml: Action {action_str} is unknown");
+                continue;
+            };
+            self.binds.insert(keymap, action);
         }
-        Ok(())
     }
 }

@@ -3,6 +3,7 @@ use std::iter::Enumerate;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
 
+use anyhow::{Context, Result};
 use chrono::offset::Local;
 use chrono::DateTime;
 use log::info;
@@ -12,7 +13,6 @@ use users::{Groups, Users, UsersCache};
 use crate::config::{str_to_tuikit, Colors};
 use crate::constant_strings_paths::PERMISSIONS_STR;
 use crate::filter::FilterKind;
-use crate::fm_error::{FmError, FmResult};
 use crate::git::git;
 use crate::impl_selectable_content;
 use crate::sort::SortKind;
@@ -119,7 +119,7 @@ pub struct FileInfo {
 impl FileInfo {
     /// Reads every information about a file from its metadata and returs
     /// a new `FileInfo` object if we can create one.
-    pub fn new(direntry: &DirEntry, users_cache: &UsersCache) -> FmResult<FileInfo> {
+    pub fn new(direntry: &DirEntry, users_cache: &UsersCache) -> Result<FileInfo> {
         let path = direntry.path();
         let filename = extract_filename(direntry)?;
 
@@ -132,29 +132,29 @@ impl FileInfo {
         path: &path::Path,
         filename: &str,
         users_cache: &UsersCache,
-    ) -> FmResult<Self> {
+    ) -> Result<Self> {
         Self::create_from_metadata_and_filename(path, filename.to_owned(), users_cache)
     }
 
-    pub fn from_path(path: &path::Path, users_cache: &UsersCache) -> FmResult<Self> {
+    pub fn from_path(path: &path::Path, users_cache: &UsersCache) -> Result<Self> {
         let filename = path
             .file_name()
-            .ok_or_else(|| FmError::custom("from path", "couldn't read filenale"))?
+            .context("from path: couldn't read filenale")?
             .to_str()
-            .ok_or_else(|| FmError::custom("from path", "couldn't parse filenale"))?
+            .context("from path: couldn't parse filenale")?
             .to_owned();
         Self::create_from_metadata_and_filename(path, filename, users_cache)
     }
 
-    fn metadata(&self) -> FmResult<std::fs::Metadata> {
+    fn metadata(&self) -> Result<std::fs::Metadata> {
         Ok(metadata(&self.path)?)
     }
 
-    pub fn size(&self) -> FmResult<u64> {
+    pub fn size(&self) -> Result<u64> {
         Ok(extract_file_size(&self.metadata()?))
     }
 
-    pub fn permissions(&self) -> FmResult<String> {
+    pub fn permissions(&self) -> Result<String> {
         Ok(extract_permissions_string(&self.metadata()?))
     }
 
@@ -162,7 +162,7 @@ impl FileInfo {
         path: &path::Path,
         filename: String,
         users_cache: &UsersCache,
-    ) -> FmResult<Self> {
+    ) -> Result<Self> {
         let metadata = metadata(path)?;
         let path = path.to_owned();
         let owner = extract_owner(&metadata, users_cache)?;
@@ -191,7 +191,7 @@ impl FileInfo {
     /// Format the file line.
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
-    pub fn format(&self, owner_col_width: usize, group_col_width: usize) -> FmResult<String> {
+    pub fn format(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
         let mut repr = format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time} {filename}",
             dir_symbol = self.dir_symbol(),
@@ -215,7 +215,7 @@ impl FileInfo {
         self.file_kind.extract_dir_symbol()
     }
 
-    pub fn format_simple(&self) -> FmResult<String> {
+    pub fn format_simple(&self) -> Result<String> {
         Ok(self.filename.to_owned())
     }
 
@@ -270,7 +270,7 @@ impl PathContent {
         users_cache: UsersCache,
         filter: &FilterKind,
         show_hidden: bool,
-    ) -> FmResult<Self> {
+    ) -> Result<Self> {
         let path = path.to_owned();
         let mut content = Self::files(&path, show_hidden, filter, &users_cache)?;
         let sort_kind = SortKind::default();
@@ -296,7 +296,7 @@ impl PathContent {
         path: &path::Path,
         filter: &FilterKind,
         show_hidden: bool,
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         self.content = Self::files(path, show_hidden, filter, &self.users_cache)?;
         self.sort_kind.sort(&mut self.content);
         self.index = 0;
@@ -313,7 +313,7 @@ impl PathContent {
         show_hidden: bool,
         filter_kind: &FilterKind,
         users_cache: &UsersCache,
-    ) -> FmResult<Vec<FileInfo>> {
+    ) -> Result<Vec<FileInfo>> {
         let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users_cache)?;
 
         let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users_cache)?;
@@ -325,7 +325,7 @@ impl PathContent {
         Ok(files)
     }
 
-    fn create_dot_dotdot(path: &path::Path, users_cache: &UsersCache) -> FmResult<Vec<FileInfo>> {
+    fn create_dot_dotdot(path: &path::Path, users_cache: &UsersCache) -> Result<Vec<FileInfo>> {
         let current = FileInfo::from_path_with_name(path, ".", users_cache)?;
         match path.parent() {
             Some(parent) => {
@@ -338,10 +338,8 @@ impl PathContent {
 
     /// Convert a path to a &str.
     /// It may fails if the path contains non valid utf-8 chars.
-    pub fn path_to_str(&self) -> FmResult<&str> {
-        self.path
-            .to_str()
-            .ok_or_else(|| FmError::custom("path to str", "Unreadable path"))
+    pub fn path_to_str(&self) -> Result<&str> {
+        self.path.to_str().context("path to str: Unreadable path")
     }
 
     /// Sort the file with current key.
@@ -375,7 +373,7 @@ impl PathContent {
     /// Reset the current file content.
     /// Reads and sort the content with current key.
     /// Select the first file if any.
-    pub fn reset_files(&mut self, filter: &FilterKind, show_hidden: bool) -> Result<(), FmError> {
+    pub fn reset_files(&mut self, filter: &FilterKind, show_hidden: bool) -> Result<()> {
         self.content = Self::files(&self.path, show_hidden, filter, &self.users_cache)?;
         self.sort_kind = SortKind::default();
         self.sort();
@@ -398,17 +396,17 @@ impl PathContent {
 
     /// Is the selected file a directory ?
     /// It may fails if the current path is empty, aka if nothing is selected.
-    pub fn is_selected_dir(&self) -> FmResult<bool> {
+    pub fn is_selected_dir(&self) -> Result<bool> {
         match self
             .selected()
-            .ok_or_else(|| FmError::custom("is selected dir", "Empty directory"))?
+            .context("is selected dir: Empty directory")?
             .file_kind
         {
             FileKind::Directory => Ok(true),
             FileKind::SymbolicLink => {
                 let dest = self
                     .selected()
-                    .ok_or_else(|| FmError::custom("is selected dir", "unreachable"))?
+                    .context("is selected dir: unreachable")?
                     .read_dest()
                     .unwrap_or_default();
                 Ok(path::PathBuf::from(dest).is_dir())
@@ -431,8 +429,8 @@ impl PathContent {
     }
 
     /// A string representation of the git status of the path.
-    pub fn git_string(&self) -> FmResult<String> {
-        Ok(git(&self.path)?)
+    pub fn git_string(&self) -> Result<String> {
+        git(&self.path)
     }
 
     /// Update the kind of sort from a char typed by the user.
@@ -471,9 +469,23 @@ impl PathContent {
         users_cache: UsersCache,
         filter: &FilterKind,
         show_hidden: bool,
-    ) -> FmResult<()> {
+    ) -> Result<()> {
         self.users_cache = users_cache;
         self.reset_files(filter, show_hidden)
+    }
+
+    /// Returns the correct index jump target to a flagged files.
+    fn find_jump_index(&self, jump_target: &path::Path) -> Option<usize> {
+        self.content
+            .iter()
+            .position(|file| file.path == jump_target)
+    }
+
+    /// Select the file from its path. Returns its index in content.
+    pub fn select_file(&mut self, jump_target: &path::Path) -> usize {
+        let index = self.find_jump_index(&jump_target).unwrap_or_default();
+        self.select_index(index);
+        index
     }
 }
 
@@ -507,22 +519,28 @@ pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
 }
 
 /// True if the file isn't hidden.
-pub fn is_not_hidden(entry: &DirEntry) -> FmResult<bool> {
-    Ok(entry
+pub fn is_not_hidden(entry: &DirEntry) -> Result<bool> {
+    let b = !entry
         .file_name()
-        .into_string()
-        .map(|s| !s.starts_with('.'))?)
+        .to_str()
+        .context("Couldn't read filename")?
+        .starts_with('.');
+    Ok(b)
 }
 
 /// Returns the modified time.
-fn extract_datetime(metadata: &Metadata) -> FmResult<String> {
+fn extract_datetime(metadata: &Metadata) -> Result<String> {
     let datetime: DateTime<Local> = metadata.modified()?.into();
     Ok(format!("{}", datetime.format("%d/%m/%Y %T")))
 }
 
 /// Returns the filename.
-fn extract_filename(direntry: &DirEntry) -> FmResult<String> {
-    Ok(direntry.file_name().into_string()?)
+fn extract_filename(direntry: &DirEntry) -> Result<String> {
+    Ok(direntry
+        .file_name()
+        .to_str()
+        .context("Couldn't read filename")?
+        .to_owned())
 }
 
 /// Reads the permission and converts them into a string.
@@ -546,12 +564,12 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 /// Reads the owner name and returns it as a string.
 /// If it's not possible to get the owner name (happens if the owner exists on a remote machine but not on host),
 /// it returns the uid as a  `Result<String>`.
-fn extract_owner(metadata: &Metadata, users_cache: &UsersCache) -> FmResult<String> {
+fn extract_owner(metadata: &Metadata, users_cache: &UsersCache) -> Result<String> {
     match users_cache.get_user_by_uid(metadata.uid()) {
         Some(uid) => Ok(uid
             .name()
             .to_str()
-            .ok_or_else(|| FmError::custom("extract owner", "Couldn't parse owner name"))?
+            .context("extract owner: Couldn't parse owner name")?
             .to_owned()),
         None => Ok(format!("{}", metadata.uid())),
     }
@@ -560,12 +578,12 @@ fn extract_owner(metadata: &Metadata, users_cache: &UsersCache) -> FmResult<Stri
 /// Reads the group name and returns it as a string.
 /// If it's not possible to get the group name (happens if the group exists on a remote machine but not on host),
 /// it returns the gid as a  `Result<String>`.
-fn extract_group(metadata: &Metadata, users_cache: &UsersCache) -> FmResult<String> {
+fn extract_group(metadata: &Metadata, users_cache: &UsersCache) -> Result<String> {
     match users_cache.get_group_by_gid(metadata.gid()) {
         Some(gid) => Ok(gid
             .name()
             .to_str()
-            .ok_or_else(|| FmError::custom("extract group", "Couldn't parse group name"))?
+            .context("extract group: Couldn't parse group name")?
             .to_owned()),
         None => Ok(format!("{}", metadata.gid())),
     }
@@ -641,14 +659,14 @@ const MAX_PATH_ELEM_SIZE: usize = 50;
 
 /// Shorten a path to be displayed in [`MAX_PATH_ELEM_SIZE`] chars or less.
 /// Each element of the path is shortened if needed.
-pub fn shorten_path(path: &path::Path, size: Option<usize>) -> FmResult<String> {
+pub fn shorten_path(path: &path::Path, size: Option<usize>) -> Result<String> {
     let size = match size {
         Some(size) => size,
         None => MAX_PATH_ELEM_SIZE,
     };
     let path_string = path
         .to_str()
-        .ok_or_else(|| FmError::custom("summarize", "couldn't parse the path"))?
+        .context("summarize: couldn't parse the path")?
         .to_owned();
 
     if path_string.len() < size {

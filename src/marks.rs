@@ -2,10 +2,10 @@ use std::collections::BTreeSet;
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
+use anyhow::{anyhow, Context, Result};
 use log::info;
 
 use crate::constant_strings_paths::MARKS_FILEPATH;
-use crate::fm_error::{FmError, FmResult};
 use crate::impl_selectable_content;
 use crate::utils::read_lines;
 
@@ -78,31 +78,28 @@ impl Marks {
         None
     }
 
-    fn parse_line(line: Result<String, io::Error>) -> FmResult<(char, PathBuf)> {
+    fn parse_line(line: Result<String, io::Error>) -> Result<(char, PathBuf)> {
         let line = line?;
         let sp: Vec<&str> = line.split(':').collect();
         if sp.len() <= 1 {
-            return Err(FmError::custom(
-                "marks: parse_line",
-                &format!("Invalid mark line: {line}"),
-            ));
+            return Err(anyhow!("marks: parse_line: Invalid mark line: {line}"));
         }
         if let Some(ch) = sp[0].chars().next() {
             let path = PathBuf::from(sp[1]);
             Ok((ch, path))
         } else {
-            Err(FmError::custom(
-                "marks: parse line",
-                &format!("Invalid first character in: {line}"),
+            Err(anyhow!(
+                "marks: parse line
+                Invalid first character in: {line}"
             ))
         }
     }
 
     /// Store a new mark in the config file.
     /// If an update is done, the marks are saved again.
-    pub fn new_mark(&mut self, ch: char, path: PathBuf) -> FmResult<()> {
+    pub fn new_mark(&mut self, ch: char, path: PathBuf) -> Result<()> {
         if ch == ':' {
-            return Err(FmError::custom("new_mark", "':' can't be used as a mark"));
+            return Err(anyhow!("new_mark ':' can't be used as a mark"));
         }
         if self.used_chars.contains(&ch) {
             let mut found_index = None;
@@ -121,7 +118,7 @@ impl Marks {
         self.save_marks()
     }
 
-    fn save_marks(&self) -> FmResult<()> {
+    fn save_marks(&self) -> Result<()> {
         let file = std::fs::File::create(&self.save_path)?;
         let mut buf = BufWriter::new(file);
         for (ch, path) in self.content.iter() {
@@ -130,10 +127,10 @@ impl Marks {
         Ok(())
     }
 
-    fn path_as_string(path: &Path) -> FmResult<String> {
+    fn path_as_string(path: &Path) -> Result<String> {
         Ok(path
             .to_str()
-            .ok_or_else(|| FmError::custom("path_as_string", "Unreadable path"))?
+            .context("path_as_string: unreadable path")?
             .to_owned())
     }
 

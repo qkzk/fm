@@ -1,49 +1,43 @@
-use crate::fm_error::{FmError, FmResult};
+use anyhow::{Context, Result};
 use flate2::read::{GzDecoder, ZlibDecoder};
 use std::fs::File;
 use std::path::Path;
 use tar::Archive;
 
 /// Decompress a zipped compressed file into its parent directory.
-/// It may fail an return a `FmError` if the file has no parent,
-/// which should be impossible.
-pub fn decompress_zip(source: &Path) -> FmResult<()> {
+pub fn decompress_zip(source: &Path) -> Result<()> {
     let file = File::open(source)?;
     let mut zip = zip::ZipArchive::new(file)?;
 
     let parent = source
         .parent()
-        .ok_or_else(|| FmError::custom("decompress", "source should have a parent"))?;
+        .context("decompress: source should have a parent")?;
     zip.extract(parent)?;
 
     Ok(())
 }
 
 /// Decompress a gz compressed file into its parent directory.
-/// It may fail an return a `FmError` if the file has no parent,
-/// which should be impossible.
-pub fn decompress_gz(source: &Path) -> FmResult<()> {
+pub fn decompress_gz(source: &Path) -> Result<()> {
     let tar_gz = File::open(source)?;
     let tar = GzDecoder::new(tar_gz);
     let mut archive = Archive::new(tar);
     let parent = source
         .parent()
-        .ok_or_else(|| FmError::custom("decompress", "source should have a parent"))?;
+        .context("decompress: source should have a parent")?;
     archive.unpack(parent)?;
 
     Ok(())
 }
 
 /// Decompress a zlib compressed file into its parent directory.
-/// It may fail an return a `FmError` if the file has no parent,
-/// which should be impossible.
-pub fn decompress_xz(source: &Path) -> FmResult<()> {
+pub fn decompress_xz(source: &Path) -> Result<()> {
     let tar_xz = File::open(source)?;
     let tar = ZlibDecoder::new(tar_xz);
     let mut archive = Archive::new(tar);
     let parent = source
         .parent()
-        .ok_or_else(|| FmError::custom("decompress", "source should have a parent"))?;
+        .context("decompress: source should have a parent")?;
     archive.unpack(parent)?;
 
     Ok(())
@@ -51,7 +45,7 @@ pub fn decompress_xz(source: &Path) -> FmResult<()> {
 
 /// List files contained in a ZIP file.
 /// Will return an error if the ZIP file is corrupted.
-pub fn list_files_zip<P>(source: P) -> FmResult<Vec<String>>
+pub fn list_files_zip<P>(source: P) -> Result<Vec<String>>
 where
     P: AsRef<Path>,
 {

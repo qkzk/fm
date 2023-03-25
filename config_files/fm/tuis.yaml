@@ -8,3 +8,5 @@ btop:
   cwd: false
 glances:
   cwd: false
+mocp:
+  cwd: true
