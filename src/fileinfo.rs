@@ -473,6 +473,20 @@ impl PathContent {
         self.users_cache = users_cache;
         self.reset_files(filter, show_hidden)
     }
+
+    /// Returns the correct index jump target to a flagged files.
+    fn find_jump_index(&self, jump_target: &path::Path) -> Option<usize> {
+        self.content
+            .iter()
+            .position(|file| file.path == jump_target)
+    }
+
+    /// Select the file from its path. Returns its index in content.
+    pub fn select_file(&mut self, jump_target: &path::Path) -> usize {
+        let index = self.find_jump_index(&jump_target).unwrap_or_default();
+        self.select_index(index);
+        index
+    }
 }
 
 impl_selectable_content!(FileInfo, PathContent);

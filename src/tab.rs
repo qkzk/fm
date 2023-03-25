@@ -200,14 +200,6 @@ impl Tab {
         self.window.scroll_to(index);
     }
 
-    /// Returns the correct index jump target to a flagged files.
-    pub fn find_jump_index(&self, jump_target: &path::Path) -> Option<usize> {
-        self.path_content
-            .content
-            .iter()
-            .position(|file| file.path == jump_target)
-    }
-
     /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
     /// extend the vector with the mount points.
     pub fn refresh_shortcuts(&mut self, mount_points: &[&path::Path]) {

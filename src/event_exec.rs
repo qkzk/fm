@@ -307,15 +307,9 @@ impl EventExec {
             Some(parent) => parent,
             None => &jump_target,
         };
-        let tab = status.selected();
-        tab.input.clear();
-        tab.history.push(target_dir);
-        tab.path_content
-            .change_directory(target_dir, &tab.filter, tab.show_hidden)?;
-        let index = tab.find_jump_index(&jump_target).unwrap_or_default();
-        tab.path_content.select_index(index);
-        tab.set_window();
-        tab.scroll_to(index);
+        status.selected().set_pathcontent(target_dir)?;
+        let index = status.selected().path_content.select_file(&jump_target);
+        status.selected().scroll_to(index);
 
         Ok(())
     }
@@ -327,7 +321,7 @@ impl EventExec {
         colors: &Colors,
     ) -> Result<()> {
         Self::_exec_confirmed_action(status, confirmed_action, colors)?;
-        status.selected().set_mode(Mode::Normal);
+        status.selected().reset_mode();
         Ok(())
     }
 
