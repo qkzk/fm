@@ -43,6 +43,7 @@ impl Bindings {
             (Key::Char('\''), ActionMap::MarksJump),
             (Key::Char('-'), ActionMap::Back),
             (Key::Char('~'), ActionMap::Home),
+            (Key::Char('`'), ActionMap::GoRoot),
             (Key::Char(':'), ActionMap::Command),
             (Key::Char('B'), ActionMap::Bulk),
             (Key::Char('C'), ActionMap::Compress),

@@ -92,7 +92,7 @@ where
 /// May fail if the filename isn't utf-8 compliant.
 pub fn filename_from_path(path: &std::path::Path) -> Result<&str> {
     path.file_name()
-        .context("couldn't read the filename")?
+        .unwrap_or_default()
         .to_str()
         .context("couldn't parse the filename")
 }

@@ -950,9 +950,12 @@ impl EventExec {
         let home_cow = shellexpand::tilde("~");
         let home: &str = home_cow.borrow();
         let path = std::fs::canonicalize(home)?;
-        tab.set_pathcontent(&path)?;
+        tab.set_pathcontent(&path)
+    }
 
-        Ok(())
+    pub fn event_go_root(tab: &mut Tab) -> Result<()> {
+        let root_path = std::path::PathBuf::from("/");
+        tab.set_pathcontent(&root_path)
     }
 
     fn read_nvim_listen_address_if_needed(status: &mut Status) {
