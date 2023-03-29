@@ -485,15 +485,18 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] allow non tui like wttr, diff, bat, tail -n etc.
     - [ ] more options like "use flagged files" for diff
 
-  - [ ] build option to force reset of config file, warn the user at first start
-  - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
-  - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
-  - [ ] allow pipe in execution
-  - [ ] refactor cryptdevice and iso_file
-    - [ ] mode to handle those mounts. ATM it's all over the place...
-    - [ ] allow mounting some other devices
-    - [ ] list non mounted devices, list all mount points
-    - [ ] act on them
+- [ ] build option to force reset of config file, warn the user at first start
+- [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
+- [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
+- [ ] allow pipe in execution
+- [ ] refactor cryptdevice and iso_file
+
+  - [ ] mode to handle those mounts. ATM it's all over the place...
+  - [ ] allow mounting some other devices
+  - [ ] list non mounted devices, list all mount points
+  - [ ] act on them
+
+- [ ] more shortcuts like `nnn` : `\` root, @: start
 
 - [ ] sub window / menu for completion / selection.
 
