@@ -45,6 +45,8 @@ static HELP_TO_FORMAT: &str = "
 {MediaInfo}:       display infos about a media file
 {Back}:      move back to previous dir
 {Home}:      move to $HOME
+{GoRoot}:      move to root (/)
+{GoStart}:      move to starting point
 {MarksNew}:      mark current path
 {MarksJump}:     jump to a mark
 {SearchNext}:      search next matching element

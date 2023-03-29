@@ -18,20 +18,15 @@ pub struct Shortcut {
     non_mount_size: usize,
 }
 
-impl Default for Shortcut {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Shortcut {
     /// Creates the hardcoded shortcuts
     /// Add the config folder and the git root
     ///(no mount point yet).
-    pub fn new() -> Self {
+    pub fn new(start_folder: &Path) -> Self {
         let mut shortcuts = Self::hardcoded_shortcuts();
         shortcuts = Self::with_home_path(shortcuts);
         shortcuts = Self::with_config_folder(shortcuts);
+        shortcuts = Self::with_start_folder(shortcuts, start_folder);
         shortcuts = Self::with_git_root(shortcuts);
         let non_mount_size = shortcuts.len();
         Self {
@@ -61,6 +56,11 @@ impl Shortcut {
         if let Ok(config_folder) = PathBuf::from_str(shellexpand::tilde(CONFIG_FOLDER).borrow()) {
             shortcuts.push(config_folder);
         }
+        shortcuts
+    }
+
+    fn with_start_folder(mut shortcuts: Vec<PathBuf>, start_folder: &Path) -> Vec<PathBuf> {
+        shortcuts.push(start_folder.to_owned());
         shortcuts
     }
 

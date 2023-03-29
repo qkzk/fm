@@ -71,7 +71,7 @@ impl Tab {
         let preview = Preview::Empty;
         let mut history = History::default();
         history.push(&path);
-        let shortcut = Shortcut::new();
+        let shortcut = Shortcut::new(&path);
         let searched = None;
         Ok(Self {
             mode,

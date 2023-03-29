@@ -453,6 +453,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] mocp go to song: `mocp -Q %file` with alt+enter (lack of a better keybinding)
 - [x] display openers in help
 
+## Current dev
+
+### Version 0.1.21
+
+- [x] more shortcuts like `nnn` : `\` root, @: start
+
 ## TODO
 
 - [ ] remote control
@@ -495,8 +501,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] allow mounting some other devices
   - [ ] list non mounted devices, list all mount points
   - [ ] act on them
-
-- [ ] more shortcuts like `nnn` : `\` root, @: start
 
 - [ ] sub window / menu for completion / selection.
 

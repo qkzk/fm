@@ -81,6 +81,7 @@ pub struct Status {
     pub bulk: Bulk,
     pub shell_menu: ShellMenu,
     pub cli_info: CliInfo,
+    pub start_folder: std::path::PathBuf,
 }
 
 impl Status {
@@ -111,6 +112,7 @@ impl Status {
         let compression = Compresser::default();
         let force_clear = false;
         let bulk = Bulk::default();
+        let start_folder = std::fs::canonicalize(std::path::PathBuf::from(&args.path))?;
 
         // unsafe because of UsersCache::with_all_users
         let users_cache = unsafe { UsersCache::with_all_users() };
@@ -149,6 +151,7 @@ impl Status {
             shell_menu,
             iso_mounter,
             cli_info,
+            start_folder,
         })
     }
 

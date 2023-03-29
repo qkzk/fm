@@ -958,6 +958,11 @@ impl EventExec {
         tab.set_pathcontent(&root_path)
     }
 
+    pub fn event_go_start(status: &mut Status) -> Result<()> {
+        let start_folder = status.start_folder.clone();
+        status.selected().set_pathcontent(&start_folder)
+    }
+
     fn read_nvim_listen_address_if_needed(status: &mut Status) {
         if !status.nvim_server.is_empty() {
             return;
