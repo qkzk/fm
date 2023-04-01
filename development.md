@@ -459,7 +459,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] more shortcuts like `nnn` : `\` root, @: start
 - [x] display settings (dual pane, full display) can be setup in config file.
-- [ ] common vim keys (hjkl)
+- [ ] common vim keys
+  - [x] hjkl
+  - [x] g G
+  - [x] J K C+u C+d
 
 ## TODO
 
