@@ -9,6 +9,8 @@ use crate::constant_strings_paths::DEFAULT_TERMINAL_APPLICATION;
 use crate::keybindings::Bindings;
 use crate::utils::is_program_in_path;
 
+/// Starting settings.
+/// those values are updated from the yaml config file
 #[derive(Debug, Clone, Default)]
 pub struct Settings {
     pub dual: bool,
@@ -16,20 +18,15 @@ pub struct Settings {
 }
 
 impl Settings {
-    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> Result<()> {
-        if let Some(dual) = yaml["dual"].as_str() {
-            match dual {
-                "false" => self.dual = false,
-                _ => self.dual = true,
-            }
+    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+        match yaml["dual"] {
+            serde_yaml::Value::Bool(false) => self.dual = false,
+            _ => self.dual = true,
         }
-        if let Some(full) = yaml["full"].as_str() {
-            match full {
-                "false" => self.full = false,
-                _ => self.full = true,
-            }
+        match yaml["full"] {
+            serde_yaml::Value::Bool(false) => self.full = false,
+            _ => self.full = true,
         }
-        Ok(())
     }
 }
 
@@ -45,6 +42,7 @@ pub struct Config {
     pub terminal: String,
     /// Configurable keybindings.
     pub binds: Bindings,
+    /// Basic starting settings
     pub settings: Settings,
 }
 
@@ -63,7 +61,7 @@ impl Config {
         self.colors.update_from_config(&yaml["colors"]);
         self.binds.update_from_config(&yaml["keys"]);
         self.terminal = Self::set_terminal(&yaml["terminal"])?;
-        self.settings.update_from_config(&yaml["settings"])?;
+        self.settings.update_from_config(&yaml["settings"]);
         Ok(())
     }
 

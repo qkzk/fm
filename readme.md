@@ -244,6 +244,8 @@ You can configure :
 - **Keybindings**. Some should be left as they are, but all keybindings can be configured.
   use the provided config file as a default.
   Multiple keys can be bound the the same action.
+- **Settings**. Do you whish to start with dual pane ? Do you wish to use basic or
+  full display ?
 - **Openers**. fm tries to be smart and open some files with a standard program.
   You can change that and use whatever installed program you want. Specify if it
   requires a shell to be run (like neovim) or not (like subl).
