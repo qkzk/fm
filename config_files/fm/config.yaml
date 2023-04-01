@@ -33,7 +33,10 @@ keys:
   'c': CopyPaste
   'd': NewDir
   'e': Exec
-  'g': Goto
+  'g': KeyHome
+  'G': End
+  'alt-g': Goto
+  'ctrl-g': Shortcut
   'h': MoveLeft
   'i': NvimFilepicker
   'j': MoveDown  
