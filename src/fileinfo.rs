@@ -483,7 +483,7 @@ impl PathContent {
 
     /// Select the file from its path. Returns its index in content.
     pub fn select_file(&mut self, jump_target: &path::Path) -> usize {
-        let index = self.find_jump_index(&jump_target).unwrap_or_default();
+        let index = self.find_jump_index(jump_target).unwrap_or_default();
         self.select_index(index);
         index
     }
