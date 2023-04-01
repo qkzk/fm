@@ -34,10 +34,11 @@ keys:
   'd': NewDir
   'e': Exec
   'g': Goto
-  'h': Help
+  'h': MoveLeft
   'i': NvimFilepicker
-  'j': Jump
-  'l': Symlink
+  'j': MoveDown  
+  'k': MoveUp
+  'l': MoveRight
   'm': Chmod
   'n': NewFile
   'o': OpenFile
@@ -53,7 +54,9 @@ keys:
   'shift-b': Bulk
   'shift-f': Filter
   'shift-g': Shortcut
-  'shift-h': History
+  'shift-h': Help
+  'shift-j': Jump
+  'shift-L': Symlink
   'shift-m': MarksNew
   'shift-o': Sort
   'shift-p': Preview
