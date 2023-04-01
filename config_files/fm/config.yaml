@@ -69,3 +69,7 @@ keys:
   'alt-e': ToggleDisplayFull
   'alt-p': TogglePreviewSecond
   'alt-f': ToggleDualPane
+settings:
+  dual: true
+  full: true
+

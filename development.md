@@ -458,6 +458,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ### Version 0.1.21
 
 - [x] more shortcuts like `nnn` : `\` root, @: start
+- [ ] remember display settings somewhere : dual / single, preview mode, simple, tree (?)
 
 ## TODO
 

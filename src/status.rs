@@ -17,7 +17,7 @@ use crate::args::Args;
 use crate::bulkrename::Bulk;
 use crate::cli_info::CliInfo;
 use crate::compress::Compresser;
-use crate::config::Colors;
+use crate::config::{Colors, Settings};
 use crate::constant_strings_paths::TUIS_PATH;
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::CryptoDeviceOpener;
@@ -97,6 +97,7 @@ impl Status {
         term: Arc<Term>,
         help: String,
         opener: Opener,
+        settings: &Settings,
     ) -> Result<Self> {
         let Ok(shell_menu) = load_shell_menu(TUIS_PATH) else {
             eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example"); 
@@ -136,10 +137,10 @@ impl Status {
             marks: Marks::read_from_config_file(),
             skimer: Skimer::new(term.clone()),
             term,
-            dual_pane: true,
+            dual_pane: settings.dual,
             preview_second: false,
             system_info: sys,
-            display_full: true,
+            display_full: settings.full,
             opener,
             help,
             trash,

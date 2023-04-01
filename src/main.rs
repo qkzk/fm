@@ -40,7 +40,14 @@ fn main() -> Result<()> {
         });
     let help = Help::from_keybindings(&config.binds, &opener)?.help;
     let mut display = Display::new(term.clone());
-    let mut status = Status::new(Args::parse(), display.height()?, term.clone(), help, opener)?;
+    let mut status = Status::new(
+        Args::parse(),
+        display.height()?,
+        term.clone(),
+        help,
+        opener,
+        &config.settings,
+    )?;
     let colors = config.colors.clone();
     drop(config);
 

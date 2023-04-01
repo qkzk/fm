@@ -9,6 +9,30 @@ use crate::constant_strings_paths::DEFAULT_TERMINAL_APPLICATION;
 use crate::keybindings::Bindings;
 use crate::utils::is_program_in_path;
 
+#[derive(Debug, Clone, Default)]
+pub struct Settings {
+    pub dual: bool,
+    pub full: bool,
+}
+
+impl Settings {
+    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> Result<()> {
+        if let Some(dual) = yaml["dual"].as_str() {
+            match dual {
+                "false" => self.dual = false,
+                _ => self.dual = true,
+            }
+        }
+        if let Some(full) = yaml["full"].as_str() {
+            match full {
+                "false" => self.full = false,
+                _ => self.full = true,
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Holds every configurable aspect of the application.
 /// All attributes are hardcoded then updated from optional values
 /// of the config file.
@@ -21,6 +45,7 @@ pub struct Config {
     pub terminal: String,
     /// Configurable keybindings.
     pub binds: Bindings,
+    pub settings: Settings,
 }
 
 impl Config {
@@ -30,6 +55,7 @@ impl Config {
             colors: Colors::default(),
             terminal: DEFAULT_TERMINAL_APPLICATION.to_owned(),
             binds: Bindings::default(),
+            settings: Settings::default(),
         })
     }
     /// Updates the config from  a configuration content.
@@ -37,6 +63,7 @@ impl Config {
         self.colors.update_from_config(&yaml["colors"]);
         self.binds.update_from_config(&yaml["keys"]);
         self.terminal = Self::set_terminal(&yaml["terminal"])?;
+        self.settings.update_from_config(&yaml["settings"])?;
         Ok(())
     }
 
