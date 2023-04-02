@@ -77,5 +77,15 @@ settings:
   dual: true
   full: true
 
+# Custom command :
+# * Use an unused keybind
+# * Don't use pipe or redirection, it won't be parsed correctly
+# * Use full path for the command : `/usr/bin/ls` not `ls`
+# * Use expensions :
+#     Expansions :
+#     - %s: the full path of the currently selected file or folder,
+#     - %f: the list of the full paths of the flagged files.
+# Example:
+# 'alt-u': "/usr/bin/ls %f"
 custom:
-  'alt-u': "/usr/bin/ls"
+  'alt-u': "/usr/bin/ls %f"

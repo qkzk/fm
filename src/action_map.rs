@@ -189,7 +189,7 @@ impl ActionMap {
             ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(current_tab, colors),
             ActionMap::TreeUnFoldAll => EventExec::event_tree_unfold_all(current_tab, colors),
             ActionMap::OpenConfig => EventExec::event_open_config(status),
-            ActionMap::Custom(string) => EventExec::event_custom(current_tab, string.clone()),
+            ActionMap::Custom(string) => EventExec::event_custom(status, string.clone()),
 
             ActionMap::Nothing => Ok(()),
         }

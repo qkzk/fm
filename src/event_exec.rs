@@ -16,6 +16,7 @@ use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
 use crate::content_window::RESERVED_ROWS;
 use crate::copy_move::CopyMove;
 use crate::cryptsetup::BlockDeviceAction;
+use crate::custom_parser::CustomParser;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::iso::IsoMounter;
@@ -24,6 +25,7 @@ use crate::mocp::Mocp;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::mount_help::MountHelper;
 use crate::nvim::nvim;
+use crate::opener::execute_and_capture_output_without_check;
 use crate::opener::{execute_in_child, execute_in_child_without_output_with_path, InternalVariant};
 use crate::password::{PasswordKind, PasswordUsage};
 use crate::preview::Preview;
@@ -1936,9 +1938,16 @@ impl EventExec {
     }
 
     /// Execute a custom event on the selected file
-    pub fn event_custom(tab: &mut Tab, string: String) -> Result<()> {
+    pub fn event_custom(status: &mut Status, string: String) -> Result<()> {
         info!("event_custom {string}");
-        EventExec::execute_custom(tab, string)?;
+        let parser = CustomParser::new(string);
+        let mut args = parser.compute(status)?;
+        let command = args.remove(0);
+        let output = execute_and_capture_output_without_check(
+            &command,
+            &args.iter().map(|s| &**s).collect(),
+        )?;
+        info!("output {output}");
         Ok(())
     }
 }
