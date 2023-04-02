@@ -156,4 +156,21 @@ impl Bindings {
             self.binds.insert(keymap, action);
         }
     }
+
+    pub fn update_custom(&mut self, yaml: &serde_yaml::value::Value) {
+        for yaml_key in yaml.as_mapping().unwrap().keys() {
+            let Some(key_string) = yaml_key.as_str() else { 
+                log::info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
+                continue;
+            };
+            let Some(keymap) = from_keyname(key_string) else {
+                log::info!("~/.config/fm/config.yaml: Keybinding {key_string} is unknown");
+                continue;
+            };
+            let Some(custom_str) = yaml[yaml_key].as_str() else { continue; };
+            let action = ActionMap::Custom(custom_str.to_owned());
+            log::info!("custom bind {keymap:?}, {action}");
+            self.binds.insert(keymap, action);
+        }
+    }
 }

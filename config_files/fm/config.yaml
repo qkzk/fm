@@ -77,3 +77,5 @@ settings:
   dual: true
   full: true
 
+custom:
+  'alt-u': "/usr/bin/ls"

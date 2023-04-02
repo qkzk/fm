@@ -96,6 +96,7 @@ pub enum ActionMap {
     TreeFold,
     TreeUnFoldAll,
     TreeFoldAll,
+    Custom(String),
 }
 
 impl ActionMap {
@@ -103,7 +104,7 @@ impl ActionMap {
     /// Every Action links to a different `EventExec` method.
     pub fn matcher(&self, status: &mut Status, colors: &Colors) -> Result<()> {
         let current_tab = status.selected();
-        match *self {
+        match self {
             ActionMap::Back => EventExec::event_back(status, colors),
             ActionMap::BackTab => EventExec::backtab(status),
             ActionMap::Backspace => EventExec::event_backspace(status),
@@ -188,6 +189,7 @@ impl ActionMap {
             ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(current_tab, colors),
             ActionMap::TreeUnFoldAll => EventExec::event_tree_unfold_all(current_tab, colors),
             ActionMap::OpenConfig => EventExec::event_open_config(status),
+            ActionMap::Custom(string) => EventExec::event_custom(current_tab, string.clone()),
 
             ActionMap::Nothing => Ok(()),
         }

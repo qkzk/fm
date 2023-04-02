@@ -1044,24 +1044,28 @@ impl EventExec {
             return Err(anyhow!("exec exec: empty directory"));
         }
         let exec_command = tab.input.string();
-        let mut args: Vec<&str> = exec_command.split(' ').collect();
-        let command = args.remove(0);
-        if std::path::Path::new(command).exists() {
-            let path = &tab
-                .selected()
-                .ok_or_else(|| anyhow!("exec exec: can't find command {command}"))?
-                .path
-                .to_str()
-                .ok_or_else(|| anyhow!("exec exec: can't find command {command}"))?;
-            // let path = &tab.path_content.selected_path_string().ok_or_else(|| {
-            //     anyhow!("exec exec", &format!("can't find command {}", command))
-            // })?;
-            args.push(path);
-            execute_in_child(command, &args)?;
-            tab.completion.reset();
-            tab.input.reset();
+        if let Ok(bool) = EventExec::execute_custom(tab, exec_command) {
+            if bool {
+                tab.completion.reset();
+                tab.input.reset();
+            }
         }
         Ok(())
+    }
+
+    fn execute_custom(tab: &mut Tab, exec_command: String) -> Result<bool> {
+        let mut args: Vec<&str> = exec_command.split(' ').collect();
+        let command = args.remove(0);
+        if !std::path::Path::new(command).exists() {
+            return Ok(false);
+        }
+        let path = &tab
+            .path_content
+            .selected_path_string()
+            .context("execute custom: can't find command")?;
+        args.push(path);
+        execute_in_child(command, &args)?;
+        Ok(true)
     }
 
     /// Executes a `dragon-drop` command on the selected file.
@@ -1929,6 +1933,13 @@ impl EventExec {
     /// Go to the previous song in MOC
     pub fn event_mocp_previous() -> Result<()> {
         Mocp::previous()
+    }
+
+    /// Execute a custom event on the selected file
+    pub fn event_custom(tab: &mut Tab, string: String) -> Result<()> {
+        info!("event_custom {string}");
+        EventExec::execute_custom(tab, string)?;
+        Ok(())
     }
 }
 

@@ -60,6 +60,7 @@ impl Config {
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> Result<()> {
         self.colors.update_from_config(&yaml["colors"]);
         self.binds.update_from_config(&yaml["keys"]);
+        self.binds.update_custom(&yaml["custom"]);
         self.terminal = Self::set_terminal(&yaml["terminal"])?;
         self.settings.update_from_config(&yaml["settings"]);
         Ok(())
