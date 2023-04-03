@@ -139,7 +139,8 @@ impl Bindings {
     /// It may fail (and leave keybinding intact) if the file isn't formated properly.
     /// An unknown or poorly formated key will be ignored.
     pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
-        for yaml_key in yaml.as_mapping().unwrap().keys() {
+        let Some(mappings) = yaml.as_mapping() else { return };
+        for yaml_key in mappings.keys() {
             let Some(key_string) = yaml_key.as_str() else { 
                 log::info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
                 continue;
@@ -158,7 +159,8 @@ impl Bindings {
     }
 
     pub fn update_custom(&mut self, yaml: &serde_yaml::value::Value) {
-        for yaml_key in yaml.as_mapping().unwrap().keys() {
+        let Some(mappings) = yaml.as_mapping() else { return };
+        for yaml_key in mappings.keys() {
             let Some(key_string) = yaml_key.as_str() else { 
                 log::info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
                 continue;
