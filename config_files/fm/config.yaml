@@ -85,6 +85,9 @@ settings:
 #     Expansions :
 #     - %s: the full path of the currently selected file or folder,
 #     - %f: the list of the full paths of the flagged files.
+#     - %e: the extension of the file.
+#     - %n: the filename only.
+#     - %p: the full path of the current directory.
 # Example:
 # 'alt-u': "/usr/bin/ls %f"
 custom:

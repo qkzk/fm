@@ -117,8 +117,11 @@ Control MOC from your TUI
 {MocpGoToSong}:        MOCP: Go to currently playing song 
 
 - CUSTOM -
-%s: selected file,
-%f: flagged files,
+%s: the selected file,
+%f: the flagged files,
+%e: the extension of the file,
+%n: the filename only,
+%p: the full path of the current directory.
 ";
 
 /// Holds the help string, formated with current keybindings.
