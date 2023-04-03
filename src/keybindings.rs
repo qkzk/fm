@@ -138,7 +138,7 @@ impl Bindings {
     /// Update the binds from a config file.
     /// It may fail (and leave keybinding intact) if the file isn't formated properly.
     /// An unknown or poorly formated key will be ignored.
-    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+    pub fn update_normal(&mut self, yaml: &serde_yaml::value::Value) {
         let Some(mappings) = yaml.as_mapping() else { return };
         for yaml_key in mappings.keys() {
             let Some(key_string) = yaml_key.as_str() else { 

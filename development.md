@@ -459,11 +459,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] more shortcuts like `nnn` : `\` root, @: start
 - [x] display settings (dual pane, full display) can be setup in config file.
-- [ ] common vim keys: require an update of the config file
+- [x] common vim keys: require an update of the config file
   - [x] hjkl
   - [x] g G
   - [x] J K C+u C+d
-- [ ] custom shell command on selection or flagged files, with or without confirmation
+  - [ ] ???
+- [x] custom shell command on selection or flagged files, with or without confirmation
+- [x] FIX: absent key in config file can crash the app
 
 ## TODO
 
