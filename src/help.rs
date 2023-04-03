@@ -115,6 +115,10 @@ Control MOC from your TUI
 {MocpTogglePause}:        MOCP: Toggle play/pause.
 {MocpNext}:       MOCP: Next song
 {MocpGoToSong}:        MOCP: Go to currently playing song 
+
+- CUSTOM -
+%s: selected file,
+%f: flagged files,
 ";
 
 /// Holds the help string, formated with current keybindings.
@@ -132,7 +136,12 @@ impl Help {
         let openers = opener.opener_association.as_map_of_strings();
         log::info!("{openers:?}");
         strings.extend(openers);
-        let help = strfmt(HELP_TO_FORMAT, &strings)?;
+        let mut help = strfmt(HELP_TO_FORMAT, &strings)?;
+        for key in binds.custom.keys() {
+            let val = &binds.custom[key];
+            let s = format!("{key:?}:        {val}\n");
+            help.push_str(&s);
+        }
         Ok(Self { help })
     }
 }

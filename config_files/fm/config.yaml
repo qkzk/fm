@@ -88,4 +88,4 @@ settings:
 # Example:
 # 'alt-u': "/usr/bin/ls %f"
 custom:
-  'alt-u': "/usr/bin/ls %f"
+  'alt-u': "/usr/bin/google-chrome-stable %s"

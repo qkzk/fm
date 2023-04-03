@@ -465,6 +465,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] J K C+u C+d
   - [ ] ???
 - [x] custom shell command on selection or flagged files, with or without confirmation
+- [x] custom action in help
 - [x] FIX: absent key in config file can crash the app
 
 ## TODO

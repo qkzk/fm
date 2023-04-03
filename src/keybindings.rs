@@ -12,6 +12,8 @@ pub struct Bindings {
     /// An HashMap of key & Actions.
     /// Every binded key is linked to its corresponding action
     pub binds: HashMap<Key, ActionMap>,
+    /// Remember every key binded to a custom action
+    pub custom: HashMap<Key, String>,
 }
 
 impl Default for Bindings {
@@ -118,7 +120,8 @@ impl Bindings {
             (Key::CtrlRight, ActionMap::MocpNext),
             (Key::CtrlLeft, ActionMap::MocpPrevious),
         ]);
-        Self { binds }
+        let custom = HashMap::new();
+        Self { binds, custom }
     }
 
     /// Returns an Option of action. None if the key isn't binded.
@@ -172,7 +175,8 @@ impl Bindings {
             let Some(custom_str) = yaml[yaml_key].as_str() else { continue; };
             let action = ActionMap::Custom(custom_str.to_owned());
             log::info!("custom bind {keymap:?}, {action}");
-            self.binds.insert(keymap, action);
+            self.binds.insert(keymap, action.clone());
+            self.custom.insert(keymap, custom_str.to_owned());
         }
     }
 }
