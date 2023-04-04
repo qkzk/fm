@@ -115,7 +115,9 @@ Control MOC from your TUI
 {MocpTogglePause}:        MOCP: Toggle play/pause.
 {MocpNext}:       MOCP: Next song
 {MocpGoToSong}:        MOCP: Go to currently playing song 
+";
 
+const CUSTOM_HELP: &str = "
 - CUSTOM -
 %s: the selected file,
 %f: the flagged files,
@@ -140,11 +142,17 @@ impl Help {
         log::info!("{openers:?}");
         strings.extend(openers);
         let mut help = strfmt(HELP_TO_FORMAT, &strings)?;
-        for key in binds.custom.keys() {
-            let val = &binds.custom[key];
-            let s = format!("{key:?}:        {val}\n");
-            help.push_str(&s);
-        }
+        help = Self::complete_with_custom_binds(&binds.custom, help);
         Ok(Self { help })
+    }
+
+    fn complete_with_custom_binds(custom_binds: &Option<Vec<String>>, mut help: String) -> String {
+        if let Some(customs) = &custom_binds {
+            help.push_str(CUSTOM_HELP);
+            for custom in customs.iter() {
+                help.push_str(custom);
+            }
+        }
+        help
     }
 }

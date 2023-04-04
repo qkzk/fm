@@ -13,7 +13,7 @@ pub struct Bindings {
     /// Every binded key is linked to its corresponding action
     pub binds: HashMap<Key, ActionMap>,
     /// Remember every key binded to a custom action
-    pub custom: HashMap<Key, String>,
+    pub custom: Option<Vec<String>>,
 }
 
 impl Default for Bindings {
@@ -120,7 +120,7 @@ impl Bindings {
             (Key::CtrlRight, ActionMap::MocpNext),
             (Key::CtrlLeft, ActionMap::MocpPrevious),
         ]);
-        let custom = HashMap::new();
+        let custom = None;
         Self { binds, custom }
     }
 
@@ -163,6 +163,7 @@ impl Bindings {
 
     pub fn update_custom(&mut self, yaml: &serde_yaml::value::Value) {
         let Some(mappings) = yaml.as_mapping() else { return };
+        let mut custom = vec![];
         for yaml_key in mappings.keys() {
             let Some(key_string) = yaml_key.as_str() else { 
                 log::info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
@@ -176,7 +177,8 @@ impl Bindings {
             let action = ActionMap::Custom(custom_str.to_owned());
             log::info!("custom bind {keymap:?}, {action}");
             self.binds.insert(keymap, action.clone());
-            self.custom.insert(keymap, custom_str.to_owned());
+            custom.push(format!("{keymap:?}:        {custom_str}\n"));
         }
+        self.custom = Some(custom);
     }
 }
