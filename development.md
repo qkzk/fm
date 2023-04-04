@@ -568,3 +568,42 @@ All of this stuff can be done easily through a shell command or automatically. I
 ### CLI
 
 - [CLI crates](https://lib.rs/command-line-interface)
+
+### Chat GPT ideas
+
+Tell me 10 cool features a TUI file manager could have
+
+Sure! Here are 10 cool features a TUI (Text-based User Interface) file manager
+could have:
+
+Easy navigation: A TUI file manager should allow users to navigate through
+directories and files quickly and easily using keyboard shortcuts.
+
+File previews: Users can preview the contents of a file without having to open
+it. This feature can be particularly useful for large text files, images, or
+videos.
+
+Customizable interface: A TUI file manager should be customizable so that users
+can choose the information they want to see on the screen, such as file size,
+modification date, and file type.
+
+File operations: Basic file operations like copying, moving, and deleting
+should be easily accessible and efficient to perform.
+
+Bulk operations: A TUI file manager should allow users to perform bulk
+operations on multiple files at once, such as renaming or deleting them.
+
+Tabbed interface: A tabbed interface allows users to have multiple directories
+open at the same time, making it easy to move files between them.
+
+Bookmarking: Users can bookmark frequently used directories for quick access.
+
+Integrated terminal: A TUI file manager can include an integrated terminal to
+execute commands without switching to another application.
+
+Search functionality: Users can search for files based on their name, content,
+or other criteria, with the search results displayed in real-time.
+
+Cloud storage integration: TUI file managers can integrate with cloud storage
+services like Dropbox, Google Drive, or OneDrive, allowing users to manage
+their cloud files directly from the file manager interface.
