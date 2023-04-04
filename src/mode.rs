@@ -79,6 +79,8 @@ pub enum InputSimple {
     SetNvimAddr,
     /// Input a password (chars a replaced by *)
     Password(PasswordKind, BlockDeviceAction, PasswordUsage),
+    /// Shell command execute as is
+    Shell,
 }
 
 /// Different modes in which we display a bunch of possible destinations.
@@ -141,6 +143,7 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
             Mode::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
             Mode::InputSimple(InputSimple::SetNvimAddr) => write!(f, "Neovim:  "),
+            Mode::InputSimple(InputSimple::Shell) => write!(f, "Shell:   "),
             Mode::InputSimple(InputSimple::Sort) => {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }

@@ -396,7 +396,7 @@ pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> Result<std::process::Chi
 /// Execute a command with options in a fork.
 /// Returns an handle to the child process.
 /// Branch stdin, stderr and stdout to /dev/null
-pub fn execute_in_child_without_output(exe: &str, args: &Vec<&str>) -> Result<std::process::Child> {
+pub fn execute_in_child_without_output(exe: &str, args: &[&str]) -> Result<std::process::Child> {
     info!("execute_in_child_without_output. executable: {exe}, arguments: {args:?}",);
     Ok(Command::new(exe)
         .args(args)

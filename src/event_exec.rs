@@ -347,6 +347,11 @@ impl EventExec {
         Ok(())
     }
 
+    pub fn exec_shell(tab: &mut Tab) -> Result<()> {
+        tab.exec_shell()?;
+        Ok(())
+    }
+
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn event_reset_mode(tab: &mut Tab) -> Result<()> {
@@ -813,6 +818,11 @@ impl EventExec {
         let tab = status.selected_non_mut();
         let path = tab.directory_of_selected()?;
         execute_in_child_without_output_with_path(&status.opener.terminal, path, None)?;
+        Ok(())
+    }
+
+    pub fn event_shell_command(tab: &mut Tab) -> Result<()> {
+        tab.set_mode(Mode::InputSimple(InputSimple::Shell));
         Ok(())
     }
 
@@ -1345,6 +1355,7 @@ impl EventExec {
             Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,
             Mode::InputSimple(InputSimple::RegexMatch) => EventExec::exec_regex(status)?,
             Mode::InputSimple(InputSimple::SetNvimAddr) => EventExec::exec_set_nvim_addr(status)?,
+            Mode::InputSimple(InputSimple::Shell) => EventExec::exec_shell(status.selected())?,
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
                 EventExec::exec_filter(status, colors)?

@@ -52,12 +52,12 @@ impl ShellMenu {
             .directory_of_selected()?
             .to_str()
             .context("event_shell: couldn't parse the directory")?;
-        execute_in_child_without_output(&status.opener.terminal, &vec!["-d", path, "-e", command])?;
+        execute_in_child_without_output(&status.opener.terminal, &["-d", path, "-e", command])?;
         Ok(())
     }
 
     fn simple(status: &Status, command: &str) -> Result<()> {
-        execute_in_child_without_output(&status.opener.terminal, &vec!["-e", command])?;
+        execute_in_child_without_output(&status.opener.terminal, &["-e", command])?;
         Ok(())
     }
 
