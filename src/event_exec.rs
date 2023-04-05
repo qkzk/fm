@@ -347,6 +347,9 @@ impl EventExec {
         Ok(())
     }
 
+    /// Execute a shell command typed by the user.
+    /// pipes and redirections aren't NotSupported
+    /// expansions are supported
     pub fn exec_shell(status: &mut Status) -> Result<()> {
         let tab = status.selected_non_mut();
         let shell_command = tab.input.string();

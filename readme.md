@@ -90,6 +90,8 @@ Some features depends on external programs to keep fm from being really bloated.
 - Contol MOCP with Ctrl+arrows. Ctrl+Left, Ctrl+Right: previous or next song. Ctrl+Down: Toggle pause. Ctrl+Up: add current folder to playlist
 - Set the selected image as wallpaper with W.
 - _Experimental_ enter "command mode" with ':'. Type the name of a command and it will be executed.
+- Execute a shell command with '!'. Expansions (%e ext, %n filename, %s filepath, %f flagged files, %d current directory) are supported.
+  pipes and redirections aren't supported.
 
 Most of those features are inspired by ranger and alternatives (Midnight commander), the look and feel by dired.
 
@@ -245,10 +247,10 @@ You can configure :
   use the provided config file as a default.
   Multiple keys can be bound the the same action.
 - **Custom actions**. You can bind any key to a shell command.
-    - don't use pipes or redirectons, they won't be parsed correctly
-    - use an unset bind
-    - %s is expanded to the selected path, %f is expanded to the flagged files (full paths).
-    - See the [config](./config_files/fm/config.yaml) or an example.
+  - don't use pipes or redirectons, they won't be parsed correctly
+  - use an unset bind
+  - %s is expanded to the selected path, %f is expanded to the flagged files (full paths).
+  - See the [config](./config_files/fm/config.yaml) or an example.
 - **Settings**. Do you whish to start with dual pane ? Do you wish to use basic or
   full display ?
 - **Openers**. fm tries to be smart and open some files with a standard program.

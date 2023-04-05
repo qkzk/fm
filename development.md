@@ -469,8 +469,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: absent key in config file can crash the app
 - [x] basic shell execution with !
   - [x] completion with which crate
-  - [ ] shell expansion %e %f etc
-  - [ ] move shell expansion methods to another struct ? refactor
+  - [x] shell expansion %e %f etc
 
 ## TODO
 
