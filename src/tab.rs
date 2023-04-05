@@ -11,7 +11,6 @@ use crate::fileinfo::{FileInfo, FileKind, PathContent};
 use crate::filter::FilterKind;
 use crate::input::Input;
 use crate::mode::Mode;
-use crate::opener::execute_in_child_without_output_with_path;
 use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
@@ -382,20 +381,5 @@ impl Tab {
     /// Only Tree, Normal & Preview doesn't require 2 windows.
     pub fn need_second_window(&self) -> bool {
         !matches!(self.mode, Mode::Normal | Mode::Tree | Mode::Preview)
-    }
-
-    pub fn exec_shell(&mut self) -> Result<()> {
-        let shell_command = self.input.string();
-        let args: Vec<&str> = shell_command.split_whitespace().collect();
-        if args.is_empty() {
-            return Ok(());
-        }
-        let Ok(executable) = which::which(args[0]) else { return Ok(()); };
-        let executable = executable.to_str().context("Coudln't parse the path")?;
-        let path = self.directory_of_selected()?;
-        let mut args: Vec<&str> = args.to_vec();
-        args.remove(0);
-        execute_in_child_without_output_with_path(executable, path, Some(&args))?;
-        Ok(())
     }
 }

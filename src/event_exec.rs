@@ -347,8 +347,19 @@ impl EventExec {
         Ok(())
     }
 
-    pub fn exec_shell(tab: &mut Tab) -> Result<()> {
-        tab.exec_shell()?;
+    pub fn exec_shell(status: &mut Status) -> Result<()> {
+        let tab = status.selected_non_mut();
+        let shell_command = tab.input.string();
+        let mut args = CustomParser::new(shell_command).compute(status)?;
+        if args.is_empty() {
+            return Ok(());
+        }
+        let Ok(executable) = which::which(args.remove(0)) else { return Ok(()); };
+        execute_in_child_without_output_with_path(
+            executable.to_str().context("Coudln't parse the path")?,
+            tab.directory_of_selected()?,
+            Some(&args.iter().map(|s| s.as_str()).collect()),
+        )?;
         Ok(())
     }
 
@@ -1355,7 +1366,7 @@ impl EventExec {
             Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,
             Mode::InputSimple(InputSimple::RegexMatch) => EventExec::exec_regex(status)?,
             Mode::InputSimple(InputSimple::SetNvimAddr) => EventExec::exec_set_nvim_addr(status)?,
-            Mode::InputSimple(InputSimple::Shell) => EventExec::exec_shell(status.selected())?,
+            Mode::InputSimple(InputSimple::Shell) => EventExec::exec_shell(status)?,
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
                 EventExec::exec_filter(status, colors)?
