@@ -103,7 +103,7 @@ Many ways to jump somewhere :
 ### Neovim filepicker
 
 When you open a file with i, it will send an event to Neovim and open it in a new buffer.
-Recent versions of neovim export the RPC server address to an environement variable which is read if no argument
+Recent versions of neovim export the RPC server address to an environment variable which is read if no argument
 is provided.
 
 It should always work, even outside of neovim.
@@ -143,13 +143,28 @@ end
 - Decompress an archive by opening it (o, enter, right click)
 - Compress flagged files with C. Pick the desired algorithm from a menu.
 
+### Custom binds
+
+You can bind any _unbound_ key to a shell command.
+
+- pipe & redirections (| > >> <) aren't supported !
+- the first word you type is the executable. Don't start your command with environment variables, it won't work.
+
+Expansions :
+
+- %e : extension
+- %s : selected file (full path)
+- %f : flagged files (full path)
+- %n : selected filename
+- %d : current directory
+
 ### More
 
 - Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p
 - Detect removable disks automatically and jump to them in a few keystrokes (Ctrl+g, up, enter)
 - Drag and drop files (requires dragon-drop installed) with Alt+d
 - Open and mount encrypted devices. Open the menu with Shift+e, mount with m, unmount with u.
-- diff the first two files / folders with D.
+- diff the first two flagged files / folders with D.
 - Contol MOCP with Ctrl+arrows. Ctrl+Left, Ctrl+Right: previous or next song. Ctrl+Down: Toggle pause. Ctrl+Up: add current folder to playlist
 - Set the selected image as wallpaper with W.
 - _Experimental_ enter "command mode" with ':'. Type the name of a command and it will be executed.
@@ -288,7 +303,7 @@ You can configure :
 
 ## External dependencies
 
-Most of the openers and tui applications are configurable from config files. Some are hardcode since their command is quite specific or if I couldn't find a workaround.
+Most of the openers and tui applications are configurable from config files. Some are hardcoded if their command is quite specific or if I couldn't find a workaround.
 
 - [Cryptsetup](https://gitlab.com/cryptsetup/cryptsetup): decrypt & mount encrypted devices
 - [Nitrogen](https://github.com/l3ib/nitrogen/): set up a wallpaper
