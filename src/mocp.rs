@@ -45,15 +45,15 @@ impl Mocp {
     /// Then toggle play/pause
     pub fn toggle_pause(status: &mut Status) -> Result<()> {
         info!("mocp toggle pause");
-        match execute_and_capture_output("mocp", &vec!["-i"]) {
+        match execute_and_capture_output("mocp", &["-i"]) {
             Ok(stdout) => {
                 // server is runing
                 if stdout.contains("STOP") {
                     // music is stopped, start playing music
-                    let _ = execute_and_capture_output("mocp", &vec!["-p"]);
+                    let _ = execute_and_capture_output("mocp", &["-p"]);
                 } else {
                     // music is playing or paused, toggle play/pause
-                    let _ = execute_and_capture_output("mocp", &vec!["-G"]);
+                    let _ = execute_and_capture_output("mocp", &["-G"]);
                 }
             }
             Err(e) => {
@@ -67,7 +67,7 @@ impl Mocp {
                 };
                 let _ = c.wait();
                 // start playing music
-                let _ = execute_and_capture_output("mocp", &vec!["-p"]);
+                let _ = execute_and_capture_output("mocp", &["-p"]);
             }
         }
         Ok(())

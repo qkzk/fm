@@ -432,7 +432,7 @@ where
 /// `Ok(stdout)` if the status code is 0
 /// an Error otherwise
 /// Branch stdin and stderr to /dev/null
-pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> Result<String> {
+pub fn execute_and_capture_output(exe: &str, args: &[&str]) -> Result<String> {
     info!("execute_and_capture_output. executable: {exe}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)
