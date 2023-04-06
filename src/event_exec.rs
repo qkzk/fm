@@ -1968,10 +1968,8 @@ impl EventExec {
         let parser = CustomParser::new(string);
         let mut args = parser.compute(status)?;
         let command = args.remove(0);
-        let output = execute_and_capture_output_without_check(
-            &command,
-            &args.iter().map(|s| &**s).collect(),
-        )?;
+        let args: Vec<&str> = args.iter().map(|s| &**s).collect();
+        let output = execute_and_capture_output_without_check(&command, &args)?;
         info!("output {output}");
         Ok(())
     }

@@ -453,7 +453,7 @@ pub fn execute_and_capture_output(exe: &str, args: &[&str]) -> Result<String> {
 /// Execute a command with options in a fork.
 /// Wait for termination and return either `Ok(stdout)`.
 /// Branch stdin and stderr to /dev/null
-pub fn execute_and_capture_output_without_check(exe: &str, args: &Vec<&str>) -> Result<String> {
+pub fn execute_and_capture_output_without_check(exe: &str, args: &[&str]) -> Result<String> {
     info!("execute_and_capture_output_without_check. executable: {exe}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)

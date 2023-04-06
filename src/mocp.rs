@@ -30,7 +30,7 @@ impl Mocp {
 
     /// Move to the currently playing song.
     pub fn go_to_song(tab: &mut Tab) -> Result<()> {
-        let output = execute_and_capture_output_without_check("mocp", &vec!["-Q", "%file"])?;
+        let output = execute_and_capture_output_without_check("mocp", &["-Q", "%file"])?;
         let filepath = std::path::PathBuf::from(output.trim());
         let Some(parent) = filepath.parent() else { return Ok(()) };
         let Some(filename) = filepath.file_name() else { return Ok(()) };

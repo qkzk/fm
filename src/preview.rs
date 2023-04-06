@@ -131,7 +131,7 @@ impl Preview {
         let path_str = path.to_str()?;
         let output = execute_and_capture_output_without_check(
             "jupyter",
-            &vec!["nbconvert", "--to", "markdown", path_str, "--stdout"],
+            &["nbconvert", "--to", "markdown", path_str, "--stdout"],
         )
         .ok()?;
         let ss = SyntaxSet::load_defaults_nonewlines();
@@ -144,7 +144,7 @@ impl Preview {
         let path_str = path.to_str()?;
         let output = execute_and_capture_output_without_check(
             "pandoc",
-            &vec!["-s", "-t", "markdown", "--", path_str],
+            &["-s", "-t", "markdown", "--", path_str],
         )
         .ok()?;
         let ss = SyntaxSet::load_defaults_nonewlines();
@@ -874,7 +874,7 @@ pub struct Diff {
 impl Diff {
     pub fn new(first_path: &str, second_path: &str) -> Result<Self> {
         let content: Vec<String> =
-            execute_and_capture_output_without_check("diff", &vec![first_path, second_path])?
+            execute_and_capture_output_without_check("diff", &[first_path, second_path])?
                 .lines()
                 .map(|s| s.to_owned())
                 .collect();
@@ -900,7 +900,7 @@ impl Iso {
     fn new(path: &Path) -> Result<Self> {
         let path = path.to_str().context("couldn't parse the path")?;
         let content: Vec<String> =
-            execute_and_capture_output_without_check("isoinfo", &vec!["-l", "-i", path])?
+            execute_and_capture_output_without_check("isoinfo", &["-l", "-i", path])?
                 .lines()
                 .map(|s| s.to_owned())
                 .collect();
