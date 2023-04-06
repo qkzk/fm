@@ -1104,7 +1104,7 @@ impl EventExec {
             .to_str()
             .context("event drag n drop: couldn't read path")?;
 
-        execute_in_child(DEFAULT_DRAGNDROP, &vec![path_str])?;
+        execute_in_child(DEFAULT_DRAGNDROP, &[path_str])?;
         Ok(())
     }
 
@@ -1931,7 +1931,7 @@ impl EventExec {
     /// Requires `nitrogen` to be installed.
     pub fn event_set_wallpaper(tab: &Tab) -> Result<()> {
         let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
-        let _ = execute_in_child("nitrogen", &vec!["--set-zoom-fill", "--save", &path_str]);
+        let _ = execute_in_child("nitrogen", &["--set-zoom-fill", "--save", &path_str]);
         Ok(())
     }
 

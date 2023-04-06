@@ -388,7 +388,7 @@ impl Opener {
 
 /// Execute a command with options in a fork.
 /// Returns an handle to the child process.
-pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> Result<std::process::Child> {
+pub fn execute_in_child(exe: &str, args: &[&str]) -> Result<std::process::Child> {
     info!("execute_in_child. executable: {exe}, arguments: {args:?}",);
     Ok(Command::new(exe).args(args).spawn()?)
 }

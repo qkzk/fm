@@ -21,10 +21,10 @@ pub struct Mocp {}
 impl Mocp {
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn add_to_playlist(tab: &Tab) -> Result<()> {
-        let _ = execute_in_child("mocp", &vec!["-S"]);
+        let _ = execute_in_child("mocp", &["-S"]);
         let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
         info!("mocp add to playlist {path_str:?}");
-        let _ = execute_in_child("mocp", &vec!["-a", &path_str]);
+        let _ = execute_in_child("mocp", &["-a", &path_str]);
         Ok(())
     }
 
@@ -60,7 +60,7 @@ impl Mocp {
                 status.force_clear();
                 info!("mocp -i error:\n{e:?}");
                 // server is stopped, start it.
-                let c = execute_in_child("mocp", &vec!["-S"]);
+                let c = execute_in_child("mocp", &["-S"]);
                 let Ok(mut c) = c else {
                     // it shouldn't fail, something is wrong. It's better not to do anything.
                     return Ok(())
@@ -76,14 +76,14 @@ impl Mocp {
     /// Skip to the next song in MOC
     pub fn next() -> Result<()> {
         info!("mocp next");
-        let _ = execute_in_child("mocp", &vec!["-f"]);
+        let _ = execute_in_child("mocp", &["-f"]);
         Ok(())
     }
 
     /// Go to the previous song in MOC
     pub fn previous() -> Result<()> {
         info!("mocp previous");
-        let _ = execute_in_child("mocp", &vec!["-r"]);
+        let _ = execute_in_child("mocp", &["-r"]);
         Ok(())
     }
 }
