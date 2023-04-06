@@ -415,10 +415,6 @@ where
     P: AsRef<Path>,
 {
     info!("execute_in_child_without_output_with_path. executable: {exe}, arguments: {args:?}",);
-    // let mut params = &[];
-    // if let Some(args) = args {
-    //     params = args;
-    // }
     let params = if let Some(args) = args { args } else { &[] };
     Ok(Command::new(exe)
         .stdin(Stdio::null())
