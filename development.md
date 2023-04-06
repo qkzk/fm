@@ -470,6 +470,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] basic shell execution with !
   - [x] completion with which crate
   - [x] shell expansion %e %f etc
+- [x] Refactor: use &[] instead of &Vec for arguments in command execution functions.
 
 ## TODO
 
