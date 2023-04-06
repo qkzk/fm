@@ -358,10 +358,11 @@ impl EventExec {
             return Ok(());
         }
         let Ok(executable) = which::which(args.remove(0)) else { return Ok(()); };
+        let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
         execute_in_child_without_output_with_path(
             executable.to_str().context("Coudln't parse the path")?,
             tab.directory_of_selected()?,
-            Some(&args.iter().map(|s| s.as_str()).collect()),
+            Some(&params),
         )?;
         Ok(())
     }

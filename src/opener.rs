@@ -409,16 +409,17 @@ pub fn execute_in_child_without_output(exe: &str, args: &[&str]) -> Result<std::
 pub fn execute_in_child_without_output_with_path<P>(
     exe: &str,
     path: P,
-    args: Option<&Vec<&str>>,
+    args: Option<&[&str]>,
 ) -> Result<std::process::Child>
 where
     P: AsRef<Path>,
 {
     info!("execute_in_child_without_output_with_path. executable: {exe}, arguments: {args:?}",);
-    let mut params = &vec![];
-    if let Some(args) = args {
-        params = args;
-    }
+    // let mut params = &[];
+    // if let Some(args) = args {
+    //     params = args;
+    // }
+    let params = if let Some(args) = args { args } else { &[] };
     Ok(Command::new(exe)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
