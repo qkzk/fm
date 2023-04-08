@@ -175,12 +175,9 @@ pub fn str_to_tuikit(color: &str) -> Color {
 /// 2. configured values from `~/.config/fm/config_file_name.yaml` if those files exists.
 pub fn load_config(path: &str) -> Result<Config> {
     let mut config = Config::new()?;
-
-    if let Ok(file) = File::open(path::Path::new(&shellexpand::tilde(path).to_string())) {
-        if let Ok(yaml) = serde_yaml::from_reader(file) {
-            config.update_from_config(&yaml)?;
-        }
-    }
+    let file = File::open(path::Path::new(&shellexpand::tilde(path).to_string()))?;
+    let yaml = serde_yaml::from_reader(file)?;
+    config.update_from_config(&yaml)?;
 
     Ok(config)
 }
