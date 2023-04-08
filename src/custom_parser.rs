@@ -5,7 +5,9 @@ use crate::status::Status;
 /// Expanded tokens from a configured command.
 /// %s is converted into a `Selected`
 /// %f is converted into a `Flagged`
-/// Everything else is left intact into an `Arg(string)`.
+/// %e is converted into a `Extension`
+/// %n is converted into a `Filename`
+/// Everything else is left intact and wrapped into an `Arg(string)`.
 #[derive(Debug, Clone)]
 pub enum Token {
     Arg(String),

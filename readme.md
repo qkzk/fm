@@ -305,6 +305,8 @@ You can configure :
 
 Most of the openers and tui applications are configurable from config files. Some are hardcoded if their command is quite specific or if I couldn't find a workaround.
 
+- [lsblk](https://linux.die.net/man/8/lsblk): list encroytped devices
+- [faillock](https://linux.die.net/man/8/faillock): reset failed sudo attempts
 - [Cryptsetup](https://gitlab.com/cryptsetup/cryptsetup): decrypt & mount encrypted devices
 - [Nitrogen](https://github.com/l3ib/nitrogen/): set up a wallpaper
 - [MOC](https://moc.daper.net/) Music On Console allows you to play music from your terminal
