@@ -25,8 +25,10 @@ use crate::mocp::Mocp;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::mount_help::MountHelper;
 use crate::nvim::nvim;
-use crate::opener::execute_and_capture_output_without_check;
-use crate::opener::{execute_in_child, execute_in_child_without_output_with_path, InternalVariant};
+use crate::opener::{
+    execute_and_capture_output_without_check, execute_in_child,
+    execute_in_child_without_output_with_path, InternalVariant,
+};
 use crate::password::{PasswordKind, PasswordUsage};
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
