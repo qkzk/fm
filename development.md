@@ -471,6 +471,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] completion with which crate
   - [x] shell expansion %e %f etc
 - [x] Refactor: use &[] instead of &Vec for arguments in command execution functions.
+- [x] Explain every inputsimple mode in second window with static strings
 
 ## TODO
 

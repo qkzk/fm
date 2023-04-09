@@ -13,8 +13,9 @@ use crate::completion::InputCompleted;
 use crate::compress::CompressionMethod;
 use crate::config::Colors;
 use crate::constant_strings_paths::{
-    FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
-    LOG_SECOND_SENTENCE,
+    CHMOD_LINES, FILTER_LINES, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
+    LOG_SECOND_SENTENCE, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES, PASSWORD_LINES,
+    REGEX_LINES, RENAME_LINES, SHELL_LINES, SORT_LINES,
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
@@ -175,9 +176,6 @@ impl<'a> WinMain<'a> {
             Mode::Tree => {
                 let Some(file) = tab.selected() else { return Ok(0) };
                 self.second_line_detailed(file, canvas)
-            }
-            Mode::InputSimple(InputSimple::Filter) => {
-                Ok(canvas.print_with_attr(1, 0, FILTER_PRESENTATION, ATTR_YELLOW_BOLD)?)
             }
             _ => Ok(0),
         }
@@ -452,6 +450,16 @@ impl<'a> Draw for WinSecondary<'a> {
                 self.confirmation(self.status, self.tab, confirmed_mode, canvas)
             }
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
+            Mode::InputSimple(InputSimple::Sort) => Self::sort(canvas),
+            Mode::InputSimple(InputSimple::Chmod) => Self::chmod(canvas),
+            Mode::InputSimple(InputSimple::Filter) => Self::filter(canvas),
+            Mode::InputSimple(InputSimple::Shell) => Self::shell(canvas),
+            Mode::InputSimple(InputSimple::Password(_, _, _)) => Self::password(canvas),
+            Mode::InputSimple(InputSimple::SetNvimAddr) => Self::nvim_address(canvas),
+            Mode::InputSimple(InputSimple::RegexMatch) => Self::regex(canvas),
+            Mode::InputSimple(InputSimple::Newdir) => Self::newdir(canvas),
+            Mode::InputSimple(InputSimple::Newfile) => Self::newfile(canvas),
+            Mode::InputSimple(InputSimple::Rename) => Self::rename(canvas),
             _ => Ok(()),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -528,6 +536,55 @@ impl<'a> WinSecondary<'a> {
         }
         Ok(())
     }
+
+    fn sort(canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(&SORT_LINES, canvas)
+    }
+
+    fn chmod(canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(&CHMOD_LINES, canvas)
+    }
+
+    fn filter(canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(&FILTER_LINES, canvas)
+    }
+
+    fn password(canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(&PASSWORD_LINES, canvas)
+    }
+
+    fn nvim_address(canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(&NVIM_ADDRESS_LINES, canvas)
+    }
+
+    fn shell(canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(&SHELL_LINES, canvas)
+    }
+
+    fn regex(canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(&REGEX_LINES, canvas)
+    }
+
+    fn newdir(canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(&NEWDIR_LINES, canvas)
+    }
+
+    fn newfile(canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(&NEWFILE_LINES, canvas)
+    }
+
+    fn rename(canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(&RENAME_LINES, canvas)
+    }
+
+    fn display_static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {
+        let attr = ATTR_YELLOW_BOLD;
+        for (row, line) in lines.iter().enumerate() {
+            canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, line, attr)?;
+        }
+        Ok(())
+    }
+
     /// Display a cursor in the top row, at a correct column.
     fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         match tab.mode {

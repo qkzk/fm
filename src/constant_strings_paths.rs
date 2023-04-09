@@ -51,9 +51,6 @@ pub static HELP_SECOND_SENTENCE: &str = "Keybindings";
 pub static LOG_FIRST_SENTENCE: &str = "Logs: ";
 /// Description of the content below, aka what is logged there.
 pub static LOG_SECOND_SENTENCE: &str = "Last actions affecting the file tree";
-/// Filter presentation for the second line
-pub static FILTER_PRESENTATION: &str =
-    "By name: n expr, by ext: e expr, only directories: d, reset: a";
 /// Video thumbnails
 pub static THUMBNAIL_PATH: &str = "/tmp/thumbnail.png";
 /// Array of hardcoded shortcuts with standard *nix paths.
@@ -72,3 +69,77 @@ pub static BAT_EXECUTABLE: &str = "bat {} --color=always";
 pub static CAT_EXECUTABLE: &str = "cat {}";
 pub static RG_EXECUTABLE: &str = "rg --line-number \"{}\"";
 pub static GREP_EXECUTABLE: &str = "grep -rI --line-number \"{}\"";
+/// Sort presentation for the second window
+pub static SORT_LINES: [&str; 7] = [
+    "k:         by kind (default)",
+    "n:         by name",
+    "m:         by modification time",
+    "s:         by size",
+    "e:         by extension",
+    "",
+    "r:         reverse current sort",
+];
+/// Chmod presentation for the second window
+pub static CHMOD_LINES: [&str; 5] = [
+    "Type an octal mode like 754.",
+    "",
+    "4:      read",
+    "2:      write",
+    "1:      execute",
+];
+/// Filter presentation for the second window
+pub static FILTER_LINES: [&str; 6] = [
+    "Type the initial of the filter and an expression if needed",
+    "",
+    "n {name}:      by name",
+    "e {extension}: by extension",
+    "d:             only directories",
+    "a:             reset",
+];
+/// Password input presentation for the second window
+pub static PASSWORD_LINES: [&str; 1] =
+    ["Type your password. It will be forgotten immediatly after use."];
+/// Shell presentation for the second window
+pub static SHELL_LINES: [&str; 10] = [
+    "Type a shell command",
+    "",
+    "Pipes | and redirections < > >> aren't supported.",
+    "",
+    "Some expression can be expanded:",
+    "%d:    current directory",
+    "%e:    selected file extension",
+    "%f:    flagged files",
+    "%n:    selected filename",
+    "%s:    selected filepath",
+];
+/// Nvim address setter presentation for second window
+pub static NVIM_ADDRESS_LINES: [&str; 4] = [
+    "Type the Neovim RPC address.",
+    "",
+    "You can get it from Neovim with :",
+    "`:echo v:servername`",
+];
+/// Regex matcher presentation for second window
+pub static REGEX_LINES: [&str; 3] = [
+    "Type a regular expression",
+    "",
+    "Flag every file in current directory matching the typed regex",
+];
+/// Newdir presentation for second window
+pub static NEWDIR_LINES: [&str; 3] = [
+    "mkdir a new directory",
+    "",
+    "Nothing is done if the directory already exists",
+];
+/// New file presentation for second window
+pub static NEWFILE_LINES: [&str; 3] = [
+    "touch a new file",
+    "",
+    "Nothing is done if the file already exists",
+];
+/// Rename presentation for second window
+pub static RENAME_LINES: [&str; 3] = [
+    "rename the selected file",
+    "",
+    "Nothing is done if the file already exists",
+];
