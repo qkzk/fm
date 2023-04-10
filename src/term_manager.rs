@@ -27,10 +27,11 @@ use crate::status::Status;
 use crate::tab::Tab;
 use crate::trash::TrashInfo;
 
+/// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
     ($t:ident) => {
-        std::iter::zip($t.content().iter().enumerate(), MENU_COLORS.iter().cycle())
-            .map(|((a, b), c)| (a, b, c))
+        std::iter::zip($t.iter().enumerate(), MENU_COLORS.iter().cycle())
+            .map(|((index, line), attr)| (index, line, attr))
     };
 }
 
@@ -440,26 +441,13 @@ impl<'a> Draw for WinSecondary<'a> {
             Mode::Navigate(Navigate::Trash) => self.trash(canvas, &self.status.trash),
             Mode::Navigate(Navigate::Compress) => self.compress(canvas, &self.status.compression),
             Mode::Navigate(Navigate::Bulk) => self.bulk(canvas, &self.status.bulk),
-            Mode::Navigate(Navigate::EncryptedDrive) => {
-                self.encrypted_devices(self.status, self.tab, canvas)
-            }
+            Mode::Navigate(Navigate::EncryptedDrive) => self.encrypt(self.status, self.tab, canvas),
             Mode::Navigate(Navigate::Marks(_)) => self.marks(self.status, canvas),
             Mode::Navigate(Navigate::ShellMenu) => self.shell_menu(self.status, canvas),
             Mode::Navigate(Navigate::CliInfo) => self.cli_info(self.status, canvas),
-            Mode::NeedConfirmation(confirmed_mode) => {
-                self.confirmation(self.status, self.tab, confirmed_mode, canvas)
-            }
+            Mode::NeedConfirmation(mode) => self.confirm(self.status, self.tab, mode, canvas),
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
-            Mode::InputSimple(InputSimple::Sort) => Self::sort(canvas),
-            Mode::InputSimple(InputSimple::Chmod) => Self::chmod(canvas),
-            Mode::InputSimple(InputSimple::Filter) => Self::filter(canvas),
-            Mode::InputSimple(InputSimple::Shell) => Self::shell(canvas),
-            Mode::InputSimple(InputSimple::Password(_, _, _)) => Self::password(canvas),
-            Mode::InputSimple(InputSimple::SetNvimAddr) => Self::nvim_address(canvas),
-            Mode::InputSimple(InputSimple::RegexMatch) => Self::regex(canvas),
-            Mode::InputSimple(InputSimple::Newdir) => Self::newdir(canvas),
-            Mode::InputSimple(InputSimple::Newfile) => Self::newfile(canvas),
-            Mode::InputSimple(InputSimple::Rename) => Self::rename(canvas),
+            Mode::InputSimple(mode) => Self::input_simple(mode, canvas),
             _ => Ok(()),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -537,50 +525,28 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn sort(canvas: &mut dyn Canvas) -> Result<()> {
-        Self::display_static_lines(&SORT_LINES, canvas)
+    fn input_simple_lines(mode: InputSimple) -> &'static [&'static str] {
+        match mode {
+            InputSimple::Chmod => &CHMOD_LINES,
+            InputSimple::Filter => &FILTER_LINES,
+            InputSimple::Newdir => &NEWDIR_LINES,
+            InputSimple::Newfile => &NEWFILE_LINES,
+            InputSimple::Password(_, _, _) => &PASSWORD_LINES,
+            InputSimple::RegexMatch => &REGEX_LINES,
+            InputSimple::Rename => &RENAME_LINES,
+            InputSimple::SetNvimAddr => &NVIM_ADDRESS_LINES,
+            InputSimple::Shell => &SHELL_LINES,
+            InputSimple::Sort => &SORT_LINES,
+        }
     }
 
-    fn chmod(canvas: &mut dyn Canvas) -> Result<()> {
-        Self::display_static_lines(&CHMOD_LINES, canvas)
-    }
-
-    fn filter(canvas: &mut dyn Canvas) -> Result<()> {
-        Self::display_static_lines(&FILTER_LINES, canvas)
-    }
-
-    fn password(canvas: &mut dyn Canvas) -> Result<()> {
-        Self::display_static_lines(&PASSWORD_LINES, canvas)
-    }
-
-    fn nvim_address(canvas: &mut dyn Canvas) -> Result<()> {
-        Self::display_static_lines(&NVIM_ADDRESS_LINES, canvas)
-    }
-
-    fn shell(canvas: &mut dyn Canvas) -> Result<()> {
-        Self::display_static_lines(&SHELL_LINES, canvas)
-    }
-
-    fn regex(canvas: &mut dyn Canvas) -> Result<()> {
-        Self::display_static_lines(&REGEX_LINES, canvas)
-    }
-
-    fn newdir(canvas: &mut dyn Canvas) -> Result<()> {
-        Self::display_static_lines(&NEWDIR_LINES, canvas)
-    }
-
-    fn newfile(canvas: &mut dyn Canvas) -> Result<()> {
-        Self::display_static_lines(&NEWFILE_LINES, canvas)
-    }
-
-    fn rename(canvas: &mut dyn Canvas) -> Result<()> {
-        Self::display_static_lines(&RENAME_LINES, canvas)
+    fn input_simple(mode: InputSimple, canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(Self::input_simple_lines(mode), canvas)
     }
 
     fn display_static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {
-        let attr = ATTR_YELLOW_BOLD;
-        for (row, line) in lines.iter().enumerate() {
-            canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, line, attr)?;
+        for (row, line, attr) in enumerated_colored_iter!(lines) {
+            canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, line, *attr)?;
         }
         Ok(())
     }
@@ -622,7 +588,8 @@ impl<'a> WinSecondary<'a> {
         selectable: &impl SelectableContent<PathBuf>,
     ) -> Result<()> {
         canvas.print(0, 0, "Go to...")?;
-        for (row, path, attr) in enumerated_colored_iter!(selectable) {
+        let content = &selectable.content();
+        for (row, path, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
@@ -643,7 +610,8 @@ impl<'a> WinSecondary<'a> {
         selectable: &impl SelectableContent<String>,
     ) -> Result<()> {
         canvas.print(0, 0, "Action...")?;
-        for (row, text, attr) in enumerated_colored_iter!(selectable) {
+        let content = &selectable.content();
+        for (row, text, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
@@ -663,7 +631,8 @@ impl<'a> WinSecondary<'a> {
             0,
             "Enter: restore the selected file - x: delete permanently",
         )?;
-        for (row, trashinfo, attr) in enumerated_colored_iter!(selectable) {
+        let content = &selectable.content();
+        for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
@@ -689,7 +658,8 @@ impl<'a> WinSecondary<'a> {
             "Archive and compress the flagged files. Pick a compression algorithm.",
             Self::ATTR_YELLOW,
         )?;
-        for (row, compression_method, attr) in enumerated_colored_iter!(selectable) {
+        let content = &selectable.content();
+        for (row, compression_method, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
@@ -760,7 +730,7 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn encrypted_devices(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+    fn encrypt(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.print_with_attr(2, 3, "m: mount    --   u: unmount", Self::ATTR_YELLOW)?;
         for (i, device) in status.encrypted_devices.content.iter().enumerate() {
             let row = calc_line_row(i, &tab.window) + 2;
@@ -785,7 +755,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     /// Display a list of edited (deleted, copied, moved) files for confirmation
-    fn confirmation(
+    fn confirm(
         &self,
         status: &Status,
         tab: &Tab,
