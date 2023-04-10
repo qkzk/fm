@@ -435,16 +435,7 @@ impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
         match self.tab.mode {
-            Mode::Navigate(Navigate::Jump) => self.destination(canvas, &self.status.flagged),
-            Mode::Navigate(Navigate::History) => self.destination(canvas, &self.tab.history),
-            Mode::Navigate(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
-            Mode::Navigate(Navigate::Trash) => self.trash(canvas, &self.status.trash),
-            Mode::Navigate(Navigate::Compress) => self.compress(canvas, &self.status.compression),
-            Mode::Navigate(Navigate::Bulk) => self.bulk(canvas, &self.status.bulk),
-            Mode::Navigate(Navigate::EncryptedDrive) => self.encrypt(self.status, self.tab, canvas),
-            Mode::Navigate(Navigate::Marks(_)) => self.marks(self.status, canvas),
-            Mode::Navigate(Navigate::ShellMenu) => self.shell_menu(self.status, canvas),
-            Mode::Navigate(Navigate::CliInfo) => self.cli_info(self.status, canvas),
+            Mode::Navigate(mode) => self.navigate(mode, canvas),
             Mode::NeedConfirmation(mode) => self.confirm(self.status, self.tab, mode, canvas),
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
             Mode::InputSimple(mode) => Self::input_simple(mode, canvas),
@@ -579,6 +570,22 @@ impl<'a> WinSecondary<'a> {
             }
         }
         Ok(())
+    }
+
+    fn navigate(&self, navigable_mode: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
+        match navigable_mode {
+            Navigate::Bulk => self.bulk(canvas, &self.status.bulk),
+            Navigate::CliInfo => self.cli_info(self.status, canvas),
+            Navigate::Compress => self.compress(canvas, &self.status.compression),
+            Navigate::EncryptedDrive => self.encrypt(self.status, self.tab, canvas),
+            Navigate::History => self.destination(canvas, &self.tab.history),
+            Navigate::Jump => self.destination(canvas, &self.status.flagged),
+            Navigate::Marks(_) => self.marks(self.status, canvas),
+            Navigate::ShellMenu => self.shell_menu(self.status, canvas),
+            Navigate::Shortcut => self.destination(canvas, &self.tab.shortcut),
+            Navigate::Trash => self.trash(canvas, &self.status.trash),
+            _ => Ok(()),
+        }
     }
 
     /// Display the possible destinations from a selectable content of PathBuf.

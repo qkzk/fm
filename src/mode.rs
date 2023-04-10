@@ -97,6 +97,7 @@ pub enum Navigate {
     Trash,
     /// Manipulate an encrypted device
     EncryptedDrive,
+    /// Manipulate an iso file to mount it
     IsoDevice,
     /// Jump to a saved mark
     Marks(MarkAction),
