@@ -1720,7 +1720,11 @@ impl EventExec {
     /// `/run/media/$CURRENT_USER/fm_iso`
     /// Ask a sudo password first if needed. It should always be the case.
     pub fn event_mount_iso_drive(status: &mut Status) -> Result<()> {
-        let path = status.selected_path_str().to_owned();
+        let path = status
+            .selected_non_mut()
+            .path_content
+            .selected_path_string()
+            .context("Couldn't parse the path")?;
         if status.iso_mounter.is_none() {
             status.iso_mounter = Some(IsoMounter::from_path(path));
         }

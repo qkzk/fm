@@ -23,6 +23,7 @@ impl IsoDevice {
 
     /// Creates a new instance from an iso file path.
     pub fn from_path(path: String) -> Self {
+        log::info!("IsoDevice from_path: {path}");
         Self {
             path,
             ..Default::default()

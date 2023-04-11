@@ -584,7 +584,6 @@ impl<'a> WinSecondary<'a> {
             Navigate::ShellMenu => self.shell_menu(self.status, canvas),
             Navigate::Shortcut => self.destination(canvas, &self.tab.shortcut),
             Navigate::Trash => self.trash(canvas, &self.status.trash),
-            _ => Ok(()),
         }
     }
 
