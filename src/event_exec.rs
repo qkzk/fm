@@ -1737,13 +1737,21 @@ impl EventExec {
                     PasswordUsage::ISO,
                 )?;
             } else {
-                iso_mounter.mount(&current_username()?)?;
-                info!("iso mounter mounted {iso_mounter:?}");
-                info!(
-                    target: "special",
-                    "iso :\n{}",
-                    iso_mounter.iso_device.as_string()?,
-                );
+                if iso_mounter.mount(&current_username()?)? {
+                    info!("iso mounter mounted {iso_mounter:?}");
+                    info!(
+                        target: "special",
+                        "iso :\n{}",
+                        iso_mounter.iso_device.as_string()?,
+                    );
+                    let path_str = &iso_mounter
+                        .iso_device
+                        .mountpoints
+                        .clone()
+                        .context("no mount point")?;
+                    let path = std::path::PathBuf::from(path_str);
+                    status.selected().set_pathcontent(&path)?;
+                };
                 status.iso_mounter = None;
             };
         }

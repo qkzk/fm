@@ -475,6 +475,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX isodevice:
     - [x] remove useless mode
     - [x] use selected filepath instead of current directory
+- [x] after mounting an iso device, move to its mountpoint
 
 ## TODO
 
