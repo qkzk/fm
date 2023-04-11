@@ -366,6 +366,7 @@ impl Tab {
 
     /// Set a new mode and save the last one
     pub fn set_mode(&mut self, new_mode: Mode) {
+        log::info!("mode {new_mode}");
         self.previous_mode = self.mode;
         self.mode = new_mode;
     }

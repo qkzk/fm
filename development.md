@@ -477,6 +477,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] use selected filepath instead of current directory
 - [x] after mounting an iso device, move to its mountpoint
 - [x] allow generic types for executable in `execute_...` commands
+- [ ] allow sudo commands from ! actions
+
+  - [ ] separate password holder from device action
+  - [ ] execute a command with sudo privileges
+  - [ ] dispatch password
+
+    atm `sudo ls <CR>` :
+
+    1. mode is set to sudo
+    2. mode is reset to shell command
+    3. nothing is done
 
 ## TODO
 

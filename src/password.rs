@@ -29,6 +29,7 @@ impl std::fmt::Display for PasswordKind {
 pub enum PasswordUsage {
     ISO,
     CRYPTSETUP,
+    SUDOCOMMAND,
 }
 
 /// Holds passwords allowing to mount or unmount an encrypted drive.

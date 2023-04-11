@@ -476,6 +476,7 @@ impl<'a> WinSecondary<'a> {
                 vec!["Save mark...".to_owned()]
             }
             Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action, _)) => {
+                info!("term: password");
                 vec![format!("{password_kind}"), tab.input.password()]
             }
             Mode::InputCompleted(mode) => {

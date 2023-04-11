@@ -28,6 +28,7 @@ use crate::opener::{
     execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path, InternalVariant,
 };
+use crate::password::PasswordHolder;
 use crate::password::{PasswordKind, PasswordUsage};
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
@@ -361,6 +362,9 @@ impl EventExec {
         }
         let executable = args.remove(0);
         if Self::is_sudo_command(&executable) {
+            let mut pwm = PasswordHolder::default();
+
+            Self::event_ask_password(status, PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
             return Ok(());
         }
         let Ok(executable) = which::which(executable) else { return Ok(()); };
@@ -1080,8 +1084,8 @@ impl EventExec {
             return Err(anyhow!("exec exec: empty directory"));
         }
         let exec_command = tab.input.string();
-        if let Ok(bool) = EventExec::execute_custom(tab, exec_command) {
-            if bool {
+        if let Ok(success) = EventExec::execute_custom(tab, exec_command) {
+            if success {
                 tab.completion.reset();
                 tab.input.reset();
             }
@@ -1740,7 +1744,7 @@ impl EventExec {
                 Self::event_ask_password(
                     status,
                     PasswordKind::SUDO,
-                    BlockDeviceAction::MOUNT,
+                    Some(BlockDeviceAction::MOUNT),
                     PasswordUsage::ISO,
                 )?;
             } else {
@@ -1772,7 +1776,7 @@ impl EventExec {
                 Self::event_ask_password(
                     status,
                     PasswordKind::SUDO,
-                    BlockDeviceAction::UMOUNT,
+                    Some(BlockDeviceAction::UMOUNT),
                     PasswordUsage::ISO,
                 )?;
             } else {
@@ -1790,14 +1794,14 @@ impl EventExec {
             Self::event_ask_password(
                 status,
                 PasswordKind::SUDO,
-                BlockDeviceAction::MOUNT,
+                Some(BlockDeviceAction::MOUNT),
                 PasswordUsage::CRYPTSETUP,
             )
         } else if !status.encrypted_devices.has_cryptsetup() {
             Self::event_ask_password(
                 status,
                 PasswordKind::CRYPTSETUP,
-                BlockDeviceAction::MOUNT,
+                Some(BlockDeviceAction::MOUNT),
                 PasswordUsage::CRYPTSETUP,
             )
         } else {
@@ -1823,7 +1827,7 @@ impl EventExec {
             Self::event_ask_password(
                 status,
                 PasswordKind::SUDO,
-                BlockDeviceAction::UMOUNT,
+                Some(BlockDeviceAction::UMOUNT),
                 PasswordUsage::CRYPTSETUP,
             )
         } else {
@@ -1835,9 +1839,10 @@ impl EventExec {
     pub fn event_ask_password(
         status: &mut Status,
         password_kind: PasswordKind,
-        encrypted_action: BlockDeviceAction,
+        encrypted_action: Option<BlockDeviceAction>,
         password_dest: PasswordUsage,
     ) -> Result<()> {
+        info!("event ask password");
         status
             .selected()
             .set_mode(Mode::InputSimple(InputSimple::Password(
@@ -1868,6 +1873,7 @@ impl EventExec {
                     .encrypted_devices
                     .set_password(password_kind, password);
             }
+            PasswordUsage::SUDOCOMMAND => (),
         }
         status.selected().reset_mode();
         Ok(())
@@ -1876,18 +1882,30 @@ impl EventExec {
     fn dispatch_password(
         status: &mut Status,
         dest: PasswordUsage,
-        action: BlockDeviceAction,
+        action: Option<BlockDeviceAction>,
     ) -> Result<()> {
         match dest {
             PasswordUsage::ISO => match action {
-                BlockDeviceAction::MOUNT => EventExec::event_mount_iso_drive(status),
-                BlockDeviceAction::UMOUNT => EventExec::event_umount_iso_drive(status),
+                Some(BlockDeviceAction::MOUNT) => {
+                    EventExec::event_mount_iso_drive(status)?;
+                }
+                Some(BlockDeviceAction::UMOUNT) => {
+                    EventExec::event_umount_iso_drive(status)?;
+                }
+                None => (),
             },
             PasswordUsage::CRYPTSETUP => match action {
-                BlockDeviceAction::MOUNT => EventExec::event_mount_encrypted_drive(status),
-                BlockDeviceAction::UMOUNT => EventExec::event_umount_encrypted_drive(status),
+                Some(BlockDeviceAction::MOUNT) => {
+                    EventExec::event_mount_encrypted_drive(status)?;
+                }
+                Some(BlockDeviceAction::UMOUNT) => {
+                    EventExec::event_umount_encrypted_drive(status)?;
+                }
+                None => (),
             },
+            PasswordUsage::SUDOCOMMAND => (),
         }
+        Ok(())
     }
 
     /// Open the config file.
