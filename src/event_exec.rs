@@ -16,7 +16,6 @@ use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
 use crate::content_window::RESERVED_ROWS;
 use crate::copy_move::CopyMove;
 use crate::cryptsetup::BlockDeviceAction;
-use crate::custom_parser::CustomParser;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::iso::IsoMounter;
@@ -32,6 +31,7 @@ use crate::opener::{
 use crate::password::{PasswordKind, PasswordUsage};
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
+use crate::shell_parser::ShellCommandParser;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::utils::{current_username, disk_used_by_path, filename_from_path};
@@ -355,20 +355,27 @@ impl EventExec {
     pub fn exec_shell(status: &mut Status) -> Result<()> {
         let tab = status.selected_non_mut();
         let shell_command = tab.input.string();
-        let mut args = CustomParser::new(shell_command).compute(status)?;
+        let mut args = ShellCommandParser::new(shell_command).compute(status)?;
         if args.is_empty() {
             return Ok(());
         }
-        let Ok(executable) = which::which(args.remove(0)) else { return Ok(()); };
+        let executable = args.remove(0);
+        if Self::is_sudo_command(&executable) {
+            return Ok(());
+        }
+        let Ok(executable) = which::which(executable) else { return Ok(()); };
         let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
         execute_in_child_without_output_with_path(
-            executable.to_str().context("Coudln't parse the path")?,
+            executable.to_str().context("Couldn't parse the path")?,
             tab.directory_of_selected()?,
             Some(&params),
         )?;
         Ok(())
     }
 
+    fn is_sudo_command(executable: &str) -> bool {
+        matches!(executable, "su" | "sudo")
+    }
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn event_reset_mode(tab: &mut Tab) -> Result<()> {
@@ -1744,12 +1751,11 @@ impl EventExec {
                         "iso :\n{}",
                         iso_mounter.iso_device.as_string()?,
                     );
-                    let path_str = &iso_mounter
+                    let path = iso_mounter
                         .iso_device
                         .mountpoints
                         .clone()
                         .context("no mount point")?;
-                    let path = std::path::PathBuf::from(path_str);
                     status.selected().set_pathcontent(&path)?;
                 };
                 status.iso_mounter = None;
@@ -1979,7 +1985,7 @@ impl EventExec {
     /// Execute a custom event on the selected file
     pub fn event_custom(status: &mut Status, string: String) -> Result<()> {
         info!("event_custom {string}");
-        let parser = CustomParser::new(string);
+        let parser = ShellCommandParser::new(string);
         let mut args = parser.compute(status)?;
         let command = args.remove(0);
         let args: Vec<&str> = args.iter().map(|s| &**s).collect();

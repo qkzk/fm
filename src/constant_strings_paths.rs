@@ -100,10 +100,11 @@ pub static FILTER_LINES: [&str; 6] = [
 pub static PASSWORD_LINES: [&str; 1] =
     ["Type your password. It will be forgotten immediatly after use."];
 /// Shell presentation for the second window
-pub static SHELL_LINES: [&str; 10] = [
+pub static SHELL_LINES: [&str; 11] = [
     "Type a shell command",
     "",
-    "Pipes | and redirections < > >> aren't supported.",
+    "Pipes and redirections ( | < > >> ) aren't supported.",
+    "`sudo` and `su` aren't supported either.",
     "",
     "Some expression can be expanded:",
     "%d:    current directory",

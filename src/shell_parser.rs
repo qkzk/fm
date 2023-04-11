@@ -34,11 +34,11 @@ impl Token {
 /// Parse a command defined in the config file into a list of tokens
 /// Those tokens are converted back into a list of arguments to be run
 #[derive(Debug, Clone)]
-pub struct CustomParser {
+pub struct ShellCommandParser {
     parsed: Vec<Token>,
 }
 
-impl CustomParser {
+impl ShellCommandParser {
     /// Parse a command into a list of tokens
     pub fn new(command: String) -> Self {
         Self {
