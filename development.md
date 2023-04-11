@@ -473,9 +473,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Refactor: use &[] instead of &Vec for arguments in command execution functions.
 - [x] Explain every inputsimple mode in second window with static strings
 - [x] FIX isodevice:
-    - [x] remove useless mode
-    - [x] use selected filepath instead of current directory
+  - [x] remove useless mode
+  - [x] use selected filepath instead of current directory
 - [x] after mounting an iso device, move to its mountpoint
+- [x] allow generic types for executable in `execute_...` commands
 
 ## TODO
 

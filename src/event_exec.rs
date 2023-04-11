@@ -366,7 +366,7 @@ impl EventExec {
         let Ok(executable) = which::which(executable) else { return Ok(()); };
         let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
         execute_in_child_without_output_with_path(
-            executable.to_str().context("Couldn't parse the path")?,
+            executable,
             tab.directory_of_selected()?,
             Some(&params),
         )?;
@@ -1989,7 +1989,7 @@ impl EventExec {
         let mut args = parser.compute(status)?;
         let command = args.remove(0);
         let args: Vec<&str> = args.iter().map(|s| &**s).collect();
-        let output = execute_and_capture_output_without_check(&command, &args)?;
+        let output = execute_and_capture_output_without_check(command, &args)?;
         info!("output {output}");
         Ok(())
     }
