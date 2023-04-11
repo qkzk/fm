@@ -1395,7 +1395,6 @@ impl EventExec {
                 EventExec::exec_cli_info(status)?;
             }
             Mode::Navigate(Navigate::EncryptedDrive) => (),
-            Mode::Navigate(Navigate::IsoDevice) => (),
             Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
                 EventExec::exec_marks_update(status)?
             }
