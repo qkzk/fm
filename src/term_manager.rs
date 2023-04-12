@@ -475,7 +475,7 @@ impl<'a> WinSecondary<'a> {
             Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
                 vec!["Save mark...".to_owned()]
             }
-            Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action, _, _)) => {
+            Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action, _)) => {
                 info!("term: password");
                 vec![format!("{password_kind}"), tab.input.password()]
             }
@@ -523,7 +523,7 @@ impl<'a> WinSecondary<'a> {
             InputSimple::Filter => &FILTER_LINES,
             InputSimple::Newdir => &NEWDIR_LINES,
             InputSimple::Newfile => &NEWFILE_LINES,
-            InputSimple::Password(_, _, _, _) => &PASSWORD_LINES,
+            InputSimple::Password(_, _, __) => &PASSWORD_LINES,
             InputSimple::RegexMatch => &REGEX_LINES,
             InputSimple::Rename => &RENAME_LINES,
             InputSimple::SetNvimAddr => &NVIM_ADDRESS_LINES,
@@ -557,7 +557,7 @@ impl<'a> WinSecondary<'a> {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
             }
-            Mode::InputSimple(InputSimple::Password(_, _, _, _)) => {
+            Mode::InputSimple(InputSimple::Password(_, _, _)) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, Self::PASSWORD_CURSOR_OFFSET + tab.input.cursor_index)?;
             }

@@ -84,6 +84,7 @@ pub struct Status {
     pub cli_info: CliInfo,
     pub start_folder: std::path::PathBuf,
     pub password_holder: PasswordHolder,
+    pub sudo_command: Option<String>,
 }
 
 impl Status {
@@ -132,6 +133,7 @@ impl Status {
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
         let iso_mounter = None;
         let password_holder = PasswordHolder::default();
+        let sudo_command = None;
 
         Ok(Self {
             tabs: [left_tab, right_tab],
@@ -157,6 +159,7 @@ impl Status {
             cli_info,
             start_folder,
             password_holder,
+            sudo_command,
         })
     }
 
