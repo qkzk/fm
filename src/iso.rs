@@ -75,11 +75,10 @@ impl MountHelper for IsoDevice {
     }
 
     fn umount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
+        let root_path = std::path::Path::new("/");
         // sudo
-        let (success, _, _) = sudo_with_password(
-            &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
-            &passwords.sudo()?,
-        )?;
+        let (success, _, _) =
+            sudo_with_password(&["-S", "ls", "/root"], &passwords.sudo()?, root_path)?;
         if !success {
             return Ok(false);
         }
@@ -90,21 +89,20 @@ impl MountHelper for IsoDevice {
             self.is_mounted = false;
         }
         // sudo -k
-        let (success, stdout, stderr) = sudo(&["-k".to_owned()])?;
+        let (success, stdout, stderr) = sudo(&["-k"])?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         Ok(success)
     }
 
     fn mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
+        let root_path = std::path::Path::new("/");
         info!("iso mount: {username}, {passwords:?}");
         if self.is_mounted {
             Err(anyhow!("iso device mount: device is already mounted"))
         } else {
             // sudo
-            let (success, _, _) = sudo_with_password(
-                &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
-                &passwords.sudo()?,
-            )?;
+            let (success, _, _) =
+                sudo_with_password(&["ls", "/root"], &passwords.sudo()?, root_path)?;
             if !success {
                 return Ok(false);
             }
@@ -122,7 +120,7 @@ impl MountHelper for IsoDevice {
             } else {
                 self.is_mounted = false;
             }
-            sudo(&["-k".to_owned()])?;
+            sudo(&["-k"])?;
             Ok(last_success)
         }
     }

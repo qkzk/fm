@@ -6,7 +6,9 @@ use sysinfo::{DiskExt, System, SystemExt};
 
 use crate::impl_selectable_content;
 use crate::mount_help::MountHelper;
-use crate::password::{sudo, sudo_with_password, PasswordHolder, PasswordKind};
+use crate::password::{
+    drop_sudo, reset_faillock, sudo, sudo_with_password, PasswordHolder, PasswordKind,
+};
 use crate::utils::current_username;
 
 /// Possible actions on encrypted drives
@@ -143,21 +145,23 @@ impl CryptoDevice {
     }
 
     fn open_mount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
+        let root_path = std::path::Path::new("/");
         self.set_device_name()?;
         if self.is_mounted() {
             Err(anyhow!("luks open mount: device is already mounted"))
         } else {
             // sudo
-            let (success, _, _) = sudo_with_password(
-                &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
-                &password.sudo()?,
-            )?;
+            let (success, _, _) =
+                sudo_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
             if !success {
                 return Ok(false);
             }
             // open
-            let (success, stdout, stderr) =
-                sudo_with_password(&self.format_luksopen_parameters(), &password.cryptsetup()?)?;
+            let (success, stdout, stderr) = sudo_with_password(
+                &self.format_luksopen_parameters(),
+                &password.cryptsetup()?,
+                root_path,
+            )?;
             info!("stdout: {}\nstderr: {}", stdout, stderr);
             if !success {
                 return Ok(false);
@@ -252,12 +256,10 @@ impl MountHelper for CryptoDevice {
     }
 
     fn umount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
+        let root_path = std::path::Path::new("/");
         self.set_device_name()?;
         // sudo
-        let (success, _, _) = sudo_with_password(
-            &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
-            &password.sudo()?,
-        )?;
+        let (success, _, _) = sudo_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
         if !success {
             return Ok(false);
         }
@@ -334,7 +336,7 @@ impl CryptoDeviceOpener {
         let username = current_username()?;
         let success = self.content[self.index].open_mount(&username, password_holder)?;
         if !success {
-            Self::reset_faillock()?
+            reset_faillock()?
         }
         password_holder.reset();
         drop_sudo()?;
@@ -346,35 +348,12 @@ impl CryptoDeviceOpener {
         let username = current_username()?;
         let success = self.content[self.index].umount_close(&username, password_holder)?;
         if !success {
-            Self::reset_faillock()?
+            reset_faillock()?
         }
         password_holder.reset();
         drop_sudo()?;
         Ok(())
     }
-
-    fn reset_faillock() -> Result<()> {
-        Command::new("faillock")
-            .arg("--user")
-            .arg(current_username()?)
-            .arg("--reset")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()?;
-        Ok(())
-    }
-}
-
-/// Run sudo -k removing sudo privileges of current running instance.
-pub fn drop_sudo() -> Result<()> {
-    Command::new("sudo")
-        .arg("-k")
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()?;
-    Ok(())
 }
 
 impl_selectable_content!(CryptoDevice, CryptoDeviceOpener);

@@ -4,6 +4,8 @@ use std::process::{Command, Stdio};
 use anyhow::{Context, Result};
 use log::info;
 
+use crate::utils::current_username;
+
 /// Different kind of password
 #[derive(Debug, Clone, Copy)]
 pub enum PasswordKind {
@@ -84,13 +86,23 @@ impl PasswordHolder {
 
 /// run a sudo command requiring a password (generally to establish the password.)
 /// Since I can't send 2 passwords at a time, it will only work with the sudo password
-pub fn sudo_with_password(args: &[String], password: &str) -> Result<(bool, String, String)> {
-    info!("sudo {args:?}, {password}");
+pub fn sudo_with_password<S, P>(
+    args: &[S],
+    password: &str,
+    path: P,
+) -> Result<(bool, String, String)>
+where
+    S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
+    P: AsRef<std::path::Path>,
+{
+    info!("sudo {args:?}");
     let mut child = Command::new("sudo")
+        .arg("-S")
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        .current_dir(path)
         .spawn()?;
 
     let child_stdin = child
@@ -109,7 +121,10 @@ pub fn sudo_with_password(args: &[String], password: &str) -> Result<(bool, Stri
 
 /// Run a passwordless sudo command.
 /// Returns stdout & stderr
-pub fn sudo(args: &[String]) -> Result<(bool, String, String)> {
+pub fn sudo<S>(args: &[S]) -> Result<(bool, String, String)>
+where
+    S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
+{
     info!("sudo {:?}", args);
     let child = Command::new("sudo")
         .args(args)
@@ -123,4 +138,27 @@ pub fn sudo(args: &[String]) -> Result<(bool, String, String)> {
         String::from_utf8(output.stdout)?,
         String::from_utf8(output.stderr)?,
     ))
+}
+
+/// Run sudo -k removing sudo privileges of current running instance.
+pub fn drop_sudo() -> Result<()> {
+    Command::new("sudo")
+        .arg("-k")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+    Ok(())
+}
+
+pub fn reset_faillock() -> Result<()> {
+    Command::new("faillock")
+        .arg("--user")
+        .arg(current_username()?)
+        .arg("--reset")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+    Ok(())
 }

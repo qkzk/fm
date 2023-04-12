@@ -412,12 +412,13 @@ pub fn execute_in_child_without_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
         .spawn()?)
 }
 
-pub fn execute_in_child_without_output_with_path<S: AsRef<std::ffi::OsStr> + fmt::Debug, P>(
+pub fn execute_in_child_without_output_with_path<S, P>(
     exe: S,
     path: P,
     args: Option<&[&str]>,
 ) -> Result<std::process::Child>
 where
+    S: AsRef<std::ffi::OsStr> + fmt::Debug,
     P: AsRef<Path>,
 {
     info!("execute_in_child_without_output_with_path. executable: {exe:?}, arguments: {args:?}");

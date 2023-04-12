@@ -15,7 +15,6 @@ use crate::config::Colors;
 use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
 use crate::content_window::RESERVED_ROWS;
 use crate::copy_move::CopyMove;
-use crate::cryptsetup::drop_sudo;
 use crate::cryptsetup::BlockDeviceAction;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
@@ -29,8 +28,8 @@ use crate::opener::{
     execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path, InternalVariant,
 };
-use crate::password::sudo_with_password;
-use crate::password::{PasswordKind, PasswordUsage};
+use crate::password::reset_faillock;
+use crate::password::{drop_sudo, sudo_with_password, PasswordKind, PasswordUsage};
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::shell_parser::ShellCommandParser;
@@ -1889,17 +1888,14 @@ impl EventExec {
     }
 
     fn run_sudo_command(status: &mut Status) -> Result<()> {
+        reset_faillock()?;
         let Some(sudo_command) = &status.sudo_command else { return Ok(()); };
-        info!("dispatch password {sudo_command}");
-        let mut args = ShellCommandParser::new(sudo_command).compute(status)?;
+        let args = ShellCommandParser::new(sudo_command).compute(status)?;
         if args.len() < 2 {
             return Ok(());
         }
-        args.remove(0);
-        if args[0] != *"-S" {
-            args.insert(0, "-S".to_owned());
-        }
-        sudo_with_password(&args[1..], &status.password_holder.sudo()?)?;
+        let path = status.selected_non_mut().directory_of_selected()?;
+        sudo_with_password(&args[1..], &status.password_holder.sudo()?, path)?;
         status.password_holder.reset();
         drop_sudo()
     }
