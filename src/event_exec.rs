@@ -1394,7 +1394,7 @@ impl EventExec {
             Mode::InputSimple(InputSimple::Password(kind, action, dest)) => {
                 must_refresh = false;
                 must_reset_mode = false;
-                EventExec::exec_store_password(status, kind, dest)?;
+                EventExec::exec_store_password(status, kind)?;
                 EventExec::dispatch_password(status, dest, action)?;
             }
             Mode::Navigate(Navigate::Jump) => EventExec::exec_jump(status)?,
@@ -1857,29 +1857,11 @@ impl EventExec {
     }
 
     /// Store a password of some kind (sudo or device passphrase).
-    fn exec_store_password(
-        status: &mut Status,
-        password_kind: PasswordKind,
-        password_dest: PasswordUsage,
-    ) -> Result<()> {
+    fn exec_store_password(status: &mut Status, password_kind: PasswordKind) -> Result<()> {
         let password = status.selected_non_mut().input.string();
-        match password_dest {
-            PasswordUsage::ISO => {
-                match password_kind {
-                    PasswordKind::SUDO => status.password_holder.set_sudo(password),
-                    PasswordKind::CRYPTSETUP => status.password_holder.set_cryptsetup(password),
-                }
-                // if let Some(ref mut iso_device) = status.iso_device {
-                //     info!("iso_mounter bfore: {iso_mounter:?}");
-                //     iso_device.set_password(password_kind, password);
-                //     info!("iso_mounter after: {iso_mounter:?}");
-                // }
-            }
-            PasswordUsage::CRYPTSETUP => match password_kind {
-                PasswordKind::SUDO => status.password_holder.set_sudo(password),
-                PasswordKind::CRYPTSETUP => status.password_holder.set_cryptsetup(password),
-            },
-            PasswordUsage::SUDOCOMMAND => status.password_holder.set_sudo(password),
+        match password_kind {
+            PasswordKind::SUDO => status.password_holder.set_sudo(password),
+            PasswordKind::CRYPTSETUP => status.password_holder.set_cryptsetup(password),
         }
         status.selected().reset_mode();
         Ok(())
@@ -1911,6 +1893,7 @@ impl EventExec {
             },
             PasswordUsage::SUDOCOMMAND => {
                 let Some(sudo_command) = &status.sudo_command else { return Ok(()); };
+                info!("dispatch password {sudo_command}");
                 let args = ShellCommandParser::new(sudo_command).compute(status)?;
                 if args.is_empty() {
                     return Ok(());

@@ -85,7 +85,7 @@ impl PasswordHolder {
 /// run a sudo command requiring a password (generally to establish the password.)
 /// Since I can't send 2 passwords at a time, it will only work with the sudo password
 pub fn sudo_password(args: &[String], password: &str) -> Result<(bool, String, String)> {
-    info!("sudo {:?}", args);
+    info!("sudo {args:?}, {password}");
     let mut child = Command::new("sudo")
         .args(args)
         .stdin(Stdio::piped())
