@@ -6,7 +6,7 @@ use sysinfo::{DiskExt, System, SystemExt};
 
 use crate::impl_selectable_content;
 use crate::mount_help::MountHelper;
-use crate::password::{sudo, sudo_password, PasswordHolder, PasswordKind};
+use crate::password::{sudo, sudo_with_password, PasswordHolder, PasswordKind};
 use crate::utils::current_username;
 
 /// Possible actions on encrypted drives
@@ -148,7 +148,7 @@ impl CryptoDevice {
             Err(anyhow!("luks open mount: device is already mounted"))
         } else {
             // sudo
-            let (success, _, _) = sudo_password(
+            let (success, _, _) = sudo_with_password(
                 &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
                 &password.sudo()?,
             )?;
@@ -157,7 +157,7 @@ impl CryptoDevice {
             }
             // open
             let (success, stdout, stderr) =
-                sudo_password(&self.format_luksopen_parameters(), &password.cryptsetup()?)?;
+                sudo_with_password(&self.format_luksopen_parameters(), &password.cryptsetup()?)?;
             info!("stdout: {}\nstderr: {}", stdout, stderr);
             if !success {
                 return Ok(false);
@@ -254,7 +254,7 @@ impl MountHelper for CryptoDevice {
     fn umount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
         self.set_device_name()?;
         // sudo
-        let (success, _, _) = sudo_password(
+        let (success, _, _) = sudo_with_password(
             &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
             &password.sudo()?,
         )?;
@@ -337,7 +337,7 @@ impl CryptoDeviceOpener {
             Self::reset_faillock()?
         }
         password_holder.reset();
-        Self::drop_sudo()?;
+        drop_sudo()?;
         Ok(())
     }
 
@@ -349,7 +349,7 @@ impl CryptoDeviceOpener {
             Self::reset_faillock()?
         }
         password_holder.reset();
-        Self::drop_sudo()?;
+        drop_sudo()?;
         Ok(())
     }
 
@@ -364,16 +364,17 @@ impl CryptoDeviceOpener {
             .spawn()?;
         Ok(())
     }
+}
 
-    fn drop_sudo() -> Result<()> {
-        Command::new("sudo")
-            .arg("-k")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()?;
-        Ok(())
-    }
+/// Run sudo -k removing sudo privileges of current running instance.
+pub fn drop_sudo() -> Result<()> {
+    Command::new("sudo")
+        .arg("-k")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+    Ok(())
 }
 
 impl_selectable_content!(CryptoDevice, CryptoDeviceOpener);

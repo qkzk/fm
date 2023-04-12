@@ -523,7 +523,7 @@ impl<'a> WinSecondary<'a> {
             InputSimple::Filter => &FILTER_LINES,
             InputSimple::Newdir => &NEWDIR_LINES,
             InputSimple::Newfile => &NEWFILE_LINES,
-            InputSimple::Password(_, _, __) => &PASSWORD_LINES,
+            InputSimple::Password(_, _, _) => &PASSWORD_LINES,
             InputSimple::RegexMatch => &REGEX_LINES,
             InputSimple::Rename => &RENAME_LINES,
             InputSimple::SetNvimAddr => &NVIM_ADDRESS_LINES,

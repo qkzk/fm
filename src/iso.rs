@@ -3,7 +3,7 @@ use log::info;
 
 use crate::{
     mount_help::MountHelper,
-    password::{sudo, sudo_password, PasswordHolder},
+    password::{sudo, sudo_with_password, PasswordHolder},
 };
 
 /// Used to mount an iso file as a loop device.
@@ -76,7 +76,7 @@ impl MountHelper for IsoDevice {
 
     fn umount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
         // sudo
-        let (success, _, _) = sudo_password(
+        let (success, _, _) = sudo_with_password(
             &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
             &passwords.sudo()?,
         )?;
@@ -101,7 +101,7 @@ impl MountHelper for IsoDevice {
             Err(anyhow!("iso device mount: device is already mounted"))
         } else {
             // sudo
-            let (success, _, _) = sudo_password(
+            let (success, _, _) = sudo_with_password(
                 &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
                 &passwords.sudo()?,
             )?;
