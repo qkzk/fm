@@ -354,26 +354,24 @@ impl EventExec {
     /// pipes and redirections aren't NotSupported
     /// expansions are supported
     pub fn exec_shell(status: &mut Status) -> Result<()> {
-        let tab = status.selected_non_mut();
-        let shell_command = tab.input.string();
+        let dir = status
+            .selected_non_mut()
+            .directory_of_selected()?
+            .to_owned();
+        let shell_command = status.selected_non_mut().input.string();
         let mut args = ShellCommandParser::new(shell_command).compute(status)?;
         if args.is_empty() {
             return Ok(());
         }
-        let executable = args.remove(0);
+        let mut executable = args.remove(0);
         if Self::is_sudo_command(&executable) {
-            let mut pwm = PasswordHolder::default();
-
             Self::event_ask_password(status, PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
-            return Ok(());
+            executable = args.remove(0);
+            // return Ok(());
         }
         let Ok(executable) = which::which(executable) else { return Ok(()); };
         let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-        execute_in_child_without_output_with_path(
-            executable,
-            tab.directory_of_selected()?,
-            Some(&params),
-        )?;
+        execute_in_child_without_output_with_path(executable, dir, Some(&params))?;
         Ok(())
     }
 
