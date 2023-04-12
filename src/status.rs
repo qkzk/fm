@@ -22,9 +22,10 @@ use crate::constant_strings_paths::TUIS_PATH;
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::CryptoDeviceOpener;
 use crate::flagged::Flagged;
-use crate::iso::IsoMounter;
+use crate::iso::IsoDevice;
 use crate::marks::Marks;
 use crate::opener::Opener;
+use crate::password::PasswordHolder;
 use crate::preview::{Directory, Preview};
 use crate::shell_menu::{load_shell_menu, ShellMenu};
 use crate::skim::Skimer;
@@ -72,7 +73,7 @@ pub struct Status {
     /// Encrypted devices opener
     pub encrypted_devices: CryptoDeviceOpener,
     /// Iso mounter. Set to None by default, dropped ASAP
-    pub iso_mounter: Option<IsoMounter>,
+    pub iso_device: Option<IsoDevice>,
     /// Compression methods
     pub compression: Compresser,
     /// NVIM RPC server address
@@ -82,6 +83,7 @@ pub struct Status {
     pub shell_menu: ShellMenu,
     pub cli_info: CliInfo,
     pub start_folder: std::path::PathBuf,
+    pub password_holder: PasswordHolder,
 }
 
 impl Status {
@@ -129,6 +131,7 @@ impl Status {
             .shortcut
             .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
         let iso_mounter = None;
+        let password_holder = PasswordHolder::default();
 
         Ok(Self {
             tabs: [left_tab, right_tab],
@@ -150,9 +153,10 @@ impl Status {
             force_clear,
             bulk,
             shell_menu,
-            iso_mounter,
+            iso_device: iso_mounter,
             cli_info,
             start_folder,
+            password_holder,
         })
     }
 

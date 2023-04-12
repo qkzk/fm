@@ -18,7 +18,7 @@ use crate::copy_move::CopyMove;
 use crate::cryptsetup::BlockDeviceAction;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
-use crate::iso::IsoMounter;
+use crate::iso::IsoDevice;
 use crate::log::read_log;
 use crate::mocp::Mocp;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
@@ -1736,11 +1736,11 @@ impl EventExec {
             .path_content
             .selected_path_string()
             .context("Couldn't parse the path")?;
-        if status.iso_mounter.is_none() {
-            status.iso_mounter = Some(IsoMounter::from_path(path));
+        if status.iso_device.is_none() {
+            status.iso_device = Some(IsoDevice::from_path(path));
         }
-        if let Some(ref mut iso_mounter) = status.iso_mounter {
-            if !iso_mounter.has_sudo() {
+        if let Some(ref mut iso_device) = status.iso_device {
+            if !status.password_holder.has_sudo() {
                 Self::event_ask_password(
                     status,
                     PasswordKind::SUDO,
@@ -1748,21 +1748,17 @@ impl EventExec {
                     PasswordUsage::ISO,
                 )?;
             } else {
-                if iso_mounter.mount(&current_username()?)? {
-                    info!("iso mounter mounted {iso_mounter:?}");
+                if iso_device.mount(&current_username()?, &mut status.password_holder)? {
+                    info!("iso mounter mounted {iso_device:?}");
                     info!(
                         target: "special",
                         "iso :\n{}",
-                        iso_mounter.iso_device.as_string()?,
+                        iso_device.as_string()?,
                     );
-                    let path = iso_mounter
-                        .iso_device
-                        .mountpoints
-                        .clone()
-                        .context("no mount point")?;
+                    let path = iso_device.mountpoints.clone().context("no mount point")?;
                     status.selected().set_pathcontent(&path)?;
                 };
-                status.iso_mounter = None;
+                status.iso_device = None;
             };
         }
         Ok(())
@@ -1771,8 +1767,8 @@ impl EventExec {
     /// Currently unused.
     /// Umount an iso device.
     pub fn event_umount_iso_drive(status: &mut Status) -> Result<()> {
-        if let Some(ref mut iso_mounter) = status.iso_mounter {
-            if !iso_mounter.has_sudo() {
+        if let Some(ref mut iso_device) = status.iso_device {
+            if !status.password_holder.has_sudo() {
                 Self::event_ask_password(
                     status,
                     PasswordKind::SUDO,
@@ -1780,7 +1776,7 @@ impl EventExec {
                     PasswordUsage::ISO,
                 )?;
             } else {
-                iso_mounter.umount(&current_username()?)?;
+                iso_device.umount(&current_username()?, &mut status.password_holder)?;
             };
         }
         Ok(())
@@ -1862,11 +1858,15 @@ impl EventExec {
         let password = status.selected_non_mut().input.string();
         match password_dest {
             PasswordUsage::ISO => {
-                if let Some(ref mut iso_mounter) = status.iso_mounter {
-                    info!("iso_mounter bfore: {iso_mounter:?}");
-                    iso_mounter.set_password(password_kind, password);
-                    info!("iso_mounter after: {iso_mounter:?}");
+                match password_kind {
+                    PasswordKind::SUDO => status.password_holder.set_sudo(password),
+                    PasswordKind::CRYPTSETUP => status.password_holder.set_cryptsetup(password),
                 }
+                // if let Some(ref mut iso_device) = status.iso_device {
+                //     info!("iso_mounter bfore: {iso_mounter:?}");
+                //     iso_device.set_password(password_kind, password);
+                //     info!("iso_mounter after: {iso_mounter:?}");
+                // }
             }
             PasswordUsage::CRYPTSETUP => {
                 status
