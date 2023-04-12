@@ -59,7 +59,7 @@ impl std::fmt::Display for NeedConfirmation {
 /// the name of a new file, of a new directory,
 /// A regex to match all files in current directory,
 /// a kind of sort, a mark name, a new mark or a filter.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum InputSimple {
     /// Rename the selected file
     Rename,
@@ -78,7 +78,12 @@ pub enum InputSimple {
     /// Set a new neovim RPC address
     SetNvimAddr,
     /// Input a password (chars a replaced by *)
-    Password(PasswordKind, Option<BlockDeviceAction>, PasswordUsage),
+    Password(
+        PasswordKind,
+        Option<BlockDeviceAction>,
+        PasswordUsage,
+        Option<String>,
+    ),
     /// Shell command execute as is
     Shell,
 }
@@ -111,7 +116,7 @@ pub enum Navigate {
 
 /// Different mode in which the application can be.
 /// It dictates the reaction to event and what to display.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum Mode {
     /// Default mode: display the files
     Normal,
@@ -147,7 +152,7 @@ impl fmt::Display for Mode {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }
             Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
-            Mode::InputSimple(InputSimple::Password(password_kind, _, _)) => {
+            Mode::InputSimple(InputSimple::Password(password_kind, _, _, _)) => {
                 write!(f, "{password_kind}")
             }
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),

@@ -479,15 +479,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow generic types for executable in `execute_...` commands
 - [ ] allow sudo commands from ! actions
 
-  - [ ] separate password holder from device action
-  - [ ] execute a command with sudo privileges
+  - [x] separate password holder from device action
   - [ ] dispatch password
+  - [ ] execute a command with sudo privileges
 
-    atm `sudo ls <CR>` :
+    here is the problem.
 
-    1. mode is set to sudo
-    2. mode is reset to shell command
-    3. nothing is done
+    1. !
+    2. type a sudo command `sudo touch b`
+    3. ask a password (it's a new event, those are stateless - only known state is the mode)
+    4. the new state must know the original command... store it in status ?
+    5. TODO! execute the privileged command
 
 ## TODO
 

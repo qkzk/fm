@@ -28,7 +28,7 @@ use crate::opener::{
     execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path, InternalVariant,
 };
-use crate::password::PasswordHolder;
+use crate::password::sudo_password;
 use crate::password::{PasswordKind, PasswordUsage};
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
@@ -359,19 +359,25 @@ impl EventExec {
             .directory_of_selected()?
             .to_owned();
         let shell_command = status.selected_non_mut().input.string();
-        let mut args = ShellCommandParser::new(shell_command).compute(status)?;
+        let mut args = ShellCommandParser::new(shell_command.clone()).compute(status)?;
         if args.is_empty() {
             return Ok(());
         }
-        let mut executable = args.remove(0);
-        if Self::is_sudo_command(&executable) {
-            Self::event_ask_password(status, PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
-            executable = args.remove(0);
-            // return Ok(());
+        let executable = args.remove(0);
+        let run_with_sudo = Self::is_sudo_command(&executable);
+        if run_with_sudo {
+            Self::event_ask_password(
+                status,
+                PasswordKind::SUDO,
+                None,
+                PasswordUsage::SUDOCOMMAND,
+                Some(shell_command),
+            )?;
+        } else {
+            let Ok(executable) = which::which(executable) else { return Ok(()); };
+            let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+            execute_in_child_without_output_with_path(executable, dir, Some(&params))?;
         }
-        let Ok(executable) = which::which(executable) else { return Ok(()); };
-        let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-        execute_in_child_without_output_with_path(executable, dir, Some(&params))?;
         Ok(())
     }
 
@@ -1374,23 +1380,27 @@ impl EventExec {
     pub fn event_enter(status: &mut Status, colors: &Colors) -> Result<()> {
         let mut must_refresh = true;
         let mut must_reset_mode = true;
-        match status.selected_non_mut().mode {
+        match &status.selected_non_mut().mode {
             Mode::InputSimple(InputSimple::Rename) => EventExec::exec_rename(status.selected())?,
             Mode::InputSimple(InputSimple::Newfile) => EventExec::exec_newfile(status.selected())?,
             Mode::InputSimple(InputSimple::Newdir) => EventExec::exec_newdir(status.selected())?,
             Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,
             Mode::InputSimple(InputSimple::RegexMatch) => EventExec::exec_regex(status)?,
             Mode::InputSimple(InputSimple::SetNvimAddr) => EventExec::exec_set_nvim_addr(status)?,
-            Mode::InputSimple(InputSimple::Shell) => EventExec::exec_shell(status)?,
+            Mode::InputSimple(InputSimple::Shell) => {
+                must_refresh = false;
+                must_reset_mode = false;
+                EventExec::exec_shell(status)?
+            }
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
                 EventExec::exec_filter(status, colors)?
             }
-            Mode::InputSimple(InputSimple::Password(kind, action, dest)) => {
+            Mode::InputSimple(InputSimple::Password(kind, action, dest, command)) => {
                 must_refresh = false;
                 must_reset_mode = false;
-                EventExec::exec_store_password(status, kind, dest)?;
-                EventExec::dispatch_password(status, dest, action)?;
+                EventExec::exec_store_password(status, *kind, *dest)?;
+                EventExec::dispatch_password(status, *dest, *action)?;
             }
             Mode::Navigate(Navigate::Jump) => EventExec::exec_jump(status)?,
             Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
@@ -1744,6 +1754,7 @@ impl EventExec {
                     PasswordKind::SUDO,
                     Some(BlockDeviceAction::MOUNT),
                     PasswordUsage::ISO,
+                    None,
                 )?;
             } else {
                 if iso_device.mount(&current_username()?, &mut status.password_holder)? {
@@ -1772,6 +1783,7 @@ impl EventExec {
                     PasswordKind::SUDO,
                     Some(BlockDeviceAction::UMOUNT),
                     PasswordUsage::ISO,
+                    None,
                 )?;
             } else {
                 iso_device.umount(&current_username()?, &mut status.password_holder)?;
@@ -1790,6 +1802,7 @@ impl EventExec {
                 PasswordKind::SUDO,
                 Some(BlockDeviceAction::MOUNT),
                 PasswordUsage::CRYPTSETUP,
+                None,
             )
         } else if !status.password_holder.has_cryptsetup() {
             Self::event_ask_password(
@@ -1797,6 +1810,7 @@ impl EventExec {
                 PasswordKind::CRYPTSETUP,
                 Some(BlockDeviceAction::MOUNT),
                 PasswordUsage::CRYPTSETUP,
+                None,
             )
         } else {
             status
@@ -1825,6 +1839,7 @@ impl EventExec {
                 PasswordKind::SUDO,
                 Some(BlockDeviceAction::UMOUNT),
                 PasswordUsage::CRYPTSETUP,
+                None,
             )
         } else {
             status
@@ -1839,6 +1854,7 @@ impl EventExec {
         password_kind: PasswordKind,
         encrypted_action: Option<BlockDeviceAction>,
         password_dest: PasswordUsage,
+        command: Option<String>,
     ) -> Result<()> {
         info!("event ask password");
         status
@@ -1847,6 +1863,7 @@ impl EventExec {
                 password_kind,
                 encrypted_action,
                 password_dest,
+                command,
             )));
         Ok(())
     }

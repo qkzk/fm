@@ -55,7 +55,7 @@ pub struct Status {
     /// Colors for extension
     // pub colors: ColorCache,
     /// terminal
-    term: Arc<Term>,
+    pub term: Arc<Term>,
     skimer: Skimer,
     /// do we display one or two tabs ?
     pub dual_pane: bool,
