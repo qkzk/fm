@@ -1786,14 +1786,14 @@ impl EventExec {
     /// passphrase.
     /// Those passwords are always dropped immediatly after the commands are run.
     pub fn event_mount_encrypted_drive(status: &mut Status) -> Result<()> {
-        if !status.encrypted_devices.has_sudo() {
+        if !status.password_holder.has_sudo() {
             Self::event_ask_password(
                 status,
                 PasswordKind::SUDO,
                 Some(BlockDeviceAction::MOUNT),
                 PasswordUsage::CRYPTSETUP,
             )
-        } else if !status.encrypted_devices.has_cryptsetup() {
+        } else if !status.password_holder.has_cryptsetup() {
             Self::event_ask_password(
                 status,
                 PasswordKind::CRYPTSETUP,
@@ -1801,14 +1801,16 @@ impl EventExec {
                 PasswordUsage::CRYPTSETUP,
             )
         } else {
-            status.encrypted_devices.mount_selected()
+            status
+                .encrypted_devices
+                .mount_selected(&mut status.password_holder)
         }
     }
 
     /// Move to the selected crypted device mount point.
     pub fn event_move_to_encrypted_drive(status: &mut Status) -> Result<()> {
         let Some(device) = status.encrypted_devices.selected() else { return Ok(()) };
-        let Some(mount_point) = device.cryptdevice.mount_point() else { return Ok(())};
+        let Some(mount_point) = device.mount_point() else { return Ok(())};
         let tab = status.selected();
         let path = path::PathBuf::from(mount_point);
         tab.history.push(&path);
@@ -1819,7 +1821,7 @@ impl EventExec {
     /// Unmount the selected device.
     /// Will ask first for a sudo password which is immediatly forgotten.
     pub fn event_umount_encrypted_drive(status: &mut Status) -> Result<()> {
-        if !status.encrypted_devices.has_sudo() {
+        if !status.password_holder.has_sudo() {
             Self::event_ask_password(
                 status,
                 PasswordKind::SUDO,
@@ -1827,7 +1829,9 @@ impl EventExec {
                 PasswordUsage::CRYPTSETUP,
             )
         } else {
-            status.encrypted_devices.umount_selected()
+            status
+                .encrypted_devices
+                .umount_selected(&mut status.password_holder)
         }
     }
 
@@ -1868,11 +1872,10 @@ impl EventExec {
                 //     info!("iso_mounter after: {iso_mounter:?}");
                 // }
             }
-            PasswordUsage::CRYPTSETUP => {
-                status
-                    .encrypted_devices
-                    .set_password(password_kind, password);
-            }
+            PasswordUsage::CRYPTSETUP => match password_kind {
+                PasswordKind::SUDO => status.password_holder.set_sudo(password),
+                PasswordKind::CRYPTSETUP => status.password_holder.set_cryptsetup(password),
+            },
             PasswordUsage::SUDOCOMMAND => (),
         }
         status.selected().reset_mode();

@@ -747,15 +747,10 @@ impl<'a> WinSecondary<'a> {
                 not_mounted_attr.effect |= Effect::REVERSE;
                 mounted_attr.effect |= Effect::REVERSE;
             }
-            if status.encrypted_devices.content[i].cryptdevice.is_mounted() {
-                canvas.print_with_attr(row, 3, &device.cryptdevice.as_string()?, mounted_attr)?;
+            if status.encrypted_devices.content[i].is_mounted() {
+                canvas.print_with_attr(row, 3, &device.as_string()?, mounted_attr)?;
             } else {
-                canvas.print_with_attr(
-                    row,
-                    3,
-                    &device.cryptdevice.as_string()?,
-                    not_mounted_attr,
-                )?;
+                canvas.print_with_attr(row, 3, &device.as_string()?, not_mounted_attr)?;
             }
         }
         Ok(())

@@ -3,7 +3,7 @@ use log::info;
 
 use crate::{
     mount_help::MountHelper,
-    password::{sudo, sudo_password, PasswordHolder, PasswordKind},
+    password::{sudo, sudo_password, PasswordHolder},
 };
 
 /// Used to mount an iso file as a loop device.
