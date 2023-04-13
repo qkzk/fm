@@ -28,8 +28,10 @@ use crate::opener::{
     execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path, InternalVariant,
 };
-use crate::password::reset_faillock;
-use crate::password::{drop_sudo, sudo_with_password, PasswordKind, PasswordUsage};
+use crate::password::reset_sudo_faillock;
+use crate::password::{
+    drop_sudo_privileges, execute_sudo_command_with_password, PasswordKind, PasswordUsage,
+};
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::shell_parser::ShellCommandParser;
@@ -377,7 +379,7 @@ impl EventExec {
     }
 
     fn is_sudo_command(executable: &str) -> bool {
-        matches!(executable, "su" | "sudo")
+        matches!(executable, "sudo")
     }
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
@@ -1888,16 +1890,16 @@ impl EventExec {
     }
 
     fn run_sudo_command(status: &mut Status) -> Result<()> {
-        reset_faillock()?;
+        reset_sudo_faillock()?;
         let Some(sudo_command) = &status.sudo_command else { return Ok(()); };
         let args = ShellCommandParser::new(sudo_command).compute(status)?;
         if args.len() < 2 {
             return Ok(());
         }
         let path = status.selected_non_mut().directory_of_selected()?;
-        sudo_with_password(&args[1..], &status.password_holder.sudo()?, path)?;
+        execute_sudo_command_with_password(&args[1..], &status.password_holder.sudo()?, path)?;
         status.password_holder.reset();
-        drop_sudo()
+        drop_sudo_privileges()
     }
 
     /// Open the config file.

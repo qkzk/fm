@@ -3,7 +3,7 @@ use log::info;
 
 use crate::{
     mount_help::MountHelper,
-    password::{sudo, sudo_with_password, PasswordHolder},
+    password::{execute_sudo_command, execute_sudo_command_with_password, PasswordHolder},
 };
 
 /// Used to mount an iso file as a loop device.
@@ -77,19 +77,23 @@ impl MountHelper for IsoDevice {
     fn umount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
         let root_path = std::path::Path::new("/");
         // sudo
-        let (success, _, _) =
-            sudo_with_password(&["-S", "ls", "/root"], &passwords.sudo()?, root_path)?;
+        let (success, _, _) = execute_sudo_command_with_password(
+            &["-S", "ls", "/root"],
+            &passwords.sudo()?,
+            root_path,
+        )?;
         if !success {
             return Ok(false);
         }
         // unmount
-        let (success, stdout, stderr) = sudo(&self.format_umount_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command(&self.format_umount_parameters(username))?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         if success {
             self.is_mounted = false;
         }
         // sudo -k
-        let (success, stdout, stderr) = sudo(&["-k"])?;
+        let (success, stdout, stderr) = execute_sudo_command(&["-k"])?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         Ok(success)
     }
@@ -101,18 +105,23 @@ impl MountHelper for IsoDevice {
             Err(anyhow!("iso device mount: device is already mounted"))
         } else {
             // sudo
-            let (success, _, _) =
-                sudo_with_password(&["ls", "/root"], &passwords.sudo()?, root_path)?;
+            let (success, _, _) = execute_sudo_command_with_password(
+                &["ls", "/root"],
+                &passwords.sudo()?,
+                root_path,
+            )?;
             if !success {
                 return Ok(false);
             }
             // mkdir
-            let (success, stdout, stderr) = sudo(&self.format_mkdir_parameters(username))?;
+            let (success, stdout, stderr) =
+                execute_sudo_command(&self.format_mkdir_parameters(username))?;
             info!("stdout: {}\nstderr: {}", stdout, stderr);
             let mut last_success = false;
             if success {
                 // mount
-                let (success, stdout, stderr) = sudo(&self.format_mount_parameters(username))?;
+                let (success, stdout, stderr) =
+                    execute_sudo_command(&self.format_mount_parameters(username))?;
                 last_success = success;
                 info!("stdout: {}\nstderr: {}", stdout, stderr);
                 // sudo -k
@@ -120,7 +129,7 @@ impl MountHelper for IsoDevice {
             } else {
                 self.is_mounted = false;
             }
-            sudo(&["-k"])?;
+            execute_sudo_command(&["-k"])?;
             Ok(last_success)
         }
     }

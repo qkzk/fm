@@ -7,7 +7,8 @@ use sysinfo::{DiskExt, System, SystemExt};
 use crate::impl_selectable_content;
 use crate::mount_help::MountHelper;
 use crate::password::{
-    drop_sudo, reset_faillock, sudo, sudo_with_password, PasswordHolder, PasswordKind,
+    drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
+    reset_sudo_faillock, PasswordHolder, PasswordKind,
 };
 use crate::utils::current_username;
 
@@ -152,12 +153,12 @@ impl CryptoDevice {
         } else {
             // sudo
             let (success, _, _) =
-                sudo_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
+                execute_sudo_command_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
             if !success {
                 return Ok(false);
             }
             // open
-            let (success, stdout, stderr) = sudo_with_password(
+            let (success, stdout, stderr) = execute_sudo_command_with_password(
                 &self.format_luksopen_parameters(),
                 &password.cryptsetup()?,
                 root_path,
@@ -175,13 +176,13 @@ impl CryptoDevice {
             return Ok(false);
         }
         // close
-        let (success, stdout, stderr) = sudo(&self.format_luksclose_parameters())?;
+        let (success, stdout, stderr) = execute_sudo_command(&self.format_luksclose_parameters())?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         if !success {
             return Ok(false);
         }
         // sudo -k
-        let (success, stdout, stderr) = sudo(&["-k".to_owned()])?;
+        let (success, stdout, stderr) = execute_sudo_command(&["-k".to_owned()])?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         Ok(success)
     }
@@ -239,19 +240,21 @@ impl MountHelper for CryptoDevice {
     fn mount(&mut self, username: &str, _: &mut PasswordHolder) -> Result<bool> {
         self.set_device_name()?;
         // mkdir
-        let (success, stdout, stderr) = sudo(&self.format_mkdir_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command(&self.format_mkdir_parameters(username))?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         if !success {
             return Ok(false);
         }
         // mount
-        let (success, stdout, stderr) = sudo(&self.format_mount_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command(&self.format_mount_parameters(username))?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         if !success {
             return Ok(false);
         }
         // sudo -k
-        sudo(&["-k".to_owned()])?;
+        execute_sudo_command(&["-k".to_owned()])?;
         Ok(success)
     }
 
@@ -259,12 +262,13 @@ impl MountHelper for CryptoDevice {
         let root_path = std::path::Path::new("/");
         self.set_device_name()?;
         // sudo
-        let (success, _, _) = sudo_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
+        let (success, _, _) =
+            execute_sudo_command_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
         if !success {
             return Ok(false);
         }
         // unmount
-        let (_, stdout, stderr) = sudo(&self.format_umount_parameters(username))?;
+        let (_, stdout, stderr) = execute_sudo_command(&self.format_umount_parameters(username))?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
 
         Ok(true)
@@ -336,10 +340,10 @@ impl CryptoDeviceOpener {
         let username = current_username()?;
         let success = self.content[self.index].open_mount(&username, password_holder)?;
         if !success {
-            reset_faillock()?
+            reset_sudo_faillock()?
         }
         password_holder.reset();
-        drop_sudo()?;
+        drop_sudo_privileges()?;
         Ok(())
     }
 
@@ -348,10 +352,10 @@ impl CryptoDeviceOpener {
         let username = current_username()?;
         let success = self.content[self.index].umount_close(&username, password_holder)?;
         if !success {
-            reset_faillock()?
+            reset_sudo_faillock()?
         }
         password_holder.reset();
-        drop_sudo()?;
+        drop_sudo_privileges()?;
         Ok(())
     }
 }
