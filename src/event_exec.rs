@@ -356,28 +356,39 @@ impl EventExec {
     /// Execute a shell command typed by the user.
     /// pipes and redirections aren't NotSupported
     /// expansions are supported
-    pub fn exec_shell(status: &mut Status) -> Result<()> {
-        let dir = status
-            .selected_non_mut()
-            .directory_of_selected()?
-            .to_owned();
+    pub fn exec_shell(status: &mut Status) -> Result<bool> {
         let shell_command = status.selected_non_mut().input.string();
         let mut args = ShellCommandParser::new(&shell_command).compute(status)?;
-        if args.is_empty() {
-            return Ok(());
+        info!("command {shell_command} args: {args:?}");
+        if Self::args_is_empty(&args) {
+            status.selected().set_mode(Mode::Normal);
+            return Ok(true);
         }
         let executable = args.remove(0);
         if Self::is_sudo_command(&executable) {
             status.sudo_command = Some(shell_command);
             Self::event_ask_password(status, PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
+            Ok(false)
         } else {
-            let Ok(executable) = which(executable) else { return Ok(()); };
+            let Ok(executable) = which(executable) else { return Ok(true); };
+            let current_directory = status
+                .selected_non_mut()
+                .directory_of_selected()?
+                .to_owned();
             let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-            execute_in_child_without_output_with_path(executable, dir, Some(&params))?;
+            execute_in_child_without_output_with_path(
+                executable,
+                current_directory,
+                Some(&params),
+            )?;
+            status.selected().set_mode(Mode::Normal);
+            Ok(true)
         }
-        Ok(())
     }
 
+    fn args_is_empty(args: &[String]) -> bool {
+        args.is_empty() || args[0] == *""
+    }
     fn is_sudo_command(executable: &str) -> bool {
         matches!(executable, "sudo")
     }
@@ -1385,9 +1396,8 @@ impl EventExec {
             Mode::InputSimple(InputSimple::RegexMatch) => EventExec::exec_regex(status)?,
             Mode::InputSimple(InputSimple::SetNvimAddr) => EventExec::exec_set_nvim_addr(status)?,
             Mode::InputSimple(InputSimple::Shell) => {
-                must_refresh = false;
                 must_reset_mode = false;
-                EventExec::exec_shell(status)?
+                must_refresh = EventExec::exec_shell(status)?;
             }
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
@@ -1397,7 +1407,7 @@ impl EventExec {
                 must_refresh = false;
                 must_reset_mode = false;
                 EventExec::exec_store_password(status, kind)?;
-                EventExec::dispatch_password(status, dest, action)?;
+                EventExec::dispatch_password(status, dest, action, colors)?;
             }
             Mode::Navigate(Navigate::Jump) => EventExec::exec_jump(status)?,
             Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
@@ -1873,6 +1883,7 @@ impl EventExec {
         status: &mut Status,
         dest: PasswordUsage,
         action: Option<BlockDeviceAction>,
+        colors: &Colors,
     ) -> Result<()> {
         match dest {
             PasswordUsage::ISO => match action {
@@ -1885,11 +1896,12 @@ impl EventExec {
                 Some(BlockDeviceAction::UMOUNT) => EventExec::event_umount_encrypted_drive(status),
                 None => Ok(()),
             },
-            PasswordUsage::SUDOCOMMAND => Self::run_sudo_command(status),
+            PasswordUsage::SUDOCOMMAND => Self::run_sudo_command(status, colors),
         }
     }
 
-    fn run_sudo_command(status: &mut Status) -> Result<()> {
+    fn run_sudo_command(status: &mut Status, colors: &Colors) -> Result<()> {
+        status.selected().set_mode(Mode::Normal);
         reset_sudo_faillock()?;
         let Some(sudo_command) = &status.sudo_command else { return Ok(()); };
         let args = ShellCommandParser::new(sudo_command).compute(status)?;
@@ -1902,7 +1914,8 @@ impl EventExec {
             status.selected_non_mut().directory_of_selected()?,
         )?;
         status.password_holder.reset();
-        drop_sudo_privileges()
+        drop_sudo_privileges()?;
+        Self::refresh_status(status, colors)
     }
 
     /// Open the config file.
