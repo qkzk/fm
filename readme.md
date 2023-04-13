@@ -71,10 +71,11 @@ Many ways to jump somewhere :
 
 ### File manipulation
 
-- Copy / move / symlinks / delete with c, p, s, x
+- Flag files with `space` (\*: flag all, v: reverse, u: unflag)
+- Copy / move / symlinks / delete / trash flagged files with c, p, s, x, X
 - Create files, directory, rename with n, d, r
 - Flag a bunch of file, change panel with TAB and move/copy them !
-- Trash a file with X, open the trash with Alt+o. x to remove permanently, enter to restore. Wipe the trash with Alt+x.
+- Open the trash with Alt+o. x to remove permanently, enter to restore. Wipe the trash with Alt+x.
 - Rename or create a bunch of file with B. Flag files, B, edit the names and save the file. The renaming is done.
   You can create nested files with `a/b/c` which will create every intermediate folder if needed.
 
@@ -87,12 +88,13 @@ Many ways to jump somewhere :
 
 ### Display
 
-- Change display, removing details or displaying a single pane with Alt+e
+- Change display, removing details with Alt+e or display a single pane with Alt+d
 - Preview most of files (text, highlighted code, binary, pdf, exif details, video/audio details, archives) with P
 - Toggle the tree view with t. Fold selected folder with z. Unfold every folder with Z, fold every folder with Alt+z.
 - Enter preview mode with Alt+P. Every file is previewed in the second pane.
 - Filter the view (by extension, name, directory only, all files) with F
-- Find files with / (with completion), flag files matching a regex with w
+- Find files with / (with completion: Tab, enter to search), 
+- flag files matching a regex with w
 
 ### Fuzzy finder
 
@@ -169,7 +171,7 @@ Expansions :
 - Set the selected image as wallpaper with W.
 - _Experimental_ enter "command mode" with ':'. Type the name of a command and it will be executed.
 
-Most of those features are inspired by ranger and alternatives (Midnight commander), the look and feel by dired.
+Most of those features are inspired by ranger and alternatives (Midnight commander, nnn, lf etc.), the look and feel by dired.
 
 ## Default keybindings
 
