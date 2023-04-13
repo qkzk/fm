@@ -8,6 +8,7 @@ use anyhow::{anyhow, Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use log::info;
 use sysinfo::SystemExt;
+use which::which;
 
 use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
@@ -366,12 +367,11 @@ impl EventExec {
             return Ok(());
         }
         let executable = args.remove(0);
-        let run_with_sudo = Self::is_sudo_command(&executable);
-        if run_with_sudo {
+        if Self::is_sudo_command(&executable) {
             status.sudo_command = Some(shell_command);
             Self::event_ask_password(status, PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
         } else {
-            let Ok(executable) = which::which(executable) else { return Ok(()); };
+            let Ok(executable) = which(executable) else { return Ok(()); };
             let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
             execute_in_child_without_output_with_path(executable, dir, Some(&params))?;
         }
@@ -1893,11 +1893,14 @@ impl EventExec {
         reset_sudo_faillock()?;
         let Some(sudo_command) = &status.sudo_command else { return Ok(()); };
         let args = ShellCommandParser::new(sudo_command).compute(status)?;
-        if args.len() < 2 {
+        if args.is_empty() {
             return Ok(());
         }
-        let path = status.selected_non_mut().directory_of_selected()?;
-        execute_sudo_command_with_password(&args[1..], &status.password_holder.sudo()?, path)?;
+        execute_sudo_command_with_password(
+            &args[1..],
+            &status.password_holder.sudo()?,
+            status.selected_non_mut().directory_of_selected()?,
+        )?;
         status.password_holder.reset();
         drop_sudo_privileges()
     }
