@@ -531,7 +531,7 @@ pub fn is_not_hidden(entry: &DirEntry) -> Result<bool> {
 /// Returns the modified time.
 fn extract_datetime(metadata: &Metadata) -> Result<String> {
     let datetime: DateTime<Local> = metadata.modified()?.into();
-    Ok(format!("{}", datetime.format("%d/%m/%Y %T")))
+    Ok(format!("{}", datetime.format("%Y/%m/%d %T")))
 }
 
 /// Returns the filename.
