@@ -477,19 +477,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] use selected filepath instead of current directory
 - [x] after mounting an iso device, move to its mountpoint
 - [x] allow generic types for executable in `execute_...` commands
-- [ ] allow sudo commands from ! actions
-
+- [x] allow sudo commands from ! actions
   - [x] separate password holder from device action
-  - [ ] dispatch password
-  - [ ] execute a command with sudo privileges
-
-    here is the problem.
-
-    1. !
-    2. type a sudo command `sudo touch b`
-    3. ask a password (it's a new event, those are stateless - only known state is the mode)
-    4. the new state must know the original command... store it in status ?
-    5. TODO! execute the privileged command
+  - [x] dispatch password
+  - [x] execute a command with sudo privileges
+- [x] FIX: modification time used `%d/%m/%y`. Changed to `%Y/%m/%d` to allow sorting and respect conventions
+- [x] display sort kind in first row
 
 ## TODO
 
