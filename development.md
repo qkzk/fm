@@ -483,6 +483,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] execute a command with sudo privileges
 - [x] FIX: modification time used `%d/%m/%y`. Changed to `%Y/%m/%d` to allow sorting and respect conventions
 - [x] display sort kind in first row
+- [ ] EventExec refactor
+  - event: linked to an Action, same name
+  - exec: linked to an executable mode, same name
+  - every helper should be moved outside the struct
 
 ## TODO
 

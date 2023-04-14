@@ -25,7 +25,7 @@ impl Default for Bindings {
 impl Bindings {
     fn new() -> Self {
         let binds = HashMap::from([
-            (Key::ESC, ActionMap::ModeNormal),
+            (Key::ESC, ActionMap::ResetMode),
             (Key::Up, ActionMap::MoveUp),
             (Key::Down, ActionMap::MoveDown),
             (Key::Left, ActionMap::MoveLeft),
@@ -113,7 +113,7 @@ impl Bindings {
             (Key::Ctrl('s'), ActionMap::FuzzyFindLine),
             (Key::Ctrl('u'), ActionMap::PageUp),
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
-            (Key::Ctrl('q'), ActionMap::ModeNormal),
+            (Key::Ctrl('q'), ActionMap::ResetMode),
             (Key::Ctrl('r'), ActionMap::RefreshView),
             (Key::AltEnter, ActionMap::MocpGoToSong),
             (Key::CtrlUp, ActionMap::MocpAddToPlayList),
