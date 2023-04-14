@@ -38,13 +38,14 @@ macro_rules! enumerated_colored_iter {
 /// At least 120 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
 
-const FIRST_LINE_COLORS: [Attr; 6] = [
+const FIRST_LINE_COLORS: [Attr; 7] = [
     color_to_attr(Color::Rgb(231, 162, 156)),
     color_to_attr(Color::Rgb(144, 172, 186)),
     color_to_attr(Color::Rgb(214, 125, 83)),
     color_to_attr(Color::Rgb(91, 152, 119)),
     color_to_attr(Color::Rgb(152, 87, 137)),
     color_to_attr(Color::Rgb(230, 189, 87)),
+    color_to_attr(Color::Rgb(251, 133, 0)),
 ];
 
 const MENU_COLORS: [Attr; 10] = [
@@ -206,7 +207,8 @@ impl<'a> WinMain<'a> {
             format!("{}  ", self.tab.path_content.used_space()),
             format!("Avail: {disk_space}  "),
             format!("{}  ", &self.tab.path_content.git_string()?),
-            format!("{} flags", &self.status.flagged.len()),
+            format!("{} flags ", &self.status.flagged.len()),
+            format!("{}", &self.tab.path_content.sort_kind),
         ])
     }
 
