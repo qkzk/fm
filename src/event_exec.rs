@@ -681,8 +681,7 @@ impl EventAction {
             Mode::InputSimple(InputSimple::Password(kind, action, dest)) => {
                 must_refresh = false;
                 must_reset_mode = false;
-                LeaveMode::password(status, kind)?;
-                dispatch_password(status, dest, action, colors)?;
+                LeaveMode::password(status, kind, colors, dest, action)?
             }
             Mode::Navigate(Navigate::Jump) => LeaveMode::jump(status)?,
             Mode::Navigate(Navigate::History) => LeaveMode::history(status.selected())?,
@@ -1335,14 +1334,20 @@ impl LeaveMode {
     }
 
     /// Store a password of some kind (sudo or device passphrase).
-    fn password(status: &mut Status, password_kind: PasswordKind) -> Result<()> {
+    fn password(
+        status: &mut Status,
+        password_kind: PasswordKind,
+        colors: &Colors,
+        dest: PasswordUsage,
+        action: Option<BlockDeviceAction>,
+    ) -> Result<()> {
         let password = status.selected_non_mut().input.string();
         match password_kind {
             PasswordKind::SUDO => status.password_holder.set_sudo(password),
             PasswordKind::CRYPTSETUP => status.password_holder.set_cryptsetup(password),
         }
         status.selected().reset_mode();
-        Ok(())
+        dispatch_password(status, dest, action, colors)
     }
 
     /// Compress the flagged files into an archive.
