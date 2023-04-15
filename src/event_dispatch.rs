@@ -31,11 +31,11 @@ impl EventDispatcher {
         match ev {
             Event::Key(Key::WheelUp(_, col, _)) => {
                 Helper::select_pane(status, col)?;
-                EventAction::event_move_up(status, colors)?;
+                EventAction::move_up(status, colors)?;
             }
             Event::Key(Key::WheelDown(_, col, _)) => {
                 Helper::select_pane(status, col)?;
-                EventAction::event_move_down(status, colors)?;
+                EventAction::move_down(status, colors)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
                 Helper::select_pane(status, col)?;
