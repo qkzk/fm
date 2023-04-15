@@ -7,11 +7,12 @@ use crate::event_exec::{
     helper_leave_sort, helper_mount_encrypted_drive, helper_move_to_encrypted_drive,
     helper_right_click, helper_select_pane, helper_select_row, helper_text_insert_and_complete,
     helper_text_insertion, helper_trash_remove_file, helper_umount_encrypted_drive, refresh_status,
-    resize, tab_refresh_view, EventExec,
+    resize, EventExec,
 };
 use crate::keybindings::Bindings;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate};
 use crate::status::Status;
+use crate::tab::Tab;
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -115,7 +116,10 @@ impl EventDispatcher {
                 }
                 Mode::Preview | Mode::Navigate(_) => {
                     status.selected().set_mode(Mode::Normal);
-                    tab_refresh_view(status.selected())
+                    {
+                        let tab: &mut Tab = status.selected();
+                        tab.refresh_view()
+                    }
                 }
             },
             _ => Ok(()),

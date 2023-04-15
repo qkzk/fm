@@ -305,7 +305,7 @@ impl EventExec {
     /// It's usefull to reset the cursor before leaving the application.
     pub fn event_quit(tab: &mut Tab) -> Result<()> {
         if let Mode::Tree = tab.mode {
-            tab_refresh_view(tab)?;
+            tab.refresh_view()?;
             tab.set_mode(Mode::Normal)
         } else {
             tab.must_quit = true;
@@ -874,7 +874,10 @@ impl EventExec {
     /// It tree mode it will exit this view.
     pub fn event_tree(status: &mut Status, colors: &Colors) -> Result<()> {
         if let Mode::Tree = status.selected_non_mut().mode {
-            tab_refresh_view(status.selected())?;
+            {
+                let tab: &mut Tab = status.selected();
+                tab.refresh_view()
+            }?;
             status.selected().set_mode(Mode::Normal)
         } else {
             status.display_full = true;
@@ -1306,7 +1309,7 @@ impl LeaveMode {
             .clone();
         tab.history.push(&path);
         tab.set_pathcontent(&path)?;
-        tab_refresh_view(tab)
+        tab.refresh_view()
     }
 
     /// Move back to a previously visited path.
@@ -1320,7 +1323,7 @@ impl LeaveMode {
             .clone();
         tab.set_pathcontent(&path)?;
         tab.history.drop_queue();
-        tab_refresh_view(tab)
+        tab.refresh_view()
     }
 
     /// Execute the selected node if it's a file else enter the directory.
@@ -1385,13 +1388,6 @@ impl LeaveMode {
         Ok(())
     }
 }
-
-fn string_to_path(path_string: &str) -> Result<path::PathBuf> {
-    let expanded_cow_path = shellexpand::tilde(&path_string);
-    let expanded_target: &str = expanded_cow_path.borrow();
-    Ok(std::fs::canonicalize(expanded_target)?)
-}
-
 /// Move down one row if possible.
 pub fn helper_down_one_row(tab: &mut Tab) {
     match tab.mode {
@@ -1404,11 +1400,6 @@ pub fn helper_down_one_row(tab: &mut Tab) {
         Mode::Preview => tab.window.scroll_down_one(tab.window.bottom),
         _ => (),
     }
-}
-
-/// Reset the inputs and completion, reset the window, exit the preview.
-pub fn tab_refresh_view(tab: &mut Tab) -> Result<()> {
-    tab.refresh_view()
 }
 
 /// Move up one row if possible.
@@ -1524,230 +1515,6 @@ pub fn helper_tree_go_to_bottom_leaf(tab: &mut Tab, colors: &Colors) -> Result<(
     tab.tree_go_to_bottom_leaf(colors)
 }
 
-fn row_to_index(row: u16) -> usize {
-    row as usize - RESERVED_ROWS
-}
-
-fn run_sudo_command(status: &mut Status, colors: &Colors) -> Result<()> {
-    status.selected().set_mode(Mode::Normal);
-    reset_sudo_faillock()?;
-    let Some(sudo_command) = &status.sudo_command else { return Ok(()); };
-    let args = ShellCommandParser::new(sudo_command).compute(status)?;
-    if args.is_empty() {
-        return Ok(());
-    }
-    execute_sudo_command_with_password(
-        &args[1..],
-        &status.password_holder.sudo()?,
-        status.selected_non_mut().directory_of_selected()?,
-    )?;
-    status.password_holder.reset();
-    drop_sudo_privileges()?;
-    refresh_status(status, colors)
-}
-
-fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
-    let command = &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>");
-    let _ = nvim(nvim_server, command);
-}
-
-/// Copy the selected filename to the clipboard. Only the filename.
-pub fn helper_filename_to_clipboard(tab: &Tab) -> Result<()> {
-    set_clipboard(
-        tab.selected()
-            .context("helper_filename_to_clipboard: no selected file")?
-            .filename
-            .clone(),
-    )
-}
-
-/// Copy the selected filepath to the clipboard. The absolute path.
-pub fn helper_filepath_to_clipboard(tab: &Tab) -> Result<()> {
-    set_clipboard(
-        tab.selected()
-            .context("helper_filepath_to_clipboard: no selected file")?
-            .path
-            .to_str()
-            .context("helper_filepath_to_clipboard: no selected file")?
-            .to_owned(),
-    )
-}
-
-fn set_clipboard(content: String) -> Result<()> {
-    info!("copied to clipboard: {}", content);
-    let Ok(mut ctx) = ClipboardContext::new() else { return Ok(()); };
-    let Ok(_) = ctx.set_contents(content) else { return Ok(()); };
-    // For some reason, it's not writen if you don't read it back...
-    let _ = ctx.get_contents();
-    Ok(())
-}
-
-/// A right click opens a file or a directory.
-pub fn helper_right_click(status: &mut Status, colors: &Colors) -> Result<()> {
-    match status.selected().mode {
-        Mode::Normal => LeaveMode::leave_file(status),
-        Mode::Tree => LeaveMode::leave_tree(status, colors),
-        _ => Ok(()),
-    }
-}
-
-/// Replace the input string by the selected completion.
-pub fn helper_replace_input_with_completion(tab: &mut Tab) {
-    tab.input.replace(tab.completion.current_proposition())
-}
-
-/// Ask for a password of some kind (sudo or device passphrase).
-pub fn helper_ask_password(
-    status: &mut Status,
-    password_kind: PasswordKind,
-    encrypted_action: Option<BlockDeviceAction>,
-    password_dest: PasswordUsage,
-) -> Result<()> {
-    info!("event ask password");
-    status
-        .selected()
-        .set_mode(Mode::InputSimple(InputSimple::Password(
-            password_kind,
-            encrypted_action,
-            password_dest,
-        )));
-    Ok(())
-}
-
-fn dispatch_password(
-    status: &mut Status,
-    dest: PasswordUsage,
-    action: Option<BlockDeviceAction>,
-    colors: &Colors,
-) -> Result<()> {
-    match dest {
-        PasswordUsage::ISO => match action {
-            Some(BlockDeviceAction::MOUNT) => helper_mount_iso_drive(status),
-            Some(BlockDeviceAction::UMOUNT) => helper_umount_iso_drive(status),
-            None => Ok(()),
-        },
-        PasswordUsage::CRYPTSETUP => match action {
-            Some(BlockDeviceAction::MOUNT) => helper_mount_encrypted_drive(status),
-            Some(BlockDeviceAction::UMOUNT) => helper_umount_encrypted_drive(status),
-            None => Ok(()),
-        },
-        PasswordUsage::SUDOCOMMAND => run_sudo_command(status, colors),
-    }
-}
-
-fn args_is_empty(args: &[String]) -> bool {
-    args.is_empty() || args[0] == *""
-}
-
-fn is_sudo_command(executable: &str) -> bool {
-    matches!(executable, "sudo")
-}
-
-/// Move to the bottom of current view.
-pub fn helper_go_bottom(tab: &mut Tab) {
-    match tab.mode {
-        Mode::Normal => {
-            let last_index = tab.path_content.content.len() - 1;
-            tab.path_content.select_index(last_index);
-            tab.window.scroll_to(last_index)
-        }
-        Mode::Preview => tab.window.scroll_to(tab.preview.len() - 1),
-        _ => (),
-    }
-}
-
-/// Move the cursor to the start of line.
-pub fn helper_cursor_home(tab: &mut Tab) {
-    tab.input.cursor_start()
-}
-
-/// Move the cursor to the end of line.
-pub fn helper_cursor_end(tab: &mut Tab) {
-    tab.input.cursor_end()
-}
-
-/// Select the left or right tab depending on where the user clicked.
-pub fn helper_select_pane(status: &mut Status, col: u16) -> Result<()> {
-    let (width, _) = status.term_size()?;
-    if (col as usize) < width / 2 {
-        status.select_tab(0)?;
-    } else {
-        status.select_tab(1)?;
-    };
-    Ok(())
-}
-
-/// Select a given row, if there's something in it.
-pub fn helper_select_row(status: &mut Status, row: u16, colors: &Colors) -> Result<()> {
-    let tab = status.selected();
-    match tab.mode {
-        Mode::Normal => {
-            let index = row_to_index(row);
-            tab.path_content.select_index(index);
-            tab.window.scroll_to(index);
-        }
-        Mode::Tree => {
-            let index = row_to_index(row) + 1;
-            tab.directory.tree.unselect_children();
-            tab.directory.tree.position = tab.directory.tree.position_from_index(index);
-            let (_, _, node) = tab.directory.tree.select_from_position()?;
-            tab.directory.make_preview(colors);
-            tab.directory.tree.current_node = node;
-        }
-        _ => (),
-    }
-    Ok(())
-}
-
-/// Move up 10 rows in normal mode.
-/// In other modes where vertical scrolling is possible (atm Preview),
-/// if moves up one page.
-pub fn page_up(tab: &mut Tab) {
-    match tab.mode {
-        Mode::Normal => {
-            let up_index = if tab.path_content.index > 10 {
-                tab.path_content.index - 10
-            } else {
-                0
-            };
-            tab.path_content.select_index(up_index);
-            tab.window.scroll_to(up_index)
-        }
-        Mode::Preview => {
-            if tab.window.top > 0 {
-                let skip = min(tab.window.top, 30);
-                tab.window.bottom -= skip;
-                tab.window.top -= skip;
-            }
-        }
-        _ => (),
-    }
-}
-
-/// Move down 10 rows in normal mode.
-/// In other modes where vertical scrolling is possible (atm Preview),
-/// if moves down one page.
-pub fn page_down(tab: &mut Tab) {
-    match tab.mode {
-        Mode::Normal => {
-            let down_index = min(
-                tab.path_content.content.len() - 1,
-                tab.path_content.index + 10,
-            );
-            tab.path_content.select_index(down_index);
-            tab.window.scroll_to(down_index);
-        }
-        Mode::Preview => {
-            if tab.window.bottom < tab.preview.len() {
-                let skip = min(tab.preview.len() - tab.window.bottom, 30);
-                tab.window.bottom += skip;
-                tab.window.top += skip;
-            }
-        }
-        _ => (),
-    }
-}
-
 /// Remove the selected element in the trash folder.
 pub fn helper_trash_remove_file(status: &mut Status) -> Result<()> {
     status.trash.remove()
@@ -1841,7 +1608,7 @@ pub fn helper_move_to_encrypted_drive(status: &mut Status) -> Result<()> {
     let path = path::PathBuf::from(mount_point);
     tab.history.push(&path);
     tab.set_pathcontent(&path)?;
-    tab_refresh_view(tab)
+    tab.refresh_view()
 }
 
 /// Unmount the selected device.
@@ -1861,24 +1628,112 @@ pub fn helper_umount_encrypted_drive(status: &mut Status) -> Result<()> {
     }
 }
 
-/// When a rezise event occurs, we may hide the second panel if the width
-/// isn't sufficiant to display enough information.
-/// We also need to know the new height of the terminal to start scrolling
-/// up or down.
-pub fn resize(status: &mut Status, width: usize, height: usize, colors: &Colors) -> Result<()> {
-    status.set_dual_pane_if_wide_enough(width)?;
-    status.selected().set_height(height);
-    refresh_status(status, colors)?;
+/// Copy the selected filename to the clipboard. Only the filename.
+pub fn helper_filename_to_clipboard(tab: &Tab) -> Result<()> {
+    set_clipboard(
+        tab.selected()
+            .context("helper_filename_to_clipboard: no selected file")?
+            .filename
+            .clone(),
+    )
+}
+
+/// Copy the selected filepath to the clipboard. The absolute path.
+pub fn helper_filepath_to_clipboard(tab: &Tab) -> Result<()> {
+    set_clipboard(
+        tab.selected()
+            .context("helper_filepath_to_clipboard: no selected file")?
+            .path
+            .to_str()
+            .context("helper_filepath_to_clipboard: no selected file")?
+            .to_owned(),
+    )
+}
+
+/// A right click opens a file or a directory.
+pub fn helper_right_click(status: &mut Status, colors: &Colors) -> Result<()> {
+    match status.selected().mode {
+        Mode::Normal => LeaveMode::leave_file(status),
+        Mode::Tree => LeaveMode::leave_tree(status, colors),
+        _ => Ok(()),
+    }
+}
+
+/// Replace the input string by the selected completion.
+pub fn helper_replace_input_with_completion(tab: &mut Tab) {
+    tab.input.replace(tab.completion.current_proposition())
+}
+
+/// Ask for a password of some kind (sudo or device passphrase).
+pub fn helper_ask_password(
+    status: &mut Status,
+    password_kind: PasswordKind,
+    encrypted_action: Option<BlockDeviceAction>,
+    password_dest: PasswordUsage,
+) -> Result<()> {
+    info!("event ask password");
+    status
+        .selected()
+        .set_mode(Mode::InputSimple(InputSimple::Password(
+            password_kind,
+            encrypted_action,
+            password_dest,
+        )));
     Ok(())
 }
 
-/// Reset the selected tab view to the default.
-pub fn refresh_status(status: &mut Status, colors: &Colors) -> Result<()> {
-    status.force_clear();
-    status.refresh_users()?;
-    status.selected().refresh_view()?;
-    if let Mode::Tree = status.selected_non_mut().mode {
-        status.selected().make_tree(colors)?
+/// Move to the bottom of current view.
+pub fn helper_go_bottom(tab: &mut Tab) {
+    match tab.mode {
+        Mode::Normal => {
+            let last_index = tab.path_content.content.len() - 1;
+            tab.path_content.select_index(last_index);
+            tab.window.scroll_to(last_index)
+        }
+        Mode::Preview => tab.window.scroll_to(tab.preview.len() - 1),
+        _ => (),
+    }
+}
+
+/// Move the cursor to the start of line.
+pub fn helper_cursor_home(tab: &mut Tab) {
+    tab.input.cursor_start()
+}
+
+/// Move the cursor to the end of line.
+pub fn helper_cursor_end(tab: &mut Tab) {
+    tab.input.cursor_end()
+}
+
+/// Select the left or right tab depending on where the user clicked.
+pub fn helper_select_pane(status: &mut Status, col: u16) -> Result<()> {
+    let (width, _) = status.term_size()?;
+    if (col as usize) < width / 2 {
+        status.select_tab(0)?;
+    } else {
+        status.select_tab(1)?;
+    };
+    Ok(())
+}
+
+/// Select a given row, if there's something in it.
+pub fn helper_select_row(status: &mut Status, row: u16, colors: &Colors) -> Result<()> {
+    let tab = status.selected();
+    match tab.mode {
+        Mode::Normal => {
+            let index = row_to_index(row);
+            tab.path_content.select_index(index);
+            tab.window.scroll_to(index);
+        }
+        Mode::Tree => {
+            let index = row_to_index(row) + 1;
+            tab.directory.tree.unselect_children();
+            tab.directory.tree.position = tab.directory.tree.position_from_index(index);
+            let (_, _, node) = tab.directory.tree.select_from_position()?;
+            tab.directory.make_preview(colors);
+            tab.directory.tree.current_node = node;
+        }
+        _ => (),
     }
     Ok(())
 }
@@ -1923,15 +1778,45 @@ pub fn helper_leave_sort(status: &mut Status, c: char, colors: &Colors) -> Resul
     Ok(())
 }
 
-fn read_nvim_listen_address_if_needed(status: &mut Status) {
-    if !status.nvim_server.is_empty() {
-        return;
-    }
-    let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") else { return; };
-    status.nvim_server = nvim_listen_address;
+/// Execute a new mark, saving it to a config file for futher use.
+pub fn exec_marks_new(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
+    let path = status.selected().path_content.path.clone();
+    status.marks.new_mark(c, path)?;
+    {
+        let tab: &mut Tab = status.selected();
+        tab.refresh_view()
+    }?;
+    status.selected().reset_mode();
+    refresh_status(status, colors)
 }
 
-fn _exec_confirmed_action(
+/// Execute a jump to a mark, moving to a valid path.
+/// If the saved path is invalid, it does nothing but reset the view.
+pub fn exec_marks_jump_char(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
+    if let Some(path) = status.marks.get(c) {
+        status.selected().set_pathcontent(&path)?;
+        status.selected().history.push(&path);
+    }
+    {
+        let tab: &mut Tab = status.selected();
+        tab.refresh_view()
+    }?;
+    status.selected().reset_mode();
+    refresh_status(status, colors)
+}
+
+/// Execute a command requiring a confirmation (Delete, Move or Copy).
+pub fn exec_confirmed_action(
+    status: &mut Status,
+    confirmed_action: NeedConfirmation,
+    colors: &Colors,
+) -> Result<()> {
+    confirm_action(status, confirmed_action, colors)?;
+    status.selected().reset_mode();
+    Ok(())
+}
+
+fn confirm_action(
     status: &mut Status,
     confirmed_action: NeedConfirmation,
     colors: &Colors,
@@ -1978,6 +1863,149 @@ fn confirm_trash_empty(status: &mut Status) -> Result<()> {
     Ok(())
 }
 
+fn row_to_index(row: u16) -> usize {
+    row as usize - RESERVED_ROWS
+}
+
+fn run_sudo_command(status: &mut Status, colors: &Colors) -> Result<()> {
+    status.selected().set_mode(Mode::Normal);
+    reset_sudo_faillock()?;
+    let Some(sudo_command) = &status.sudo_command else { return Ok(()); };
+    let args = ShellCommandParser::new(sudo_command).compute(status)?;
+    if args.is_empty() {
+        return Ok(());
+    }
+    execute_sudo_command_with_password(
+        &args[1..],
+        &status.password_holder.sudo()?,
+        status.selected_non_mut().directory_of_selected()?,
+    )?;
+    status.password_holder.reset();
+    drop_sudo_privileges()?;
+    refresh_status(status, colors)
+}
+
+fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
+    let command = &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>");
+    let _ = nvim(nvim_server, command);
+}
+
+fn set_clipboard(content: String) -> Result<()> {
+    info!("copied to clipboard: {}", content);
+    let Ok(mut ctx) = ClipboardContext::new() else { return Ok(()); };
+    let Ok(_) = ctx.set_contents(content) else { return Ok(()); };
+    // For some reason, it's not writen if you don't read it back...
+    let _ = ctx.get_contents();
+    Ok(())
+}
+
+fn dispatch_password(
+    status: &mut Status,
+    dest: PasswordUsage,
+    action: Option<BlockDeviceAction>,
+    colors: &Colors,
+) -> Result<()> {
+    match dest {
+        PasswordUsage::ISO => match action {
+            Some(BlockDeviceAction::MOUNT) => helper_mount_iso_drive(status),
+            Some(BlockDeviceAction::UMOUNT) => helper_umount_iso_drive(status),
+            None => Ok(()),
+        },
+        PasswordUsage::CRYPTSETUP => match action {
+            Some(BlockDeviceAction::MOUNT) => helper_mount_encrypted_drive(status),
+            Some(BlockDeviceAction::UMOUNT) => helper_umount_encrypted_drive(status),
+            None => Ok(()),
+        },
+        PasswordUsage::SUDOCOMMAND => run_sudo_command(status, colors),
+    }
+}
+
+fn args_is_empty(args: &[String]) -> bool {
+    args.is_empty() || args[0] == *""
+}
+
+fn is_sudo_command(executable: &str) -> bool {
+    matches!(executable, "sudo")
+}
+
+/// Move up 10 rows in normal mode.
+/// In other modes where vertical scrolling is possible (atm Preview),
+/// if moves up one page.
+pub fn page_up(tab: &mut Tab) {
+    match tab.mode {
+        Mode::Normal => {
+            let up_index = if tab.path_content.index > 10 {
+                tab.path_content.index - 10
+            } else {
+                0
+            };
+            tab.path_content.select_index(up_index);
+            tab.window.scroll_to(up_index)
+        }
+        Mode::Preview => {
+            if tab.window.top > 0 {
+                let skip = min(tab.window.top, 30);
+                tab.window.bottom -= skip;
+                tab.window.top -= skip;
+            }
+        }
+        _ => (),
+    }
+}
+
+/// Move down 10 rows in normal mode.
+/// In other modes where vertical scrolling is possible (atm Preview),
+/// if moves down one page.
+pub fn page_down(tab: &mut Tab) {
+    match tab.mode {
+        Mode::Normal => {
+            let down_index = min(
+                tab.path_content.content.len() - 1,
+                tab.path_content.index + 10,
+            );
+            tab.path_content.select_index(down_index);
+            tab.window.scroll_to(down_index);
+        }
+        Mode::Preview => {
+            if tab.window.bottom < tab.preview.len() {
+                let skip = min(tab.preview.len() - tab.window.bottom, 30);
+                tab.window.bottom += skip;
+                tab.window.top += skip;
+            }
+        }
+        _ => (),
+    }
+}
+
+/// When a rezise event occurs, we may hide the second panel if the width
+/// isn't sufficiant to display enough information.
+/// We also need to know the new height of the terminal to start scrolling
+/// up or down.
+pub fn resize(status: &mut Status, width: usize, height: usize, colors: &Colors) -> Result<()> {
+    status.set_dual_pane_if_wide_enough(width)?;
+    status.selected().set_height(height);
+    refresh_status(status, colors)?;
+    Ok(())
+}
+
+/// Reset the selected tab view to the default.
+pub fn refresh_status(status: &mut Status, colors: &Colors) -> Result<()> {
+    status.force_clear();
+    status.refresh_users()?;
+    status.selected().refresh_view()?;
+    if let Mode::Tree = status.selected_non_mut().mode {
+        status.selected().make_tree(colors)?
+    }
+    Ok(())
+}
+fn read_nvim_listen_address_if_needed(status: &mut Status) {
+    if !status.nvim_server.is_empty() {
+        return;
+    }
+    let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") else { return; };
+    status.nvim_server = nvim_listen_address;
+}
+
 fn execute_custom(tab: &mut Tab, exec_command: String) -> Result<bool> {
     let mut args: Vec<&str> = exec_command.split(' ').collect();
     let command = args.remove(0);
@@ -1993,34 +2021,8 @@ fn execute_custom(tab: &mut Tab, exec_command: String) -> Result<bool> {
     Ok(true)
 }
 
-/// Execute a new mark, saving it to a config file for futher use.
-pub fn exec_marks_new(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
-    let path = status.selected().path_content.path.clone();
-    status.marks.new_mark(c, path)?;
-    tab_refresh_view(status.selected())?;
-    status.selected().reset_mode();
-    refresh_status(status, colors)
-}
-
-/// Execute a jump to a mark, moving to a valid path.
-/// If the saved path is invalid, it does nothing but reset the view.
-pub fn exec_marks_jump_char(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
-    if let Some(path) = status.marks.get(c) {
-        status.selected().set_pathcontent(&path)?;
-        status.selected().history.push(&path);
-    }
-    tab_refresh_view(status.selected())?;
-    status.selected().reset_mode();
-    refresh_status(status, colors)
-}
-
-/// Execute a command requiring a confirmation (Delete, Move or Copy).
-pub fn exec_confirmed_action(
-    status: &mut Status,
-    confirmed_action: NeedConfirmation,
-    colors: &Colors,
-) -> Result<()> {
-    _exec_confirmed_action(status, confirmed_action, colors)?;
-    status.selected().reset_mode();
-    Ok(())
+fn string_to_path(path_string: &str) -> Result<path::PathBuf> {
+    let expanded_cow_path = shellexpand::tilde(&path_string);
+    let expanded_target: &str = expanded_cow_path.borrow();
+    Ok(std::fs::canonicalize(expanded_target)?)
 }
