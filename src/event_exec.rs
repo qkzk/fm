@@ -580,7 +580,7 @@ impl EventExec {
     /// Move the cursor one char to right in mode requiring text input.
     pub fn event_move_right(status: &mut Status, colors: &Colors) -> Result<()> {
         match status.selected().mode {
-            Mode::Normal => Self::leave_file(status),
+            Mode::Normal => LeaveMode::leave_file(status),
             Mode::Tree => helper_select_first_child(status.selected(), colors),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 helper_move_cursor_right(status.selected());
@@ -664,56 +664,56 @@ impl EventExec {
         let mut must_refresh = true;
         let mut must_reset_mode = true;
         match status.selected_non_mut().mode {
-            Mode::InputSimple(InputSimple::Rename) => EventExec::leave_rename(status.selected())?,
-            Mode::InputSimple(InputSimple::Newfile) => EventExec::leave_newfile(status.selected())?,
-            Mode::InputSimple(InputSimple::Newdir) => EventExec::leave_newdir(status.selected())?,
-            Mode::InputSimple(InputSimple::Chmod) => EventExec::leave_chmod(status)?,
-            Mode::InputSimple(InputSimple::RegexMatch) => EventExec::leave_regex(status)?,
-            Mode::InputSimple(InputSimple::SetNvimAddr) => EventExec::leave_set_nvim_addr(status)?,
+            Mode::InputSimple(InputSimple::Rename) => LeaveMode::leave_rename(status.selected())?,
+            Mode::InputSimple(InputSimple::Newfile) => LeaveMode::leave_newfile(status.selected())?,
+            Mode::InputSimple(InputSimple::Newdir) => LeaveMode::leave_newdir(status.selected())?,
+            Mode::InputSimple(InputSimple::Chmod) => LeaveMode::leave_chmod(status)?,
+            Mode::InputSimple(InputSimple::RegexMatch) => LeaveMode::leave_regex(status)?,
+            Mode::InputSimple(InputSimple::SetNvimAddr) => LeaveMode::leave_set_nvim_addr(status)?,
             Mode::InputSimple(InputSimple::Shell) => {
                 must_reset_mode = false;
-                must_refresh = EventExec::leave_shell(status)?;
+                must_refresh = LeaveMode::leave_shell(status)?;
             }
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
-                EventExec::exec_filter(status, colors)?
+                LeaveMode::leave_filter(status, colors)?
             }
             Mode::InputSimple(InputSimple::Password(kind, action, dest)) => {
                 must_refresh = false;
                 must_reset_mode = false;
-                EventExec::leave_password(status, kind)?;
+                LeaveMode::leave_password(status, kind)?;
                 dispatch_password(status, dest, action, colors)?;
             }
-            Mode::Navigate(Navigate::Jump) => EventExec::leave_jump(status)?,
-            Mode::Navigate(Navigate::History) => EventExec::leave_history(status.selected())?,
-            Mode::Navigate(Navigate::Shortcut) => EventExec::leave_shortcut(status.selected())?,
-            Mode::Navigate(Navigate::Trash) => EventExec::leave_trash(status)?,
-            Mode::Navigate(Navigate::Bulk) => EventExec::leave_bulk(status)?,
-            Mode::Navigate(Navigate::ShellMenu) => EventExec::leave_shellmenu(status)?,
+            Mode::Navigate(Navigate::Jump) => LeaveMode::leave_jump(status)?,
+            Mode::Navigate(Navigate::History) => LeaveMode::leave_history(status.selected())?,
+            Mode::Navigate(Navigate::Shortcut) => LeaveMode::leave_shortcut(status.selected())?,
+            Mode::Navigate(Navigate::Trash) => LeaveMode::leave_trash(status)?,
+            Mode::Navigate(Navigate::Bulk) => LeaveMode::leave_bulk(status)?,
+            Mode::Navigate(Navigate::ShellMenu) => LeaveMode::leave_shellmenu(status)?,
             Mode::Navigate(Navigate::CliInfo) => {
                 must_refresh = false;
                 must_reset_mode = false;
-                EventExec::leave_cli_info(status)?;
+                LeaveMode::leave_cli_info(status)?;
             }
             Mode::Navigate(Navigate::EncryptedDrive) => (),
             Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
-                EventExec::leave_marks_update(status)?
+                LeaveMode::leave_marks_update(status)?
             }
             Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
-                EventExec::leave_marks_jump(status)?
+                LeaveMode::leave_marks_jump(status)?
             }
-            Mode::Navigate(Navigate::Compress) => EventExec::leave_compress(status)?,
-            Mode::InputCompleted(InputCompleted::Exec) => EventExec::leave_exec(status.selected())?,
+            Mode::Navigate(Navigate::Compress) => LeaveMode::leave_compress(status)?,
+            Mode::InputCompleted(InputCompleted::Exec) => LeaveMode::leave_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
-                EventExec::leave_search(status, colors)?
+                LeaveMode::leave_search(status, colors)?
             }
-            Mode::InputCompleted(InputCompleted::Goto) => EventExec::leave_goto(status.selected())?,
+            Mode::InputCompleted(InputCompleted::Goto) => LeaveMode::leave_goto(status.selected())?,
             Mode::InputCompleted(InputCompleted::Command) => {
-                EventExec::leave_command(status, colors)?
+                LeaveMode::leave_command(status, colors)?
             }
-            Mode::Normal => EventExec::leave_file(status)?,
-            Mode::Tree => EventExec::leave_tree(status, colors)?,
+            Mode::Normal => LeaveMode::leave_file(status)?,
+            Mode::Tree => LeaveMode::leave_tree(status, colors)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
             | Mode::InputCompleted(InputCompleted::Nothing)
@@ -1005,7 +1005,11 @@ impl EventExec {
         info!("output {output}");
         Ok(())
     }
+}
 
+pub struct LeaveMode {}
+
+impl LeaveMode {
     /// Restore a file from the trash if possible.
     /// Parent folders are created if needed.
     pub fn leave_trash(status: &mut Status) -> Result<()> {
@@ -1324,7 +1328,7 @@ impl EventExec {
         let tab = status.selected();
         let node = tab.directory.tree.current_node.clone();
         if !node.is_dir {
-            Self::event_open_file(status)
+            EventExec::event_open_file(status)
         } else {
             tab.set_pathcontent(&node.filepath())?;
             tab.make_tree(colors)?;
@@ -1364,6 +1368,21 @@ impl EventExec {
         let command_str = status.selected_non_mut().completion.current_proposition();
         let Ok(command) = ActionMap::from_str(command_str) else { return Ok(()) };
         command.matcher(status, colors)
+    }
+
+    /// Apply a filter to the displayed files.
+    /// See `crate::filter` for more details.
+    pub fn leave_filter(status: &mut Status, colors: &Colors) -> Result<()> {
+        let tab = status.selected();
+        let filter = FilterKind::from_input(&tab.input.string());
+        tab.set_filter(filter);
+        tab.input.reset();
+        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
+        if let Mode::Tree = tab.previous_mode {
+            tab.make_tree(colors)?;
+        }
+        tab.window.reset(tab.path_content.content.len());
+        Ok(())
     }
 }
 
@@ -1566,8 +1585,8 @@ fn set_clipboard(content: String) -> Result<()> {
 /// A right click opens a file or a directory.
 pub fn helper_right_click(status: &mut Status, colors: &Colors) -> Result<()> {
     match status.selected().mode {
-        Mode::Normal => EventExec::leave_file(status),
-        Mode::Tree => EventExec::leave_tree(status, colors),
+        Mode::Normal => LeaveMode::leave_file(status),
+        Mode::Tree => LeaveMode::leave_tree(status, colors),
         _ => Ok(()),
     }
 }
@@ -1993,21 +2012,6 @@ pub fn exec_marks_jump_char(status: &mut Status, c: char, colors: &Colors) -> Re
     tab_refresh_view(status.selected())?;
     status.selected().reset_mode();
     refresh_status(status, colors)
-}
-
-/// Apply a filter to the displayed files.
-/// See `crate::filter` for more details.
-pub fn exec_filter(status: &mut Status, colors: &Colors) -> Result<()> {
-    let tab = status.selected();
-    let filter = FilterKind::from_input(&tab.input.string());
-    tab.set_filter(filter);
-    tab.input.reset();
-    tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
-    if let Mode::Tree = tab.previous_mode {
-        tab.make_tree(colors)?;
-    }
-    tab.window.reset(tab.path_content.content.len());
-    Ok(())
 }
 
 /// Execute a command requiring a confirmation (Delete, Move or Copy).

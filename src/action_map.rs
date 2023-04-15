@@ -2,7 +2,7 @@ use anyhow::Result;
 use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::config::Colors;
-use crate::event_exec::EventExec;
+use crate::event_exec::{EventExec, LeaveMode};
 use crate::status::Status;
 
 /// Different kind of action which can be mapped to a key.
@@ -186,7 +186,7 @@ impl ActionMap {
             ActionMap::TrashEmpty => EventExec::event_trash_empty(status),
             ActionMap::TrashMoveFile => EventExec::event_trash_move_file(status),
             ActionMap::TrashOpen => EventExec::event_trash_open(status),
-            ActionMap::TrashRestoreFile => EventExec::leave_trash(status),
+            ActionMap::TrashRestoreFile => LeaveMode::leave_trash(status),
             ActionMap::Tree => EventExec::event_tree(status, colors),
             ActionMap::TreeFold => EventExec::event_tree_fold(current_tab, colors),
             ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(current_tab, colors),
