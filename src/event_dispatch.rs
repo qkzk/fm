@@ -2,13 +2,7 @@ use anyhow::Result;
 use tuikit::prelude::{Event, Key, MouseButton};
 
 use crate::config::Colors;
-use crate::event_exec::{
-    exec_confirmed_action, exec_marks_jump_char, exec_marks_new, helper_leave_need_confirmation,
-    helper_leave_sort, helper_mount_encrypted_drive, helper_move_to_encrypted_drive,
-    helper_right_click, helper_select_pane, helper_select_row, helper_text_insert_and_complete,
-    helper_text_insertion, helper_trash_remove_file, helper_umount_encrypted_drive, refresh_status,
-    resize, EventExec,
-};
+use crate::event_exec::{EventAction, Helper};
 use crate::keybindings::Bindings;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate};
 use crate::status::Status;
@@ -36,25 +30,25 @@ impl EventDispatcher {
     pub fn dispatch(&self, status: &mut Status, ev: Event, colors: &Colors) -> Result<()> {
         match ev {
             Event::Key(Key::WheelUp(_, col, _)) => {
-                helper_select_pane(status, col)?;
-                EventExec::event_move_up(status, colors)?;
+                Helper::select_pane(status, col)?;
+                EventAction::event_move_up(status, colors)?;
             }
             Event::Key(Key::WheelDown(_, col, _)) => {
-                helper_select_pane(status, col)?;
-                EventExec::event_move_down(status, colors)?;
+                Helper::select_pane(status, col)?;
+                EventAction::event_move_down(status, colors)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
-                helper_select_pane(status, col)?;
-                helper_select_row(status, row, colors)?;
+                Helper::select_pane(status, col)?;
+                Helper::select_row(status, row, colors)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Right, row, col))
             | Event::Key(Key::DoubleClick(MouseButton::Left, row, col)) => {
-                helper_select_pane(status, col)?;
-                helper_select_row(status, row, colors)?;
-                helper_right_click(status, colors)?;
+                Helper::select_pane(status, col)?;
+                Helper::select_row(status, row, colors)?;
+                Helper::right_click(status, colors)?;
             }
-            Event::User(_) => refresh_status(status, colors)?,
-            Event::Resize { width, height } => resize(status, width, height, colors)?,
+            Event::User(_) => Helper::refresh_status(status, colors)?,
+            Event::Resize { width, height } => Helper::resize(status, width, height, colors)?,
             Event::Key(Key::Char(c)) => self.char(status, Key::Char(c), colors)?,
             Event::Key(key) => self.key_matcher(status, key, colors)?,
             _ => (),
@@ -76,43 +70,43 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, key_char: Key, colors: &Colors) -> Result<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
-                Mode::InputSimple(InputSimple::Sort) => helper_leave_sort(status, c, colors),
+                Mode::InputSimple(InputSimple::Sort) => Helper::sort(status, c, colors),
                 Mode::InputSimple(InputSimple::RegexMatch) => {
-                    helper_text_insertion(status.selected(), c);
+                    Helper::text_insertion(status.selected(), c);
                     status.select_from_regex()?;
                     Ok(())
                 }
                 Mode::InputSimple(_) => {
-                    helper_text_insertion(status.selected(), c);
+                    Helper::text_insertion(status.selected(), c);
                     Ok(())
                 }
-                Mode::InputCompleted(_) => helper_text_insert_and_complete(status.selected(), c),
+                Mode::InputCompleted(_) => Helper::text_insert_and_complete(status.selected(), c),
                 Mode::Normal | Mode::Tree => match self.binds.get(&key_char) {
-                    Some(helper_char) => helper_char.matcher(status, colors),
+                    Some(char) => char.matcher(status, colors),
                     None => Ok(()),
                 },
                 Mode::NeedConfirmation(confirmed_action) => {
                     if c == 'y' {
-                        let _ = exec_confirmed_action(status, confirmed_action, colors);
+                        let _ = Helper::confirm_action(status, confirmed_action, colors);
                     }
-                    helper_leave_need_confirmation(status.selected());
+                    Helper::need_confirmation(status.selected());
                     Ok(())
                 }
-                Mode::Navigate(Navigate::Trash) if c == 'x' => helper_trash_remove_file(status),
+                Mode::Navigate(Navigate::Trash) if c == 'x' => Helper::trash_remove_file(status),
                 Mode::Navigate(Navigate::EncryptedDrive) if c == 'm' => {
-                    helper_mount_encrypted_drive(status)
+                    Helper::mount_encrypted_drive(status)
                 }
                 Mode::Navigate(Navigate::EncryptedDrive) if c == 'g' => {
-                    helper_move_to_encrypted_drive(status)
+                    Helper::move_to_encrypted_drive(status)
                 }
                 Mode::Navigate(Navigate::EncryptedDrive) if c == 'u' => {
-                    helper_umount_encrypted_drive(status)
+                    Helper::umount_encrypted_drive(status)
                 }
                 Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
-                    exec_marks_jump_char(status, c, colors)
+                    Helper::marks_jump_char(status, c, colors)
                 }
                 Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
-                    exec_marks_new(status, c, colors)
+                    Helper::marks_new(status, c, colors)
                 }
                 Mode::Preview | Mode::Navigate(_) => {
                     status.selected().set_mode(Mode::Normal);
