@@ -83,7 +83,7 @@ impl EventExec {
                 let Some(file) = tab.path_content.selected() else { return Ok(()) };
                 let path = file.path.clone();
                 status.toggle_flag_on_path(&path);
-                bla_down_one_row(status.selected());
+                helper_down_one_row(status.selected());
             }
             Mode::Tree => {
                 let path = tab.directory.tree.current_node.filepath();
@@ -273,7 +273,7 @@ impl EventExec {
         tab.set_mode(Mode::Preview);
         tab.preview = Preview::log(log);
         tab.window.reset(tab.preview.len());
-        bla_go_bottom(tab);
+        helper_go_bottom(tab);
         Ok(())
     }
 
@@ -334,7 +334,7 @@ impl EventExec {
             .clone();
         let opener = status.opener.open_info(filepath);
         if let Some(InternalVariant::NotSupported) = opener.internal_variant.as_ref() {
-            bla_mount_iso_drive(status)?;
+            helper_mount_iso_drive(status)?;
         } else {
             match status.opener.open(filepath) {
                 Ok(_) => (),
@@ -520,7 +520,7 @@ impl EventExec {
     /// Does nothing if the selected item is already the first in list.
     pub fn event_move_up(status: &mut Status, colors: &Colors) -> Result<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview => bla_up_one_row(status.selected()),
+            Mode::Normal | Mode::Preview => helper_up_one_row(status.selected()),
             Mode::Navigate(Navigate::Jump) => status.flagged.prev(),
             Mode::Navigate(Navigate::History) => status.selected().history.prev(),
             Mode::Navigate(Navigate::Trash) => status.trash.prev(),
@@ -532,7 +532,7 @@ impl EventExec {
             Mode::Navigate(Navigate::CliInfo) => status.cli_info.prev(),
             Mode::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.prev(),
             Mode::InputCompleted(_) => status.selected().completion.prev(),
-            Mode::Tree => bla_select_prev(status.selected(), colors)?,
+            Mode::Tree => helper_select_prev(status.selected(), colors)?,
             _ => (),
         };
         Ok(())
@@ -542,7 +542,7 @@ impl EventExec {
     /// Does nothing if the user is already at the bottom.
     pub fn event_move_down(status: &mut Status, colors: &Colors) -> Result<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Preview => bla_down_one_row(status.selected()),
+            Mode::Normal | Mode::Preview => helper_down_one_row(status.selected()),
             Mode::Navigate(Navigate::Jump) => status.flagged.next(),
             Mode::Navigate(Navigate::History) => status.selected().history.next(),
             Mode::Navigate(Navigate::Trash) => status.trash.next(),
@@ -554,7 +554,7 @@ impl EventExec {
             Mode::Navigate(Navigate::CliInfo) => status.cli_info.next(),
             Mode::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
             Mode::InputCompleted(_) => status.selected().completion.next(),
-            Mode::Tree => bla_select_next(status.selected(), colors)?,
+            Mode::Tree => helper_select_next(status.selected(), colors)?,
             _ => (),
         };
         Ok(())
@@ -565,10 +565,10 @@ impl EventExec {
     pub fn event_move_left(status: &mut Status, colors: &Colors) -> Result<()> {
         let tab = status.selected();
         match tab.mode {
-            Mode::Normal => bla_move_to_parent(tab),
-            Mode::Tree => bla_select_parent(tab, colors),
+            Mode::Normal => helper_move_to_parent(tab),
+            Mode::Tree => helper_select_parent(tab, colors),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
-                bla_move_cursor_left(tab);
+                helper_move_cursor_left(tab);
                 Ok(())
             }
 
@@ -580,10 +580,10 @@ impl EventExec {
     /// Move the cursor one char to right in mode requiring text input.
     pub fn event_move_right(status: &mut Status, colors: &Colors) -> Result<()> {
         match status.selected().mode {
-            Mode::Normal => Self::exec_file(status),
-            Mode::Tree => bla_select_first_child(status.selected(), colors),
+            Mode::Normal => Self::leave_file(status),
+            Mode::Tree => helper_select_first_child(status.selected(), colors),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
-                bla_move_cursor_right(status.selected());
+                helper_move_cursor_right(status.selected());
                 Ok(())
             }
             _ => Ok(()),
@@ -594,7 +594,7 @@ impl EventExec {
     pub fn event_backspace(status: &mut Status) -> Result<()> {
         match status.selected().mode {
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
-                bla_delete_char_left(status.selected());
+                helper_delete_char_left(status.selected());
                 Ok(())
             }
             Mode::Normal => Ok(()),
@@ -606,7 +606,7 @@ impl EventExec {
     pub fn event_delete(status: &mut Status) -> Result<()> {
         match status.selected().mode {
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
-                bla_delete_chars_right(status.selected());
+                helper_delete_chars_right(status.selected());
                 Ok(())
             }
             _ => Ok(()),
@@ -617,9 +617,9 @@ impl EventExec {
     pub fn event_key_home(status: &mut Status, colors: &Colors) -> Result<()> {
         let tab = status.selected();
         match tab.mode {
-            Mode::Normal | Mode::Preview => bla_go_top(tab),
-            Mode::Tree => bla_tree_go_to_root(tab, colors)?,
-            _ => bla_cursor_home(tab),
+            Mode::Normal | Mode::Preview => helper_go_top(tab),
+            Mode::Tree => helper_tree_go_to_root(tab, colors)?,
+            _ => helper_cursor_home(tab),
         };
         Ok(())
     }
@@ -628,9 +628,9 @@ impl EventExec {
     pub fn event_end(status: &mut Status, colors: &Colors) -> Result<()> {
         let tab = status.selected();
         match tab.mode {
-            Mode::Normal | Mode::Preview => bla_go_bottom(tab),
-            Mode::Tree => bla_tree_go_to_bottom_leaf(tab, colors)?,
-            _ => bla_cursor_end(tab),
+            Mode::Normal | Mode::Preview => helper_go_bottom(tab),
+            Mode::Tree => helper_tree_go_to_bottom_leaf(tab, colors)?,
+            _ => helper_cursor_end(tab),
         };
         Ok(())
     }
@@ -639,7 +639,7 @@ impl EventExec {
     pub fn event_page_up(status: &mut Status, colors: &Colors) -> Result<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => page_up(status.selected()),
-            Mode::Tree => bla_tree_page_up(status.selected(), colors)?,
+            Mode::Tree => helper_tree_page_up(status.selected(), colors)?,
             _ => (),
         };
         Ok(())
@@ -649,7 +649,7 @@ impl EventExec {
     pub fn event_page_down(status: &mut Status, colors: &Colors) -> Result<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => page_down(status.selected()),
-            Mode::Tree => bla_tree_page_down(status.selected(), colors)?,
+            Mode::Tree => helper_tree_page_down(status.selected(), colors)?,
             _ => (),
         };
         Ok(())
@@ -664,15 +664,15 @@ impl EventExec {
         let mut must_refresh = true;
         let mut must_reset_mode = true;
         match status.selected_non_mut().mode {
-            Mode::InputSimple(InputSimple::Rename) => EventExec::exec_rename(status.selected())?,
-            Mode::InputSimple(InputSimple::Newfile) => EventExec::exec_newfile(status.selected())?,
-            Mode::InputSimple(InputSimple::Newdir) => EventExec::exec_newdir(status.selected())?,
-            Mode::InputSimple(InputSimple::Chmod) => EventExec::exec_chmod(status)?,
-            Mode::InputSimple(InputSimple::RegexMatch) => EventExec::exec_regex(status)?,
-            Mode::InputSimple(InputSimple::SetNvimAddr) => EventExec::exec_set_nvim_addr(status)?,
+            Mode::InputSimple(InputSimple::Rename) => EventExec::leave_rename(status.selected())?,
+            Mode::InputSimple(InputSimple::Newfile) => EventExec::leave_newfile(status.selected())?,
+            Mode::InputSimple(InputSimple::Newdir) => EventExec::leave_newdir(status.selected())?,
+            Mode::InputSimple(InputSimple::Chmod) => EventExec::leave_chmod(status)?,
+            Mode::InputSimple(InputSimple::RegexMatch) => EventExec::leave_regex(status)?,
+            Mode::InputSimple(InputSimple::SetNvimAddr) => EventExec::leave_set_nvim_addr(status)?,
             Mode::InputSimple(InputSimple::Shell) => {
                 must_reset_mode = false;
-                must_refresh = EventExec::exec_shell(status)?;
+                must_refresh = EventExec::leave_shell(status)?;
             }
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
@@ -681,39 +681,39 @@ impl EventExec {
             Mode::InputSimple(InputSimple::Password(kind, action, dest)) => {
                 must_refresh = false;
                 must_reset_mode = false;
-                EventExec::exec_store_password(status, kind)?;
+                EventExec::leave_password(status, kind)?;
                 dispatch_password(status, dest, action, colors)?;
             }
-            Mode::Navigate(Navigate::Jump) => EventExec::exec_jump(status)?,
-            Mode::Navigate(Navigate::History) => EventExec::exec_history(status.selected())?,
-            Mode::Navigate(Navigate::Shortcut) => EventExec::exec_shortcut(status.selected())?,
-            Mode::Navigate(Navigate::Trash) => EventExec::event_trash_restore_file(status)?,
-            Mode::Navigate(Navigate::Bulk) => EventExec::exec_bulk(status)?,
-            Mode::Navigate(Navigate::ShellMenu) => EventExec::exec_shellmenu(status)?,
+            Mode::Navigate(Navigate::Jump) => EventExec::leave_jump(status)?,
+            Mode::Navigate(Navigate::History) => EventExec::leave_history(status.selected())?,
+            Mode::Navigate(Navigate::Shortcut) => EventExec::leave_shortcut(status.selected())?,
+            Mode::Navigate(Navigate::Trash) => EventExec::leave_trash(status)?,
+            Mode::Navigate(Navigate::Bulk) => EventExec::leave_bulk(status)?,
+            Mode::Navigate(Navigate::ShellMenu) => EventExec::leave_shellmenu(status)?,
             Mode::Navigate(Navigate::CliInfo) => {
                 must_refresh = false;
                 must_reset_mode = false;
-                EventExec::exec_cli_info(status)?;
+                EventExec::leave_cli_info(status)?;
             }
             Mode::Navigate(Navigate::EncryptedDrive) => (),
             Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
-                EventExec::exec_marks_update(status)?
+                EventExec::leave_marks_update(status)?
             }
             Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
-                EventExec::exec_marks_jump(status)?
+                EventExec::leave_marks_jump(status)?
             }
-            Mode::Navigate(Navigate::Compress) => EventExec::exec_compress(status)?,
-            Mode::InputCompleted(InputCompleted::Exec) => EventExec::exec_exec(status.selected())?,
+            Mode::Navigate(Navigate::Compress) => EventExec::leave_compress(status)?,
+            Mode::InputCompleted(InputCompleted::Exec) => EventExec::leave_exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
-                EventExec::exec_search(status, colors)?
+                EventExec::leave_search(status, colors)?
             }
-            Mode::InputCompleted(InputCompleted::Goto) => EventExec::exec_goto(status.selected())?,
+            Mode::InputCompleted(InputCompleted::Goto) => EventExec::leave_goto(status.selected())?,
             Mode::InputCompleted(InputCompleted::Command) => {
-                EventExec::exec_command(status, colors)?
+                EventExec::leave_command(status, colors)?
             }
-            Mode::Normal => EventExec::exec_file(status)?,
-            Mode::Tree => EventExec::exec_tree(status, colors)?,
+            Mode::Normal => EventExec::leave_file(status)?,
+            Mode::Tree => EventExec::leave_tree(status, colors)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
             | Mode::InputCompleted(InputCompleted::Nothing)
@@ -734,7 +734,7 @@ impl EventExec {
     /// insert a completion in modes allowing completion.
     pub fn event_tab(status: &mut Status) -> Result<()> {
         match status.selected().mode {
-            Mode::InputCompleted(_) => bla_replace_input_with_completion(status.selected()),
+            Mode::InputCompleted(_) => helper_replace_input_with_completion(status.selected()),
             Mode::Normal | Mode::Tree => status.next(),
             _ => (),
         };
@@ -768,7 +768,7 @@ impl EventExec {
     /// Copy the filename of the selected file in normal mode.
     pub fn event_copy_filename(status: &mut Status) -> Result<()> {
         if let Mode::Normal | Mode::Tree = status.selected_non_mut().mode {
-            return bla_filename_to_clipboard(status.selected());
+            return helper_filename_to_clipboard(status.selected());
         }
         Ok(())
     }
@@ -776,7 +776,7 @@ impl EventExec {
     /// Copy the filepath of the selected file in normal mode.
     pub fn event_copy_filepath(status: &mut Status) -> Result<()> {
         if let Mode::Normal | Mode::Tree = status.selected_non_mut().mode {
-            return bla_filepath_to_clipboard(status.selected());
+            return helper_filepath_to_clipboard(status.selected());
         }
         Ok(())
     }
@@ -851,16 +851,6 @@ impl EventExec {
         status.selected().refresh_view()?;
         Ok(())
     }
-
-    /// Restore a file from the trash if possible.
-    /// Parent folders are created if needed.
-    pub fn event_trash_restore_file(status: &mut Status) -> Result<()> {
-        status.trash.restore()?;
-        status.selected().reset_mode();
-        status.selected().refresh_view()?;
-        Ok(())
-    }
-
     /// Ask the user if he wants to empty the trash.
     /// It requires a confimation before doing anything
     pub fn event_trash_empty(status: &mut Status) -> Result<()> {
@@ -902,7 +892,7 @@ impl EventExec {
         let (tree, _, _) = tab.directory.tree.explore_position(false);
         tree.node.toggle_fold();
         tab.directory.make_preview(colors);
-        bla_select_next(tab, colors)
+        helper_select_next(tab, colors)
     }
 
     /// Unfold every child node in the tree.
@@ -1006,7 +996,7 @@ impl EventExec {
 
     /// Execute a custom event on the selected file
     pub fn event_custom(status: &mut Status, string: String) -> Result<()> {
-        info!("bla_custom {string}");
+        info!("helper_custom {string}");
         let parser = ShellCommandParser::new(&string);
         let mut args = parser.compute(status)?;
         let command = args.remove(0);
@@ -1016,8 +1006,16 @@ impl EventExec {
         Ok(())
     }
 
+    /// Restore a file from the trash if possible.
+    /// Parent folders are created if needed.
+    pub fn leave_trash(status: &mut Status) -> Result<()> {
+        status.trash.restore()?;
+        status.selected().reset_mode();
+        status.selected().refresh_view()?;
+        Ok(())
+    }
     /// Open the file with configured opener or enter the directory.
-    pub fn exec_file(status: &mut Status) -> Result<()> {
+    pub fn leave_file(status: &mut Status) -> Result<()> {
         let tab = status.selected();
         if tab.path_content.is_empty() {
             return Ok(());
@@ -1030,7 +1028,7 @@ impl EventExec {
     }
 
     /// Jump to the current mark.
-    pub fn exec_marks_jump(status: &mut Status) -> Result<()> {
+    pub fn leave_marks_jump(status: &mut Status) -> Result<()> {
         let marks = status.marks.clone();
         let tab = status.selected();
         if let Some((_, path)) = marks.selected() {
@@ -1045,7 +1043,7 @@ impl EventExec {
     /// Update the selected mark with the current path.
     /// Doesn't change its char.
     /// If it doesn't fail, a new pair will be set with (oldchar, new path).
-    pub fn exec_marks_update(status: &mut Status) -> Result<()> {
+    pub fn leave_marks_update(status: &mut Status) -> Result<()> {
         let marks = status.marks.clone();
         let len = status.selected_non_mut().path_content.content.len();
         if let Some((ch, _)) = marks.selected() {
@@ -1058,36 +1056,15 @@ impl EventExec {
         Ok(())
     }
 
-    /// Execute a new mark, saving it to a config file for futher use.
-    pub fn exec_marks_new(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
-        let path = status.selected().path_content.path.clone();
-        status.marks.new_mark(c, path)?;
-        tab_refresh_view(status.selected())?;
-        status.selected().reset_mode();
-        refresh_status(status, colors)
-    }
-
-    /// Execute a jump to a mark, moving to a valid path.
-    /// If the saved path is invalid, it does nothing but reset the view.
-    pub fn exec_marks_jump_char(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
-        if let Some(path) = status.marks.get(c) {
-            status.selected().set_pathcontent(&path)?;
-            status.selected().history.push(&path);
-        }
-        tab_refresh_view(status.selected())?;
-        status.selected().reset_mode();
-        refresh_status(status, colors)
-    }
-
-    pub fn exec_bulk(status: &mut Status) -> Result<()> {
+    pub fn leave_bulk(status: &mut Status) -> Result<()> {
         status.bulk.execute_bulk(status)
     }
 
-    pub fn exec_shellmenu(status: &mut Status) -> Result<()> {
+    pub fn leave_shellmenu(status: &mut Status) -> Result<()> {
         status.shell_menu.execute(status)
     }
 
-    pub fn exec_cli_info(status: &mut Status) -> Result<()> {
+    pub fn leave_cli_info(status: &mut Status) -> Result<()> {
         let output = status.cli_info.execute()?;
         info!("output\n{output}");
         status.selected().set_mode(Mode::Preview);
@@ -1101,7 +1078,7 @@ impl EventExec {
     /// the file.
     /// Nothing is done if the user typed nothing or an invalid permission like
     /// 955.
-    pub fn exec_chmod(status: &mut Status) -> Result<()> {
+    pub fn leave_chmod(status: &mut Status) -> Result<()> {
         if status.selected().input.is_empty() {
             return Ok(());
         }
@@ -1117,7 +1094,7 @@ impl EventExec {
         status.reset_tabs_view()
     }
 
-    pub fn exec_set_nvim_addr(status: &mut Status) -> Result<()> {
+    pub fn leave_set_nvim_addr(status: &mut Status) -> Result<()> {
         status.nvim_server = status.selected_non_mut().input.string();
         status.selected().reset_mode();
         Ok(())
@@ -1126,7 +1103,7 @@ impl EventExec {
     /// Execute a jump to the selected flagged file.
     /// If the user selected a directory, we jump inside it.
     /// Otherwise, we jump to the parent and select the file.
-    pub fn exec_jump(status: &mut Status) -> Result<()> {
+    pub fn leave_jump(status: &mut Status) -> Result<()> {
         let Some(jump_target) = status.flagged.selected() else { return Ok(()) };
         let jump_target = jump_target.to_owned();
         let target_dir = match jump_target.parent() {
@@ -1140,19 +1117,8 @@ impl EventExec {
         Ok(())
     }
 
-    /// Execute a command requiring a confirmation (Delete, Move or Copy).
-    pub fn exec_confirmed_action(
-        status: &mut Status,
-        confirmed_action: NeedConfirmation,
-        colors: &Colors,
-    ) -> Result<()> {
-        _exec_confirmed_action(status, confirmed_action, colors)?;
-        status.selected().reset_mode();
-        Ok(())
-    }
-
     /// Select the first file matching the typed regex in current dir.
-    pub fn exec_regex(status: &mut Status) -> Result<(), regex::Error> {
+    pub fn leave_regex(status: &mut Status) -> Result<(), regex::Error> {
         status.select_from_regex()?;
         status.selected().input.reset();
         Ok(())
@@ -1161,7 +1127,7 @@ impl EventExec {
     /// Execute a shell command typed by the user.
     /// pipes and redirections aren't NotSupported
     /// expansions are supported
-    pub fn exec_shell(status: &mut Status) -> Result<bool> {
+    pub fn leave_shell(status: &mut Status) -> Result<bool> {
         let shell_command = status.selected_non_mut().input.string();
         let mut args = ShellCommandParser::new(&shell_command).compute(status)?;
         info!("command {shell_command} args: {args:?}");
@@ -1172,7 +1138,7 @@ impl EventExec {
         let executable = args.remove(0);
         if is_sudo_command(&executable) {
             status.sudo_command = Some(shell_command);
-            bla_ask_password(status, PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
+            helper_ask_password(status, PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
             Ok(false)
         } else {
             let Ok(executable) = which(executable) else { return Ok(true); };
@@ -1195,7 +1161,7 @@ impl EventExec {
     /// It uses the `fs::rename` function and has the same limitations.
     /// We only try to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
-    pub fn exec_rename(tab: &mut Tab) -> Result<()> {
+    pub fn leave_rename(tab: &mut Tab) -> Result<()> {
         let fileinfo = match tab.previous_mode {
             Mode::Tree => &tab.directory.tree.current_node.fileinfo,
             _ => tab
@@ -1226,7 +1192,7 @@ impl EventExec {
     /// Creates a new file with input string as name.
     /// Nothing is done if the file already exists.
     /// Filename is sanitized before processing.
-    pub fn exec_newfile(tab: &mut Tab) -> Result<()> {
+    pub fn leave_newfile(tab: &mut Tab) -> Result<()> {
         let path = tab
             .path_content
             .path
@@ -1243,7 +1209,7 @@ impl EventExec {
     /// We use `fs::create_dir` internally so it will fail if the input string
     /// ie. the user can create `newdir` or `newdir/newfolder`.
     /// Directory name is sanitized before processing.
-    pub fn exec_newdir(tab: &mut Tab) -> Result<()> {
+    pub fn leave_newdir(tab: &mut Tab) -> Result<()> {
         let path = tab
             .path_content
             .path
@@ -1259,7 +1225,7 @@ impl EventExec {
     /// from the input string. It will fail silently if the executable can't
     /// be found.
     /// Optional parameters can be passed normally. ie. `"ls -lah"`
-    pub fn exec_exec(tab: &mut Tab) -> Result<()> {
+    pub fn leave_exec(tab: &mut Tab) -> Result<()> {
         if tab.path_content.content.is_empty() {
             return Err(anyhow!("exec exec: empty directory"));
         }
@@ -1278,7 +1244,7 @@ impl EventExec {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn exec_search(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn leave_search(status: &mut Status, colors: &Colors) -> Result<()> {
         let tab = status.selected();
         let searched = tab.input.string();
         tab.input.reset();
@@ -1312,7 +1278,7 @@ impl EventExec {
     /// The first completion proposition is used, `~` expansion is done.
     /// If no result were found, no cd is done and we go back to normal mode
     /// silently.
-    pub fn exec_goto(tab: &mut Tab) -> Result<()> {
+    pub fn leave_goto(tab: &mut Tab) -> Result<()> {
         if tab.completion.is_empty() {
             return Ok(());
         }
@@ -1327,7 +1293,7 @@ impl EventExec {
 
     /// Move to the selected shortcut.
     /// It may fail if the user has no permission to visit the path.
-    pub fn exec_shortcut(tab: &mut Tab) -> Result<()> {
+    pub fn leave_shortcut(tab: &mut Tab) -> Result<()> {
         tab.input.reset();
         let path = tab
             .shortcut
@@ -1341,7 +1307,7 @@ impl EventExec {
 
     /// Move back to a previously visited path.
     /// It may fail if the user has no permission to visit the path
-    pub fn exec_history(tab: &mut Tab) -> Result<()> {
+    pub fn leave_history(tab: &mut Tab) -> Result<()> {
         tab.input.reset();
         let path = tab
             .history
@@ -1353,23 +1319,8 @@ impl EventExec {
         tab_refresh_view(tab)
     }
 
-    /// Apply a filter to the displayed files.
-    /// See `crate::filter` for more details.
-    pub fn exec_filter(status: &mut Status, colors: &Colors) -> Result<()> {
-        let tab = status.selected();
-        let filter = FilterKind::from_input(&tab.input.string());
-        tab.set_filter(filter);
-        tab.input.reset();
-        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
-        if let Mode::Tree = tab.previous_mode {
-            tab.make_tree(colors)?;
-        }
-        tab.window.reset(tab.path_content.content.len());
-        Ok(())
-    }
-
     /// Execute the selected node if it's a file else enter the directory.
-    pub fn exec_tree(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn leave_tree(status: &mut Status, colors: &Colors) -> Result<()> {
         let tab = status.selected();
         let node = tab.directory.tree.current_node.clone();
         if !node.is_dir {
@@ -1382,7 +1333,7 @@ impl EventExec {
     }
 
     /// Store a password of some kind (sudo or device passphrase).
-    fn exec_store_password(status: &mut Status, password_kind: PasswordKind) -> Result<()> {
+    fn leave_password(status: &mut Status, password_kind: PasswordKind) -> Result<()> {
         let password = status.selected_non_mut().input.string();
         match password_kind {
             PasswordKind::SUDO => status.password_holder.set_sudo(password),
@@ -1395,7 +1346,7 @@ impl EventExec {
     /// Compress the flagged files into an archive.
     /// Compression method is chosen by the user.
     /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
-    fn exec_compress(status: &mut Status) -> Result<()> {
+    fn leave_compress(status: &mut Status) -> Result<()> {
         let cwd = std::env::current_dir()?;
         let files_with_relative_paths = status
             .flagged
@@ -1409,7 +1360,7 @@ impl EventExec {
     /// Execute the selected command.
     /// Some commands does nothing as they require to be executed from a specific
     /// context.
-    pub fn exec_command(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn leave_command(status: &mut Status, colors: &Colors) -> Result<()> {
         let command_str = status.selected_non_mut().completion.current_proposition();
         let Ok(command) = ActionMap::from_str(command_str) else { return Ok(()) };
         command.matcher(status, colors)
@@ -1423,7 +1374,7 @@ fn string_to_path(path_string: &str) -> Result<path::PathBuf> {
 }
 
 /// Move down one row if possible.
-pub fn bla_down_one_row(tab: &mut Tab) {
+pub fn helper_down_one_row(tab: &mut Tab) {
     match tab.mode {
         Mode::Normal => {
             tab.path_content.unselect_current();
@@ -1442,7 +1393,7 @@ pub fn tab_refresh_view(tab: &mut Tab) -> Result<()> {
 }
 
 /// Move up one row if possible.
-pub fn bla_up_one_row(tab: &mut Tab) {
+pub fn helper_up_one_row(tab: &mut Tab) {
     match tab.mode {
         Mode::Normal => {
             tab.path_content.unselect_current();
@@ -1456,7 +1407,7 @@ pub fn bla_up_one_row(tab: &mut Tab) {
 }
 
 /// Move to the top of the current directory.
-pub fn bla_go_top(tab: &mut Tab) {
+pub fn helper_go_top(tab: &mut Tab) {
     match tab.mode {
         Mode::Normal => tab.path_content.select_index(0),
         Mode::Preview => (),
@@ -1470,86 +1421,86 @@ pub fn bla_go_top(tab: &mut Tab) {
 /// Move to parent directory if there's one.
 /// Does
 /// Add the starting directory to history.
-pub fn bla_move_to_parent(tab: &mut Tab) -> Result<()> {
+pub fn helper_move_to_parent(tab: &mut Tab) -> Result<()> {
     tab.move_to_parent()
 }
 
 /// Move the cursor left one block.
-pub fn bla_move_cursor_left(tab: &mut Tab) {
+pub fn helper_move_cursor_left(tab: &mut Tab) {
     tab.input.cursor_left()
 }
 
 /// Move the cursor to the right in input string.
-pub fn bla_move_cursor_right(tab: &mut Tab) {
+pub fn helper_move_cursor_right(tab: &mut Tab) {
     tab.input.cursor_right()
 }
 
 /// Delete the char to the left in input string.
-pub fn bla_delete_char_left(tab: &mut Tab) {
+pub fn helper_delete_char_left(tab: &mut Tab) {
     tab.input.delete_char_left()
 }
 
 /// Delete all chars right of the cursor in input string.
-pub fn bla_delete_chars_right(tab: &mut Tab) {
+pub fn helper_delete_chars_right(tab: &mut Tab) {
     tab.input.delete_chars_right()
 }
 
 /// Add a char to input string, look for a possible completion.
-pub fn bla_text_insert_and_complete(tab: &mut Tab, c: char) -> Result<()> {
-    bla_text_insertion(tab, c);
+pub fn helper_text_insert_and_complete(tab: &mut Tab, c: char) -> Result<()> {
+    helper_text_insertion(tab, c);
     tab.fill_completion()
 }
 
 /// Insert a char in the input string.
-pub fn bla_text_insertion(tab: &mut Tab, c: char) {
+pub fn helper_text_insertion(tab: &mut Tab, c: char) {
     tab.input.insert(c);
 }
 
 /// Fold every child node in the tree.
 /// Recursively explore the tree and fold every node. Reset the display.
-pub fn bla_tree_go_to_root(tab: &mut Tab, colors: &Colors) -> Result<()> {
+pub fn helper_tree_go_to_root(tab: &mut Tab, colors: &Colors) -> Result<()> {
     tab.directory.tree.reset_required_height();
     tab.tree_select_root(colors)
 }
 
 /// Select the first child of the current node and reset the display.
-pub fn bla_select_first_child(tab: &mut Tab, colors: &Colors) -> Result<()> {
+pub fn helper_select_first_child(tab: &mut Tab, colors: &Colors) -> Result<()> {
     tab.directory.tree.increase_required_height();
     tab.tree_select_first_child(colors)
 }
 
 /// Select the parent of the current node and reset the display.
 /// Move to the parent and reset the tree if we were in the root node.
-pub fn bla_select_parent(tab: &mut Tab, colors: &Colors) -> Result<()> {
+pub fn helper_select_parent(tab: &mut Tab, colors: &Colors) -> Result<()> {
     tab.tree_select_parent(colors)
 }
 
 /// Select the next sibling of the current node.
-pub fn bla_select_next(tab: &mut Tab, colors: &Colors) -> Result<()> {
+pub fn helper_select_next(tab: &mut Tab, colors: &Colors) -> Result<()> {
     tab.directory.tree.increase_required_height();
     tab.tree_select_next(colors)
 }
 
 /// Select the previous sibling of the current node.
-pub fn bla_select_prev(tab: &mut Tab, colors: &Colors) -> Result<()> {
+pub fn helper_select_prev(tab: &mut Tab, colors: &Colors) -> Result<()> {
     tab.directory.tree.decrease_required_height();
     tab.tree_select_prev(colors)
 }
 
 /// Move up 10 lines in the tree
-pub fn bla_tree_page_up(tab: &mut Tab, colors: &Colors) -> Result<()> {
+pub fn helper_tree_page_up(tab: &mut Tab, colors: &Colors) -> Result<()> {
     tab.directory.tree.decrease_required_height_by_ten();
     tab.tree_page_up(colors)
 }
 
 /// Move down 10 lines in the tree
-pub fn bla_tree_page_down(tab: &mut Tab, colors: &Colors) -> Result<()> {
+pub fn helper_tree_page_down(tab: &mut Tab, colors: &Colors) -> Result<()> {
     tab.directory.tree.increase_required_height_by_ten();
     tab.tree_page_down(colors)
 }
 
 /// Select the last leaf of the tree and reset the view.
-pub fn bla_tree_go_to_bottom_leaf(tab: &mut Tab, colors: &Colors) -> Result<()> {
+pub fn helper_tree_go_to_bottom_leaf(tab: &mut Tab, colors: &Colors) -> Result<()> {
     tab.directory.tree.set_required_height(usize::MAX);
     tab.tree_go_to_bottom_leaf(colors)
 }
@@ -1582,23 +1533,23 @@ fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
 }
 
 /// Copy the selected filename to the clipboard. Only the filename.
-pub fn bla_filename_to_clipboard(tab: &Tab) -> Result<()> {
+pub fn helper_filename_to_clipboard(tab: &Tab) -> Result<()> {
     set_clipboard(
         tab.selected()
-            .context("bla_filename_to_clipboard: no selected file")?
+            .context("helper_filename_to_clipboard: no selected file")?
             .filename
             .clone(),
     )
 }
 
 /// Copy the selected filepath to the clipboard. The absolute path.
-pub fn bla_filepath_to_clipboard(tab: &Tab) -> Result<()> {
+pub fn helper_filepath_to_clipboard(tab: &Tab) -> Result<()> {
     set_clipboard(
         tab.selected()
-            .context("bla_filepath_to_clipboard: no selected file")?
+            .context("helper_filepath_to_clipboard: no selected file")?
             .path
             .to_str()
-            .context("bla_filepath_to_clipboard: no selected file")?
+            .context("helper_filepath_to_clipboard: no selected file")?
             .to_owned(),
     )
 }
@@ -1613,21 +1564,21 @@ fn set_clipboard(content: String) -> Result<()> {
 }
 
 /// A right click opens a file or a directory.
-pub fn bla_right_click(status: &mut Status, colors: &Colors) -> Result<()> {
+pub fn helper_right_click(status: &mut Status, colors: &Colors) -> Result<()> {
     match status.selected().mode {
-        Mode::Normal => EventExec::exec_file(status),
-        Mode::Tree => EventExec::exec_tree(status, colors),
+        Mode::Normal => EventExec::leave_file(status),
+        Mode::Tree => EventExec::leave_tree(status, colors),
         _ => Ok(()),
     }
 }
 
 /// Replace the input string by the selected completion.
-pub fn bla_replace_input_with_completion(tab: &mut Tab) {
+pub fn helper_replace_input_with_completion(tab: &mut Tab) {
     tab.input.replace(tab.completion.current_proposition())
 }
 
 /// Ask for a password of some kind (sudo or device passphrase).
-pub fn bla_ask_password(
+pub fn helper_ask_password(
     status: &mut Status,
     password_kind: PasswordKind,
     encrypted_action: Option<BlockDeviceAction>,
@@ -1652,13 +1603,13 @@ fn dispatch_password(
 ) -> Result<()> {
     match dest {
         PasswordUsage::ISO => match action {
-            Some(BlockDeviceAction::MOUNT) => bla_mount_iso_drive(status),
-            Some(BlockDeviceAction::UMOUNT) => bla_umount_iso_drive(status),
+            Some(BlockDeviceAction::MOUNT) => helper_mount_iso_drive(status),
+            Some(BlockDeviceAction::UMOUNT) => helper_umount_iso_drive(status),
             None => Ok(()),
         },
         PasswordUsage::CRYPTSETUP => match action {
-            Some(BlockDeviceAction::MOUNT) => bla_mount_encrypted_drive(status),
-            Some(BlockDeviceAction::UMOUNT) => bla_umount_encrypted_drive(status),
+            Some(BlockDeviceAction::MOUNT) => helper_mount_encrypted_drive(status),
+            Some(BlockDeviceAction::UMOUNT) => helper_umount_encrypted_drive(status),
             None => Ok(()),
         },
         PasswordUsage::SUDOCOMMAND => run_sudo_command(status, colors),
@@ -1674,7 +1625,7 @@ fn is_sudo_command(executable: &str) -> bool {
 }
 
 /// Move to the bottom of current view.
-pub fn bla_go_bottom(tab: &mut Tab) {
+pub fn helper_go_bottom(tab: &mut Tab) {
     match tab.mode {
         Mode::Normal => {
             let last_index = tab.path_content.content.len() - 1;
@@ -1687,17 +1638,17 @@ pub fn bla_go_bottom(tab: &mut Tab) {
 }
 
 /// Move the cursor to the start of line.
-pub fn bla_cursor_home(tab: &mut Tab) {
+pub fn helper_cursor_home(tab: &mut Tab) {
     tab.input.cursor_start()
 }
 
 /// Move the cursor to the end of line.
-pub fn bla_cursor_end(tab: &mut Tab) {
+pub fn helper_cursor_end(tab: &mut Tab) {
     tab.input.cursor_end()
 }
 
 /// Select the left or right tab depending on where the user clicked.
-pub fn bla_select_pane(status: &mut Status, col: u16) -> Result<()> {
+pub fn helper_select_pane(status: &mut Status, col: u16) -> Result<()> {
     let (width, _) = status.term_size()?;
     if (col as usize) < width / 2 {
         status.select_tab(0)?;
@@ -1708,7 +1659,7 @@ pub fn bla_select_pane(status: &mut Status, col: u16) -> Result<()> {
 }
 
 /// Select a given row, if there's something in it.
-pub fn bla_select_row(status: &mut Status, row: u16, colors: &Colors) -> Result<()> {
+pub fn helper_select_row(status: &mut Status, row: u16, colors: &Colors) -> Result<()> {
     let tab = status.selected();
     match tab.mode {
         Mode::Normal => {
@@ -1779,14 +1730,14 @@ pub fn page_down(tab: &mut Tab) {
 }
 
 /// Remove the selected element in the trash folder.
-pub fn bla_trash_remove_file(status: &mut Status) -> Result<()> {
+pub fn helper_trash_remove_file(status: &mut Status) -> Result<()> {
     status.trash.remove()
 }
 
 /// Mount the currently selected file (which should be an .iso file) to
 /// `/run/media/$CURRENT_USER/fm_iso`
 /// Ask a sudo password first if needed. It should always be the case.
-pub fn bla_mount_iso_drive(status: &mut Status) -> Result<()> {
+pub fn helper_mount_iso_drive(status: &mut Status) -> Result<()> {
     let path = status
         .selected_non_mut()
         .path_content
@@ -1797,7 +1748,7 @@ pub fn bla_mount_iso_drive(status: &mut Status) -> Result<()> {
     }
     if let Some(ref mut iso_device) = status.iso_device {
         if !status.password_holder.has_sudo() {
-            bla_ask_password(
+            helper_ask_password(
                 status,
                 PasswordKind::SUDO,
                 Some(BlockDeviceAction::MOUNT),
@@ -1822,10 +1773,10 @@ pub fn bla_mount_iso_drive(status: &mut Status) -> Result<()> {
 
 /// Currently unused.
 /// Umount an iso device.
-pub fn bla_umount_iso_drive(status: &mut Status) -> Result<()> {
+pub fn helper_umount_iso_drive(status: &mut Status) -> Result<()> {
     if let Some(ref mut iso_device) = status.iso_device {
         if !status.password_holder.has_sudo() {
-            bla_ask_password(
+            helper_ask_password(
                 status,
                 PasswordKind::SUDO,
                 Some(BlockDeviceAction::UMOUNT),
@@ -1841,16 +1792,16 @@ pub fn bla_umount_iso_drive(status: &mut Status) -> Result<()> {
 /// Mount the selected encrypted device. Will ask first for sudo password and
 /// passphrase.
 /// Those passwords are always dropped immediatly after the commands are run.
-pub fn bla_mount_encrypted_drive(status: &mut Status) -> Result<()> {
+pub fn helper_mount_encrypted_drive(status: &mut Status) -> Result<()> {
     if !status.password_holder.has_sudo() {
-        bla_ask_password(
+        helper_ask_password(
             status,
             PasswordKind::SUDO,
             Some(BlockDeviceAction::MOUNT),
             PasswordUsage::CRYPTSETUP,
         )
     } else if !status.password_holder.has_cryptsetup() {
-        bla_ask_password(
+        helper_ask_password(
             status,
             PasswordKind::CRYPTSETUP,
             Some(BlockDeviceAction::MOUNT),
@@ -1864,7 +1815,7 @@ pub fn bla_mount_encrypted_drive(status: &mut Status) -> Result<()> {
 }
 
 /// Move to the selected crypted device mount point.
-pub fn bla_move_to_encrypted_drive(status: &mut Status) -> Result<()> {
+pub fn helper_move_to_encrypted_drive(status: &mut Status) -> Result<()> {
     let Some(device) = status.encrypted_devices.selected() else { return Ok(()) };
     let Some(mount_point) = device.mount_point() else { return Ok(())};
     let tab = status.selected();
@@ -1876,9 +1827,9 @@ pub fn bla_move_to_encrypted_drive(status: &mut Status) -> Result<()> {
 
 /// Unmount the selected device.
 /// Will ask first for a sudo password which is immediatly forgotten.
-pub fn bla_umount_encrypted_drive(status: &mut Status) -> Result<()> {
+pub fn helper_umount_encrypted_drive(status: &mut Status) -> Result<()> {
     if !status.password_holder.has_sudo() {
-        bla_ask_password(
+        helper_ask_password(
             status,
             PasswordKind::SUDO,
             Some(BlockDeviceAction::UMOUNT),
@@ -1915,7 +1866,7 @@ pub fn refresh_status(status: &mut Status, colors: &Colors) -> Result<()> {
 
 /// Leave a mode requiring a confirmation without doing anything.
 /// Reset the mode to the previous mode.
-pub fn bla_leave_need_confirmation(tab: &mut Tab) {
+pub fn helper_leave_need_confirmation(tab: &mut Tab) {
     tab.reset_mode();
 }
 
@@ -1928,7 +1879,7 @@ pub fn bla_leave_need_confirmation(tab: &mut Tab) {
 /// by extension.
 /// The first letter is used to identify the method.
 /// If the user types an uppercase char, the sort is reverse.
-pub fn bla_leave_sort(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
+pub fn helper_leave_sort(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
     if status.selected_non_mut().path_content.content.is_empty() {
         return Ok(());
     }
@@ -1939,7 +1890,7 @@ pub fn bla_leave_sort(status: &mut Status, c: char, colors: &Colors) -> Result<(
             tab.path_content.unselect_current();
             tab.path_content.update_sort_from_char(c);
             tab.path_content.sort();
-            bla_go_top(tab);
+            helper_go_top(tab);
             tab.path_content.select_index(0);
         }
         Mode::Tree => {
@@ -2021,4 +1972,51 @@ fn execute_custom(tab: &mut Tab, exec_command: String) -> Result<bool> {
     args.push(path);
     execute_in_child(command, &args)?;
     Ok(true)
+}
+
+/// Execute a new mark, saving it to a config file for futher use.
+pub fn exec_marks_new(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
+    let path = status.selected().path_content.path.clone();
+    status.marks.new_mark(c, path)?;
+    tab_refresh_view(status.selected())?;
+    status.selected().reset_mode();
+    refresh_status(status, colors)
+}
+
+/// Execute a jump to a mark, moving to a valid path.
+/// If the saved path is invalid, it does nothing but reset the view.
+pub fn exec_marks_jump_char(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
+    if let Some(path) = status.marks.get(c) {
+        status.selected().set_pathcontent(&path)?;
+        status.selected().history.push(&path);
+    }
+    tab_refresh_view(status.selected())?;
+    status.selected().reset_mode();
+    refresh_status(status, colors)
+}
+
+/// Apply a filter to the displayed files.
+/// See `crate::filter` for more details.
+pub fn exec_filter(status: &mut Status, colors: &Colors) -> Result<()> {
+    let tab = status.selected();
+    let filter = FilterKind::from_input(&tab.input.string());
+    tab.set_filter(filter);
+    tab.input.reset();
+    tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
+    if let Mode::Tree = tab.previous_mode {
+        tab.make_tree(colors)?;
+    }
+    tab.window.reset(tab.path_content.content.len());
+    Ok(())
+}
+
+/// Execute a command requiring a confirmation (Delete, Move or Copy).
+pub fn exec_confirmed_action(
+    status: &mut Status,
+    confirmed_action: NeedConfirmation,
+    colors: &Colors,
+) -> Result<()> {
+    _exec_confirmed_action(status, confirmed_action, colors)?;
+    status.selected().reset_mode();
+    Ok(())
 }

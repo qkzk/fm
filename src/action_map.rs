@@ -186,7 +186,7 @@ impl ActionMap {
             ActionMap::TrashEmpty => EventExec::event_trash_empty(status),
             ActionMap::TrashMoveFile => EventExec::event_trash_move_file(status),
             ActionMap::TrashOpen => EventExec::event_trash_open(status),
-            ActionMap::TrashRestoreFile => EventExec::event_trash_restore_file(status),
+            ActionMap::TrashRestoreFile => EventExec::leave_trash(status),
             ActionMap::Tree => EventExec::event_tree(status, colors),
             ActionMap::TreeFold => EventExec::event_tree_fold(current_tab, colors),
             ActionMap::TreeFoldAll => EventExec::event_tree_fold_all(current_tab, colors),
