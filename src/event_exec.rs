@@ -673,7 +673,7 @@ impl EventAction {
             }
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
-                LeaveMode::filter(status, colors)?
+                LeaveMode::filter(status.selected(), colors)?
             }
             Mode::InputSimple(InputSimple::Password(kind, action, dest)) => {
                 must_refresh = false;
@@ -698,7 +698,7 @@ impl EventAction {
             Mode::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
-                LeaveMode::search(status, colors)?
+                LeaveMode::search(status.selected(), colors)?
             }
             Mode::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status.selected())?,
             Mode::InputCompleted(InputCompleted::Command) => LeaveMode::command(status, colors)?,
@@ -1246,8 +1246,7 @@ impl LeaveMode {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn search(status: &mut Status, colors: &Colors) -> Result<()> {
-        let tab = status.selected();
+    pub fn search(tab: &mut Tab, colors: &Colors) -> Result<()> {
         let searched = tab.input.string();
         tab.input.reset();
         if searched.is_empty() {
@@ -1374,10 +1373,18 @@ impl LeaveMode {
         command.matcher(status, colors)
     }
 
+    /// A right click opens a file or a directory.
+    pub fn right_click(status: &mut Status, colors: &Colors) -> Result<()> {
+        match status.selected().mode {
+            Mode::Normal => LeaveMode::open_file(status),
+            Mode::Tree => LeaveMode::tree(status, colors),
+            _ => Ok(()),
+        }
+    }
+
     /// Apply a filter to the displayed files.
     /// See `crate::filter` for more details.
-    pub fn filter(status: &mut Status, colors: &Colors) -> Result<()> {
-        let tab = status.selected();
+    pub fn filter(tab: &mut Tab, colors: &Colors) -> Result<()> {
         let filter = FilterKind::from_input(&tab.input.string());
         tab.set_filter(filter);
         tab.input.reset();
@@ -1387,14 +1394,5 @@ impl LeaveMode {
         }
         tab.window.reset(tab.path_content.content.len());
         Ok(())
-    }
-
-    /// A right click opens a file or a directory.
-    pub fn right_click(status: &mut Status, colors: &Colors) -> Result<()> {
-        match status.selected().mode {
-            Mode::Normal => LeaveMode::open_file(status),
-            Mode::Tree => LeaveMode::tree(status, colors),
-            _ => Ok(()),
-        }
     }
 }
