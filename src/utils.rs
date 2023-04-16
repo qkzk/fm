@@ -3,10 +3,12 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use copypasta::{ClipboardContext, ClipboardProvider};
 use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 use users::{get_current_uid, get_user_by_uid};
 
+use crate::content_window::RESERVED_ROWS;
 use crate::event_dispatch::EventDispatcher;
 use crate::fileinfo::human_size;
 use crate::status::Status;
@@ -123,4 +125,17 @@ pub fn is_program_in_path(program: &str) -> bool {
 /// Extract the lines of a string
 pub fn extract_lines(content: String) -> Vec<String> {
     content.lines().map(|line| line.to_string()).collect()
+}
+
+pub fn set_clipboard(content: String) -> Result<()> {
+    log::info!("copied to clipboard: {}", content);
+    let Ok(mut ctx) = ClipboardContext::new() else { return Ok(()); };
+    let Ok(_) = ctx.set_contents(content) else { return Ok(()); };
+    // For some reason, it's not writen if you don't read it back...
+    let _ = ctx.get_contents();
+    Ok(())
+}
+
+pub fn row_to_index(row: u16) -> usize {
+    row as usize - RESERVED_ROWS
 }

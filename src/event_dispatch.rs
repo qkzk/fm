@@ -39,12 +39,12 @@ impl EventDispatcher {
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
                 Helper::select_pane(status, col)?;
-                Helper::select_row(status, row, colors)?;
+                status.selected().select_row(row, colors)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Right, row, col))
             | Event::Key(Key::DoubleClick(MouseButton::Left, row, col)) => {
                 Helper::select_pane(status, col)?;
-                Helper::select_row(status, row, colors)?;
+                status.selected().select_row(row, colors)?;
                 Helper::right_click(status, colors)?;
             }
             Event::User(_) => Helper::refresh_status(status, colors)?,
@@ -70,17 +70,23 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, key_char: Key, colors: &Colors) -> Result<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
-                Mode::InputSimple(InputSimple::Sort) => Helper::sort(status, c, colors),
+                Mode::InputSimple(InputSimple::Sort) => status.selected().sort(c, colors),
                 Mode::InputSimple(InputSimple::RegexMatch) => {
-                    Helper::text_insertion(status.selected(), c);
+                    {
+                        let tab: &mut Tab = status.selected();
+                        tab.input.insert(c);
+                    };
                     status.select_from_regex()?;
                     Ok(())
                 }
                 Mode::InputSimple(_) => {
-                    Helper::text_insertion(status.selected(), c);
+                    {
+                        let tab: &mut Tab = status.selected();
+                        tab.input.insert(c);
+                    };
                     Ok(())
                 }
-                Mode::InputCompleted(_) => Helper::text_insert_and_complete(status.selected(), c),
+                Mode::InputCompleted(_) => status.selected().text_insert_and_complete(c),
                 Mode::Normal | Mode::Tree => match self.binds.get(&key_char) {
                     Some(char) => char.matcher(status, colors),
                     None => Ok(()),
@@ -89,10 +95,10 @@ impl EventDispatcher {
                     if c == 'y' {
                         let _ = Helper::confirm_action(status, confirmed_action, colors);
                     }
-                    Helper::need_confirmation(status.selected());
+                    status.selected().reset_mode();
                     Ok(())
                 }
-                Mode::Navigate(Navigate::Trash) if c == 'x' => Helper::trash_remove_file(status),
+                Mode::Navigate(Navigate::Trash) if c == 'x' => status.trash.remove(),
                 Mode::Navigate(Navigate::EncryptedDrive) if c == 'm' => {
                     Helper::mount_encrypted_drive(status)
                 }
