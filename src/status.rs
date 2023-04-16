@@ -20,19 +20,26 @@ use crate::compress::Compresser;
 use crate::config::{Colors, Settings};
 use crate::constant_strings_paths::TUIS_PATH;
 use crate::copy_move::{copy_move, CopyMove};
-use crate::cryptsetup::CryptoDeviceOpener;
+use crate::cryptsetup::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::flagged::Flagged;
 use crate::iso::IsoDevice;
 use crate::marks::Marks;
+use crate::mode::{InputSimple, Mode, NeedConfirmation};
+use crate::mount_help::MountHelper;
 use crate::opener::Opener;
-use crate::password::PasswordHolder;
+use crate::password::{
+    drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock, PasswordHolder,
+    PasswordKind, PasswordUsage,
+};
 use crate::preview::{Directory, Preview};
+use crate::selectable_content::SelectableContent;
 use crate::shell_menu::{load_shell_menu, ShellMenu};
+use crate::shell_parser::ShellCommandParser;
 use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::trash::Trash;
-use crate::utils::{disk_space, filename_from_path};
+use crate::utils::{current_username, disk_space, filename_from_path};
 
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.
@@ -441,6 +448,279 @@ impl Status {
     /// We ensure to clear it before displaying again.
     pub fn force_clear(&mut self) {
         self.force_clear = true;
+    }
+
+    /// Mount the currently selected file (which should be an .iso file) to
+    /// `/run/media/$CURRENT_USER/fm_iso`
+    /// Ask a sudo password first if needed. It should always be the case.
+    pub fn mount_iso_drive(&mut self) -> Result<()> {
+        let path = self
+            .selected_non_mut()
+            .path_content
+            .selected_path_string()
+            .context("Couldn't parse the path")?;
+        if self.iso_device.is_none() {
+            self.iso_device = Some(IsoDevice::from_path(path));
+        }
+        if let Some(ref mut iso_device) = self.iso_device {
+            if !self.password_holder.has_sudo() {
+                Self::ask_password(
+                    self,
+                    PasswordKind::SUDO,
+                    Some(BlockDeviceAction::MOUNT),
+                    PasswordUsage::ISO,
+                )?;
+            } else {
+                if iso_device.mount(&current_username()?, &mut self.password_holder)? {
+                    info!("iso mounter mounted {iso_device:?}");
+                    info!(
+                        target: "special",
+                        "iso :\n{}",
+                        iso_device.as_string()?,
+                    );
+                    let path = iso_device.mountpoints.clone().context("no mount point")?;
+                    self.selected().set_pathcontent(&path)?;
+                };
+                self.iso_device = None;
+            };
+        }
+        Ok(())
+    }
+
+    /// Currently unused.
+    /// Umount an iso device.
+    pub fn umount_iso_drive(&mut self) -> Result<()> {
+        if let Some(ref mut iso_device) = self.iso_device {
+            if !self.password_holder.has_sudo() {
+                Self::ask_password(
+                    self,
+                    PasswordKind::SUDO,
+                    Some(BlockDeviceAction::UMOUNT),
+                    PasswordUsage::ISO,
+                )?;
+            } else {
+                iso_device.umount(&current_username()?, &mut self.password_holder)?;
+            };
+        }
+        Ok(())
+    }
+
+    /// Mount the selected encrypted device. Will ask first for sudo password and
+    /// passphrase.
+    /// Those passwords are always dropped immediatly after the commands are run.
+    pub fn mount_encrypted_drive(&mut self) -> Result<()> {
+        if !self.password_holder.has_sudo() {
+            Self::ask_password(
+                self,
+                PasswordKind::SUDO,
+                Some(BlockDeviceAction::MOUNT),
+                PasswordUsage::CRYPTSETUP,
+            )
+        } else if !self.password_holder.has_cryptsetup() {
+            Self::ask_password(
+                self,
+                PasswordKind::CRYPTSETUP,
+                Some(BlockDeviceAction::MOUNT),
+                PasswordUsage::CRYPTSETUP,
+            )
+        } else {
+            self.encrypted_devices
+                .mount_selected(&mut self.password_holder)
+        }
+    }
+
+    /// Move to the selected crypted device mount point.
+    pub fn move_to_encrypted_drive(&mut self) -> Result<()> {
+        let Some(device) = self.encrypted_devices.selected() else { return Ok(()) };
+        let Some(mount_point) = device.mount_point() else { return Ok(())};
+        let tab = self.selected();
+        let path = std::path::PathBuf::from(mount_point);
+        tab.history.push(&path);
+        tab.set_pathcontent(&path)?;
+        tab.refresh_view()
+    }
+
+    /// Unmount the selected device.
+    /// Will ask first for a sudo password which is immediatly forgotten.
+    pub fn umount_encrypted_drive(&mut self) -> Result<()> {
+        if !self.password_holder.has_sudo() {
+            Self::ask_password(
+                self,
+                PasswordKind::SUDO,
+                Some(BlockDeviceAction::UMOUNT),
+                PasswordUsage::CRYPTSETUP,
+            )
+        } else {
+            self.encrypted_devices
+                .umount_selected(&mut self.password_holder)
+        }
+    }
+
+    /// Ask for a password of some kind (sudo or device passphrase).
+    pub fn ask_password(
+        &mut self,
+        password_kind: PasswordKind,
+        encrypted_action: Option<BlockDeviceAction>,
+        password_dest: PasswordUsage,
+    ) -> Result<()> {
+        info!("event ask password");
+        self.selected()
+            .set_mode(Mode::InputSimple(InputSimple::Password(
+                password_kind,
+                encrypted_action,
+                password_dest,
+            )));
+        Ok(())
+    }
+
+    /// Execute a new mark, saving it to a config file for futher use.
+    pub fn marks_new(&mut self, c: char, colors: &Colors) -> Result<()> {
+        let path = self.selected().path_content.path.clone();
+        self.marks.new_mark(c, path)?;
+        {
+            let tab: &mut Tab = self.selected();
+            tab.refresh_view()
+        }?;
+        self.selected().reset_mode();
+        self.refresh_status(colors)
+    }
+
+    /// Execute a jump to a mark, moving to a valid path.
+    /// If the saved path is invalid, it does nothing but reset the view.
+    pub fn marks_jump_char(&mut self, c: char, colors: &Colors) -> Result<()> {
+        if let Some(path) = self.marks.get(c) {
+            self.selected().set_pathcontent(&path)?;
+            self.selected().history.push(&path);
+        }
+        self.selected().refresh_view()?;
+        self.selected().reset_mode();
+        self.refresh_status(colors)
+    }
+
+    /// Reset the selected tab view to the default.
+    pub fn refresh_status(&mut self, colors: &Colors) -> Result<()> {
+        self.force_clear();
+        self.refresh_users()?;
+        self.selected().refresh_view()?;
+        if let Mode::Tree = self.selected_non_mut().mode {
+            self.selected().make_tree(colors)?
+        }
+        Ok(())
+    }
+
+    /// When a rezise event occurs, we may hide the second panel if the width
+    /// isn't sufficiant to display enough information.
+    /// We also need to know the new height of the terminal to start scrolling
+    /// up or down.
+    pub fn resize(&mut self, width: usize, height: usize, colors: &Colors) -> Result<()> {
+        self.set_dual_pane_if_wide_enough(width)?;
+        self.selected().set_height(height);
+        self.refresh_status(colors)?;
+        Ok(())
+    }
+
+    /// Recursively delete all flagged files.
+    pub fn confirm_delete_files(&mut self, colors: &Colors) -> Result<()> {
+        for pathbuf in self.flagged.content.iter() {
+            if pathbuf.is_dir() {
+                std::fs::remove_dir_all(pathbuf)?;
+            } else {
+                std::fs::remove_file(pathbuf)?;
+            }
+        }
+        self.selected().reset_mode();
+        self.clear_flags_and_reset_view()?;
+        self.refresh_status(colors)
+    }
+
+    /// Empty the trash folder permanently.
+    pub fn confirm_trash_empty(&mut self) -> Result<()> {
+        self.trash.empty_trash()?;
+        self.selected().reset_mode();
+        self.clear_flags_and_reset_view()?;
+        Ok(())
+    }
+
+    fn run_sudo_command(&mut self, colors: &Colors) -> Result<()> {
+        self.selected().set_mode(Mode::Normal);
+        reset_sudo_faillock()?;
+        let Some(sudo_command) = &self.sudo_command else { return Ok(()); };
+        let args = ShellCommandParser::new(sudo_command).compute(self)?;
+        if args.is_empty() {
+            return Ok(());
+        }
+        execute_sudo_command_with_password(
+            &args[1..],
+            &self.password_holder.sudo()?,
+            self.selected_non_mut().directory_of_selected()?,
+        )?;
+        self.password_holder.reset();
+        drop_sudo_privileges()?;
+        self.refresh_status(colors)
+    }
+
+    pub fn dispatch_password(
+        &mut self,
+        dest: PasswordUsage,
+        action: Option<BlockDeviceAction>,
+        colors: &Colors,
+    ) -> Result<()> {
+        match dest {
+            PasswordUsage::ISO => match action {
+                Some(BlockDeviceAction::MOUNT) => self.mount_iso_drive(),
+                Some(BlockDeviceAction::UMOUNT) => self.umount_iso_drive(),
+                None => Ok(()),
+            },
+            PasswordUsage::CRYPTSETUP => match action {
+                Some(BlockDeviceAction::MOUNT) => self.mount_encrypted_drive(),
+                Some(BlockDeviceAction::UMOUNT) => self.umount_encrypted_drive(),
+                None => Ok(()),
+            },
+            PasswordUsage::SUDOCOMMAND => Self::run_sudo_command(self, colors),
+        }
+    }
+
+    pub fn read_nvim_listen_address_if_needed(&mut self) {
+        if !self.nvim_server.is_empty() {
+            return;
+        }
+        let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") else { return; };
+        self.nvim_server = nvim_listen_address;
+    }
+
+    /// Execute a command requiring a confirmation (Delete, Move or Copy).
+    pub fn confirm_action(
+        &mut self,
+        confirmed_action: NeedConfirmation,
+        colors: &Colors,
+    ) -> Result<()> {
+        self.match_confirmed_mode(confirmed_action, colors)?;
+        self.selected().reset_mode();
+        Ok(())
+    }
+
+    fn match_confirmed_mode(
+        &mut self,
+        confirmed_action: NeedConfirmation,
+        colors: &Colors,
+    ) -> Result<()> {
+        match confirmed_action {
+            NeedConfirmation::Delete => self.confirm_delete_files(colors),
+            NeedConfirmation::Move => self.cut_or_copy_flagged_files(CopyMove::Move),
+            NeedConfirmation::Copy => self.cut_or_copy_flagged_files(CopyMove::Copy),
+            NeedConfirmation::EmptyTrash => self.confirm_trash_empty(),
+        }
+    }
+
+    /// Select the left or right tab depending on where the user clicked.
+    pub fn select_pane(&mut self, col: u16) -> Result<()> {
+        let (width, _) = self.term_size()?;
+        if (col as usize) < width / 2 {
+            self.select_tab(0)?;
+        } else {
+            self.select_tab(1)?;
+        };
+        Ok(())
     }
 }
 

@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::io::BufRead;
 use std::path::Path;
 use std::sync::Arc;
@@ -11,6 +12,7 @@ use users::{get_current_uid, get_user_by_uid};
 use crate::content_window::RESERVED_ROWS;
 use crate::event_dispatch::EventDispatcher;
 use crate::fileinfo::human_size;
+use crate::nvim::nvim;
 use crate::status::Status;
 use crate::term_manager::{Display, EventReader};
 
@@ -138,4 +140,23 @@ pub fn set_clipboard(content: String) -> Result<()> {
 
 pub fn row_to_index(row: u16) -> usize {
     row as usize - RESERVED_ROWS
+}
+
+pub fn string_to_path(path_string: &str) -> Result<std::path::PathBuf> {
+    let expanded_cow_path = shellexpand::tilde(&path_string);
+    let expanded_target: &str = expanded_cow_path.borrow();
+    Ok(std::fs::canonicalize(expanded_target)?)
+}
+
+pub fn args_is_empty(args: &[String]) -> bool {
+    args.is_empty() || args[0] == *""
+}
+
+pub fn is_sudo_command(executable: &str) -> bool {
+    matches!(executable, "sudo")
+}
+
+pub fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
+    let command = &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>");
+    let _ = nvim(nvim_server, command);
 }

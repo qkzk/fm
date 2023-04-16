@@ -12,6 +12,7 @@ use crate::fileinfo::{FileInfo, FileKind, PathContent};
 use crate::filter::FilterKind;
 use crate::input::Input;
 use crate::mode::Mode;
+use crate::opener::execute_in_child;
 use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
@@ -597,5 +598,20 @@ impl Tab {
             _ => (),
         }
         Ok(())
+    }
+
+    pub fn execute_custom(&mut self, exec_command: String) -> Result<bool> {
+        let mut args: Vec<&str> = exec_command.split(' ').collect();
+        let command = args.remove(0);
+        if !std::path::Path::new(command).exists() {
+            return Ok(false);
+        }
+        let path = &self
+            .path_content
+            .selected_path_string()
+            .context("execute custom: can't find command")?;
+        args.push(path);
+        execute_in_child(command, &args)?;
+        Ok(true)
     }
 }

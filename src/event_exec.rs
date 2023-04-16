@@ -12,30 +12,26 @@ use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
 use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
-use crate::copy_move::CopyMove;
 use crate::cryptsetup::BlockDeviceAction;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
-use crate::iso::IsoDevice;
 use crate::log::read_log;
 use crate::mocp::Mocp;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
-use crate::mount_help::MountHelper;
-use crate::nvim::nvim;
 use crate::opener::{
     execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path, InternalVariant,
 };
-use crate::password::reset_sudo_faillock;
-use crate::password::{
-    drop_sudo_privileges, execute_sudo_command_with_password, PasswordKind, PasswordUsage,
-};
+use crate::password::{PasswordKind, PasswordUsage};
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::shell_parser::ShellCommandParser;
 use crate::status::Status;
 use crate::tab::Tab;
-use crate::utils::{current_username, disk_used_by_path, filename_from_path};
+use crate::utils::{
+    args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
+    string_to_path,
+};
 
 /// Links events from tuikit to custom actions.
 /// It mutates `Status` or its children `Tab`.
@@ -331,7 +327,7 @@ impl EventAction {
             .clone();
         let opener = status.opener.open_info(filepath);
         if let Some(InternalVariant::NotSupported) = opener.internal_variant.as_ref() {
-            Helper::mount_iso_drive(status)?;
+            status.mount_iso_drive()?;
         } else {
             match status.opener.open(filepath) {
                 Ok(_) => (),
@@ -425,7 +421,7 @@ impl EventAction {
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
     pub fn nvim_filepicker(status: &mut Status) -> Result<()> {
-        Helper::read_nvim_listen_address_if_needed(status);
+        status.read_nvim_listen_address_if_needed();
         if status.nvim_server.is_empty() {
             return Ok(());
         };
@@ -719,7 +715,7 @@ impl EventAction {
             status.selected().reset_mode();
         }
         if must_refresh {
-            Helper::refresh_status(status, colors)?;
+            status.refresh_status(colors)?;
         }
         Ok(())
     }
@@ -781,7 +777,7 @@ impl EventAction {
     /// Refresh the current view, reloading the files. Move the selection to top.
     pub fn refreshview(status: &mut Status, colors: &Colors) -> Result<()> {
         status.encrypted_devices.update()?;
-        Helper::refresh_status(status, colors)
+        status.refresh_status(colors)
     }
 
     /// Display mediainfo details of an image
@@ -1144,7 +1140,7 @@ impl LeaveMode {
         let executable = args.remove(0);
         if is_sudo_command(&executable) {
             status.sudo_command = Some(shell_command);
-            Helper::ask_password(status, PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
+            status.ask_password(PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
             Ok(false)
         } else {
             let Ok(executable) = which(executable) else { return Ok(true); };
@@ -1236,7 +1232,7 @@ impl LeaveMode {
             return Err(anyhow!("exec exec: empty directory"));
         }
         let exec_command = tab.input.string();
-        if let Ok(success) = Helper::execute_custom(tab, exec_command) {
+        if let Ok(success) = tab.execute_custom(exec_command) {
             if success {
                 tab.completion.reset();
                 tab.input.reset();
@@ -1352,7 +1348,7 @@ impl LeaveMode {
             PasswordKind::CRYPTSETUP => status.password_holder.set_cryptsetup(password),
         }
         status.selected().reset_mode();
-        Helper::dispatch_password(status, dest, action, colors)
+        status.dispatch_password(dest, action, colors)
     }
 
     /// Compress the flagged files into an archive.
@@ -1392,120 +1388,7 @@ impl LeaveMode {
         tab.window.reset(tab.path_content.content.len());
         Ok(())
     }
-}
 
-/// Helper methods called from an event reaction or from a leave mode.
-/// Those methods mutate `Status` or `Tab` instance.
-pub struct Helper {}
-
-impl Helper {
-    /// Mount the currently selected file (which should be an .iso file) to
-    /// `/run/media/$CURRENT_USER/fm_iso`
-    /// Ask a sudo password first if needed. It should always be the case.
-    pub fn mount_iso_drive(status: &mut Status) -> Result<()> {
-        let path = status
-            .selected_non_mut()
-            .path_content
-            .selected_path_string()
-            .context("Couldn't parse the path")?;
-        if status.iso_device.is_none() {
-            status.iso_device = Some(IsoDevice::from_path(path));
-        }
-        if let Some(ref mut iso_device) = status.iso_device {
-            if !status.password_holder.has_sudo() {
-                Helper::ask_password(
-                    status,
-                    PasswordKind::SUDO,
-                    Some(BlockDeviceAction::MOUNT),
-                    PasswordUsage::ISO,
-                )?;
-            } else {
-                if iso_device.mount(&current_username()?, &mut status.password_holder)? {
-                    info!("iso mounter mounted {iso_device:?}");
-                    info!(
-                        target: "special",
-                        "iso :\n{}",
-                        iso_device.as_string()?,
-                    );
-                    let path = iso_device.mountpoints.clone().context("no mount point")?;
-                    status.selected().set_pathcontent(&path)?;
-                };
-                status.iso_device = None;
-            };
-        }
-        Ok(())
-    }
-
-    /// Currently unused.
-    /// Umount an iso device.
-    pub fn umount_iso_drive(status: &mut Status) -> Result<()> {
-        if let Some(ref mut iso_device) = status.iso_device {
-            if !status.password_holder.has_sudo() {
-                Helper::ask_password(
-                    status,
-                    PasswordKind::SUDO,
-                    Some(BlockDeviceAction::UMOUNT),
-                    PasswordUsage::ISO,
-                )?;
-            } else {
-                iso_device.umount(&current_username()?, &mut status.password_holder)?;
-            };
-        }
-        Ok(())
-    }
-
-    /// Mount the selected encrypted device. Will ask first for sudo password and
-    /// passphrase.
-    /// Those passwords are always dropped immediatly after the commands are run.
-    pub fn mount_encrypted_drive(status: &mut Status) -> Result<()> {
-        if !status.password_holder.has_sudo() {
-            Helper::ask_password(
-                status,
-                PasswordKind::SUDO,
-                Some(BlockDeviceAction::MOUNT),
-                PasswordUsage::CRYPTSETUP,
-            )
-        } else if !status.password_holder.has_cryptsetup() {
-            Helper::ask_password(
-                status,
-                PasswordKind::CRYPTSETUP,
-                Some(BlockDeviceAction::MOUNT),
-                PasswordUsage::CRYPTSETUP,
-            )
-        } else {
-            status
-                .encrypted_devices
-                .mount_selected(&mut status.password_holder)
-        }
-    }
-
-    /// Move to the selected crypted device mount point.
-    pub fn move_to_encrypted_drive(status: &mut Status) -> Result<()> {
-        let Some(device) = status.encrypted_devices.selected() else { return Ok(()) };
-        let Some(mount_point) = device.mount_point() else { return Ok(())};
-        let tab = status.selected();
-        let path = path::PathBuf::from(mount_point);
-        tab.history.push(&path);
-        tab.set_pathcontent(&path)?;
-        tab.refresh_view()
-    }
-
-    /// Unmount the selected device.
-    /// Will ask first for a sudo password which is immediatly forgotten.
-    pub fn umount_encrypted_drive(status: &mut Status) -> Result<()> {
-        if !status.password_holder.has_sudo() {
-            Helper::ask_password(
-                status,
-                PasswordKind::SUDO,
-                Some(BlockDeviceAction::UMOUNT),
-                PasswordUsage::CRYPTSETUP,
-            )
-        } else {
-            status
-                .encrypted_devices
-                .umount_selected(&mut status.password_holder)
-        }
-    }
     /// A right click opens a file or a directory.
     pub fn right_click(status: &mut Status, colors: &Colors) -> Result<()> {
         match status.selected().mode {
@@ -1514,206 +1397,4 @@ impl Helper {
             _ => Ok(()),
         }
     }
-
-    /// Ask for a password of some kind (sudo or device passphrase).
-    pub fn ask_password(
-        status: &mut Status,
-        password_kind: PasswordKind,
-        encrypted_action: Option<BlockDeviceAction>,
-        password_dest: PasswordUsage,
-    ) -> Result<()> {
-        info!("event ask password");
-        status
-            .selected()
-            .set_mode(Mode::InputSimple(InputSimple::Password(
-                password_kind,
-                encrypted_action,
-                password_dest,
-            )));
-        Ok(())
-    }
-
-    /// Select the left or right tab depending on where the user clicked.
-    pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
-        let (width, _) = status.term_size()?;
-        if (col as usize) < width / 2 {
-            status.select_tab(0)?;
-        } else {
-            status.select_tab(1)?;
-        };
-        Ok(())
-    }
-
-    /// Execute a new mark, saving it to a config file for futher use.
-    pub fn marks_new(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
-        let path = status.selected().path_content.path.clone();
-        status.marks.new_mark(c, path)?;
-        {
-            let tab: &mut Tab = status.selected();
-            tab.refresh_view()
-        }?;
-        status.selected().reset_mode();
-        Helper::refresh_status(status, colors)
-    }
-
-    /// Execute a jump to a mark, moving to a valid path.
-    /// If the saved path is invalid, it does nothing but reset the view.
-    pub fn marks_jump_char(status: &mut Status, c: char, colors: &Colors) -> Result<()> {
-        if let Some(path) = status.marks.get(c) {
-            status.selected().set_pathcontent(&path)?;
-            status.selected().history.push(&path);
-        }
-        status.selected().refresh_view()?;
-        status.selected().reset_mode();
-        Helper::refresh_status(status, colors)
-    }
-
-    /// Execute a command requiring a confirmation (Delete, Move or Copy).
-    pub fn confirm_action(
-        status: &mut Status,
-        confirmed_action: NeedConfirmation,
-        colors: &Colors,
-    ) -> Result<()> {
-        Helper::match_confirmed_mode(status, confirmed_action, colors)?;
-        status.selected().reset_mode();
-        Ok(())
-    }
-
-    /// When a rezise event occurs, we may hide the second panel if the width
-    /// isn't sufficiant to display enough information.
-    /// We also need to know the new height of the terminal to start scrolling
-    /// up or down.
-    pub fn resize(status: &mut Status, width: usize, height: usize, colors: &Colors) -> Result<()> {
-        status.set_dual_pane_if_wide_enough(width)?;
-        status.selected().set_height(height);
-        Helper::refresh_status(status, colors)?;
-        Ok(())
-    }
-
-    /// Reset the selected tab view to the default.
-    pub fn refresh_status(status: &mut Status, colors: &Colors) -> Result<()> {
-        status.force_clear();
-        status.refresh_users()?;
-        status.selected().refresh_view()?;
-        if let Mode::Tree = status.selected_non_mut().mode {
-            status.selected().make_tree(colors)?
-        }
-        Ok(())
-    }
-
-    fn match_confirmed_mode(
-        status: &mut Status,
-        confirmed_action: NeedConfirmation,
-        colors: &Colors,
-    ) -> Result<()> {
-        match confirmed_action {
-            NeedConfirmation::Delete => Helper::confirm_delete_files(status, colors),
-            NeedConfirmation::Move => status.cut_or_copy_flagged_files(CopyMove::Move),
-            NeedConfirmation::Copy => status.cut_or_copy_flagged_files(CopyMove::Copy),
-            NeedConfirmation::EmptyTrash => Helper::confirm_trash_empty(status),
-        }
-    }
-
-    /// Recursively delete all flagged files.
-    pub fn confirm_delete_files(status: &mut Status, colors: &Colors) -> Result<()> {
-        for pathbuf in status.flagged.content.iter() {
-            if pathbuf.is_dir() {
-                std::fs::remove_dir_all(pathbuf)?;
-            } else {
-                std::fs::remove_file(pathbuf)?;
-            }
-        }
-        status.selected().reset_mode();
-        status.clear_flags_and_reset_view()?;
-        Helper::refresh_status(status, colors)
-    }
-
-    /// Empty the trash folder permanently.
-    fn confirm_trash_empty(status: &mut Status) -> Result<()> {
-        status.trash.empty_trash()?;
-        status.selected().reset_mode();
-        status.clear_flags_and_reset_view()?;
-        Ok(())
-    }
-
-    fn run_sudo_command(status: &mut Status, colors: &Colors) -> Result<()> {
-        status.selected().set_mode(Mode::Normal);
-        reset_sudo_faillock()?;
-        let Some(sudo_command) = &status.sudo_command else { return Ok(()); };
-        let args = ShellCommandParser::new(sudo_command).compute(status)?;
-        if args.is_empty() {
-            return Ok(());
-        }
-        execute_sudo_command_with_password(
-            &args[1..],
-            &status.password_holder.sudo()?,
-            status.selected_non_mut().directory_of_selected()?,
-        )?;
-        status.password_holder.reset();
-        drop_sudo_privileges()?;
-        Helper::refresh_status(status, colors)
-    }
-
-    fn dispatch_password(
-        status: &mut Status,
-        dest: PasswordUsage,
-        action: Option<BlockDeviceAction>,
-        colors: &Colors,
-    ) -> Result<()> {
-        match dest {
-            PasswordUsage::ISO => match action {
-                Some(BlockDeviceAction::MOUNT) => Helper::mount_iso_drive(status),
-                Some(BlockDeviceAction::UMOUNT) => Helper::umount_iso_drive(status),
-                None => Ok(()),
-            },
-            PasswordUsage::CRYPTSETUP => match action {
-                Some(BlockDeviceAction::MOUNT) => Helper::mount_encrypted_drive(status),
-                Some(BlockDeviceAction::UMOUNT) => Helper::umount_encrypted_drive(status),
-                None => Ok(()),
-            },
-            PasswordUsage::SUDOCOMMAND => Self::run_sudo_command(status, colors),
-        }
-    }
-
-    fn read_nvim_listen_address_if_needed(status: &mut Status) {
-        if !status.nvim_server.is_empty() {
-            return;
-        }
-        let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") else { return; };
-        status.nvim_server = nvim_listen_address;
-    }
-
-    fn execute_custom(tab: &mut Tab, exec_command: String) -> Result<bool> {
-        let mut args: Vec<&str> = exec_command.split(' ').collect();
-        let command = args.remove(0);
-        if !std::path::Path::new(command).exists() {
-            return Ok(false);
-        }
-        let path = &tab
-            .path_content
-            .selected_path_string()
-            .context("execute custom: can't find command")?;
-        args.push(path);
-        execute_in_child(command, &args)?;
-        Ok(true)
-    }
-}
-
-fn string_to_path(path_string: &str) -> Result<path::PathBuf> {
-    let expanded_cow_path = shellexpand::tilde(&path_string);
-    let expanded_target: &str = expanded_cow_path.borrow();
-    Ok(std::fs::canonicalize(expanded_target)?)
-}
-
-fn args_is_empty(args: &[String]) -> bool {
-    args.is_empty() || args[0] == *""
-}
-
-fn is_sudo_command(executable: &str) -> bool {
-    matches!(executable, "sudo")
-}
-
-fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
-    let command = &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>");
-    let _ = nvim(nvim_server, command);
 }
