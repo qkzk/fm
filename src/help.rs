@@ -106,7 +106,7 @@ Navigate as usual. Most actions works as in 'normal' view.
 {Filter}:      FILTER 
     (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
 {Enter}:  Execute mode then NORMAL
-{ModeNormal}:    NORMAL
+{ResetMode}:    NORMAL
 
 - MOC -
 Control MOC from your TUI

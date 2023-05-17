@@ -2,10 +2,11 @@ use anyhow::Result;
 use tuikit::prelude::{Event, Key, MouseButton};
 
 use crate::config::Colors;
-use crate::event_exec::EventExec;
+use crate::event_exec::{EventAction, LeaveMode};
 use crate::keybindings::Bindings;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate};
 use crate::status::Status;
+use crate::tab::Tab;
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -29,25 +30,25 @@ impl EventDispatcher {
     pub fn dispatch(&self, status: &mut Status, ev: Event, colors: &Colors) -> Result<()> {
         match ev {
             Event::Key(Key::WheelUp(_, col, _)) => {
-                EventExec::event_select_pane(status, col)?;
-                EventExec::event_move_up(status, colors)?;
+                status.select_pane(col)?;
+                EventAction::move_up(status, colors)?;
             }
             Event::Key(Key::WheelDown(_, col, _)) => {
-                EventExec::event_select_pane(status, col)?;
-                EventExec::event_move_down(status, colors)?;
+                status.select_pane(col)?;
+                EventAction::move_down(status, colors)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
-                EventExec::event_select_pane(status, col)?;
-                EventExec::event_select_row(status, row, colors)?;
+                status.select_pane(col)?;
+                status.selected().select_row(row, colors)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Right, row, col))
             | Event::Key(Key::DoubleClick(MouseButton::Left, row, col)) => {
-                EventExec::event_select_pane(status, col)?;
-                EventExec::event_select_row(status, row, colors)?;
-                EventExec::event_right_click(status, colors)?;
+                status.select_pane(col)?;
+                status.selected().select_row(row, colors)?;
+                LeaveMode::right_click(status, colors)?;
             }
-            Event::User(_) => EventExec::refresh_status(status, colors)?,
-            Event::Resize { width, height } => EventExec::resize(status, width, height, colors)?,
+            Event::User(_) => status.refresh_status(colors)?,
+            Event::Resize { width, height } => status.resize(width, height, colors)?,
             Event::Key(Key::Char(c)) => self.char(status, Key::Char(c), colors)?,
             Event::Key(key) => self.key_matcher(status, key, colors)?,
             _ => (),
@@ -69,53 +70,54 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, key_char: Key, colors: &Colors) -> Result<()> {
         match key_char {
             Key::Char(c) => match status.selected_non_mut().mode {
-                Mode::InputSimple(InputSimple::Sort) => {
-                    EventExec::event_leave_sort(status, c, colors)
-                }
+                Mode::InputSimple(InputSimple::Sort) => status.selected().sort(c, colors),
                 Mode::InputSimple(InputSimple::RegexMatch) => {
-                    EventExec::event_text_insertion(status.selected(), c);
+                    {
+                        let tab: &mut Tab = status.selected();
+                        tab.input.insert(c);
+                    };
                     status.select_from_regex()?;
                     Ok(())
                 }
                 Mode::InputSimple(_) => {
-                    EventExec::event_text_insertion(status.selected(), c);
+                    {
+                        let tab: &mut Tab = status.selected();
+                        tab.input.insert(c);
+                    };
                     Ok(())
                 }
-                Mode::InputCompleted(_) => {
-                    EventExec::event_text_insert_and_complete(status.selected(), c)
-                }
+                Mode::InputCompleted(_) => status.selected().text_insert_and_complete(c),
                 Mode::Normal | Mode::Tree => match self.binds.get(&key_char) {
-                    Some(event_char) => event_char.matcher(status, colors),
+                    Some(char) => char.matcher(status, colors),
                     None => Ok(()),
                 },
                 Mode::NeedConfirmation(confirmed_action) => {
                     if c == 'y' {
-                        let _ = EventExec::exec_confirmed_action(status, confirmed_action, colors);
+                        let _ = status.confirm_action(confirmed_action, colors);
                     }
-                    EventExec::event_leave_need_confirmation(status.selected());
+                    status.selected().reset_mode();
                     Ok(())
                 }
-                Mode::Navigate(Navigate::Trash) if c == 'x' => {
-                    EventExec::event_trash_remove_file(status)
-                }
+                Mode::Navigate(Navigate::Trash) if c == 'x' => status.trash.remove(),
                 Mode::Navigate(Navigate::EncryptedDrive) if c == 'm' => {
-                    EventExec::event_mount_encrypted_drive(status)
+                    status.mount_encrypted_drive()
                 }
                 Mode::Navigate(Navigate::EncryptedDrive) if c == 'g' => {
-                    EventExec::event_move_to_encrypted_drive(status)
+                    status.move_to_encrypted_drive()
                 }
                 Mode::Navigate(Navigate::EncryptedDrive) if c == 'u' => {
-                    EventExec::event_umount_encrypted_drive(status)
+                    status.umount_encrypted_drive()
                 }
                 Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
-                    EventExec::exec_marks_jump_char(status, c, colors)
+                    status.marks_jump_char(c, colors)
                 }
-                Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
-                    EventExec::exec_marks_new(status, c, colors)
-                }
+                Mode::Navigate(Navigate::Marks(MarkAction::New)) => status.marks_new(c, colors),
                 Mode::Preview | Mode::Navigate(_) => {
                     status.selected().set_mode(Mode::Normal);
-                    EventExec::event_normal(status.selected())
+                    {
+                        let tab: &mut Tab = status.selected();
+                        tab.refresh_view()
+                    }
                 }
             },
             _ => Ok(()),

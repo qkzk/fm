@@ -78,7 +78,7 @@ pub enum InputSimple {
     /// Set a new neovim RPC address
     SetNvimAddr,
     /// Input a password (chars a replaced by *)
-    Password(PasswordKind, BlockDeviceAction, PasswordUsage),
+    Password(PasswordKind, Option<BlockDeviceAction>, PasswordUsage),
     /// Shell command execute as is
     Shell,
 }

@@ -3,7 +3,7 @@ use log::info;
 
 use crate::{
     mount_help::MountHelper,
-    password::{sudo, sudo_password, PasswordHolder, PasswordKind},
+    password::{execute_sudo_command, execute_sudo_command_with_password, PasswordHolder},
 };
 
 /// Used to mount an iso file as a loop device.
@@ -75,46 +75,53 @@ impl MountHelper for IsoDevice {
     }
 
     fn umount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
+        let root_path = std::path::Path::new("/");
         // sudo
-        let (success, _, _) = sudo_password(
-            &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
+        let (success, _, _) = execute_sudo_command_with_password(
+            &["-S", "ls", "/root"],
             &passwords.sudo()?,
+            root_path,
         )?;
         if !success {
             return Ok(false);
         }
         // unmount
-        let (success, stdout, stderr) = sudo(&self.format_umount_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command(&self.format_umount_parameters(username))?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         if success {
             self.is_mounted = false;
         }
         // sudo -k
-        let (success, stdout, stderr) = sudo(&["-k".to_owned()])?;
+        let (success, stdout, stderr) = execute_sudo_command(&["-k"])?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         Ok(success)
     }
 
     fn mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
+        let root_path = std::path::Path::new("/");
         info!("iso mount: {username}, {passwords:?}");
         if self.is_mounted {
             Err(anyhow!("iso device mount: device is already mounted"))
         } else {
             // sudo
-            let (success, _, _) = sudo_password(
-                &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
+            let (success, _, _) = execute_sudo_command_with_password(
+                &["ls", "/root"],
                 &passwords.sudo()?,
+                root_path,
             )?;
             if !success {
                 return Ok(false);
             }
             // mkdir
-            let (success, stdout, stderr) = sudo(&self.format_mkdir_parameters(username))?;
+            let (success, stdout, stderr) =
+                execute_sudo_command(&self.format_mkdir_parameters(username))?;
             info!("stdout: {}\nstderr: {}", stdout, stderr);
             let mut last_success = false;
             if success {
                 // mount
-                let (success, stdout, stderr) = sudo(&self.format_mount_parameters(username))?;
+                let (success, stdout, stderr) =
+                    execute_sudo_command(&self.format_mount_parameters(username))?;
                 last_success = success;
                 info!("stdout: {}\nstderr: {}", stdout, stderr);
                 // sudo -k
@@ -122,7 +129,7 @@ impl MountHelper for IsoDevice {
             } else {
                 self.is_mounted = false;
             }
-            sudo(&["-k".to_owned()])?;
+            execute_sudo_command(&["-k"])?;
             Ok(last_success)
         }
     }
@@ -137,49 +144,6 @@ impl MountHelper for IsoDevice {
             ))
         } else {
             Ok(format!("not mounted {}", self.path))
-        }
-    }
-}
-
-/// Holds every thing needed to mount a device.
-/// It has an `IsoDevice` instance and a password holder.
-#[derive(Clone, Debug, Default)]
-pub struct IsoMounter {
-    pub iso_device: IsoDevice,
-    password_holder: PasswordHolder,
-}
-
-impl IsoMounter {
-    /// True if the sudo password is known.
-    pub fn has_sudo(&self) -> bool {
-        self.password_holder.has_sudo()
-    }
-
-    /// Mount the device. Will fail if the password isn't known or the file can't be mounted.
-    pub fn mount(&mut self, username: &str) -> Result<bool> {
-        self.iso_device.mount(username, &mut self.password_holder)
-    }
-
-    /// Currently unused.
-    /// Un mount the device.
-    pub fn umount(&mut self, username: &str) -> Result<bool> {
-        self.iso_device.umount(username, &mut self.password_holder)
-    }
-
-    /// Creates an instance from an iso filepath.
-    pub fn from_path(path: String) -> Self {
-        let iso_device = IsoDevice::from_path(path);
-        Self {
-            iso_device,
-            ..Default::default()
-        }
-    }
-
-    /// Set the password.
-    /// Only sudo password can be set.
-    pub fn set_password(&mut self, password_kind: PasswordKind, password: String) {
-        if let PasswordKind::SUDO = password_kind {
-            self.password_holder.set_sudo(password)
         }
     }
 }

@@ -38,13 +38,14 @@ macro_rules! enumerated_colored_iter {
 /// At least 120 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
 
-const FIRST_LINE_COLORS: [Attr; 6] = [
+const FIRST_LINE_COLORS: [Attr; 7] = [
     color_to_attr(Color::Rgb(231, 162, 156)),
     color_to_attr(Color::Rgb(144, 172, 186)),
     color_to_attr(Color::Rgb(214, 125, 83)),
     color_to_attr(Color::Rgb(91, 152, 119)),
     color_to_attr(Color::Rgb(152, 87, 137)),
     color_to_attr(Color::Rgb(230, 189, 87)),
+    color_to_attr(Color::Rgb(251, 133, 0)),
 ];
 
 const MENU_COLORS: [Attr; 10] = [
@@ -206,7 +207,8 @@ impl<'a> WinMain<'a> {
             format!("{}  ", self.tab.path_content.used_space()),
             format!("Avail: {disk_space}  "),
             format!("{}  ", &self.tab.path_content.git_string()?),
-            format!("{} flags", &self.status.flagged.len()),
+            format!("{} flags ", &self.status.flagged.len()),
+            format!("{}", &self.tab.path_content.sort_kind),
         ])
     }
 
@@ -476,6 +478,7 @@ impl<'a> WinSecondary<'a> {
                 vec!["Save mark...".to_owned()]
             }
             Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action, _)) => {
+                info!("term: password");
                 vec![format!("{password_kind}"), tab.input.password()]
             }
             Mode::InputCompleted(mode) => {
@@ -746,15 +749,10 @@ impl<'a> WinSecondary<'a> {
                 not_mounted_attr.effect |= Effect::REVERSE;
                 mounted_attr.effect |= Effect::REVERSE;
             }
-            if status.encrypted_devices.content[i].cryptdevice.is_mounted() {
-                canvas.print_with_attr(row, 3, &device.cryptdevice.as_string()?, mounted_attr)?;
+            if status.encrypted_devices.content[i].is_mounted() {
+                canvas.print_with_attr(row, 3, &device.as_string()?, mounted_attr)?;
             } else {
-                canvas.print_with_attr(
-                    row,
-                    3,
-                    &device.cryptdevice.as_string()?,
-                    not_mounted_attr,
-                )?;
+                canvas.print_with_attr(row, 3, &device.as_string()?, not_mounted_attr)?;
             }
         }
         Ok(())

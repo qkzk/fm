@@ -256,7 +256,7 @@ pub struct PathContent {
     /// The index of the selected file.
     pub index: usize,
     /// The kind of sort used to display the files.
-    sort_kind: SortKind,
+    pub sort_kind: SortKind,
     used_space: u64,
     pub users_cache: UsersCache,
 }
@@ -531,7 +531,7 @@ pub fn is_not_hidden(entry: &DirEntry) -> Result<bool> {
 /// Returns the modified time.
 fn extract_datetime(metadata: &Metadata) -> Result<String> {
     let datetime: DateTime<Local> = metadata.modified()?.into();
-    Ok(format!("{}", datetime.format("%d/%m/%Y %T")))
+    Ok(format!("{}", datetime.format("%Y/%m/%d %T")))
 }
 
 /// Returns the filename.
@@ -545,11 +545,11 @@ fn extract_filename(direntry: &DirEntry) -> Result<String> {
 
 /// Reads the permission and converts them into a string.
 fn extract_permissions_string(metadata: &Metadata) -> String {
-    let mut perm = String::with_capacity(9);
     let mode = (metadata.mode() & 511) as usize;
     let s_o = convert_octal_mode(mode >> 6);
     let s_g = convert_octal_mode((mode >> 3) & 7);
     let s_a = convert_octal_mode(mode & 7);
+    let mut perm = String::with_capacity(9);
     perm.push_str(s_o);
     perm.push_str(s_a);
     perm.push_str(s_g);

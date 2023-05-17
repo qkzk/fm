@@ -103,8 +103,8 @@ pub static PASSWORD_LINES: [&str; 1] =
 pub static SHELL_LINES: [&str; 11] = [
     "Type a shell command",
     "",
-    "Pipes and redirections ( | < > >> ) aren't supported.",
-    "`sudo` and `su` aren't supported either.",
+    "`sudo` commands are supported.",
+    "Pipes, redirections ( | < > >> ) and shell specific syntax (*) aren't supported.",
     "",
     "Some expression can be expanded:",
     "%d:    current directory",

@@ -477,6 +477,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] use selected filepath instead of current directory
 - [x] after mounting an iso device, move to its mountpoint
 - [x] allow generic types for executable in `execute_...` commands
+- [x] allow sudo commands from ! actions
+  - [x] separate password holder from device action
+  - [x] dispatch password
+  - [x] execute a command with sudo privileges
+- [x] FIX: modification time used `%d/%m/%y`. Changed to `%Y/%m/%d` to allow sorting and respect conventions
+- [x] display sort kind in first row
+- [ ] EventExec refactor
+  - [x] event: linked to an Action, same name
+  - [x] exec: linked to an executable mode, same name
+  - [x] every helper should be moved outside the struct
 
 ## TODO
 

@@ -40,9 +40,9 @@ pub struct ShellCommandParser {
 
 impl ShellCommandParser {
     /// Parse a command into a list of tokens
-    pub fn new(command: String) -> Self {
+    pub fn new(command: &str) -> Self {
         Self {
-            parsed: Self::parse(&command),
+            parsed: Self::parse(command),
         }
     }
 
