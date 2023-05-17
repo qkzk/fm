@@ -30,7 +30,7 @@ use crate::status::Status;
 use crate::tab::Tab;
 use crate::utils::{
     args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
-    string_to_path,
+    opt_mount_point, string_to_path,
 };
 
 /// Links events from tuikit to custom actions.
@@ -828,13 +828,13 @@ impl EventAction {
     /// it is moved there.
     /// Else, nothing is done.
     pub fn trash_move_file(status: &mut Status) -> Result<()> {
-        let trash_mount_point = disk_used_by_path(
+        let trash_mount_point = opt_mount_point(disk_used_by_path(
             status.system_info.disks(),
             &std::path::PathBuf::from(&status.trash.trash_folder_files),
-        );
+        ));
 
         for flagged in status.flagged.content.iter() {
-            let origin_mount_point = disk_used_by_path(status.disks(), flagged);
+            let origin_mount_point = opt_mount_point(disk_used_by_path(status.disks(), flagged));
             if trash_mount_point != origin_mount_point {
                 continue;
             }

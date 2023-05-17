@@ -55,6 +55,14 @@ pub fn disk_space(disks: &[Disk], path: &Path) -> String {
     disk_space_used(disk_used_by_path(disks, path))
 }
 
+/// Takes a disk and returns its mount point.
+/// Returns `None` if it received `None`.
+/// It's a poor fix to support OSX where `sysinfo::Disk` doesn't implement `PartialEq`.
+pub fn opt_mount_point(disk: Option<&Disk>) -> Option<&std::path::Path> {
+    let Some(disk) = disk else { return None; };
+    Some(disk.mount_point())
+}
+
 /// Drops everything holding an `Arc<Term>`.
 /// If new structs holding `Arc<Term>`  are introduced
 /// (surelly to display something on their own...), we'll have to pass them
