@@ -23,6 +23,13 @@ Options:
   -V, --version          Print version information
 ```
 
+## Platform
+
+Linux is the only supported platform.
+
+- Version 0.1.20 doesn't compile on MacOS (see [#77](https://github.com/qkzk/fm/issues/77)).
+- Version 0.1.21 fixes this bug but I can't test more since I don't own a mac :)
+
 ## Video
 
 ![fm](./fm.gif)

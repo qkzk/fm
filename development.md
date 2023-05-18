@@ -483,10 +483,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] execute a command with sudo privileges
 - [x] FIX: modification time used `%d/%m/%y`. Changed to `%Y/%m/%d` to allow sorting and respect conventions
 - [x] display sort kind in first row
-- [ ] EventExec refactor
+- [x] EventExec refactor
   - [x] event: linked to an Action, same name
   - [x] exec: linked to an executable mode, same name
   - [x] every helper should be moved outside the struct
+- [x] FIX: impossible to compile on MacOs since to `sysinfo::Disk` only implement `PartialEq` on linux. 
+    Can't test MacOs compilation since I don't own a mac...
+- [x] FIX: incompatible config files between versions crashes the app.
+- [x] FIX: Help string susbtitution aren't aligned properly
 
 ## TODO
 
