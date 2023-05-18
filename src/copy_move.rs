@@ -137,6 +137,6 @@ pub fn copy_move(
 /// Send a notification to the desktop.
 /// Requires "notify-send" to be installed.
 fn notify(text: &str) -> Result<()> {
-    execute_in_child("notify-send", &vec![text])?;
+    execute_in_child("notify-send", &[text])?;
     Ok(())
 }

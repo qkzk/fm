@@ -23,6 +23,13 @@ Options:
   -V, --version          Print version information
 ```
 
+## Platform
+
+Linux is the only supported platform.
+
+- Version 0.1.20 doesn't compile on MacOS (see [#77](https://github.com/qkzk/fm/issues/77)).
+- Version 0.1.21 fixes this bug but I can't test more since I don't own a mac :)
+
 ## Video
 
 ![fm](./fm.gif)
@@ -53,57 +60,66 @@ If you added the [recommanded function](#cd-on-quit) to your bashrc/zshrc, simpl
 
 Some features depends on external programs to keep fm from being really bloated.
 
+### Navigation
+
 - Navigate with the arrows or the mouse (left select, right open, wheel)
+  Basic vim keys are supported by default: hjkl, gG, Ctrl+U Ctrl+D, JK
 - Open a file with o, enter or right click
 - Execute a file with a custom command with e
-- Copy / move / symlinks / delete with c, p, s, x
+
+### Moving
+
+Many ways to jump somewhere :
+
+- Alt+g: type the full address (with completion enabled),
+- Ctrl+g: a predefined shortcut (default root folders, home and mount points, gitroot, config folder),
+- Alt+j: by jumping to a flagged file,
+- ': by creating your own marks and jumping to them
+
+### File manipulation
+
+- Flag files with `space` (\*: flag all, v: reverse, u: unflag)
+- Copy / move / symlinks / delete / trash flagged files with c, p, s, x, X
 - Create files, directory, rename with n, d, r
-- Open a new shell in this directory with s
-- Start a configured TUI application with S
 - Flag a bunch of file, change panel with TAB and move/copy them !
-- Many ways to jump somewhere :
-
-  - g: type the full address (with completion enabled),
-  - G: a predefined shortcut (default root folders, home and mount points, gitroot, config folder),
-  - j: by jumping to a flagged file,
-  - ': by creating your own marks and jumping to them
-
-- Change display, removing details or displaying a single pane.
-- Preview most of files (text, highlighted code, binary, pdf, exif details, video/audio details, archives) with P
-- Display a tree view of directory by previewing it
-- Decompress an archive by opening it (o, enter, right click)
-- Compress flagged files with C. Pick the desired algorithm from a menu.
-- Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p
+- Open the trash with Alt+o. x to remove permanently, enter to restore. Wipe the trash with Alt+x.
 - Rename or create a bunch of file with B. Flag files, B, edit the names and save the file. The renaming is done.
   You can create nested files with `a/b/c` which will create every intermediate folder if needed.
+
+### Shell
+
+- Open a new shell in this directory with s
+- Start a configured TUI application with S
+- Execute a shell command with '!'. Expansions (%e ext, %n filename, %s filepath, %f flagged files, %d current directory) are supported.
+  pipes and redirections aren't supported.
+
+### Display
+
+- Change display, removing details with Alt+e or display a single pane with Alt+d
+- Preview most of files (text, highlighted code, binary, pdf, exif details, video/audio details, archives) with P
+- Toggle the tree view with t. Fold selected folder with z. Unfold every folder with Z, fold every folder with Alt+z.
+- Enter preview mode with Alt+P. Every file is previewed in the second pane.
+- Filter the view (by extension, name, directory only, all files) with F
+- Find files with / (with completion: Tab, enter to search), 
+- flag files matching a regex with w
+
+### Fuzzy finder
+
 - Use the integrated fuzzy finder (forked version of skim, an fzf clone) with Ctrl+f to navigate quickly
 - The same fuzzy finder can find specific lines in files with Ctrl+s
-- Filter the view (by extension, name, directory only, all files) with F
-- Find files with / (with completion), flag files matching a regex with w
-- Detect removable disks automatically and jump to them in a few keystrokes (G, up, enter)
-- Drag and drop files (requires dragon-drop installed) with Alt+D
-- Trash a file with X, open the trash with Alt+o. x to remove permanently, enter to restore. Wipe the trash with Alt+x.
-- Toggle the tree view with t. Fold selected folder with z. Unfold every folder with Z, fold every folder with Alt+z.
-- Open and mount encrypted devices. Open the menu with Shift+e, mount with m, unmount with u.
-- diff the first two files / folders with D.
-- Enter preview mode with Alt+P. Every file is previewed in the second pane.
-- Contol MOCP with Ctrl+arrows. Ctrl+Left, Ctrl+Right: previous or next song. Ctrl+Down: Toggle pause. Ctrl+Up: add current folder to playlist
-- Set the selected image as wallpaper with W.
-- _Experimental_ enter "command mode" with ':'. Type the name of a command and it will be executed.
+- Another fuzzy finder is available for your keybinds with Alt+h
 
-Most of those features are inspired by ranger and alternatives (Midnight commander), the look and feel by dired.
-
-## Neovim filepicker
+### Neovim filepicker
 
 When you open a file with i, it will send an event to Neovim and open it in a new buffer.
-Recent versions of neovim export the RPC server address to an environement variable which is read if no argument
+Recent versions of neovim export the RPC server address to an environment variable which is read if no argument
 is provided.
 
 It should always work, even outside of neovim.
 
 It's also possible to pass the RPC server address with `fm -s address`.
 
-## cd on quit
+### cd on quit
 
 When leaving fm, it prints the last visited path.
 If you add this function to your `zshrc` / `bashrc`, it will listen to stdout and cd to the last dir.
@@ -130,6 +146,39 @@ function f
   end
 end
 ```
+
+### Archives
+
+- Decompress an archive by opening it (o, enter, right click)
+- Compress flagged files with C. Pick the desired algorithm from a menu.
+
+### Custom binds
+
+You can bind any _unbound_ key to a shell command.
+
+- pipe & redirections (| > >> <) aren't supported !
+- the first word you type is the executable. Don't start your command with environment variables, it won't work.
+
+Expansions :
+
+- %e : extension
+- %s : selected file (full path)
+- %f : flagged files (full path)
+- %n : selected filename
+- %d : current directory
+
+### More
+
+- Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p
+- Detect removable disks automatically and jump to them in a few keystrokes (Ctrl+g, up, enter)
+- Drag and drop files (requires dragon-drop installed) with Alt+d
+- Open and mount encrypted devices. Open the menu with Shift+e, mount with m, unmount with u.
+- diff the first two flagged files / folders with D.
+- Contol MOCP with Ctrl+arrows. Ctrl+Left, Ctrl+Right: previous or next song. Ctrl+Down: Toggle pause. Ctrl+Up: add current folder to playlist
+- Set the selected image as wallpaper with W.
+- _Experimental_ enter "command mode" with ':'. Type the name of a command and it will be executed.
+
+Most of those features are inspired by ranger and alternatives (Midnight commander, nnn, lf etc.), the look and feel by dired.
 
 ## Default keybindings
 
@@ -244,6 +293,13 @@ You can configure :
 - **Keybindings**. Some should be left as they are, but all keybindings can be configured.
   use the provided config file as a default.
   Multiple keys can be bound the the same action.
+- **Custom actions**. You can bind any key to a shell command.
+  - don't use pipes or redirectons, they won't be parsed correctly
+  - use an unset bind
+  - %s is expanded to the selected path, %f is expanded to the flagged files (full paths).
+  - See the [config](./config_files/fm/config.yaml) or an example.
+- **Settings**. Do you whish to start with dual pane ? Do you wish to use basic or
+  full display ?
 - **Openers**. fm tries to be smart and open some files with a standard program.
   You can change that and use whatever installed program you want. Specify if it
   requires a shell to be run (like neovim) or not (like subl).
@@ -256,8 +312,10 @@ You can configure :
 
 ## External dependencies
 
-Most of the openers and tui applications are configurable from config files. Some are hardcode since their command is quite specific or if I couldn't find a workaround.
+Most of the openers and tui applications are configurable from config files. Some are hardcoded if their command is quite specific or if I couldn't find a workaround.
 
+- [lsblk](https://linux.die.net/man/8/lsblk): list encroytped devices
+- [faillock](https://linux.die.net/man/8/faillock): reset failed sudo attempts
 - [Cryptsetup](https://gitlab.com/cryptsetup/cryptsetup): decrypt & mount encrypted devices
 - [Nitrogen](https://github.com/l3ib/nitrogen/): set up a wallpaper
 - [MOC](https://moc.daper.net/) Music On Console allows you to play music from your terminal

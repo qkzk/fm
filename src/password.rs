@@ -4,6 +4,8 @@ use std::process::{Command, Stdio};
 use anyhow::{Context, Result};
 use log::info;
 
+use crate::utils::current_username;
+
 /// Different kind of password
 #[derive(Debug, Clone, Copy)]
 pub enum PasswordKind {
@@ -29,6 +31,7 @@ impl std::fmt::Display for PasswordKind {
 pub enum PasswordUsage {
     ISO,
     CRYPTSETUP,
+    SUDOCOMMAND,
 }
 
 /// Holds passwords allowing to mount or unmount an encrypted drive.
@@ -83,13 +86,28 @@ impl PasswordHolder {
 
 /// run a sudo command requiring a password (generally to establish the password.)
 /// Since I can't send 2 passwords at a time, it will only work with the sudo password
-pub fn sudo_password(args: &[String], password: &str) -> Result<(bool, String, String)> {
-    info!("sudo {:?}", args);
+/// It requires a path to establish CWD.
+pub fn execute_sudo_command_with_password<S, P>(
+    args: &[S],
+    password: &str,
+    path: P,
+) -> Result<(bool, String, String)>
+where
+    S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
+    P: AsRef<std::path::Path> + std::fmt::Debug,
+{
+    info!("sudo_with_password {args:?} CWD {path:?}");
+    info!(
+        target: "special",
+        "running sudo command with passwod. args: {args:?}, CWD: {path:?}"
+    );
     let mut child = Command::new("sudo")
+        .arg("-S")
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        .current_dir(path)
         .spawn()?;
 
     let child_stdin = child
@@ -106,13 +124,17 @@ pub fn sudo_password(args: &[String], password: &str) -> Result<(bool, String, S
     ))
 }
 
-/// Run a passwordless sudo command.
+/// Runs a passwordless sudo command.
 /// Returns stdout & stderr
-pub fn sudo(args: &[String]) -> Result<(bool, String, String)> {
-    info!("sudo {:?}", args);
+pub fn execute_sudo_command<S>(args: &[S]) -> Result<(bool, String, String)>
+where
+    S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
+{
+    info!("running sudo {:?}", args);
+    info!(target: "special", "running sudo command. {args:?}");
     let child = Command::new("sudo")
         .args(args)
-        .stdin(Stdio::piped())
+        .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
@@ -122,4 +144,29 @@ pub fn sudo(args: &[String]) -> Result<(bool, String, String)> {
         String::from_utf8(output.stdout)?,
         String::from_utf8(output.stderr)?,
     ))
+}
+
+/// Runs `sudo -k` removing sudo privileges of current running instance.
+pub fn drop_sudo_privileges() -> Result<()> {
+    Command::new("sudo")
+        .arg("-k")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+    Ok(())
+}
+
+/// Reset the sudo faillock to avoid being blocked from running sudo commands.
+/// Runs `faillock --user $USERNAME --reset`
+pub fn reset_sudo_faillock() -> Result<()> {
+    Command::new("faillock")
+        .arg("--user")
+        .arg(current_username()?)
+        .arg("--reset")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+    Ok(())
 }

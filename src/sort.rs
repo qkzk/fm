@@ -152,3 +152,21 @@ impl SortKind {
         }
     }
 }
+
+impl std::fmt::Display for SortKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let s = match (&self.sort_by, &self.order) {
+            (SortBy::Exte, Order::Ascending) => "Exte ↑",
+            (SortBy::Exte, Order::Descending) => "Exte ↓",
+            (SortBy::Date, Order::Ascending) => "Date ↑",
+            (SortBy::Date, Order::Descending) => "Date ↓",
+            (SortBy::File, Order::Ascending) => "Name ↑",
+            (SortBy::File, Order::Descending) => "Name ↓",
+            (SortBy::Size, Order::Ascending) => "Size ↑",
+            (SortBy::Size, Order::Descending) => "Size ↓",
+            (SortBy::Kind, Order::Ascending) => "Kind ↑",
+            (SortBy::Kind, Order::Descending) => "Kind ↓",
+        };
+        write!(f, "{}", s)
+    }
+}

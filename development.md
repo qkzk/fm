@@ -453,6 +453,45 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] mocp go to song: `mocp -Q %file` with alt+enter (lack of a better keybinding)
 - [x] display openers in help
 
+## Current dev
+
+### Version 0.1.21
+
+- [x] more shortcuts like `nnn` : `\` root, @: start
+- [x] display settings (dual pane, full display) can be setup in config file.
+- [x] common vim keys: require an update of the config file
+  - [x] hjkl
+  - [x] g G
+  - [x] J K C+u C+d
+  - [ ] ???
+- [x] custom shell command on selection or flagged files, with or without confirmation
+- [x] custom action in help
+- [x] FIX: absent key in config file can crash the app
+- [x] basic shell execution with !
+  - [x] completion with which crate
+  - [x] shell expansion %e %f etc
+- [x] Refactor: use &[] instead of &Vec for arguments in command execution functions.
+- [x] Explain every inputsimple mode in second window with static strings
+- [x] FIX isodevice:
+  - [x] remove useless mode
+  - [x] use selected filepath instead of current directory
+- [x] after mounting an iso device, move to its mountpoint
+- [x] allow generic types for executable in `execute_...` commands
+- [x] allow sudo commands from ! actions
+  - [x] separate password holder from device action
+  - [x] dispatch password
+  - [x] execute a command with sudo privileges
+- [x] FIX: modification time used `%d/%m/%y`. Changed to `%Y/%m/%d` to allow sorting and respect conventions
+- [x] display sort kind in first row
+- [x] EventExec refactor
+  - [x] event: linked to an Action, same name
+  - [x] exec: linked to an executable mode, same name
+  - [x] every helper should be moved outside the struct
+- [x] FIX: impossible to compile on MacOs since to `sysinfo::Disk` only implement `PartialEq` on linux. 
+    Can't test MacOs compilation since I don't own a mac...
+- [x] FIX: incompatible config files between versions crashes the app.
+- [x] FIX: Help string susbtitution aren't aligned properly
+
 ## TODO
 
 - [ ] remote control
@@ -470,7 +509,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] display / event separation. use async and message passing between coroutines
 
-- [ ] vim keys, harmonize keybinds with ranger
 - [ ] zoxide support
 - [ ] make navigable content scrollable
 - [ ] temporary marks
@@ -485,15 +523,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] allow non tui like wttr, diff, bat, tail -n etc.
     - [ ] more options like "use flagged files" for diff
 
-  - [ ] build option to force reset of config file, warn the user at first start
-  - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
-  - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
-  - [ ] allow pipe in execution
-  - [ ] refactor cryptdevice and iso_file
-    - [ ] mode to handle those mounts. ATM it's all over the place...
-    - [ ] allow mounting some other devices
-    - [ ] list non mounted devices, list all mount points
-    - [ ] act on them
+- [ ] build option to force reset of config file, warn the user at first start
+- [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
+- [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
+- [ ] allow pipe in execution
+- [ ] refactor cryptdevice and iso_file
+
+  - [ ] mode to handle those mounts. ATM it's all over the place...
+  - [ ] allow mounting some other devices
+  - [ ] list non mounted devices, list all mount points
+  - [ ] act on them
 
 - [ ] sub window / menu for completion / selection.
 
@@ -504,7 +543,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Version 0.1.50 : safety & memory usage
 
   - [ ] there's a memory leak somewhere
-  - [ ] command::execute in child: prevent it from crashing main app
   - [ ] preview of big files (or whatever file) should only read chunk of the file,
         not the whole thing. Previewing a 5gB iso file uses up to 15gB of ram, which will crash any system.
         or should it ?
@@ -553,3 +591,42 @@ All of this stuff can be done easily through a shell command or automatically. I
 ### CLI
 
 - [CLI crates](https://lib.rs/command-line-interface)
+
+### Chat GPT ideas
+
+Tell me 10 cool features a TUI file manager could have
+
+Sure! Here are 10 cool features a TUI (Text-based User Interface) file manager
+could have:
+
+Easy navigation: A TUI file manager should allow users to navigate through
+directories and files quickly and easily using keyboard shortcuts.
+
+File previews: Users can preview the contents of a file without having to open
+it. This feature can be particularly useful for large text files, images, or
+videos.
+
+Customizable interface: A TUI file manager should be customizable so that users
+can choose the information they want to see on the screen, such as file size,
+modification date, and file type.
+
+File operations: Basic file operations like copying, moving, and deleting
+should be easily accessible and efficient to perform.
+
+Bulk operations: A TUI file manager should allow users to perform bulk
+operations on multiple files at once, such as renaming or deleting them.
+
+Tabbed interface: A tabbed interface allows users to have multiple directories
+open at the same time, making it easy to move files between them.
+
+Bookmarking: Users can bookmark frequently used directories for quick access.
+
+Integrated terminal: A TUI file manager can include an integrated terminal to
+execute commands without switching to another application.
+
+Search functionality: Users can search for files based on their name, content,
+or other criteria, with the search results displayed in real-time.
+
+Cloud storage integration: TUI file managers can integrate with cloud storage
+services like Dropbox, Google Drive, or OneDrive, allowing users to manage
+their cloud files directly from the file manager interface.

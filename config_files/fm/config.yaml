@@ -33,11 +33,12 @@ keys:
   'c': CopyPaste
   'd': NewDir
   'e': Exec
-  'g': Goto
-  'h': Help
+  'g': KeyHome
+  'h': MoveLeft
   'i': NvimFilepicker
-  'j': Jump
-  'l': Symlink
+  'j': MoveDown  
+  'k': MoveUp
+  'l': MoveRight
   'm': Chmod
   'n': NewFile
   'o': OpenFile
@@ -52,20 +53,41 @@ keys:
   'x': DeleteFile
   'shift-b': Bulk
   'shift-f': Filter
-  'shift-g': Shortcut
-  'shift-h': History
+  'shift-g': End
+  'shift-h': Help
+  'shift-L': Symlink
   'shift-m': MarksNew
   'shift-o': Sort
   'shift-p': Preview
   'shift-t': MediaInfo
   'ctrl-c': CopyFilename
-  'ctrl-d': Delete
   'ctrl-e': EncryptedDrive
   'ctrl-f': FuzzyFind
+  'ctrl-g': Shortcut
   'ctrl-p': CopyFilepath
   'ctrl-q': ModeNormal
   'ctrl-r': RefreshView
   'alt-d': DragNDrop
   'alt-e': ToggleDisplayFull
+  'alt-g': Goto
   'alt-p': TogglePreviewSecond
   'alt-f': ToggleDualPane
+settings:
+  dual: true
+  full: true
+
+# Custom command :
+# * Use an unused keybind
+# * Don't use pipe or redirection, it won't be parsed correctly
+# * Use full path for the command : `/usr/bin/ls` not `ls`
+# * Use expensions :
+#     Expansions :
+#     - %s: the full path of the currently selected file or folder,
+#     - %f: the list of the full paths of the flagged files.
+#     - %e: the extension of the file.
+#     - %n: the filename only.
+#     - %p: the full path of the current directory.
+# Example:
+# 'alt-u': "/usr/bin/ls %f"
+custom:
+  'alt-u': "/usr/bin/google-chrome-stable %s"

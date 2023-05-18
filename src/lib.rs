@@ -32,6 +32,7 @@ pub mod password;
 pub mod preview;
 pub mod selectable_content;
 pub mod shell_menu;
+pub mod shell_parser;
 pub mod shortcut;
 pub mod skim;
 pub mod sort;

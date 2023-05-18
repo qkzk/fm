@@ -9,6 +9,27 @@ use crate::constant_strings_paths::DEFAULT_TERMINAL_APPLICATION;
 use crate::keybindings::Bindings;
 use crate::utils::is_program_in_path;
 
+/// Starting settings.
+/// those values are updated from the yaml config file
+#[derive(Debug, Clone, Default)]
+pub struct Settings {
+    pub dual: bool,
+    pub full: bool,
+}
+
+impl Settings {
+    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+        match yaml["dual"] {
+            serde_yaml::Value::Bool(false) => self.dual = false,
+            _ => self.dual = true,
+        }
+        match yaml["full"] {
+            serde_yaml::Value::Bool(false) => self.full = false,
+            _ => self.full = true,
+        }
+    }
+}
+
 /// Holds every configurable aspect of the application.
 /// All attributes are hardcoded then updated from optional values
 /// of the config file.
@@ -21,6 +42,8 @@ pub struct Config {
     pub terminal: String,
     /// Configurable keybindings.
     pub binds: Bindings,
+    /// Basic starting settings
+    pub settings: Settings,
 }
 
 impl Config {
@@ -30,27 +53,28 @@ impl Config {
             colors: Colors::default(),
             terminal: DEFAULT_TERMINAL_APPLICATION.to_owned(),
             binds: Bindings::default(),
+            settings: Settings::default(),
         })
     }
     /// Updates the config from  a configuration content.
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> Result<()> {
         self.colors.update_from_config(&yaml["colors"]);
-        self.binds.update_from_config(&yaml["keys"]);
-        self.terminal = Self::set_terminal(&yaml["terminal"])?;
+        self.binds.update_normal(&yaml["keys"]);
+        self.binds.update_custom(&yaml["custom"]);
+        self.update_terminal(&yaml["terminal"]);
+        self.settings.update_from_config(&yaml["settings"]);
         Ok(())
     }
 
     /// First we try to use the current terminal. If it's a fake one (ie. inside neovim float term),
     /// we look for the configured one,
-    /// else we use the hardcoded one.
-    fn set_terminal(yaml: &serde_yaml::value::Value) -> Result<String> {
+    /// else nothing is done.
+    fn update_terminal(&mut self, yaml: &serde_yaml::value::Value) {
         let terminal_currently_used = std::env::var("TERM").unwrap_or_default();
         if !terminal_currently_used.is_empty() && is_program_in_path(&terminal_currently_used) {
-            Ok(terminal_currently_used)
+            self.terminal = terminal_currently_used
         } else if let Some(configured_terminal) = yaml.as_str() {
-            Ok(configured_terminal.to_owned())
-        } else {
-            Ok(DEFAULT_TERMINAL_APPLICATION.to_owned())
+            self.terminal = configured_terminal.to_owned()
         }
     }
 
@@ -149,14 +173,11 @@ pub fn str_to_tuikit(color: &str) -> Color {
 /// 1. hardcoded values
 ///
 /// 2. configured values from `~/.config/fm/config_file_name.yaml` if those files exists.
+/// If the config fle is poorly formated its simply ignored.
 pub fn load_config(path: &str) -> Result<Config> {
     let mut config = Config::new()?;
-
-    if let Ok(file) = File::open(path::Path::new(&shellexpand::tilde(path).to_string())) {
-        if let Ok(yaml) = serde_yaml::from_reader(file) {
-            config.update_from_config(&yaml)?;
-        }
-    }
-
+    let file = File::open(path::Path::new(&shellexpand::tilde(path).to_string()))?;
+    let Ok(yaml) = serde_yaml::from_reader(file) else { return Ok(config); };
+    let _ = config.update_from_config(&yaml);
     Ok(config)
 }

@@ -12,6 +12,8 @@ pub struct Bindings {
     /// An HashMap of key & Actions.
     /// Every binded key is linked to its corresponding action
     pub binds: HashMap<Key, ActionMap>,
+    /// Remember every key binded to a custom action
+    pub custom: Option<Vec<String>>,
 }
 
 impl Default for Bindings {
@@ -23,7 +25,7 @@ impl Default for Bindings {
 impl Bindings {
     fn new() -> Self {
         let binds = HashMap::from([
-            (Key::ESC, ActionMap::ModeNormal),
+            (Key::ESC, ActionMap::ResetMode),
             (Key::Up, ActionMap::MoveUp),
             (Key::Down, ActionMap::MoveDown),
             (Key::Left, ActionMap::MoveLeft),
@@ -43,15 +45,21 @@ impl Bindings {
             (Key::Char('\''), ActionMap::MarksJump),
             (Key::Char('-'), ActionMap::Back),
             (Key::Char('~'), ActionMap::Home),
+            (Key::Char('`'), ActionMap::GoRoot),
+            (Key::Char('!'), ActionMap::ShellCommand),
+            (Key::Char('@'), ActionMap::GoStart),
             (Key::Char(':'), ActionMap::Command),
             (Key::Char('B'), ActionMap::Bulk),
             (Key::Char('C'), ActionMap::Compress),
             (Key::Char('D'), ActionMap::Diff),
             (Key::Char('E'), ActionMap::EncryptedDrive),
             (Key::Char('F'), ActionMap::Filter),
-            (Key::Char('G'), ActionMap::Shortcut),
-            (Key::Char('H'), ActionMap::History),
+            (Key::Char('G'), ActionMap::End),
+            (Key::Char('H'), ActionMap::Help),
+            (Key::Char('J'), ActionMap::PageUp),
+            (Key::Char('K'), ActionMap::PageDown),
             (Key::Char('I'), ActionMap::NvimSetAddress),
+            (Key::Char('L'), ActionMap::Symlink),
             (Key::Char('M'), ActionMap::MarksNew),
             (Key::Char('O'), ActionMap::Sort),
             (Key::Char('P'), ActionMap::Preview),
@@ -64,11 +72,12 @@ impl Bindings {
             (Key::Char('d'), ActionMap::NewDir),
             (Key::Char('e'), ActionMap::Exec),
             (Key::Char('f'), ActionMap::SearchNext),
-            (Key::Char('g'), ActionMap::Goto),
-            (Key::Char('h'), ActionMap::Help),
+            (Key::Char('g'), ActionMap::KeyHome),
+            (Key::Char('k'), ActionMap::MoveUp),
+            (Key::Char('j'), ActionMap::MoveDown),
+            (Key::Char('h'), ActionMap::MoveLeft),
+            (Key::Char('l'), ActionMap::MoveRight),
             (Key::Char('i'), ActionMap::NvimFilepicker),
-            (Key::Char('j'), ActionMap::Jump),
-            (Key::Char('l'), ActionMap::Symlink),
             (Key::Char('m'), ActionMap::Chmod),
             (Key::Char('n'), ActionMap::NewFile),
             (Key::Char('o'), ActionMap::OpenFile),
@@ -83,23 +92,28 @@ impl Bindings {
             (Key::Char('x'), ActionMap::DeleteFile),
             (Key::Char('z'), ActionMap::TreeFold),
             (Key::Char('Z'), ActionMap::TreeUnFoldAll),
-            (Key::Alt('z'), ActionMap::TreeFoldAll),
+            (Key::Alt('c'), ActionMap::OpenConfig),
             (Key::Alt('d'), ActionMap::DragNDrop),
             (Key::Alt('e'), ActionMap::ToggleDisplayFull),
             (Key::Alt('f'), ActionMap::ToggleDualPane),
+            (Key::Alt('g'), ActionMap::Goto),
             (Key::Alt('h'), ActionMap::FuzzyFindHelp),
             (Key::Alt('i'), ActionMap::CliInfo),
+            (Key::Alt('j'), ActionMap::Jump),
             (Key::Alt('l'), ActionMap::Log),
-            (Key::Alt('p'), ActionMap::TogglePreviewSecond),
-            (Key::Alt('c'), ActionMap::OpenConfig),
-            (Key::Alt('x'), ActionMap::TrashEmpty),
             (Key::Alt('o'), ActionMap::TrashOpen),
+            (Key::Alt('p'), ActionMap::TogglePreviewSecond),
+            (Key::Alt('x'), ActionMap::TrashEmpty),
+            (Key::Alt('z'), ActionMap::TreeFoldAll),
             (Key::Ctrl('c'), ActionMap::CopyFilename),
-            (Key::Ctrl('d'), ActionMap::Delete),
+            (Key::Ctrl('d'), ActionMap::PageDown),
             (Key::Ctrl('f'), ActionMap::FuzzyFind),
+            (Key::Ctrl('g'), ActionMap::Shortcut),
+            (Key::Ctrl('h'), ActionMap::History),
             (Key::Ctrl('s'), ActionMap::FuzzyFindLine),
+            (Key::Ctrl('u'), ActionMap::PageUp),
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
-            (Key::Ctrl('q'), ActionMap::ModeNormal),
+            (Key::Ctrl('q'), ActionMap::ResetMode),
             (Key::Ctrl('r'), ActionMap::RefreshView),
             (Key::AltEnter, ActionMap::MocpGoToSong),
             (Key::CtrlUp, ActionMap::MocpAddToPlayList),
@@ -107,7 +121,8 @@ impl Bindings {
             (Key::CtrlRight, ActionMap::MocpNext),
             (Key::CtrlLeft, ActionMap::MocpPrevious),
         ]);
-        Self { binds }
+        let custom = None;
+        Self { binds, custom }
     }
 
     /// Returns an Option of action. None if the key isn't binded.
@@ -127,8 +142,9 @@ impl Bindings {
     /// Update the binds from a config file.
     /// It may fail (and leave keybinding intact) if the file isn't formated properly.
     /// An unknown or poorly formated key will be ignored.
-    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
-        for yaml_key in yaml.as_mapping().unwrap().keys() {
+    pub fn update_normal(&mut self, yaml: &serde_yaml::value::Value) {
+        let Some(mappings) = yaml.as_mapping() else { return };
+        for yaml_key in mappings.keys() {
             let Some(key_string) = yaml_key.as_str() else { 
                 log::info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
                 continue;
@@ -144,5 +160,26 @@ impl Bindings {
             };
             self.binds.insert(keymap, action);
         }
+    }
+
+    pub fn update_custom(&mut self, yaml: &serde_yaml::value::Value) {
+        let Some(mappings) = yaml.as_mapping() else { return };
+        let mut custom = vec![];
+        for yaml_key in mappings.keys() {
+            let Some(key_string) = yaml_key.as_str() else { 
+                log::info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
+                continue;
+            };
+            let Some(keymap) = from_keyname(key_string) else {
+                log::info!("~/.config/fm/config.yaml: Keybinding {key_string} is unknown");
+                continue;
+            };
+            let Some(custom_str) = yaml[yaml_key].as_str() else { continue; };
+            let action = ActionMap::Custom(custom_str.to_owned());
+            log::info!("custom bind {keymap:?}, {action}");
+            self.binds.insert(keymap, action.clone());
+            custom.push(format!("{keymap:?}:        {custom_str}\n"));
+        }
+        self.custom = Some(custom);
     }
 }

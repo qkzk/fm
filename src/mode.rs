@@ -78,7 +78,9 @@ pub enum InputSimple {
     /// Set a new neovim RPC address
     SetNvimAddr,
     /// Input a password (chars a replaced by *)
-    Password(PasswordKind, BlockDeviceAction, PasswordUsage),
+    Password(PasswordKind, Option<BlockDeviceAction>, PasswordUsage),
+    /// Shell command execute as is
+    Shell,
 }
 
 /// Different modes in which we display a bunch of possible destinations.
@@ -95,8 +97,7 @@ pub enum Navigate {
     Trash,
     /// Manipulate an encrypted device
     EncryptedDrive,
-    IsoDevice,
-    /// Jump to a saved mark
+    /// Manipulate an iso file to mount it
     Marks(MarkAction),
     /// Pick a compression method
     Compress,
@@ -141,6 +142,7 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
             Mode::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
             Mode::InputSimple(InputSimple::SetNvimAddr) => write!(f, "Neovim:  "),
+            Mode::InputSimple(InputSimple::Shell) => write!(f, "Shell:   "),
             Mode::InputSimple(InputSimple::Sort) => {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }
@@ -167,9 +169,6 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::Compress) => write!(f, "Compress :"),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 write!(f, "Encrypted devices :")
-            }
-            Mode::Navigate(Navigate::IsoDevice) => {
-                write!(f, "Iso image :")
             }
             Mode::Navigate(Navigate::CliInfo) => write!(f, "Display infos :"),
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),

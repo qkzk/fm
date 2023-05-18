@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::path;
 
 use anyhow::{Context, Result};
@@ -11,9 +12,11 @@ use crate::fileinfo::{FileInfo, FileKind, PathContent};
 use crate::filter::FilterKind;
 use crate::input::Input;
 use crate::mode::Mode;
+use crate::opener::execute_in_child;
 use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
+use crate::utils::{row_to_index, set_clipboard};
 use crate::visited::History;
 
 /// Holds every thing about the current tab of the application.
@@ -71,7 +74,7 @@ impl Tab {
         let preview = Preview::Empty;
         let mut history = History::default();
         history.push(&path);
-        let shortcut = Shortcut::new();
+        let shortcut = Shortcut::new(&path);
         let searched = None;
         Ok(Self {
             mode,
@@ -277,18 +280,21 @@ impl Tab {
 
     /// Move down 10 times in the tree
     pub fn tree_page_down(&mut self, colors: &Colors) -> Result<()> {
+        self.directory.tree.increase_required_height_by_ten();
         self.directory.unselect_children();
         self.directory.page_down(colors)
     }
 
     /// Move up 10 times in the tree
     pub fn tree_page_up(&mut self, colors: &Colors) -> Result<()> {
+        self.directory.tree.decrease_required_height_by_ten();
         self.directory.unselect_children();
         self.directory.page_up(colors)
     }
 
     /// Select the next sibling.
     pub fn tree_select_next(&mut self, colors: &Colors) -> Result<()> {
+        self.directory.tree.increase_required_height();
         self.directory.unselect_children();
         self.directory.select_next(colors)
     }
@@ -307,6 +313,7 @@ impl Tab {
 
     /// Go to the last leaf.
     pub fn tree_go_to_bottom_leaf(&mut self, colors: &Colors) -> Result<()> {
+        self.directory.tree.set_required_height(usize::MAX);
         self.directory.unselect_children();
         self.directory.go_to_bottom_leaf(colors)
     }
@@ -366,6 +373,7 @@ impl Tab {
 
     /// Set a new mode and save the last one
     pub fn set_mode(&mut self, new_mode: Mode) {
+        log::info!("mode {new_mode}");
         self.previous_mode = self.mode;
         self.mode = new_mode;
     }
@@ -381,5 +389,229 @@ impl Tab {
     /// Only Tree, Normal & Preview doesn't require 2 windows.
     pub fn need_second_window(&self) -> bool {
         !matches!(self.mode, Mode::Normal | Mode::Tree | Mode::Preview)
+    }
+
+    /// Move down one row if possible.
+    pub fn down_one_row(&mut self) {
+        match self.mode {
+            Mode::Normal => {
+                self.path_content.unselect_current();
+                self.path_content.next();
+                self.path_content.select_current();
+                self.window.scroll_down_one(self.path_content.index)
+            }
+            Mode::Preview => self.window.scroll_down_one(self.window.bottom),
+            _ => (),
+        }
+    }
+
+    /// Move up one row if possible.
+    pub fn up_one_row(&mut self) {
+        match self.mode {
+            Mode::Normal => {
+                self.path_content.unselect_current();
+                self.path_content.prev();
+                self.path_content.select_current();
+                self.window.scroll_up_one(self.path_content.index)
+            }
+            Mode::Preview => self.window.scroll_up_one(self.window.top),
+            _ => (),
+        }
+    }
+
+    /// Move to the top of the current directory.
+    pub fn go_top(&mut self) {
+        match self.mode {
+            Mode::Normal => self.path_content.select_index(0),
+            Mode::Preview => (),
+            _ => {
+                return;
+            }
+        }
+        self.window.scroll_to(0);
+    }
+
+    /// Add a char to input string, look for a possible completion.
+    pub fn text_insert_and_complete(&mut self, c: char) -> Result<()> {
+        self.input.insert(c);
+        self.fill_completion()
+    }
+
+    /// Fold every child node in the tree.
+    /// Recursively explore the tree and fold every node. Reset the display.
+    pub fn tree_go_to_root(&mut self, colors: &Colors) -> Result<()> {
+        self.directory.tree.reset_required_height();
+        self.tree_select_root(colors)
+    }
+
+    /// Select the first child of the current node and reset the display.
+    pub fn select_first_child(&mut self, colors: &Colors) -> Result<()> {
+        self.directory.tree.increase_required_height();
+        self.tree_select_first_child(colors)
+    }
+
+    /// Select the next sibling of the current node.
+    pub fn select_next(&mut self, colors: &Colors) -> Result<()> {
+        self.directory.tree.increase_required_height();
+        self.tree_select_next(colors)
+    }
+
+    /// Select the previous sibling of the current node.
+    pub fn select_prev(&mut self, colors: &Colors) -> Result<()> {
+        self.directory.tree.decrease_required_height();
+        self.tree_select_prev(colors)
+    }
+
+    /// Copy the selected filename to the clipboard. Only the filename.
+    pub fn filename_to_clipboard(&self) -> Result<()> {
+        set_clipboard(
+            self.selected()
+                .context("filename_to_clipboard: no selected file")?
+                .filename
+                .clone(),
+        )
+    }
+
+    /// Copy the selected filepath to the clipboard. The absolute path.
+    pub fn filepath_to_clipboard(&self) -> Result<()> {
+        set_clipboard(
+            self.selected()
+                .context("filepath_to_clipboard: no selected file")?
+                .path
+                .to_str()
+                .context("filepath_to_clipboard: no selected file")?
+                .to_owned(),
+        )
+    }
+
+    /// Move to the bottom of current view.
+    pub fn go_bottom(&mut self) {
+        match self.mode {
+            Mode::Normal => {
+                let last_index = self.path_content.content.len() - 1;
+                self.path_content.select_index(last_index);
+                self.window.scroll_to(last_index)
+            }
+            Mode::Preview => self.window.scroll_to(self.preview.len() - 1),
+            _ => (),
+        }
+    }
+
+    /// Move up 10 rows in normal mode.
+    /// In other modes where vertical scrolling is possible (atm Preview),
+    /// if moves up one page.
+    pub fn page_up(&mut self) {
+        match self.mode {
+            Mode::Normal => {
+                let up_index = if self.path_content.index > 10 {
+                    self.path_content.index - 10
+                } else {
+                    0
+                };
+                self.path_content.select_index(up_index);
+                self.window.scroll_to(up_index)
+            }
+            Mode::Preview => {
+                if self.window.top > 0 {
+                    let skip = min(self.window.top, 30);
+                    self.window.bottom -= skip;
+                    self.window.top -= skip;
+                }
+            }
+            _ => (),
+        }
+    }
+
+    /// Move down 10 rows in normal mode.
+    /// In other modes where vertical scrolling is possible (atm Preview),
+    /// if moves down one page.
+    pub fn page_down(&mut self) {
+        match self.mode {
+            Mode::Normal => {
+                let down_index = min(
+                    self.path_content.content.len() - 1,
+                    self.path_content.index + 10,
+                );
+                self.path_content.select_index(down_index);
+                self.window.scroll_to(down_index);
+            }
+            Mode::Preview => {
+                if self.window.bottom < self.preview.len() {
+                    let skip = min(self.preview.len() - self.window.bottom, 30);
+                    self.window.bottom += skip;
+                    self.window.top += skip;
+                }
+            }
+            _ => (),
+        }
+    }
+
+    /// Select a given row, if there's something in it.
+    pub fn select_row(&mut self, row: u16, colors: &Colors) -> Result<()> {
+        match self.mode {
+            Mode::Normal => {
+                let index = row_to_index(row);
+                self.path_content.select_index(index);
+                self.window.scroll_to(index);
+            }
+            Mode::Tree => {
+                let index = row_to_index(row) + 1;
+                self.directory.tree.unselect_children();
+                self.directory.tree.position = self.directory.tree.position_from_index(index);
+                let (_, _, node) = self.directory.tree.select_from_position()?;
+                self.directory.make_preview(colors);
+                self.directory.tree.current_node = node;
+            }
+            _ => (),
+        }
+        Ok(())
+    }
+
+    /// Sort the file with given criteria
+    /// Valid kind of sorts are :
+    /// by kind : directory first, files next, in alphanumeric order
+    /// by filename,
+    /// by date of modification,
+    /// by size,
+    /// by extension.
+    /// The first letter is used to identify the method.
+    /// If the user types an uppercase char, the sort is reverse.
+    pub fn sort(&mut self, c: char, colors: &Colors) -> Result<()> {
+        if self.path_content.content.is_empty() {
+            return Ok(());
+        }
+        self.reset_mode();
+        match self.mode {
+            Mode::Normal => {
+                self.path_content.unselect_current();
+                self.path_content.update_sort_from_char(c);
+                self.path_content.sort();
+                self.go_top();
+                self.path_content.select_index(0);
+            }
+            Mode::Tree => {
+                self.directory.tree.update_sort_from_char(c);
+                self.directory.tree.sort();
+                self.tree_select_root(colors)?;
+                self.directory.tree.into_navigable_content(colors);
+            }
+            _ => (),
+        }
+        Ok(())
+    }
+
+    pub fn execute_custom(&mut self, exec_command: String) -> Result<bool> {
+        let mut args: Vec<&str> = exec_command.split(' ').collect();
+        let command = args.remove(0);
+        if !std::path::Path::new(command).exists() {
+            return Ok(false);
+        }
+        let path = &self
+            .path_content
+            .selected_path_string()
+            .context("execute custom: can't find command")?;
+        args.push(path);
+        execute_in_child(command, &args)?;
+        Ok(true)
     }
 }

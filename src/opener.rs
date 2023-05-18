@@ -388,16 +388,22 @@ impl Opener {
 
 /// Execute a command with options in a fork.
 /// Returns an handle to the child process.
-pub fn execute_in_child(exe: &str, args: &Vec<&str>) -> Result<std::process::Child> {
-    info!("execute_in_child. executable: {exe}, arguments: {args:?}",);
+pub fn execute_in_child<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
+    exe: S,
+    args: &[&str],
+) -> Result<std::process::Child> {
+    info!("execute_in_child. executable: {exe:?}, arguments: {args:?}",);
     Ok(Command::new(exe).args(args).spawn()?)
 }
 
 /// Execute a command with options in a fork.
 /// Returns an handle to the child process.
 /// Branch stdin, stderr and stdout to /dev/null
-pub fn execute_in_child_without_output(exe: &str, args: &Vec<&str>) -> Result<std::process::Child> {
-    info!("execute_in_child_without_output. executable: {exe}, arguments: {args:?}",);
+pub fn execute_in_child_without_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
+    exe: S,
+    args: &[&str],
+) -> Result<std::process::Child> {
+    info!("execute_in_child_without_output. executable: {exe:?}, arguments: {args:?}",);
     Ok(Command::new(exe)
         .args(args)
         .stdin(Stdio::null())
@@ -406,19 +412,17 @@ pub fn execute_in_child_without_output(exe: &str, args: &Vec<&str>) -> Result<st
         .spawn()?)
 }
 
-pub fn execute_in_child_without_output_with_path<P>(
-    exe: &str,
+pub fn execute_in_child_without_output_with_path<S, P>(
+    exe: S,
     path: P,
-    args: Option<&Vec<&str>>,
+    args: Option<&[&str]>,
 ) -> Result<std::process::Child>
 where
+    S: AsRef<std::ffi::OsStr> + fmt::Debug,
     P: AsRef<Path>,
 {
-    info!("execute_in_child_without_output_with_path. executable: {exe}, arguments: {args:?}",);
-    let mut params = &vec![];
-    if let Some(args) = args {
-        params = args;
-    }
+    info!("execute_in_child_without_output_with_path. executable: {exe:?}, arguments: {args:?}");
+    let params = if let Some(args) = args { args } else { &[] };
     Ok(Command::new(exe)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -432,8 +436,11 @@ where
 /// `Ok(stdout)` if the status code is 0
 /// an Error otherwise
 /// Branch stdin and stderr to /dev/null
-pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> Result<String> {
-    info!("execute_and_capture_output. executable: {exe}, arguments: {args:?}",);
+pub fn execute_and_capture_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
+    exe: S,
+    args: &[&str],
+) -> Result<String> {
+    info!("execute_and_capture_output. executable: {exe:?}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)
         .stdin(Stdio::null())
@@ -453,8 +460,11 @@ pub fn execute_and_capture_output(exe: &str, args: &Vec<&str>) -> Result<String>
 /// Execute a command with options in a fork.
 /// Wait for termination and return either `Ok(stdout)`.
 /// Branch stdin and stderr to /dev/null
-pub fn execute_and_capture_output_without_check(exe: &str, args: &Vec<&str>) -> Result<String> {
-    info!("execute_and_capture_output_without_check. executable: {exe}, arguments: {args:?}",);
+pub fn execute_and_capture_output_without_check<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
+    exe: S,
+    args: &[&str],
+) -> Result<String> {
+    info!("execute_and_capture_output_without_check. executable: {exe:?}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)
         .stdin(Stdio::null())

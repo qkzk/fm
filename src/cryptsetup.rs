@@ -6,7 +6,10 @@ use sysinfo::{DiskExt, System, SystemExt};
 
 use crate::impl_selectable_content;
 use crate::mount_help::MountHelper;
-use crate::password::{sudo, sudo_password, PasswordHolder, PasswordKind};
+use crate::password::{
+    drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
+    reset_sudo_faillock, PasswordHolder, PasswordKind,
+};
 use crate::utils::current_username;
 
 /// Possible actions on encrypted drives
@@ -143,21 +146,23 @@ impl CryptoDevice {
     }
 
     fn open_mount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
+        let root_path = std::path::Path::new("/");
         self.set_device_name()?;
         if self.is_mounted() {
             Err(anyhow!("luks open mount: device is already mounted"))
         } else {
             // sudo
-            let (success, _, _) = sudo_password(
-                &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
-                &password.sudo()?,
-            )?;
+            let (success, _, _) =
+                execute_sudo_command_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
             if !success {
                 return Ok(false);
             }
             // open
-            let (success, stdout, stderr) =
-                sudo_password(&self.format_luksopen_parameters(), &password.cryptsetup()?)?;
+            let (success, stdout, stderr) = execute_sudo_command_with_password(
+                &self.format_luksopen_parameters(),
+                &password.cryptsetup()?,
+                root_path,
+            )?;
             info!("stdout: {}\nstderr: {}", stdout, stderr);
             if !success {
                 return Ok(false);
@@ -171,13 +176,13 @@ impl CryptoDevice {
             return Ok(false);
         }
         // close
-        let (success, stdout, stderr) = sudo(&self.format_luksclose_parameters())?;
+        let (success, stdout, stderr) = execute_sudo_command(&self.format_luksclose_parameters())?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         if !success {
             return Ok(false);
         }
         // sudo -k
-        let (success, stdout, stderr) = sudo(&["-k".to_owned()])?;
+        let (success, stdout, stderr) = execute_sudo_command(&["-k".to_owned()])?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         Ok(success)
     }
@@ -235,34 +240,35 @@ impl MountHelper for CryptoDevice {
     fn mount(&mut self, username: &str, _: &mut PasswordHolder) -> Result<bool> {
         self.set_device_name()?;
         // mkdir
-        let (success, stdout, stderr) = sudo(&self.format_mkdir_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command(&self.format_mkdir_parameters(username))?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         if !success {
             return Ok(false);
         }
         // mount
-        let (success, stdout, stderr) = sudo(&self.format_mount_parameters(username))?;
+        let (success, stdout, stderr) =
+            execute_sudo_command(&self.format_mount_parameters(username))?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
         if !success {
             return Ok(false);
         }
         // sudo -k
-        sudo(&["-k".to_owned()])?;
+        execute_sudo_command(&["-k".to_owned()])?;
         Ok(success)
     }
 
     fn umount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
+        let root_path = std::path::Path::new("/");
         self.set_device_name()?;
         // sudo
-        let (success, _, _) = sudo_password(
-            &["-S".to_owned(), "ls".to_owned(), "/root".to_owned()],
-            &password.sudo()?,
-        )?;
+        let (success, _, _) =
+            execute_sudo_command_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
         if !success {
             return Ok(false);
         }
         // unmount
-        let (_, stdout, stderr) = sudo(&self.format_umount_parameters(username))?;
+        let (_, stdout, stderr) = execute_sudo_command(&self.format_umount_parameters(username))?;
         info!("stdout: {}\nstderr: {}", stdout, stderr);
 
         Ok(true)
@@ -300,7 +306,7 @@ impl CryptoDeviceMounter {
 /// of the user.
 #[derive(Debug, Clone, Default)]
 pub struct CryptoDeviceOpener {
-    pub content: Vec<CryptoDeviceMounter>,
+    pub content: Vec<CryptoDevice>,
     index: usize,
 }
 
@@ -309,7 +315,7 @@ impl CryptoDeviceOpener {
     pub fn update(&mut self) -> Result<()> {
         self.content = filter_crypto_devices_lines(get_devices()?, "crypto")
             .iter()
-            .map(|line| CryptoDeviceMounter::from_line(line))
+            .map(|line| CryptoDevice::from_line(line))
             .filter_map(|r| r.ok())
             .collect();
         self.index = 0;
@@ -317,76 +323,41 @@ impl CryptoDeviceOpener {
     }
 
     /// Set a password for the selected device.
-    pub fn set_password(&mut self, password_kind: PasswordKind, password: String) {
+    pub fn set_password(
+        &mut self,
+        password_kind: PasswordKind,
+        password: String,
+        password_holder: &mut PasswordHolder,
+    ) {
         match password_kind {
-            PasswordKind::SUDO => self.content[self.index].password_holder.set_sudo(password),
-            PasswordKind::CRYPTSETUP => self.content[self.index]
-                .password_holder
-                .set_cryptsetup(password),
+            PasswordKind::SUDO => password_holder.set_sudo(password),
+            PasswordKind::CRYPTSETUP => password_holder.set_cryptsetup(password),
         }
     }
 
     /// Open and mount the selected device.
-    pub fn mount_selected(&mut self) -> Result<()> {
+    pub fn mount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<()> {
         let username = current_username()?;
-        let mut passwords = self.content[self.index].password_holder.clone();
-        let success = self.content[self.index]
-            .cryptdevice
-            .open_mount(&username, &mut passwords)?;
+        let success = self.content[self.index].open_mount(&username, password_holder)?;
         if !success {
-            Self::reset_faillock()?
+            reset_sudo_faillock()?
         }
-        self.content[self.index].password_holder.reset();
-        Self::drop_sudo()?;
+        password_holder.reset();
+        drop_sudo_privileges()?;
         Ok(())
     }
 
     /// Unmount and close the selected device.
-    pub fn umount_selected(&mut self) -> Result<()> {
+    pub fn umount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<()> {
         let username = current_username()?;
-        let mut passwords = self.content[self.index].password_holder.clone();
-        let success = self.content[self.index]
-            .cryptdevice
-            .umount_close(&username, &mut passwords)?;
+        let success = self.content[self.index].umount_close(&username, password_holder)?;
         if !success {
-            Self::reset_faillock()?
+            reset_sudo_faillock()?
         }
-        self.content[self.index].password_holder.reset();
-        Self::drop_sudo()?;
+        password_holder.reset();
+        drop_sudo_privileges()?;
         Ok(())
-    }
-
-    fn reset_faillock() -> Result<()> {
-        Command::new("faillock")
-            .arg("--user")
-            .arg(current_username()?)
-            .arg("--reset")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()?;
-        Ok(())
-    }
-
-    fn drop_sudo() -> Result<()> {
-        Command::new("sudo")
-            .arg("-k")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()?;
-        Ok(())
-    }
-
-    /// True if the selected device has sudo password.
-    pub fn has_sudo(&self) -> bool {
-        self.content[self.index].password_holder.has_sudo()
-    }
-
-    /// True if the selected device has cryptsetup passphrase.
-    pub fn has_cryptsetup(&self) -> bool {
-        self.content[self.index].password_holder.has_cryptsetup()
     }
 }
 
-impl_selectable_content!(CryptoDeviceMounter, CryptoDeviceOpener);
+impl_selectable_content!(CryptoDevice, CryptoDeviceOpener);

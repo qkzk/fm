@@ -21,16 +21,16 @@ pub struct Mocp {}
 impl Mocp {
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn add_to_playlist(tab: &Tab) -> Result<()> {
-        let _ = execute_in_child("mocp", &vec!["-S"]);
+        let _ = execute_in_child("mocp", &["-S"]);
         let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
         info!("mocp add to playlist {path_str:?}");
-        let _ = execute_in_child("mocp", &vec!["-a", &path_str]);
+        let _ = execute_in_child("mocp", &["-a", &path_str]);
         Ok(())
     }
 
     /// Move to the currently playing song.
     pub fn go_to_song(tab: &mut Tab) -> Result<()> {
-        let output = execute_and_capture_output_without_check("mocp", &vec!["-Q", "%file"])?;
+        let output = execute_and_capture_output_without_check("mocp", &["-Q", "%file"])?;
         let filepath = std::path::PathBuf::from(output.trim());
         let Some(parent) = filepath.parent() else { return Ok(()) };
         let Some(filename) = filepath.file_name() else { return Ok(()) };
@@ -45,29 +45,29 @@ impl Mocp {
     /// Then toggle play/pause
     pub fn toggle_pause(status: &mut Status) -> Result<()> {
         info!("mocp toggle pause");
-        match execute_and_capture_output("mocp", &vec!["-i"]) {
+        match execute_and_capture_output("mocp", &["-i"]) {
             Ok(stdout) => {
                 // server is runing
                 if stdout.contains("STOP") {
                     // music is stopped, start playing music
-                    let _ = execute_and_capture_output("mocp", &vec!["-p"]);
+                    let _ = execute_and_capture_output("mocp", &["-p"]);
                 } else {
                     // music is playing or paused, toggle play/pause
-                    let _ = execute_and_capture_output("mocp", &vec!["-G"]);
+                    let _ = execute_and_capture_output("mocp", &["-G"]);
                 }
             }
             Err(e) => {
                 status.force_clear();
                 info!("mocp -i error:\n{e:?}");
                 // server is stopped, start it.
-                let c = execute_in_child("mocp", &vec!["-S"]);
+                let c = execute_in_child("mocp", &["-S"]);
                 let Ok(mut c) = c else {
                     // it shouldn't fail, something is wrong. It's better not to do anything.
                     return Ok(())
                 };
                 let _ = c.wait();
                 // start playing music
-                let _ = execute_and_capture_output("mocp", &vec!["-p"]);
+                let _ = execute_and_capture_output("mocp", &["-p"]);
             }
         }
         Ok(())
@@ -76,14 +76,14 @@ impl Mocp {
     /// Skip to the next song in MOC
     pub fn next() -> Result<()> {
         info!("mocp next");
-        let _ = execute_in_child("mocp", &vec!["-f"]);
+        let _ = execute_in_child("mocp", &["-f"]);
         Ok(())
     }
 
     /// Go to the previous song in MOC
     pub fn previous() -> Result<()> {
         info!("mocp previous");
-        let _ = execute_in_child("mocp", &vec!["-r"]);
+        let _ = execute_in_child("mocp", &["-r"]);
         Ok(())
     }
 }

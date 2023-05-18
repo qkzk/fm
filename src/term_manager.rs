@@ -13,8 +13,9 @@ use crate::completion::InputCompleted;
 use crate::compress::CompressionMethod;
 use crate::config::Colors;
 use crate::constant_strings_paths::{
-    FILTER_PRESENTATION, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
-    LOG_SECOND_SENTENCE,
+    CHMOD_LINES, FILTER_LINES, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
+    LOG_SECOND_SENTENCE, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES, PASSWORD_LINES,
+    REGEX_LINES, RENAME_LINES, SHELL_LINES, SORT_LINES,
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
@@ -26,23 +27,25 @@ use crate::status::Status;
 use crate::tab::Tab;
 use crate::trash::TrashInfo;
 
+/// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
     ($t:ident) => {
-        std::iter::zip($t.content().iter().enumerate(), MENU_COLORS.iter().cycle())
-            .map(|((a, b), c)| (a, b, c))
+        std::iter::zip($t.iter().enumerate(), MENU_COLORS.iter().cycle())
+            .map(|((index, line), attr)| (index, line, attr))
     };
 }
 
 /// At least 120 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
 
-const FIRST_LINE_COLORS: [Attr; 6] = [
+const FIRST_LINE_COLORS: [Attr; 7] = [
     color_to_attr(Color::Rgb(231, 162, 156)),
     color_to_attr(Color::Rgb(144, 172, 186)),
     color_to_attr(Color::Rgb(214, 125, 83)),
     color_to_attr(Color::Rgb(91, 152, 119)),
     color_to_attr(Color::Rgb(152, 87, 137)),
     color_to_attr(Color::Rgb(230, 189, 87)),
+    color_to_attr(Color::Rgb(251, 133, 0)),
 ];
 
 const MENU_COLORS: [Attr; 10] = [
@@ -176,9 +179,6 @@ impl<'a> WinMain<'a> {
                 let Some(file) = tab.selected() else { return Ok(0) };
                 self.second_line_detailed(file, canvas)
             }
-            Mode::InputSimple(InputSimple::Filter) => {
-                Ok(canvas.print_with_attr(1, 0, FILTER_PRESENTATION, ATTR_YELLOW_BOLD)?)
-            }
             _ => Ok(0),
         }
     }
@@ -207,7 +207,8 @@ impl<'a> WinMain<'a> {
             format!("{}  ", self.tab.path_content.used_space()),
             format!("Avail: {disk_space}  "),
             format!("{}  ", &self.tab.path_content.git_string()?),
-            format!("{} flags", &self.status.flagged.len()),
+            format!("{} flags ", &self.status.flagged.len()),
+            format!("{}", &self.tab.path_content.sort_kind),
         ])
     }
 
@@ -436,22 +437,10 @@ impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
         match self.tab.mode {
-            Mode::Navigate(Navigate::Jump) => self.destination(canvas, &self.status.flagged),
-            Mode::Navigate(Navigate::History) => self.destination(canvas, &self.tab.history),
-            Mode::Navigate(Navigate::Shortcut) => self.destination(canvas, &self.tab.shortcut),
-            Mode::Navigate(Navigate::Trash) => self.trash(canvas, &self.status.trash),
-            Mode::Navigate(Navigate::Compress) => self.compress(canvas, &self.status.compression),
-            Mode::Navigate(Navigate::Bulk) => self.bulk(canvas, &self.status.bulk),
-            Mode::Navigate(Navigate::EncryptedDrive) => {
-                self.encrypted_devices(self.status, self.tab, canvas)
-            }
-            Mode::Navigate(Navigate::Marks(_)) => self.marks(self.status, canvas),
-            Mode::Navigate(Navigate::ShellMenu) => self.shell_menu(self.status, canvas),
-            Mode::Navigate(Navigate::CliInfo) => self.cli_info(self.status, canvas),
-            Mode::NeedConfirmation(confirmed_mode) => {
-                self.confirmation(self.status, self.tab, confirmed_mode, canvas)
-            }
+            Mode::Navigate(mode) => self.navigate(mode, canvas),
+            Mode::NeedConfirmation(mode) => self.confirm(self.status, self.tab, mode, canvas),
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
+            Mode::InputSimple(mode) => Self::input_simple(mode, canvas),
             _ => Ok(()),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -489,6 +478,7 @@ impl<'a> WinSecondary<'a> {
                 vec!["Save mark...".to_owned()]
             }
             Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action, _)) => {
+                info!("term: password");
                 vec![format!("{password_kind}"), tab.input.password()]
             }
             Mode::InputCompleted(mode) => {
@@ -528,6 +518,33 @@ impl<'a> WinSecondary<'a> {
         }
         Ok(())
     }
+
+    fn input_simple_lines(mode: InputSimple) -> &'static [&'static str] {
+        match mode {
+            InputSimple::Chmod => &CHMOD_LINES,
+            InputSimple::Filter => &FILTER_LINES,
+            InputSimple::Newdir => &NEWDIR_LINES,
+            InputSimple::Newfile => &NEWFILE_LINES,
+            InputSimple::Password(_, _, _) => &PASSWORD_LINES,
+            InputSimple::RegexMatch => &REGEX_LINES,
+            InputSimple::Rename => &RENAME_LINES,
+            InputSimple::SetNvimAddr => &NVIM_ADDRESS_LINES,
+            InputSimple::Shell => &SHELL_LINES,
+            InputSimple::Sort => &SORT_LINES,
+        }
+    }
+
+    fn input_simple(mode: InputSimple, canvas: &mut dyn Canvas) -> Result<()> {
+        Self::display_static_lines(Self::input_simple_lines(mode), canvas)
+    }
+
+    fn display_static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {
+        for (row, line, attr) in enumerated_colored_iter!(lines) {
+            canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, line, *attr)?;
+        }
+        Ok(())
+    }
+
     /// Display a cursor in the top row, at a correct column.
     fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         match tab.mode {
@@ -558,6 +575,21 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
+    fn navigate(&self, navigable_mode: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
+        match navigable_mode {
+            Navigate::Bulk => self.bulk(canvas, &self.status.bulk),
+            Navigate::CliInfo => self.cli_info(self.status, canvas),
+            Navigate::Compress => self.compress(canvas, &self.status.compression),
+            Navigate::EncryptedDrive => self.encrypt(self.status, self.tab, canvas),
+            Navigate::History => self.destination(canvas, &self.tab.history),
+            Navigate::Jump => self.destination(canvas, &self.status.flagged),
+            Navigate::Marks(_) => self.marks(self.status, canvas),
+            Navigate::ShellMenu => self.shell_menu(self.status, canvas),
+            Navigate::Shortcut => self.destination(canvas, &self.tab.shortcut),
+            Navigate::Trash => self.trash(canvas, &self.status.trash),
+        }
+    }
+
     /// Display the possible destinations from a selectable content of PathBuf.
     fn destination(
         &self,
@@ -565,7 +597,8 @@ impl<'a> WinSecondary<'a> {
         selectable: &impl SelectableContent<PathBuf>,
     ) -> Result<()> {
         canvas.print(0, 0, "Go to...")?;
-        for (row, path, attr) in enumerated_colored_iter!(selectable) {
+        let content = &selectable.content();
+        for (row, path, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
@@ -586,7 +619,8 @@ impl<'a> WinSecondary<'a> {
         selectable: &impl SelectableContent<String>,
     ) -> Result<()> {
         canvas.print(0, 0, "Action...")?;
-        for (row, text, attr) in enumerated_colored_iter!(selectable) {
+        let content = &selectable.content();
+        for (row, text, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
@@ -606,7 +640,8 @@ impl<'a> WinSecondary<'a> {
             0,
             "Enter: restore the selected file - x: delete permanently",
         )?;
-        for (row, trashinfo, attr) in enumerated_colored_iter!(selectable) {
+        let content = &selectable.content();
+        for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
@@ -632,7 +667,8 @@ impl<'a> WinSecondary<'a> {
             "Archive and compress the flagged files. Pick a compression algorithm.",
             Self::ATTR_YELLOW,
         )?;
-        for (row, compression_method, attr) in enumerated_colored_iter!(selectable) {
+        let content = &selectable.content();
+        for (row, compression_method, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
@@ -703,7 +739,7 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn encrypted_devices(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+    fn encrypt(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.print_with_attr(2, 3, "m: mount    --   u: unmount", Self::ATTR_YELLOW)?;
         for (i, device) in status.encrypted_devices.content.iter().enumerate() {
             let row = calc_line_row(i, &tab.window) + 2;
@@ -713,22 +749,17 @@ impl<'a> WinSecondary<'a> {
                 not_mounted_attr.effect |= Effect::REVERSE;
                 mounted_attr.effect |= Effect::REVERSE;
             }
-            if status.encrypted_devices.content[i].cryptdevice.is_mounted() {
-                canvas.print_with_attr(row, 3, &device.cryptdevice.as_string()?, mounted_attr)?;
+            if status.encrypted_devices.content[i].is_mounted() {
+                canvas.print_with_attr(row, 3, &device.as_string()?, mounted_attr)?;
             } else {
-                canvas.print_with_attr(
-                    row,
-                    3,
-                    &device.cryptdevice.as_string()?,
-                    not_mounted_attr,
-                )?;
+                canvas.print_with_attr(row, 3, &device.as_string()?, not_mounted_attr)?;
             }
         }
         Ok(())
     }
 
     /// Display a list of edited (deleted, copied, moved) files for confirmation
-    fn confirmation(
+    fn confirm(
         &self,
         status: &Status,
         tab: &Tab,
