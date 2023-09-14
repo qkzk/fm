@@ -483,10 +483,24 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] execute a command with sudo privileges
 - [x] FIX: modification time used `%d/%m/%y`. Changed to `%Y/%m/%d` to allow sorting and respect conventions
 - [x] display sort kind in first row
-- [ ] EventExec refactor
+- [x] EventExec refactor
   - [x] event: linked to an Action, same name
   - [x] exec: linked to an executable mode, same name
   - [x] every helper should be moved outside the struct
+- [ ] BUG: sometimes "$ENV" is created in build folder.
+
+  - [ ] when ?
+        logging configuration ?
+  - [ ] fix ?
+
+    - force parsing of env variable when creating the log file [SO](./https://stackoverflow.com/questions/62888154/rust-load-environment-variables-into-log4rs-yml-file)
+    - [doc.rs: FileAppenderBuilder build](https://docs.rs/log4rs/latest/log4rs/append/file/struct.FileAppenderBuilder.html#method.build)
+
+      Consumes the `FileAppenderBuilder`, producing a `FileAppender`.
+      The path argument can contain environment variables of the form $ENV{name_here},
+      where 'name_here' will be the name of the environment variable that
+      will be resolved. Note that if the variable fails to resolve,
+      $ENV{name_here} will NOT be replaced in the path.
 
 ## TODO
 
