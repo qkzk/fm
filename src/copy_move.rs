@@ -45,7 +45,9 @@ fn handle_progress_display(
     term: &Arc<Term>,
     process_info: fs_extra::TransitProcess,
 ) -> fs_extra::dir::TransitProcessResult {
-    pb.set_position(100 * process_info.copied_bytes / process_info.total_bytes);
+    if process_info.total_bytes > 0 {
+        pb.set_position(100 * process_info.copied_bytes / process_info.total_bytes);
+    }
     let _ = term.print_with_attr(
         1,
         0,
