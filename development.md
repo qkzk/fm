@@ -494,7 +494,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Version 0.1.22
 
-- [ ] FIX: copying 0 bytes crash progress bar thread
+- [x] FIX: copying 0 bytes crash progress bar thread
 - [ ] FIX: marks jump reset the position of every tab. It should only reset itself
 
 ## TODO
