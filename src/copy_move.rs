@@ -39,13 +39,14 @@ fn setup(
     Ok((in_mem, pb, options))
 }
 
+/// Display the updated progress bar on the terminal.
 fn handle_progress_display(
     in_mem: &InMemoryTerm,
     pb: &ProgressBar,
     term: &Arc<Term>,
     process_info: fs_extra::TransitProcess,
 ) -> fs_extra::dir::TransitProcessResult {
-    pb.set_position(100 * process_info.copied_bytes / process_info.total_bytes);
+    pb.set_position(progress_bar_position(&process_info));
     let _ = term.print_with_attr(
         1,
         0,
@@ -58,6 +59,16 @@ fn handle_progress_display(
     );
     let _ = term.present();
     fs_extra::dir::TransitProcessResult::ContinueOrAbort
+}
+
+/// Position of the progress bar.
+/// We have to handle properly 0 bytes to avoid division by zero.
+fn progress_bar_position(process_info: &fs_extra::TransitProcess) -> u64 {
+    if process_info.total_bytes > 0 {
+        100 * process_info.copied_bytes / process_info.total_bytes
+    } else {
+        0
+    }
 }
 
 /// Different kind of movement of files : copying or moving.
