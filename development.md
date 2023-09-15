@@ -453,8 +453,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] mocp go to song: `mocp -Q %file` with alt+enter (lack of a better keybinding)
 - [x] display openers in help
 
-## Current dev
-
 ### Version 0.1.21
 
 - [x] more shortcuts like `nnn` : `\` root, @: start
@@ -487,10 +485,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] event: linked to an Action, same name
   - [x] exec: linked to an executable mode, same name
   - [x] every helper should be moved outside the struct
-- [x] FIX: impossible to compile on MacOs since to `sysinfo::Disk` only implement `PartialEq` on linux. 
-    Can't test MacOs compilation since I don't own a mac...
+- [x] FIX: impossible to compile on MacOs since to `sysinfo::Disk` only implement `PartialEq` on linux.
+      Can't test MacOs compilation since I don't own a mac...
 - [x] FIX: incompatible config files between versions crashes the app.
 - [x] FIX: Help string susbtitution aren't aligned properly
+
+## Current dev
+
+### Version 0.1.22
+
+- [ ] FIX: copying 0 bytes crash progress bar thread
+- [ ] FIX: marks jump reset the position of every tab. It should only reset itself
 
 ## TODO
 
