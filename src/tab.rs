@@ -217,8 +217,11 @@ impl Tab {
 
     /// Refresh the existing users.
     pub fn refresh_users(&mut self, users_cache: UsersCache) -> Result<()> {
+        let last_pathcontent_index = self.path_content.index;
         self.path_content
-            .refresh_users(users_cache, &self.filter, self.show_hidden)
+            .refresh_users(users_cache, &self.filter, self.show_hidden)?;
+        self.path_content.select_index(last_pathcontent_index);
+        Ok(())
     }
 
     /// Search in current directory for an file whose name contains `searched_name`,
