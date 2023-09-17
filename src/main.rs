@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
-use fm::opener::{load_opener, Opener};
 use log::info;
 
 use fm::args::Args;
@@ -11,6 +10,7 @@ use fm::constant_strings_paths::{CONFIG_PATH, OPENER_PATH};
 use fm::event_dispatch::EventDispatcher;
 use fm::help::Help;
 use fm::log::set_loggers;
+use fm::opener::{load_opener, Opener};
 use fm::status::Status;
 use fm::term_manager::{Display, EventReader};
 use fm::utils::{drop_everything, init_term, print_on_quit};

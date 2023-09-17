@@ -573,6 +573,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## BUGS
 
+- [ ] creates $ENV{HOME} folders everywhere
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
 
 ## Won't do
