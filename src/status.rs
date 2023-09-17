@@ -59,8 +59,6 @@ pub struct Status {
     pub flagged: Flagged,
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
-    /// Colors for extension
-    // pub colors: ColorCache,
     /// terminal
     pub term: Arc<Term>,
     skimer: Skimer,
