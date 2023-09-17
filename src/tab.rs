@@ -266,7 +266,9 @@ impl Tab {
     /// Move to the parent of current path
     pub fn move_to_parent(&mut self) -> Result<()> {
         let path = self.path_content.path.clone();
-        let Some(parent) = path.parent() else { return Ok(()) };
+        let Some(parent) = path.parent() else {
+            return Ok(());
+        };
         self.set_pathcontent(parent)
     }
 
@@ -297,14 +299,11 @@ impl Tab {
 
     /// Select the next sibling.
     pub fn tree_select_next(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.increase_required_height();
-        self.directory.unselect_children();
         self.directory.select_next(colors)
     }
 
     /// Select the previous siblging
     pub fn tree_select_prev(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.unselect_children();
         self.directory.select_prev(colors)
     }
 
@@ -449,19 +448,16 @@ impl Tab {
 
     /// Select the first child of the current node and reset the display.
     pub fn select_first_child(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.increase_required_height();
         self.tree_select_first_child(colors)
     }
 
     /// Select the next sibling of the current node.
     pub fn select_next(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.increase_required_height();
         self.tree_select_next(colors)
     }
 
     /// Select the previous sibling of the current node.
     pub fn select_prev(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.decrease_required_height();
         self.tree_select_prev(colors)
     }
 

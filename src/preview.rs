@@ -777,19 +777,25 @@ impl Directory {
     /// Select the "next" element of the tree if any.
     /// This is the element immediatly below the current one.
     pub fn select_next(&mut self, colors: &Colors) -> Result<()> {
-        if self.selected_index + 1 < self.content.len() {
+        if self.selected_index < self.content.len() {
+            self.tree.increase_required_height();
+            self.unselect_children();
             self.selected_index += 1;
+            self.update_tree_position_from_index(colors)?;
         }
-        self.update_tree_position_from_index(colors)
+        Ok(())
     }
 
     /// Select the previous sibling if any.
     /// This is the element immediatly below the current one.
     pub fn select_prev(&mut self, colors: &Colors) -> Result<()> {
         if self.selected_index > 0 {
+            self.tree.decrease_required_height();
+            self.unselect_children();
             self.selected_index -= 1;
+            self.update_tree_position_from_index(colors)?;
         }
-        self.update_tree_position_from_index(colors)
+        Ok(())
     }
 
     /// Move up 10 times.

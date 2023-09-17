@@ -572,6 +572,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ## BUGS
 
 - [x] when switching from single to dual pane, sort and position are lost
+- [x] tree mode: move up from top don't move window
+- [x] tree mode: move down from bottom crashes
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
 
 ## Won't do

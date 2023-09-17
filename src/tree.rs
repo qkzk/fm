@@ -115,6 +115,7 @@ impl Tree {
     /// are present and the exploration is slow.
     pub const MAX_DEPTH: usize = 5;
     pub const REQUIRED_HEIGHT: usize = 80;
+    const MAX_INDEX: usize = 2 << 20;
 
     /// Set the required height to a given value.
     /// The required height is used to stop filling the view content.
@@ -124,13 +125,17 @@ impl Tree {
 
     /// The required height is used to stop filling the view content.
     pub fn increase_required_height(&mut self) {
-        self.required_height += 1;
+        if self.required_height < Self::MAX_INDEX {
+            self.required_height += 1;
+        }
     }
 
     /// Add 10 to the required height.
     /// The required height is used to stop filling the view content.
     pub fn increase_required_height_by_ten(&mut self) {
-        self.required_height += 10;
+        if self.required_height < Self::MAX_INDEX {
+            self.required_height += 10;
+        }
     }
 
     /// Reset the required height to its default value : Self::MAX_HEIGHT
@@ -233,10 +238,14 @@ impl Tree {
         if max_depth == 0 {
             return Ok(vec![]);
         }
-        let FileKind::Directory = fileinfo.file_kind else { return Ok(vec![]) };
+        let FileKind::Directory = fileinfo.file_kind else {
+            return Ok(vec![]);
+        };
         let Some(mut files) =
-                files_collection(fileinfo, users_cache, display_hidden, filter_kind, true)
-            else { return Ok(vec![]) };
+            files_collection(fileinfo, users_cache, display_hidden, filter_kind, true)
+        else {
+            return Ok(vec![]);
+        };
         sort_kind.sort(&mut files);
         let leaves = files
             .iter()
@@ -410,7 +419,7 @@ impl Tree {
     /// We first create a position with max value (usize::MAX) and max size (Self::MAX_DEPTH).
     /// Then we select this node and adjust the position.
     pub fn go_to_bottom_leaf(&mut self) -> Result<()> {
-        self.position = vec![usize::MAX; Self::MAX_DEPTH];
+        self.position = vec![Self::MAX_INDEX; Self::MAX_DEPTH];
         let (depth, last_cord, node) = self.select_from_position()?;
         self.fix_position(depth, last_cord);
         self.current_node = node;
@@ -457,7 +466,9 @@ impl Tree {
                 let other_prefix = other_prefix(prefix);
 
                 let mut leaves = current.leaves.iter_mut();
-                let Some(first_leaf) = leaves.next() else { continue; };
+                let Some(first_leaf) = leaves.next() else {
+                    continue;
+                };
                 stack.push((first_prefix.clone(), first_leaf));
 
                 for leaf in leaves {
@@ -479,7 +490,9 @@ impl Tree {
         }
 
         for tree in self.leaves.iter_mut().rev() {
-            let Some(position) = tree.select_first_match(key) else { continue };
+            let Some(position) = tree.select_first_match(key) else {
+                continue;
+            };
             return Some(position);
         }
 
