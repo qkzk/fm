@@ -496,6 +496,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] FIX: copying 0 bytes crash progress bar thread
 - [x] FIX: refresh users (from tab) reset the selection in pathcontent.
+- [x] FIX: when switching from single to dual pane, sort and position are lost
+- [x] FIX: tree mode: move down from bottom crashes
 
 ## TODO
 
@@ -571,9 +573,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## BUGS
 
-- [x] when switching from single to dual pane, sort and position are lost
-- [x] tree mode: move up from top don't move window
-- [x] tree mode: move down from bottom crashes
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
 
 ## Won't do
