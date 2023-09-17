@@ -110,7 +110,7 @@ impl Status {
         settings: &Settings,
     ) -> Result<Self> {
         let Ok(shell_menu) = load_shell_menu(TUIS_PATH) else {
-            eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example"); 
+            eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example");
             info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");
             std::process::exit(1);
         };
@@ -217,7 +217,9 @@ impl Status {
                 .to_str()
                 .context("skim error")?,
         );
-        let Some(output) = skim.first() else {return Ok(())};
+        let Some(output) = skim.first() else {
+            return Ok(());
+        };
         self._update_tab_from_skim_output(output)
     }
 
@@ -226,7 +228,9 @@ impl Status {
     /// The output is splited at `:` since we only care about the path, not the line number.
     pub fn skim_line_output_to_tab(&mut self) -> Result<()> {
         let skim = self.skimer.search_line_in_file();
-        let Some(output) = skim.first() else {return Ok(())};
+        let Some(output) = skim.first() else {
+            return Ok(());
+        };
         self._update_tab_from_skim_line_output(output)
     }
 
@@ -235,11 +239,19 @@ impl Status {
     /// If the result can't be parsed, nothing is done.
     pub fn skim_find_keybinding(&mut self) -> Result<()> {
         let skim = self.skimer.search_in_text(self.help.clone());
-        let Some(output) = skim.first() else { return Ok(()) };
+        let Some(output) = skim.first() else {
+            return Ok(());
+        };
         let line = output.output().into_owned();
-        let Some(keybind) = line.split(':').next() else { return Ok(()) };
-        let Some(keyname) = parse_keyname(keybind) else { return Ok(()) };
-        let Some(key) = from_keyname(&keyname) else { return Ok(()) };
+        let Some(keybind) = line.split(':').next() else {
+            return Ok(());
+        };
+        let Some(keyname) = parse_keyname(keybind) else {
+            return Ok(());
+        };
+        let Some(key) = from_keyname(&keyname) else {
+            return Ok(());
+        };
         let event = Event::Key(key);
         let _ = self.term.borrow_mut().send_event(event);
         Ok(())
@@ -247,7 +259,9 @@ impl Status {
 
     fn _update_tab_from_skim_line_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {
         let output_str = skim_output.output().to_string();
-        let Some(filename) = output_str.split(':').next() else { return Ok(());};
+        let Some(filename) = output_str.split(':').next() else {
+            return Ok(());
+        };
         let path = fs::canonicalize(filename)?;
         self._replace_path_by_skim_output(path)
     }
@@ -260,7 +274,9 @@ impl Status {
     fn _replace_path_by_skim_output(&mut self, path: std::path::PathBuf) -> Result<()> {
         let tab = self.selected();
         if path.is_file() {
-            let Some(parent) = path.parent() else { return Ok(()) };
+            let Some(parent) = path.parent() else {
+                return Ok(());
+            };
             tab.set_pathcontent(parent)?;
             let filename = filename_from_path(&path)?;
             tab.search_from(filename, 0);
@@ -531,8 +547,12 @@ impl Status {
 
     /// Move to the selected crypted device mount point.
     pub fn move_to_encrypted_drive(&mut self) -> Result<()> {
-        let Some(device) = self.encrypted_devices.selected() else { return Ok(()) };
-        let Some(mount_point) = device.mount_point() else { return Ok(())};
+        let Some(device) = self.encrypted_devices.selected() else {
+            return Ok(());
+        };
+        let Some(mount_point) = device.mount_point() else {
+            return Ok(());
+        };
         let tab = self.selected();
         let path = std::path::PathBuf::from(mount_point);
         tab.history.push(&path);
@@ -612,10 +632,11 @@ impl Status {
     /// isn't sufficiant to display enough information.
     /// We also need to know the new height of the terminal to start scrolling
     /// up or down.
-    pub fn resize(&mut self, width: usize, height: usize, colors: &Colors) -> Result<()> {
+    pub fn resize(&mut self, width: usize, height: usize) -> Result<()> {
         self.set_dual_pane_if_wide_enough(width)?;
         self.selected().set_height(height);
-        self.refresh_status(colors)?;
+        self.force_clear();
+        self.refresh_users()?;
         Ok(())
     }
 
@@ -644,7 +665,9 @@ impl Status {
     fn run_sudo_command(&mut self, colors: &Colors) -> Result<()> {
         self.selected().set_mode(Mode::Normal);
         reset_sudo_faillock()?;
-        let Some(sudo_command) = &self.sudo_command else { return Ok(()); };
+        let Some(sudo_command) = &self.sudo_command else {
+            return Ok(());
+        };
         let args = ShellCommandParser::new(sudo_command).compute(self)?;
         if args.is_empty() {
             return Ok(());
@@ -684,7 +707,9 @@ impl Status {
         if !self.nvim_server.is_empty() {
             return;
         }
-        let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") else { return; };
+        let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") else {
+            return;
+        };
         self.nvim_server = nvim_listen_address;
     }
 
@@ -726,9 +751,13 @@ impl Status {
 
 fn parse_keyname(keyname: &str) -> Option<String> {
     let mut split = keyname.split('(');
-    let Some(mutator) = split.next() else { return None; };
+    let Some(mutator) = split.next() else {
+        return None;
+    };
     let mut mutator = mutator.to_lowercase();
-    let Some(param) = split.next() else { return Some(mutator) };
+    let Some(param) = split.next() else {
+        return Some(mutator);
+    };
     let mut param = param.to_owned();
     mutator = mutator.replace("char", "");
     param = param.replace([')', '\''], "");

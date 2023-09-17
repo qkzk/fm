@@ -48,7 +48,7 @@ impl EventDispatcher {
                 LeaveMode::right_click(status, colors)?;
             }
             Event::User(_) => status.refresh_status(colors)?,
-            Event::Resize { width, height } => status.resize(width, height, colors)?,
+            Event::Resize { width, height } => status.resize(width, height)?,
             Event::Key(Key::Char(c)) => self.char(status, Key::Char(c), colors)?,
             Event::Key(key) => self.key_matcher(status, key, colors)?,
             _ => (),
