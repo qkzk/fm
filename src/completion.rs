@@ -98,6 +98,7 @@ impl Completion {
         }
         self.extend_absolute_paths(&parent, &last_name);
         self.extend_relative_paths(current_path, &last_name);
+        self.proposals.dedup();
         Ok(())
     }
 
