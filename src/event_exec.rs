@@ -73,7 +73,9 @@ impl EventAction {
 
         match tab.mode {
             Mode::Normal => {
-                let Some(file) = tab.path_content.selected() else { return Ok(()) };
+                let Some(file) = tab.path_content.selected() else {
+                    return Ok(());
+                };
                 let path = file.path.clone();
                 status.toggle_flag_on_path(&path);
                 status.selected().down_one_row();
@@ -215,7 +217,9 @@ impl EventAction {
             return Ok(());
         }
         let unmutable_tab = status.selected_non_mut();
-        let Some(file_info) = unmutable_tab.selected() else { return Ok(()) };
+        let Some(file_info) = unmutable_tab.selected() else {
+            return Ok(());
+        };
         match file_info.file_kind {
             FileKind::NormalFile => {
                 let preview = Preview::new(
@@ -427,8 +431,12 @@ impl EventAction {
         };
         let nvim_server = status.nvim_server.clone();
         let tab = status.selected();
-        let Some(fileinfo) = tab.selected() else { return Ok(()) };
-        let Some(path_str) = fileinfo.path.to_str() else { return Ok(()) };
+        let Some(fileinfo) = tab.selected() else {
+            return Ok(());
+        };
+        let Some(path_str) = fileinfo.path.to_str() else {
+            return Ok(());
+        };
         open_in_current_neovim(path_str, &nvim_server);
 
         Ok(())
@@ -487,7 +495,9 @@ impl EventAction {
     /// It obviously requires the `dragon-drop` command to be installed.
     pub fn drag_n_drop(status: &mut Status) -> Result<()> {
         let tab = status.selected_non_mut();
-        let Some(file) = tab.selected() else { return Ok(()) };
+        let Some(file) = tab.selected() else {
+            return Ok(());
+        };
         let path_str = file
             .path
             .to_str()
@@ -501,7 +511,9 @@ impl EventAction {
         match tab.mode {
             Mode::Tree => (),
             _ => {
-                let Some(searched) = tab.searched.clone() else { return Ok(()) };
+                let Some(searched) = tab.searched.clone() else {
+                    return Ok(());
+                };
                 let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
                 tab.search_from(&searched, next_index);
             }
@@ -783,7 +795,9 @@ impl EventAction {
     /// Display mediainfo details of an image
     pub fn mediainfo(tab: &mut Tab) -> Result<()> {
         if let Mode::Normal | Mode::Tree = tab.mode {
-            let Some(file_info) = tab.selected() else { return Ok(())};
+            let Some(file_info) = tab.selected() else {
+                return Ok(());
+            };
             info!("selected {:?}", file_info);
             tab.preview = Preview::mediainfo(&file_info.path)?;
             tab.window.reset(tab.preview.len());
@@ -958,7 +972,9 @@ impl EventAction {
     /// Set the current selected file as wallpaper with `nitrogen`.
     /// Requires `nitrogen` to be installed.
     pub fn set_wallpaper(tab: &Tab) -> Result<()> {
-        let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
+        let Some(path_str) = tab.path_content.selected_path_string() else {
+            return Ok(());
+        };
         let _ = execute_in_child("nitrogen", &["--set-zoom-fill", "--save", &path_str]);
         Ok(())
     }
@@ -991,9 +1007,9 @@ impl EventAction {
     }
 
     /// Execute a custom event on the selected file
-    pub fn custom(status: &mut Status, string: String) -> Result<()> {
+    pub fn custom(status: &mut Status, string: &String) -> Result<()> {
         info!("custom {string}");
-        let parser = ShellCommandParser::new(&string);
+        let parser = ShellCommandParser::new(string);
         let mut args = parser.compute(status)?;
         let command = args.remove(0);
         let args: Vec<&str> = args.iter().map(|s| &**s).collect();
@@ -1106,7 +1122,9 @@ impl LeaveMode {
     /// If the user selected a directory, we jump inside it.
     /// Otherwise, we jump to the parent and select the file.
     pub fn jump(status: &mut Status) -> Result<()> {
-        let Some(jump_target) = status.flagged.selected() else { return Ok(()) };
+        let Some(jump_target) = status.flagged.selected() else {
+            return Ok(());
+        };
         let jump_target = jump_target.to_owned();
         let target_dir = match jump_target.parent() {
             Some(parent) => parent,
@@ -1143,7 +1161,9 @@ impl LeaveMode {
             status.ask_password(PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
             Ok(false)
         } else {
-            let Ok(executable) = which(executable) else { return Ok(true); };
+            let Ok(executable) = which(executable) else {
+                return Ok(true);
+            };
             let current_directory = status
                 .selected_non_mut()
                 .directory_of_selected()?
@@ -1369,7 +1389,9 @@ impl LeaveMode {
     /// context.
     pub fn command(status: &mut Status, colors: &Colors) -> Result<()> {
         let command_str = status.selected_non_mut().completion.current_proposition();
-        let Ok(command) = ActionMap::from_str(command_str) else { return Ok(()) };
+        let Ok(command) = ActionMap::from_str(command_str) else {
+            return Ok(());
+        };
         command.matcher(status, colors)
     }
 

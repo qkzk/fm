@@ -143,9 +143,11 @@ impl Bindings {
     /// It may fail (and leave keybinding intact) if the file isn't formated properly.
     /// An unknown or poorly formated key will be ignored.
     pub fn update_normal(&mut self, yaml: &serde_yaml::value::Value) {
-        let Some(mappings) = yaml.as_mapping() else { return };
+        let Some(mappings) = yaml.as_mapping() else {
+            return;
+        };
         for yaml_key in mappings.keys() {
-            let Some(key_string) = yaml_key.as_str() else { 
+            let Some(key_string) = yaml_key.as_str() else {
                 log::info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
                 continue;
             };
@@ -153,8 +155,10 @@ impl Bindings {
                 log::info!("~/.config/fm/config.yaml: Keybinding {key_string} is unknown");
                 continue;
             };
-            let Some(action_str) = yaml[yaml_key].as_str() else { continue; };
-            let Ok(action) = ActionMap::from_str(action_str) else { 
+            let Some(action_str) = yaml[yaml_key].as_str() else {
+                continue;
+            };
+            let Ok(action) = ActionMap::from_str(action_str) else {
                 log::info!("~/.config/fm/config.yaml: Action {action_str} is unknown");
                 continue;
             };
@@ -163,10 +167,12 @@ impl Bindings {
     }
 
     pub fn update_custom(&mut self, yaml: &serde_yaml::value::Value) {
-        let Some(mappings) = yaml.as_mapping() else { return };
+        let Some(mappings) = yaml.as_mapping() else {
+            return;
+        };
         let mut custom = vec![];
         for yaml_key in mappings.keys() {
-            let Some(key_string) = yaml_key.as_str() else { 
+            let Some(key_string) = yaml_key.as_str() else {
                 log::info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
                 continue;
             };
@@ -174,7 +180,9 @@ impl Bindings {
                 log::info!("~/.config/fm/config.yaml: Keybinding {key_string} is unknown");
                 continue;
             };
-            let Some(custom_str) = yaml[yaml_key].as_str() else { continue; };
+            let Some(custom_str) = yaml[yaml_key].as_str() else {
+                continue;
+            };
             let action = ActionMap::Custom(custom_str.to_owned());
             log::info!("custom bind {keymap:?}, {action}");
             self.binds.insert(keymap, action.clone());

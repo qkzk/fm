@@ -191,7 +191,7 @@ impl ActionMap {
             ActionMap::TreeFold => EventAction::tree_fold(current_tab, colors),
             ActionMap::TreeFoldAll => EventAction::tree_fold_all(current_tab, colors),
             ActionMap::TreeUnFoldAll => EventAction::tree_unfold_all(current_tab, colors),
-            ActionMap::Custom(string) => EventAction::custom(status, string.clone()),
+            ActionMap::Custom(string) => EventAction::custom(status, string),
 
             ActionMap::Nothing => Ok(()),
         }
