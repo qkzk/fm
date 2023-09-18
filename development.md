@@ -498,6 +498,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: refresh users (from tab) reset the selection in pathcontent.
 - [x] FIX: when switching from single to dual pane, sort and position are lost
 - [x] FIX: tree mode: move down from bottom crashes
+- [x] FIX: inxi --full or inxi -F hangs. Use inxi -v 2 instead
 
 ## TODO
 
