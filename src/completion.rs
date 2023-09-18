@@ -168,6 +168,7 @@ impl Completion {
         Ok(())
     }
 
+    /// Looks for fm actions completing the one typed by the user.
     pub fn command(&mut self, input_string: &str) -> Result<()> {
         let proposals = crate::action_map::ActionMap::iter()
             .filter(|command| {
