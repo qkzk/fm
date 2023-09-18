@@ -4,7 +4,6 @@ use anyhow::Result;
 use strum::IntoEnumIterator;
 
 use crate::fileinfo::PathContent;
-use crate::mode::Mode;
 use crate::tree::ColoredString;
 
 /// Different kind of completions
@@ -27,7 +26,6 @@ pub enum InputCompleted {
 /// showing where the user is in the vec.
 #[derive(Clone, Default)]
 pub struct Completion {
-    kind: InputCompleted,
     /// Possible completions
     pub proposals: Vec<String>,
     /// Which completion is selected by the user
@@ -35,14 +33,6 @@ pub struct Completion {
 }
 
 impl Completion {
-    pub fn set_kind(&mut self, mode: &Mode) {
-        if let Mode::InputCompleted(completion_kind) = mode {
-            self.kind = *completion_kind
-        } else {
-            self.kind = InputCompleted::Nothing
-        }
-    }
-
     /// Is there any completion option ?
     pub fn is_empty(&self) -> bool {
         self.proposals.is_empty()

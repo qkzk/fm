@@ -97,7 +97,6 @@ impl Tab {
 
     /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> Result<()> {
-        // self.completion.set_kind(&self.mode);
         match self.mode {
             Mode::InputCompleted(InputCompleted::Goto) => {
                 let current_path = self.path_content_str().unwrap_or_default().to_owned();
