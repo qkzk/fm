@@ -101,6 +101,7 @@ struct WinMain<'a> {
     colors: &'a Colors,
     x_position: usize,
     is_second: bool,
+    is_selected: bool,
 }
 
 impl<'a> Draw for WinMain<'a> {
@@ -110,6 +111,7 @@ impl<'a> Draw for WinMain<'a> {
             self.preview_as_second_pane(canvas)?;
             return Ok(());
         }
+        self.selection_line(canvas)?;
         match self.tab.mode {
             Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
             Mode::Tree => self.tree(self.status, self.tab, canvas),
@@ -128,6 +130,11 @@ impl<'a> Widget for WinMain<'a> {}
 
 impl<'a> WinMain<'a> {
     const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
+    const ATTR_SELECTION_LINE: Attr = Attr {
+        fg: Color::LIGHT_BLUE,
+        bg: Color::LIGHT_BLUE,
+        effect: Effect::REVERSE,
+    };
 
     fn new(
         status: &'a Status,
@@ -136,6 +143,7 @@ impl<'a> WinMain<'a> {
         colors: &'a Colors,
         abs: usize,
         is_second: bool,
+        is_selected: bool,
     ) -> Self {
         Self {
             status,
@@ -144,6 +152,7 @@ impl<'a> WinMain<'a> {
             colors,
             x_position: abs,
             is_second,
+            is_selected,
         }
     }
 
@@ -162,21 +171,25 @@ impl<'a> WinMain<'a> {
     /// something else.
     /// Returns the result of the number of printed chars.
     fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> Result<()> {
-        draw_colored_strings(0, 0, self.create_first_row(tab, disk_space)?, canvas)
+        draw_colored_strings(1, 0, self.create_first_row(tab, disk_space)?, canvas)
     }
 
     fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<usize> {
         match tab.mode {
             Mode::Normal => {
                 if !status.display_full {
-                    let Some(file) = tab.selected() else { return Ok(0) };
+                    let Some(file) = tab.selected() else {
+                        return Ok(0);
+                    };
                     self.second_line_detailed(file, canvas)
                 } else {
                     self.second_line_simple(status, canvas)
                 }
             }
             Mode::Tree => {
-                let Some(file) = tab.selected() else { return Ok(0) };
+                let Some(file) = tab.selected() else {
+                    return Ok(0);
+                };
                 self.second_line_detailed(file, canvas)
             }
             _ => Ok(0),
@@ -188,12 +201,12 @@ impl<'a> WinMain<'a> {
         let group_size = file.group.len();
         let mut attr = fileinfo_attr(file, self.colors);
         attr.effect ^= Effect::REVERSE;
-        Ok(canvas.print_with_attr(1, 0, &file.format(owner_size, group_size)?, attr)?)
+        Ok(canvas.print_with_attr(2, 0, &file.format(owner_size, group_size)?, attr)?)
     }
 
     fn second_line_simple(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<usize> {
         Ok(canvas.print_with_attr(
-            1,
+            2,
             0,
             &format!("{}", &status.selected_non_mut().filter),
             ATTR_YELLOW_BOLD,
@@ -263,6 +276,20 @@ impl<'a> WinMain<'a> {
         Ok(first_row)
     }
 
+    /// Draw a light indicating if the tab is selected.
+    /// It's light blue if the tab is selected and transparent otherwise.
+    fn selection_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let (width, _) = canvas.size()?;
+        let selection_text = if self.is_selected {
+            "n".repeat(width)
+        } else {
+            "".to_owned()
+        };
+
+        canvas.print_with_attr(0, 0, &selection_text, Self::ATTR_SELECTION_LINE)?;
+        Ok(())
+    }
+
     /// Displays the current directory content, one line per item like in
     /// `ls -l`.
     ///
@@ -287,7 +314,7 @@ impl<'a> WinMain<'a> {
             .content
             .iter()
             .enumerate()
-            .take(min(len, tab.window.bottom + 1))
+            .take(min(len, tab.window.bottom))
             .skip(tab.window.top)
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
@@ -300,7 +327,7 @@ impl<'a> WinMain<'a> {
             if status.flagged.contains(&file.path) {
                 attr.effect |= Effect::BOLD | Effect::UNDERLINE;
             }
-            canvas.print_with_attr(row, 0, &string, attr)?;
+            canvas.print_with_attr(row + 1, 0, &string, attr)?;
         }
         self.second_line(status, tab, canvas)?;
         Ok(())
@@ -927,8 +954,25 @@ impl Display {
         colors: &Colors,
     ) -> Result<()> {
         let (width, _) = self.term.term_size()?;
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0, false);
-        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors, width / 2, true);
+        let (first_selected, second_selected) = (status.index == 0, status.index == 1);
+        let win_main_left = WinMain::new(
+            status,
+            0,
+            disk_space_tab_0,
+            colors,
+            0,
+            false,
+            first_selected,
+        );
+        let win_main_right = WinMain::new(
+            status,
+            1,
+            disk_space_tab_1,
+            colors,
+            width / 2,
+            true,
+            second_selected,
+        );
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let (border_left, border_right) = self.borders(status);
@@ -956,7 +1000,7 @@ impl Display {
         disk_space_tab_0: &str,
         colors: &Colors,
     ) -> Result<()> {
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0, false);
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, 0, false, true);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let win = self.vertical_split(
