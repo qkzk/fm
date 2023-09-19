@@ -111,7 +111,6 @@ impl<'a> Draw for WinMain<'a> {
             self.preview_as_second_pane(canvas)?;
             return Ok(());
         }
-        self.selection_line(canvas)?;
         match self.tab.mode {
             Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
             Mode::Tree => self.tree(self.status, self.tab, canvas),
@@ -130,11 +129,6 @@ impl<'a> Widget for WinMain<'a> {}
 
 impl<'a> WinMain<'a> {
     const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
-    const ATTR_SELECTION_LINE: Attr = Attr {
-        fg: Color::LIGHT_BLUE,
-        bg: Color::LIGHT_BLUE,
-        effect: Effect::REVERSE,
-    };
 
     fn new(
         status: &'a Status,
@@ -160,7 +154,7 @@ impl<'a> WinMain<'a> {
         let tab = &self.status.tabs[0];
         let (_, height) = canvas.size()?;
         self.preview(tab, &tab.preview.window_for_second_pane(height), canvas)?;
-        draw_colored_strings(0, 0, self.default_preview_first_line(tab), canvas)?;
+        draw_colored_strings(0, 0, self.default_preview_first_line(tab), canvas, false)?;
         Ok(())
     }
 
@@ -170,8 +164,15 @@ impl<'a> WinMain<'a> {
     /// When a confirmation is needed we ask the user to input `'y'` or
     /// something else.
     /// Returns the result of the number of printed chars.
+    /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> Result<()> {
-        draw_colored_strings(1, 0, self.create_first_row(tab, disk_space)?, canvas)
+        draw_colored_strings(
+            0,
+            0,
+            self.create_first_row(tab, disk_space)?,
+            canvas,
+            self.is_selected,
+        )
     }
 
     fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<usize> {
@@ -201,12 +202,12 @@ impl<'a> WinMain<'a> {
         let group_size = file.group.len();
         let mut attr = fileinfo_attr(file, self.colors);
         attr.effect ^= Effect::REVERSE;
-        Ok(canvas.print_with_attr(2, 0, &file.format(owner_size, group_size)?, attr)?)
+        Ok(canvas.print_with_attr(1, 0, &file.format(owner_size, group_size)?, attr)?)
     }
 
     fn second_line_simple(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<usize> {
         Ok(canvas.print_with_attr(
-            2,
+            1,
             0,
             &format!("{}", &status.selected_non_mut().filter),
             ATTR_YELLOW_BOLD,
@@ -276,20 +277,6 @@ impl<'a> WinMain<'a> {
         Ok(first_row)
     }
 
-    /// Draw a light indicating if the tab is selected.
-    /// It's light blue if the tab is selected and transparent otherwise.
-    fn selection_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let (width, _) = canvas.size()?;
-        let selection_text = if self.is_selected {
-            "n".repeat(width)
-        } else {
-            "".to_owned()
-        };
-
-        canvas.print_with_attr(0, 0, &selection_text, Self::ATTR_SELECTION_LINE)?;
-        Ok(())
-    }
-
     /// Displays the current directory content, one line per item like in
     /// `ls -l`.
     ///
@@ -314,7 +301,7 @@ impl<'a> WinMain<'a> {
             .content
             .iter()
             .enumerate()
-            .take(min(len, tab.window.bottom))
+            .take(min(len, tab.window.bottom + 1))
             .skip(tab.window.top)
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
@@ -327,7 +314,7 @@ impl<'a> WinMain<'a> {
             if status.flagged.contains(&file.path) {
                 attr.effect |= Effect::BOLD | Effect::UNDERLINE;
             }
-            canvas.print_with_attr(row + 1, 0, &string, attr)?;
+            canvas.print_with_attr(row, 0, &string, attr)?;
         }
         self.second_line(status, tab, canvas)?;
         Ok(())
@@ -490,7 +477,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn first_line(&self, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        draw_colored_strings(0, 0, self.create_first_row(tab)?, canvas)
+        draw_colored_strings(0, 0, self.create_first_row(tab)?, canvas, false)
     }
 
     fn create_first_row(&self, tab: &Tab) -> Result<Vec<String>> {
@@ -1030,15 +1017,21 @@ const fn color_to_attr(color: Color) -> Attr {
         effect: Effect::empty(),
     }
 }
+
 fn draw_colored_strings(
     row: usize,
     offset: usize,
     strings: Vec<String>,
     canvas: &mut dyn Canvas,
+    reverse: bool,
 ) -> Result<()> {
     let mut col = 0;
     for (text, attr) in std::iter::zip(strings.iter(), FIRST_LINE_COLORS.iter().cycle()) {
-        col += canvas.print_with_attr(row, offset + col, text, *attr)?;
+        let mut attrm = attr.to_owned();
+        if reverse {
+            attrm.effect |= Effect::REVERSE;
+        }
+        col += canvas.print_with_attr(row, offset + col, text, attrm)?;
     }
     Ok(())
 }

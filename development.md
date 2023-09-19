@@ -501,8 +501,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: inxi --full or inxi -F hangs. Use inxi -v 2 instead
 - [x] allow shell expansion (~ -> /home/user) in goto mode
 - [x] FIX: mode CHMOD reset the file index
+- [x] better display of selected tab. Reverse the colors in the first line
 - [ ] display a message when trash is empty in trash explore mode (alt-o)
-- [ ] better display of selected tab. Use a whole block line below or above ?
 
 ## TODO
 
