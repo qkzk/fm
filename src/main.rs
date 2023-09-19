@@ -51,8 +51,6 @@ fn main() -> Result<()> {
     let colors = config.colors.clone();
     drop(config);
 
-    info!(target: "special", "config dropped");
-
     while let Ok(event) = event_reader.poll_event() {
         event_dispatcher.dispatch(&mut status, event, &colors)?;
         status.refresh_disks();

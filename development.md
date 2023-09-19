@@ -505,6 +505,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] display a message when trash is empty in trash explore mode (alt-o)
 - [x] display last executed action (use a string as message)
 - [x] FIX: vertical resize to a smaller window : files expand to the last line and message are overwritten
+- [x] FIX: open a secondary window and messages are overwritten by files. Don't display messages...
 
 ## TODO
 
