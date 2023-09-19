@@ -1036,11 +1036,11 @@ fn draw_colored_strings(
 ) -> Result<()> {
     let mut col = 0;
     for (text, attr) in std::iter::zip(strings.iter(), FIRST_LINE_COLORS.iter().cycle()) {
-        let mut attrm = attr.to_owned();
+        let mut attr = *attr;
         if reverse {
-            attrm.effect |= Effect::REVERSE;
+            attr.effect |= Effect::REVERSE;
         }
-        col += canvas.print_with_attr(row, offset + col, text, attrm)?;
+        col += canvas.print_with_attr(row, offset + col, text, attr)?;
     }
     Ok(())
 }
