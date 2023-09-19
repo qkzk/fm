@@ -1066,7 +1066,9 @@ impl LeaveMode {
         let len = status.selected_non_mut().path_content.content.len();
         if let Some((ch, _)) = marks.selected() {
             if let Some(path_str) = status.selected_non_mut().path_content_str() {
-                status.marks.new_mark(*ch, path::PathBuf::from(path_str))?;
+                let p = path::PathBuf::from(path_str);
+                status.marks.new_mark(*ch, &p)?;
+                log::info!(target : "special", "Saved mark {ch} -> {p}", p=p.display());
             }
             status.selected().window.reset(len);
             status.selected().input.reset();
@@ -1097,16 +1099,17 @@ impl LeaveMode {
     /// Nothing is done if the user typed nothing or an invalid permission like
     /// 955.
     pub fn chmod(status: &mut Status) -> Result<()> {
-        if status.selected().input.is_empty() {
+        if status.selected().input.is_empty() || status.flagged.is_empty() {
             return Ok(());
         }
-        let permissions: u32 =
-            u32::from_str_radix(&status.selected().input.string(), 8).unwrap_or(0_u32);
+        let input_permission = &status.selected().input.string();
+        let permissions: u32 = u32::from_str_radix(input_permission, 8).unwrap_or(0_u32);
         if permissions <= Status::MAX_PERMISSIONS {
             for path in status.flagged.content.iter() {
                 Status::set_permissions(path, permissions)?
             }
-            status.flagged.clear()
+            status.flagged.clear();
+            log::info!(target:"special", "Changed permissions to {input_permission}")
         }
         status.selected().refresh_view()?;
         status.reset_tabs_view()
@@ -1145,8 +1148,8 @@ impl LeaveMode {
     }
 
     /// Execute a shell command typed by the user.
-    /// pipes and redirections aren't NotSupported
-    /// expansions are supported
+    /// pipes and redirections aren't supported
+    /// but expansions are supported
     pub fn shell(status: &mut Status) -> Result<bool> {
         let shell_command = status.selected_non_mut().input.string();
         let mut args = ShellCommandParser::new(&shell_command).compute(status)?;

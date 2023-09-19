@@ -581,6 +581,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] creates $ENV{HOME} folders everywhere
 - [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
+- [ ] moving with Goto (alt+g) to a folder with space (?) crashes
+- [ ] vertical resize to a smaller window : files expand to the last line and message are overwritten
 
 ## Won't do
 

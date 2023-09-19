@@ -97,8 +97,9 @@ impl Marks {
 
     /// Store a new mark in the config file.
     /// If an update is done, the marks are saved again.
-    pub fn new_mark(&mut self, ch: char, path: PathBuf) -> Result<()> {
+    pub fn new_mark(&mut self, ch: char, path: &Path) -> Result<()> {
         if ch == ':' {
+            log::info!(target: "special", "':' can't be used as a mark");
             return Err(anyhow!("new_mark ':' can't be used as a mark"));
         }
         if self.used_chars.contains(&ch) {
@@ -109,11 +110,14 @@ impl Marks {
                     break;
                 }
             }
-            let Some(found_index) = found_index else {return Ok(())};
-            self.content[found_index] = (ch, path);
+            let Some(found_index) = found_index else {
+                return Ok(());
+            };
+            self.content[found_index] = (ch, path.to_path_buf());
         } else {
-            self.content.push((ch, path))
+            self.content.push((ch, path.to_path_buf()))
         }
+        log::info!(target: "special", "Saved mark {ch} -> {p}", p=path.display());
 
         self.save_marks()
     }

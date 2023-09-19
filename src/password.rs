@@ -99,7 +99,7 @@ where
     info!("sudo_with_password {args:?} CWD {path:?}");
     info!(
         target: "special",
-        "running sudo command with passwod. args: {args:?}, CWD: {path:?}"
+        "running sudo command with password. args: {args:?}, CWD: {path:?}"
     );
     let mut child = Command::new("sudo")
         .arg("-S")

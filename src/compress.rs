@@ -57,7 +57,9 @@ impl Compresser {
     /// Archive the files with tar and compress them with the selected method.
     /// The compression method is chosen by the user.
     pub fn compress(&self, files: Vec<std::path::PathBuf>) -> Result<()> {
-        let Some(selected) = self.selected() else { return Ok(()) };
+        let Some(selected) = self.selected() else {
+            return Ok(());
+        };
         match selected {
             CompressionMethod::DEFLATE => Self::compress_deflate("archive.tar.gz", files),
             CompressionMethod::GZ => Self::compress_gzip("archive.tar.gz", files),
@@ -103,6 +105,7 @@ impl Compresser {
 
         // Finish deflate file
         encoder.finish()?;
+        log::info!(target:"special", "Compressed to {archive_name} with deflate method");
 
         Ok(())
     }
@@ -116,6 +119,7 @@ impl Compresser {
 
         // Finish zlib file
         encoder.finish()?;
+        log::info!(target:"special", "Compressed to {archive_name} with zlib");
 
         Ok(())
     }
@@ -129,6 +133,7 @@ impl Compresser {
 
         // Finish lzma file
         encoder.finish()?;
+        log::info!(target:"special", "Compressed to {archive_name} with lzma");
 
         Ok(())
     }
@@ -149,6 +154,7 @@ impl Compresser {
 
         // Finish zip file
         zip.finish()?;
+        log::info!(target:"special", "Compressed to {archive_name} with zip");
         Ok(())
     }
 }

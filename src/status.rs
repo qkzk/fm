@@ -489,7 +489,7 @@ impl Status {
                     info!("iso mounter mounted {iso_device:?}");
                     info!(
                         target: "special",
-                        "iso :\n{}",
+                        "iso : {}",
                         iso_device.as_string()?,
                     );
                     let path = iso_device.mountpoints.clone().context("no mount point")?;
@@ -594,7 +594,7 @@ impl Status {
     /// Execute a new mark, saving it to a config file for futher use.
     pub fn marks_new(&mut self, c: char, colors: &Colors) -> Result<()> {
         let path = self.selected().path_content.path.clone();
-        self.marks.new_mark(c, path)?;
+        self.marks.new_mark(c, &path)?;
         {
             let tab: &mut Tab = self.selected();
             tab.refresh_view()

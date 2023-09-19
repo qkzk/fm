@@ -50,7 +50,8 @@ impl CliInfo {
         let key = self.selected().context("no cli selected")?;
         let output = {
             let args = self.commands.get(key).context("no arguments for exe")?;
-            info!("execute. executable: {key}, arguments: {args:?}",);
+            info!("execute. executable: {key}, arguments: {args:?}");
+            info!(target:"special", "Executed {key}");
             let child = Command::new(args[0])
                 .args(&args[1..])
                 .env("CLICOLOR_FORCE", "1")

@@ -392,7 +392,8 @@ pub fn execute_in_child<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     exe: S,
     args: &[&str],
 ) -> Result<std::process::Child> {
-    info!("execute_in_child. executable: {exe:?}, arguments: {args:?}",);
+    info!("execute_in_child. executable: {exe:?}, arguments: {args:?}");
+    info!(target: "special", "Execute: {exe:?}, arguments: {args:?}");
     Ok(Command::new(exe).args(args).spawn()?)
 }
 

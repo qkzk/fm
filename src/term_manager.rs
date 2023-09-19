@@ -19,6 +19,7 @@ use crate::constant_strings_paths::{
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
+use crate::log::read_log;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::mount_help::MountHelper;
 use crate::preview::{Preview, TextKind, Window};
@@ -318,9 +319,9 @@ impl<'a> WinMain<'a> {
         }
         self.second_line(status, tab, canvas)?;
         let (_, height) = canvas.size()?;
-        if let Some(message) = &status.selected_non_mut().last_message {
-            log::info!("display last message {message} - line {height}");
-            canvas.print_with_attr(height - 1, 4, &message, ATTR_YELLOW_BOLD)?;
+        if let Some(log) = read_log()?.last() {
+            log::info!("display last message {log} - line {height}");
+            canvas.print_with_attr(height - 1, 4, &log, ATTR_YELLOW_BOLD)?;
         }
         Ok(())
     }

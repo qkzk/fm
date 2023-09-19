@@ -138,7 +138,7 @@ impl MountHelper for IsoDevice {
     fn as_string(&self) -> Result<String> {
         if let Some(ref mount_point) = self.mountpoints {
             Ok(format!(
-                "mounted {}\nto {}",
+                "mounted {} to {}",
                 self.path,
                 mount_point.display()
             ))

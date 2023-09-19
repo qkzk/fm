@@ -22,13 +22,19 @@ impl Default for ShellMenu {
 impl ShellMenu {
     fn update_from_file(&mut self, yaml: &serde_yaml::mapping::Mapping) -> Result<()> {
         for (key, mapping) in yaml.into_iter() {
-            let Some(command) = key.as_str() else { continue; };
+            let Some(command) = key.as_str() else {
+                continue;
+            };
             if !is_program_in_path(command) {
                 continue;
             }
             let command = command.to_owned();
-            let Some(require_cwd) = mapping.get("cwd") else { continue; };
-            let Some(require_cwd) = require_cwd.as_bool() else { continue; };
+            let Some(require_cwd) = mapping.get("cwd") else {
+                continue;
+            };
+            let Some(require_cwd) = require_cwd.as_bool() else {
+                continue;
+            };
             self.content.push((command, require_cwd));
         }
         Ok(())
@@ -43,6 +49,7 @@ impl ShellMenu {
         } else {
             Self::simple(status, name.as_str())?
         };
+        log::info!(target: "special", "Executed {name}");
         Ok(())
     }
 
