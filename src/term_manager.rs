@@ -655,17 +655,26 @@ impl<'a> WinSecondary<'a> {
             "Enter: restore the selected file - x: delete permanently",
         )?;
         let content = &selectable.content();
-        for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
-            let mut attr = *attr;
-            if row == selectable.index() {
-                attr.effect |= Effect::REVERSE;
-            }
+        if content.is_empty() {
             let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP,
+                ContentWindow::WINDOW_MARGIN_TOP + 2,
                 4,
-                &format!("{trashinfo}"),
-                attr,
+                "Trash is empty",
+                ATTR_YELLOW_BOLD,
             );
+        } else {
+            for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
+                let mut attr = *attr;
+                if row == selectable.index() {
+                    attr.effect |= Effect::REVERSE;
+                }
+                let _ = canvas.print_with_attr(
+                    row + ContentWindow::WINDOW_MARGIN_TOP,
+                    4,
+                    &format!("{trashinfo}"),
+                    attr,
+                );
+            }
         }
         Ok(())
     }

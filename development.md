@@ -502,7 +502,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow shell expansion (~ -> /home/user) in goto mode
 - [x] FIX: mode CHMOD reset the file index
 - [x] better display of selected tab. Reverse the colors in the first line
-- [ ] display a message when trash is empty in trash explore mode (alt-o)
+- [x] display a message when trash is empty in trash explore mode (alt-o)
 
 ## TODO
 
