@@ -124,19 +124,25 @@ impl Tab {
         }
     }
 
+    /// Refresh everything but the view
+    pub fn refresh_params(&mut self) -> Result<()> {
+        self.filter = FilterKind::All;
+        self.input.reset();
+        self.preview = Preview::new_empty();
+        self.completion.reset();
+        self.directory.clear();
+        Ok(())
+    }
+
     /// Refresh the current view.
     /// Input string is emptied, the files are read again, the window of
     /// displayed files is reset.
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> Result<()> {
-        self.filter = FilterKind::All;
-        self.input.reset();
+        self.refresh_params()?;
         self.path_content
             .reset_files(&self.filter, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
-        self.preview = Preview::new_empty();
-        self.completion.reset();
-        self.directory.clear();
         Ok(())
     }
 

@@ -102,7 +102,7 @@ impl EventAction {
                 .flagged
                 .push(status.tabs[status.index].selected().unwrap().path.clone());
         };
-        status.reset_tabs_view()
+        Ok(())
     }
 
     /// Enter JUMP mode, allowing to jump to any flagged file.
@@ -159,7 +159,7 @@ impl EventAction {
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(tab: &mut Tab) -> Result<()> {
         tab.reset_mode();
-        tab.refresh_view()
+        tab.refresh_params()
     }
     /// Enter a copy paste mode.
     /// A confirmation is asked before copying all flagged files to

@@ -500,6 +500,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: tree mode: move down from bottom crashes
 - [x] FIX: inxi --full or inxi -F hangs. Use inxi -v 2 instead
 - [x] allow shell expansion (~ -> /home/user) in goto mode
+- [x] FIX: mode CHMOD reset the file index
+- [ ] display a message when trash is empty in trash explore mode (alt-o)
 
 ## TODO
 
