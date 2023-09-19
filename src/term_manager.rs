@@ -320,7 +320,6 @@ impl<'a> WinMain<'a> {
         self.second_line(status, tab, canvas)?;
         let (_, height) = canvas.size()?;
         if let Some(log) = read_log()?.last() {
-            log::info!("display last message {log} - line {height}");
             canvas.print_with_attr(height - 1, 4, &log, ATTR_YELLOW_BOLD)?;
         }
         Ok(())

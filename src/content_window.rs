@@ -39,6 +39,7 @@ impl ContentWindow {
     /// Set the height of file window.
     pub fn set_height(&mut self, height: usize) {
         self.height = height - RESERVED_ROWS;
+        self.bottom = min(self.len, self.height - RESERVED_ROWS);
     }
 
     /// Move the window one line up if possible.
