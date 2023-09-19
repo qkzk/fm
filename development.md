@@ -502,6 +502,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow shell expansion (~ -> /home/user) in goto mode
 - [x] FIX: mode CHMOD reset the file index
 - [ ] display a message when trash is empty in trash explore mode (alt-o)
+- [ ] better display of selected tab. Use a whole block line below or above ?
 
 ## TODO
 
