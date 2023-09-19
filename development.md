@@ -503,6 +503,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: mode CHMOD reset the file index
 - [x] better display of selected tab. Reverse the colors in the first line
 - [x] display a message when trash is empty in trash explore mode (alt-o)
+- [ ] display last executed action (use a string as message)
 
 ## TODO
 

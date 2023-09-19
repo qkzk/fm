@@ -301,7 +301,7 @@ impl<'a> WinMain<'a> {
             .content
             .iter()
             .enumerate()
-            .take(min(len, tab.window.bottom + 1))
+            .take(min(len, tab.window.bottom))
             .skip(tab.window.top)
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
@@ -317,6 +317,11 @@ impl<'a> WinMain<'a> {
             canvas.print_with_attr(row, 0, &string, attr)?;
         }
         self.second_line(status, tab, canvas)?;
+        let (_, height) = canvas.size()?;
+        if let Some(message) = &status.selected_non_mut().last_message {
+            log::info!("display last message {message} - line {height}");
+            canvas.print_with_attr(height - 1, 4, &message, ATTR_YELLOW_BOLD)?;
+        }
         Ok(())
     }
 

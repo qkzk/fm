@@ -69,7 +69,7 @@ impl ContentWindow {
     pub fn reset(&mut self, len: usize) {
         self.len = len;
         self.top = 0;
-        self.bottom = min(len, self.height);
+        self.bottom = min(len, self.height - RESERVED_ROWS);
     }
 
     /// Scroll the window to this index if possible.
@@ -77,7 +77,7 @@ impl ContentWindow {
     pub fn scroll_to(&mut self, index: usize) {
         if index < self.top || index > self.bottom {
             self.top = max(index, Self::WINDOW_PADDING) - Self::WINDOW_PADDING;
-            self.bottom = self.top + min(self.len, self.height - 3);
+            self.bottom = self.top + min(self.len, self.height - RESERVED_ROWS);
         }
     }
 }
