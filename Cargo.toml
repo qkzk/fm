@@ -30,7 +30,7 @@ fs_extra = "1.2.0"
 
 [dependencies]
 anyhow = "1.0.28"
-chrono = "0.4.22"
+chrono = "0.4.31"
 clap = { version = "4.0.2", features = ["derive"] }
 content_inspector = "0.2.4"
 copypasta = "0.8.1"

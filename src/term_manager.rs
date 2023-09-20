@@ -19,7 +19,7 @@ use crate::constant_strings_paths::{
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
-use crate::log::read_log;
+use crate::log::{is_log_recent_engough, read_log};
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::mount_help::MountHelper;
 use crate::preview::{Preview, TextKind, Window};
@@ -330,7 +330,9 @@ impl<'a> WinMain<'a> {
     fn log_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let (_, height) = canvas.size()?;
         if let Some(log) = read_log()?.last() {
-            canvas.print_with_attr(height - 1, 4, &log, ATTR_YELLOW_BOLD)?;
+            if is_log_recent_engough(log)? {
+                canvas.print_with_attr(height - 1, 4, log, ATTR_YELLOW_BOLD)?;
+            }
         }
         Ok(())
     }
