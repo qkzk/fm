@@ -506,7 +506,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] display last executed action (use a string as message)
 - [x] FIX: vertical resize to a smaller window : files expand to the last line and message are overwritten
 - [x] FIX: open a secondary window and messages are overwritten by files. Don't display messages...
-- [ ] FIX: clippy term_manager::windmain has too many arguments. Create a struct holding params for winmain
+- [x] FIX: clippy term_manager::windmain has too many arguments. Create a struct holding params for winmain
 
 ## TODO
 
@@ -583,8 +583,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ## BUGS
 
 - [ ] creates $ENV{HOME} folders everywhere
-- [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
-- [ ] moving with Goto (alt+g) to a folder with space (?) crashes
 
 ## Won't do
 
