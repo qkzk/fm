@@ -95,21 +95,42 @@ macro_rules! impl_preview {
     };
 }
 
+/// Bunch of attributes describing the state of a main window
+/// relatively to other windows
+struct WinMainAttributes {
+    /// horizontal position, in cells
+    x_position: usize,
+    /// is this the first (false) or second (true) window ?
+    is_second: bool,
+    /// is this tab selected ?
+    is_selected: bool,
+    /// is there a secondary window ?
+    has_window_below: bool,
+}
+
+impl WinMainAttributes {
+    fn new(x_position: usize, is_second: bool, is_selected: bool, has_window_below: bool) -> Self {
+        Self {
+            x_position,
+            is_second,
+            is_selected,
+            has_window_below,
+        }
+    }
+}
+
 struct WinMain<'a> {
     status: &'a Status,
     tab: &'a Tab,
     disk_space: &'a str,
     colors: &'a Colors,
-    x_position: usize,
-    is_second: bool,
-    is_selected: bool,
-    has_window_below: bool,
+    attributes: WinMainAttributes,
 }
 
 impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
-        if self.status.dual_pane && self.is_second && self.status.preview_second {
+        if self.status.dual_pane && self.attributes.is_second && self.status.preview_second {
             self.preview_as_second_pane(canvas)?;
             return Ok(());
         }
@@ -137,20 +158,14 @@ impl<'a> WinMain<'a> {
         index: usize,
         disk_space: &'a str,
         colors: &'a Colors,
-        x_position: usize,
-        is_second: bool,
-        is_selected: bool,
-        has_window_below: bool,
+        attributes: WinMainAttributes,
     ) -> Self {
         Self {
             status,
             tab: &status.tabs[index],
             disk_space,
             colors,
-            x_position,
-            is_second,
-            is_selected,
-            has_window_below,
+            attributes,
         }
     }
 
@@ -175,7 +190,7 @@ impl<'a> WinMain<'a> {
             0,
             self.create_first_row(tab, disk_space)?,
             canvas,
-            self.is_selected,
+            self.attributes.is_selected,
         )
     }
 
@@ -321,7 +336,7 @@ impl<'a> WinMain<'a> {
             canvas.print_with_attr(row, 0, &string, attr)?;
         }
         self.second_line(status, tab, canvas)?;
-        if !self.has_window_below {
+        if !self.attributes.has_window_below {
             self.log_line(canvas)?;
         }
         Ok(())
@@ -406,7 +421,7 @@ impl<'a> WinMain<'a> {
             Preview::Ueberzug(image) => {
                 let (width, height) = canvas.size()?;
                 image.ueberzug(
-                    self.x_position as u16 + 2,
+                    self.attributes.x_position as u16 + 2,
                     3,
                     width as u16 - 2,
                     height as u16 - 2,
@@ -968,26 +983,20 @@ impl Display {
     ) -> Result<()> {
         let (width, _) = self.term.term_size()?;
         let (first_selected, second_selected) = (status.index == 0, status.index == 1);
-        let win_main_left = WinMain::new(
-            status,
-            0,
-            disk_space_tab_0,
-            colors,
+        let attributes_left = WinMainAttributes::new(
             0,
             false,
             first_selected,
             status.tabs[0].need_second_window(),
         );
-        let win_main_right = WinMain::new(
-            status,
-            1,
-            disk_space_tab_1,
-            colors,
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, attributes_left);
+        let attributes_right = WinMainAttributes::new(
             width / 2,
             true,
             second_selected,
             status.tabs[1].need_second_window(),
         );
+        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors, attributes_right);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let (border_left, border_right) = self.borders(status);
@@ -1015,16 +1024,9 @@ impl Display {
         disk_space_tab_0: &str,
         colors: &Colors,
     ) -> Result<()> {
-        let win_main_left = WinMain::new(
-            status,
-            0,
-            disk_space_tab_0,
-            colors,
-            0,
-            false,
-            true,
-            status.tabs[0].need_second_window(),
-        );
+        let attributes_left =
+            WinMainAttributes::new(0, false, true, status.tabs[0].need_second_window());
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, attributes_left);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let win = self.vertical_split(
