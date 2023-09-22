@@ -387,9 +387,12 @@ impl Tab {
 
     /// Reset the last mode.
     /// The last mode is set to normal again.
-    pub fn reset_mode(&mut self) {
+    /// Returns True if the last mode requires a refresh afterwards.
+    pub fn reset_mode(&mut self) -> bool {
+        let must_refresh = matches!(self.mode, Mode::Preview);
         self.mode = self.previous_mode;
         self.previous_mode = Mode::Normal;
+        must_refresh
     }
 
     /// Returns true if the current mode requires 2 windows.

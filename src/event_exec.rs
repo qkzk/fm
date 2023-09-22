@@ -158,8 +158,11 @@ impl EventAction {
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(tab: &mut Tab) -> Result<()> {
-        tab.reset_mode();
-        tab.refresh_params()
+        if tab.reset_mode() {
+            tab.refresh_view()
+        } else {
+            tab.refresh_params()
+        }
     }
     /// Enter a copy paste mode.
     /// A confirmation is asked before copying all flagged files to

@@ -489,6 +489,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       Can't test MacOs compilation since I don't own a mac...
 - [x] FIX: incompatible config files between versions crashes the app.
 - [x] FIX: Help string susbtitution aren't aligned properly
+- [x] FIX: exiting preview doesn't refresh
+- [ ] Mode should know if a refresh is required after leaving them.
 
 ## Current dev
 
