@@ -6,6 +6,7 @@ use crate::constant_strings_paths::{ACTION_LOG_PATH, LOG_CONFIG_PATH};
 use crate::utils::extract_lines;
 
 const ONE_DAY_IN_SECONDS: i64 = 24 * 60 * 60;
+// static ENV_HOME: &str = "$ENV{HOME}";
 
 /// Set the logs.
 /// The configuration is read from a config file defined in `LOG_CONFIG_PATH`
@@ -17,8 +18,34 @@ pub fn set_loggers() -> Result<()> {
         shellexpand::tilde(LOG_CONFIG_PATH).as_ref(),
         Default::default(),
     )?;
+    // clear_useless_env_home()?;
     Ok(())
 }
+
+/// Delete useless $ENV{HOME} folder created by log4rs.
+/// This folder is created when a log file is big enough to proc a rolling
+/// Since the pattern can't be resolved, it's not created in the config folder but where the app is started...
+/// See [github issue](https://github.com/estk/log4rs/issues/314)
+/// The function log its results and delete nothing.
+// fn clear_useless_env_home() -> Result<()> {
+//     let p = std::path::Path::new(&ENV_HOME);
+//     let cwd = std::env::current_dir();
+//     log::info!(
+//         "looking from {ENV_HOME} - {p}  CWD {cwd}",
+//         p = p.display(),
+//         cwd = cwd?.display()
+//     );
+//     if p.exists() && std::fs::metadata(ENV_HOME)?.is_dir()
+//     // && std::path::Path::new(ENV_HOME).read_dir()?.next().is_none()
+//     {
+//         let z = std::path::Path::new(ENV_HOME).read_dir()?.next();
+//         log::info!("z {z:?}");
+//
+//         // std::fs::remove_dir_all(ENV_HOME)?;
+//         log::info!("Removed {ENV_HOME} empty directory from CWD");
+//     }
+//     Ok(())
+// }
 
 /// Returns the last line of the log file.
 pub fn read_log() -> Result<Vec<String>> {
