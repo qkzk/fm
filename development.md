@@ -490,7 +490,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: incompatible config files between versions crashes the app.
 - [x] FIX: Help string susbtitution aren't aligned properly
 - [x] FIX: exiting preview doesn't refresh
-- [ ] Mode should know if a refresh is required after leaving them.
+- [x] Mode should know if a refresh is required after leaving them.
 
 ## Current dev
 

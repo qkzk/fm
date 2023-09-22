@@ -389,7 +389,7 @@ impl Tab {
     /// The last mode is set to normal again.
     /// Returns True if the last mode requires a refresh afterwards.
     pub fn reset_mode(&mut self) -> bool {
-        let must_refresh = matches!(self.mode, Mode::Preview);
+        let must_refresh = self.mode.refresh_required();
         self.mode = self.previous_mode;
         self.previous_mode = Mode::Normal;
         must_refresh

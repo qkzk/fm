@@ -131,6 +131,15 @@ pub enum Mode {
     InputSimple(InputSimple),
 }
 
+impl Mode {
+    /// True if the mode requires a view refresh when left.
+    /// Most modes don't, since they don't display their content in the first window.
+    /// content. But `Mode::Preview` does, since it uses the main window.
+    pub fn refresh_required(&self) -> bool {
+        matches!(*self, Mode::Preview)
+    }
+}
+
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
