@@ -594,11 +594,7 @@ impl<'a> WinSecondary<'a> {
     /// Display a cursor in the top row, at a correct column.
     fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         match tab.mode {
-            Mode::Normal
-            | Mode::Tree
-            | Mode::Navigate(Navigate::Marks(_))
-            | Mode::Navigate(_)
-            | Mode::Preview => {
+            Mode::Normal | Mode::Tree | Mode::Navigate(_) | Mode::Preview => {
                 canvas.show_cursor(false)?;
             }
             Mode::InputSimple(InputSimple::Sort) => {
@@ -844,20 +840,12 @@ impl<'a> WinSecondary<'a> {
                 }
             }
         }
-        let confirmation_string = match confirmed_mode {
-            NeedConfirmation::Copy => {
-                format!(
-                    "Files will be copied to {}",
-                    tab.path_content.path_to_str()?
-                )
-            }
-            NeedConfirmation::Delete => "Files will deleted permanently".to_owned(),
-            NeedConfirmation::Move => {
-                format!("Files will be moved to {}", tab.path_content.path_to_str()?)
-            }
-            NeedConfirmation::EmptyTrash => "Trash will be emptied".to_owned(),
-        };
-        canvas.print_with_attr(2, 3, &confirmation_string, ATTR_YELLOW_BOLD)?;
+        canvas.print_with_attr(
+            2,
+            3,
+            &confirmed_mode.confirmation_string(tab.path_content.path_to_str()?),
+            ATTR_YELLOW_BOLD,
+        )?;
 
         Ok(())
     }

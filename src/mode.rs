@@ -41,6 +41,21 @@ impl NeedConfirmation {
             Self::EmptyTrash => 35,
         }
     }
+
+    /// A confirmation message to be displayed before executing the mode.
+    /// When files are moved or copied the destination is displayed.
+    pub fn confirmation_string(&self, destination: &str) -> String {
+        match *self {
+            NeedConfirmation::Copy => {
+                format!("Files will be copied to {}", destination)
+            }
+            NeedConfirmation::Delete => "Files will deleted permanently".to_owned(),
+            NeedConfirmation::Move => {
+                format!("Files will be moved to {}", destination)
+            }
+            NeedConfirmation::EmptyTrash => "Trash will be emptied".to_owned(),
+        }
+    }
 }
 
 impl std::fmt::Display for NeedConfirmation {
