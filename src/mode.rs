@@ -44,11 +44,12 @@ impl NeedConfirmation {
             NeedConfirmation::Copy => {
                 format!("Files will be copied to {}", destination)
             }
-            NeedConfirmation::Delete => "Files will deleted permanently".to_owned(),
+            NeedConfirmation::Delete | NeedConfirmation::EmptyTrash => {
+                "Files will be deleted permanently".to_owned()
+            }
             NeedConfirmation::Move => {
                 format!("Files will be moved to {}", destination)
             }
-            NeedConfirmation::EmptyTrash => "Trash will be emptied".to_owned(),
         }
     }
 }
