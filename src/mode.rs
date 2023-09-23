@@ -34,12 +34,7 @@ impl NeedConfirmation {
     /// Since we ask the user confirmation, we need to know how much space
     /// is needed.
     pub fn cursor_offset(&self) -> usize {
-        match *self {
-            Self::Copy => 25,
-            Self::Delete => 21,
-            Self::Move => 25,
-            Self::EmptyTrash => 35,
-        }
+        self.to_string().len() + 8
     }
 
     /// A confirmation message to be displayed before executing the mode.
