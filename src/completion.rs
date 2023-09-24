@@ -221,10 +221,7 @@ impl Completion {
             content
                 .iter()
                 .filter(|(_, s)| s.text.contains(input_string))
-                .map(|(_, s)| {
-                    let text = s.text.replace("▸ ", "");
-                    text.replace("▾ ", "")
-                })
+                .map(|(_, s)| s.text.replace("▸ ", "").replace("▾ ", ""))
                 .collect(),
         );
 
