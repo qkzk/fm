@@ -513,6 +513,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] remote mount with sshfs.
   - request `username hostname remotepath` in one stroke,
   - execute `sshfs remote_user@hostname:remote_path current_path` which will mount the remote path in current path
+- [x] FIX: search keybindings don't work. Need to trim a string.
 - [ ] use memory and not disk to read logs. Write action logs before saving. Remove most useless logs, only save commands
 
 ## TODO

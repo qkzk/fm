@@ -756,7 +756,7 @@ fn parse_keyname(keyname: &str) -> Option<String> {
     let Some(param) = split.next() else {
         return Some(mutator);
     };
-    let mut param = param.to_owned();
+    let mut param = param.trim().to_owned();
     mutator = mutator.replace("char", "");
     param = param.replace([')', '\''], "");
     if param.chars().all(char::is_uppercase) {
