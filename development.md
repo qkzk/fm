@@ -510,7 +510,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: open a secondary window and messages are overwritten by files. Don't display messages...
 - [x] FIX: clippy term_manager::windmain has too many arguments. Create a struct holding params for winmain
 - [x] NeedConfirmation modes are responsible for their confirmation message
-- [x] remote mount with sshfs.
+- [x] Use Alt+r to remote mount with sshfs.
   - request `username hostname remotepath` in one stroke,
   - execute `sshfs remote_user@hostname:remote_path current_path` which will mount the remote path in current path
 - [x] FIX: search keybindings don't work. Need to trim a string.
