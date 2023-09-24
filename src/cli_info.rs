@@ -1,6 +1,6 @@
 use std::process::{Command, Stdio};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use log::info;
 
 use crate::constant_strings_paths::CLI_INFO_COMMANDS;
@@ -42,30 +42,30 @@ impl CliInfo {
     /// Some environement variables are first set to ensure the colored output.
     /// Long running commands may freeze the display.
     pub fn execute(&self) -> Result<String> {
-        let output = {
-            let args = self.commands[self.index].clone();
-            info!("execute. {args:?}");
-            info!(target:"special", "Executed {args:?}");
-            let child = Command::new(args[0])
-                .args(&args[1..])
-                .env("CLICOLOR_FORCE", "1")
-                .env("COLORTERM", "ansi")
-                .stdin(Stdio::null())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null())
-                .spawn()?;
-            let output = child.wait_with_output()?;
-            if output.status.success() {
-                Ok(String::from_utf8(output.stdout)?)
+        let args = self.commands[self.index].clone();
+        info!("execute. {args:?}");
+        info!(target:"special", "Executed {args:?}");
+        let child = Command::new(args[0])
+            .args(&args[1..])
+            .env("CLICOLOR_FORCE", "1")
+            .env("COLORTERM", "ansi")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()?;
+        let command_output = child.wait_with_output()?;
+        let text_output = {
+            if command_output.status.success() {
+                String::from_utf8(command_output.stdout)?
             } else {
-                Err(anyhow!(
-                    "execute: command {a} exited with error code {e}",
+                format!(
+                    "Command {a} exited with error code {e}",
                     a = args[0],
-                    e = output.status
-                ))
+                    e = command_output.status
+                )
             }
-        }?;
-        Ok(output)
+        };
+        Ok(text_output)
     }
 }
 
