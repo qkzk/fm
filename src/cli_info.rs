@@ -1,11 +1,10 @@
-use std::collections::HashMap;
 use std::process::{Command, Stdio};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use log::info;
 
+use crate::constant_strings_paths::CLI_INFO_COMMANDS;
 use crate::impl_selectable_content;
-
 use crate::utils::is_program_in_path;
 
 /// Holds the command line commands we can run and display
@@ -15,24 +14,20 @@ use crate::utils::is_program_in_path;
 #[derive(Clone)]
 pub struct CliInfo {
     pub content: Vec<&'static str>,
-    commands: HashMap<&'static str, Vec<&'static str>>,
+    commands: Vec<Vec<&'static str>>,
     index: usize,
 }
 
 impl Default for CliInfo {
     fn default() -> Self {
         let index = 0;
-        let commands = HashMap::from([
-            ("duf", vec!["duf"]),
-            ("inxi", vec!["inxi", "-v", "2", "--color"]),
-            ("neofetch", vec!["neofetch"]),
-            ("lsusb", vec!["lsusb"]),
-        ]);
-        let content: Vec<&'static str> = commands
-            .keys()
-            .filter(|s| is_program_in_path(s))
-            .copied()
+        let commands: Vec<Vec<&str>> = CLI_INFO_COMMANDS
+            .iter()
+            .map(|command| command.split(' ').collect::<Vec<_>>())
+            .filter(|args| is_program_in_path(args[0]))
             .collect();
+
+        let content: Vec<&str> = commands.iter().map(|args| args[0]).collect();
 
         Self {
             content,
@@ -47,11 +42,10 @@ impl CliInfo {
     /// Some environement variables are first set to ensure the colored output.
     /// Long running commands may freeze the display.
     pub fn execute(&self) -> Result<String> {
-        let key = self.selected().context("no cli selected")?;
         let output = {
-            let args = self.commands.get(key).context("no arguments for exe")?;
-            info!("execute. executable: {key}, arguments: {args:?}");
-            info!(target:"special", "Executed {key}");
+            let args = self.commands[self.index].clone();
+            info!("execute. {args:?}");
+            info!(target:"special", "Executed {args:?}");
             let child = Command::new(args[0])
                 .args(&args[1..])
                 .env("CLICOLOR_FORCE", "1")
@@ -64,7 +58,11 @@ impl CliInfo {
             if output.status.success() {
                 Ok(String::from_utf8(output.stdout)?)
             } else {
-                Err(anyhow!("execute: command didn't finished correctly",))
+                Err(anyhow!(
+                    "execute: command {a} exited with error code {e}",
+                    a = args[0],
+                    e = output.status
+                ))
             }
         }?;
         Ok(output)
