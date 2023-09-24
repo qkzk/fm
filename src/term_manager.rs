@@ -828,7 +828,7 @@ impl<'a> WinSecondary<'a> {
                     )?;
                 }
             }
-            NeedConfirmation::Copy | NeedConfirmation::Delete | NeedConfirmation::Move => {
+            _ => {
                 for (row, path) in status.flagged.content.iter().enumerate() {
                     canvas.print_with_attr(
                         row + ContentWindow::WINDOW_MARGIN_TOP + 2,
