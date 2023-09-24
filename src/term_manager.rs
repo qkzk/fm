@@ -15,7 +15,7 @@ use crate::config::Colors;
 use crate::constant_strings_paths::{
     CHMOD_LINES, FILTER_LINES, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
     LOG_SECOND_SENTENCE, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES, PASSWORD_LINES,
-    REGEX_LINES, RENAME_LINES, SHELL_LINES, SORT_LINES,
+    REGEX_LINES, REMOTE_LINES, RENAME_LINES, SHELL_LINES, SORT_LINES,
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
@@ -576,6 +576,7 @@ impl<'a> WinSecondary<'a> {
             InputSimple::SetNvimAddr => &NVIM_ADDRESS_LINES,
             InputSimple::Shell => &SHELL_LINES,
             InputSimple::Sort => &SORT_LINES,
+            InputSimple::Remote => &REMOTE_LINES,
         }
     }
 

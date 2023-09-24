@@ -92,6 +92,8 @@ pub enum InputSimple {
     Password(PasswordKind, Option<BlockDeviceAction>, PasswordUsage),
     /// Shell command execute as is
     Shell,
+    /// Mount a remote directory with sshfs
+    Remote,
 }
 
 /// Different modes in which we display a bunch of possible destinations.
@@ -170,6 +172,8 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Password(password_kind, _, _)) => {
                 write!(f, "{password_kind}")
             }
+            Mode::InputSimple(InputSimple::Remote) => write!(f, "Remote:  "),
+
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
             Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
             Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),

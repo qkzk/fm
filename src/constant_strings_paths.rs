@@ -69,6 +69,7 @@ pub static BAT_EXECUTABLE: &str = "bat {} --color=always";
 pub static CAT_EXECUTABLE: &str = "cat {}";
 pub static RG_EXECUTABLE: &str = "rg --line-number \"{}\"";
 pub static GREP_EXECUTABLE: &str = "grep -rI --line-number \"{}\"";
+pub static SSHFS_EXECUTABLE: &str = "sshfs";
 /// Sort presentation for the second window
 pub static SORT_LINES: [&str; 7] = [
     "k:         by kind (default)",
@@ -78,6 +79,12 @@ pub static SORT_LINES: [&str; 7] = [
     "e:         by extension",
     "",
     "r:         reverse current sort",
+];
+pub static REMOTE_LINES: [&str; 4] = [
+    "Mount a directory with sshfs",
+    "Type the arguments as below, separated by a space",
+    "",
+    "username hostname remote_path",
 ];
 /// Chmod presentation for the second window
 pub static CHMOD_LINES: [&str; 5] = [

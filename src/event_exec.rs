@@ -11,6 +11,7 @@ use which::which;
 use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
+use crate::constant_strings_paths::SSHFS_EXECUTABLE;
 use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
 use crate::cryptsetup::BlockDeviceAction;
 use crate::fileinfo::FileKind;
@@ -19,7 +20,7 @@ use crate::log::read_log;
 use crate::mocp::Mocp;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::opener::{
-    execute_and_capture_output_without_check, execute_in_child,
+    execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path, InternalVariant,
 };
 use crate::password::{PasswordKind, PasswordUsage};
@@ -28,6 +29,7 @@ use crate::selectable_content::SelectableContent;
 use crate::shell_parser::ShellCommandParser;
 use crate::status::Status;
 use crate::tab::Tab;
+use crate::utils::is_program_in_path;
 use crate::utils::{
     args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
     opt_mount_point, string_to_path,
@@ -695,6 +697,7 @@ impl EventAction {
                 must_reset_mode = false;
                 LeaveMode::password(status, kind, colors, dest, action)?
             }
+            Mode::InputSimple(InputSimple::Remote) => LeaveMode::remote(status.selected())?,
             Mode::Navigate(Navigate::Jump) => LeaveMode::jump(status)?,
             Mode::Navigate(Navigate::History) => LeaveMode::history(status.selected())?,
             Mode::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status.selected())?,
@@ -1018,6 +1021,11 @@ impl EventAction {
         let args: Vec<&str> = args.iter().map(|s| &**s).collect();
         let output = execute_and_capture_output_without_check(command, &args)?;
         info!("output {output}");
+        Ok(())
+    }
+
+    pub fn remote_mount(tab: &mut Tab) -> Result<()> {
+        tab.set_mode(Mode::InputSimple(InputSimple::Remote));
         Ok(())
     }
 }
@@ -1421,6 +1429,42 @@ impl LeaveMode {
             tab.make_tree(colors)?;
         }
         tab.window.reset(tab.path_content.content.len());
+        Ok(())
+    }
+
+    /// Run sshfs with typed parameters to mount a remote directory in current directory.
+    /// sshfs should be reachable in path.
+    /// The user must type 3 arguments like this : `username hostname remote_path`.
+    /// If the user doesn't provide 3 arguments,
+    pub fn remote(tab: &mut Tab) -> Result<()> {
+        let user_hostname_remotepath_string = tab.input.string();
+        let strings: Vec<&str> = user_hostname_remotepath_string.split(' ').collect();
+        tab.input.reset();
+
+        if !is_program_in_path(SSHFS_EXECUTABLE) {
+            info!("{SSHFS_EXECUTABLE} isn't in path");
+            return Ok(());
+        }
+
+        if strings.len() != 3 {
+            info!(
+                "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3, got {nb}",
+                nb = strings.len()
+            );
+            return Ok(());
+        };
+
+        let (username, hostname, remote_path) = (strings[0], strings[1], strings[2]);
+        let current_path: &str = tab
+            .current_path()
+            .to_str()
+            .context("couldn't parse the path")?;
+        let first_arg = &format!("{username}@{hostname}:{remote_path}");
+        let command_output =
+            execute_and_capture_output(SSHFS_EXECUTABLE, &[first_arg, current_path]);
+        let log_line = format!("{SSHFS_EXECUTABLE} output {command_output:?}");
+        info!("{log_line}");
+        info!(target: "special", "{log_line}");
         Ok(())
     }
 }

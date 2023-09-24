@@ -103,6 +103,7 @@ Navigate as usual. Most actions works as in 'normal' view.
 {Command:<10}:      COMMAND
 {Bulk:<10}:      BULK
 {ShellMenu:<10}:      SHELL MENU
+{RemoteMount:<10}:      MOUNT REMOTE PATH
 {Filter:<10}:      FILTER 
     (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
 {Enter:<10}:      Execute mode then NORMAL

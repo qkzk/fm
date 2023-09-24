@@ -510,6 +510,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: open a secondary window and messages are overwritten by files. Don't display messages...
 - [x] FIX: clippy term_manager::windmain has too many arguments. Create a struct holding params for winmain
 - [x] NeedConfirmation modes are responsible for their confirmation message
+- [x] remote mount with sshfs.
+  - request `username hostname remotepath` in one stroke,
+  - execute `sshfs remote_user@hostname:remote_path current_path` which will mount the remote path in current path
+- [ ] use memory and not disk to read logs. Write action logs before saving. Remove most useless logs, only save commands
 
 ## TODO
 
@@ -552,12 +556,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] allow mounting some other devices
   - [ ] list non mounted devices, list all mount points
   - [ ] act on them
-
-- [ ] sub window / menu for completion / selection.
-
-  1. enter selectable mode
-  2. chose an action
-  3. confirm
 
 - [ ] Version 0.1.50 : safety & memory usage
 

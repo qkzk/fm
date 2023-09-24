@@ -84,6 +84,7 @@ impl Bindings {
             (Key::Char('p'), ActionMap::CutPaste),
             (Key::Char('q'), ActionMap::Quit),
             (Key::Char('r'), ActionMap::Rename),
+            (Key::Char('R'), ActionMap::RemoteMount),
             (Key::Char('s'), ActionMap::Shell),
             (Key::Char('t'), ActionMap::Tree),
             (Key::Char('u'), ActionMap::ClearFlags),
