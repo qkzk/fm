@@ -1387,15 +1387,22 @@ impl LeaveMode {
     /// Compress the flagged files into an archive.
     /// Compression method is chosen by the user.
     /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
+    /// Files which are above the CWD are filtered out since they can't be added to an archive.
+    /// Archive creation depends on CWD so we ensure it's set to the selected tab.
     fn compress(status: &mut Status) -> Result<()> {
-        let cwd = std::env::current_dir()?;
-        let files_with_relative_paths = status
+        let here = &status.selected_non_mut().path_content.path;
+        std::env::set_current_dir(here)?;
+        let files_with_relative_paths: Vec<path::PathBuf> = status
             .flagged
             .content
             .iter()
-            .filter_map(|abs_path| pathdiff::diff_paths(abs_path, &cwd))
+            .filter_map(|abs_path| pathdiff::diff_paths(abs_path, here))
+            .filter(|f| !f.starts_with(".."))
             .collect();
-        status.compression.compress(files_with_relative_paths)
+        if files_with_relative_paths.is_empty() {
+            return Ok(());
+        }
+        status.compression.compress(files_with_relative_paths, here)
     }
 
     /// Execute the selected command.
