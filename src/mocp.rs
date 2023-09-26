@@ -97,4 +97,16 @@ impl Mocp {
         let _ = execute_in_child(MOCP, &["-r"]);
         Ok(())
     }
+
+    /// Clear the playlist
+    /// Since clearing the playlist exit the server,
+    /// we have to restart it afterwards.
+    pub fn clear() -> Result<()> {
+        info!("mocp clear");
+        // Clear the playlist **and exit**
+        let _ = execute_in_child(MOCP, &["-c"]);
+        // Restart the server
+        let _ = execute_in_child(MOCP, &["-S"]);
+        Ok(())
+    }
 }

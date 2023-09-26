@@ -116,6 +116,7 @@ impl Bindings {
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
             (Key::Ctrl('q'), ActionMap::ResetMode),
             (Key::Ctrl('r'), ActionMap::RefreshView),
+            (Key::Ctrl('x'), ActionMap::MocpClearPlaylist),
             (Key::AltEnter, ActionMap::MocpGoToSong),
             (Key::CtrlUp, ActionMap::MocpAddToPlayList),
             (Key::CtrlDown, ActionMap::MocpTogglePause),

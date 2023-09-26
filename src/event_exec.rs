@@ -996,6 +996,10 @@ impl EventAction {
         Mocp::add_to_playlist(tab)
     }
 
+    pub fn mocp_clear_playlist() -> Result<()> {
+        Mocp::clear()
+    }
+
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn mocp_go_to_song(tab: &mut Tab) -> Result<()> {
         Mocp::go_to_song(tab)

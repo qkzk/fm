@@ -516,7 +516,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: search keybindings don't work. Need to trim a string.
 - [x] FIX: archive depends on CWD and will crash if it's not set properly (ie. change tab, move, change tab, compress)
 - [x] use memory and not disk to read last line of logs.
-- [ ] mocp clear playlist
+- [x] mocp clear playlist with ctrl+x
 
 ## TODO
 
