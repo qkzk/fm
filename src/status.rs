@@ -23,6 +23,7 @@ use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::flagged::Flagged;
 use crate::iso::IsoDevice;
+use crate::log::write_log_line;
 use crate::marks::Marks;
 use crate::mode::{InputSimple, Mode, NeedConfirmation};
 use crate::mount_help::MountHelper;
@@ -487,11 +488,9 @@ impl Status {
             } else {
                 if iso_device.mount(&current_username()?, &mut self.password_holder)? {
                     info!("iso mounter mounted {iso_device:?}");
-                    info!(
-                        target: "special",
-                        "iso : {}",
-                        iso_device.as_string()?,
-                    );
+
+                    let log_line = format!("iso : {}", iso_device.as_string()?,);
+                    write_log_line(log_line);
                     let path = iso_device.mountpoints.clone().context("no mount point")?;
                     self.selected().set_pathcontent(&path)?;
                 };
@@ -640,6 +639,7 @@ impl Status {
 
     /// Recursively delete all flagged files.
     pub fn confirm_delete_files(&mut self, colors: &Colors) -> Result<()> {
+        let nb = self.flagged.len();
         for pathbuf in self.flagged.content.iter() {
             if pathbuf.is_dir() {
                 std::fs::remove_dir_all(pathbuf)?;
@@ -647,6 +647,8 @@ impl Status {
                 std::fs::remove_file(pathbuf)?;
             }
         }
+        let log_line = format!("Deleted {nb} flagged files");
+        write_log_line(log_line);
         self.selected().reset_mode();
         self.clear_flags_and_reset_view()?;
         self.refresh_status(colors)

@@ -5,6 +5,7 @@ use std::io::Write;
 use anyhow::Result;
 
 use crate::impl_selectable_content;
+use crate::log::write_log_line;
 use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
 use flate2::Compression;
 use lzma::LzmaWriter;
@@ -70,7 +71,8 @@ impl Compresser {
             CompressionMethod::ZIP => Self::zip(Self::archive(here, "archive.zip")?, files)?,
             CompressionMethod::LZMA => Self::lzma(Self::archive(here, "archive.tar.xz")?, files)?,
         }
-        log::info!(target:"special", "Compressed with {selected}");
+        let log_line = format!("Compressed with {selected}");
+        write_log_line(log_line);
         Ok(())
     }
 

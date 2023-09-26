@@ -16,6 +16,7 @@ use crate::constant_strings_paths::{
 };
 use crate::decompress::{decompress_gz, decompress_xz, decompress_zip};
 use crate::fileinfo::extract_extension;
+use crate::log::write_log_line;
 
 fn find_it<P>(exe_name: P) -> Option<PathBuf>
 where
@@ -393,7 +394,8 @@ pub fn execute_in_child<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     args: &[&str],
 ) -> Result<std::process::Child> {
     info!("execute_in_child. executable: {exe:?}, arguments: {args:?}");
-    info!(target: "special", "Execute: {exe:?}, arguments: {args:?}");
+    let log_line = format!("Execute: {exe:?}, arguments: {args:?}");
+    write_log_line(log_line);
     Ok(Command::new(exe).args(args).spawn()?)
 }
 

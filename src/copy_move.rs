@@ -11,6 +11,7 @@ use tuikit::prelude::{Attr, Color, Effect, Event, Term};
 
 use crate::constant_strings_paths::NOTIFY_EXECUTABLE;
 use crate::fileinfo::human_size;
+use crate::log::write_log_line;
 use crate::opener::execute_in_child;
 
 fn setup_progress_bar(
@@ -154,11 +155,8 @@ where
 fn inform_of_copy(verb: &str, hs_bytes: String, preterit: &str) {
     let _ = notify(&format!("fm: {} finished {}B {}", verb, hs_bytes, preterit));
     info!("{} finished {}B", verb, hs_bytes,);
-    info!(target: "special",
-        "{} finished {}B",
-        verb,
-        hs_bytes,
-    )
+    let log_line = format!("{} finished {}B", verb, hs_bytes,);
+    write_log_line(log_line);
 }
 
 /// Send a notification to the desktop.

@@ -17,6 +17,7 @@ use crate::cryptsetup::BlockDeviceAction;
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::log::read_log;
+use crate::log::write_log_line;
 use crate::mocp::Mocp;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::opener::{
@@ -145,7 +146,12 @@ impl EventAction {
                 .directory_of_selected()?
                 .join(filename);
             std::os::unix::fs::symlink(original_file, &link)?;
-            info!(target: "special", "Symlink {link} links to {original_file}", original_file=original_file.display(), link=link.display());
+            let log_line = format!(
+                "Symlink {link} links to {original_file}",
+                original_file = original_file.display(),
+                link = link.display()
+            );
+            write_log_line(log_line);
         }
         status.clear_flags_and_reset_view()
     }
@@ -1079,7 +1085,8 @@ impl LeaveMode {
             if let Some(path_str) = status.selected_non_mut().path_content_str() {
                 let p = path::PathBuf::from(path_str);
                 status.marks.new_mark(*ch, &p)?;
-                log::info!(target : "special", "Saved mark {ch} -> {p}", p=p.display());
+                let log_line = format!("Saved mark {ch} -> {p}", p = p.display());
+                write_log_line(log_line);
             }
             status.selected().window.reset(len);
             status.selected().input.reset();
@@ -1120,7 +1127,8 @@ impl LeaveMode {
                 Status::set_permissions(path, permissions)?
             }
             status.flagged.clear();
-            log::info!(target:"special", "Changed permissions to {input_permission}")
+            let log_line = format!("Changed permissions to {input_permission}");
+            write_log_line(log_line);
         }
         status.selected().refresh_view()?;
         status.reset_tabs_view()
@@ -1214,11 +1222,13 @@ impl LeaveMode {
                 original_path.display(),
                 new_path.display()
             );
-            info!(target: "special",
+            let log_line = format!(
                 "renaming: original: {} - new: {}",
                 original_path.display(),
                 new_path.display()
             );
+            write_log_line(log_line);
+
             fs::rename(original_path, new_path)?;
         }
 
@@ -1235,7 +1245,8 @@ impl LeaveMode {
             .join(sanitize_filename::sanitize(tab.input.string()));
         if !path.exists() {
             fs::File::create(&path)?;
-            info!(target: "special", "New file: {path}", path=path.display());
+            let log_line = format!("New file: {path}", path = path.display());
+            write_log_line(log_line);
         }
         tab.refresh_view()
     }
@@ -1252,7 +1263,8 @@ impl LeaveMode {
             .join(sanitize_filename::sanitize(tab.input.string()));
         if !path.exists() {
             fs::create_dir_all(&path)?;
-            info!(target: "special", "New directory: {path}", path=path.display());
+            let log_line = format!("New directory: {path}", path = path.display());
+            write_log_line(log_line);
         }
         tab.refresh_view()
     }
@@ -1471,7 +1483,7 @@ impl LeaveMode {
             execute_and_capture_output(SSHFS_EXECUTABLE, &[first_arg, current_path]);
         let log_line = format!("{SSHFS_EXECUTABLE} output {command_output:?}");
         info!("{log_line}");
-        info!(target: "special", "{log_line}");
+        write_log_line(log_line);
         Ok(())
     }
 }

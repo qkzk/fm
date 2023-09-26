@@ -515,7 +515,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - execute `sshfs remote_user@hostname:remote_path current_path` which will mount the remote path in current path
 - [x] FIX: search keybindings don't work. Need to trim a string.
 - [x] FIX: archive depends on CWD and will crash if it's not set properly (ie. change tab, move, change tab, compress)
-- [ ] use memory and not disk to read logs. Write action logs before saving. Remove most useless logs, only save commands
+- [x] use memory and not disk to read last line of logs.
 
 ## TODO
 

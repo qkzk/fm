@@ -4,6 +4,7 @@ use std::process::{Command, Stdio};
 use anyhow::{Context, Result};
 use log::info;
 
+use crate::log::write_log_line;
 use crate::utils::current_username;
 
 /// Different kind of password
@@ -97,10 +98,8 @@ where
     P: AsRef<std::path::Path> + std::fmt::Debug,
 {
     info!("sudo_with_password {args:?} CWD {path:?}");
-    info!(
-        target: "special",
-        "running sudo command with password. args: {args:?}, CWD: {path:?}"
-    );
+    let log_line = format!("running sudo command with password. args: {args:?}, CWD: {path:?}");
+    write_log_line(log_line);
     let mut child = Command::new("sudo")
         .arg("-S")
         .args(args)
@@ -131,7 +130,8 @@ where
     S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
 {
     info!("running sudo {:?}", args);
-    info!(target: "special", "running sudo command. {args:?}");
+    let log_line = format!("running sudo command. {args:?}");
+    write_log_line(log_line);
     let child = Command::new("sudo")
         .args(args)
         .stdin(Stdio::null())

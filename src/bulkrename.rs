@@ -8,6 +8,7 @@ use std::time::{Duration, SystemTime};
 
 use crate::constant_strings_paths::TMP_FOLDER_PATH;
 use crate::impl_selectable_content;
+use crate::log::write_log_line;
 use crate::opener::Opener;
 use crate::status::Status;
 
@@ -115,8 +116,12 @@ impl<'a> Bulkrename<'a> {
         let mut file = std::fs::File::create(&self.temp_file)?;
 
         for path in self.original_filepath.clone().unwrap().iter() {
-            let Some(os_filename) = path.file_name() else { return Ok(()) };
-            let Some(filename) = os_filename.to_str() else {return Ok(()) };
+            let Some(os_filename) = path.file_name() else {
+                return Ok(());
+            };
+            let Some(filename) = os_filename.to_str() else {
+                return Ok(());
+            };
             let b = filename.as_bytes();
             file.write_all(b)?;
             file.write_all(&[b'\n'])?;
@@ -169,9 +174,11 @@ impl<'a> Bulkrename<'a> {
             let new_name = sanitize_filename::sanitize(filename);
             self.rename_file(path, &new_name)?;
             counter += 1;
-            info!(target: "special", "Bulk renamed {path} to {new_name}", path=path.display())
+            let log_line = format!("Bulk renamed {path} to {new_name}", path = path.display());
+            write_log_line(log_line);
         }
-        info!(target: "special", "Bulk renamed {counter} files");
+        let log_line = format!("Bulk renamed {counter} files");
+        write_log_line(log_line);
         Ok(())
     }
 
@@ -181,24 +188,29 @@ impl<'a> Bulkrename<'a> {
             let mut new_path = std::path::PathBuf::from(self.parent_dir.unwrap());
             if !filename.ends_with('/') {
                 new_path.push(filename);
-                let Some(parent) = new_path.parent() else { return Ok(()); };
+                let Some(parent) = new_path.parent() else {
+                    return Ok(());
+                };
                 info!("Bulk new files. Creating parent: {}", parent.display());
                 if std::fs::create_dir_all(parent).is_err() {
                     continue;
                 };
                 info!("creating: {new_path:?}");
                 std::fs::File::create(&new_path)?;
-                info!(target:"special", "Bulk created {new_path}", new_path=new_path.display());
+                let log_line = format!("Bulk created {new_path}", new_path = new_path.display());
+                write_log_line(log_line);
                 counter += 1;
             } else {
                 new_path.push(filename);
                 info!("Bulk creating dir: {}", new_path.display());
                 std::fs::create_dir_all(&new_path)?;
-                info!(target:"special", "Bulk created {new_path}", new_path=new_path.display());
+                let log_line = format!("Bulk created {new_path}", new_path = new_path.display());
+                write_log_line(log_line);
                 counter += 1;
             }
         }
-        info!(target: "special", "Bulk created {counter} files");
+        let log_line = format!("Bulk created {counter} files");
+        write_log_line(log_line);
         Ok(())
     }
 

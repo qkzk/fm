@@ -5,6 +5,7 @@ use log::info;
 
 use crate::constant_strings_paths::CLI_INFO_COMMANDS;
 use crate::impl_selectable_content;
+use crate::log::write_log_line;
 use crate::utils::is_program_in_path;
 
 /// Holds the command line commands we can run and display
@@ -44,7 +45,8 @@ impl CliInfo {
     pub fn execute(&self) -> Result<String> {
         let args = self.commands[self.index].clone();
         info!("execute. {args:?}");
-        info!(target:"special", "Executed {args:?}");
+        let log_line = format!("Executed {args:?}");
+        write_log_line(log_line);
         let child = Command::new(args[0])
             .args(&args[1..])
             .env("CLICOLOR_FORCE", "1")

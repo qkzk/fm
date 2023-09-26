@@ -861,6 +861,7 @@ dependencies = [
  "futures 0.3.27",
  "gag",
  "indicatif",
+ "lazy_static",
  "log",
  "log4rs",
  "nvim-rs",

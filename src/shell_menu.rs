@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 
 use crate::impl_selectable_content;
+use crate::log::write_log_line;
 use crate::opener::{execute_in_child_without_output, execute_in_child_without_output_with_path};
 use crate::status::Status;
 use crate::utils::is_program_in_path;
@@ -49,7 +50,8 @@ impl ShellMenu {
         } else {
             Self::simple(status, name.as_str())?
         };
-        log::info!(target: "special", "Executed {name}");
+        let log_line = format!("Executed {name}");
+        write_log_line(log_line);
         Ok(())
     }
 
