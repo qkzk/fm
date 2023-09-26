@@ -517,6 +517,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: archive depends on CWD and will crash if it's not set properly (ie. change tab, move, change tab, compress)
 - [x] use memory and not disk to read last line of logs.
 - [x] mocp clear playlist with ctrl+x
+- [x] FIX: MOCP print error message on screen
 
 ## TODO
 

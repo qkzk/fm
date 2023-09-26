@@ -24,12 +24,12 @@ pub struct Mocp {}
 impl Mocp {
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn add_to_playlist(tab: &Tab) -> Result<()> {
-        let _ = execute_in_child(MOCP, &["-S"]);
+        let _ = execute_and_capture_output_without_check(MOCP, &["-S"]);
         let Some(path_str) = tab.path_content.selected_path_string() else {
             return Ok(());
         };
         info!("mocp add to playlist {path_str:?}");
-        let _ = execute_in_child(MOCP, &["-a", &path_str]);
+        let _ = execute_and_capture_output_without_check(MOCP, &["-a", &path_str]);
         Ok(())
     }
 
@@ -87,14 +87,14 @@ impl Mocp {
     /// Skip to the next song in MOC
     pub fn next() -> Result<()> {
         info!("mocp next");
-        let _ = execute_in_child(MOCP, &["-f"]);
+        let _ = execute_and_capture_output_without_check(MOCP, &["-f"]);
         Ok(())
     }
 
     /// Go to the previous song in MOC
     pub fn previous() -> Result<()> {
         info!("mocp previous");
-        let _ = execute_in_child(MOCP, &["-r"]);
+        let _ = execute_and_capture_output_without_check(MOCP, &["-r"]);
         Ok(())
     }
 
@@ -104,9 +104,9 @@ impl Mocp {
     pub fn clear() -> Result<()> {
         info!("mocp clear");
         // Clear the playlist **and exit**
-        let _ = execute_in_child(MOCP, &["-c"]);
+        let _ = execute_and_capture_output_without_check(MOCP, &["-c"]);
         // Restart the server
-        let _ = execute_in_child(MOCP, &["-S"]);
+        let _ = execute_and_capture_output_without_check(MOCP, &["-S"]);
         Ok(())
     }
 }
