@@ -837,8 +837,12 @@ impl EventAction {
             return Ok(());
         };
         if let Mode::Normal | Mode::Tree = status.selected_non_mut().mode {
-            let first_path = &status.flagged.content[0].to_str().unwrap();
-            let second_path = &status.flagged.content[1].to_str().unwrap();
+            let first_path = &status.flagged.content[0]
+                .to_str()
+                .context("Couldn't parse filename")?;
+            let second_path = &status.flagged.content[1]
+                .to_str()
+                .context("Couldn't parse filename")?;
             status.selected().preview = Preview::diff(first_path, second_path)?;
             let tab = status.selected();
             tab.window.reset(tab.preview.len());
