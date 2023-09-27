@@ -139,6 +139,7 @@ impl Preview {
 
     fn notebook(path: &Path) -> Option<Self> {
         let path_str = path.to_str()?;
+        // nbconvert is bundled with jupyter, no need to check again
         let output = execute_and_capture_output_without_check(
             JUPYTER,
             &["nbconvert", "--to", "markdown", path_str, "--stdout"],
