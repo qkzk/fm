@@ -18,6 +18,7 @@ use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::log::read_log;
 use crate::log::write_log_line;
+use crate::mocp::is_mocp_installed;
 use crate::mocp::Mocp;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::opener::{
@@ -997,15 +998,27 @@ impl EventAction {
 
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn mocp_add_to_playlist(tab: &Tab) -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
         Mocp::add_to_playlist(tab)
     }
 
     pub fn mocp_clear_playlist() -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
         Mocp::clear()
     }
 
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn mocp_go_to_song(tab: &mut Tab) -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
         Mocp::go_to_song(tab)
     }
 
@@ -1013,16 +1026,28 @@ impl EventAction {
     /// Starts the server if needed, preventing the output to fill the screen.
     /// Then toggle play/pause
     pub fn mocp_toggle_pause(status: &mut Status) -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
         Mocp::toggle_pause(status)
     }
 
     /// Skip to the next song in MOC
     pub fn mocp_next() -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
         Mocp::next()
     }
 
     /// Go to the previous song in MOC
     pub fn mocp_previous() -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
         Mocp::previous()
     }
 
