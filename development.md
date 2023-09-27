@@ -521,6 +521,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] cryptdevice requires lsblk & cryptdevice. Display a message if not installed
 - [x] mocp must be installed to run relatives commands
 - [x] nitrogen must be installed to set a wallpaper
+- [x] mediainfo must be installed to preview a media file with it
 
 ## TODO
 

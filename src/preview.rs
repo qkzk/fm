@@ -19,7 +19,7 @@ use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
 use crate::config::Colors;
-use crate::constant_strings_paths::THUMBNAIL_PATH;
+use crate::constant_strings_paths::{MEDIAINFO, THUMBNAIL_PATH};
 use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
@@ -27,7 +27,7 @@ use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
 use crate::status::Status;
 use crate::tree::{ColoredString, Tree};
-use crate::utils::filename_from_path;
+use crate::utils::{filename_from_path, is_program_in_path};
 
 /// Different kind of preview used to display some informaitons
 /// About the file.
@@ -83,7 +83,9 @@ impl Preview {
                 e if is_ext_compressed(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
                 e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
                 e if is_ext_image(e) => Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?)),
-                e if is_ext_audio(e) => Ok(Self::Media(MediaContent::new(&file_info.path)?)),
+                e if is_ext_audio(e) && is_program_in_path(MEDIAINFO) => {
+                    Ok(Self::Media(MediaContent::new(&file_info.path)?))
+                }
                 e if is_ext_video(e) => {
                     Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
                 }
@@ -530,7 +532,7 @@ pub struct MediaContent {
 impl MediaContent {
     fn new(path: &Path) -> Result<Self> {
         let content: Vec<String>;
-        if let Ok(output) = std::process::Command::new("mediainfo").arg(path).output() {
+        if let Ok(output) = std::process::Command::new(MEDIAINFO).arg(path).output() {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
             content = s.lines().map(|s| s.to_owned()).collect();
         } else {

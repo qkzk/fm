@@ -11,6 +11,7 @@ use which::which;
 use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
+use crate::constant_strings_paths::MEDIAINFO;
 use crate::constant_strings_paths::NITROGEN;
 use crate::constant_strings_paths::SSHFS_EXECUTABLE;
 use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
@@ -809,6 +810,10 @@ impl EventAction {
 
     /// Display mediainfo details of an image
     pub fn mediainfo(tab: &mut Tab) -> Result<()> {
+        if !is_program_in_path(MEDIAINFO) {
+            write_log_line(format!("{} isn't installed", MEDIAINFO));
+            return Ok(());
+        }
         if let Mode::Normal | Mode::Tree = tab.mode {
             let Some(file_info) = tab.selected() else {
                 return Ok(());
