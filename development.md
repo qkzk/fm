@@ -522,6 +522,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] mocp must be installed to run relatives commands
 - [x] nitrogen must be installed to set a wallpaper
 - [x] mediainfo must be installed to preview a media file with it
+- [x] ueberzug must be installed to preview images & font files with it
+- [x] pandoc must be installed to preview doc (.doc, .odb)
+- [x] jupyter must be installed to preview .ipynb notebooks.
 
 ## TODO
 

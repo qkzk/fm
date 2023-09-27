@@ -19,7 +19,7 @@ use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
 use crate::config::Colors;
-use crate::constant_strings_paths::{MEDIAINFO, THUMBNAIL_PATH};
+use crate::constant_strings_paths::{JUPYTER, MEDIAINFO, PANDOC, THUMBNAIL_PATH, UEBERZUG};
 use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
@@ -82,23 +82,27 @@ impl Preview {
             FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
                 e if is_ext_compressed(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
                 e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
-                e if is_ext_image(e) => Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?)),
+                e if is_ext_image(e) && is_program_in_path(UEBERZUG) => {
+                    Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?))
+                }
                 e if is_ext_audio(e) && is_program_in_path(MEDIAINFO) => {
                     Ok(Self::Media(MediaContent::new(&file_info.path)?))
                 }
-                e if is_ext_video(e) => {
+                e if is_ext_video(e) && is_program_in_path(UEBERZUG) => {
                     Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
                 }
-                e if is_ext_font(e) => {
+                e if is_ext_font(e) && is_program_in_path(UEBERZUG) => {
                     Ok(Self::Ueberzug(Ueberzug::font_thumbnail(&file_info.path)?))
                 }
-                e if is_ext_svg(e) => Ok(Self::Ueberzug(Ueberzug::svg_thumbnail(&file_info.path)?)),
+                e if is_ext_svg(e) && is_program_in_path(UEBERZUG) => {
+                    Ok(Self::Ueberzug(Ueberzug::svg_thumbnail(&file_info.path)?))
+                }
                 e if is_ext_iso(e) => Ok(Self::Iso(Iso::new(&file_info.path)?)),
-                e if is_ext_notebook(e) => {
+                e if is_ext_notebook(e) && is_program_in_path(JUPYTER) => {
                     Ok(Self::notebook(&file_info.path)
                         .context("Preview: Couldn't parse notebook")?)
                 }
-                e if is_ext_doc(e) => {
+                e if is_ext_doc(e) && is_program_in_path(PANDOC) => {
                     Ok(Self::doc(&file_info.path).context("Preview: Couldn't parse doc")?)
                 }
                 e => match Self::preview_syntaxed(e, &file_info.path) {
@@ -132,7 +136,7 @@ impl Preview {
     fn notebook(path: &Path) -> Option<Self> {
         let path_str = path.to_str()?;
         let output = execute_and_capture_output_without_check(
-            "jupyter",
+            JUPYTER,
             &["nbconvert", "--to", "markdown", path_str, "--stdout"],
         )
         .ok()?;
@@ -145,7 +149,7 @@ impl Preview {
     fn doc(path: &Path) -> Option<Self> {
         let path_str = path.to_str()?;
         let output = execute_and_capture_output_without_check(
-            "pandoc",
+            PANDOC,
             &["-s", "-t", "markdown", "--", path_str],
         )
         .ok()?;

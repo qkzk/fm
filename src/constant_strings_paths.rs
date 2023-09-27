@@ -158,3 +158,9 @@ pub const CLI_INFO_COMMANDS: [&str; 4] = ["duf", "inxi -v 2 --color", "neofetch"
 pub const NITROGEN: &str = "nitrogen";
 /// Mediainfo (used to preview media files) executable
 pub const MEDIAINFO: &str = "mediainfo";
+/// ueberzug (used to preview images & fonts)
+pub const UEBERZUG: &str = "ueberzug";
+/// jupyter. used to preview notebooks (.ipynb)
+pub const JUPYTER: &str = "jupyter";
+/// pandoc. used to preview .doc & .odb documents
+pub const PANDOC: &str = "pandoc";
