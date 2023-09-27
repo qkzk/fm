@@ -10,7 +10,10 @@ use crate::password::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
     reset_sudo_faillock, PasswordHolder, PasswordKind,
 };
-use crate::utils::current_username;
+use crate::utils::{current_username, is_program_in_path};
+
+const LSBLK: &str = "lsblk";
+const CRYPTSETUP: &str = "cryptsetup";
 
 /// Possible actions on encrypted drives
 #[derive(Debug, Clone, Copy)]
@@ -26,7 +29,7 @@ pub enum BlockDeviceAction {
 /// ```
 /// as a String.
 fn get_devices() -> Result<String> {
-    let output = Command::new("lsblk")
+    let output = Command::new(LSBLK)
         .args(&vec!["-l", "-o", "FSTYPE,PATH,UUID,FSVER,MOUNTPOINT"])
         .stdin(Stdio::null())
         .stderr(Stdio::null())
@@ -42,6 +45,12 @@ fn filter_crypto_devices_lines(output: String, key: &str) -> Vec<String> {
         .filter(|line| line.contains(key))
         .map(|line| line.into())
         .collect()
+}
+
+/// True iff `lsblk` and `cryptsetup` are in path.
+/// Nothing here can be done without those programs.
+pub fn lsblk_and_cryptsetup_installed() -> bool {
+    is_program_in_path(LSBLK) && is_program_in_path(CRYPTSETUP)
 }
 
 /// Represent an encrypted device.
@@ -88,7 +97,7 @@ impl CryptoDevice {
 
     fn format_luksopen_parameters(&self) -> [String; 4] {
         [
-            "cryptsetup".to_owned(),
+            CRYPTSETUP.to_owned(),
             "open".to_owned(),
             self.path.clone(),
             self.uuid.clone(),
@@ -96,7 +105,7 @@ impl CryptoDevice {
     }
     fn format_luksclose_parameters(&self) -> [String; 3] {
         [
-            "cryptsetup".to_owned(),
+            CRYPTSETUP.to_owned(),
             "luksClose".to_owned(),
             self.device_name
                 .clone()
@@ -117,7 +126,7 @@ impl CryptoDevice {
     }
 
     fn set_device_name(&mut self) -> Result<()> {
-        let child = Command::new("lsblk")
+        let child = Command::new(LSBLK)
             .arg("-l")
             .arg("-n")
             .arg(self.path.clone())

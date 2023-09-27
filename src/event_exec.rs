@@ -13,7 +13,7 @@ use crate::completion::InputCompleted;
 use crate::config::Colors;
 use crate::constant_strings_paths::SSHFS_EXECUTABLE;
 use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
-use crate::cryptsetup::BlockDeviceAction;
+use crate::cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::log::read_log;
@@ -938,6 +938,10 @@ impl EventAction {
     /// Enter the encrypted device menu, allowing the user to mount/umount
     /// a luks encrypted device.
     pub fn encrypted_drive(status: &mut Status) -> Result<()> {
+        if !lsblk_and_cryptsetup_installed() {
+            write_log_line("lsblk and cryptsetup must be installed.".to_owned());
+            return Ok(());
+        }
         if status.encrypted_devices.is_empty() {
             status.encrypted_devices.update()?;
         }

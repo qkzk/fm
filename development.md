@@ -518,6 +518,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] use memory and not disk to read last line of logs.
 - [x] mocp clear playlist with ctrl+x
 - [x] FIX: MOCP print error message on screen
+- [x] cryptdevice requires lsblk & cryptdevice. Display a message if not installed
 
 ## TODO
 
