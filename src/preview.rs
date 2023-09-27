@@ -987,7 +987,9 @@ fn is_ext_compressed(ext: &str) -> bool {
         "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
     )
 }
-fn is_ext_image(ext: &str) -> bool {
+
+/// True iff the extension is a known (by me) image extension.
+pub fn is_ext_image(ext: &str) -> bool {
     matches!(
         ext,
         "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "raw" | "cr2" | "nef" | "orf" | "sr2"

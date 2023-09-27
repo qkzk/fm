@@ -11,6 +11,7 @@ use which::which;
 use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
+use crate::constant_strings_paths::NITROGEN;
 use crate::constant_strings_paths::SSHFS_EXECUTABLE;
 use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
 use crate::cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
@@ -26,6 +27,7 @@ use crate::opener::{
     execute_in_child_without_output_with_path, InternalVariant,
 };
 use crate::password::{PasswordKind, PasswordUsage};
+use crate::preview::is_ext_image;
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::shell_parser::ShellCommandParser;
@@ -989,10 +991,20 @@ impl EventAction {
     /// Set the current selected file as wallpaper with `nitrogen`.
     /// Requires `nitrogen` to be installed.
     pub fn set_wallpaper(tab: &Tab) -> Result<()> {
+        if !is_program_in_path(NITROGEN) {
+            write_log_line("nitrogen must be installed".to_owned());
+            return Ok(());
+        }
+        let Some(fileinfo) = tab.path_content.selected() else {
+            return Ok(());
+        };
+        if !is_ext_image(&fileinfo.extension) {
+            return Ok(());
+        }
         let Some(path_str) = tab.path_content.selected_path_string() else {
             return Ok(());
         };
-        let _ = execute_in_child("nitrogen", &["--set-zoom-fill", "--save", &path_str]);
+        let _ = execute_in_child(NITROGEN, &["--set-zoom-fill", "--save", &path_str]);
         Ok(())
     }
 
