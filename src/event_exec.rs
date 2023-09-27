@@ -11,6 +11,7 @@ use which::which;
 use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
+use crate::constant_strings_paths::DIFF;
 use crate::constant_strings_paths::MEDIAINFO;
 use crate::constant_strings_paths::NITROGEN;
 use crate::constant_strings_paths::SSHFS_EXECUTABLE;
@@ -828,6 +829,10 @@ impl EventAction {
 
     /// Display a diff between the first 2 flagged files or dir.
     pub fn diff(status: &mut Status) -> Result<()> {
+        if !is_program_in_path(DIFF) {
+            write_log_line(format!("{DIFF} isn't installed"));
+            return Ok(());
+        }
         if status.flagged.len() < 2 {
             return Ok(());
         };

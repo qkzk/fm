@@ -19,7 +19,9 @@ use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
 use crate::config::Colors;
-use crate::constant_strings_paths::{JUPYTER, MEDIAINFO, PANDOC, THUMBNAIL_PATH, UEBERZUG};
+use crate::constant_strings_paths::{
+    DIFF, ISOINFO, JUPYTER, MEDIAINFO, PANDOC, THUMBNAIL_PATH, UEBERZUG,
+};
 use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
@@ -97,7 +99,9 @@ impl Preview {
                 e if is_ext_svg(e) && is_program_in_path(UEBERZUG) => {
                     Ok(Self::Ueberzug(Ueberzug::svg_thumbnail(&file_info.path)?))
                 }
-                e if is_ext_iso(e) => Ok(Self::Iso(Iso::new(&file_info.path)?)),
+                e if is_ext_iso(e) && is_program_in_path(ISOINFO) => {
+                    Ok(Self::Iso(Iso::new(&file_info.path)?))
+                }
                 e if is_ext_notebook(e) && is_program_in_path(JUPYTER) => {
                     Ok(Self::notebook(&file_info.path)
                         .context("Preview: Couldn't parse notebook")?)
@@ -886,11 +890,11 @@ pub struct Diff {
 impl Diff {
     pub fn new(first_path: &str, second_path: &str) -> Result<Self> {
         let content: Vec<String> =
-            execute_and_capture_output_without_check("diff", &[first_path, second_path])?
+            execute_and_capture_output_without_check(DIFF, &[first_path, second_path])?
                 .lines()
                 .map(|s| s.to_owned())
                 .collect();
-        info!("diff:\n{content:?}");
+        info!("{DIFF}:\n{content:?}");
 
         Ok(Self {
             length: content.len(),
@@ -912,11 +916,11 @@ impl Iso {
     fn new(path: &Path) -> Result<Self> {
         let path = path.to_str().context("couldn't parse the path")?;
         let content: Vec<String> =
-            execute_and_capture_output_without_check("isoinfo", &["-l", "-i", path])?
+            execute_and_capture_output_without_check(ISOINFO, &["-l", "-i", path])?
                 .lines()
                 .map(|s| s.to_owned())
                 .collect();
-        info!("isofino:\n{content:?}");
+        info!("{ISOINFO}:\n{content:?}");
 
         Ok(Self {
             length: content.len(),
