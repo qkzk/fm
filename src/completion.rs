@@ -4,7 +4,7 @@ use anyhow::Result;
 use strum::IntoEnumIterator;
 
 use crate::fileinfo::PathContent;
-use crate::tree::ColoredString;
+use crate::preview::ColoredTriplet;
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
@@ -215,13 +215,13 @@ impl Completion {
     pub fn search_from_tree(
         &mut self,
         input_string: &str,
-        content: &[(String, ColoredString)],
+        content: &[ColoredTriplet],
     ) -> Result<()> {
         self.update(
             content
                 .iter()
-                .filter(|(_, s)| s.text.contains(input_string))
-                .map(|(_, s)| s.text.replace("▸ ", "").replace("▾ ", ""))
+                .filter(|(_, _, s)| s.text.contains(input_string))
+                .map(|(_, _, s)| s.text.replace("▸ ", "").replace("▾ ", ""))
                 .collect(),
         );
 

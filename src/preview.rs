@@ -705,7 +705,7 @@ impl ColoredText {
 /// if the directory has a lot of children.
 #[derive(Clone, Debug)]
 pub struct Directory {
-    pub content: Vec<(String, ColoredString)>,
+    pub content: Vec<ColoredTriplet>,
     pub tree: Tree,
     len: usize,
     pub selected_index: usize,
@@ -980,14 +980,16 @@ macro_rules! impl_window {
     };
 }
 
-type ColoredPair = (String, ColoredString);
+/// A tuple with `(ColoredString, String, ColoredString)`.
+/// Used to iter and impl window trait in tree mode.
+pub type ColoredTriplet = (ColoredString, String, ColoredString);
 
 impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
 impl_window!(PdfContent, String);
 impl_window!(ZipContent, String);
 impl_window!(MediaContent, String);
-impl_window!(Directory, ColoredPair);
+impl_window!(Directory, ColoredTriplet);
 impl_window!(Diff, String);
 impl_window!(Iso, String);
 impl_window!(ColoredText, String);

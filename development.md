@@ -529,6 +529,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] diff must be installed to preview a diff of 2 files
 - [x] inform user if file already exits when creating / renaming
 - [x] factorise new file & new dir
+- [x] metadata in tree mode. Toggle like display full with alt-e
 
 ## TODO
 

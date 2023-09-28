@@ -7,6 +7,7 @@ use users::UsersCache;
 use crate::config::Colors;
 use crate::fileinfo::{fileinfo_attr, files_collection, FileInfo, FileKind};
 use crate::filter::FilterKind;
+use crate::preview::ColoredTriplet;
 use crate::sort::SortKind;
 use crate::utils::filename_from_path;
 
@@ -38,6 +39,14 @@ impl ColoredString {
         };
         Self::new(text, current_node.attr(colors), current_node.filepath())
     }
+
+    fn from_metadata_line(current_node: &Node, colors: &Colors) -> Self {
+        Self::new(
+            current_node.metadata_line.to_owned(),
+            current_node.attr(colors),
+            current_node.filepath(),
+        )
+    }
 }
 
 /// An element in a tree.
@@ -49,6 +58,7 @@ pub struct Node {
     pub position: Vec<usize>,
     pub folded: bool,
     pub is_dir: bool,
+    pub metadata_line: String,
 }
 
 impl Node {
@@ -84,13 +94,15 @@ impl Node {
         self.folded = !self.folded;
     }
 
-    fn from_fileinfo(fileinfo: FileInfo, parent_position: Vec<usize>) -> Self {
-        Self {
-            is_dir: matches!(fileinfo.file_kind, FileKind::Directory),
+    fn from_fileinfo(fileinfo: FileInfo, parent_position: Vec<usize>) -> Result<Self> {
+        let is_dir = matches!(fileinfo.file_kind, FileKind::Directory);
+        Ok(Self {
+            is_dir,
+            metadata_line: fileinfo.format_no_filename()?,
             fileinfo,
             position: parent_position,
             folded: false,
-        }
+        })
     }
 }
 
@@ -213,7 +225,7 @@ impl Tree {
             &sort_kind,
             parent_position.clone(),
         )?;
-        let node = Node::from_fileinfo(fileinfo, parent_position);
+        let node = Node::from_fileinfo(fileinfo, parent_position)?;
         let position = vec![0];
         let current_node = node.clone();
         Ok(Self {
@@ -291,6 +303,7 @@ impl Tree {
             position: vec![0],
             folded: false,
             is_dir: false,
+            metadata_line: "".to_owned(),
         };
         let leaves = vec![];
         let position = vec![0];
@@ -442,10 +455,7 @@ impl Tree {
     /// is reached. There's no way atm to avoid parsing the first lines
     /// since the "prefix" (straight lines at left of screen) can reach
     /// the whole screen.
-    pub fn into_navigable_content(
-        &mut self,
-        colors: &Colors,
-    ) -> (usize, Vec<(String, ColoredString)>) {
+    pub fn into_navigable_content(&mut self, colors: &Colors) -> (usize, Vec<ColoredTriplet>) {
         let required_height = self.required_height;
         let mut stack = vec![("".to_owned(), self)];
         let mut content = vec![];
@@ -457,6 +467,7 @@ impl Tree {
             }
 
             content.push((
+                ColoredString::from_metadata_line(&current.node, colors),
                 prefix.to_owned(),
                 ColoredString::from_node(&current.node, colors),
             ));

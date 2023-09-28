@@ -348,18 +348,28 @@ impl<'a> WinMain<'a> {
     }
 
     fn tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        let line_number_width = 3;
-
+        let left_margin = if status.display_full { 0 } else { 3 };
         let (_, height) = canvas.size()?;
         let (top, bottom, len) = tab.directory.calculate_tree_window(height);
-        for (i, (prefix, colored_string)) in tab.directory.window(top, bottom, len) {
+
+        for (i, (metadata, prefix, colored_string)) in tab.directory.window(top, bottom, len) {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
-            let col = canvas.print(row, line_number_width, prefix)?;
             let mut attr = colored_string.attr;
             if status.flagged.contains(&colored_string.path) {
                 attr.effect |= Effect::BOLD | Effect::UNDERLINE;
             }
-            canvas.print_with_attr(row, line_number_width + col + 1, &colored_string.text, attr)?;
+            let col_metadata = if status.display_full {
+                canvas.print_with_attr(row, left_margin, &metadata.text, attr)?
+            } else {
+                0
+            };
+            let col_tree_prefix = canvas.print(row, left_margin + col_metadata, prefix)?;
+            canvas.print_with_attr(
+                row,
+                left_margin + col_metadata + col_tree_prefix + 1,
+                &colored_string.text,
+                attr,
+            )?;
         }
         self.second_line(status, tab, canvas)?;
         Ok(())
@@ -423,7 +433,7 @@ impl<'a> WinMain<'a> {
                 );
             }
             Preview::Directory(directory) => {
-                for (i, (prefix, colored_string)) in
+                for (i, (_, prefix, colored_string)) in
                     (directory).window(window.top, window.bottom, length)
                 {
                     let row = calc_line_row(i, window);

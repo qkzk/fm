@@ -211,6 +211,25 @@ impl FileInfo {
         Ok(repr)
     }
 
+    /// Format the metadata line, without the filename.
+    /// Owned & Group have fixed width of 6.
+    pub fn format_no_filename(&self) -> Result<String> {
+        let mut repr = format!(
+            "{dir_symbol}{permissions} {file_size} {owner:<6} {group:<6} {system_time}",
+            dir_symbol = self.dir_symbol(),
+            permissions = self.permissions()?,
+            file_size = self.file_size,
+            owner = self.owner,
+            group = self.group,
+            system_time = self.system_time,
+        );
+        if let FileKind::SymbolicLink = self.file_kind {
+            repr.push_str(" -> ");
+            repr.push_str(&self.read_dest().unwrap_or_else(|| "Broken link".to_owned()));
+        }
+        Ok(repr)
+    }
+
     pub fn dir_symbol(&self) -> char {
         self.file_kind.extract_dir_symbol()
     }
