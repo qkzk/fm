@@ -15,7 +15,7 @@ static MOCP: &str = DEFAULT_AUDIO_OPENER.0;
 /// Nothing can be done here without it, we shouldn't run commands
 /// that will always fail.
 pub fn is_mocp_installed() -> bool {
-    return is_program_in_path(MOCP);
+    is_program_in_path(MOCP)
 }
 
 /// A bunch of methods to control MOC.
