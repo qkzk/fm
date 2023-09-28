@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::fmt::Display;
 use std::fs;
 use std::path;
 use std::str::FromStr;
@@ -1095,6 +1096,47 @@ impl EventAction {
     }
 }
 
+enum NodeCreation {
+    Newfile,
+    Newdir,
+}
+
+impl Display for NodeCreation {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Newfile => write!(f, "file"),
+            Self::Newdir => write!(f, "directory"),
+        }
+    }
+}
+
+impl NodeCreation {
+    fn create(&self, tab: &mut Tab) -> Result<()> {
+        let path = tab
+            .path_content
+            .path
+            .join(sanitize_filename::sanitize(tab.input.string()));
+        if path.exists() {
+            write_log_line(format!(
+                "{self} {path} already exists",
+                path = path.display()
+            ));
+        } else {
+            match self {
+                Self::Newdir => {
+                    fs::create_dir_all(&path)?;
+                }
+                Self::Newfile => {
+                    fs::File::create(&path)?;
+                }
+            }
+            let log_line = format!("Created new {self}: {path}", path = path.display());
+            write_log_line(log_line);
+        }
+        tab.refresh_view()
+    }
+}
+
 /// Methods called when executing something with Enter key.
 pub struct LeaveMode {}
 
@@ -1298,16 +1340,7 @@ impl LeaveMode {
     /// Nothing is done if the file already exists.
     /// Filename is sanitized before processing.
     pub fn newfile(tab: &mut Tab) -> Result<()> {
-        let path = tab
-            .path_content
-            .path
-            .join(sanitize_filename::sanitize(tab.input.string()));
-        if !path.exists() {
-            fs::File::create(&path)?;
-            let log_line = format!("New file: {path}", path = path.display());
-            write_log_line(log_line);
-        }
-        tab.refresh_view()
+        NodeCreation::Newfile.create(tab)
     }
 
     /// Creates a new directory with input string as name.
@@ -1316,16 +1349,7 @@ impl LeaveMode {
     /// ie. the user can create `newdir` or `newdir/newfolder`.
     /// Directory name is sanitized before processing.
     pub fn newdir(tab: &mut Tab) -> Result<()> {
-        let path = tab
-            .path_content
-            .path
-            .join(sanitize_filename::sanitize(tab.input.string()));
-        if !path.exists() {
-            fs::create_dir_all(&path)?;
-            let log_line = format!("New directory: {path}", path = path.display());
-            write_log_line(log_line);
-        }
-        tab.refresh_view()
+        NodeCreation::Newdir.create(tab)
     }
 
     /// Tries to execute the selected file with an executable which is read

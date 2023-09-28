@@ -527,6 +527,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] jupyter must be installed to preview .ipynb notebooks.
 - [x] isoinfo must be installed to preview .iso files
 - [x] diff must be installed to preview a diff of 2 files
+- [x] inform user if file already exits when creating / renaming
+- [x] factorise new file & new dir
 
 ## TODO
 
