@@ -25,12 +25,13 @@ pub struct ContentWindow {
 impl ContentWindow {
     /// Returns a new `ContentWindow` instance with values depending of
     /// number of files and height of the terminal screen.
-    pub fn new(len: usize, height: usize) -> Self {
+    pub fn new(len: usize, terminal_height: usize) -> Self {
+        let height = Self::nb_displayed_rows(terminal_height);
         ContentWindow {
             top: 0,
-            bottom: min(len, Self::nb_displayed_rows(height)),
+            bottom: min(len, height),
             len,
-            height: Self::nb_displayed_rows(height),
+            height,
         }
     }
 
@@ -41,9 +42,9 @@ impl ContentWindow {
     /// How many rows are reserved at bottom
 
     /// Set the height of file window.
-    pub fn set_height(&mut self, height: usize) {
-        self.height = Self::nb_displayed_rows(height);
-        self.bottom = min(self.len, Self::nb_displayed_rows(self.height));
+    pub fn set_height(&mut self, terminal_height: usize) {
+        self.height = Self::nb_displayed_rows(terminal_height);
+        self.bottom = min(self.len, self.height);
     }
 
     /// Move the window one line up if possible.
