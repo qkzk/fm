@@ -1,6 +1,10 @@
 use std::cmp::{max, min};
 
-pub const RESERVED_ROWS: usize = 3;
+/// How many rows are reserved for the header ?
+pub const HEADER_ROWS: usize = 3;
+/// How many rows are reserved for the footer ?
+const FOOTER_ROWS: usize = 1;
+
 /// Holds the information about the displayed window of lines.
 /// When there's too much lines to display in one screen, we can scroll
 /// and this struct is responsible for that.
@@ -10,7 +14,7 @@ pub const RESERVED_ROWS: usize = 3;
 pub struct ContentWindow {
     /// The index of the first displayed file.
     pub top: usize,
-    /// The index of the last displayed file.
+    /// The index of the last displayed file + 1.
     pub bottom: usize,
     /// The number of displayble file in the current folder.
     pub len: usize,
@@ -24,9 +28,9 @@ impl ContentWindow {
     pub fn new(len: usize, height: usize) -> Self {
         ContentWindow {
             top: 0,
-            bottom: min(len, height - RESERVED_ROWS),
+            bottom: min(len, Self::nb_displayed_rows(height)),
             len,
-            height: height - RESERVED_ROWS,
+            height: Self::nb_displayed_rows(height),
         }
     }
 
@@ -38,8 +42,8 @@ impl ContentWindow {
 
     /// Set the height of file window.
     pub fn set_height(&mut self, height: usize) {
-        self.height = height - RESERVED_ROWS;
-        self.bottom = min(self.len, self.height - RESERVED_ROWS);
+        self.height = Self::nb_displayed_rows(height);
+        self.bottom = min(self.len, Self::nb_displayed_rows(self.height));
     }
 
     /// Move the window one line up if possible.
@@ -70,15 +74,22 @@ impl ContentWindow {
     pub fn reset(&mut self, len: usize) {
         self.len = len;
         self.top = 0;
-        self.bottom = min(len, self.height - RESERVED_ROWS);
+        self.bottom = min(len, Self::nb_displayed_rows(self.height));
     }
 
     /// Scroll the window to this index if possible.
     /// Does nothing if the index can't be reached.
     pub fn scroll_to(&mut self, index: usize) {
-        if index < self.top || index > self.bottom {
+        if index < self.top || index >= self.bottom {
             self.top = max(index, Self::WINDOW_PADDING) - Self::WINDOW_PADDING;
-            self.bottom = self.top + min(self.len, self.height - RESERVED_ROWS);
+            self.bottom = self.top + min(self.len, Self::nb_displayed_rows(self.height));
         }
+    }
+
+    /// How many rows could be displayed with given height ?
+    /// It's not the number of rows displayed since the content may
+    /// not be long enough to fill the window.
+    fn nb_displayed_rows(height: usize) -> usize {
+        height - HEADER_ROWS - FOOTER_ROWS
     }
 }

@@ -9,7 +9,7 @@ use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 use users::{get_current_uid, get_user_by_uid};
 
-use crate::content_window::RESERVED_ROWS;
+use crate::content_window::HEADER_ROWS;
 use crate::event_dispatch::EventDispatcher;
 use crate::fileinfo::human_size;
 use crate::nvim::nvim;
@@ -59,7 +59,9 @@ pub fn disk_space(disks: &[Disk], path: &Path) -> String {
 /// Returns `None` if it received `None`.
 /// It's a poor fix to support OSX where `sysinfo::Disk` doesn't implement `PartialEq`.
 pub fn opt_mount_point(disk: Option<&Disk>) -> Option<&std::path::Path> {
-    let Some(disk) = disk else { return None; };
+    let Some(disk) = disk else {
+        return None;
+    };
     Some(disk.mount_point())
 }
 
@@ -139,15 +141,19 @@ pub fn extract_lines(content: String) -> Vec<String> {
 
 pub fn set_clipboard(content: String) -> Result<()> {
     log::info!("copied to clipboard: {}", content);
-    let Ok(mut ctx) = ClipboardContext::new() else { return Ok(()); };
-    let Ok(_) = ctx.set_contents(content) else { return Ok(()); };
+    let Ok(mut ctx) = ClipboardContext::new() else {
+        return Ok(());
+    };
+    let Ok(_) = ctx.set_contents(content) else {
+        return Ok(());
+    };
     // For some reason, it's not writen if you don't read it back...
     let _ = ctx.get_contents();
     Ok(())
 }
 
 pub fn row_to_index(row: u16) -> usize {
-    row as usize - RESERVED_ROWS
+    row as usize - HEADER_ROWS
 }
 
 pub fn string_to_path(path_string: &str) -> Result<std::path::PathBuf> {

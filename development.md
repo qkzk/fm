@@ -530,6 +530,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] inform user if file already exits when creating / renaming
 - [x] factorise new file & new dir
 - [x] metadata in tree mode. Toggle like display full with alt-e
+- [x] FIX: pagedown may select a file outside window without scrolling to it
+- [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
+      Scroll to second element if needed
 
 ## TODO
 
