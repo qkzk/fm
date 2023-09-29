@@ -603,6 +603,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ## BUGS
 
 - [ ] creates $ENV{HOME} folders everywhere
+- [ ] window scrolling has too many bugs and need a rewrite
 
 ## Won't do
 
