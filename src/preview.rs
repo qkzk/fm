@@ -823,7 +823,11 @@ impl Directory {
     pub fn page_down(&mut self, colors: &Colors) -> Result<()> {
         self.selected_index += 10;
         if self.selected_index >= self.content.len() {
-            self.selected_index = self.content.len() - 1;
+            if self.content.len() > 0 {
+                self.selected_index = self.content.len() - 1;
+            } else {
+                self.selected_index = 1;
+            }
         }
         self.update_tree_position_from_index(colors)
     }

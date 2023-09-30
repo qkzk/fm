@@ -90,8 +90,9 @@ impl ContentWindow {
     pub fn scroll_to(&mut self, index: usize) {
         if self.is_index_outside_window(index) {
             self.top = max(index, Self::WINDOW_PADDING) - Self::WINDOW_PADDING;
-            self.bottom =
-                self.top + Self::default_bottom(self.height, self.len) - Self::BOTTOM_ROWS;
+            self.bottom = (self.top + Self::default_bottom(self.height, self.len))
+                .checked_sub(Self::BOTTOM_ROWS)
+                .unwrap_or_else(|| 2);
         }
     }
 
