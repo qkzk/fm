@@ -104,6 +104,16 @@ impl Node {
             folded: false,
         })
     }
+
+    fn empty(fileinfo: FileInfo) -> Self {
+        Self {
+            fileinfo,
+            position: vec![0],
+            folded: false,
+            is_dir: false,
+            metadata_line: "".to_owned(),
+        }
+    }
 }
 
 /// Holds a recursive view of a directory.
@@ -128,6 +138,10 @@ impl Tree {
     pub const MAX_DEPTH: usize = 5;
     pub const REQUIRED_HEIGHT: usize = 80;
     const MAX_INDEX: usize = 2 << 20;
+
+    pub fn set_required_height_to_max(&mut self) {
+        self.set_required_height(Self::MAX_INDEX)
+    }
 
     /// Set the required height to a given value.
     /// The required height is used to stop filling the view content.
@@ -298,24 +312,19 @@ impl Tree {
     pub fn empty(path: &Path, users_cache: &UsersCache) -> Result<Self> {
         let filename = filename_from_path(path)?;
         let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
-        let node = Node {
-            fileinfo,
-            position: vec![0],
-            folded: false,
-            is_dir: false,
-            metadata_line: "".to_owned(),
-        };
+        let node = Node::empty(fileinfo);
         let leaves = vec![];
         let position = vec![0];
         let current_node = node.clone();
         let sort_kind = SortKind::tree_default();
+        let required_height = 0;
         Ok(Self {
             node,
             leaves,
             position,
             current_node,
             sort_kind,
-            required_height: 0,
+            required_height,
         })
     }
 
