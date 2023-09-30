@@ -236,7 +236,11 @@ impl<'a> WinMain<'a> {
     fn normal_first_row(&self, disk_space: &str) -> Result<Vec<String>> {
         Ok(vec![
             format!("{} ", shorten_path(&self.tab.path_content.path, None)?),
-            format!(" {} files ", self.tab.path_content.true_len()),
+            format!(
+                " {} / {} ",
+                self.tab.path_content.index + 1,
+                self.tab.path_content.true_len() + 2
+            ),
             format!("{}  ", self.tab.path_content.used_space()),
             format!(" Avail: {disk_space}  "),
             format!(" {}  ", &self.tab.path_content.git_string()?),
