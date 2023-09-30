@@ -822,9 +822,9 @@ impl Directory {
     /// Move down 10 times
     pub fn page_down(&mut self, colors: &Colors) -> Result<()> {
         self.selected_index += 10;
-        if self.selected_index >= self.content.len() {
+        if self.selected_index > self.content.len() {
             if self.content.len() > 0 {
-                self.selected_index = self.content.len() - 1;
+                self.selected_index = self.content.len();
             } else {
                 self.selected_index = 1;
             }
