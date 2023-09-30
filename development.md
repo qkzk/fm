@@ -531,6 +531,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] factorise new file & new dir
 - [x] metadata in tree mode. Toggle like display full with alt-e
 - [x] FIX: pagedown may select a file outside window without scrolling to it
+- [x] FIX: multiple scrolling bugs. It should be smooth in every context
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 
@@ -603,7 +604,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ## BUGS
 
 - [ ] creates $ENV{HOME} folders everywhere
-- [ ] window scrolling has too many bugs and need a rewrite
 
 ## Won't do
 

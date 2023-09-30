@@ -9,7 +9,7 @@ use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 use users::{get_current_uid, get_user_by_uid};
 
-use crate::content_window::HEADER_ROWS;
+use crate::content_window::ContentWindow;
 use crate::event_dispatch::EventDispatcher;
 use crate::fileinfo::human_size;
 use crate::nvim::nvim;
@@ -153,7 +153,7 @@ pub fn set_clipboard(content: String) -> Result<()> {
 }
 
 pub fn row_to_index(row: u16) -> usize {
-    row as usize - HEADER_ROWS
+    row as usize - ContentWindow::HEADER_ROWS
 }
 
 pub fn string_to_path(path_string: &str) -> Result<std::path::PathBuf> {

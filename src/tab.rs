@@ -410,7 +410,7 @@ impl Tab {
                 self.path_content.select_current();
                 self.window.scroll_down_one(self.path_content.index)
             }
-            Mode::Preview => self.window.scroll_down_one(self.window.bottom),
+            Mode::Preview => self.preview_page_down(),
             _ => (),
         }
     }
@@ -424,7 +424,7 @@ impl Tab {
                 self.path_content.select_current();
                 self.window.scroll_up_one(self.path_content.index)
             }
-            Mode::Preview => self.window.scroll_up_one(self.window.top),
+            Mode::Preview => self.preview_page_up(),
             _ => (),
         }
     }
@@ -518,14 +518,16 @@ impl Tab {
                 self.path_content.select_index(up_index);
                 self.window.scroll_to(up_index)
             }
-            Mode::Preview => {
-                if self.window.top > 0 {
-                    let skip = min(self.window.top, 30);
-                    self.window.bottom -= skip;
-                    self.window.top -= skip;
-                }
-            }
+            Mode::Preview => self.preview_page_up(),
             _ => (),
+        }
+    }
+
+    fn preview_page_up(&mut self) {
+        if self.window.top > 0 {
+            let skip = min(self.window.top, 30);
+            self.window.bottom -= skip;
+            self.window.top -= skip;
         }
     }
 
@@ -542,14 +544,16 @@ impl Tab {
                 self.path_content.select_index(down_index);
                 self.window.scroll_to(down_index);
             }
-            Mode::Preview => {
-                if self.window.bottom < self.preview.len() {
-                    let skip = min(self.preview.len() - self.window.bottom, 30);
-                    self.window.bottom += skip;
-                    self.window.top += skip;
-                }
-            }
+            Mode::Preview => self.preview_page_down(),
             _ => (),
+        }
+    }
+
+    fn preview_page_down(&mut self) {
+        if self.window.bottom < self.preview.len() {
+            let skip = min(self.preview.len() - self.window.bottom, 30);
+            self.window.bottom += skip;
+            self.window.top += skip;
         }
     }
 
