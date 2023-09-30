@@ -123,7 +123,7 @@ impl Status {
         let force_clear = false;
         let bulk = Bulk::default();
         let start_folder = std::fs::canonicalize(std::path::PathBuf::from(&args.path))?;
-
+        let dual_pane = settings.dual && term.term_size()?.0 >= MIN_WIDTH_FOR_DUAL_PANE;
         // unsafe because of UsersCache::with_all_users
         let users_cache = unsafe { UsersCache::with_all_users() };
         let mut right_tab = Tab::new(args.clone(), height, users_cache)?;
@@ -148,7 +148,7 @@ impl Status {
             marks: Marks::read_from_config_file(),
             skimer: Skimer::new(term.clone()),
             term,
-            dual_pane: settings.dual,
+            dual_pane,
             preview_second: false,
             system_info: sys,
             display_full: settings.full,
@@ -740,11 +740,15 @@ impl Status {
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_pane(&mut self, col: u16) -> Result<()> {
         let (width, _) = self.term_size()?;
-        if (col as usize) < width / 2 {
-            self.select_tab(0)?;
+        if self.dual_pane {
+            if (col as usize) < width / 2 {
+                self.select_tab(0)?;
+            } else {
+                self.select_tab(1)?;
+            };
         } else {
-            self.select_tab(1)?;
-        };
+            self.select_tab(0)?;
+        }
         Ok(())
     }
 }
