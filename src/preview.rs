@@ -869,18 +869,19 @@ impl Directory {
 
     /// Calculates the top, bottom and lenght of the view, depending on which element
     /// is selected and the size of the window used to display.
-    pub fn calculate_tree_window(&self, height: usize) -> (usize, usize, usize) {
+    pub fn calculate_tree_window(&self, terminal_height: usize) -> (usize, usize, usize) {
         let length = self.content.len();
 
         let top: usize;
         let bottom: usize;
-        if self.selected_index < height - 1 {
+        let window_height = terminal_height - ContentWindow::WINDOW_MARGIN_TOP;
+        if self.selected_index < terminal_height - 1 {
             top = 0;
-            bottom = height - 1;
+            bottom = window_height;
         } else {
-            let padding = std::cmp::max(10, height / 2);
-            top = self.selected_index - 1 - padding;
-            bottom = self.selected_index + height - 1 + padding;
+            let padding = std::cmp::max(10, terminal_height / 2);
+            top = self.selected_index - padding;
+            bottom = top + window_height;
         }
 
         (top, bottom, length)

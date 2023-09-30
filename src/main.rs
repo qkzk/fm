@@ -52,7 +52,7 @@ fn main() -> Result<()> {
     drop(config);
 
     while let Ok(event) = event_reader.poll_event() {
-        event_dispatcher.dispatch(&mut status, event, &colors)?;
+        event_dispatcher.dispatch(&mut status, event, &colors, event_reader.term_height()?)?;
         status.refresh_disks();
         if status.force_clear {
             display.force_clear()?;

@@ -152,7 +152,7 @@ pub fn set_clipboard(content: String) -> Result<()> {
     Ok(())
 }
 
-pub fn row_to_index(row: u16) -> usize {
+pub fn row_to_window_index(row: u16) -> usize {
     row as usize - ContentWindow::HEADER_ROWS
 }
 

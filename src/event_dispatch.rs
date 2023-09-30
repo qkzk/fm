@@ -27,7 +27,13 @@ impl EventDispatcher {
     /// Only non keyboard events are dealt here directly.
     /// Keyboard events are configurable and are sent to specific functions
     /// which needs to know those keybindings.
-    pub fn dispatch(&self, status: &mut Status, ev: Event, colors: &Colors) -> Result<()> {
+    pub fn dispatch(
+        &self,
+        status: &mut Status,
+        ev: Event,
+        colors: &Colors,
+        current_height: usize,
+    ) -> Result<()> {
         match ev {
             Event::Key(Key::WheelUp(_, col, _)) => {
                 status.select_pane(col)?;
@@ -39,12 +45,12 @@ impl EventDispatcher {
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
                 status.select_pane(col)?;
-                status.selected().select_row(row, colors)?;
+                status.selected().select_row(row, colors, current_height)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Right, row, col))
             | Event::Key(Key::DoubleClick(MouseButton::Left, row, col)) => {
                 status.select_pane(col)?;
-                status.selected().select_row(row, colors)?;
+                status.selected().select_row(row, colors, current_height)?;
                 LeaveMode::right_click(status, colors)?;
             }
             Event::User(_) => status.refresh_status(colors)?,

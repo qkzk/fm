@@ -16,7 +16,7 @@ use crate::opener::execute_in_child;
 use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
-use crate::utils::{row_to_index, set_clipboard};
+use crate::utils::{row_to_window_index, set_clipboard};
 use crate::visited::History;
 
 /// Holds every thing about the current tab of the application.
@@ -558,23 +558,32 @@ impl Tab {
     }
 
     /// Select a given row, if there's something in it.
-    pub fn select_row(&mut self, row: u16, colors: &Colors) -> Result<()> {
+    pub fn select_row(&mut self, row: u16, colors: &Colors, term_height: usize) -> Result<()> {
         match self.mode {
-            Mode::Normal => {
-                let index = row_to_index(row);
-                self.path_content.select_index(index);
-                self.window.scroll_to(index);
-            }
-            Mode::Tree => {
-                let index = row_to_index(row) + 1;
-                self.directory.tree.unselect_children();
-                self.directory.tree.position = self.directory.tree.position_from_index(index);
-                let (_, _, node) = self.directory.tree.select_from_position()?;
-                self.directory.make_preview(colors);
-                self.directory.tree.current_node = node;
-            }
+            Mode::Normal => self.normal_select_row(row),
+            Mode::Tree => self.tree_select_row(row, colors, term_height)?,
             _ => (),
         }
+        Ok(())
+    }
+
+    fn normal_select_row(&mut self, row: u16) {
+        let screen_index = row_to_window_index(row);
+        let index = screen_index + self.window.top;
+        self.path_content.select_index(index);
+        self.window.scroll_to(index);
+    }
+
+    fn tree_select_row(&mut self, row: u16, colors: &Colors, term_height: usize) -> Result<()> {
+        let screen_index = row_to_window_index(row) + 1;
+        // term.height = canvas.height + 2 rows for the canvas border
+        let (top, _, _) = self.directory.calculate_tree_window(term_height - 2);
+        let index = screen_index + top;
+        self.directory.tree.unselect_children();
+        self.directory.tree.position = self.directory.tree.position_from_index(index);
+        let (_, _, node) = self.directory.tree.select_from_position()?;
+        self.directory.make_preview(colors);
+        self.directory.tree.current_node = node;
         Ok(())
     }
 
