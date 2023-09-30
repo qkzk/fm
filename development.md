@@ -606,6 +606,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] creates $ENV{HOME} folders everywhere
 - [ ] tree mode : index are offset by one
+- [ ] page down when few files in current path screw the display
 
 ## Won't do
 
