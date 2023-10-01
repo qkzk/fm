@@ -115,6 +115,6 @@ impl ContentWindow {
     /// too close from the border.
     /// User shouldn't be able to reach the last elements
     fn is_index_outside_window(&self, index: usize) -> bool {
-        index < self.top + Self::WINDOW_PADDING || index >= self.bottom - Self::WINDOW_PADDING
+        index < self.top || index >= self.bottom
     }
 }
