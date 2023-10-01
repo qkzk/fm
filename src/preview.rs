@@ -823,7 +823,7 @@ impl Directory {
     pub fn page_down(&mut self, colors: &Colors) -> Result<()> {
         self.selected_index += 10;
         if self.selected_index > self.content.len() {
-            if self.content.len() > 0 {
+            if !self.content.is_empty() {
                 self.selected_index = self.content.len();
             } else {
                 self.selected_index = 1;

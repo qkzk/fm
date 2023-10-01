@@ -39,7 +39,7 @@ impl ContentWindow {
     /// Default value for the bottom index.
     /// minimum of terminal height minus reserved rows and the length of the content.
     fn default_bottom(len: usize, height: usize) -> usize {
-        return min(height - Self::BOTTOM_ROWS, len);
+        min(height - Self::BOTTOM_ROWS, len)
     }
 
     /// Returns a new `ContentWindow` instance with values depending of
@@ -95,7 +95,7 @@ impl ContentWindow {
             self.top = max(index, Self::WINDOW_PADDING) - Self::WINDOW_PADDING;
             self.bottom = (self.top + Self::default_bottom(self.height, self.len))
                 .checked_sub(Self::BOTTOM_ROWS)
-                .unwrap_or_else(|| 2);
+                .unwrap_or(2);
             log::info!(
                 "scroll_to {index} is outside window top {top} bottom {bottom}",
                 top = self.top,
