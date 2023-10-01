@@ -88,11 +88,19 @@ impl ContentWindow {
     /// Scroll the window to this index if possible.
     /// Does nothing if the index can't be reached.
     pub fn scroll_to(&mut self, index: usize) {
+        if self.len < self.height {
+            return;
+        }
         if self.is_index_outside_window(index) {
             self.top = max(index, Self::WINDOW_PADDING) - Self::WINDOW_PADDING;
             self.bottom = (self.top + Self::default_bottom(self.height, self.len))
                 .checked_sub(Self::BOTTOM_ROWS)
                 .unwrap_or_else(|| 2);
+            log::info!(
+                "scroll_to {index} is outside window top {top} bottom {bottom}",
+                top = self.top,
+                bottom = self.bottom
+            );
         }
     }
 

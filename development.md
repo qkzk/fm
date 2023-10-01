@@ -533,6 +533,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: pagedown may select a file outside window without scrolling to it
 - [x] FIX: multiple scrolling bugs. It should be smooth in every context
 - [x] FIX: after scrolling left click doesn't select the correct file
+- [x] FIX: page down when few files in current path screw the display
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 
@@ -606,7 +607,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] creates $ENV{HOME} folders everywhere
 - [ ] tree mode : index are offset by one
-- [ ] page down when few files in current path screw the display
 
 ## Won't do
 

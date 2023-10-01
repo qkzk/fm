@@ -536,17 +536,19 @@ impl Tab {
     /// if moves down one page.
     pub fn page_down(&mut self) {
         match self.mode {
-            Mode::Normal => {
-                let down_index = min(
-                    self.path_content.content.len() - 1,
-                    self.path_content.index + 10,
-                );
-                self.path_content.select_index(down_index);
-                self.window.scroll_to(down_index);
-            }
+            Mode::Normal => self.normal_page_down(),
             Mode::Preview => self.preview_page_down(),
             _ => (),
         }
+    }
+
+    fn normal_page_down(&mut self) {
+        let down_index = min(
+            self.path_content.content.len() - 1,
+            self.path_content.index + 10,
+        );
+        self.path_content.select_index(down_index);
+        self.window.scroll_to(down_index);
     }
 
     fn preview_page_down(&mut self) {
