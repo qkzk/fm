@@ -44,13 +44,13 @@ pub const DEFAULT_DRAGNDROP: &str = "dragon-drop";
 /// The index of each string gives a correct representation.
 pub const PERMISSIONS_STR: [&str; 8] = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
 /// Description of the application.
-pub const HELP_FIRST_SENTENCE: &str = "fm: a dired / ranger like file manager. ";
+pub const HELP_FIRST_SENTENCE: &str = " fm: a dired / ranger like file manager. ";
 /// Description of the content below, aka the help itself.
-pub const HELP_SECOND_SENTENCE: &str = "Keybindings";
+pub const HELP_SECOND_SENTENCE: &str = " Keybindings ";
 /// Description of the content below, aka the action log file
-pub const LOG_FIRST_SENTENCE: &str = "Logs: ";
+pub const LOG_FIRST_SENTENCE: &str = " Logs: ";
 /// Description of the content below, aka what is logged there.
-pub const LOG_SECOND_SENTENCE: &str = "Last actions affecting the file tree";
+pub const LOG_SECOND_SENTENCE: &str = " Last actions affecting the file tree";
 /// Video thumbnails
 pub const THUMBNAIL_PATH: &str = "/tmp/thumbnail.png";
 /// Array of hardcoded shortcuts with standard *nix paths.

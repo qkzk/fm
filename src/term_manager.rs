@@ -212,10 +212,14 @@ impl<'a> WinMain<'a> {
                 }
             }
             Mode::Tree => {
-                let Some(file) = tab.selected() else {
-                    return Ok(0);
-                };
-                self.second_line_detailed(file, canvas)
+                if !status.display_full {
+                    let Some(file) = tab.selected() else {
+                        return Ok(0);
+                    };
+                    self.second_line_detailed(file, canvas)
+                } else {
+                    self.second_line_simple(status, canvas)
+                }
             }
             _ => Ok(0),
         }
@@ -240,7 +244,7 @@ impl<'a> WinMain<'a> {
 
     fn normal_first_row(&self, disk_space: &str) -> Result<Vec<String>> {
         Ok(vec![
-            format!("{} ", shorten_path(&self.tab.path_content.path, None)?),
+            format!(" {} ", shorten_path(&self.tab.path_content.path, None)?),
             format!(
                 " {} / {} ",
                 self.tab.path_content.index + 1,
@@ -257,7 +261,7 @@ impl<'a> WinMain<'a> {
     fn help_first_row() -> Vec<String> {
         vec![
             HELP_FIRST_SENTENCE.to_owned(),
-            format!("Version: {v} ", v = std::env!("CARGO_PKG_VERSION")),
+            format!(" Version: {v} ", v = std::env!("CARGO_PKG_VERSION")),
             HELP_SECOND_SENTENCE.to_owned(),
         ]
     }
@@ -273,11 +277,11 @@ impl<'a> WinMain<'a> {
         match tab.path_content.selected() {
             Some(fileinfo) => {
                 let mut strings = vec![
-                    "Preview  ".to_owned(),
-                    format!("{}", fileinfo.path.to_string_lossy()),
+                    " Preview ".to_owned(),
+                    format!(" {} ", fileinfo.path.to_string_lossy()),
                 ];
                 if !tab.preview.is_empty() {
-                    strings.push(format!(" {} / {}", tab.window.bottom, tab.preview.len()));
+                    strings.push(format!(" {} / {} ", tab.window.bottom, tab.preview.len()));
                 };
                 strings
             }
