@@ -77,6 +77,11 @@ impl Shortcut {
         shortcuts
     }
 
+    fn clear_doublons(&mut self) {
+        self.content.dedup();
+        self.content = dedup_slow(self.content.clone())
+    }
+
     pub fn update_git_root(&mut self) {
         self.content[self.non_mount_size - 1] = Self::git_root_or_cwd();
     }
@@ -91,8 +96,30 @@ impl Shortcut {
     /// extend the vector with the mount points.
     pub fn refresh(&mut self, mount_points: &[&Path]) {
         self.content.truncate(self.non_mount_size);
-        self.extend_with_mount_points(mount_points)
+        self.extend_with_mount_points(mount_points);
+        self.clear_doublons();
     }
+}
+
+/// Remove duplicates from a vector and returns it.
+/// Elements should be `PartialEq`.
+/// It removes element than are not consecutives and is very slow.
+fn dedup_slow<T>(mut elems: Vec<T>) -> Vec<T>
+where
+    T: PartialEq,
+{
+    let mut to_remove = vec![];
+    for i in 0..elems.len() {
+        for j in (i + 1)..elems.len() {
+            if elems[i] == elems[j] {
+                to_remove.push(j)
+            }
+        }
+    }
+    for i in to_remove.iter().rev() {
+        elems.remove(*i);
+    }
+    elems
 }
 
 impl_selectable_content!(PathBuf, Shortcut);
