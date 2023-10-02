@@ -546,7 +546,7 @@ impl<'a> WinSecondary<'a> {
                 vec![format!("{password_kind}"), tab.input.password()]
             }
             Mode::InputCompleted(mode) => {
-                let mut completion_strings = vec![format!("{}", &tab.mode), tab.input.string()];
+                let mut completion_strings = vec![tab.mode.to_string(), tab.input.string()];
                 if let Some(completion) = tab.completion.complete_input_string(&tab.input.string())
                 {
                     completion_strings.push(completion.to_owned())
@@ -560,10 +560,7 @@ impl<'a> WinSecondary<'a> {
                 completion_strings
             }
             _ => {
-                vec![
-                    format!("{}", tab.mode.clone()),
-                    format!("{}", tab.input.string()),
-                ]
+                vec![tab.mode.to_string(), tab.input.string()]
             }
         };
         Ok(first_row)
