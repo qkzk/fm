@@ -536,6 +536,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: page down when few files in current path screw the display
 - [x] remove doublons from shortcut (Ctrl+g) "goto mode"
 - [x] FIX: scrolling isn't smooth anymore
+- [x] InputSimple is responsible of its help lines
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 

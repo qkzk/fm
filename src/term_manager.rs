@@ -13,9 +13,7 @@ use crate::completion::InputCompleted;
 use crate::compress::CompressionMethod;
 use crate::config::Colors;
 use crate::constant_strings_paths::{
-    CHMOD_LINES, FILTER_LINES, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
-    LOG_SECOND_SENTENCE, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES, PASSWORD_LINES,
-    REGEX_LINES, REMOTE_LINES, RENAME_LINES, SHELL_LINES, SORT_LINES,
+    HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE,
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
@@ -504,7 +502,7 @@ impl<'a> Draw for WinSecondary<'a> {
             Mode::Navigate(mode) => self.navigate(mode, canvas),
             Mode::NeedConfirmation(mode) => self.confirm(self.status, self.tab, mode, canvas),
             Mode::InputCompleted(_) => self.completion(self.tab, canvas),
-            Mode::InputSimple(mode) => Self::input_simple(mode, canvas),
+            Mode::InputSimple(mode) => Self::display_static_lines(mode.lines(), canvas),
             _ => Ok(()),
         }?;
         self.cursor(self.tab, canvas)?;
@@ -578,26 +576,6 @@ impl<'a> WinSecondary<'a> {
             canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, candidate, attr)?;
         }
         Ok(())
-    }
-
-    fn input_simple_lines(mode: InputSimple) -> &'static [&'static str] {
-        match mode {
-            InputSimple::Chmod => &CHMOD_LINES,
-            InputSimple::Filter => &FILTER_LINES,
-            InputSimple::Newdir => &NEWDIR_LINES,
-            InputSimple::Newfile => &NEWFILE_LINES,
-            InputSimple::Password(_, _, _) => &PASSWORD_LINES,
-            InputSimple::RegexMatch => &REGEX_LINES,
-            InputSimple::Rename => &RENAME_LINES,
-            InputSimple::SetNvimAddr => &NVIM_ADDRESS_LINES,
-            InputSimple::Shell => &SHELL_LINES,
-            InputSimple::Sort => &SORT_LINES,
-            InputSimple::Remote => &REMOTE_LINES,
-        }
-    }
-
-    fn input_simple(mode: InputSimple, canvas: &mut dyn Canvas) -> Result<()> {
-        Self::display_static_lines(Self::input_simple_lines(mode), canvas)
     }
 
     fn display_static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {

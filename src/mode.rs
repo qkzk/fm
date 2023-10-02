@@ -1,6 +1,10 @@
 use std::fmt;
 
 use crate::completion::InputCompleted;
+use crate::constant_strings_paths::{
+    CHMOD_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES, PASSWORD_LINES,
+    REGEX_LINES, REMOTE_LINES, RENAME_LINES, SHELL_LINES, SORT_LINES,
+};
 use crate::cryptsetup::BlockDeviceAction;
 use crate::password::{PasswordKind, PasswordUsage};
 
@@ -94,6 +98,26 @@ pub enum InputSimple {
     Shell,
     /// Mount a remote directory with sshfs
     Remote,
+}
+
+impl InputSimple {
+    /// Returns a vector of static &str describing what
+    /// the mode does.
+    pub fn lines(&self) -> &'static [&'static str] {
+        match *self {
+            Self::Chmod => &CHMOD_LINES,
+            Self::Filter => &FILTER_LINES,
+            Self::Newdir => &NEWDIR_LINES,
+            Self::Newfile => &NEWFILE_LINES,
+            Self::Password(_, _, _) => &PASSWORD_LINES,
+            Self::RegexMatch => &REGEX_LINES,
+            Self::Rename => &RENAME_LINES,
+            Self::SetNvimAddr => &NVIM_ADDRESS_LINES,
+            Self::Shell => &SHELL_LINES,
+            Self::Sort => &SORT_LINES,
+            Self::Remote => &REMOTE_LINES,
+        }
+    }
 }
 
 /// Different modes in which we display a bunch of possible destinations.
