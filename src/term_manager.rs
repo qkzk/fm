@@ -199,17 +199,7 @@ impl<'a> WinMain<'a> {
 
     fn second_line(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<usize> {
         match tab.mode {
-            Mode::Normal => {
-                if !status.display_full {
-                    let Some(file) = tab.selected() else {
-                        return Ok(0);
-                    };
-                    self.second_line_detailed(file, canvas)
-                } else {
-                    self.second_line_simple(status, canvas)
-                }
-            }
-            Mode::Tree => {
+            Mode::Normal | Mode::Tree => {
                 if !status.display_full {
                     let Some(file) = tab.selected() else {
                         return Ok(0);
