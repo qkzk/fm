@@ -511,8 +511,11 @@ impl EventAction {
     /// Executes a `dragon-drop` command on the selected file.
     /// It obviously requires the `dragon-drop` command to be installed.
     pub fn drag_n_drop(status: &mut Status) -> Result<()> {
-        let tab = status.selected_non_mut();
-        let Some(file) = tab.selected() else {
+        if !is_program_in_path(DEFAULT_DRAGNDROP) {
+            write_log_line(format!("{DEFAULT_DRAGNDROP} must be installed."));
+            return Ok(());
+        }
+        let Some(file) = status.selected_non_mut().selected() else {
             return Ok(());
         };
         let path_str = file
