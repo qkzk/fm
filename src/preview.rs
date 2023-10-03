@@ -951,21 +951,6 @@ pub trait Window<T> {
     ) -> Take<Skip<Enumerate<Iter<'_, T>>>>;
 }
 
-impl Window<Vec<SyntaxedString>> for HLContent {
-    fn window(
-        &self,
-        top: usize,
-        bottom: usize,
-        length: usize,
-    ) -> std::iter::Take<Skip<Enumerate<Iter<'_, Vec<SyntaxedString>>>>> {
-        self.content
-            .iter()
-            .enumerate()
-            .skip(top)
-            .take(min(length, bottom + 1))
-    }
-}
-
 macro_rules! impl_window {
     ($t:ident, $u:ident) => {
         impl Window<$u> for $t {
@@ -989,6 +974,10 @@ macro_rules! impl_window {
 /// Used to iter and impl window trait in tree mode.
 pub type ColoredTriplet = (ColoredString, String, ColoredString);
 
+/// A vector of highlighted strings
+pub type VecSyntaxedString = Vec<SyntaxedString>;
+
+impl_window!(HLContent, VecSyntaxedString);
 impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
 impl_window!(PdfContent, String);
