@@ -232,6 +232,16 @@ impl Preview {
     }
 }
 
+/// Read a number of lines from a text file. Returns a vector of strings.
+fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
+    let reader = std::io::BufReader::new(std::fs::File::open(path)?);
+    Ok(reader
+        .lines()
+        .take(size_limit)
+        .map(|line| line.unwrap_or_else(|_| "".to_owned()))
+        .collect())
+}
+
 /// Holds a preview of a text content.
 /// It's a boxed vector of strings (per line)
 #[derive(Clone, Default)]
@@ -262,12 +272,7 @@ impl TextContent {
     }
 
     fn from_file(path: &Path) -> Result<Self> {
-        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
-        let content: Vec<String> = reader
-            .lines()
-            .take(Self::SIZE_LIMIT)
-            .map(|line| line.unwrap_or_else(|_| "".to_owned()))
-            .collect();
+        let content = read_nb_lines(path, Self::SIZE_LIMIT)?;
         Ok(Self {
             kind: TextKind::TEXTFILE,
             length: content.len(),
@@ -290,18 +295,12 @@ pub struct HLContent {
 
 impl HLContent {
     const SIZE_LIMIT: usize = 32768;
-
     /// Creates a new displayable content of a syntect supported file.
     /// It may file if the file isn't properly formatted or the extension
     /// is wrong (ie. python content with .c extension).
     /// ATM only Solarized (dark) theme is supported.
     fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
-        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
-        let raw_content: Vec<String> = reader
-            .lines()
-            .take(Self::SIZE_LIMIT)
-            .map(|line| line.unwrap_or_else(|_| "".to_owned()))
-            .collect();
+        let raw_content = read_nb_lines(path, Self::SIZE_LIMIT)?;
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
 
         Ok(Self {
