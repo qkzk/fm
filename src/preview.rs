@@ -145,10 +145,7 @@ impl Preview {
             &["nbconvert", "--to", "markdown", path_str, "--stdout"],
         )
         .ok()?;
-        let ss = SyntaxSet::load_defaults_nonewlines();
-        ss.find_syntax_by_extension("md").map(|syntax| {
-            Self::Syntaxed(HLContent::from_str(&output, ss.clone(), syntax).unwrap_or_default())
-        })
+        Self::syntaxed_from_str(output, "md")
     }
 
     fn doc(path: &Path) -> Option<Self> {
@@ -158,8 +155,12 @@ impl Preview {
             &["-s", "-t", "markdown", "--", path_str],
         )
         .ok()?;
+        Self::syntaxed_from_str(output, "md")
+    }
+
+    fn syntaxed_from_str(output: String, ext: &str) -> Option<Self> {
         let ss = SyntaxSet::load_defaults_nonewlines();
-        ss.find_syntax_by_extension("md").map(|syntax| {
+        ss.find_syntax_by_extension(ext).map(|syntax| {
             Self::Syntaxed(HLContent::from_str(&output, ss.clone(), syntax).unwrap_or_default())
         })
     }
@@ -1025,11 +1026,11 @@ fn is_ext_video(ext: &str) -> bool {
 }
 
 fn is_ext_font(ext: &str) -> bool {
-    matches!(ext, "ttf")
+    ext == "ttf"
 }
 
 fn is_ext_svg(ext: &str) -> bool {
-    matches!(ext, "svg")
+    ext == "svg"
 }
 
 fn is_ext_pdf(ext: &str) -> bool {
