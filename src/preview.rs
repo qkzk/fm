@@ -55,6 +55,7 @@ pub enum Preview {
 pub enum TextKind {
     HELP,
     LOG,
+    EPUB,
     #[default]
     TEXTFILE,
 }
@@ -108,6 +109,9 @@ impl Preview {
                 }
                 e if is_ext_doc(e) && is_program_in_path(PANDOC) => {
                     Ok(Self::doc(&file_info.path).context("Preview: Couldn't parse doc")?)
+                }
+                e if is_ext_epub(e) && is_program_in_path(PANDOC) => {
+                    Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
                 }
                 e => match Self::preview_syntaxed(e, &file_info.path) {
                     Some(syntaxed_preview) => Ok(syntaxed_preview),
@@ -203,6 +207,12 @@ impl Preview {
         Self::ColoredText(ColoredText::new(output))
     }
 
+    pub fn epub(path: &Path) -> Result<Self> {
+        Ok(Self::Text(
+            TextContent::epub(path).context("Couldn't read epub")?,
+        ))
+    }
+
     /// Empty preview, holding nothing.
     pub fn new_empty() -> Self {
         Self::Empty
@@ -256,7 +266,7 @@ impl TextContent {
     const SIZE_LIMIT: usize = 1048576;
 
     fn help(help: &str) -> Self {
-        let content: Vec<String> = help.split('\n').map(|s| s.to_owned()).collect();
+        let content: Vec<String> = help.lines().map(|line| line.to_owned()).collect();
         Self {
             kind: TextKind::HELP,
             length: content.len(),
@@ -270,6 +280,21 @@ impl TextContent {
             length: content.len(),
             content,
         }
+    }
+
+    fn epub(path: &Path) -> Option<Self> {
+        let path_str = path.to_str()?;
+        let output = execute_and_capture_output_without_check(
+            PANDOC,
+            &["-s", "-t", "plain", "--", path_str],
+        )
+        .ok()?;
+        let content: Vec<String> = output.lines().map(|line| line.to_owned()).collect();
+        Some(Self {
+            kind: TextKind::EPUB,
+            length: content.len(),
+            content,
+        })
     }
 
     fn from_file(path: &Path) -> Result<Self> {
@@ -1047,6 +1072,10 @@ fn is_ext_notebook(ext: &str) -> bool {
 
 fn is_ext_doc(ext: &str) -> bool {
     matches!(ext, "doc" | "docx" | "odt" | "sxw")
+}
+
+fn is_ext_epub(ext: &str) -> bool {
+    ext == "epub"
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
