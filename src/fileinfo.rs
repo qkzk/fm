@@ -1,4 +1,4 @@
-use std::fs::{metadata, read_dir, DirEntry, Metadata};
+use std::fs::{metadata, read_dir, symlink_metadata, DirEntry, Metadata};
 use std::iter::Enumerate;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
@@ -163,7 +163,7 @@ impl FileInfo {
         filename: String,
         users_cache: &UsersCache,
     ) -> Result<Self> {
-        let metadata = metadata(path)?;
+        let metadata = symlink_metadata(path)?;
         let path = path.to_owned();
         let owner = extract_owner(&metadata, users_cache)?;
         let group = extract_group(&metadata, users_cache)?;
@@ -192,8 +192,19 @@ impl FileInfo {
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
     pub fn format(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
-        let mut repr = format!(
-            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time} {filename}",
+        let mut repr = self.format_base(owner_col_width, group_col_width)?;
+        repr.push_str(" ");
+        repr.push_str(&self.filename);
+        if let FileKind::SymbolicLink = self.file_kind {
+            repr.push_str(" -> ");
+            repr.push_str(&self.read_dest().unwrap_or_else(|| "Broken link".to_owned()));
+        }
+        Ok(repr)
+    }
+
+    fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
+        let repr = format!(
+            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time}",
             dir_symbol = self.dir_symbol(),
             permissions = self.permissions()?,
             file_size = self.file_size,
@@ -202,27 +213,14 @@ impl FileInfo {
             group = self.group,
             group_col_width = group_col_width,
             system_time = self.system_time,
-            filename = self.filename,
         );
-        if let FileKind::SymbolicLink = self.file_kind {
-            repr.push_str(" -> ");
-            repr.push_str(&self.read_dest().unwrap_or_else(|| "Broken link".to_owned()));
-        }
         Ok(repr)
     }
 
     /// Format the metadata line, without the filename.
     /// Owned & Group have fixed width of 6.
     pub fn format_no_filename(&self) -> Result<String> {
-        let mut repr = format!(
-            "{dir_symbol}{permissions} {file_size} {owner:<6} {group:<6} {system_time}",
-            dir_symbol = self.dir_symbol(),
-            permissions = self.permissions()?,
-            file_size = self.file_size,
-            owner = self.owner,
-            group = self.group,
-            system_time = self.system_time,
-        );
+        let mut repr = self.format_base(6, 6)?;
         if let FileKind::SymbolicLink = self.file_kind {
             repr.push_str(" -> ");
             repr.push_str(&self.read_dest().unwrap_or_else(|| "Broken link".to_owned()));
