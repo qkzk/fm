@@ -537,6 +537,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] remove doublons from shortcut (Ctrl+g) "goto mode"
 - [x] FIX: scrolling isn't smooth anymore
 - [x] InputSimple is responsible of its help lines
+- [x] Preview epub. Requires pandoc.
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 

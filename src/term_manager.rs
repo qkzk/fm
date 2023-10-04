@@ -264,13 +264,11 @@ impl<'a> WinMain<'a> {
     fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
         match tab.path_content.selected() {
             Some(fileinfo) => {
-                let mut strings = vec![
-                    " Preview ".to_owned(),
-                    format!(" {} ", fileinfo.path.to_string_lossy()),
-                ];
+                let mut strings = vec![" Preview ".to_owned()];
                 if !tab.preview.is_empty() {
                     strings.push(format!(" {} / {} ", tab.window.bottom, tab.preview.len()));
                 };
+                strings.push(format!(" {} ", fileinfo.path.to_string_lossy()));
                 strings
             }
             None => vec!["".to_owned()],
