@@ -1,4 +1,4 @@
-use std::fs::{metadata, read_dir, symlink_metadata, DirEntry, Metadata};
+use std::fs::{read_dir, symlink_metadata, DirEntry, Metadata};
 use std::iter::Enumerate;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
@@ -18,9 +18,11 @@ use crate::impl_selectable_content;
 use crate::sort::SortKind;
 use crate::utils::filename_from_path;
 
+type Valid = bool;
+
 /// Different kind of files
 #[derive(Debug, Clone, Copy)]
-pub enum FileKind {
+pub enum FileKind<Valid> {
     /// Classic files.
     NormalFile,
     /// Folder
@@ -34,14 +36,14 @@ pub enum FileKind {
     /// File socket
     Socket,
     /// symlink
-    SymbolicLink,
+    SymbolicLink(Valid),
 }
 
-impl FileKind {
+impl FileKind<Valid> {
     /// Returns a new `FileKind` depending on metadata.
     /// Only linux files have some of those metadata
     /// since we rely on `std::fs::MetadataExt`.
-    pub fn new(meta: &Metadata) -> Self {
+    pub fn new(meta: &Metadata, filepath: &path::Path) -> Self {
         if meta.file_type().is_dir() {
             Self::Directory
         } else if meta.file_type().is_block_device() {
@@ -53,7 +55,8 @@ impl FileKind {
         } else if meta.file_type().is_fifo() {
             Self::Fifo
         } else if meta.file_type().is_symlink() {
-            Self::SymbolicLink
+            let valid = is_valid_symlink(filepath);
+            Self::SymbolicLink(valid)
         } else {
             Self::NormalFile
         }
@@ -69,7 +72,7 @@ impl FileKind {
             FileKind::NormalFile => '.',
             FileKind::CharDevice => 'c',
             FileKind::BlockDevice => 'b',
-            FileKind::SymbolicLink => 'l',
+            FileKind::SymbolicLink(_) => 'l',
         }
     }
 
@@ -77,7 +80,7 @@ impl FileKind {
         match self {
             FileKind::Directory => 'a',
             FileKind::NormalFile => 'b',
-            FileKind::SymbolicLink => 'c',
+            FileKind::SymbolicLink(_) => 'c',
             FileKind::BlockDevice => 'd',
             FileKind::CharDevice => 'e',
             FileKind::Socket => 'f',
@@ -107,7 +110,7 @@ pub struct FileInfo {
     /// Is this file currently selected ?
     pub is_selected: bool,
     /// What kind of file is this ?
-    pub file_kind: FileKind,
+    pub file_kind: FileKind<Valid>,
     /// Extension of the file. `""` for a directory.
     pub extension: String,
     /// A formated filename where the "kind" of file
@@ -147,7 +150,7 @@ impl FileInfo {
     }
 
     fn metadata(&self) -> Result<std::fs::Metadata> {
-        Ok(metadata(&self.path)?)
+        Ok(symlink_metadata(&self.path)?)
     }
 
     pub fn size(&self) -> Result<u64> {
@@ -171,7 +174,7 @@ impl FileInfo {
         let is_selected = false;
         let file_size = human_size(extract_file_size(&metadata));
 
-        let file_kind = FileKind::new(&metadata);
+        let file_kind = FileKind::new(&metadata, &path);
         let extension = extract_extension(&path).into();
         let kind_format = filekind_and_filename(&filename, &file_kind);
 
@@ -195,9 +198,11 @@ impl FileInfo {
         let mut repr = self.format_base(owner_col_width, group_col_width)?;
         repr.push_str(" ");
         repr.push_str(&self.filename);
-        if let FileKind::SymbolicLink = self.file_kind {
-            repr.push_str(" -> ");
-            repr.push_str(&self.read_dest().unwrap_or_else(|| "Broken link".to_owned()));
+        if let FileKind::SymbolicLink(_) = self.file_kind {
+            match read_symlink_dest(&self.path) {
+                Some(dest) => repr.push_str(&format!(" -> {dest}")),
+                None => repr.push_str("  broken link"),
+            }
         }
         Ok(repr)
     }
@@ -220,12 +225,7 @@ impl FileInfo {
     /// Format the metadata line, without the filename.
     /// Owned & Group have fixed width of 6.
     pub fn format_no_filename(&self) -> Result<String> {
-        let mut repr = self.format_base(6, 6)?;
-        if let FileKind::SymbolicLink = self.file_kind {
-            repr.push_str(" -> ");
-            repr.push_str(&self.read_dest().unwrap_or_else(|| "Broken link".to_owned()));
-        }
-        Ok(repr)
+        Ok(self.format_base(6, 6)?)
     }
 
     pub fn dir_symbol(&self) -> char {
@@ -234,13 +234,6 @@ impl FileInfo {
 
     pub fn format_simple(&self) -> Result<String> {
         Ok(self.filename.to_owned())
-    }
-
-    fn read_dest(&self) -> Option<String> {
-        match metadata(&self.path) {
-            Ok(_) => Some(std::fs::read_link(&self.path).ok()?.to_str()?.to_owned()),
-            Err(_) => Some("Broken link".to_owned()),
-        }
     }
 
     /// Select the file.
@@ -420,14 +413,17 @@ impl PathContent {
             .file_kind
         {
             FileKind::Directory => Ok(true),
-            FileKind::SymbolicLink => {
-                let dest = self
-                    .selected()
-                    .context("is selected dir: unreachable")?
-                    .read_dest()
-                    .unwrap_or_default();
+            FileKind::SymbolicLink(true) => {
+                let dest = read_symlink_dest(
+                    &self
+                        .selected()
+                        .context("is selected dir: unreachable")?
+                        .path,
+                )
+                .unwrap_or_default();
                 Ok(path::PathBuf::from(dest).is_dir())
             }
+            FileKind::SymbolicLink(false) => Ok(false),
             _ => Ok(false),
         }
     }
@@ -518,7 +514,8 @@ pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
         FileKind::CharDevice => str_to_tuikit(&colors.char),
         FileKind::Fifo => str_to_tuikit(&colors.fifo),
         FileKind::Socket => str_to_tuikit(&colors.socket),
-        FileKind::SymbolicLink => str_to_tuikit(&colors.symlink),
+        FileKind::SymbolicLink(true) => str_to_tuikit(&colors.symlink),
+        FileKind::SymbolicLink(false) => str_to_tuikit(&colors.broken),
         _ => colors.color_cache.extension_color(&fileinfo.extension),
     };
 
@@ -634,7 +631,7 @@ fn get_used_space(files: &[FileInfo]) -> u64 {
     files.iter().map(|f| f.size().unwrap_or_default()).sum()
 }
 
-fn filekind_and_filename(filename: &str, file_kind: &FileKind) -> String {
+fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> String {
     let mut s = String::new();
     s.push(file_kind.sortable_char());
     s.push_str(filename);
@@ -703,4 +700,23 @@ pub fn shorten_path(path: &path::Path, size: Option<usize>) -> Result<String> {
         })
         .collect();
     Ok(shortened_elems.join("/"))
+}
+
+/// Returns `Some(destination)` where `destination` is a String if the path is
+/// the destination of a symlink,
+/// Returns `None` if the link is broken, if the path doesn't exists or if the path
+/// isn't a symlink.
+fn read_symlink_dest(path: &path::Path) -> Option<String> {
+    match std::fs::read_link(&path) {
+        Ok(dest) if dest.exists() => Some(dest.to_str()?.to_owned()),
+        _ => None,
+    }
+}
+
+/// true iff the path is a valid symlink (pointing to an existing file).
+fn is_valid_symlink(path: &path::Path) -> bool {
+    match std::fs::read_link(&path) {
+        Ok(dest) if dest.exists() => true,
+        _ => false,
+    }
 }

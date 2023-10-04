@@ -100,6 +100,8 @@ pub struct Colors {
     pub socket: String,
     /// Color for `symlink` files.
     pub symlink: String,
+    /// Color for broken `symlink` files.
+    pub broken: String,
     /// Colors for normal files, depending of extension
     pub color_cache: ColorCache,
 }
@@ -124,6 +126,9 @@ impl Colors {
         if let Some(symlink) = yaml["symlink"].as_str().map(|s| s.to_string()) {
             self.symlink = symlink;
         }
+        if let Some(broken) = yaml["broken"].as_str().map(|s| s.to_string()) {
+            self.broken = broken;
+        }
     }
 
     fn new() -> Self {
@@ -134,6 +139,7 @@ impl Colors {
             fifo: "blue".to_owned(),
             socket: "cyan".to_owned(),
             symlink: "magenta".to_owned(),
+            broken: "white".to_owned(),
             color_cache: ColorCache::default(),
         }
     }
@@ -177,7 +183,9 @@ pub fn str_to_tuikit(color: &str) -> Color {
 pub fn load_config(path: &str) -> Result<Config> {
     let mut config = Config::new()?;
     let file = File::open(path::Path::new(&shellexpand::tilde(path).to_string()))?;
-    let Ok(yaml) = serde_yaml::from_reader(file) else { return Ok(config); };
+    let Ok(yaml) = serde_yaml::from_reader(file) else {
+        return Ok(config);
+    };
     let _ = config.update_from_config(&yaml);
     Ok(config)
 }

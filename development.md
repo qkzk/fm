@@ -538,6 +538,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: scrolling isn't smooth anymore
 - [x] InputSimple is responsible of its help lines
 - [x] Preview epub. Requires pandoc.
+- [x] FIX: symlink aren't displayed at all.
+  - Improve broken symlink detection and display
+  - Use `symlink_metadata` to avoid following symlink in tree mode, which may cause recursive filetree
+  - Don't display symlink destination in tree mode since it clutters the display
+  - Use a different configurable color for broken symlink
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 
