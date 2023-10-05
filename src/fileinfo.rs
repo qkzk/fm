@@ -196,7 +196,7 @@ impl FileInfo {
     /// know the maximum size of owner column for formatting purpose.
     pub fn format(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
         let mut repr = self.format_base(owner_col_width, group_col_width)?;
-        repr.push_str(" ");
+        repr.push(' ');
         repr.push_str(&self.filename);
         if let FileKind::SymbolicLink(_) = self.file_kind {
             match read_symlink_dest(&self.path) {
@@ -225,7 +225,7 @@ impl FileInfo {
     /// Format the metadata line, without the filename.
     /// Owned & Group have fixed width of 6.
     pub fn format_no_filename(&self) -> Result<String> {
-        Ok(self.format_base(6, 6)?)
+        self.format_base(6, 6)
     }
 
     pub fn dir_symbol(&self) -> char {
@@ -707,7 +707,7 @@ pub fn shorten_path(path: &path::Path, size: Option<usize>) -> Result<String> {
 /// Returns `None` if the link is broken, if the path doesn't exists or if the path
 /// isn't a symlink.
 fn read_symlink_dest(path: &path::Path) -> Option<String> {
-    match std::fs::read_link(&path) {
+    match std::fs::read_link(path) {
         Ok(dest) if dest.exists() => Some(dest.to_str()?.to_owned()),
         _ => None,
     }
@@ -715,8 +715,5 @@ fn read_symlink_dest(path: &path::Path) -> Option<String> {
 
 /// true iff the path is a valid symlink (pointing to an existing file).
 fn is_valid_symlink(path: &path::Path) -> bool {
-    match std::fs::read_link(&path) {
-        Ok(dest) if dest.exists() => true,
-        _ => false,
-    }
+    matches!(std::fs::read_link(path), Ok(dest) if dest.exists())
 }
