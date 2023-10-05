@@ -543,6 +543,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - Use `symlink_metadata` to avoid following symlink in tree mode, which may cause recursive filetree
   - Don't display symlink destination in tree mode since it clutters the display
   - Use a different configurable color for broken symlink
+- [x] display selected file in first line
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 

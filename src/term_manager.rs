@@ -232,7 +232,8 @@ impl<'a> WinMain<'a> {
 
     fn normal_first_row(&self, disk_space: &str) -> Result<Vec<String>> {
         Ok(vec![
-            format!(" {} ", shorten_path(&self.tab.path_content.path, None)?),
+            format!(" {}", shorten_path(&self.tab.path_content.path, None)?),
+            self.first_row_filename(),
             format!(
                 " {} / {} ",
                 self.tab.path_content.index + 1,
@@ -244,6 +245,24 @@ impl<'a> WinMain<'a> {
             format!(" {} flags ", &self.status.flagged.len()),
             format!(" {} ", &self.tab.path_content.sort_kind),
         ])
+    }
+
+    fn first_row_filename(&self) -> String {
+        match self.tab.mode {
+            Mode::Tree => "".to_owned(),
+            _ => {
+                if let Some(fileinfo) = self.tab.path_content.selected() {
+                    let name = &fileinfo.filename;
+                    if name == "." || name == ".." {
+                        "".to_owned()
+                    } else {
+                        format!("/{name} ")
+                    }
+                } else {
+                    "".to_owned()
+                }
+            }
+        }
     }
 
     fn help_first_row() -> Vec<String> {
