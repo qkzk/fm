@@ -234,11 +234,7 @@ impl<'a> WinMain<'a> {
         Ok(vec![
             format!(" {}", shorten_path(&self.tab.path_content.path, None)?),
             self.first_row_filename(),
-            format!(
-                " {} / {} ",
-                self.tab.path_content.index + 1,
-                self.tab.path_content.true_len() + 2
-            ),
+            self.first_row_position(),
             format!("{}  ", self.tab.path_content.used_space()),
             format!(" Avail: {disk_space}  "),
             format!(" {} ", self.tab.path_content.git_string()?),
@@ -263,6 +259,14 @@ impl<'a> WinMain<'a> {
                 }
             }
         }
+    }
+
+    fn first_row_position(&self) -> String {
+        format!(
+            " {} / {} ",
+            self.tab.path_content.index + 1,
+            self.tab.path_content.true_len() + 2
+        )
     }
 
     fn first_row_flags(&self) -> String {
