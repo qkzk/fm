@@ -241,8 +241,8 @@ impl<'a> WinMain<'a> {
             ),
             format!("{}  ", self.tab.path_content.used_space()),
             format!(" Avail: {disk_space}  "),
-            format!(" {}  ", &self.tab.path_content.git_string()?),
-            format!(" {} flags ", &self.status.flagged.len()),
+            format!(" {} ", self.tab.path_content.git_string()?),
+            self.first_row_flags(),
             format!(" {} ", &self.tab.path_content.sort_kind),
         ])
     }
@@ -263,6 +263,16 @@ impl<'a> WinMain<'a> {
                 }
             }
         }
+    }
+
+    fn first_row_flags(&self) -> String {
+        let nb_flagged = self.status.flagged.len();
+        let flag_string = if self.status.flagged.len() > 1 {
+            "flags"
+        } else {
+            "flag"
+        };
+        format!(" {nb_flagged} {flag_string} ",)
     }
 
     fn help_first_row() -> Vec<String> {
