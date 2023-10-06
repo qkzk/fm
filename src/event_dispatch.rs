@@ -6,7 +6,6 @@ use crate::event_exec::{EventAction, LeaveMode};
 use crate::keybindings::Bindings;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate};
 use crate::status::Status;
-use crate::tab::Tab;
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
