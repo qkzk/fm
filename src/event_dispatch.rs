@@ -55,7 +55,7 @@ impl EventDispatcher {
             }
             Event::User(_) => status.refresh_status(colors)?,
             Event::Resize { width, height } => status.resize(width, height)?,
-            Event::Key(Key::Char(c)) => self.char(status, Key::Char(c), colors)?,
+            Event::Key(Key::Char(c)) => self.char(status, c, colors)?,
             Event::Key(key) => self.key_matcher(status, key, colors)?,
             _ => (),
         };
@@ -73,60 +73,45 @@ impl EventDispatcher {
         }
     }
 
-    fn char(&self, status: &mut Status, key_char: Key, colors: &Colors) -> Result<()> {
-        match key_char {
-            Key::Char(c) => match status.selected_non_mut().mode {
-                Mode::InputSimple(InputSimple::Sort) => status.selected().sort(c, colors),
-                Mode::InputSimple(InputSimple::RegexMatch) => {
-                    {
-                        let tab: &mut Tab = status.selected();
-                        tab.input.insert(c);
-                    };
-                    status.select_from_regex()?;
-                    Ok(())
-                }
-                Mode::InputSimple(_) => {
-                    {
-                        let tab: &mut Tab = status.selected();
-                        tab.input.insert(c);
-                    };
-                    Ok(())
-                }
-                Mode::InputCompleted(_) => status.selected().text_insert_and_complete(c),
-                Mode::Normal | Mode::Tree => match self.binds.get(&key_char) {
-                    Some(char) => char.matcher(status, colors),
-                    None => Ok(()),
-                },
-                Mode::NeedConfirmation(confirmed_action) => {
-                    if c == 'y' {
-                        let _ = status.confirm_action(confirmed_action, colors);
-                    }
-                    status.selected().reset_mode();
-                    Ok(())
-                }
-                Mode::Navigate(Navigate::Trash) if c == 'x' => status.trash.remove(),
-                Mode::Navigate(Navigate::EncryptedDrive) if c == 'm' => {
-                    status.mount_encrypted_drive()
-                }
-                Mode::Navigate(Navigate::EncryptedDrive) if c == 'g' => {
-                    status.move_to_encrypted_drive()
-                }
-                Mode::Navigate(Navigate::EncryptedDrive) if c == 'u' => {
-                    status.umount_encrypted_drive()
-                }
-                Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
-                    status.marks_jump_char(c, colors)
-                }
-                Mode::Navigate(Navigate::Marks(MarkAction::New)) => status.marks_new(c, colors),
-                Mode::Preview | Mode::Navigate(_) => {
-                    status.selected().set_mode(Mode::Normal);
-                    {
-                        let tab: &mut Tab = status.selected();
-                        tab.refresh_view()
-                    }
-                }
+    fn char(&self, status: &mut Status, c: char, colors: &Colors) -> Result<()> {
+        let tab = status.selected();
+        match tab.mode {
+            Mode::InputSimple(InputSimple::Sort) => tab.sort(c, colors),
+            Mode::InputSimple(InputSimple::RegexMatch) => {
+                tab.input.insert(c);
+                status.select_from_regex()?;
+                Ok(())
+            }
+            Mode::InputSimple(_) => {
+                tab.input.insert(c);
+                Ok(())
+            }
+            Mode::InputCompleted(_) => tab.text_insert_and_complete(c),
+            Mode::Normal | Mode::Tree => match self.binds.get(&Key::Char(c)) {
+                Some(action) => action.matcher(status, colors),
+                None => Ok(()),
             },
-            _ => Ok(()),
+            Mode::NeedConfirmation(confirmed_action) => {
+                if c == 'y' {
+                    let _ = status.confirm_action(confirmed_action, colors);
+                }
+                if status.selected().reset_mode() {
+                    status.selected().refresh_view()?;
+                }
+                Ok(())
+            }
+            Mode::Navigate(Navigate::Trash) if c == 'x' => status.trash.remove(),
+            Mode::Navigate(Navigate::EncryptedDrive) if c == 'm' => status.mount_encrypted_drive(),
+            Mode::Navigate(Navigate::EncryptedDrive) if c == 'g' => status.go_to_encrypted_drive(),
+            Mode::Navigate(Navigate::EncryptedDrive) if c == 'u' => status.umount_encrypted_drive(),
+            Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => status.marks_jump_char(c, colors),
+            Mode::Navigate(Navigate::Marks(MarkAction::New)) => status.marks_new(c, colors),
+            Mode::Preview | Mode::Navigate(_) => {
+                if tab.reset_mode() {
+                    tab.refresh_view()?;
+                }
+                Ok(())
+            }
         }
     }
 }

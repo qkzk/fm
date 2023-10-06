@@ -543,7 +543,7 @@ impl Status {
     }
 
     /// Move to the selected crypted device mount point.
-    pub fn move_to_encrypted_drive(&mut self) -> Result<()> {
+    pub fn go_to_encrypted_drive(&mut self) -> Result<()> {
         let Some(device) = self.encrypted_devices.selected() else {
             return Ok(());
         };
