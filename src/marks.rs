@@ -151,7 +151,7 @@ impl Marks {
     }
 
     fn format_mark(ch: &char, path: &Path) -> String {
-        format!("{}    {}", ch, path.to_string_lossy())
+        format!("{ch}    {path}", path = path.display())
     }
 }
 
