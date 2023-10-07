@@ -57,46 +57,65 @@ impl ShellCommandParser {
             match token {
                 Token::Arg(string) => computed.push(string.to_owned()),
                 Token::Selected => {
-                    let path = status
-                        .selected_non_mut()
-                        .path_content
-                        .selected_path_string()
-                        .context("Empty directory")?;
-                    computed.push(path);
+                    computed.push(Self::selected(status)?);
                 }
                 Token::Path => {
-                    let path = status
-                        .selected_non_mut()
-                        .path_content_str()
-                        .context("Couldn't read path")?
-                        .to_owned();
-                    computed.push(path);
+                    computed.push(Self::path(status)?);
                 }
                 Token::Filename => {
-                    let filename = status
-                        .selected_non_mut()
-                        .selected()
-                        .context("Empty directory")?
-                        .filename
-                        .clone();
-                    computed.push(filename);
+                    computed.push(Self::filename(status)?);
                 }
                 Token::Extension => {
-                    let extension = status
-                        .selected_non_mut()
-                        .selected()
-                        .context("Empty directory")?
-                        .extension
-                        .clone();
-                    computed.push(extension);
+                    computed.push(Self::extension(status)?);
                 }
-                Token::Flagged => {
-                    for path in status.flagged.content.iter() {
-                        computed.push(path.to_str().context("Couldn't parse the path")?.to_owned());
-                    }
-                }
+                Token::Flagged => computed.extend_from_slice(&Self::flagged(status)),
             }
         }
         Ok(computed)
+    }
+
+    fn selected(status: &Status) -> Result<String> {
+        status
+            .selected_non_mut()
+            .path_content
+            .selected_path_string()
+            .context("Empty directory")
+    }
+
+    fn path(status: &Status) -> Result<String> {
+        Ok(status
+            .selected_non_mut()
+            .path_content_str()
+            .context("Couldn't read path")?
+            .to_owned())
+    }
+
+    fn filename(status: &Status) -> Result<String> {
+        Ok(status
+            .selected_non_mut()
+            .selected()
+            .context("Empty directory")?
+            .filename
+            .clone())
+    }
+
+    fn extension(status: &Status) -> Result<String> {
+        Ok(status
+            .selected_non_mut()
+            .selected()
+            .context("Empty directory")?
+            .extension
+            .clone())
+    }
+
+    fn flagged(status: &Status) -> Vec<String> {
+        status
+            .flagged
+            .content
+            .iter()
+            .map(|path| path.to_str())
+            .filter(|s| s.is_some())
+            .map(|s| s.unwrap().to_owned())
+            .collect()
     }
 }
