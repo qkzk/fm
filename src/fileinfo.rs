@@ -660,9 +660,8 @@ pub fn files_collection(
         ),
         Err(error) => {
             info!(
-                "Couldn't read path {} - {}",
-                fileinfo.path.to_string_lossy(),
-                error
+                "Couldn't read path {path} - {error}",
+                path = fileinfo.path.display(),
             );
             None
         }
