@@ -43,13 +43,13 @@ impl EventDispatcher {
                 EventAction::move_down(status, colors)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
-                status.select_pane(col)?;
-                status.selected().select_row(row, colors, current_height)?;
+                status.click(row, col, current_height, colors)?;
             }
-            Event::Key(Key::SingleClick(MouseButton::Right, row, col))
-            | Event::Key(Key::DoubleClick(MouseButton::Left, row, col)) => {
-                status.select_pane(col)?;
-                status.selected().select_row(row, colors, current_height)?;
+            Event::Key(
+                Key::SingleClick(MouseButton::Right, row, col)
+                | Key::DoubleClick(MouseButton::Left, row, col),
+            ) => {
+                status.click(row, col, current_height, colors)?;
                 LeaveMode::right_click(status, colors)?;
             }
             Event::User(_) => status.refresh_status(colors)?,
@@ -90,15 +90,7 @@ impl EventDispatcher {
                 Some(action) => action.matcher(status, colors),
                 None => Ok(()),
             },
-            Mode::NeedConfirmation(confirmed_action) => {
-                if c == 'y' {
-                    let _ = status.confirm_action(confirmed_action, colors);
-                }
-                if status.selected().reset_mode() {
-                    status.selected().refresh_view()?;
-                }
-                Ok(())
-            }
+            Mode::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action, colors),
             Mode::Navigate(Navigate::Trash) if c == 'x' => status.trash.remove(),
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'm' => status.mount_encrypted_drive(),
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'g' => status.go_to_encrypted_drive(),

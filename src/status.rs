@@ -316,6 +316,17 @@ impl Status {
         self.reset_tabs_view()
     }
 
+    pub fn click(
+        &mut self,
+        row: u16,
+        col: u16,
+        current_height: usize,
+        colors: &Colors,
+    ) -> Result<()> {
+        self.select_pane(col)?;
+        self.selected().select_row(row, colors, current_height)
+    }
+
     /// Set the permissions of the flagged files according to a given permission.
     /// If the permission are invalid or if the user can't edit them, it may fail.
     pub fn set_permissions<P>(path: P, permissions: u32) -> Result<()>
@@ -714,13 +725,19 @@ impl Status {
     }
 
     /// Execute a command requiring a confirmation (Delete, Move or Copy).
-    pub fn confirm_action(
+    /// The action is only executed if the user typed the char `y`
+    pub fn confirm(
         &mut self,
+        c: char,
         confirmed_action: NeedConfirmation,
         colors: &Colors,
     ) -> Result<()> {
-        self.match_confirmed_mode(confirmed_action, colors)?;
-        self.selected().reset_mode();
+        if c == 'y' {
+            let _ = self.match_confirmed_mode(confirmed_action, colors);
+        }
+        if self.selected().reset_mode() {
+            self.selected().refresh_view()?;
+        }
         Ok(())
     }
 
