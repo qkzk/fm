@@ -4,10 +4,11 @@
 // Copied from https://github.com/9ary/gitprompt-rs/blob/master/src/main.rs
 // Couldn't use without forking and I'm lazy.
 
-use anyhow::{anyhow, Context, Result};
 use std::fmt::Write as _;
 use std::path::Path;
 use std::process;
+
+use anyhow::{anyhow, Context, Result};
 
 struct GitStatus {
     branch: Option<String>,
