@@ -5,6 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
+use clap::Parser;
 use log::info;
 use regex::Regex;
 use skim::SkimItem;
@@ -101,13 +102,13 @@ impl Status {
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
     pub fn new(
-        args: Args,
         height: usize,
         term: Arc<Term>,
         help: String,
         opener: Opener,
         settings: &Settings,
     ) -> Result<Self> {
+        let args = Args::parse();
         let Ok(shell_menu) = load_shell_menu(TUIS_PATH) else {
             eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example");
             info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");

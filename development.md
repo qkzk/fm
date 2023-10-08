@@ -546,6 +546,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] display selected file in first line
 - [x] FIX: sort by size use wrong value and order badly 2B > 1M
 - [x] refactor copy move. CopyOrMove is responsible for its setup.
+- [x] refactor main. Split setup, exit and main loop.
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 
