@@ -30,12 +30,12 @@ fn exit_wrong_config() -> ! {
 /// It reads and drops the configuration from the config file.
 /// If the config can't be parsed, it exits with error code 1.
 fn setup() -> Result<(
-    EventReader,
+    Arc<tuikit::term::Term>,
     EventDispatcher,
+    EventReader,
     Status,
     Display,
     Colors,
-    Arc<tuikit::term::Term>,
 )> {
     let Ok(config) = load_config(CONFIG_PATH) else {
         exit_wrong_config()
@@ -60,12 +60,12 @@ fn setup() -> Result<(
     let colors = config.colors.clone();
     drop(config);
     Ok((
-        event_reader,
+        term,
         event_dispatcher,
+        event_reader,
         status,
         display,
         colors,
-        term,
     ))
 }
 
@@ -82,11 +82,11 @@ fn force_clear_if_needed(status: &mut Status, display: &mut Display) -> Result<(
 /// drop everything holding a terminal instance,
 /// print the final path
 fn reset_and_print_on_quit(
-    display: Display,
-    status: Status,
     term: Arc<tuikit::term::Term>,
     event_dispatcher: EventDispatcher,
     event_reader: EventReader,
+    status: Status,
+    display: Display,
 ) -> Result<()> {
     display.show_cursor()?;
     let final_path = status.selected_path_str().to_owned();
@@ -103,7 +103,7 @@ fn reset_and_print_on_quit(
 fn main() -> Result<()> {
     set_loggers()?;
     info!("fm is starting");
-    let (event_reader, event_dispatcher, mut status, mut display, colors, term) = setup()?;
+    let (term, event_dispatcher, event_reader, mut status, mut display, colors) = setup()?;
 
     while let Ok(event) = event_reader.poll_event() {
         event_dispatcher.dispatch(&mut status, event, &colors, event_reader.term_height()?)?;
@@ -116,5 +116,5 @@ fn main() -> Result<()> {
         };
     }
 
-    reset_and_print_on_quit(display, status, term, event_dispatcher, event_reader)
+    reset_and_print_on_quit(term, event_dispatcher, event_reader, status, display)
 }
