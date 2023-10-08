@@ -86,9 +86,12 @@ impl PasswordHolder {
 }
 
 /// Spawn a sudo command with stdin, stdout and stderr piped.
+/// sudo is run with -S argument to read the passworo from stdin
 /// Args are sent.
 /// CWD is set to `path`.
-fn new_sudo_command<S, P>(args: &[S], path: P) -> Result<std::process::Child>
+/// No password is set yet.
+/// A password should be sent with `inject_password`.
+fn new_sudo_command_awaiting_password<S, P>(args: &[S], path: P) -> Result<std::process::Child>
 where
     S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
     P: AsRef<std::path::Path> + std::fmt::Debug,
@@ -128,7 +131,7 @@ where
     info!("sudo_with_password {args:?} CWD {path:?}");
     let log_line = format!("running sudo command with password. args: {args:?}, CWD: {path:?}");
     write_log_line(log_line);
-    let mut child = new_sudo_command(args, path)?;
+    let mut child = new_sudo_command_awaiting_password(args, path)?;
     inject_password(password, &mut child)?;
     let output = child.wait_with_output()?;
     Ok((
@@ -136,6 +139,20 @@ where
         String::from_utf8(output.stdout)?,
         String::from_utf8(output.stderr)?,
     ))
+}
+
+/// Spawn a sudo command which shouldn't require a password.
+/// The command is executed immediatly and we return an handle to it.
+fn new_sudo_command_passwordless<S>(args: &[S]) -> Result<std::process::Child>
+where
+    S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
+{
+    Ok(Command::new("sudo")
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?)
 }
 
 /// Runs a passwordless sudo command.
@@ -147,12 +164,7 @@ where
     info!("running sudo {:?}", args);
     let log_line = format!("running sudo command. {args:?}");
     write_log_line(log_line);
-    let child = Command::new("sudo")
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
+    let child = new_sudo_command_passwordless(args)?;
     let output = child.wait_with_output()?;
     Ok((
         output.status.success(),
