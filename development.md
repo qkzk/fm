@@ -491,7 +491,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: Help string susbtitution aren't aligned properly
 - [x] FIX: exiting preview doesn't refresh
 - [x] Mode should know if a refresh is required after leaving them.
-- [x] refactor copy move. CopyOrMove is responsible for its setup.
 
 ## Current dev
 
@@ -546,6 +545,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - Use a different configurable color for broken symlink
 - [x] display selected file in first line
 - [x] FIX: sort by size use wrong value and order badly 2B > 1M
+- [x] refactor copy move. CopyOrMove is responsible for its setup.
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 
