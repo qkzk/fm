@@ -80,7 +80,7 @@ impl GitStatus {
         git_string.push('(');
 
         if let Some(branch) = &self.branch {
-            git_string.push_str(&branch);
+            git_string.push_str(branch);
         } else {
             // Detached head
             git_string.push_str(":HEAD");
