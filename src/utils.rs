@@ -65,25 +65,17 @@ pub fn opt_mount_point(disk: Option<&Disk>) -> Option<&std::path::Path> {
     Some(disk.mount_point())
 }
 
-/// Drops everything holding an `Arc<Term>`.
-/// If new structs holding `Arc<Term>`  are introduced
-/// (surelly to display something on their own...), we'll have to pass them
-/// here and drop them.
+/// Drops everything passed to it
 /// It's used if the user wants to "cd on quit" which is a nice feature I
 /// wanted to implement.
 /// Since tuikit term redirects stdout, we have to drop them first.
-pub fn drop_everything(
-    term: Arc<Term>,
-    event_dispatcher: EventDispatcher,
-    event_reader: EventReader,
-    status: Status,
-    display: Display,
-) {
-    std::mem::drop(term);
-    std::mem::drop(event_dispatcher);
-    std::mem::drop(event_reader);
-    std::mem::drop(status);
-    std::mem::drop(display);
+#[macro_export]
+macro_rules! drop_all {
+    ($( $x:ident ),* ) => {
+        $(
+            std::mem::drop($x);
+        )*
+    };
 }
 
 /// Print the path on the stdout.

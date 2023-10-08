@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use fm::drop_all;
 use log::info;
 
 use fm::config::{load_config, Colors};
@@ -11,7 +12,7 @@ use fm::log::set_loggers;
 use fm::opener::{load_opener, Opener};
 use fm::status::Status;
 use fm::term_manager::{Display, EventReader};
-use fm::utils::{drop_everything, init_term, print_on_quit};
+use fm::utils::{init_term, print_on_quit};
 
 /// Exit the application and log a message.
 /// Used when the config can't be read.
@@ -90,7 +91,7 @@ fn reset_and_print_on_quit(
 ) -> Result<()> {
     display.show_cursor()?;
     let final_path = status.selected_path_str().to_owned();
-    drop_everything(term, event_dispatcher, event_reader, status, display);
+    drop_all!(term, event_dispatcher, event_reader, status, display);
     print_on_quit(&final_path);
     info!("fm is shutting down");
     Ok(())
