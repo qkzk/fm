@@ -545,6 +545,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - Don't display symlink destination in tree mode since it clutters the display
   - Use a different configurable color for broken symlink
 - [x] display selected file in first line
+- [x] FIX: sort by size use wrong value and order badly 2B > 1M
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 
@@ -619,7 +620,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] creates $ENV{HOME} folders everywhere -
       a new version of log4rs seems to solve this, it's not deplayed to crates.io yet
 - [ ] tree mode : index are offset by one
-- [ ] sort by size use wrong value and order badly 2B > 1M
 
 ## Won't do
 

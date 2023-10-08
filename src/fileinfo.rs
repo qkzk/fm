@@ -101,6 +101,8 @@ pub struct FileInfo {
     pub filename: String,
     /// File size as a `String`, already human formated.
     pub file_size: String,
+    /// True size of a file, not formated
+    pub true_size: u64,
     /// Owner name of the file.
     pub owner: String,
     /// Group name of the file.
@@ -172,7 +174,8 @@ impl FileInfo {
         let group = extract_group(&metadata, users_cache)?;
         let system_time = extract_datetime(&metadata)?;
         let is_selected = false;
-        let file_size = human_size(extract_file_size(&metadata));
+        let true_size = extract_file_size(&metadata);
+        let file_size = human_size(true_size);
 
         let file_kind = FileKind::new(&metadata, &path);
         let extension = extract_extension(&path).into();
@@ -182,6 +185,7 @@ impl FileInfo {
             path,
             filename,
             file_size,
+            true_size,
             owner,
             group,
             system_time,
