@@ -20,6 +20,8 @@ pub fn set_loggers() -> Result<()> {
         Default::default(),
     )?;
     // clear_useless_env_home()?;
+
+    log::info!("fm is starting");
     Ok(())
 }
 

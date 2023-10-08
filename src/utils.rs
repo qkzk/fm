@@ -1,7 +1,6 @@
 use std::borrow::Borrow;
 use std::io::BufRead;
 use std::path::Path;
-use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
@@ -10,11 +9,8 @@ use tuikit::term::Term;
 use users::{get_current_uid, get_user_by_uid};
 
 use crate::content_window::ContentWindow;
-use crate::event_dispatch::EventDispatcher;
 use crate::fileinfo::human_size;
 use crate::nvim::nvim;
-use crate::status::Status;
-use crate::term_manager::{Display, EventReader};
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
 pub fn init_term() -> Result<Term> {
@@ -63,19 +59,6 @@ pub fn opt_mount_point(disk: Option<&Disk>) -> Option<&std::path::Path> {
         return None;
     };
     Some(disk.mount_point())
-}
-
-/// Drops everything passed to it
-/// It's used if the user wants to "cd on quit" which is a nice feature I
-/// wanted to implement.
-/// Since tuikit term redirects stdout, we have to drop them first.
-#[macro_export]
-macro_rules! drop_all {
-    ($( $x:ident ),* ) => {
-        $(
-            std::mem::drop($x);
-        )*
-    };
 }
 
 /// Print the path on the stdout.
