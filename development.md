@@ -491,6 +491,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: Help string susbtitution aren't aligned properly
 - [x] FIX: exiting preview doesn't refresh
 - [x] Mode should know if a refresh is required after leaving them.
+- [x] refactor copy move. CopyOrMove is responsible for its setup.
 
 ## Current dev
 
@@ -618,6 +619,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] creates $ENV{HOME} folders everywhere -
       a new version of log4rs seems to solve this, it's not deplayed to crates.io yet
 - [ ] tree mode : index are offset by one
+- [ ] sort by size use wrong value and order badly 2B > 1M
 
 ## Won't do
 
