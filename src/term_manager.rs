@@ -858,7 +858,7 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(
             2,
             3,
-            &confirmed_mode.confirmation_string(tab.path_content.path_to_str()?),
+            &confirmed_mode.confirmation_string(&tab.path_content.path_to_str()),
             ATTR_YELLOW_BOLD,
         )?;
 

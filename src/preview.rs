@@ -190,7 +190,7 @@ impl Preview {
     }
 
     fn is_binary(file_info: &FileInfo, file: &mut std::fs::File, buffer: &mut [u8]) -> bool {
-        file_info.size().unwrap_or_default() >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
+        file_info.true_size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
             && file.read_exact(buffer).is_ok()
             && inspect(buffer) == ContentType::BINARY
     }
@@ -452,7 +452,7 @@ impl BinaryContent {
 
         Ok(Self {
             path: file_info.path.clone(),
-            length: file_info.size().unwrap_or_default() / Self::LINE_WIDTH as u64,
+            length: file_info.true_size / Self::LINE_WIDTH as u64,
             content,
         })
     }

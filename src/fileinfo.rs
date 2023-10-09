@@ -92,7 +92,6 @@ impl FileKind<Valid> {
 /// Infos about a file
 /// We read and keep tracks every displayable information about
 /// a file.
-/// Like in [exa](https://github.com/ogham/exa) we don't display the group.
 #[derive(Clone, Debug)]
 pub struct FileInfo {
     /// Full path of the file
@@ -100,6 +99,7 @@ pub struct FileInfo {
     /// Filename
     pub filename: String,
     /// File size as a `String`, already human formated.
+    /// For char devices and block devices we display major & minor like ls.
     pub size_column: String,
     /// True size of a file, not formated
     pub true_size: u64,
@@ -128,7 +128,7 @@ impl FileInfo {
         let path = direntry.path();
         let filename = extract_filename(direntry)?;
 
-        Self::create_from_metadata_and_filename(&path, filename, users_cache)
+        Self::create_from_metadata_and_filename(&path, &filename, users_cache)
     }
 
     /// Creates a fileinfo from a path and a filename.
@@ -138,7 +138,7 @@ impl FileInfo {
         filename: &str,
         users_cache: &UsersCache,
     ) -> Result<Self> {
-        Self::create_from_metadata_and_filename(path, filename.to_owned(), users_cache)
+        Self::create_from_metadata_and_filename(path, filename, users_cache)
     }
 
     pub fn from_path(path: &path::Path, users_cache: &UsersCache) -> Result<Self> {
@@ -146,17 +146,12 @@ impl FileInfo {
             .file_name()
             .context("from path: couldn't read filenale")?
             .to_str()
-            .context("from path: couldn't parse filenale")?
-            .to_owned();
+            .context("from path: couldn't parse filenale")?;
         Self::create_from_metadata_and_filename(path, filename, users_cache)
     }
 
     fn metadata(&self) -> Result<std::fs::Metadata> {
         Ok(symlink_metadata(&self.path)?)
-    }
-
-    pub fn size(&self) -> Result<u64> {
-        Ok(extract_file_size(&self.metadata()?))
     }
 
     pub fn permissions(&self) -> Result<String> {
@@ -165,9 +160,10 @@ impl FileInfo {
 
     fn create_from_metadata_and_filename(
         path: &path::Path,
-        filename: String,
+        filename: &str,
         users_cache: &UsersCache,
     ) -> Result<Self> {
+        let filename = filename.to_owned();
         let metadata = symlink_metadata(path)?;
         let path = path.to_owned();
         let owner = extract_owner(&metadata, users_cache)?;
@@ -361,8 +357,8 @@ impl PathContent {
 
     /// Convert a path to a &str.
     /// It may fails if the path contains non valid utf-8 chars.
-    pub fn path_to_str(&self) -> Result<&str> {
-        self.path.to_str().context("path to str: Unreadable path")
+    pub fn path_to_str(&self) -> String {
+        self.path.display().to_string()
     }
 
     /// Sort the file with current key.
@@ -648,7 +644,7 @@ pub fn extract_extension(path: &path::Path) -> &str {
 }
 
 fn get_used_space(files: &[FileInfo]) -> u64 {
-    files.iter().map(|f| f.size().unwrap_or_default()).sum()
+    files.iter().map(|f| f.true_size).sum()
 }
 
 fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> String {
