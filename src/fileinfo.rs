@@ -405,7 +405,7 @@ impl PathContent {
 
     /// Path of the currently selected file.
     pub fn selected_path_string(&self) -> Option<String> {
-        Some(self.selected()?.path.to_str()?.to_owned())
+        Some(self.selected()?.path.display().to_string())
     }
 
     /// True if the path starts with a subpath.
@@ -572,11 +572,7 @@ fn extract_permissions_string(metadata: &Metadata) -> String {
     let s_o = convert_octal_mode(mode >> 6);
     let s_g = convert_octal_mode((mode >> 3) & 7);
     let s_a = convert_octal_mode(mode & 7);
-    let mut perm = String::with_capacity(9);
-    perm.push_str(s_o);
-    perm.push_str(s_a);
-    perm.push_str(s_g);
-    perm
+    format!("{s_o}{s_a}{s_g}")
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`
@@ -648,10 +644,7 @@ fn get_used_space(files: &[FileInfo]) -> u64 {
 }
 
 fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> String {
-    let mut s = String::new();
-    s.push(file_kind.sortable_char());
-    s.push_str(filename);
-    s
+    format!("{c}{filename}", c = file_kind.sortable_char())
 }
 
 /// Creates an optional vector of fileinfo contained in a file.
