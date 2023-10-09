@@ -20,7 +20,8 @@ use users::UsersCache;
 
 use crate::config::Colors;
 use crate::constant_strings_paths::{
-    DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, MEDIAINFO, PANDOC, THUMBNAIL_PATH, UEBERZUG,
+    DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, MEDIAINFO, PANDOC, RSVG_CONVERT, THUMBNAIL_PATH,
+    UEBERZUG,
 };
 use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
@@ -103,7 +104,10 @@ impl Preview {
                 {
                     Ok(Self::Ueberzug(Ueberzug::font_thumbnail(&file_info.path)?))
                 }
-                e if is_ext_svg(e) && is_program_in_path(UEBERZUG) => {
+                e if is_ext_svg(e)
+                    && is_program_in_path(UEBERZUG)
+                    && is_program_in_path(RSVG_CONVERT) =>
+                {
                     Ok(Self::Ueberzug(Ueberzug::svg_thumbnail(&file_info.path)?))
                 }
                 e if is_ext_iso(e) && is_program_in_path(ISOINFO) => {
@@ -680,7 +684,7 @@ impl Ueberzug {
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
         Self::make_thumbnail(
-            "rsvg-convert",
+            RSVG_CONVERT,
             &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH],
         )
     }
@@ -1061,7 +1065,7 @@ fn is_ext_font(ext: &str) -> bool {
 }
 
 fn is_ext_svg(ext: &str) -> bool {
-    ext == "svg"
+    matches!(ext, "svg" | "svgz")
 }
 
 fn is_ext_pdf(ext: &str) -> bool {
