@@ -549,9 +549,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] refactor copy move. CopyOrMove is responsible for its setup.
 - [x] refactor main. Split setup, exit and main loop.
 - [x] refactor main. Use a struct responsible for setup, update, display and quit.
-- [ ] preview fonts & video thumbnail
+- [x] preview fonts, svg & video thumbnail
   - video thumbnail requires ffmpeg
-  - fontimage otf not supported
+  - fonts preview otf not supported
+  - fonts preview requires fontimage
+  - svg preview requires rsvg-convert
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 

@@ -238,7 +238,7 @@ impl Preview {
             Self::Binary(binary) => binary.len(),
             Self::Pdf(pdf) => pdf.len(),
             Self::Archive(zip) => zip.len(),
-            Self::Ueberzug(_img) => 0,
+            Self::Ueberzug(_) => 0,
             Self::Media(media) => media.len(),
             Self::Directory(directory) => directory.len(),
             Self::Diff(diff) => diff.len(),
