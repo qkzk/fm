@@ -175,9 +175,10 @@ impl FileInfo {
         let system_time = extract_datetime(&metadata)?;
         let is_selected = false;
         let true_size = extract_file_size(&metadata);
-        let file_size = human_size(true_size);
 
         let file_kind = FileKind::new(&metadata, &path);
+
+        let file_size = Self::calc_file_size(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
         let kind_format = filekind_and_filename(&filename, &file_kind);
 
@@ -194,6 +195,18 @@ impl FileInfo {
             extension,
             kind_format,
         })
+    }
+
+    fn calc_file_size(true_size: u64, metadata: &Metadata, file_kind: &FileKind<Valid>) -> String {
+        match file_kind {
+            FileKind::NormalFile => human_size(true_size),
+            FileKind::Directory => "  - ".to_owned(),
+            FileKind::Fifo => "f   ".to_owned(),
+            FileKind::Socket => "s   ".to_owned(),
+            FileKind::CharDevice => "c   ".to_owned(),
+            FileKind::BlockDevice => "d   ".to_owned(),
+            FileKind::SymbolicLink(_) => human_size(true_size),
+        }
     }
     /// Format the file line.
     /// Since files can have different owners in the same directory, we need to
