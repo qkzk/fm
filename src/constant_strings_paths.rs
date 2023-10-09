@@ -162,6 +162,8 @@ pub const MEDIAINFO: &str = "mediainfo";
 pub const UEBERZUG: &str = "ueberzug";
 /// fontimage (used to preview fonts)
 pub const FONTIMAGE: &str = "fontimage";
+/// ffmpeg (used to preview video thumbnail)
+pub const FFMPEG: &str = "ffmpeg";
 /// jupyter. used to preview notebooks (.ipynb)
 pub const JUPYTER: &str = "jupyter";
 /// pandoc. used to preview .doc & .odb documents
