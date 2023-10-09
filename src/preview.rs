@@ -1051,7 +1051,7 @@ fn is_ext_video(ext: &str) -> bool {
 }
 
 fn is_ext_font(ext: &str) -> bool {
-    ext == "ttf"
+    matches!(ext, "ttf" | "otf")
 }
 
 fn is_ext_svg(ext: &str) -> bool {
