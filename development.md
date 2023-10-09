@@ -558,7 +558,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] char device
   - [ ] block device (parsing lsblk ?)
   - [ ] socket
-- [ ] size for char & block device [exa](https://github.com/ogham/exa/blob/fb05c421ae98e076989eb6e8b1bcf42c07c1d0fe/src/fs/file.rs#L331)
+- [x] size for char & block device [exa](https://github.com/ogham/exa/blob/fb05c421ae98e076989eb6e8b1bcf42c07c1d0fe/src/fs/file.rs#L331)
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 

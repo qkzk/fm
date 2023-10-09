@@ -100,7 +100,7 @@ pub struct FileInfo {
     /// Filename
     pub filename: String,
     /// File size as a `String`, already human formated.
-    pub file_size: String,
+    pub size_column: String,
     /// True size of a file, not formated
     pub true_size: u64,
     /// Owner name of the file.
@@ -178,14 +178,14 @@ impl FileInfo {
 
         let file_kind = FileKind::new(&metadata, &path);
 
-        let file_size = Self::calc_file_size(true_size, &metadata, &file_kind);
+        let size_column = Self::size_column(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
         let kind_format = filekind_and_filename(&filename, &file_kind);
 
         Ok(FileInfo {
             path,
             filename,
-            file_size,
+            size_column,
             true_size,
             owner,
             group,
@@ -197,15 +197,11 @@ impl FileInfo {
         })
     }
 
-    fn calc_file_size(true_size: u64, metadata: &Metadata, file_kind: &FileKind<Valid>) -> String {
+    fn size_column(true_size: u64, metadata: &Metadata, file_kind: &FileKind<Valid>) -> String {
         match file_kind {
-            FileKind::NormalFile => human_size(true_size),
-            FileKind::Directory => "  - ".to_owned(),
-            FileKind::Fifo => "f   ".to_owned(),
-            FileKind::Socket => "s   ".to_owned(),
-            FileKind::CharDevice => "c   ".to_owned(),
-            FileKind::BlockDevice => "d   ".to_owned(),
-            FileKind::SymbolicLink(_) => human_size(true_size),
+            FileKind::Directory => "     - ".to_owned(),
+            FileKind::CharDevice | FileKind::BlockDevice => major_minor(metadata),
+            _ => format!("  {hs} ", hs = human_size(true_size)),
         }
     }
     /// Format the file line.
@@ -229,7 +225,7 @@ impl FileInfo {
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time}",
             dir_symbol = self.dir_symbol(),
             permissions = self.permissions()?,
-            file_size = self.file_size,
+            file_size = self.size_column,
             owner = self.owner,
             owner_col_width = owner_col_width,
             group = self.group,
@@ -634,6 +630,13 @@ pub fn human_size(bytes: u64) -> String {
         bytes / (1024_u64).pow(factor as u32),
         size[factor as usize]
     )
+}
+
+fn major_minor(metadata: &Metadata) -> String {
+    let device_ids = metadata.rdev().to_be_bytes();
+    let major = device_ids[6];
+    let minor = device_ids[7];
+    format!("{major:>3},{minor:<3}")
 }
 
 /// Extract the optional extension from a filename.
