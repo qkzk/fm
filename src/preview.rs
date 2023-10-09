@@ -20,7 +20,7 @@ use users::UsersCache;
 
 use crate::config::Colors;
 use crate::constant_strings_paths::{
-    DIFF, ISOINFO, JUPYTER, MEDIAINFO, PANDOC, THUMBNAIL_PATH, UEBERZUG,
+    DIFF, FONTIMAGE, ISOINFO, JUPYTER, MEDIAINFO, PANDOC, THUMBNAIL_PATH, UEBERZUG,
 };
 use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
@@ -94,7 +94,10 @@ impl Preview {
                 e if is_ext_video(e) && is_program_in_path(UEBERZUG) => {
                     Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
                 }
-                e if is_ext_font(e) && is_program_in_path(UEBERZUG) => {
+                e if is_ext_font(e)
+                    && is_program_in_path(UEBERZUG)
+                    && is_program_in_path(FONTIMAGE) =>
+                {
                     Ok(Self::Ueberzug(Ueberzug::font_thumbnail(&file_info.path)?))
                 }
                 e if is_ext_svg(e) && is_program_in_path(UEBERZUG) => {
@@ -666,7 +669,7 @@ impl Ueberzug {
         let path_str = font_path
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
-        Self::make_thumbnail("fontimage", &["-o", THUMBNAIL_PATH, path_str])
+        Self::make_thumbnail(FONTIMAGE, &["-o", THUMBNAIL_PATH, path_str])
     }
 
     fn make_svg_thumbnail(svg_path: &Path) -> Result<()> {
