@@ -20,7 +20,7 @@ use users::UsersCache;
 
 use crate::config::Colors;
 use crate::constant_strings_paths::{
-    DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, MEDIAINFO, PANDOC, RSVG_CONVERT, THUMBNAIL_PATH,
+    DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, MEDIAINFO, PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH,
     UEBERZUG,
 };
 use crate::content_window::ContentWindow;
@@ -48,6 +48,7 @@ pub enum Preview {
     Iso(Iso),
     Diff(Diff),
     ColoredText(ColoredText),
+    Socket(Socket),
     #[default]
     Empty,
 }
@@ -128,8 +129,13 @@ impl Preview {
                     None => Self::preview_text_or_binary(file_info),
                 },
             },
+            FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(file_info)),
             _ => Err(anyhow!("new preview: can't preview this filekind",)),
         }
+    }
+
+    fn socket(file_info: &FileInfo) -> Self {
+        Self::Socket(Socket::new(file_info))
     }
 
     /// Creates a new, static window used when we display a preview in the second pane
@@ -244,6 +250,7 @@ impl Preview {
             Self::Diff(diff) => diff.len(),
             Self::Iso(iso) => iso.len(),
             Self::ColoredText(text) => text.len(),
+            Self::Socket(socket) => socket.len(),
         }
     }
 
@@ -261,6 +268,38 @@ fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
         .take(size_limit)
         .map(|line| line.unwrap_or_else(|_| "".to_owned()))
         .collect())
+}
+
+#[derive(Clone, Default)]
+pub struct Socket {
+    content: Vec<String>,
+    length: usize,
+}
+
+impl Socket {
+    /// New socket preview
+    /// See `man ss` for a description of the arguments.
+    fn new(fileinfo: &FileInfo) -> Self {
+        let content: Vec<String>;
+        if let Ok(output) = std::process::Command::new(SS).arg("-lpmepiT").output() {
+            let s = String::from_utf8(output.stdout).unwrap_or_default();
+            content = s
+                .lines()
+                .filter(|l| l.contains(&fileinfo.filename))
+                .map(|s| s.to_owned())
+                .collect();
+        } else {
+            content = vec![];
+        }
+        Self {
+            length: content.len(),
+            content,
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
 }
 
 /// Holds a preview of a text content.
@@ -1022,6 +1061,7 @@ impl_window!(Directory, ColoredTriplet);
 impl_window!(Diff, String);
 impl_window!(Iso, String);
 impl_window!(ColoredText, String);
+impl_window!(Socket, String);
 
 fn is_ext_compressed(ext: &str) -> bool {
     matches!(

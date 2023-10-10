@@ -174,3 +174,5 @@ pub const PANDOC: &str = "pandoc";
 pub const DIFF: &str = "diff";
 /// isoinfo. used to preview iso file content
 pub const ISOINFO: &str = "isoinfo";
+/// socket file explorer
+pub const SS: &str = "ss";

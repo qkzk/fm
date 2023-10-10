@@ -505,6 +505,9 @@ impl<'a> WinMain<'a> {
             Preview::Iso(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window)
             }
+            Preview::Socket(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
 
             Preview::Empty => (),
         }
