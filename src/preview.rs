@@ -50,7 +50,7 @@ pub enum Preview {
     ColoredText(ColoredText),
     Socket(Socket),
     BlockDevice(BlockDevice),
-    FIFO(FIFO),
+    FifoCharDevice(FifoCharDevice),
     #[default]
     Empty,
 }
@@ -133,7 +133,9 @@ impl Preview {
             },
             FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(file_info)),
             FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(file_info)),
-            FileKind::Fifo if is_program_in_path(LSOF) => Ok(Self::fifo(file_info)),
+            FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
+                Ok(Self::fifo_chardevice(file_info))
+            }
             _ => Err(anyhow!("new preview: can't preview this filekind",)),
         }
     }
@@ -146,8 +148,8 @@ impl Preview {
         Self::BlockDevice(BlockDevice::new(file_info))
     }
 
-    fn fifo(file_info: &FileInfo) -> Self {
-        Self::FIFO(FIFO::new(file_info))
+    fn fifo_chardevice(file_info: &FileInfo) -> Self {
+        Self::FifoCharDevice(FifoCharDevice::new(file_info))
     }
 
     /// Creates a new, static window used when we display a preview in the second pane
@@ -264,7 +266,7 @@ impl Preview {
             Self::ColoredText(text) => text.len(),
             Self::Socket(socket) => socket.len(),
             Self::BlockDevice(blockdevice) => blockdevice.len(),
-            Self::FIFO(fifo) => fifo.len(),
+            Self::FifoCharDevice(fifo) => fifo.len(),
         }
     }
 
@@ -353,14 +355,14 @@ impl BlockDevice {
     }
 }
 
-/// Preview a fifo file with lsof
+/// Preview a fifo or a chardevice file with lsof
 #[derive(Clone, Default)]
-pub struct FIFO {
+pub struct FifoCharDevice {
     content: Vec<String>,
     length: usize,
 }
 
-impl FIFO {
+impl FifoCharDevice {
     /// New FIFO preview
     /// See `man lsof` for a description of the arguments.
     fn new(fileinfo: &FileInfo) -> Self {
@@ -1146,7 +1148,7 @@ impl_window!(Iso, String);
 impl_window!(ColoredText, String);
 impl_window!(Socket, String);
 impl_window!(BlockDevice, String);
-impl_window!(FIFO, String);
+impl_window!(FifoCharDevice, String);
 
 fn is_ext_compressed(ext: &str) -> bool {
     matches!(
