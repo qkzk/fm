@@ -20,8 +20,8 @@ use users::UsersCache;
 
 use crate::config::Colors;
 use crate::constant_strings_paths::{
-    DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, MEDIAINFO, PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH,
-    UEBERZUG,
+    DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LSBLK, MEDIAINFO, PANDOC, RSVG_CONVERT, SS,
+    THUMBNAIL_PATH, UEBERZUG,
 };
 use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
@@ -49,6 +49,7 @@ pub enum Preview {
     Diff(Diff),
     ColoredText(ColoredText),
     Socket(Socket),
+    BlockDevice(BlockDevice),
     #[default]
     Empty,
 }
@@ -130,12 +131,17 @@ impl Preview {
                 },
             },
             FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(file_info)),
+            FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(file_info)),
             _ => Err(anyhow!("new preview: can't preview this filekind",)),
         }
     }
 
     fn socket(file_info: &FileInfo) -> Self {
         Self::Socket(Socket::new(file_info))
+    }
+
+    fn blockdevice(file_info: &FileInfo) -> Self {
+        Self::BlockDevice(BlockDevice::new(file_info))
     }
 
     /// Creates a new, static window used when we display a preview in the second pane
@@ -251,6 +257,7 @@ impl Preview {
             Self::Iso(iso) => iso.len(),
             Self::ColoredText(text) => text.len(),
             Self::Socket(socket) => socket.len(),
+            Self::BlockDevice(blockdevice) => blockdevice.len(),
         }
     }
 
@@ -270,6 +277,7 @@ fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
         .collect())
 }
 
+/// Preview a socket file with `ss -lpmepiT`
 #[derive(Clone, Default)]
 pub struct Socket {
     content: Vec<String>,
@@ -288,6 +296,42 @@ impl Socket {
                 .filter(|l| l.contains(&fileinfo.filename))
                 .map(|s| s.to_owned())
                 .collect();
+        } else {
+            content = vec![];
+        }
+        Self {
+            length: content.len(),
+            content,
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
+/// Preview a blockdevice file with lsblk
+#[derive(Clone, Default)]
+pub struct BlockDevice {
+    content: Vec<String>,
+    length: usize,
+}
+
+impl BlockDevice {
+    /// New socket preview
+    /// See `man ss` for a description of the arguments.
+    fn new(fileinfo: &FileInfo) -> Self {
+        let content: Vec<String>;
+        if let Ok(output) = std::process::Command::new(LSBLK)
+            .args([
+                "-lfo",
+                "FSTYPE,PATH,LABEL,UUID,FSVER,MOUNTPOINT,MODEL,SIZE,FSAVAIL,FSUSE%",
+                &fileinfo.path.display().to_string(),
+            ])
+            .output()
+        {
+            let s = String::from_utf8(output.stdout).unwrap_or_default();
+            content = s.lines().map(|s| s.to_owned()).collect();
         } else {
             content = vec![];
         }
@@ -1062,6 +1106,7 @@ impl_window!(Diff, String);
 impl_window!(Iso, String);
 impl_window!(ColoredText, String);
 impl_window!(Socket, String);
+impl_window!(BlockDevice, String);
 
 fn is_ext_compressed(ext: &str) -> bool {
     matches!(

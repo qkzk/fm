@@ -508,6 +508,9 @@ impl<'a> WinMain<'a> {
             Preview::Socket(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window)
             }
+            Preview::BlockDevice(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
 
             Preview::Empty => (),
         }

@@ -556,7 +556,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - svg preview requires rsvg-convert
 - [ ] preview for
   - [ ] char device
-  - [ ] block device (parsing lsblk ?)
+  - [x] block device using lsblk
   - [x] socket using ss
 - [x] size for char & block device [exa](https://github.com/ogham/exa/blob/fb05c421ae98e076989eb6e8b1bcf42c07c1d0fe/src/fs/file.rs#L331)
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
