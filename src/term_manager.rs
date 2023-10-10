@@ -248,12 +248,7 @@ impl<'a> WinMain<'a> {
             Mode::Tree => "".to_owned(),
             _ => {
                 if let Some(fileinfo) = self.tab.path_content.selected() {
-                    let name = &fileinfo.filename;
-                    if name == "." || name == ".." {
-                        "".to_owned()
-                    } else {
-                        format!("/{name} ")
-                    }
+                    fileinfo.filename_without_dot_dotdot()
                 } else {
                     "".to_owned()
                 }

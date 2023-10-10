@@ -262,6 +262,16 @@ impl FileInfo {
     pub fn is_dir(&self) -> bool {
         self.path.is_dir()
     }
+
+    /// Name of proper files, empty string for `.` and `..`.
+    pub fn filename_without_dot_dotdot(&self) -> String {
+        let name = &self.filename;
+        if name == "." || name == ".." {
+            "".to_owned()
+        } else {
+            format!("/{name} ")
+        }
+    }
 }
 
 /// Holds the information about file in the current directory.

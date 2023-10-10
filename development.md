@@ -554,7 +554,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - fonts preview otf not supported
   - fonts preview requires fontimage
   - svg preview requires rsvg-convert
-- [ ] preview for
+- [x] preview for special files :
   - [x] block device using lsblk
   - [x] socket using ss
   - [x] fifo & chardevice `lsof path`
