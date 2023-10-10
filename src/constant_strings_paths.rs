@@ -180,3 +180,5 @@ pub const SS: &str = "ss";
 pub const LSBLK: &str = "lsblk";
 /// cryptsetup is used to mount encrypted drives
 pub const CRYPTSETUP: &str = "cryptsetup";
+/// used to get information about fifo files
+pub const LSOF: &str = "lsof";

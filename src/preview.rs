@@ -20,7 +20,7 @@ use users::UsersCache;
 
 use crate::config::Colors;
 use crate::constant_strings_paths::{
-    DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LSBLK, MEDIAINFO, PANDOC, RSVG_CONVERT, SS,
+    DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LSBLK, LSOF, MEDIAINFO, PANDOC, RSVG_CONVERT, SS,
     THUMBNAIL_PATH, UEBERZUG,
 };
 use crate::content_window::ContentWindow;
@@ -50,6 +50,7 @@ pub enum Preview {
     ColoredText(ColoredText),
     Socket(Socket),
     BlockDevice(BlockDevice),
+    FIFO(FIFO),
     #[default]
     Empty,
 }
@@ -132,6 +133,7 @@ impl Preview {
             },
             FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(file_info)),
             FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(file_info)),
+            FileKind::Fifo if is_program_in_path(LSOF) => Ok(Self::fifo(file_info)),
             _ => Err(anyhow!("new preview: can't preview this filekind",)),
         }
     }
@@ -142,6 +144,10 @@ impl Preview {
 
     fn blockdevice(file_info: &FileInfo) -> Self {
         Self::BlockDevice(BlockDevice::new(file_info))
+    }
+
+    fn fifo(file_info: &FileInfo) -> Self {
+        Self::FIFO(FIFO::new(file_info))
     }
 
     /// Creates a new, static window used when we display a preview in the second pane
@@ -258,6 +264,7 @@ impl Preview {
             Self::ColoredText(text) => text.len(),
             Self::Socket(socket) => socket.len(),
             Self::BlockDevice(blockdevice) => blockdevice.len(),
+            Self::FIFO(fifo) => fifo.len(),
         }
     }
 
@@ -328,6 +335,38 @@ impl BlockDevice {
                 "FSTYPE,PATH,LABEL,UUID,FSVER,MOUNTPOINT,MODEL,SIZE,FSAVAIL,FSUSE%",
                 &fileinfo.path.display().to_string(),
             ])
+            .output()
+        {
+            let s = String::from_utf8(output.stdout).unwrap_or_default();
+            content = s.lines().map(|s| s.to_owned()).collect();
+        } else {
+            content = vec![];
+        }
+        Self {
+            length: content.len(),
+            content,
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
+/// Preview a fifo file with lsof
+#[derive(Clone, Default)]
+pub struct FIFO {
+    content: Vec<String>,
+    length: usize,
+}
+
+impl FIFO {
+    /// New FIFO preview
+    /// See `man lsof` for a description of the arguments.
+    fn new(fileinfo: &FileInfo) -> Self {
+        let content: Vec<String>;
+        if let Ok(output) = std::process::Command::new(LSOF)
+            .arg(&fileinfo.path.display().to_string())
             .output()
         {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
@@ -1107,6 +1146,7 @@ impl_window!(Iso, String);
 impl_window!(ColoredText, String);
 impl_window!(Socket, String);
 impl_window!(BlockDevice, String);
+impl_window!(FIFO, String);
 
 fn is_ext_compressed(ext: &str) -> bool {
     matches!(

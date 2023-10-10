@@ -511,6 +511,9 @@ impl<'a> WinMain<'a> {
             Preview::BlockDevice(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window)
             }
+            Preview::FIFO(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window)
+            }
 
             Preview::Empty => (),
         }
