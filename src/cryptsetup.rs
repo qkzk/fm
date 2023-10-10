@@ -4,6 +4,7 @@ use anyhow::{anyhow, Context, Result};
 use log::info;
 use sysinfo::{DiskExt, System, SystemExt};
 
+use crate::constant_strings_paths::{CRYPTSETUP, LSBLK};
 use crate::impl_selectable_content;
 use crate::mount_help::MountHelper;
 use crate::password::{
@@ -11,9 +12,6 @@ use crate::password::{
     reset_sudo_faillock, PasswordHolder, PasswordKind,
 };
 use crate::utils::{current_username, is_program_in_path};
-
-const LSBLK: &str = "lsblk";
-const CRYPTSETUP: &str = "cryptsetup";
 
 /// Possible actions on encrypted drives
 #[derive(Debug, Clone, Copy)]

@@ -176,3 +176,7 @@ pub const DIFF: &str = "diff";
 pub const ISOINFO: &str = "isoinfo";
 /// socket file explorer
 pub const SS: &str = "ss";
+/// lsblk is used to get mountpoints, info about encrypted drives
+pub const LSBLK: &str = "lsblk";
+/// cryptsetup is used to mount encrypted drives
+pub const CRYPTSETUP: &str = "cryptsetup";
