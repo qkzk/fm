@@ -432,7 +432,7 @@ impl EventAction {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn shortcut(tab: &mut Tab) -> Result<()> {
-        std::env::set_current_dir(tab.current_path())?;
+        std::env::set_current_dir(tab.current_directory_path())?;
         tab.shortcut.update_git_root();
         tab.set_mode(Mode::Navigate(Navigate::Shortcut));
         Ok(())
@@ -1561,7 +1561,7 @@ impl LeaveMode {
 
         let (username, hostname, remote_path) = (strings[0], strings[1], strings[2]);
         let current_path: &str = tab
-            .current_path()
+            .current_directory_path()
             .to_str()
             .context("couldn't parse the path")?;
         let first_arg = &format!("{username}@{hostname}:{remote_path}");

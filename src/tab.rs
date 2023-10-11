@@ -330,7 +330,7 @@ impl Tab {
     ///     if the selected node is a directory, that's it.
     ///     else, it is the parent of the selected node.
     /// In other modes, it's the current path of pathcontent.
-    pub fn current_path(&mut self) -> &path::Path {
+    pub fn current_directory_path(&mut self) -> &path::Path {
         match self.mode {
             Mode::Tree => {
                 let path = &self.directory.tree.current_node.fileinfo.path;
