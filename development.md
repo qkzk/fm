@@ -559,6 +559,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] socket using ss
   - [x] fifo & chardevice `lsof path`
 - [x] size for char & block device [exa](https://github.com/ogham/exa/blob/fb05c421ae98e076989eb6e8b1bcf42c07c1d0fe/src/fs/file.rs#L331)
+- [x] use a struct for ColumnSize
+- [x] FIX: goto mode from tree node with a selected file crashes the application
+- [x] Not accessible file in tree mode crashes the application
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 

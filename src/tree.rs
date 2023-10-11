@@ -287,8 +287,8 @@ impl Tree {
                     display_hidden,
                     position,
                 )
-                .unwrap()
             })
+            .filter_map(|r| r.ok())
             .collect();
 
         Ok(leaves)

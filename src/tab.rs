@@ -326,11 +326,22 @@ impl Tab {
     }
 
     /// Returns the current path.
-    /// It Tree mode, it's the path of the selected node.
-    /// Else, it's the current path of pathcontent.
+    /// In tree mode :
+    ///     if the selected node is a directory, that's it.
+    ///     else, it is the parent of the selected node.
+    /// In other modes, it's the current path of pathcontent.
     pub fn current_path(&mut self) -> &path::Path {
         match self.mode {
-            Mode::Tree => &self.directory.tree.current_node.fileinfo.path,
+            Mode::Tree => {
+                let path = &self.directory.tree.current_node.fileinfo.path;
+                if path.is_dir() {
+                    return path;
+                }
+                let Some(parent) = path.parent() else {
+                    return path::Path::new("/");
+                };
+                parent
+            }
             _ => &self.path_content.path,
         }
     }
