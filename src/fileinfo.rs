@@ -89,6 +89,41 @@ impl FileKind<Valid> {
     }
 }
 
+/// Different kind of display for the size column.
+/// ls -lh display a human readable size for normal files,
+/// nothing should be displayed for a directory,
+/// Major & Minor driver versions are used for CharDevice & BlockDevice
+#[derive(Clone, Debug)]
+pub enum SizeColumn {
+    /// Used for normal files. It's the size in bytes.
+    Size(u64),
+    /// Used for directories, nothing is displayed
+    None,
+    /// Use for CharDevice and BlockDevice.
+    /// It's the major & minor driver versions.
+    MajorMinor((u8, u8)),
+}
+
+impl std::fmt::Display for SizeColumn {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Size(bytes) => write!(f, "   {hs}", hs = human_size(*bytes)),
+            Self::None => write!(f, "     - "),
+            Self::MajorMinor((major, minor)) => write!(f, "{major:>3},{minor:<3}"),
+        }
+    }
+}
+
+impl SizeColumn {
+    fn new(size: u64, metadata: &Metadata, file_kind: &FileKind<Valid>) -> Self {
+        match file_kind {
+            FileKind::Directory => Self::None,
+            FileKind::CharDevice | FileKind::BlockDevice => Self::MajorMinor(major_minor(metadata)),
+            _ => Self::Size(size),
+        }
+    }
+}
+
 /// Infos about a file
 /// We read and keep tracks every displayable information about
 /// a file.
@@ -100,7 +135,7 @@ pub struct FileInfo {
     pub filename: String,
     /// File size as a `String`, already human formated.
     /// For char devices and block devices we display major & minor like ls.
-    pub size_column: String,
+    pub size_column: SizeColumn,
     /// True size of a file, not formated
     pub true_size: u64,
     /// Owner name of the file.
@@ -174,7 +209,7 @@ impl FileInfo {
 
         let file_kind = FileKind::new(&metadata, &path);
 
-        let size_column = Self::size_column(true_size, &metadata, &file_kind);
+        let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
         let kind_format = filekind_and_filename(&filename, &file_kind);
 
@@ -193,13 +228,6 @@ impl FileInfo {
         })
     }
 
-    fn size_column(true_size: u64, metadata: &Metadata, file_kind: &FileKind<Valid>) -> String {
-        match file_kind {
-            FileKind::Directory => "     - ".to_owned(),
-            FileKind::CharDevice | FileKind::BlockDevice => major_minor(metadata),
-            _ => format!("  {hs} ", hs = human_size(true_size)),
-        }
-    }
     /// Format the file line.
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
@@ -634,11 +662,13 @@ pub fn human_size(bytes: u64) -> String {
     )
 }
 
-fn major_minor(metadata: &Metadata) -> String {
+/// Extract the major & minor driver version of a special file.
+/// It's used for CharDevice & BlockDevice
+fn major_minor(metadata: &Metadata) -> (u8, u8) {
     let device_ids = metadata.rdev().to_be_bytes();
     let major = device_ids[6];
     let minor = device_ids[7];
-    format!("{major:>3},{minor:<3}")
+    (major, minor)
 }
 
 /// Extract the optional extension from a filename.
