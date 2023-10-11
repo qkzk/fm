@@ -19,7 +19,7 @@ use crate::bulkrename::Bulk;
 use crate::cli_info::CliInfo;
 use crate::compress::Compresser;
 use crate::config::{Colors, Settings};
-use crate::constant_strings_paths::TUIS_PATH;
+use crate::constant_strings_paths::{NVIM, SS, TUIS_PATH};
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::flagged::Flagged;
@@ -41,7 +41,7 @@ use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::trash::Trash;
-use crate::utils::{current_username, disk_space, filename_from_path};
+use crate::utils::{current_username, disk_space, filename_from_path, is_program_in_path};
 
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.
@@ -719,10 +719,30 @@ impl Status {
         if !self.nvim_server.is_empty() {
             return;
         }
-        let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") else {
+        if let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") {
+            self.nvim_server = nvim_listen_address;
             return;
         };
-        self.nvim_server = nvim_listen_address;
+        if let Ok(nvim_listen_address) = Self::parse_nvim_address_from_ss_output() {
+            self.nvim_server = nvim_listen_address;
+        }
+    }
+
+    fn parse_nvim_address_from_ss_output() -> Result<String> {
+        if !is_program_in_path(SS) {
+            return Err(anyhow!("{SS} isn't installed"));
+        }
+        if let Ok(output) = std::process::Command::new(SS).arg("-l").output() {
+            let output = String::from_utf8(output.stdout).unwrap_or_default();
+            let content: String = output
+                .split(&['\n', '\t', ' '])
+                .filter(|w| w.contains(NVIM))
+                .collect();
+            if !content.is_empty() {
+                return Ok(content);
+            }
+        }
+        Err(anyhow!("Couldn't get nvim listen address from `ss` output"))
     }
 
     /// Execute a command requiring a confirmation (Delete, Move or Copy).

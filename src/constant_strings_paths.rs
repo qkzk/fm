@@ -182,3 +182,5 @@ pub const LSBLK: &str = "lsblk";
 pub const CRYPTSETUP: &str = "cryptsetup";
 /// used to get information about fifo files
 pub const LSOF: &str = "lsof";
+/// neovim executable
+pub const NVIM: &str = "nvim";
