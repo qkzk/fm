@@ -492,8 +492,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: exiting preview doesn't refresh
 - [x] Mode should know if a refresh is required after leaving them.
 
-## Current dev
-
 ### Version 0.1.22
 
 - [x] FIX: copying 0 bytes crash progress bar thread
@@ -563,6 +561,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: goto mode from tree node with a selected file crashes the application
 - [x] Not accessible file in tree mode crashes the application
 - [x] Look for nvim listen address in `ss -l` output
+
+## Current dev
+
+### Version 0.1.23
+
+- [ ] preview every archive
 
 ## TODO
 
