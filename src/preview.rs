@@ -24,7 +24,7 @@ use crate::constant_strings_paths::{
     THUMBNAIL_PATH, UEBERZUG,
 };
 use crate::content_window::ContentWindow;
-use crate::decompress::list_files_zip;
+use crate::decompress::{list_files_tar, list_files_zip};
 use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
@@ -41,7 +41,7 @@ pub enum Preview {
     Text(TextContent),
     Binary(BinaryContent),
     Pdf(PdfContent),
-    Archive(ZipContent),
+    Archive(ArchiveContent),
     Ueberzug(Ueberzug),
     Media(MediaContent),
     Directory(Directory),
@@ -87,7 +87,9 @@ impl Preview {
                 Some(2),
             )?)),
             FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
-                e if is_ext_compressed(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
+                e if is_ext_compressed(e) => {
+                    Ok(Self::Archive(ArchiveContent::new(&file_info.path, e)?))
+                }
                 e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
                 e if is_ext_image(e) && is_program_in_path(UEBERZUG) => {
                     Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?))
@@ -665,17 +667,24 @@ impl PdfContent {
     }
 }
 
-/// Holds a list of file of an archive as returned by `ZipArchive::file_names`.
+/// Holds a list of file of an archive as returned by
+/// `ZipArchive::file_names` or from  a `tar tvf` command.
 /// A generic error message prevent it from returning an error.
 #[derive(Clone)]
-pub struct ZipContent {
+pub struct ArchiveContent {
     length: usize,
     content: Vec<String>,
 }
 
-impl ZipContent {
-    fn new(path: &Path) -> Result<Self> {
-        let content = list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]);
+impl ArchiveContent {
+    fn new(path: &Path, ext: &str) -> Result<Self> {
+        let content = match ext {
+            "zip" => list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]),
+            "zst" | "gz" | "bz" | "xz" | "gzip" | "bzip2" => {
+                list_files_tar(path).unwrap_or(vec!["Invalid Tar content".to_owned()])
+            }
+            _ => vec![format!("Unsupported format: {ext}")],
+        };
 
         Ok(Self {
             length: content.len(),
@@ -1140,7 +1149,7 @@ impl_window!(HLContent, VecSyntaxedString);
 impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
 impl_window!(PdfContent, String);
-impl_window!(ZipContent, String);
+impl_window!(ArchiveContent, String);
 impl_window!(MediaContent, String);
 impl_window!(Directory, ColoredTriplet);
 impl_window!(Diff, String);
@@ -1153,7 +1162,18 @@ impl_window!(FifoCharDevice, String);
 fn is_ext_compressed(ext: &str) -> bool {
     matches!(
         ext,
-        "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
+        "zip"
+            | "gzip"
+            | "bzip2"
+            | "xz"
+            | "lzip"
+            | "lzma"
+            | "tar"
+            | "mtree"
+            | "raw"
+            | "7z"
+            | "gz"
+            | "zst"
     )
 }
 

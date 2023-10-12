@@ -4,6 +4,8 @@ use std::fs::File;
 use std::path::Path;
 use tar::Archive;
 
+use crate::constant_strings_paths::TAR;
+
 /// Decompress a zipped compressed file into its parent directory.
 pub fn decompress_zip(source: &Path) -> Result<()> {
     let file = File::open(source)?;
@@ -52,4 +54,22 @@ where
     let file = File::open(source)?;
     let zip = zip::ZipArchive::new(file)?;
     Ok(zip.file_names().map(|f| f.to_owned()).collect())
+}
+
+/// List files contained in a tar.something file.
+/// Will return an error if `tar tvf source` can't list the content.
+pub fn list_files_tar<P>(source: P) -> Result<Vec<String>>
+where
+    P: AsRef<Path>,
+{
+    if let Ok(output) = std::process::Command::new(TAR)
+        .arg("tvf")
+        .arg(source.as_ref().display().to_string())
+        .output()
+    {
+        let output = String::from_utf8(output.stdout).unwrap_or_default();
+        let content = output.lines().map(|l| l.to_owned()).collect();
+        return Ok(content);
+    }
+    Err(anyhow::anyhow!("Tar couldn't read the file content"))
 }

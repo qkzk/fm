@@ -184,3 +184,5 @@ pub const CRYPTSETUP: &str = "cryptsetup";
 pub const LSOF: &str = "lsof";
 /// neovim executable
 pub const NVIM: &str = "nvim";
+/// tar executable
+pub const TAR: &str = "tar";
