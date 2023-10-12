@@ -570,16 +570,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] remote control
 
-  - [x] filepicker
-        requires the nvim-remote rust crate installed
   - [ ] listen to stdin (rcv etc.)
     - [ ] follow change directory
     - [ ] when called from a file buffer in nvim, open with this file selected
   - [ ] nvim plugin - set a serverstart with a listenaddress, send it to fm
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
-  - [ ] $NVIM_LISTEN_ADDRESS isn't always set on nbim startup ; can be set from nvim before running... then sent to fm with some args
-  - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
 
 - [ ] display / event separation. use async and message passing between coroutines
 
@@ -590,12 +586,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
 - [ ] pushbullet ?
 
-  - [ ] update the animation
-  - [ ] exec multiple flagged files
-  - [ ] shell menu
+- [ ] update the animation
+- [ ] exec multiple flagged files
+- [ ] shell menu
 
-    - [ ] allow non tui like wttr, diff, bat, tail -n etc.
-    - [ ] more options like "use flagged files" for diff
+  - [ ] allow non tui like wttr, diff, bat, tail -n etc.
+  - [ ] more options like "use flagged files" for diff
 
 - [ ] build option to force reset of config file, warn the user at first start
 - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
