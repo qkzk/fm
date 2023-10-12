@@ -10,6 +10,7 @@ use rand::{thread_rng, Rng};
 
 use crate::constant_strings_paths::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO};
 use crate::impl_selectable_content;
+use crate::log::write_log_line;
 use crate::utils::read_lines;
 
 static TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
@@ -87,7 +88,9 @@ DeletionDate={}
             let dest_name = Self::remove_extension(dest_name.to_str().unwrap().to_owned())?;
             if let Ok(lines) = read_lines(trash_info_file) {
                 for (index, line_result) in lines.enumerate() {
-                    let Ok(line) = line_result.as_ref() else { continue };
+                    let Ok(line) = line_result.as_ref() else {
+                        continue;
+                    };
                     if line.starts_with("[Trash Info]") {
                         if index == 0 {
                             found_trash_info_line = true;
@@ -254,7 +257,8 @@ impl Trash {
         std::fs::rename(origin, &trashfile_filename)?;
 
         info!("moved to trash {:?} -> {:?}", origin, dest_file_name);
-        info!(target:"special", "moved to trash {:?} -> {:?}", origin, dest_file_name);
+        let log_line = format!("moved to trash {:?} -> {:?}", origin, dest_file_name);
+        write_log_line(log_line);
         Ok(())
     }
 
@@ -271,10 +275,11 @@ impl Trash {
 
         self.content = vec![];
 
-        info!(target: "special",
+        let log_line = format!(
             "Emptied the trash: {} files permanently deleted",
             number_of_elements
         );
+        write_log_line(log_line);
         info!(
             "Emptied the trash: {} files permanently deleted",
             number_of_elements
@@ -331,7 +336,8 @@ impl Trash {
             std::fs::create_dir_all(&parent)?
         }
         std::fs::rename(trashed_file_content, &origin)?;
-        info!(target: "special", "Trash restored: {origin}", origin=origin.display());
+        let log_line = format!("Trash restored: {origin}", origin = origin.display());
+        write_log_line(log_line);
         Ok(())
     }
 
@@ -347,11 +353,11 @@ impl Trash {
         if self.index > 0 {
             self.index -= 1
         }
-        info!(
-            target: "special",
+        let log_line = format!(
             "Trash removed {trashed_file_content}",
             trashed_file_content = trashed_file_content.display()
         );
+        write_log_line(log_line);
         Ok(())
     }
 }

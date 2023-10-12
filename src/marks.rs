@@ -7,6 +7,7 @@ use log::info;
 
 use crate::constant_strings_paths::MARKS_FILEPATH;
 use crate::impl_selectable_content;
+use crate::log::write_log_line;
 use crate::utils::read_lines;
 
 /// Holds the marks created by the user.
@@ -97,9 +98,11 @@ impl Marks {
 
     /// Store a new mark in the config file.
     /// If an update is done, the marks are saved again.
-    pub fn new_mark(&mut self, ch: char, path: PathBuf) -> Result<()> {
+    pub fn new_mark(&mut self, ch: char, path: &Path) -> Result<()> {
         if ch == ':' {
-            return Err(anyhow!("new_mark ':' can't be used as a mark"));
+            let log_line = "new mark - ':' can't be used as a mark";
+            write_log_line(log_line.to_owned());
+            return Err(anyhow!(log_line));
         }
         if self.used_chars.contains(&ch) {
             let mut found_index = None;
@@ -109,11 +112,16 @@ impl Marks {
                     break;
                 }
             }
-            let Some(found_index) = found_index else {return Ok(())};
-            self.content[found_index] = (ch, path);
+            let Some(found_index) = found_index else {
+                return Ok(());
+            };
+            self.content[found_index] = (ch, path.to_path_buf());
         } else {
-            self.content.push((ch, path))
+            self.content.push((ch, path.to_path_buf()))
         }
+
+        let log_line = format!("Saved mark {ch} -> {p}", p = path.display());
+        write_log_line(log_line);
 
         self.save_marks()
     }
@@ -143,7 +151,7 @@ impl Marks {
     }
 
     fn format_mark(ch: &char, path: &Path) -> String {
-        format!("{}    {}", ch, path.to_string_lossy())
+        format!("{ch}    {path}", path = path.display())
     }
 }
 

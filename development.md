@@ -453,8 +453,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] mocp go to song: `mocp -Q %file` with alt+enter (lack of a better keybinding)
 - [x] display openers in help
 
-## Current dev
-
 ### Version 0.1.21
 
 - [x] more shortcuts like `nnn` : `\` root, @: start
@@ -487,25 +485,97 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] event: linked to an Action, same name
   - [x] exec: linked to an executable mode, same name
   - [x] every helper should be moved outside the struct
-- [x] FIX: impossible to compile on MacOs since to `sysinfo::Disk` only implement `PartialEq` on linux. 
-    Can't test MacOs compilation since I don't own a mac...
+- [x] FIX: impossible to compile on MacOs since to `sysinfo::Disk` only implement `PartialEq` on linux.
+      Can't test MacOs compilation since I don't own a mac...
 - [x] FIX: incompatible config files between versions crashes the app.
 - [x] FIX: Help string susbtitution aren't aligned properly
+- [x] FIX: exiting preview doesn't refresh
+- [x] Mode should know if a refresh is required after leaving them.
+
+## Current dev
+
+### Version 0.1.22
+
+- [x] FIX: copying 0 bytes crash progress bar thread
+- [x] FIX: refresh users (from tab) reset the selection in pathcontent.
+- [x] FIX: when switching from single to dual pane, sort and position are lost
+- [x] FIX: tree mode: move down from bottom crashes
+- [x] FIX: inxi --full or inxi -F hangs. Use inxi -v 2 instead
+- [x] allow shell expansion (~ -> /home/user) in goto mode
+- [x] FIX: mode CHMOD reset the file index
+- [x] better display of selected tab. Reverse the colors in the first line
+- [x] display a message when trash is empty in trash explore mode (alt-o)
+- [x] display last executed action (use a string as message)
+- [x] FIX: vertical resize to a smaller window : files expand to the last line and message are overwritten
+- [x] FIX: open a secondary window and messages are overwritten by files. Don't display messages...
+- [x] FIX: clippy term_manager::windmain has too many arguments. Create a struct holding params for winmain
+- [x] NeedConfirmation modes are responsible for their confirmation message
+- [x] Use Alt+r to remote mount with sshfs.
+  - request `username hostname remotepath` in one stroke,
+  - execute `sshfs remote_user@hostname:remote_path current_path` which will mount the remote path in current path
+- [x] FIX: search keybindings don't work. Need to trim a string.
+- [x] FIX: archive depends on CWD and will crash if it's not set properly (ie. change tab, move, change tab, compress)
+- [x] use memory and not disk to read last line of logs.
+- [x] mocp clear playlist with ctrl+x
+- [x] FIX: MOCP print error message on screen
+- [x] cryptdevice requires lsblk & cryptdevice. Display a message if not installed
+- [x] mocp must be installed to run relatives commands
+- [x] nitrogen must be installed to set a wallpaper
+- [x] mediainfo must be installed to preview a media file with it
+- [x] ueberzug must be installed to preview images & font files with it
+- [x] pandoc must be installed to preview doc (.doc, .odb)
+- [x] jupyter must be installed to preview .ipynb notebooks.
+- [x] isoinfo must be installed to preview .iso files
+- [x] diff must be installed to preview a diff of 2 files
+- [x] git muse be installed to display a git status string
+- [x] inform user if file already exits when creating / renaming
+- [x] factorise new file & new dir
+- [x] metadata in tree mode. Toggle like display full with alt-e
+- [x] FIX: pagedown may select a file outside window without scrolling to it
+- [x] FIX: multiple scrolling bugs. It should be smooth in every context
+- [x] FIX: after scrolling left click doesn't select the correct file
+- [x] FIX: page down when few files in current path screw the display
+- [x] remove doublons from shortcut (Ctrl+g) "goto mode"
+- [x] FIX: scrolling isn't smooth anymore
+- [x] InputSimple is responsible of its help lines
+- [x] Preview epub. Requires pandoc.
+- [x] FIX: symlink aren't displayed at all.
+  - Improve broken symlink detection and display
+  - Use `symlink_metadata` to avoid following symlink in tree mode, which may cause recursive filetree
+  - Don't display symlink destination in tree mode since it clutters the display
+  - Use a different configurable color for broken symlink
+- [x] display selected file in first line
+- [x] FIX: sort by size use wrong value and order badly 2B > 1M
+- [x] refactor copy move. CopyOrMove is responsible for its setup.
+- [x] refactor main. Split setup, exit and main loop.
+- [x] refactor main. Use a struct responsible for setup, update, display and quit.
+- [x] preview fonts, svg & video thumbnail
+  - video thumbnail requires ffmpeg
+  - fonts preview otf not supported
+  - fonts preview requires fontimage
+  - svg preview requires rsvg-convert
+- [x] preview for special files :
+  - [x] block device using lsblk
+  - [x] socket using ss
+  - [x] fifo & chardevice `lsof path`
+- [x] size for char & block device [exa](https://github.com/ogham/exa/blob/fb05c421ae98e076989eb6e8b1bcf42c07c1d0fe/src/fs/file.rs#L331)
+- [x] use a struct for ColumnSize
+- [x] FIX: goto mode from tree node with a selected file crashes the application
+- [x] Not accessible file in tree mode crashes the application
+- [x] Look for nvim listen address in `ss -l` output
 
 ## TODO
 
+- [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
+      Scroll to second element if needed
 - [ ] remote control
 
-  - [x] filepicker
-        requires the nvim-remote rust crate installed
   - [ ] listen to stdin (rcv etc.)
     - [ ] follow change directory
     - [ ] when called from a file buffer in nvim, open with this file selected
   - [ ] nvim plugin - set a serverstart with a listenaddress, send it to fm
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
-  - [ ] $NVIM_LISTEN_ADDRESS isn't always set on nbim startup ; can be set from nvim before running... then sent to fm with some args
-  - [ ] args read correctly, use NVIM_LISTEN_ADDRESS if args is sent
 
 - [ ] display / event separation. use async and message passing between coroutines
 
@@ -516,12 +586,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
 - [ ] pushbullet ?
 
-  - [ ] update the animation
-  - [ ] exec multiple flagged files
-  - [ ] shell menu
+- [ ] update the animation
+- [ ] exec multiple flagged files
+- [ ] shell menu
 
-    - [ ] allow non tui like wttr, diff, bat, tail -n etc.
-    - [ ] more options like "use flagged files" for diff
+  - [ ] allow non tui like wttr, diff, bat, tail -n etc.
+  - [ ] more options like "use flagged files" for diff
 
 - [ ] build option to force reset of config file, warn the user at first start
 - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
@@ -533,12 +603,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] allow mounting some other devices
   - [ ] list non mounted devices, list all mount points
   - [ ] act on them
-
-- [ ] sub window / menu for completion / selection.
-
-  1. enter selectable mode
-  2. chose an action
-  3. confirm
 
 - [ ] Version 0.1.50 : safety & memory usage
 
@@ -566,7 +630,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## BUGS
 
-- [ ] when opening a file with rifle opener into nvim and closing, the terminal hangs
+- [ ] creates $ENV{HOME} folders everywhere -
+      a new version of log4rs seems to solve this, it's not deplayed to crates.io yet
+- [ ] tree mode : index are offset by one
 
 ## Won't do
 

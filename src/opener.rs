@@ -16,6 +16,7 @@ use crate::constant_strings_paths::{
 };
 use crate::decompress::{decompress_gz, decompress_xz, decompress_zip};
 use crate::fileinfo::extract_extension;
+use crate::log::write_log_line;
 
 fn find_it<P>(exe_name: P) -> Option<PathBuf>
 where
@@ -392,7 +393,9 @@ pub fn execute_in_child<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     exe: S,
     args: &[&str],
 ) -> Result<std::process::Child> {
-    info!("execute_in_child. executable: {exe:?}, arguments: {args:?}",);
+    info!("execute_in_child. executable: {exe:?}, arguments: {args:?}");
+    let log_line = format!("Execute: {exe:?}, arguments: {args:?}");
+    write_log_line(log_line);
     Ok(Command::new(exe).args(args).spawn()?)
 }
 
@@ -452,7 +455,7 @@ pub fn execute_and_capture_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
         Ok(String::from_utf8(output.stdout)?)
     } else {
         Err(anyhow!(
-            "execute_and_capture_output: command didn't finished correctly",
+            "execute_and_capture_output: command didn't finish properly",
         ))
     }
 }

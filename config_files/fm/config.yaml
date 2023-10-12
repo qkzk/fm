@@ -10,7 +10,7 @@ colors:
   socket: cyan
   symlink: magenta
 keys: 
-  'esc': ModeNormal
+  'esc': ResetMode
   'up': MoveUp
   'down': MoveDown
   'left': MoveLeft
@@ -65,7 +65,7 @@ keys:
   'ctrl-f': FuzzyFind
   'ctrl-g': Shortcut
   'ctrl-p': CopyFilepath
-  'ctrl-q': ModeNormal
+  'ctrl-q': ResetMode
   'ctrl-r': RefreshView
   'alt-d': DragNDrop
   'alt-e': ToggleDisplayFull

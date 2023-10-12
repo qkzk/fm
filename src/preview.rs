@@ -19,7 +19,10 @@ use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
 use crate::config::Colors;
-use crate::constant_strings_paths::THUMBNAIL_PATH;
+use crate::constant_strings_paths::{
+    DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LSBLK, LSOF, MEDIAINFO, PANDOC, RSVG_CONVERT, SS,
+    THUMBNAIL_PATH, UEBERZUG,
+};
 use crate::content_window::ContentWindow;
 use crate::decompress::list_files_zip;
 use crate::fileinfo::{FileInfo, FileKind};
@@ -27,7 +30,7 @@ use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
 use crate::status::Status;
 use crate::tree::{ColoredString, Tree};
-use crate::utils::filename_from_path;
+use crate::utils::{filename_from_path, is_program_in_path};
 
 /// Different kind of preview used to display some informaitons
 /// About the file.
@@ -45,6 +48,9 @@ pub enum Preview {
     Iso(Iso),
     Diff(Diff),
     ColoredText(ColoredText),
+    Socket(Socket),
+    BlockDevice(BlockDevice),
+    FifoCharDevice(FifoCharDevice),
     #[default]
     Empty,
 }
@@ -53,6 +59,7 @@ pub enum Preview {
 pub enum TextKind {
     HELP,
     LOG,
+    EPUB,
     #[default]
     TEXTFILE,
 }
@@ -82,30 +89,67 @@ impl Preview {
             FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
                 e if is_ext_compressed(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
                 e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
-                e if is_ext_image(e) => Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?)),
-                e if is_ext_audio(e) => Ok(Self::Media(MediaContent::new(&file_info.path)?)),
-                e if is_ext_video(e) => {
+                e if is_ext_image(e) && is_program_in_path(UEBERZUG) => {
+                    Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?))
+                }
+                e if is_ext_audio(e) && is_program_in_path(MEDIAINFO) => {
+                    Ok(Self::Media(MediaContent::new(&file_info.path)?))
+                }
+                e if is_ext_video(e)
+                    && is_program_in_path(UEBERZUG)
+                    && is_program_in_path(FFMPEG) =>
+                {
                     Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
                 }
-                e if is_ext_font(e) => {
+                e if is_ext_font(e)
+                    && is_program_in_path(UEBERZUG)
+                    && is_program_in_path(FONTIMAGE) =>
+                {
                     Ok(Self::Ueberzug(Ueberzug::font_thumbnail(&file_info.path)?))
                 }
-                e if is_ext_svg(e) => Ok(Self::Ueberzug(Ueberzug::svg_thumbnail(&file_info.path)?)),
-                e if is_ext_iso(e) => Ok(Self::Iso(Iso::new(&file_info.path)?)),
-                e if is_ext_notebook(e) => {
+                e if is_ext_svg(e)
+                    && is_program_in_path(UEBERZUG)
+                    && is_program_in_path(RSVG_CONVERT) =>
+                {
+                    Ok(Self::Ueberzug(Ueberzug::svg_thumbnail(&file_info.path)?))
+                }
+                e if is_ext_iso(e) && is_program_in_path(ISOINFO) => {
+                    Ok(Self::Iso(Iso::new(&file_info.path)?))
+                }
+                e if is_ext_notebook(e) && is_program_in_path(JUPYTER) => {
                     Ok(Self::notebook(&file_info.path)
                         .context("Preview: Couldn't parse notebook")?)
                 }
-                e if is_ext_doc(e) => {
+                e if is_ext_doc(e) && is_program_in_path(PANDOC) => {
                     Ok(Self::doc(&file_info.path).context("Preview: Couldn't parse doc")?)
+                }
+                e if is_ext_epub(e) && is_program_in_path(PANDOC) => {
+                    Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
                 }
                 e => match Self::preview_syntaxed(e, &file_info.path) {
                     Some(syntaxed_preview) => Ok(syntaxed_preview),
                     None => Self::preview_text_or_binary(file_info),
                 },
             },
+            FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(file_info)),
+            FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(file_info)),
+            FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
+                Ok(Self::fifo_chardevice(file_info))
+            }
             _ => Err(anyhow!("new preview: can't preview this filekind",)),
         }
+    }
+
+    fn socket(file_info: &FileInfo) -> Self {
+        Self::Socket(Socket::new(file_info))
+    }
+
+    fn blockdevice(file_info: &FileInfo) -> Self {
+        Self::BlockDevice(BlockDevice::new(file_info))
+    }
+
+    fn fifo_chardevice(file_info: &FileInfo) -> Self {
+        Self::FifoCharDevice(FifoCharDevice::new(file_info))
     }
 
     /// Creates a new, static window used when we display a preview in the second pane
@@ -129,26 +173,28 @@ impl Preview {
 
     fn notebook(path: &Path) -> Option<Self> {
         let path_str = path.to_str()?;
+        // nbconvert is bundled with jupyter, no need to check again
         let output = execute_and_capture_output_without_check(
-            "jupyter",
+            JUPYTER,
             &["nbconvert", "--to", "markdown", path_str, "--stdout"],
         )
         .ok()?;
-        let ss = SyntaxSet::load_defaults_nonewlines();
-        ss.find_syntax_by_extension("md").map(|syntax| {
-            Self::Syntaxed(HLContent::from_str(&output, ss.clone(), syntax).unwrap_or_default())
-        })
+        Self::syntaxed_from_str(output, "md")
     }
 
     fn doc(path: &Path) -> Option<Self> {
         let path_str = path.to_str()?;
         let output = execute_and_capture_output_without_check(
-            "pandoc",
+            PANDOC,
             &["-s", "-t", "markdown", "--", path_str],
         )
         .ok()?;
+        Self::syntaxed_from_str(output, "md")
+    }
+
+    fn syntaxed_from_str(output: String, ext: &str) -> Option<Self> {
         let ss = SyntaxSet::load_defaults_nonewlines();
-        ss.find_syntax_by_extension("md").map(|syntax| {
+        ss.find_syntax_by_extension(ext).map(|syntax| {
             Self::Syntaxed(HLContent::from_str(&output, ss.clone(), syntax).unwrap_or_default())
         })
     }
@@ -164,7 +210,7 @@ impl Preview {
     }
 
     fn is_binary(file_info: &FileInfo, file: &mut std::fs::File, buffer: &mut [u8]) -> bool {
-        file_info.size().unwrap_or_default() >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
+        file_info.true_size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
             && file.read_exact(buffer).is_ok()
             && inspect(buffer) == ContentType::BINARY
     }
@@ -191,6 +237,12 @@ impl Preview {
         Self::ColoredText(ColoredText::new(output))
     }
 
+    pub fn epub(path: &Path) -> Result<Self> {
+        Ok(Self::Text(
+            TextContent::epub(path).context("Couldn't read epub")?,
+        ))
+    }
+
     /// Empty preview, holding nothing.
     pub fn new_empty() -> Self {
         Self::Empty
@@ -206,18 +258,132 @@ impl Preview {
             Self::Binary(binary) => binary.len(),
             Self::Pdf(pdf) => pdf.len(),
             Self::Archive(zip) => zip.len(),
-            Self::Ueberzug(_img) => 0,
+            Self::Ueberzug(_) => 0,
             Self::Media(media) => media.len(),
             Self::Directory(directory) => directory.len(),
             Self::Diff(diff) => diff.len(),
             Self::Iso(iso) => iso.len(),
             Self::ColoredText(text) => text.len(),
+            Self::Socket(socket) => socket.len(),
+            Self::BlockDevice(blockdevice) => blockdevice.len(),
+            Self::FifoCharDevice(fifo) => fifo.len(),
         }
     }
 
     /// True if nothing is currently previewed.
     pub fn is_empty(&self) -> bool {
         matches!(*self, Self::Empty)
+    }
+}
+
+/// Read a number of lines from a text file. Returns a vector of strings.
+fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
+    let reader = std::io::BufReader::new(std::fs::File::open(path)?);
+    Ok(reader
+        .lines()
+        .take(size_limit)
+        .map(|line| line.unwrap_or_else(|_| "".to_owned()))
+        .collect())
+}
+
+/// Preview a socket file with `ss -lpmepiT`
+#[derive(Clone, Default)]
+pub struct Socket {
+    content: Vec<String>,
+    length: usize,
+}
+
+impl Socket {
+    /// New socket preview
+    /// See `man ss` for a description of the arguments.
+    fn new(fileinfo: &FileInfo) -> Self {
+        let content: Vec<String>;
+        if let Ok(output) = std::process::Command::new(SS).arg("-lpmepiT").output() {
+            let s = String::from_utf8(output.stdout).unwrap_or_default();
+            content = s
+                .lines()
+                .filter(|l| l.contains(&fileinfo.filename))
+                .map(|s| s.to_owned())
+                .collect();
+        } else {
+            content = vec![];
+        }
+        Self {
+            length: content.len(),
+            content,
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
+/// Preview a blockdevice file with lsblk
+#[derive(Clone, Default)]
+pub struct BlockDevice {
+    content: Vec<String>,
+    length: usize,
+}
+
+impl BlockDevice {
+    /// New socket preview
+    /// See `man ss` for a description of the arguments.
+    fn new(fileinfo: &FileInfo) -> Self {
+        let content: Vec<String>;
+        if let Ok(output) = std::process::Command::new(LSBLK)
+            .args([
+                "-lfo",
+                "FSTYPE,PATH,LABEL,UUID,FSVER,MOUNTPOINT,MODEL,SIZE,FSAVAIL,FSUSE%",
+                &fileinfo.path.display().to_string(),
+            ])
+            .output()
+        {
+            let s = String::from_utf8(output.stdout).unwrap_or_default();
+            content = s.lines().map(|s| s.to_owned()).collect();
+        } else {
+            content = vec![];
+        }
+        Self {
+            length: content.len(),
+            content,
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
+/// Preview a fifo or a chardevice file with lsof
+#[derive(Clone, Default)]
+pub struct FifoCharDevice {
+    content: Vec<String>,
+    length: usize,
+}
+
+impl FifoCharDevice {
+    /// New FIFO preview
+    /// See `man lsof` for a description of the arguments.
+    fn new(fileinfo: &FileInfo) -> Self {
+        let content: Vec<String>;
+        if let Ok(output) = std::process::Command::new(LSOF)
+            .arg(&fileinfo.path.display().to_string())
+            .output()
+        {
+            let s = String::from_utf8(output.stdout).unwrap_or_default();
+            content = s.lines().map(|s| s.to_owned()).collect();
+        } else {
+            content = vec![];
+        }
+        Self {
+            length: content.len(),
+            content,
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.length
     }
 }
 
@@ -234,7 +400,7 @@ impl TextContent {
     const SIZE_LIMIT: usize = 1048576;
 
     fn help(help: &str) -> Self {
-        let content: Vec<String> = help.split('\n').map(|s| s.to_owned()).collect();
+        let content: Vec<String> = help.lines().map(|line| line.to_owned()).collect();
         Self {
             kind: TextKind::HELP,
             length: content.len(),
@@ -250,13 +416,23 @@ impl TextContent {
         }
     }
 
+    fn epub(path: &Path) -> Option<Self> {
+        let path_str = path.to_str()?;
+        let output = execute_and_capture_output_without_check(
+            PANDOC,
+            &["-s", "-t", "plain", "--", path_str],
+        )
+        .ok()?;
+        let content: Vec<String> = output.lines().map(|line| line.to_owned()).collect();
+        Some(Self {
+            kind: TextKind::EPUB,
+            length: content.len(),
+            content,
+        })
+    }
+
     fn from_file(path: &Path) -> Result<Self> {
-        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
-        let content: Vec<String> = reader
-            .lines()
-            .take(Self::SIZE_LIMIT)
-            .map(|line| line.unwrap_or_else(|_| "".to_owned()))
-            .collect();
+        let content = read_nb_lines(path, Self::SIZE_LIMIT)?;
         Ok(Self {
             kind: TextKind::TEXTFILE,
             length: content.len(),
@@ -279,18 +455,12 @@ pub struct HLContent {
 
 impl HLContent {
     const SIZE_LIMIT: usize = 32768;
-
     /// Creates a new displayable content of a syntect supported file.
     /// It may file if the file isn't properly formatted or the extension
     /// is wrong (ie. python content with .c extension).
     /// ATM only Solarized (dark) theme is supported.
     fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
-        let reader = std::io::BufReader::new(std::fs::File::open(path)?);
-        let raw_content: Vec<String> = reader
-            .lines()
-            .take(Self::SIZE_LIMIT)
-            .map(|line| line.unwrap_or_else(|_| "".to_owned()))
-            .collect();
+        let raw_content = read_nb_lines(path, Self::SIZE_LIMIT)?;
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
 
         Ok(Self {
@@ -406,7 +576,7 @@ impl BinaryContent {
 
         Ok(Self {
             path: file_info.path.clone(),
-            length: file_info.size().unwrap_or_default() / Self::LINE_WIDTH as u64,
+            length: file_info.true_size / Self::LINE_WIDTH as u64,
             content,
         })
     }
@@ -530,7 +700,7 @@ pub struct MediaContent {
 impl MediaContent {
     fn new(path: &Path) -> Result<Self> {
         let content: Vec<String>;
-        if let Ok(output) = std::process::Command::new("mediainfo").arg(path).output() {
+        if let Ok(output) = std::process::Command::new(MEDIAINFO).arg(path).output() {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
             content = s.lines().map(|s| s.to_owned()).collect();
         } else {
@@ -612,7 +782,7 @@ impl Ueberzug {
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
         Self::make_thumbnail(
-            "ffmpeg",
+            FFMPEG,
             &[
                 "-i",
                 path_str,
@@ -630,7 +800,7 @@ impl Ueberzug {
         let path_str = font_path
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
-        Self::make_thumbnail("fontimage", &["-o", THUMBNAIL_PATH, path_str])
+        Self::make_thumbnail(FONTIMAGE, &["-o", THUMBNAIL_PATH, path_str])
     }
 
     fn make_svg_thumbnail(svg_path: &Path) -> Result<()> {
@@ -638,7 +808,7 @@ impl Ueberzug {
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
         Self::make_thumbnail(
-            "rsvg-convert",
+            RSVG_CONVERT,
             &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH],
         )
     }
@@ -694,7 +864,7 @@ impl ColoredText {
 /// if the directory has a lot of children.
 #[derive(Clone, Debug)]
 pub struct Directory {
-    pub content: Vec<(String, ColoredString)>,
+    pub content: Vec<ColoredTriplet>,
     pub tree: Tree,
     len: usize,
     pub selected_index: usize,
@@ -777,19 +947,25 @@ impl Directory {
     /// Select the "next" element of the tree if any.
     /// This is the element immediatly below the current one.
     pub fn select_next(&mut self, colors: &Colors) -> Result<()> {
-        if self.selected_index + 1 < self.content.len() {
+        if self.selected_index < self.content.len() {
+            self.tree.increase_required_height();
+            self.unselect_children();
             self.selected_index += 1;
+            self.update_tree_position_from_index(colors)?;
         }
-        self.update_tree_position_from_index(colors)
+        Ok(())
     }
 
     /// Select the previous sibling if any.
     /// This is the element immediatly below the current one.
     pub fn select_prev(&mut self, colors: &Colors) -> Result<()> {
         if self.selected_index > 0 {
+            self.tree.decrease_required_height();
+            self.unselect_children();
             self.selected_index -= 1;
+            self.update_tree_position_from_index(colors)?;
         }
-        self.update_tree_position_from_index(colors)
+        Ok(())
     }
 
     /// Move up 10 times.
@@ -805,8 +981,12 @@ impl Directory {
     /// Move down 10 times
     pub fn page_down(&mut self, colors: &Colors) -> Result<()> {
         self.selected_index += 10;
-        if self.selected_index >= self.content.len() {
-            self.selected_index = self.content.len() - 1;
+        if self.selected_index > self.content.len() {
+            if !self.content.is_empty() {
+                self.selected_index = self.content.len();
+            } else {
+                self.selected_index = 1;
+            }
         }
         self.update_tree_position_from_index(colors)
     }
@@ -848,18 +1028,19 @@ impl Directory {
 
     /// Calculates the top, bottom and lenght of the view, depending on which element
     /// is selected and the size of the window used to display.
-    pub fn calculate_tree_window(&self, height: usize) -> (usize, usize, usize) {
+    pub fn calculate_tree_window(&self, terminal_height: usize) -> (usize, usize, usize) {
         let length = self.content.len();
 
         let top: usize;
         let bottom: usize;
-        if self.selected_index < height - 1 {
+        let window_height = terminal_height - ContentWindow::WINDOW_MARGIN_TOP;
+        if self.selected_index < terminal_height - 1 {
             top = 0;
-            bottom = height - 1;
+            bottom = window_height;
         } else {
-            let padding = std::cmp::max(10, height / 2);
-            top = self.selected_index - 1 - padding;
-            bottom = self.selected_index + height - 1 + padding;
+            let padding = std::cmp::max(10, terminal_height / 2);
+            top = self.selected_index - padding;
+            bottom = top + window_height;
         }
 
         (top, bottom, length)
@@ -874,11 +1055,11 @@ pub struct Diff {
 impl Diff {
     pub fn new(first_path: &str, second_path: &str) -> Result<Self> {
         let content: Vec<String> =
-            execute_and_capture_output_without_check("diff", &[first_path, second_path])?
+            execute_and_capture_output_without_check(DIFF, &[first_path, second_path])?
                 .lines()
                 .map(|s| s.to_owned())
                 .collect();
-        info!("diff:\n{content:?}");
+        info!("{DIFF}:\n{content:?}");
 
         Ok(Self {
             length: content.len(),
@@ -900,11 +1081,11 @@ impl Iso {
     fn new(path: &Path) -> Result<Self> {
         let path = path.to_str().context("couldn't parse the path")?;
         let content: Vec<String> =
-            execute_and_capture_output_without_check("isoinfo", &["-l", "-i", path])?
+            execute_and_capture_output_without_check(ISOINFO, &["-l", "-i", path])?
                 .lines()
                 .map(|s| s.to_owned())
                 .collect();
-        info!("isofino:\n{content:?}");
+        info!("{ISOINFO}:\n{content:?}");
 
         Ok(Self {
             length: content.len(),
@@ -929,21 +1110,6 @@ pub trait Window<T> {
     ) -> Take<Skip<Enumerate<Iter<'_, T>>>>;
 }
 
-impl Window<Vec<SyntaxedString>> for HLContent {
-    fn window(
-        &self,
-        top: usize,
-        bottom: usize,
-        length: usize,
-    ) -> std::iter::Take<Skip<Enumerate<Iter<'_, Vec<SyntaxedString>>>>> {
-        self.content
-            .iter()
-            .enumerate()
-            .skip(top)
-            .take(min(length, bottom + 1))
-    }
-}
-
 macro_rules! impl_window {
     ($t:ident, $u:ident) => {
         impl Window<$u> for $t {
@@ -963,17 +1129,26 @@ macro_rules! impl_window {
     };
 }
 
-type ColoredPair = (String, ColoredString);
+/// A tuple with `(ColoredString, String, ColoredString)`.
+/// Used to iter and impl window trait in tree mode.
+pub type ColoredTriplet = (ColoredString, String, ColoredString);
 
+/// A vector of highlighted strings
+pub type VecSyntaxedString = Vec<SyntaxedString>;
+
+impl_window!(HLContent, VecSyntaxedString);
 impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
 impl_window!(PdfContent, String);
 impl_window!(ZipContent, String);
 impl_window!(MediaContent, String);
-impl_window!(Directory, ColoredPair);
+impl_window!(Directory, ColoredTriplet);
 impl_window!(Diff, String);
 impl_window!(Iso, String);
 impl_window!(ColoredText, String);
+impl_window!(Socket, String);
+impl_window!(BlockDevice, String);
+impl_window!(FifoCharDevice, String);
 
 fn is_ext_compressed(ext: &str) -> bool {
     matches!(
@@ -981,7 +1156,9 @@ fn is_ext_compressed(ext: &str) -> bool {
         "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
     )
 }
-fn is_ext_image(ext: &str) -> bool {
+
+/// True iff the extension is a known (by me) image extension.
+pub fn is_ext_image(ext: &str) -> bool {
     matches!(
         ext,
         "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "raw" | "cr2" | "nef" | "orf" | "sr2"
@@ -1011,11 +1188,11 @@ fn is_ext_video(ext: &str) -> bool {
 }
 
 fn is_ext_font(ext: &str) -> bool {
-    matches!(ext, "ttf")
+    matches!(ext, "ttf" | "otf")
 }
 
 fn is_ext_svg(ext: &str) -> bool {
-    matches!(ext, "svg")
+    matches!(ext, "svg" | "svgz")
 }
 
 fn is_ext_pdf(ext: &str) -> bool {
@@ -1032,6 +1209,10 @@ fn is_ext_notebook(ext: &str) -> bool {
 
 fn is_ext_doc(ext: &str) -> bool {
     matches!(ext, "doc" | "docx" | "odt" | "sxw")
+}
+
+fn is_ext_epub(ext: &str) -> bool {
+    ext == "epub"
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {

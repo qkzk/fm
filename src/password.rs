@@ -4,6 +4,7 @@ use std::process::{Command, Stdio};
 use anyhow::{Context, Result};
 use log::info;
 
+use crate::log::write_log_line;
 use crate::utils::current_username;
 
 /// Different kind of password
@@ -84,6 +85,37 @@ impl PasswordHolder {
     }
 }
 
+/// Spawn a sudo command with stdin, stdout and stderr piped.
+/// sudo is run with -S argument to read the passworo from stdin
+/// Args are sent.
+/// CWD is set to `path`.
+/// No password is set yet.
+/// A password should be sent with `inject_password`.
+fn new_sudo_command_awaiting_password<S, P>(args: &[S], path: P) -> Result<std::process::Child>
+where
+    S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
+    P: AsRef<std::path::Path> + std::fmt::Debug,
+{
+    Ok(Command::new("sudo")
+        .arg("-S")
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .current_dir(path)
+        .spawn()?)
+}
+
+/// Send password to a sudo command through its stdin.
+fn inject_password(password: &str, child: &mut std::process::Child) -> Result<()> {
+    let child_stdin = child
+        .stdin
+        .as_mut()
+        .context("run_privileged_command: couldn't open child stdin")?;
+    child_stdin.write_all(format!("{password}\n").as_bytes())?;
+    Ok(())
+}
+
 /// run a sudo command requiring a password (generally to establish the password.)
 /// Since I can't send 2 passwords at a time, it will only work with the sudo password
 /// It requires a path to establish CWD.
@@ -97,31 +129,30 @@ where
     P: AsRef<std::path::Path> + std::fmt::Debug,
 {
     info!("sudo_with_password {args:?} CWD {path:?}");
-    info!(
-        target: "special",
-        "running sudo command with passwod. args: {args:?}, CWD: {path:?}"
-    );
-    let mut child = Command::new("sudo")
-        .arg("-S")
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .current_dir(path)
-        .spawn()?;
-
-    let child_stdin = child
-        .stdin
-        .as_mut()
-        .context("run_privileged_command: couldn't open child stdin")?;
-    child_stdin.write_all(format!("{password}\n").as_bytes())?;
-
+    let log_line = format!("running sudo command with password. args: {args:?}, CWD: {path:?}");
+    write_log_line(log_line);
+    let mut child = new_sudo_command_awaiting_password(args, path)?;
+    inject_password(password, &mut child)?;
     let output = child.wait_with_output()?;
     Ok((
         output.status.success(),
         String::from_utf8(output.stdout)?,
         String::from_utf8(output.stderr)?,
     ))
+}
+
+/// Spawn a sudo command which shouldn't require a password.
+/// The command is executed immediatly and we return an handle to it.
+fn new_sudo_command_passwordless<S>(args: &[S]) -> Result<std::process::Child>
+where
+    S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
+{
+    Ok(Command::new("sudo")
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?)
 }
 
 /// Runs a passwordless sudo command.
@@ -131,13 +162,9 @@ where
     S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
 {
     info!("running sudo {:?}", args);
-    info!(target: "special", "running sudo command. {args:?}");
-    let child = Command::new("sudo")
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
+    let log_line = format!("running sudo command. {args:?}");
+    write_log_line(log_line);
+    let child = new_sudo_command_passwordless(args)?;
     let output = child.wait_with_output()?;
     Ok((
         output.status.success(),

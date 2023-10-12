@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 
 use crate::impl_selectable_content;
+use crate::log::write_log_line;
 use crate::opener::{execute_in_child_without_output, execute_in_child_without_output_with_path};
 use crate::status::Status;
 use crate::utils::is_program_in_path;
@@ -22,13 +23,19 @@ impl Default for ShellMenu {
 impl ShellMenu {
     fn update_from_file(&mut self, yaml: &serde_yaml::mapping::Mapping) -> Result<()> {
         for (key, mapping) in yaml.into_iter() {
-            let Some(command) = key.as_str() else { continue; };
+            let Some(command) = key.as_str() else {
+                continue;
+            };
             if !is_program_in_path(command) {
                 continue;
             }
             let command = command.to_owned();
-            let Some(require_cwd) = mapping.get("cwd") else { continue; };
-            let Some(require_cwd) = require_cwd.as_bool() else { continue; };
+            let Some(require_cwd) = mapping.get("cwd") else {
+                continue;
+            };
+            let Some(require_cwd) = require_cwd.as_bool() else {
+                continue;
+            };
             self.content.push((command, require_cwd));
         }
         Ok(())
@@ -43,6 +50,8 @@ impl ShellMenu {
         } else {
             Self::simple(status, name.as_str())?
         };
+        let log_line = format!("Executed {name}");
+        write_log_line(log_line);
         Ok(())
     }
 

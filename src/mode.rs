@@ -1,6 +1,10 @@
 use std::fmt;
 
 use crate::completion::InputCompleted;
+use crate::constant_strings_paths::{
+    CHMOD_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES, PASSWORD_LINES,
+    REGEX_LINES, REMOTE_LINES, RENAME_LINES, SHELL_LINES, SORT_LINES,
+};
 use crate::cryptsetup::BlockDeviceAction;
 use crate::password::{PasswordKind, PasswordUsage};
 
@@ -34,11 +38,22 @@ impl NeedConfirmation {
     /// Since we ask the user confirmation, we need to know how much space
     /// is needed.
     pub fn cursor_offset(&self) -> usize {
+        self.to_string().len() + 8
+    }
+
+    /// A confirmation message to be displayed before executing the mode.
+    /// When files are moved or copied the destination is displayed.
+    pub fn confirmation_string(&self, destination: &str) -> String {
         match *self {
-            Self::Copy => 25,
-            Self::Delete => 21,
-            Self::Move => 25,
-            Self::EmptyTrash => 35,
+            NeedConfirmation::Copy => {
+                format!("Files will be copied to {}", destination)
+            }
+            NeedConfirmation::Delete | NeedConfirmation::EmptyTrash => {
+                "Files will be deleted permanently".to_owned()
+            }
+            NeedConfirmation::Move => {
+                format!("Files will be moved to {}", destination)
+            }
         }
     }
 }
@@ -81,6 +96,28 @@ pub enum InputSimple {
     Password(PasswordKind, Option<BlockDeviceAction>, PasswordUsage),
     /// Shell command execute as is
     Shell,
+    /// Mount a remote directory with sshfs
+    Remote,
+}
+
+impl InputSimple {
+    /// Returns a vector of static &str describing what
+    /// the mode does.
+    pub fn lines(&self) -> &'static [&'static str] {
+        match *self {
+            Self::Chmod => &CHMOD_LINES,
+            Self::Filter => &FILTER_LINES,
+            Self::Newdir => &NEWDIR_LINES,
+            Self::Newfile => &NEWFILE_LINES,
+            Self::Password(_, _, _) => &PASSWORD_LINES,
+            Self::RegexMatch => &REGEX_LINES,
+            Self::Rename => &RENAME_LINES,
+            Self::SetNvimAddr => &NVIM_ADDRESS_LINES,
+            Self::Shell => &SHELL_LINES,
+            Self::Sort => &SORT_LINES,
+            Self::Remote => &REMOTE_LINES,
+        }
+    }
 }
 
 /// Different modes in which we display a bunch of possible destinations.
@@ -131,6 +168,15 @@ pub enum Mode {
     InputSimple(InputSimple),
 }
 
+impl Mode {
+    /// True if the mode requires a view refresh when left.
+    /// Most modes don't, since they don't display their content in the first window.
+    /// content. But `Mode::Preview` does, since it uses the main window.
+    pub fn refresh_required(&self) -> bool {
+        matches!(*self, Mode::Preview)
+    }
+}
+
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -150,6 +196,8 @@ impl fmt::Display for Mode {
             Mode::InputSimple(InputSimple::Password(password_kind, _, _)) => {
                 write!(f, "{password_kind}")
             }
+            Mode::InputSimple(InputSimple::Remote) => write!(f, "Remote:  "),
+
             Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
             Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
             Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),

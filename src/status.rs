@@ -5,6 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
+use clap::Parser;
 use log::info;
 use regex::Regex;
 use skim::SkimItem;
@@ -18,11 +19,12 @@ use crate::bulkrename::Bulk;
 use crate::cli_info::CliInfo;
 use crate::compress::Compresser;
 use crate::config::{Colors, Settings};
-use crate::constant_strings_paths::TUIS_PATH;
+use crate::constant_strings_paths::{NVIM, SS, TUIS_PATH};
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::flagged::Flagged;
 use crate::iso::IsoDevice;
+use crate::log::write_log_line;
 use crate::marks::Marks;
 use crate::mode::{InputSimple, Mode, NeedConfirmation};
 use crate::mount_help::MountHelper;
@@ -39,7 +41,7 @@ use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::trash::Trash;
-use crate::utils::{current_username, disk_space, filename_from_path};
+use crate::utils::{current_username, disk_space, filename_from_path, is_program_in_path};
 
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.
@@ -59,8 +61,6 @@ pub struct Status {
     pub flagged: Flagged,
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
-    /// Colors for extension
-    // pub colors: ColorCache,
     /// terminal
     pub term: Arc<Term>,
     skimer: Skimer,
@@ -102,15 +102,15 @@ impl Status {
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
     pub fn new(
-        args: Args,
         height: usize,
         term: Arc<Term>,
         help: String,
         opener: Opener,
         settings: &Settings,
     ) -> Result<Self> {
+        let args = Args::parse();
         let Ok(shell_menu) = load_shell_menu(TUIS_PATH) else {
-            eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example"); 
+            eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example");
             info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");
             std::process::exit(1);
         };
@@ -124,7 +124,7 @@ impl Status {
         let force_clear = false;
         let bulk = Bulk::default();
         let start_folder = std::fs::canonicalize(std::path::PathBuf::from(&args.path))?;
-
+        let dual_pane = settings.dual && term.term_size()?.0 >= MIN_WIDTH_FOR_DUAL_PANE;
         // unsafe because of UsersCache::with_all_users
         let users_cache = unsafe { UsersCache::with_all_users() };
         let mut right_tab = Tab::new(args.clone(), height, users_cache)?;
@@ -149,7 +149,7 @@ impl Status {
             marks: Marks::read_from_config_file(),
             skimer: Skimer::new(term.clone()),
             term,
-            dual_pane: settings.dual,
+            dual_pane,
             preview_second: false,
             system_info: sys,
             display_full: settings.full,
@@ -217,7 +217,9 @@ impl Status {
                 .to_str()
                 .context("skim error")?,
         );
-        let Some(output) = skim.first() else {return Ok(())};
+        let Some(output) = skim.first() else {
+            return Ok(());
+        };
         self._update_tab_from_skim_output(output)
     }
 
@@ -226,7 +228,9 @@ impl Status {
     /// The output is splited at `:` since we only care about the path, not the line number.
     pub fn skim_line_output_to_tab(&mut self) -> Result<()> {
         let skim = self.skimer.search_line_in_file();
-        let Some(output) = skim.first() else {return Ok(())};
+        let Some(output) = skim.first() else {
+            return Ok(());
+        };
         self._update_tab_from_skim_line_output(output)
     }
 
@@ -235,11 +239,19 @@ impl Status {
     /// If the result can't be parsed, nothing is done.
     pub fn skim_find_keybinding(&mut self) -> Result<()> {
         let skim = self.skimer.search_in_text(self.help.clone());
-        let Some(output) = skim.first() else { return Ok(()) };
+        let Some(output) = skim.first() else {
+            return Ok(());
+        };
         let line = output.output().into_owned();
-        let Some(keybind) = line.split(':').next() else { return Ok(()) };
-        let Some(keyname) = parse_keyname(keybind) else { return Ok(()) };
-        let Some(key) = from_keyname(&keyname) else { return Ok(()) };
+        let Some(keybind) = line.split(':').next() else {
+            return Ok(());
+        };
+        let Some(keyname) = parse_keyname(keybind) else {
+            return Ok(());
+        };
+        let Some(key) = from_keyname(&keyname) else {
+            return Ok(());
+        };
         let event = Event::Key(key);
         let _ = self.term.borrow_mut().send_event(event);
         Ok(())
@@ -247,7 +259,9 @@ impl Status {
 
     fn _update_tab_from_skim_line_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {
         let output_str = skim_output.output().to_string();
-        let Some(filename) = output_str.split(':').next() else { return Ok(());};
+        let Some(filename) = output_str.split(':').next() else {
+            return Ok(());
+        };
         let path = fs::canonicalize(filename)?;
         self._replace_path_by_skim_output(path)
     }
@@ -260,7 +274,9 @@ impl Status {
     fn _replace_path_by_skim_output(&mut self, path: std::path::PathBuf) -> Result<()> {
         let tab = self.selected();
         if path.is_file() {
-            let Some(parent) = path.parent() else { return Ok(()) };
+            let Some(parent) = path.parent() else {
+                return Ok(());
+            };
             tab.set_pathcontent(parent)?;
             let filename = filename_from_path(&path)?;
             tab.search_from(filename, 0);
@@ -299,6 +315,17 @@ impl Status {
     pub fn clear_flags_and_reset_view(&mut self) -> Result<()> {
         self.flagged.clear();
         self.reset_tabs_view()
+    }
+
+    pub fn click(
+        &mut self,
+        row: u16,
+        col: u16,
+        current_height: usize,
+        colors: &Colors,
+    ) -> Result<()> {
+        self.select_pane(col)?;
+        self.selected().select_row(row, colors, current_height)
     }
 
     /// Set the permissions of the flagged files according to a given permission.
@@ -473,11 +500,9 @@ impl Status {
             } else {
                 if iso_device.mount(&current_username()?, &mut self.password_holder)? {
                     info!("iso mounter mounted {iso_device:?}");
-                    info!(
-                        target: "special",
-                        "iso :\n{}",
-                        iso_device.as_string()?,
-                    );
+
+                    let log_line = format!("iso : {}", iso_device.as_string()?,);
+                    write_log_line(log_line);
                     let path = iso_device.mountpoints.clone().context("no mount point")?;
                     self.selected().set_pathcontent(&path)?;
                 };
@@ -530,9 +555,13 @@ impl Status {
     }
 
     /// Move to the selected crypted device mount point.
-    pub fn move_to_encrypted_drive(&mut self) -> Result<()> {
-        let Some(device) = self.encrypted_devices.selected() else { return Ok(()) };
-        let Some(mount_point) = device.mount_point() else { return Ok(())};
+    pub fn go_to_encrypted_drive(&mut self) -> Result<()> {
+        let Some(device) = self.encrypted_devices.selected() else {
+            return Ok(());
+        };
+        let Some(mount_point) = device.mount_point() else {
+            return Ok(());
+        };
         let tab = self.selected();
         let path = std::path::PathBuf::from(mount_point);
         tab.history.push(&path);
@@ -576,7 +605,7 @@ impl Status {
     /// Execute a new mark, saving it to a config file for futher use.
     pub fn marks_new(&mut self, c: char, colors: &Colors) -> Result<()> {
         let path = self.selected().path_content.path.clone();
-        self.marks.new_mark(c, path)?;
+        self.marks.new_mark(c, &path)?;
         {
             let tab: &mut Tab = self.selected();
             tab.refresh_view()
@@ -612,15 +641,17 @@ impl Status {
     /// isn't sufficiant to display enough information.
     /// We also need to know the new height of the terminal to start scrolling
     /// up or down.
-    pub fn resize(&mut self, width: usize, height: usize, colors: &Colors) -> Result<()> {
+    pub fn resize(&mut self, width: usize, height: usize) -> Result<()> {
         self.set_dual_pane_if_wide_enough(width)?;
         self.selected().set_height(height);
-        self.refresh_status(colors)?;
+        self.force_clear();
+        self.refresh_users()?;
         Ok(())
     }
 
     /// Recursively delete all flagged files.
     pub fn confirm_delete_files(&mut self, colors: &Colors) -> Result<()> {
+        let nb = self.flagged.len();
         for pathbuf in self.flagged.content.iter() {
             if pathbuf.is_dir() {
                 std::fs::remove_dir_all(pathbuf)?;
@@ -628,6 +659,8 @@ impl Status {
                 std::fs::remove_file(pathbuf)?;
             }
         }
+        let log_line = format!("Deleted {nb} flagged files");
+        write_log_line(log_line);
         self.selected().reset_mode();
         self.clear_flags_and_reset_view()?;
         self.refresh_status(colors)
@@ -644,7 +677,9 @@ impl Status {
     fn run_sudo_command(&mut self, colors: &Colors) -> Result<()> {
         self.selected().set_mode(Mode::Normal);
         reset_sudo_faillock()?;
-        let Some(sudo_command) = &self.sudo_command else { return Ok(()); };
+        let Some(sudo_command) = &self.sudo_command else {
+            return Ok(());
+        };
         let args = ShellCommandParser::new(sudo_command).compute(self)?;
         if args.is_empty() {
             return Ok(());
@@ -684,18 +719,46 @@ impl Status {
         if !self.nvim_server.is_empty() {
             return;
         }
-        let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") else { return; };
-        self.nvim_server = nvim_listen_address;
+        if let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") {
+            self.nvim_server = nvim_listen_address;
+            return;
+        };
+        if let Ok(nvim_listen_address) = Self::parse_nvim_address_from_ss_output() {
+            self.nvim_server = nvim_listen_address;
+        }
+    }
+
+    fn parse_nvim_address_from_ss_output() -> Result<String> {
+        if !is_program_in_path(SS) {
+            return Err(anyhow!("{SS} isn't installed"));
+        }
+        if let Ok(output) = std::process::Command::new(SS).arg("-l").output() {
+            let output = String::from_utf8(output.stdout).unwrap_or_default();
+            let content: String = output
+                .split(&['\n', '\t', ' '])
+                .filter(|w| w.contains(NVIM))
+                .collect();
+            if !content.is_empty() {
+                return Ok(content);
+            }
+        }
+        Err(anyhow!("Couldn't get nvim listen address from `ss` output"))
     }
 
     /// Execute a command requiring a confirmation (Delete, Move or Copy).
-    pub fn confirm_action(
+    /// The action is only executed if the user typed the char `y`
+    pub fn confirm(
         &mut self,
+        c: char,
         confirmed_action: NeedConfirmation,
         colors: &Colors,
     ) -> Result<()> {
-        self.match_confirmed_mode(confirmed_action, colors)?;
-        self.selected().reset_mode();
+        if c == 'y' {
+            let _ = self.match_confirmed_mode(confirmed_action, colors);
+        }
+        if self.selected().reset_mode() {
+            self.selected().refresh_view()?;
+        }
         Ok(())
     }
 
@@ -715,21 +778,29 @@ impl Status {
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_pane(&mut self, col: u16) -> Result<()> {
         let (width, _) = self.term_size()?;
-        if (col as usize) < width / 2 {
-            self.select_tab(0)?;
+        if self.dual_pane {
+            if (col as usize) < width / 2 {
+                self.select_tab(0)?;
+            } else {
+                self.select_tab(1)?;
+            };
         } else {
-            self.select_tab(1)?;
-        };
+            self.select_tab(0)?;
+        }
         Ok(())
     }
 }
 
 fn parse_keyname(keyname: &str) -> Option<String> {
     let mut split = keyname.split('(');
-    let Some(mutator) = split.next() else { return None; };
+    let Some(mutator) = split.next() else {
+        return None;
+    };
     let mut mutator = mutator.to_lowercase();
-    let Some(param) = split.next() else { return Some(mutator) };
-    let mut param = param.to_owned();
+    let Some(param) = split.next() else {
+        return Some(mutator);
+    };
+    let mut param = param.trim().to_owned();
     mutator = mutator.replace("char", "");
     param = param.replace([')', '\''], "");
     if param.chars().all(char::is_uppercase) {

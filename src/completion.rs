@@ -4,8 +4,7 @@ use anyhow::Result;
 use strum::IntoEnumIterator;
 
 use crate::fileinfo::PathContent;
-use crate::mode::Mode;
-use crate::tree::ColoredString;
+use crate::preview::ColoredTriplet;
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
@@ -27,7 +26,6 @@ pub enum InputCompleted {
 /// showing where the user is in the vec.
 #[derive(Clone, Default)]
 pub struct Completion {
-    kind: InputCompleted,
     /// Possible completions
     pub proposals: Vec<String>,
     /// Which completion is selected by the user
@@ -35,14 +33,6 @@ pub struct Completion {
 }
 
 impl Completion {
-    pub fn set_kind(&mut self, mode: &Mode) {
-        if let Mode::InputCompleted(completion_kind) = mode {
-            self.kind = *completion_kind
-        } else {
-            self.kind = InputCompleted::Nothing
-        }
-    }
-
     /// Is there any completion option ?
     pub fn is_empty(&self) -> bool {
         self.proposals.is_empty()
@@ -101,21 +91,33 @@ impl Completion {
     /// Goto completion.
     /// Looks for the valid path completing what the user typed.
     pub fn goto(&mut self, input_string: &str, current_path: &str) -> Result<()> {
-        self.update_from_input(input_string, current_path);
+        self.goto_update_from_input(input_string, current_path);
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
             return Ok(());
         }
         self.extend_absolute_paths(&parent, &last_name);
         self.extend_relative_paths(current_path, &last_name);
+        self.proposals.dedup();
         Ok(())
     }
 
-    fn update_from_input(&mut self, input_string: &str, current_path: &str) {
-        if let Some(input_path) = self.canonicalize_input(input_string, current_path) {
-            self.proposals = vec![input_path]
+    fn goto_update_from_input(&mut self, input_string: &str, current_path: &str) {
+        self.proposals = vec![];
+        if let Some(expanded_input) = self.expand_input(input_string) {
+            self.proposals.push(expanded_input);
+        }
+        if let Some(cannonicalized_input) = self.canonicalize_input(input_string, current_path) {
+            self.proposals.push(cannonicalized_input);
+        }
+    }
+
+    fn expand_input(&mut self, input_string: &str) -> Option<String> {
+        let expanded_input = shellexpand::tilde(input_string).into_owned();
+        if std::path::PathBuf::from(&expanded_input).exists() {
+            Some(expanded_input)
         } else {
-            self.proposals = vec![]
+            None
         }
     }
 
@@ -131,8 +133,12 @@ impl Completion {
     }
 
     fn extend_absolute_paths(&mut self, parent: &str, last_name: &str) {
-        let Ok(path) = std::fs::canonicalize(parent) else { return };
-        let Ok(entries) = fs::read_dir(path) else { return };
+        let Ok(path) = std::fs::canonicalize(parent) else {
+            return;
+        };
+        let Ok(entries) = fs::read_dir(path) else {
+            return;
+        };
         self.extend(&Self::entries_matching_filename(entries, last_name))
     }
 
@@ -162,6 +168,7 @@ impl Completion {
         Ok(())
     }
 
+    /// Looks for fm actions completing the one typed by the user.
     pub fn command(&mut self, input_string: &str) -> Result<()> {
         let proposals = crate::action_map::ActionMap::iter()
             .filter(|command| {
@@ -208,16 +215,13 @@ impl Completion {
     pub fn search_from_tree(
         &mut self,
         input_string: &str,
-        content: &[(String, ColoredString)],
+        content: &[ColoredTriplet],
     ) -> Result<()> {
         self.update(
             content
                 .iter()
-                .filter(|(_, s)| s.text.contains(input_string))
-                .map(|(_, s)| {
-                    let text = s.text.replace("▸ ", "");
-                    text.replace("▾ ", "")
-                })
+                .filter(|(_, _, s)| s.text.contains(input_string))
+                .map(|(_, _, s)| s.text.replace("▸ ", "").replace("▾ ", ""))
                 .collect(),
         );
 
@@ -233,7 +237,9 @@ impl Completion {
 }
 
 fn file_match_input(dir_entry: &std::fs::DirEntry, input_string: &str) -> bool {
-    let Ok(file_type) = dir_entry.file_type() else { return false;};
+    let Ok(file_type) = dir_entry.file_type() else {
+        return false;
+    };
     (file_type.is_file() || file_type.is_symlink()) && filename_startswith(dir_entry, input_string)
 }
 

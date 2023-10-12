@@ -16,7 +16,7 @@ use crate::opener::execute_in_child;
 use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
-use crate::utils::{row_to_index, set_clipboard};
+use crate::utils::{row_to_window_index, set_clipboard};
 use crate::visited::History;
 
 /// Holds every thing about the current tab of the application.
@@ -97,7 +97,6 @@ impl Tab {
 
     /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> Result<()> {
-        // self.completion.set_kind(&self.mode);
         match self.mode {
             Mode::InputCompleted(InputCompleted::Goto) => {
                 let current_path = self.path_content_str().unwrap_or_default().to_owned();
@@ -125,19 +124,25 @@ impl Tab {
         }
     }
 
+    /// Refresh everything but the view
+    pub fn refresh_params(&mut self) -> Result<()> {
+        self.filter = FilterKind::All;
+        self.input.reset();
+        self.preview = Preview::new_empty();
+        self.completion.reset();
+        self.directory.clear();
+        Ok(())
+    }
+
     /// Refresh the current view.
     /// Input string is emptied, the files are read again, the window of
     /// displayed files is reset.
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> Result<()> {
-        self.filter = FilterKind::All;
-        self.input.reset();
+        self.refresh_params()?;
         self.path_content
             .reset_files(&self.filter, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
-        self.preview = Preview::new_empty();
-        self.completion.reset();
-        self.directory.clear();
         Ok(())
     }
 
@@ -217,8 +222,11 @@ impl Tab {
 
     /// Refresh the existing users.
     pub fn refresh_users(&mut self, users_cache: UsersCache) -> Result<()> {
+        let last_pathcontent_index = self.path_content.index;
         self.path_content
-            .refresh_users(users_cache, &self.filter, self.show_hidden)
+            .refresh_users(users_cache, &self.filter, self.show_hidden)?;
+        self.path_content.select_index(last_pathcontent_index);
+        Ok(())
     }
 
     /// Search in current directory for an file whose name contains `searched_name`,
@@ -263,7 +271,9 @@ impl Tab {
     /// Move to the parent of current path
     pub fn move_to_parent(&mut self) -> Result<()> {
         let path = self.path_content.path.clone();
-        let Some(parent) = path.parent() else { return Ok(()) };
+        let Some(parent) = path.parent() else {
+            return Ok(());
+        };
         self.set_pathcontent(parent)
     }
 
@@ -294,14 +304,11 @@ impl Tab {
 
     /// Select the next sibling.
     pub fn tree_select_next(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.increase_required_height();
-        self.directory.unselect_children();
         self.directory.select_next(colors)
     }
 
     /// Select the previous siblging
     pub fn tree_select_prev(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.unselect_children();
         self.directory.select_prev(colors)
     }
 
@@ -313,17 +320,28 @@ impl Tab {
 
     /// Go to the last leaf.
     pub fn tree_go_to_bottom_leaf(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.set_required_height(usize::MAX);
+        self.directory.tree.set_required_height_to_max();
         self.directory.unselect_children();
         self.directory.go_to_bottom_leaf(colors)
     }
 
     /// Returns the current path.
-    /// It Tree mode, it's the path of the selected node.
-    /// Else, it's the current path of pathcontent.
-    pub fn current_path(&mut self) -> &path::Path {
+    /// In tree mode :
+    ///     if the selected node is a directory, that's it.
+    ///     else, it is the parent of the selected node.
+    /// In other modes, it's the current path of pathcontent.
+    pub fn current_directory_path(&mut self) -> &path::Path {
         match self.mode {
-            Mode::Tree => &self.directory.tree.current_node.fileinfo.path,
+            Mode::Tree => {
+                let path = &self.directory.tree.current_node.fileinfo.path;
+                if path.is_dir() {
+                    return path;
+                }
+                let Some(parent) = path.parent() else {
+                    return path::Path::new("/");
+                };
+                parent
+            }
             _ => &self.path_content.path,
         }
     }
@@ -380,9 +398,12 @@ impl Tab {
 
     /// Reset the last mode.
     /// The last mode is set to normal again.
-    pub fn reset_mode(&mut self) {
+    /// Returns True if the last mode requires a refresh afterwards.
+    pub fn reset_mode(&mut self) -> bool {
+        let must_refresh = self.mode.refresh_required();
         self.mode = self.previous_mode;
         self.previous_mode = Mode::Normal;
+        must_refresh
     }
 
     /// Returns true if the current mode requires 2 windows.
@@ -400,7 +421,7 @@ impl Tab {
                 self.path_content.select_current();
                 self.window.scroll_down_one(self.path_content.index)
             }
-            Mode::Preview => self.window.scroll_down_one(self.window.bottom),
+            Mode::Preview => self.preview_page_down(),
             _ => (),
         }
     }
@@ -414,7 +435,7 @@ impl Tab {
                 self.path_content.select_current();
                 self.window.scroll_up_one(self.path_content.index)
             }
-            Mode::Preview => self.window.scroll_up_one(self.window.top),
+            Mode::Preview => self.preview_page_up(),
             _ => (),
         }
     }
@@ -446,19 +467,16 @@ impl Tab {
 
     /// Select the first child of the current node and reset the display.
     pub fn select_first_child(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.increase_required_height();
         self.tree_select_first_child(colors)
     }
 
     /// Select the next sibling of the current node.
     pub fn select_next(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.increase_required_height();
         self.tree_select_next(colors)
     }
 
     /// Select the previous sibling of the current node.
     pub fn select_prev(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.decrease_required_height();
         self.tree_select_prev(colors)
     }
 
@@ -511,14 +529,16 @@ impl Tab {
                 self.path_content.select_index(up_index);
                 self.window.scroll_to(up_index)
             }
-            Mode::Preview => {
-                if self.window.top > 0 {
-                    let skip = min(self.window.top, 30);
-                    self.window.bottom -= skip;
-                    self.window.top -= skip;
-                }
-            }
+            Mode::Preview => self.preview_page_up(),
             _ => (),
+        }
+    }
+
+    fn preview_page_up(&mut self) {
+        if self.window.top > 0 {
+            let skip = min(self.window.top, 30);
+            self.window.bottom -= skip;
+            self.window.top -= skip;
         }
     }
 
@@ -527,43 +547,56 @@ impl Tab {
     /// if moves down one page.
     pub fn page_down(&mut self) {
         match self.mode {
-            Mode::Normal => {
-                let down_index = min(
-                    self.path_content.content.len() - 1,
-                    self.path_content.index + 10,
-                );
-                self.path_content.select_index(down_index);
-                self.window.scroll_to(down_index);
-            }
-            Mode::Preview => {
-                if self.window.bottom < self.preview.len() {
-                    let skip = min(self.preview.len() - self.window.bottom, 30);
-                    self.window.bottom += skip;
-                    self.window.top += skip;
-                }
-            }
+            Mode::Normal => self.normal_page_down(),
+            Mode::Preview => self.preview_page_down(),
             _ => (),
         }
     }
 
+    fn normal_page_down(&mut self) {
+        let down_index = min(
+            self.path_content.content.len() - 1,
+            self.path_content.index + 10,
+        );
+        self.path_content.select_index(down_index);
+        self.window.scroll_to(down_index);
+    }
+
+    fn preview_page_down(&mut self) {
+        if self.window.bottom < self.preview.len() {
+            let skip = min(self.preview.len() - self.window.bottom, 30);
+            self.window.bottom += skip;
+            self.window.top += skip;
+        }
+    }
+
     /// Select a given row, if there's something in it.
-    pub fn select_row(&mut self, row: u16, colors: &Colors) -> Result<()> {
+    pub fn select_row(&mut self, row: u16, colors: &Colors, term_height: usize) -> Result<()> {
         match self.mode {
-            Mode::Normal => {
-                let index = row_to_index(row);
-                self.path_content.select_index(index);
-                self.window.scroll_to(index);
-            }
-            Mode::Tree => {
-                let index = row_to_index(row) + 1;
-                self.directory.tree.unselect_children();
-                self.directory.tree.position = self.directory.tree.position_from_index(index);
-                let (_, _, node) = self.directory.tree.select_from_position()?;
-                self.directory.make_preview(colors);
-                self.directory.tree.current_node = node;
-            }
+            Mode::Normal => self.normal_select_row(row),
+            Mode::Tree => self.tree_select_row(row, colors, term_height)?,
             _ => (),
         }
+        Ok(())
+    }
+
+    fn normal_select_row(&mut self, row: u16) {
+        let screen_index = row_to_window_index(row);
+        let index = screen_index + self.window.top;
+        self.path_content.select_index(index);
+        self.window.scroll_to(index);
+    }
+
+    fn tree_select_row(&mut self, row: u16, colors: &Colors, term_height: usize) -> Result<()> {
+        let screen_index = row_to_window_index(row) + 1;
+        // term.height = canvas.height + 2 rows for the canvas border
+        let (top, _, _) = self.directory.calculate_tree_window(term_height - 2);
+        let index = screen_index + top;
+        self.directory.tree.unselect_children();
+        self.directory.tree.position = self.directory.tree.position_from_index(index);
+        let (_, _, node) = self.directory.tree.select_from_position()?;
+        self.directory.make_preview(colors);
+        self.directory.tree.current_node = node;
         Ok(())
     }
 

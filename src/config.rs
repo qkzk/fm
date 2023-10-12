@@ -30,6 +30,13 @@ impl Settings {
     }
 }
 
+macro_rules! update_attribute {
+    ($self_attr:expr, $yaml:ident, $key:expr) => {
+        if let Some(attr) = read_yaml_value($yaml, $key) {
+            $self_attr = attr;
+        }
+    };
+}
 /// Holds every configurable aspect of the application.
 /// All attributes are hardcoded then updated from optional values
 /// of the config file.
@@ -84,6 +91,10 @@ impl Config {
     }
 }
 
+fn read_yaml_value(yaml: &serde_yaml::value::Value, key: &str) -> Option<String> {
+    yaml[key].as_str().map(|s| s.to_string())
+}
+
 /// Holds configurable colors for every kind of file.
 /// "Normal" files are displayed with a different color by extension.
 #[derive(Debug, Clone)]
@@ -100,30 +111,21 @@ pub struct Colors {
     pub socket: String,
     /// Color for `symlink` files.
     pub symlink: String,
+    /// Color for broken `symlink` files.
+    pub broken: String,
     /// Colors for normal files, depending of extension
     pub color_cache: ColorCache,
 }
 
 impl Colors {
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
-        if let Some(directory) = yaml["directory"].as_str().map(|s| s.to_string()) {
-            self.directory = directory;
-        }
-        if let Some(block) = yaml["block"].as_str().map(|s| s.to_string()) {
-            self.block = block;
-        }
-        if let Some(char) = yaml["char"].as_str().map(|s| s.to_string()) {
-            self.char = char;
-        }
-        if let Some(fifo) = yaml["fifo"].as_str().map(|s| s.to_string()) {
-            self.fifo = fifo;
-        }
-        if let Some(socket) = yaml["socket"].as_str().map(|s| s.to_string()) {
-            self.socket = socket;
-        }
-        if let Some(symlink) = yaml["symlink"].as_str().map(|s| s.to_string()) {
-            self.symlink = symlink;
-        }
+        update_attribute!(self.directory, yaml, "directory");
+        update_attribute!(self.block, yaml, "block");
+        update_attribute!(self.char, yaml, "char");
+        update_attribute!(self.fifo, yaml, "fifo");
+        update_attribute!(self.socket, yaml, "socket");
+        update_attribute!(self.symlink, yaml, "symlink");
+        update_attribute!(self.broken, yaml, "broken");
     }
 
     fn new() -> Self {
@@ -134,6 +136,7 @@ impl Colors {
             fifo: "blue".to_owned(),
             socket: "cyan".to_owned(),
             symlink: "magenta".to_owned(),
+            broken: "white".to_owned(),
             color_cache: ColorCache::default(),
         }
     }
@@ -177,7 +180,9 @@ pub fn str_to_tuikit(color: &str) -> Color {
 pub fn load_config(path: &str) -> Result<Config> {
     let mut config = Config::new()?;
     let file = File::open(path::Path::new(&shellexpand::tilde(path).to_string()))?;
-    let Ok(yaml) = serde_yaml::from_reader(file) else { return Ok(config); };
+    let Ok(yaml) = serde_yaml::from_reader(file) else {
+        return Ok(config);
+    };
     let _ = config.update_from_config(&yaml);
     Ok(config)
 }

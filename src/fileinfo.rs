@@ -1,4 +1,4 @@
-use std::fs::{metadata, read_dir, DirEntry, Metadata};
+use std::fs::{read_dir, symlink_metadata, DirEntry, Metadata};
 use std::iter::Enumerate;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
@@ -18,9 +18,11 @@ use crate::impl_selectable_content;
 use crate::sort::SortKind;
 use crate::utils::filename_from_path;
 
+type Valid = bool;
+
 /// Different kind of files
 #[derive(Debug, Clone, Copy)]
-pub enum FileKind {
+pub enum FileKind<Valid> {
     /// Classic files.
     NormalFile,
     /// Folder
@@ -34,14 +36,14 @@ pub enum FileKind {
     /// File socket
     Socket,
     /// symlink
-    SymbolicLink,
+    SymbolicLink(Valid),
 }
 
-impl FileKind {
+impl FileKind<Valid> {
     /// Returns a new `FileKind` depending on metadata.
     /// Only linux files have some of those metadata
     /// since we rely on `std::fs::MetadataExt`.
-    pub fn new(meta: &Metadata) -> Self {
+    pub fn new(meta: &Metadata, filepath: &path::Path) -> Self {
         if meta.file_type().is_dir() {
             Self::Directory
         } else if meta.file_type().is_block_device() {
@@ -53,7 +55,8 @@ impl FileKind {
         } else if meta.file_type().is_fifo() {
             Self::Fifo
         } else if meta.file_type().is_symlink() {
-            Self::SymbolicLink
+            let valid = is_valid_symlink(filepath);
+            Self::SymbolicLink(valid)
         } else {
             Self::NormalFile
         }
@@ -69,7 +72,7 @@ impl FileKind {
             FileKind::NormalFile => '.',
             FileKind::CharDevice => 'c',
             FileKind::BlockDevice => 'b',
-            FileKind::SymbolicLink => 'l',
+            FileKind::SymbolicLink(_) => 'l',
         }
     }
 
@@ -77,7 +80,7 @@ impl FileKind {
         match self {
             FileKind::Directory => 'a',
             FileKind::NormalFile => 'b',
-            FileKind::SymbolicLink => 'c',
+            FileKind::SymbolicLink(_) => 'c',
             FileKind::BlockDevice => 'd',
             FileKind::CharDevice => 'e',
             FileKind::Socket => 'f',
@@ -86,10 +89,44 @@ impl FileKind {
     }
 }
 
+/// Different kind of display for the size column.
+/// ls -lh display a human readable size for normal files,
+/// nothing should be displayed for a directory,
+/// Major & Minor driver versions are used for CharDevice & BlockDevice
+#[derive(Clone, Debug)]
+pub enum SizeColumn {
+    /// Used for normal files. It's the size in bytes.
+    Size(u64),
+    /// Used for directories, nothing is displayed
+    None,
+    /// Use for CharDevice and BlockDevice.
+    /// It's the major & minor driver versions.
+    MajorMinor((u8, u8)),
+}
+
+impl std::fmt::Display for SizeColumn {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Size(bytes) => write!(f, "   {hs}", hs = human_size(*bytes)),
+            Self::None => write!(f, "     - "),
+            Self::MajorMinor((major, minor)) => write!(f, "{major:>3},{minor:<3}"),
+        }
+    }
+}
+
+impl SizeColumn {
+    fn new(size: u64, metadata: &Metadata, file_kind: &FileKind<Valid>) -> Self {
+        match file_kind {
+            FileKind::Directory => Self::None,
+            FileKind::CharDevice | FileKind::BlockDevice => Self::MajorMinor(major_minor(metadata)),
+            _ => Self::Size(size),
+        }
+    }
+}
+
 /// Infos about a file
 /// We read and keep tracks every displayable information about
 /// a file.
-/// Like in [exa](https://github.com/ogham/exa) we don't display the group.
 #[derive(Clone, Debug)]
 pub struct FileInfo {
     /// Full path of the file
@@ -97,7 +134,10 @@ pub struct FileInfo {
     /// Filename
     pub filename: String,
     /// File size as a `String`, already human formated.
-    pub file_size: String,
+    /// For char devices and block devices we display major & minor like ls.
+    pub size_column: SizeColumn,
+    /// True size of a file, not formated
+    pub true_size: u64,
     /// Owner name of the file.
     pub owner: String,
     /// Group name of the file.
@@ -107,7 +147,7 @@ pub struct FileInfo {
     /// Is this file currently selected ?
     pub is_selected: bool,
     /// What kind of file is this ?
-    pub file_kind: FileKind,
+    pub file_kind: FileKind<Valid>,
     /// Extension of the file. `""` for a directory.
     pub extension: String,
     /// A formated filename where the "kind" of file
@@ -123,7 +163,7 @@ impl FileInfo {
         let path = direntry.path();
         let filename = extract_filename(direntry)?;
 
-        Self::create_from_metadata_and_filename(&path, filename, users_cache)
+        Self::create_from_metadata_and_filename(&path, &filename, users_cache)
     }
 
     /// Creates a fileinfo from a path and a filename.
@@ -133,7 +173,7 @@ impl FileInfo {
         filename: &str,
         users_cache: &UsersCache,
     ) -> Result<Self> {
-        Self::create_from_metadata_and_filename(path, filename.to_owned(), users_cache)
+        Self::create_from_metadata_and_filename(path, filename, users_cache)
     }
 
     pub fn from_path(path: &path::Path, users_cache: &UsersCache) -> Result<Self> {
@@ -141,17 +181,12 @@ impl FileInfo {
             .file_name()
             .context("from path: couldn't read filenale")?
             .to_str()
-            .context("from path: couldn't parse filenale")?
-            .to_owned();
+            .context("from path: couldn't parse filenale")?;
         Self::create_from_metadata_and_filename(path, filename, users_cache)
     }
 
     fn metadata(&self) -> Result<std::fs::Metadata> {
-        Ok(metadata(&self.path)?)
-    }
-
-    pub fn size(&self) -> Result<u64> {
-        Ok(extract_file_size(&self.metadata()?))
+        Ok(symlink_metadata(&self.path)?)
     }
 
     pub fn permissions(&self) -> Result<String> {
@@ -160,25 +195,29 @@ impl FileInfo {
 
     fn create_from_metadata_and_filename(
         path: &path::Path,
-        filename: String,
+        filename: &str,
         users_cache: &UsersCache,
     ) -> Result<Self> {
-        let metadata = metadata(path)?;
+        let filename = filename.to_owned();
+        let metadata = symlink_metadata(path)?;
         let path = path.to_owned();
         let owner = extract_owner(&metadata, users_cache)?;
         let group = extract_group(&metadata, users_cache)?;
         let system_time = extract_datetime(&metadata)?;
         let is_selected = false;
-        let file_size = human_size(extract_file_size(&metadata));
+        let true_size = extract_file_size(&metadata);
 
-        let file_kind = FileKind::new(&metadata);
+        let file_kind = FileKind::new(&metadata, &path);
+
+        let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
         let kind_format = filekind_and_filename(&filename, &file_kind);
 
         Ok(FileInfo {
             path,
             filename,
-            file_size,
+            size_column,
+            true_size,
             owner,
             group,
             system_time,
@@ -188,27 +227,42 @@ impl FileInfo {
             kind_format,
         })
     }
+
     /// Format the file line.
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
     pub fn format(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
-        let mut repr = format!(
-            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time} {filename}",
+        let mut repr = self.format_base(owner_col_width, group_col_width)?;
+        repr.push(' ');
+        repr.push_str(&self.filename);
+        if let FileKind::SymbolicLink(_) = self.file_kind {
+            match read_symlink_dest(&self.path) {
+                Some(dest) => repr.push_str(&format!(" -> {dest}")),
+                None => repr.push_str("  broken link"),
+            }
+        }
+        Ok(repr)
+    }
+
+    fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
+        let repr = format!(
+            "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time}",
             dir_symbol = self.dir_symbol(),
             permissions = self.permissions()?,
-            file_size = self.file_size,
+            file_size = self.size_column,
             owner = self.owner,
             owner_col_width = owner_col_width,
             group = self.group,
             group_col_width = group_col_width,
             system_time = self.system_time,
-            filename = self.filename,
         );
-        if let FileKind::SymbolicLink = self.file_kind {
-            repr.push_str(" -> ");
-            repr.push_str(&self.read_dest().unwrap_or_else(|| "Broken link".to_owned()));
-        }
         Ok(repr)
+    }
+
+    /// Format the metadata line, without the filename.
+    /// Owned & Group have fixed width of 6.
+    pub fn format_no_filename(&self) -> Result<String> {
+        self.format_base(6, 6)
     }
 
     pub fn dir_symbol(&self) -> char {
@@ -217,13 +271,6 @@ impl FileInfo {
 
     pub fn format_simple(&self) -> Result<String> {
         Ok(self.filename.to_owned())
-    }
-
-    fn read_dest(&self) -> Option<String> {
-        match metadata(&self.path) {
-            Ok(_) => Some(std::fs::read_link(&self.path).ok()?.to_str()?.to_owned()),
-            Err(_) => Some("Broken link".to_owned()),
-        }
     }
 
     /// Select the file.
@@ -242,6 +289,16 @@ impl FileInfo {
 
     pub fn is_dir(&self) -> bool {
         self.path.is_dir()
+    }
+
+    /// Name of proper files, empty string for `.` and `..`.
+    pub fn filename_without_dot_dotdot(&self) -> String {
+        let name = &self.filename;
+        if name == "." || name == ".." {
+            "".to_owned()
+        } else {
+            format!("/{name} ")
+        }
     }
 }
 
@@ -338,8 +395,8 @@ impl PathContent {
 
     /// Convert a path to a &str.
     /// It may fails if the path contains non valid utf-8 chars.
-    pub fn path_to_str(&self) -> Result<&str> {
-        self.path.to_str().context("path to str: Unreadable path")
+    pub fn path_to_str(&self) -> String {
+        self.path.display().to_string()
     }
 
     /// Sort the file with current key.
@@ -386,7 +443,7 @@ impl PathContent {
 
     /// Path of the currently selected file.
     pub fn selected_path_string(&self) -> Option<String> {
-        Some(self.selected()?.path.to_str()?.to_owned())
+        Some(self.selected()?.path.display().to_string())
     }
 
     /// True if the path starts with a subpath.
@@ -403,14 +460,17 @@ impl PathContent {
             .file_kind
         {
             FileKind::Directory => Ok(true),
-            FileKind::SymbolicLink => {
-                let dest = self
-                    .selected()
-                    .context("is selected dir: unreachable")?
-                    .read_dest()
-                    .unwrap_or_default();
+            FileKind::SymbolicLink(true) => {
+                let dest = read_symlink_dest(
+                    &self
+                        .selected()
+                        .context("is selected dir: unreachable")?
+                        .path,
+                )
+                .unwrap_or_default();
                 Ok(path::PathBuf::from(dest).is_dir())
             }
+            FileKind::SymbolicLink(false) => Ok(false),
             _ => Ok(false),
         }
     }
@@ -501,7 +561,8 @@ pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
         FileKind::CharDevice => str_to_tuikit(&colors.char),
         FileKind::Fifo => str_to_tuikit(&colors.fifo),
         FileKind::Socket => str_to_tuikit(&colors.socket),
-        FileKind::SymbolicLink => str_to_tuikit(&colors.symlink),
+        FileKind::SymbolicLink(true) => str_to_tuikit(&colors.symlink),
+        FileKind::SymbolicLink(false) => str_to_tuikit(&colors.broken),
         _ => colors.color_cache.extension_color(&fileinfo.extension),
     };
 
@@ -549,11 +610,7 @@ fn extract_permissions_string(metadata: &Metadata) -> String {
     let s_o = convert_octal_mode(mode >> 6);
     let s_g = convert_octal_mode((mode >> 3) & 7);
     let s_a = convert_octal_mode(mode & 7);
-    let mut perm = String::with_capacity(9);
-    perm.push_str(s_o);
-    perm.push_str(s_a);
-    perm.push_str(s_g);
-    perm
+    format!("{s_o}{s_a}{s_g}")
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`
@@ -605,6 +662,15 @@ pub fn human_size(bytes: u64) -> String {
     )
 }
 
+/// Extract the major & minor driver version of a special file.
+/// It's used for CharDevice & BlockDevice
+fn major_minor(metadata: &Metadata) -> (u8, u8) {
+    let device_ids = metadata.rdev().to_be_bytes();
+    let major = device_ids[6];
+    let minor = device_ids[7];
+    (major, minor)
+}
+
 /// Extract the optional extension from a filename.
 /// Returns empty &str aka "" if the file has no extension.
 pub fn extract_extension(path: &path::Path) -> &str {
@@ -614,14 +680,11 @@ pub fn extract_extension(path: &path::Path) -> &str {
 }
 
 fn get_used_space(files: &[FileInfo]) -> u64 {
-    files.iter().map(|f| f.size().unwrap_or_default()).sum()
+    files.iter().map(|f| f.true_size).sum()
 }
 
-fn filekind_and_filename(filename: &str, file_kind: &FileKind) -> String {
-    let mut s = String::new();
-    s.push(file_kind.sortable_char());
-    s.push_str(filename);
-    s
+fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> String {
+    format!("{c}{filename}", c = file_kind.sortable_char())
 }
 
 /// Creates an optional vector of fileinfo contained in a file.
@@ -646,9 +709,8 @@ pub fn files_collection(
         ),
         Err(error) => {
             info!(
-                "Couldn't read path {} - {}",
-                fileinfo.path.to_string_lossy(),
-                error
+                "Couldn't read path {path} - {error}",
+                path = fileinfo.path.display(),
             );
             None
         }
@@ -686,4 +748,20 @@ pub fn shorten_path(path: &path::Path, size: Option<usize>) -> Result<String> {
         })
         .collect();
     Ok(shortened_elems.join("/"))
+}
+
+/// Returns `Some(destination)` where `destination` is a String if the path is
+/// the destination of a symlink,
+/// Returns `None` if the link is broken, if the path doesn't exists or if the path
+/// isn't a symlink.
+fn read_symlink_dest(path: &path::Path) -> Option<String> {
+    match std::fs::read_link(path) {
+        Ok(dest) if dest.exists() => Some(dest.to_str()?.to_owned()),
+        _ => None,
+    }
+}
+
+/// true iff the path is a valid symlink (pointing to an existing file).
+fn is_valid_symlink(path: &path::Path) -> bool {
+    matches!(std::fs::read_link(path), Ok(dest) if dest.exists())
 }

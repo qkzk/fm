@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::fmt::Display;
 use std::fs;
 use std::path;
 use std::str::FromStr;
@@ -11,23 +12,31 @@ use which::which;
 use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
+use crate::constant_strings_paths::DIFF;
+use crate::constant_strings_paths::MEDIAINFO;
+use crate::constant_strings_paths::NITROGEN;
+use crate::constant_strings_paths::SSHFS_EXECUTABLE;
 use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
-use crate::cryptsetup::BlockDeviceAction;
+use crate::cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::log::read_log;
+use crate::log::write_log_line;
+use crate::mocp::is_mocp_installed;
 use crate::mocp::Mocp;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::opener::{
-    execute_and_capture_output_without_check, execute_in_child,
+    execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path, InternalVariant,
 };
 use crate::password::{PasswordKind, PasswordUsage};
+use crate::preview::is_ext_image;
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::shell_parser::ShellCommandParser;
 use crate::status::Status;
 use crate::tab::Tab;
+use crate::utils::is_program_in_path;
 use crate::utils::{
     args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
     opt_mount_point, string_to_path,
@@ -73,7 +82,9 @@ impl EventAction {
 
         match tab.mode {
             Mode::Normal => {
-                let Some(file) = tab.path_content.selected() else { return Ok(()) };
+                let Some(file) = tab.path_content.selected() else {
+                    return Ok(());
+                };
                 let path = file.path.clone();
                 status.toggle_flag_on_path(&path);
                 status.selected().down_one_row();
@@ -100,7 +111,7 @@ impl EventAction {
                 .flagged
                 .push(status.tabs[status.index].selected().unwrap().path.clone());
         };
-        status.reset_tabs_view()
+        Ok(())
     }
 
     /// Enter JUMP mode, allowing to jump to any flagged file.
@@ -141,7 +152,12 @@ impl EventAction {
                 .directory_of_selected()?
                 .join(filename);
             std::os::unix::fs::symlink(original_file, &link)?;
-            info!(target: "special", "Symlink {link} links to {original_file}", original_file=original_file.display(), link=link.display());
+            let log_line = format!(
+                "Symlink {link} links to {original_file}",
+                original_file = original_file.display(),
+                link = link.display()
+            );
+            write_log_line(log_line);
         }
         status.clear_flags_and_reset_view()
     }
@@ -156,8 +172,11 @@ impl EventAction {
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(tab: &mut Tab) -> Result<()> {
-        tab.reset_mode();
-        tab.refresh_view()
+        if tab.reset_mode() {
+            tab.refresh_view()
+        } else {
+            tab.refresh_params()
+        }
     }
     /// Enter a copy paste mode.
     /// A confirmation is asked before copying all flagged files to
@@ -215,7 +234,9 @@ impl EventAction {
             return Ok(());
         }
         let unmutable_tab = status.selected_non_mut();
-        let Some(file_info) = unmutable_tab.selected() else { return Ok(()) };
+        let Some(file_info) = unmutable_tab.selected() else {
+            return Ok(());
+        };
         match file_info.file_kind {
             FileKind::NormalFile => {
                 let preview = Preview::new(
@@ -411,7 +432,7 @@ impl EventAction {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn shortcut(tab: &mut Tab) -> Result<()> {
-        std::env::set_current_dir(tab.current_path())?;
+        std::env::set_current_dir(tab.current_directory_path())?;
         tab.shortcut.update_git_root();
         tab.set_mode(Mode::Navigate(Navigate::Shortcut));
         Ok(())
@@ -427,8 +448,12 @@ impl EventAction {
         };
         let nvim_server = status.nvim_server.clone();
         let tab = status.selected();
-        let Some(fileinfo) = tab.selected() else { return Ok(()) };
-        let Some(path_str) = fileinfo.path.to_str() else { return Ok(()) };
+        let Some(fileinfo) = tab.selected() else {
+            return Ok(());
+        };
+        let Some(path_str) = fileinfo.path.to_str() else {
+            return Ok(());
+        };
         open_in_current_neovim(path_str, &nvim_server);
 
         Ok(())
@@ -486,8 +511,13 @@ impl EventAction {
     /// Executes a `dragon-drop` command on the selected file.
     /// It obviously requires the `dragon-drop` command to be installed.
     pub fn drag_n_drop(status: &mut Status) -> Result<()> {
-        let tab = status.selected_non_mut();
-        let Some(file) = tab.selected() else { return Ok(()) };
+        if !is_program_in_path(DEFAULT_DRAGNDROP) {
+            write_log_line(format!("{DEFAULT_DRAGNDROP} must be installed."));
+            return Ok(());
+        }
+        let Some(file) = status.selected_non_mut().selected() else {
+            return Ok(());
+        };
         let path_str = file
             .path
             .to_str()
@@ -501,7 +531,9 @@ impl EventAction {
         match tab.mode {
             Mode::Tree => (),
             _ => {
-                let Some(searched) = tab.searched.clone() else { return Ok(()) };
+                let Some(searched) = tab.searched.clone() else {
+                    return Ok(());
+                };
                 let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
                 tab.search_from(&searched, next_index);
             }
@@ -680,6 +712,7 @@ impl EventAction {
                 must_reset_mode = false;
                 LeaveMode::password(status, kind, colors, dest, action)?
             }
+            Mode::InputSimple(InputSimple::Remote) => LeaveMode::remote(status.selected())?,
             Mode::Navigate(Navigate::Jump) => LeaveMode::jump(status)?,
             Mode::Navigate(Navigate::History) => LeaveMode::history(status.selected())?,
             Mode::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status.selected())?,
@@ -782,8 +815,14 @@ impl EventAction {
 
     /// Display mediainfo details of an image
     pub fn mediainfo(tab: &mut Tab) -> Result<()> {
+        if !is_program_in_path(MEDIAINFO) {
+            write_log_line(format!("{} isn't installed", MEDIAINFO));
+            return Ok(());
+        }
         if let Mode::Normal | Mode::Tree = tab.mode {
-            let Some(file_info) = tab.selected() else { return Ok(())};
+            let Some(file_info) = tab.selected() else {
+                return Ok(());
+            };
             info!("selected {:?}", file_info);
             tab.preview = Preview::mediainfo(&file_info.path)?;
             tab.window.reset(tab.preview.len());
@@ -794,12 +833,20 @@ impl EventAction {
 
     /// Display a diff between the first 2 flagged files or dir.
     pub fn diff(status: &mut Status) -> Result<()> {
+        if !is_program_in_path(DIFF) {
+            write_log_line(format!("{DIFF} isn't installed"));
+            return Ok(());
+        }
         if status.flagged.len() < 2 {
             return Ok(());
         };
         if let Mode::Normal | Mode::Tree = status.selected_non_mut().mode {
-            let first_path = &status.flagged.content[0].to_str().unwrap();
-            let second_path = &status.flagged.content[1].to_str().unwrap();
+            let first_path = &status.flagged.content[0]
+                .to_str()
+                .context("Couldn't parse filename")?;
+            let second_path = &status.flagged.content[1]
+                .to_str()
+                .context("Couldn't parse filename")?;
             status.selected().preview = Preview::diff(first_path, second_path)?;
             let tab = status.selected();
             tab.window.reset(tab.preview.len());
@@ -912,6 +959,10 @@ impl EventAction {
     /// Enter the encrypted device menu, allowing the user to mount/umount
     /// a luks encrypted device.
     pub fn encrypted_drive(status: &mut Status) -> Result<()> {
+        if !lsblk_and_cryptsetup_installed() {
+            write_log_line("lsblk and cryptsetup must be installed.".to_owned());
+            return Ok(());
+        }
         if status.encrypted_devices.is_empty() {
             status.encrypted_devices.update()?;
         }
@@ -958,18 +1009,46 @@ impl EventAction {
     /// Set the current selected file as wallpaper with `nitrogen`.
     /// Requires `nitrogen` to be installed.
     pub fn set_wallpaper(tab: &Tab) -> Result<()> {
-        let Some(path_str) = tab.path_content.selected_path_string() else { return Ok(()); };
-        let _ = execute_in_child("nitrogen", &["--set-zoom-fill", "--save", &path_str]);
+        if !is_program_in_path(NITROGEN) {
+            write_log_line("nitrogen must be installed".to_owned());
+            return Ok(());
+        }
+        let Some(fileinfo) = tab.path_content.selected() else {
+            return Ok(());
+        };
+        if !is_ext_image(&fileinfo.extension) {
+            return Ok(());
+        }
+        let Some(path_str) = tab.path_content.selected_path_string() else {
+            return Ok(());
+        };
+        let _ = execute_in_child(NITROGEN, &["--set-zoom-fill", "--save", &path_str]);
         Ok(())
     }
 
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn mocp_add_to_playlist(tab: &Tab) -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
         Mocp::add_to_playlist(tab)
+    }
+
+    pub fn mocp_clear_playlist() -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
+        Mocp::clear()
     }
 
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn mocp_go_to_song(tab: &mut Tab) -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
         Mocp::go_to_song(tab)
     }
 
@@ -977,29 +1056,87 @@ impl EventAction {
     /// Starts the server if needed, preventing the output to fill the screen.
     /// Then toggle play/pause
     pub fn mocp_toggle_pause(status: &mut Status) -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
         Mocp::toggle_pause(status)
     }
 
     /// Skip to the next song in MOC
     pub fn mocp_next() -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
         Mocp::next()
     }
 
     /// Go to the previous song in MOC
     pub fn mocp_previous() -> Result<()> {
+        if !is_mocp_installed() {
+            write_log_line("mocp isn't installed".to_owned());
+            return Ok(());
+        }
         Mocp::previous()
     }
 
     /// Execute a custom event on the selected file
-    pub fn custom(status: &mut Status, string: String) -> Result<()> {
+    pub fn custom(status: &mut Status, string: &String) -> Result<()> {
         info!("custom {string}");
-        let parser = ShellCommandParser::new(&string);
+        let parser = ShellCommandParser::new(string);
         let mut args = parser.compute(status)?;
         let command = args.remove(0);
         let args: Vec<&str> = args.iter().map(|s| &**s).collect();
         let output = execute_and_capture_output_without_check(command, &args)?;
         info!("output {output}");
         Ok(())
+    }
+
+    pub fn remote_mount(tab: &mut Tab) -> Result<()> {
+        tab.set_mode(Mode::InputSimple(InputSimple::Remote));
+        Ok(())
+    }
+}
+
+enum NodeCreation {
+    Newfile,
+    Newdir,
+}
+
+impl Display for NodeCreation {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Newfile => write!(f, "file"),
+            Self::Newdir => write!(f, "directory"),
+        }
+    }
+}
+
+impl NodeCreation {
+    fn create(&self, tab: &mut Tab) -> Result<()> {
+        let path = tab
+            .path_content
+            .path
+            .join(sanitize_filename::sanitize(tab.input.string()));
+        if path.exists() {
+            write_log_line(format!(
+                "{self} {path} already exists",
+                path = path.display()
+            ));
+        } else {
+            match self {
+                Self::Newdir => {
+                    fs::create_dir_all(&path)?;
+                }
+                Self::Newfile => {
+                    fs::File::create(&path)?;
+                }
+            }
+            let log_line = format!("Created new {self}: {path}", path = path.display());
+            write_log_line(log_line);
+        }
+        tab.refresh_view()
     }
 }
 
@@ -1050,7 +1187,10 @@ impl LeaveMode {
         let len = status.selected_non_mut().path_content.content.len();
         if let Some((ch, _)) = marks.selected() {
             if let Some(path_str) = status.selected_non_mut().path_content_str() {
-                status.marks.new_mark(*ch, path::PathBuf::from(path_str))?;
+                let p = path::PathBuf::from(path_str);
+                status.marks.new_mark(*ch, &p)?;
+                let log_line = format!("Saved mark {ch} -> {p}", p = p.display());
+                write_log_line(log_line);
             }
             status.selected().window.reset(len);
             status.selected().input.reset();
@@ -1081,16 +1221,18 @@ impl LeaveMode {
     /// Nothing is done if the user typed nothing or an invalid permission like
     /// 955.
     pub fn chmod(status: &mut Status) -> Result<()> {
-        if status.selected().input.is_empty() {
+        if status.selected().input.is_empty() || status.flagged.is_empty() {
             return Ok(());
         }
-        let permissions: u32 =
-            u32::from_str_radix(&status.selected().input.string(), 8).unwrap_or(0_u32);
+        let input_permission = &status.selected().input.string();
+        let permissions: u32 = u32::from_str_radix(input_permission, 8).unwrap_or(0_u32);
         if permissions <= Status::MAX_PERMISSIONS {
             for path in status.flagged.content.iter() {
                 Status::set_permissions(path, permissions)?
             }
-            status.flagged.clear()
+            status.flagged.clear();
+            let log_line = format!("Changed permissions to {input_permission}");
+            write_log_line(log_line);
         }
         status.selected().refresh_view()?;
         status.reset_tabs_view()
@@ -1106,7 +1248,9 @@ impl LeaveMode {
     /// If the user selected a directory, we jump inside it.
     /// Otherwise, we jump to the parent and select the file.
     pub fn jump(status: &mut Status) -> Result<()> {
-        let Some(jump_target) = status.flagged.selected() else { return Ok(()) };
+        let Some(jump_target) = status.flagged.selected() else {
+            return Ok(());
+        };
         let jump_target = jump_target.to_owned();
         let target_dir = match jump_target.parent() {
             Some(parent) => parent,
@@ -1127,8 +1271,8 @@ impl LeaveMode {
     }
 
     /// Execute a shell command typed by the user.
-    /// pipes and redirections aren't NotSupported
-    /// expansions are supported
+    /// pipes and redirections aren't supported
+    /// but expansions are supported
     pub fn shell(status: &mut Status) -> Result<bool> {
         let shell_command = status.selected_non_mut().input.string();
         let mut args = ShellCommandParser::new(&shell_command).compute(status)?;
@@ -1143,7 +1287,9 @@ impl LeaveMode {
             status.ask_password(PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
             Ok(false)
         } else {
-            let Ok(executable) = which(executable) else { return Ok(true); };
+            let Ok(executable) = which(executable) else {
+                return Ok(true);
+            };
             let current_directory = status
                 .selected_non_mut()
                 .directory_of_selected()?
@@ -1180,11 +1326,13 @@ impl LeaveMode {
                 original_path.display(),
                 new_path.display()
             );
-            info!(target: "special",
+            let log_line = format!(
                 "renaming: original: {} - new: {}",
                 original_path.display(),
                 new_path.display()
             );
+            write_log_line(log_line);
+
             fs::rename(original_path, new_path)?;
         }
 
@@ -1195,15 +1343,7 @@ impl LeaveMode {
     /// Nothing is done if the file already exists.
     /// Filename is sanitized before processing.
     pub fn newfile(tab: &mut Tab) -> Result<()> {
-        let path = tab
-            .path_content
-            .path
-            .join(sanitize_filename::sanitize(tab.input.string()));
-        if !path.exists() {
-            fs::File::create(&path)?;
-            info!(target: "special", "New file: {path}", path=path.display());
-        }
-        tab.refresh_view()
+        NodeCreation::Newfile.create(tab)
     }
 
     /// Creates a new directory with input string as name.
@@ -1212,15 +1352,7 @@ impl LeaveMode {
     /// ie. the user can create `newdir` or `newdir/newfolder`.
     /// Directory name is sanitized before processing.
     pub fn newdir(tab: &mut Tab) -> Result<()> {
-        let path = tab
-            .path_content
-            .path
-            .join(sanitize_filename::sanitize(tab.input.string()));
-        if !path.exists() {
-            fs::create_dir_all(&path)?;
-            info!(target: "special", "New directory: {path}", path=path.display());
-        }
-        tab.refresh_view()
+        NodeCreation::Newdir.create(tab)
     }
 
     /// Tries to execute the selected file with an executable which is read
@@ -1353,15 +1485,22 @@ impl LeaveMode {
     /// Compress the flagged files into an archive.
     /// Compression method is chosen by the user.
     /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
+    /// Files which are above the CWD are filtered out since they can't be added to an archive.
+    /// Archive creation depends on CWD so we ensure it's set to the selected tab.
     fn compress(status: &mut Status) -> Result<()> {
-        let cwd = std::env::current_dir()?;
-        let files_with_relative_paths = status
+        let here = &status.selected_non_mut().path_content.path;
+        std::env::set_current_dir(here)?;
+        let files_with_relative_paths: Vec<path::PathBuf> = status
             .flagged
             .content
             .iter()
-            .filter_map(|abs_path| pathdiff::diff_paths(abs_path, &cwd))
+            .filter_map(|abs_path| pathdiff::diff_paths(abs_path, here))
+            .filter(|f| !f.starts_with(".."))
             .collect();
-        status.compression.compress(files_with_relative_paths)
+        if files_with_relative_paths.is_empty() {
+            return Ok(());
+        }
+        status.compression.compress(files_with_relative_paths, here)
     }
 
     /// Execute the selected command.
@@ -1369,7 +1508,9 @@ impl LeaveMode {
     /// context.
     pub fn command(status: &mut Status, colors: &Colors) -> Result<()> {
         let command_str = status.selected_non_mut().completion.current_proposition();
-        let Ok(command) = ActionMap::from_str(command_str) else { return Ok(()) };
+        let Ok(command) = ActionMap::from_str(command_str) else {
+            return Ok(());
+        };
         command.matcher(status, colors)
     }
 
@@ -1393,6 +1534,42 @@ impl LeaveMode {
             tab.make_tree(colors)?;
         }
         tab.window.reset(tab.path_content.content.len());
+        Ok(())
+    }
+
+    /// Run sshfs with typed parameters to mount a remote directory in current directory.
+    /// sshfs should be reachable in path.
+    /// The user must type 3 arguments like this : `username hostname remote_path`.
+    /// If the user doesn't provide 3 arguments,
+    pub fn remote(tab: &mut Tab) -> Result<()> {
+        let user_hostname_remotepath_string = tab.input.string();
+        let strings: Vec<&str> = user_hostname_remotepath_string.split(' ').collect();
+        tab.input.reset();
+
+        if !is_program_in_path(SSHFS_EXECUTABLE) {
+            info!("{SSHFS_EXECUTABLE} isn't in path");
+            return Ok(());
+        }
+
+        if strings.len() != 3 {
+            info!(
+                "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3, got {nb}",
+                nb = strings.len()
+            );
+            return Ok(());
+        };
+
+        let (username, hostname, remote_path) = (strings[0], strings[1], strings[2]);
+        let current_path: &str = tab
+            .current_directory_path()
+            .to_str()
+            .context("couldn't parse the path")?;
+        let first_arg = &format!("{username}@{hostname}:{remote_path}");
+        let command_output =
+            execute_and_capture_output(SSHFS_EXECUTABLE, &[first_arg, current_path]);
+        let log_line = format!("{SSHFS_EXECUTABLE} output {command_output:?}");
+        info!("{log_line}");
+        write_log_line(log_line);
         Ok(())
     }
 }

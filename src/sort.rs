@@ -117,7 +117,7 @@ impl SortKind {
                 SortBy::Kind => Self::sort_by_key_hrtb(files, |f| &f.kind_format),
                 SortBy::File => Self::sort_by_key_hrtb(files, |f| &f.filename),
                 SortBy::Date => Self::sort_by_key_hrtb(files, |f| &f.system_time),
-                SortBy::Size => Self::sort_by_key_hrtb(files, |f| &f.file_size),
+                SortBy::Size => Self::sort_by_key_hrtb(files, |f| &f.true_size),
                 SortBy::Exte => Self::sort_by_key_hrtb(files, |f| &f.extension),
             }
         } else {
@@ -125,7 +125,7 @@ impl SortKind {
                 SortBy::Kind => Self::reversed_sort_by_key_hrtb(files, |f| &f.kind_format),
                 SortBy::File => Self::reversed_sort_by_key_hrtb(files, |f| &f.filename),
                 SortBy::Date => Self::reversed_sort_by_key_hrtb(files, |f| &f.system_time),
-                SortBy::Size => Self::reversed_sort_by_key_hrtb(files, |f| &f.file_size),
+                SortBy::Size => Self::reversed_sort_by_key_hrtb(files, |f| &f.true_size),
                 SortBy::Exte => Self::reversed_sort_by_key_hrtb(files, |f| &f.extension),
             }
         }
@@ -138,7 +138,7 @@ impl SortKind {
                 SortBy::Kind => Self::sort_by_key_hrtb(trees, |f| &f.file().kind_format),
                 SortBy::File => Self::sort_by_key_hrtb(trees, |f| &f.file().filename),
                 SortBy::Date => Self::sort_by_key_hrtb(trees, |f| &f.file().system_time),
-                SortBy::Size => Self::sort_by_key_hrtb(trees, |f| &f.file().file_size),
+                SortBy::Size => Self::sort_by_key_hrtb(trees, |f| &f.file().true_size),
                 SortBy::Exte => Self::sort_by_key_hrtb(trees, |f| &f.file().extension),
             }
         } else {
@@ -146,7 +146,7 @@ impl SortKind {
                 SortBy::Kind => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().kind_format),
                 SortBy::File => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().filename),
                 SortBy::Date => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().system_time),
-                SortBy::Size => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().file_size),
+                SortBy::Size => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().true_size),
                 SortBy::Exte => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().extension),
             }
         }

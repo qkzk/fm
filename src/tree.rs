@@ -7,6 +7,7 @@ use users::UsersCache;
 use crate::config::Colors;
 use crate::fileinfo::{fileinfo_attr, files_collection, FileInfo, FileKind};
 use crate::filter::FilterKind;
+use crate::preview::ColoredTriplet;
 use crate::sort::SortKind;
 use crate::utils::filename_from_path;
 
@@ -38,6 +39,14 @@ impl ColoredString {
         };
         Self::new(text, current_node.attr(colors), current_node.filepath())
     }
+
+    fn from_metadata_line(current_node: &Node, colors: &Colors) -> Self {
+        Self::new(
+            current_node.metadata_line.to_owned(),
+            current_node.attr(colors),
+            current_node.filepath(),
+        )
+    }
 }
 
 /// An element in a tree.
@@ -49,6 +58,7 @@ pub struct Node {
     pub position: Vec<usize>,
     pub folded: bool,
     pub is_dir: bool,
+    pub metadata_line: String,
 }
 
 impl Node {
@@ -84,12 +94,24 @@ impl Node {
         self.folded = !self.folded;
     }
 
-    fn from_fileinfo(fileinfo: FileInfo, parent_position: Vec<usize>) -> Self {
-        Self {
-            is_dir: matches!(fileinfo.file_kind, FileKind::Directory),
+    fn from_fileinfo(fileinfo: FileInfo, parent_position: Vec<usize>) -> Result<Self> {
+        let is_dir = matches!(fileinfo.file_kind, FileKind::Directory);
+        Ok(Self {
+            is_dir,
+            metadata_line: fileinfo.format_no_filename()?,
             fileinfo,
             position: parent_position,
             folded: false,
+        })
+    }
+
+    fn empty(fileinfo: FileInfo) -> Self {
+        Self {
+            fileinfo,
+            position: vec![0],
+            folded: false,
+            is_dir: false,
+            metadata_line: "".to_owned(),
         }
     }
 }
@@ -115,6 +137,11 @@ impl Tree {
     /// are present and the exploration is slow.
     pub const MAX_DEPTH: usize = 5;
     pub const REQUIRED_HEIGHT: usize = 80;
+    const MAX_INDEX: usize = 2 << 20;
+
+    pub fn set_required_height_to_max(&mut self) {
+        self.set_required_height(Self::MAX_INDEX)
+    }
 
     /// Set the required height to a given value.
     /// The required height is used to stop filling the view content.
@@ -124,13 +151,17 @@ impl Tree {
 
     /// The required height is used to stop filling the view content.
     pub fn increase_required_height(&mut self) {
-        self.required_height += 1;
+        if self.required_height < Self::MAX_INDEX {
+            self.required_height += 1;
+        }
     }
 
     /// Add 10 to the required height.
     /// The required height is used to stop filling the view content.
     pub fn increase_required_height_by_ten(&mut self) {
-        self.required_height += 10;
+        if self.required_height < Self::MAX_INDEX {
+            self.required_height += 10;
+        }
     }
 
     /// Reset the required height to its default value : Self::MAX_HEIGHT
@@ -208,7 +239,7 @@ impl Tree {
             &sort_kind,
             parent_position.clone(),
         )?;
-        let node = Node::from_fileinfo(fileinfo, parent_position);
+        let node = Node::from_fileinfo(fileinfo, parent_position)?;
         let position = vec![0];
         let current_node = node.clone();
         Ok(Self {
@@ -233,10 +264,14 @@ impl Tree {
         if max_depth == 0 {
             return Ok(vec![]);
         }
-        let FileKind::Directory = fileinfo.file_kind else { return Ok(vec![]) };
+        let FileKind::Directory = fileinfo.file_kind else {
+            return Ok(vec![]);
+        };
         let Some(mut files) =
-                files_collection(fileinfo, users_cache, display_hidden, filter_kind, true)
-            else { return Ok(vec![]) };
+            files_collection(fileinfo, users_cache, display_hidden, filter_kind, true)
+        else {
+            return Ok(vec![]);
+        };
         sort_kind.sort(&mut files);
         let leaves = files
             .iter()
@@ -252,8 +287,8 @@ impl Tree {
                     display_hidden,
                     position,
                 )
-                .unwrap()
             })
+            .filter_map(|r| r.ok())
             .collect();
 
         Ok(leaves)
@@ -277,23 +312,19 @@ impl Tree {
     pub fn empty(path: &Path, users_cache: &UsersCache) -> Result<Self> {
         let filename = filename_from_path(path)?;
         let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
-        let node = Node {
-            fileinfo,
-            position: vec![0],
-            folded: false,
-            is_dir: false,
-        };
+        let node = Node::empty(fileinfo);
         let leaves = vec![];
         let position = vec![0];
         let current_node = node.clone();
         let sort_kind = SortKind::tree_default();
+        let required_height = 0;
         Ok(Self {
             node,
             leaves,
             position,
             current_node,
             sort_kind,
-            required_height: 0,
+            required_height,
         })
     }
 
@@ -410,7 +441,7 @@ impl Tree {
     /// We first create a position with max value (usize::MAX) and max size (Self::MAX_DEPTH).
     /// Then we select this node and adjust the position.
     pub fn go_to_bottom_leaf(&mut self) -> Result<()> {
-        self.position = vec![usize::MAX; Self::MAX_DEPTH];
+        self.position = vec![Self::MAX_INDEX; Self::MAX_DEPTH];
         let (depth, last_cord, node) = self.select_from_position()?;
         self.fix_position(depth, last_cord);
         self.current_node = node;
@@ -433,10 +464,7 @@ impl Tree {
     /// is reached. There's no way atm to avoid parsing the first lines
     /// since the "prefix" (straight lines at left of screen) can reach
     /// the whole screen.
-    pub fn into_navigable_content(
-        &mut self,
-        colors: &Colors,
-    ) -> (usize, Vec<(String, ColoredString)>) {
+    pub fn into_navigable_content(&mut self, colors: &Colors) -> (usize, Vec<ColoredTriplet>) {
         let required_height = self.required_height;
         let mut stack = vec![("".to_owned(), self)];
         let mut content = vec![];
@@ -448,6 +476,7 @@ impl Tree {
             }
 
             content.push((
+                ColoredString::from_metadata_line(&current.node, colors),
                 prefix.to_owned(),
                 ColoredString::from_node(&current.node, colors),
             ));
@@ -457,7 +486,9 @@ impl Tree {
                 let other_prefix = other_prefix(prefix);
 
                 let mut leaves = current.leaves.iter_mut();
-                let Some(first_leaf) = leaves.next() else { continue; };
+                let Some(first_leaf) = leaves.next() else {
+                    continue;
+                };
                 stack.push((first_prefix.clone(), first_leaf));
 
                 for leaf in leaves {
@@ -479,7 +510,9 @@ impl Tree {
         }
 
         for tree in self.leaves.iter_mut().rev() {
-            let Some(position) = tree.select_first_match(key) else { continue };
+            let Some(position) = tree.select_first_match(key) else {
+                continue;
+            };
             return Some(position);
         }
 

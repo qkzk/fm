@@ -1,7 +1,6 @@
 use std::borrow::Borrow;
 use std::io::BufRead;
 use std::path::Path;
-use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
@@ -9,12 +8,9 @@ use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 use users::{get_current_uid, get_user_by_uid};
 
-use crate::content_window::RESERVED_ROWS;
-use crate::event_dispatch::EventDispatcher;
+use crate::content_window::ContentWindow;
 use crate::fileinfo::human_size;
 use crate::nvim::nvim;
-use crate::status::Status;
-use crate::term_manager::{Display, EventReader};
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
 pub fn init_term() -> Result<Term> {
@@ -59,29 +55,10 @@ pub fn disk_space(disks: &[Disk], path: &Path) -> String {
 /// Returns `None` if it received `None`.
 /// It's a poor fix to support OSX where `sysinfo::Disk` doesn't implement `PartialEq`.
 pub fn opt_mount_point(disk: Option<&Disk>) -> Option<&std::path::Path> {
-    let Some(disk) = disk else { return None; };
+    let Some(disk) = disk else {
+        return None;
+    };
     Some(disk.mount_point())
-}
-
-/// Drops everything holding an `Arc<Term>`.
-/// If new structs holding `Arc<Term>`  are introduced
-/// (surelly to display something on their own...), we'll have to pass them
-/// here and drop them.
-/// It's used if the user wants to "cd on quit" which is a nice feature I
-/// wanted to implement.
-/// Since tuikit term redirects stdout, we have to drop them first.
-pub fn drop_everything(
-    term: Arc<Term>,
-    event_dispatcher: EventDispatcher,
-    event_reader: EventReader,
-    status: Status,
-    display: Display,
-) {
-    std::mem::drop(term);
-    std::mem::drop(event_dispatcher);
-    std::mem::drop(event_reader);
-    std::mem::drop(status);
-    std::mem::drop(display);
 }
 
 /// Print the path on the stdout.
@@ -139,15 +116,19 @@ pub fn extract_lines(content: String) -> Vec<String> {
 
 pub fn set_clipboard(content: String) -> Result<()> {
     log::info!("copied to clipboard: {}", content);
-    let Ok(mut ctx) = ClipboardContext::new() else { return Ok(()); };
-    let Ok(_) = ctx.set_contents(content) else { return Ok(()); };
+    let Ok(mut ctx) = ClipboardContext::new() else {
+        return Ok(());
+    };
+    let Ok(_) = ctx.set_contents(content) else {
+        return Ok(());
+    };
     // For some reason, it's not writen if you don't read it back...
     let _ = ctx.get_contents();
     Ok(())
 }
 
-pub fn row_to_index(row: u16) -> usize {
-    row as usize - RESERVED_ROWS
+pub fn row_to_window_index(row: u16) -> usize {
+    row as usize - ContentWindow::HEADER_ROWS
 }
 
 pub fn string_to_path(path_string: &str) -> Result<std::path::PathBuf> {
