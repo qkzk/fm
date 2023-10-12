@@ -41,7 +41,7 @@ gag = "1.0.0"
 indicatif = { version = "0.17.1", features= ["in_memory"] }
 lazy_static = "1.4.0"
 log = { version = "0.4.0", features = ["std"] }
-log4rs = {git = "https://github.com/estk/log4rs", features = ["rolling_file_appender", "compound_policy", "size_trigger", "fixed_window_roller"] }
+log4rs = { version = "1.2.0", features = ["rolling_file_appender", "compound_policy", "size_trigger", "fixed_window_roller"] }
 nvim-rs = { version = "0.3", features = ["use_tokio"] }
 pathdiff = "0.2.1"
 pdf-extract = "0.6.4"

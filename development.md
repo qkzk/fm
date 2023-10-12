@@ -563,11 +563,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: goto mode from tree node with a selected file crashes the application
 - [x] Not accessible file in tree mode crashes the application
 - [x] Look for nvim listen address in `ss -l` output
-- [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
-      Scroll to second element if needed
 
 ## TODO
 
+- [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
+      Scroll to second element if needed
 - [ ] remote control
 
   - [ ] listen to stdin (rcv etc.)
