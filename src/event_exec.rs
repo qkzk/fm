@@ -30,7 +30,7 @@ use crate::opener::{
     execute_in_child_without_output_with_path, InternalVariant,
 };
 use crate::password::{PasswordKind, PasswordUsage};
-use crate::preview::is_ext_image;
+use crate::preview::ExtensionKind;
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::shell_parser::ShellCommandParser;
@@ -1016,7 +1016,10 @@ impl EventAction {
         let Some(fileinfo) = tab.path_content.selected() else {
             return Ok(());
         };
-        if !is_ext_image(&fileinfo.extension) {
+        if !matches!(
+            ExtensionKind::matcher(&fileinfo.extension),
+            ExtensionKind::Image,
+        ) {
             return Ok(());
         }
         let Some(path_str) = tab.path_content.selected_path_string() else {

@@ -32,6 +32,58 @@ use crate::status::Status;
 use crate::tree::{ColoredString, Tree};
 use crate::utils::{filename_from_path, is_program_in_path};
 
+/// Different kind of extension for grouped by previewers.
+/// Any extension we can preview should be matched here.
+#[derive(Default)]
+pub enum ExtensionKind {
+    Archive,
+    Image,
+    Audio,
+    Video,
+    Font,
+    Svg,
+    Pdf,
+    Iso,
+    Notebook,
+    Doc,
+    Epub,
+    #[default]
+    Unknown,
+}
+
+impl ExtensionKind {
+    /// Match any known extension against an extension kind.
+    pub fn matcher(ext: &str) -> Self {
+        match ext {
+            "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
+            | "gz" | "zst" => Self::Archive,
+            "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "cr2" | "nef" | "orf" | "sr2" => {
+                Self::Image
+            }
+            "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac"
+            | "mac" | "flac" => Self::Audio,
+            "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" => Self::Video,
+            "ttf" | "otf" => Self::Font,
+            "svg" | "svgz" => Self::Svg,
+            "pdf" => Self::Pdf,
+            "iso" => Self::Iso,
+            "ipynb" => Self::Notebook,
+            "doc" | "docx" | "odt" | "sxw" => Self::Doc,
+            "epub" => Self::Epub,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+#[derive(Clone, Default)]
+pub enum TextKind {
+    HELP,
+    LOG,
+    EPUB,
+    #[default]
+    TEXTFILE,
+}
+
 /// Different kind of preview used to display some informaitons
 /// About the file.
 /// We check if it's an archive first, then a pdf file, an image, a media file
@@ -53,15 +105,6 @@ pub enum Preview {
     FifoCharDevice(FifoCharDevice),
     #[default]
     Empty,
-}
-
-#[derive(Clone, Default)]
-pub enum TextKind {
-    HELP,
-    LOG,
-    EPUB,
-    #[default]
-    TEXTFILE,
 }
 
 impl Preview {
@@ -86,53 +129,54 @@ impl Preview {
                 status.selected_non_mut().show_hidden,
                 Some(2),
             )?)),
-            FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
-                e if is_ext_compressed(e) => {
-                    Ok(Self::Archive(ArchiveContent::new(&file_info.path, e)?))
+            FileKind::NormalFile => {
+                let extension = &file_info.extension.to_lowercase();
+                match ExtensionKind::matcher(extension) {
+                    ExtensionKind::Archive => Ok(Self::Archive(ArchiveContent::new(
+                        &file_info.path,
+                        extension,
+                    )?)),
+                    ExtensionKind::Pdf => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
+                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => {
+                        Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?))
+                    }
+                    ExtensionKind::Audio if is_program_in_path(MEDIAINFO) => {
+                        Ok(Self::Media(MediaContent::new(&file_info.path)?))
+                    }
+                    ExtensionKind::Video
+                        if is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG) =>
+                    {
+                        Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
+                    }
+                    ExtensionKind::Font
+                        if is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE) =>
+                    {
+                        Ok(Self::Ueberzug(Ueberzug::font_thumbnail(&file_info.path)?))
+                    }
+                    ExtensionKind::Svg
+                        if is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT) =>
+                    {
+                        Ok(Self::Ueberzug(Ueberzug::svg_thumbnail(&file_info.path)?))
+                    }
+                    ExtensionKind::Iso if is_program_in_path(ISOINFO) => {
+                        Ok(Self::Iso(Iso::new(&file_info.path)?))
+                    }
+                    ExtensionKind::Notebook if is_program_in_path(JUPYTER) => {
+                        Ok(Self::notebook(&file_info.path)
+                            .context("Preview: Couldn't parse notebook")?)
+                    }
+                    ExtensionKind::Doc if is_program_in_path(PANDOC) => {
+                        Ok(Self::doc(&file_info.path).context("Preview: Couldn't parse doc")?)
+                    }
+                    ExtensionKind::Epub if is_program_in_path(PANDOC) => {
+                        Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
+                    }
+                    _ => match Self::preview_syntaxed(extension, &file_info.path) {
+                        Some(syntaxed_preview) => Ok(syntaxed_preview),
+                        None => Self::preview_text_or_binary(file_info),
+                    },
                 }
-                e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
-                e if is_ext_image(e) && is_program_in_path(UEBERZUG) => {
-                    Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?))
-                }
-                e if is_ext_audio(e) && is_program_in_path(MEDIAINFO) => {
-                    Ok(Self::Media(MediaContent::new(&file_info.path)?))
-                }
-                e if is_ext_video(e)
-                    && is_program_in_path(UEBERZUG)
-                    && is_program_in_path(FFMPEG) =>
-                {
-                    Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
-                }
-                e if is_ext_font(e)
-                    && is_program_in_path(UEBERZUG)
-                    && is_program_in_path(FONTIMAGE) =>
-                {
-                    Ok(Self::Ueberzug(Ueberzug::font_thumbnail(&file_info.path)?))
-                }
-                e if is_ext_svg(e)
-                    && is_program_in_path(UEBERZUG)
-                    && is_program_in_path(RSVG_CONVERT) =>
-                {
-                    Ok(Self::Ueberzug(Ueberzug::svg_thumbnail(&file_info.path)?))
-                }
-                e if is_ext_iso(e) && is_program_in_path(ISOINFO) => {
-                    Ok(Self::Iso(Iso::new(&file_info.path)?))
-                }
-                e if is_ext_notebook(e) && is_program_in_path(JUPYTER) => {
-                    Ok(Self::notebook(&file_info.path)
-                        .context("Preview: Couldn't parse notebook")?)
-                }
-                e if is_ext_doc(e) && is_program_in_path(PANDOC) => {
-                    Ok(Self::doc(&file_info.path).context("Preview: Couldn't parse doc")?)
-                }
-                e if is_ext_epub(e) && is_program_in_path(PANDOC) => {
-                    Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
-                }
-                e => match Self::preview_syntaxed(e, &file_info.path) {
-                    Some(syntaxed_preview) => Ok(syntaxed_preview),
-                    None => Self::preview_text_or_binary(file_info),
-                },
-            },
+            }
             FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(file_info)),
             FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(file_info)),
             FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
@@ -1158,82 +1202,6 @@ impl_window!(ColoredText, String);
 impl_window!(Socket, String);
 impl_window!(BlockDevice, String);
 impl_window!(FifoCharDevice, String);
-
-fn is_ext_compressed(ext: &str) -> bool {
-    matches!(
-        ext,
-        "zip"
-            | "gzip"
-            | "bzip2"
-            | "xz"
-            | "lzip"
-            | "lzma"
-            | "tar"
-            | "mtree"
-            | "raw"
-            | "7z"
-            | "gz"
-            | "zst"
-    )
-}
-
-/// True iff the extension is a known (by me) image extension.
-pub fn is_ext_image(ext: &str) -> bool {
-    matches!(
-        ext,
-        "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "raw" | "cr2" | "nef" | "orf" | "sr2"
-    )
-}
-
-fn is_ext_audio(ext: &str) -> bool {
-    matches!(
-        ext,
-        "ogg"
-            | "ogm"
-            | "riff"
-            | "mp2"
-            | "mp3"
-            | "wm"
-            | "qt"
-            | "ac3"
-            | "dts"
-            | "aac"
-            | "mac"
-            | "flac"
-    )
-}
-
-fn is_ext_video(ext: &str) -> bool {
-    matches!(ext, "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg")
-}
-
-fn is_ext_font(ext: &str) -> bool {
-    matches!(ext, "ttf" | "otf")
-}
-
-fn is_ext_svg(ext: &str) -> bool {
-    matches!(ext, "svg" | "svgz")
-}
-
-fn is_ext_pdf(ext: &str) -> bool {
-    ext == "pdf"
-}
-
-fn is_ext_iso(ext: &str) -> bool {
-    ext == "iso"
-}
-
-fn is_ext_notebook(ext: &str) -> bool {
-    ext == "ipynb"
-}
-
-fn is_ext_doc(ext: &str) -> bool {
-    matches!(ext, "doc" | "docx" | "odt" | "sxw")
-}
-
-fn is_ext_epub(ext: &str) -> bool {
-    ext == "epub"
-}
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
     let prev_hook = panic::take_hook();
