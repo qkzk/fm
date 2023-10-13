@@ -51,6 +51,7 @@ pub enum Preview {
     Socket(Socket),
     BlockDevice(BlockDevice),
     FifoCharDevice(FifoCharDevice),
+    Gallery(Gallery),
     #[default]
     Empty,
 }
@@ -78,6 +79,13 @@ impl Preview {
         colors: &Colors,
     ) -> Result<Self> {
         match file_info.file_kind {
+            FileKind::Directory if is_image_folder(file_info) => Ok(Self::Gallery(Gallery::new(
+                &file_info.path,
+                users_cache,
+                colors,
+                &status.selected_non_mut().filter,
+                status.selected_non_mut().show_hidden,
+            )?)),
             FileKind::Directory => Ok(Self::Directory(Directory::new(
                 &file_info.path,
                 users_cache,
@@ -269,6 +277,7 @@ impl Preview {
             Self::Socket(socket) => socket.len(),
             Self::BlockDevice(blockdevice) => blockdevice.len(),
             Self::FifoCharDevice(fifo) => fifo.len(),
+            Self::Gallery(gallery) => gallery.len(),
         }
     }
 
@@ -288,6 +297,35 @@ fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
         .collect())
 }
 
+/// Gallery preview for folders with many images
+pub struct Gallery {
+    content: Vec<Option<Ueberzug>>,
+    length: usize,
+}
+
+impl Gallery {
+    fn new(
+        path: &Path,
+        users_cache: &UsersCache,
+        colors: &Colors,
+        filter: &FilterKind,
+        show_hidden: bool,
+    ) -> Result<Self> {
+        let content = Self::make_gallery();
+        Ok(Self {
+            length: content.len(),
+            content,
+        })
+    }
+
+    fn make_gallery() -> Vec<Option<Ueberzug>> {
+        vec![]
+    }
+
+    fn len(&self) -> usize {
+        self.content.len()
+    }
+}
 /// Preview a socket file with `ss -lpmepiT`
 #[derive(Clone, Default)]
 pub struct Socket {
@@ -1233,6 +1271,10 @@ fn is_ext_doc(ext: &str) -> bool {
 
 fn is_ext_epub(ext: &str) -> bool {
     ext == "epub"
+}
+
+fn is_image_folder(file_info: &FileInfo) -> bool {
+    true
 }
 
 fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
