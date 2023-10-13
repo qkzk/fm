@@ -567,7 +567,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ### Version 0.1.23
 
 - [x] preview tar archive
-- [ ] gallery mode for image folders
 
 ## TODO
 
