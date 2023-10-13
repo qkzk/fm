@@ -519,7 +519,7 @@ impl PathContent {
     }
 
     /// Returns an enumeration of the files (`FileInfo`) in content.
-    pub fn enumerate(&mut self) -> Enumerate<std::slice::Iter<'_, FileInfo>> {
+    pub fn enumerate(&self) -> Enumerate<std::slice::Iter<'_, FileInfo>> {
         self.content.iter().enumerate()
     }
 
