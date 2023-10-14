@@ -568,6 +568,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] preview tar archive
 - [x] Jump mode : 'Space' Toggle flag, 'u' remove all flags, 'Enter' jump to the file
+- [ ] copy / move while existing file already exist should use another name
 
 ## TODO
 
