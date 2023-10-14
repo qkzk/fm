@@ -60,6 +60,12 @@ impl Flagged {
             .map(|p| p.as_path())
             .collect()
     }
+
+    /// Remove the selected file from the flagged files.
+    pub fn remove_selected(&mut self) {
+        self.content.remove(self.index);
+        self.index = 0;
+    }
 }
 
 impl_selectable_content!(PathBuf, Flagged);

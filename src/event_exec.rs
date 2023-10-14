@@ -713,7 +713,10 @@ impl EventAction {
                 LeaveMode::password(status, kind, colors, dest, action)?
             }
             Mode::InputSimple(InputSimple::Remote) => LeaveMode::remote(status.selected())?,
-            Mode::Navigate(Navigate::Jump) => LeaveMode::jump(status)?,
+            Mode::Navigate(Navigate::Jump) => {
+                must_refresh = false;
+                LeaveMode::jump(status)?
+            }
             Mode::Navigate(Navigate::History) => LeaveMode::history(status.selected())?,
             Mode::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status.selected())?,
             Mode::Navigate(Navigate::Trash) => LeaveMode::trash(status)?,

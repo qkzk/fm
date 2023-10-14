@@ -567,6 +567,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ### Version 0.1.23
 
 - [x] preview tar archive
+- [x] Jump mode : 'Space' Toggle flag, 'u' remove all flags, 'Enter' jump to the file
 
 ## TODO
 

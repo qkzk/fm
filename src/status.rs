@@ -317,6 +317,12 @@ impl Status {
         self.reset_tabs_view()
     }
 
+    /// Remove a flag file from Jump mode
+    pub fn jump_remove_selected_flagged(&mut self) -> Result<()> {
+        self.flagged.remove_selected();
+        Ok(())
+    }
+
     pub fn click(
         &mut self,
         row: u16,
