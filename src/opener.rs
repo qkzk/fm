@@ -51,8 +51,8 @@ pub enum ExtensionKind {
 
 // TODO: move those associations to a config file
 impl ExtensionKind {
-    fn parse(ext: &str) -> Self {
-        match ext.to_lowercase().as_str() {
+    fn matcher(ext: &str) -> Self {
+        match ext {
             "avif" | "bmp" | "gif" | "png" | "jpg" | "jpeg" | "pgm" | "ppm" | "webp" | "tiff" => {
                 Self::Bitmap
             }
@@ -126,7 +126,6 @@ impl OpenerAssociation {
                     ExtensionKind::Text,
                     OpenerInfo::external(DEFAULT_TEXT_OPENER),
                 ),
-                (ExtensionKind::Default, OpenerInfo::external(DEFAULT_OPENER)),
                 (
                     ExtensionKind::Vectorial,
                     OpenerInfo::external(DEFAULT_VECTORIAL_OPENER),
@@ -138,23 +137,24 @@ impl OpenerAssociation {
                 (
                     ExtensionKind::Internal(InternalVariant::DecompressZip),
                     OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressZip))
-                        .unwrap(),
+                        .unwrap_or_default(),
                 ),
                 (
                     ExtensionKind::Internal(InternalVariant::DecompressGz),
                     OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressGz))
-                        .unwrap(),
+                        .unwrap_or_default(),
                 ),
                 (
                     ExtensionKind::Internal(InternalVariant::DecompressXz),
                     OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressXz))
-                        .unwrap(),
+                        .unwrap_or_default(),
                 ),
                 (
                     ExtensionKind::Internal(InternalVariant::NotSupported),
                     OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::NotSupported))
-                        .unwrap(),
+                        .unwrap_or_default(),
                 ),
+                (ExtensionKind::Default, OpenerInfo::external(DEFAULT_OPENER)),
             ]),
         }
     }
@@ -189,7 +189,8 @@ macro_rules! open_file_with {
 
 impl OpenerAssociation {
     fn opener_info(&self, ext: &str) -> Option<&OpenerInfo> {
-        self.association.get(&ExtensionKind::parse(ext))
+        self.association
+            .get(&ExtensionKind::matcher(&ext.to_lowercase()))
     }
 
     fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
@@ -235,6 +236,16 @@ pub struct OpenerInfo {
     /// The internal variant kind.
     pub internal_variant: Option<InternalVariant>,
     use_term: bool,
+}
+
+impl Default for OpenerInfo {
+    fn default() -> Self {
+        Self {
+            external_program: Some("/usr/bin/xdg-open".to_owned()),
+            internal_variant: None,
+            use_term: false,
+        }
+    }
 }
 
 impl OpenerInfo {
