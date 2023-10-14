@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Result};
 use log::info;
-use rand::Rng;
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::thread;
@@ -11,6 +10,7 @@ use crate::impl_selectable_content;
 use crate::log::write_log_line;
 use crate::opener::Opener;
 use crate::status::Status;
+use crate::utils::random_name;
 
 /// Struct holding informations about files about to be renamed.
 /// We only need to know which are the original filenames and which
@@ -90,20 +90,9 @@ impl<'a> Bulkrename<'a> {
         Ok(std::fs::metadata(filepath)?.modified()?)
     }
 
-    fn random_name() -> String {
-        let mut rand_str = String::with_capacity(14);
-        rand_str.push_str("fm-");
-        rand::thread_rng()
-            .sample_iter(&rand::distributions::Alphanumeric)
-            .take(7)
-            .for_each(|ch| rand_str.push(ch as char));
-        rand_str.push_str(".txt");
-        rand_str
-    }
-
     fn generate_random_filepath() -> Result<PathBuf> {
         let mut filepath = PathBuf::from(&TMP_FOLDER_PATH);
-        filepath.push(Self::random_name());
+        filepath.push(random_name());
         Ok(filepath)
     }
 

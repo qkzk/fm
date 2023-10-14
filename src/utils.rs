@@ -4,6 +4,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
+use rand::Rng;
 use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 use users::{get_current_uid, get_user_by_uid};
@@ -148,4 +149,17 @@ pub fn is_sudo_command(executable: &str) -> bool {
 pub fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
     let command = &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>");
     let _ = nvim(nvim_server, command);
+}
+
+/// Creates a random string.
+/// The string starts with `fm-` and contains 7 random alphanumeric characters.
+pub fn random_name() -> String {
+    let mut rand_str = String::with_capacity(14);
+    rand_str.push_str("fm-");
+    rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(7)
+        .for_each(|ch| rand_str.push(ch as char));
+    rand_str.push_str(".txt");
+    rand_str
 }

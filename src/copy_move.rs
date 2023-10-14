@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use log::info;
@@ -13,7 +13,7 @@ use crate::constant_strings_paths::NOTIFY_EXECUTABLE;
 use crate::fileinfo::human_size;
 use crate::log::write_log_line;
 use crate::opener::execute_in_child;
-use crate::utils::is_program_in_path;
+use crate::utils::{is_program_in_path, random_name};
 
 /// Display the updated progress bar on the terminal.
 fn handle_progress_display(
@@ -125,6 +125,21 @@ impl CopyMove {
 /// A progress bar is displayed on the passed terminal.
 /// A notification is then sent to the user if a compatible notification system
 /// is installed.
+///
+/// If a file is copied or moved to a folder which already contains a file with the same name,
+/// the copie/moved file has a `_` appended to its name.
+///
+/// This is done by :
+/// 1. creating a random temporary folder in the destination,
+/// 2. moving / copying every file there,
+/// 3. moving all file to their final destination, appending enough `_` to get an unique file name,
+/// 4. deleting the now empty temporary folder.
+///
+/// This quite complex behavior is the only way I could find to keep the progress bar while allowing to
+/// create copies of files in the same dir.
+///
+/// In this scenario we have to wait for the copy to end before moving back the file.
+/// Sadly, the copy is now blocking.
 pub fn copy_move(
     copy_or_move: CopyMove,
     sources: Vec<PathBuf>,
@@ -136,8 +151,15 @@ pub fn copy_move(
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&in_mem, &pb, &term, process_info)
     };
-    let dest = dest.to_owned();
-    let _ = thread::spawn(move || {
+    let dest_has_existing_file = check_existing_file(&sources, dest)?;
+    let final_dest = dest;
+    let dest = if dest_has_existing_file {
+        create_temporary_destination(dest)?
+    } else {
+        dest.to_owned()
+    };
+    let temp_dest = dest.clone();
+    let copy_move_thread = thread::spawn(move || {
         let transfered_bytes =
             match copy_or_move.copier()(&sources, &dest, &options, handle_progress) {
                 Ok(transfered_bytes) => transfered_bytes,
@@ -151,7 +173,74 @@ pub fn copy_move(
 
         copy_or_move.log_and_notify(human_size(transfered_bytes));
     });
+    if dest_has_existing_file {
+        let _ = copy_move_thread.join();
+        move_copied_files_to_dest(&temp_dest, final_dest)?;
+    }
     Ok(())
+}
+
+/// Creates a randomly named folder in the destination.
+/// The name is `fm-random` where `random` is a random string of length 7.
+fn create_temporary_destination(dest: &str) -> Result<String> {
+    let mut temp_dest = std::path::PathBuf::from(dest);
+    let rand_str = random_name();
+    temp_dest.push(rand_str);
+    std::fs::create_dir(&temp_dest)?;
+    Ok(temp_dest.display().to_string())
+}
+
+/// Move every file from `temp_dest` to `final_dest` and delete `temp_dest`.
+/// If the `final_dest` already contains a file with the same name,
+/// the moved file has enough `_` appended to its name to make it unique.
+/// The now empty `temp_dest` is then deleted.
+fn move_copied_files_to_dest(temp_dest: &str, final_dest: &str) -> Result<()> {
+    for file in std::fs::read_dir(temp_dest).context("Unreachable folder")? {
+        let file = file.context("File don't exist")?;
+        move_copied_file_to_dest(file, final_dest)?;
+    }
+
+    std::fs::remove_dir(temp_dest)?;
+
+    Ok(())
+}
+
+/// Move a single file to `final_dest`.
+/// If the file already exists in `final_dest` the moved one has engough '_' appended
+/// to its name to make it unique.
+fn move_copied_file_to_dest(file: std::fs::DirEntry, final_dest: &str) -> Result<()> {
+    let mut file_name = file
+        .file_name()
+        .to_str()
+        .context("Couldn't cast the filename")?
+        .to_owned();
+    let mut old_dest = std::path::PathBuf::from(final_dest);
+    old_dest.push(&file_name);
+    while old_dest.exists() {
+        old_dest.pop();
+        file_name.push('_');
+        old_dest.push(&file_name);
+    }
+    std::fs::rename(file.path(), old_dest)?;
+    Ok(())
+}
+
+/// True iff `dest` contains any file with the same file name as one of `sources`.
+fn check_existing_file(sources: &[PathBuf], dest: &str) -> Result<bool> {
+    for file in sources {
+        let filename = file
+            .file_name()
+            .context("Couldn't read filename")?
+            .to_str()
+            .context("Couldn't cast filename into str")?
+            .to_owned();
+        let mut new_path = std::path::PathBuf::from(dest);
+        new_path.push(&filename);
+        if new_path.exists() {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Send a notification to the desktop.
