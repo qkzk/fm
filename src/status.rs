@@ -323,6 +323,34 @@ impl Status {
         Ok(())
     }
 
+    /// Move the selected flagged file to the trash.
+    pub fn trash_single_flagged(&mut self) -> Result<()> {
+        let filepath = self
+            .flagged
+            .selected()
+            .context("no flagged file")?
+            .to_owned();
+        self.flagged.remove_selected();
+        self.trash.trash(&filepath)?;
+        Ok(())
+    }
+
+    /// Delete the selected flagged file.
+    pub fn delete_single_flagged(&mut self) -> Result<()> {
+        let filepath = self
+            .flagged
+            .selected()
+            .context("no flagged file")?
+            .to_owned();
+        self.flagged.remove_selected();
+        if filepath.is_dir() {
+            std::fs::remove_dir_all(filepath)?;
+        } else {
+            std::fs::remove_file(filepath)?;
+        }
+        Ok(())
+    }
+
     pub fn click(
         &mut self,
         row: u16,

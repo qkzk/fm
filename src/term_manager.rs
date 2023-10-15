@@ -699,7 +699,7 @@ impl<'a> WinSecondary<'a> {
         canvas.print(
             1,
             0,
-            "Enter: restore the selected file - x: delete permanently",
+            "Enter: restore the selected file  --  x: delete permanently",
         )?;
         let content = &selectable.content();
         if content.is_empty() {

@@ -206,7 +206,7 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::Marks(_)) => write!(f, "Marks jump:"),
             Mode::Navigate(Navigate::Jump) => write!(
                 f,
-                "Flagged files:   <Enter> go to file     --    <SPC> remove flag    --   <u> remove all flags"
+                "Flagged files: <Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash"
             ),
             Mode::Navigate(Navigate::History) => write!(f, "History :"),
             Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),

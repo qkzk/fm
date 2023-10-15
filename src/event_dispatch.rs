@@ -97,6 +97,8 @@ impl EventDispatcher {
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'u' => status.umount_encrypted_drive(),
             Mode::Navigate(Navigate::Jump) if c == ' ' => status.jump_remove_selected_flagged(),
             Mode::Navigate(Navigate::Jump) if c == 'u' => status.clear_flags_and_reset_view(),
+            Mode::Navigate(Navigate::Jump) if c == 'x' => status.delete_single_flagged(),
+            Mode::Navigate(Navigate::Jump) if c == 'X' => status.trash_single_flagged(),
             Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => status.marks_jump_char(c, colors),
             Mode::Navigate(Navigate::Marks(MarkAction::New)) => status.marks_new(c, colors),
             Mode::Preview | Mode::Navigate(_) => {
