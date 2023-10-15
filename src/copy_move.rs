@@ -148,109 +148,152 @@ pub fn copy_move(
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&in_mem, &pb, &term, process_info)
     };
-    let has_filename_conflict = check_filename_conflict(&sources, dest)?;
-    let final_dest = dest.to_owned();
-    let dest = if has_filename_conflict {
-        create_temporary_destination(dest)?
-    } else {
-        dest.to_owned()
-    };
+    let conflict_handler = ConflictHandler::new(dest, &sources)?;
+
     let _ = thread::spawn(move || {
-        let transfered_bytes =
-            match copy_or_move.copier()(&sources, &dest, &options, handle_progress) {
-                Ok(transfered_bytes) => transfered_bytes,
-                Err(e) => {
-                    info!("copy move couldn't copy: {e:?}");
-                    0
-                }
-            };
+        let transfered_bytes = match copy_or_move.copier()(
+            &sources,
+            &conflict_handler.temp_dest,
+            &options,
+            handle_progress,
+        ) {
+            Ok(transfered_bytes) => transfered_bytes,
+            Err(e) => {
+                info!("copy move couldn't copy: {e:?}");
+                0
+            }
+        };
 
         let _ = c_term.send_event(Event::User(()));
 
-        if has_filename_conflict {
-            if let Err(e) = move_copied_files_to_dest(&dest, &final_dest) {
-                log::info!("Move temp files back error: {e:?}")
-            }
-            if let Err(e) = delete_temp_dest(&dest) {
-                log::info!("Delete temp dir error: {e:?}")
-            }
+        if let Err(e) = conflict_handler.solve_conflicts() {
+            info!("Conflict Handler error: {e}");
         }
+
         copy_or_move.log_and_notify(human_size(transfered_bytes));
     });
     Ok(())
 }
 
-/// Creates a randomly named folder in the destination.
-/// The name is `fm-random` where `random` is a random string of length 7.
-fn create_temporary_destination(dest: &str) -> Result<String> {
-    let mut temp_dest = std::path::PathBuf::from(dest);
-    let rand_str = random_name();
-    temp_dest.push(rand_str);
-    std::fs::create_dir(&temp_dest)?;
-    Ok(temp_dest.display().to_string())
+/// Deal with conflicting filenames during a copy or a move.
+struct ConflictHandler {
+    /// The destination of the files.
+    /// If there's no conflicting filenames, it's their final destination
+    /// otherwise it's a temporary folder we'll create.
+    temp_dest: String,
+    /// True iff there's at least one file name conflict:
+    /// an already existing file in the destination with the same name
+    /// as a file from source.
+    has_conflict: bool,
+    /// Defined to the final destination if there's a conflict.
+    /// None otherwise.
+    final_dest: Option<String>,
 }
 
-/// Move every file from `temp_dest` to `final_dest` and delete `temp_dest`.
-/// If the `final_dest` already contains a file with the same name,
-/// the moved file has enough `_` appended to its name to make it unique.
-fn move_copied_files_to_dest(temp_dest: &str, final_dest: &str) -> Result<()> {
-    for file in std::fs::read_dir(temp_dest).context("Unreachable folder")? {
-        let file = file.context("File don't exist")?;
-        move_single_file_to_dest(file, final_dest)?;
+impl ConflictHandler {
+    /// Creates a new `ConflictHandler` instance.
+    /// We check for conflict and create the temporary folder if needed.
+    fn new(dest: &str, sources: &[PathBuf]) -> Result<Self> {
+        let has_conflict = ConflictHandler::check_filename_conflict(sources, dest)?;
+        let temp_dest: String;
+        let final_dest: Option<String>;
+        if has_conflict {
+            temp_dest = Self::create_temporary_destination(dest)?;
+            final_dest = Some(dest.to_owned());
+        } else {
+            temp_dest = dest.to_owned();
+            final_dest = None;
+        };
+
+        Ok(Self {
+            temp_dest,
+            has_conflict,
+            final_dest,
+        })
     }
-    Ok(())
-}
 
-/// Delete the temporary folder used when copying files.
-/// An error is returned if the temporary foldern isn't empty which
-/// should always be the case.
-fn delete_temp_dest(temp_dest: &str) -> Result<()> {
-    std::fs::remove_dir(temp_dest)?;
-    Ok(())
-}
-
-/// Move a single file to `final_dest`.
-/// If the file already exists in `final_dest` the moved one has engough '_' appended
-/// to its name to make it unique.
-fn move_single_file_to_dest(file: std::fs::DirEntry, final_dest: &str) -> Result<()> {
-    let mut file_name = file
-        .file_name()
-        .to_str()
-        .context("Couldn't cast the filename")?
-        .to_owned();
-    let mut old_dest = std::path::PathBuf::from(final_dest);
-    old_dest.push(&file_name);
-    while old_dest.exists() {
-        old_dest.pop();
-        file_name.push('_');
-        old_dest.push(&file_name);
+    /// Creates a randomly named folder in the destination.
+    /// The name is `fm-random` where `random` is a random string of length 7.
+    fn create_temporary_destination(dest: &str) -> Result<String> {
+        let mut temp_dest = std::path::PathBuf::from(dest);
+        let rand_str = random_name();
+        temp_dest.push(rand_str);
+        std::fs::create_dir(&temp_dest)?;
+        Ok(temp_dest.display().to_string())
     }
-    log::info!(
-        "moving back {file} to {old_dest} - existing ? {exist}",
-        file = file.path().display(),
-        old_dest = old_dest.display(),
-        exist = old_dest.exists()
-    );
-    std::fs::rename(file.path(), old_dest)?;
-    Ok(())
-}
 
-/// True iff `dest` contains any file with the same file name as one of `sources`.
-fn check_filename_conflict(sources: &[PathBuf], dest: &str) -> Result<bool> {
-    for file in sources {
-        let filename = file
-            .file_name()
-            .context("Couldn't read filename")?
-            .to_str()
-            .context("Couldn't cast filename into str")?
-            .to_owned();
-        let mut new_path = std::path::PathBuf::from(dest);
-        new_path.push(&filename);
-        if new_path.exists() {
-            return Ok(true);
+    /// Move every file from `temp_dest` to `final_dest` and delete `temp_dest`.
+    /// If the `final_dest` already contains a file with the same name,
+    /// the moved file has enough `_` appended to its name to make it unique.
+    fn move_copied_files_to_dest(&self) -> Result<()> {
+        for file in std::fs::read_dir(&self.temp_dest).context("Unreachable folder")? {
+            let file = file.context("File don't exist")?;
+            self.move_single_file_to_dest(file)?;
         }
+        Ok(())
     }
-    Ok(false)
+
+    /// Delete the temporary folder used when copying files.
+    /// An error is returned if the temporary foldern isn't empty which
+    /// should always be the case.
+    fn delete_temp_dest(&self) -> Result<()> {
+        std::fs::remove_dir(&self.temp_dest)?;
+        Ok(())
+    }
+
+    /// Move a single file to `final_dest`.
+    /// If the file already exists in `final_dest` the moved one has enough '_' appended
+    /// to its name to make it unique.
+    fn move_single_file_to_dest(&self, file: std::fs::DirEntry) -> Result<()> {
+        let mut file_name = file
+            .file_name()
+            .to_str()
+            .context("Couldn't cast the filename")?
+            .to_owned();
+
+        let mut final_dest = std::path::PathBuf::from(
+            self.final_dest
+                .clone()
+                .context("Final dest shouldn't be None")?,
+        );
+        final_dest.push(&file_name);
+        while final_dest.exists() {
+            final_dest.pop();
+            file_name.push('_');
+            final_dest.push(&file_name);
+        }
+        std::fs::rename(file.path(), final_dest)?;
+        Ok(())
+    }
+
+    /// True iff `dest` contains any file with the same file name as one of `sources`.
+    fn check_filename_conflict(sources: &[PathBuf], dest: &str) -> Result<bool> {
+        for file in sources {
+            let filename = file
+                .file_name()
+                .context("Couldn't read filename")?
+                .to_str()
+                .context("Couldn't cast filename into str")?
+                .to_owned();
+            let mut new_path = std::path::PathBuf::from(dest);
+            new_path.push(&filename);
+            if new_path.exists() {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    /// Does nothing if there's no conflicting filenames during the copy/move.
+    /// Move back every file, appending '_' to their name until the name is unique.
+    /// Delete the temp folder.
+    fn solve_conflicts(&self) -> Result<()> {
+        if self.has_conflict {
+            self.move_copied_files_to_dest()?;
+            self.delete_temp_dest()?;
+        }
+        Ok(())
+    }
 }
 
 /// Send a notification to the desktop.
