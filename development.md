@@ -569,7 +569,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] preview tar archive
 - [x] Jump mode : 'Space' Toggle flag, 'u' remove all flags, 'Enter' jump to the file
 - [x] FIX: copy / move while existing file already exist use another name
-  It allows fm to create copies of file in the same directory.
+
+      It allows fm to create copies of file in the same directory.
 
 ## TODO
 
