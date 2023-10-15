@@ -447,7 +447,8 @@ impl<'a> WinMain<'a> {
                         &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
                         Self::ATTR_LINE_NR,
                     )?;
-                    line.print(canvas, row, line_number_width_hex + 1);
+                    line.print_bytes(canvas, row, line_number_width_hex + 1);
+                    line.print_ascii(canvas, row, line_number_width_hex + 43);
                 }
             }
             Preview::Ueberzug(image) => {

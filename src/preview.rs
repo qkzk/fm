@@ -652,8 +652,10 @@ impl Line {
         Self { line }
     }
 
-    fn format(&self) -> String {
-        let mut s = "".to_owned();
+    /// Format a line of 16 bytes as BigEndian, separated by spaces.
+    /// Every byte is zero filled if necessary.
+    fn format_hex(&self) -> String {
+        let mut s = String::new();
         for (i, byte) in self.line.iter().enumerate() {
             let _ = write!(s, "{byte:02x}");
             if i % 2 == 1 {
@@ -663,10 +665,41 @@ impl Line {
         s
     }
 
+    /// Format a line of 16 bytes as an ASCII string.
+    /// Non ASCII printable bytes are replaced by dots.
+    fn format_as_ascii(&self) -> String {
+        let mut line_of_char = String::new();
+        for byte in self.line.iter() {
+            if *byte < 31 || *byte > 126 {
+                line_of_char.push('.')
+            } else if let Some(c) = char::from_u32(*byte as u32) {
+                line_of_char.push(c);
+            } else {
+                line_of_char.push(' ')
+            }
+        }
+        line_of_char
+    }
+
     /// Print line of pair of bytes in hexadecimal, 16 bytes long.
+    /// It uses BigEndian notation, regardless of platform usage.
     /// It tries to imitates the output of hexdump.
-    pub fn print(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
-        let _ = canvas.print(row, offset + 2, &self.format());
+    pub fn print_bytes(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
+        let _ = canvas.print(row, offset + 2, &self.format_hex());
+    }
+
+    /// Print a line as an ASCII string
+    /// Non ASCII printable bytes are replaced by dots.
+    pub fn print_ascii(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
+        let _ = canvas.print_with_attr(
+            row,
+            offset + 2,
+            &self.format_as_ascii(),
+            Attr {
+                fg: Color::LIGHT_YELLOW,
+                ..Default::default()
+            },
+        );
     }
 }
 
