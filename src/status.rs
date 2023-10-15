@@ -211,11 +211,8 @@ impl Status {
     pub fn skim_output_to_tab(&mut self) -> Result<()> {
         let skim = self.skimer.search_filename(
             self.selected_non_mut()
-                .selected()
-                .context("skim: no selected file")?
-                .path
-                .to_str()
-                .context("skim error")?,
+                .path_content_str()
+                .context("Couldn't parse current directory")?,
         );
         let Some(output) = skim.first() else {
             return Ok(());
