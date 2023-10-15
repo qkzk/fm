@@ -23,7 +23,7 @@ fn handle_progress_display(
     process_info: fs_extra::TransitProcess,
 ) -> fs_extra::dir::TransitProcessResult {
     pb.set_position(progress_bar_position(&process_info));
-    let _ = term.print_with_attr(1, 1, &in_mem.contents(), CopyMove::attr());
+    let _ = term.print_with_attr(2, 1, &in_mem.contents(), CopyMove::attr());
     let _ = term.present();
     fs_extra::dir::TransitProcessResult::ContinueOrAbort
 }
@@ -137,9 +137,6 @@ impl CopyMove {
 ///
 /// This quite complex behavior is the only way I could find to keep the progress bar while allowing to
 /// create copies of files in the same dir.
-///
-/// In this scenario we have to wait for the copy to end before moving back the file.
-/// Sadly, the copy is now blocking.
 pub fn copy_move(
     copy_or_move: CopyMove,
     sources: Vec<PathBuf>,
@@ -151,15 +148,14 @@ pub fn copy_move(
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&in_mem, &pb, &term, process_info)
     };
-    let dest_has_existing_file = check_existing_file(&sources, dest)?;
-    let final_dest = dest;
-    let dest = if dest_has_existing_file {
+    let has_filename_conflict = check_filename_conflict(&sources, dest)?;
+    let final_dest = dest.to_owned();
+    let dest = if has_filename_conflict {
         create_temporary_destination(dest)?
     } else {
         dest.to_owned()
     };
-    let temp_dest = dest.clone();
-    let copy_move_thread = thread::spawn(move || {
+    let _ = thread::spawn(move || {
         let transfered_bytes =
             match copy_or_move.copier()(&sources, &dest, &options, handle_progress) {
                 Ok(transfered_bytes) => transfered_bytes,
@@ -171,12 +167,16 @@ pub fn copy_move(
 
         let _ = c_term.send_event(Event::User(()));
 
+        if has_filename_conflict {
+            if let Err(e) = move_copied_files_to_dest(&dest, &final_dest) {
+                log::info!("Move temp files back error: {e:?}")
+            }
+            if let Err(e) = delete_temp_dest(&dest) {
+                log::info!("Delete temp dir error: {e:?}")
+            }
+        }
         copy_or_move.log_and_notify(human_size(transfered_bytes));
     });
-    if dest_has_existing_file {
-        let _ = copy_move_thread.join();
-        move_copied_files_to_dest(&temp_dest, final_dest)?;
-    }
     Ok(())
 }
 
@@ -193,22 +193,26 @@ fn create_temporary_destination(dest: &str) -> Result<String> {
 /// Move every file from `temp_dest` to `final_dest` and delete `temp_dest`.
 /// If the `final_dest` already contains a file with the same name,
 /// the moved file has enough `_` appended to its name to make it unique.
-/// The now empty `temp_dest` is then deleted.
 fn move_copied_files_to_dest(temp_dest: &str, final_dest: &str) -> Result<()> {
     for file in std::fs::read_dir(temp_dest).context("Unreachable folder")? {
         let file = file.context("File don't exist")?;
-        move_copied_file_to_dest(file, final_dest)?;
+        move_single_file_to_dest(file, final_dest)?;
     }
+    Ok(())
+}
 
+/// Delete the temporary folder used when copying files.
+/// An error is returned if the temporary foldern isn't empty which
+/// should always be the case.
+fn delete_temp_dest(temp_dest: &str) -> Result<()> {
     std::fs::remove_dir(temp_dest)?;
-
     Ok(())
 }
 
 /// Move a single file to `final_dest`.
 /// If the file already exists in `final_dest` the moved one has engough '_' appended
 /// to its name to make it unique.
-fn move_copied_file_to_dest(file: std::fs::DirEntry, final_dest: &str) -> Result<()> {
+fn move_single_file_to_dest(file: std::fs::DirEntry, final_dest: &str) -> Result<()> {
     let mut file_name = file
         .file_name()
         .to_str()
@@ -221,12 +225,18 @@ fn move_copied_file_to_dest(file: std::fs::DirEntry, final_dest: &str) -> Result
         file_name.push('_');
         old_dest.push(&file_name);
     }
+    log::info!(
+        "moving back {file} to {old_dest} - existing ? {exist}",
+        file = file.path().display(),
+        old_dest = old_dest.display(),
+        exist = old_dest.exists()
+    );
     std::fs::rename(file.path(), old_dest)?;
     Ok(())
 }
 
 /// True iff `dest` contains any file with the same file name as one of `sources`.
-fn check_existing_file(sources: &[PathBuf], dest: &str) -> Result<bool> {
+fn check_filename_conflict(sources: &[PathBuf], dest: &str) -> Result<bool> {
     for file in sources {
         let filename = file
             .file_name()
