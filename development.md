@@ -574,7 +574,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] skim fuzzy find (ctrl-f) starts from current dir, not current selected file
 - [x] open/file pick flagged files if there are, use selected file instead
 - [x] regroup openers when opening multiple files.
-- [ ] refresh after a while
+- [ ] refresh every 10 seconds. If no file in current dir has changed, nothing happens.
+    
+    BUT... if something changed, the whole view is refreshed, reseting the selected file :(
+
+    It still needs some amelioration
 
 ## TODO
 

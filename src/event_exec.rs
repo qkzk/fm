@@ -816,6 +816,11 @@ impl EventAction {
         status.refresh_status(colors)
     }
 
+    pub fn refresh_if_needed(status: &mut Status) -> Result<()> {
+        status.encrypted_devices.update()?;
+        status.refresh_if_needed()
+    }
+
     /// Display mediainfo details of an image
     pub fn mediainfo(tab: &mut Tab) -> Result<()> {
         if !is_program_in_path(MEDIAINFO) {

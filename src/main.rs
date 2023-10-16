@@ -1,4 +1,8 @@
+use std::borrow::BorrowMut;
+use std::sync::mpsc::{self, TryRecvError};
 use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
 use anyhow::Result;
 use log::info;
@@ -29,6 +33,10 @@ struct FM {
     /// Since most are generated the first time an extension is met,
     /// we need to hold this.
     colors: Colors,
+    /// Refresher is used to force a refresh when a file has been modified externally.
+    /// It send `Event::User(())` every 10 seconds.
+    /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
+    refresher: Refresher,
 }
 
 impl FM {
@@ -37,7 +45,8 @@ impl FM {
     /// an `EventDispatcher`,
     /// a `Status`,
     /// a `Display`,
-    /// some `Colors`.
+    /// some `Colors`,
+    /// a `Refresher`.
     /// It reads and drops the configuration from the config file.
     /// If the config can't be parsed, it exits with error code 1.
     fn start() -> Result<Self> {
@@ -54,8 +63,15 @@ impl FM {
         });
         let help = Help::from_keybindings(&config.binds, &opener)?.help;
         let display = Display::new(term.clone());
-        let status = Status::new(display.height()?, term, help, opener, &config.settings)?;
+        let status = Status::new(
+            display.height()?,
+            term.clone(),
+            help,
+            opener,
+            &config.settings,
+        )?;
         let colors = config.colors.clone();
+        let refresher = Refresher::spawn(term);
         drop(config);
         Ok(Self {
             event_reader,
@@ -63,6 +79,7 @@ impl FM {
             status,
             display,
             colors,
+            refresher,
         })
     }
 
@@ -109,9 +126,54 @@ impl FM {
     fn quit(self) -> Result<()> {
         self.display.show_cursor()?;
         let final_path = self.status.selected_path_str().to_owned();
-        drop(self);
+        self.refresher.quit()?;
         print_on_quit(&final_path);
         info!("fm is shutting down");
+        Ok(())
+    }
+}
+
+/// Allows refresh if the current path has been modified externally.
+struct Refresher {
+    /// Sender of messages, used to terminate the thread properly
+    tx: mpsc::Sender<()>,
+    /// Handle to the `term::Event` sender thread.
+    handle: thread::JoinHandle<()>,
+}
+
+impl Refresher {
+    /// Spawn a constantly thread sending refresh event to the terminal.
+    /// It also listen to a receiver for quit messages.
+    fn spawn(mut term: Arc<tuikit::term::Term>) -> Self {
+        let (tx, rx) = mpsc::channel();
+        let mut counter: u8 = 0;
+        let handle = thread::spawn(move || loop {
+            match rx.try_recv() {
+                Ok(_) | Err(TryRecvError::Disconnected) => {
+                    log::info!("terminating refresher");
+                    let _ = term.show_cursor(true);
+                    return;
+                }
+                Err(TryRecvError::Empty) => {}
+            }
+            counter += 1;
+            thread::sleep(Duration::from_millis(100));
+            if counter >= 10 * 10 {
+                counter = 0;
+                let event = tuikit::prelude::Event::User(());
+                if term.borrow_mut().send_event(event).is_err() {
+                    break;
+                }
+            }
+        });
+        Self { tx, handle }
+    }
+
+    /// Send a quit message to the receiver, signaling it to quit.
+    /// Join the refreshing thread which should be terminated.
+    fn quit(self) -> Result<()> {
+        self.tx.send(())?;
+        let _ = self.handle.join();
         Ok(())
     }
 }

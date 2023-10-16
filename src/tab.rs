@@ -146,6 +146,15 @@ impl Tab {
         Ok(())
     }
 
+    pub fn refresh_if_needed(&mut self) -> Result<()> {
+        if self.path_content.path.metadata()?.modified()?.elapsed()?
+            < std::time::Duration::new(10, 0)
+        {
+            self.refresh_view()?;
+        }
+        Ok(())
+    }
+
     /// Move to the currently selected directory.
     /// Fail silently if the current directory is empty or if the selected
     /// file isn't a directory.
