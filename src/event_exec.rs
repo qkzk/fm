@@ -27,7 +27,7 @@ use crate::mocp::Mocp;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::opener::{
     execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
-    execute_in_child_without_output_with_path, InternalVariant,
+    execute_in_child_without_output_with_path,
 };
 use crate::password::{PasswordKind, PasswordUsage};
 use crate::preview::ExtensionKind;
@@ -344,45 +344,13 @@ impl EventAction {
     /// their respective opener.
     /// Directories aren't opened since it will lead nowhere, it would only replace the
     /// current tab multiple times. It may change in the future.
-    /// Another strange behavior, it doesn't regroup files by opener : opening multiple
-    /// text file will create a process per file.
-    /// This may also change in the future.
+    /// Only files which use an external opener are supported.
     pub fn open_file(status: &mut Status) -> Result<()> {
         if status.flagged.is_empty() {
-            let filepath = &status
-                .selected_non_mut()
-                .selected()
-                .context("event open file, Empty directory")?
-                .path
-                .clone();
-            Self::open_filepath(status, filepath)?;
+            status.open_selected_file()
         } else {
-            let content = status.flagged.content().clone();
-            for flagged in content.iter() {
-                if !flagged.is_dir() {
-                    Self::open_filepath(status, flagged)?
-                }
-            }
+            status.open_flagged_files()
         }
-        Ok(())
-    }
-
-    /// Open a single file with its own opener
-    fn open_filepath(status: &mut Status, filepath: &path::Path) -> Result<()> {
-        let opener = status.opener.open_info(filepath);
-        if let Some(InternalVariant::NotSupported) = opener.internal_variant.as_ref() {
-            status.mount_iso_drive()?;
-        } else {
-            match status.opener.open(filepath) {
-                Ok(_) => (),
-                Err(e) => info!(
-                    "Error opening {:?}: {:?}",
-                    status.selected_non_mut().path_content.selected(),
-                    e
-                ),
-            }
-        }
-        Ok(())
     }
 
     /// Enter the rename mode.

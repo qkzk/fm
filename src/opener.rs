@@ -229,7 +229,7 @@ pub enum InternalVariant {
 
 /// A way to open one kind of files.
 /// It's either an internal method or an external program.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct OpenerInfo {
     /// The external program used to open the file.
     pub external_program: Option<String>,
@@ -321,6 +321,46 @@ impl Opener {
         }
     }
 
+    /// Open multiple files.
+    /// Files sharing an opener are opened in a single command ie.: `nvim a.txt b.rs c.py`.
+    /// Only files opened with an external opener are supported.
+    pub fn open_multiple(&self, file_paths: &[PathBuf]) -> Result<()> {
+        let openers = self.regroup_openers(file_paths);
+        for (open_info, file_paths) in openers.iter() {
+            let file_paths_str = Self::collect_paths_as_str(file_paths);
+            let mut args: Vec<&str> = vec![open_info.external_program.as_ref().unwrap()];
+            args.extend(&file_paths_str);
+            self.open_with_args(args, open_info.use_term)?;
+        }
+        Ok(())
+    }
+
+    /// Create an hashmap of openers -> [files].
+    /// Each file in the collection share the same opener.
+    fn regroup_openers(&self, file_paths: &[PathBuf]) -> HashMap<OpenerInfo, Vec<PathBuf>> {
+        let mut openers: HashMap<OpenerInfo, Vec<PathBuf>> = HashMap::new();
+        for file_path in file_paths.iter() {
+            let open_info = self.get_opener(extract_extension(file_path));
+            if open_info.external_program.is_some() {
+                openers
+                    .entry(open_info.to_owned())
+                    .and_modify(|files| files.push((*file_path).to_owned()))
+                    .or_insert(vec![(*file_path).to_owned()]);
+            }
+        }
+        openers
+    }
+
+    /// Convert a slice of `PathBuf` into their string representation.
+    /// Files which are directory are skipped.
+    fn collect_paths_as_str(file_paths: &[PathBuf]) -> Vec<&str> {
+        file_paths
+            .iter()
+            .filter(|fp| !fp.is_dir())
+            .filter_map(|fp| fp.to_str())
+            .collect()
+    }
+
     /// Open a file, using the configured method.
     /// It may fail if the program changed after reading the config file.
     /// It may also fail if the program can't handle this kind of files.
@@ -370,6 +410,10 @@ impl Opener {
             .to_str()
             .context("open with: can't parse filepath to str")?;
         let args = vec![program, strpath];
+        self.open_with_args(args, use_term)
+    }
+
+    fn open_with_args(&self, args: Vec<&str>, use_term: bool) -> Result<std::process::Child> {
         if use_term {
             self.open_terminal(args)
         } else {

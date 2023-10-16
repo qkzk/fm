@@ -28,7 +28,7 @@ use crate::log::write_log_line;
 use crate::marks::Marks;
 use crate::mode::{InputSimple, Mode, NeedConfirmation};
 use crate::mount_help::MountHelper;
-use crate::opener::Opener;
+use crate::opener::{InternalVariant, Opener};
 use crate::password::{
     drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock, PasswordHolder,
     PasswordKind, PasswordUsage,
@@ -506,6 +506,35 @@ impl Status {
     /// We ensure to clear it before displaying again.
     pub fn force_clear(&mut self) {
         self.force_clear = true;
+    }
+
+    /// Open a the selected file with its opener
+    pub fn open_selected_file(&mut self) -> Result<()> {
+        let filepath = &self
+            .selected_non_mut()
+            .selected()
+            .context("Empty directory")?
+            .path
+            .clone();
+        let opener = self.opener.open_info(filepath);
+        if let Some(InternalVariant::NotSupported) = opener.internal_variant.as_ref() {
+            self.mount_iso_drive()?;
+        } else {
+            match self.opener.open(filepath) {
+                Ok(_) => (),
+                Err(e) => info!(
+                    "Error opening {:?}: {:?}",
+                    self.selected_non_mut().path_content.selected(),
+                    e
+                ),
+            }
+        }
+        Ok(())
+    }
+
+    /// Open every flagged file with their respective opener.
+    pub fn open_flagged_files(&mut self) -> Result<()> {
+        self.opener.open_multiple(self.flagged.content())
     }
 
     /// Mount the currently selected file (which should be an .iso file) to
