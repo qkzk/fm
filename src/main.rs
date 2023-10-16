@@ -67,7 +67,7 @@ impl FM {
     }
 
     /// Return the last event received by the terminal
-    fn poll_event(&mut self) -> Result<tuikit::prelude::Event> {
+    fn poll_event(&self) -> Result<tuikit::prelude::Event> {
         self.event_reader.poll_event()
     }
 
