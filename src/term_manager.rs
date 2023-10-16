@@ -359,7 +359,7 @@ impl<'a> WinMain<'a> {
             if status.flagged.contains(&file.path) {
                 attr.effect |= Effect::BOLD | Effect::UNDERLINE;
             }
-            canvas.print_with_attr(row, 0, &string, attr)?;
+            canvas.print_with_attr(row, 1, &string, attr)?;
         }
         self.second_line(status, tab, canvas)?;
         if !self.attributes.has_window_below {
