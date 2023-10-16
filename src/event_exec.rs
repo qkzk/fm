@@ -338,14 +338,37 @@ impl EventAction {
         Ok(())
     }
 
-    /// Open a file with custom opener.
+    /// Open files with custom opener.
+    /// If there's no flagged file, the selected is chosen.
+    /// Otherwise, it will open the flagged files (not the flagged directories) with
+    /// their respective opener.
+    /// Directories aren't opened since it will lead nowhere, it would only replace the
+    /// current tab multiple times. It may change in the future.
+    /// Another strange behavior, it doesn't regroup files by opener : opening multiple
+    /// text file will create a process per file.
+    /// This may also change in the future.
     pub fn open_file(status: &mut Status) -> Result<()> {
-        let filepath = &status
-            .selected_non_mut()
-            .selected()
-            .context("event open file, Empty directory")?
-            .path
-            .clone();
+        if status.flagged.is_empty() {
+            let filepath = &status
+                .selected_non_mut()
+                .selected()
+                .context("event open file, Empty directory")?
+                .path
+                .clone();
+            Self::open_filepath(status, filepath)?;
+        } else {
+            let content = status.flagged.content().clone();
+            for flagged in content.iter() {
+                if !flagged.is_dir() {
+                    Self::open_filepath(status, flagged)?
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Open a single file with its own opener
+    fn open_filepath(status: &mut Status, filepath: &path::Path) -> Result<()> {
         let opener = status.opener.open_info(filepath);
         if let Some(InternalVariant::NotSupported) = opener.internal_variant.as_ref() {
             status.mount_iso_drive()?;
@@ -437,7 +460,9 @@ impl EventAction {
         tab.set_mode(Mode::Navigate(Navigate::Shortcut));
         Ok(())
     }
-    /// Send a signal to parent NVIM process, picking the selected file.
+    /// Send a signal to parent NVIM process, picking files.
+    /// If there's no flagged file, it picks the selected one.
+    /// otherwise, flagged files are picked.
     /// If no RPC server were provided at launch time - which may happen for
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
@@ -447,14 +472,21 @@ impl EventAction {
             return Ok(());
         };
         let nvim_server = status.nvim_server.clone();
-        let tab = status.selected();
-        let Some(fileinfo) = tab.selected() else {
-            return Ok(());
-        };
-        let Some(path_str) = fileinfo.path.to_str() else {
-            return Ok(());
-        };
-        open_in_current_neovim(path_str, &nvim_server);
+        if status.flagged.is_empty() {
+            let tab = status.selected();
+            let Some(fileinfo) = tab.selected() else {
+                return Ok(());
+            };
+            let Some(path_str) = fileinfo.path.to_str() else {
+                return Ok(());
+            };
+            open_in_current_neovim(path_str, &nvim_server);
+        } else {
+            let flagged = status.flagged.content.clone();
+            for file_path in flagged.iter() {
+                open_in_current_neovim(&file_path.display().to_string(), &nvim_server)
+            }
+        }
 
         Ok(())
     }

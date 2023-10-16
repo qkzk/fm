@@ -572,6 +572,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Jump mode (display flagged files) should allow to delete / trash the flagged files
 - [x] binary preview also display parsed ASCII strings
 - [x] skim fuzzy find (ctrl-f) starts from current dir, not current selected file
+- [x] open/file pick flagged files if there are, use selected file instead
 
 ## TODO
 
