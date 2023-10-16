@@ -573,6 +573,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] binary preview also display parsed ASCII strings
 - [x] skim fuzzy find (ctrl-f) starts from current dir, not current selected file
 - [x] open/file pick flagged files if there are, use selected file instead
+- [ ] regroup openers when opening multiple files. Requires a lot of change...
 
 ## TODO
 
