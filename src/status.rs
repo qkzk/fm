@@ -697,13 +697,6 @@ impl Status {
         Ok(())
     }
 
-    /// if the current selected folder has been modified less than 10 seconds
-    /// ago, the current view is refreshed
-    pub fn refresh_if_needed(&mut self) -> Result<()> {
-        self.selected().refresh_if_needed()?;
-        Ok(())
-    }
-
     /// When a rezise event occurs, we may hide the second panel if the width
     /// isn't sufficiant to display enough information.
     /// We also need to know the new height of the terminal to start scrolling

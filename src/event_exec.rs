@@ -816,9 +816,9 @@ impl EventAction {
         status.refresh_status(colors)
     }
 
-    pub fn refresh_if_needed(status: &mut Status) -> Result<()> {
-        status.encrypted_devices.update()?;
-        status.refresh_if_needed()
+    /// Refresh the view if files were modified in current directory.
+    pub fn refresh_if_needed(tab: &mut Tab) -> Result<()> {
+        tab.refresh_if_needed()
     }
 
     /// Display mediainfo details of an image

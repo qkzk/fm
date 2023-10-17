@@ -146,11 +146,18 @@ impl Tab {
         Ok(())
     }
 
+    /// Refresh the view if files were modified in current directory.
+    /// If a refresh occurs, tries to select the same file as before.
+    /// If it can't, the first file (`.`) is selected.
+    /// Does nothing otherwise
     pub fn refresh_if_needed(&mut self) -> Result<()> {
         if self.path_content.path.metadata()?.modified()?.elapsed()?
             < std::time::Duration::new(10, 0)
         {
+            let selected_path = self.selected().context("no selected file")?.path.clone();
             self.refresh_view()?;
+            let index = self.path_content.select_file(&selected_path);
+            self.scroll_to(index);
         }
         Ok(())
     }

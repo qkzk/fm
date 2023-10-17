@@ -167,7 +167,7 @@ impl ActionMap {
             ActionMap::PageUp => EventAction::page_up(current_tab, colors),
             ActionMap::Preview => EventAction::preview(status, colors),
             ActionMap::Quit => EventAction::quit(current_tab),
-            ActionMap::RefreshIfNeeded => EventAction::refresh_if_needed(status),
+            ActionMap::RefreshIfNeeded => EventAction::refresh_if_needed(current_tab),
             ActionMap::RefreshView => EventAction::refreshview(status, colors),
             ActionMap::RegexMatch => EventAction::regex_match(current_tab),
             ActionMap::RemoteMount => EventAction::remote_mount(current_tab),
