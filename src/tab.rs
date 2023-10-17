@@ -149,16 +149,28 @@ impl Tab {
     /// Refresh the view if files were modified in current directory.
     /// If a refresh occurs, tries to select the same file as before.
     /// If it can't, the first file (`.`) is selected.
-    /// Does nothing otherwise
+    /// Does nothing outside of normal mode.
     pub fn refresh_if_needed(&mut self) -> Result<()> {
-        if self.path_content.path.metadata()?.modified()?.elapsed()?
-            < std::time::Duration::new(10, 0)
-        {
-            let selected_path = self.selected().context("no selected file")?.path.clone();
-            self.refresh_view()?;
-            let index = self.path_content.select_file(&selected_path);
-            self.scroll_to(index);
+        if let Mode::Normal = self.mode {
+            if self.is_last_modification_happend_less_than(10)? {
+                self.refresh_and_reselect_file()?
+            }
         }
+        Ok(())
+    }
+
+    /// True iff the last modification of current folder happened less than `seconds` ago.
+    fn is_last_modification_happend_less_than(&self, seconds: u64) -> Result<bool> {
+        Ok(self.path_content.path.metadata()?.modified()?.elapsed()?
+            < std::time::Duration::new(seconds, 0))
+    }
+
+    /// Refresh the folder, reselect the last selected file, move the window to it.
+    fn refresh_and_reselect_file(&mut self) -> Result<()> {
+        let selected_path = self.selected().context("no selected file")?.path.clone();
+        self.refresh_view()?;
+        let index = self.path_content.select_file(&selected_path);
+        self.scroll_to(index);
         Ok(())
     }
 
