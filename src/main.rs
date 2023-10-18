@@ -33,10 +33,10 @@ struct FM {
     /// Since most are generated the first time an extension is met,
     /// we need to hold this.
     colors: Colors,
-    /// Refresher is used to force a refresh when a file has been modified externally.
-    /// It send `Event::User(())` every 10 seconds.
-    /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
-    refresher: Refresher,
+    //  /// Refresher is used to force a refresh when a file has been modified externally.
+    //  /// It send `Event::User(())` every 10 seconds.
+    //  /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
+    // refresher: Refresher,
 }
 
 impl FM {
@@ -71,7 +71,7 @@ impl FM {
             &config.settings,
         )?;
         let colors = config.colors.clone();
-        let refresher = Refresher::spawn(term);
+        // let refresher = Refresher::spawn(term);
         drop(config);
         Ok(Self {
             event_reader,
@@ -79,7 +79,7 @@ impl FM {
             status,
             display,
             colors,
-            refresher,
+            // refresher,
         })
     }
 
@@ -126,7 +126,7 @@ impl FM {
     fn quit(self) -> Result<()> {
         self.display.show_cursor()?;
         let final_path = self.status.selected_path_str().to_owned();
-        self.refresher.quit()?;
+        // self.refresher.quit()?;
         print_on_quit(&final_path);
         info!("fm is shutting down");
         Ok(())
