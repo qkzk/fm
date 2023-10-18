@@ -59,11 +59,7 @@ impl EventDispatcher {
             Event::Key(key) => self.key_matcher(status, key, colors)?,
             _ => (),
         };
-        if status.dual_pane && status.preview_second {
-            status.force_preview(colors)
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 
     fn key_matcher(&self, status: &mut Status, key: Key, colors: &Colors) -> Result<()> {

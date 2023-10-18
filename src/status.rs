@@ -224,7 +224,11 @@ impl Status {
     /// It calls skim, reads its output, then update the tab content.
     /// The output is splited at `:` since we only care about the path, not the line number.
     pub fn skim_line_output_to_tab(&mut self) -> Result<()> {
-        let skim = self.skimer.search_line_in_file();
+        let skim = self.skimer.search_line_in_file(
+            self.selected_non_mut()
+                .path_content_str()
+                .context("Couldn't parse current directory")?,
+        );
         let Some(output) = skim.first() else {
             return Ok(());
         };
@@ -474,14 +478,27 @@ impl Status {
         Ok(())
     }
 
-    /// Force a preview on the second pane
-    pub fn force_preview(&mut self, colors: &Colors) -> Result<()> {
-        let fileinfo = &self.tabs[0]
+    /// Check if the second pane should display a preview and force it.
+    pub fn update_second_pane_for_preview(&mut self, colors: &Colors) -> Result<()> {
+        if self.index == 0 && self.preview_second {
+            self.set_second_pane_for_preview(colors)?;
+        };
+        Ok(())
+    }
+
+    /// Force preview the selected file of the first pane in the second pane.
+    /// Doesn't check if it has do.
+    pub fn set_second_pane_for_preview(&mut self, colors: &Colors) -> Result<()> {
+        self.tabs[1].set_mode(Mode::Preview);
+
+        let fileinfo = self.tabs[0]
             .selected()
             .context("force preview: No file to select")?;
         let users_cache = &self.tabs[0].path_content.users_cache;
-        self.tabs[0].preview =
+        self.tabs[1].preview =
             Preview::new(fileinfo, users_cache, self, colors).unwrap_or_default();
+
+        self.tabs[1].window.reset(self.tabs[1].preview.len());
         Ok(())
     }
 

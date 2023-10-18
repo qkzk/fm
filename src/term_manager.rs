@@ -146,7 +146,7 @@ impl<'a> Draw for WinMain<'a> {
                 _ => self.files(self.status, self.tab, canvas),
             },
         }?;
-        self.first_line(self.tab, self.disk_space, canvas)?;
+        self.first_line(self.disk_space, canvas)?;
         Ok(())
     }
 }
@@ -173,9 +173,8 @@ impl<'a> WinMain<'a> {
     }
 
     fn preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let tab = &self.status.tabs[0];
-        let (_, height) = canvas.size()?;
-        self.preview(tab, &tab.preview.window_for_second_pane(height), canvas)?;
+        let tab = &self.status.tabs[1];
+        self.preview(tab, &tab.window, canvas)?;
         draw_colored_strings(0, 0, self.default_preview_first_line(tab), canvas, false)?;
         Ok(())
     }
@@ -187,11 +186,11 @@ impl<'a> WinMain<'a> {
     /// something else.
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
-    fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> Result<()> {
+    fn first_line(&self, disk_space: &str, canvas: &mut dyn Canvas) -> Result<()> {
         draw_colored_strings(
             0,
             0,
-            self.create_first_row(tab, disk_space)?,
+            self.create_first_row(disk_space)?,
             canvas,
             self.attributes.is_selected,
         )
@@ -289,21 +288,29 @@ impl<'a> WinMain<'a> {
         ]
     }
 
-    fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
-        match tab.path_content.selected() {
-            Some(fileinfo) => {
-                let mut strings = vec![" Preview ".to_owned()];
-                if !tab.preview.is_empty() {
-                    strings.push(format!(" {} / {} ", tab.window.bottom, tab.preview.len()));
-                };
-                strings.push(format!(" {} ", fileinfo.path.to_string_lossy()));
-                strings
-            }
-            None => vec!["".to_owned()],
+    fn pick_previewed_fileinfo(&self) -> Option<&FileInfo> {
+        if self.status.dual_pane && self.status.preview_second {
+            self.status.tabs[0].selected()
+        } else {
+            self.status.selected_non_mut().selected()
         }
     }
 
-    fn create_first_row(&self, tab: &Tab, disk_space: &str) -> Result<Vec<String>> {
+    fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
+        if let Some(fileinfo) = self.pick_previewed_fileinfo() {
+            let mut strings = vec![" Preview ".to_owned()];
+            if !tab.preview.is_empty() {
+                strings.push(format!(" {} / {} ", tab.window.bottom, tab.preview.len()));
+            };
+            strings.push(format!(" {} ", fileinfo.path.display()));
+            strings
+        } else {
+            vec!["".to_owned()]
+        }
+    }
+
+    fn create_first_row(&self, disk_space: &str) -> Result<Vec<String>> {
+        let tab = self.status.selected_non_mut();
         let first_row = match tab.mode {
             Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
             Mode::Preview => match &tab.preview {

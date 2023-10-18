@@ -1022,6 +1022,7 @@ impl Directory {
     pub fn select_root(&mut self, colors: &Colors) -> Result<()> {
         self.tree.select_root();
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        self.update_tree_position_from_index(colors)?;
         Ok(())
     }
 
@@ -1090,6 +1091,7 @@ impl Directory {
     pub fn select_first_child(&mut self, colors: &Colors) -> Result<()> {
         self.tree.select_first_child()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        self.update_tree_position_from_index(colors)?;
         Ok(())
     }
 
@@ -1097,6 +1099,7 @@ impl Directory {
     pub fn select_parent(&mut self, colors: &Colors) -> Result<()> {
         self.tree.select_parent()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        self.update_tree_position_from_index(colors)?;
         Ok(())
     }
 
@@ -1104,6 +1107,7 @@ impl Directory {
     pub fn go_to_bottom_leaf(&mut self, colors: &Colors) -> Result<()> {
         self.tree.go_to_bottom_leaf()?;
         (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+        self.update_tree_position_from_index(colors)?;
         Ok(())
     }
 
