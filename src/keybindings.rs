@@ -5,6 +5,7 @@ use std::string::ToString;
 use tuikit::prelude::{from_keyname, Key};
 
 use crate::action_map::ActionMap;
+use crate::constant_strings_paths::CONFIG_PATH;
 
 /// Holds an hashmap between keys and actions.
 #[derive(Clone, Debug)]
@@ -150,21 +151,33 @@ impl Bindings {
         };
         for yaml_key in mappings.keys() {
             let Some(key_string) = yaml_key.as_str() else {
-                log::info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
+                log::info!("{CONFIG_PATH}: Keybinding {yaml_key:?} is unreadable");
                 continue;
             };
             let Some(keymap) = from_keyname(key_string) else {
-                log::info!("~/.config/fm/config.yaml: Keybinding {key_string} is unknown");
+                log::info!("{CONFIG_PATH}: Keybinding {key_string} is unknown");
                 continue;
             };
+            if self.keymap_is_reserved(&keymap) {
+                continue;
+            }
             let Some(action_str) = yaml[yaml_key].as_str() else {
                 continue;
             };
             let Ok(action) = ActionMap::from_str(action_str) else {
-                log::info!("~/.config/fm/config.yaml: Action {action_str} is unknown");
+                log::info!("{CONFIG_PATH}: Action {action_str} is unknown");
                 continue;
             };
             self.binds.insert(keymap, action);
+        }
+    }
+
+    /// List of keymap used internally which can't be bound to anything.
+    fn keymap_is_reserved(&self, keymap: &Key) -> bool {
+        match *keymap {
+            // used to send refresh requests.
+            Key::AltPageUp => true,
+            _ => false,
         }
     }
 

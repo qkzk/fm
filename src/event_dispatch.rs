@@ -52,7 +52,10 @@ impl EventDispatcher {
                 status.click(row, col, current_height, colors)?;
                 LeaveMode::right_click(status, colors)?;
             }
-            Event::User(_) => status.selected().refresh_if_needed()?,
+            // reserved keybind which can't be bound to anything.
+            // using `Key::User(())` conflicts with skim internal which
+            // interpret this event as a signal(1)
+            Event::Key(Key::AltPageUp) => status.selected().refresh_if_needed()?,
 
             Event::Resize { width, height } => status.resize(width, height)?,
             Event::Key(Key::Char(c)) => self.char(status, c, colors)?,
