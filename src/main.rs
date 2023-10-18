@@ -142,10 +142,13 @@ struct Refresher {
 }
 
 impl Refresher {
-    /// Spawn a constantly thread sending refresh event to the terminal.
+    /// Spawn a thread which sends events to the terminal.
+    /// Those events are interpreted as refresh requests.
     /// It also listen to a receiver for quit messages.
+    ///
     /// This will send periodically an `Key::AltPageUp` event to the terminal which requires a refresh.
     /// This keybind is reserved and can't be bound to anything.
+    ///
     /// Using Event::User(()) conflicts with skim internal which interpret this
     /// event as a signal(1) and hangs the terminal.
     fn spawn(mut term: Arc<tuikit::term::Term>) -> Self {
