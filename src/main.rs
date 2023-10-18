@@ -34,7 +34,7 @@ struct FM {
     /// we need to hold this.
     colors: Colors,
     /// Refresher is used to force a refresh when a file has been modified externally.
-    /// It send `Event::User(())` every 10 seconds.
+    /// It send `Event::Key(Key::AltPageUp)` every 10 seconds.
     /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
     refresher: Refresher,
 }
@@ -144,6 +144,10 @@ struct Refresher {
 impl Refresher {
     /// Spawn a constantly thread sending refresh event to the terminal.
     /// It also listen to a receiver for quit messages.
+    /// This will send periodically an `Key::AltPageUp` event to the terminal which requires a refresh.
+    /// This keybind is reserved and can't be bound to anything.
+    /// Using Event::User(()) conflicts with skim internal which interpret this
+    /// event as a signal(1) and hangs the terminal.
     fn spawn(mut term: Arc<tuikit::term::Term>) -> Self {
         let (tx, rx) = mpsc::channel();
         let mut counter: u8 = 0;
@@ -160,7 +164,7 @@ impl Refresher {
             thread::sleep(Duration::from_millis(100));
             if counter >= 10 * 10 {
                 counter = 0;
-                let event = tuikit::prelude::Event::User(());
+                let event = tuikit::prelude::Event::Key(tuikit::prelude::Key::AltPageUp);
                 if term.borrow_mut().send_event(event).is_err() {
                     break;
                 }

@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use log::info;
-use tuikit::prelude::{Attr, Color, Effect, Event, Term};
+use tuikit::prelude::{Attr, Color, Effect, Event, Key, Term};
 
 use crate::constant_strings_paths::NOTIFY_EXECUTABLE;
 use crate::fileinfo::human_size;
@@ -164,7 +164,7 @@ pub fn copy_move(
             }
         };
 
-        let _ = c_term.send_event(Event::User(()));
+        let _ = c_term.send_event(Event::Key(Key::AltPageUp));
 
         if let Err(e) = conflict_handler.solve_conflicts() {
             info!("Conflict Handler error: {e}");

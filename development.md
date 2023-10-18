@@ -575,6 +575,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] open/file pick flagged files if there are, use selected file instead
 - [x] regroup openers when opening multiple files.
 - [x] refresh every 10 seconds. If no file in current dir has changed, nothing happens.
+- [x] scroll in preview second screen
+- [x] FIX sending `Event::User(())` events from refresher hangs skim. Use `Event(Key::AltPageUp)` which is now reserved.
 - [ ] avoid multiple refreshs if we edit files ourself
 
 ## TODO

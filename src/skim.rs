@@ -44,11 +44,11 @@ impl Skimer {
 
     /// Call skim on its term.
     /// Returns the file whose line match a pattern from current folder using ripgrep or grep.
-    pub fn search_line_in_file(&self) -> Vec<Arc<dyn SkimItem>> {
+    pub fn search_line_in_file(&self, path_str: &str) -> Vec<Arc<dyn SkimItem>> {
         self.skim
             .run_internal(
                 None,
-                "".to_owned(),
+                path_str.to_owned(),
                 None,
                 Some(self.file_matcher.to_owned()),
             )
@@ -89,7 +89,9 @@ impl SkimItem for StringWrapper {
 
 fn pick_first_installed<'a>(commands: &'a [&'a str]) -> Option<&'a str> {
     for command in commands {
-        let Some(program) = command.split_whitespace().next() else { continue };
+        let Some(program) = command.split_whitespace().next() else {
+            continue;
+        };
         if is_program_in_path(program) {
             return Some(command);
         }
