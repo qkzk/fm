@@ -58,24 +58,36 @@ pub struct Tab {
 
 impl Tab {
     /// Creates a new tab from args and height.
-    pub fn new(args: Args, height: usize, users_cache: UsersCache) -> Result<Self> {
+    pub fn new(
+        args: &Args,
+        height: usize,
+        users_cache: UsersCache,
+        mount_points: &[&path::Path],
+    ) -> Result<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
-        let directory = Directory::empty(&path, &users_cache)?;
+        let start_dir = if path.is_dir() {
+            &path
+        } else {
+            path.parent().context("")?
+        };
+        let directory = Directory::empty(start_dir, &users_cache)?;
         let filter = FilterKind::All;
-        let show_hidden = false;
-        let path_content = PathContent::new(&path, users_cache, &filter, show_hidden)?;
-        let show_hidden = false;
+        let show_hidden = args.all;
+        let mut path_content = PathContent::new(start_dir, users_cache, &filter, show_hidden)?;
         let mode = Mode::Normal;
         let previous_mode = Mode::Normal;
-        let window = ContentWindow::new(path_content.content.len(), height);
+        let mut window = ContentWindow::new(path_content.content.len(), height);
         let input = Input::default();
         let completion = Completion::default();
         let must_quit = false;
         let preview = Preview::Empty;
         let mut history = History::default();
         history.push(&path);
-        let shortcut = Shortcut::new(&path);
+        let mut shortcut = Shortcut::new(&path);
+        shortcut.extend_with_mount_points(mount_points);
         let searched = None;
+        let index = path_content.select_file(&path);
+        window.scroll_to(index);
         Ok(Self {
             mode,
             previous_mode,

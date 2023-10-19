@@ -11,16 +11,16 @@ Written in rust.
 [docrs]: https://docs.rs/fm-tui/0.1.0
 
 ```
-FM : dired like file manager
-
+A TUI file manager inspired by dired and ranger
 
 Usage: fm [OPTIONS]
 
 Options:
   -p, --path <PATH>      Starting path [default: .]
   -s, --server <SERVER>  Nvim server [default: ]
-  -h, --help             Print help information
-  -V, --version          Print version information
+  -f, --file <FILE>      Selected file [default: .]
+  -h, --help             Print help
+  -V, --version          Print version
 ```
 
 ## Platform
@@ -100,7 +100,7 @@ Many ways to jump somewhere :
 - Toggle the tree view with t. Fold selected folder with z. Unfold every folder with Z, fold every folder with Alt+z.
 - Enter preview mode with Alt+P. Every file is previewed in the second pane.
 - Filter the view (by extension, name, directory only, all files) with F
-- Find files with / (with completion: Tab, enter to search), 
+- Find files with / (with completion: Tab, enter to search),
 - flag files matching a regex with w
 
 ### Fuzzy finder

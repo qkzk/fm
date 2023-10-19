@@ -35,7 +35,7 @@ use crate::password::{
 };
 use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
-use crate::shell_menu::{load_shell_menu, ShellMenu};
+use crate::shell_menu::ShellMenu;
 use crate::shell_parser::ShellCommandParser;
 use crate::skim::Skimer;
 use crate::tab::Tab;
@@ -109,50 +109,52 @@ impl Status {
         settings: &Settings,
     ) -> Result<Self> {
         let args = Args::parse();
-        let Ok(shell_menu) = load_shell_menu(TUIS_PATH) else {
-            eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example");
-            info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");
-            std::process::exit(1);
+        let preview_second = args.preview;
+        let start_folder = std::fs::canonicalize(std::path::PathBuf::from(&args.path))?;
+        let nvim_server = args.server.clone();
+        let display_full = args.metadata || settings.full;
+        let dual_pane = (args.dual || settings.dual) && Self::display_wide_enough(&term)?;
+
+        let Ok(shell_menu) = ShellMenu::new(TUIS_PATH) else {
+            Self::quit()
         };
         let cli_info = CliInfo::default();
-
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
-        let nvim_server = args.server.clone();
         let encrypted_devices = CryptoDeviceOpener::default();
         let trash = Trash::new()?;
         let compression = Compresser::default();
         let force_clear = false;
         let bulk = Bulk::default();
-        let start_folder = std::fs::canonicalize(std::path::PathBuf::from(&args.path))?;
-        let dual_pane = settings.dual && term.term_size()?.0 >= MIN_WIDTH_FOR_DUAL_PANE;
-        // unsafe because of UsersCache::with_all_users
-        let users_cache = unsafe { UsersCache::with_all_users() };
-        let mut right_tab = Tab::new(args.clone(), height, users_cache)?;
-        right_tab
-            .shortcut
-            .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
-
-        // unsafe because of UsersCache::with_all_users
-        let users_cache2 = unsafe { UsersCache::with_all_users() };
-        let mut left_tab = Tab::new(args, height, users_cache2)?;
-        left_tab
-            .shortcut
-            .extend_with_mount_points(&Self::disks_mounts(sys.disks()));
-        let iso_mounter = None;
+        let iso_device = None;
         let password_holder = PasswordHolder::default();
         let sudo_command = None;
+        let flagged = Flagged::default();
+        let marks = Marks::read_from_config_file();
+        let skimer = Skimer::new(term.clone());
+        let index = 0;
 
+        // unsafe because of UsersCache::with_all_users
+        let users_cache = unsafe { UsersCache::with_all_users() };
+        // unsafe because of UsersCache::with_all_users
+        let users_cache2 = unsafe { UsersCache::with_all_users() };
+
+        let mount_points = Self::disks_mounts(sys.disks());
+
+        let tabs = [
+            Tab::new(&args, height, users_cache, &mount_points)?,
+            Tab::new(&args, height, users_cache2, &mount_points)?,
+        ];
         Ok(Self {
-            tabs: [left_tab, right_tab],
-            index: 0,
-            flagged: Flagged::default(),
-            marks: Marks::read_from_config_file(),
-            skimer: Skimer::new(term.clone()),
+            tabs,
+            index,
+            flagged,
+            marks,
+            skimer,
             term,
             dual_pane,
-            preview_second: false,
+            preview_second,
             system_info: sys,
-            display_full: settings.full,
+            display_full,
             opener,
             help,
             trash,
@@ -162,12 +164,22 @@ impl Status {
             force_clear,
             bulk,
             shell_menu,
-            iso_device: iso_mounter,
+            iso_device,
             cli_info,
             start_folder,
             password_holder,
             sudo_command,
         })
+    }
+
+    fn display_wide_enough(term: &Arc<Term>) -> Result<bool> {
+        Ok(term.term_size()?.0 >= MIN_WIDTH_FOR_DUAL_PANE)
+    }
+
+    fn quit() -> ! {
+        eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example");
+        info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");
+        std::process::exit(1);
     }
 
     /// Select the other tab if two are displayed. Does nother otherwise.

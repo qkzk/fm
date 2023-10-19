@@ -21,6 +21,15 @@ impl Default for ShellMenu {
 }
 
 impl ShellMenu {
+    pub fn new(path: &str) -> Result<Self> {
+        let mut shell_menu = Self::default();
+        let file =
+            std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
+        let yaml = serde_yaml::from_reader(file)?;
+        shell_menu.update_from_file(&yaml)?;
+        Ok(shell_menu)
+    }
+
     fn update_from_file(&mut self, yaml: &serde_yaml::mapping::Mapping) -> Result<()> {
         for (key, mapping) in yaml.into_iter() {
             let Some(command) = key.as_str() else {
@@ -86,11 +95,3 @@ impl ShellMenu {
 type SBool = (String, bool);
 
 impl_selectable_content!(SBool, ShellMenu);
-
-pub fn load_shell_menu(path: &str) -> Result<ShellMenu> {
-    let mut shell_menu = ShellMenu::default();
-    let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
-    let yaml = serde_yaml::from_reader(file)?;
-    shell_menu.update_from_file(&yaml)?;
-    Ok(shell_menu)
-}
