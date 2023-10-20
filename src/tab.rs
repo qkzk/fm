@@ -6,7 +6,7 @@ use users::UsersCache;
 
 use crate::args::Args;
 use crate::completion::{Completion, InputCompleted};
-use crate::config::Colors;
+use crate::config::{Colors, Settings};
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{FileInfo, FileKind, PathContent};
 use crate::filter::FilterKind;
@@ -62,6 +62,7 @@ impl Tab {
         args: &Args,
         height: usize,
         users_cache: UsersCache,
+        settings: &Settings,
         mount_points: &[&path::Path],
     ) -> Result<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
@@ -72,7 +73,7 @@ impl Tab {
         };
         let directory = Directory::empty(start_dir, &users_cache)?;
         let filter = FilterKind::All;
-        let show_hidden = args.all;
+        let show_hidden = args.all || settings.all;
         let mut path_content = PathContent::new(start_dir, users_cache, &filter, show_hidden)?;
         let mode = Mode::Normal;
         let previous_mode = Mode::Normal;

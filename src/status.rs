@@ -112,7 +112,7 @@ impl Status {
         let preview_second = args.preview;
         let start_folder = std::fs::canonicalize(std::path::PathBuf::from(&args.path))?;
         let nvim_server = args.server.clone();
-        let display_full = args.metadata || settings.full;
+        let display_full = Self::parse_display_full(args.simple, args.metadata, settings.full);
         let dual_pane = (args.dual || settings.dual) && Self::display_wide_enough(&term)?;
 
         let Ok(shell_menu) = ShellMenu::new(TUIS_PATH) else {
@@ -141,8 +141,8 @@ impl Status {
         let mount_points = Self::disks_mounts(sys.disks());
 
         let tabs = [
-            Tab::new(&args, height, users_cache, &mount_points)?,
-            Tab::new(&args, height, users_cache2, &mount_points)?,
+            Tab::new(&args, height, users_cache, settings, &mount_points)?,
+            Tab::new(&args, height, users_cache2, settings, &mount_points)?,
         ];
         Ok(Self {
             tabs,
@@ -180,6 +180,20 @@ impl Status {
         eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example");
         info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");
         std::process::exit(1);
+    }
+
+    fn parse_display_full(
+        simple_args: Option<bool>,
+        metadata_args: Option<bool>,
+        full_config: bool,
+    ) -> bool {
+        if let Some(simple_args) = simple_args {
+            return !simple_args;
+        }
+        if let Some(metadata_args) = metadata_args {
+            return metadata_args;
+        }
+        full_config
     }
 
     /// Select the other tab if two are displayed. Does nother otherwise.

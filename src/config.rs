@@ -15,6 +15,7 @@ use crate::utils::is_program_in_path;
 pub struct Settings {
     pub dual: bool,
     pub full: bool,
+    pub all: bool,
 }
 
 impl Settings {
@@ -26,6 +27,10 @@ impl Settings {
         match yaml["full"] {
             serde_yaml::Value::Bool(false) => self.full = false,
             _ => self.full = true,
+        }
+        match yaml["all"] {
+            serde_yaml::Value::Bool(false) => self.all = false,
+            _ => self.all = true,
         }
     }
 }
