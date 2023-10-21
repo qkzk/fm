@@ -12,17 +12,13 @@ pub struct Args {
     #[arg(short, long, default_value_t = String::from(""))]
     pub server: String,
 
-    /// Dual pane ? default to true
-    #[arg(short, long, default_value_t = false)]
-    pub dual: bool,
+    /// Dual pane ?
+    #[arg(short = 'D', long)]
+    pub dual: Option<bool>,
 
-    /// Display file metadata ? default to true
-    #[arg(group = "full", conflicts_with = "metadata", short = 'S', long)]
+    /// Display files metadata ?
+    #[arg(short = 'S', long)]
     pub simple: Option<bool>,
-
-    /// Display file metadata ? default to true
-    #[arg(group = "full", conflicts_with = "simple", short = 'M', long)]
-    pub metadata: Option<bool>,
 
     /// Use second pane as preview ? default to false
     #[arg(short = 'P', long, default_value_t = false)]

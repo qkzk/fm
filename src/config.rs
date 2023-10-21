@@ -16,6 +16,7 @@ pub struct Settings {
     pub dual: bool,
     pub full: bool,
     pub all: bool,
+    pub preview: bool,
 }
 
 impl Settings {
@@ -31,6 +32,10 @@ impl Settings {
         match yaml["all"] {
             serde_yaml::Value::Bool(false) => self.all = false,
             _ => self.all = true,
+        }
+        match yaml["preview"] {
+            serde_yaml::Value::Bool(true) => self.all = true,
+            _ => self.all = false,
         }
     }
 }

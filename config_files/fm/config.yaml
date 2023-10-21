@@ -3,12 +3,13 @@ terminal: st
 colors:
   # white, black, red, green, blue, yellow, cyan, magenta 
   # light_white, light_black, light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
-  directory: red
   block: yellow
   char: green
+  directory: red
   fifo: blue
   socket: cyan
   symlink: magenta
+# keybindings
 keys: 
   'esc': ResetMode
   'up': MoveUp
@@ -51,6 +52,18 @@ keys:
   'v': ReverseFlags
   'w': RegexMatch
   'x': DeleteFile
+  'alt-d': DragNDrop
+  'alt-e': ToggleDisplayFull
+  'alt-f': ToggleDualPane
+  'alt-g': Goto
+  'alt-p': TogglePreviewSecond
+  'ctrl-c': CopyFilename
+  'ctrl-e': EncryptedDrive
+  'ctrl-f': FuzzyFind
+  'ctrl-g': Shortcut
+  'ctrl-p': CopyFilepath
+  'ctrl-q': ResetMode
+  'ctrl-r': RefreshView
   'shift-b': Bulk
   'shift-f': Filter
   'shift-g': End
@@ -60,21 +73,16 @@ keys:
   'shift-o': Sort
   'shift-p': Preview
   'shift-t': MediaInfo
-  'ctrl-c': CopyFilename
-  'ctrl-e': EncryptedDrive
-  'ctrl-f': FuzzyFind
-  'ctrl-g': Shortcut
-  'ctrl-p': CopyFilepath
-  'ctrl-q': ResetMode
-  'ctrl-r': RefreshView
-  'alt-d': DragNDrop
-  'alt-e': ToggleDisplayFull
-  'alt-g': Goto
-  'alt-p': TogglePreviewSecond
-  'alt-f': ToggleDualPane
+# display settings
 settings:
+  # display all files ?
+  all: false
+  # use a second pane (if the terminal is wide enough) ?
   dual: true
+  # display metadata ?
   full: true
+  # use second pane for preview ?
+  preview: false
 
 # Custom command :
 # * Use an unused keybind

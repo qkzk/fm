@@ -112,8 +112,8 @@ impl Status {
         let preview_second = args.preview;
         let start_folder = std::fs::canonicalize(std::path::PathBuf::from(&args.path))?;
         let nvim_server = args.server.clone();
-        let display_full = Self::parse_display_full(args.simple, args.metadata, settings.full);
-        let dual_pane = (args.dual || settings.dual) && Self::display_wide_enough(&term)?;
+        let display_full = Self::parse_display_full(args.simple, settings.full);
+        let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
 
         let Ok(shell_menu) = ShellMenu::new(TUIS_PATH) else {
             Self::quit()
@@ -182,20 +182,26 @@ impl Status {
         std::process::exit(1);
     }
 
-    fn parse_display_full(
-        simple_args: Option<bool>,
-        metadata_args: Option<bool>,
-        full_config: bool,
-    ) -> bool {
+    fn parse_display_full(simple_args: Option<bool>, full_config: bool) -> bool {
         if let Some(simple_args) = simple_args {
             return !simple_args;
-        }
-        if let Some(metadata_args) = metadata_args {
-            return metadata_args;
         }
         full_config
     }
 
+    fn parse_dual_pane(
+        args_dual: Option<bool>,
+        dual_config: bool,
+        term: &Arc<Term>,
+    ) -> Result<bool> {
+        if !Self::display_wide_enough(term)? {
+            return Ok(false);
+        }
+        if let Some(args_dual) = args_dual {
+            return Ok(args_dual);
+        }
+        Ok(dual_config)
+    }
     /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn next(&mut self) {
         if !self.dual_pane {
