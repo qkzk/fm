@@ -479,15 +479,7 @@ impl EventAction {
             return Ok(());
         }
         let tab = status.selected();
-        tab.history.content.pop();
-        let last_index = tab.history.len() - 1;
-        let last = tab.history.content[last_index].clone();
-        tab.set_pathcontent(&last)?;
-        if let Mode::Tree = tab.mode {
-            tab.make_tree(colors)?
-        }
-
-        Ok(())
+        tab.back(colors)
     }
 
     /// Move to $HOME aka ~.
@@ -598,7 +590,7 @@ impl EventAction {
     pub fn move_left(status: &mut Status, colors: &Colors) -> Result<()> {
         let tab = status.selected();
         match tab.mode {
-            Mode::Normal => tab.move_to_parent()?,
+            Mode::Normal => tab.move_to_parent(colors)?,
             Mode::Tree => tab.tree_select_parent(colors)?,
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 tab.input.cursor_left();
@@ -744,7 +736,10 @@ impl EventAction {
                 must_refresh = false;
                 LeaveMode::jump(status, colors)?
             }
-            Mode::Navigate(Navigate::History) => LeaveMode::history(status, colors)?,
+            Mode::Navigate(Navigate::History) => {
+                must_refresh = false;
+                LeaveMode::history(status, colors)?
+            }
             Mode::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status, colors)?,
             Mode::Navigate(Navigate::Trash) => LeaveMode::trash(status, colors)?,
             Mode::Navigate(Navigate::Bulk) => LeaveMode::bulk(status, colors)?,
@@ -1217,7 +1212,6 @@ impl LeaveMode {
         let marks = status.marks.clone();
         let tab = status.selected();
         if let Some((_, path)) = marks.selected() {
-            tab.history.push(path);
             tab.set_pathcontent(path)?;
             tab.window.reset(tab.path_content.content.len());
             tab.input.reset();
@@ -1465,7 +1459,6 @@ impl LeaveMode {
         let completed = tab.completion.current_proposition();
         let path = string_to_path(completed)?;
         tab.input.reset();
-        tab.history.push(&path);
         tab.set_pathcontent(&path)?;
         tab.window.reset(tab.path_content.content.len());
         status.update_second_pane_for_preview(colors)
@@ -1481,7 +1474,6 @@ impl LeaveMode {
             .selected()
             .context("exec shortcut: empty shortcuts")?
             .clone();
-        tab.history.push(&path);
         tab.set_pathcontent(&path)?;
         tab.refresh_view()?;
         status.update_second_pane_for_preview(colors)
@@ -1491,15 +1483,16 @@ impl LeaveMode {
     /// It may fail if the user has no permission to visit the path
     pub fn history(status: &mut Status, colors: &Colors) -> Result<()> {
         let tab = status.selected();
-        tab.input.reset();
-        let path = tab
+        let (path, file) = tab
             .history
             .selected()
             .context("exec history: path unreachable")?
             .clone();
         tab.set_pathcontent(&path)?;
         tab.history.drop_queue();
-        tab.refresh_view()?;
+        let index = tab.path_content.select_file(&file);
+        tab.scroll_to(index);
+        log::info!("leave history {path:?} {file:?} {index}");
         status.update_second_pane_for_preview(colors)
     }
 

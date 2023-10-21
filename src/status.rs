@@ -673,7 +673,6 @@ impl Status {
         };
         let tab = self.selected();
         let path = std::path::PathBuf::from(mount_point);
-        tab.history.push(&path);
         tab.set_pathcontent(&path)?;
         tab.refresh_view()
     }
@@ -728,7 +727,6 @@ impl Status {
     pub fn marks_jump_char(&mut self, c: char, colors: &Colors) -> Result<()> {
         if let Some(path) = self.marks.get(c) {
             self.selected().set_pathcontent(&path)?;
-            self.selected().history.push(&path);
         }
         self.selected().refresh_view()?;
         self.selected().reset_mode();

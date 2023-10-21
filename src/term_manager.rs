@@ -650,7 +650,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::CliInfo => self.cli_info(self.status, canvas),
             Navigate::Compress => self.compress(canvas, &self.status.compression),
             Navigate::EncryptedDrive => self.encrypt(self.status, self.tab, canvas),
-            Navigate::History => self.destination(canvas, &self.tab.history),
+            Navigate::History => self.history(canvas, &self.tab.history),
             Navigate::Jump => self.destination(canvas, &self.status.flagged),
             Navigate::Marks(_) => self.marks(self.status, canvas),
             Navigate::ShellMenu => self.shell_menu(self.status, canvas),
@@ -676,6 +676,28 @@ impl<'a> WinSecondary<'a> {
                 row + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
                 path.to_str().context("Unreadable filename")?,
+                attr,
+            );
+        }
+        Ok(())
+    }
+
+    fn history(
+        &self,
+        canvas: &mut dyn Canvas,
+        selectable: &impl SelectableContent<(PathBuf, PathBuf)>,
+    ) -> Result<()> {
+        canvas.print(0, 0, "Go to...")?;
+        let content = &selectable.content();
+        for (row, pair, attr) in enumerated_colored_iter!(content) {
+            let mut attr = *attr;
+            if row == selectable.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                pair.0.to_str().context("Unreadable filename")?,
                 attr,
             );
         }

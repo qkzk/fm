@@ -10,6 +10,7 @@ use crate::config::{Colors, Settings};
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{FileInfo, FileKind, PathContent};
 use crate::filter::FilterKind;
+use crate::history::History;
 use crate::input::Input;
 use crate::mode::Mode;
 use crate::opener::execute_in_child;
@@ -17,7 +18,6 @@ use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
 use crate::utils::{row_to_window_index, set_clipboard};
-use crate::visited::History;
 
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
@@ -44,8 +44,6 @@ pub struct Tab {
     /// Lines of the previewed files.
     /// Empty if not in preview mode.
     pub preview: Preview,
-    /// Visited directories
-    pub history: History,
     /// Predefined shortcuts
     pub shortcut: Shortcut,
     /// Last searched string
@@ -54,6 +52,8 @@ pub struct Tab {
     pub directory: Directory,
     /// The filter use before displaying files
     pub filter: FilterKind,
+    /// Visited directories
+    pub history: History,
 }
 
 impl Tab {
@@ -82,8 +82,7 @@ impl Tab {
         let completion = Completion::default();
         let must_quit = false;
         let preview = Preview::Empty;
-        let mut history = History::default();
-        history.push(&path);
+        let history = History::default();
         let mut shortcut = Shortcut::new(&path);
         shortcut.extend_with_mount_points(mount_points);
         let searched = None;
@@ -99,12 +98,12 @@ impl Tab {
             completion,
             must_quit,
             preview,
-            history,
             shortcut,
             searched,
             directory,
             filter,
             show_hidden,
+            history,
         })
     }
 
@@ -197,7 +196,6 @@ impl Tab {
             .context("Empty directory")?
             .path
             .clone();
-        self.history.push(childpath);
         self.set_pathcontent(childpath)?;
         self.window.reset(self.path_content.content.len());
         self.input.cursor_start();
@@ -226,7 +224,10 @@ impl Tab {
     /// Reset the window.
     /// Add the last path to the history of visited paths.
     pub fn set_pathcontent(&mut self, path: &path::Path) -> Result<()> {
-        self.history.push(path);
+        self.history.push(
+            &self.path_content.path,
+            &self.path_content.selected().context("")?.path,
+        );
         self.path_content
             .change_directory(path, &self.filter, self.show_hidden)?;
         self.window.reset(self.path_content.content.len());
@@ -310,12 +311,31 @@ impl Tab {
     }
 
     /// Move to the parent of current path
-    pub fn move_to_parent(&mut self) -> Result<()> {
+    pub fn move_to_parent(&mut self, colors: &Colors) -> Result<()> {
         let path = self.path_content.path.clone();
         let Some(parent) = path.parent() else {
             return Ok(());
         };
+        if self.history.is_this_the_last(parent) {
+            self.back(colors)?;
+            return Ok(());
+        }
         self.set_pathcontent(parent)
+    }
+
+    pub fn back(&mut self, colors: &Colors) -> Result<()> {
+        let Some((path, file)) = self.history.content.pop() else {
+            return Ok(());
+        };
+        self.set_pathcontent(&path)?;
+        let index = self.path_content.select_file(&file);
+        self.scroll_to(index);
+        self.history.content.pop();
+        if let Mode::Tree = self.mode {
+            self.make_tree(colors)?
+        }
+
+        Ok(())
     }
 
     /// Select the parent of current node.
@@ -323,7 +343,7 @@ impl Tab {
     pub fn tree_select_parent(&mut self, colors: &Colors) -> Result<()> {
         self.directory.unselect_children();
         if self.directory.tree.position.len() <= 1 {
-            self.move_to_parent()?;
+            self.move_to_parent(colors)?;
             self.make_tree(colors)?
         }
         self.directory.select_parent(colors)
