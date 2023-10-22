@@ -364,7 +364,8 @@ impl<'a> WinMain<'a> {
                 file.format_simple()?
             };
             if status.flagged.contains(&file.path) {
-                attr.effect |= Effect::BOLD | Effect::UNDERLINE;
+                attr.effect |= Effect::BOLD;
+                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
             }
             canvas.print_with_attr(row, 1, &string, attr)?;
         }
@@ -1101,7 +1102,7 @@ fn draw_colored_strings(
     canvas: &mut dyn Canvas,
     reverse: bool,
 ) -> Result<()> {
-    let mut col = 0;
+    let mut col = 1;
     for (text, attr) in std::iter::zip(strings.iter(), FIRST_LINE_COLORS.iter().cycle()) {
         let mut attr = *attr;
         if reverse {

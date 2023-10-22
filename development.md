@@ -580,6 +580,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow file selection from args : -f filename selects a file
 - [x] more args : dual pane, preview second, display full, show hidden
 - [x] history: when moving back select back the file we were at
+- [x] use yellow block char to make flagged files more visibles.
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 
