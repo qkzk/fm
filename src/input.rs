@@ -1,9 +1,11 @@
+use unicode_segmentation::UnicodeSegmentation;
+
 /// Holds the chars typed by the user and the cursor position.
 /// Methods allow mutation of this content and movement of the cursor.
 #[derive(Clone, Default)]
 pub struct Input {
     /// The input typed by the user
-    chars: Vec<char>,
+    chars: Vec<String>,
     /// The index of the cursor in that string
     pub cursor_index: usize,
 }
@@ -57,12 +59,17 @@ impl Input {
 
     /// Delete all chars right to the cursor
     pub fn delete_chars_right(&mut self) {
-        self.chars = self.chars.iter().copied().take(self.cursor_index).collect();
+        self.chars = self
+            .chars
+            .iter()
+            .take(self.cursor_index)
+            .map(|s| s.to_string())
+            .collect();
     }
 
     /// Returns the content typed by the user as a String.
     pub fn string(&self) -> String {
-        self.chars.iter().collect()
+        self.chars.join("")
     }
 
     /// Returns a string of * for every char typed.
@@ -72,7 +79,7 @@ impl Input {
 
     /// Insert an utf-8 char into the input at cursor index.
     pub fn insert(&mut self, c: char) {
-        self.chars.insert(self.cursor_index, c);
+        self.chars.insert(self.cursor_index, String::from(c));
         self.cursor_index += 1
     }
 
@@ -84,8 +91,18 @@ impl Input {
 
     /// Replace the content with the new content.
     /// Put the cursor at the end.
+    ///
+    /// To avoid splitting graphemes at wrong place, the new content is read
+    /// as Unicode Graphemes with
+    /// ```rust
+    /// unicode_segmentation::UnicodeSegmentation::graphemes(content, true)
+    /// ```
     pub fn replace(&mut self, content: &str) {
-        self.chars = content.chars().collect();
+        self.chars = UnicodeSegmentation::graphemes(content, true)
+            .collect::<Vec<&str>>()
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
         self.cursor_index = self.len()
     }
 }

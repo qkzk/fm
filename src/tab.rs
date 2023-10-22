@@ -12,12 +12,12 @@ use crate::fileinfo::{FileInfo, FileKind, PathContent};
 use crate::filter::FilterKind;
 use crate::history::History;
 use crate::input::Input;
-use crate::mode::Mode;
+use crate::mode::{InputSimple, Mode};
 use crate::opener::execute_in_child;
 use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
-use crate::utils::{row_to_window_index, set_clipboard};
+use crate::utils::{filename_from_path, row_to_window_index, set_clipboard};
 
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
@@ -706,5 +706,24 @@ impl Tab {
         args.push(path);
         execute_in_child(command, &args)?;
         Ok(true)
+    }
+
+    pub fn rename(&mut self) -> Result<()> {
+        if self.selected().is_some() {
+            let old_name = match self.mode {
+                Mode::Tree => self.directory.tree.current_node.filename(),
+                _ => filename_from_path(
+                    &self
+                        .path_content
+                        .selected()
+                        .context("Event rename: no file in current directory")?
+                        .path,
+                )?
+                .to_owned(),
+            };
+            self.input.replace(&old_name);
+            self.set_mode(Mode::InputSimple(InputSimple::Rename));
+        }
+        Ok(())
     }
 }

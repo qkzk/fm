@@ -38,8 +38,8 @@ use crate::status::Status;
 use crate::tab::Tab;
 use crate::utils::is_program_in_path;
 use crate::utils::{
-    args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
-    opt_mount_point, string_to_path,
+    args_is_empty, disk_used_by_path, is_sudo_command, open_in_current_neovim, opt_mount_point,
+    string_to_path,
 };
 
 /// Links events from tuikit to custom actions.
@@ -358,21 +358,7 @@ impl EventAction {
     /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
     /// not the selected file in the pathcontent.
     pub fn rename(tab: &mut Tab) -> Result<()> {
-        if tab.selected().is_some() {
-            let old_name = match tab.mode {
-                Mode::Tree => tab.directory.tree.current_node.filename(),
-                _ => filename_from_path(
-                    &tab.path_content
-                        .selected()
-                        .context("Event rename: no file in current directory")?
-                        .path,
-                )?
-                .to_owned(),
-            };
-            tab.input.replace(&old_name);
-            tab.set_mode(Mode::InputSimple(InputSimple::Rename));
-        }
-        Ok(())
+        tab.rename()
     }
 
     /// Enter the goto mode where an user can type a path to jump to.
@@ -635,10 +621,7 @@ impl EventAction {
     pub fn delete(status: &mut Status) -> Result<()> {
         match status.selected().mode {
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
-                {
-                    let tab: &mut Tab = status.selected();
-                    tab.input.delete_chars_right()
-                };
+                status.selected().input.delete_chars_right();
                 Ok(())
             }
             _ => Ok(()),

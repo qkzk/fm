@@ -546,10 +546,10 @@ impl<'a> Draw for WinSecondary<'a> {
 }
 
 impl<'a> WinSecondary<'a> {
-    const EDIT_BOX_OFFSET: usize = 9;
     const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
-    const SORT_CURSOR_OFFSET: usize = 37;
-    const PASSWORD_CURSOR_OFFSET: usize = 7;
+    const EDIT_BOX_OFFSET: usize = 10;
+    const SORT_CURSOR_OFFSET: usize = 38;
+    const PASSWORD_CURSOR_OFFSET: usize = 8;
 
     fn new(status: &'a Status, index: usize) -> Self {
         Self {

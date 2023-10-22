@@ -581,6 +581,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] more args : dual pane, preview second, display full, show hidden
 - [x] history: when moving back select back the file we were at
 - [x] use yellow block char to make flagged files more visibles.
+- [x] move input 1 char right since we inserted a space
+- [ ] BUG: when encrypted drive is already mounted don't let user mount it again
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 

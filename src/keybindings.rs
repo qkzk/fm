@@ -112,6 +112,7 @@ impl Bindings {
             (Key::Ctrl('f'), ActionMap::FuzzyFind),
             (Key::Ctrl('g'), ActionMap::Shortcut),
             (Key::Ctrl('h'), ActionMap::History),
+            (Key::Ctrl('k'), ActionMap::Delete),
             (Key::Ctrl('s'), ActionMap::FuzzyFindLine),
             (Key::Ctrl('u'), ActionMap::PageUp),
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
