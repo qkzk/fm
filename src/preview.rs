@@ -4,14 +4,12 @@ use std::fs::metadata;
 use std::io::Cursor;
 use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
-use std::panic;
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
 
 use anyhow::{anyhow, Context, Result};
 use content_inspector::{inspect, ContentType};
 use log::info;
-use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
@@ -92,7 +90,6 @@ pub enum Preview {
     Syntaxed(HLContent),
     Text(TextContent),
     Binary(BinaryContent),
-    Pdf(PdfContent),
     Archive(ArchiveContent),
     Ueberzug(Ueberzug),
     Media(MediaContent),
@@ -136,7 +133,10 @@ impl Preview {
                         &file_info.path,
                         extension,
                     )?)),
-                    ExtensionKind::Pdf => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
+                    // ExtensionKind::Pdf => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
+                    ExtensionKind::Pdf => {
+                        Ok(Self::Ueberzug(Ueberzug::pdf_thumbnail(&file_info.path)?))
+                    }
                     ExtensionKind::Image if is_program_in_path(UEBERZUG) => {
                         Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?))
                     }
@@ -302,7 +302,6 @@ impl Preview {
             Self::Syntaxed(syntaxed) => syntaxed.len(),
             Self::Text(text) => text.len(),
             Self::Binary(binary) => binary.len(),
-            Self::Pdf(pdf) => pdf.len(),
             Self::Archive(zip) => zip.len(),
             Self::Ueberzug(_) => 0,
             Self::Media(media) => media.len(),
@@ -703,53 +702,6 @@ impl Line {
     }
 }
 
-/// Holds a preview of a pdffile as outputed by `pdf_extract` crate.
-/// If the pdf file content can't be extracted, it doesn't fail but simply hold
-/// an error message to be displayed.
-/// Afterall, it's just a TUI filemanager, the user shouldn't expect to display
-/// any kind of graphical pdf...
-#[derive(Clone)]
-pub struct PdfContent {
-    length: usize,
-    content: Vec<String>,
-}
-
-impl PdfContent {
-    // 20 MB
-    const FILESIZE_LIMIT: u64 = 20 * 1024 * 1024;
-    const CONTENT_LIMIT: usize = 1_048_576;
-    const ERROR_MSG: &str = "Couldn't extract text from pdf";
-
-    fn new(path: &Path) -> Self {
-        let content = if path.metadata().unwrap().len() > Self::FILESIZE_LIMIT {
-            vec![Self::ERROR_MSG.to_owned()]
-        } else {
-            let result = catch_unwind_silent(|| {
-                // TODO! remove this when pdf_extract replaces println! whith dlog.
-                let _print_gag = gag::Gag::stdout().unwrap();
-                if let Ok(content_string) = pdf_extract::extract_text(path) {
-                    content_string
-                        .split_whitespace()
-                        .take(Self::CONTENT_LIMIT)
-                        .map(|s| s.to_owned())
-                        .collect()
-                } else {
-                    vec![Self::ERROR_MSG.to_owned()]
-                }
-            });
-            result.unwrap_or_else(|_| vec![Self::ERROR_MSG.to_owned()])
-        };
-        Self {
-            length: content.len(),
-            content,
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.length
-    }
-}
-
 /// Holds a list of file of an archive as returned by
 /// `ZipArchive::file_names` or from  a `tar tvf` command.
 /// A generic error message prevent it from returning an error.
@@ -857,6 +809,11 @@ impl Ueberzug {
         Ok(Self::thumbnail())
     }
 
+    fn pdf_thumbnail(pdf_path: &Path) -> Result<Self> {
+        Self::make_pdf_thumbnail(pdf_path)?;
+        Ok(Self::thumbnail())
+    }
+
     fn make_thumbnail(exe: &str, args: &[&str]) -> Result<()> {
         let output = std::process::Command::new(exe).args(args).output()?;
         if !output.stderr.is_empty() {
@@ -866,6 +823,23 @@ impl Ueberzug {
                 String::from_utf8(output.stderr).unwrap_or_default()
             );
         }
+        Ok(())
+    }
+
+    fn make_pdf_thumbnail(pdf_path: &Path) -> Result<()> {
+        let doc: poppler::PopplerDocument =
+            poppler::PopplerDocument::new_from_file(pdf_path, "upw")?;
+        let page: poppler::PopplerPage =
+            doc.get_page(0).context("poppler couldn't extract page")?;
+        let (w, h) = page.get_size();
+        let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, w as i32, h as i32)?;
+        let ctx = cairo::Context::new(&surface)?;
+        ctx.save()?;
+        page.render(&ctx);
+        ctx.restore()?;
+        ctx.show_page()?;
+        let mut file = std::fs::File::create(THUMBNAIL_PATH)?;
+        surface.write_to_png(&mut file)?;
         Ok(())
     }
 
@@ -1235,7 +1209,6 @@ pub type VecSyntaxedString = Vec<SyntaxedString>;
 impl_window!(HLContent, VecSyntaxedString);
 impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
-impl_window!(PdfContent, String);
 impl_window!(ArchiveContent, String);
 impl_window!(MediaContent, String);
 impl_window!(Directory, ColoredTriplet);
@@ -1245,11 +1218,3 @@ impl_window!(ColoredText, String);
 impl_window!(Socket, String);
 impl_window!(BlockDevice, String);
 impl_window!(FifoCharDevice, String);
-
-fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
-    let prev_hook = panic::take_hook();
-    panic::set_hook(Box::new(|_| {}));
-    let result = panic::catch_unwind(f);
-    panic::set_hook(prev_hook);
-    result
-}

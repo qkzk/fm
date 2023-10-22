@@ -497,9 +497,6 @@ impl<'a> WinMain<'a> {
             Preview::Media(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window)
             }
-            Preview::Pdf(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window)
-            }
             Preview::Text(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window)
             }

@@ -52,7 +52,7 @@ pub const LOG_FIRST_SENTENCE: &str = " Logs: ";
 /// Description of the content below, aka what is logged there.
 pub const LOG_SECOND_SENTENCE: &str = " Last actions affecting the file tree";
 /// Video thumbnails
-pub const THUMBNAIL_PATH: &str = "/tmp/thumbnail.png";
+pub const THUMBNAIL_PATH: &str = "/tmp/fm_thumbnail.png";
 /// Array of hardcoded shortcuts with standard *nix paths.
 pub const HARDCODED_SHORTCUTS: [&str; 9] = [
     "/",
