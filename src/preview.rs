@@ -715,24 +715,30 @@ pub struct PdfContent {
 }
 
 impl PdfContent {
-    const SIZE_LIMIT: usize = 1048576;
+    // 20 MB
+    const FILESIZE_LIMIT: u64 = 20 * 1024 * 1024;
+    const CONTENT_LIMIT: usize = 1_048_576;
+    const ERROR_MSG: &str = "Couldn't extract text from pdf";
 
     fn new(path: &Path) -> Self {
-        let result = catch_unwind_silent(|| {
-            // TODO! remove this when pdf_extract replaces println! whith dlog.
-            let _print_gag = gag::Gag::stdout().unwrap();
-            if let Ok(content_string) = pdf_extract::extract_text(path) {
-                content_string
-                    .split_whitespace()
-                    .take(Self::SIZE_LIMIT)
-                    .map(|s| s.to_owned())
-                    .collect()
-            } else {
-                vec!["Coudln't parse the pdf".to_owned()]
-            }
-        });
-        let content = result.unwrap_or_else(|_| vec!["Couldn't read the pdf".to_owned()]);
-
+        let content = if path.metadata().unwrap().len() > Self::FILESIZE_LIMIT {
+            vec![Self::ERROR_MSG.to_owned()]
+        } else {
+            let result = catch_unwind_silent(|| {
+                // TODO! remove this when pdf_extract replaces println! whith dlog.
+                let _print_gag = gag::Gag::stdout().unwrap();
+                if let Ok(content_string) = pdf_extract::extract_text(path) {
+                    content_string
+                        .split_whitespace()
+                        .take(Self::CONTENT_LIMIT)
+                        .map(|s| s.to_owned())
+                        .collect()
+                } else {
+                    vec![Self::ERROR_MSG.to_owned()]
+                }
+            });
+            result.unwrap_or_else(|_| vec![Self::ERROR_MSG.to_owned()])
+        };
         Self {
             length: content.len(),
             content,
