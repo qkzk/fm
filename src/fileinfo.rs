@@ -245,14 +245,24 @@ impl FileInfo {
     }
 
     fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
+        let owner = format!(
+            "{owner:.owner_col_width$}",
+            owner = self.owner,
+            owner_col_width = owner_col_width
+        );
+        let group = format!(
+            "{group:.group_col_width$}",
+            group = self.group,
+            group_col_width = group_col_width
+        );
         let repr = format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time}",
             dir_symbol = self.dir_symbol(),
             permissions = self.permissions()?,
             file_size = self.size_column,
-            owner = self.owner,
+            owner = owner,
             owner_col_width = owner_col_width,
-            group = self.group,
+            group = group,
             group_col_width = group_col_width,
             system_time = self.system_time,
         );

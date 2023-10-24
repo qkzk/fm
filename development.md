@@ -584,6 +584,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] move input 1 char right since we inserted a space
 - [x] preview pdf with ueberzug. First page extracted with poppler -> cairo -> thumbnail -> ueberzug
 - [x] FIX: when encrypted drive is already mounted don't let user mount it again
+- [x] FIX: group & owner metadata alignement in tree mode
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 
