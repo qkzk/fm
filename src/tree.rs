@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use tuikit::attr::Attr;
 use users::UsersCache;
 
@@ -573,6 +573,18 @@ impl Tree {
         }
 
         visited.node.position.clone()
+    }
+
+    pub fn directory_of_selected(&self) -> Result<&std::path::Path> {
+        let fileinfo = &self.current_node.fileinfo;
+
+        match fileinfo.file_kind {
+            FileKind::Directory => Ok(&self.current_node.fileinfo.path),
+            _ => Ok(fileinfo
+                .path
+                .parent()
+                .context("selected file should have a parent")?),
+        }
     }
 }
 

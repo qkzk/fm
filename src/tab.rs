@@ -413,16 +413,7 @@ impl Tab {
     /// In normal mode it's the current working directory.
     pub fn directory_of_selected(&self) -> Result<&path::Path> {
         match self.mode {
-            Mode::Tree => {
-                let fileinfo = &self.directory.tree.current_node.fileinfo;
-                match fileinfo.file_kind {
-                    FileKind::Directory => Ok(&self.directory.tree.current_node.fileinfo.path),
-                    _ => Ok(fileinfo
-                        .path
-                        .parent()
-                        .context("selected file should have a parent")?),
-                }
-            }
+            Mode::Tree => self.directory.tree.directory_of_selected(),
             _ => Ok(&self.path_content.path),
         }
     }

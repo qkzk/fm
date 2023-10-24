@@ -696,8 +696,8 @@ impl EventAction {
         let mut must_reset_mode = true;
         match status.selected_non_mut().mode {
             Mode::InputSimple(InputSimple::Rename) => LeaveMode::rename(status.selected())?,
-            Mode::InputSimple(InputSimple::Newfile) => LeaveMode::newfile(status.selected())?,
-            Mode::InputSimple(InputSimple::Newdir) => LeaveMode::newdir(status.selected())?,
+            Mode::InputSimple(InputSimple::Newfile) => LeaveMode::new_file(status.selected())?,
+            Mode::InputSimple(InputSimple::Newdir) => LeaveMode::new_dir(status.selected())?,
             Mode::InputSimple(InputSimple::Chmod) => LeaveMode::chmod(status)?,
             Mode::InputSimple(InputSimple::RegexMatch) => LeaveMode::regex(status)?,
             Mode::InputSimple(InputSimple::SetNvimAddr) => LeaveMode::set_nvim_addr(status)?,
@@ -1139,10 +1139,12 @@ impl Display for NodeCreation {
 
 impl NodeCreation {
     fn create(&self, tab: &mut Tab) -> Result<()> {
-        let path = tab
-            .path_content
-            .path
-            .join(sanitize_filename::sanitize(tab.input.string()));
+        let root_path = match tab.previous_mode {
+            Mode::Tree => tab.directory.tree.directory_of_selected()?.to_owned(),
+            _ => tab.path_content.path.clone(),
+        };
+        log::info!("root_path: {root_path:?}");
+        let path = root_path.join(sanitize_filename::sanitize(tab.input.string()));
         if path.exists() {
             write_log_line(format!(
                 "{self} {path} already exists",
@@ -1365,7 +1367,7 @@ impl LeaveMode {
     /// Creates a new file with input string as name.
     /// Nothing is done if the file already exists.
     /// Filename is sanitized before processing.
-    pub fn newfile(tab: &mut Tab) -> Result<()> {
+    pub fn new_file(tab: &mut Tab) -> Result<()> {
         NodeCreation::Newfile.create(tab)
     }
 
@@ -1374,7 +1376,7 @@ impl LeaveMode {
     /// We use `fs::create_dir` internally so it will fail if the input string
     /// ie. the user can create `newdir` or `newdir/newfolder`.
     /// Directory name is sanitized before processing.
-    pub fn newdir(tab: &mut Tab) -> Result<()> {
+    pub fn new_dir(tab: &mut Tab) -> Result<()> {
         NodeCreation::Newdir.create(tab)
     }
 
