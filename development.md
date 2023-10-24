@@ -577,7 +577,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] refresh every 10 seconds. If no file in current dir has changed, nothing happens.
 - [x] scroll in preview second screen
 - [x] FIX sending `Event::User(())` events from refresher hangs skim. Use `Event(Key::AltPageUp)` which is now reserved.
-- [x] allow file selection from args : -f filename selects a file
+- [x] allow file selection from args : -p filename selects the file from parent dir
 - [x] more args : dual pane, preview second, display full, show hidden
 - [x] history: when moving back select back the file we were at
 - [x] use yellow block char to make flagged files more visibles.
