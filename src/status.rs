@@ -643,6 +643,12 @@ impl Status {
     /// passphrase.
     /// Those passwords are always dropped immediatly after the commands are run.
     pub fn mount_encrypted_drive(&mut self) -> Result<()> {
+        let Some(device) = self.encrypted_devices.selected() else {
+            return Ok(());
+        };
+        if device.is_mounted() {
+            return Ok(());
+        }
         if !self.password_holder.has_sudo() {
             Self::ask_password(
                 self,
@@ -668,6 +674,9 @@ impl Status {
         let Some(device) = self.encrypted_devices.selected() else {
             return Ok(());
         };
+        if !device.is_mounted() {
+            return Ok(());
+        }
         let Some(mount_point) = device.mount_point() else {
             return Ok(());
         };
@@ -680,6 +689,12 @@ impl Status {
     /// Unmount the selected device.
     /// Will ask first for a sudo password which is immediatly forgotten.
     pub fn umount_encrypted_drive(&mut self) -> Result<()> {
+        let Some(device) = self.encrypted_devices.selected() else {
+            return Ok(());
+        };
+        if !device.is_mounted() {
+            return Ok(());
+        }
         if !self.password_holder.has_sudo() {
             Self::ask_password(
                 self,

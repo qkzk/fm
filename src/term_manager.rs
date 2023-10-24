@@ -13,7 +13,8 @@ use crate::completion::InputCompleted;
 use crate::compress::CompressionMethod;
 use crate::config::Colors;
 use crate::constant_strings_paths::{
-    HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE,
+    ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
+    LOG_SECOND_SENTENCE,
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
@@ -647,7 +648,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::Bulk => self.bulk(canvas, &self.status.bulk),
             Navigate::CliInfo => self.cli_info(self.status, canvas),
             Navigate::Compress => self.compress(canvas, &self.status.compression),
-            Navigate::EncryptedDrive => self.encrypt(self.status, self.tab, canvas),
+            Navigate::EncryptedDrive => self.encrypted_drive(self.status, self.tab, canvas),
             Navigate::History => self.history(canvas, &self.tab.history),
             Navigate::Jump => self.destination(canvas, &self.status.flagged),
             Navigate::Marks(_) => self.marks(self.status, canvas),
@@ -837,8 +838,8 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn encrypt(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(2, 3, "m: mount    --   u: unmount", Self::ATTR_YELLOW)?;
+    fn encrypted_drive(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
         for (i, device) in status.encrypted_devices.content.iter().enumerate() {
             let row = calc_line_row(i, &tab.window) + 2;
             let mut not_mounted_attr = Attr::default();

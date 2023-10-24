@@ -71,6 +71,8 @@ pub const RG_EXECUTABLE: &str = "rg --line-number \"{}\"";
 pub const GREP_EXECUTABLE: &str = "grep -rI --line-number \"{}\"";
 pub const SSHFS_EXECUTABLE: &str = "sshfs";
 pub const NOTIFY_EXECUTABLE: &str = "notity-send";
+/// Encrypted devices bind description
+pub const ENCRYPTED_DEVICE_BINDS: &str = "m: mount   --   u: unmount   --   g: go to mount point";
 /// Sort presentation for the second window
 pub const SORT_LINES: [&str; 7] = [
     "k:         by kind (default)",
