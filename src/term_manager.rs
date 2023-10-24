@@ -888,10 +888,19 @@ impl<'a> WinSecondary<'a> {
                 }
             }
         }
+        let dest = match tab.previous_mode {
+            Mode::Tree => tab
+                .directory
+                .tree
+                .directory_of_selected()?
+                .display()
+                .to_string(),
+            _ => tab.path_content.path_to_str(),
+        };
         canvas.print_with_attr(
             2,
             3,
-            &confirmed_mode.confirmation_string(&tab.path_content.path_to_str()),
+            &confirmed_mode.confirmation_string(&dest),
             ATTR_YELLOW_BOLD,
         )?;
 

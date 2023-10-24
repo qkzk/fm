@@ -8,7 +8,7 @@ use crate::args::Args;
 use crate::completion::{Completion, InputCompleted};
 use crate::config::{Colors, Settings};
 use crate::content_window::ContentWindow;
-use crate::fileinfo::{FileInfo, FileKind, PathContent};
+use crate::fileinfo::{FileInfo, PathContent};
 use crate::filter::FilterKind;
 use crate::history::History;
 use crate::input::Input;

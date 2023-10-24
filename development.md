@@ -585,7 +585,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] preview pdf with ueberzug. First page extracted with poppler -> cairo -> thumbnail -> ueberzug
 - [x] FIX: when encrypted drive is already mounted don't let user mount it again
 - [x] FIX: group & owner metadata alignement in tree mode
-- [ ] Tree mode Copy / Move / New should copy in selected directory not root of tree
+- [x] Tree mode Copy / Move / New should copy in selected directory not root of tree
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 

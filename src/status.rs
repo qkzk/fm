@@ -336,11 +336,23 @@ impl Status {
     /// is sent every time, even for 0 bytes files...
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
         let sources = self.flagged.content.clone();
-        let dest = self
-            .selected_non_mut()
-            .path_content_str()
-            .context("cut or copy: unreadable path")?;
-        copy_move(cut_or_copy, sources, dest, self.term.clone())?;
+
+        let dest = match self.selected_non_mut().previous_mode {
+            Mode::Tree => self
+                .selected_non_mut()
+                .directory
+                .tree
+                .directory_of_selected()?
+                .display()
+                .to_string(),
+            _ => self
+                .selected_non_mut()
+                .path_content_str()
+                .context("cut or copy: unreadable path")?
+                .to_owned(),
+        };
+
+        copy_move(cut_or_copy, sources, &dest, self.term.clone())?;
         self.clear_flags_and_reset_view()
     }
 
