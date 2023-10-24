@@ -301,7 +301,11 @@ impl<'a> WinMain<'a> {
         if let Some(fileinfo) = self.pick_previewed_fileinfo() {
             let mut strings = vec![" Preview ".to_owned()];
             if !tab.preview.is_empty() {
-                strings.push(format!(" {} / {} ", tab.window.bottom, tab.preview.len()));
+                let index = match &tab.preview {
+                    Preview::Ueberzug(image) => image.index + 1,
+                    _ => tab.window.bottom,
+                };
+                strings.push(format!(" {index} / {len} ", len = tab.preview.len()));
             };
             strings.push(format!(" {} ", fileinfo.path.display()));
             strings
@@ -462,6 +466,7 @@ impl<'a> WinMain<'a> {
             }
             Preview::Ueberzug(image) => {
                 let (width, height) = canvas.size()?;
+                image.match_index()?;
                 image.ueberzug(
                     self.attributes.x_position as u16 + 2,
                     3,

@@ -586,10 +586,15 @@ impl Tab {
     }
 
     fn preview_page_up(&mut self) {
-        if self.window.top > 0 {
-            let skip = min(self.window.top, 30);
-            self.window.bottom -= skip;
-            self.window.top -= skip;
+        match &mut self.preview {
+            Preview::Ueberzug(ref mut image) => image.up_one_row(),
+            _ => {
+                if self.window.top > 0 {
+                    let skip = min(self.window.top, 30);
+                    self.window.bottom -= skip;
+                    self.window.top -= skip;
+                }
+            }
         }
     }
 
@@ -614,10 +619,15 @@ impl Tab {
     }
 
     fn preview_page_down(&mut self) {
-        if self.window.bottom < self.preview.len() {
-            let skip = min(self.preview.len() - self.window.bottom, 30);
-            self.window.bottom += skip;
-            self.window.top += skip;
+        match &mut self.preview {
+            Preview::Ueberzug(ref mut image) => image.down_one_row(),
+            _ => {
+                if self.window.bottom < self.preview.len() {
+                    let skip = min(self.preview.len() - self.window.bottom, 30);
+                    self.window.bottom += skip;
+                    self.window.top += skip;
+                }
+            }
         }
     }
 

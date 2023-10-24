@@ -586,6 +586,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: when encrypted drive is already mounted don't let user mount it again
 - [x] FIX: group & owner metadata alignement in tree mode
 - [x] Tree mode Copy / Move / New should copy in selected directory not root of tree
+- [x] Allow scrolling in preview pdf. Required a lot of change in Preview::ueberzug. Update thumbnail when required.
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 

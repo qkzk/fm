@@ -134,29 +134,39 @@ impl Preview {
                         extension,
                     )?)),
                     // ExtensionKind::Pdf => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
-                    ExtensionKind::Pdf => {
-                        Ok(Self::Ueberzug(Ueberzug::pdf_thumbnail(&file_info.path)?))
-                    }
-                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => {
-                        Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?))
-                    }
+                    ExtensionKind::Pdf => Ok(Self::Ueberzug(Ueberzug::make(
+                        &file_info.path,
+                        UeberzugKind::Pdf,
+                    )?)),
+                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => Ok(Self::Ueberzug(
+                        Ueberzug::make(&file_info.path, UeberzugKind::Image)?,
+                    )),
                     ExtensionKind::Audio if is_program_in_path(MEDIAINFO) => {
                         Ok(Self::Media(MediaContent::new(&file_info.path)?))
                     }
                     ExtensionKind::Video
                         if is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
+                        Ok(Self::Ueberzug(Ueberzug::make(
+                            &file_info.path,
+                            UeberzugKind::Video,
+                        )?))
                     }
                     ExtensionKind::Font
                         if is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::font_thumbnail(&file_info.path)?))
+                        Ok(Self::Ueberzug(Ueberzug::make(
+                            &file_info.path,
+                            UeberzugKind::Font,
+                        )?))
                     }
                     ExtensionKind::Svg
                         if is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::svg_thumbnail(&file_info.path)?))
+                        Ok(Self::Ueberzug(Ueberzug::make(
+                            &file_info.path,
+                            UeberzugKind::Svg,
+                        )?))
                     }
                     ExtensionKind::Iso if is_program_in_path(ISOINFO) => {
                         Ok(Self::Iso(Iso::new(&file_info.path)?))
@@ -303,7 +313,7 @@ impl Preview {
             Self::Text(text) => text.len(),
             Self::Binary(binary) => binary.len(),
             Self::Archive(zip) => zip.len(),
-            Self::Ueberzug(_) => 0,
+            Self::Ueberzug(ueberzug) => ueberzug.len(),
             Self::Media(media) => media.len(),
             Self::Directory(directory) => directory.len(),
             Self::Diff(diff) => diff.len(),
@@ -761,57 +771,89 @@ impl MediaContent {
     }
 }
 
+pub enum UeberzugKind {
+    Font,
+    Image,
+    Pdf,
+    Svg,
+    Video,
+}
+
 /// Holds a path, a filename and an instance of ueberzug::Ueberzug.
 /// The ueberzug instance is held as long as the preview is displayed.
 /// When the preview is reset, the instance is dropped and the image is erased.
 /// Positonning the image is tricky since tuikit doesn't know where it's drawed in the terminal:
 /// the preview can't be placed correctly in embeded terminals.
 pub struct Ueberzug {
+    original: PathBuf,
     path: String,
     filename: String,
+    kind: UeberzugKind,
     ueberzug: ueberzug::Ueberzug,
+    length: usize,
+    pub index: usize,
 }
 
 impl Ueberzug {
-    fn image(img_path: &Path) -> Result<Self> {
+    fn thumbnail(original: PathBuf, kind: UeberzugKind) -> Self {
+        Self {
+            original,
+            path: THUMBNAIL_PATH.to_owned(),
+            filename: "thumbnail".to_owned(),
+            kind,
+            ueberzug: ueberzug::Ueberzug::new(),
+            length: 0,
+            index: 0,
+        }
+    }
+
+    fn make(filepath: &Path, kind: UeberzugKind) -> Result<Self> {
+        match kind {
+            UeberzugKind::Font => Self::font_thumbnail(filepath),
+            UeberzugKind::Image => Self::image_thumbnail(filepath),
+            UeberzugKind::Pdf => Self::pdf_thumbnail(filepath),
+            UeberzugKind::Svg => Self::svg_thumbnail(filepath),
+            UeberzugKind::Video => Self::video_thumbnail(filepath),
+        }
+    }
+
+    fn image_thumbnail(img_path: &Path) -> Result<Self> {
         let filename = filename_from_path(img_path)?.to_owned();
         let path = img_path
             .to_str()
             .context("ueberzug: couldn't parse the path into a string")?
             .to_owned();
         Ok(Self {
+            original: img_path.to_owned(),
             path,
             filename,
+            kind: UeberzugKind::Image,
             ueberzug: ueberzug::Ueberzug::new(),
+            length: 0,
+            index: 0,
         })
-    }
-
-    fn thumbnail() -> Self {
-        Self {
-            path: THUMBNAIL_PATH.to_owned(),
-            filename: "thumbnail".to_owned(),
-            ueberzug: ueberzug::Ueberzug::new(),
-        }
     }
 
     fn video_thumbnail(video_path: &Path) -> Result<Self> {
         Self::make_video_thumbnail(video_path)?;
-        Ok(Self::thumbnail())
+        Ok(Self::thumbnail(video_path.to_owned(), UeberzugKind::Video))
     }
 
     fn font_thumbnail(font_path: &Path) -> Result<Self> {
         Self::make_font_thumbnail(font_path)?;
-        Ok(Self::thumbnail())
+        Ok(Self::thumbnail(font_path.to_owned(), UeberzugKind::Font))
     }
 
     fn svg_thumbnail(svg_path: &Path) -> Result<Self> {
         Self::make_svg_thumbnail(svg_path)?;
-        Ok(Self::thumbnail())
+        Ok(Self::thumbnail(svg_path.to_owned(), UeberzugKind::Svg))
     }
 
     fn pdf_thumbnail(pdf_path: &Path) -> Result<Self> {
-        Self::make_pdf_thumbnail(pdf_path)?;
-        Ok(Self::thumbnail())
+        let length = Self::make_pdf_thumbnail(pdf_path, 0)?;
+        let mut thumbnail = Self::thumbnail(pdf_path.to_owned(), UeberzugKind::Pdf);
+        thumbnail.length = length;
+        Ok(thumbnail)
     }
 
     fn make_thumbnail(exe: &str, args: &[&str]) -> Result<()> {
@@ -826,11 +868,23 @@ impl Ueberzug {
         Ok(())
     }
 
-    fn make_pdf_thumbnail(pdf_path: &Path) -> Result<()> {
+    /// Creates the thumbnail for the `index` page.
+    /// Returns the number of pages of the pdf.
+    ///
+    /// It may fail (and surelly crash the app) if the pdf is password protected.
+    /// We pass a generic password which is hardcoded.
+    fn make_pdf_thumbnail(pdf_path: &Path, index: usize) -> Result<usize> {
         let doc: poppler::PopplerDocument =
             poppler::PopplerDocument::new_from_file(pdf_path, "upw")?;
-        let page: poppler::PopplerPage =
-            doc.get_page(0).context("poppler couldn't extract page")?;
+        let length = doc.get_n_pages();
+        if index >= length {
+            return Err(anyhow!(
+                "Poppler: index {index} >= number of page {length}."
+            ));
+        }
+        let page: poppler::PopplerPage = doc
+            .get_page(index)
+            .context("poppler couldn't extract page")?;
         let (w, h) = page.get_size();
         let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, w as i32, h as i32)?;
         let ctx = cairo::Context::new(&surface)?;
@@ -840,7 +894,7 @@ impl Ueberzug {
         ctx.show_page()?;
         let mut file = std::fs::File::create(THUMBNAIL_PATH)?;
         surface.write_to_png(&mut file)?;
-        Ok(())
+        Ok(length)
     }
 
     fn make_video_thumbnail(video_path: &Path) -> Result<()> {
@@ -877,6 +931,42 @@ impl Ueberzug {
             RSVG_CONVERT,
             &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH],
         )
+    }
+
+    /// Only affect pdf thumbnail. Will decrease the index if possible.
+    pub fn up_one_row(&mut self) {
+        if let UeberzugKind::Pdf = self.kind {
+            if self.index > 0 {
+                self.index -= 1;
+            }
+        }
+    }
+
+    /// Only affect pdf thumbnail. Will increase the index if possible.
+    pub fn down_one_row(&mut self) {
+        if let UeberzugKind::Pdf = self.kind {
+            if self.index + 1 < self.len() {
+                self.index += 1;
+            }
+        }
+    }
+
+    /// 0 for every kind except pdf where it's the number of pages.
+    pub fn len(&self) -> usize {
+        self.length
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Update the thumbnail of the pdf to match its own index.
+    /// Does nothing for other kinds.
+    pub fn match_index(&self) -> Result<()> {
+        if let UeberzugKind::Pdf = self.kind {
+            Self::make_pdf_thumbnail(&self.original, self.index)?;
+        }
+        Ok(())
     }
 
     /// Draw the image with ueberzug in the current window.
