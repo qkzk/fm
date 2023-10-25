@@ -62,7 +62,7 @@ impl EventAction {
             .for_each(|file| {
                 status.flagged.push(file.path.clone());
             });
-        status.reset_tabs_view()
+        Ok(())
     }
 
     /// Reverse every flag in _current_ directory. Flagged files in other
@@ -73,7 +73,7 @@ impl EventAction {
             .content
             .iter()
             .for_each(|file| status.flagged.toggle(&file.path));
-        status.reset_tabs_view()
+        Ok(())
     }
 
     /// Toggle a single flag and move down one row.
@@ -259,10 +259,10 @@ impl EventAction {
 
     /// Enter the delete mode.
     /// A confirmation is then asked before deleting all the flagged files.
-    /// Does nothing is no file is flagged.
+    /// If no file is flagged, flag the selected one before entering the mode.
     pub fn delete_file(status: &mut Status) -> Result<()> {
         if status.flagged.is_empty() {
-            return Ok(());
+            Self::toggle_flag(status)?;
         }
         status
             .selected()
@@ -887,12 +887,17 @@ impl EventAction {
         status.select_tab(0)?;
         Ok(())
     }
+
     /// Move flagged files to the trash directory.
+    /// If no file is flagged, flag the selected file.
     /// More information in the trash crate itself.
     /// If the file is mounted on the $topdir of the trash (aka the $HOME mount point),
     /// it is moved there.
     /// Else, nothing is done.
     pub fn trash_move_file(status: &mut Status) -> Result<()> {
+        if status.flagged.is_empty() {
+            Self::toggle_flag(status)?;
+        }
         let trash_mount_point = opt_mount_point(disk_used_by_path(
             status.system_info.disks(),
             &std::path::PathBuf::from(&status.trash.trash_folder_files),
