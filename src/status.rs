@@ -535,6 +535,11 @@ impl Status {
     pub fn set_second_pane_for_preview(&mut self, colors: &Colors) -> Result<()> {
         self.tabs[1].set_mode(Mode::Preview);
 
+        if !Self::display_wide_enough(&self.term)? {
+            self.tabs[1].preview = Preview::new_empty();
+            return Ok(());
+        }
+
         let fileinfo = self.tabs[0]
             .selected()
             .context("force preview: No file to select")?;

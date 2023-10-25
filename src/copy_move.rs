@@ -296,6 +296,12 @@ impl ConflictHandler {
     }
 }
 
+impl Drop for ConflictHandler {
+    fn drop(&mut self) {
+        let _ = self.delete_temp_dest();
+    }
+}
+
 /// Send a notification to the desktop.
 /// Does nothing if "notify-send" isn't installed.
 fn notify(text: &str) -> Result<()> {

@@ -51,8 +51,10 @@ pub const HELP_SECOND_SENTENCE: &str = " Keybindings ";
 pub const LOG_FIRST_SENTENCE: &str = " Logs: ";
 /// Description of the content below, aka what is logged there.
 pub const LOG_SECOND_SENTENCE: &str = " Last actions affecting the file tree";
-/// Video thumbnails
+/// Ueberzug image thumbnails
 pub const THUMBNAIL_PATH: &str = "/tmp/fm_thumbnail.png";
+/// Libreoffice pdf output
+pub const CALC_PDF_PATH: &str = "/tmp/fm_calc.pdf";
 /// Array of hardcoded shortcuts with standard *nix paths.
 pub const HARDCODED_SHORTCUTS: [&str; 9] = [
     "/",
@@ -188,3 +190,5 @@ pub const LSOF: &str = "lsof";
 pub const NVIM: &str = "nvim";
 /// tar executable
 pub const TAR: &str = "tar";
+/// libreoffice executable
+pub const LIBREOFFICE: &str = "libreoffice";

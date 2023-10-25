@@ -15,7 +15,7 @@ use fm::log::set_loggers;
 use fm::opener::{load_opener, Opener};
 use fm::status::Status;
 use fm::term_manager::{Display, EventReader};
-use fm::utils::{init_term, print_on_quit};
+use fm::utils::{clear_tmp_file, init_term, print_on_quit};
 
 /// Holds everything about the application itself.
 /// Most attributes holds an `Arc<tuiki::Term::term>`.
@@ -124,6 +124,7 @@ impl FM {
     /// drop itself, which allow us to print normally afterward
     /// print the final path
     fn quit(self) -> Result<()> {
+        clear_tmp_file();
         self.display.show_cursor()?;
         let final_path = self.status.selected_path_str().to_owned();
         self.refresher.quit()?;

@@ -146,7 +146,7 @@ impl<'a> Bulkrename<'a> {
         Ok(new_names)
     }
 
-    fn delete_temp_file(&self) -> Result<()> {
+    pub fn delete_temp_file(&self) -> Result<()> {
         std::fs::remove_file(&self.temp_file)?;
         Ok(())
     }
@@ -208,6 +208,12 @@ impl<'a> Bulkrename<'a> {
         parent.pop();
         std::fs::rename(path, parent.join(filename))?;
         Ok(())
+    }
+}
+
+impl<'a> Drop for Bulkrename<'a> {
+    fn drop(&mut self) {
+        let _ = self.delete_temp_file();
     }
 }
 

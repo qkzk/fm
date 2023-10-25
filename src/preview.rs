@@ -18,8 +18,8 @@ use users::UsersCache;
 
 use crate::config::Colors;
 use crate::constant_strings_paths::{
-    DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LSBLK, LSOF, MEDIAINFO, PANDOC, RSVG_CONVERT, SS,
-    THUMBNAIL_PATH, UEBERZUG,
+    CALC_PDF_PATH, DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
+    PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
 };
 use crate::content_window::ContentWindow;
 use crate::decompress::{list_files_tar, list_files_zip};
@@ -28,7 +28,7 @@ use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
 use crate::status::Status;
 use crate::tree::{ColoredString, Tree};
-use crate::utils::{filename_from_path, is_program_in_path};
+use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path};
 
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.
@@ -43,7 +43,7 @@ pub enum ExtensionKind {
     Pdf,
     Iso,
     Notebook,
-    Doc,
+    Office,
     Epub,
     #[default]
     Unknown,
@@ -66,7 +66,7 @@ impl ExtensionKind {
             "pdf" => Self::Pdf,
             "iso" => Self::Iso,
             "ipynb" => Self::Notebook,
-            "doc" | "docx" | "odt" | "sxw" => Self::Doc,
+            "doc" | "docx" | "odt" | "sxw" | "xlsx" | "xls" => Self::Office,
             "epub" => Self::Epub,
             _ => Self::Unknown,
         }
@@ -107,6 +107,12 @@ pub enum Preview {
 impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
+    /// Empty preview, holding nothing.
+    pub fn new_empty() -> Self {
+        clear_tmp_file();
+        Self::Empty
+    }
+
     /// Creates a new preview instance based on the filekind and the extension of
     /// the file.
     /// Sometimes it reads the content of the file, sometimes it delegates
@@ -117,6 +123,7 @@ impl Preview {
         status: &Status,
         colors: &Colors,
     ) -> Result<Self> {
+        clear_tmp_file();
         match file_info.file_kind {
             FileKind::Directory => Ok(Self::Directory(Directory::new(
                 &file_info.path,
@@ -175,9 +182,9 @@ impl Preview {
                         Ok(Self::notebook(&file_info.path)
                             .context("Preview: Couldn't parse notebook")?)
                     }
-                    ExtensionKind::Doc if is_program_in_path(PANDOC) => {
-                        Ok(Self::doc(&file_info.path).context("Preview: Couldn't parse doc")?)
-                    }
+                    ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => Ok(Self::Ueberzug(
+                        Ueberzug::make(&file_info.path, UeberzugKind::Office)?,
+                    )),
                     ExtensionKind::Epub if is_program_in_path(PANDOC) => {
                         Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
                     }
@@ -238,16 +245,6 @@ impl Preview {
         Self::syntaxed_from_str(output, "md")
     }
 
-    fn doc(path: &Path) -> Option<Self> {
-        let path_str = path.to_str()?;
-        let output = execute_and_capture_output_without_check(
-            PANDOC,
-            &["-s", "-t", "markdown", "--", path_str],
-        )
-        .ok()?;
-        Self::syntaxed_from_str(output, "md")
-    }
-
     fn syntaxed_from_str(output: String, ext: &str) -> Option<Self> {
         let ss = SyntaxSet::load_defaults_nonewlines();
         ss.find_syntax_by_extension(ext).map(|syntax| {
@@ -297,11 +294,6 @@ impl Preview {
         Ok(Self::Text(
             TextContent::epub(path).context("Couldn't read epub")?,
         ))
-    }
-
-    /// Empty preview, holding nothing.
-    pub fn new_empty() -> Self {
-        Self::Empty
     }
 
     /// The size (most of the time the number of lines) of the preview.
@@ -774,6 +766,7 @@ impl MediaContent {
 pub enum UeberzugKind {
     Font,
     Image,
+    Office,
     Pdf,
     Svg,
     Video,
@@ -811,6 +804,7 @@ impl Ueberzug {
         match kind {
             UeberzugKind::Font => Self::font_thumbnail(filepath),
             UeberzugKind::Image => Self::image_thumbnail(filepath),
+            UeberzugKind::Office => Self::office_thumbnail(filepath),
             UeberzugKind::Pdf => Self::pdf_thumbnail(filepath),
             UeberzugKind::Svg => Self::svg_thumbnail(filepath),
             UeberzugKind::Video => Self::video_thumbnail(filepath),
@@ -847,6 +841,32 @@ impl Ueberzug {
     fn svg_thumbnail(svg_path: &Path) -> Result<Self> {
         Self::make_svg_thumbnail(svg_path)?;
         Ok(Self::thumbnail(svg_path.to_owned(), UeberzugKind::Svg))
+    }
+
+    fn office_thumbnail(calc_path: &Path) -> Result<Self> {
+        let calc_str = calc_path.display().to_string();
+        let args = vec!["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
+        let output = std::process::Command::new(LIBREOFFICE)
+            .args(args)
+            .output()?;
+        if !output.stderr.is_empty() {
+            info!(
+                "libreoffice conversion output: {} {}",
+                String::from_utf8(output.stdout).unwrap_or_default(),
+                String::from_utf8(output.stderr).unwrap_or_default()
+            );
+            return Err(anyhow!("{LIBREOFFICE} couldn't convert {calc_str} to pdf"));
+        }
+        let mut pdf_path = std::path::PathBuf::from("/tmp");
+        let filename = calc_path.file_name().context("")?;
+        pdf_path.push(filename);
+        pdf_path.set_extension("pdf");
+        std::fs::rename(pdf_path, CALC_PDF_PATH)?;
+        let calc_pdf_path = PathBuf::from(CALC_PDF_PATH);
+        let length = Self::make_pdf_thumbnail(&calc_pdf_path, 0)?;
+        let mut thumbnail = Self::thumbnail(calc_pdf_path.to_owned(), UeberzugKind::Pdf);
+        thumbnail.length = length;
+        Ok(thumbnail)
     }
 
     fn pdf_thumbnail(pdf_path: &Path) -> Result<Self> {

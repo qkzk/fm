@@ -9,6 +9,7 @@ use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 use users::{get_current_uid, get_user_by_uid};
 
+use crate::constant_strings_paths::{CALC_PDF_PATH, THUMBNAIL_PATH};
 use crate::content_window::ContentWindow;
 use crate::fileinfo::human_size;
 use crate::nvim::nvim;
@@ -162,4 +163,10 @@ pub fn random_name() -> String {
         .for_each(|ch| rand_str.push(ch as char));
     rand_str.push_str(".txt");
     rand_str
+}
+
+/// Clear the temporary file used by fm for previewing.
+pub fn clear_tmp_file() {
+    let _ = std::fs::remove_file(THUMBNAIL_PATH);
+    let _ = std::fs::remove_file(CALC_PDF_PATH);
 }
