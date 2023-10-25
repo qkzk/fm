@@ -658,8 +658,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## BUGS
 
-- [ ] creates $ENV{HOME} folders everywhere -
-      a new version of log4rs seems to solve this, it's not deplayed to crates.io yet
 - [ ] tree mode : index are offset by one
 
 ## Won't do
