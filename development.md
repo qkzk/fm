@@ -588,7 +588,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Tree mode Copy / Move / New should copy in selected directory not root of tree
 - [x] Allow scrolling in preview pdf. Required a lot of change in Preview::ueberzug. Update thumbnail when required.
 - [x] Flag the selected file if no file is flagged before entering delete mode or trashing a file.
-- [ ] fuzzy finder should do nothing if escape (quit?) is inputed
+- [x] FIX: fuzzy finder should do nothing if escape (quit?) is inputed
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 

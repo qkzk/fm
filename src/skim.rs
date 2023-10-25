@@ -36,24 +36,35 @@ impl Skimer {
     /// The preview is enabled by default and we assume the previewer won't be uninstalled during the lifetime
     /// of the application.
     pub fn search_filename(&self, path_str: &str) -> Vec<Arc<dyn SkimItem>> {
-        self.skim
-            .run_internal(None, path_str.to_owned(), Some(&self.previewer), None)
-            .map(|out| out.selected_items)
-            .unwrap_or_else(Vec::new)
+        let Some(output) =
+            self.skim
+                .run_internal(None, path_str.to_owned(), Some(&self.previewer), None)
+        else {
+            return vec![];
+        };
+        if output.is_abort {
+            vec![]
+        } else {
+            output.selected_items
+        }
     }
 
     /// Call skim on its term.
     /// Returns the file whose line match a pattern from current folder using ripgrep or grep.
     pub fn search_line_in_file(&self, path_str: &str) -> Vec<Arc<dyn SkimItem>> {
-        self.skim
-            .run_internal(
-                None,
-                path_str.to_owned(),
-                None,
-                Some(self.file_matcher.to_owned()),
-            )
-            .map(|out| out.selected_items)
-            .unwrap_or_else(Vec::new)
+        let Some(output) = self.skim.run_internal(
+            None,
+            path_str.to_owned(),
+            None,
+            Some(self.file_matcher.to_owned()),
+        ) else {
+            return vec![];
+        };
+        if output.is_abort {
+            vec![]
+        } else {
+            output.selected_items
+        }
     }
 
     /// Search in a text content, splitted by line.
@@ -66,10 +77,17 @@ impl Skimer {
             }));
         }
         drop(tx_item); // so that skim could know when to stop waiting for more items.
-        self.skim
+        let Some(output) = self
+            .skim
             .run_internal(Some(rx_item), "".to_owned(), None, None)
-            .map(|out| out.selected_items)
-            .unwrap_or_else(Vec::new)
+        else {
+            return vec![];
+        };
+        if output.is_abort {
+            vec![]
+        } else {
+            output.selected_items
+        }
     }
 }
 
