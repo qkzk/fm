@@ -388,7 +388,7 @@ impl<'a> WinMain<'a> {
     }
 
     fn tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        let left_margin = if status.display_full { 0 } else { 3 };
+        let left_margin = if status.display_full { 1 } else { 3 };
         let (_, height) = canvas.size()?;
         let (top, bottom, len) = tab.directory.calculate_tree_window(height);
 
@@ -396,8 +396,10 @@ impl<'a> WinMain<'a> {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
             let mut attr = colored_string.attr;
             if status.flagged.contains(&colored_string.path) {
-                attr.effect |= Effect::BOLD | Effect::UNDERLINE;
+                attr.effect |= Effect::BOLD;
+                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
             }
+
             let col_metadata = if status.display_full {
                 canvas.print_with_attr(row, left_margin, &metadata.text, attr)?
             } else {
@@ -406,7 +408,7 @@ impl<'a> WinMain<'a> {
             let col_tree_prefix = canvas.print(row, left_margin + col_metadata, prefix)?;
             canvas.print_with_attr(
                 row,
-                left_margin + col_metadata + col_tree_prefix + 1,
+                left_margin + col_metadata + col_tree_prefix,
                 &colored_string.text,
                 attr,
             )?;
