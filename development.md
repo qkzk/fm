@@ -590,9 +590,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Flag the selected file if no file is flagged before entering delete mode or trashing a file.
 - [x] FIX: fuzzy finder should do nothing if escape (quit?) is inputed
 - [x] preview openoffice / office documents as images. Don't use pandoc for .doc .odb etc. previews
-- [ ] mtp mount with gio [nnn plugin](https://github.com/jarun/nnn/blob/master/plugins/mtpmount)
-  - [ ] add MTP mount points to shortcuts
-  - [ ] list, mount, unmount mtp mount points
+- [x] mtp mount with gio [nnn plugin](https://github.com/jarun/nnn/blob/master/plugins/mtpmount)
+  - [x] add MTP mount points to shortcuts
+  - [x] list, mount, unmount mtp mount points
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 

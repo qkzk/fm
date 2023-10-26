@@ -50,7 +50,9 @@ impl FilterKind {
         if keep_dirs && fileinfo.is_dir() {
             true
         } else {
-            let Ok(re) = Regex::new(filename) else { return false };
+            let Ok(re) = Regex::new(filename) else {
+                return false;
+            };
             re.is_match(&fileinfo.filename)
         }
     }

@@ -170,3 +170,11 @@ pub fn clear_tmp_file() {
     let _ = std::fs::remove_file(THUMBNAIL_PATH);
     let _ = std::fs::remove_file(CALC_PDF_PATH);
 }
+
+/// True if the directory is empty,
+/// False if it's not.
+/// Err if the path doesn't exists or isn't accessible by
+/// the user.
+pub fn is_dir_empty(path: &std::path::Path) -> Result<bool> {
+    Ok(path.read_dir()?.next().is_none())
+}

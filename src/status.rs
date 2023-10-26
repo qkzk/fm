@@ -733,7 +733,7 @@ impl Status {
         let Some(devices) = &mut self.removable_devices else {
             return Ok(());
         };
-        let Some(device) = devices.current() else {
+        let Some(device) = devices.selected_mut() else {
             return Ok(());
         };
         if device.is_mounted {
@@ -747,7 +747,7 @@ impl Status {
         let Some(devices) = &mut self.removable_devices else {
             return Ok(());
         };
-        let Some(device) = devices.current() else {
+        let Some(device) = devices.selected_mut() else {
             return Ok(());
         };
         if !device.is_mounted {

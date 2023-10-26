@@ -7,7 +7,7 @@ use std::borrow::Borrow;
 fn main() {
     let Ok(mut default_config_files) = std::env::current_dir() else {
         eprintln!("Environment variable $PWD should be set. Couldn't find the source folder.");
-        return
+        return;
     };
     default_config_files.push("config_files/fm");
 
