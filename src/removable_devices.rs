@@ -1,6 +1,10 @@
 use anyhow::{anyhow, Result};
 
-use crate::{constant_strings_paths::GIO, impl_selectable_content, utils::is_dir_empty};
+use crate::{
+    constant_strings_paths::GIO,
+    impl_selectable_content,
+    utils::{is_dir_empty, is_program_in_path},
+};
 
 /// Holds info about removable devices.
 /// We can navigate this struct.
@@ -20,6 +24,9 @@ impl RemovableDevices {
     /// Then we create a `Removable` instance for every line.
     /// If no line match or if any error happens, we return `None`.
     pub fn from_gio() -> Option<Self> {
+        if !is_program_in_path(GIO) {
+            return None;
+        }
         let Ok(output) = std::process::Command::new(GIO)
             .args(["mount", "-li"])
             .output()
@@ -99,6 +106,8 @@ impl Removable {
         }
         self.is_mounted = std::process::Command::new(GIO)
             .args(vec!["mount", &self.format_for_gio()])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .spawn()?
             .wait()?
             .success();
@@ -121,6 +130,8 @@ impl Removable {
         }
         self.is_mounted = !std::process::Command::new(GIO)
             .args(vec!["mount", &self.format_for_gio(), "-u"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .spawn()?
             .wait()?
             .success();
