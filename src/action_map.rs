@@ -161,7 +161,7 @@ impl ActionMap {
             ActionMap::NewDir => EventAction::new_dir(current_tab),
             ActionMap::NewFile => EventAction::new_file(current_tab),
             ActionMap::NvimFilepicker => EventAction::nvim_filepicker(status),
-            ActionMap::NvimSetAddress => EventAction::set_nvim_server(status),
+            ActionMap::NvimSetAddress => EventAction::set_nvim_server(current_tab),
             ActionMap::OpenConfig => EventAction::open_config(status),
             ActionMap::OpenFile => EventAction::open_file(status),
             ActionMap::PageDown => EventAction::page_down(status, colors),

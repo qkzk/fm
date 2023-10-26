@@ -447,10 +447,8 @@ impl EventAction {
         Ok(())
     }
 
-    pub fn set_nvim_server(status: &mut Status) -> Result<()> {
-        status
-            .selected()
-            .set_mode(Mode::InputSimple(InputSimple::SetNvimAddr));
+    pub fn set_nvim_server(tab: &mut Tab) -> Result<()> {
+        tab.set_mode(Mode::InputSimple(InputSimple::SetNvimAddr));
         Ok(())
     }
 
