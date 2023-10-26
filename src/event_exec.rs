@@ -13,6 +13,7 @@ use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
 use crate::constant_strings_paths::DIFF;
+use crate::constant_strings_paths::GIO;
 use crate::constant_strings_paths::MEDIAINFO;
 use crate::constant_strings_paths::NITROGEN;
 use crate::constant_strings_paths::SSHFS_EXECUTABLE;
@@ -32,6 +33,7 @@ use crate::opener::{
 use crate::password::{PasswordKind, PasswordUsage};
 use crate::preview::ExtensionKind;
 use crate::preview::Preview;
+use crate::removable_devices::RemovableDevices;
 use crate::selectable_content::SelectableContent;
 use crate::shell_parser::ShellCommandParser;
 use crate::status::Status;
@@ -738,6 +740,7 @@ impl EventAction {
                 LeaveMode::marks_jump(status, colors)?
             }
             Mode::Navigate(Navigate::Compress) => LeaveMode::compress(status)?,
+            Mode::Navigate(Navigate::RemovableDevices) => (),
             Mode::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
@@ -992,6 +995,18 @@ impl EventAction {
         status
             .selected()
             .set_mode(Mode::Navigate(Navigate::EncryptedDrive));
+        Ok(())
+    }
+
+    pub fn removable_devices(status: &mut Status) -> Result<()> {
+        if !is_program_in_path(GIO) {
+            write_log_line("gio must be installed.".to_owned());
+            return Ok(());
+        }
+        status.removable_devices = RemovableDevices::from_gio();
+        status
+            .selected()
+            .set_mode(Mode::Navigate(Navigate::RemovableDevices));
         Ok(())
     }
 

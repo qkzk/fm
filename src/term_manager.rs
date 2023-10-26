@@ -656,6 +656,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::CliInfo => self.cli_info(self.status, canvas),
             Navigate::Compress => self.compress(canvas, &self.status.compression),
             Navigate::EncryptedDrive => self.encrypted_drive(self.status, self.tab, canvas),
+            Navigate::RemovableDevices => self.removable_devices(self.status, self.tab, canvas),
             Navigate::History => self.history(canvas, &self.tab.history),
             Navigate::Jump => self.destination(canvas, &self.status.flagged),
             Navigate::Marks(_) => self.marks(self.status, canvas),
@@ -864,6 +865,26 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
+    fn removable_devices(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
+        if let Some(removable) = &status.removable_devices {
+            for (i, removable) in removable.content.iter().enumerate() {
+                let row = calc_line_row(i, &tab.window) + 2;
+                let mut not_mounted_attr = Attr::default();
+                let mut mounted_attr = Attr::from(Color::BLUE);
+                if i == status.encrypted_devices.index() {
+                    not_mounted_attr.effect |= Effect::REVERSE;
+                    mounted_attr.effect |= Effect::REVERSE;
+                }
+                if removable.is_mounted {
+                    canvas.print_with_attr(row, 3, &removable.device_name, mounted_attr)?;
+                } else {
+                    canvas.print_with_attr(row, 3, &removable.device_name, not_mounted_attr)?;
+                }
+            }
+        }
+        Ok(())
+    }
     /// Display a list of edited (deleted, copied, moved) files for confirmation
     fn confirm(
         &self,

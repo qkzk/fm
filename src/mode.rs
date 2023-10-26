@@ -134,6 +134,8 @@ pub enum Navigate {
     Trash,
     /// Manipulate an encrypted device
     EncryptedDrive,
+    /// Removable devices
+    RemovableDevices,
     /// Manipulate an iso file to mount it
     Marks(MarkAction),
     /// Pick a compression method
@@ -220,6 +222,9 @@ impl fmt::Display for Mode {
             Mode::Navigate(Navigate::Compress) => write!(f, "Compress :"),
             Mode::Navigate(Navigate::EncryptedDrive) => {
                 write!(f, "Encrypted devices :")
+            }
+            Mode::Navigate(Navigate::RemovableDevices) => {
+                write!(f, "Removable devices :")
             }
             Mode::Navigate(Navigate::CliInfo) => write!(f, "Display infos :"),
             Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),

@@ -146,7 +146,7 @@ impl Status {
             Tab::new(&args, height, users_cache, settings, &mount_points)?,
             Tab::new(&args, height, users_cache2, settings, &mount_points)?,
         ];
-        let removable_devices = None;
+        let removable_devices = RemovableDevices::from_gio();
         Ok(Self {
             tabs,
             index,

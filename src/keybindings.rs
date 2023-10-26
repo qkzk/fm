@@ -105,6 +105,7 @@ impl Bindings {
             (Key::Alt('o'), ActionMap::TrashOpen),
             (Key::Alt('p'), ActionMap::TogglePreviewSecond),
             (Key::Alt('r'), ActionMap::RemoteMount),
+            (Key::Alt('R'), ActionMap::RemovableDevices),
             (Key::Alt('x'), ActionMap::TrashEmpty),
             (Key::Alt('z'), ActionMap::TreeFoldAll),
             (Key::Ctrl('c'), ActionMap::CopyFilename),
