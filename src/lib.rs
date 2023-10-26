@@ -31,6 +31,7 @@ pub mod nvim;
 pub mod opener;
 pub mod password;
 pub mod preview;
+pub mod removable_devices;
 pub mod selectable_content;
 pub mod shell_menu;
 pub mod shell_parser;

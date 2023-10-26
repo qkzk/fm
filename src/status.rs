@@ -34,6 +34,7 @@ use crate::password::{
     PasswordKind, PasswordUsage,
 };
 use crate::preview::{Directory, Preview};
+use crate::removable_devices::RemovableDevices;
 use crate::selectable_content::SelectableContent;
 use crate::shell_menu::ShellMenu;
 use crate::shell_parser::ShellCommandParser;
@@ -92,6 +93,7 @@ pub struct Status {
     pub start_folder: std::path::PathBuf,
     pub password_holder: PasswordHolder,
     pub sudo_command: Option<String>,
+    pub removable_devices: Option<RemovableDevices>,
 }
 
 impl Status {
@@ -144,6 +146,7 @@ impl Status {
             Tab::new(&args, height, users_cache, settings, &mount_points)?,
             Tab::new(&args, height, users_cache2, settings, &mount_points)?,
         ];
+        let removable_devices = None;
         Ok(Self {
             tabs,
             index,
@@ -169,6 +172,7 @@ impl Status {
             start_folder,
             password_holder,
             sudo_command,
+            removable_devices,
         })
     }
 
