@@ -99,7 +99,7 @@ Navigate as usual. Most actions works as in 'normal' view.
 {Shortcut:<10}:      SHORTCUT
 {EncryptedDrive:<10}:      ENCRYPTED DRIVE
     (m: open & mount,  u: unmount & close, g: go there)
-{RemovableDevices:<10}:      REMOVABLE DEVICES
+{RemovableDevices:<10}:      REMOVABLE MTP DEVICES
     (m: mount,  u: unmount, g: go there)
 {Search:<10}:      SEARCH
 {Command:<10}:      COMMAND
