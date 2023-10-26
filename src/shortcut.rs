@@ -90,6 +90,31 @@ impl Shortcut {
     pub fn extend_with_mount_points(&mut self, mount_points: &[&Path]) {
         self.content
             .extend(mount_points.iter().map(|p| p.to_path_buf()));
+        self.extend_with_mtp()
+    }
+
+    /// Update the shortcuts with MTP mount points
+    fn extend_with_mtp(&mut self) {
+        let uid = users::get_current_uid();
+        let mtp_mount_point = PathBuf::from(format!("/run/user/{uid}/gvfs/"));
+        if !mtp_mount_point.exists() || !mtp_mount_point.is_dir() {
+            return;
+        }
+        let mount_points: Vec<PathBuf> = match std::fs::read_dir(&mtp_mount_point) {
+            Ok(read_dir) => read_dir
+                .filter_map(|direntry| direntry.ok())
+                .filter(|direntry| direntry.path().is_dir())
+                .map(|direntry| direntry.path())
+                .collect(),
+            Err(error) => {
+                log::info!(
+                    "unreadable gvfs {mtp_mount_point}: {error:?} ",
+                    mtp_mount_point = mtp_mount_point.display(),
+                );
+                return;
+            }
+        };
+        self.content.extend(mount_points)
     }
 
     /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
