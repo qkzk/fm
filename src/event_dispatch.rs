@@ -95,6 +95,15 @@ impl EventDispatcher {
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'm' => status.mount_encrypted_drive(),
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'g' => status.go_to_encrypted_drive(),
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'u' => status.umount_encrypted_drive(),
+            Mode::Navigate(Navigate::RemovableDevices) if c == 'm' => {
+                status.mount_removable_device()
+            }
+            Mode::Navigate(Navigate::RemovableDevices) if c == 'g' => {
+                status.go_to_removable_device()
+            }
+            Mode::Navigate(Navigate::RemovableDevices) if c == 'u' => {
+                status.umount_removable_device()
+            }
             Mode::Navigate(Navigate::Jump) if c == ' ' => status.jump_remove_selected_flagged(),
             Mode::Navigate(Navigate::Jump) if c == 'u' => status.clear_flags_and_reset_view(),
             Mode::Navigate(Navigate::Jump) if c == 'x' => status.delete_single_flagged(),

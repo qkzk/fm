@@ -729,6 +729,49 @@ impl Status {
         }
     }
 
+    pub fn mount_removable_device(&mut self) -> Result<()> {
+        let Some(devices) = &mut self.removable_devices else {
+            return Ok(());
+        };
+        let Some(device) = devices.current() else {
+            return Ok(());
+        };
+        if device.is_mounted {
+            return Ok(());
+        }
+        device.mount()?;
+        Ok(())
+    }
+
+    pub fn umount_removable_device(&mut self) -> Result<()> {
+        let Some(devices) = &mut self.removable_devices else {
+            return Ok(());
+        };
+        let Some(device) = devices.current() else {
+            return Ok(());
+        };
+        if !device.is_mounted {
+            return Ok(());
+        }
+        device.umount()?;
+        Ok(())
+    }
+
+    pub fn go_to_removable_device(&mut self) -> Result<()> {
+        let Some(devices) = &self.removable_devices else {
+            return Ok(());
+        };
+        let Some(device) = devices.selected() else {
+            return Ok(());
+        };
+        if !device.is_mounted {
+            return Ok(());
+        }
+        let path = std::path::PathBuf::from(&device.path);
+        self.selected().set_pathcontent(&path)?;
+        self.selected().refresh_view()
+    }
+
     /// Ask for a password of some kind (sudo or device passphrase).
     pub fn ask_password(
         &mut self,

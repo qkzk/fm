@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use log::info;
 
 use crate::{constant_strings_paths::GIO, impl_selectable_content};
 
@@ -36,6 +35,14 @@ impl RemovableDevices {
             Some(Self { content, index: 0 })
         }
     }
+
+    pub fn current(&mut self) -> Option<&mut Removable> {
+        if self.content.is_empty() {
+            None
+        } else {
+            Some(&mut self.content[self.index])
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -47,18 +54,49 @@ pub struct Removable {
 
 impl Removable {
     fn from_gio(line: String) -> Result<Self> {
-        let line = line.replace("activation_root=", "");
-        let device_name = line.replace("mtp:://", "");
+        let line = line.replace("activation_root=mtp://", "");
+        let device_name = line;
         let uid = users::get_current_uid();
-        let path = format!("/run/user/{uid}/gvfs/{line}");
+        let path = format!("/run/user/{uid}/gvfs/mtp:host={device_name}");
         let pb_path = std::path::Path::new(&path);
         let is_mounted = pb_path.exists() && pb_path.read_dir()?.next().is_some();
-        log::info!("gio {line} - is_mounted {is_mounted}");
+        log::info!("gio {device_name} - is_mounted {is_mounted}");
         Ok(Self {
             device_name,
             path,
             is_mounted,
         })
+    }
+
+    pub fn mount(&mut self) -> Result<()> {
+        if self.is_mounted {
+            return Err(anyhow!("Already mounted {name}", name = self.device_name));
+        }
+        self.is_mounted = std::process::Command::new(GIO)
+            .args(vec![
+                "mount",
+                &format!("mtp://{name}", name = self.device_name),
+            ])
+            .spawn()?
+            .wait()?
+            .success();
+        Ok(())
+    }
+
+    pub fn umount(&mut self) -> Result<()> {
+        if !self.is_mounted {
+            return Err(anyhow!("Not mounted {name}", name = self.device_name));
+        }
+        self.is_mounted = std::process::Command::new(GIO)
+            .args(vec![
+                "mount",
+                &format!("mtp://{name}", name = self.device_name),
+                "-u",
+            ])
+            .spawn()?
+            .wait()?
+            .success();
+        Ok(())
     }
 }
 
