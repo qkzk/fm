@@ -462,11 +462,7 @@ impl EventAction {
     }
 
     /// Move back in history to the last visited directory.
-    pub fn back(status: &mut Status, colors: &Colors) -> Result<()> {
-        if status.selected_non_mut().history.content.len() <= 1 {
-            return Ok(());
-        }
-        let tab = status.selected();
+    pub fn back(tab: &mut Tab, colors: &Colors) -> Result<()> {
         tab.back(colors)
     }
 

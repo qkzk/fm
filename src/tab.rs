@@ -324,6 +324,9 @@ impl Tab {
     }
 
     pub fn back(&mut self, colors: &Colors) -> Result<()> {
+        if self.history.content.is_empty() {
+            return Ok(());
+        }
         let Some((path, file)) = self.history.content.pop() else {
             return Ok(());
         };

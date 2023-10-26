@@ -670,17 +670,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 All of this stuff can be done easily through a shell command or automatically. I'm not sure I wan't to bloat fm with it.
 
-- [ ] auto mount usb keys ??? [rusb](https://github.com/a1ien/rusb) -- just use udiskie (started automatically) and udiskie-umount /mount/point
-      just use udiskie
-- [ ] mtp... but fast [libmtp.rs](https://docs.rs/libmtp-rs/0.7.7/libmtp_rs/)
-- [ ] connexion to remote servers [removefs](https://crates.io/crates/remotefs) [termscp](https://crates.io/crates/termscp)
-
-  - ssh
-  - sftp
-  - ftp
-  - google drive
-
-  or just use sshfs...
+- [ ] auto mount usb keys ??? just use udiskie (started automatically) and udiskie-umount /mount/point
+- [ ] cloud services (apple, microsoft, google, dropbox etc.)
+- [ ] ftp
 
 ## Sources
 

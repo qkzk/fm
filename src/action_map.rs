@@ -110,7 +110,7 @@ impl ActionMap {
     pub fn matcher(&self, status: &mut Status, colors: &Colors) -> Result<()> {
         let current_tab = status.selected();
         match self {
-            ActionMap::Back => EventAction::back(status, colors),
+            ActionMap::Back => EventAction::back(current_tab, colors),
             ActionMap::BackTab => EventAction::backtab(status),
             ActionMap::Backspace => EventAction::backspace(current_tab),
             ActionMap::Bulk => EventAction::bulk(status),
