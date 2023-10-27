@@ -593,6 +593,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] mtp mount with gio [nnn plugin](https://github.com/jarun/nnn/blob/master/plugins/mtpmount)
   - [x] add MTP mount points to shortcuts
   - [x] list, mount, unmount mtp mount points
+- [ ] remove dependencies
 - [ ] make every Navigable thing `None` until first use and then `Some(default)`
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
