@@ -199,7 +199,7 @@ impl Status {
 
     pub fn execute_bulk(&self) -> Result<()> {
         if let Some(bulk) = &self.bulk {
-            bulk.execute_bulk(&self)?;
+            bulk.execute_bulk(self)?;
         }
         Ok(())
     }

@@ -480,7 +480,7 @@ where
     P: AsRef<Path>,
 {
     info!("execute_in_child_without_output_with_path. executable: {exe:?}, arguments: {args:?}");
-    let params = if let Some(args) = args { args } else { &[] };
+    let params = args.unwrap_or(&[]);
     Ok(Command::new(exe)
         .stdin(Stdio::null())
         .stdout(Stdio::null())

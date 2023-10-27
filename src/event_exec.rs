@@ -7,41 +7,33 @@ use std::str::FromStr;
 use anyhow::{anyhow, Context, Result};
 use log::info;
 use sysinfo::SystemExt;
-use which::which;
 
 use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
 use crate::config::Colors;
-use crate::constant_strings_paths::DIFF;
-use crate::constant_strings_paths::GIO;
-use crate::constant_strings_paths::MEDIAINFO;
-use crate::constant_strings_paths::NITROGEN;
-use crate::constant_strings_paths::SSHFS_EXECUTABLE;
-use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
+use crate::constant_strings_paths::{
+    CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
+};
 use crate::cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
 use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
-use crate::log::read_log;
-use crate::log::write_log_line;
-use crate::mocp::is_mocp_installed;
-use crate::mocp::Mocp;
+use crate::log::{read_log, write_log_line};
+use crate::mocp::{is_mocp_installed, Mocp};
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::opener::{
     execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path,
 };
 use crate::password::{PasswordKind, PasswordUsage};
-use crate::preview::ExtensionKind;
-use crate::preview::Preview;
+use crate::preview::{ExtensionKind, Preview};
 use crate::removable_devices::RemovableDevices;
 use crate::selectable_content::SelectableContent;
 use crate::shell_parser::ShellCommandParser;
 use crate::status::Status;
 use crate::tab::Tab;
-use crate::utils::is_program_in_path;
 use crate::utils::{
-    args_is_empty, disk_used_by_path, is_sudo_command, open_in_current_neovim, opt_mount_point,
-    string_to_path,
+    args_is_empty, disk_used_by_path, is_program_in_path, is_sudo_command, open_in_current_neovim,
+    opt_mount_point, string_to_path,
 };
 
 /// Links events from tuikit to custom actions.
@@ -1314,6 +1306,9 @@ impl LeaveMode {
     /// Execute a shell command typed by the user.
     /// pipes and redirections aren't supported
     /// but expansions are supported
+    /// Returns `Ok(true)` if a refresh is required,
+    /// `Ok(false)` if we should stay in the current mode (aka, a password is required)
+    /// It won't return an `Err` if the command fail.
     pub fn shell(status: &mut Status) -> Result<bool> {
         let shell_command = status.selected_non_mut().input.string();
         let mut args = ShellCommandParser::new(&shell_command).compute(status)?;
@@ -1328,9 +1323,9 @@ impl LeaveMode {
             status.ask_password(PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
             Ok(false)
         } else {
-            let Ok(executable) = which(executable) else {
+            if !is_program_in_path(&executable) {
                 return Ok(true);
-            };
+            }
             let current_directory = status
                 .selected_non_mut()
                 .directory_of_selected()?

@@ -37,8 +37,6 @@ content_inspector = "0.2.4"
 copypasta = "0.8.1"
 flate2 = "1.0"
 fs_extra = "1.2.0"
-futures = "0.3"
-gag = "1.0.0"
 indicatif = { version = "0.17.1", features= ["in_memory"] }
 lazy_static = "1.4.0"
 log = { version = "0.4.0", features = ["std"] }
@@ -66,4 +64,3 @@ zip = "0.6.4"
 tokio = "1"
 ueberzug = "0.1.0"
 unicode-segmentation = "1.10.1"
-which = "4.4.0"
