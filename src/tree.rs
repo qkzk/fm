@@ -73,12 +73,7 @@ impl Node {
     }
 
     fn attr(&self, colors: &Colors) -> Attr {
-        let mut attr = fileinfo_attr(&self.fileinfo, colors);
-        if self.fileinfo.is_selected {
-            attr.effect |= tuikit::attr::Effect::REVERSE
-        };
-
-        attr
+        fileinfo_attr(&self.fileinfo, colors)
     }
 
     fn select(&mut self) {
