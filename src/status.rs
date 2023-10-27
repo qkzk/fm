@@ -87,7 +87,7 @@ pub struct Status {
     /// NVIM RPC server address
     pub nvim_server: String,
     pub force_clear: bool,
-    pub bulk: Bulk,
+    pub bulk: Option<Bulk>,
     pub shell_menu: ShellMenu,
     pub cli_info: CliInfo,
     pub start_folder: std::path::PathBuf,
@@ -126,7 +126,7 @@ impl Status {
         let trash = Trash::new()?;
         let compression = Compresser::default();
         let force_clear = false;
-        let bulk = Bulk::default();
+        let bulk = None;
         let iso_device = None;
         let password_holder = PasswordHolder::default();
         let sudo_command = None;
@@ -174,6 +174,34 @@ impl Status {
             sudo_command,
             removable_devices,
         })
+    }
+
+    /// Creats a new bulk instance if needed
+    pub fn init_bulk(&mut self) {
+        if self.bulk.is_none() {
+            self.bulk = Some(Bulk::default());
+        }
+    }
+
+    pub fn bulk_prev(&mut self) {
+        self.init_bulk();
+        if let Some(bulk) = &mut self.bulk {
+            bulk.prev();
+        }
+    }
+
+    pub fn bulk_next(&mut self) {
+        self.init_bulk();
+        if let Some(bulk) = &mut self.bulk {
+            bulk.next();
+        }
+    }
+
+    pub fn execute_bulk(&self) -> Result<()> {
+        if let Some(bulk) = &self.bulk {
+            bulk.execute_bulk(&self)?;
+        }
+        Ok(())
     }
 
     fn display_wide_enough(term: &Arc<Term>) -> Result<bool> {

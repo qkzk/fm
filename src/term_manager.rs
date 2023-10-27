@@ -714,16 +714,19 @@ impl<'a> WinSecondary<'a> {
     fn bulk(
         &self,
         canvas: &mut dyn Canvas,
-        selectable: &impl SelectableContent<String>,
+        selectable: &Option<impl SelectableContent<String>>,
     ) -> Result<()> {
-        canvas.print(0, 0, "Action...")?;
-        let content = &selectable.content();
-        for (row, text, attr) in enumerated_colored_iter!(content) {
-            let mut attr = *attr;
-            if row == selectable.index() {
-                attr.effect |= Effect::REVERSE;
+        if let Some(selectable) = selectable {
+            canvas.print(0, 0, "Action...")?;
+            let content = &selectable.content();
+            for (row, text, attr) in enumerated_colored_iter!(content) {
+                let mut attr = *attr;
+                if row == selectable.index() {
+                    attr.effect |= Effect::REVERSE;
+                }
+                let _ =
+                    canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr);
             }
-            let _ = canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr);
         }
         Ok(())
     }

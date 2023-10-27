@@ -168,6 +168,7 @@ impl EventAction {
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.
     pub fn bulk(status: &mut Status) -> Result<()> {
+        status.init_bulk();
         status.selected().set_mode(Mode::Navigate(Navigate::Bulk));
         Ok(())
     }
@@ -534,7 +535,7 @@ impl EventAction {
             Mode::Navigate(Navigate::Shortcut) => tab.shortcut.prev(),
             Mode::Navigate(Navigate::Marks(_)) => status.marks.prev(),
             Mode::Navigate(Navigate::Compress) => status.compression.prev(),
-            Mode::Navigate(Navigate::Bulk) => status.bulk.prev(),
+            Mode::Navigate(Navigate::Bulk) => status.bulk_prev(),
             Mode::Navigate(Navigate::ShellMenu) => status.shell_menu.prev(),
             Mode::Navigate(Navigate::CliInfo) => status.cli_info.prev(),
             Mode::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.prev(),
@@ -556,7 +557,7 @@ impl EventAction {
             Mode::Navigate(Navigate::Shortcut) => status.selected().shortcut.next(),
             Mode::Navigate(Navigate::Marks(_)) => status.marks.next(),
             Mode::Navigate(Navigate::Compress) => status.compression.next(),
-            Mode::Navigate(Navigate::Bulk) => status.bulk.next(),
+            Mode::Navigate(Navigate::Bulk) => status.bulk_next(),
             Mode::Navigate(Navigate::ShellMenu) => status.shell_menu.next(),
             Mode::Navigate(Navigate::CliInfo) => status.cli_info.next(),
             Mode::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
@@ -1238,7 +1239,7 @@ impl LeaveMode {
     }
 
     pub fn bulk(status: &mut Status, colors: &Colors) -> Result<()> {
-        status.bulk.execute_bulk(status)?;
+        status.execute_bulk()?;
         status.update_second_pane_for_preview(colors)
     }
 

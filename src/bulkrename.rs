@@ -237,8 +237,7 @@ impl Default for Bulk {
 impl Bulk {
     /// Execute the selected bulk method depending on the index.
     /// First method is a rename of selected files,
-    /// Second is the creation of files,
-    /// Third is the creation of folders.
+    /// Second is the creation of files or folders,
     pub fn execute_bulk(&self, status: &Status) -> Result<()> {
         match self.index {
             0 => Bulkrename::renamer(status.filtered_flagged_files())?.rename(&status.opener),
