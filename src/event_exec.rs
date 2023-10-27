@@ -1240,6 +1240,7 @@ impl LeaveMode {
 
     pub fn bulk(status: &mut Status, colors: &Colors) -> Result<()> {
         status.execute_bulk()?;
+        status.bulk = None;
         status.update_second_pane_for_preview(colors)
     }
 
