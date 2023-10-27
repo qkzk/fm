@@ -143,7 +143,7 @@ pub fn copy_move(
     dest: &str,
     term: Arc<Term>,
 ) -> Result<()> {
-    let c_term = term.clone();
+    let c_term = Arc::clone(&term);
     let (in_mem, pb, options) = copy_or_move.setup_progress_bar(term.term_size()?)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&in_mem, &pb, &term, process_info)

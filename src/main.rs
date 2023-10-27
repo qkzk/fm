@@ -54,7 +54,7 @@ impl FM {
             exit_wrong_config()
         };
         let term = Arc::new(init_term()?);
-        let event_reader = EventReader::new(term.clone());
+        let event_reader = EventReader::new(Arc::clone(&term));
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = load_opener(OPENER_PATH, &config.terminal).unwrap_or_else(|_| {
             eprintln!("Couldn't read the opener config file at {OPENER_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/opener.yaml for an example. Using default.");
@@ -62,10 +62,10 @@ impl FM {
             Opener::new(&config.terminal)
         });
         let help = Help::from_keybindings(&config.binds, &opener)?.help;
-        let display = Display::new(term.clone());
+        let display = Display::new(Arc::clone(&term));
         let status = Status::new(
             display.height()?,
-            term.clone(),
+            Arc::clone(&term),
             help,
             opener,
             &config.settings,

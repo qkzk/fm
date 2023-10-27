@@ -132,7 +132,7 @@ impl Status {
         let sudo_command = None;
         let flagged = Flagged::default();
         let marks = Marks::read_from_config_file();
-        let skimer = None; //Skimer::new(term.clone());
+        let skimer = None;
         let index = 0;
 
         // unsafe because of UsersCache::with_all_users
@@ -271,7 +271,7 @@ impl Status {
     }
 
     fn skim_init(&mut self) {
-        self.skimer = Some(Skimer::new(self.term.clone()));
+        self.skimer = Some(Skimer::new(Arc::clone(&self.term)));
     }
 
     /// Replace the tab content with the first result of skim.
@@ -405,7 +405,7 @@ impl Status {
                 .to_owned(),
         };
 
-        copy_move(cut_or_copy, sources, &dest, self.term.clone())?;
+        copy_move(cut_or_copy, sources, &dest, Arc::clone(&self.term))?;
         self.clear_flags_and_reset_view()
     }
 
