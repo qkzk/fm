@@ -64,7 +64,7 @@ pub struct Status {
     pub marks: Marks,
     /// terminal
     pub term: Arc<Term>,
-    skimer: Skimer,
+    skimer: Option<Skimer>,
     /// do we display one or two tabs ?
     pub dual_pane: bool,
     pub system_info: System,
@@ -132,7 +132,7 @@ impl Status {
         let sudo_command = None;
         let flagged = Flagged::default();
         let marks = Marks::read_from_config_file();
-        let skimer = Skimer::new(term.clone());
+        let skimer = None; //Skimer::new(term.clone());
         let index = 0;
 
         // unsafe because of UsersCache::with_all_users
@@ -270,10 +270,18 @@ impl Status {
         self.flagged.toggle(path)
     }
 
+    fn skim_init(&mut self) {
+        self.skimer = Some(Skimer::new(self.term.clone()));
+    }
+
     /// Replace the tab content with the first result of skim.
     /// It calls skim, reads its output, then update the tab content.
     pub fn skim_output_to_tab(&mut self) -> Result<()> {
-        let skim = self.skimer.search_filename(
+        self.skim_init();
+        let Some(skimer) = &self.skimer else {
+            return Ok(());
+        };
+        let skim = skimer.search_filename(
             self.selected_non_mut()
                 .path_content_str()
                 .context("Couldn't parse current directory")?,
@@ -281,14 +289,20 @@ impl Status {
         let Some(output) = skim.first() else {
             return Ok(());
         };
-        self._update_tab_from_skim_output(output)
+        self._update_tab_from_skim_output(output)?;
+        self.skimer = None;
+        Ok(())
     }
 
     /// Replace the tab content with the first result of skim.
     /// It calls skim, reads its output, then update the tab content.
     /// The output is splited at `:` since we only care about the path, not the line number.
     pub fn skim_line_output_to_tab(&mut self) -> Result<()> {
-        let skim = self.skimer.search_line_in_file(
+        self.skim_init();
+        let Some(skimer) = &self.skimer else {
+            return Ok(());
+        };
+        let skim = skimer.search_line_in_file(
             self.selected_non_mut()
                 .path_content_str()
                 .context("Couldn't parse current directory")?,
@@ -296,14 +310,20 @@ impl Status {
         let Some(output) = skim.first() else {
             return Ok(());
         };
-        self._update_tab_from_skim_line_output(output)
+        self._update_tab_from_skim_line_output(output)?;
+        self.skimer = None;
+        Ok(())
     }
 
     /// Run a command directly from help.
     /// Search a command in skim, if it's a keybinding, run it directly.
     /// If the result can't be parsed, nothing is done.
     pub fn skim_find_keybinding(&mut self) -> Result<()> {
-        let skim = self.skimer.search_in_text(self.help.clone());
+        self.skim_init();
+        let Some(skimer) = &mut self.skimer else {
+            return Ok(());
+        };
+        let skim = skimer.search_in_text(self.help.clone());
         let Some(output) = skim.first() else {
             return Ok(());
         };
@@ -319,6 +339,7 @@ impl Status {
         };
         let event = Event::Key(key);
         let _ = self.term.borrow_mut().send_event(event);
+        self.skimer = None;
         Ok(())
     }
 
