@@ -22,6 +22,7 @@ use crate::config::{Colors, Settings};
 use crate::constant_strings_paths::{NVIM, SS, TUIS_PATH};
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::{BlockDeviceAction, CryptoDeviceOpener};
+use crate::fileinfo::FileKind;
 use crate::flagged::Flagged;
 use crate::iso::IsoDevice;
 use crate::log::write_log_line;
@@ -596,9 +597,14 @@ impl Status {
         let fileinfo = self.tabs[0]
             .selected()
             .context("force preview: No file to select")?;
-        let users_cache = &self.tabs[0].path_content.users_cache;
-        self.tabs[1].preview =
-            Preview::new(fileinfo, users_cache, self, colors).unwrap_or_default();
+        let preview = match fileinfo.file_kind {
+            FileKind::Directory => {
+                let users_cache = &self.tabs[0].path_content.users_cache;
+                Preview::directory(fileinfo, users_cache, self, colors)
+            }
+            _ => Preview::new(fileinfo),
+        };
+        self.tabs[1].preview = preview.unwrap_or_default();
 
         self.tabs[1].window.reset(self.tabs[1].preview.len());
         Ok(())

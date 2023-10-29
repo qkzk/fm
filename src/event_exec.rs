@@ -234,13 +234,7 @@ impl EventAction {
         };
         match file_info.file_kind {
             FileKind::NormalFile => {
-                let preview = Preview::new(
-                    file_info,
-                    &unmutable_tab.path_content.users_cache,
-                    status,
-                    colors,
-                )
-                .unwrap_or_default();
+                let preview = Preview::new(file_info).unwrap_or_default();
                 status.selected().set_mode(Mode::Preview);
                 status.selected().window.reset(preview.len());
                 status.selected().preview = preview;

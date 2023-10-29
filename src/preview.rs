@@ -113,26 +113,35 @@ impl Preview {
         Self::Empty
     }
 
-    /// Creates a new preview instance based on the filekind and the extension of
-    /// the file.
-    /// Sometimes it reads the content of the file, sometimes it delegates
-    /// it to the display method.
-    pub fn new(
+    /// Creates a new `Directory` from the file_info
+    /// It explores recursivelly the directory and creates a tree.
+    /// The recursive exploration is limited to depth 2.
+    pub fn directory(
         file_info: &FileInfo,
         users_cache: &UsersCache,
         status: &Status,
         colors: &Colors,
     ) -> Result<Self> {
+        Ok(Self::Directory(Directory::new(
+            &file_info.path,
+            users_cache,
+            colors,
+            &status.selected_non_mut().filter,
+            status.selected_non_mut().show_hidden,
+            Some(2),
+        )?))
+    }
+    /// Creates a new preview instance based on the filekind and the extension of
+    /// the file.
+    /// Sometimes it reads the content of the file, sometimes it delegates
+    /// it to the display method.
+    pub fn new(file_info: &FileInfo) -> Result<Self> {
         clear_tmp_file();
         match file_info.file_kind {
-            FileKind::Directory => Ok(Self::Directory(Directory::new(
-                &file_info.path,
-                users_cache,
-                colors,
-                &status.selected_non_mut().filter,
-                status.selected_non_mut().show_hidden,
-                Some(2),
-            )?)),
+            FileKind::Directory => Err(anyhow!(
+                "{path} is a directory",
+                path = file_info.path.display()
+            )),
             FileKind::NormalFile => {
                 let extension = &file_info.extension.to_lowercase();
                 match ExtensionKind::matcher(extension) {
