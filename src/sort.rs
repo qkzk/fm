@@ -18,6 +18,19 @@ enum SortBy {
     Exte,
 }
 
+impl std::fmt::Display for SortBy {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let sort_by = match &self {
+            SortBy::Exte => "Exte",
+            SortBy::Date => "Date",
+            SortBy::File => "File",
+            SortBy::Size => "Size",
+            SortBy::Kind => "Kind",
+        };
+        write!(f, "{sort_by}")
+    }
+}
+
 /// Ascending or descending sort
 #[derive(Debug, Clone, Default)]
 enum Order {
@@ -155,18 +168,10 @@ impl SortKind {
 
 impl std::fmt::Display for SortKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let s = match (&self.sort_by, &self.order) {
-            (SortBy::Exte, Order::Ascending) => "Exte ↑",
-            (SortBy::Exte, Order::Descending) => "Exte ↓",
-            (SortBy::Date, Order::Ascending) => "Date ↑",
-            (SortBy::Date, Order::Descending) => "Date ↓",
-            (SortBy::File, Order::Ascending) => "Name ↑",
-            (SortBy::File, Order::Descending) => "Name ↓",
-            (SortBy::Size, Order::Ascending) => "Size ↑",
-            (SortBy::Size, Order::Descending) => "Size ↓",
-            (SortBy::Kind, Order::Ascending) => "Kind ↑",
-            (SortBy::Kind, Order::Descending) => "Kind ↓",
+        let sort_order = match &self.order {
+            Order::Ascending => "↓",
+            Order::Descending => "↑",
         };
-        write!(f, "{}", s)
+        write!(f, "{sort_by} {sort_order}", sort_by = &self.sort_by)
     }
 }
