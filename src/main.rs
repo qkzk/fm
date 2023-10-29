@@ -5,6 +5,7 @@ use std::thread;
 use std::time::Duration;
 
 use anyhow::Result;
+use fm::preview::PreviewArgs;
 use log::info;
 
 use fm::config::{load_config, Colors};
@@ -37,6 +38,8 @@ struct FM {
     /// It send `Event::Key(Key::AltPageUp)` every 10 seconds.
     /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
     refresher: Refresher,
+    previewer: Previewer,
+    rx2: mpsc::Receiver<Option<fm::preview::Preview>>,
 }
 
 impl FM {
@@ -72,6 +75,7 @@ impl FM {
         )?;
         let colors = config.colors.clone();
         let refresher = Refresher::spawn(term);
+        let (previewer, rx2) = Previewer::spawn();
         drop(config);
         Ok(Self {
             event_reader,
@@ -80,6 +84,8 @@ impl FM {
             display,
             colors,
             refresher,
+            previewer,
+            rx2,
         })
     }
 
@@ -186,6 +192,56 @@ impl Refresher {
     }
 }
 
+/// Allows refresh if the current path has been modified externally.
+struct Previewer {
+    /// Sender of messages, used to terminate the thread properly
+    tx: mpsc::Sender<Option<PreviewArgs>>,
+    /// Handle to the `term::Event` sender thread.
+    handle: thread::JoinHandle<()>,
+}
+
+impl Previewer {
+    /// Spawn a thread which sends events to the terminal.
+    /// Those events are interpreted as refresh requests.
+    /// It also listen to a receiver for quit messages.
+    ///
+    /// This will send periodically an `Key::AltPageUp` event to the terminal which requires a refresh.
+    /// This keybind is reserved and can't be bound to anything.
+    ///
+    /// Using Event::User(()) conflicts with skim internal which interpret this
+    /// event as a signal(1) and hangs the terminal.
+    fn spawn() -> (Self, mpsc::Receiver<Option<fm::preview::Preview>>) {
+        let (tx, rx) = mpsc::channel::<Option<PreviewArgs>>();
+        let (tx2, rx2) = mpsc::channel::<Option<fm::preview::Preview>>();
+        let handle = thread::spawn(move || loop {
+            match rx.try_recv() {
+                Ok(preview_args) => {
+                    let preview = Self::make_preview(preview_args);
+                    tx2.send(preview).unwrap();
+                }
+                Err(TryRecvError::Disconnected) => {
+                    log::info!("terminating previewer");
+                    return;
+                }
+                Err(TryRecvError::Empty) => {}
+            }
+        });
+        (Self { tx, handle }, rx2)
+    }
+
+    fn make_preview(preview_args: Option<PreviewArgs>) -> Option<fm::preview::Preview> {
+        if let Some(preview_args) = preview_args {
+            let res = fm::preview::Preview::new(&preview_args.fileinfo);
+            if let Ok(preview) = res {
+                Some(preview)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
 /// Exit the application and log a message.
 /// Used when the config can't be read.
 fn exit_wrong_config() -> ! {
@@ -205,6 +261,19 @@ fn main() -> Result<()> {
 
     while let Ok(event) = fm.poll_event() {
         fm.update(event)?;
+        if let Some(fileinfo) = fm.status.tabs[0].selected() {
+            let preview_args = PreviewArgs::new(fileinfo);
+            fm.previewer.tx.send(Some(preview_args))?;
+            match fm.rx2.try_recv() {
+                Ok(preview) => {
+                    if let Some(preview) = preview {
+                        log::info!("rx2 received {path}", path = preview.path().display());
+                        fm.status.update_preview(preview);
+                    }
+                }
+                _ => (),
+            }
+        }
         fm.display()?;
         if fm.must_quit() {
             break;

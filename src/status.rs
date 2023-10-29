@@ -22,6 +22,7 @@ use crate::config::{Colors, Settings};
 use crate::constant_strings_paths::{NVIM, SS, TUIS_PATH};
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::{BlockDeviceAction, CryptoDeviceOpener};
+use crate::fileinfo::FileKind;
 use crate::flagged::Flagged;
 use crate::iso::IsoDevice;
 use crate::log::write_log_line;
@@ -583,6 +584,15 @@ impl Status {
         Ok(())
     }
 
+    pub fn update_preview(&mut self, preview: Preview) {
+        log::info!("update_preview {kind}", kind = preview.into_string());
+        if let Some(fileinfo) = self.tabs[0].selected() {
+            if preview.path() == fileinfo.path {
+                self.tabs[1].preview = preview;
+            }
+        }
+    }
+
     /// Force preview the selected file of the first pane in the second pane.
     /// Doesn't check if it has do.
     pub fn set_second_pane_for_preview(&mut self, colors: &Colors) -> Result<()> {
@@ -597,10 +607,47 @@ impl Status {
             .selected()
             .context("force preview: No file to select")?;
         let users_cache = &self.tabs[0].path_content.users_cache;
-        self.tabs[1].preview =
-            Preview::new(fileinfo, users_cache, self, colors).unwrap_or_default();
+        self.tabs[1].preview = Preview::new(fileinfo).unwrap_or_default();
 
         self.tabs[1].window.reset(self.tabs[1].preview.len());
+        Ok(())
+    }
+
+    pub fn set_preview(&mut self, colors: &Colors) -> Result<()> {
+        if self.selected_non_mut().path_content.is_empty() {
+            return Ok(());
+        }
+        let unmutable_tab = self.selected_non_mut();
+        let Some(file_info) = unmutable_tab.selected() else {
+            return Ok(());
+        };
+        match file_info.file_kind {
+            FileKind::NormalFile => {
+                let preview = Preview::new(file_info).unwrap_or_default();
+                self.selected().set_mode(Mode::Preview);
+                self.selected().window.reset(preview.len());
+                self.selected().preview = preview;
+            }
+            FileKind::Directory => Self::tree(self, colors)?,
+            _ => (),
+        }
+        Ok(())
+    }
+
+    pub fn tree(&mut self, colors: &Colors) -> Result<()> {
+        if let Mode::Tree = self.selected_non_mut().mode {
+            {
+                let tab: &mut Tab = self.selected();
+                tab.refresh_view()
+            }?;
+            self.selected().set_mode(Mode::Normal)
+        } else {
+            self.display_full = true;
+            self.selected().make_tree(colors)?;
+            self.selected().set_mode(Mode::Tree);
+            let len = self.selected_non_mut().directory.len();
+            self.selected().window.reset(len);
+        }
         Ok(())
     }
 

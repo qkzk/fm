@@ -1,5 +1,5 @@
 use std::cmp::min;
-use std::fmt::Write as _;
+use std::fmt::{Debug, Write as _};
 use std::fs::metadata;
 use std::io::Cursor;
 use std::io::{BufRead, BufReader, Read};
@@ -26,7 +26,6 @@ use crate::decompress::{list_files_tar, list_files_zip};
 use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
-use crate::status::Status;
 use crate::tree::{ColoredString, Tree};
 use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path};
 
@@ -73,7 +72,7 @@ impl ExtensionKind {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub enum TextKind {
     HELP,
     LOG,
@@ -82,10 +81,21 @@ pub enum TextKind {
     TEXTFILE,
 }
 
+pub struct PreviewArgs {
+    pub fileinfo: FileInfo,
+}
+
+impl PreviewArgs {
+    pub fn new(fileinfo: &FileInfo) -> Self {
+        let fileinfo = fileinfo.clone();
+        Self { fileinfo }
+    }
+}
+
 /// Different kind of preview used to display some informaitons
 /// About the file.
 /// We check if it's an archive first, then a pdf file, an image, a media file
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum Preview {
     Syntaxed(HLContent),
     Text(TextContent),
@@ -107,6 +117,44 @@ pub enum Preview {
 impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
+    pub fn into_string(&self) -> &str {
+        match self {
+            Self::Empty => "empty",
+            Self::Syntaxed(_) => "syntaxed",
+            Self::Text(_) => "text",
+            Self::Binary(_) => "binary",
+            Self::Archive(_) => "archive",
+            Self::Ueberzug(_) => "ueberzug",
+            Self::Media(_) => "media",
+            Self::Directory(_) => "directory",
+            Self::Iso(_) => "iso",
+            Self::Diff(_) => "diff",
+            Self::ColoredText(_) => "colored text",
+            Self::Socket(_) => "socket",
+            Self::BlockDevice(_) => "block device",
+            Self::FifoCharDevice(_) => "fifo char device",
+        }
+    }
+
+    pub fn path(&self) -> PathBuf {
+        match self {
+            Self::Empty => PathBuf::new(),
+            Self::Syntaxed(p) => p.path.to_owned(),
+            Self::Text(p) => p.path.to_owned(),
+            Self::Binary(p) => p.path.to_owned(),
+            Self::Archive(p) => p.path.to_owned(),
+            Self::Ueberzug(p) => p.original.to_owned(),
+            Self::Media(p) => p.path.to_owned(),
+            Self::Directory(p) => p.path.to_owned(),
+            Self::Iso(p) => p.path.to_owned(),
+            Self::Diff(p) => p.path.to_owned(),
+            Self::ColoredText(p) => p.path.to_owned(),
+            Self::Socket(p) => p.path.to_owned(),
+            Self::BlockDevice(p) => p.path.to_owned(),
+            Self::FifoCharDevice(p) => p.path.to_owned(),
+        }
+    }
+
     /// Empty preview, holding nothing.
     pub fn new_empty() -> Self {
         clear_tmp_file();
@@ -117,22 +165,10 @@ impl Preview {
     /// the file.
     /// Sometimes it reads the content of the file, sometimes it delegates
     /// it to the display method.
-    pub fn new(
-        file_info: &FileInfo,
-        users_cache: &UsersCache,
-        status: &Status,
-        colors: &Colors,
-    ) -> Result<Self> {
-        clear_tmp_file();
+    pub fn new(file_info: &FileInfo) -> Result<Self> {
+        // clear_tmp_file();
         match file_info.file_kind {
-            FileKind::Directory => Ok(Self::Directory(Directory::new(
-                &file_info.path,
-                users_cache,
-                colors,
-                &status.selected_non_mut().filter,
-                status.selected_non_mut().show_hidden,
-                Some(2),
-            )?)),
+            FileKind::Directory => Ok(Self::new_empty()),
             FileKind::NormalFile => {
                 let extension = &file_info.extension.to_lowercase();
                 match ExtensionKind::matcher(extension) {
@@ -334,10 +370,11 @@ fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
 }
 
 /// Preview a socket file with `ss -lpmepiT`
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Socket {
     content: Vec<String>,
     length: usize,
+    path: PathBuf,
 }
 
 impl Socket {
@@ -358,6 +395,7 @@ impl Socket {
         Self {
             length: content.len(),
             content,
+            path: fileinfo.path.clone(),
         }
     }
 
@@ -367,10 +405,11 @@ impl Socket {
 }
 
 /// Preview a blockdevice file with lsblk
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct BlockDevice {
     content: Vec<String>,
     length: usize,
+    path: PathBuf,
 }
 
 impl BlockDevice {
@@ -394,6 +433,7 @@ impl BlockDevice {
         Self {
             length: content.len(),
             content,
+            path: fileinfo.path.to_owned(),
         }
     }
 
@@ -403,10 +443,11 @@ impl BlockDevice {
 }
 
 /// Preview a fifo or a chardevice file with lsof
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct FifoCharDevice {
     content: Vec<String>,
     length: usize,
+    path: PathBuf,
 }
 
 impl FifoCharDevice {
@@ -426,6 +467,7 @@ impl FifoCharDevice {
         Self {
             length: content.len(),
             content,
+            path: fileinfo.path.to_owned(),
         }
     }
 
@@ -436,11 +478,12 @@ impl FifoCharDevice {
 
 /// Holds a preview of a text content.
 /// It's a boxed vector of strings (per line)
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct TextContent {
     pub kind: TextKind,
     content: Vec<String>,
     length: usize,
+    path: PathBuf,
 }
 
 impl TextContent {
@@ -452,6 +495,7 @@ impl TextContent {
             kind: TextKind::HELP,
             length: content.len(),
             content,
+            path: PathBuf::new(),
         }
     }
 
@@ -460,6 +504,7 @@ impl TextContent {
             kind: TextKind::LOG,
             length: content.len(),
             content,
+            path: PathBuf::new(),
         }
     }
 
@@ -475,6 +520,7 @@ impl TextContent {
             kind: TextKind::EPUB,
             length: content.len(),
             content,
+            path: path.into(),
         })
     }
 
@@ -484,6 +530,7 @@ impl TextContent {
             kind: TextKind::TEXTFILE,
             length: content.len(),
             content,
+            path: path.into(),
         })
     }
 
@@ -494,10 +541,11 @@ impl TextContent {
 
 /// Holds a preview of a code text file whose language is supported by `Syntect`.
 /// The file is colored propery and line numbers are shown.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct HLContent {
     content: Vec<Vec<SyntaxedString>>,
     length: usize,
+    pub path: PathBuf,
 }
 
 impl HLContent {
@@ -513,6 +561,7 @@ impl HLContent {
         Ok(Self {
             length: highlighted_content.len(),
             content: highlighted_content,
+            path: path.into(),
         })
     }
 
@@ -522,6 +571,7 @@ impl HLContent {
         Ok(Self {
             length: highlighted_content.len(),
             content: highlighted_content,
+            path: PathBuf::new(),
         })
     }
 
@@ -560,7 +610,7 @@ impl HLContent {
 /// Holds a string to be displayed with given colors.
 /// We have to read the colors from Syntect and parse it into tuikit attr
 /// This struct does the parsing.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SyntaxedString {
     col: usize,
     content: String,
@@ -594,7 +644,7 @@ impl SyntaxedString {
 /// It doesn't try to respect endianness.
 /// The lines are formatted to display 16 bytes.
 /// The number of lines is truncated to $2^20 = 1048576$.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BinaryContent {
     pub path: PathBuf,
     length: u64,
@@ -643,7 +693,7 @@ impl BinaryContent {
 
 /// Holds a `Vec` of "bytes" (`u8`).
 /// It's mostly used to implement a `print` method.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Line {
     line: Vec<u8>,
 }
@@ -707,10 +757,11 @@ impl Line {
 /// Holds a list of file of an archive as returned by
 /// `ZipArchive::file_names` or from  a `tar tvf` command.
 /// A generic error message prevent it from returning an error.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ArchiveContent {
     length: usize,
     content: Vec<String>,
+    path: PathBuf,
 }
 
 impl ArchiveContent {
@@ -726,6 +777,7 @@ impl ArchiveContent {
         Ok(Self {
             length: content.len(),
             content,
+            path: path.into(),
         })
     }
 
@@ -736,11 +788,12 @@ impl ArchiveContent {
 
 /// Holds media info about a "media" file (mostly videos and audios).
 /// Requires the [`mediainfo`](https://mediaarea.net/) executable installed in path.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MediaContent {
     length: usize,
     /// The media info details.
     content: Vec<String>,
+    path: PathBuf,
 }
 
 impl MediaContent {
@@ -755,6 +808,7 @@ impl MediaContent {
         Ok(Self {
             length: content.len(),
             content,
+            path: path.into(),
         })
     }
 
@@ -763,6 +817,7 @@ impl MediaContent {
     }
 }
 
+#[derive(Debug)]
 pub enum UeberzugKind {
     Font,
     Image,
@@ -785,6 +840,14 @@ pub struct Ueberzug {
     ueberzug: ueberzug::Ueberzug,
     length: usize,
     pub index: usize,
+}
+
+impl Debug for Ueberzug {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Ueberzug")
+            .field("orginial", &self.original)
+            .finish()
+    }
 }
 
 impl Ueberzug {
@@ -866,6 +929,7 @@ impl Ueberzug {
         let length = Self::make_pdf_thumbnail(&calc_pdf_path, 0)?;
         let mut thumbnail = Self::thumbnail(calc_pdf_path.to_owned(), UeberzugKind::Pdf);
         thumbnail.length = length;
+        thumbnail.original = calc_path.into();
         Ok(thumbnail)
     }
 
@@ -1011,6 +1075,7 @@ pub struct ColoredText {
     pub content: Vec<String>,
     len: usize,
     pub selected_index: usize,
+    path: PathBuf,
 }
 
 impl ColoredText {
@@ -1031,6 +1096,7 @@ impl ColoredText {
             content,
             len,
             selected_index,
+            path: PathBuf::new(),
         }
     }
 }
@@ -1044,6 +1110,7 @@ pub struct Directory {
     pub tree: Tree,
     len: usize,
     pub selected_index: usize,
+    path: PathBuf,
 }
 
 impl Directory {
@@ -1077,6 +1144,7 @@ impl Directory {
             len: content.len(),
             content,
             selected_index,
+            path: path.into(),
         })
     }
 
@@ -1087,6 +1155,7 @@ impl Directory {
             len: 0,
             content: vec![],
             selected_index: 0,
+            path: PathBuf::new(),
         })
     }
 
@@ -1227,9 +1296,11 @@ impl Directory {
     }
 }
 
+#[derive(Debug)]
 pub struct Diff {
     pub content: Vec<String>,
     length: usize,
+    path: PathBuf,
 }
 
 impl Diff {
@@ -1244,6 +1315,7 @@ impl Diff {
         Ok(Self {
             length: content.len(),
             content,
+            path: PathBuf::from(first_path),
         })
     }
 
@@ -1252,9 +1324,11 @@ impl Diff {
     }
 }
 
+#[derive(Debug)]
 pub struct Iso {
     pub content: Vec<String>,
     length: usize,
+    path: PathBuf,
 }
 
 impl Iso {
@@ -1270,6 +1344,7 @@ impl Iso {
         Ok(Self {
             length: content.len(),
             content,
+            path: path.into(),
         })
     }
 

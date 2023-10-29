@@ -15,7 +15,6 @@ use crate::constant_strings_paths::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
 };
 use crate::cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
-use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::log::{read_log, write_log_line};
 use crate::mocp::{is_mocp_installed, Mocp};
@@ -225,31 +224,7 @@ impl EventAction {
     /// more details on previewinga file.
     /// Does nothing if the directory is empty.
     pub fn preview(status: &mut Status, colors: &Colors) -> Result<()> {
-        if status.selected_non_mut().path_content.is_empty() {
-            return Ok(());
-        }
-        let unmutable_tab = status.selected_non_mut();
-        let Some(file_info) = unmutable_tab.selected() else {
-            return Ok(());
-        };
-        match file_info.file_kind {
-            FileKind::NormalFile => {
-                let preview = Preview::new(
-                    file_info,
-                    &unmutable_tab.path_content.users_cache,
-                    status,
-                    colors,
-                )
-                .unwrap_or_default();
-                status.selected().set_mode(Mode::Preview);
-                status.selected().window.reset(preview.len());
-                status.selected().preview = preview;
-            }
-            FileKind::Directory => Self::tree(status, colors)?,
-            _ => (),
-        }
-
-        Ok(())
+        status.set_preview(colors)
     }
 
     /// Enter the delete mode.
@@ -926,20 +901,7 @@ impl EventAction {
     /// Creates a tree in every mode but "Tree".
     /// It tree mode it will exit this view.
     pub fn tree(status: &mut Status, colors: &Colors) -> Result<()> {
-        if let Mode::Tree = status.selected_non_mut().mode {
-            {
-                let tab: &mut Tab = status.selected();
-                tab.refresh_view()
-            }?;
-            status.selected().set_mode(Mode::Normal)
-        } else {
-            status.display_full = true;
-            status.selected().make_tree(colors)?;
-            status.selected().set_mode(Mode::Tree);
-            let len = status.selected_non_mut().directory.len();
-            status.selected().window.reset(len);
-        }
-        Ok(())
+        status.tree(colors)
     }
 
     /// Fold the current node of the tree.
