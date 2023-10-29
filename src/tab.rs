@@ -140,7 +140,7 @@ impl Tab {
     pub fn refresh_params(&mut self) -> Result<()> {
         self.filter = FilterKind::All;
         self.input.reset();
-        self.preview = Preview::new_empty();
+        self.preview = Preview::empty();
         self.completion.reset();
         self.directory.clear();
         Ok(())

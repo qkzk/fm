@@ -576,6 +576,44 @@ impl Status {
         Ok(())
     }
 
+    pub fn make_preview(&mut self, colors: &Colors) -> Result<()> {
+        if self.selected_non_mut().path_content.is_empty() {
+            return Ok(());
+        }
+        let Some(file_info) = self.selected_non_mut().selected() else {
+            return Ok(());
+        };
+        match file_info.file_kind {
+            FileKind::NormalFile => {
+                let preview = Preview::file(file_info).unwrap_or_default();
+                self.selected().set_mode(Mode::Preview);
+                self.selected().window.reset(preview.len());
+                self.selected().preview = preview;
+            }
+            FileKind::Directory => self.tree(colors)?,
+            _ => (),
+        }
+
+        Ok(())
+    }
+
+    pub fn tree(&mut self, colors: &Colors) -> Result<()> {
+        if let Mode::Tree = self.selected_non_mut().mode {
+            {
+                let tab: &mut Tab = self.selected();
+                tab.refresh_view()
+            }?;
+            self.selected().set_mode(Mode::Normal)
+        } else {
+            self.display_full = true;
+            self.selected().make_tree(colors)?;
+            self.selected().set_mode(Mode::Tree);
+            let len = self.selected_non_mut().directory.len();
+            self.selected().window.reset(len);
+        }
+        Ok(())
+    }
+
     /// Check if the second pane should display a preview and force it.
     pub fn update_second_pane_for_preview(&mut self, colors: &Colors) -> Result<()> {
         if self.index == 0 && self.preview_second {
@@ -587,22 +625,24 @@ impl Status {
     /// Force preview the selected file of the first pane in the second pane.
     /// Doesn't check if it has do.
     pub fn set_second_pane_for_preview(&mut self, colors: &Colors) -> Result<()> {
-        self.tabs[1].set_mode(Mode::Preview);
-
         if !Self::display_wide_enough(&self.term)? {
-            self.tabs[1].preview = Preview::new_empty();
+            self.tabs[1].preview = Preview::empty();
             return Ok(());
         }
 
+        self.tabs[1].set_mode(Mode::Preview);
         let fileinfo = self.tabs[0]
             .selected()
             .context("force preview: No file to select")?;
         let preview = match fileinfo.file_kind {
-            FileKind::Directory => {
-                let users_cache = &self.tabs[0].path_content.users_cache;
-                Preview::directory(fileinfo, users_cache, self, colors)
-            }
-            _ => Preview::new(fileinfo),
+            FileKind::Directory => Preview::directory(
+                fileinfo,
+                &self.tabs[0].path_content.users_cache,
+                &self.tabs[0].filter,
+                self.tabs[0].show_hidden,
+                colors,
+            ),
+            _ => Preview::file(fileinfo),
         };
         self.tabs[1].preview = preview.unwrap_or_default();
 

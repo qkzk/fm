@@ -26,7 +26,6 @@ use crate::decompress::{list_files_tar, list_files_zip};
 use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
-use crate::status::Status;
 use crate::tree::{ColoredString, Tree};
 use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path};
 
@@ -108,7 +107,7 @@ impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
     /// Empty preview, holding nothing.
-    pub fn new_empty() -> Self {
+    pub fn empty() -> Self {
         clear_tmp_file();
         Self::Empty
     }
@@ -119,23 +118,27 @@ impl Preview {
     pub fn directory(
         file_info: &FileInfo,
         users_cache: &UsersCache,
-        status: &Status,
+        filter: &FilterKind,
+        show_hidden: bool,
         colors: &Colors,
     ) -> Result<Self> {
         Ok(Self::Directory(Directory::new(
             &file_info.path,
             users_cache,
             colors,
-            &status.selected_non_mut().filter,
-            status.selected_non_mut().show_hidden,
+            filter,
+            show_hidden,
             Some(2),
         )?))
     }
+
     /// Creates a new preview instance based on the filekind and the extension of
     /// the file.
     /// Sometimes it reads the content of the file, sometimes it delegates
     /// it to the display method.
-    pub fn new(file_info: &FileInfo) -> Result<Self> {
+    /// Directories aren't handled there since we need more arguments to create
+    /// their previews.
+    pub fn file(file_info: &FileInfo) -> Result<Self> {
         clear_tmp_file();
         match file_info.file_kind {
             FileKind::Directory => Err(anyhow!(
@@ -149,7 +152,6 @@ impl Preview {
                         &file_info.path,
                         extension,
                     )?)),
-                    // ExtensionKind::Pdf => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
                     ExtensionKind::Pdf => Ok(Self::Ueberzug(Ueberzug::make(
                         &file_info.path,
                         UeberzugKind::Pdf,

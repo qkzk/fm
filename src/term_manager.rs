@@ -67,6 +67,12 @@ const ATTR_YELLOW_BOLD: Attr = Attr {
     effect: Effect::BOLD,
 };
 
+const ATTR_CYAN_BOLD: Attr = Attr {
+    fg: Color::CYAN,
+    bg: Color::Default,
+    effect: Effect::BOLD,
+};
+
 /// Simple struct to read the events.
 pub struct EventReader {
     term: Arc<Term>,
@@ -204,7 +210,7 @@ impl<'a> WinMain<'a> {
                     let Some(file) = tab.selected() else {
                         return Ok(0);
                     };
-                    self.second_line_detailed(file, canvas)
+                    self.second_line_detailed(file, status, canvas)
                 } else {
                     self.second_line_simple(status, canvas)
                 }
@@ -213,18 +219,28 @@ impl<'a> WinMain<'a> {
         }
     }
 
-    fn second_line_detailed(&self, file: &FileInfo, canvas: &mut dyn Canvas) -> Result<usize> {
+    fn second_line_detailed(
+        &self,
+        file: &FileInfo,
+        status: &Status,
+        canvas: &mut dyn Canvas,
+    ) -> Result<usize> {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
         let mut attr = fileinfo_attr(file, self.colors);
         attr.effect ^= Effect::REVERSE;
-        Ok(canvas.print_with_attr(1, 0, &file.format(owner_size, group_size)?, attr)?)
+
+        if status.flagged.contains(&file.path) {
+            canvas.print_with_attr(1, 0, "█", ATTR_CYAN_BOLD)?;
+            attr.effect |= Effect::BOLD;
+        }
+        Ok(canvas.print_with_attr(1, 1, &file.format(owner_size, group_size)?, attr)?)
     }
 
     fn second_line_simple(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<usize> {
         Ok(canvas.print_with_attr(
             1,
-            0,
+            1,
             &format!("{}", &status.selected_non_mut().filter),
             ATTR_YELLOW_BOLD,
         )?)
@@ -370,7 +386,7 @@ impl<'a> WinMain<'a> {
             };
             if status.flagged.contains(&file.path) {
                 attr.effect |= Effect::BOLD;
-                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
+                canvas.print_with_attr(row, 0, "█", ATTR_CYAN_BOLD)?;
             }
             canvas.print_with_attr(row, 1, &string, attr)?;
         }
@@ -397,7 +413,7 @@ impl<'a> WinMain<'a> {
             let mut attr = colored_string.attr;
             if status.flagged.contains(&colored_string.path) {
                 attr.effect |= Effect::BOLD;
-                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
+                canvas.print_with_attr(row, 0, "█", ATTR_CYAN_BOLD)?;
             }
 
             let col_metadata = if status.display_full {
