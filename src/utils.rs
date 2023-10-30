@@ -94,15 +94,15 @@ pub fn filename_from_path(path: &std::path::Path) -> Result<&str> {
 /// Read from `/proc/self`.
 /// Should never fail.
 pub fn current_uid() -> Result<u32> {
-    Ok(metadata("/proc/self").map(|m| m.uid())?)
+    Ok(metadata("/proc/self").map(|metadata| metadata.uid())?)
 }
 
 /// Get the current username as a String.
 /// Read from `/proc/self` and then `/etc/passwd` and should never fail.
 pub fn current_username() -> Result<String> {
-    let uid = current_uid()?;
-    let user = Users::new().get_user_by_uid(uid);
-    user.context("Couldn't read my own name")
+    Users::new()
+        .get_user_by_uid(current_uid()?)
+        .context("Couldn't read my own name")
 }
 
 /// True iff the command is available in $PATH.
