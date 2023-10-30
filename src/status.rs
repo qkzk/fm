@@ -18,7 +18,7 @@ use crate::args::Args;
 use crate::bulkrename::Bulk;
 use crate::cli_info::CliInfo;
 use crate::compress::Compresser;
-use crate::config::{Colors, Settings};
+use crate::config::Settings;
 use crate::constant_strings_paths::{NVIM, SS, TUIS_PATH};
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::{BlockDeviceAction, CryptoDeviceOpener};
@@ -450,15 +450,9 @@ impl Status {
         Ok(())
     }
 
-    pub fn click(
-        &mut self,
-        row: u16,
-        col: u16,
-        current_height: usize,
-        colors: &Colors,
-    ) -> Result<()> {
+    pub fn click(&mut self, row: u16, col: u16, current_height: usize) -> Result<()> {
         self.select_pane(col)?;
-        self.selected().select_row(row, colors, current_height)
+        self.selected().select_row(row, current_height)
     }
 
     /// Set the permissions of the flagged files according to a given permission.
@@ -576,7 +570,7 @@ impl Status {
         Ok(())
     }
 
-    pub fn make_preview(&mut self, colors: &Colors) -> Result<()> {
+    pub fn make_preview(&mut self) -> Result<()> {
         if self.selected_non_mut().path_content.is_empty() {
             return Ok(());
         }
@@ -590,14 +584,14 @@ impl Status {
                 self.selected().window.reset(preview.len());
                 self.selected().preview = preview;
             }
-            FileKind::Directory => self.tree(colors)?,
+            FileKind::Directory => self.tree()?,
             _ => (),
         }
 
         Ok(())
     }
 
-    pub fn tree(&mut self, colors: &Colors) -> Result<()> {
+    pub fn tree(&mut self) -> Result<()> {
         if let Mode::Tree = self.selected_non_mut().mode {
             {
                 let tab: &mut Tab = self.selected();
@@ -606,7 +600,7 @@ impl Status {
             self.selected().set_mode(Mode::Normal)
         } else {
             self.display_full = true;
-            self.selected().make_tree(colors)?;
+            self.selected().make_tree()?;
             self.selected().set_mode(Mode::Tree);
             let len = self.selected_non_mut().directory.len();
             self.selected().window.reset(len);
@@ -615,16 +609,16 @@ impl Status {
     }
 
     /// Check if the second pane should display a preview and force it.
-    pub fn update_second_pane_for_preview(&mut self, colors: &Colors) -> Result<()> {
+    pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
         if self.index == 0 && self.preview_second {
-            self.set_second_pane_for_preview(colors)?;
+            self.set_second_pane_for_preview()?;
         };
         Ok(())
     }
 
     /// Force preview the selected file of the first pane in the second pane.
     /// Doesn't check if it has do.
-    pub fn set_second_pane_for_preview(&mut self, colors: &Colors) -> Result<()> {
+    pub fn set_second_pane_for_preview(&mut self) -> Result<()> {
         if !Self::display_wide_enough(&self.term)? {
             self.tabs[1].preview = Preview::empty();
             return Ok(());
@@ -640,7 +634,6 @@ impl Status {
                 &self.tabs[0].path_content.users_cache,
                 &self.tabs[0].filter,
                 self.tabs[0].show_hidden,
-                colors,
             ),
             _ => Preview::file(fileinfo),
         };
@@ -885,7 +878,7 @@ impl Status {
     }
 
     /// Execute a new mark, saving it to a config file for futher use.
-    pub fn marks_new(&mut self, c: char, colors: &Colors) -> Result<()> {
+    pub fn marks_new(&mut self, c: char) -> Result<()> {
         let path = self.selected().path_content.path.clone();
         self.marks.new_mark(c, &path)?;
         {
@@ -893,27 +886,27 @@ impl Status {
             tab.refresh_view()
         }?;
         self.selected().reset_mode();
-        self.refresh_status(colors)
+        self.refresh_status()
     }
 
     /// Execute a jump to a mark, moving to a valid path.
     /// If the saved path is invalid, it does nothing but reset the view.
-    pub fn marks_jump_char(&mut self, c: char, colors: &Colors) -> Result<()> {
+    pub fn marks_jump_char(&mut self, c: char) -> Result<()> {
         if let Some(path) = self.marks.get(c) {
             self.selected().set_pathcontent(&path)?;
         }
         self.selected().refresh_view()?;
         self.selected().reset_mode();
-        self.refresh_status(colors)
+        self.refresh_status()
     }
 
     /// Reset the selected tab view to the default.
-    pub fn refresh_status(&mut self, colors: &Colors) -> Result<()> {
+    pub fn refresh_status(&mut self) -> Result<()> {
         self.force_clear();
         self.refresh_users()?;
         self.selected().refresh_view()?;
         if let Mode::Tree = self.selected_non_mut().mode {
-            self.selected().make_tree(colors)?
+            self.selected().make_tree()?
         }
         Ok(())
     }
@@ -931,7 +924,7 @@ impl Status {
     }
 
     /// Recursively delete all flagged files.
-    pub fn confirm_delete_files(&mut self, colors: &Colors) -> Result<()> {
+    pub fn confirm_delete_files(&mut self) -> Result<()> {
         let nb = self.flagged.len();
         for pathbuf in self.flagged.content.iter() {
             if pathbuf.is_dir() {
@@ -944,7 +937,7 @@ impl Status {
         write_log_line(log_line);
         self.selected().reset_mode();
         self.clear_flags_and_reset_view()?;
-        self.refresh_status(colors)
+        self.refresh_status()
     }
 
     /// Empty the trash folder permanently.
@@ -955,7 +948,7 @@ impl Status {
         Ok(())
     }
 
-    fn run_sudo_command(&mut self, colors: &Colors) -> Result<()> {
+    fn run_sudo_command(&mut self) -> Result<()> {
         self.selected().set_mode(Mode::Normal);
         reset_sudo_faillock()?;
         let Some(sudo_command) = &self.sudo_command else {
@@ -972,14 +965,13 @@ impl Status {
         )?;
         self.password_holder.reset();
         drop_sudo_privileges()?;
-        self.refresh_status(colors)
+        self.refresh_status()
     }
 
     pub fn dispatch_password(
         &mut self,
         dest: PasswordUsage,
         action: Option<BlockDeviceAction>,
-        colors: &Colors,
     ) -> Result<()> {
         match dest {
             PasswordUsage::ISO => match action {
@@ -992,7 +984,7 @@ impl Status {
                 Some(BlockDeviceAction::UMOUNT) => self.umount_encrypted_drive(),
                 None => Ok(()),
             },
-            PasswordUsage::SUDOCOMMAND => Self::run_sudo_command(self, colors),
+            PasswordUsage::SUDOCOMMAND => Self::run_sudo_command(self),
         }
     }
 
@@ -1028,14 +1020,9 @@ impl Status {
 
     /// Execute a command requiring a confirmation (Delete, Move or Copy).
     /// The action is only executed if the user typed the char `y`
-    pub fn confirm(
-        &mut self,
-        c: char,
-        confirmed_action: NeedConfirmation,
-        colors: &Colors,
-    ) -> Result<()> {
+    pub fn confirm(&mut self, c: char, confirmed_action: NeedConfirmation) -> Result<()> {
         if c == 'y' {
-            let _ = self.match_confirmed_mode(confirmed_action, colors);
+            let _ = self.match_confirmed_mode(confirmed_action);
         }
         if self.selected().reset_mode() {
             self.selected().refresh_view()?;
@@ -1043,13 +1030,9 @@ impl Status {
         Ok(())
     }
 
-    fn match_confirmed_mode(
-        &mut self,
-        confirmed_action: NeedConfirmation,
-        colors: &Colors,
-    ) -> Result<()> {
+    fn match_confirmed_mode(&mut self, confirmed_action: NeedConfirmation) -> Result<()> {
         match confirmed_action {
-            NeedConfirmation::Delete => self.confirm_delete_files(colors),
+            NeedConfirmation::Delete => self.confirm_delete_files(),
             NeedConfirmation::Move => self.cut_or_copy_flagged_files(CopyMove::Move),
             NeedConfirmation::Copy => self.cut_or_copy_flagged_files(CopyMove::Copy),
             NeedConfirmation::EmptyTrash => self.confirm_trash_empty(),

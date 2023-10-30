@@ -6,7 +6,7 @@ use users::UsersCache;
 
 use crate::args::Args;
 use crate::completion::{Completion, InputCompleted};
-use crate::config::{Colors, Settings};
+use crate::config::Settings;
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{FileInfo, PathContent};
 use crate::filter::FilterKind;
@@ -305,25 +305,25 @@ impl Tab {
     }
 
     /// Select the root node of the tree.
-    pub fn tree_select_root(&mut self, colors: &Colors) -> Result<()> {
+    pub fn tree_select_root(&mut self) -> Result<()> {
         self.directory.unselect_children();
-        self.directory.select_root(colors)
+        self.directory.select_root()
     }
 
     /// Move to the parent of current path
-    pub fn move_to_parent(&mut self, colors: &Colors) -> Result<()> {
+    pub fn move_to_parent(&mut self) -> Result<()> {
         let path = self.path_content.path.clone();
         let Some(parent) = path.parent() else {
             return Ok(());
         };
         if self.history.is_this_the_last(parent) {
-            self.back(colors)?;
+            self.back()?;
             return Ok(());
         }
         self.set_pathcontent(parent)
     }
 
-    pub fn back(&mut self, colors: &Colors) -> Result<()> {
+    pub fn back(&mut self) -> Result<()> {
         if self.history.content.is_empty() {
             return Ok(());
         }
@@ -335,7 +335,7 @@ impl Tab {
         self.scroll_to(index);
         self.history.content.pop();
         if let Mode::Tree = self.mode {
-            self.make_tree(colors)?
+            self.make_tree()?
         }
 
         Ok(())
@@ -343,50 +343,50 @@ impl Tab {
 
     /// Select the parent of current node.
     /// If we were at the root node, move to the parent and make a new tree.
-    pub fn tree_select_parent(&mut self, colors: &Colors) -> Result<()> {
+    pub fn tree_select_parent(&mut self) -> Result<()> {
         self.directory.unselect_children();
         if self.directory.tree.position.len() <= 1 {
-            self.move_to_parent(colors)?;
-            self.make_tree(colors)?
+            self.move_to_parent()?;
+            self.make_tree()?
         }
-        self.directory.select_parent(colors)
+        self.directory.select_parent()
     }
 
     /// Move down 10 times in the tree
-    pub fn tree_page_down(&mut self, colors: &Colors) -> Result<()> {
+    pub fn tree_page_down(&mut self) -> Result<()> {
         self.directory.tree.increase_required_height_by_ten();
         self.directory.unselect_children();
-        self.directory.page_down(colors)
+        self.directory.page_down()
     }
 
     /// Move up 10 times in the tree
-    pub fn tree_page_up(&mut self, colors: &Colors) -> Result<()> {
+    pub fn tree_page_up(&mut self) -> Result<()> {
         self.directory.tree.decrease_required_height_by_ten();
         self.directory.unselect_children();
-        self.directory.page_up(colors)
+        self.directory.page_up()
     }
 
     /// Select the next sibling.
-    pub fn tree_select_next(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.select_next(colors)
+    pub fn tree_select_next(&mut self) -> Result<()> {
+        self.directory.select_next()
     }
 
     /// Select the previous siblging
-    pub fn tree_select_prev(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.select_prev(colors)
+    pub fn tree_select_prev(&mut self) -> Result<()> {
+        self.directory.select_prev()
     }
 
     /// Select the first child if any.
-    pub fn tree_select_first_child(&mut self, colors: &Colors) -> Result<()> {
+    pub fn tree_select_first_child(&mut self) -> Result<()> {
         self.directory.unselect_children();
-        self.directory.select_first_child(colors)
+        self.directory.select_first_child()
     }
 
     /// Go to the last leaf.
-    pub fn tree_go_to_bottom_leaf(&mut self, colors: &Colors) -> Result<()> {
+    pub fn tree_go_to_bottom_leaf(&mut self) -> Result<()> {
         self.directory.tree.set_required_height_to_max();
         self.directory.unselect_children();
-        self.directory.go_to_bottom_leaf(colors)
+        self.directory.go_to_bottom_leaf()
     }
 
     /// Returns the current path.
@@ -430,17 +430,10 @@ impl Tab {
     }
 
     /// Makes a new tree of the current path.
-    pub fn make_tree(&mut self, colors: &Colors) -> Result<()> {
+    pub fn make_tree(&mut self) -> Result<()> {
         let path = self.path_content.path.clone();
         let users_cache = &self.path_content.users_cache;
-        self.directory = Directory::new(
-            &path,
-            users_cache,
-            colors,
-            &self.filter,
-            self.show_hidden,
-            None,
-        )?;
+        self.directory = Directory::new(&path, users_cache, &self.filter, self.show_hidden, None)?;
         Ok(())
     }
 
@@ -517,24 +510,24 @@ impl Tab {
 
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node. Reset the display.
-    pub fn tree_go_to_root(&mut self, colors: &Colors) -> Result<()> {
+    pub fn tree_go_to_root(&mut self) -> Result<()> {
         self.directory.tree.reset_required_height();
-        self.tree_select_root(colors)
+        self.tree_select_root()
     }
 
     /// Select the first child of the current node and reset the display.
-    pub fn select_first_child(&mut self, colors: &Colors) -> Result<()> {
-        self.tree_select_first_child(colors)
+    pub fn select_first_child(&mut self) -> Result<()> {
+        self.tree_select_first_child()
     }
 
     /// Select the next sibling of the current node.
-    pub fn select_next(&mut self, colors: &Colors) -> Result<()> {
-        self.tree_select_next(colors)
+    pub fn select_next(&mut self) -> Result<()> {
+        self.tree_select_next()
     }
 
     /// Select the previous sibling of the current node.
-    pub fn select_prev(&mut self, colors: &Colors) -> Result<()> {
-        self.tree_select_prev(colors)
+    pub fn select_prev(&mut self) -> Result<()> {
+        self.tree_select_prev()
     }
 
     /// Copy the selected filename to the clipboard. Only the filename.
@@ -638,10 +631,10 @@ impl Tab {
     }
 
     /// Select a given row, if there's something in it.
-    pub fn select_row(&mut self, row: u16, colors: &Colors, term_height: usize) -> Result<()> {
+    pub fn select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
         match self.mode {
             Mode::Normal => self.normal_select_row(row),
-            Mode::Tree => self.tree_select_row(row, colors, term_height)?,
+            Mode::Tree => self.tree_select_row(row, term_height)?,
             _ => (),
         }
         Ok(())
@@ -654,7 +647,7 @@ impl Tab {
         self.window.scroll_to(index);
     }
 
-    fn tree_select_row(&mut self, row: u16, colors: &Colors, term_height: usize) -> Result<()> {
+    fn tree_select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
         let screen_index = row_to_window_index(row) + 1;
         // term.height = canvas.height + 2 rows for the canvas border
         let (top, _, _) = self.directory.calculate_tree_window(term_height - 2);
@@ -662,7 +655,7 @@ impl Tab {
         self.directory.tree.unselect_children();
         self.directory.tree.position = self.directory.tree.position_from_index(index);
         let (_, _, node) = self.directory.tree.select_from_position()?;
-        self.directory.make_preview(colors);
+        self.directory.make_preview();
         self.directory.tree.current_node = node;
         Ok(())
     }
@@ -676,7 +669,7 @@ impl Tab {
     /// by extension.
     /// The first letter is used to identify the method.
     /// If the user types an uppercase char, the sort is reverse.
-    pub fn sort(&mut self, c: char, colors: &Colors) -> Result<()> {
+    pub fn sort(&mut self, c: char) -> Result<()> {
         if self.path_content.content.is_empty() {
             return Ok(());
         }
@@ -692,8 +685,8 @@ impl Tab {
             Mode::Tree => {
                 self.directory.tree.update_sort_from_char(c);
                 self.directory.tree.sort();
-                self.tree_select_root(colors)?;
-                self.directory.tree.into_navigable_content(colors);
+                self.tree_select_root()?;
+                self.directory.tree.into_navigable_content();
             }
             _ => (),
         }

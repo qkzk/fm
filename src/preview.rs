@@ -16,7 +16,6 @@ use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
 use users::UsersCache;
 
-use crate::config::Colors;
 use crate::constant_strings_paths::{
     CALC_PDF_PATH, DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
     PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
@@ -120,12 +119,10 @@ impl Preview {
         users_cache: &UsersCache,
         filter: &FilterKind,
         show_hidden: bool,
-        colors: &Colors,
     ) -> Result<Self> {
         Ok(Self::Directory(Directory::new(
             &file_info.path,
             users_cache,
-            colors,
             filter,
             show_hidden,
             Some(2),
@@ -568,8 +565,8 @@ impl HLContent {
     }
 }
 
-/// Holds a string to be displayed with given colors.
-/// We have to read the colors from Syntect and parse it into tuikit attr
+/// Holds a string to be displayed with given .
+/// We have to read the  from Syntect and parse it into tuikit attr
 /// This struct does the parsing.
 #[derive(Clone)]
 pub struct SyntaxedString {
@@ -1063,7 +1060,6 @@ impl Directory {
     pub fn new(
         path: &Path,
         users_cache: &UsersCache,
-        colors: &Colors,
         filter_kind: &FilterKind,
         show_hidden: bool,
         max_depth: Option<usize>,
@@ -1082,7 +1078,7 @@ impl Directory {
             vec![0],
         )?;
         tree.select_root();
-        let (selected_index, content) = tree.into_navigable_content(colors);
+        let (selected_index, content) = tree.into_navigable_content();
         Ok(Self {
             tree,
             len: content.len(),
@@ -1120,10 +1116,10 @@ impl Directory {
     }
 
     /// Select the root node and reset the view.
-    pub fn select_root(&mut self, colors: &Colors) -> Result<()> {
+    pub fn select_root(&mut self) -> Result<()> {
         self.tree.select_root();
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-        self.update_tree_position_from_index(colors)?;
+        (self.selected_index, self.content) = self.tree.into_navigable_content();
+        self.update_tree_position_from_index()?;
         Ok(())
     }
 
@@ -1134,40 +1130,40 @@ impl Directory {
 
     /// Select the "next" element of the tree if any.
     /// This is the element immediatly below the current one.
-    pub fn select_next(&mut self, colors: &Colors) -> Result<()> {
+    pub fn select_next(&mut self) -> Result<()> {
         if self.selected_index < self.content.len() {
             self.tree.increase_required_height();
             self.unselect_children();
             self.selected_index += 1;
-            self.update_tree_position_from_index(colors)?;
+            self.update_tree_position_from_index()?;
         }
         Ok(())
     }
 
     /// Select the previous sibling if any.
     /// This is the element immediatly below the current one.
-    pub fn select_prev(&mut self, colors: &Colors) -> Result<()> {
+    pub fn select_prev(&mut self) -> Result<()> {
         if self.selected_index > 0 {
             self.tree.decrease_required_height();
             self.unselect_children();
             self.selected_index -= 1;
-            self.update_tree_position_from_index(colors)?;
+            self.update_tree_position_from_index()?;
         }
         Ok(())
     }
 
     /// Move up 10 times.
-    pub fn page_up(&mut self, colors: &Colors) -> Result<()> {
+    pub fn page_up(&mut self) -> Result<()> {
         if self.selected_index > 10 {
             self.selected_index -= 10;
         } else {
             self.selected_index = 1;
         }
-        self.update_tree_position_from_index(colors)
+        self.update_tree_position_from_index()
     }
 
     /// Move down 10 times
-    pub fn page_down(&mut self, colors: &Colors) -> Result<()> {
+    pub fn page_down(&mut self) -> Result<()> {
         self.selected_index += 10;
         if self.selected_index > self.content.len() {
             if !self.content.is_empty() {
@@ -1176,45 +1172,45 @@ impl Directory {
                 self.selected_index = 1;
             }
         }
-        self.update_tree_position_from_index(colors)
+        self.update_tree_position_from_index()
     }
 
     /// Update the position of the selected element from its index.
-    pub fn update_tree_position_from_index(&mut self, colors: &Colors) -> Result<()> {
+    pub fn update_tree_position_from_index(&mut self) -> Result<()> {
         self.tree.position = self.tree.position_from_index(self.selected_index);
         let (_, _, node) = self.tree.select_from_position()?;
         self.tree.current_node = node;
-        (_, self.content) = self.tree.into_navigable_content(colors);
+        (_, self.content) = self.tree.into_navigable_content();
         Ok(())
     }
 
     /// Select the first child, if any.
-    pub fn select_first_child(&mut self, colors: &Colors) -> Result<()> {
+    pub fn select_first_child(&mut self) -> Result<()> {
         self.tree.select_first_child()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-        self.update_tree_position_from_index(colors)?;
+        (self.selected_index, self.content) = self.tree.into_navigable_content();
+        self.update_tree_position_from_index()?;
         Ok(())
     }
 
     /// Select the parent of current node.
-    pub fn select_parent(&mut self, colors: &Colors) -> Result<()> {
+    pub fn select_parent(&mut self) -> Result<()> {
         self.tree.select_parent()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-        self.update_tree_position_from_index(colors)?;
+        (self.selected_index, self.content) = self.tree.into_navigable_content();
+        self.update_tree_position_from_index()?;
         Ok(())
     }
 
     /// Select the last leaf of the tree (ie the last line.)
-    pub fn go_to_bottom_leaf(&mut self, colors: &Colors) -> Result<()> {
+    pub fn go_to_bottom_leaf(&mut self) -> Result<()> {
         self.tree.go_to_bottom_leaf()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-        self.update_tree_position_from_index(colors)?;
+        (self.selected_index, self.content) = self.tree.into_navigable_content();
+        self.update_tree_position_from_index()?;
         Ok(())
     }
 
     /// Make a preview of the tree.
-    pub fn make_preview(&mut self, colors: &Colors) {
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
+    pub fn make_preview(&mut self) {
+        (self.selected_index, self.content) = self.tree.into_navigable_content();
     }
 
     /// Calculates the top, bottom and lenght of the view, depending on which element

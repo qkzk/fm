@@ -11,7 +11,6 @@ use tuikit::term::Term;
 
 use crate::completion::InputCompleted;
 use crate::compress::CompressionMethod;
-use crate::config::Colors;
 use crate::constant_strings_paths::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
     LOG_SECOND_SENTENCE,
@@ -133,7 +132,6 @@ struct WinMain<'a> {
     status: &'a Status,
     tab: &'a Tab,
     disk_space: &'a str,
-    colors: &'a Colors,
     attributes: WinMainAttributes,
 }
 
@@ -167,14 +165,12 @@ impl<'a> WinMain<'a> {
         status: &'a Status,
         index: usize,
         disk_space: &'a str,
-        colors: &'a Colors,
         attributes: WinMainAttributes,
     ) -> Self {
         Self {
             status,
             tab: &status.tabs[index],
             disk_space,
-            colors,
             attributes,
         }
     }
@@ -227,7 +223,7 @@ impl<'a> WinMain<'a> {
     ) -> Result<usize> {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
-        let mut attr = fileinfo_attr(file, self.colors);
+        let mut attr = fileinfo_attr(file);
         attr.effect ^= Effect::REVERSE;
 
         if status.flagged.contains(&file.path) {
@@ -378,7 +374,7 @@ impl<'a> WinMain<'a> {
             .skip(tab.window.top)
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
-            let mut attr = fileinfo_attr(file, self.colors);
+            let mut attr = fileinfo_attr(file);
             let string = if status.display_full {
                 file.format(owner_size, group_size)?
             } else {
@@ -1003,16 +999,16 @@ impl Display {
     /// The preview in preview mode.
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
-    pub fn display_all(&mut self, status: &Status, colors: &Colors) -> Result<()> {
+    pub fn display_all(&mut self, status: &Status) -> Result<()> {
         self.hide_cursor()?;
         self.term.clear()?;
 
         let (width, _) = self.term.term_size()?;
         let disk_spaces = status.disk_spaces_per_tab();
         if status.dual_pane && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self.draw_dual_pane(status, &disk_spaces.0, &disk_spaces.1, colors)?
+            self.draw_dual_pane(status, &disk_spaces.0, &disk_spaces.1)?
         } else {
-            self.draw_single_pane(status, &disk_spaces.0, colors)?
+            self.draw_single_pane(status, &disk_spaces.0)?
         }
 
         Ok(self.term.present()?)
@@ -1071,7 +1067,6 @@ impl Display {
         status: &Status,
         disk_space_tab_0: &str,
         disk_space_tab_1: &str,
-        colors: &Colors,
     ) -> Result<()> {
         let (width, _) = self.term.term_size()?;
         let (first_selected, second_selected) = (status.index == 0, status.index == 1);
@@ -1081,14 +1076,14 @@ impl Display {
             first_selected,
             status.tabs[0].need_second_window(),
         );
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, attributes_left);
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, attributes_left);
         let attributes_right = WinMainAttributes::new(
             width / 2,
             true,
             second_selected,
             status.tabs[1].need_second_window(),
         );
-        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors, attributes_right);
+        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, attributes_right);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let (border_left, border_right) = self.borders(status);
@@ -1110,15 +1105,10 @@ impl Display {
         Ok(self.term.draw(&hsplit)?)
     }
 
-    fn draw_single_pane(
-        &mut self,
-        status: &Status,
-        disk_space_tab_0: &str,
-        colors: &Colors,
-    ) -> Result<()> {
+    fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: &str) -> Result<()> {
         let attributes_left =
             WinMainAttributes::new(0, false, true, status.tabs[0].need_second_window());
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, attributes_left);
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, attributes_left);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let win = self.vertical_split(

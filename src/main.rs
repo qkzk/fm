@@ -7,7 +7,7 @@ use std::time::Duration;
 use anyhow::Result;
 use log::info;
 
-use fm::config::{load_config, Colors};
+use fm::config::load_config;
 use fm::constant_strings_paths::{CONFIG_PATH, OPENER_PATH};
 use fm::event_dispatch::EventDispatcher;
 use fm::help::Help;
@@ -29,10 +29,10 @@ struct FM {
     status: Status,
     /// Responsible for the display on screen.
     display: Display,
-    /// Colors used by different kind of files.
-    /// Since most are generated the first time an extension is met,
-    /// we need to hold this.
-    colors: Colors,
+    // /// Colors used by different kind of files.
+    // /// Since most are generated the first time an extension is met,
+    // /// we need to hold this.
+    // colors: Colors,
     /// Refresher is used to force a refresh when a file has been modified externally.
     /// It send `Event::Key(Key::AltPageUp)` every 10 seconds.
     /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
@@ -70,7 +70,6 @@ impl FM {
             opener,
             &config.settings,
         )?;
-        let colors = config.colors.clone();
         let refresher = Refresher::spawn(term);
         drop(config);
         Ok(Self {
@@ -78,7 +77,6 @@ impl FM {
             event_dispatcher,
             status,
             display,
-            colors,
             refresher,
         })
     }
@@ -102,7 +100,7 @@ impl FM {
         self.event_dispatcher.dispatch(
             &mut self.status,
             event,
-            &self.colors,
+            // &self.colors,
             self.event_reader.term_height()?,
         )?;
         self.status.refresh_disks();
@@ -112,7 +110,7 @@ impl FM {
     /// Display itself using its `display` attribute.
     fn display(&mut self) -> Result<()> {
         self.force_clear_if_needed()?;
-        self.display.display_all(&self.status, &self.colors)
+        self.display.display_all(&self.status)
     }
 
     /// True iff the application must quit.

@@ -1,5 +1,5 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
+// use std::cell::RefCell;
+// use std::collections::HashMap;
 use std::hash::Hasher;
 
 use tuikit::attr::Color;
@@ -9,23 +9,23 @@ use tuikit::attr::Color;
 /// per run. This trades a bit of memory for a bit of CPU.
 #[derive(Default, Clone, Debug)]
 pub struct ColorCache {
-    cache: RefCell<HashMap<String, Color>>,
+    // cache: RefCell<HashMap<String, Color>>,
 }
 
-impl ColorCache {
-    /// Returns a color for any possible extension.
-    /// The color is cached within the struct, avoiding multiple calculations.
-    pub fn extension_color(&self, extension: &str) -> Color {
-        let mut cache = self.cache.borrow_mut();
-        if let Some(color) = cache.get(extension) {
-            color.to_owned()
-        } else {
-            let color = extension_color(extension);
-            cache.insert(extension.to_owned(), color);
-            color
-        }
-    }
-}
+// impl ColorCache {
+//     /// Returns a color for any possible extension.
+//     /// The color is cached within the struct, avoiding multiple calculations.
+//     pub fn extension_color(&self, extension: &str) -> Color {
+//         let mut cache = self.cache.borrow_mut();
+//         if let Some(color) = cache.get(extension) {
+//             color.to_owned()
+//         } else {
+//             let color = extension_color(extension);
+//             cache.insert(extension.to_owned(), color);
+//             color
+//         }
+//     }
+// }
 
 /// Picks a blueish/greenish color on color picker hexagon's perimeter.
 fn color(coords: usize) -> Color {

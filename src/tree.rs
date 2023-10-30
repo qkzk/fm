@@ -4,7 +4,6 @@ use anyhow::{Context, Result};
 use tuikit::attr::Attr;
 use users::UsersCache;
 
-use crate::config::Colors;
 use crate::fileinfo::{fileinfo_attr, files_collection, FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::preview::ColoredTriplet;
@@ -27,7 +26,7 @@ impl ColoredString {
         Self { text, attr, path }
     }
 
-    fn from_node(current_node: &Node, colors: &Colors) -> Self {
+    fn from_node(current_node: &Node) -> Self {
         let text = if current_node.is_dir {
             if current_node.folded {
                 format!("▸ {}", &current_node.fileinfo.filename)
@@ -37,13 +36,13 @@ impl ColoredString {
         } else {
             current_node.filename()
         };
-        Self::new(text, current_node.attr(colors), current_node.filepath())
+        Self::new(text, current_node.attr(), current_node.filepath())
     }
 
-    fn from_metadata_line(current_node: &Node, colors: &Colors) -> Self {
+    fn from_metadata_line(current_node: &Node) -> Self {
         Self::new(
             current_node.metadata_line.to_owned(),
-            current_node.attr(colors),
+            current_node.attr(),
             current_node.filepath(),
         )
     }
@@ -72,8 +71,8 @@ impl Node {
         self.fileinfo.path.to_owned()
     }
 
-    fn attr(&self, colors: &Colors) -> Attr {
-        fileinfo_attr(&self.fileinfo, colors)
+    fn attr(&self) -> Attr {
+        fileinfo_attr(&self.fileinfo)
     }
 
     fn select(&mut self) {
@@ -459,7 +458,7 @@ impl Tree {
     /// is reached. There's no way atm to avoid parsing the first lines
     /// since the "prefix" (straight lines at left of screen) can reach
     /// the whole screen.
-    pub fn into_navigable_content(&mut self, colors: &Colors) -> (usize, Vec<ColoredTriplet>) {
+    pub fn into_navigable_content(&mut self) -> (usize, Vec<ColoredTriplet>) {
         let required_height = self.required_height;
         let mut stack = vec![("".to_owned(), self)];
         let mut content = vec![];
@@ -471,9 +470,9 @@ impl Tree {
             }
 
             content.push((
-                ColoredString::from_metadata_line(&current.node, colors),
+                ColoredString::from_metadata_line(&current.node),
                 prefix.to_owned(),
-                ColoredString::from_node(&current.node, colors),
+                ColoredString::from_node(&current.node),
             ));
 
             if !current.node.folded {
