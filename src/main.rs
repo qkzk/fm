@@ -1,4 +1,3 @@
-use std::borrow::BorrowMut;
 use std::sync::mpsc::{self, TryRecvError};
 use std::sync::Arc;
 use std::thread;
@@ -136,6 +135,15 @@ struct Refresher {
 }
 
 impl Refresher {
+    /// Between 2 refreshed
+    const TEN_SECONDS_IN_DECISECONDS: u8 = 10 * 10;
+
+    /// Event sent to Fm event poller which is interpreted
+    /// as a request for refresh.
+    /// This key can't be bound to anything (who would use that ?).
+    const REFRESH_EVENT: tuikit::prelude::Event =
+        tuikit::prelude::Event::Key(tuikit::prelude::Key::AltPageUp);
+
     /// Spawn a thread which sends events to the terminal.
     /// Those events are interpreted as refresh requests.
     /// It also listen to a receiver for quit messages.
@@ -145,7 +153,7 @@ impl Refresher {
     ///
     /// Using Event::User(()) conflicts with skim internal which interpret this
     /// event as a signal(1) and hangs the terminal.
-    fn spawn(mut term: Arc<tuikit::term::Term>) -> Self {
+    fn spawn(term: Arc<tuikit::term::Term>) -> Self {
         let (tx, rx) = mpsc::channel();
         let mut counter: u8 = 0;
         let handle = thread::spawn(move || loop {
@@ -159,10 +167,9 @@ impl Refresher {
             }
             counter += 1;
             thread::sleep(Duration::from_millis(100));
-            if counter >= 10 * 10 {
+            if counter >= Self::TEN_SECONDS_IN_DECISECONDS {
                 counter = 0;
-                let event = tuikit::prelude::Event::Key(tuikit::prelude::Key::AltPageUp);
-                if term.borrow_mut().send_event(event).is_err() {
+                if term.send_event(Self::REFRESH_EVENT).is_err() {
                     break;
                 }
             }

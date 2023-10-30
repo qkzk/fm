@@ -1,4 +1,3 @@
-use std::borrow::BorrowMut;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -339,7 +338,7 @@ impl Status {
             return Ok(());
         };
         let event = Event::Key(key);
-        let _ = self.term.borrow_mut().send_event(event);
+        let _ = self.term.send_event(event);
         self.skimer = None;
         Ok(())
     }
