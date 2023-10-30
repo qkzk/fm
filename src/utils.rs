@@ -136,10 +136,14 @@ pub fn set_clipboard(content: String) -> Result<()> {
     Ok(())
 }
 
+/// Convert a row into a `crate::fm::ContentWindow` index.
+/// Just remove the header rows.
 pub fn row_to_window_index(row: u16) -> usize {
     row as usize - ContentWindow::HEADER_ROWS
 }
 
+/// Convert a string into a valid, expanded and canonicalized path.
+/// Doesn't check if the path exists.
 pub fn string_to_path(path_string: &str) -> Result<std::path::PathBuf> {
     let expanded_cow_path = shellexpand::tilde(&path_string);
     let expanded_target: &str = expanded_cow_path.borrow();
@@ -150,10 +154,12 @@ pub fn args_is_empty(args: &[String]) -> bool {
     args.is_empty() || args[0] == *""
 }
 
+/// True if the executable is "sudo"
 pub fn is_sudo_command(executable: &str) -> bool {
     matches!(executable, "sudo")
 }
 
+/// Open the path in neovim.
 pub fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
     let command = &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>");
     let _ = nvim(nvim_server, command);
@@ -162,7 +168,7 @@ pub fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
 /// Creates a random string.
 /// The string starts with `fm-` and contains 7 random alphanumeric characters.
 pub fn random_name() -> String {
-    let mut rand_str = String::with_capacity(14);
+    let mut rand_str = String::with_capacity(10);
     rand_str.push_str("fm-");
     rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
