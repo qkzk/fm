@@ -14,7 +14,6 @@ use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
-use users::UsersCache;
 
 use crate::constant_strings_paths::{
     CALC_PDF_PATH, DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
@@ -26,6 +25,7 @@ use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
 use crate::tree::{ColoredString, Tree};
+use crate::users::Users;
 use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path};
 
 /// Different kind of extension for grouped by previewers.
@@ -116,13 +116,13 @@ impl Preview {
     /// The recursive exploration is limited to depth 2.
     pub fn directory(
         file_info: &FileInfo,
-        users_cache: &UsersCache,
+        users: &Users,
         filter: &FilterKind,
         show_hidden: bool,
     ) -> Result<Self> {
         Ok(Self::Directory(Directory::new(
             &file_info.path,
-            users_cache,
+            users,
             filter,
             show_hidden,
             Some(2),
@@ -1059,7 +1059,7 @@ impl Directory {
     /// We only hold the result here, since the tree itself has now usage atm.
     pub fn new(
         path: &Path,
-        users_cache: &UsersCache,
+        users: &Users,
         filter_kind: &FilterKind,
         show_hidden: bool,
         max_depth: Option<usize>,
@@ -1069,14 +1069,7 @@ impl Directory {
             None => Tree::MAX_DEPTH,
         };
 
-        let mut tree = Tree::from_path(
-            path,
-            max_depth,
-            users_cache,
-            filter_kind,
-            show_hidden,
-            vec![0],
-        )?;
+        let mut tree = Tree::from_path(path, max_depth, users, filter_kind, show_hidden, vec![0])?;
         tree.select_root();
         let (selected_index, content) = tree.into_navigable_content();
         Ok(Self {
@@ -1088,9 +1081,9 @@ impl Directory {
     }
 
     /// Creates an empty directory preview.
-    pub fn empty(path: &Path, users_cache: &UsersCache) -> Result<Self> {
+    pub fn empty(path: &Path, users: &Users) -> Result<Self> {
         Ok(Self {
-            tree: Tree::empty(path, users_cache)?,
+            tree: Tree::empty(path, users)?,
             len: 0,
             content: vec![],
             selected_index: 0,

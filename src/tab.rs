@@ -2,7 +2,6 @@ use std::cmp::min;
 use std::path;
 
 use anyhow::{Context, Result};
-use users::UsersCache;
 
 use crate::args::Args;
 use crate::completion::{Completion, InputCompleted};
@@ -17,6 +16,7 @@ use crate::opener::execute_in_child;
 use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
+use crate::users::Users;
 use crate::utils::{filename_from_path, row_to_window_index, set_clipboard};
 
 /// Holds every thing about the current tab of the application.
@@ -54,6 +54,8 @@ pub struct Tab {
     pub filter: FilterKind,
     /// Visited directories
     pub history: History,
+    /// Users & groups
+    pub users: Users,
 }
 
 impl Tab {
@@ -61,7 +63,7 @@ impl Tab {
     pub fn new(
         args: &Args,
         height: usize,
-        users_cache: UsersCache,
+        users: Users,
         settings: &Settings,
         mount_points: &[&path::Path],
     ) -> Result<Self> {
@@ -71,10 +73,10 @@ impl Tab {
         } else {
             path.parent().context("")?
         };
-        let directory = Directory::empty(start_dir, &users_cache)?;
+        let directory = Directory::empty(start_dir, &users)?;
         let filter = FilterKind::All;
         let show_hidden = args.all || settings.all;
-        let mut path_content = PathContent::new(start_dir, users_cache, &filter, show_hidden)?;
+        let mut path_content = PathContent::new(start_dir, &users, &filter, show_hidden)?;
         let mode = Mode::Normal;
         let previous_mode = Mode::Normal;
         let mut window = ContentWindow::new(path_content.content.len(), height);
@@ -104,6 +106,7 @@ impl Tab {
             filter,
             show_hidden,
             history,
+            users,
         })
     }
 
@@ -153,7 +156,7 @@ impl Tab {
     pub fn refresh_view(&mut self) -> Result<()> {
         self.refresh_params()?;
         self.path_content
-            .reset_files(&self.filter, self.show_hidden)?;
+            .reset_files(&self.filter, self.show_hidden, &self.users)?;
         self.window.reset(self.path_content.content.len());
         Ok(())
     }
@@ -229,7 +232,7 @@ impl Tab {
             &self.path_content.selected().context("")?.path,
         );
         self.path_content
-            .change_directory(path, &self.filter, self.show_hidden)?;
+            .change_directory(path, &self.filter, self.show_hidden, &self.users)?;
         self.window.reset(self.path_content.content.len());
         std::env::set_current_dir(path)?;
         Ok(())
@@ -260,15 +263,6 @@ impl Tab {
     pub fn go_to_index(&mut self, index: usize) {
         self.path_content.select_index(index);
         self.window.scroll_to(index);
-    }
-
-    /// Refresh the existing users.
-    pub fn refresh_users(&mut self, users_cache: UsersCache) -> Result<()> {
-        let last_pathcontent_index = self.path_content.index;
-        self.path_content
-            .refresh_users(users_cache, &self.filter, self.show_hidden)?;
-        self.path_content.select_index(last_pathcontent_index);
-        Ok(())
     }
 
     /// Search in current directory for an file whose name contains `searched_name`,
@@ -432,8 +426,8 @@ impl Tab {
     /// Makes a new tree of the current path.
     pub fn make_tree(&mut self) -> Result<()> {
         let path = self.path_content.path.clone();
-        let users_cache = &self.path_content.users_cache;
-        self.directory = Directory::new(&path, users_cache, &self.filter, self.show_hidden, None)?;
+        let users = &self.users;
+        self.directory = Directory::new(&path, users, &self.filter, self.show_hidden, None)?;
         Ok(())
     }
 

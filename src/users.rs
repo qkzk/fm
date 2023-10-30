@@ -1,3 +1,14 @@
+/// Users and Groups of current Unix system.
+/// It requires `/etc/passwd` and `/etc/group` to be at their usual place.
+///
+/// Holds two vectors, one for users, one for group.
+/// Each vector is a pair of `(u32, String)`, for uid, username and gid, groupname respectively.
+/// Those vectors are read from `/etc/passwd` and from `/etc/group` directly.
+/// It also provides two methods allowing to access the name from uid or gid.
+///
+/// Both users and groups use vectors which are sorted by their first element (uid/gid).
+/// It allows use to use bisection (binary search) to find the correct name.
+/// Cloning should be easy.
 #[derive(Clone, Debug, Default)]
 pub struct Users {
     users: Vec<(u32, String)>,
@@ -5,6 +16,7 @@ pub struct Users {
 }
 
 impl Users {
+    /// Name of the user from its uid.
     pub fn get_user_by_uid(&self, uid: u32) -> Option<String> {
         if let Ok(index) = self
             .users
@@ -18,6 +30,7 @@ impl Users {
         None
     }
 
+    /// Name of the group from its gid.
     pub fn get_group_by_gid(&self, gid: u32) -> Option<String> {
         if let Ok(index) = self
             .groups
@@ -53,11 +66,9 @@ impl Users {
         self
     }
 
+    /// Creates a default instance and update both users and groups from
+    /// `/etc/passwd` and `/etc/group` respectively.
     pub fn new() -> Self {
         Self::default().update_users().update_groups()
-    }
-
-    pub fn update(mut self) {
-        self = Self::new();
     }
 }

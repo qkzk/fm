@@ -1,5 +1,7 @@
 use std::borrow::Borrow;
+use std::fs::metadata;
 use std::io::BufRead;
+use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -7,12 +9,12 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 use rand::Rng;
 use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
-use users::{get_current_uid, get_user_by_uid};
 
 use crate::constant_strings_paths::{CALC_PDF_PATH, THUMBNAIL_PATH};
 use crate::content_window::ContentWindow;
 use crate::fileinfo::human_size;
 use crate::nvim::nvim;
+use crate::users::Users;
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
 pub fn init_term() -> Result<Term> {
@@ -88,14 +90,19 @@ pub fn filename_from_path(path: &std::path::Path) -> Result<&str> {
         .context("couldn't parse the filename")
 }
 
+/// Uid of the current user.
+/// Read from `/proc/self`.
+/// Should never fail.
+pub fn current_uid() -> Result<u32> {
+    Ok(metadata("/proc/self").map(|m| m.uid())?)
+}
+
 /// Get the current username as a String.
+/// Read from `/proc/self` and then `/etc/passwd` and should never fail.
 pub fn current_username() -> Result<String> {
-    let user = get_user_by_uid(get_current_uid()).context("Couldn't read username")?;
-    Ok(user
-        .name()
-        .to_str()
-        .context("Couldn't read username")?
-        .to_owned())
+    let uid = current_uid()?;
+    let user = Users::new().get_user_by_uid(uid);
+    user.context("Couldn't read my own name")
 }
 
 /// True iff the command is available in $PATH.

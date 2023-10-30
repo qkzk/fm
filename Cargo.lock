@@ -833,7 +833,6 @@ dependencies = [
  "ueberzug",
  "unicode-segmentation",
  "url-escape",
- "users",
  "zip",
 ]
 
@@ -2773,16 +2772,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44e0ce4d1246d075ca5abec4b41d33e87a6054d08e2366b63205665e950db218"
 dependencies = [
  "percent-encoding",
-]
-
-[[package]]
-name = "users"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24cc0f6d6f267b73e5a2cadf007ba8f9bc39c6a6f9666f8cf25ea809a153b032"
-dependencies = [
- "libc 0.2.149",
- "log",
 ]
 
 [[package]]

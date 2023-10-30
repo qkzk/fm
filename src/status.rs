@@ -12,7 +12,6 @@ use skim::SkimItem;
 use sysinfo::{Disk, DiskExt, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
-use users::UsersCache;
 
 use crate::args::Args;
 use crate::bulkrename::Bulk;
@@ -43,6 +42,7 @@ use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::trash::Trash;
+use crate::users::Users;
 use crate::utils::{current_username, disk_space, filename_from_path, is_program_in_path};
 
 /// Holds every mutable parameter of the application itself, except for
@@ -137,15 +137,15 @@ impl Status {
         let index = 0;
 
         // unsafe because of UsersCache::with_all_users
-        let users_cache = unsafe { UsersCache::with_all_users() };
+        let users = Users::new();
         // unsafe because of UsersCache::with_all_users
-        let users_cache2 = unsafe { UsersCache::with_all_users() };
+        let users2 = users.clone();
 
         let mount_points = Self::disks_mounts(sys.disks());
 
         let tabs = [
-            Tab::new(&args, height, users_cache, settings, &mount_points)?,
-            Tab::new(&args, height, users_cache2, settings, &mount_points)?,
+            Tab::new(&args, height, users, settings, &mount_points)?,
+            Tab::new(&args, height, users2, settings, &mount_points)?,
         ];
         let removable_devices = None;
         Ok(Self {
@@ -549,18 +549,19 @@ impl Status {
 
     /// Refresh the existing users.
     pub fn refresh_users(&mut self) -> Result<()> {
-        for tab in self.tabs.iter_mut() {
-            let users_cache = unsafe { UsersCache::with_all_users() };
-            tab.refresh_users(users_cache)?;
-        }
+        let users = Users::new();
+        self.tabs[0].users = users.clone();
+        self.tabs[1].users = users;
+        self.tabs[0].refresh_view()?;
+        self.tabs[1].refresh_view()?;
         Ok(())
     }
 
     /// Drop the current tree, replace it with an empty one.
     pub fn remove_tree(&mut self) -> Result<()> {
         let path = self.selected_non_mut().path_content.path.clone();
-        let users_cache = &self.selected_non_mut().path_content.users_cache;
-        self.selected().directory = Directory::empty(&path, users_cache)?;
+        let users = &self.selected_non_mut().users;
+        self.selected().directory = Directory::empty(&path, users)?;
         Ok(())
     }
 
@@ -631,7 +632,7 @@ impl Status {
         let preview = match fileinfo.file_kind {
             FileKind::Directory => Preview::directory(
                 fileinfo,
-                &self.tabs[0].path_content.users_cache,
+                &self.tabs[0].users,
                 &self.tabs[0].filter,
                 self.tabs[0].show_hidden,
             ),

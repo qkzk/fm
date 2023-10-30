@@ -2,12 +2,12 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use tuikit::attr::Attr;
-use users::UsersCache;
 
 use crate::fileinfo::{fileinfo_attr, files_collection, FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::preview::ColoredTriplet;
 use crate::sort::SortKind;
+use crate::users::Users;
 use crate::utils::filename_from_path;
 
 /// Holds a string and its display attributes.
@@ -188,15 +188,15 @@ impl Tree {
     pub fn from_path(
         path: &Path,
         max_depth: usize,
-        users_cache: &UsersCache,
+        users: &Users,
         filter_kind: &FilterKind,
         show_hidden: bool,
         parent_position: Vec<usize>,
     ) -> Result<Self> {
         Self::create_tree_from_fileinfo(
-            FileInfo::from_path_with_name(path, filename_from_path(path)?, users_cache)?,
+            FileInfo::from_path_with_name(path, filename_from_path(path)?, users)?,
             max_depth,
-            users_cache,
+            users,
             filter_kind,
             show_hidden,
             parent_position,
@@ -218,7 +218,7 @@ impl Tree {
     fn create_tree_from_fileinfo(
         fileinfo: FileInfo,
         max_depth: usize,
-        users_cache: &UsersCache,
+        users: &Users,
         filter_kind: &FilterKind,
         display_hidden: bool,
         parent_position: Vec<usize>,
@@ -227,7 +227,7 @@ impl Tree {
         let leaves = Self::make_leaves(
             &fileinfo,
             max_depth,
-            users_cache,
+            users,
             display_hidden,
             filter_kind,
             &sort_kind,
@@ -249,7 +249,7 @@ impl Tree {
     fn make_leaves(
         fileinfo: &FileInfo,
         max_depth: usize,
-        users_cache: &UsersCache,
+        users: &Users,
         display_hidden: bool,
         filter_kind: &FilterKind,
         sort_kind: &SortKind,
@@ -261,8 +261,7 @@ impl Tree {
         let FileKind::Directory = fileinfo.file_kind else {
             return Ok(vec![]);
         };
-        let Some(mut files) =
-            files_collection(fileinfo, users_cache, display_hidden, filter_kind, true)
+        let Some(mut files) = files_collection(fileinfo, users, display_hidden, filter_kind, true)
         else {
             return Ok(vec![]);
         };
@@ -276,7 +275,7 @@ impl Tree {
                 Self::create_tree_from_fileinfo(
                     fileinfo.to_owned(),
                     max_depth - 1,
-                    users_cache,
+                    users,
                     filter_kind,
                     display_hidden,
                     position,
@@ -303,9 +302,9 @@ impl Tree {
 
     /// Creates an empty tree. Used when the user changes the CWD and hasn't displayed
     /// a tree yet.
-    pub fn empty(path: &Path, users_cache: &UsersCache) -> Result<Self> {
+    pub fn empty(path: &Path, users: &Users) -> Result<Self> {
         let filename = filename_from_path(path)?;
-        let fileinfo = FileInfo::from_path_with_name(path, filename, users_cache)?;
+        let fileinfo = FileInfo::from_path_with_name(path, filename, users)?;
         let node = Node::empty(fileinfo);
         let leaves = vec![];
         let position = vec![0];

@@ -299,7 +299,8 @@ impl EventAction {
     pub fn toggle_hidden(status: &mut Status) -> Result<()> {
         let tab = status.selected();
         tab.show_hidden = !tab.show_hidden;
-        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
+        tab.path_content
+            .reset_files(&tab.filter, tab.show_hidden, &tab.users)?;
         tab.window.reset(tab.path_content.content.len());
         if let Mode::Tree = tab.mode {
             tab.make_tree()?
@@ -1527,7 +1528,8 @@ impl LeaveMode {
         let filter = FilterKind::from_input(&tab.input.string());
         tab.set_filter(filter);
         tab.input.reset();
-        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
+        tab.path_content
+            .reset_files(&tab.filter, tab.show_hidden, &tab.users)?;
         if let Mode::Tree = tab.previous_mode {
             tab.make_tree()?;
         }

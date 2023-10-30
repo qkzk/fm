@@ -8,7 +8,6 @@ use chrono::offset::Local;
 use chrono::DateTime;
 use log::info;
 use tuikit::prelude::{Attr, Color, Effect};
-use users::{Groups, Users, UsersCache};
 
 use crate::colors::extension_color;
 use crate::constant_strings_paths::PERMISSIONS_STR;
@@ -16,6 +15,7 @@ use crate::filter::FilterKind;
 use crate::git::git;
 use crate::impl_selectable_content;
 use crate::sort::SortKind;
+use crate::users::Users;
 use crate::utils::filename_from_path;
 
 type Valid = bool;
@@ -159,30 +159,26 @@ pub struct FileInfo {
 impl FileInfo {
     /// Reads every information about a file from its metadata and returs
     /// a new `FileInfo` object if we can create one.
-    pub fn new(direntry: &DirEntry, users_cache: &UsersCache) -> Result<FileInfo> {
+    pub fn new(direntry: &DirEntry, users: &Users) -> Result<FileInfo> {
         let path = direntry.path();
         let filename = extract_filename(direntry)?;
 
-        Self::create_from_metadata_and_filename(&path, &filename, users_cache)
+        Self::create_from_metadata_and_filename(&path, &filename, users)
     }
 
     /// Creates a fileinfo from a path and a filename.
     /// The filename is used when we create the fileinfo for "." and ".." in every folder.
-    pub fn from_path_with_name(
-        path: &path::Path,
-        filename: &str,
-        users_cache: &UsersCache,
-    ) -> Result<Self> {
-        Self::create_from_metadata_and_filename(path, filename, users_cache)
+    pub fn from_path_with_name(path: &path::Path, filename: &str, users: &Users) -> Result<Self> {
+        Self::create_from_metadata_and_filename(path, filename, users)
     }
 
-    pub fn from_path(path: &path::Path, users_cache: &UsersCache) -> Result<Self> {
+    pub fn from_path(path: &path::Path, users: &Users) -> Result<Self> {
         let filename = path
             .file_name()
             .context("from path: couldn't read filenale")?
             .to_str()
             .context("from path: couldn't parse filenale")?;
-        Self::create_from_metadata_and_filename(path, filename, users_cache)
+        Self::create_from_metadata_and_filename(path, filename, users)
     }
 
     fn metadata(&self) -> Result<std::fs::Metadata> {
@@ -196,13 +192,13 @@ impl FileInfo {
     fn create_from_metadata_and_filename(
         path: &path::Path,
         filename: &str,
-        users_cache: &UsersCache,
+        users: &Users,
     ) -> Result<Self> {
         let filename = filename.to_owned();
         let metadata = symlink_metadata(path)?;
         let path = path.to_owned();
-        let owner = extract_owner(&metadata, users_cache)?;
-        let group = extract_group(&metadata, users_cache)?;
+        let owner = extract_owner(&metadata, users)?;
+        let group = extract_group(&metadata, users)?;
         let system_time = extract_datetime(&metadata)?;
         let is_selected = false;
         let true_size = extract_file_size(&metadata);
@@ -313,7 +309,6 @@ pub struct PathContent {
     /// The kind of sort used to display the files.
     pub sort_kind: SortKind,
     used_space: u64,
-    pub users_cache: UsersCache,
 }
 
 impl PathContent {
@@ -322,12 +317,12 @@ impl PathContent {
     /// Selects the first file if any.
     pub fn new(
         path: &path::Path,
-        users_cache: UsersCache,
+        users: &Users,
         filter: &FilterKind,
         show_hidden: bool,
     ) -> Result<Self> {
         let path = path.to_owned();
-        let mut content = Self::files(&path, show_hidden, filter, &users_cache)?;
+        let mut content = Self::files(&path, show_hidden, filter, users)?;
         let sort_kind = SortKind::default();
         sort_kind.sort(&mut content);
         let selected_index: usize = 0;
@@ -342,7 +337,6 @@ impl PathContent {
             index: selected_index,
             sort_kind,
             used_space,
-            users_cache,
         })
     }
 
@@ -351,8 +345,9 @@ impl PathContent {
         path: &path::Path,
         filter: &FilterKind,
         show_hidden: bool,
+        users: &Users,
     ) -> Result<()> {
-        self.content = Self::files(path, show_hidden, filter, &self.users_cache)?;
+        self.content = Self::files(path, show_hidden, filter, users)?;
         self.sort_kind.sort(&mut self.content);
         self.index = 0;
         if !self.content.is_empty() {
@@ -367,24 +362,24 @@ impl PathContent {
         path: &path::Path,
         show_hidden: bool,
         filter_kind: &FilterKind,
-        users_cache: &UsersCache,
+        users: &Users,
     ) -> Result<Vec<FileInfo>> {
-        let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users_cache)?;
+        let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users)?;
 
-        let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users_cache)?;
+        let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users)?;
         if let Some(true_files) =
-            files_collection(&fileinfo, users_cache, show_hidden, filter_kind, false)
+            files_collection(&fileinfo, users, show_hidden, filter_kind, false)
         {
             files.extend(true_files);
         }
         Ok(files)
     }
 
-    fn create_dot_dotdot(path: &path::Path, users_cache: &UsersCache) -> Result<Vec<FileInfo>> {
-        let current = FileInfo::from_path_with_name(path, ".", users_cache)?;
+    fn create_dot_dotdot(path: &path::Path, users: &Users) -> Result<Vec<FileInfo>> {
+        let current = FileInfo::from_path_with_name(path, ".", users)?;
         match path.parent() {
             Some(parent) => {
-                let parent = FileInfo::from_path_with_name(parent, "..", users_cache)?;
+                let parent = FileInfo::from_path_with_name(parent, "..", users)?;
                 Ok(vec![current, parent])
             }
             None => Ok(vec![current]),
@@ -428,8 +423,13 @@ impl PathContent {
     /// Reset the current file content.
     /// Reads and sort the content with current key.
     /// Select the first file if any.
-    pub fn reset_files(&mut self, filter: &FilterKind, show_hidden: bool) -> Result<()> {
-        self.content = Self::files(&self.path, show_hidden, filter, &self.users_cache)?;
+    pub fn reset_files(
+        &mut self,
+        filter: &FilterKind,
+        show_hidden: bool,
+        users: &Users,
+    ) -> Result<()> {
+        self.content = Self::files(&self.path, show_hidden, filter, users)?;
         self.sort_kind = SortKind::default();
         self.sort();
         self.index = 0;
@@ -524,12 +524,11 @@ impl PathContent {
     /// Refresh the existing users.
     pub fn refresh_users(
         &mut self,
-        users_cache: UsersCache,
+        users: &Users,
         filter: &FilterKind,
         show_hidden: bool,
     ) -> Result<()> {
-        self.users_cache = users_cache;
-        self.reset_files(filter, show_hidden)
+        self.reset_files(filter, show_hidden, users)
     }
 
     /// Returns the correct index jump target to a flagged files.
@@ -623,13 +622,9 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 /// Reads the owner name and returns it as a string.
 /// If it's not possible to get the owner name (happens if the owner exists on a remote machine but not on host),
 /// it returns the uid as a  `Result<String>`.
-fn extract_owner(metadata: &Metadata, users_cache: &UsersCache) -> Result<String> {
-    match users_cache.get_user_by_uid(metadata.uid()) {
-        Some(uid) => Ok(uid
-            .name()
-            .to_str()
-            .context("extract owner: Couldn't parse owner name")?
-            .to_owned()),
+fn extract_owner(metadata: &Metadata, users: &Users) -> Result<String> {
+    match users.get_user_by_uid(metadata.uid()) {
+        Some(name) => Ok(name),
         None => Ok(format!("{}", metadata.uid())),
     }
 }
@@ -637,13 +632,9 @@ fn extract_owner(metadata: &Metadata, users_cache: &UsersCache) -> Result<String
 /// Reads the group name and returns it as a string.
 /// If it's not possible to get the group name (happens if the group exists on a remote machine but not on host),
 /// it returns the gid as a  `Result<String>`.
-fn extract_group(metadata: &Metadata, users_cache: &UsersCache) -> Result<String> {
-    match users_cache.get_group_by_gid(metadata.gid()) {
-        Some(gid) => Ok(gid
-            .name()
-            .to_str()
-            .context("extract group: Couldn't parse group name")?
-            .to_owned()),
+fn extract_group(metadata: &Metadata, users: &Users) -> Result<String> {
+    match users.get_group_by_gid(metadata.gid()) {
+        Some(name) => Ok(name),
         None => Ok(format!("{}", metadata.gid())),
     }
 }
@@ -694,7 +685,7 @@ fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> String 
 /// Returns None if there's no file.
 pub fn files_collection(
     fileinfo: &FileInfo,
-    users_cache: &UsersCache,
+    users: &Users,
     show_hidden: bool,
     filter_kind: &FilterKind,
     keep_dir: bool,
@@ -704,7 +695,7 @@ pub fn files_collection(
             read_dir
                 .filter_map(|direntry| direntry.ok())
                 .filter(|direntry| show_hidden || is_not_hidden(direntry).unwrap_or(true))
-                .map(|direntry| FileInfo::new(&direntry, users_cache))
+                .map(|direntry| FileInfo::new(&direntry, users))
                 .filter_map(|fileinfo| fileinfo.ok())
                 .filter(|fileinfo| filter_kind.filter_by(fileinfo, keep_dir))
                 .collect(),

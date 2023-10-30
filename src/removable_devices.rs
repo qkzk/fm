@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use crate::{
     constant_strings_paths::GIO,
     impl_selectable_content,
-    utils::{is_dir_empty, is_program_in_path},
+    utils::{current_uid, is_dir_empty, is_program_in_path},
 };
 
 /// Holds info about removable devices.
@@ -83,7 +83,7 @@ impl Removable {
             .replace('/', "")
             .trim()
             .to_owned();
-        let uid = users::get_current_uid();
+        let uid = current_uid()?;
         let path = format!("/run/user/{uid}/gvfs/mtp:host={device_name}");
         let pb_path = std::path::Path::new(&path);
         let is_mounted = pb_path.exists() && !is_dir_empty(pb_path)?;
