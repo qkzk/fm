@@ -10,7 +10,7 @@ use log::info;
 use tuikit::prelude::{Attr, Color, Effect};
 use users::{Groups, Users, UsersCache};
 
-use crate::color_cache::extension_color;
+use crate::colors::extension_color;
 use crate::constant_strings_paths::PERMISSIONS_STR;
 use crate::filter::FilterKind;
 use crate::git::git;
@@ -566,17 +566,6 @@ fn fileinfo_color(fileinfo: &FileInfo) -> Color {
 /// effect.
 /// Selected file is reversed.
 pub fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
-    // let fg = match fileinfo.file_kind {
-    //     FileKind::Directory => str_to_tuikit(&colors.directory),
-    //     FileKind::BlockDevice => str_to_tuikit(&colors.block),
-    //     FileKind::CharDevice => str_to_tuikit(&colors.char),
-    //     FileKind::Fifo => str_to_tuikit(&colors.fifo),
-    //     FileKind::Socket => str_to_tuikit(&colors.socket),
-    //     FileKind::SymbolicLink(true) => str_to_tuikit(&colors.symlink),
-    //     FileKind::SymbolicLink(false) => str_to_tuikit(&colors.broken),
-    //     _ => extension_color(&fileinfo.extension),
-    //     // _ => colors.color_cache.extension_color(&fileinfo.extension),
-    // };
     let fg = fileinfo_color(fileinfo);
 
     let effect = if fileinfo.is_selected {

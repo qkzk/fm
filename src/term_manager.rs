@@ -66,12 +66,6 @@ const ATTR_YELLOW_BOLD: Attr = Attr {
     effect: Effect::BOLD,
 };
 
-const ATTR_CYAN_BOLD: Attr = Attr {
-    fg: Color::CYAN,
-    bg: Color::Default,
-    effect: Effect::BOLD,
-};
-
 /// Simple struct to read the events.
 pub struct EventReader {
     term: Arc<Term>,
@@ -227,7 +221,7 @@ impl<'a> WinMain<'a> {
         attr.effect ^= Effect::REVERSE;
 
         if status.flagged.contains(&file.path) {
-            canvas.print_with_attr(1, 0, "█", ATTR_CYAN_BOLD)?;
+            canvas.print_with_attr(1, 0, "█", ATTR_YELLOW_BOLD)?;
             attr.effect |= Effect::BOLD;
         }
         Ok(canvas.print_with_attr(1, 1, &file.format(owner_size, group_size)?, attr)?)
@@ -382,7 +376,7 @@ impl<'a> WinMain<'a> {
             };
             if status.flagged.contains(&file.path) {
                 attr.effect |= Effect::BOLD;
-                canvas.print_with_attr(row, 0, "█", ATTR_CYAN_BOLD)?;
+                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
             }
             canvas.print_with_attr(row, 1, &string, attr)?;
         }
@@ -409,7 +403,7 @@ impl<'a> WinMain<'a> {
             let mut attr = colored_string.attr;
             if status.flagged.contains(&colored_string.path) {
                 attr.effect |= Effect::BOLD;
-                canvas.print_with_attr(row, 0, "█", ATTR_CYAN_BOLD)?;
+                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
             }
 
             let col_metadata = if status.display_full {

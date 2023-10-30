@@ -289,7 +289,6 @@ Every configuration file is saved in `~/.config/fm/`
 
 You can configure :
 
-- **Colors** for non standard file types (directory, socket, char device, block device)
 - **Keybindings**. Some should be left as they are, but all keybindings can be configured.
   use the provided config file as a default.
   Multiple keys can be bound the the same action.
@@ -310,11 +309,13 @@ You can configure :
   Open the menu with `S` and pick the desired one. It will only work with a TUI application like HTOP,
   not a CLI application like bat.
 
+Before version 0.1.23, colors used to be configurable. Configuration wasn't a problem but passing it everywhere was a burden.
+
 ## External dependencies
 
 Most of the openers and tui applications are configurable from config files. Some are hardcoded if their command is quite specific or if I couldn't find a workaround.
 
-- [lsblk](https://linux.die.net/man/8/lsblk): list encroytped devices
+- [lsblk](https://linux.die.net/man/8/lsblk): list encrytped devices
 - [faillock](https://linux.die.net/man/8/faillock): reset failed sudo attempts
 - [Cryptsetup](https://gitlab.com/cryptsetup/cryptsetup): decrypt & mount encrypted devices
 - [Nitrogen](https://github.com/l3ib/nitrogen/): set up a wallpaper
@@ -323,9 +324,10 @@ Most of the openers and tui applications are configurable from config files. Som
 - [Ueberzug](https://github.com/LalleSX/ueberzug) display images in your terminal. Used to preview images. This one may be tricky to install from source since the original maintener nuked his project. It's still available in many package managers.
 - [isoinfo](https://command-not-found.com/isoinfo) allow the content preview of an iso file
 - [jupyter](https://jupyter.org/) preview jupyter notebooks by converting them to markdown
-- [pandoc](https://pandoc.org) preview open documents by converting them to markdown with pandoc
+- [pandoc](https://pandoc.org) preview epub by converting them to markdown with pandoc
 - [fontimage](https://fontforge.org/docs/fontutils/fontimage.html) preview fonts by creating a thumbnail
 - [rsvg-convert](https://github.com/brion/librsvg) preview svg by creating a thumbnail
+- [libreoffice](https://www.libreoffice.org) preview open & MS-office documents
 
 ## Contribution
 

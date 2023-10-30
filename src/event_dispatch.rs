@@ -25,13 +25,7 @@ impl EventDispatcher {
     /// Only non keyboard events are dealt here directly.
     /// Keyboard events are configurable and are sent to specific functions
     /// which needs to know those keybindings.
-    pub fn dispatch(
-        &self,
-        status: &mut Status,
-        ev: Event,
-        // colors: &Colors,
-        current_height: usize,
-    ) -> Result<()> {
+    pub fn dispatch(&self, status: &mut Status, ev: Event, current_height: usize) -> Result<()> {
         match ev {
             Event::Key(Key::WheelUp(_, col, _)) => {
                 status.select_pane(col)?;

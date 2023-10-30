@@ -29,10 +29,6 @@ struct FM {
     status: Status,
     /// Responsible for the display on screen.
     display: Display,
-    // /// Colors used by different kind of files.
-    // /// Since most are generated the first time an extension is met,
-    // /// we need to hold this.
-    // colors: Colors,
     /// Refresher is used to force a refresh when a file has been modified externally.
     /// It send `Event::Key(Key::AltPageUp)` every 10 seconds.
     /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
@@ -45,7 +41,6 @@ impl FM {
     /// an `EventDispatcher`,
     /// a `Status`,
     /// a `Display`,
-    /// some `Colors`,
     /// a `Refresher`.
     /// It reads and drops the configuration from the config file.
     /// If the config can't be parsed, it exits with error code 1.

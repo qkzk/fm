@@ -1,14 +1,5 @@
 # the terminal must be installed
 terminal: st
-colors:
-  # white, black, red, green, blue, yellow, cyan, magenta 
-  # light_white, light_black, light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
-  block: yellow
-  char: green
-  directory: red
-  fifo: blue
-  socket: cyan
-  symlink: magenta
 # keybindings
 keys: 
   'esc': ResetMode

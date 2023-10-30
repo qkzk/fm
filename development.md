@@ -594,7 +594,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] add MTP mount points to shortcuts
   - [x] list, mount, unmount mtp mount points
 - [x] bulk, skim & removable are `None` until first use.
-- [ ] remove dependencies
+- [x] remove dependencies
+- [x] remove colors configuration. Calculate every color for every extension
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 
