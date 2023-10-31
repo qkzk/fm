@@ -25,9 +25,10 @@ impl std::fmt::Display for PasswordKind {
 }
 
 /// What will this password be used for ?
-/// ATM only 2 usages are supported:
+/// ATM only 3 usages are supported:
 /// * mounting an ISO file,
 /// * opening an mounting an encrypted device.
+/// * running a sudo command
 #[derive(Debug, Clone, Copy)]
 pub enum PasswordUsage {
     ISO,
@@ -35,33 +36,35 @@ pub enum PasswordUsage {
     SUDOCOMMAND,
 }
 
+type Password = String;
+
 /// Holds passwords allowing to mount or unmount an encrypted drive.
 #[derive(Default, Clone, Debug)]
 pub struct PasswordHolder {
-    sudo: Option<String>,
-    cryptsetup: Option<String>,
+    sudo: Option<Password>,
+    cryptsetup: Option<Password>,
 }
 
 impl PasswordHolder {
     /// Set the sudo password.
-    pub fn set_sudo(&mut self, password: String) {
+    pub fn set_sudo(&mut self, password: Password) {
         self.sudo = Some(password)
     }
 
     /// Set the encrypted device passphrase
-    pub fn set_cryptsetup(&mut self, passphrase: String) {
+    pub fn set_cryptsetup(&mut self, passphrase: Password) {
         self.cryptsetup = Some(passphrase)
     }
 
     /// Reads the cryptsetup password
-    pub fn cryptsetup(&self) -> Result<String> {
+    pub fn cryptsetup(&self) -> Result<Password> {
         self.cryptsetup
             .clone()
             .context("PasswordHolder: cryptsetup password isn't set")
     }
 
     /// Reads the sudo password
-    pub fn sudo(&self) -> Result<String> {
+    pub fn sudo(&self) -> Result<Password> {
         self.sudo
             .clone()
             .context("PasswordHolder: sudo password isn't set")
