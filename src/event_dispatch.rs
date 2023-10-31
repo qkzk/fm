@@ -69,46 +69,25 @@ impl EventDispatcher {
         let tab = status.selected();
         match tab.mode {
             Mode::InputSimple(InputSimple::Sort) => tab.sort(c),
-            Mode::InputSimple(InputSimple::RegexMatch) => {
-                tab.input.insert(c);
-                status.select_from_regex()?;
-                Ok(())
-            }
-            Mode::InputSimple(_) => {
-                tab.input.insert(c);
-                Ok(())
-            }
+            Mode::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
+            Mode::InputSimple(_) => tab.input_insert(c),
             Mode::InputCompleted(_) => tab.text_insert_and_complete(c),
-            Mode::Normal | Mode::Tree => match self.binds.get(&Key::Char(c)) {
-                Some(action) => action.matcher(status),
-                None => Ok(()),
-            },
+            Mode::Normal | Mode::Tree => self.key_matcher(status, Key::Char(c)),
             Mode::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
-            Mode::Navigate(Navigate::Trash) if c == 'x' => status.trash.remove(),
+            Mode::Navigate(Navigate::Trash) if c == 'x' => status.trash_remove(),
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'm' => status.mount_encrypted_drive(),
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'g' => status.go_to_encrypted_drive(),
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'u' => status.umount_encrypted_drive(),
-            Mode::Navigate(Navigate::RemovableDevices) if c == 'm' => {
-                status.mount_removable_device()
-            }
-            Mode::Navigate(Navigate::RemovableDevices) if c == 'g' => {
-                status.go_to_removable_device()
-            }
-            Mode::Navigate(Navigate::RemovableDevices) if c == 'u' => {
-                status.umount_removable_device()
-            }
+            Mode::Navigate(Navigate::RemovableDevices) if c == 'm' => status.mount_removable(),
+            Mode::Navigate(Navigate::RemovableDevices) if c == 'g' => status.go_to_removable(),
+            Mode::Navigate(Navigate::RemovableDevices) if c == 'u' => status.umount_removable(),
             Mode::Navigate(Navigate::Jump) if c == ' ' => status.jump_remove_selected_flagged(),
             Mode::Navigate(Navigate::Jump) if c == 'u' => status.clear_flags_and_reset_view(),
             Mode::Navigate(Navigate::Jump) if c == 'x' => status.delete_single_flagged(),
             Mode::Navigate(Navigate::Jump) if c == 'X' => status.trash_single_flagged(),
             Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => status.marks_jump_char(c),
             Mode::Navigate(Navigate::Marks(MarkAction::New)) => status.marks_new(c),
-            Mode::Preview | Mode::Navigate(_) => {
-                if tab.reset_mode() {
-                    tab.refresh_view()?;
-                }
-                Ok(())
-            }
+            Mode::Preview | Mode::Navigate(_) => tab.reset_mode_and_view(),
         }
     }
 }

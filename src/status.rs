@@ -421,6 +421,9 @@ impl Status {
         Ok(())
     }
 
+    pub fn trash_remove(&mut self) -> Result<()> {
+        self.trash.remove()
+    }
     /// Move the selected flagged file to the trash.
     pub fn trash_single_flagged(&mut self) -> Result<()> {
         let filepath = self
@@ -464,6 +467,12 @@ impl Status {
             path,
             std::fs::Permissions::from_mode(permissions),
         )?)
+    }
+
+    pub fn input_regex(&mut self, char: char) -> Result<()> {
+        self.selected().input.insert(char);
+        self.select_from_regex()?;
+        Ok(())
     }
 
     /// Flag every file matching a typed regex.
@@ -817,7 +826,7 @@ impl Status {
         }
     }
 
-    pub fn mount_removable_device(&mut self) -> Result<()> {
+    pub fn mount_removable(&mut self) -> Result<()> {
         let Some(devices) = &mut self.removable_devices else {
             return Ok(());
         };
@@ -831,7 +840,7 @@ impl Status {
         Ok(())
     }
 
-    pub fn umount_removable_device(&mut self) -> Result<()> {
+    pub fn umount_removable(&mut self) -> Result<()> {
         let Some(devices) = &mut self.removable_devices else {
             return Ok(());
         };
@@ -845,7 +854,7 @@ impl Status {
         Ok(())
     }
 
-    pub fn go_to_removable_device(&mut self) -> Result<()> {
+    pub fn go_to_removable(&mut self) -> Result<()> {
         let Some(devices) = &self.removable_devices else {
             return Ok(());
         };

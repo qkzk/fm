@@ -450,6 +450,14 @@ impl Tab {
         must_refresh
     }
 
+    pub fn reset_mode_and_view(&mut self) -> Result<()> {
+        if self.reset_mode() {
+            self.refresh_view()
+        } else {
+            Ok(())
+        }
+    }
+
     /// Returns true if the current mode requires 2 windows.
     /// Only Tree, Normal & Preview doesn't require 2 windows.
     pub fn need_second_window(&self) -> bool {
@@ -494,6 +502,12 @@ impl Tab {
             }
         }
         self.window.scroll_to(0);
+    }
+
+    /// Insert a char in the input string.
+    pub fn input_insert(&mut self, char: char) -> Result<()> {
+        self.input.insert(char);
+        Ok(())
     }
 
     /// Add a char to input string, look for a possible completion.
