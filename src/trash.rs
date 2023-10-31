@@ -177,7 +177,10 @@ impl std::fmt::Display for TrashInfo {
 }
 
 /// Represent a view of the trash.
-/// It's content is navigable so we use a Vector to hold the content.
+/// Its content is navigable so we use a Vector to hold the content.
+/// Only files that share the same mount point as the trash folder (generally ~/.local/share/Trash)
+/// can be moved to trash.
+/// Other files are unaffected.
 #[derive(Clone)]
 pub struct Trash {
     /// Trashed files info.
@@ -286,12 +289,18 @@ impl Trash {
 
     fn execute_trash(&mut self, trash_info: TrashInfo, dest_file_name: &str) -> Result<()> {
         let trashfile_filename = &self.trashfile_path(dest_file_name);
-        std::fs::rename(&trash_info.origin, trashfile_filename)?;
-        Self::log_trash_add(&trash_info.origin, dest_file_name);
-        trash_info.write_trash_info(&self.trashinfo_path(dest_file_name))?;
-        self.content.push(trash_info);
-
-        Ok(())
+        match std::fs::rename(&trash_info.origin, trashfile_filename) {
+            Err(error) => {
+                log::info!("Couldn't trash {trash_info}. Error: {error:?}");
+                Ok(())
+            }
+            Ok(()) => {
+                Self::log_trash_add(&trash_info.origin, dest_file_name);
+                trash_info.write_trash_info(&self.trashinfo_path(dest_file_name))?;
+                self.content.push(trash_info);
+                Ok(())
+            }
+        }
     }
 
     fn log_trash_add(origin: &Path, dest_file_name: &str) {

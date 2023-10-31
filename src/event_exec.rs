@@ -30,8 +30,7 @@ use crate::shell_parser::ShellCommandParser;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::utils::{
-    args_is_empty, disk_used_by_path, is_program_in_path, is_sudo_command, open_in_current_neovim,
-    opt_mount_point, string_to_path,
+    args_is_empty, is_program_in_path, is_sudo_command, open_in_current_neovim, string_to_path,
 };
 
 /// Links events from tuikit to custom actions.
@@ -861,16 +860,8 @@ impl EventAction {
         if status.flagged.is_empty() {
             Self::toggle_flag(status)?;
         }
-        let trash_mount_point = opt_mount_point(disk_used_by_path(
-            status.system_info.disks(),
-            std::path::Path::new(&status.trash.trash_folder_files),
-        ));
 
         for flagged in status.flagged.content.iter() {
-            let origin_mount_point = opt_mount_point(disk_used_by_path(status.disks(), flagged));
-            if trash_mount_point != origin_mount_point {
-                continue;
-            }
             status.trash.trash(flagged)?;
         }
         status.flagged.clear();

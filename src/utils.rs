@@ -55,16 +55,6 @@ pub fn disk_space(disks: &[Disk], path: &Path) -> String {
     disk_space_used(disk_used_by_path(disks, path))
 }
 
-/// Takes a disk and returns its mount point.
-/// Returns `None` if it received `None`.
-/// It's a poor fix to support OSX where `sysinfo::Disk` doesn't implement `PartialEq`.
-pub fn opt_mount_point(disk: Option<&Disk>) -> Option<&std::path::Path> {
-    let Some(disk) = disk else {
-        return None;
-    };
-    Some(disk.mount_point())
-}
-
 /// Print the path on the stdout.
 pub fn print_on_quit(path_string: &str) {
     println!("{path_string}")
