@@ -14,6 +14,8 @@ pub const ACTION_LOG_PATH: &str = "~/.config/fm/log/action_logger.log";
 pub const TRASH_FOLDER_FILES: &str = "~/.local/share/Trash/files";
 /// Path to the trash folder info file
 pub const TRASH_FOLDER_INFO: &str = "~/.local/share/Trash/info";
+/// Trash info files extension. Watchout it includes the final '.'
+pub const TRASH_INFO_EXTENSION: &str = ".trashinfo";
 /// Log file path. Rotating file logs are created in the same directeroy
 pub const LOG_PATH: &str = "~/.config/fm/fm{}";
 /// File where marks are stored.

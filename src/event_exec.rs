@@ -863,7 +863,7 @@ impl EventAction {
         }
         let trash_mount_point = opt_mount_point(disk_used_by_path(
             status.system_info.disks(),
-            &std::path::PathBuf::from(&status.trash.trash_folder_files),
+            std::path::Path::new(&status.trash.trash_folder_files),
         ));
 
         for flagged in status.flagged.content.iter() {

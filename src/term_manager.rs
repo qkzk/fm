@@ -894,7 +894,7 @@ impl<'a> WinSecondary<'a> {
         }
         Ok(())
     }
-    /// Display a list of edited (deleted, copied, moved) files for confirmation
+    /// Display a list of edited (deleted, copied, moved, trashed) files for confirmation
     fn confirm(
         &self,
         status: &Status,
@@ -905,13 +905,22 @@ impl<'a> WinSecondary<'a> {
         info!("confirmed action: {:?}", confirmed_mode);
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => {
-                for (row, trashinfo) in status.trash.content.iter().enumerate() {
-                    canvas.print_with_attr(
-                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                if status.trash.is_empty() {
+                    let _ = canvas.print_with_attr(
+                        ContentWindow::WINDOW_MARGIN_TOP + 2,
                         4,
-                        &format!("{trashinfo}"),
-                        Attr::default(),
-                    )?;
+                        "Trash is empty",
+                        ATTR_YELLOW_BOLD,
+                    );
+                } else {
+                    for (row, trashinfo) in status.trash.content().iter().enumerate() {
+                        canvas.print_with_attr(
+                            row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                            4,
+                            &format!("{trashinfo}"),
+                            Attr::default(),
+                        )?;
+                    }
                 }
             }
             _ => {

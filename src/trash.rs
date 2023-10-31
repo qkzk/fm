@@ -8,7 +8,7 @@ use log::info;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 
-use crate::constant_strings_paths::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO};
+use crate::constant_strings_paths::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO, TRASH_INFO_EXTENSION};
 use crate::impl_selectable_content;
 use crate::log::write_log_line;
 use crate::utils::read_lines;
@@ -72,73 +72,95 @@ DeletionDate={}
 
     /// Reads a .trashinfo file and parse it into a new instance.
     ///
-    /// Let say `Document.trashinfo` contains :
+    /// Let say `Documents.trashinfo` contains :
     ///
+    /// ```not_rust
     /// [TrashInfo]
     /// Path=/home/quentin/Documents
     /// DeletionDate=2022-12-31T22:45:55
+    /// ```
     ///
     /// It will be parsed into
+    /// ```rust
     /// TrashInfo { PathBuf::from("/home/quentin/Documents"), "Documents", "2022-12-31T22:45:55" }
+    /// ```
     pub fn from_trash_info_file(trash_info_file: &Path) -> Result<Self> {
-        let mut option_path: Option<PathBuf> = None;
-        let mut option_deleted_time: Option<String> = None;
-        let mut found_trash_info_line: bool = false;
-        if let Some(dest_name) = trash_info_file.file_name() {
-            let dest_name = Self::remove_extension(dest_name.to_str().unwrap().to_owned())?;
-            if let Ok(lines) = read_lines(trash_info_file) {
-                for (index, line_result) in lines.enumerate() {
-                    let Ok(line) = line_result.as_ref() else {
-                        continue;
-                    };
-                    if line.starts_with("[Trash Info]") {
-                        if index == 0 {
-                            found_trash_info_line = true;
-                            continue;
-                        } else {
-                            return trashinfo_error("[TrashInfo] was found after first line");
-                        }
-                    }
-                    if line.starts_with("Path=") && option_path.is_none() {
-                        if !found_trash_info_line {
-                            return trashinfo_error("Found Path line before TrashInfo");
-                        }
-                        let path_part = &line[5..];
-                        let cow_path_str = url_escape::decode(path_part);
-                        let path_str = cow_path_str.as_ref();
-                        option_path = Some(PathBuf::from(path_str));
-                    } else if line.starts_with("DeletionDate=") && option_deleted_time.is_none() {
-                        if !found_trash_info_line {
-                            return trashinfo_error("Found DeletionDate line before TrashInfo");
-                        }
-                        let deletion_date_str = &line[13..];
-                        match parsed_date_from_path_info(deletion_date_str) {
-                            Ok(()) => (),
-                            Err(e) => return Err(e),
-                        }
-                        option_deleted_time = Some(deletion_date_str.to_owned())
-                    }
-                }
-            }
-            match (option_path, option_deleted_time) {
-                (Some(origin), Some(deletion_date)) => Ok(Self {
+        let (option_path, option_deleted_time) = Self::parse_trash_info_file(trash_info_file)?;
+
+        match (option_path, option_deleted_time) {
+            (Some(origin), Some(deletion_date)) => {
+                let dest_name = Self::get_dest_name(trash_info_file)?;
+                Ok(Self {
                     dest_name,
                     deletion_date,
                     origin,
-                }),
-                _ => trashinfo_error("Couldn't parse the trash info file"),
+                })
             }
+            _ => Err(anyhow!("Couldn't parse the trash info file")),
+        }
+    }
+
+    fn get_dest_name(trash_info_file: &Path) -> Result<String> {
+        if let Some(dest_name) = trash_info_file.file_name() {
+            let dest_name = Self::remove_extension(dest_name.to_str().unwrap().to_owned())?;
+            Ok(dest_name)
         } else {
-            trashinfo_error("Couldn't parse the trash info filename")
+            Err(anyhow!("Couldn't parse the trash info filename"))
+        }
+    }
+
+    fn parse_trash_info_file(trash_info_file: &Path) -> Result<(Option<PathBuf>, Option<String>)> {
+        let mut option_path: Option<PathBuf> = None;
+        let mut option_deleted_time: Option<String> = None;
+
+        if let Ok(mut lines) = read_lines(trash_info_file) {
+            let Some(Ok(first_line)) = lines.next() else {
+                return Err(anyhow!("Unreadable TrashInfo file"));
+            };
+            if !first_line.starts_with("[Trash Info]") {
+                return Err(anyhow!("First line should start with [TrashInfo]"));
+            }
+
+            for line in lines {
+                let Ok(line) = line else {
+                    continue;
+                };
+                if option_path.is_none() && line.starts_with("Path=") {
+                    option_path = Some(Self::parse_option_path(&line));
+                    continue;
+                }
+                if option_deleted_time.is_none() && line.starts_with("DeletionDate=") {
+                    option_deleted_time = Some(Self::parse_deletion_date(&line)?);
+                }
+            }
+        }
+
+        Ok((option_path, option_deleted_time))
+    }
+
+    fn parse_option_path(line: &str) -> PathBuf {
+        let path_part = &line[5..];
+        let cow_path_str = url_escape::decode(path_part);
+        let path_str = cow_path_str.as_ref();
+        PathBuf::from(path_str)
+    }
+
+    fn parse_deletion_date(line: &str) -> Result<String> {
+        let deletion_date_str = &line[13..];
+        match parsed_date_from_path_info(deletion_date_str) {
+            Ok(()) => Ok(deletion_date_str.to_owned()),
+            Err(e) => Err(e),
         }
     }
 
     fn remove_extension(mut destname: String) -> Result<String> {
-        if destname.ends_with(".trashinfo") {
+        if destname.ends_with(TRASH_INFO_EXTENSION) {
             destname.truncate(destname.len() - 10);
             Ok(destname)
         } else {
-            Err(anyhow!("trahsinfo: filename doesn't contain .trashfino"))
+            Err(anyhow!(
+                "trahsinfo: filename doesn't contain {TRASH_INFO_EXTENSION}"
+            ))
         }
     }
 }
@@ -159,7 +181,7 @@ impl std::fmt::Display for TrashInfo {
 #[derive(Clone)]
 pub struct Trash {
     /// Trashed files info.
-    pub content: Vec<TrashInfo>,
+    content: Vec<TrashInfo>,
     index: usize,
     /// The path to the trashed files
     pub trash_folder_files: String,
@@ -171,7 +193,7 @@ impl Trash {
         if let Some(file_name) = origin.file_name() {
             let mut dest = file_name
                 .to_str()
-                .context("pick_dest_name :Couldn't parse the origin filename into a string")?
+                .context("pick_dest_name: Couldn't parse the origin filename into a string")?
                 .to_owned();
             let mut dest_path = PathBuf::from(&self.trash_folder_files);
             dest_path.push(&dest);
@@ -242,50 +264,67 @@ impl Trash {
         }
 
         let dest_file_name = self.pick_dest_name(origin)?;
-        let trash_info = TrashInfo::new(origin, &dest_file_name);
-        let mut trashfile_filename = PathBuf::from(&self.trash_folder_files);
-        trashfile_filename.push(&dest_file_name);
 
-        let mut dest_trashinfo_name = dest_file_name.clone();
-        dest_trashinfo_name.push_str(".trashinfo");
-        let mut trashinfo_filename = PathBuf::from(&self.trash_folder_info);
-        trashinfo_filename.push(dest_trashinfo_name);
-        trash_info.write_trash_info(&trashinfo_filename)?;
+        self.execute_trash(TrashInfo::new(origin, &dest_file_name), &dest_file_name)
+    }
 
+    fn concat_path(root: &str, filename: &str) -> PathBuf {
+        let mut concatened_path = PathBuf::from(root);
+        concatened_path.push(filename);
+        concatened_path
+    }
+
+    fn trashfile_path(&self, dest_file_name: &str) -> PathBuf {
+        Self::concat_path(&self.trash_folder_files, dest_file_name)
+    }
+
+    fn trashinfo_path(&self, dest_trashinfo_name: &str) -> PathBuf {
+        let mut dest_trashinfo_name = dest_trashinfo_name.to_owned();
+        dest_trashinfo_name.push_str(TRASH_INFO_EXTENSION);
+        Self::concat_path(&self.trash_folder_info, &dest_trashinfo_name)
+    }
+
+    fn execute_trash(&mut self, trash_info: TrashInfo, dest_file_name: &str) -> Result<()> {
+        let trashfile_filename = &self.trashfile_path(dest_file_name);
+        std::fs::rename(&trash_info.origin, trashfile_filename)?;
+        Self::log_trash_add(&trash_info.origin, dest_file_name);
+        trash_info.write_trash_info(&self.trashinfo_path(dest_file_name))?;
         self.content.push(trash_info);
 
-        std::fs::rename(origin, &trashfile_filename)?;
+        Ok(())
+    }
 
+    fn log_trash_add(origin: &Path, dest_file_name: &str) {
         info!("moved to trash {:?} -> {:?}", origin, dest_file_name);
         let log_line = format!("moved to trash {:?} -> {:?}", origin, dest_file_name);
         write_log_line(log_line);
-        Ok(())
     }
 
     /// Empty the trash, removing all the files and the trashinfo.
     /// This action requires a confirmation.
     /// Watchout, it may delete files that weren't parsed.
     pub fn empty_trash(&mut self) -> Result<()> {
-        remove_dir_all(&self.trash_folder_files)?;
-        create_dir(&self.trash_folder_files)?;
-
-        remove_dir_all(&self.trash_folder_info)?;
-        create_dir(&self.trash_folder_info)?;
+        self.empty_trash_dirs()?;
         let number_of_elements = self.content.len();
-
         self.content = vec![];
-
-        let log_line = format!(
-            "Emptied the trash: {} files permanently deleted",
-            number_of_elements
-        );
-        write_log_line(log_line);
-        info!(
-            "Emptied the trash: {} files permanently deleted",
-            number_of_elements
-        );
-
+        Self::log_trash_empty(number_of_elements);
         Ok(())
+    }
+
+    fn empty_trash_dirs(&self) -> Result<(), std::io::Error> {
+        Self::empty_dir(&self.trash_folder_files)?;
+        Self::empty_dir(&self.trash_folder_files)
+    }
+
+    fn empty_dir(dir: &str) -> Result<(), std::io::Error> {
+        remove_dir_all(dir)?;
+        create_dir(dir)
+    }
+
+    fn log_trash_empty(number_of_elements: usize) {
+        let log_line = format!("Emptied the trash: {number_of_elements} files permanently deleted");
+        write_log_line(log_line);
+        info!("Emptied the trash: {number_of_elements} files permanently deleted");
     }
 
     fn remove_selected_file(&mut self) -> Result<(PathBuf, PathBuf, PathBuf)> {
@@ -294,35 +333,31 @@ impl Trash {
                 "remove selected file: Can't restore from an empty trash",
             ));
         }
-        let trashinfo = self.content[self.index].to_owned();
+        let trashinfo = &self.content[self.index];
+        let origin = trashinfo.origin.to_owned();
 
-        let origin = trashinfo.origin;
-        let dest_name = trashinfo.dest_name;
-        let parent = find_parent(&origin)?;
+        let parent = find_parent(&trashinfo.origin)?;
 
-        let mut info_name = dest_name.clone();
-        info_name.push_str(".trashinfo");
-
-        let mut trashed_file_content = PathBuf::from(&self.trash_folder_files);
-        trashed_file_content.push(&dest_name);
-
-        let mut trashed_file_info = PathBuf::from(&self.trash_folder_info);
-        trashed_file_info.push(&info_name);
+        let trashed_file_content = self.trashfile_path(&trashinfo.dest_name);
+        let trashed_file_info = self.trashinfo_path(&trashinfo.dest_name);
 
         if !trashed_file_content.exists() {
             return Err(anyhow!("trash restore: Couldn't find the trashed file",));
         }
 
         if !trashed_file_info.exists() {
-            return Err(anyhow!(
-                "trash restore: Couldn't find the trashed file info",
-            ));
+            return Err(anyhow!("trash restore: Couldn't find the trashed info",));
         }
 
-        self.content.remove(self.index);
-        std::fs::remove_file(&trashed_file_info)?;
+        self.remove_from_content_and_delete_trashinfo(&trashed_file_info)?;
 
         Ok((origin, trashed_file_content, parent))
+    }
+
+    fn remove_from_content_and_delete_trashinfo(&mut self, trashed_file_info: &Path) -> Result<()> {
+        self.content.remove(self.index);
+        std::fs::remove_file(trashed_file_info)?;
+        Ok(())
     }
 
     /// Restores a file from the trash to its previous directory.
@@ -332,13 +367,22 @@ impl Trash {
             return Ok(());
         }
         let (origin, trashed_file_content, parent) = self.remove_selected_file()?;
+        Self::execute_restore(&origin, &trashed_file_content, &parent)?;
+        Self::log_trash_restore(&origin);
+        Ok(())
+    }
+
+    fn execute_restore(origin: &Path, trashed_file_content: &Path, parent: &Path) -> Result<()> {
         if !parent.exists() {
-            std::fs::create_dir_all(&parent)?
+            std::fs::create_dir_all(parent)?
         }
-        std::fs::rename(trashed_file_content, &origin)?;
+        std::fs::rename(trashed_file_content, origin)?;
+        Ok(())
+    }
+
+    fn log_trash_restore(origin: &Path) {
         let log_line = format!("Trash restored: {origin}", origin = origin.display());
         write_log_line(log_line);
-        Ok(())
     }
 
     /// Deletes a file permanently from the trash.
@@ -350,15 +394,20 @@ impl Trash {
         let (_, trashed_file_content, _) = self.remove_selected_file()?;
 
         std::fs::remove_file(&trashed_file_content)?;
+        Self::log_trash_remove(&trashed_file_content);
+
         if self.index > 0 {
             self.index -= 1
         }
+        Ok(())
+    }
+
+    fn log_trash_remove(trashed_file_content: &Path) {
         let log_line = format!(
-            "Trash removed {trashed_file_content}",
+            "Trash removed: {trashed_file_content}",
             trashed_file_content = trashed_file_content.display()
         );
         write_log_line(log_line);
-        Ok(())
     }
 }
 
@@ -380,10 +429,6 @@ fn rand_string() -> String {
         .take(2)
         .map(char::from)
         .collect()
-}
-
-fn trashinfo_error(msg: &str) -> Result<TrashInfo> {
-    Err(anyhow!("trash {}", msg))
 }
 
 fn find_parent(path: &Path) -> Result<PathBuf> {
