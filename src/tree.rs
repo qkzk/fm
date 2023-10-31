@@ -38,14 +38,6 @@ impl ColoredString {
         };
         Self::new(text, current_node.attr(), current_node.filepath())
     }
-
-    fn from_metadata_line(current_node: &Node) -> Self {
-        Self::new(
-            current_node.metadata_line.to_owned(),
-            current_node.attr(),
-            current_node.filepath(),
-        )
-    }
 }
 
 /// An element in a tree.
@@ -469,7 +461,7 @@ impl Tree {
             }
 
             content.push((
-                ColoredString::from_metadata_line(&current.node),
+                current.node.metadata_line.to_owned(),
                 prefix.to_owned(),
                 ColoredString::from_node(&current.node),
             ));

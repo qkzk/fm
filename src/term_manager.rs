@@ -407,7 +407,7 @@ impl<'a> WinMain<'a> {
             }
 
             let col_metadata = if status.display_full {
-                canvas.print_with_attr(row, left_margin, &metadata.text, attr)?
+                canvas.print_with_attr(row, left_margin, metadata, attr)?
             } else {
                 0
             };

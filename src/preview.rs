@@ -1311,7 +1311,7 @@ macro_rules! impl_window {
 
 /// A tuple with `(ColoredString, String, ColoredString)`.
 /// Used to iter and impl window trait in tree mode.
-pub type ColoredTriplet = (ColoredString, String, ColoredString);
+pub type ColoredTriplet = (String, String, ColoredString);
 
 /// A vector of highlighted strings
 pub type VecSyntaxedString = Vec<SyntaxedString>;
