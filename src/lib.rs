@@ -1,4 +1,5 @@
 pub mod action_map;
+pub mod app;
 pub mod args;
 pub mod bulkrename;
 pub mod cli_info;
@@ -31,6 +32,7 @@ pub mod nvim;
 pub mod opener;
 pub mod password;
 pub mod preview;
+pub mod refresher;
 pub mod removable_devices;
 pub mod selectable_content;
 pub mod shell_menu;
