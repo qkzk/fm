@@ -1,3 +1,36 @@
+trait User {
+    fn id(&self) -> u32;
+    fn name(&self) -> &str;
+    fn from_id_and_name(id: u32, name: &str) -> Self;
+}
+
+#[derive(Debug, Clone)]
+struct Owner {
+    id: u32,
+    name: String,
+}
+
+impl User for Owner {
+    fn id(&self) -> u32 {
+        self.id
+    }
+
+    fn name(&self) -> &str {
+        self.name.as_ref()
+    }
+
+    fn from_id_and_name(id: u32, name: &str) -> Self {
+        Self {
+            id,
+            name: name.to_owned(),
+        }
+    }
+}
+
+type Group = Owner;
+
+// NOTE: should this be splitted in 2 ?
+
 /// Users and Groups of current Unix system.
 /// It requires `/etc/passwd` and `/etc/group` to be at their usual place.
 ///
@@ -11,58 +44,52 @@
 /// Cloning should be easy.
 #[derive(Clone, Debug, Default)]
 pub struct Users {
-    users: Vec<(u32, String)>,
-    groups: Vec<(u32, String)>,
+    users: Vec<Owner>,
+    groups: Vec<Group>,
 }
 
 impl Users {
-    /// Name of the user from its uid.
-    pub fn get_user_by_uid(&self, uid: u32) -> Option<String> {
-        if let Ok(index) = self
-            .users
+    /// Search for an id in a _**sorted**_ collection of `Owner`, returns its name.
+    fn search(collection: &[Owner], id: u32) -> Option<String> {
+        if let Ok(index) = collection
             .iter()
-            .map(|pair| pair.0)
+            .map(|pair| pair.id())
             .collect::<Vec<_>>()
-            .binary_search(&uid)
+            .binary_search(&id)
         {
-            return Some(self.users[index].1.to_owned());
+            return Some(collection[index].name().into());
         }
         None
+    }
+
+    /// Name of the user from its uid.
+    pub fn get_user_by_uid(&self, uid: u32) -> Option<String> {
+        Self::search(&self.users, uid)
     }
 
     /// Name of the group from its gid.
     pub fn get_group_by_gid(&self, gid: u32) -> Option<String> {
-        if let Ok(index) = self
-            .groups
-            .iter()
-            .map(|pair| pair.0)
-            .collect::<Vec<_>>()
-            .binary_search(&gid)
-        {
-            return Some(self.groups[index].1.to_owned());
-        }
-        None
+        Self::search(&self.groups, gid)
     }
 
+    // NOTE: can't refactor further since GroupEntry and PasswdEntry don't share common trait
     fn update_users(mut self) -> Self {
-        let users = pgs_files::passwd::get_all_entries();
-        let mut pairs: Vec<(u32, String)> = users
+        let mut users: Vec<Owner> = pgs_files::passwd::get_all_entries()
             .iter()
-            .map(|entry| (entry.uid, entry.name.to_owned()))
+            .map(|entry| User::from_id_and_name(entry.uid, &entry.name))
             .collect();
-        pairs.sort_unstable_by_key(|pair| pair.0);
-        self.users = pairs;
+        users.sort_unstable_by_key(|pair| pair.id());
+        self.users = users;
         self
     }
 
     fn update_groups(mut self) -> Self {
-        let users = pgs_files::group::get_all_entries();
-        let mut pairs: Vec<(u32, String)> = users
+        let mut groups: Vec<Group> = pgs_files::group::get_all_entries()
             .iter()
-            .map(|entry| (entry.gid, entry.name.to_owned()))
+            .map(|entry| Group::from_id_and_name(entry.gid, &entry.name))
             .collect();
-        pairs.sort_unstable_by_key(|pair| pair.0);
-        self.groups = pairs;
+        groups.sort_unstable_by_key(|pair| pair.id());
+        self.groups = groups;
         self
     }
 
