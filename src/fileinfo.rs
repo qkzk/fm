@@ -64,7 +64,7 @@ impl FileKind<Valid> {
     /// Returns the expected first symbol from `ln -l` line.
     /// d for directory, s for socket, . for file, c for char device,
     /// b for block, l for links.
-    fn extract_dir_symbol(&self) -> char {
+    fn dir_symbol(&self) -> char {
         match self {
             FileKind::Fifo => 'p',
             FileKind::Socket => 's',
@@ -157,44 +157,8 @@ pub struct FileInfo {
 }
 
 impl FileInfo {
-    /// Reads every information about a file from its metadata and returs
-    /// a new `FileInfo` object if we can create one.
-    pub fn new(direntry: &DirEntry, users: &Users) -> Result<FileInfo> {
-        let path = direntry.path();
-        let filename = extract_filename(direntry)?;
-
-        Self::create_from_metadata_and_filename(&path, &filename, users)
-    }
-
-    /// Creates a fileinfo from a path and a filename.
-    /// The filename is used when we create the fileinfo for "." and ".." in every folder.
-    pub fn from_path_with_name(path: &path::Path, filename: &str, users: &Users) -> Result<Self> {
-        Self::create_from_metadata_and_filename(path, filename, users)
-    }
-
-    pub fn from_path(path: &path::Path, users: &Users) -> Result<Self> {
-        let filename = path
-            .file_name()
-            .context("from path: couldn't read filenale")?
-            .to_str()
-            .context("from path: couldn't parse filenale")?;
-        Self::create_from_metadata_and_filename(path, filename, users)
-    }
-
-    fn metadata(&self) -> Result<std::fs::Metadata> {
-        Ok(symlink_metadata(&self.path)?)
-    }
-
-    pub fn permissions(&self) -> Result<String> {
-        Ok(extract_permissions_string(&self.metadata()?))
-    }
-
-    fn create_from_metadata_and_filename(
-        path: &path::Path,
-        filename: &str,
-        users: &Users,
-    ) -> Result<Self> {
-        let filename = filename.to_owned();
+    fn new(path: &path::Path, users: &Users) -> Result<Self> {
+        let filename = extract_filename(path)?;
         let metadata = symlink_metadata(path)?;
         let path = path.to_owned();
         let owner = extract_owner(&metadata, users)?;
@@ -220,6 +184,30 @@ impl FileInfo {
             extension,
             kind_format,
         })
+    }
+
+    /// Reads every information about a file from its metadata and returs
+    /// a new `FileInfo` object if we can create one.
+    pub fn from_direntry(direntry: &DirEntry, users: &Users) -> Result<FileInfo> {
+        Self::new(&direntry.path(), users)
+    }
+
+    /// Creates a fileinfo from a path and a filename.
+    /// The filename is used when we create the fileinfo for "." and ".." in every folder.
+    pub fn from_path_with_name(path: &path::Path, filename: &str, users: &Users) -> Result<Self> {
+        let mut file_info = Self::new(path, users)?;
+        file_info.filename = filename.to_owned();
+        file_info.kind_format = filekind_and_filename(filename, &file_info.file_kind);
+        Ok(file_info)
+    }
+
+    fn metadata(&self) -> Result<std::fs::Metadata> {
+        Ok(symlink_metadata(&self.path)?)
+    }
+
+    /// String representation of file permissions
+    pub fn permissions(&self) -> Result<String> {
+        Ok(extract_permissions_string(&self.metadata()?))
     }
 
     /// Format the file line.
@@ -258,7 +246,7 @@ impl FileInfo {
     }
 
     pub fn dir_symbol(&self) -> char {
-        self.file_kind.extract_dir_symbol()
+        self.file_kind.dir_symbol()
     }
 
     pub fn format_simple(&self) -> Result<String> {
@@ -275,6 +263,7 @@ impl FileInfo {
         self.is_selected = false;
     }
 
+    /// True iff the file is hidden (aka starts with a '.').
     pub fn is_hidden(&self) -> bool {
         self.filename.starts_with('.')
     }
@@ -283,13 +272,16 @@ impl FileInfo {
         self.path.is_dir()
     }
 
-    /// Name of proper files, empty string for `.` and `..`.
+    /// Formated proper name.
+    /// "/ " for `.`
     pub fn filename_without_dot_dotdot(&self) -> String {
-        let name = &self.filename;
-        if name == "." || name == ".." {
-            "".to_owned()
-        } else {
-            format!("/{name} ")
+        match self.filename.as_ref() {
+            "." => "/ ".to_owned(),
+            ".." => format!(
+                "/{name} ",
+                name = extract_filename(&self.path).unwrap_or_default()
+            ),
+            _ => format!("/{name} ", name = self.filename),
         }
     }
 }
@@ -588,19 +580,19 @@ pub fn is_not_hidden(entry: &DirEntry) -> Result<bool> {
     Ok(b)
 }
 
+fn extract_filename(path: &path::Path) -> Result<String> {
+    Ok(path
+        .file_name()
+        .context("from path: couldn't read filename")?
+        .to_str()
+        .context("from path: couldn't parse filename")?
+        .to_owned())
+}
+
 /// Returns the modified time.
 fn extract_datetime(metadata: &Metadata) -> Result<String> {
     let datetime: DateTime<Local> = metadata.modified()?.into();
     Ok(format!("{}", datetime.format("%Y/%m/%d %T")))
-}
-
-/// Returns the filename.
-fn extract_filename(direntry: &DirEntry) -> Result<String> {
-    Ok(direntry
-        .file_name()
-        .to_str()
-        .context("Couldn't read filename")?
-        .to_owned())
 }
 
 /// Reads the permission and converts them into a string.
@@ -693,7 +685,7 @@ pub fn files_collection(
             read_dir
                 .filter_map(|direntry| direntry.ok())
                 .filter(|direntry| show_hidden || is_not_hidden(direntry).unwrap_or(true))
-                .map(|direntry| FileInfo::new(&direntry, users))
+                .map(|direntry| FileInfo::from_direntry(&direntry, users))
                 .filter_map(|fileinfo| fileinfo.ok())
                 .filter(|fileinfo| filter_kind.filter_by(fileinfo, keep_dir))
                 .collect(),
