@@ -74,11 +74,13 @@ impl Completion {
     fn update(&mut self, proposals: Vec<String>) {
         self.index = 0;
         self.proposals = proposals;
+        self.proposals.dedup()
     }
 
     fn extend(&mut self, proposals: &[String]) {
         self.index = 0;
-        self.proposals.extend_from_slice(proposals)
+        self.proposals.extend_from_slice(proposals);
+        self.proposals.dedup()
     }
 
     /// Empty the proposals `Vec`.
@@ -98,7 +100,6 @@ impl Completion {
         }
         self.extend_absolute_paths(&parent, &last_name);
         self.extend_relative_paths(current_path, &last_name);
-        self.proposals.dedup();
         Ok(())
     }
 
