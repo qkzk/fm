@@ -6,7 +6,6 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
 use log::info;
-use sysinfo::SystemExt;
 
 use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
@@ -16,7 +15,8 @@ use crate::constant_strings_paths::{
 use crate::cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
 use crate::filter::FilterKind;
 use crate::log::{read_log, write_log_line};
-use crate::mocp::{is_mocp_installed, Mocp};
+use crate::mocp::Mocp;
+use crate::mocp::MOCP;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
 use crate::opener::{
     execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
@@ -1013,7 +1013,7 @@ impl EventAction {
 
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn mocp_add_to_playlist(tab: &Tab) -> Result<()> {
-        if !is_mocp_installed() {
+        if !is_program_in_path(MOCP) {
             write_log_line("mocp isn't installed".to_owned());
             return Ok(());
         }
@@ -1021,7 +1021,7 @@ impl EventAction {
     }
 
     pub fn mocp_clear_playlist() -> Result<()> {
-        if !is_mocp_installed() {
+        if !is_program_in_path(MOCP) {
             write_log_line("mocp isn't installed".to_owned());
             return Ok(());
         }
@@ -1031,7 +1031,7 @@ impl EventAction {
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn mocp_go_to_song(status: &mut Status) -> Result<()> {
         let tab = status.selected();
-        if !is_mocp_installed() {
+        if !is_program_in_path(MOCP) {
             write_log_line("mocp isn't installed".to_owned());
             return Ok(());
         }
@@ -1044,7 +1044,7 @@ impl EventAction {
     /// Starts the server if needed, preventing the output to fill the screen.
     /// Then toggle play/pause
     pub fn mocp_toggle_pause(status: &mut Status) -> Result<()> {
-        if !is_mocp_installed() {
+        if !is_program_in_path(MOCP) {
             write_log_line("mocp isn't installed".to_owned());
             return Ok(());
         }
@@ -1053,7 +1053,7 @@ impl EventAction {
 
     /// Skip to the next song in MOC
     pub fn mocp_next() -> Result<()> {
-        if !is_mocp_installed() {
+        if !is_program_in_path(MOCP) {
             write_log_line("mocp isn't installed".to_owned());
             return Ok(());
         }
@@ -1062,7 +1062,7 @@ impl EventAction {
 
     /// Go to the previous song in MOC
     pub fn mocp_previous() -> Result<()> {
-        if !is_mocp_installed() {
+        if !is_program_in_path(MOCP) {
             write_log_line("mocp isn't installed".to_owned());
             return Ok(());
         }

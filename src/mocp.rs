@@ -7,16 +7,8 @@ use crate::opener::{
 };
 use crate::status::Status;
 use crate::tab::Tab;
-use crate::utils::is_program_in_path;
 
-static MOCP: &str = DEFAULT_AUDIO_OPENER.0;
-
-/// True iff `mocp` is in path.
-/// Nothing can be done here without it, we shouldn't run commands
-/// that will always fail.
-pub fn is_mocp_installed() -> bool {
-    is_program_in_path(MOCP)
-}
+pub const MOCP: &str = DEFAULT_AUDIO_OPENER.0;
 
 /// A bunch of methods to control MOC.
 /// It relies on the application `mocp` itself to :
