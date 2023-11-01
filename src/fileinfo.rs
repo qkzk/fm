@@ -202,9 +202,7 @@ impl FileInfo {
         let system_time = extract_datetime(&metadata)?;
         let is_selected = false;
         let true_size = extract_file_size(&metadata);
-
         let file_kind = FileKind::new(&metadata, &path);
-
         let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
         let kind_format = filekind_and_filename(&filename, &file_kind);
