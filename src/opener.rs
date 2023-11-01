@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::env;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -17,22 +16,7 @@ use crate::constant_strings_paths::{
 use crate::decompress::{decompress_gz, decompress_xz, decompress_zip};
 use crate::fileinfo::extract_extension;
 use crate::log::write_log_line;
-
-fn find_it<P>(exe_name: P) -> Option<PathBuf>
-where
-    P: AsRef<Path>,
-{
-    env::var_os("PATH").and_then(|paths| {
-        env::split_paths(&paths).find_map(|dir| {
-            let full_path = dir.join(&exe_name);
-            if full_path.is_file() {
-                Some(full_path)
-            } else {
-                None
-            }
-        })
-    })
-}
+use crate::utils::is_program_in_path;
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
@@ -210,7 +194,7 @@ impl OpenerAssociation {
     fn validate_openers(&mut self) {
         self.association.retain(|_, opener| {
             opener.external_program.is_none()
-                || find_it(opener.external_program.as_ref().unwrap()).is_some()
+                || is_program_in_path(opener.external_program.as_ref().unwrap())
         });
     }
 }
@@ -241,7 +225,7 @@ pub struct OpenerInfo {
 impl Default for OpenerInfo {
     fn default() -> Self {
         Self {
-            external_program: Some("/usr/bin/xdg-open".to_owned()),
+            external_program: Some(DEFAULT_OPENER.0.to_owned()),
             internal_variant: None,
             use_term: false,
         }

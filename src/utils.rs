@@ -96,7 +96,10 @@ pub fn current_username() -> Result<String> {
 }
 
 /// True iff the command is available in $PATH.
-pub fn is_program_in_path(program: &str) -> bool {
+pub fn is_program_in_path<S>(program: S) -> bool
+where
+    S: Into<String> + std::fmt::Display,
+{
     if let Ok(path) = std::env::var("PATH") {
         for p in path.split(':') {
             let p_str = &format!("{p}/{program}");
