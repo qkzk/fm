@@ -106,8 +106,7 @@ impl CryptoDevice {
             .disks()
             .iter()
             .map(|d| d.mount_point())
-            .map(|p| p.to_str())
-            .flatten()
+            .filter_map(|p| p.to_str())
             .map(|s| s.to_owned())
             .find(|s| s.contains(&self.uuid))
     }
