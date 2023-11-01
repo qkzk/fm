@@ -7,7 +7,7 @@ use std::time::{Duration, SystemTime};
 
 use crate::constant_strings_paths::TMP_FOLDER_PATH;
 use crate::impl_selectable_content;
-use crate::log::write_log_line;
+use crate::log_line;
 use crate::opener::Opener;
 use crate::status::Status;
 use crate::utils::random_name;
@@ -163,11 +163,9 @@ impl<'a> Bulkrename<'a> {
             let new_name = sanitize_filename::sanitize(filename);
             self.rename_file(path, &new_name)?;
             counter += 1;
-            let log_line = format!("Bulk renamed {path} to {new_name}", path = path.display());
-            write_log_line(log_line);
+            log_line!("Bulk renamed {path} to {new_name}", path = path.display());
         }
-        let log_line = format!("Bulk renamed {counter} files");
-        write_log_line(log_line);
+        log_line!("Bulk renamed {counter} files");
         Ok(())
     }
 
@@ -186,20 +184,17 @@ impl<'a> Bulkrename<'a> {
                 };
                 info!("creating: {new_path:?}");
                 std::fs::File::create(&new_path)?;
-                let log_line = format!("Bulk created {new_path}", new_path = new_path.display());
-                write_log_line(log_line);
+                log_line!("Bulk created {new_path}", new_path = new_path.display());
                 counter += 1;
             } else {
                 new_path.push(filename);
                 info!("Bulk creating dir: {}", new_path.display());
                 std::fs::create_dir_all(&new_path)?;
-                let log_line = format!("Bulk created {new_path}", new_path = new_path.display());
-                write_log_line(log_line);
+                log_line!("Bulk created {new_path}", new_path = new_path.display());
                 counter += 1;
             }
         }
-        let log_line = format!("Bulk created {counter} files");
-        write_log_line(log_line);
+        log_line!("Bulk created {counter} files");
         Ok(())
     }
 

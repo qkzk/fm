@@ -10,7 +10,7 @@ use rand::{thread_rng, Rng};
 
 use crate::constant_strings_paths::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO, TRASH_INFO_EXTENSION};
 use crate::impl_selectable_content;
-use crate::log::write_log_line;
+use crate::log_line;
 use crate::utils::read_lines;
 
 const TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
@@ -305,8 +305,7 @@ impl Trash {
 
     fn log_trash_add(origin: &Path, dest_file_name: &str) {
         info!("moved to trash {:?} -> {:?}", origin, dest_file_name);
-        let log_line = format!("moved to trash {:?} -> {:?}", origin, dest_file_name);
-        write_log_line(log_line);
+        log_line!("moved to trash {:?} -> {:?}", origin, dest_file_name);
     }
 
     /// Empty the trash, removing all the files and the trashinfo.
@@ -331,8 +330,7 @@ impl Trash {
     }
 
     fn log_trash_empty(number_of_elements: usize) {
-        let log_line = format!("Emptied the trash: {number_of_elements} files permanently deleted");
-        write_log_line(log_line);
+        log_line!("Emptied the trash: {number_of_elements} files permanently deleted");
         info!("Emptied the trash: {number_of_elements} files permanently deleted");
     }
 
@@ -390,8 +388,7 @@ impl Trash {
     }
 
     fn log_trash_restore(origin: &Path) {
-        let log_line = format!("Trash restored: {origin}", origin = origin.display());
-        write_log_line(log_line);
+        log_line!("Trash restored: {origin}", origin = origin.display());
     }
 
     /// Deletes a file permanently from the trash.
@@ -412,11 +409,10 @@ impl Trash {
     }
 
     fn log_trash_remove(trashed_file_content: &Path) {
-        let log_line = format!(
+        log_line!(
             "Trash removed: {trashed_file_content}",
             trashed_file_content = trashed_file_content.display()
         );
-        write_log_line(log_line);
     }
 }
 

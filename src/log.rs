@@ -93,3 +93,12 @@ where
     log::info!(target: "special", "{log_line}");
     write_last_log_line(log_line);
 }
+
+#[macro_export]
+macro_rules! log_line {
+    ($($arg:tt)+) => (
+    $crate::log::write_log_line(
+      format!($($arg)+)
+    )
+  );
+}

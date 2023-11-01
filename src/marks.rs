@@ -7,7 +7,7 @@ use log::info;
 
 use crate::constant_strings_paths::MARKS_FILEPATH;
 use crate::impl_selectable_content;
-use crate::log::write_log_line;
+use crate::log_line;
 use crate::utils::read_lines;
 
 /// Holds the marks created by the user.
@@ -82,7 +82,7 @@ impl Marks {
     fn parse_line(line: Result<String, io::Error>) -> Result<(char, PathBuf)> {
         let line = line?;
         let sp: Vec<&str> = line.split(':').collect();
-        if sp.len() <= 1 {
+        if sp.len() != 2 {
             return Err(anyhow!("marks: parse_line: Invalid mark line: {line}"));
         }
         if let Some(ch) = sp[0].chars().next() {
@@ -100,30 +100,31 @@ impl Marks {
     /// If an update is done, the marks are saved again.
     pub fn new_mark(&mut self, ch: char, path: &Path) -> Result<()> {
         if ch == ':' {
-            let log_line = "new mark - ':' can't be used as a mark";
-            write_log_line(log_line.to_owned());
+            log_line!("new mark - ':' can't be used as a mark");
             return Ok(());
         }
         if self.used_chars.contains(&ch) {
-            let mut found_index = None;
-            for (index, (k, _)) in self.content.iter().enumerate() {
-                if *k == ch {
-                    found_index = Some(index);
-                    break;
-                }
-            }
-            let Some(found_index) = found_index else {
-                return Ok(());
-            };
-            self.content[found_index] = (ch, path.to_path_buf());
+            self.update_mark(ch, path);
         } else {
             self.content.push((ch, path.to_path_buf()))
         }
 
-        let log_line = format!("Saved mark {ch} -> {p}", p = path.display());
-        write_log_line(log_line);
+        self.save_marks()?;
+        log_line!("Saved mark {ch} -> {p}", p = path.display());
+        Ok(())
+    }
 
-        self.save_marks()
+    fn update_mark(&mut self, ch: char, path: &Path) {
+        let mut found_index = None;
+        for (index, (k, _)) in self.content.iter().enumerate() {
+            if *k == ch {
+                found_index = Some(index);
+                break;
+            }
+        }
+        if let Some(found_index) = found_index {
+            self.content[found_index] = (ch, path.to_path_buf())
+        }
     }
 
     fn save_marks(&self) -> Result<()> {

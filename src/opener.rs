@@ -15,7 +15,7 @@ use crate::constant_strings_paths::{
 };
 use crate::decompress::{decompress_gz, decompress_xz, decompress_zip};
 use crate::fileinfo::extract_extension;
-use crate::log::write_log_line;
+use crate::log_line;
 use crate::utils::is_program_in_path;
 
 /// Different kind of extensions for default openers.
@@ -433,8 +433,7 @@ pub fn execute_in_child<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     args: &[&str],
 ) -> Result<std::process::Child> {
     info!("execute_in_child. executable: {exe:?}, arguments: {args:?}");
-    let log_line = format!("Execute: {exe:?}, arguments: {args:?}");
-    write_log_line(log_line);
+    log_line!("Execute: {exe:?}, arguments: {args:?}");
     Ok(Command::new(exe).args(args).spawn()?)
 }
 

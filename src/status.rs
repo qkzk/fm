@@ -23,7 +23,7 @@ use crate::cryptsetup::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::fileinfo::FileKind;
 use crate::flagged::Flagged;
 use crate::iso::IsoDevice;
-use crate::log::write_log_line;
+use crate::log_line;
 use crate::marks::Marks;
 use crate::mode::{InputSimple, Mode, NeedConfirmation};
 use crate::mount_help::MountHelper;
@@ -728,8 +728,7 @@ impl Status {
                 if iso_device.mount(&current_username()?, &mut self.password_holder)? {
                     info!("iso mounter mounted {iso_device:?}");
 
-                    let log_line = format!("iso : {}", iso_device.as_string()?,);
-                    write_log_line(log_line);
+                    log_line!("iso : {}", iso_device.as_string()?);
                     let path = iso_device.mountpoints.clone().context("no mount point")?;
                     self.selected().set_pathcontent(&path)?;
                 };
@@ -942,8 +941,7 @@ impl Status {
                 std::fs::remove_file(pathbuf)?;
             }
         }
-        let log_line = format!("Deleted {nb} flagged files");
-        write_log_line(log_line);
+        log_line!("Deleted {nb} flagged files");
         self.selected().reset_mode();
         self.clear_flags_and_reset_view()?;
         self.refresh_status()

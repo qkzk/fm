@@ -11,7 +11,7 @@ use tuikit::prelude::{Attr, Color, Effect, Event, Key, Term};
 
 use crate::constant_strings_paths::NOTIFY_EXECUTABLE;
 use crate::fileinfo::human_size;
-use crate::log::write_log_line;
+use crate::log_line;
 use crate::opener::execute_in_child;
 use crate::utils::{is_program_in_path, random_name};
 
@@ -90,7 +90,7 @@ impl CopyMove {
         let message = format!("{preterit} {hs_bytes} bytes", preterit = self.preterit());
         let _ = notify(&message);
         info!("{message}");
-        write_log_line(message);
+        log_line!("{message}");
     }
 
     fn setup_progress_bar(

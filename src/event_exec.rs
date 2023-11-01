@@ -14,7 +14,8 @@ use crate::constant_strings_paths::{
 };
 use crate::cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
 use crate::filter::FilterKind;
-use crate::log::{read_log, write_log_line};
+use crate::log::read_log;
+use crate::log_line;
 use crate::mocp::Mocp;
 use crate::mocp::MOCP;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
@@ -143,12 +144,11 @@ impl EventAction {
                 .directory_of_selected()?
                 .join(filename);
             std::os::unix::fs::symlink(original_file, &link)?;
-            let log_line = format!(
+            log_line!(
                 "Symlink {link} links to {original_file}",
                 original_file = original_file.display(),
                 link = link.display()
             );
-            write_log_line(log_line);
         }
         status.clear_flags_and_reset_view()
     }
@@ -457,7 +457,7 @@ impl EventAction {
     /// It obviously requires the `dragon-drop` command to be installed.
     pub fn drag_n_drop(status: &mut Status) -> Result<()> {
         if !is_program_in_path(DEFAULT_DRAGNDROP) {
-            write_log_line(format!("{DEFAULT_DRAGNDROP} must be installed."));
+            log_line!("{DEFAULT_DRAGNDROP} must be installed.");
             return Ok(());
         }
         let Some(file) = status.selected_non_mut().selected() else {
@@ -795,7 +795,7 @@ impl EventAction {
     /// Display mediainfo details of an image
     pub fn mediainfo(tab: &mut Tab) -> Result<()> {
         if !is_program_in_path(MEDIAINFO) {
-            write_log_line(format!("{} isn't installed", MEDIAINFO));
+            log_line!("{} isn't installed", MEDIAINFO);
             return Ok(());
         }
         if let Mode::Normal | Mode::Tree = tab.mode {
@@ -813,7 +813,7 @@ impl EventAction {
     /// Display a diff between the first 2 flagged files or dir.
     pub fn diff(status: &mut Status) -> Result<()> {
         if !is_program_in_path(DIFF) {
-            write_log_line(format!("{DIFF} isn't installed"));
+            log_line!("{DIFF} isn't installed");
             return Ok(());
         }
         if status.flagged.len() < 2 {
@@ -923,7 +923,7 @@ impl EventAction {
     /// a luks encrypted device.
     pub fn encrypted_drive(status: &mut Status) -> Result<()> {
         if !lsblk_and_cryptsetup_installed() {
-            write_log_line("lsblk and cryptsetup must be installed.".to_owned());
+            log_line!("lsblk and cryptsetup must be installed.");
             return Ok(());
         }
         if status.encrypted_devices.is_empty() {
@@ -937,7 +937,7 @@ impl EventAction {
 
     pub fn removable_devices(status: &mut Status) -> Result<()> {
         if !is_program_in_path(GIO) {
-            write_log_line("gio must be installed.".to_owned());
+            log_line!("gio must be installed.");
             return Ok(());
         }
         status.removable_devices = RemovableDevices::from_gio();
@@ -991,7 +991,7 @@ impl EventAction {
     /// Requires `nitrogen` to be installed.
     pub fn set_wallpaper(tab: &Tab) -> Result<()> {
         if !is_program_in_path(NITROGEN) {
-            write_log_line("nitrogen must be installed".to_owned());
+            log_line!("nitrogen must be installed");
             return Ok(());
         }
         let Some(fileinfo) = tab.path_content.selected() else {
@@ -1013,7 +1013,7 @@ impl EventAction {
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn mocp_add_to_playlist(tab: &Tab) -> Result<()> {
         if !is_program_in_path(MOCP) {
-            write_log_line("mocp isn't installed".to_owned());
+            log_line!("mocp isn't installed");
             return Ok(());
         }
         Mocp::add_to_playlist(tab)
@@ -1021,7 +1021,7 @@ impl EventAction {
 
     pub fn mocp_clear_playlist() -> Result<()> {
         if !is_program_in_path(MOCP) {
-            write_log_line("mocp isn't installed".to_owned());
+            log_line!("mocp isn't installed");
             return Ok(());
         }
         Mocp::clear()
@@ -1031,7 +1031,7 @@ impl EventAction {
     pub fn mocp_go_to_song(status: &mut Status) -> Result<()> {
         let tab = status.selected();
         if !is_program_in_path(MOCP) {
-            write_log_line("mocp isn't installed".to_owned());
+            log_line!("mocp isn't installed");
             return Ok(());
         }
         Mocp::go_to_song(tab)?;
@@ -1044,7 +1044,7 @@ impl EventAction {
     /// Then toggle play/pause
     pub fn mocp_toggle_pause(status: &mut Status) -> Result<()> {
         if !is_program_in_path(MOCP) {
-            write_log_line("mocp isn't installed".to_owned());
+            log_line!("mocp isn't installed");
             return Ok(());
         }
         Mocp::toggle_pause(status)
@@ -1053,7 +1053,7 @@ impl EventAction {
     /// Skip to the next song in MOC
     pub fn mocp_next() -> Result<()> {
         if !is_program_in_path(MOCP) {
-            write_log_line("mocp isn't installed".to_owned());
+            log_line!("mocp isn't installed");
             return Ok(());
         }
         Mocp::next()
@@ -1062,7 +1062,7 @@ impl EventAction {
     /// Go to the previous song in MOC
     pub fn mocp_previous() -> Result<()> {
         if !is_program_in_path(MOCP) {
-            write_log_line("mocp isn't installed".to_owned());
+            log_line!("mocp isn't installed");
             return Ok(());
         }
         Mocp::previous()
@@ -1109,10 +1109,7 @@ impl NodeCreation {
         log::info!("root_path: {root_path:?}");
         let path = root_path.join(sanitize_filename::sanitize(tab.input.string()));
         if path.exists() {
-            write_log_line(format!(
-                "{self} {path} already exists",
-                path = path.display()
-            ));
+            log_line!("{self} {path} already exists", path = path.display());
         } else {
             match self {
                 Self::Newdir => {
@@ -1122,8 +1119,7 @@ impl NodeCreation {
                     fs::File::create(&path)?;
                 }
             }
-            let log_line = format!("Created new {self}: {path}", path = path.display());
-            write_log_line(log_line);
+            log_line!("Created new {self}: {path}", path = path.display());
         }
         tab.refresh_view()
     }
@@ -1177,8 +1173,7 @@ impl LeaveMode {
             if let Some(path_str) = status.selected_non_mut().path_content_str() {
                 let p = path::PathBuf::from(path_str);
                 status.marks.new_mark(*ch, &p)?;
-                let log_line = format!("Saved mark {ch} -> {p}", p = p.display());
-                write_log_line(log_line);
+                log_line!("Saved mark {ch} -> {p}", p = p.display());
             }
             status.selected().window.reset(len);
             status.selected().input.reset();
@@ -1221,8 +1216,7 @@ impl LeaveMode {
                 Status::set_permissions(path, permissions)?
             }
             status.flagged.clear();
-            let log_line = format!("Changed permissions to {input_permission}");
-            write_log_line(log_line);
+            log_line!("Changed permissions to {input_permission}");
         }
         status.selected().refresh_view()?;
         status.reset_tabs_view()
@@ -1318,12 +1312,11 @@ impl LeaveMode {
                 original_path.display(),
                 new_path.display()
             );
-            let log_line = format!(
+            log_line!(
                 "renaming: original: {} - new: {}",
                 original_path.display(),
                 new_path.display()
             );
-            write_log_line(log_line);
 
             fs::rename(original_path, new_path)?;
         }
@@ -1563,9 +1556,8 @@ impl LeaveMode {
         let first_arg = &format!("{username}@{hostname}:{remote_path}");
         let command_output =
             execute_and_capture_output(SSHFS_EXECUTABLE, &[first_arg, current_path]);
-        let log_line = format!("{SSHFS_EXECUTABLE} output {command_output:?}");
-        info!("{log_line}");
-        write_log_line(log_line);
+        info!("{SSHFS_EXECUTABLE} output {command_output:?}");
+        log_line!("{SSHFS_EXECUTABLE} output {command_output:?}");
         Ok(())
     }
 }
