@@ -64,7 +64,7 @@ pub struct Status {
     pub marks: Marks,
     /// terminal
     pub term: Arc<Term>,
-    skimer: Option<Skimer>,
+    skimer: Option<Result<Skimer>>,
     /// do we display one or two tabs ?
     pub dual_pane: bool,
     pub system_info: System,
@@ -278,7 +278,12 @@ impl Status {
     /// It calls skim, reads its output, then update the tab content.
     pub fn skim_output_to_tab(&mut self) -> Result<()> {
         self.skim_init();
-        let Some(skimer) = &self.skimer else {
+        let _ = self._skim_output_to_tab();
+        self.drop_skim()
+    }
+
+    fn _skim_output_to_tab(&mut self) -> Result<()> {
+        let Some(Ok(skimer)) = &self.skimer else {
             return Ok(());
         };
         let skim = skimer.search_filename(
@@ -289,9 +294,7 @@ impl Status {
         let Some(output) = skim.first() else {
             return Ok(());
         };
-        self._update_tab_from_skim_output(output)?;
-        self.skimer = None;
-        Ok(())
+        self._update_tab_from_skim_output(output)
     }
 
     /// Replace the tab content with the first result of skim.
@@ -299,7 +302,12 @@ impl Status {
     /// The output is splited at `:` since we only care about the path, not the line number.
     pub fn skim_line_output_to_tab(&mut self) -> Result<()> {
         self.skim_init();
-        let Some(skimer) = &self.skimer else {
+        let _ = self._skim_line_output_to_tab();
+        self.drop_skim()
+    }
+
+    fn _skim_line_output_to_tab(&mut self) -> Result<()> {
+        let Some(Ok(skimer)) = &self.skimer else {
             return Ok(());
         };
         let skim = skimer.search_line_in_file(
@@ -310,9 +318,7 @@ impl Status {
         let Some(output) = skim.first() else {
             return Ok(());
         };
-        self._update_tab_from_skim_line_output(output)?;
-        self.skimer = None;
-        Ok(())
+        self._update_tab_from_skim_line_output(output)
     }
 
     /// Run a command directly from help.
@@ -320,27 +326,30 @@ impl Status {
     /// If the result can't be parsed, nothing is done.
     pub fn skim_find_keybinding(&mut self) -> Result<()> {
         self.skim_init();
-        let Some(skimer) = &mut self.skimer else {
-            return Ok(());
+        self._skim_find_keybinding();
+        self.drop_skim()
+    }
+
+    fn _skim_find_keybinding(&mut self) {
+        let Some(Ok(skimer)) = &mut self.skimer else {
+            return;
         };
-        let skim = skimer.search_in_text(self.help.clone());
+        let skim = skimer.search_in_text(&self.help);
         let Some(output) = skim.first() else {
-            return Ok(());
+            return;
         };
         let line = output.output().into_owned();
         let Some(keybind) = line.split(':').next() else {
-            return Ok(());
+            return;
         };
         let Some(keyname) = parse_keyname(keybind) else {
-            return Ok(());
+            return;
         };
         let Some(key) = from_keyname(&keyname) else {
-            return Ok(());
+            return;
         };
         let event = Event::Key(key);
         let _ = self.term.send_event(event);
-        self.skimer = None;
-        Ok(())
     }
 
     fn _update_tab_from_skim_line_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {
@@ -370,6 +379,11 @@ impl Status {
             tab.set_pathcontent(&path)?;
         }
 
+        Ok(())
+    }
+
+    fn drop_skim(&mut self) -> Result<()> {
+        self.skimer = None;
         Ok(())
     }
 
