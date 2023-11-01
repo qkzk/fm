@@ -102,7 +102,7 @@ impl Marks {
         if ch == ':' {
             let log_line = "new mark - ':' can't be used as a mark";
             write_log_line(log_line.to_owned());
-            return Err(anyhow!(log_line));
+            return Ok(());
         }
         if self.used_chars.contains(&ch) {
             let mut found_index = None;
