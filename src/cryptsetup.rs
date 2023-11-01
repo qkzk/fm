@@ -35,16 +35,6 @@ fn get_devices() -> Result<String> {
     Ok(String::from_utf8(output.stdout)?)
 }
 
-/// Parse the output of an lsblk detailed output and filter the line
-/// Containing "crypto" aka Luks encrypted crypto devices
-fn filter_crypto_devices_lines(output: String, key: &str) -> Vec<String> {
-    output
-        .lines()
-        .filter(|line| line.contains(key))
-        .map(|line| line.into())
-        .collect()
-}
-
 /// True iff `lsblk` and `cryptsetup` are in path.
 /// Nothing here can be done without those programs.
 pub fn lsblk_and_cryptsetup_installed() -> bool {
@@ -320,9 +310,10 @@ pub struct CryptoDeviceOpener {
 impl CryptoDeviceOpener {
     /// Updates itself from the output of cryptsetup.
     pub fn update(&mut self) -> Result<()> {
-        self.content = filter_crypto_devices_lines(get_devices()?, "crypto")
-            .iter()
-            .map(|line| CryptoDevice::from_line(line))
+        self.content = get_devices()?
+            .lines()
+            .filter(|line| line.contains("crypto"))
+            .map(CryptoDevice::from_line)
             .filter_map(|r| r.ok())
             .collect();
         self.index = 0;
