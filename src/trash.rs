@@ -13,7 +13,7 @@ use crate::impl_selectable_content;
 use crate::log::write_log_line;
 use crate::utils::read_lines;
 
-static TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
+const TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 
 /// Holds the information about a trashed file.
 /// Follow the specifications of .trashinfo files as described in
