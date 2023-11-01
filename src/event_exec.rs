@@ -979,7 +979,13 @@ impl EventAction {
     /// Toggle the second pane between preview & normal mode (files).
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
         status.preview_second = !status.preview_second;
-        status.update_second_pane_for_preview()
+        if status.preview_second {
+            status.set_second_pane_for_preview()?;
+        } else {
+            status.tabs[1].reset_mode();
+            status.tabs[1].refresh_view()?;
+        }
+        Ok(())
     }
 
     /// Set the current selected file as wallpaper with `nitrogen`.
