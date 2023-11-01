@@ -396,8 +396,7 @@ impl EventAction {
         };
         let nvim_server = status.nvim_server.clone();
         if status.flagged.is_empty() {
-            let tab = status.selected();
-            let Some(fileinfo) = tab.selected() else {
+            let Some(fileinfo) = status.selected_non_mut().selected() else {
                 return Ok(());
             };
             let Some(path_str) = fileinfo.path.to_str() else {
