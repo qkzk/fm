@@ -2,7 +2,7 @@ use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
 use log::info;
-use sysinfo::{DiskExt, System, SystemExt};
+use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
 use crate::constant_strings_paths::{CRYPTSETUP, LSBLK};
 use crate::impl_selectable_content;
@@ -102,14 +102,13 @@ impl CryptoDevice {
     }
 
     pub fn mount_point(&self) -> Option<String> {
-        let system_info = System::new_all();
-        system_info
+        System::new_with_specifics(RefreshKind::new().with_disks())
             .disks()
             .iter()
             .map(|d| d.mount_point())
             .map(|p| p.to_str())
-            .filter(|s| s.is_some())
-            .map(|s| s.unwrap().to_owned())
+            .flatten()
+            .map(|s| s.to_owned())
             .find(|s| s.contains(&self.uuid))
     }
 
