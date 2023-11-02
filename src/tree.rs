@@ -1,9 +1,8 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use tuikit::attr::Attr;
 
-use crate::fileinfo::{fileinfo_attr, files_collection, FileInfo, FileKind};
+use crate::fileinfo::{files_collection, ColorEffect, FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::preview::ColoredTriplet;
 use crate::sort::SortKind;
@@ -16,14 +15,18 @@ pub struct ColoredString {
     /// A text to be printed. In most case, it should be a filename.
     pub text: String,
     /// A tuikit::attr::Attr (fg, bg, effect) to enhance the text.
-    pub attr: Attr,
+    pub color_effect: ColorEffect,
     /// The complete path of this string.
     pub path: std::path::PathBuf,
 }
 
 impl ColoredString {
-    fn new(text: String, attr: Attr, path: std::path::PathBuf) -> Self {
-        Self { text, attr, path }
+    fn new(text: String, color_effect: ColorEffect, path: std::path::PathBuf) -> Self {
+        Self {
+            text,
+            color_effect,
+            path,
+        }
     }
 
     fn from_node(current_node: &Node) -> Self {
@@ -36,7 +39,7 @@ impl ColoredString {
         } else {
             current_node.filename()
         };
-        Self::new(text, current_node.attr(), current_node.filepath())
+        Self::new(text, current_node.color_effect(), current_node.filepath())
     }
 }
 
@@ -63,8 +66,8 @@ impl Node {
         self.fileinfo.path.to_owned()
     }
 
-    fn attr(&self) -> Attr {
-        fileinfo_attr(&self.fileinfo)
+    fn color_effect(&self) -> ColorEffect {
+        ColorEffect::new(&self.fileinfo)
     }
 
     fn select(&mut self) {

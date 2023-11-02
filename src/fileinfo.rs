@@ -551,23 +551,45 @@ fn fileinfo_color(fileinfo: &FileInfo) -> Color {
     }
 }
 
+/// Holds a `tuikit::attr::Color` and a `tuikit::attr::Effect`
+/// Both are used to print the file.
+/// When printing we still need to know if the file is flagged,
+/// which may change the `tuikit::attr::Effect`.
+#[derive(Clone, Debug)]
+pub struct ColorEffect {
+    color: Color,
+    pub effect: Effect,
+}
+
+impl ColorEffect {
+    /// Calculates a color and an effect from `fm::file_info::FileInfo`.
+    pub fn new(fileinfo: &FileInfo) -> ColorEffect {
+        let color = fileinfo_color(fileinfo);
+
+        let effect = if fileinfo.is_selected {
+            Effect::REVERSE
+        } else {
+            Effect::empty()
+        };
+
+        Self { color, effect }
+    }
+
+    /// Makes a new `tuikit::attr::Attr` where `bg` is default.
+    pub fn attr(&self) -> Attr {
+        Attr {
+            fg: self.color,
+            bg: Color::default(),
+            effect: self.effect,
+        }
+    }
+}
+
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
 /// effect.
 /// Selected file is reversed.
 pub fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
-    let fg = fileinfo_color(fileinfo);
-
-    let effect = if fileinfo.is_selected {
-        Effect::REVERSE
-    } else {
-        Effect::empty()
-    };
-
-    Attr {
-        fg,
-        bg: Color::default(),
-        effect,
-    }
+    ColorEffect::new(fileinfo).attr()
 }
 
 /// True if the file isn't hidden.

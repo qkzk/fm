@@ -400,7 +400,7 @@ impl<'a> WinMain<'a> {
 
         for (i, (metadata, prefix, colored_string)) in tab.directory.window(top, bottom, len) {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
-            let mut attr = colored_string.attr;
+            let mut attr = colored_string.color_effect.attr();
             if status.flagged.contains(&colored_string.path) {
                 attr.effect |= Effect::BOLD;
                 canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
@@ -488,11 +488,12 @@ impl<'a> WinMain<'a> {
                 {
                     let row = calc_line_row(i, window);
                     let col = canvas.print(row, line_number_width, prefix)?;
+
                     canvas.print_with_attr(
                         row,
                         line_number_width + col + 1,
                         &colored_string.text,
-                        colored_string.attr,
+                        colored_string.color_effect.attr(),
                     )?;
                 }
             }
