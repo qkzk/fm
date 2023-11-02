@@ -1,6 +1,23 @@
-# the terminal must be installed
+# the terminal emulator, which must be accessible from $PATH
 terminal: st
+# configurable colors
+colors:
+  # you can define an ANSI color for any kind of file except "normal" files.
+  # colors for normal files are calculated on the fly.
+  # List of allowed colors:
+  #   white,        black,        red,       green,       blue,       yellow,       cyan,       magenta 
+  #   light_white,  light_black,  light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
+  directory: red
+  block: yellow
+  char: green
+  fifo: blue
+  socket: cyan
+  symlink: magenta
 # keybindings
+# You can bind any key to any action.
+# List of valid actions is accessible from `help` (default key H) and from the readme.md file.
+# Invalid actions are skipped.
+# AltPageUp can't be bound, it is reserved for internal use.
 keys: 
   'esc': ResetMode
   'up': MoveUp

@@ -2,9 +2,9 @@ use std::{fs::File, path};
 
 use anyhow::Result;
 use serde_yaml;
-// use tuikit::attr::Color;
+use tuikit::attr::Color;
 
-use crate::constant_strings_paths::DEFAULT_TERMINAL_APPLICATION;
+use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 use crate::keybindings::Bindings;
 use crate::utils::is_program_in_path;
 
@@ -38,7 +38,6 @@ impl Settings {
         }
     }
 }
-
 /// Holds every configurable aspect of the application.
 /// All attributes are hardcoded then updated from optional values
 /// of the config file.
@@ -103,4 +102,112 @@ pub fn load_config(path: &str) -> Result<Config> {
     };
     let _ = config.update_from_config(&yaml);
     Ok(config)
+}
+
+/// Convert a string color into a `tuikit::Color` instance.
+pub fn str_to_tuikit<S>(color: S) -> Color
+where
+    S: AsRef<str>,
+{
+    match color.as_ref() {
+        "white" => Color::WHITE,
+        "red" => Color::RED,
+        "green" => Color::GREEN,
+        "blue" => Color::BLUE,
+        "yellow" => Color::YELLOW,
+        "cyan" => Color::CYAN,
+        "magenta" => Color::MAGENTA,
+        "black" => Color::BLACK,
+        "light_white" => Color::LIGHT_WHITE,
+        "light_red" => Color::LIGHT_RED,
+        "light_green" => Color::LIGHT_GREEN,
+        "light_blue" => Color::LIGHT_BLUE,
+        "light_yellow" => Color::LIGHT_YELLOW,
+        "light_cyan" => Color::LIGHT_CYAN,
+        "light_magenta" => Color::LIGHT_MAGENTA,
+        "light_black" => Color::LIGHT_BLACK,
+        _ => Color::default(),
+    }
+}
+
+macro_rules! update_attribute {
+    ($self_attr:expr, $yaml:ident, $key:expr) => {
+        if let Some(attr) = read_yaml_value($yaml, $key) {
+            $self_attr = str_to_tuikit(attr);
+        }
+    };
+}
+fn read_yaml_value(yaml: &serde_yaml::value::Value, key: &str) -> Option<String> {
+    yaml[key].as_str().map(|s| s.to_string())
+}
+
+/// Holds configurable colors for every kind of file.
+/// "Normal" files are displayed with a different color by extension.
+#[derive(Debug, Clone)]
+pub struct Colors {
+    /// Color for `directory` files.
+    pub directory: Color,
+    /// Color for `block` files.
+    pub block: Color,
+    /// Color for `char` files.
+    pub char: Color,
+    /// Color for `fifo` files.
+    pub fifo: Color,
+    /// Color for `socket` files.
+    pub socket: Color,
+    /// Color for `symlink` files.
+    pub symlink: Color,
+    /// Color for broken `symlink` files.
+    pub broken: Color,
+}
+
+impl Colors {
+    fn new() -> Self {
+        Self {
+            directory: Color::RED,
+            block: Color::YELLOW,
+            char: Color::GREEN,
+            fifo: Color::BLUE,
+            socket: Color::CYAN,
+            symlink: Color::MAGENTA,
+            broken: Color::WHITE,
+        }
+    }
+
+    /// Update every color from a yaml value (read from the config file).
+    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+        update_attribute!(self.directory, yaml, "directory");
+        update_attribute!(self.block, yaml, "block");
+        update_attribute!(self.char, yaml, "char");
+        update_attribute!(self.fifo, yaml, "fifo");
+        update_attribute!(self.socket, yaml, "socket");
+        update_attribute!(self.symlink, yaml, "symlink");
+        update_attribute!(self.broken, yaml, "broken");
+    }
+}
+
+impl Default for Colors {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+lazy_static::lazy_static! {
+    /// Colors read from the config file.
+    /// We define a colors for every kind of file except normal files.
+    /// Colors for normal files are calculated from their extension and
+    /// are greens or blues.
+    ///
+    /// Colors are setup on start and never change afterwards.
+    /// Since many functions use colors for formating, using `lazy_static`
+    /// avoids to pass them everytime.
+    pub static ref COLORS: Colors = {
+        let mut colors = Colors::default();
+        if let Ok(file) = File::open(path::Path::new(&shellexpand::tilde(CONFIG_PATH).to_string())) {
+            if let Ok(yaml)  = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file) {
+                colors.update_from_config(&yaml["colors"]);
+            };
+        };
+        colors
+    };
 }

@@ -10,6 +10,7 @@ use log::info;
 use tuikit::prelude::{Attr, Color, Effect};
 
 use crate::colors::extension_color;
+use crate::config::COLORS;
 use crate::constant_strings_paths::PERMISSIONS_STR;
 use crate::filter::FilterKind;
 use crate::git::git;
@@ -540,13 +541,13 @@ impl_selectable_content!(FileInfo, PathContent);
 
 fn fileinfo_color(fileinfo: &FileInfo) -> Color {
     match fileinfo.file_kind {
-        FileKind::Directory => Color::RED,
-        FileKind::BlockDevice => Color::YELLOW,
-        FileKind::CharDevice => Color::GREEN,
-        FileKind::Fifo => Color::BLUE,
-        FileKind::Socket => Color::CYAN,
-        FileKind::SymbolicLink(true) => Color::MAGENTA,
-        FileKind::SymbolicLink(false) => Color::WHITE,
+        FileKind::Directory => COLORS.directory,
+        FileKind::BlockDevice => COLORS.block,
+        FileKind::CharDevice => COLORS.char,
+        FileKind::Fifo => COLORS.fifo,
+        FileKind::Socket => COLORS.socket,
+        FileKind::SymbolicLink(true) => COLORS.symlink,
+        FileKind::SymbolicLink(false) => COLORS.broken,
         _ => extension_color(&fileinfo.extension),
     }
 }
