@@ -1,6 +1,9 @@
 # the terminal emulator, which must be accessible from $PATH
 terminal: st
 # configurable colors
+# palette of the normal files. Accepted values are "red-green", "red-blue" and "green-blue"
+# other value will lead to the default palette which is "green-blue".
+palette: green-blue
 colors:
   # you can define an ANSI color or an rgb color for any kind of file except "normal" files.
   # colors for normal files are calculated on the fly.
