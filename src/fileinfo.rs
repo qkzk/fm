@@ -3,7 +3,7 @@ use std::iter::Enumerate;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use chrono::offset::Local;
 use chrono::DateTime;
 use log::info;
@@ -728,6 +728,9 @@ const MAX_PATH_ELEM_SIZE: usize = 50;
 /// Shorten a path to be displayed in [`MAX_PATH_ELEM_SIZE`] chars or less.
 /// Each element of the path is shortened if needed.
 pub fn shorten_path(path: &path::Path, size: Option<usize>) -> Result<String> {
+    if path == path::Path::new("/") {
+        return Ok("".to_owned());
+    }
     let size = match size {
         Some(size) => size,
         None => MAX_PATH_ELEM_SIZE,
