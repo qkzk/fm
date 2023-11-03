@@ -4,6 +4,7 @@ use anyhow::Result;
 use serde_yaml;
 use tuikit::attr::Color;
 
+use crate::colors::Colorer;
 use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 use crate::keybindings::Bindings;
 use crate::utils::is_program_in_path;
@@ -233,5 +234,26 @@ lazy_static::lazy_static! {
             };
         };
         colors
+    };
+}
+
+lazy_static::lazy_static! {
+    /// Defines a palette which will color the "normal" files based on their extension.
+    /// We try to read a yaml value and pick one of 3 palettes :
+    /// "red-green", "red-blue" and "green-blue" which is the default.
+    pub static ref COLORER: fn(usize) -> Color = {
+        let mut colorer = Colorer::color_green_blue as fn(usize) -> Color;
+        if let Ok(file) = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(CONFIG_PATH).to_string())) {
+            if let Ok(yaml)  = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file) {
+                if let Some(palette) = yaml["palette"].as_str() {
+                    match palette {
+                        "red-blue" => {colorer = Colorer::color_red_blue as fn(usize) -> Color;},
+                        "red-green" => {colorer = Colorer::color_red_green as fn(usize) -> Color;},
+                        _ => ()
+                    }
+                }
+            };
+        };
+        colorer
     };
 }

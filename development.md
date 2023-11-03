@@ -601,7 +601,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: can't read filename from / ... which crashes the app.
 - [x] FIX: exploring root folder leads to wrong first line display.
 - [x] allow seveval palettes for normal file colors
-- [ ] move every lazy_static into config.
+- [x] move every lazy_static configuration into config.
 - [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
