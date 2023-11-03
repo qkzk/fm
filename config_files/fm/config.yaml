@@ -2,17 +2,19 @@
 terminal: st
 # configurable colors
 colors:
-  # you can define an ANSI color for any kind of file except "normal" files.
+  # you can define an ANSI color or an rgb color for any kind of file except "normal" files.
   # colors for normal files are calculated on the fly.
   # List of allowed colors:
   #   white,        black,        red,       green,       blue,       yellow,       cyan,       magenta 
   #   light_white,  light_black,  light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
+  # Allowed Format for rgb color : `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
   directory: red
   block: yellow
   char: green
   fifo: blue
   socket: cyan
   symlink: magenta
+  broken: light_magenta
 # keybindings
 # You can bind any key to any action.
 # List of valid actions is accessible from `help` (default key H) and from the readme.md file.

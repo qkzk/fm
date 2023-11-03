@@ -126,8 +126,32 @@ where
         "light_cyan" => Color::LIGHT_CYAN,
         "light_magenta" => Color::LIGHT_MAGENTA,
         "light_black" => Color::LIGHT_BLACK,
-        _ => Color::default(),
+        color => parse_rgb_color(color),
     }
+}
+
+/// Tries to parse an unknown color into a `Color::Rgb(u8, u8, u8)`
+/// rgb format should never fail.
+/// Other formats are unknown.
+/// rgb( 123,   78,          0) -> Color::Rgb(123, 78, 0)
+/// #FF00FF -> Color::default()
+/// Unreadable colors are replaced by `Color::default()` which is white.
+fn parse_rgb_color(color: &str) -> Color {
+    let color = color.to_lowercase();
+    if color.starts_with("rgb(") && color.ends_with(')') {
+        let triplet: Vec<u8> = color
+            .replace("rgb(", "")
+            .replace([')', ' '], "")
+            .trim()
+            .split(',')
+            .filter_map(|s| s.parse().ok())
+            .collect();
+        if triplet.len() == 3 {
+            return Color::Rgb(triplet[0], triplet[1], triplet[2]);
+        }
+    }
+
+    Color::default()
 }
 
 macro_rules! update_attribute {
