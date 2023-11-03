@@ -3,7 +3,7 @@ use std::iter::Enumerate;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::offset::Local;
 use chrono::DateTime;
 use log::info;
@@ -606,9 +606,9 @@ pub fn is_not_hidden(entry: &DirEntry) -> Result<bool> {
 fn extract_filename(path: &path::Path) -> Result<String> {
     Ok(path
         .file_name()
-        .context("from path: couldn't read filename")?
+        .unwrap_or_default()
         .to_str()
-        .context("from path: couldn't parse filename")?
+        .context(format!("Couldn't read filename of {p}", p = path.display()))?
         .to_owned())
 }
 

@@ -598,6 +598,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] complete refactor of many files.
 - [x] Use `lazy_static` to load `Colors` configuration. Don't use a cache. Calculate every color for every extension
 - [x] allow rgb colors in config file
+- [x] FIX: can't read filename from / ... which crashes the app.
 - [ ] allow rgb palette for normal file colors
 - [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
