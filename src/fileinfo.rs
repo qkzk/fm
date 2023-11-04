@@ -158,7 +158,7 @@ pub struct FileInfo {
 }
 
 impl FileInfo {
-    fn new(path: &path::Path, users: &Users) -> Result<Self> {
+    pub fn new(path: &path::Path, users: &Users) -> Result<Self> {
         let filename = extract_filename(path)?;
         let metadata = symlink_metadata(path)?;
         let path = path.to_owned();

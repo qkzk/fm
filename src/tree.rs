@@ -52,10 +52,16 @@ pub struct Node {
     pub position: Vec<usize>,
     pub folded: bool,
     pub is_dir: bool,
-    pub metadata_line: String,
+    pub is_selected: bool,
 }
 
 impl Node {
+    pub fn fileinfo(&self, path: &Path, users: &Users) -> Result<FileInfo> {
+        FileInfo::new(path, users)
+    }
+    pub fn metadata_line(&self) -> Result<String> {
+        self.fileinfo.format_no_filename()
+    }
     /// Returns a copy of the filename.
     pub fn filename(&self) -> String {
         self.fileinfo.filename.to_owned()
@@ -67,14 +73,20 @@ impl Node {
     }
 
     fn color_effect(&self) -> ColorEffect {
-        ColorEffect::new(&self.fileinfo)
+        let mut ce = ColorEffect::new(&self.fileinfo);
+        if self.is_selected {
+            ce.effect |= tuikit::attr::Effect::REVERSE;
+        }
+        ce
     }
 
     fn select(&mut self) {
+        self.is_selected = true;
         self.fileinfo.select()
     }
 
     fn unselect(&mut self) {
+        self.is_selected = false;
         self.fileinfo.unselect()
     }
 
@@ -87,10 +99,10 @@ impl Node {
         let is_dir = matches!(fileinfo.file_kind, FileKind::Directory);
         Ok(Self {
             is_dir,
-            metadata_line: fileinfo.format_no_filename()?,
             fileinfo,
             position: parent_position,
             folded: false,
+            is_selected: false,
         })
     }
 
@@ -100,7 +112,7 @@ impl Node {
             position: vec![0],
             folded: false,
             is_dir: false,
-            metadata_line: "".to_owned(),
+            is_selected: false,
         }
     }
 }
@@ -459,12 +471,12 @@ impl Tree {
         let mut selected_index = 0;
 
         while let Some((prefix, current)) = stack.pop() {
-            if current.node.fileinfo.is_selected {
+            if current.node.is_selected {
                 selected_index = content.len();
             }
 
             content.push((
-                current.node.metadata_line.to_owned(),
+                current.node.metadata_line().unwrap_or_default(),
                 prefix.to_owned(),
                 ColoredString::from_node(&current.node),
             ));
