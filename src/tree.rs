@@ -221,6 +221,87 @@ impl Tree {
     pub fn file(&self) -> &FileInfo {
         &self.node.fileinfo
     }
+    fn create_tree_with_stack(
+        fileinfo: FileInfo,
+        max_depth: usize,
+        users: &Users,
+        filter_kind: &FilterKind,
+        display_hidden: bool,
+        parent_position: Vec<usize>,
+    ) -> Result<Self> {
+        let sort_kind = SortKind::tree_default();
+        // let leaves = Self::make_leaves(
+        //     &fileinfo,
+        //     max_depth,
+        //     users,
+        //     display_hidden,
+        //     filter_kind,
+        //     &sort_kind,
+        //     parent_position.clone(),
+        // )?;
+        let node = Node::from_fileinfo(fileinfo, parent_position)?;
+        let position = vec![0];
+        let current_node = node.clone();
+
+        let mut stack = vec![];
+
+        let mut current_node = Node::from_fileinfo(fileinfo, parent_position)?;
+
+        let root = node.clone();
+        stack.push(node);
+
+        while !stack.is_empty() {
+            let mut current = stack.pop();
+            let mut leaves = None;
+            if current.depth == max_depth {
+                continue;
+            }
+            let FileKind::Directory = fileinfo.file_kind else {
+                continue;
+            };
+            let Some(mut files) =
+                files_collection(&current.fileinfo, users, display_hidden, filter_kind, true)
+            else {
+                continue;
+            };
+            sort_kind.sort(&mut files);
+            let leaves = files
+                .iter()
+                .enumerate()
+                .map(|(index, fileinfo)| {
+                    let mut position = current.position.clone();
+                    position.push(files.len() - index - 1);
+                    Self {
+
+                        node:Node::from_fileinfo(fileinfo, current.position),
+                        leaves:vec![],
+                        position:position,
+                        current_node:root,
+                        sort_kind,
+
+                    }
+                    Self::create_tree_from_fileinfo(
+                        fileinfo.to_owned(),
+                        max_depth - 1,
+                        users,
+                        filter_kind,
+                        display_hidden,
+                        position,
+                    )
+                })
+                .filter_map(|r| r.ok())
+                .collect();
+        }
+
+        Ok(Self {
+            node,
+            leaves,
+            position,
+            current_node,
+            sort_kind,
+            required_height: Self::REQUIRED_HEIGHT,
+        })
+    }
 
     fn create_tree_from_fileinfo(
         fileinfo: FileInfo,
