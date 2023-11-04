@@ -1,3 +1,4 @@
+use std::borrow::{Borrow, BorrowMut};
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -230,77 +231,72 @@ impl Tree {
         parent_position: Vec<usize>,
     ) -> Result<Self> {
         let sort_kind = SortKind::tree_default();
-        // let leaves = Self::make_leaves(
-        //     &fileinfo,
-        //     max_depth,
-        //     users,
-        //     display_hidden,
-        //     filter_kind,
-        //     &sort_kind,
-        //     parent_position.clone(),
-        // )?;
-        let node = Node::from_fileinfo(fileinfo, parent_position)?;
+        let node = Node::from_fileinfo(fileinfo.clone(), parent_position)?;
+        let root = node.clone();
         let position = vec![0];
-        let current_node = node.clone();
 
         let mut stack = vec![];
 
-        let mut current_node = Node::from_fileinfo(fileinfo, parent_position)?;
+        let tree = Tree {
+            node: node.clone(),
+            leaves: vec![],
+            position,
+            current_node: node.clone(),
+            sort_kind: sort_kind.clone(),
+            required_height: Self::REQUIRED_HEIGHT,
+        };
 
-        let root = node.clone();
-        stack.push(node);
+        let root_tree = std::rc::Rc::new(tree);
+        stack.push(root_tree.clone());
 
-        while !stack.is_empty() {
-            let mut current = stack.pop();
-            let mut leaves = None;
-            if current.depth == max_depth {
+        while let Some(mut current_tree) = stack.pop() {
+            let current_node = &current_tree.node;
+            if current_node.position.len() == max_depth {
                 continue;
             }
-            let FileKind::Directory = fileinfo.file_kind else {
-                continue;
-            };
-            let Some(mut files) =
-                files_collection(&current.fileinfo, users, display_hidden, filter_kind, true)
-            else {
-                continue;
-            };
-            sort_kind.sort(&mut files);
-            let leaves = files
-                .iter()
-                .enumerate()
-                .map(|(index, fileinfo)| {
-                    let mut position = current.position.clone();
-                    position.push(files.len() - index - 1);
-                    Self {
 
-                        node:Node::from_fileinfo(fileinfo, current.position),
-                        leaves:vec![],
-                        position:position,
-                        current_node:root,
-                        sort_kind,
+            if let FileKind::Directory = fileinfo.file_kind {
+                let mut leaves = vec![];
+                if let Some(mut files) = files_collection(
+                    &current_node.fileinfo,
+                    users,
+                    display_hidden,
+                    filter_kind,
+                    true,
+                ) {
+                    sort_kind.sort(&mut files);
 
+                    for (index, file) in files.iter().enumerate() {
+                        let mut position = current_tree.position.clone();
+                        position.push(files.len() - index - 1);
+                        let Ok(node) =
+                            Node::from_fileinfo(file.to_owned(), current_tree.position.clone())
+                        else {
+                            continue;
+                        };
+                        let tree = Self {
+                            node,
+                            leaves: vec![],
+                            position,
+                            current_node: root.clone(),
+                            sort_kind: sort_kind.clone(),
+                            required_height: Self::REQUIRED_HEIGHT,
+                        };
+                        leaves.push();
+                        stack.push(std::rc::Rc::new(tree));
                     }
-                    Self::create_tree_from_fileinfo(
-                        fileinfo.to_owned(),
-                        max_depth - 1,
-                        users,
-                        filter_kind,
-                        display_hidden,
-                        position,
-                    )
-                })
-                .filter_map(|r| r.ok())
-                .collect();
+                }
+                current_tree.set_leaves(leaves);
+            }
         }
+        let st: &Tree = root_tree.borrow();
+        let st = st.to_owned();
 
-        Ok(Self {
-            node,
-            leaves,
-            position,
-            current_node,
-            sort_kind,
-            required_height: Self::REQUIRED_HEIGHT,
-        })
+        Ok(st)
+    }
+
+    fn set_leaves(&mut self, leaves: Vec<Self>) {
+        self.leaves = leaves;
     }
 
     fn create_tree_from_fileinfo(

@@ -602,9 +602,27 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: exploring root folder leads to wrong first line display.
 - [x] allow seveval palettes for normal file colors
 - [x] move every lazy_static configuration into config.
+- [ ] remake tree without recursion
 - [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
+
+### Tree remake
+
+```
+1. init. créer une racine et un arbre la contenant. Feuilles vides.
+2. pile = [arbre(racine)]
+3. tant que pile non vide:
+       arbre_courant = pile.pop()
+       node_courant = arbre_courant.node
+
+       si position == max_depth {
+        continue
+       }
+
+       arbre_courant.feuilles depuis les enfants de node_courant
+       empiler chaque arbre fils
+```
 
 ## TODO
 
