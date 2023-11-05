@@ -297,11 +297,11 @@ impl FileSystem {
         let mut selected_index = 0;
 
         while let Some((prefix, current)) = stack.pop() {
-            let Some(node) = &self.nodes.get(current) else {
+            let Some(current_node) = &self.nodes.get(current) else {
                 continue;
             };
 
-            if node.selected {
+            if current_node.selected {
                 selected_index = content.len();
             }
 
@@ -311,20 +311,29 @@ impl FileSystem {
             let filename = filename_from_path(current).unwrap_or_default().to_owned();
 
             let mut color_effect = ColorEffect::new(&fileinfo);
-            if node.selected {
+            if current_node.selected {
                 color_effect.effect |= tuikit::attr::Effect::REVERSE;
             }
+            let filename_text = if current.is_dir() && !current.is_symlink() {
+                if current_node.folded {
+                    format!("▸ {}", filename)
+                } else {
+                    format!("▾ {}", filename)
+                }
+            } else {
+                filename
+            };
             content.push((
                 fileinfo.format_no_filename().unwrap_or_default(),
                 prefix.to_owned(),
-                ColoredString::new(filename, color_effect, current.to_owned()),
+                ColoredString::new(filename_text, color_effect, current.to_owned()),
             ));
 
-            if !node.folded {
+            if current.is_dir() && !current.is_symlink() && !current_node.folded {
                 let first_prefix = first_prefix(prefix.clone());
                 let other_prefix = other_prefix(prefix);
 
-                if let Some(children) = &node.children {
+                if let Some(children) = &current_node.children {
                     let mut leaves = children.iter();
                     let Some(first_leaf) = leaves.next() else {
                         continue;
@@ -336,6 +345,7 @@ impl FileSystem {
                     }
                 }
             }
+
             if content.len() > required_height {
                 break;
             }
