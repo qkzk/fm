@@ -70,6 +70,7 @@ impl Node {
 pub struct FileSystem {
     root_path: PathBuf,
     selected: PathBuf,
+    last_path: PathBuf,
     nodes: HashMap<PathBuf, Node>,
     required_height: usize,
 }
@@ -90,6 +91,7 @@ impl FileSystem {
         let mut stack = vec![root_path.to_owned()];
         let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
 
+        let mut last_path = root_path.to_owned();
         while let Some(path) = stack.pop() {
             let reached_depth = path.components().collect::<Vec<_>>().len();
             if reached_depth >= depth + start_depth {
@@ -114,6 +116,7 @@ impl FileSystem {
                     };
                 }
             }
+            last_path = node.path.to_owned();
             nodes.insert(node.path.to_owned(), node);
         }
 
@@ -124,6 +127,7 @@ impl FileSystem {
         Self {
             selected: root_path.clone(),
             root_path,
+            last_path,
             nodes,
             required_height: Self::REQUIRED_HEIGHT,
         }
@@ -133,6 +137,7 @@ impl FileSystem {
         Self {
             root_path: PathBuf::default(),
             selected: PathBuf::default(),
+            last_path: PathBuf::default(),
             nodes: HashMap::new(),
             required_height: 0,
         }
@@ -266,7 +271,17 @@ impl FileSystem {
         self.selected = self.root_path.to_owned();
     }
 
-    pub fn select_last(&mut self) {}
+    pub fn select_last(&mut self) {
+        let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
+            unreachable!("selected path should be in node")
+        };
+        selected_node.unselect();
+        let Some(last_node) = self.nodes.get_mut(&self.last_path) else {
+            unreachable!("root path should be in nodes")
+        };
+        last_node.select();
+        self.selected = self.last_path.to_owned();
+    }
 
     /// Fold selected node
     pub fn toggle_fold(&mut self) {

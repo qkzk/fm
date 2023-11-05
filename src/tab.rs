@@ -386,9 +386,8 @@ impl Tab {
 
     /// Go to the last leaf.
     pub fn tree_go_to_bottom_leaf(&mut self) -> Result<()> {
-        self.directory.tree.set_required_height_to_max();
-        self.directory.unselect_children();
-        self.directory.go_to_bottom_leaf()
+        self.tree.select_last();
+        Ok(())
     }
 
     /// Returns the current path.
