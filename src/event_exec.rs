@@ -895,18 +895,21 @@ impl EventAction {
     /// Fold the current node of the tree.
     /// Has no effect on "file" nodes.
     pub fn tree_fold(tab: &mut Tab) -> Result<()> {
-        let (tree, _, _) = tab.directory.tree.explore_position(false);
-        tree.node.toggle_fold();
-        tab.directory.make_preview();
-        tab.tree_select_next()
+        tab.tree.toggle_fold();
+        // let (tree, _, _) = tab.directory.tree.explore_position(false);
+        // tree.node.toggle_fold();
+        // tab.directory.make_preview();
+        // tab.tree_select_next()
+        Ok(())
     }
 
     /// Unfold every child node in the tree.
     /// Recursively explore the tree and unfold every node.
     /// Reset the display.
     pub fn tree_unfold_all(tab: &mut Tab) -> Result<()> {
-        tab.directory.tree.unfold_children();
-        tab.directory.make_preview();
+        tab.tree.fold_all();
+        // tab.directory.tree.unfold_children();
+        // tab.directory.make_preview();
         Ok(())
     }
 
@@ -914,8 +917,9 @@ impl EventAction {
     /// Recursively explore the tree and fold every node.
     /// Reset the display.
     pub fn tree_fold_all(tab: &mut Tab) -> Result<()> {
-        tab.directory.tree.fold_children();
-        tab.directory.make_preview();
+        tab.tree.fold_all();
+        // tab.directory.tree.fold_children();
+        // tab.directory.make_preview();
         Ok(())
     }
 
@@ -1365,7 +1369,7 @@ impl LeaveMode {
     /// The current order of files is used.
     pub fn search(status: &mut Status) -> Result<()> {
         let tab = status.selected();
-        let searched = tab.input.string();
+        let searched = &tab.input.string();
         tab.input.reset();
         if searched.is_empty() {
             tab.searched = None;
@@ -1374,19 +1378,20 @@ impl LeaveMode {
         tab.searched = Some(searched.clone());
         match tab.previous_mode {
             Mode::Tree => {
-                tab.directory.tree.unselect_children();
-                if let Some(position) = tab.directory.tree.select_first_match(&searched) {
-                    tab.directory.tree.position = position;
-                    (_, _, tab.directory.tree.current_node) =
-                        tab.directory.tree.select_from_position()?;
-                } else {
-                    tab.directory.tree.select_root()
-                };
-                tab.directory.make_preview();
+                tab.tree.search_first_match(searched);
+                // tab.directory.tree.unselect_children();
+                // if let Some(position) = tab.directory.tree.select_first_match(&searched) {
+                //     tab.directory.tree.position = position;
+                //     (_, _, tab.directory.tree.current_node) =
+                //         tab.directory.tree.select_from_position()?;
+                // } else {
+                //     tab.directory.tree.select_root()
+                // };
+                // tab.directory.make_preview();
             }
             _ => {
                 let next_index = tab.path_content.index;
-                tab.search_from(&searched, next_index);
+                tab.search_from(searched, next_index);
             }
         };
         status.update_second_pane_for_preview()

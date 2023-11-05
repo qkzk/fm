@@ -138,41 +138,8 @@ impl FileSystem {
         }
     }
 
-    pub fn selected(&self) -> &Path {
-        self.selected.as_path()
-    }
-
-    pub fn root_path(&self) -> &Path {
-        self.root_path.as_path()
-    }
-
-    pub fn selected_node(&self) -> Option<&Node> {
-        self.nodes.get(self.selected())
-    }
-
     pub fn sort(&mut self, _sort_kind: SortKind) -> Result<()> {
         todo!()
-    }
-
-    pub fn select<P>(&mut self, path: P)
-    where
-        P: AsRef<Path> + Into<PathBuf>,
-    {
-        self.unselect_current();
-        self.selected = path.into();
-        self.select_current();
-    }
-
-    fn unselect_current(&mut self) {
-        if let Some(node) = self.nodes.get_mut(&self.selected) {
-            node.unselect()
-        }
-    }
-
-    fn select_current(&mut self) {
-        if let Some(node) = self.nodes.get_mut(&self.selected) {
-            node.select()
-        }
     }
 
     /// Select next sibling or the next sibling of the parent
@@ -194,50 +161,52 @@ impl FileSystem {
         Ok(())
     }
 
+    // FIX: Still a problem when reaching max depth of tree,
+    // can't find next sibling since we look for children which exists but aren't in tree.
+    // Check if the children are listed (they shouldn't be) in node.children and are in self.nodes.
     fn find_next_path(&self) -> Option<PathBuf> {
         let Some(current_node) = self.nodes.get(&self.selected) else {
             unreachable!("selected path should be in nodes")
         };
-        if let Some(children_paths) = &current_node.children {
-            if let Some(child_path) = children_paths.last() {
-                let child_path = child_path.to_owned();
-                return Some(child_path.to_owned());
-            }
-        } else {
-            let mut current_path = self.selected.to_owned();
-
-            while let Some(parent_path) = current_path.parent() {
-                let Some(parent_node) = self.nodes.get(parent_path) else {
-                    current_path = parent_path.to_owned();
-                    continue;
-                };
-                let Some(siblings_paths) = &parent_node.children else {
-                    current_path = parent_path.to_owned();
-                    continue;
-                };
-                log::info!("siblings {siblings_paths:?}");
-                let Some(index_current) =
-                    siblings_paths.iter().position(|path| path == &current_path)
-                else {
-                    current_path = parent_path.to_owned();
-                    continue;
-                };
-                if index_current == 0 {
-                    current_path = parent_path.to_owned();
-                    continue;
+        if !self.selected.is_dir() || !current_node.folded {
+            if let Some(children_paths) = &current_node.children {
+                if let Some(child_path) = children_paths.last() {
+                    let child_path = child_path.to_owned();
+                    return Some(child_path.to_owned());
                 }
-                let Some(next_sibling_path) = siblings_paths.get(index_current - 1) else {
-                    current_path = parent_path.to_owned();
-                    continue;
-                };
-                if self.nodes.contains_key(next_sibling_path) {
-                    log::info!("returning {next_sibling_path:?}");
-                    return Some(next_sibling_path.to_owned());
-                } else {
-                    current_path = parent_path.to_owned();
-                    continue;
-                };
             }
+        }
+        let mut current_path = self.selected.to_owned();
+
+        while let Some(parent_path) = current_path.parent() {
+            let Some(parent_node) = self.nodes.get(parent_path) else {
+                current_path = parent_path.to_owned();
+                continue;
+            };
+            let Some(siblings_paths) = &parent_node.children else {
+                current_path = parent_path.to_owned();
+                continue;
+            };
+            let Some(index_current) = siblings_paths.iter().position(|path| path == &current_path)
+            else {
+                current_path = parent_path.to_owned();
+                continue;
+            };
+            if index_current == 0 {
+                current_path = parent_path.to_owned();
+                continue;
+            }
+            let Some(next_sibling_path) = siblings_paths.get(index_current - 1) else {
+                current_path = parent_path.to_owned();
+                continue;
+            };
+            if self.nodes.contains_key(next_sibling_path) {
+                log::info!("returning {next_sibling_path:?}");
+                return Some(next_sibling_path.to_owned());
+            } else {
+                current_path = parent_path.to_owned();
+                continue;
+            };
         }
         None
     }
@@ -261,7 +230,7 @@ impl FileSystem {
     }
 
     fn find_prev_path(&self) -> Option<PathBuf> {
-        let current_path = self.selected().to_owned();
+        let current_path = self.selected.to_owned();
         let Some(parent_path) = current_path.parent() else {
             return None;
         };
@@ -297,6 +266,8 @@ impl FileSystem {
         self.selected = self.root_path.to_owned();
     }
 
+    pub fn select_last(&mut self) {}
+
     /// Fold selected node
     pub fn toggle_fold(&mut self) {
         if let Some(node) = self.nodes.get_mut(&self.selected) {
@@ -304,33 +275,34 @@ impl FileSystem {
         }
     }
 
-    pub fn toggle_fold_all(&mut self) {
+    pub fn fold_all(&mut self) {
         for (_, node) in self.nodes.iter_mut() {
-            node.toggle_fold()
+            node.fold()
         }
     }
 
+    // FIX: can only find the first match and nothing else
     pub fn search_first_match(&mut self, pattern: &str) {
-        if let Some(filename) = self.selected.file_name() {
-            let filename = filename.to_string_lossy();
-            if filename.contains(pattern) {
-                return;
-            }
-        }
-        todo!()
-    }
-
-    pub fn len(&self) -> usize {
-        self.nodes.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.nodes.is_empty()
+        let initial_selected = self.selected.to_owned();
+        let Some((found_path, found_node)) = self.nodes.iter_mut().find(|(path, _)| {
+            path.file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .contains(pattern)
+        }) else {
+            return;
+        };
+        self.selected = found_path.to_owned();
+        found_node.select();
+        let Some(current_node) = self.nodes.get_mut(&initial_selected) else {
+            unreachable!("selected path should be in nodes");
+        };
+        current_node.unselect();
     }
 
     pub fn into_navigable_content(&self, users: &Users) -> (usize, Vec<ColoredTriplet>) {
         let required_height = self.required_height;
-        let mut stack = vec![("".to_owned(), self.root_path())];
+        let mut stack = vec![("".to_owned(), self.root_path.as_path())];
         let mut content = vec![];
         let mut selected_index = 0;
 
