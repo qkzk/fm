@@ -366,12 +366,12 @@ impl Tab {
 
     /// Select the next sibling.
     pub fn tree_select_next(&mut self) -> Result<()> {
-        self.directory.select_next()
+        self.tree.select_next()
     }
 
     /// Select the previous siblging
     pub fn tree_select_prev(&mut self) -> Result<()> {
-        self.directory.select_prev()
+        self.tree.select_prev()
     }
 
     /// Select the first child if any.
@@ -540,16 +540,14 @@ impl Tab {
         self.tree_select_first_child()
     }
 
-    /// Select the next sibling of the current node.
-    pub fn select_next(&mut self) -> Result<()> {
-        self.tree.next();
-        self.tree_select_next()
-    }
-
     /// Select the previous sibling of the current node.
     pub fn select_prev(&mut self) -> Result<()> {
-        self.tree.prev();
-        self.tree_select_prev()
+        self.tree.select_prev()
+    }
+
+    /// Select the next sibling of the current node.
+    pub fn select_next(&mut self) -> Result<()> {
+        self.tree.select_next()
     }
 
     /// Copy the selected filename to the clipboard. Only the filename.

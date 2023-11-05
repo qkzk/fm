@@ -150,7 +150,7 @@ impl FileSystem {
         self.nodes.get(self.selected())
     }
 
-    pub fn sort(&mut self, sort_kind: SortKind) -> Result<()> {
+    pub fn sort(&mut self, _sort_kind: SortKind) -> Result<()> {
         todo!()
     }
 
@@ -175,9 +175,8 @@ impl FileSystem {
         }
     }
 
-    // TODO: remove indentation with let ... else
     /// Select next sibling or the next sibling of the parent
-    pub fn next(&mut self) -> Result<()> {
+    pub fn select_next(&mut self) -> Result<()> {
         let current_node = self
             .nodes
             .get_mut(&self.selected)
@@ -227,9 +226,43 @@ impl FileSystem {
         Ok(())
     }
 
+    /// Select previous sibling or the parent
+    pub fn select_prev(&mut self) -> Result<()> {
+        let current_path = self.selected().to_owned();
+        let Some(parent_path) = current_path.parent() else {
+            return Ok(());
+        };
+        let Some(parent_node) = self.nodes.get(parent_path) else {
+            return Ok(());
+        };
+        let Some(siblings_paths) = &parent_node.children else {
+            return Ok(());
+        };
+        let Some(index_current) = siblings_paths.iter().position(|path| path == &current_path)
+        else {
+            return Ok(());
+        };
+        if index_current > 0 {
+            // Previous sibling
+            self.selected = siblings_paths[index_current - 1].to_owned();
+            let Some(node) = self.nodes.get_mut(&self.selected) else {
+                return Ok(());
+            };
+            node.select();
+        } else {
+            // parent
+            let Some(node) = self.nodes.get_mut(parent_path) else {
+                return Ok(());
+            };
+            self.selected = parent_path.to_owned();
+            node.select();
+        }
+        Ok(())
+    }
+
     // TODO: remove indentation with let ... else
     /// Select previous sibling or parent if it's the first.
-    pub fn prev(&mut self) {
+    pub fn prev_not_working(&mut self) {
         if let Some(parent) = self.selected.parent() {
             if let Some(parent_node) = self.nodes.get(parent) {
                 if let Some(siblings) = &parent_node.children {
@@ -271,11 +304,11 @@ impl FileSystem {
         todo!()
     }
 
-    pub fn len(&mut self) -> usize {
+    pub fn len(&self) -> usize {
         self.nodes.len()
     }
 
-    pub fn is_empty(self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.nodes.is_empty()
     }
 
