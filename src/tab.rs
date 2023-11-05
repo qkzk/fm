@@ -533,8 +533,10 @@ impl Tab {
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node. Reset the display.
     pub fn tree_go_to_root(&mut self) -> Result<()> {
-        self.directory.tree.reset_required_height();
-        self.tree_select_root()
+        // self.directory.tree.reset_required_height();
+        // self.tree_select_root()
+        self.tree.select_root();
+        Ok(())
     }
 
     /// Select the first child of the current node and reset the display.

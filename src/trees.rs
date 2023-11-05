@@ -285,6 +285,18 @@ impl FileSystem {
         }
     }
 
+    pub fn select_root(&mut self) {
+        let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
+            unreachable!("selected path should be in node")
+        };
+        selected_node.unselect();
+        let Some(root_node) = self.nodes.get_mut(&self.root_path) else {
+            unreachable!("root path should be in nodes")
+        };
+        root_node.select();
+        self.selected = self.root_path.to_owned();
+    }
+
     /// Fold selected node
     pub fn toggle_fold(&mut self) {
         if let Some(node) = self.nodes.get_mut(&self.selected) {
