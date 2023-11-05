@@ -16,6 +16,7 @@ use crate::opener::execute_in_child;
 use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
+use crate::sort::SortKind;
 use crate::trees::FileSystem;
 use crate::users::Users;
 use crate::utils::{filename_from_path, row_to_window_index, set_clipboard};
@@ -436,7 +437,7 @@ impl Tab {
         self.tree = FileSystem::new(
             path,
             5,
-            self.path_content.sort_kind.clone(),
+            SortKind::tree_default(),
             users,
             self.show_hidden,
             &self.filter,
@@ -539,17 +540,6 @@ impl Tab {
     /// Select the first child of the current node and reset the display.
     pub fn select_first_child(&mut self) -> Result<()> {
         self.tree_select_first_child()
-    }
-
-    /// Select the previous sibling of the current node.
-    pub fn select_prev(&mut self) -> Result<()> {
-        self.tree.select_prev();
-        Ok(())
-    }
-
-    /// Select the next sibling of the current node.
-    pub fn select_next(&mut self) -> Result<()> {
-        self.tree.select_next()
     }
 
     /// Copy the selected filename to the clipboard. Only the filename.

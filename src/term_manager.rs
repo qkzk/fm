@@ -448,10 +448,12 @@ impl<'a> WinMain<'a> {
             } else {
                 0
             };
-            let col_tree_prefix = canvas.print(row, left_margin + col_metadata, prefix)?;
+            let offset = if i == 0 { 1 } else { 0 };
+
+            let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, prefix)?;
             canvas.print_with_attr(
                 row,
-                left_margin + col_metadata + col_tree_prefix,
+                left_margin + col_metadata + col_tree_prefix + offset,
                 &colored_string.text,
                 attr,
             )?;

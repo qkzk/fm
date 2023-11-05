@@ -527,7 +527,7 @@ impl EventAction {
             Mode::Navigate(Navigate::CliInfo) => status.cli_info.next(),
             Mode::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
             Mode::InputCompleted(_) => status.selected().completion.next(),
-            Mode::Tree => status.selected().select_next()?,
+            Mode::Tree => status.selected().tree_select_next()?,
             _ => (),
         };
         status.update_second_pane_for_preview()
@@ -898,7 +898,7 @@ impl EventAction {
         let (tree, _, _) = tab.directory.tree.explore_position(false);
         tree.node.toggle_fold();
         tab.directory.make_preview();
-        tab.select_next()
+        tab.tree_select_next()
     }
 
     /// Unfold every child node in the tree.
