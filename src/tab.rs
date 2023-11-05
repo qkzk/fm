@@ -334,7 +334,7 @@ impl Tab {
         self.scroll_to(index);
         self.history.content.pop();
         if let Mode::Tree = self.mode {
-            self.make_tree()?
+            self.make_tree(None)?
         }
 
         Ok(())
@@ -346,7 +346,7 @@ impl Tab {
         self.directory.unselect_children();
         if self.directory.tree.position.len() <= 1 {
             self.move_to_parent()?;
-            self.make_tree()?
+            self.make_tree(None)?
         }
         self.directory.select_parent()
     }
@@ -430,18 +430,14 @@ impl Tab {
     }
 
     /// Makes a new tree of the current path.
-    pub fn make_tree(&mut self) -> Result<()> {
+    pub fn make_tree(&mut self, sort_kind: Option<SortKind>) -> Result<()> {
+        let sort_kind = match sort_kind {
+            Some(sort_kind) => sort_kind,
+            None => SortKind::tree_default(),
+        };
         let path = self.path_content.path.clone();
         let users = &self.users;
-        // self.directory = Directory::new(&path, users, &self.filter, self.show_hidden, None)?;
-        self.tree = FileSystem::new(
-            path,
-            5,
-            SortKind::tree_default(),
-            users,
-            self.show_hidden,
-            &self.filter,
-        );
+        self.tree = FileSystem::new(path, 5, sort_kind, users, self.show_hidden, &self.filter);
         Ok(())
     }
 
@@ -697,10 +693,13 @@ impl Tab {
                 self.path_content.select_index(0);
             }
             Mode::Tree => {
-                self.directory.tree.update_sort_from_char(c);
-                self.directory.tree.sort();
-                self.tree_select_root()?;
-                self.directory.tree.into_navigable_content();
+                self.path_content.update_sort_from_char(c);
+                self.make_tree(Some(self.path_content.sort_kind.clone()))?;
+
+                // self.directory.tree.update_sort_from_char(c);
+                // self.directory.tree.sort();
+                // self.tree_select_root()?;
+                // self.directory.tree.into_navigable_content();
             }
             _ => (),
         }

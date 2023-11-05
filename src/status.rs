@@ -41,6 +41,7 @@ use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::trash::Trash;
+use crate::trees::FileSystem;
 use crate::users::Users;
 use crate::utils::{current_username, disk_space, filename_from_path, is_program_in_path};
 
@@ -617,17 +618,15 @@ impl Status {
     pub fn tree(&mut self) -> Result<()> {
         if let Mode::Tree = self.selected_non_mut().mode {
             {
-                let tab: &mut Tab = self.selected();
+                let tab = self.selected();
+                tab.tree = FileSystem::empty();
                 tab.refresh_view()
             }?;
             self.selected().set_mode(Mode::Normal)
         } else {
             self.display_full = true;
-            // self.selected().make_tree()?;
-            self.selected().make_tree()?;
+            self.selected().make_tree(None)?;
             self.selected().set_mode(Mode::Tree);
-            let len = self.selected_non_mut().directory.len();
-            self.selected().window.reset(len);
         }
         Ok(())
     }
@@ -929,7 +928,7 @@ impl Status {
         self.refresh_users()?;
         self.selected().refresh_view()?;
         if let Mode::Tree = self.selected_non_mut().mode {
-            self.selected().make_tree()?
+            self.selected().make_tree(None)?
         }
         Ok(())
     }

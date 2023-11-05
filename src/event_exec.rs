@@ -302,7 +302,7 @@ impl EventAction {
             .reset_files(&tab.filter, tab.show_hidden, &tab.users)?;
         tab.window.reset(tab.path_content.content.len());
         if let Mode::Tree = tab.mode {
-            tab.make_tree()?
+            tab.make_tree(None)?
         }
         Ok(())
     }
@@ -1454,7 +1454,7 @@ impl LeaveMode {
             EventAction::open_file(status)
         } else {
             tab.set_pathcontent(&node.filepath())?;
-            tab.make_tree()?;
+            tab.make_tree(None)?;
             Ok(())
         }
     }
@@ -1525,7 +1525,7 @@ impl LeaveMode {
         tab.path_content
             .reset_files(&tab.filter, tab.show_hidden, &tab.users)?;
         if let Mode::Tree = tab.previous_mode {
-            tab.make_tree()?;
+            tab.make_tree(None)?;
         }
         tab.window.reset(tab.path_content.content.len());
         Ok(())

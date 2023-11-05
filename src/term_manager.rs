@@ -142,7 +142,7 @@ impl<'a> Draw for WinMain<'a> {
             Mode::Tree => self.trees(self.status, self.tab, canvas),
             Mode::Normal => self.files(self.status, self.tab, canvas),
             _ => match self.tab.previous_mode {
-                Mode::Tree => self.tree(self.status, self.tab, canvas),
+                Mode::Tree => self.trees(self.status, self.tab, canvas),
                 _ => self.files(self.status, self.tab, canvas),
             },
         }?;
@@ -394,7 +394,7 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+    fn _tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
         let left_margin = if status.display_full { 1 } else { 3 };
         let (_, height) = canvas.size()?;
         let (top, bottom, len) = tab.directory.calculate_tree_window(height);
