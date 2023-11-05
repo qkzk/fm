@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use crate::{
     content_window::ContentWindow,
@@ -177,20 +177,31 @@ impl FileSystem {
 
     /// Select next sibling or the next sibling of the parent
     pub fn select_next(&mut self) -> Result<()> {
-        let current_node = self
-            .nodes
-            .get_mut(&self.selected)
-            .context("no selected node")?;
+        log::info!("select_next START {sel}", sel = self.selected.display());
 
+        if let Some(next_path) = self.find_next_path() {
+            let Some(next_node) = self.nodes.get_mut(&next_path) else {
+                return Ok(());
+            };
+            log::info!("selecting {next_node:?}");
+            next_node.select();
+            let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
+                unreachable!("current_node should be in nodes");
+            };
+            selected_node.unselect();
+            self.selected = next_path;
+        }
+        Ok(())
+    }
+
+    fn find_next_path(&self) -> Option<PathBuf> {
+        let Some(current_node) = self.nodes.get(&self.selected) else {
+            unreachable!("selected path should be in nodes")
+        };
         if let Some(children_paths) = &current_node.children {
-            if let Some(child_path) = children_paths.get(0) {
+            if let Some(child_path) = children_paths.last() {
                 let child_path = child_path.to_owned();
-                current_node.unselect();
-                self.selected = child_path.clone();
-                self.nodes
-                    .get_mut(&child_path)
-                    .context("no child path in nodes")?
-                    .select();
+                return Some(child_path.to_owned());
             }
         } else {
             let mut current_path = self.selected.to_owned();
@@ -204,58 +215,73 @@ impl FileSystem {
                     current_path = parent_path.to_owned();
                     continue;
                 };
+                log::info!("siblings {siblings_paths:?}");
                 let Some(index_current) =
                     siblings_paths.iter().position(|path| path == &current_path)
                 else {
                     current_path = parent_path.to_owned();
                     continue;
                 };
-                let Some(next_sibling_path) = siblings_paths.get(index_current + 1) else {
+                if index_current == 0 {
+                    current_path = parent_path.to_owned();
+                    continue;
+                }
+                let Some(next_sibling_path) = siblings_paths.get(index_current - 1) else {
                     current_path = parent_path.to_owned();
                     continue;
                 };
-                self.selected = next_sibling_path.to_owned();
-                let Some(node) = self.nodes.get_mut(&self.selected) else {
+                if self.nodes.contains_key(next_sibling_path) {
+                    log::info!("returning {next_sibling_path:?}");
+                    return Some(next_sibling_path.to_owned());
+                } else {
                     current_path = parent_path.to_owned();
                     continue;
                 };
-                node.select();
-                break;
             }
         }
-        Ok(())
+        None
     }
 
+    // TODO! find the bottom child of parent instead of jumping back 1 level
     /// Select previous sibling or the parent
     pub fn select_prev(&mut self) {
+        log::info!("select_prev START {sel}", sel = self.selected.display());
+
+        if let Some(previous_path) = self.find_prev_path() {
+            let Some(previous_node) = self.nodes.get_mut(&previous_path) else {
+                return;
+            };
+            previous_node.select();
+            let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
+                unreachable!("current_node should be in nodes");
+            };
+            selected_node.unselect();
+            self.selected = previous_path;
+        }
+    }
+
+    fn find_prev_path(&self) -> Option<PathBuf> {
         let current_path = self.selected().to_owned();
         let Some(parent_path) = current_path.parent() else {
-            return;
+            return None;
         };
         let Some(parent_node) = self.nodes.get(parent_path) else {
-            return;
+            return None;
         };
         let Some(siblings_paths) = &parent_node.children else {
-            return;
+            return None;
         };
         let Some(index_current) = siblings_paths.iter().position(|path| path == &current_path)
         else {
-            return;
+            return None;
         };
-        if index_current > 0 {
-            // Previous sibling
-            self.selected = siblings_paths[index_current - 1].to_owned();
-            let Some(node) = self.nodes.get_mut(&self.selected) else {
-                return;
-            };
-            node.select();
+        if index_current + 1 < siblings_paths.len() {
+            Some(siblings_paths[index_current + 1].to_owned())
         } else {
-            // parent
-            let Some(node) = self.nodes.get_mut(parent_path) else {
-                return;
+            let Some(_node) = self.nodes.get(parent_path) else {
+                return None;
             };
-            self.selected = parent_path.to_owned();
-            node.select();
+            Some(parent_path.to_owned())
         }
     }
 
