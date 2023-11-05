@@ -198,10 +198,10 @@ impl<'a> WinMain<'a> {
         match tab.mode {
             Mode::Normal | Mode::Tree => {
                 if !status.display_full {
-                    let Some(file) = tab.selected() else {
+                    let Ok(file) = tab.selected() else {
                         return Ok(0);
                     };
-                    self.second_line_detailed(file, status, canvas)
+                    self.second_line_detailed(&file, status, canvas)
                 } else {
                     self.second_line_simple(status, canvas)
                 }
@@ -296,7 +296,7 @@ impl<'a> WinMain<'a> {
         ]
     }
 
-    fn pick_previewed_fileinfo(&self) -> Option<&FileInfo> {
+    fn pick_previewed_fileinfo(&self) -> Result<FileInfo> {
         if self.status.dual_pane && self.status.preview_second {
             self.status.tabs[0].selected()
         } else {
@@ -305,7 +305,7 @@ impl<'a> WinMain<'a> {
     }
 
     fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
-        if let Some(fileinfo) = self.pick_previewed_fileinfo() {
+        if let Ok(fileinfo) = self.pick_previewed_fileinfo() {
             let mut strings = vec![" Preview ".to_owned()];
             if !tab.preview.is_empty() {
                 let index = match &tab.preview {
@@ -391,36 +391,6 @@ impl<'a> WinMain<'a> {
     fn log_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let (_, height) = canvas.size()?;
         canvas.print_with_attr(height - 1, 4, &read_last_log_line(), ATTR_YELLOW_BOLD)?;
-        Ok(())
-    }
-
-    fn _tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        let left_margin = if status.display_full { 1 } else { 3 };
-        let (_, height) = canvas.size()?;
-        let (top, bottom, len) = tab.directory.calculate_tree_window(height);
-
-        for (i, (metadata, prefix, colored_string)) in tab.directory.window(top, bottom, len) {
-            let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
-            let mut attr = colored_string.color_effect.attr();
-            if status.flagged.contains(&colored_string.path) {
-                attr.effect |= Effect::BOLD;
-                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
-            }
-
-            let col_metadata = if status.display_full {
-                canvas.print_with_attr(row, left_margin, metadata, attr)?
-            } else {
-                0
-            };
-            let col_tree_prefix = canvas.print(row, left_margin + col_metadata, prefix)?;
-            canvas.print_with_attr(
-                row,
-                left_margin + col_metadata + col_tree_prefix,
-                &colored_string.text,
-                attr,
-            )?;
-        }
-        self.second_line(status, tab, canvas)?;
         Ok(())
     }
 
@@ -975,9 +945,9 @@ impl<'a> WinSecondary<'a> {
         }
         let dest = match tab.previous_mode {
             Mode::Tree => tab
-                .directory
                 .tree
-                .directory_of_selected()?
+                .directory_of_selected()
+                .context("No directory_of_selected")?
                 .display()
                 .to_string(),
             _ => tab.path_content.path_to_str(),

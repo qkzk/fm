@@ -143,8 +143,12 @@ impl FileSystem {
         }
     }
 
-    pub fn sort(&mut self, _sort_kind: SortKind) -> Result<()> {
-        todo!()
+    pub fn selected_path(&self) -> &Path {
+        self.selected.as_path()
+    }
+
+    pub fn selected_node(&self) -> Option<&Node> {
+        self.nodes.get(&self.selected)
     }
 
     /// Select next sibling or the next sibling of the parent
@@ -215,7 +219,6 @@ impl FileSystem {
         }
         None
     }
-
     // TODO! find the bottom child of parent instead of jumping back 1 level
     /// Select previous sibling or the parent
     pub fn select_prev(&mut self) {
@@ -283,6 +286,32 @@ impl FileSystem {
         self.selected = self.last_path.to_owned();
     }
 
+    pub fn select_parent(&mut self) {
+        if let Some(parent_path) = self.selected.parent() {
+            let Some(parent_node) = self.nodes.get_mut(parent_path) else {
+                return;
+            };
+            parent_node.select();
+            let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
+                unreachable!("current_node should be in nodes");
+            };
+            selected_node.unselect();
+            self.selected = parent_path.to_owned();
+        }
+    }
+
+    pub fn select_from_path(&mut self, clicked_path: &Path) {
+        let Some(new_node) = self.nodes.get_mut(clicked_path) else {
+            return;
+        };
+        new_node.select();
+        let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
+            unreachable!("current_node should be in nodes");
+        };
+        selected_node.unselect();
+        self.selected = clicked_path.to_owned();
+    }
+
     /// Fold selected node
     pub fn toggle_fold(&mut self) {
         if let Some(node) = self.nodes.get_mut(&self.selected) {
@@ -299,6 +328,14 @@ impl FileSystem {
     pub fn unfold_all(&mut self) {
         for (_, node) in self.nodes.iter_mut() {
             node.unfold()
+        }
+    }
+
+    pub fn directory_of_selected(&self) -> Option<&Path> {
+        if self.selected.is_dir() && !self.selected.is_symlink() {
+            Some(self.selected.as_path())
+        } else {
+            self.selected.parent()
         }
     }
 
@@ -327,8 +364,8 @@ impl FileSystem {
         let mut content = vec![];
         let mut selected_index = 0;
 
-        while let Some((prefix, current)) = stack.pop() {
-            let Some(current_node) = &self.nodes.get(current) else {
+        while let Some((prefix, current_path)) = stack.pop() {
+            let Some(current_node) = &self.nodes.get(current_path) else {
                 continue;
             };
 
@@ -336,16 +373,18 @@ impl FileSystem {
                 selected_index = content.len();
             }
 
-            let Ok(fileinfo) = FileInfo::new(current, users) else {
+            let Ok(fileinfo) = FileInfo::new(current_path, users) else {
                 continue;
             };
-            let filename = filename_from_path(current).unwrap_or_default().to_owned();
+            let filename = filename_from_path(current_path)
+                .unwrap_or_default()
+                .to_owned();
 
             let mut color_effect = ColorEffect::new(&fileinfo);
             if current_node.selected {
                 color_effect.effect |= tuikit::attr::Effect::REVERSE;
             }
-            let filename_text = if current.is_dir() && !current.is_symlink() {
+            let filename_text = if current_path.is_dir() && !current_path.is_symlink() {
                 if current_node.folded {
                     format!("▸ {}", filename)
                 } else {
@@ -357,10 +396,10 @@ impl FileSystem {
             content.push((
                 fileinfo.format_no_filename().unwrap_or_default(),
                 prefix.to_owned(),
-                ColoredString::new(filename_text, color_effect, current.to_owned()),
+                ColoredString::new(filename_text, color_effect, current_path.to_owned()),
             ));
 
-            if current.is_dir() && !current.is_symlink() && !current_node.folded {
+            if current_path.is_dir() && !current_path.is_symlink() && !current_node.folded {
                 let first_prefix = first_prefix(prefix.clone());
                 let other_prefix = other_prefix(prefix);
 
@@ -382,6 +421,13 @@ impl FileSystem {
             }
         }
         (selected_index, content)
+    }
+
+    pub fn paths(&self) -> Vec<&std::ffi::OsStr> {
+        self.nodes
+            .keys()
+            .filter_map(|path| path.file_name())
+            .collect()
     }
 }
 

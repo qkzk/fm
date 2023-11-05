@@ -73,17 +73,13 @@ impl EventAction {
         let tab = status.selected_non_mut();
 
         match tab.mode {
-            Mode::Normal => {
-                let Some(file) = tab.path_content.selected() else {
+            Mode::Normal | Mode::Tree => {
+                let Ok(file) = tab.selected() else {
                     return Ok(());
                 };
                 let path = file.path.clone();
                 status.toggle_flag_on_path(&path);
                 status.selected().down_one_row();
-            }
-            Mode::Tree => {
-                let path = tab.directory.tree.current_node.filepath();
-                status.toggle_flag_on_path(&path);
             }
             _ => (),
         }
@@ -378,7 +374,7 @@ impl EventAction {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn shortcut(tab: &mut Tab) -> Result<()> {
-        std::env::set_current_dir(tab.current_directory_path())?;
+        std::env::set_current_dir(tab.current_directory_path().context("no parent")?)?;
         tab.shortcut.update_git_root();
         tab.set_mode(Mode::Navigate(Navigate::Shortcut));
         Ok(())
@@ -396,7 +392,7 @@ impl EventAction {
         };
         let nvim_server = status.nvim_server.clone();
         if status.flagged.is_empty() {
-            let Some(fileinfo) = status.selected_non_mut().selected() else {
+            let Ok(fileinfo) = status.selected_non_mut().selected() else {
                 return Ok(());
             };
             let Some(path_str) = fileinfo.path.to_str() else {
@@ -460,7 +456,7 @@ impl EventAction {
             log_line!("{DEFAULT_DRAGNDROP} must be installed.");
             return Ok(());
         }
-        let Some(file) = status.selected_non_mut().selected() else {
+        let Ok(file) = status.selected_non_mut().selected() else {
             return Ok(());
         };
         let path_str = file
@@ -539,7 +535,7 @@ impl EventAction {
         let tab = status.selected();
         match tab.mode {
             Mode::Normal => tab.move_to_parent()?,
-            Mode::Tree => tab.tree_select_parent()?,
+            Mode::Tree => tab.tree_select_parent(),
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 tab.input.cursor_left();
             }
@@ -556,7 +552,11 @@ impl EventAction {
         match tab.mode {
             Mode::Normal => LeaveMode::open_file(status),
             Mode::Tree => {
-                tab.select_first_child()?;
+                if tab.tree.selected_path().is_file() {
+                    tab.tree_select_next()?;
+                } else {
+                    LeaveMode::open_file(status)?;
+                };
                 status.update_second_pane_for_preview()
             }
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
@@ -799,7 +799,7 @@ impl EventAction {
             return Ok(());
         }
         if let Mode::Normal | Mode::Tree = tab.mode {
-            let Some(file_info) = tab.selected() else {
+            let Ok(file_info) = tab.selected() else {
                 return Ok(());
             };
             info!("selected {:?}", file_info);
@@ -1099,7 +1099,11 @@ impl Display for NodeCreation {
 impl NodeCreation {
     fn create(&self, tab: &mut Tab) -> Result<()> {
         let root_path = match tab.previous_mode {
-            Mode::Tree => tab.directory.tree.directory_of_selected()?.to_owned(),
+            Mode::Tree => tab
+                .tree
+                .directory_of_selected()
+                .context("no parent")?
+                .to_owned(),
             _ => tab.path_content.path.clone(),
         };
         log::info!("root_path: {root_path:?}");
@@ -1137,6 +1141,9 @@ impl LeaveMode {
     /// Open the file with configured opener or enter the directory.
     pub fn open_file(status: &mut Status) -> Result<()> {
         let tab = status.selected();
+        if matches!(tab.mode, Mode::Tree) {
+            return EventAction::open_file(status);
+        };
         if tab.path_content.is_empty() {
             return Ok(());
         }
@@ -1292,15 +1299,15 @@ impl LeaveMode {
     /// We only try to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
     pub fn rename(tab: &mut Tab) -> Result<()> {
-        let fileinfo = match tab.previous_mode {
-            Mode::Tree => &tab.directory.tree.current_node.fileinfo,
-            _ => tab
-                .path_content
+        let original_path = if let Mode::Tree = tab.mode {
+            tab.tree.selected_path()
+        } else {
+            tab.path_content
                 .selected()
-                .context("rename: couldnt parse selected")?,
+                .context("rename: couldn't parse selected file")?
+                .path
+                .as_path()
         };
-
-        let original_path = &fileinfo.path;
         if let Some(parent) = original_path.parent() {
             let new_path = parent.join(sanitize_filename::sanitize(tab.input.string()));
             info!(
@@ -1438,17 +1445,10 @@ impl LeaveMode {
         status.update_second_pane_for_preview()
     }
 
+    // TODO! enter the tree if it's a directory
     /// Execute the selected node if it's a file else enter the directory.
     pub fn tree(status: &mut Status) -> Result<()> {
-        let tab = status.selected();
-        let node = tab.directory.tree.current_node.clone();
-        if !node.is_dir {
-            EventAction::open_file(status)
-        } else {
-            tab.set_pathcontent(&node.filepath())?;
-            tab.make_tree(None)?;
-            Ok(())
-        }
+        EventAction::open_file(status)
     }
 
     /// Store a password of some kind (sudo or device passphrase).
@@ -1548,6 +1548,7 @@ impl LeaveMode {
         let (username, hostname, remote_path) = (strings[0], strings[1], strings[2]);
         let current_path: &str = tab
             .current_directory_path()
+            .context("no parent")?
             .to_str()
             .context("couldn't parse the path")?;
         let first_arg = &format!("{username}@{hostname}:{remote_path}");
