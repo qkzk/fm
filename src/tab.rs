@@ -543,7 +543,8 @@ impl Tab {
 
     /// Select the previous sibling of the current node.
     pub fn select_prev(&mut self) -> Result<()> {
-        self.tree.select_prev()
+        self.tree.select_prev();
+        Ok(())
     }
 
     /// Select the next sibling of the current node.
