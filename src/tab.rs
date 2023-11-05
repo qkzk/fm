@@ -353,16 +353,18 @@ impl Tab {
 
     /// Move down 10 times in the tree
     pub fn tree_page_down(&mut self) -> Result<()> {
-        self.directory.tree.increase_required_height_by_ten();
-        self.directory.unselect_children();
-        self.directory.page_down()
+        for _ in 1..10 {
+            self.tree.select_next()?;
+        }
+        Ok(())
     }
 
     /// Move up 10 times in the tree
     pub fn tree_page_up(&mut self) -> Result<()> {
-        self.directory.tree.decrease_required_height_by_ten();
-        self.directory.unselect_children();
-        self.directory.page_up()
+        for _ in 1..10 {
+            self.tree.select_prev();
+        }
+        Ok(())
     }
 
     /// Select the next sibling.
