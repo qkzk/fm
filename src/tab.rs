@@ -16,6 +16,7 @@ use crate::opener::execute_in_child;
 use crate::preview::{Directory, Preview};
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
+use crate::trees::FileSystem;
 use crate::users::Users;
 use crate::utils::{filename_from_path, row_to_window_index, set_clipboard};
 
@@ -56,6 +57,7 @@ pub struct Tab {
     pub history: History,
     /// Users & groups
     pub users: Users,
+    pub tree: FileSystem,
 }
 
 impl Tab {
@@ -89,6 +91,7 @@ impl Tab {
         shortcut.extend_with_mount_points(mount_points);
         let searched = None;
         let index = path_content.select_file(&path);
+        let tree = FileSystem::empty();
         window.scroll_to(index);
         Ok(Self {
             mode,
@@ -107,6 +110,7 @@ impl Tab {
             show_hidden,
             history,
             users,
+            tree,
         })
     }
 
@@ -427,7 +431,15 @@ impl Tab {
     pub fn make_tree(&mut self) -> Result<()> {
         let path = self.path_content.path.clone();
         let users = &self.users;
-        self.directory = Directory::new(&path, users, &self.filter, self.show_hidden, None)?;
+        // self.directory = Directory::new(&path, users, &self.filter, self.show_hidden, None)?;
+        self.tree = FileSystem::new(
+            path,
+            5,
+            self.path_content.sort_kind.clone(),
+            users,
+            self.show_hidden,
+            &self.filter,
+        );
         Ok(())
     }
 
@@ -530,11 +542,13 @@ impl Tab {
 
     /// Select the next sibling of the current node.
     pub fn select_next(&mut self) -> Result<()> {
+        self.tree.next();
         self.tree_select_next()
     }
 
     /// Select the previous sibling of the current node.
     pub fn select_prev(&mut self) -> Result<()> {
+        self.tree.prev();
         self.tree_select_prev()
     }
 

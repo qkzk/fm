@@ -25,6 +25,7 @@ use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::trash::TrashInfo;
+use crate::trees::calculate_tree_window;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -138,7 +139,7 @@ impl<'a> Draw for WinMain<'a> {
         }
         match self.tab.mode {
             Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
-            Mode::Tree => self.tree(self.status, self.tab, canvas),
+            Mode::Tree => self.trees(self.status, self.tab, canvas),
             Mode::Normal => self.files(self.status, self.tab, canvas),
             _ => match self.tab.previous_mode {
                 Mode::Tree => self.tree(self.status, self.tab, canvas),
@@ -423,6 +424,41 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
+    fn trees(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+        let left_margin = if status.display_full { 1 } else { 3 };
+        let (_, height) = canvas.size()?;
+        let (selected_index, content) = tab.tree.into_navigable_content(&tab.users);
+        let (top, bottom, len) = calculate_tree_window(selected_index, canvas.size()?.1, height);
+
+        for (i, (metadata, prefix, colored_string)) in content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(len, bottom + 1))
+        {
+            let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
+            let mut attr = colored_string.color_effect.attr();
+            if status.flagged.contains(&colored_string.path) {
+                attr.effect |= Effect::BOLD;
+                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
+            }
+
+            let col_metadata = if status.display_full {
+                canvas.print_with_attr(row, left_margin, metadata, attr)?
+            } else {
+                0
+            };
+            let col_tree_prefix = canvas.print(row, left_margin + col_metadata, prefix)?;
+            canvas.print_with_attr(
+                row,
+                left_margin + col_metadata + col_tree_prefix,
+                &colored_string.text,
+                attr,
+            )?;
+        }
+        self.second_line(status, tab, canvas)?;
+        Ok(())
+    }
     fn print_line_number(
         row_position_in_canvas: usize,
         line_number_to_print: usize,

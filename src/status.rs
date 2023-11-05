@@ -623,6 +623,7 @@ impl Status {
             self.selected().set_mode(Mode::Normal)
         } else {
             self.display_full = true;
+            // self.selected().make_tree()?;
             self.selected().make_tree()?;
             self.selected().set_mode(Mode::Tree);
             let len = self.selected_non_mut().directory.len();

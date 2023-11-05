@@ -21,7 +21,7 @@ pub struct ColoredString {
 }
 
 impl ColoredString {
-    fn new(text: String, color_effect: ColorEffect, path: std::path::PathBuf) -> Self {
+    pub fn new(text: String, color_effect: ColorEffect, path: std::path::PathBuf) -> Self {
         Self {
             text,
             color_effect,
