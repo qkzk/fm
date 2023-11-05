@@ -896,10 +896,6 @@ impl EventAction {
     /// Has no effect on "file" nodes.
     pub fn tree_fold(tab: &mut Tab) -> Result<()> {
         tab.tree.toggle_fold();
-        // let (tree, _, _) = tab.directory.tree.explore_position(false);
-        // tree.node.toggle_fold();
-        // tab.directory.make_preview();
-        // tab.tree_select_next()
         Ok(())
     }
 
@@ -907,9 +903,7 @@ impl EventAction {
     /// Recursively explore the tree and unfold every node.
     /// Reset the display.
     pub fn tree_unfold_all(tab: &mut Tab) -> Result<()> {
-        tab.tree.fold_all();
-        // tab.directory.tree.unfold_children();
-        // tab.directory.make_preview();
+        tab.tree.unfold_all();
         Ok(())
     }
 
@@ -918,8 +912,6 @@ impl EventAction {
     /// Reset the display.
     pub fn tree_fold_all(tab: &mut Tab) -> Result<()> {
         tab.tree.fold_all();
-        // tab.directory.tree.fold_children();
-        // tab.directory.make_preview();
         Ok(())
     }
 

@@ -281,6 +281,12 @@ impl FileSystem {
         }
     }
 
+    pub fn unfold_all(&mut self) {
+        for (_, node) in self.nodes.iter_mut() {
+            node.unfold()
+        }
+    }
+
     // FIX: can only find the first match and nothing else
     pub fn search_first_match(&mut self, pattern: &str) {
         let initial_selected = self.selected.to_owned();
