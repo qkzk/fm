@@ -227,57 +227,35 @@ impl FileSystem {
     }
 
     /// Select previous sibling or the parent
-    pub fn select_prev(&mut self) -> Result<()> {
+    pub fn select_prev(&mut self) {
         let current_path = self.selected().to_owned();
         let Some(parent_path) = current_path.parent() else {
-            return Ok(());
+            return;
         };
         let Some(parent_node) = self.nodes.get(parent_path) else {
-            return Ok(());
+            return;
         };
         let Some(siblings_paths) = &parent_node.children else {
-            return Ok(());
+            return;
         };
         let Some(index_current) = siblings_paths.iter().position(|path| path == &current_path)
         else {
-            return Ok(());
+            return;
         };
         if index_current > 0 {
             // Previous sibling
             self.selected = siblings_paths[index_current - 1].to_owned();
             let Some(node) = self.nodes.get_mut(&self.selected) else {
-                return Ok(());
+                return;
             };
             node.select();
         } else {
             // parent
             let Some(node) = self.nodes.get_mut(parent_path) else {
-                return Ok(());
+                return;
             };
             self.selected = parent_path.to_owned();
             node.select();
-        }
-        Ok(())
-    }
-
-    // TODO: remove indentation with let ... else
-    /// Select previous sibling or parent if it's the first.
-    pub fn prev_not_working(&mut self) {
-        if let Some(parent) = self.selected.parent() {
-            if let Some(parent_node) = self.nodes.get(parent) {
-                if let Some(siblings) = &parent_node.children {
-                    if let Some(index_selected) =
-                        siblings.iter().position(|path| path == &self.selected)
-                    {
-                        if index_selected == 0 {
-                            self.selected = parent.to_owned();
-                        } else if let Some(prev_sibling) = siblings.get(index_selected - 1) {
-                            self.selected = prev_sibling.to_owned();
-                        }
-                        self.select_current()
-                    }
-                }
-            }
         }
     }
 

@@ -371,7 +371,8 @@ impl Tab {
 
     /// Select the previous siblging
     pub fn tree_select_prev(&mut self) -> Result<()> {
-        self.tree.select_prev()
+        self.tree.select_prev();
+        Ok(())
     }
 
     /// Select the first child if any.
