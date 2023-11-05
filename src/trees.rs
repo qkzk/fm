@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use crate::{
     content_window::ContentWindow,
@@ -177,52 +177,54 @@ impl FileSystem {
 
     // TODO: remove indentation with let ... else
     /// Select next sibling or the next sibling of the parent
-    pub fn next(&mut self) {
-        if let Some(current) = self.selected_node() {
-            if let Some(children) = &current.children {
-                if let Some(child_path) = children.get(0) {
-                    log::info!("first child {sel}", sel = self.selected.display());
-                    self.select(child_path)
-                }
-            }
-        }
+    pub fn next(&mut self) -> Result<()> {
+        let current_node = self
+            .nodes
+            .get_mut(&self.selected)
+            .context("no selected node")?;
 
-        if let Some(parent) = self.selected.parent() {
-            if let Some(parent_node) = self.nodes.get(parent) {
-                if let Some(siblings) = &parent_node.children {
-                    if let Some(index_selected) =
-                        siblings.iter().position(|path| path == &self.selected)
-                    {
-                        if let Some(next_sibling) = siblings.get(index_selected + 1) {
-                            self.selected = next_sibling.to_owned();
-                            log::info!("next sibling {sel}", sel = self.selected.display());
-                            self.select_current()
-                        } else {
-                            if let Some(parent_parent) = parent.parent() {
-                                if let Some(parent_parent_node) = self.nodes.get(parent_parent) {
-                                    if let Some(parent_siblings) = &parent_parent_node.children {
-                                        if let Some(index_parent) =
-                                            parent_siblings.iter().position(|path| path == &parent)
-                                        {
-                                            if let Some(next_parent_sibling) =
-                                                parent_siblings.get(index_parent + 1)
-                                            {
-                                                self.selected = next_parent_sibling.to_owned();
-                                                log::info!(
-                                                    "parent sibling {sel}",
-                                                    sel = self.selected.display()
-                                                );
-                                                self.select_current()
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        if let Some(children_paths) = &current_node.children {
+            if let Some(child_path) = children_paths.get(0) {
+                let child_path = child_path.to_owned();
+                current_node.unselect();
+                self.selected = child_path.clone();
+                self.nodes
+                    .get_mut(&child_path)
+                    .context("no child path in nodes")?
+                    .select();
+            }
+        } else {
+            let mut current_path = self.selected.to_owned();
+
+            while let Some(parent_path) = current_path.parent() {
+                let Some(parent_node) = self.nodes.get(parent_path) else {
+                    current_path = parent_path.to_owned();
+                    continue;
+                };
+                let Some(siblings_paths) = &parent_node.children else {
+                    current_path = parent_path.to_owned();
+                    continue;
+                };
+                let Some(index_current) =
+                    siblings_paths.iter().position(|path| path == &current_path)
+                else {
+                    current_path = parent_path.to_owned();
+                    continue;
+                };
+                let Some(next_sibling_path) = siblings_paths.get(index_current + 1) else {
+                    current_path = parent_path.to_owned();
+                    continue;
+                };
+                self.selected = next_sibling_path.to_owned();
+                let Some(node) = self.nodes.get_mut(&self.selected) else {
+                    current_path = parent_path.to_owned();
+                    continue;
+                };
+                node.select();
+                break;
             }
         }
+        Ok(())
     }
 
     // TODO: remove indentation with let ... else
