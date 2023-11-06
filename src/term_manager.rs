@@ -254,12 +254,7 @@ impl<'a> WinMain<'a> {
         match self.tab.mode {
             Mode::Tree => Ok(format!(
                 "/{rel}",
-                rel = self
-                    .tab
-                    .tree
-                    .selected_path_relative_to_root()?
-                    .display()
-                    .to_string(),
+                rel = self.tab.tree.selected_path_relative_to_root()?.display()
             )),
             _ => {
                 if let Some(fileinfo) = self.tab.path_content.selected() {

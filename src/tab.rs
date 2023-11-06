@@ -339,7 +339,7 @@ impl Tab {
             let Some(parent) = self.tree.root_path().parent() else {
                 return Ok(());
             };
-            self.set_pathcontent(&parent.to_owned())?;
+            self.set_pathcontent(parent.to_owned().as_ref())?;
             self.make_tree(Some(self.path_content.sort_kind.clone()))
         } else {
             self.tree.select_parent();

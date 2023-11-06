@@ -703,7 +703,7 @@ pub fn files_collection(
     filter_kind: &FilterKind,
     keep_dir: bool,
 ) -> Option<Vec<FileInfo>> {
-    match read_dir(&path) {
+    match read_dir(path) {
         Ok(read_dir) => Some(
             read_dir
                 .filter_map(|direntry| direntry.ok())
