@@ -1445,10 +1445,18 @@ impl LeaveMode {
         status.update_second_pane_for_preview()
     }
 
-    // TODO! enter the tree if it's a directory
     /// Execute the selected node if it's a file else enter the directory.
     pub fn tree(status: &mut Status) -> Result<()> {
-        EventAction::open_file(status)
+        let path = status.selected_fileinfo()?.path;
+        let is_dir = path.is_dir();
+        if is_dir {
+            status.selected().set_pathcontent(&path)?;
+            status.selected().make_tree(None)?;
+            status.selected().set_mode(Mode::Tree);
+            Ok(())
+        } else {
+            EventAction::open_file(status)
+        }
     }
 
     /// Store a password of some kind (sudo or device passphrase).

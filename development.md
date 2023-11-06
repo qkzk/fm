@@ -611,8 +611,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: scrolling to bottom of tree is bugged
   - [x] FIX: scrolling starts 1 row to low
   - [x] FIX: filename in first line
+  - [x] FIX: can't "open" a folder to redo the tree there
   - [ ] search can only find the first match
-  - [ ] can't "open" a folder to redo the tree there
   - [ ] test everything
   - [ ] refactor
   - [ ] document

@@ -665,11 +665,6 @@ impl Tab {
             Mode::Tree => {
                 self.path_content.update_sort_from_char(c);
                 self.make_tree(Some(self.path_content.sort_kind.clone()))?;
-
-                // self.directory.tree.update_sort_from_char(c);
-                // self.directory.tree.sort();
-                // self.tree_select_root()?;
-                // self.directory.tree.into_navigable_content();
             }
             _ => (),
         }

@@ -20,7 +20,7 @@ use crate::config::Settings;
 use crate::constant_strings_paths::{NVIM, SS, TUIS_PATH};
 use crate::copy_move::{copy_move, CopyMove};
 use crate::cryptsetup::{BlockDeviceAction, CryptoDeviceOpener};
-use crate::fileinfo::FileKind;
+use crate::fileinfo::{FileInfo, FileKind};
 use crate::flagged::Flagged;
 use crate::iso::IsoDevice;
 use crate::log_line;
@@ -256,6 +256,10 @@ impl Status {
     /// Returns a non mutable reference to the selected tab.
     pub fn selected_non_mut(&self) -> &Tab {
         &self.tabs[self.index]
+    }
+
+    pub fn selected_fileinfo(&self) -> Result<FileInfo> {
+        self.selected_non_mut().selected()
     }
 
     /// Reset the view of every tab.
