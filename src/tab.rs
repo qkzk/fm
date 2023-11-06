@@ -131,7 +131,7 @@ impl Tab {
                 if matches!(self.previous_mode, Mode::Tree) =>
             {
                 self.completion
-                    .search_from_tree(&self.input.string(), &self.tree.paths())
+                    .search_from_tree(&self.input.string(), &self.tree.filenames())
             }
             Mode::InputCompleted(InputCompleted::Command) => {
                 self.completion.command(&self.input.string())

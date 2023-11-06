@@ -9,7 +9,7 @@ use crate::{
     content_window::ContentWindow,
     fileinfo::{files_collection, ColorEffect, FileInfo},
     filter::FilterKind,
-    preview::ColoredTriplet,
+    preview::{ColoredTriplet, MakeTriplet},
     sort::SortKind,
     users::Users,
     utils::filename_from_path,
@@ -108,21 +108,21 @@ impl Tree {
         filter_kind: &FilterKind,
     ) -> Self {
         // keep track of the depth
-        let start_depth = root_path.components().collect::<Vec<_>>().len();
+        let root_depth = root_path.components().collect::<Vec<_>>().len();
         let mut stack = vec![root_path.to_owned()];
         let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
 
         let mut last_path = root_path.to_owned();
-        while let Some(path) = stack.pop() {
-            let reached_depth = path.components().collect::<Vec<_>>().len();
-            if reached_depth >= depth + start_depth {
+        while let Some(current_path) = stack.pop() {
+            let reached_depth = current_path.components().collect::<Vec<_>>().len();
+            if reached_depth >= depth + root_depth {
                 continue;
             }
-            let children_will_be_added = depth + start_depth - reached_depth > 1;
-            let mut node = Node::new(&path, None);
-            if path.is_dir() && !path.is_symlink() && children_will_be_added {
+            let children_will_be_added = depth + root_depth - reached_depth > 1;
+            let mut node = Node::new(&current_path, None);
+            if current_path.is_dir() && !current_path.is_symlink() && children_will_be_added {
                 if let Some(mut files) =
-                    files_collection(&path, users, show_hidden, filter_kind, true)
+                    files_collection(&current_path, users, show_hidden, filter_kind, true)
                 {
                     sort_kind.sort(&mut files);
                     let children = Self::make_children_and_stack_them(&mut stack, &files);
@@ -133,10 +133,10 @@ impl Tree {
             nodes.insert(node.path.to_owned(), node);
         }
 
-        let Some(node) = nodes.get_mut(&root_path) else {
+        let Some(root_node) = nodes.get_mut(&root_path) else {
             unreachable!("root path should be in nodes");
         };
-        node.select();
+        root_node.select();
 
         Self {
             selected: root_path.clone(),
@@ -433,78 +433,79 @@ impl Tree {
     }
 
     pub fn into_navigable_content(&self, users: &Users) -> (usize, Vec<ColoredTriplet>) {
-        let required_height = self.required_height;
         let mut stack = vec![("".to_owned(), self.root_path.as_path())];
         let mut content = vec![];
         let mut selected_index = 0;
 
-        while let Some((prefix, current_path)) = stack.pop() {
-            let Some(current_node) = &self.nodes.get(current_path) else {
+        while let Some((prefix, path)) = stack.pop() {
+            let Some(node) = self.nodes.get(path) else {
                 continue;
             };
 
-            if current_node.selected {
+            if node.selected {
                 selected_index = content.len();
             }
 
-            let Ok(fileinfo) = FileInfo::new(current_path, users) else {
+            let Ok(fileinfo) = FileInfo::new(path, users) else {
                 continue;
             };
-            let filename = filename_from_path(current_path)
-                .unwrap_or_default()
-                .to_owned();
 
-            let mut color_effect = ColorEffect::new(&fileinfo);
-            if current_node.selected {
-                color_effect.effect |= tuikit::attr::Effect::REVERSE;
-            }
-            let filename_text = if current_path.is_dir() && !current_path.is_symlink() {
-                if current_node.folded {
-                    format!("▸ {}", filename)
-                } else {
-                    format!("▾ {}", filename)
-                }
-            } else {
-                filename
-            };
-            content.push((
-                fileinfo.format_no_filename().unwrap_or_default(),
-                prefix.to_owned(),
-                ColoredString::new(filename_text, color_effect, current_path.to_owned()),
+            content.push(<ColoredTriplet as MakeTriplet>::make(
+                &fileinfo,
+                &prefix,
+                filename_format(path, node),
+                ColorEffect::node(&fileinfo, node),
+                path,
             ));
 
-            if current_path.is_dir() && !current_path.is_symlink() && !current_node.folded {
-                let first_prefix = first_prefix(prefix.clone());
-                let other_prefix = other_prefix(prefix);
-
-                if let Some(children) = &current_node.children {
-                    let mut leaves = children.iter();
-                    let Some(first_leaf) = leaves.next() else {
-                        continue;
-                    };
-                    stack.push((first_prefix.clone(), first_leaf));
-
-                    for leaf in leaves {
-                        stack.push((other_prefix.clone(), leaf));
-                    }
-                }
+            if Self::have_interesting_children(path, node) {
+                Self::stack_children(&mut stack, prefix, node);
             }
 
-            if content.len() > required_height {
+            if content.len() > self.required_height {
                 break;
             }
         }
         (selected_index, content)
     }
 
-    pub fn paths(&self) -> Vec<&std::ffi::OsStr> {
+    pub fn filenames(&self) -> Vec<&std::ffi::OsStr> {
         self.nodes
             .keys()
             .filter_map(|path| path.file_name())
             .collect()
     }
+
+    #[inline]
+    fn stack_children<'a>(
+        stack: &mut Vec<(String, &'a Path)>,
+        prefix: String,
+        current_node: &'a Node,
+    ) {
+        let first_prefix = first_prefix(prefix.clone());
+        let other_prefix = other_prefix(prefix);
+
+        let Some(children) = &current_node.children else {
+            return;
+        };
+        let mut children = children.iter();
+        let Some(first_leaf) = children.next() else {
+            return;
+        };
+        stack.push((first_prefix.clone(), first_leaf));
+
+        for leaf in children {
+            stack.push((other_prefix.clone(), leaf));
+        }
+    }
+
+    #[inline]
+    fn have_interesting_children(current_path: &Path, current_node: &Node) -> bool {
+        current_path.is_dir() && !current_path.is_symlink() && !current_node.folded
+    }
 }
 
+#[inline]
 fn first_prefix(mut prefix: String) -> String {
     prefix.push(' ');
     prefix = prefix.replace("└──", "   ");
@@ -513,12 +514,30 @@ fn first_prefix(mut prefix: String) -> String {
     prefix
 }
 
+#[inline]
 fn other_prefix(mut prefix: String) -> String {
     prefix.push(' ');
     prefix = prefix.replace("└──", "   ");
     prefix = prefix.replace("├──", "│  ");
     prefix.push_str("├──");
     prefix
+}
+
+#[inline]
+fn filename_format(current_path: &Path, current_node: &Node) -> String {
+    let filename = filename_from_path(current_path)
+        .unwrap_or_default()
+        .to_owned();
+
+    if current_path.is_dir() && !current_path.is_symlink() {
+        if current_node.folded {
+            format!("▸ {}", filename)
+        } else {
+            format!("▾ {}", filename)
+        }
+    } else {
+        filename
+    }
 }
 
 pub fn calculate_tree_window(selected_index: usize, terminal_height: usize) -> (usize, usize) {
@@ -529,7 +548,7 @@ pub fn calculate_tree_window(selected_index: usize, terminal_height: usize) -> (
         top = 0;
         bottom = window_height;
     } else {
-        let padding = std::cmp::max(10, terminal_height / 2);
+        let padding = 10.max(terminal_height / 2);
         top = selected_index - padding;
         bottom = top + window_height;
     }

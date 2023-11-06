@@ -21,7 +21,7 @@ use crate::constant_strings_paths::{
 };
 use crate::content_window::ContentWindow;
 use crate::decompress::{list_files_tar, list_files_zip};
-use crate::fileinfo::{FileInfo, FileKind};
+use crate::fileinfo::{ColorEffect, FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
 use crate::sort::SortKind;
@@ -1159,6 +1159,32 @@ macro_rules! impl_window {
 /// Used to iter and impl window trait in tree mode.
 pub type ColoredTriplet = (String, String, ColoredString);
 
+pub trait MakeTriplet {
+    fn make(
+        fileinfo: &FileInfo,
+        prefix: &str,
+        filename_text: String,
+        color_effect: ColorEffect,
+        current_path: &std::path::Path,
+    ) -> ColoredTriplet;
+}
+
+impl MakeTriplet for ColoredTriplet {
+    #[inline]
+    fn make(
+        fileinfo: &FileInfo,
+        prefix: &str,
+        filename_text: String,
+        color_effect: ColorEffect,
+        current_path: &std::path::Path,
+    ) -> ColoredTriplet {
+        (
+            fileinfo.format_no_filename().unwrap_or_default(),
+            prefix.to_owned(),
+            ColoredString::new(filename_text, color_effect, current_path.to_owned()),
+        )
+    }
+}
 /// A vector of highlighted strings
 pub type VecSyntaxedString = Vec<SyntaxedString>;
 

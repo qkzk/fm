@@ -16,6 +16,7 @@ use crate::filter::FilterKind;
 use crate::git::git;
 use crate::impl_selectable_content;
 use crate::sort::SortKind;
+use crate::tree::Node;
 use crate::users::Users;
 use crate::utils::filename_from_path;
 
@@ -564,6 +565,7 @@ pub struct ColorEffect {
 
 impl ColorEffect {
     /// Calculates a color and an effect from `fm::file_info::FileInfo`.
+    #[inline]
     pub fn new(fileinfo: &FileInfo) -> ColorEffect {
         let color = fileinfo_color(fileinfo);
 
@@ -574,6 +576,15 @@ impl ColorEffect {
         };
 
         Self { color, effect }
+    }
+
+    #[inline]
+    pub fn node(fileinfo: &FileInfo, current_node: &Node) -> Self {
+        let mut color_effect = Self::new(fileinfo);
+        if current_node.selected {
+            color_effect.effect |= Effect::REVERSE;
+        }
+        color_effect
     }
 
     /// Makes a new `tuikit::attr::Attr` where `bg` is default.
