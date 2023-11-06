@@ -477,7 +477,7 @@ pub fn calculate_tree_window(
     let top: usize;
     let bottom: usize;
     let window_height = terminal_height - ContentWindow::WINDOW_MARGIN_TOP;
-    if selected_index < terminal_height - 1 {
+    if selected_index < terminal_height - ContentWindow::WINDOW_MARGIN_TOP {
         top = 0;
         bottom = window_height;
     } else {
