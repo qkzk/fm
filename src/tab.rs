@@ -332,8 +332,17 @@ impl Tab {
 
     /// Select the parent of current node.
     /// If we were at the root node, move to the parent and make a new tree.
-    pub fn tree_select_parent(&mut self) {
-        self.tree.select_parent()
+    pub fn tree_select_parent(&mut self) -> Result<()> {
+        if self.tree.is_on_root() {
+            let Some(parent) = self.tree.root_path().parent() else {
+                return Ok(());
+            };
+            self.set_pathcontent(&parent.to_owned())?;
+            self.make_tree(Some(self.path_content.sort_kind.clone()))
+        } else {
+            self.tree.select_parent();
+            Ok(())
+        }
     }
 
     /// Move down 10 times in the tree

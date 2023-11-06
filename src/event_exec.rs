@@ -535,7 +535,7 @@ impl EventAction {
         let tab = status.selected();
         match tab.mode {
             Mode::Normal => tab.move_to_parent()?,
-            Mode::Tree => tab.tree_select_parent(),
+            Mode::Tree => tab.tree_select_parent()?,
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 tab.input.cursor_left();
             }

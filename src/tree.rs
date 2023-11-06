@@ -165,6 +165,10 @@ impl Tree {
         }
     }
 
+    pub fn root_path(&self) -> &Path {
+        self.root_path.as_path()
+    }
+
     pub fn selected_path(&self) -> &Path {
         self.selected.as_path()
     }
@@ -183,6 +187,10 @@ impl Tree {
 
     pub fn selected_path_relative_to_root(&self) -> Result<&Path> {
         Ok(self.selected.strip_prefix(&self.root_path)?)
+    }
+
+    pub fn is_on_root(&self) -> bool {
+        self.selected == self.root_path
     }
 
     /// Select next sibling or the next sibling of the parent

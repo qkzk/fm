@@ -612,6 +612,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: scrolling starts 1 row to low
   - [x] FIX: filename in first line
   - [x] FIX: can't "open" a folder to redo the tree there
+  - [x] FIX: move back from root should redo the parent tree
   - [ ] search can only find the first match
   - [ ] test everything
   - [ ] refactor
