@@ -118,9 +118,10 @@ impl Tree {
             if reached_depth >= depth + start_depth {
                 continue;
             }
+            let children_will_be_added = depth + start_depth - reached_depth > 1;
             let mut node = Node::new(&path, None);
             if let Ok(fileinfo) = node.fileinfo(users) {
-                if path.is_dir() && !path.is_symlink() {
+                if path.is_dir() && !path.is_symlink() && children_will_be_added {
                     if let Some(mut files) =
                         files_collection(&fileinfo, users, show_hidden, filter_kind, true)
                     {
