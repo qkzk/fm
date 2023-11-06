@@ -25,7 +25,7 @@ use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::trash::TrashInfo;
-use crate::trees::calculate_tree_window;
+use crate::tree::calculate_tree_window;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {

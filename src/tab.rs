@@ -17,7 +17,7 @@ use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
 use crate::sort::SortKind;
-use crate::trees::{calculate_tree_window, FileSystem};
+use crate::tree::{calculate_tree_window, Tree};
 use crate::users::Users;
 use crate::utils::{row_to_window_index, set_clipboard};
 
@@ -56,7 +56,7 @@ pub struct Tab {
     pub history: History,
     /// Users & groups
     pub users: Users,
-    pub tree: FileSystem,
+    pub tree: Tree,
 }
 
 impl Tab {
@@ -89,7 +89,7 @@ impl Tab {
         shortcut.extend_with_mount_points(mount_points);
         let searched = None;
         let index = path_content.select_file(&path);
-        let tree = FileSystem::empty();
+        let tree = Tree::empty();
         window.scroll_to(index);
         Ok(Self {
             mode,
@@ -146,7 +146,7 @@ impl Tab {
         self.input.reset();
         self.preview = Preview::empty();
         self.completion.reset();
-        self.tree = FileSystem::empty();
+        self.tree = Tree::empty();
         Ok(())
     }
 
@@ -415,7 +415,7 @@ impl Tab {
         };
         let path = self.path_content.path.clone();
         let users = &self.users;
-        self.tree = FileSystem::new(path, 5, sort_kind, users, self.show_hidden, &self.filter);
+        self.tree = Tree::new(path, 5, sort_kind, users, self.show_hidden, &self.filter);
         Ok(())
     }
 

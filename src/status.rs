@@ -41,7 +41,7 @@ use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::trash::Trash;
-use crate::trees::FileSystem;
+use crate::tree::Tree;
 use crate::users::Users;
 use crate::utils::{current_username, disk_space, filename_from_path, is_program_in_path};
 
@@ -582,7 +582,7 @@ impl Status {
 
     /// Drop the current tree, replace it with an empty one.
     pub fn remove_tree(&mut self) -> Result<()> {
-        self.selected().tree = FileSystem::empty();
+        self.selected().tree = Tree::empty();
         Ok(())
     }
 
@@ -617,7 +617,7 @@ impl Status {
         if let Mode::Tree = self.selected_non_mut().mode {
             {
                 let tab = self.selected();
-                tab.tree = FileSystem::empty();
+                tab.tree = Tree::empty();
                 tab.refresh_view()
             }?;
             self.selected().set_mode(Mode::Normal)

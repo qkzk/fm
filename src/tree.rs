@@ -88,7 +88,7 @@ impl Node {
 }
 
 #[derive(Debug, Clone)]
-pub struct FileSystem {
+pub struct Tree {
     root_path: PathBuf,
     selected: PathBuf,
     last_path: PathBuf,
@@ -96,7 +96,7 @@ pub struct FileSystem {
     required_height: usize,
 }
 
-impl FileSystem {
+impl Tree {
     pub const REQUIRED_HEIGHT: usize = 80;
 
     pub fn new(

@@ -25,7 +25,7 @@ use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
 use crate::sort::SortKind;
-use crate::trees::{ColoredString, FileSystem};
+use crate::tree::{ColoredString, Tree};
 use crate::users::Users;
 use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path};
 
@@ -1046,7 +1046,7 @@ pub struct Directory {
 
 impl Directory {
     pub fn new(path: PathBuf, users: &Users) -> Self {
-        let tree = FileSystem::new(
+        let tree = Tree::new(
             path,
             4,
             SortKind::tree_default(),

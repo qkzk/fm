@@ -44,6 +44,6 @@ pub mod status;
 pub mod tab;
 pub mod term_manager;
 pub mod trash;
-pub mod trees;
+pub mod tree;
 pub mod users;
 pub mod utils;
