@@ -193,13 +193,15 @@ impl Tab {
     /// Move to the currently selected directory.
     /// Fail silently if the current directory is empty or if the selected
     /// file isn't a directory.
-    pub fn go_to_child(&mut self) -> Result<()> {
+    pub fn go_to_selected_dir(&mut self) -> Result<()> {
+        log::info!("go to selected");
         let childpath = &self
             .path_content
             .selected()
             .context("Empty directory")?
             .path
             .clone();
+        log::info!("selected : {childpath:?}");
         self.set_pathcontent(childpath)?;
         self.window.reset(self.path_content.content.len());
         self.input.cursor_start();

@@ -706,7 +706,10 @@ impl EventAction {
             }
             Mode::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status)?,
             Mode::InputCompleted(InputCompleted::Command) => LeaveMode::command(status)?,
-            Mode::Normal => LeaveMode::open_file(status)?,
+            Mode::Normal => {
+                LeaveMode::open_file(status)?;
+                must_reset_mode = false;
+            }
             Mode::Tree => LeaveMode::tree(status)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
@@ -1148,7 +1151,7 @@ impl LeaveMode {
             return Ok(());
         }
         if tab.path_content.is_selected_dir()? {
-            tab.go_to_child()
+            tab.go_to_selected_dir()
         } else {
             EventAction::open_file(status)
         }
