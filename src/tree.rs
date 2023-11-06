@@ -120,31 +120,23 @@ impl Tree {
             }
             let children_will_be_added = depth + start_depth - reached_depth > 1;
             let mut node = Node::new(&path, None);
-            if let Ok(fileinfo) = node.fileinfo(users) {
-                if path.is_dir() && !path.is_symlink() && children_will_be_added {
-                    if let Some(mut files) =
-                        files_collection(&fileinfo, users, show_hidden, filter_kind, true)
-                    {
-                        sort_kind.sort(&mut files);
-                        let children = files
-                            .iter()
-                            .map(|fileinfo| {
-                                stack.push(fileinfo.path.to_owned());
-                                fileinfo
-                            })
-                            .map(|fileinfo| fileinfo.path.to_owned())
-                            .collect();
-                        node.set_children(Some(children));
-                    };
-                }
+            if path.is_dir() && !path.is_symlink() && children_will_be_added {
+                if let Some(mut files) =
+                    files_collection(&path, users, show_hidden, filter_kind, true)
+                {
+                    sort_kind.sort(&mut files);
+                    let children = Self::make_children_and_stack_them(&mut stack, &files);
+                    node.set_children(Some(children));
+                };
             }
             last_path = node.path.to_owned();
             nodes.insert(node.path.to_owned(), node);
         }
 
-        if let Some(node) = nodes.get_mut(&root_path) {
-            node.select()
-        }
+        let Some(node) = nodes.get_mut(&root_path) else {
+            unreachable!("root path should be in nodes");
+        };
+        node.select();
 
         Self {
             selected: root_path.clone(),
@@ -153,6 +145,17 @@ impl Tree {
             nodes,
             required_height: Self::DEFAULT_REQUIRED_HEIGHT,
         }
+    }
+
+    fn make_children_and_stack_them(stack: &mut Vec<PathBuf>, files: &[FileInfo]) -> Vec<PathBuf> {
+        files
+            .iter()
+            .map(|fileinfo| fileinfo.path.to_owned())
+            .map(|path| {
+                stack.push(path.to_owned());
+                path
+            })
+            .collect()
     }
 
     pub fn empty() -> Self {
@@ -237,6 +240,7 @@ impl Tree {
         }
         let mut current_path = self.selected.to_owned();
 
+        // TODO: refactor using ancestors. Not so easy since we keep track of parent and current
         while let Some(parent_path) = current_path.parent() {
             let Some(parent_node) = self.nodes.get(parent_path) else {
                 current_path = parent_path.to_owned();

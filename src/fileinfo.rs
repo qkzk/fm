@@ -359,7 +359,7 @@ impl PathContent {
 
         let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users)?;
         if let Some(true_files) =
-            files_collection(&fileinfo, users, show_hidden, filter_kind, false)
+            files_collection(&fileinfo.path, users, show_hidden, filter_kind, false)
         {
             files.extend(true_files);
         }
@@ -697,13 +697,13 @@ fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> String 
 /// Files are filtered by filterkind and the display hidden flag.
 /// Returns None if there's no file.
 pub fn files_collection(
-    fileinfo: &FileInfo,
+    path: &path::Path,
     users: &Users,
     show_hidden: bool,
     filter_kind: &FilterKind,
     keep_dir: bool,
 ) -> Option<Vec<FileInfo>> {
-    match read_dir(&fileinfo.path) {
+    match read_dir(&path) {
         Ok(read_dir) => Some(
             read_dir
                 .filter_map(|direntry| direntry.ok())
@@ -714,10 +714,7 @@ pub fn files_collection(
                 .collect(),
         ),
         Err(error) => {
-            info!(
-                "Couldn't read path {path} - {error}",
-                path = fileinfo.path.display(),
-            );
+            info!("Couldn't read path {path} - {error}", path = path.display(),);
             None
         }
     }
