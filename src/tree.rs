@@ -97,7 +97,7 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub const REQUIRED_HEIGHT: usize = 80;
+    pub const DEFAULT_REQUIRED_HEIGHT: usize = 80;
 
     pub fn new(
         root_path: PathBuf,
@@ -151,8 +151,28 @@ impl Tree {
             root_path,
             last_path,
             nodes,
-            required_height: Self::REQUIRED_HEIGHT,
+            required_height: Self::DEFAULT_REQUIRED_HEIGHT,
         }
+    }
+
+    fn increment_required_height(&mut self) {
+        if self.required_height < usize::MAX {
+            self.required_height += 1
+        }
+    }
+
+    fn decrement_required_height(&mut self) {
+        if self.required_height > Self::DEFAULT_REQUIRED_HEIGHT {
+            self.required_height -= 1
+        }
+    }
+
+    fn set_required_height_to_max(&mut self) {
+        self.required_height = usize::MAX
+    }
+
+    fn reset_required_height(&mut self) {
+        self.required_height = Self::DEFAULT_REQUIRED_HEIGHT
     }
 
     pub fn empty() -> Self {
@@ -188,6 +208,7 @@ impl Tree {
             };
             selected_node.unselect();
             self.selected = next_path;
+            self.increment_required_height()
         }
         Ok(())
     }
@@ -256,6 +277,7 @@ impl Tree {
             };
             selected_node.unselect();
             self.selected = previous_path;
+            self.decrement_required_height()
         }
     }
 
@@ -294,6 +316,7 @@ impl Tree {
         };
         root_node.select();
         self.selected = self.root_path.to_owned();
+        self.reset_required_height()
     }
 
     pub fn select_last(&mut self) {
@@ -306,6 +329,7 @@ impl Tree {
         };
         last_node.select();
         self.selected = self.last_path.to_owned();
+        self.set_required_height_to_max()
     }
 
     pub fn select_parent(&mut self) {
@@ -319,6 +343,7 @@ impl Tree {
             };
             selected_node.unselect();
             self.selected = parent_path.to_owned();
+            self.decrement_required_height()
         }
     }
 
@@ -332,6 +357,7 @@ impl Tree {
         };
         selected_node.unselect();
         self.selected = clicked_path.to_owned();
+        self.set_required_height_to_max()
     }
 
     /// Fold selected node
@@ -469,15 +495,11 @@ fn other_prefix(mut prefix: String) -> String {
     prefix
 }
 
-pub fn calculate_tree_window(
-    selected_index: usize,
-    terminal_height: usize,
-    length: usize,
-) -> (usize, usize, usize) {
+pub fn calculate_tree_window(selected_index: usize, terminal_height: usize) -> (usize, usize) {
     let top: usize;
     let bottom: usize;
     let window_height = terminal_height - ContentWindow::WINDOW_MARGIN_TOP;
-    if selected_index < terminal_height - ContentWindow::WINDOW_MARGIN_TOP {
+    if selected_index < window_height {
         top = 0;
         bottom = window_height;
     } else {
@@ -486,5 +508,5 @@ pub fn calculate_tree_window(
         bottom = top + window_height;
     }
 
-    (top, bottom, length)
+    (top, bottom)
 }

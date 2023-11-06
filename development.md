@@ -608,8 +608,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Tree remade without recursion. Improve ram usage
   - [x] FIX: folders are max depth hangs the app
   - [x] FIX: rename renames the root path
-  - [ ] FIX: scrolling to bottom of tree is bugged
+  - [x] FIX: scrolling to bottom of tree is bugged
   - [x] FIX: scrolling starts 1 row to low
+  - [ ] FIX: filename in first line
   - [ ] search can only find the first match
   - [ ] can't "open" a folder to redo the tree there
   - [ ] test everything

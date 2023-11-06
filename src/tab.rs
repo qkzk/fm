@@ -633,7 +633,7 @@ impl Tab {
     fn tree_select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
         let screen_index = row_to_window_index(row);
         let (selected_index, content) = self.tree.into_navigable_content(&self.users);
-        let (top, _, _) = calculate_tree_window(selected_index, term_height, term_height);
+        let (top, _) = calculate_tree_window(selected_index, term_height - 2);
         let index = screen_index + top;
         let (_, _, colored_path) = content.get(index).context("no selected file")?;
         self.tree.select_from_path(&colored_path.path);

@@ -398,13 +398,14 @@ impl<'a> WinMain<'a> {
         let left_margin = if status.display_full { 1 } else { 3 };
         let (_, height) = canvas.size()?;
         let (selected_index, content) = tab.tree.into_navigable_content(&tab.users);
-        let (top, bottom, len) = calculate_tree_window(selected_index, canvas.size()?.1, height);
+        let (top, bottom) = calculate_tree_window(selected_index, height);
+        let length = content.len();
 
         for (i, (metadata, prefix, colored_string)) in content
             .iter()
             .enumerate()
             .skip(top)
-            .take(min(len, bottom + 1))
+            .take(min(length, bottom + 1))
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
             let mut attr = colored_string.color_effect.attr();
