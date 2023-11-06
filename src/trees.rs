@@ -11,10 +11,31 @@ use crate::{
     filter::FilterKind,
     preview::ColoredTriplet,
     sort::SortKind,
-    tree::ColoredString,
     users::Users,
     utils::filename_from_path,
 };
+
+/// Holds a string and its display attributes.
+#[derive(Clone, Debug)]
+pub struct ColoredString {
+    /// A text to be printed. In most case, it should be a filename.
+    pub text: String,
+    /// A tuikit::attr::Attr (fg, bg, effect) to enhance the text.
+    pub color_effect: ColorEffect,
+    /// The complete path of this string.
+    pub path: std::path::PathBuf,
+}
+
+impl ColoredString {
+    pub fn new(text: String, color_effect: ColorEffect, path: std::path::PathBuf) -> Self {
+        Self {
+            text,
+            color_effect,
+            path,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Node {
     pub path: PathBuf,

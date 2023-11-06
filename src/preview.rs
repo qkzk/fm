@@ -25,8 +25,7 @@ use crate::fileinfo::{FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
 use crate::sort::SortKind;
-use crate::tree::ColoredString;
-use crate::trees::FileSystem;
+use crate::trees::{ColoredString, FileSystem};
 use crate::users::Users;
 use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path};
 
