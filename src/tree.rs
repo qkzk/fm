@@ -193,9 +193,16 @@ impl Tree {
         self.selected == self.root_path
     }
 
+    pub fn is_on_last(&self) -> bool {
+        self.selected == self.last_path
+    }
+
     /// Select next sibling or the next sibling of the parent
     pub fn select_next(&mut self) -> Result<()> {
-        log::info!("select_next START {sel}", sel = self.selected.display());
+        if self.is_on_last() {
+            self.select_root();
+            return Ok(());
+        }
 
         if let Some(next_path) = self.find_next_path() {
             let Some(next_node) = self.nodes.get_mut(&next_path) else {
@@ -265,7 +272,10 @@ impl Tree {
     // TODO! find the bottom child of parent instead of jumping back 1 level
     /// Select previous sibling or the parent
     pub fn select_prev(&mut self) {
-        log::info!("select_prev START {sel}", sel = self.selected.display());
+        if self.is_on_root() {
+            self.select_last();
+            return;
+        }
 
         if let Some(previous_path) = self.find_prev_path() {
             let Some(previous_node) = self.nodes.get_mut(&previous_path) else {

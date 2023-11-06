@@ -349,6 +349,9 @@ impl Tab {
     pub fn tree_page_down(&mut self) -> Result<()> {
         for _ in 1..10 {
             self.tree.select_next()?;
+            if self.tree.is_on_last() {
+                break;
+            }
         }
         Ok(())
     }
@@ -357,6 +360,9 @@ impl Tab {
     pub fn tree_page_up(&mut self) -> Result<()> {
         for _ in 1..10 {
             self.tree.select_prev();
+            if self.tree.is_on_root() {
+                break;
+            }
         }
         Ok(())
     }

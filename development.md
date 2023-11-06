@@ -613,6 +613,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: filename in first line
   - [x] FIX: can't "open" a folder to redo the tree there
   - [x] FIX: move back from root should redo the parent tree
+  - [x] FIX: move up from to go to last and vice versa
   - [ ] search can only find the first match
   - [ ] test everything
   - [ ] refactor
