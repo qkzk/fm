@@ -155,26 +155,6 @@ impl Tree {
         }
     }
 
-    fn increment_required_height(&mut self) {
-        if self.required_height < usize::MAX {
-            self.required_height += 1
-        }
-    }
-
-    fn decrement_required_height(&mut self) {
-        if self.required_height > Self::DEFAULT_REQUIRED_HEIGHT {
-            self.required_height -= 1
-        }
-    }
-
-    fn set_required_height_to_max(&mut self) {
-        self.required_height = usize::MAX
-    }
-
-    fn reset_required_height(&mut self) {
-        self.required_height = Self::DEFAULT_REQUIRED_HEIGHT
-    }
-
     pub fn empty() -> Self {
         Self {
             root_path: PathBuf::default(),
@@ -191,6 +171,18 @@ impl Tree {
 
     pub fn selected_node(&self) -> Option<&Node> {
         self.nodes.get(&self.selected)
+    }
+
+    pub fn directory_of_selected(&self) -> Option<&Path> {
+        if self.selected.is_dir() && !self.selected.is_symlink() {
+            Some(self.selected.as_path())
+        } else {
+            self.selected.parent()
+        }
+    }
+
+    pub fn selected_path_relative_to_root(&self) -> Result<&Path> {
+        Ok(self.selected.strip_prefix(&self.root_path)?)
     }
 
     /// Select next sibling or the next sibling of the parent
@@ -360,6 +352,26 @@ impl Tree {
         self.set_required_height_to_max()
     }
 
+    fn increment_required_height(&mut self) {
+        if self.required_height < usize::MAX {
+            self.required_height += 1
+        }
+    }
+
+    fn decrement_required_height(&mut self) {
+        if self.required_height > Self::DEFAULT_REQUIRED_HEIGHT {
+            self.required_height -= 1
+        }
+    }
+
+    fn set_required_height_to_max(&mut self) {
+        self.required_height = usize::MAX
+    }
+
+    fn reset_required_height(&mut self) {
+        self.required_height = Self::DEFAULT_REQUIRED_HEIGHT
+    }
+
     /// Fold selected node
     pub fn toggle_fold(&mut self) {
         if let Some(node) = self.nodes.get_mut(&self.selected) {
@@ -376,14 +388,6 @@ impl Tree {
     pub fn unfold_all(&mut self) {
         for (_, node) in self.nodes.iter_mut() {
             node.unfold()
-        }
-    }
-
-    pub fn directory_of_selected(&self) -> Option<&Path> {
-        if self.selected.is_dir() && !self.selected.is_symlink() {
-            Some(self.selected.as_path())
-        } else {
-            self.selected.parent()
         }
     }
 

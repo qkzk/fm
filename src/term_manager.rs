@@ -240,7 +240,7 @@ impl<'a> WinMain<'a> {
     fn normal_first_row(&self, disk_space: &str) -> Result<Vec<String>> {
         Ok(vec![
             format!(" {}", shorten_path(&self.tab.path_content.path, None)?),
-            self.first_row_filename(),
+            self.first_row_filename()?,
             self.first_row_position(),
             format!("{}  ", self.tab.path_content.used_space()),
             format!(" Avail: {disk_space}  "),
@@ -250,14 +250,22 @@ impl<'a> WinMain<'a> {
         ])
     }
 
-    fn first_row_filename(&self) -> String {
+    fn first_row_filename(&self) -> Result<String> {
         match self.tab.mode {
-            Mode::Tree => "".to_owned(),
+            Mode::Tree => Ok(format!(
+                "/{rel}",
+                rel = self
+                    .tab
+                    .tree
+                    .selected_path_relative_to_root()?
+                    .display()
+                    .to_string(),
+            )),
             _ => {
                 if let Some(fileinfo) = self.tab.path_content.selected() {
-                    fileinfo.filename_without_dot_dotdot()
+                    Ok(fileinfo.filename_without_dot_dotdot())
                 } else {
-                    "".to_owned()
+                    Ok("".to_owned())
                 }
             }
         }
