@@ -1299,7 +1299,7 @@ impl LeaveMode {
     /// We only try to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
     pub fn rename(tab: &mut Tab) -> Result<()> {
-        let original_path = if let Mode::Tree = tab.mode {
+        let original_path = if let Mode::Tree = tab.previous_mode {
             tab.tree.selected_path()
         } else {
             tab.path_content

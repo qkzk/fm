@@ -607,7 +607,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] avoid multiple refreshs if we edit files ourself
 - [ ] Tree remade without recursion. Improve ram usage
   - [x] FIX: folders are max depth hangs the app
-  - [ ] FIX: rename renames the root path
+  - [x] FIX: rename renames the root path
   - [ ] FIX: scrolling to bottom of tree is bugged
   - [ ] FIX: scrolling starts 1 row to low
   - [ ] search can only find the first match
