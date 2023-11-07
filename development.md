@@ -618,7 +618,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] Use a generic trait for movements
   - [x] FIX: first line position for tree
   - [ ] FIX: tab.selected() should return Option<&FileInfo>
-  - [ ] search can only find the first match
+  - [ ] FIX: search can only find the first match
   - [ ] test everything
   - [ ] refactor
   - [ ] document
