@@ -354,10 +354,10 @@ impl Tab {
     /// Move down 10 times in the tree
     pub fn tree_page_down(&mut self) -> Result<()> {
         for _ in 1..10 {
-            self.tree.go(To::Next);
             if self.tree.is_on_last() {
                 break;
             }
+            self.tree.go(To::Next);
         }
         Ok(())
     }
@@ -365,10 +365,10 @@ impl Tab {
     /// Move up 10 times in the tree
     pub fn tree_page_up(&mut self) {
         for _ in 1..10 {
-            self.tree.go(To::Prev);
             if self.tree.is_on_root() {
                 break;
             }
+            self.tree.go(To::Prev);
         }
     }
 

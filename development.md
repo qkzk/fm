@@ -617,6 +617,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: enter a dir from normal mode shouldn't set mode tree
   - [x] Use a generic trait for movements
   - [x] FIX: first line position for tree
+  - [ ] FIX: changing sortkind in tree mode dosn't change first line
   - [ ] FIX: copying/moving 0B files does nothing
   - [ ] test everything
   - [ ] refactor
