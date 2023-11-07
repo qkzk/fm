@@ -137,16 +137,8 @@ impl<'a> Draw for WinMain<'a> {
             self.preview_as_second_pane(canvas)?;
             return Ok(());
         }
-        match self.tab.mode {
-            Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
-            Mode::Tree => self.trees(self.status, self.tab, canvas),
-            Mode::Normal => self.files(self.status, self.tab, canvas),
-            _ => match self.tab.previous_mode {
-                Mode::Tree => self.trees(self.status, self.tab, canvas),
-                _ => self.files(self.status, self.tab, canvas),
-            },
-        }?;
-        self.first_line(self.disk_space, canvas)?;
+        let opt_index = self.draw_content(canvas)?;
+        self.first_line(self.disk_space, canvas, opt_index)?;
         Ok(())
     }
 }
@@ -177,6 +169,18 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
+    fn draw_content(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
+        match self.tab.mode {
+            Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
+            Mode::Tree => self.trees(self.status, self.tab, canvas),
+            Mode::Normal => self.files(self.status, self.tab, canvas),
+            _ => match self.tab.previous_mode {
+                Mode::Tree => self.trees(self.status, self.tab, canvas),
+                _ => self.files(self.status, self.tab, canvas),
+            },
+        }
+    }
+
     /// Display the top line on terminal.
     /// Its content depends on the mode.
     /// In normal mode we display the path and number of files.
@@ -184,11 +188,16 @@ impl<'a> WinMain<'a> {
     /// something else.
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
-    fn first_line(&self, disk_space: &str, canvas: &mut dyn Canvas) -> Result<()> {
+    fn first_line(
+        &self,
+        disk_space: &str,
+        canvas: &mut dyn Canvas,
+        opt_index: Option<usize>,
+    ) -> Result<()> {
         draw_colored_strings(
             0,
             0,
-            self.create_first_row(disk_space)?,
+            self.create_first_row(disk_space, opt_index)?,
             canvas,
             self.attributes.is_selected,
         )
@@ -237,11 +246,11 @@ impl<'a> WinMain<'a> {
         )?)
     }
 
-    fn normal_first_row(&self, disk_space: &str) -> Result<Vec<String>> {
+    fn normal_first_row(&self, disk_space: &str, opt_index: Option<usize>) -> Result<Vec<String>> {
         Ok(vec![
             format!(" {}", shorten_path(&self.tab.path_content.path, None)?),
             self.first_row_filename()?,
-            self.first_row_position(),
+            self.first_row_position(opt_index),
             format!("{}  ", self.tab.path_content.used_space()),
             format!(" Avail: {disk_space}  "),
             format!(" {} ", self.tab.path_content.git_string()?),
@@ -266,11 +275,17 @@ impl<'a> WinMain<'a> {
         }
     }
 
-    fn first_row_position(&self) -> String {
+    fn first_row_position(&self, opt_index: Option<usize>) -> String {
+        if matches!(self.tab.mode, Mode::Tree) {
+            let Some(selected_index) = opt_index else {
+                return "".to_owned();
+            };
+            return format!(" {selected_index} / {len} ", len = self.tab.tree.len());
+        };
         format!(
-            " {} / {} ",
-            self.tab.path_content.index + 1,
-            self.tab.path_content.true_len() + 2
+            " {index} / {len} ",
+            index = self.tab.path_content.index + 1,
+            len = self.tab.path_content.true_len() + 2
         )
     }
 
@@ -324,10 +339,10 @@ impl<'a> WinMain<'a> {
         }
     }
 
-    fn create_first_row(&self, disk_space: &str) -> Result<Vec<String>> {
+    fn create_first_row(&self, disk_space: &str, opt_index: Option<usize>) -> Result<Vec<String>> {
         let tab = self.status.selected_non_mut();
         let first_row = match tab.mode {
-            Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
+            Mode::Normal | Mode::Tree => self.normal_first_row(disk_space, opt_index)?,
             Mode::Preview => match &tab.preview {
                 Preview::Text(text_content) => match text_content.kind {
                     TextKind::HELP => Self::help_first_row(),
@@ -337,7 +352,7 @@ impl<'a> WinMain<'a> {
                 _ => self.default_preview_first_line(tab),
             },
             _ => match self.tab.previous_mode {
-                Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
+                Mode::Normal | Mode::Tree => self.normal_first_row(disk_space, opt_index)?,
                 _ => vec![],
             },
         };
@@ -351,7 +366,7 @@ impl<'a> WinMain<'a> {
     /// We reverse the attributes of the selected one, underline the flagged files.
     /// When we display a simpler version, the second line is used to display the
     /// metadata of the selected file.
-    fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+    fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
         let len = tab.path_content.content.len();
         let group_size: usize;
         let owner_size: usize;
@@ -388,7 +403,7 @@ impl<'a> WinMain<'a> {
         if !self.attributes.has_window_below {
             self.log_line(canvas)?;
         }
-        Ok(())
+        Ok(None)
     }
 
     fn log_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -397,7 +412,7 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn trees(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+    fn trees(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
         let left_margin = if status.display_full { 1 } else { 3 };
         let (_, height) = canvas.size()?;
         let (selected_index, content) = tab.tree.into_navigable_content(&tab.users);
@@ -433,7 +448,7 @@ impl<'a> WinMain<'a> {
             )?;
         }
         self.second_line(status, tab, canvas)?;
-        Ok(())
+        Ok(Some(selected_index))
     }
     fn print_line_number(
         row_position_in_canvas: usize,
@@ -455,7 +470,12 @@ impl<'a> WinMain<'a> {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&self, tab: &Tab, window: &ContentWindow, canvas: &mut dyn Canvas) -> Result<()> {
+    fn preview(
+        &self,
+        tab: &Tab,
+        window: &ContentWindow,
+        canvas: &mut dyn Canvas,
+    ) -> Result<Option<usize>> {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
         match &tab.preview {
@@ -545,7 +565,7 @@ impl<'a> WinMain<'a> {
 
             Preview::Empty => (),
         }
-        Ok(())
+        Ok(None)
     }
 }
 

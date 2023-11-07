@@ -223,6 +223,14 @@ impl Tree {
         Ok(self.selected.strip_prefix(&self.root_path)?)
     }
 
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+
     pub fn is_on_root(&self) -> bool {
         self.selected == self.root_path
     }
