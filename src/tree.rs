@@ -307,7 +307,6 @@ impl Tree {
                 continue;
             };
             if self.nodes.contains_key(next_sibling_path) {
-                log::info!("returning {next_sibling_path:?}");
                 return Some(next_sibling_path.to_owned());
             } else {
                 current_path = parent_path.to_owned();
