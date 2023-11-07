@@ -581,7 +581,7 @@ impl ColorEffect {
     #[inline]
     pub fn node(fileinfo: &FileInfo, current_node: &Node) -> Self {
         let mut color_effect = Self::new(fileinfo);
-        if current_node.selected {
+        if current_node.selected() {
             color_effect.effect |= Effect::REVERSE;
         }
         color_effect

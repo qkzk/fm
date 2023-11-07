@@ -38,10 +38,10 @@ impl ColoredString {
 
 #[derive(Debug, Clone)]
 pub struct Node {
-    pub path: PathBuf,
-    pub children: Option<Vec<PathBuf>>,
-    pub folded: bool,
-    pub selected: bool,
+    path: PathBuf,
+    children: Option<Vec<PathBuf>>,
+    folded: bool,
+    selected: bool,
 }
 
 impl Node {
@@ -72,6 +72,10 @@ impl Node {
 
     pub fn unselect(&mut self) {
         self.selected = false
+    }
+
+    pub fn selected(&self) -> bool {
+        self.selected
     }
 
     pub fn fileinfo(&self, users: &Users) -> Result<FileInfo> {
