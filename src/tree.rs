@@ -86,6 +86,31 @@ impl Node {
         self.children = children
     }
 }
+pub trait Go {
+    fn go(&mut self, direction: To);
+}
+
+pub enum To<'a> {
+    Next,
+    Prev,
+    Root,
+    Last,
+    Parent,
+    Path(&'a Path),
+}
+
+impl Go for Tree {
+    fn go(&mut self, direction: To) {
+        match direction {
+            To::Next => self.select_next().unwrap_or_else(|_| ()),
+            To::Prev => self.select_prev(),
+            To::Root => self.select_root(),
+            To::Last => self.select_last(),
+            To::Parent => self.select_parent(),
+            To::Path(path) => self.select_path(path),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Tree {
@@ -361,7 +386,7 @@ impl Tree {
         }
     }
 
-    pub fn select_from_path(&mut self, clicked_path: &Path) {
+    pub fn select_path(&mut self, clicked_path: &Path) {
         let Some(new_node) = self.nodes.get_mut(clicked_path) else {
             return;
         };

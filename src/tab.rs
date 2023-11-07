@@ -17,7 +17,7 @@ use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
 use crate::sort::SortKind;
-use crate::tree::{calculate_tree_window, Tree};
+use crate::tree::{calculate_tree_window, Go, To, Tree};
 use crate::users::Users;
 use crate::utils::{row_to_window_index, set_clipboard};
 
@@ -371,7 +371,8 @@ impl Tab {
 
     /// Select the next sibling.
     pub fn tree_select_next(&mut self) -> Result<()> {
-        self.tree.select_next()
+        self.tree.go(To::Next);
+        Ok(())
     }
 
     /// Select the previous siblging
@@ -524,8 +525,6 @@ impl Tab {
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node. Reset the display.
     pub fn tree_go_to_root(&mut self) -> Result<()> {
-        // self.directory.tree.reset_required_height();
-        // self.tree_select_root()
         self.tree.select_root();
         Ok(())
     }
@@ -653,7 +652,7 @@ impl Tab {
         let (top, _) = calculate_tree_window(selected_index, term_height - 2);
         let index = screen_index + top;
         let (_, _, colored_path) = content.get(index).context("no selected file")?;
-        self.tree.select_from_path(&colored_path.path);
+        self.tree.select_path(&colored_path.path);
         Ok(())
     }
 
