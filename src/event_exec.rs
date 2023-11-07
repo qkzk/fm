@@ -1450,7 +1450,7 @@ impl LeaveMode {
 
     /// Execute the selected node if it's a file else enter the directory.
     pub fn tree(status: &mut Status) -> Result<()> {
-        let path = status.selected_fileinfo()?.path;
+        let path = status.selected_non_mut().selected()?.path;
         let is_dir = path.is_dir();
         if is_dir {
             status.selected().set_pathcontent(&path)?;

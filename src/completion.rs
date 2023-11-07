@@ -3,7 +3,7 @@ use std::fs::{self, ReadDir};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 
-use crate::fileinfo::PathContent;
+use crate::{fileinfo::PathContent, tree::Node};
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
@@ -215,18 +215,18 @@ impl Completion {
     pub fn search_from_tree(
         &mut self,
         input_string: &str,
-        content: &[&std::ffi::OsStr],
+        content: std::iter::FilterMap<
+            std::iter::FilterMap<
+                std::collections::hash_map::Keys<'_, std::path::PathBuf, Node>,
+                fn(&std::path::PathBuf) -> Option<&std::ffi::OsStr>,
+            >,
+            fn(&std::ffi::OsStr) -> Option<&str>,
+        >,
     ) -> Result<()> {
         self.update(
             content
-                .iter()
-                .filter(|&p| p.to_string_lossy().contains(input_string))
-                .map(|p| {
-                    p.to_string_lossy()
-                        .into_owned()
-                        .replace("▸ ", "")
-                        .replace("▾ ", "")
-                })
+                .filter(|&p| p.contains(input_string))
+                .map(|p| p.replace("▸ ", "").replace("▾ ", ""))
                 .collect(),
         );
 

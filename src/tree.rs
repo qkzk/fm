@@ -1,5 +1,8 @@
 use std::{
+    collections::hash_map,
     collections::HashMap,
+    ffi::OsStr,
+    iter::FilterMap,
     path::{Path, PathBuf},
 };
 
@@ -45,7 +48,7 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new(path: &Path, children: Option<Vec<PathBuf>>) -> Self {
+    fn new(path: &Path, children: Option<Vec<PathBuf>>) -> Self {
         Self {
             path: path.to_owned(),
             children,
@@ -54,23 +57,23 @@ impl Node {
         }
     }
 
-    pub fn fold(&mut self) {
+    fn fold(&mut self) {
         self.folded = true
     }
 
-    pub fn unfold(&mut self) {
+    fn unfold(&mut self) {
         self.folded = false
     }
 
-    pub fn toggle_fold(&mut self) {
+    fn toggle_fold(&mut self) {
         self.folded = !self.folded
     }
 
-    pub fn select(&mut self) {
+    fn select(&mut self) {
         self.selected = true
     }
 
-    pub fn unselect(&mut self) {
+    fn unselect(&mut self) {
         self.selected = false
     }
 
@@ -82,12 +85,13 @@ impl Node {
         FileInfo::new(&self.path, users)
     }
 
-    pub fn color_effect(&self, users: &Users) -> Result<ColorEffect> {
-        Ok(ColorEffect::new(&self.fileinfo(users)?))
+    fn set_children(&mut self, children: Option<Vec<PathBuf>>) {
+        self.children = children
     }
 
-    pub fn set_children(&mut self, children: Option<Vec<PathBuf>>) {
-        self.children = children
+    #[inline]
+    fn have_children(self: &Node) -> bool {
+        !self.folded && self.children.is_some()
     }
 }
 
@@ -108,7 +112,7 @@ pub enum To<'a> {
 impl Go for Tree {
     fn go(&mut self, direction: To) {
         match direction {
-            To::Next => self.select_next().unwrap_or_else(|_| ()),
+            To::Next => self.select_next(),
             To::Prev => self.select_prev(),
             To::Root => self.select_root(),
             To::Last => self.select_last(),
@@ -157,7 +161,9 @@ impl Tree {
                 {
                     sort_kind.sort(&mut files);
                     let children = Self::make_children_and_stack_them(&mut stack, &files);
-                    node.set_children(Some(children));
+                    if !children.is_empty() {
+                        node.set_children(Some(children));
+                    }
                 };
             }
             last_path = node.path.to_owned();
@@ -240,17 +246,16 @@ impl Tree {
     }
 
     /// Select next sibling or the next sibling of the parent
-    pub fn select_next(&mut self) -> Result<()> {
+    pub fn select_next(&mut self) {
         if self.is_on_last() {
             self.select_root();
-            return Ok(());
+            return;
         }
 
         if let Some(next_path) = self.find_next_path() {
             let Some(next_node) = self.nodes.get_mut(&next_path) else {
-                return Ok(());
+                return;
             };
-            log::info!("selecting {next_node:?}");
             next_node.select();
             let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
                 unreachable!("current_node should be in nodes");
@@ -259,7 +264,6 @@ impl Tree {
             self.selected = next_path;
             self.increment_required_height()
         }
-        Ok(())
     }
 
     // FIX: Still a problem when reaching max depth of tree,
@@ -497,7 +501,7 @@ impl Tree {
                 path,
             ));
 
-            if Self::have_interesting_children(path, node) {
+            if node.have_children() {
                 Self::stack_children(&mut stack, prefix, node);
             }
 
@@ -508,11 +512,19 @@ impl Tree {
         (selected_index, content)
     }
 
-    pub fn filenames(&self) -> Vec<&std::ffi::OsStr> {
-        self.nodes
-            .keys()
-            .filter_map(|path| path.file_name())
-            .collect()
+    /// An (ugly) iterator over filenames.
+    /// It allows us to iter explicitely over filenames
+    /// while avoiding another allocation by collecting into a `Vec`
+    #[inline]
+    pub fn filenames(
+        &self,
+    ) -> FilterMap<
+        FilterMap<hash_map::Keys<'_, PathBuf, Node>, fn(&PathBuf) -> Option<&OsStr>>,
+        fn(&OsStr) -> Option<&str>,
+    > {
+        let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
+        let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
+        self.nodes.keys().filter_map(to_filename).filter_map(to_str)
     }
 
     #[inline]
@@ -536,11 +548,6 @@ impl Tree {
         for leaf in children {
             stack.push((other_prefix.clone(), leaf));
         }
-    }
-
-    #[inline]
-    fn have_interesting_children(current_path: &Path, current_node: &Node) -> bool {
-        current_path.is_dir() && !current_path.is_symlink() && !current_node.folded
     }
 }
 
