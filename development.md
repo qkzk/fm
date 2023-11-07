@@ -620,7 +620,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] FIX: copying/moving 0B files does nothing
   - [ ] test everything
   - [ ] refactor
-  - [ ] document
+  - [x] document
 
 ## TODO
 

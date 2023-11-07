@@ -1,24 +1,20 @@
-use std::{
-    collections::hash_map,
-    collections::HashMap,
-    ffi::OsStr,
-    iter::FilterMap,
-    path::{Path, PathBuf},
-};
+use std::collections::hash_map;
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::iter::FilterMap;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
-use crate::{
-    content_window::ContentWindow,
-    fileinfo::{files_collection, ColorEffect, FileInfo},
-    filter::FilterKind,
-    preview::{ColoredTriplet, MakeTriplet},
-    sort::SortKind,
-    users::Users,
-    utils::filename_from_path,
-};
+use crate::content_window::ContentWindow;
+use crate::fileinfo::{files_collection, ColorEffect, FileInfo};
+use crate::filter::FilterKind;
+use crate::preview::{ColoredTriplet, MakeTriplet};
+use crate::sort::SortKind;
+use crate::users::Users;
+use crate::utils::filename_from_path;
 
-/// Holds a string and its display attributes.
+/// Holds a string, its display attributes and the associated pathbuf.
 #[derive(Clone, Debug)]
 pub struct ColoredString {
     /// A text to be printed. In most case, it should be a filename.
@@ -30,6 +26,7 @@ pub struct ColoredString {
 }
 
 impl ColoredString {
+    /// Creates a new colored string.
     pub fn new(text: String, color_effect: ColorEffect, path: std::path::PathBuf) -> Self {
         Self {
             text,
@@ -39,6 +36,9 @@ impl ColoredString {
     }
 }
 
+/// An element of a tree.
+/// It's a file/directory, some optional children.
+/// A Node knows if it's folded or selected.
 #[derive(Debug, Clone)]
 pub struct Node {
     path: PathBuf,
@@ -48,6 +48,8 @@ pub struct Node {
 }
 
 impl Node {
+    /// Creates a new Node from a path and its children.
+    /// By default it's not selected nor folded.
     fn new(path: &Path, children: Option<Vec<PathBuf>>) -> Self {
         Self {
             path: path.to_owned(),
@@ -77,10 +79,12 @@ impl Node {
         self.selected = false
     }
 
+    /// Is the node selected ?
     pub fn selected(&self) -> bool {
         self.selected
     }
 
+    /// Creates a new fileinfo from the node.
     pub fn fileinfo(&self, users: &Users) -> Result<FileInfo> {
         FileInfo::new(&self.path, users)
     }
@@ -97,9 +101,10 @@ impl Node {
 
 /// Describe a movement in a navigable structure
 pub trait Go {
-    fn go(&mut self, direction: To);
+    fn go(&mut self, to: To);
 }
 
+/// Describes a direction for the next selected tree element.
 pub enum To<'a> {
     Next,
     Prev,
@@ -110,8 +115,9 @@ pub enum To<'a> {
 }
 
 impl Go for Tree {
-    fn go(&mut self, direction: To) {
-        match direction {
+    /// Select another element from a tree.
+    fn go(&mut self, to: To) {
+        match to {
             To::Next => self.select_next(),
             To::Prev => self.select_prev(),
             To::Root => self.select_root(),
@@ -122,7 +128,10 @@ impl Go for Tree {
     }
 }
 
-#[derive(Debug, Clone)]
+/// A FileSystem tree of nodes.
+/// Internally it's a wrapper around an `std::collections::HashMap<PathBuf, Node>`
+/// It also holds informations about the required height of the tree.
+#[derive(Debug, Clone, Default)]
 pub struct Tree {
     root_path: PathBuf,
     selected: PathBuf,
@@ -134,6 +143,7 @@ pub struct Tree {
 impl Tree {
     pub const DEFAULT_REQUIRED_HEIGHT: usize = 80;
 
+    /// Creates a new tree, exploring every node untill depth is reached.
     pub fn new(
         root_path: PathBuf,
         depth: usize,
@@ -195,58 +205,60 @@ impl Tree {
             .collect()
     }
 
-    pub fn empty() -> Self {
-        Self {
-            root_path: PathBuf::default(),
-            selected: PathBuf::default(),
-            last_path: PathBuf::default(),
-            nodes: HashMap::new(),
-            required_height: 0,
-        }
-    }
-
+    /// Root path of the tree.
     pub fn root_path(&self) -> &Path {
         self.root_path.as_path()
     }
 
+    /// Selected path
     pub fn selected_path(&self) -> &Path {
         self.selected.as_path()
     }
 
+    /// Selected node
     pub fn selected_node(&self) -> Option<&Node> {
         self.nodes.get(&self.selected)
     }
 
+    /// The folder containing the selected node.
+    /// Itself if selected is a directory.
     pub fn directory_of_selected(&self) -> Option<&Path> {
-        if self.selected.is_dir() && !self.selected.is_symlink() {
+        let ret = if self.selected.is_dir() && !self.selected.is_symlink() {
             Some(self.selected.as_path())
         } else {
             self.selected.parent()
-        }
+        };
+        log::info!("directory_of_selected {ret:?}");
+        ret
     }
 
+    /// Relative path of selected from rootpath.
     pub fn selected_path_relative_to_root(&self) -> Result<&Path> {
         Ok(self.selected.strip_prefix(&self.root_path)?)
     }
 
+    /// Number of nodes
     pub fn len(&self) -> usize {
         self.nodes.len()
     }
 
+    /// True if there's no node.
     pub fn is_empty(&self) -> bool {
         self.nodes.is_empty()
     }
 
+    /// True if selected is root.
     pub fn is_on_root(&self) -> bool {
         self.selected == self.root_path
     }
 
+    /// True if selected is the last file
     pub fn is_on_last(&self) -> bool {
         self.selected == self.last_path
     }
 
     /// Select next sibling or the next sibling of the parent
-    pub fn select_next(&mut self) {
+    fn select_next(&mut self) {
         if self.is_on_last() {
             self.select_root();
             return;
@@ -317,7 +329,7 @@ impl Tree {
     }
     // TODO! find the bottom child of parent instead of jumping back 1 level
     /// Select previous sibling or the parent
-    pub fn select_prev(&mut self) {
+    fn select_prev(&mut self) {
         if self.is_on_root() {
             self.select_last();
             return;
@@ -443,12 +455,14 @@ impl Tree {
         }
     }
 
+    /// Fold all node from root to end
     pub fn fold_all(&mut self) {
         for (_, node) in self.nodes.iter_mut() {
             node.fold()
         }
     }
 
+    /// Unfold all node from root to end
     pub fn unfold_all(&mut self) {
         for (_, node) in self.nodes.iter_mut() {
             node.unfold()
@@ -456,6 +470,7 @@ impl Tree {
     }
 
     // FIX: can only find the first match and nothing else
+    /// Select the first node whose filename match a pattern.
     pub fn search_first_match(&mut self, pattern: &str) {
         let initial_selected = self.selected.to_owned();
         let Some((found_path, found_node)) = self.nodes.iter_mut().find(|(path, _)| {
@@ -474,6 +489,7 @@ impl Tree {
         current_node.unselect();
     }
 
+    /// Returns a navigable vector of `ColoredTriplet` and the index of selected file
     pub fn into_navigable_content(&self, users: &Users) -> (usize, Vec<ColoredTriplet>) {
         let mut stack = vec![("".to_owned(), self.root_path.as_path())];
         let mut content = vec![];
@@ -585,18 +601,15 @@ fn filename_format(current_path: &Path, current_node: &Node) -> String {
     }
 }
 
-pub fn calculate_tree_window(selected_index: usize, terminal_height: usize) -> (usize, usize) {
-    let top: usize;
-    let bottom: usize;
+/// Emulate a `ContentWindow`, returning the top and bottom index of displayable files.
+pub fn calculate_top_bottom(selected_index: usize, terminal_height: usize) -> (usize, usize) {
     let window_height = terminal_height - ContentWindow::WINDOW_MARGIN_TOP;
-    if selected_index < window_height {
-        top = 0;
-        bottom = window_height;
+    let top = if selected_index < window_height {
+        0
     } else {
-        let padding = 10.max(terminal_height / 2);
-        top = selected_index - padding;
-        bottom = top + window_height;
-    }
+        selected_index - 10.max(terminal_height / 2)
+    };
+    let bottom = top + window_height;
 
     (top, bottom)
 }

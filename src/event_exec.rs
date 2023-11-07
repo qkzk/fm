@@ -19,8 +19,9 @@ use crate::log_line;
 use crate::mocp::Mocp;
 use crate::mocp::MOCP;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
+use crate::opener::execute_and_capture_output_with_path;
 use crate::opener::{
-    execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
+    execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path,
 };
 use crate::password::{PasswordKind, PasswordUsage};
@@ -374,7 +375,7 @@ impl EventAction {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn shortcut(tab: &mut Tab) -> Result<()> {
-        std::env::set_current_dir(tab.current_directory_path().context("no parent")?)?;
+        std::env::set_current_dir(tab.directory_of_selected()?)?;
         tab.shortcut.update_git_root();
         tab.set_mode(Mode::Navigate(Navigate::Shortcut));
         Ok(())
@@ -1557,16 +1558,18 @@ impl LeaveMode {
         };
 
         let (username, hostname, remote_path) = (strings[0], strings[1], strings[2]);
-        let current_path: &str = tab
-            .current_directory_path()
-            .context("no parent")?
-            .to_str()
-            .context("couldn't parse the path")?;
+        let current_path: &str = &tab
+            .directory_of_selected_previous_mode()?
+            .display()
+            .to_string();
         let first_arg = &format!("{username}@{hostname}:{remote_path}");
-        let command_output =
-            execute_and_capture_output(SSHFS_EXECUTABLE, &[first_arg, current_path]);
-        info!("{SSHFS_EXECUTABLE} output {command_output:?}");
-        log_line!("{SSHFS_EXECUTABLE} output {command_output:?}");
+        let command_output = execute_and_capture_output_with_path(
+            SSHFS_EXECUTABLE,
+            current_path,
+            &[first_arg, current_path],
+        );
+        info!("{SSHFS_EXECUTABLE} {strings:?} output {command_output:?}");
+        log_line!("{SSHFS_EXECUTABLE} {strings:?} output {command_output:?}");
         Ok(())
     }
 }

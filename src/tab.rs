@@ -17,7 +17,7 @@ use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
 use crate::sort::SortKind;
-use crate::tree::{calculate_tree_window, Go, To, Tree};
+use crate::tree::{calculate_top_bottom, Go, To, Tree};
 use crate::users::Users;
 use crate::utils::{row_to_window_index, set_clipboard};
 
@@ -89,7 +89,7 @@ impl Tab {
         shortcut.extend_with_mount_points(mount_points);
         let searched = None;
         let index = path_content.select_file(&path);
-        let tree = Tree::empty();
+        let tree = Tree::default();
         window.scroll_to(index);
         Ok(Self {
             mode,
@@ -146,7 +146,7 @@ impl Tab {
         self.input.reset();
         self.preview = Preview::empty();
         self.completion.reset();
-        self.tree = Tree::empty();
+        self.tree = Tree::default();
         Ok(())
     }
 
@@ -391,10 +391,10 @@ impl Tab {
     ///     if the selected node is a directory, that's it.
     ///     else, it is the parent of the selected node.
     /// In other modes, it's the current path of pathcontent.
-    pub fn current_directory_path(&mut self) -> Option<&path::Path> {
-        match self.mode {
-            Mode::Tree => return self.tree.directory_of_selected(),
-            _ => Some(&self.path_content.path),
+    pub fn directory_of_selected_previous_mode(&mut self) -> Result<&path::Path> {
+        match self.previous_mode {
+            Mode::Tree => return self.tree.directory_of_selected().context("no parent"),
+            _ => Ok(&self.path_content.path),
         }
     }
 
@@ -648,7 +648,7 @@ impl Tab {
     fn tree_select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
         let screen_index = row_to_window_index(row);
         let (selected_index, content) = self.tree.into_navigable_content(&self.users);
-        let (top, _) = calculate_tree_window(selected_index, term_height - 2);
+        let (top, _) = calculate_top_bottom(selected_index, term_height - 2);
         let index = screen_index + top;
         let (_, _, colored_path) = content.get(index).context("no selected file")?;
         self.tree.go(To::Path(&colored_path.path));

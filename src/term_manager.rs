@@ -25,7 +25,7 @@ use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::trash::TrashInfo;
-use crate::tree::calculate_tree_window;
+use crate::tree::calculate_top_bottom;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -416,7 +416,7 @@ impl<'a> WinMain<'a> {
         let left_margin = if status.display_full { 1 } else { 3 };
         let (_, height) = canvas.size()?;
         let (selected_index, content) = tab.tree.into_navigable_content(&tab.users);
-        let (top, bottom) = calculate_tree_window(selected_index, height);
+        let (top, bottom) = calculate_top_bottom(selected_index, height);
         let length = content.len();
 
         for (i, (metadata, prefix, colored_string)) in content

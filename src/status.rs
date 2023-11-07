@@ -582,7 +582,7 @@ impl Status {
 
     /// Drop the current tree, replace it with an empty one.
     pub fn remove_tree(&mut self) -> Result<()> {
-        self.selected().tree = Tree::empty();
+        self.selected().tree = Tree::default();
         Ok(())
     }
 
@@ -617,7 +617,7 @@ impl Status {
         if let Mode::Tree = self.selected_non_mut().mode {
             {
                 let tab = self.selected();
-                tab.tree = Tree::empty();
+                tab.tree = Tree::default();
                 tab.refresh_view()
             }?;
             self.selected().set_mode(Mode::Normal)
