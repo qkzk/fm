@@ -405,20 +405,11 @@ impl Status {
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
         let sources = self.flagged.content.clone();
 
-        let dest = match self.selected_non_mut().previous_mode {
-            Mode::Tree => self
-                .selected_non_mut()
-                .tree
-                .directory_of_selected()
-                .context("no parent")?
-                .display()
-                .to_string(),
-            _ => self
-                .selected_non_mut()
-                .path_content_str()
-                .context("cut or copy: unreadable path")?
-                .to_owned(),
-        };
+        let dest = self
+            .selected_non_mut()
+            .directory_of_selected_previous_mode()?
+            .display()
+            .to_string();
 
         copy_move(cut_or_copy, sources, &dest, Arc::clone(&self.term))?;
         self.clear_flags_and_reset_view()

@@ -146,7 +146,11 @@ impl Tab {
         self.input.reset();
         self.preview = Preview::empty();
         self.completion.reset();
-        self.tree = Tree::default();
+        if matches!(self.mode, Mode::Tree) {
+            self.tree = Tree::default()
+        } else {
+            self.make_tree(None)?;
+        };
         Ok(())
     }
 
@@ -387,11 +391,11 @@ impl Tab {
     }
 
     /// Returns the current path.
-    /// In tree mode :
+    /// If previous mode was tree mode :
     ///     if the selected node is a directory, that's it.
     ///     else, it is the parent of the selected node.
     /// In other modes, it's the current path of pathcontent.
-    pub fn directory_of_selected_previous_mode(&mut self) -> Result<&path::Path> {
+    pub fn directory_of_selected_previous_mode(&self) -> Result<&path::Path> {
         match self.previous_mode {
             Mode::Tree => return self.tree.directory_of_selected().context("no parent"),
             _ => Ok(&self.path_content.path),
@@ -409,7 +413,7 @@ impl Tab {
         }
     }
 
-    /// Optional Fileinfo of the selected element.
+    /// Fileinfo of the selected element.
     pub fn selected(&self) -> Result<FileInfo> {
         match self.mode {
             Mode::Tree => {
