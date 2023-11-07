@@ -569,8 +569,8 @@ impl Tree {
 #[inline]
 fn first_prefix(mut prefix: String) -> String {
     prefix.push(' ');
-    prefix = prefix.replace("└──", "   ");
-    prefix = prefix.replace("├──", "│  ");
+    prefix = prefix.replace("└──", "  ");
+    prefix = prefix.replace("├──", "│ ");
     prefix.push_str("└──");
     prefix
 }
@@ -578,8 +578,8 @@ fn first_prefix(mut prefix: String) -> String {
 #[inline]
 fn other_prefix(mut prefix: String) -> String {
     prefix.push(' ');
-    prefix = prefix.replace("└──", "   ");
-    prefix = prefix.replace("├──", "│  ");
+    prefix = prefix.replace("└──", "  ");
+    prefix = prefix.replace("├──", "│ ");
     prefix.push_str("├──");
     prefix
 }
