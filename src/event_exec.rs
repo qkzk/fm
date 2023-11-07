@@ -622,7 +622,7 @@ impl EventAction {
             }
             Mode::Preview => tab.page_up(),
             Mode::Tree => {
-                tab.tree_page_up()?;
+                tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
             }
             _ => (),

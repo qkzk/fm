@@ -342,7 +342,7 @@ impl Tab {
             self.set_pathcontent(parent.to_owned().as_ref())?;
             self.make_tree(Some(self.path_content.sort_kind.clone()))
         } else {
-            self.tree.select_parent();
+            self.tree.go(To::Parent);
             Ok(())
         }
     }
@@ -350,7 +350,7 @@ impl Tab {
     /// Move down 10 times in the tree
     pub fn tree_page_down(&mut self) -> Result<()> {
         for _ in 1..10 {
-            self.tree.select_next()?;
+            self.tree.go(To::Next);
             if self.tree.is_on_last() {
                 break;
             }
@@ -359,14 +359,13 @@ impl Tab {
     }
 
     /// Move up 10 times in the tree
-    pub fn tree_page_up(&mut self) -> Result<()> {
+    pub fn tree_page_up(&mut self) {
         for _ in 1..10 {
-            self.tree.select_prev();
+            self.tree.go(To::Prev);
             if self.tree.is_on_root() {
                 break;
             }
         }
-        Ok(())
     }
 
     /// Select the next sibling.
@@ -377,13 +376,13 @@ impl Tab {
 
     /// Select the previous siblging
     pub fn tree_select_prev(&mut self) -> Result<()> {
-        self.tree.select_prev();
+        self.tree.go(To::Prev);
         Ok(())
     }
 
     /// Go to the last leaf.
     pub fn tree_go_to_bottom_leaf(&mut self) -> Result<()> {
-        self.tree.select_last();
+        self.tree.go(To::Last);
         Ok(())
     }
 
@@ -525,7 +524,7 @@ impl Tab {
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node. Reset the display.
     pub fn tree_go_to_root(&mut self) -> Result<()> {
-        self.tree.select_root();
+        self.tree.go(To::Root);
         Ok(())
     }
 
@@ -652,7 +651,7 @@ impl Tab {
         let (top, _) = calculate_tree_window(selected_index, term_height - 2);
         let index = screen_index + top;
         let (_, _, colored_path) = content.get(index).context("no selected file")?;
-        self.tree.select_path(&colored_path.path);
+        self.tree.go(To::Path(&colored_path.path));
         Ok(())
     }
 

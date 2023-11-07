@@ -86,6 +86,8 @@ impl Node {
         self.children = children
     }
 }
+
+/// Describe a movement in a navigable structure
 pub trait Go {
     fn go(&mut self, direction: To);
 }
@@ -345,7 +347,7 @@ impl Tree {
         }
     }
 
-    pub fn select_root(&mut self) {
+    fn select_root(&mut self) {
         let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
             unreachable!("selected path should be in node")
         };
@@ -358,7 +360,7 @@ impl Tree {
         self.reset_required_height()
     }
 
-    pub fn select_last(&mut self) {
+    fn select_last(&mut self) {
         let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
             unreachable!("selected path should be in node")
         };
@@ -371,7 +373,7 @@ impl Tree {
         self.set_required_height_to_max()
     }
 
-    pub fn select_parent(&mut self) {
+    fn select_parent(&mut self) {
         if let Some(parent_path) = self.selected.parent() {
             let Some(parent_node) = self.nodes.get_mut(parent_path) else {
                 return;
@@ -386,7 +388,7 @@ impl Tree {
         }
     }
 
-    pub fn select_path(&mut self, clicked_path: &Path) {
+    fn select_path(&mut self, clicked_path: &Path) {
         let Some(new_node) = self.nodes.get_mut(clicked_path) else {
             return;
         };
