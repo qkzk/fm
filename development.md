@@ -615,6 +615,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: move back from root should redo the parent tree
   - [x] FIX: move up from to go to last and vice versa
   - [x] FIX: enter a dir from normal mode shouldn't set mode tree
+  - [x] Use a generic trait for movements
   - [ ] FIX: tab.selected() should return Option<&FileInfo>
   - [ ] search can only find the first match
   - [ ] test everything
