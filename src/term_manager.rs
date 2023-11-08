@@ -280,7 +280,11 @@ impl<'a> WinMain<'a> {
             let Some(selected_index) = opt_index else {
                 return "".to_owned();
             };
-            return format!(" {selected_index} / {len} ", len = self.tab.tree.len());
+            return format!(
+                " {position} / {len} ",
+                position = selected_index + 1,
+                len = self.tab.tree.len()
+            );
         };
         format!(
             " {index} / {len} ",
