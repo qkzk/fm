@@ -156,15 +156,15 @@ impl Tree {
         let root_depth = root_path.components().collect::<Vec<_>>().len();
         let mut stack = vec![root_path.to_owned()];
         let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
-
         let mut last_path = root_path.to_owned();
+
         while let Some(current_path) = stack.pop() {
             let reached_depth = current_path.components().collect::<Vec<_>>().len();
             if reached_depth >= depth + root_depth {
                 continue;
             }
             let children_will_be_added = depth + root_depth - reached_depth > 1;
-            let mut node = Node::new(&current_path, None);
+            let mut current_node = Node::new(&current_path, None);
             if current_path.is_dir() && !current_path.is_symlink() && children_will_be_added {
                 if let Some(mut files) =
                     files_collection(&current_path, users, show_hidden, filter_kind, true)
@@ -172,12 +172,12 @@ impl Tree {
                     sort_kind.sort(&mut files);
                     let children = Self::make_children_and_stack_them(&mut stack, &files);
                     if !children.is_empty() {
-                        node.set_children(Some(children));
+                        current_node.set_children(Some(children));
                     }
                 };
             }
-            last_path = node.path.to_owned();
-            nodes.insert(node.path.to_owned(), node);
+            last_path = current_path.to_owned();
+            nodes.insert(current_path.to_owned(), current_node);
         }
 
         let Some(root_node) = nodes.get_mut(&root_path) else {

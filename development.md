@@ -602,10 +602,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: exploring root folder leads to wrong first line display.
 - [x] allow seveval palettes for normal file colors
 - [x] move every lazy_static configuration into config.
+- [x] FIX: encrypted are never shown as mounted
 - [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
-- [x] FIX: encrypted are never shown as mounted
 - [ ] Tree remade without recursion. Improve ram usage
   - [x] FIX: folders are max depth hangs the app
   - [x] FIX: rename renames the root path
