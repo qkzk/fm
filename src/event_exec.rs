@@ -471,12 +471,12 @@ impl EventAction {
 
     pub fn search_next(status: &mut Status) -> Result<()> {
         let tab = status.selected();
+        let Some(searched) = tab.searched.clone() else {
+            return Ok(());
+        };
         match tab.mode {
-            Mode::Tree => (),
+            Mode::Tree => tab.tree.search_first_match(&searched),
             _ => {
-                let Some(searched) = tab.searched.clone() else {
-                    return Ok(());
-                };
                 let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
                 tab.search_from(&searched, next_index);
                 status.update_second_pane_for_preview()?;
@@ -1381,16 +1381,8 @@ impl LeaveMode {
         tab.searched = Some(searched.clone());
         match tab.previous_mode {
             Mode::Tree => {
+                log::info!("searching in tree");
                 tab.tree.search_first_match(searched);
-                // tab.directory.tree.unselect_children();
-                // if let Some(position) = tab.directory.tree.select_first_match(&searched) {
-                //     tab.directory.tree.position = position;
-                //     (_, _, tab.directory.tree.current_node) =
-                //         tab.directory.tree.select_from_position()?;
-                // } else {
-                //     tab.directory.tree.select_root()
-                // };
-                // tab.directory.make_preview();
             }
             _ => {
                 let next_index = tab.path_content.index;

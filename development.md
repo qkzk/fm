@@ -618,6 +618,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: enter a dir from normal mode shouldn't set mode tree
   - [x] Use a generic trait for movements
   - [x] FIX: first line position for tree
+  - [x] FIX: searching for file very low don't scroll there
+  - [x] FIX: search can only find the first match
   - [ ] test everything
   - [ ] refactor
   - [x] document
@@ -625,7 +627,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ## TODO
 
 - [ ] FIX: tab.selected() should return Option<&FileInfo>
-- [ ] FIX: search can only find the first match
 - [ ] use widget for every drawable element. First line should be a collection of widget which are drawned
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed

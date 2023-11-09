@@ -416,6 +416,9 @@ impl Tree {
     }
 
     fn select_path(&mut self, clicked_path: &Path) {
+        if clicked_path == self.selected {
+            return;
+        }
         let Some(new_node) = self.nodes.get_mut(clicked_path) else {
             return;
         };
@@ -469,24 +472,25 @@ impl Tree {
         }
     }
 
-    // FIX: can only find the first match and nothing else
     /// Select the first node whose filename match a pattern.
     pub fn search_first_match(&mut self, pattern: &str) {
-        let initial_selected = self.selected.to_owned();
-        let Some((found_path, found_node)) = self.nodes.iter_mut().find(|(path, _)| {
-            path.file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .contains(pattern)
-        }) else {
-            return;
+        let Some(current_index) = self.nodes.keys().position(|path| path == &self.selected) else {
+            unreachable!("selected should be in pos");
         };
-        self.selected = found_path.to_owned();
-        found_node.select();
-        let Some(current_node) = self.nodes.get_mut(&initial_selected) else {
-            unreachable!("selected path should be in nodes");
+        if let Some(found_path) = self
+            .nodes
+            .keys()
+            .skip(current_index + 1)
+            .find(|path| path_filename_contains(path, pattern))
+        {
+            self.go(To::Path(found_path.to_owned().as_path()));
+        } else if let Some(found_path) = self
+            .nodes
+            .keys()
+            .find(|path| path_filename_contains(path, pattern))
+        {
+            self.go(To::Path(found_path.to_owned().as_path()));
         };
-        current_node.unselect();
     }
 
     /// Returns a navigable vector of `ColoredTriplet` and the index of selected file
@@ -612,4 +616,11 @@ pub fn calculate_top_bottom(selected_index: usize, terminal_height: usize) -> (u
     let bottom = top + window_height;
 
     (top, bottom)
+}
+
+fn path_filename_contains(path: &Path, pattern: &str) -> bool {
+    path.file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .contains(pattern)
 }
