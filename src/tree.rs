@@ -477,20 +477,33 @@ impl Tree {
         let Some(current_index) = self.nodes.keys().position(|path| path == &self.selected) else {
             unreachable!("selected should be in pos");
         };
-        if let Some(found_path) = self
-            .nodes
+        let Some(found_path) = self.find_pattern(pattern, current_index) else {
+            return;
+        };
+        self.go(To::Path(found_path.to_owned().as_path()));
+    }
+
+    fn find_pattern(&self, pattern: &str, current_index: usize) -> Option<&PathBuf> {
+        if let Some(found_path) = self.find_path_from_index(current_index, pattern) {
+            Some(found_path)
+        } else if let Some(found_path) = self.find_path_from_top(pattern) {
+            Some(found_path)
+        } else {
+            None
+        }
+    }
+
+    fn find_path_from_top(&self, pattern: &str) -> Option<&PathBuf> {
+        self.nodes
+            .keys()
+            .find(|path| path_filename_contains(path, pattern))
+    }
+
+    fn find_path_from_index(&self, current_index: usize, pattern: &str) -> Option<&PathBuf> {
+        self.nodes
             .keys()
             .skip(current_index + 1)
             .find(|path| path_filename_contains(path, pattern))
-        {
-            self.go(To::Path(found_path.to_owned().as_path()));
-        } else if let Some(found_path) = self
-            .nodes
-            .keys()
-            .find(|path| path_filename_contains(path, pattern))
-        {
-            self.go(To::Path(found_path.to_owned().as_path()));
-        };
     }
 
     /// Returns a navigable vector of `ColoredTriplet` and the index of selected file
