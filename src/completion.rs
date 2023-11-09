@@ -3,7 +3,7 @@ use std::fs::{self, ReadDir};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 
-use crate::{fileinfo::PathContent, tree::Node};
+use crate::{fileinfo::PathContent, tree::Filenames};
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
@@ -212,17 +212,7 @@ impl Completion {
     }
 
     /// Looks for file within tree completing what the user typed.
-    pub fn search_from_tree(
-        &mut self,
-        input_string: &str,
-        content: std::iter::FilterMap<
-            std::iter::FilterMap<
-                std::collections::hash_map::Keys<'_, std::path::PathBuf, Node>,
-                fn(&std::path::PathBuf) -> Option<&std::ffi::OsStr>,
-            >,
-            fn(&std::ffi::OsStr) -> Option<&str>,
-        >,
-    ) -> Result<()> {
+    pub fn search_from_tree(&mut self, input_string: &str, content: Filenames) -> Result<()> {
         self.update(
             content
                 .filter(|&p| p.contains(input_string))

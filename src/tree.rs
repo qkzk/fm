@@ -472,38 +472,62 @@ impl Tree {
         }
     }
 
+    // BUG: won't respect display order.
+    // ATM .keys() and display don't respect the same order.
+    // keys -> fileinfo -> sortkind won't work since sortkind is written for files from the same directory.
+    // We could traverse the tree with `into_navigable_content`, search there and then...
     /// Select the first node whose filename match a pattern.
     pub fn search_first_match(&mut self, pattern: &str) {
-        let Some(current_index) = self.nodes.keys().position(|path| path == &self.selected) else {
-            unreachable!("selected should be in pos");
-        };
-        let Some(found_path) = self.find_pattern(pattern, current_index) else {
+        // let Some(current_index) = self.nodes.keys().position(|path| path == &self.selected) else {
+        //     unreachable!("selected should be in pos");
+        // };
+        let Some(found_path) = self.deep_first_search(pattern) else {
             return;
         };
         self.go(To::Path(found_path.to_owned().as_path()));
     }
 
-    fn find_pattern(&self, pattern: &str, current_index: usize) -> Option<&PathBuf> {
-        if let Some(found_path) = self.find_path_from_index(current_index, pattern) {
-            Some(found_path)
-        } else if let Some(found_path) = self.find_path_from_top(pattern) {
-            Some(found_path)
-        } else {
-            None
+    fn deep_first_search(&self, pattern: &str) -> Option<PathBuf> {
+        let mut stack = vec![self.root_path.as_path()];
+        let mut found = vec![];
+
+        while let Some(path) = stack.pop() {
+            if path_filename_contains(path, pattern) {
+                found.push(path.to_path_buf());
+            }
+            let Some(current_node) = self.nodes.get(path) else {
+                continue;
+            };
+
+            if current_node.have_children() {
+                let Some(children) = &current_node.children else {
+                    continue;
+                };
+                for leaf in children.iter() {
+                    stack.push(leaf);
+                }
+            }
         }
+        self.pick_best_match(&found)
     }
 
-    fn find_path_from_top(&self, pattern: &str) -> Option<&PathBuf> {
-        self.nodes
-            .keys()
-            .find(|path| path_filename_contains(path, pattern))
-    }
-
-    fn find_path_from_index(&self, current_index: usize, pattern: &str) -> Option<&PathBuf> {
-        self.nodes
-            .keys()
-            .skip(current_index + 1)
-            .find(|path| path_filename_contains(path, pattern))
+    fn pick_best_match(&self, found: &[PathBuf]) -> Option<PathBuf> {
+        if found.is_empty() {
+            return None;
+        }
+        if let Some(position) = found.iter().position(|path| path == &self.selected) {
+            // selected is in found
+            if position + 1 < found.len() {
+                // selected isn't last, use next elem
+                Some(found[position + 1].to_owned())
+            } else {
+                // selected is last
+                Some(found[0].to_owned())
+            }
+        } else {
+            // selected isn't in found, use first match
+            Some(found[0].to_owned())
+        }
     }
 
     /// Returns a navigable vector of `ColoredTriplet` and the index of selected file
@@ -544,16 +568,11 @@ impl Tree {
         (selected_index, content)
     }
 
-    /// An (ugly) iterator over filenames.
+    /// An iterator over filenames.
     /// It allows us to iter explicitely over filenames
     /// while avoiding another allocation by collecting into a `Vec`
     #[inline]
-    pub fn filenames(
-        &self,
-    ) -> FilterMap<
-        FilterMap<hash_map::Keys<'_, PathBuf, Node>, fn(&PathBuf) -> Option<&OsStr>>,
-        fn(&OsStr) -> Option<&str>,
-    > {
+    pub fn filenames(&self) -> Filenames<'_> {
         let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
         let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
         self.nodes.keys().filter_map(to_filename).filter_map(to_str)
@@ -637,3 +656,8 @@ fn path_filename_contains(path: &Path, pattern: &str) -> bool {
         .to_string_lossy()
         .contains(pattern)
 }
+
+type FnPbOsstr = fn(&PathBuf) -> Option<&OsStr>;
+type FilterHashMap<'a> = FilterMap<hash_map::Keys<'a, PathBuf, Node>, FnPbOsstr>;
+/// An iterator over filenames of a HashMap<PathBuf, Node>
+pub type Filenames<'a> = FilterMap<FilterHashMap<'a>, fn(&OsStr) -> Option<&str>>;
