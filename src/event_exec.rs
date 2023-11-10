@@ -238,11 +238,10 @@ impl EventAction {
     /// Display the help which can be navigated and displays the configrable
     /// binds.
     pub fn help(status: &mut Status) -> Result<()> {
-        let help = status.help.clone();
-        let tab = status.selected();
-        tab.set_mode(Mode::Preview);
-        tab.preview = Preview::help(&help);
-        tab.window.reset(tab.preview.len());
+        status.selected().set_mode(Mode::Preview);
+        status.selected().preview = Preview::help(&status.help);
+        let len = status.selected_non_mut().preview.len();
+        status.selected().window.reset(len);
         Ok(())
     }
 
@@ -283,12 +282,7 @@ impl EventAction {
     /// Once a quit event is received, we change a flag and break the main loop.
     /// It's usefull to reset the cursor before leaving the application.
     pub fn quit(tab: &mut Tab) -> Result<()> {
-        if let Mode::Tree = tab.mode {
-            tab.refresh_view()?;
-            tab.set_mode(Mode::Normal)
-        } else {
-            tab.must_quit = true;
-        }
+        tab.must_quit = true;
         Ok(())
     }
     /// Toggle the display of hidden files.

@@ -147,9 +147,9 @@ impl Tab {
         self.preview = Preview::empty();
         self.completion.reset();
         if matches!(self.mode, Mode::Tree) {
-            self.tree = Tree::default()
-        } else {
             self.make_tree(None)?;
+        } else {
+            self.tree = Tree::default()
         };
         Ok(())
     }
@@ -159,10 +159,10 @@ impl Tab {
     /// displayed files is reset.
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> Result<()> {
-        self.refresh_params()?;
         self.path_content
             .reset_files(&self.filter, self.show_hidden, &self.users)?;
         self.window.reset(self.path_content.content.len());
+        self.refresh_params()?;
         Ok(())
     }
 

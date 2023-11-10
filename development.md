@@ -620,6 +620,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: first line position for tree
   - [x] FIX: searching for file very low don't scroll there
   - [x] FIX: search can only find the first match
+  - [x] FIX: leaving preview doesn't reset tree
   - [ ] test everything
   - [ ] refactor
   - [x] document

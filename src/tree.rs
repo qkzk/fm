@@ -117,6 +117,9 @@ pub enum To<'a> {
 impl Go for Tree {
     /// Select another element from a tree.
     fn go(&mut self, to: To) {
+        if self.is_empty() {
+            return;
+        }
         match to {
             To::Next => self.select_next(),
             To::Prev => self.select_prev(),
@@ -260,7 +263,7 @@ impl Tree {
     /// Select next sibling or the next sibling of the parent
     fn select_next(&mut self) {
         if self.is_on_last() {
-            self.select_root();
+            self.go(To::Root);
             return;
         }
 
@@ -331,7 +334,7 @@ impl Tree {
     /// Select previous sibling or the parent
     fn select_prev(&mut self) {
         if self.is_on_root() {
-            self.select_last();
+            self.go(To::Last);
             return;
         }
 
