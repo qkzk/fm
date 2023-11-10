@@ -155,6 +155,36 @@ impl Tree {
         show_hidden: bool,
         filter_kind: &FilterKind,
     ) -> Self {
+        let (mut nodes, last_path) = Self::make_nodes(
+            &root_path,
+            depth,
+            sort_kind,
+            users,
+            show_hidden,
+            filter_kind,
+        );
+        let Some(root_node) = nodes.get_mut(&root_path) else {
+            unreachable!("root path should be in nodes");
+        };
+        root_node.select();
+
+        Self {
+            selected: root_path.clone(),
+            root_path,
+            last_path,
+            nodes,
+            required_height: Self::DEFAULT_REQUIRED_HEIGHT,
+        }
+    }
+
+    fn make_nodes(
+        root_path: &PathBuf,
+        depth: usize,
+        sort_kind: SortKind,
+        users: &Users,
+        show_hidden: bool,
+        filter_kind: &FilterKind,
+    ) -> (HashMap<PathBuf, Node>, PathBuf) {
         // keep track of the depth
         let root_depth = root_path.components().collect::<Vec<_>>().len();
         let mut stack = vec![root_path.to_owned()];
@@ -166,9 +196,9 @@ impl Tree {
             if reached_depth >= depth + root_depth {
                 continue;
             }
-            let children_will_be_added = depth + root_depth - reached_depth > 1;
+            let children_will_be_added = depth + root_depth > 1 + reached_depth;
             let mut current_node = Node::new(&current_path, None);
-            if current_path.is_dir() && !current_path.is_symlink() && children_will_be_added {
+            if children_will_be_added && current_path.is_dir() && !current_path.is_symlink() {
                 if let Some(mut files) =
                     files_collection(&current_path, users, show_hidden, filter_kind, true)
                 {
@@ -182,19 +212,7 @@ impl Tree {
             last_path = current_path.to_owned();
             nodes.insert(current_path.to_owned(), current_node);
         }
-
-        let Some(root_node) = nodes.get_mut(&root_path) else {
-            unreachable!("root path should be in nodes");
-        };
-        root_node.select();
-
-        Self {
-            selected: root_path.clone(),
-            root_path,
-            last_path,
-            nodes,
-            required_height: Self::DEFAULT_REQUIRED_HEIGHT,
-        }
+        (nodes, last_path)
     }
 
     fn make_children_and_stack_them(stack: &mut Vec<PathBuf>, files: &[FileInfo]) -> Vec<PathBuf> {
@@ -475,15 +493,9 @@ impl Tree {
         }
     }
 
-    // BUG: won't respect display order.
-    // ATM .keys() and display don't respect the same order.
-    // keys -> fileinfo -> sortkind won't work since sortkind is written for files from the same directory.
-    // We could traverse the tree with `into_navigable_content`, search there and then...
     /// Select the first node whose filename match a pattern.
+    /// If the selected file match, the next match will be selected.
     pub fn search_first_match(&mut self, pattern: &str) {
-        // let Some(current_index) = self.nodes.keys().position(|path| path == &self.selected) else {
-        //     unreachable!("selected should be in pos");
-        // };
         let Some(found_path) = self.deep_first_search(pattern) else {
             return;
         };
