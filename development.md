@@ -606,7 +606,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
-- [ ] Tree remade without recursion. Improve ram usage
+- [ ] Tree remade without recursion. Use an `HashMap<PathBuf, Node>`
   - [x] FIX: folders are max depth hangs the app
   - [x] FIX: rename renames the root path
   - [x] FIX: scrolling to bottom of tree is bugged
@@ -621,6 +621,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: searching for file very low don't scroll there
   - [x] FIX: search can only find the first match
   - [x] FIX: leaving preview doesn't reset tree
+  - [x] Add a link to previous and next node in Node. Simplify navigation, increase ram usage :/
   - [ ] test everything
   - [ ] refactor
   - [x] document

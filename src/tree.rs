@@ -45,6 +45,8 @@ pub struct Node {
     children: Option<Vec<PathBuf>>,
     folded: bool,
     selected: bool,
+    prev: Option<PathBuf>,
+    next: Option<PathBuf>,
 }
 
 impl Node {
@@ -56,6 +58,8 @@ impl Node {
             children,
             folded: false,
             selected: false,
+            prev: None,
+            next: None,
         }
     }
 
@@ -177,6 +181,7 @@ impl Tree {
         }
     }
 
+    #[inline]
     fn make_nodes(
         root_path: &PathBuf,
         depth: usize,
@@ -209,12 +214,26 @@ impl Tree {
                     }
                 };
             }
-            last_path = current_path.to_owned();
+
+            if let Some(last_node) = nodes.get_mut(&last_path) {
+                last_node.next = Some(current_path.to_owned());
+            }
+            current_node.prev = Some(last_path);
             nodes.insert(current_path.to_owned(), current_node);
+            last_path = current_path.to_owned();
         }
+        let Some(root_node) = nodes.get_mut(root_path) else {
+            unreachable!("root_path should be in nodes");
+        };
+        root_node.prev = Some(last_path.to_owned());
+        let Some(last_node) = nodes.get_mut(&last_path) else {
+            unreachable!("last_path should be in nodes");
+        };
+        last_node.next = Some(root_path.to_owned());
         (nodes, last_path)
     }
 
+    #[inline]
     fn make_children_and_stack_them(stack: &mut Vec<PathBuf>, files: &[FileInfo]) -> Vec<PathBuf> {
         files
             .iter()
@@ -244,13 +263,11 @@ impl Tree {
     /// The folder containing the selected node.
     /// Itself if selected is a directory.
     pub fn directory_of_selected(&self) -> Option<&Path> {
-        let ret = if self.selected.is_dir() && !self.selected.is_symlink() {
+        if self.selected.is_dir() && !self.selected.is_symlink() {
             Some(self.selected.as_path())
         } else {
             self.selected.parent()
-        };
-        log::info!("directory_of_selected {ret:?}");
-        ret
+        }
     }
 
     /// Relative path of selected from rootpath.
@@ -299,56 +316,15 @@ impl Tree {
         }
     }
 
-    // FIX: Still a problem when reaching max depth of tree,
-    // can't find next sibling since we look for children which exists but aren't in tree.
-    // Check if the children are listed (they shouldn't be) in node.children and are in self.nodes.
     fn find_next_path(&self) -> Option<PathBuf> {
-        let Some(current_node) = self.nodes.get(&self.selected) else {
-            unreachable!("selected path should be in nodes")
-        };
-        if !self.selected.is_dir() || !current_node.folded {
-            if let Some(children_paths) = &current_node.children {
-                if let Some(child_path) = children_paths.last() {
-                    let child_path = child_path.to_owned();
-                    return Some(child_path.to_owned());
-                }
+        if let Some(selected_node) = self.nodes.get(&self.selected) {
+            if let Some(next_path) = &selected_node.next {
+                return Some(next_path.to_owned());
             }
         }
-        let mut current_path = self.selected.to_owned();
-
-        // TODO: refactor using ancestors. Not so easy since we keep track of parent and current
-        while let Some(parent_path) = current_path.parent() {
-            let Some(parent_node) = self.nodes.get(parent_path) else {
-                current_path = parent_path.to_owned();
-                continue;
-            };
-            let Some(siblings_paths) = &parent_node.children else {
-                current_path = parent_path.to_owned();
-                continue;
-            };
-            let Some(index_current) = siblings_paths.iter().position(|path| path == &current_path)
-            else {
-                current_path = parent_path.to_owned();
-                continue;
-            };
-            if index_current == 0 {
-                current_path = parent_path.to_owned();
-                continue;
-            }
-            let Some(next_sibling_path) = siblings_paths.get(index_current - 1) else {
-                current_path = parent_path.to_owned();
-                continue;
-            };
-            if self.nodes.contains_key(next_sibling_path) {
-                return Some(next_sibling_path.to_owned());
-            } else {
-                current_path = parent_path.to_owned();
-                continue;
-            };
-        }
-        None
+        unreachable!("every node should have a next");
     }
-    // TODO! find the bottom child of parent instead of jumping back 1 level
+
     /// Select previous sibling or the parent
     fn select_prev(&mut self) {
         if self.is_on_root() {
@@ -371,28 +347,12 @@ impl Tree {
     }
 
     fn find_prev_path(&self) -> Option<PathBuf> {
-        let current_path = self.selected.to_owned();
-        let Some(parent_path) = current_path.parent() else {
-            return None;
-        };
-        let Some(parent_node) = self.nodes.get(parent_path) else {
-            return None;
-        };
-        let Some(siblings_paths) = &parent_node.children else {
-            return None;
-        };
-        let Some(index_current) = siblings_paths.iter().position(|path| path == &current_path)
-        else {
-            return None;
-        };
-        if index_current + 1 < siblings_paths.len() {
-            Some(siblings_paths[index_current + 1].to_owned())
-        } else {
-            let Some(_node) = self.nodes.get(parent_path) else {
-                return None;
-            };
-            Some(parent_path.to_owned())
+        if let Some(selected_node) = self.nodes.get(&self.selected) {
+            if let Some(prev_path) = &selected_node.prev {
+                return Some(prev_path.to_owned());
+            }
         }
+        unreachable!("every node should have a prev");
     }
 
     fn select_root(&mut self) {
