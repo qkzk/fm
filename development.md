@@ -622,8 +622,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: search can only find the first match
   - [x] FIX: leaving preview doesn't reset tree
   - [x] Add a link to previous and next node in Node. Simplify navigation, increase ram usage :/
-  - [ ] test everything
-  - [ ] refactor
+  - [x] test everything
+  - [x] refactor
   - [x] document
 
 ## TODO
