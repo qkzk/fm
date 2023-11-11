@@ -622,12 +622,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] test everything
   - [x] refactor
   - [x] document
-- [ ] mount usb key - should be merged with mtp
-- [ ] document filepicking (from my config etc.).
-- [ ] avoid multiple refreshs if we edit files ourself
 
 ## TODO
 
+- [ ] mount usb key - should be merged with mtp
+- [ ] document filepicking (from my config etc.).
+- [ ] avoid multiple refreshs if we edit files ourself
 - [ ] FIX: tab.selected() should return Option<&FileInfo>
 - [ ] use widget for every drawable element. First line should be a collection of widget which are drawned
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
