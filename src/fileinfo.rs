@@ -599,12 +599,12 @@ pub fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
 
 /// True if the file isn't hidden.
 pub fn is_not_hidden(entry: &DirEntry) -> Result<bool> {
-    let b = !entry
+    let is_hidden = !entry
         .file_name()
         .to_str()
         .context("Couldn't read filename")?
         .starts_with('.');
-    Ok(b)
+    Ok(is_hidden)
 }
 
 fn extract_filename(path: &path::Path) -> Result<String> {
