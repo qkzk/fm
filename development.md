@@ -562,8 +562,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Not accessible file in tree mode crashes the application
 - [x] Look for nvim listen address in `ss -l` output
 
-## Current dev
-
 ### Version 0.1.23
 
 - [x] preview tar archive
@@ -622,6 +620,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] test everything
   - [x] refactor
   - [x] document
+
+## Current dev
 
 ## TODO
 
