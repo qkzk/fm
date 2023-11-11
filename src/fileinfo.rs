@@ -465,15 +465,6 @@ impl PathContent {
         }
     }
 
-    /// Number of files contained in current content.
-    /// It's not the lenght of `self.content` since it includes `.` and `..`.
-    pub fn true_len(&self) -> usize {
-        match self.path.parent() {
-            Some(_) => self.content.len() - 2,
-            None => self.content.len() - 1,
-        }
-    }
-
     /// Human readable string representation of the space used by _files_
     /// in current path.
     /// No recursive exploration of directory.

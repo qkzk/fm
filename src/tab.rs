@@ -723,4 +723,16 @@ impl Tab {
         self.set_mode(Mode::InputSimple(InputSimple::Rename));
         Ok(())
     }
+
+    pub fn display_mode(&self) -> Mode {
+        match self.mode {
+            Mode::Preview => Mode::Preview,
+            Mode::Normal => Mode::Normal,
+            Mode::Tree => Mode::Tree,
+            _ => match self.previous_mode {
+                Mode::Tree => Mode::Tree,
+                _ => Mode::Normal,
+            },
+        }
+    }
 }
