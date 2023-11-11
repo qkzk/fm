@@ -93,6 +93,7 @@ impl Node {
         FileInfo::new(&self.path, users)
     }
 
+    #[inline]
     fn set_children(&mut self, children: Option<Vec<PathBuf>>) {
         self.children = children
     }
@@ -130,7 +131,7 @@ impl Go for Tree {
             To::Root => self.select_root(),
             To::Last => self.select_last(),
             To::Parent => self.select_parent(),
-            To::Path(path) => self.select_path(path),
+            To::Path(path) => self.select_path(path, true),
         }
     }
 }
@@ -297,21 +298,8 @@ impl Tree {
 
     /// Select next sibling or the next sibling of the parent
     fn select_next(&mut self) {
-        if self.is_on_last() {
-            self.go(To::Root);
-            return;
-        }
-
         if let Some(next_path) = self.find_next_path() {
-            let Some(next_node) = self.nodes.get_mut(&next_path) else {
-                return;
-            };
-            next_node.select();
-            let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
-                unreachable!("current_node should be in nodes");
-            };
-            selected_node.unselect();
-            self.selected = next_path;
+            self.select_path(&next_path, false);
             self.increment_required_height()
         }
     }
@@ -328,20 +316,9 @@ impl Tree {
     /// Select previous sibling or the parent
     fn select_prev(&mut self) {
         if self.is_on_root() {
-            self.go(To::Last);
-            return;
-        }
-
-        if let Some(previous_path) = self.find_prev_path() {
-            let Some(previous_node) = self.nodes.get_mut(&previous_path) else {
-                return;
-            };
-            previous_node.select();
-            let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
-                unreachable!("current_node should be in nodes");
-            };
-            selected_node.unselect();
-            self.selected = previous_path;
+            self.select_last();
+        } else if let Some(previous_path) = self.find_prev_path() {
+            self.select_path(&previous_path, false);
             self.decrement_required_height()
         }
     }
@@ -356,60 +333,40 @@ impl Tree {
     }
 
     fn select_root(&mut self) {
-        let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
-            unreachable!("selected path should be in node")
-        };
-        selected_node.unselect();
-        let Some(root_node) = self.nodes.get_mut(&self.root_path) else {
-            unreachable!("root path should be in nodes")
-        };
-        root_node.select();
-        self.selected = self.root_path.to_owned();
+        let root_path = self.root_path.to_owned();
+        self.select_path(&root_path, false);
         self.reset_required_height()
     }
 
     fn select_last(&mut self) {
-        let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
-            unreachable!("selected path should be in node")
-        };
-        selected_node.unselect();
-        let Some(last_node) = self.nodes.get_mut(&self.last_path) else {
-            unreachable!("root path should be in nodes")
-        };
-        last_node.select();
-        self.selected = self.last_path.to_owned();
+        let last_path = self.last_path.to_owned();
+        self.select_path(&last_path, false);
         self.set_required_height_to_max()
     }
 
     fn select_parent(&mut self) {
         if let Some(parent_path) = self.selected.parent() {
-            let Some(parent_node) = self.nodes.get_mut(parent_path) else {
-                return;
-            };
-            parent_node.select();
-            let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
-                unreachable!("current_node should be in nodes");
-            };
-            selected_node.unselect();
-            self.selected = parent_path.to_owned();
+            self.select_path(parent_path.to_owned().as_path(), false);
             self.decrement_required_height()
         }
     }
 
-    fn select_path(&mut self, clicked_path: &Path) {
-        if clicked_path == self.selected {
+    fn select_path(&mut self, dest_path: &Path, set_height: bool) {
+        if dest_path == self.selected {
             return;
         }
-        let Some(new_node) = self.nodes.get_mut(clicked_path) else {
+        let Some(dest_node) = self.nodes.get_mut(dest_path) else {
             return;
         };
-        new_node.select();
+        dest_node.select();
         let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
             unreachable!("current_node should be in nodes");
         };
         selected_node.unselect();
-        self.selected = clicked_path.to_owned();
-        self.set_required_height_to_max()
+        self.selected = dest_path.to_owned();
+        if set_height {
+            self.set_required_height_to_max()
+        }
     }
 
     fn increment_required_height(&mut self) {
@@ -459,7 +416,7 @@ impl Tree {
         let Some(found_path) = self.deep_first_search(pattern) else {
             return;
         };
-        self.go(To::Path(found_path.to_owned().as_path()));
+        self.select_path(found_path.to_owned().as_path(), true);
     }
 
     fn deep_first_search(&self, pattern: &str) -> Option<PathBuf> {
