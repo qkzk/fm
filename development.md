@@ -603,10 +603,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow seveval palettes for normal file colors
 - [x] move every lazy_static configuration into config.
 - [x] FIX: encrypted are never shown as mounted
-- [ ] mount usb key - should be merged with mtp
-- [ ] document filepicking (from my config etc.).
-- [ ] avoid multiple refreshs if we edit files ourself
-- [ ] Tree remade without recursion. Use an `HashMap<PathBuf, Node>`
+- [x] Tree remade without recursion. Use an `HashMap<PathBuf, Node>`
   - [x] FIX: folders are max depth hangs the app
   - [x] FIX: rename renames the root path
   - [x] FIX: scrolling to bottom of tree is bugged
@@ -625,6 +622,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] test everything
   - [x] refactor
   - [x] document
+- [ ] mount usb key - should be merged with mtp
+- [ ] document filepicking (from my config etc.).
+- [ ] avoid multiple refreshs if we edit files ourself
 
 ## TODO
 
