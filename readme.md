@@ -16,9 +16,12 @@ A TUI file manager inspired by dired and ranger
 Usage: fm [OPTIONS]
 
 Options:
-  -p, --path <PATH>      Starting path [default: .]
+  -p, --path <PATH>      Starting path. directory or file [default: .]
   -s, --server <SERVER>  Nvim server [default: ]
-  -f, --file <FILE>      Selected file [default: .]
+  -D, --dual <DUAL>      Dual pane ? [possible values: true, false]
+  -S, --simple <SIMPLE>  Display files metadata ? [possible values: true, false]
+  -P, --preview          Use second pane as preview ? default to false
+  -A, --all              Display all files (hidden)
   -h, --help             Print help
   -V, --version          Print version
 ```
@@ -59,6 +62,7 @@ If you added the [recommanded function](#cd-on-quit) to your bashrc/zshrc, simpl
 ## Features
 
 Some features depends on external programs to keep fm from being really bloated.
+I try to implement every feature I can think of.
 
 ### Navigation
 
@@ -96,28 +100,30 @@ Many ways to jump somewhere :
 ### Display
 
 - Change display, removing details with Alt+e or display a single pane with Alt+d
-- Preview most of files (text, highlighted code, binary, pdf, exif details, video/audio details, archives) with P
+- Preview most of files (text, highlighted code, binary, pdf, exif details, image/video, audio details, archives, MS-office & OpenOffice documents) with P
 - Toggle the tree view with t. Fold selected folder with z. Unfold every folder with Z, fold every folder with Alt+z.
 - Enter preview mode with Alt+P. Every file is previewed in the second pane.
 - Filter the view (by extension, name, directory only, all files) with F
 - Find files with / (with completion: Tab, enter to search),
 - flag files matching a regex with w
 
-### Fuzzy finder
+### Fuzzy finders
 
-- Use the integrated fuzzy finder (forked version of skim, an fzf clone) with Ctrl+f to navigate quickly
-- The same fuzzy finder can find specific lines in files with Ctrl+s
-- Another fuzzy finder is available for your keybinds with Alt+h
+- Ctrl-f : search in filenames and move there,
+- Ctrl-s : search for a line in file content and move there,
+- Alt-h : search for a keybinding and execute the action.
+
+We use a fork of [skim](https://github.com/lotabout/skim), an fzf clone written in rust.
 
 ### Neovim filepicker
 
 When you open a file with i, it will send an event to Neovim and open it in a new buffer.
-Recent versions of neovim export the RPC server address to an environment variable which is read if no argument
-is provided.
 
 It should always work, even outside of neovim.
 
-It's also possible to pass the RPC server address with `fm -s address`.
+The RPC server address is found by looking for neovim in /proc. If it fails, we can still look for an
+environment variable set by neovim itself.
+Finally, it's also possible to pass the RPC server address with `fm -s address`.
 
 ### cd on quit
 
@@ -177,6 +183,8 @@ Expansions :
 - Contol MOCP with Ctrl+arrows. Ctrl+Left, Ctrl+Right: previous or next song. Ctrl+Down: Toggle pause. Ctrl+Up: add current folder to playlist
 - Set the selected image as wallpaper with W.
 - _Experimental_ enter "command mode" with ':'. Type the name of a command and it will be executed.
+- Mount a remote filesystem using ssfhs with Alt-r.
+- Mount a MTP device with Alt-R.
 
 Most of those features are inspired by ranger and alternatives (Midnight commander, nnn, lf etc.), the look and feel by dired.
 
@@ -308,8 +316,11 @@ You can configure :
 - **TUI applications**. Some classic TUI applications like htop, glances, btop, lazygit are already there.
   Open the menu with `S` and pick the desired one. It will only work with a TUI application like HTOP,
   not a CLI application like bat.
-
-Before version 0.1.23, colors used to be configurable. Configuration wasn't a problem but passing it everywhere was a burden.
+- **Colors** of files.
+  Non standard files (directory, char devices, block devices, symlinks, sockets, fifo) have their own configurable colors.
+  You can use ansi colors or rgb values.
+  Standard files are colored by their extension and you can use 3 differents palettes (red-green, red-blue or green-blue).
+  Every extension has its own random color.
 
 ## External dependencies
 
