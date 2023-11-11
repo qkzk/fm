@@ -562,66 +562,66 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Not accessible file in tree mode crashes the application
 - [x] Look for nvim listen address in `ss -l` output
 
-## Current dev
-
 ### Version 0.1.23
 
-- [x] preview tar archive
-- [x] Jump mode : 'Space' Toggle flag, 'u' remove all flags, 'Enter' jump to the file
-- [x] FIX: copy / move while existing file already exist use another name
-- [x] Jump mode (display flagged files) should allow to delete / trash the flagged files
-- [x] binary preview also display parsed ASCII strings
-- [x] skim fuzzy find (ctrl-f) starts from current dir, not current selected file
-- [x] open/file pick flagged files if there are, use selected file instead
-- [x] regroup openers when opening multiple files.
-- [x] refresh every 10 seconds. If no file in current dir has changed, nothing happens.
-- [x] scroll in preview second screen
-- [x] FIX sending `Event::User(())` events from refresher hangs skim. Use `Event(Key::AltPageUp)` which is now reserved.
-- [x] allow file selection from args : -p filename selects the file from parent dir
-- [x] more args : dual pane, preview second, display full, show hidden
-- [x] history: when moving back select back the file we were at
-- [x] use yellow block char to make flagged files more visibles.
-- [x] move input 1 char right since we inserted a space
-- [x] preview pdf with ueberzug. First page extracted with poppler -> cairo -> thumbnail -> ueberzug
-- [x] FIX: when encrypted drive is already mounted don't let user mount it again
-- [x] FIX: group & owner metadata alignement in tree mode
-- [x] Tree mode Copy / Move / New should copy in selected directory not root of tree
-- [x] Allow scrolling in preview pdf. Required a lot of change in Preview::ueberzug. Update thumbnail when required.
-- [x] Flag the selected file if no file is flagged before entering delete mode or trashing a file.
-- [x] FIX: fuzzy finder should do nothing if escape (quit?) is inputed
-- [x] preview openoffice / office documents as images. Don't use pandoc for .doc .odb etc. previews
-- [x] mtp mount with gio [nnn plugin](https://github.com/jarun/nnn/blob/master/plugins/mtpmount)
-  - [x] add MTP mount points to shortcuts
-  - [x] list, mount, unmount mtp mount points
-- [x] bulk, skim & removable are `None` until first use.
-- [x] remove dependencies
-- [x] complete refactor of many files.
-- [x] Use `lazy_static` to load `Colors` configuration. Don't use a cache. Calculate every color for every extension
-- [x] allow rgb colors in config file
-- [x] FIX: can't read filename from / ... which crashes the app.
-- [x] FIX: exploring root folder leads to wrong first line display.
-- [x] allow seveval palettes for normal file colors
-- [x] move every lazy_static configuration into config.
-- [x] FIX: encrypted are never shown as mounted
-- [x] Tree remade without recursion. Use an `HashMap<PathBuf, Node>`
-  - [x] FIX: folders are max depth hangs the app
-  - [x] FIX: rename renames the root path
-  - [x] FIX: scrolling to bottom of tree is bugged
-  - [x] FIX: scrolling starts 1 row to low
-  - [x] FIX: filename in first line
-  - [x] FIX: can't "open" a folder to redo the tree there
-  - [x] FIX: move back from root should redo the parent tree
-  - [x] FIX: move up from to go to last and vice versa
-  - [x] FIX: enter a dir from normal mode shouldn't set mode tree
-  - [x] Use a generic trait for movements
-  - [x] FIX: first line position for tree
-  - [x] FIX: searching for file very low don't scroll there
-  - [x] FIX: search can only find the first match
-  - [x] FIX: leaving preview doesn't reset tree
-  - [x] Add a link to previous and next node in Node. Simplify navigation, increase ram usage :/
-  - [x] test everything
-  - [x] refactor
-  - [x] document
+- preview tar archive
+- Jump mode : 'Space' Toggle flag, 'u' remove all flags, 'Enter' jump to the file
+- FIX: copy / move while existing file already exist use another name
+- Jump mode (display flagged files) should allow to delete / trash the flagged files
+- binary preview also display parsed ASCII strings
+- skim fuzzy find (ctrl-f) starts from current dir, not current selected file
+- open/file pick flagged files if there are, use selected file instead
+- regroup openers when opening multiple files.
+- refresh every 10 seconds. If no file in current dir has changed, nothing happens.
+- scroll in preview second screen
+- FIX sending `Event::User(())` events from refresher hangs skim. Use `Event(Key::AltPageUp)` which is now reserved.
+- allow file selection from args : -p filename selects the file from parent dir
+- more args : dual pane, preview second, display full, show hidden
+- history: when moving back select back the file we were at
+- use yellow block char to make flagged files more visibles.
+- move input 1 char right since we inserted a space
+- preview pdf with ueberzug. First page extracted with poppler -> cairo -> thumbnail -> ueberzug
+- FIX: when encrypted drive is already mounted don't let user mount it again
+- FIX: group & owner metadata alignement in tree mode
+- Tree mode Copy / Move / New should copy in selected directory not root of tree
+- Allow scrolling in preview pdf. Required a lot of change in Preview::ueberzug. Update thumbnail when required.
+- Flag the selected file if no file is flagged before entering delete mode or trashing a file.
+- FIX: fuzzy finder should do nothing if escape (quit?) is inputed
+- preview openoffice / office documents as images. Don't use pandoc for .doc .odb etc. previews
+- mtp mount with gio [nnn plugin](https://github.com/jarun/nnn/blob/master/plugins/mtpmount)
+  - add MTP mount points to shortcuts
+  - list, mount, unmount mtp mount points
+- bulk, skim & removable are `None` until first use.
+- remove dependencies
+- complete refactor of many files.
+- Use `lazy_static` to load `Colors` configuration. Don't use a cache. Calculate every color for every extension
+- allow rgb colors in config file
+- FIX: can't read filename from / ... which crashes the app.
+- FIX: exploring root folder leads to wrong first line display.
+- allow seveval palettes for normal file colors
+- move every lazy_static configuration into config.
+- FIX: encrypted are never shown as mounted
+- Tree remade without recursion. Use an `HashMap<PathBuf, Node>`
+  - FIX: folders are max depth hangs the app
+  - FIX: rename renames the root path
+  - FIX: scrolling to bottom of tree is bugged
+  - FIX: scrolling starts 1 row to low
+  - FIX: filename in first line
+  - FIX: can't "open" a folder to redo the tree there
+  - FIX: move back from root should redo the parent tree
+  - FIX: move up from to go to last and vice versa
+  - FIX: enter a dir from normal mode shouldn't set mode tree
+  - Use a generic trait for movements
+  - FIX: first line position for tree
+  - FIX: searching for file very low don't scroll there
+  - FIX: search can only find the first match
+  - FIX: leaving preview doesn't reset tree
+  - Add a link to previous and next node in Node. Simplify navigation, increase ram usage :/
+  - test everything
+  - refactor
+  - document
+
+## Current dev
 
 ## TODO
 
