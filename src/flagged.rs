@@ -48,6 +48,7 @@ impl Flagged {
     /// True if the `path` is flagged.
     /// Since we maintain the content sorted, we can use a binary search and
     /// compensate a little bit with using a vector instead of a set.
+    #[inline]
     pub fn contains(&self, path: &Path) -> bool {
         self.content.binary_search(&path.to_path_buf()).is_ok()
     }
