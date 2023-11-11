@@ -1,4 +1,6 @@
-# FM : Dired like File Manager
+# Development
+
+I write every step in this file.
 
 ## DONE
 
@@ -693,10 +695,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
   - which language ?
   - what for ?
-
-## BUGS
-
-- [ ] tree mode : index are offset by one
 
 ## Won't do
 
