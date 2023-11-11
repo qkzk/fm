@@ -11,9 +11,9 @@ use tuikit::term::Term;
 
 use crate::completion::InputCompleted;
 use crate::compress::CompressionMethod;
-use crate::config::Colors;
 use crate::constant_strings_paths::{
-    HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE,
+    ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
+    LOG_SECOND_SENTENCE,
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
@@ -25,6 +25,7 @@ use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::trash::TrashInfo;
+use crate::tree::calculate_top_bottom;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -126,7 +127,6 @@ struct WinMain<'a> {
     status: &'a Status,
     tab: &'a Tab,
     disk_space: &'a str,
-    colors: &'a Colors,
     attributes: WinMainAttributes,
 }
 
@@ -137,16 +137,8 @@ impl<'a> Draw for WinMain<'a> {
             self.preview_as_second_pane(canvas)?;
             return Ok(());
         }
-        match self.tab.mode {
-            Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
-            Mode::Tree => self.tree(self.status, self.tab, canvas),
-            Mode::Normal => self.files(self.status, self.tab, canvas),
-            _ => match self.tab.previous_mode {
-                Mode::Tree => self.tree(self.status, self.tab, canvas),
-                _ => self.files(self.status, self.tab, canvas),
-            },
-        }?;
-        self.first_line(self.tab, self.disk_space, canvas)?;
+        let opt_index = self.draw_content(canvas)?;
+        self.first_line(self.disk_space, canvas, opt_index)?;
         Ok(())
     }
 }
@@ -160,24 +152,33 @@ impl<'a> WinMain<'a> {
         status: &'a Status,
         index: usize,
         disk_space: &'a str,
-        colors: &'a Colors,
         attributes: WinMainAttributes,
     ) -> Self {
         Self {
             status,
             tab: &status.tabs[index],
             disk_space,
-            colors,
             attributes,
         }
     }
 
     fn preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let tab = &self.status.tabs[0];
-        let (_, height) = canvas.size()?;
-        self.preview(tab, &tab.preview.window_for_second_pane(height), canvas)?;
+        let tab = &self.status.tabs[1];
+        self.preview(tab, &tab.window, canvas)?;
         draw_colored_strings(0, 0, self.default_preview_first_line(tab), canvas, false)?;
         Ok(())
+    }
+
+    fn draw_content(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
+        match self.tab.mode {
+            Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
+            Mode::Tree => self.trees(self.status, self.tab, canvas),
+            Mode::Normal => self.files(self.status, self.tab, canvas),
+            _ => match self.tab.previous_mode {
+                Mode::Tree => self.trees(self.status, self.tab, canvas),
+                _ => self.files(self.status, self.tab, canvas),
+            },
+        }
     }
 
     /// Display the top line on terminal.
@@ -187,11 +188,16 @@ impl<'a> WinMain<'a> {
     /// something else.
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
-    fn first_line(&self, tab: &Tab, disk_space: &str, canvas: &mut dyn Canvas) -> Result<()> {
+    fn first_line(
+        &self,
+        disk_space: &str,
+        canvas: &mut dyn Canvas,
+        opt_index: Option<usize>,
+    ) -> Result<()> {
         draw_colored_strings(
             0,
             0,
-            self.create_first_row(tab, disk_space)?,
+            self.create_first_row(disk_space, opt_index)?,
             canvas,
             self.attributes.is_selected,
         )
@@ -201,10 +207,10 @@ impl<'a> WinMain<'a> {
         match tab.mode {
             Mode::Normal | Mode::Tree => {
                 if !status.display_full {
-                    let Some(file) = tab.selected() else {
+                    let Ok(file) = tab.selected() else {
                         return Ok(0);
                     };
-                    self.second_line_detailed(file, canvas)
+                    self.second_line_detailed(&file, status, canvas)
                 } else {
                     self.second_line_simple(status, canvas)
                 }
@@ -213,28 +219,38 @@ impl<'a> WinMain<'a> {
         }
     }
 
-    fn second_line_detailed(&self, file: &FileInfo, canvas: &mut dyn Canvas) -> Result<usize> {
+    fn second_line_detailed(
+        &self,
+        file: &FileInfo,
+        status: &Status,
+        canvas: &mut dyn Canvas,
+    ) -> Result<usize> {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
-        let mut attr = fileinfo_attr(file, self.colors);
+        let mut attr = fileinfo_attr(file);
         attr.effect ^= Effect::REVERSE;
-        Ok(canvas.print_with_attr(1, 0, &file.format(owner_size, group_size)?, attr)?)
+
+        if status.flagged.contains(&file.path) {
+            canvas.print_with_attr(1, 0, "█", ATTR_YELLOW_BOLD)?;
+            attr.effect |= Effect::BOLD;
+        }
+        Ok(canvas.print_with_attr(1, 1, &file.format(owner_size, group_size)?, attr)?)
     }
 
     fn second_line_simple(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<usize> {
         Ok(canvas.print_with_attr(
             1,
-            0,
+            1,
             &format!("{}", &status.selected_non_mut().filter),
             ATTR_YELLOW_BOLD,
         )?)
     }
 
-    fn normal_first_row(&self, disk_space: &str) -> Result<Vec<String>> {
+    fn normal_first_row(&self, disk_space: &str, opt_index: Option<usize>) -> Result<Vec<String>> {
         Ok(vec![
             format!(" {}", shorten_path(&self.tab.path_content.path, None)?),
-            self.first_row_filename(),
-            self.first_row_position(),
+            self.first_row_filename()?,
+            self.first_row_position(opt_index),
             format!("{}  ", self.tab.path_content.used_space()),
             format!(" Avail: {disk_space}  "),
             format!(" {} ", self.tab.path_content.git_string()?),
@@ -243,24 +259,37 @@ impl<'a> WinMain<'a> {
         ])
     }
 
-    fn first_row_filename(&self) -> String {
+    fn first_row_filename(&self) -> Result<String> {
         match self.tab.mode {
-            Mode::Tree => "".to_owned(),
+            Mode::Tree => Ok(format!(
+                "/{rel}",
+                rel = self.tab.tree.selected_path_relative_to_root()?.display()
+            )),
             _ => {
                 if let Some(fileinfo) = self.tab.path_content.selected() {
-                    fileinfo.filename_without_dot_dotdot()
+                    Ok(fileinfo.filename_without_dot_dotdot())
                 } else {
-                    "".to_owned()
+                    Ok("".to_owned())
                 }
             }
         }
     }
 
-    fn first_row_position(&self) -> String {
+    fn first_row_position(&self, opt_index: Option<usize>) -> String {
+        if matches!(self.tab.mode, Mode::Tree) {
+            let Some(selected_index) = opt_index else {
+                return "".to_owned();
+            };
+            return format!(
+                " {position} / {len} ",
+                position = selected_index + 1,
+                len = self.tab.tree.len()
+            );
+        };
         format!(
-            " {} / {} ",
-            self.tab.path_content.index + 1,
-            self.tab.path_content.true_len() + 2
+            " {index} / {len} ",
+            index = self.tab.path_content.index + 1,
+            len = self.tab.path_content.true_len() + 2
         )
     }
 
@@ -289,23 +318,35 @@ impl<'a> WinMain<'a> {
         ]
     }
 
-    fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
-        match tab.path_content.selected() {
-            Some(fileinfo) => {
-                let mut strings = vec![" Preview ".to_owned()];
-                if !tab.preview.is_empty() {
-                    strings.push(format!(" {} / {} ", tab.window.bottom, tab.preview.len()));
-                };
-                strings.push(format!(" {} ", fileinfo.path.to_string_lossy()));
-                strings
-            }
-            None => vec!["".to_owned()],
+    fn pick_previewed_fileinfo(&self) -> Result<FileInfo> {
+        if self.status.dual_pane && self.status.preview_second {
+            self.status.tabs[0].selected()
+        } else {
+            self.status.selected_non_mut().selected()
         }
     }
 
-    fn create_first_row(&self, tab: &Tab, disk_space: &str) -> Result<Vec<String>> {
+    fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
+        if let Ok(fileinfo) = self.pick_previewed_fileinfo() {
+            let mut strings = vec![" Preview ".to_owned()];
+            if !tab.preview.is_empty() {
+                let index = match &tab.preview {
+                    Preview::Ueberzug(image) => image.index + 1,
+                    _ => tab.window.bottom,
+                };
+                strings.push(format!(" {index} / {len} ", len = tab.preview.len()));
+            };
+            strings.push(format!(" {} ", fileinfo.path.display()));
+            strings
+        } else {
+            vec!["".to_owned()]
+        }
+    }
+
+    fn create_first_row(&self, disk_space: &str, opt_index: Option<usize>) -> Result<Vec<String>> {
+        let tab = self.status.selected_non_mut();
         let first_row = match tab.mode {
-            Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
+            Mode::Normal | Mode::Tree => self.normal_first_row(disk_space, opt_index)?,
             Mode::Preview => match &tab.preview {
                 Preview::Text(text_content) => match text_content.kind {
                     TextKind::HELP => Self::help_first_row(),
@@ -315,7 +356,7 @@ impl<'a> WinMain<'a> {
                 _ => self.default_preview_first_line(tab),
             },
             _ => match self.tab.previous_mode {
-                Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
+                Mode::Normal | Mode::Tree => self.normal_first_row(disk_space, opt_index)?,
                 _ => vec![],
             },
         };
@@ -329,7 +370,7 @@ impl<'a> WinMain<'a> {
     /// We reverse the attributes of the selected one, underline the flagged files.
     /// When we display a simpler version, the second line is used to display the
     /// metadata of the selected file.
-    fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+    fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
         let len = tab.path_content.content.len();
         let group_size: usize;
         let owner_size: usize;
@@ -350,22 +391,23 @@ impl<'a> WinMain<'a> {
             .skip(tab.window.top)
         {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - tab.window.top;
-            let mut attr = fileinfo_attr(file, self.colors);
+            let mut attr = fileinfo_attr(file);
             let string = if status.display_full {
                 file.format(owner_size, group_size)?
             } else {
                 file.format_simple()?
             };
             if status.flagged.contains(&file.path) {
-                attr.effect |= Effect::BOLD | Effect::UNDERLINE;
+                attr.effect |= Effect::BOLD;
+                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
             }
-            canvas.print_with_attr(row, 0, &string, attr)?;
+            canvas.print_with_attr(row, 1, &string, attr)?;
         }
         self.second_line(status, tab, canvas)?;
         if !self.attributes.has_window_below {
             self.log_line(canvas)?;
         }
-        Ok(())
+        Ok(None)
     }
 
     fn log_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -374,34 +416,44 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        let left_margin = if status.display_full { 0 } else { 3 };
+    fn trees(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
+        let left_margin = if status.display_full { 1 } else { 3 };
         let (_, height) = canvas.size()?;
-        let (top, bottom, len) = tab.directory.calculate_tree_window(height);
+        let (selected_index, content) = tab.tree.into_navigable_content(&tab.users);
+        let (top, bottom) = calculate_top_bottom(selected_index, height);
+        let length = content.len();
 
-        for (i, (metadata, prefix, colored_string)) in tab.directory.window(top, bottom, len) {
+        for (i, (metadata, prefix, colored_string)) in content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(length, bottom + 1))
+        {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
-            let mut attr = colored_string.attr;
+            let mut attr = colored_string.color_effect.attr();
             if status.flagged.contains(&colored_string.path) {
-                attr.effect |= Effect::BOLD | Effect::UNDERLINE;
+                attr.effect |= Effect::BOLD;
+                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
             }
+
             let col_metadata = if status.display_full {
-                canvas.print_with_attr(row, left_margin, &metadata.text, attr)?
+                canvas.print_with_attr(row, left_margin, metadata, attr)?
             } else {
                 0
             };
-            let col_tree_prefix = canvas.print(row, left_margin + col_metadata, prefix)?;
+            let offset = if i == 0 { 1 } else { 0 };
+
+            let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, prefix)?;
             canvas.print_with_attr(
                 row,
-                left_margin + col_metadata + col_tree_prefix + 1,
+                left_margin + col_metadata + col_tree_prefix + offset,
                 &colored_string.text,
                 attr,
             )?;
         }
         self.second_line(status, tab, canvas)?;
-        Ok(())
+        Ok(Some(selected_index))
     }
-
     fn print_line_number(
         row_position_in_canvas: usize,
         line_number_to_print: usize,
@@ -422,7 +474,12 @@ impl<'a> WinMain<'a> {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&self, tab: &Tab, window: &ContentWindow, canvas: &mut dyn Canvas) -> Result<()> {
+    fn preview(
+        &self,
+        tab: &Tab,
+        window: &ContentWindow,
+        canvas: &mut dyn Canvas,
+    ) -> Result<Option<usize>> {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
         match &tab.preview {
@@ -447,11 +504,13 @@ impl<'a> WinMain<'a> {
                         &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
                         Self::ATTR_LINE_NR,
                     )?;
-                    line.print(canvas, row, line_number_width_hex + 1);
+                    line.print_bytes(canvas, row, line_number_width_hex + 1);
+                    line.print_ascii(canvas, row, line_number_width_hex + 43);
                 }
             }
             Preview::Ueberzug(image) => {
                 let (width, height) = canvas.size()?;
+                image.match_index()?;
                 image.ueberzug(
                     self.attributes.x_position as u16 + 2,
                     3,
@@ -465,11 +524,12 @@ impl<'a> WinMain<'a> {
                 {
                     let row = calc_line_row(i, window);
                     let col = canvas.print(row, line_number_width, prefix)?;
+
                     canvas.print_with_attr(
                         row,
                         line_number_width + col + 1,
                         &colored_string.text,
-                        colored_string.attr,
+                        colored_string.color_effect.attr(),
                     )?;
                 }
             }
@@ -486,9 +546,6 @@ impl<'a> WinMain<'a> {
                 impl_preview!(text, tab, length, canvas, line_number_width, window)
             }
             Preview::Media(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window)
-            }
-            Preview::Pdf(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window)
             }
             Preview::Text(text) => {
@@ -512,7 +569,7 @@ impl<'a> WinMain<'a> {
 
             Preview::Empty => (),
         }
-        Ok(())
+        Ok(None)
     }
 }
 
@@ -537,10 +594,10 @@ impl<'a> Draw for WinSecondary<'a> {
 }
 
 impl<'a> WinSecondary<'a> {
-    const EDIT_BOX_OFFSET: usize = 9;
     const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
-    const SORT_CURSOR_OFFSET: usize = 37;
-    const PASSWORD_CURSOR_OFFSET: usize = 7;
+    const EDIT_BOX_OFFSET: usize = 10;
+    const SORT_CURSOR_OFFSET: usize = 38;
+    const PASSWORD_CURSOR_OFFSET: usize = 8;
 
     fn new(status: &'a Status, index: usize) -> Self {
         Self {
@@ -641,8 +698,9 @@ impl<'a> WinSecondary<'a> {
             Navigate::Bulk => self.bulk(canvas, &self.status.bulk),
             Navigate::CliInfo => self.cli_info(self.status, canvas),
             Navigate::Compress => self.compress(canvas, &self.status.compression),
-            Navigate::EncryptedDrive => self.encrypt(self.status, self.tab, canvas),
-            Navigate::History => self.destination(canvas, &self.tab.history),
+            Navigate::EncryptedDrive => self.encrypted_drive(self.status, self.tab, canvas),
+            Navigate::RemovableDevices => self.removable_devices(self.status, self.tab, canvas),
+            Navigate::History => self.history(canvas, &self.tab.history),
             Navigate::Jump => self.destination(canvas, &self.status.flagged),
             Navigate::Marks(_) => self.marks(self.status, canvas),
             Navigate::ShellMenu => self.shell_menu(self.status, canvas),
@@ -674,19 +732,44 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn bulk(
+    fn history(
         &self,
         canvas: &mut dyn Canvas,
-        selectable: &impl SelectableContent<String>,
+        selectable: &impl SelectableContent<(PathBuf, PathBuf)>,
     ) -> Result<()> {
-        canvas.print(0, 0, "Action...")?;
+        canvas.print(0, 0, "Go to...")?;
         let content = &selectable.content();
-        for (row, text, attr) in enumerated_colored_iter!(content) {
+        for (row, pair, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
                 attr.effect |= Effect::REVERSE;
             }
-            let _ = canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr);
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                pair.0.to_str().context("Unreadable filename")?,
+                attr,
+            );
+        }
+        Ok(())
+    }
+
+    fn bulk(
+        &self,
+        canvas: &mut dyn Canvas,
+        selectable: &Option<impl SelectableContent<String>>,
+    ) -> Result<()> {
+        if let Some(selectable) = selectable {
+            canvas.print(0, 0, "Action...")?;
+            let content = &selectable.content();
+            for (row, text, attr) in enumerated_colored_iter!(content) {
+                let mut attr = *attr;
+                if row == selectable.index() {
+                    attr.effect |= Effect::REVERSE;
+                }
+                let _ =
+                    canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr);
+            }
         }
         Ok(())
     }
@@ -699,7 +782,7 @@ impl<'a> WinSecondary<'a> {
         canvas.print(
             1,
             0,
-            "Enter: restore the selected file - x: delete permanently",
+            "Enter: restore the selected file  --  x: delete permanently",
         )?;
         let content = &selectable.content();
         if content.is_empty() {
@@ -809,8 +892,8 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn encrypt(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(2, 3, "m: mount    --   u: unmount", Self::ATTR_YELLOW)?;
+    fn encrypted_drive(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
         for (i, device) in status.encrypted_devices.content.iter().enumerate() {
             let row = calc_line_row(i, &tab.window) + 2;
             let mut not_mounted_attr = Attr::default();
@@ -828,7 +911,27 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    /// Display a list of edited (deleted, copied, moved) files for confirmation
+    fn removable_devices(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
+        if let Some(removable) = &status.removable_devices {
+            for (i, removable) in removable.content.iter().enumerate() {
+                let row = calc_line_row(i, &tab.window) + 2;
+                let mut not_mounted_attr = Attr::default();
+                let mut mounted_attr = Attr::from(Color::BLUE);
+                if i == status.encrypted_devices.index() {
+                    not_mounted_attr.effect |= Effect::REVERSE;
+                    mounted_attr.effect |= Effect::REVERSE;
+                }
+                if removable.is_mounted {
+                    canvas.print_with_attr(row, 3, &removable.device_name, mounted_attr)?;
+                } else {
+                    canvas.print_with_attr(row, 3, &removable.device_name, not_mounted_attr)?;
+                }
+            }
+        }
+        Ok(())
+    }
+    /// Display a list of edited (deleted, copied, moved, trashed) files for confirmation
     fn confirm(
         &self,
         status: &Status,
@@ -839,13 +942,22 @@ impl<'a> WinSecondary<'a> {
         info!("confirmed action: {:?}", confirmed_mode);
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => {
-                for (row, trashinfo) in status.trash.content.iter().enumerate() {
-                    canvas.print_with_attr(
-                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                if status.trash.is_empty() {
+                    let _ = canvas.print_with_attr(
+                        ContentWindow::WINDOW_MARGIN_TOP + 2,
                         4,
-                        &format!("{trashinfo}"),
-                        Attr::default(),
-                    )?;
+                        "Trash is empty",
+                        ATTR_YELLOW_BOLD,
+                    );
+                } else {
+                    for (row, trashinfo) in status.trash.content().iter().enumerate() {
+                        canvas.print_with_attr(
+                            row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                            4,
+                            &format!("{trashinfo}"),
+                            Attr::default(),
+                        )?;
+                    }
                 }
             }
             _ => {
@@ -859,10 +971,19 @@ impl<'a> WinSecondary<'a> {
                 }
             }
         }
+        let dest = match tab.previous_mode {
+            Mode::Tree => tab
+                .tree
+                .directory_of_selected()
+                .context("No directory_of_selected")?
+                .display()
+                .to_string(),
+            _ => tab.path_content.path_to_str(),
+        };
         canvas.print_with_attr(
             2,
             3,
-            &confirmed_mode.confirmation_string(&tab.path_content.path_to_str()),
+            &confirmed_mode.confirmation_string(&dest),
             ATTR_YELLOW_BOLD,
         )?;
 
@@ -918,16 +1039,16 @@ impl Display {
     /// The preview in preview mode.
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
-    pub fn display_all(&mut self, status: &Status, colors: &Colors) -> Result<()> {
+    pub fn display_all(&mut self, status: &Status) -> Result<()> {
         self.hide_cursor()?;
         self.term.clear()?;
 
         let (width, _) = self.term.term_size()?;
         let disk_spaces = status.disk_spaces_per_tab();
         if status.dual_pane && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self.draw_dual_pane(status, &disk_spaces.0, &disk_spaces.1, colors)?
+            self.draw_dual_pane(status, &disk_spaces.0, &disk_spaces.1)?
         } else {
-            self.draw_single_pane(status, &disk_spaces.0, colors)?
+            self.draw_single_pane(status, &disk_spaces.0)?
         }
 
         Ok(self.term.present()?)
@@ -986,7 +1107,6 @@ impl Display {
         status: &Status,
         disk_space_tab_0: &str,
         disk_space_tab_1: &str,
-        colors: &Colors,
     ) -> Result<()> {
         let (width, _) = self.term.term_size()?;
         let (first_selected, second_selected) = (status.index == 0, status.index == 1);
@@ -996,14 +1116,14 @@ impl Display {
             first_selected,
             status.tabs[0].need_second_window(),
         );
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, attributes_left);
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, attributes_left);
         let attributes_right = WinMainAttributes::new(
             width / 2,
             true,
             second_selected,
             status.tabs[1].need_second_window(),
         );
-        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, colors, attributes_right);
+        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, attributes_right);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let (border_left, border_right) = self.borders(status);
@@ -1025,15 +1145,10 @@ impl Display {
         Ok(self.term.draw(&hsplit)?)
     }
 
-    fn draw_single_pane(
-        &mut self,
-        status: &Status,
-        disk_space_tab_0: &str,
-        colors: &Colors,
-    ) -> Result<()> {
+    fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: &str) -> Result<()> {
         let attributes_left =
             WinMainAttributes::new(0, false, true, status.tabs[0].need_second_window());
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, colors, attributes_left);
+        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, attributes_left);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let win = self.vertical_split(
@@ -1071,7 +1186,7 @@ fn draw_colored_strings(
     canvas: &mut dyn Canvas,
     reverse: bool,
 ) -> Result<()> {
-    let mut col = 0;
+    let mut col = 1;
     for (text, attr) in std::iter::zip(strings.iter(), FIRST_LINE_COLORS.iter().cycle()) {
         let mut attr = *attr;
         if reverse {

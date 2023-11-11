@@ -1,14 +1,28 @@
-# the terminal must be installed
+# the terminal emulator, which must be accessible from $PATH
 terminal: st
+# configurable colors
+# palette of the normal files. Accepted values are "red-green", "red-blue" and "green-blue"
+# other value will lead to the default palette which is "green-blue".
+palette: green-blue
 colors:
-  # white, black, red, green, blue, yellow, cyan, magenta 
-  # light_white, light_black, light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
+  # you can define an ANSI color or an rgb color for any kind of file except "normal" files.
+  # colors for normal files are calculated on the fly.
+  # List of allowed colors:
+  #   white,        black,        red,       green,       blue,       yellow,       cyan,       magenta 
+  #   light_white,  light_black,  light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
+  # Allowed Format for rgb color : `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
   directory: red
   block: yellow
   char: green
   fifo: blue
   socket: cyan
   symlink: magenta
+  broken: light_magenta
+# keybindings
+# You can bind any key to any action.
+# List of valid actions is accessible from `help` (default key H) and from the readme.md file.
+# Invalid actions are skipped.
+# AltPageUp can't be bound, it is reserved for internal use.
 keys: 
   'esc': ResetMode
   'up': MoveUp
@@ -51,6 +65,18 @@ keys:
   'v': ReverseFlags
   'w': RegexMatch
   'x': DeleteFile
+  'alt-d': DragNDrop
+  'alt-e': ToggleDisplayFull
+  'alt-f': ToggleDualPane
+  'alt-g': Goto
+  'alt-p': TogglePreviewSecond
+  'ctrl-c': CopyFilename
+  'ctrl-e': EncryptedDrive
+  'ctrl-f': FuzzyFind
+  'ctrl-g': Shortcut
+  'ctrl-p': CopyFilepath
+  'ctrl-q': ResetMode
+  'ctrl-r': RefreshView
   'shift-b': Bulk
   'shift-f': Filter
   'shift-g': End
@@ -60,21 +86,16 @@ keys:
   'shift-o': Sort
   'shift-p': Preview
   'shift-t': MediaInfo
-  'ctrl-c': CopyFilename
-  'ctrl-e': EncryptedDrive
-  'ctrl-f': FuzzyFind
-  'ctrl-g': Shortcut
-  'ctrl-p': CopyFilepath
-  'ctrl-q': ResetMode
-  'ctrl-r': RefreshView
-  'alt-d': DragNDrop
-  'alt-e': ToggleDisplayFull
-  'alt-g': Goto
-  'alt-p': TogglePreviewSecond
-  'alt-f': ToggleDualPane
+# display settings
 settings:
+  # display all files ?
+  all: false
+  # use a second pane (if the terminal is wide enough) ?
   dual: true
+  # display metadata ?
   full: true
+  # use second pane for preview ?
+  preview: false
 
 # Custom command :
 # * Use an unused keybind

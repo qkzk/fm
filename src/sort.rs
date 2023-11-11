@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use crate::{fileinfo::FileInfo, tree::Tree};
+use crate::fileinfo::FileInfo;
 
 /// Different kind of sort
 #[derive(Debug, Clone, Default)]
@@ -16,6 +16,19 @@ enum SortBy {
     Size,
     /// by extension
     Exte,
+}
+
+impl std::fmt::Display for SortBy {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let sort_by = match &self {
+            SortBy::Exte => "Exte",
+            SortBy::Date => "Date",
+            SortBy::File => "File",
+            SortBy::Size => "Size",
+            SortBy::Kind => "Kind",
+        };
+        write!(f, "{sort_by}")
+    }
 }
 
 /// Ascending or descending sort
@@ -105,7 +118,6 @@ impl SortKind {
         slice.sort_unstable_by(|a, b| Ordering::reverse(f(a).cmp(f(b))))
     }
 
-    // TODO! refactor both methods.
     // A second version should take 2 parameters.
     // 1. the way to access the data depending on T where files: &mut [T],
     // 2. a closure returning the correct data.
@@ -130,43 +142,14 @@ impl SortKind {
             }
         }
     }
-
-    /// Sort leaves of a tree depending of enum variants.
-    pub fn sort_tree(&self, trees: &mut [Tree]) {
-        if let Order::Ascending = self.order {
-            match self.sort_by {
-                SortBy::Kind => Self::sort_by_key_hrtb(trees, |f| &f.file().kind_format),
-                SortBy::File => Self::sort_by_key_hrtb(trees, |f| &f.file().filename),
-                SortBy::Date => Self::sort_by_key_hrtb(trees, |f| &f.file().system_time),
-                SortBy::Size => Self::sort_by_key_hrtb(trees, |f| &f.file().true_size),
-                SortBy::Exte => Self::sort_by_key_hrtb(trees, |f| &f.file().extension),
-            }
-        } else {
-            match self.sort_by {
-                SortBy::Kind => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().kind_format),
-                SortBy::File => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().filename),
-                SortBy::Date => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().system_time),
-                SortBy::Size => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().true_size),
-                SortBy::Exte => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().extension),
-            }
-        }
-    }
 }
 
 impl std::fmt::Display for SortKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let s = match (&self.sort_by, &self.order) {
-            (SortBy::Exte, Order::Ascending) => "Exte ↑",
-            (SortBy::Exte, Order::Descending) => "Exte ↓",
-            (SortBy::Date, Order::Ascending) => "Date ↑",
-            (SortBy::Date, Order::Descending) => "Date ↓",
-            (SortBy::File, Order::Ascending) => "Name ↑",
-            (SortBy::File, Order::Descending) => "Name ↓",
-            (SortBy::Size, Order::Ascending) => "Size ↑",
-            (SortBy::Size, Order::Descending) => "Size ↓",
-            (SortBy::Kind, Order::Ascending) => "Kind ↑",
-            (SortBy::Kind, Order::Descending) => "Kind ↓",
+        let sort_order = match &self.order {
+            Order::Ascending => "↓",
+            Order::Descending => "↑",
         };
-        write!(f, "{}", s)
+        write!(f, "{sort_by} {sort_order}", sort_by = &self.sort_by)
     }
 }

@@ -6,40 +6,33 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
 use log::info;
-use sysinfo::SystemExt;
-use which::which;
 
 use crate::action_map::ActionMap;
 use crate::completion::InputCompleted;
-use crate::config::Colors;
-use crate::constant_strings_paths::DIFF;
-use crate::constant_strings_paths::MEDIAINFO;
-use crate::constant_strings_paths::NITROGEN;
-use crate::constant_strings_paths::SSHFS_EXECUTABLE;
-use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_DRAGNDROP};
+use crate::constant_strings_paths::{
+    CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
+};
 use crate::cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
-use crate::fileinfo::FileKind;
 use crate::filter::FilterKind;
 use crate::log::read_log;
-use crate::log::write_log_line;
-use crate::mocp::is_mocp_installed;
+use crate::log_line;
 use crate::mocp::Mocp;
+use crate::mocp::MOCP;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
+use crate::opener::execute_and_capture_output_with_path;
 use crate::opener::{
-    execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
-    execute_in_child_without_output_with_path, InternalVariant,
+    execute_and_capture_output_without_check, execute_in_child,
+    execute_in_child_without_output_with_path,
 };
 use crate::password::{PasswordKind, PasswordUsage};
-use crate::preview::is_ext_image;
-use crate::preview::Preview;
+use crate::preview::{ExtensionKind, Preview};
+use crate::removable_devices::RemovableDevices;
 use crate::selectable_content::SelectableContent;
 use crate::shell_parser::ShellCommandParser;
 use crate::status::Status;
 use crate::tab::Tab;
-use crate::utils::is_program_in_path;
 use crate::utils::{
-    args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
-    opt_mount_point, string_to_path,
+    args_is_empty, is_program_in_path, is_sudo_command, open_in_current_neovim, string_to_path,
 };
 
 /// Links events from tuikit to custom actions.
@@ -62,7 +55,7 @@ impl EventAction {
             .for_each(|file| {
                 status.flagged.push(file.path.clone());
             });
-        status.reset_tabs_view()
+        Ok(())
     }
 
     /// Reverse every flag in _current_ directory. Flagged files in other
@@ -73,7 +66,7 @@ impl EventAction {
             .content
             .iter()
             .for_each(|file| status.flagged.toggle(&file.path));
-        status.reset_tabs_view()
+        Ok(())
     }
 
     /// Toggle a single flag and move down one row.
@@ -81,17 +74,13 @@ impl EventAction {
         let tab = status.selected_non_mut();
 
         match tab.mode {
-            Mode::Normal => {
-                let Some(file) = tab.path_content.selected() else {
+            Mode::Normal | Mode::Tree => {
+                let Ok(file) = tab.selected() else {
                     return Ok(());
                 };
                 let path = file.path.clone();
                 status.toggle_flag_on_path(&path);
                 status.selected().down_one_row();
-            }
-            Mode::Tree => {
-                let path = tab.directory.tree.current_node.filepath();
-                status.toggle_flag_on_path(&path);
             }
             _ => (),
         }
@@ -152,12 +141,11 @@ impl EventAction {
                 .directory_of_selected()?
                 .join(filename);
             std::os::unix::fs::symlink(original_file, &link)?;
-            let log_line = format!(
+            log_line!(
                 "Symlink {link} links to {original_file}",
                 original_file = original_file.display(),
                 link = link.display()
             );
-            write_log_line(log_line);
         }
         status.clear_flags_and_reset_view()
     }
@@ -166,6 +154,7 @@ impl EventAction {
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.
     pub fn bulk(status: &mut Status) -> Result<()> {
+        status.init_bulk();
         status.selected().set_mode(Mode::Navigate(Navigate::Bulk));
         Ok(())
     }
@@ -229,40 +218,16 @@ impl EventAction {
     /// Every file can be previewed. See the `crate::enum::Preview` for
     /// more details on previewinga file.
     /// Does nothing if the directory is empty.
-    pub fn preview(status: &mut Status, colors: &Colors) -> Result<()> {
-        if status.selected_non_mut().path_content.is_empty() {
-            return Ok(());
-        }
-        let unmutable_tab = status.selected_non_mut();
-        let Some(file_info) = unmutable_tab.selected() else {
-            return Ok(());
-        };
-        match file_info.file_kind {
-            FileKind::NormalFile => {
-                let preview = Preview::new(
-                    file_info,
-                    &unmutable_tab.path_content.users_cache,
-                    status,
-                    colors,
-                )
-                .unwrap_or_default();
-                status.selected().set_mode(Mode::Preview);
-                status.selected().window.reset(preview.len());
-                status.selected().preview = preview;
-            }
-            FileKind::Directory => Self::tree(status, colors)?,
-            _ => (),
-        }
-
-        Ok(())
+    pub fn preview(status: &mut Status) -> Result<()> {
+        status.make_preview()
     }
 
     /// Enter the delete mode.
     /// A confirmation is then asked before deleting all the flagged files.
-    /// Does nothing is no file is flagged.
+    /// If no file is flagged, flag the selected one before entering the mode.
     pub fn delete_file(status: &mut Status) -> Result<()> {
         if status.flagged.is_empty() {
-            return Ok(());
+            Self::toggle_flag(status)?;
         }
         status
             .selected()
@@ -273,11 +238,10 @@ impl EventAction {
     /// Display the help which can be navigated and displays the configrable
     /// binds.
     pub fn help(status: &mut Status) -> Result<()> {
-        let help = status.help.clone();
-        let tab = status.selected();
-        tab.set_mode(Mode::Preview);
-        tab.preview = Preview::help(&help);
-        tab.window.reset(tab.preview.len());
+        status.selected().set_mode(Mode::Preview);
+        status.selected().preview = Preview::help(&status.help);
+        let len = status.selected_non_mut().preview.len();
+        status.selected().window.reset(len);
         Ok(())
     }
 
@@ -318,48 +282,35 @@ impl EventAction {
     /// Once a quit event is received, we change a flag and break the main loop.
     /// It's usefull to reset the cursor before leaving the application.
     pub fn quit(tab: &mut Tab) -> Result<()> {
-        if let Mode::Tree = tab.mode {
-            tab.refresh_view()?;
-            tab.set_mode(Mode::Normal)
-        } else {
-            tab.must_quit = true;
-        }
+        tab.must_quit = true;
         Ok(())
     }
     /// Toggle the display of hidden files.
-    pub fn toggle_hidden(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn toggle_hidden(status: &mut Status) -> Result<()> {
         let tab = status.selected();
         tab.show_hidden = !tab.show_hidden;
-        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
+        tab.path_content
+            .reset_files(&tab.filter, tab.show_hidden, &tab.users)?;
         tab.window.reset(tab.path_content.content.len());
         if let Mode::Tree = tab.mode {
-            tab.make_tree(colors)?
+            tab.make_tree(None)?
         }
         Ok(())
     }
 
-    /// Open a file with custom opener.
+    /// Open files with custom opener.
+    /// If there's no flagged file, the selected is chosen.
+    /// Otherwise, it will open the flagged files (not the flagged directories) with
+    /// their respective opener.
+    /// Directories aren't opened since it will lead nowhere, it would only replace the
+    /// current tab multiple times. It may change in the future.
+    /// Only files which use an external opener are supported.
     pub fn open_file(status: &mut Status) -> Result<()> {
-        let filepath = &status
-            .selected_non_mut()
-            .selected()
-            .context("event open file, Empty directory")?
-            .path
-            .clone();
-        let opener = status.opener.open_info(filepath);
-        if let Some(InternalVariant::NotSupported) = opener.internal_variant.as_ref() {
-            status.mount_iso_drive()?;
+        if status.flagged.is_empty() {
+            status.open_selected_file()
         } else {
-            match status.opener.open(filepath) {
-                Ok(_) => (),
-                Err(e) => info!(
-                    "Error opening {:?}: {:?}",
-                    status.selected_non_mut().path_content.selected(),
-                    e
-                ),
-            }
+            status.open_flagged_files()
         }
-        Ok(())
     }
 
     /// Enter the rename mode.
@@ -367,21 +318,7 @@ impl EventAction {
     /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
     /// not the selected file in the pathcontent.
     pub fn rename(tab: &mut Tab) -> Result<()> {
-        if tab.selected().is_some() {
-            let old_name = match tab.mode {
-                Mode::Tree => tab.directory.tree.current_node.filename(),
-                _ => filename_from_path(
-                    &tab.path_content
-                        .selected()
-                        .context("Event rename: no file in current directory")?
-                        .path,
-                )?
-                .to_owned(),
-            };
-            tab.input.replace(&old_name);
-            tab.set_mode(Mode::InputSimple(InputSimple::Rename));
-        }
-        Ok(())
+        tab.rename()
     }
 
     /// Enter the goto mode where an user can type a path to jump to.
@@ -432,12 +369,14 @@ impl EventAction {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn shortcut(tab: &mut Tab) -> Result<()> {
-        std::env::set_current_dir(tab.current_directory_path())?;
+        std::env::set_current_dir(tab.directory_of_selected()?)?;
         tab.shortcut.update_git_root();
         tab.set_mode(Mode::Navigate(Navigate::Shortcut));
         Ok(())
     }
-    /// Send a signal to parent NVIM process, picking the selected file.
+    /// Send a signal to parent NVIM process, picking files.
+    /// If there's no flagged file, it picks the selected one.
+    /// otherwise, flagged files are picked.
     /// If no RPC server were provided at launch time - which may happen for
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
@@ -447,22 +386,26 @@ impl EventAction {
             return Ok(());
         };
         let nvim_server = status.nvim_server.clone();
-        let tab = status.selected();
-        let Some(fileinfo) = tab.selected() else {
-            return Ok(());
-        };
-        let Some(path_str) = fileinfo.path.to_str() else {
-            return Ok(());
-        };
-        open_in_current_neovim(path_str, &nvim_server);
+        if status.flagged.is_empty() {
+            let Ok(fileinfo) = status.selected_non_mut().selected() else {
+                return Ok(());
+            };
+            let Some(path_str) = fileinfo.path.to_str() else {
+                return Ok(());
+            };
+            open_in_current_neovim(path_str, &nvim_server);
+        } else {
+            let flagged = status.flagged.content.clone();
+            for file_path in flagged.iter() {
+                open_in_current_neovim(&file_path.display().to_string(), &nvim_server)
+            }
+        }
 
         Ok(())
     }
 
-    pub fn set_nvim_server(status: &mut Status) -> Result<()> {
-        status
-            .selected()
-            .set_mode(Mode::InputSimple(InputSimple::SetNvimAddr));
+    pub fn set_nvim_server(tab: &mut Tab) -> Result<()> {
+        tab.set_mode(Mode::InputSimple(InputSimple::SetNvimAddr));
         Ok(())
     }
 
@@ -474,48 +417,41 @@ impl EventAction {
     }
 
     /// Move back in history to the last visited directory.
-    pub fn back(status: &mut Status, colors: &Colors) -> Result<()> {
-        if status.selected_non_mut().history.content.len() <= 1 {
-            return Ok(());
-        }
-        let tab = status.selected();
-        tab.history.content.pop();
-        let last_index = tab.history.len() - 1;
-        let last = tab.history.content[last_index].clone();
-        tab.set_pathcontent(&last)?;
-        if let Mode::Tree = tab.mode {
-            tab.make_tree(colors)?
-        }
-
-        Ok(())
+    pub fn back(tab: &mut Tab) -> Result<()> {
+        tab.back()
     }
 
     /// Move to $HOME aka ~.
-    pub fn home(tab: &mut Tab) -> Result<()> {
+    pub fn home(status: &mut Status) -> Result<()> {
+        let tab = status.selected();
         let home_cow = shellexpand::tilde("~");
         let home: &str = home_cow.borrow();
         let path = std::fs::canonicalize(home)?;
-        tab.set_pathcontent(&path)
+        tab.set_pathcontent(&path)?;
+        status.update_second_pane_for_preview()
     }
 
-    pub fn go_root(tab: &mut Tab) -> Result<()> {
+    pub fn go_root(status: &mut Status) -> Result<()> {
+        let tab = status.selected();
         let root_path = std::path::PathBuf::from("/");
-        tab.set_pathcontent(&root_path)
+        tab.set_pathcontent(&root_path)?;
+        status.update_second_pane_for_preview()
     }
 
     pub fn go_start(status: &mut Status) -> Result<()> {
         let start_folder = status.start_folder.clone();
-        status.selected().set_pathcontent(&start_folder)
+        status.selected().set_pathcontent(&start_folder)?;
+        status.update_second_pane_for_preview()
     }
 
     /// Executes a `dragon-drop` command on the selected file.
     /// It obviously requires the `dragon-drop` command to be installed.
     pub fn drag_n_drop(status: &mut Status) -> Result<()> {
         if !is_program_in_path(DEFAULT_DRAGNDROP) {
-            write_log_line(format!("{DEFAULT_DRAGNDROP} must be installed."));
+            log_line!("{DEFAULT_DRAGNDROP} must be installed.");
             return Ok(());
         }
-        let Some(file) = status.selected_non_mut().selected() else {
+        let Ok(file) = status.selected_non_mut().selected() else {
             return Ok(());
         };
         let path_str = file
@@ -527,15 +463,17 @@ impl EventAction {
         Ok(())
     }
 
-    pub fn search_next(tab: &mut Tab) -> Result<()> {
+    pub fn search_next(status: &mut Status) -> Result<()> {
+        let tab = status.selected();
+        let Some(searched) = tab.searched.clone() else {
+            return Ok(());
+        };
         match tab.mode {
-            Mode::Tree => (),
+            Mode::Tree => tab.tree.search_first_match(&searched),
             _ => {
-                let Some(searched) = tab.searched.clone() else {
-                    return Ok(());
-                };
                 let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
                 tab.search_from(&searched, next_index);
+                status.update_second_pane_for_preview()?;
             }
         }
         Ok(())
@@ -543,7 +481,7 @@ impl EventAction {
 
     /// Move up one row in modes allowing movement.
     /// Does nothing if the selected item is already the first in list.
-    pub fn move_up(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn move_up(status: &mut Status) -> Result<()> {
         let tab = status.selected();
         match tab.mode {
             Mode::Normal | Mode::Preview => tab.up_one_row(),
@@ -553,20 +491,20 @@ impl EventAction {
             Mode::Navigate(Navigate::Shortcut) => tab.shortcut.prev(),
             Mode::Navigate(Navigate::Marks(_)) => status.marks.prev(),
             Mode::Navigate(Navigate::Compress) => status.compression.prev(),
-            Mode::Navigate(Navigate::Bulk) => status.bulk.prev(),
+            Mode::Navigate(Navigate::Bulk) => status.bulk_prev(),
             Mode::Navigate(Navigate::ShellMenu) => status.shell_menu.prev(),
             Mode::Navigate(Navigate::CliInfo) => status.cli_info.prev(),
             Mode::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.prev(),
             Mode::InputCompleted(_) => tab.completion.prev(),
-            Mode::Tree => tab.tree_select_prev(colors)?,
+            Mode::Tree => tab.tree_select_prev()?,
             _ => (),
         };
-        Ok(())
+        status.update_second_pane_for_preview()
     }
 
     /// Move down one row in modes allowing movements.
     /// Does nothing if the user is already at the bottom.
-    pub fn move_down(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn move_down(status: &mut Status) -> Result<()> {
         match status.selected().mode {
             Mode::Normal | Mode::Preview => status.selected().down_one_row(),
             Mode::Navigate(Navigate::Jump) => status.flagged.next(),
@@ -575,40 +513,47 @@ impl EventAction {
             Mode::Navigate(Navigate::Shortcut) => status.selected().shortcut.next(),
             Mode::Navigate(Navigate::Marks(_)) => status.marks.next(),
             Mode::Navigate(Navigate::Compress) => status.compression.next(),
-            Mode::Navigate(Navigate::Bulk) => status.bulk.next(),
+            Mode::Navigate(Navigate::Bulk) => status.bulk_next(),
             Mode::Navigate(Navigate::ShellMenu) => status.shell_menu.next(),
             Mode::Navigate(Navigate::CliInfo) => status.cli_info.next(),
             Mode::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
             Mode::InputCompleted(_) => status.selected().completion.next(),
-            Mode::Tree => status.selected().select_next(colors)?,
+            Mode::Tree => status.selected().tree_select_next()?,
             _ => (),
         };
-        Ok(())
+        status.update_second_pane_for_preview()
     }
 
     /// Move to parent in normal mode,
     /// move left one char in mode requiring text input.
-    pub fn move_left(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn move_left(status: &mut Status) -> Result<()> {
         let tab = status.selected();
         match tab.mode {
-            Mode::Normal => tab.move_to_parent(),
-            Mode::Tree => tab.tree_select_parent(colors),
+            Mode::Normal => tab.move_to_parent()?,
+            Mode::Tree => tab.tree_select_parent()?,
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 tab.input.cursor_left();
-                Ok(())
             }
 
-            _ => Ok(()),
+            _ => (),
         }
+        status.update_second_pane_for_preview()
     }
 
     /// Move to child if any or open a regular file in normal mode.
     /// Move the cursor one char to right in mode requiring text input.
-    pub fn move_right(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn move_right(status: &mut Status) -> Result<()> {
         let tab: &mut Tab = status.selected();
         match tab.mode {
             Mode::Normal => LeaveMode::open_file(status),
-            Mode::Tree => tab.select_first_child(colors),
+            Mode::Tree => {
+                if tab.tree.selected_path().is_file() {
+                    tab.tree_select_next()?;
+                } else {
+                    LeaveMode::open_file(status)?;
+                };
+                status.update_second_pane_for_preview()
+            }
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
                 tab.input.cursor_right();
                 Ok(())
@@ -633,10 +578,7 @@ impl EventAction {
     pub fn delete(status: &mut Status) -> Result<()> {
         match status.selected().mode {
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
-                {
-                    let tab: &mut Tab = status.selected();
-                    tab.input.delete_chars_right()
-                };
+                status.selected().input.delete_chars_right();
                 Ok(())
             }
             _ => Ok(()),
@@ -644,41 +586,58 @@ impl EventAction {
     }
 
     /// Move to leftmost char in mode allowing edition.
-    pub fn key_home(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn key_home(status: &mut Status) -> Result<()> {
         let tab = status.selected();
         match tab.mode {
             Mode::Normal | Mode::Preview => tab.go_top(),
-            Mode::Tree => tab.tree_go_to_root(colors)?,
+            Mode::Tree => tab.tree_go_to_root()?,
             _ => tab.input.cursor_start(),
         };
-        Ok(())
+        status.update_second_pane_for_preview()
     }
 
     /// Move to the bottom in any mode.
-    pub fn end(tab: &mut Tab, colors: &Colors) -> Result<()> {
+    pub fn end(status: &mut Status) -> Result<()> {
+        let tab = status.selected();
         match tab.mode {
             Mode::Normal | Mode::Preview => tab.go_bottom(),
-            Mode::Tree => tab.tree_go_to_bottom_leaf(colors)?,
+            Mode::Tree => tab.tree_go_to_bottom_leaf()?,
             _ => tab.input.cursor_end(),
         };
-        Ok(())
+        status.update_second_pane_for_preview()
     }
 
     /// Move up 10 lines in normal mode and preview.
-    pub fn page_up(tab: &mut Tab, colors: &Colors) -> Result<()> {
+    pub fn page_up(status: &mut Status) -> Result<()> {
+        let tab = status.selected();
         match tab.mode {
-            Mode::Normal | Mode::Preview => tab.page_up(),
-            Mode::Tree => tab.tree_page_up(colors)?,
+            Mode::Normal => {
+                tab.page_up();
+                status.update_second_pane_for_preview()?;
+            }
+            Mode::Preview => tab.page_up(),
+            Mode::Tree => {
+                tab.tree_page_up();
+                status.update_second_pane_for_preview()?;
+            }
             _ => (),
         };
         Ok(())
     }
 
     /// Move down 10 lines in normal & preview mode.
-    pub fn page_down(tab: &mut Tab, colors: &Colors) -> Result<()> {
+    pub fn page_down(status: &mut Status) -> Result<()> {
+        let tab = status.selected();
         match tab.mode {
-            Mode::Normal | Mode::Preview => tab.page_down(),
-            Mode::Tree => tab.tree_page_down(colors)?,
+            Mode::Normal => {
+                tab.page_down();
+                status.update_second_pane_for_preview()?;
+            }
+            Mode::Preview => tab.page_down(),
+            Mode::Tree => {
+                tab.tree_page_down()?;
+                status.update_second_pane_for_preview()?;
+            }
             _ => (),
         };
         Ok(())
@@ -689,13 +648,13 @@ impl EventAction {
     /// related action.
     /// In normal mode, it will open the file.
     /// Reset to normal mode afterwards.
-    pub fn enter(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn enter(status: &mut Status) -> Result<()> {
         let mut must_refresh = true;
         let mut must_reset_mode = true;
         match status.selected_non_mut().mode {
             Mode::InputSimple(InputSimple::Rename) => LeaveMode::rename(status.selected())?,
-            Mode::InputSimple(InputSimple::Newfile) => LeaveMode::newfile(status.selected())?,
-            Mode::InputSimple(InputSimple::Newdir) => LeaveMode::newdir(status.selected())?,
+            Mode::InputSimple(InputSimple::Newfile) => LeaveMode::new_file(status.selected())?,
+            Mode::InputSimple(InputSimple::Newdir) => LeaveMode::new_dir(status.selected())?,
             Mode::InputSimple(InputSimple::Chmod) => LeaveMode::chmod(status)?,
             Mode::InputSimple(InputSimple::RegexMatch) => LeaveMode::regex(status)?,
             Mode::InputSimple(InputSimple::SetNvimAddr) => LeaveMode::set_nvim_addr(status)?,
@@ -705,17 +664,23 @@ impl EventAction {
             }
             Mode::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
-                LeaveMode::filter(status.selected(), colors)?
+                LeaveMode::filter(status.selected())?
             }
             Mode::InputSimple(InputSimple::Password(kind, action, dest)) => {
                 must_refresh = false;
                 must_reset_mode = false;
-                LeaveMode::password(status, kind, colors, dest, action)?
+                LeaveMode::password(status, kind, dest, action)?
             }
             Mode::InputSimple(InputSimple::Remote) => LeaveMode::remote(status.selected())?,
-            Mode::Navigate(Navigate::Jump) => LeaveMode::jump(status)?,
-            Mode::Navigate(Navigate::History) => LeaveMode::history(status.selected())?,
-            Mode::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status.selected())?,
+            Mode::Navigate(Navigate::Jump) => {
+                must_refresh = false;
+                LeaveMode::jump(status)?
+            }
+            Mode::Navigate(Navigate::History) => {
+                must_refresh = false;
+                LeaveMode::history(status)?
+            }
+            Mode::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status)?,
             Mode::Navigate(Navigate::Trash) => LeaveMode::trash(status)?,
             Mode::Navigate(Navigate::Bulk) => LeaveMode::bulk(status)?,
             Mode::Navigate(Navigate::ShellMenu) => LeaveMode::shellmenu(status)?,
@@ -728,15 +693,19 @@ impl EventAction {
             Mode::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMode::marks_update(status)?,
             Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMode::marks_jump(status)?,
             Mode::Navigate(Navigate::Compress) => LeaveMode::compress(status)?,
+            Mode::Navigate(Navigate::RemovableDevices) => (),
             Mode::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status.selected())?,
             Mode::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
-                LeaveMode::search(status.selected(), colors)?
+                LeaveMode::search(status)?
             }
-            Mode::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status.selected())?,
-            Mode::InputCompleted(InputCompleted::Command) => LeaveMode::command(status, colors)?,
-            Mode::Normal => LeaveMode::open_file(status)?,
-            Mode::Tree => LeaveMode::tree(status, colors)?,
+            Mode::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status)?,
+            Mode::InputCompleted(InputCompleted::Command) => LeaveMode::command(status)?,
+            Mode::Normal => {
+                LeaveMode::open_file(status)?;
+                must_reset_mode = false;
+            }
+            Mode::Tree => LeaveMode::tree(status)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
             | Mode::InputCompleted(InputCompleted::Nothing)
@@ -748,7 +717,7 @@ impl EventAction {
             status.selected().reset_mode();
         }
         if must_refresh {
-            status.refresh_status(colors)?;
+            status.refresh_status()?;
         }
         Ok(())
     }
@@ -758,10 +727,10 @@ impl EventAction {
     pub fn tab(status: &mut Status) -> Result<()> {
         match status.selected().mode {
             Mode::InputCompleted(_) => {
-                let tab: &mut Tab = status.selected();
+                let tab = status.selected();
                 tab.input.replace(tab.completion.current_proposition())
             }
-            Mode::Normal | Mode::Tree => status.next(),
+            Mode::Normal | Mode::Tree | Mode::Preview => status.next(),
             _ => (),
         };
         Ok(())
@@ -770,7 +739,7 @@ impl EventAction {
     /// Change tab in normal mode.
     pub fn backtab(status: &mut Status) -> Result<()> {
         match status.selected().mode {
-            Mode::Normal | Mode::Tree => status.prev(),
+            Mode::Normal | Mode::Tree | Mode::Preview => status.prev(),
             _ => (),
         };
         Ok(())
@@ -778,12 +747,14 @@ impl EventAction {
 
     /// Start a fuzzy find with skim.
     pub fn fuzzyfind(status: &mut Status) -> Result<()> {
-        status.skim_output_to_tab()
+        status.skim_output_to_tab()?;
+        status.update_second_pane_for_preview()
     }
 
     /// Start a fuzzy find for a specific line with skim.
     pub fn fuzzyfind_line(status: &mut Status) -> Result<()> {
-        status.skim_line_output_to_tab()
+        status.skim_line_output_to_tab()?;
+        status.update_second_pane_for_preview()
     }
 
     /// Start a fuzzy find for a keybinding with skim.
@@ -808,19 +779,25 @@ impl EventAction {
     }
 
     /// Refresh the current view, reloading the files. Move the selection to top.
-    pub fn refreshview(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn refreshview(status: &mut Status) -> Result<()> {
         status.encrypted_devices.update()?;
-        status.refresh_status(colors)
+        status.refresh_status()?;
+        status.update_second_pane_for_preview()
+    }
+
+    /// Refresh the view if files were modified in current directory.
+    pub fn refresh_if_needed(tab: &mut Tab) -> Result<()> {
+        tab.refresh_if_needed()
     }
 
     /// Display mediainfo details of an image
     pub fn mediainfo(tab: &mut Tab) -> Result<()> {
         if !is_program_in_path(MEDIAINFO) {
-            write_log_line(format!("{} isn't installed", MEDIAINFO));
+            log_line!("{} isn't installed", MEDIAINFO);
             return Ok(());
         }
         if let Mode::Normal | Mode::Tree = tab.mode {
-            let Some(file_info) = tab.selected() else {
+            let Ok(file_info) = tab.selected() else {
                 return Ok(());
             };
             info!("selected {:?}", file_info);
@@ -834,7 +811,7 @@ impl EventAction {
     /// Display a diff between the first 2 flagged files or dir.
     pub fn diff(status: &mut Status) -> Result<()> {
         if !is_program_in_path(DIFF) {
-            write_log_line(format!("{DIFF} isn't installed"));
+            log_line!("{DIFF} isn't installed");
             return Ok(());
         }
         if status.flagged.len() < 2 {
@@ -869,22 +846,19 @@ impl EventAction {
         status.select_tab(0)?;
         Ok(())
     }
+
     /// Move flagged files to the trash directory.
+    /// If no file is flagged, flag the selected file.
     /// More information in the trash crate itself.
     /// If the file is mounted on the $topdir of the trash (aka the $HOME mount point),
     /// it is moved there.
     /// Else, nothing is done.
     pub fn trash_move_file(status: &mut Status) -> Result<()> {
-        let trash_mount_point = opt_mount_point(disk_used_by_path(
-            status.system_info.disks(),
-            &std::path::PathBuf::from(&status.trash.trash_folder_files),
-        ));
+        if status.flagged.is_empty() {
+            Self::toggle_flag(status)?;
+        }
 
         for flagged in status.flagged.content.iter() {
-            let origin_mount_point = opt_mount_point(disk_used_by_path(status.disks(), flagged));
-            if trash_mount_point != origin_mount_point {
-                continue;
-            }
             status.trash.trash(flagged)?;
         }
         status.flagged.clear();
@@ -912,47 +886,30 @@ impl EventAction {
 
     /// Creates a tree in every mode but "Tree".
     /// It tree mode it will exit this view.
-    pub fn tree(status: &mut Status, colors: &Colors) -> Result<()> {
-        if let Mode::Tree = status.selected_non_mut().mode {
-            {
-                let tab: &mut Tab = status.selected();
-                tab.refresh_view()
-            }?;
-            status.selected().set_mode(Mode::Normal)
-        } else {
-            status.display_full = true;
-            status.selected().make_tree(colors)?;
-            status.selected().set_mode(Mode::Tree);
-            let len = status.selected_non_mut().directory.len();
-            status.selected().window.reset(len);
-        }
-        Ok(())
+    pub fn tree(status: &mut Status) -> Result<()> {
+        status.tree()
     }
 
     /// Fold the current node of the tree.
     /// Has no effect on "file" nodes.
-    pub fn tree_fold(tab: &mut Tab, colors: &Colors) -> Result<()> {
-        let (tree, _, _) = tab.directory.tree.explore_position(false);
-        tree.node.toggle_fold();
-        tab.directory.make_preview(colors);
-        tab.select_next(colors)
+    pub fn tree_fold(tab: &mut Tab) -> Result<()> {
+        tab.tree.toggle_fold();
+        Ok(())
     }
 
     /// Unfold every child node in the tree.
     /// Recursively explore the tree and unfold every node.
     /// Reset the display.
-    pub fn tree_unfold_all(tab: &mut Tab, colors: &Colors) -> Result<()> {
-        tab.directory.tree.unfold_children();
-        tab.directory.make_preview(colors);
+    pub fn tree_unfold_all(tab: &mut Tab) -> Result<()> {
+        tab.tree.unfold_all();
         Ok(())
     }
 
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node.
     /// Reset the display.
-    pub fn tree_fold_all(tab: &mut Tab, colors: &Colors) -> Result<()> {
-        tab.directory.tree.fold_children();
-        tab.directory.make_preview(colors);
+    pub fn tree_fold_all(tab: &mut Tab) -> Result<()> {
+        tab.tree.fold_all();
         Ok(())
     }
 
@@ -960,7 +917,7 @@ impl EventAction {
     /// a luks encrypted device.
     pub fn encrypted_drive(status: &mut Status) -> Result<()> {
         if !lsblk_and_cryptsetup_installed() {
-            write_log_line("lsblk and cryptsetup must be installed.".to_owned());
+            log_line!("lsblk and cryptsetup must be installed.");
             return Ok(());
         }
         if status.encrypted_devices.is_empty() {
@@ -969,6 +926,18 @@ impl EventAction {
         status
             .selected()
             .set_mode(Mode::Navigate(Navigate::EncryptedDrive));
+        Ok(())
+    }
+
+    pub fn removable_devices(status: &mut Status) -> Result<()> {
+        if !is_program_in_path(GIO) {
+            log_line!("gio must be installed.");
+            return Ok(());
+        }
+        status.removable_devices = RemovableDevices::from_gio();
+        status
+            .selected()
+            .set_mode(Mode::Navigate(Navigate::RemovableDevices));
         Ok(())
     }
 
@@ -1003,6 +972,12 @@ impl EventAction {
     /// Toggle the second pane between preview & normal mode (files).
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
         status.preview_second = !status.preview_second;
+        if status.preview_second {
+            status.set_second_pane_for_preview()?;
+        } else {
+            status.tabs[1].reset_mode();
+            status.tabs[1].refresh_view()?;
+        }
         Ok(())
     }
 
@@ -1010,13 +985,16 @@ impl EventAction {
     /// Requires `nitrogen` to be installed.
     pub fn set_wallpaper(tab: &Tab) -> Result<()> {
         if !is_program_in_path(NITROGEN) {
-            write_log_line("nitrogen must be installed".to_owned());
+            log_line!("nitrogen must be installed");
             return Ok(());
         }
         let Some(fileinfo) = tab.path_content.selected() else {
             return Ok(());
         };
-        if !is_ext_image(&fileinfo.extension) {
+        if !matches!(
+            ExtensionKind::matcher(&fileinfo.extension),
+            ExtensionKind::Image,
+        ) {
             return Ok(());
         }
         let Some(path_str) = tab.path_content.selected_path_string() else {
@@ -1028,36 +1006,39 @@ impl EventAction {
 
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn mocp_add_to_playlist(tab: &Tab) -> Result<()> {
-        if !is_mocp_installed() {
-            write_log_line("mocp isn't installed".to_owned());
+        if !is_program_in_path(MOCP) {
+            log_line!("mocp isn't installed");
             return Ok(());
         }
         Mocp::add_to_playlist(tab)
     }
 
     pub fn mocp_clear_playlist() -> Result<()> {
-        if !is_mocp_installed() {
-            write_log_line("mocp isn't installed".to_owned());
+        if !is_program_in_path(MOCP) {
+            log_line!("mocp isn't installed");
             return Ok(());
         }
         Mocp::clear()
     }
 
     /// Add a song or a folder to MOC playlist. Start it first...
-    pub fn mocp_go_to_song(tab: &mut Tab) -> Result<()> {
-        if !is_mocp_installed() {
-            write_log_line("mocp isn't installed".to_owned());
+    pub fn mocp_go_to_song(status: &mut Status) -> Result<()> {
+        let tab = status.selected();
+        if !is_program_in_path(MOCP) {
+            log_line!("mocp isn't installed");
             return Ok(());
         }
-        Mocp::go_to_song(tab)
+        Mocp::go_to_song(tab)?;
+
+        status.update_second_pane_for_preview()
     }
 
     /// Toggle play/pause on MOC.
     /// Starts the server if needed, preventing the output to fill the screen.
     /// Then toggle play/pause
     pub fn mocp_toggle_pause(status: &mut Status) -> Result<()> {
-        if !is_mocp_installed() {
-            write_log_line("mocp isn't installed".to_owned());
+        if !is_program_in_path(MOCP) {
+            log_line!("mocp isn't installed");
             return Ok(());
         }
         Mocp::toggle_pause(status)
@@ -1065,8 +1046,8 @@ impl EventAction {
 
     /// Skip to the next song in MOC
     pub fn mocp_next() -> Result<()> {
-        if !is_mocp_installed() {
-            write_log_line("mocp isn't installed".to_owned());
+        if !is_program_in_path(MOCP) {
+            log_line!("mocp isn't installed");
             return Ok(());
         }
         Mocp::next()
@@ -1074,8 +1055,8 @@ impl EventAction {
 
     /// Go to the previous song in MOC
     pub fn mocp_previous() -> Result<()> {
-        if !is_mocp_installed() {
-            write_log_line("mocp isn't installed".to_owned());
+        if !is_program_in_path(MOCP) {
+            log_line!("mocp isn't installed");
             return Ok(());
         }
         Mocp::previous()
@@ -1115,15 +1096,18 @@ impl Display for NodeCreation {
 
 impl NodeCreation {
     fn create(&self, tab: &mut Tab) -> Result<()> {
-        let path = tab
-            .path_content
-            .path
-            .join(sanitize_filename::sanitize(tab.input.string()));
+        let root_path = match tab.previous_mode {
+            Mode::Tree => tab
+                .tree
+                .directory_of_selected()
+                .context("no parent")?
+                .to_owned(),
+            _ => tab.path_content.path.clone(),
+        };
+        log::info!("root_path: {root_path:?}");
+        let path = root_path.join(sanitize_filename::sanitize(tab.input.string()));
         if path.exists() {
-            write_log_line(format!(
-                "{self} {path} already exists",
-                path = path.display()
-            ));
+            log_line!("{self} {path} already exists", path = path.display());
         } else {
             match self {
                 Self::Newdir => {
@@ -1133,8 +1117,7 @@ impl NodeCreation {
                     fs::File::create(&path)?;
                 }
             }
-            let log_line = format!("Created new {self}: {path}", path = path.display());
-            write_log_line(log_line);
+            log_line!("Created new {self}: {path}", path = path.display());
         }
         tab.refresh_view()
     }
@@ -1150,17 +1133,20 @@ impl LeaveMode {
         status.trash.restore()?;
         status.selected().reset_mode();
         status.selected().refresh_view()?;
-        Ok(())
+        status.update_second_pane_for_preview()
     }
 
     /// Open the file with configured opener or enter the directory.
     pub fn open_file(status: &mut Status) -> Result<()> {
         let tab = status.selected();
+        if matches!(tab.mode, Mode::Tree) {
+            return EventAction::open_file(status);
+        };
         if tab.path_content.is_empty() {
             return Ok(());
         }
         if tab.path_content.is_selected_dir()? {
-            tab.go_to_child()
+            tab.go_to_selected_dir()
         } else {
             EventAction::open_file(status)
         }
@@ -1171,12 +1157,11 @@ impl LeaveMode {
         let marks = status.marks.clone();
         let tab = status.selected();
         if let Some((_, path)) = marks.selected() {
-            tab.history.push(path);
             tab.set_pathcontent(path)?;
             tab.window.reset(tab.path_content.content.len());
             tab.input.reset();
         }
-        Ok(())
+        status.update_second_pane_for_preview()
     }
 
     /// Update the selected mark with the current path.
@@ -1189,8 +1174,7 @@ impl LeaveMode {
             if let Some(path_str) = status.selected_non_mut().path_content_str() {
                 let p = path::PathBuf::from(path_str);
                 status.marks.new_mark(*ch, &p)?;
-                let log_line = format!("Saved mark {ch} -> {p}", p = p.display());
-                write_log_line(log_line);
+                log_line!("Saved mark {ch} -> {p}", p = p.display());
             }
             status.selected().window.reset(len);
             status.selected().input.reset();
@@ -1199,7 +1183,9 @@ impl LeaveMode {
     }
 
     pub fn bulk(status: &mut Status) -> Result<()> {
-        status.bulk.execute_bulk(status)
+        status.execute_bulk()?;
+        status.bulk = None;
+        status.update_second_pane_for_preview()
     }
 
     pub fn shellmenu(status: &mut Status) -> Result<()> {
@@ -1231,8 +1217,7 @@ impl LeaveMode {
                 Status::set_permissions(path, permissions)?
             }
             status.flagged.clear();
-            let log_line = format!("Changed permissions to {input_permission}");
-            write_log_line(log_line);
+            log_line!("Changed permissions to {input_permission}");
         }
         status.selected().refresh_view()?;
         status.reset_tabs_view()
@@ -1259,8 +1244,7 @@ impl LeaveMode {
         status.selected().set_pathcontent(target_dir)?;
         let index = status.selected().path_content.select_file(&jump_target);
         status.selected().scroll_to(index);
-
-        Ok(())
+        status.update_second_pane_for_preview()
     }
 
     /// Select the first file matching the typed regex in current dir.
@@ -1273,6 +1257,9 @@ impl LeaveMode {
     /// Execute a shell command typed by the user.
     /// pipes and redirections aren't supported
     /// but expansions are supported
+    /// Returns `Ok(true)` if a refresh is required,
+    /// `Ok(false)` if we should stay in the current mode (aka, a password is required)
+    /// It won't return an `Err` if the command fail.
     pub fn shell(status: &mut Status) -> Result<bool> {
         let shell_command = status.selected_non_mut().input.string();
         let mut args = ShellCommandParser::new(&shell_command).compute(status)?;
@@ -1287,9 +1274,9 @@ impl LeaveMode {
             status.ask_password(PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
             Ok(false)
         } else {
-            let Ok(executable) = which(executable) else {
+            if !is_program_in_path(&executable) {
                 return Ok(true);
-            };
+            }
             let current_directory = status
                 .selected_non_mut()
                 .directory_of_selected()?
@@ -1310,15 +1297,15 @@ impl LeaveMode {
     /// We only try to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
     pub fn rename(tab: &mut Tab) -> Result<()> {
-        let fileinfo = match tab.previous_mode {
-            Mode::Tree => &tab.directory.tree.current_node.fileinfo,
-            _ => tab
-                .path_content
+        let original_path = if let Mode::Tree = tab.previous_mode {
+            tab.tree.selected_path()
+        } else {
+            tab.path_content
                 .selected()
-                .context("rename: couldnt parse selected")?,
+                .context("rename: couldn't parse selected file")?
+                .path
+                .as_path()
         };
-
-        let original_path = &fileinfo.path;
         if let Some(parent) = original_path.parent() {
             let new_path = parent.join(sanitize_filename::sanitize(tab.input.string()));
             info!(
@@ -1326,12 +1313,11 @@ impl LeaveMode {
                 original_path.display(),
                 new_path.display()
             );
-            let log_line = format!(
+            log_line!(
                 "renaming: original: {} - new: {}",
                 original_path.display(),
                 new_path.display()
             );
-            write_log_line(log_line);
 
             fs::rename(original_path, new_path)?;
         }
@@ -1342,7 +1328,7 @@ impl LeaveMode {
     /// Creates a new file with input string as name.
     /// Nothing is done if the file already exists.
     /// Filename is sanitized before processing.
-    pub fn newfile(tab: &mut Tab) -> Result<()> {
+    pub fn new_file(tab: &mut Tab) -> Result<()> {
         NodeCreation::Newfile.create(tab)
     }
 
@@ -1351,7 +1337,7 @@ impl LeaveMode {
     /// We use `fs::create_dir` internally so it will fail if the input string
     /// ie. the user can create `newdir` or `newdir/newfolder`.
     /// Directory name is sanitized before processing.
-    pub fn newdir(tab: &mut Tab) -> Result<()> {
+    pub fn new_dir(tab: &mut Tab) -> Result<()> {
         NodeCreation::Newdir.create(tab)
     }
 
@@ -1378,8 +1364,9 @@ impl LeaveMode {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn search(tab: &mut Tab, colors: &Colors) -> Result<()> {
-        let searched = tab.input.string();
+    pub fn search(status: &mut Status) -> Result<()> {
+        let tab = status.selected();
+        let searched = &tab.input.string();
         tab.input.reset();
         if searched.is_empty() {
             tab.searched = None;
@@ -1388,80 +1375,77 @@ impl LeaveMode {
         tab.searched = Some(searched.clone());
         match tab.previous_mode {
             Mode::Tree => {
-                tab.directory.tree.unselect_children();
-                if let Some(position) = tab.directory.tree.select_first_match(&searched) {
-                    tab.directory.tree.position = position;
-                    (_, _, tab.directory.tree.current_node) =
-                        tab.directory.tree.select_from_position()?;
-                } else {
-                    tab.directory.tree.select_root()
-                };
-                tab.directory.make_preview(colors);
-                Ok(())
+                log::info!("searching in tree");
+                tab.tree.search_first_match(searched);
             }
             _ => {
                 let next_index = tab.path_content.index;
-                tab.search_from(&searched, next_index);
-                Ok(())
+                tab.search_from(searched, next_index);
             }
-        }
+        };
+        status.update_second_pane_for_preview()
     }
 
     /// Move to the folder typed by the user.
     /// The first completion proposition is used, `~` expansion is done.
     /// If no result were found, no cd is done and we go back to normal mode
     /// silently.
-    pub fn goto(tab: &mut Tab) -> Result<()> {
+    pub fn goto(status: &mut Status) -> Result<()> {
+        let tab = status.selected();
         if tab.completion.is_empty() {
             return Ok(());
         }
         let completed = tab.completion.current_proposition();
         let path = string_to_path(completed)?;
         tab.input.reset();
-        tab.history.push(&path);
         tab.set_pathcontent(&path)?;
         tab.window.reset(tab.path_content.content.len());
-        Ok(())
+        status.update_second_pane_for_preview()
     }
 
     /// Move to the selected shortcut.
     /// It may fail if the user has no permission to visit the path.
-    pub fn shortcut(tab: &mut Tab) -> Result<()> {
+    pub fn shortcut(status: &mut Status) -> Result<()> {
+        let tab = status.selected();
         tab.input.reset();
         let path = tab
             .shortcut
             .selected()
             .context("exec shortcut: empty shortcuts")?
             .clone();
-        tab.history.push(&path);
         tab.set_pathcontent(&path)?;
-        tab.refresh_view()
+        tab.refresh_view()?;
+        status.update_second_pane_for_preview()
     }
 
     /// Move back to a previously visited path.
     /// It may fail if the user has no permission to visit the path
-    pub fn history(tab: &mut Tab) -> Result<()> {
-        tab.input.reset();
-        let path = tab
+    pub fn history(status: &mut Status) -> Result<()> {
+        let tab = status.selected();
+        let (path, file) = tab
             .history
             .selected()
             .context("exec history: path unreachable")?
             .clone();
         tab.set_pathcontent(&path)?;
         tab.history.drop_queue();
-        tab.refresh_view()
+        let index = tab.path_content.select_file(&file);
+        tab.scroll_to(index);
+        log::info!("leave history {path:?} {file:?} {index}");
+        status.update_second_pane_for_preview()
     }
 
     /// Execute the selected node if it's a file else enter the directory.
-    pub fn tree(status: &mut Status, colors: &Colors) -> Result<()> {
-        let tab = status.selected();
-        let node = tab.directory.tree.current_node.clone();
-        if !node.is_dir {
-            EventAction::open_file(status)
-        } else {
-            tab.set_pathcontent(&node.filepath())?;
-            tab.make_tree(colors)?;
+    pub fn tree(status: &mut Status) -> Result<()> {
+        let path = status.selected_non_mut().selected()?.path;
+        let is_dir = path.is_dir();
+        if is_dir {
+            status.selected().set_pathcontent(&path)?;
+            status.selected().make_tree(None)?;
+            status.selected().set_mode(Mode::Tree);
             Ok(())
+        } else {
+            EventAction::open_file(status)
         }
     }
 
@@ -1469,7 +1453,6 @@ impl LeaveMode {
     fn password(
         status: &mut Status,
         password_kind: PasswordKind,
-        colors: &Colors,
         dest: PasswordUsage,
         action: Option<BlockDeviceAction>,
     ) -> Result<()> {
@@ -1479,7 +1462,7 @@ impl LeaveMode {
             PasswordKind::CRYPTSETUP => status.password_holder.set_cryptsetup(password),
         }
         status.selected().reset_mode();
-        status.dispatch_password(dest, action, colors)
+        status.dispatch_password(dest, action)
     }
 
     /// Compress the flagged files into an archive.
@@ -1506,32 +1489,33 @@ impl LeaveMode {
     /// Execute the selected command.
     /// Some commands does nothing as they require to be executed from a specific
     /// context.
-    pub fn command(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn command(status: &mut Status) -> Result<()> {
         let command_str = status.selected_non_mut().completion.current_proposition();
         let Ok(command) = ActionMap::from_str(command_str) else {
             return Ok(());
         };
-        command.matcher(status, colors)
+        command.matcher(status)
     }
 
     /// A right click opens a file or a directory.
-    pub fn right_click(status: &mut Status, colors: &Colors) -> Result<()> {
+    pub fn right_click(status: &mut Status) -> Result<()> {
         match status.selected().mode {
             Mode::Normal => LeaveMode::open_file(status),
-            Mode::Tree => LeaveMode::tree(status, colors),
+            Mode::Tree => LeaveMode::tree(status),
             _ => Ok(()),
         }
     }
 
     /// Apply a filter to the displayed files.
     /// See `crate::filter` for more details.
-    pub fn filter(tab: &mut Tab, colors: &Colors) -> Result<()> {
+    pub fn filter(tab: &mut Tab) -> Result<()> {
         let filter = FilterKind::from_input(&tab.input.string());
         tab.set_filter(filter);
         tab.input.reset();
-        tab.path_content.reset_files(&tab.filter, tab.show_hidden)?;
+        tab.path_content
+            .reset_files(&tab.filter, tab.show_hidden, &tab.users)?;
         if let Mode::Tree = tab.previous_mode {
-            tab.make_tree(colors)?;
+            tab.make_tree(None)?;
         }
         tab.window.reset(tab.path_content.content.len());
         Ok(())
@@ -1560,16 +1544,18 @@ impl LeaveMode {
         };
 
         let (username, hostname, remote_path) = (strings[0], strings[1], strings[2]);
-        let current_path: &str = tab
-            .current_directory_path()
-            .to_str()
-            .context("couldn't parse the path")?;
+        let current_path: &str = &tab
+            .directory_of_selected_previous_mode()?
+            .display()
+            .to_string();
         let first_arg = &format!("{username}@{hostname}:{remote_path}");
-        let command_output =
-            execute_and_capture_output(SSHFS_EXECUTABLE, &[first_arg, current_path]);
-        let log_line = format!("{SSHFS_EXECUTABLE} output {command_output:?}");
-        info!("{log_line}");
-        write_log_line(log_line);
+        let command_output = execute_and_capture_output_with_path(
+            SSHFS_EXECUTABLE,
+            current_path,
+            &[first_arg, current_path],
+        );
+        info!("{SSHFS_EXECUTABLE} {strings:?} output {command_output:?}");
+        log_line!("{SSHFS_EXECUTABLE} {strings:?} output {command_output:?}");
         Ok(())
     }
 }

@@ -4,7 +4,7 @@ use std::process::{Command, Stdio};
 use anyhow::{Context, Result};
 use log::info;
 
-use crate::log::write_log_line;
+use crate::log_line;
 use crate::utils::current_username;
 
 /// Different kind of password
@@ -25,9 +25,10 @@ impl std::fmt::Display for PasswordKind {
 }
 
 /// What will this password be used for ?
-/// ATM only 2 usages are supported:
+/// ATM only 3 usages are supported:
 /// * mounting an ISO file,
 /// * opening an mounting an encrypted device.
+/// * running a sudo command
 #[derive(Debug, Clone, Copy)]
 pub enum PasswordUsage {
     ISO,
@@ -35,33 +36,35 @@ pub enum PasswordUsage {
     SUDOCOMMAND,
 }
 
+type Password = String;
+
 /// Holds passwords allowing to mount or unmount an encrypted drive.
 #[derive(Default, Clone, Debug)]
 pub struct PasswordHolder {
-    sudo: Option<String>,
-    cryptsetup: Option<String>,
+    sudo: Option<Password>,
+    cryptsetup: Option<Password>,
 }
 
 impl PasswordHolder {
     /// Set the sudo password.
-    pub fn set_sudo(&mut self, password: String) {
+    pub fn set_sudo(&mut self, password: Password) {
         self.sudo = Some(password)
     }
 
     /// Set the encrypted device passphrase
-    pub fn set_cryptsetup(&mut self, passphrase: String) {
+    pub fn set_cryptsetup(&mut self, passphrase: Password) {
         self.cryptsetup = Some(passphrase)
     }
 
     /// Reads the cryptsetup password
-    pub fn cryptsetup(&self) -> Result<String> {
+    pub fn cryptsetup(&self) -> Result<Password> {
         self.cryptsetup
             .clone()
             .context("PasswordHolder: cryptsetup password isn't set")
     }
 
     /// Reads the sudo password
-    pub fn sudo(&self) -> Result<String> {
+    pub fn sudo(&self) -> Result<Password> {
         self.sudo
             .clone()
             .context("PasswordHolder: sudo password isn't set")
@@ -129,8 +132,7 @@ where
     P: AsRef<std::path::Path> + std::fmt::Debug,
 {
     info!("sudo_with_password {args:?} CWD {path:?}");
-    let log_line = format!("running sudo command with password. args: {args:?}, CWD: {path:?}");
-    write_log_line(log_line);
+    log_line!("running sudo command with password. args: {args:?}, CWD: {path:?}");
     let mut child = new_sudo_command_awaiting_password(args, path)?;
     inject_password(password, &mut child)?;
     let output = child.wait_with_output()?;
@@ -162,8 +164,7 @@ where
     S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
 {
     info!("running sudo {:?}", args);
-    let log_line = format!("running sudo command. {args:?}");
-    write_log_line(log_line);
+    log_line!("running sudo command. {args:?}");
     let child = new_sudo_command_passwordless(args)?;
     let output = child.wait_with_output()?;
     Ok((

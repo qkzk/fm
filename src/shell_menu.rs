@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 
 use crate::impl_selectable_content;
-use crate::log::write_log_line;
+use crate::log_line;
 use crate::opener::{execute_in_child_without_output, execute_in_child_without_output_with_path};
 use crate::status::Status;
 use crate::utils::is_program_in_path;
@@ -21,6 +21,15 @@ impl Default for ShellMenu {
 }
 
 impl ShellMenu {
+    pub fn new(path: &str) -> Result<Self> {
+        let mut shell_menu = Self::default();
+        let file =
+            std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
+        let yaml = serde_yaml::from_reader(file)?;
+        shell_menu.update_from_file(&yaml)?;
+        Ok(shell_menu)
+    }
+
     fn update_from_file(&mut self, yaml: &serde_yaml::mapping::Mapping) -> Result<()> {
         for (key, mapping) in yaml.into_iter() {
             let Some(command) = key.as_str() else {
@@ -50,8 +59,7 @@ impl ShellMenu {
         } else {
             Self::simple(status, name.as_str())?
         };
-        let log_line = format!("Executed {name}");
-        write_log_line(log_line);
+        log_line!("Executed {name}");
         Ok(())
     }
 
@@ -86,11 +94,3 @@ impl ShellMenu {
 type SBool = (String, bool);
 
 impl_selectable_content!(SBool, ShellMenu);
-
-pub fn load_shell_menu(path: &str) -> Result<ShellMenu> {
-    let mut shell_menu = ShellMenu::default();
-    let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
-    let yaml = serde_yaml::from_reader(file)?;
-    shell_menu.update_from_file(&yaml)?;
-    Ok(shell_menu)
-}

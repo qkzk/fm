@@ -50,7 +50,7 @@ static HELP_TO_FORMAT: &str = "
 {MarksNew:<10}:      mark current path
 {MarksJump:<10}:      jump to a mark
 {SearchNext:<10}:      search next matching element
-{FuzzyFind:<10}:      fuzzy finder
+{FuzzyFind:<10}:      fuzzy finder for file
 {FuzzyFindLine:<10}:      fuzzy finder for line
 {FuzzyFindHelp:<10}:      fuzzy finder from help
 {RefreshView:<10}:      refresh view
@@ -98,7 +98,9 @@ Navigate as usual. Most actions works as in 'normal' view.
 {History:<10}:      HISTORY
 {Shortcut:<10}:      SHORTCUT
 {EncryptedDrive:<10}:      ENCRYPTED DRIVE
-    (m: open & mount,  u: unmount & close)
+    (m: open & mount,  u: unmount & close, g: go there)
+{RemovableDevices:<10}:      REMOVABLE MTP DEVICES
+    (m: mount,  u: unmount, g: go there)
 {Search:<10}:      SEARCH
 {Command:<10}:      COMMAND
 {Bulk:<10}:      BULK

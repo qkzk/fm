@@ -4,33 +4,82 @@ use std::fs::metadata;
 use std::io::Cursor;
 use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
-use std::panic;
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
 
 use anyhow::{anyhow, Context, Result};
 use content_inspector::{inspect, ContentType};
 use log::info;
-use pdf_extract;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
-use users::UsersCache;
 
-use crate::config::Colors;
 use crate::constant_strings_paths::{
-    DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LSBLK, LSOF, MEDIAINFO, PANDOC, RSVG_CONVERT, SS,
-    THUMBNAIL_PATH, UEBERZUG,
+    CALC_PDF_PATH, DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
+    PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
 };
 use crate::content_window::ContentWindow;
-use crate::decompress::list_files_zip;
-use crate::fileinfo::{FileInfo, FileKind};
+use crate::decompress::{list_files_tar, list_files_zip};
+use crate::fileinfo::{ColorEffect, FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
-use crate::status::Status;
+use crate::sort::SortKind;
 use crate::tree::{ColoredString, Tree};
-use crate::utils::{filename_from_path, is_program_in_path};
+use crate::users::Users;
+use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path};
+
+/// Different kind of extension for grouped by previewers.
+/// Any extension we can preview should be matched here.
+#[derive(Default)]
+pub enum ExtensionKind {
+    Archive,
+    Image,
+    Audio,
+    Video,
+    Font,
+    Svg,
+    Pdf,
+    Iso,
+    Notebook,
+    Office,
+    Epub,
+    #[default]
+    Unknown,
+}
+
+impl ExtensionKind {
+    /// Match any known extension against an extension kind.
+    pub fn matcher(ext: &str) -> Self {
+        match ext {
+            "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
+            | "gz" | "zst" => Self::Archive,
+            "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "cr2" | "nef" | "orf" | "sr2" => {
+                Self::Image
+            }
+            "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac"
+            | "mac" | "flac" => Self::Audio,
+            "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" => Self::Video,
+            "ttf" | "otf" => Self::Font,
+            "svg" | "svgz" => Self::Svg,
+            "pdf" => Self::Pdf,
+            "iso" => Self::Iso,
+            "ipynb" => Self::Notebook,
+            "doc" | "docx" | "odt" | "sxw" | "xlsx" | "xls" => Self::Office,
+            "epub" => Self::Epub,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+#[derive(Clone, Default)]
+pub enum TextKind {
+    HELP,
+    LOG,
+    EPUB,
+    #[default]
+    TEXTFILE,
+}
 
 /// Different kind of preview used to display some informaitons
 /// About the file.
@@ -40,8 +89,7 @@ pub enum Preview {
     Syntaxed(HLContent),
     Text(TextContent),
     Binary(BinaryContent),
-    Pdf(PdfContent),
-    Archive(ZipContent),
+    Archive(ArchiveContent),
     Ueberzug(Ueberzug),
     Media(MediaContent),
     Directory(Directory),
@@ -55,82 +103,98 @@ pub enum Preview {
     Empty,
 }
 
-#[derive(Clone, Default)]
-pub enum TextKind {
-    HELP,
-    LOG,
-    EPUB,
-    #[default]
-    TEXTFILE,
-}
-
 impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
+
+    /// Empty preview, holding nothing.
+    pub fn empty() -> Self {
+        clear_tmp_file();
+        Self::Empty
+    }
+
+    /// Creates a new `Directory` from the file_info
+    /// It explores recursivelly the directory and creates a tree.
+    /// The recursive exploration is limited to depth 2.
+    pub fn directory(file_info: &FileInfo, users: &Users) -> Result<Self> {
+        Ok(Self::Directory(Directory::new(
+            file_info.path.to_owned(),
+            users,
+        )))
+    }
 
     /// Creates a new preview instance based on the filekind and the extension of
     /// the file.
     /// Sometimes it reads the content of the file, sometimes it delegates
     /// it to the display method.
-    pub fn new(
-        file_info: &FileInfo,
-        users_cache: &UsersCache,
-        status: &Status,
-        colors: &Colors,
-    ) -> Result<Self> {
+    /// Directories aren't handled there since we need more arguments to create
+    /// their previews.
+    pub fn file(file_info: &FileInfo) -> Result<Self> {
+        clear_tmp_file();
         match file_info.file_kind {
-            FileKind::Directory => Ok(Self::Directory(Directory::new(
-                &file_info.path,
-                users_cache,
-                colors,
-                &status.selected_non_mut().filter,
-                status.selected_non_mut().show_hidden,
-                Some(2),
-            )?)),
-            FileKind::NormalFile => match file_info.extension.to_lowercase().as_str() {
-                e if is_ext_compressed(e) => Ok(Self::Archive(ZipContent::new(&file_info.path)?)),
-                e if is_ext_pdf(e) => Ok(Self::Pdf(PdfContent::new(&file_info.path))),
-                e if is_ext_image(e) && is_program_in_path(UEBERZUG) => {
-                    Ok(Self::Ueberzug(Ueberzug::image(&file_info.path)?))
+            FileKind::Directory => Err(anyhow!(
+                "{path} is a directory",
+                path = file_info.path.display()
+            )),
+            FileKind::NormalFile => {
+                let extension = &file_info.extension.to_lowercase();
+                match ExtensionKind::matcher(extension) {
+                    ExtensionKind::Archive => Ok(Self::Archive(ArchiveContent::new(
+                        &file_info.path,
+                        extension,
+                    )?)),
+                    ExtensionKind::Pdf => Ok(Self::Ueberzug(Ueberzug::make(
+                        &file_info.path,
+                        UeberzugKind::Pdf,
+                    )?)),
+                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => Ok(Self::Ueberzug(
+                        Ueberzug::make(&file_info.path, UeberzugKind::Image)?,
+                    )),
+                    ExtensionKind::Audio if is_program_in_path(MEDIAINFO) => {
+                        Ok(Self::Media(MediaContent::new(&file_info.path)?))
+                    }
+                    ExtensionKind::Video
+                        if is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG) =>
+                    {
+                        Ok(Self::Ueberzug(Ueberzug::make(
+                            &file_info.path,
+                            UeberzugKind::Video,
+                        )?))
+                    }
+                    ExtensionKind::Font
+                        if is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE) =>
+                    {
+                        Ok(Self::Ueberzug(Ueberzug::make(
+                            &file_info.path,
+                            UeberzugKind::Font,
+                        )?))
+                    }
+                    ExtensionKind::Svg
+                        if is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT) =>
+                    {
+                        Ok(Self::Ueberzug(Ueberzug::make(
+                            &file_info.path,
+                            UeberzugKind::Svg,
+                        )?))
+                    }
+                    ExtensionKind::Iso if is_program_in_path(ISOINFO) => {
+                        Ok(Self::Iso(Iso::new(&file_info.path)?))
+                    }
+                    ExtensionKind::Notebook if is_program_in_path(JUPYTER) => {
+                        Ok(Self::notebook(&file_info.path)
+                            .context("Preview: Couldn't parse notebook")?)
+                    }
+                    ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => Ok(Self::Ueberzug(
+                        Ueberzug::make(&file_info.path, UeberzugKind::Office)?,
+                    )),
+                    ExtensionKind::Epub if is_program_in_path(PANDOC) => {
+                        Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
+                    }
+                    _ => match Self::preview_syntaxed(extension, &file_info.path) {
+                        Some(syntaxed_preview) => Ok(syntaxed_preview),
+                        None => Self::preview_text_or_binary(file_info),
+                    },
                 }
-                e if is_ext_audio(e) && is_program_in_path(MEDIAINFO) => {
-                    Ok(Self::Media(MediaContent::new(&file_info.path)?))
-                }
-                e if is_ext_video(e)
-                    && is_program_in_path(UEBERZUG)
-                    && is_program_in_path(FFMPEG) =>
-                {
-                    Ok(Self::Ueberzug(Ueberzug::video_thumbnail(&file_info.path)?))
-                }
-                e if is_ext_font(e)
-                    && is_program_in_path(UEBERZUG)
-                    && is_program_in_path(FONTIMAGE) =>
-                {
-                    Ok(Self::Ueberzug(Ueberzug::font_thumbnail(&file_info.path)?))
-                }
-                e if is_ext_svg(e)
-                    && is_program_in_path(UEBERZUG)
-                    && is_program_in_path(RSVG_CONVERT) =>
-                {
-                    Ok(Self::Ueberzug(Ueberzug::svg_thumbnail(&file_info.path)?))
-                }
-                e if is_ext_iso(e) && is_program_in_path(ISOINFO) => {
-                    Ok(Self::Iso(Iso::new(&file_info.path)?))
-                }
-                e if is_ext_notebook(e) && is_program_in_path(JUPYTER) => {
-                    Ok(Self::notebook(&file_info.path)
-                        .context("Preview: Couldn't parse notebook")?)
-                }
-                e if is_ext_doc(e) && is_program_in_path(PANDOC) => {
-                    Ok(Self::doc(&file_info.path).context("Preview: Couldn't parse doc")?)
-                }
-                e if is_ext_epub(e) && is_program_in_path(PANDOC) => {
-                    Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
-                }
-                e => match Self::preview_syntaxed(e, &file_info.path) {
-                    Some(syntaxed_preview) => Ok(syntaxed_preview),
-                    None => Self::preview_text_or_binary(file_info),
-                },
-            },
+            }
             FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(file_info)),
             FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(file_info)),
             FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
@@ -177,16 +241,6 @@ impl Preview {
         let output = execute_and_capture_output_without_check(
             JUPYTER,
             &["nbconvert", "--to", "markdown", path_str, "--stdout"],
-        )
-        .ok()?;
-        Self::syntaxed_from_str(output, "md")
-    }
-
-    fn doc(path: &Path) -> Option<Self> {
-        let path_str = path.to_str()?;
-        let output = execute_and_capture_output_without_check(
-            PANDOC,
-            &["-s", "-t", "markdown", "--", path_str],
         )
         .ok()?;
         Self::syntaxed_from_str(output, "md")
@@ -243,11 +297,6 @@ impl Preview {
         ))
     }
 
-    /// Empty preview, holding nothing.
-    pub fn new_empty() -> Self {
-        Self::Empty
-    }
-
     /// The size (most of the time the number of lines) of the preview.
     /// Some preview (thumbnail, empty) can't be scrolled and their size is always 0.
     pub fn len(&self) -> usize {
@@ -256,9 +305,8 @@ impl Preview {
             Self::Syntaxed(syntaxed) => syntaxed.len(),
             Self::Text(text) => text.len(),
             Self::Binary(binary) => binary.len(),
-            Self::Pdf(pdf) => pdf.len(),
             Self::Archive(zip) => zip.len(),
-            Self::Ueberzug(_) => 0,
+            Self::Ueberzug(ueberzug) => ueberzug.len(),
             Self::Media(media) => media.len(),
             Self::Directory(directory) => directory.len(),
             Self::Diff(diff) => diff.len(),
@@ -510,8 +558,8 @@ impl HLContent {
     }
 }
 
-/// Holds a string to be displayed with given colors.
-/// We have to read the colors from Syntect and parse it into tuikit attr
+/// Holds a string to be displayed with given .
+/// We have to read the  from Syntect and parse it into tuikit attr
 /// This struct does the parsing.
 #[derive(Clone)]
 pub struct SyntaxedString {
@@ -606,8 +654,10 @@ impl Line {
         Self { line }
     }
 
-    fn format(&self) -> String {
-        let mut s = "".to_owned();
+    /// Format a line of 16 bytes as BigEndian, separated by spaces.
+    /// Every byte is zero filled if necessary.
+    fn format_hex(&self) -> String {
+        let mut s = String::new();
         for (i, byte) in self.line.iter().enumerate() {
             let _ = write!(s, "{byte:02x}");
             if i % 2 == 1 {
@@ -617,65 +667,62 @@ impl Line {
         s
     }
 
-    /// Print line of pair of bytes in hexadecimal, 16 bytes long.
-    /// It tries to imitates the output of hexdump.
-    pub fn print(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
-        let _ = canvas.print(row, offset + 2, &self.format());
-    }
-}
-
-/// Holds a preview of a pdffile as outputed by `pdf_extract` crate.
-/// If the pdf file content can't be extracted, it doesn't fail but simply hold
-/// an error message to be displayed.
-/// Afterall, it's just a TUI filemanager, the user shouldn't expect to display
-/// any kind of graphical pdf...
-#[derive(Clone)]
-pub struct PdfContent {
-    length: usize,
-    content: Vec<String>,
-}
-
-impl PdfContent {
-    const SIZE_LIMIT: usize = 1048576;
-
-    fn new(path: &Path) -> Self {
-        let result = catch_unwind_silent(|| {
-            // TODO! remove this when pdf_extract replaces println! whith dlog.
-            let _print_gag = gag::Gag::stdout().unwrap();
-            if let Ok(content_string) = pdf_extract::extract_text(path) {
-                content_string
-                    .split_whitespace()
-                    .take(Self::SIZE_LIMIT)
-                    .map(|s| s.to_owned())
-                    .collect()
+    /// Format a line of 16 bytes as an ASCII string.
+    /// Non ASCII printable bytes are replaced by dots.
+    fn format_as_ascii(&self) -> String {
+        let mut line_of_char = String::new();
+        for byte in self.line.iter() {
+            if *byte < 31 || *byte > 126 {
+                line_of_char.push('.')
+            } else if let Some(c) = char::from_u32(*byte as u32) {
+                line_of_char.push(c);
             } else {
-                vec!["Coudln't parse the pdf".to_owned()]
+                line_of_char.push(' ')
             }
-        });
-        let content = result.unwrap_or_else(|_| vec!["Couldn't read the pdf".to_owned()]);
-
-        Self {
-            length: content.len(),
-            content,
         }
+        line_of_char
     }
 
-    fn len(&self) -> usize {
-        self.length
+    /// Print line of pair of bytes in hexadecimal, 16 bytes long.
+    /// It uses BigEndian notation, regardless of platform usage.
+    /// It tries to imitates the output of hexdump.
+    pub fn print_bytes(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
+        let _ = canvas.print(row, offset + 2, &self.format_hex());
+    }
+
+    /// Print a line as an ASCII string
+    /// Non ASCII printable bytes are replaced by dots.
+    pub fn print_ascii(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
+        let _ = canvas.print_with_attr(
+            row,
+            offset + 2,
+            &self.format_as_ascii(),
+            Attr {
+                fg: Color::LIGHT_YELLOW,
+                ..Default::default()
+            },
+        );
     }
 }
 
-/// Holds a list of file of an archive as returned by `ZipArchive::file_names`.
+/// Holds a list of file of an archive as returned by
+/// `ZipArchive::file_names` or from  a `tar tvf` command.
 /// A generic error message prevent it from returning an error.
 #[derive(Clone)]
-pub struct ZipContent {
+pub struct ArchiveContent {
     length: usize,
     content: Vec<String>,
 }
 
-impl ZipContent {
-    fn new(path: &Path) -> Result<Self> {
-        let content = list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]);
+impl ArchiveContent {
+    fn new(path: &Path, ext: &str) -> Result<Self> {
+        let content = match ext {
+            "zip" => list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]),
+            "zst" | "gz" | "bz" | "xz" | "gzip" | "bzip2" => {
+                list_files_tar(path).unwrap_or(vec!["Invalid Tar content".to_owned()])
+            }
+            _ => vec![format!("Unsupported format: {ext}")],
+        };
 
         Ok(Self {
             length: content.len(),
@@ -717,52 +764,117 @@ impl MediaContent {
     }
 }
 
+pub enum UeberzugKind {
+    Font,
+    Image,
+    Office,
+    Pdf,
+    Svg,
+    Video,
+}
+
 /// Holds a path, a filename and an instance of ueberzug::Ueberzug.
 /// The ueberzug instance is held as long as the preview is displayed.
 /// When the preview is reset, the instance is dropped and the image is erased.
 /// Positonning the image is tricky since tuikit doesn't know where it's drawed in the terminal:
 /// the preview can't be placed correctly in embeded terminals.
 pub struct Ueberzug {
+    original: PathBuf,
     path: String,
     filename: String,
+    kind: UeberzugKind,
     ueberzug: ueberzug::Ueberzug,
+    length: usize,
+    pub index: usize,
 }
 
 impl Ueberzug {
-    fn image(img_path: &Path) -> Result<Self> {
+    fn thumbnail(original: PathBuf, kind: UeberzugKind) -> Self {
+        Self {
+            original,
+            path: THUMBNAIL_PATH.to_owned(),
+            filename: "thumbnail".to_owned(),
+            kind,
+            ueberzug: ueberzug::Ueberzug::new(),
+            length: 0,
+            index: 0,
+        }
+    }
+
+    fn make(filepath: &Path, kind: UeberzugKind) -> Result<Self> {
+        match kind {
+            UeberzugKind::Font => Self::font_thumbnail(filepath),
+            UeberzugKind::Image => Self::image_thumbnail(filepath),
+            UeberzugKind::Office => Self::office_thumbnail(filepath),
+            UeberzugKind::Pdf => Self::pdf_thumbnail(filepath),
+            UeberzugKind::Svg => Self::svg_thumbnail(filepath),
+            UeberzugKind::Video => Self::video_thumbnail(filepath),
+        }
+    }
+
+    fn image_thumbnail(img_path: &Path) -> Result<Self> {
         let filename = filename_from_path(img_path)?.to_owned();
         let path = img_path
             .to_str()
             .context("ueberzug: couldn't parse the path into a string")?
             .to_owned();
         Ok(Self {
+            original: img_path.to_owned(),
             path,
             filename,
+            kind: UeberzugKind::Image,
             ueberzug: ueberzug::Ueberzug::new(),
+            length: 0,
+            index: 0,
         })
-    }
-
-    fn thumbnail() -> Self {
-        Self {
-            path: THUMBNAIL_PATH.to_owned(),
-            filename: "thumbnail".to_owned(),
-            ueberzug: ueberzug::Ueberzug::new(),
-        }
     }
 
     fn video_thumbnail(video_path: &Path) -> Result<Self> {
         Self::make_video_thumbnail(video_path)?;
-        Ok(Self::thumbnail())
+        Ok(Self::thumbnail(video_path.to_owned(), UeberzugKind::Video))
     }
 
     fn font_thumbnail(font_path: &Path) -> Result<Self> {
         Self::make_font_thumbnail(font_path)?;
-        Ok(Self::thumbnail())
+        Ok(Self::thumbnail(font_path.to_owned(), UeberzugKind::Font))
     }
 
     fn svg_thumbnail(svg_path: &Path) -> Result<Self> {
         Self::make_svg_thumbnail(svg_path)?;
-        Ok(Self::thumbnail())
+        Ok(Self::thumbnail(svg_path.to_owned(), UeberzugKind::Svg))
+    }
+
+    fn office_thumbnail(calc_path: &Path) -> Result<Self> {
+        let calc_str = calc_path.display().to_string();
+        let args = vec!["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
+        let output = std::process::Command::new(LIBREOFFICE)
+            .args(args)
+            .output()?;
+        if !output.stderr.is_empty() {
+            info!(
+                "libreoffice conversion output: {} {}",
+                String::from_utf8(output.stdout).unwrap_or_default(),
+                String::from_utf8(output.stderr).unwrap_or_default()
+            );
+            return Err(anyhow!("{LIBREOFFICE} couldn't convert {calc_str} to pdf"));
+        }
+        let mut pdf_path = std::path::PathBuf::from("/tmp");
+        let filename = calc_path.file_name().context("")?;
+        pdf_path.push(filename);
+        pdf_path.set_extension("pdf");
+        std::fs::rename(pdf_path, CALC_PDF_PATH)?;
+        let calc_pdf_path = PathBuf::from(CALC_PDF_PATH);
+        let length = Self::make_pdf_thumbnail(&calc_pdf_path, 0)?;
+        let mut thumbnail = Self::thumbnail(calc_pdf_path.to_owned(), UeberzugKind::Pdf);
+        thumbnail.length = length;
+        Ok(thumbnail)
+    }
+
+    fn pdf_thumbnail(pdf_path: &Path) -> Result<Self> {
+        let length = Self::make_pdf_thumbnail(pdf_path, 0)?;
+        let mut thumbnail = Self::thumbnail(pdf_path.to_owned(), UeberzugKind::Pdf);
+        thumbnail.length = length;
+        Ok(thumbnail)
     }
 
     fn make_thumbnail(exe: &str, args: &[&str]) -> Result<()> {
@@ -775,6 +887,35 @@ impl Ueberzug {
             );
         }
         Ok(())
+    }
+
+    /// Creates the thumbnail for the `index` page.
+    /// Returns the number of pages of the pdf.
+    ///
+    /// It may fail (and surelly crash the app) if the pdf is password protected.
+    /// We pass a generic password which is hardcoded.
+    fn make_pdf_thumbnail(pdf_path: &Path, index: usize) -> Result<usize> {
+        let doc: poppler::PopplerDocument =
+            poppler::PopplerDocument::new_from_file(pdf_path, "upw")?;
+        let length = doc.get_n_pages();
+        if index >= length {
+            return Err(anyhow!(
+                "Poppler: index {index} >= number of page {length}."
+            ));
+        }
+        let page: poppler::PopplerPage = doc
+            .get_page(index)
+            .context("poppler couldn't extract page")?;
+        let (w, h) = page.get_size();
+        let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, w as i32, h as i32)?;
+        let ctx = cairo::Context::new(&surface)?;
+        ctx.save()?;
+        page.render(&ctx);
+        ctx.restore()?;
+        ctx.show_page()?;
+        let mut file = std::fs::File::create(THUMBNAIL_PATH)?;
+        surface.write_to_png(&mut file)?;
+        Ok(length)
     }
 
     fn make_video_thumbnail(video_path: &Path) -> Result<()> {
@@ -811,6 +952,42 @@ impl Ueberzug {
             RSVG_CONVERT,
             &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH],
         )
+    }
+
+    /// Only affect pdf thumbnail. Will decrease the index if possible.
+    pub fn up_one_row(&mut self) {
+        if let UeberzugKind::Pdf = self.kind {
+            if self.index > 0 {
+                self.index -= 1;
+            }
+        }
+    }
+
+    /// Only affect pdf thumbnail. Will increase the index if possible.
+    pub fn down_one_row(&mut self) {
+        if let UeberzugKind::Pdf = self.kind {
+            if self.index + 1 < self.len() {
+                self.index += 1;
+            }
+        }
+    }
+
+    /// 0 for every kind except pdf where it's the number of pages.
+    pub fn len(&self) -> usize {
+        self.length
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Update the thumbnail of the pdf to match its own index.
+    /// Does nothing for other kinds.
+    pub fn match_index(&self) -> Result<()> {
+        if let UeberzugKind::Pdf = self.kind {
+            Self::make_pdf_thumbnail(&self.original, self.index)?;
+        }
+        Ok(())
     }
 
     /// Draw the image with ueberzug in the current window.
@@ -865,185 +1042,34 @@ impl ColoredText {
 #[derive(Clone, Debug)]
 pub struct Directory {
     pub content: Vec<ColoredTriplet>,
-    pub tree: Tree,
-    len: usize,
-    pub selected_index: usize,
 }
 
 impl Directory {
-    /// Creates a new tree view of the directory.
-    /// We only hold the result here, since the tree itself has now usage atm.
-    pub fn new(
-        path: &Path,
-        users_cache: &UsersCache,
-        colors: &Colors,
-        filter_kind: &FilterKind,
-        show_hidden: bool,
-        max_depth: Option<usize>,
-    ) -> Result<Self> {
-        let max_depth = match max_depth {
-            Some(max_depth) => max_depth,
-            None => Tree::MAX_DEPTH,
-        };
-
-        let mut tree = Tree::from_path(
+    pub fn new(path: PathBuf, users: &Users) -> Self {
+        let tree = Tree::new(
             path,
-            max_depth,
-            users_cache,
-            filter_kind,
-            show_hidden,
-            vec![0],
-        )?;
-        tree.select_root();
-        let (selected_index, content) = tree.into_navigable_content(colors);
-        Ok(Self {
-            tree,
-            len: content.len(),
-            content,
-            selected_index,
-        })
+            4,
+            SortKind::tree_default(),
+            users,
+            false,
+            &FilterKind::All,
+        );
+
+        let (_selected_index, content) = tree.into_navigable_content(users);
+
+        Self { content }
     }
 
-    /// Creates an empty directory preview.
-    pub fn empty(path: &Path, users_cache: &UsersCache) -> Result<Self> {
-        Ok(Self {
-            tree: Tree::empty(path, users_cache)?,
-            len: 0,
-            content: vec![],
-            selected_index: 0,
-        })
+    pub fn empty() -> Self {
+        Self { content: vec![] }
     }
 
-    /// Reset the attributes to default one and free some unused memory.
-    pub fn clear(&mut self) {
-        self.len = 0;
-        self.content = vec![];
-        self.selected_index = 0;
-        self.tree.clear();
-    }
-
-    /// Number of displayed lines.
     pub fn len(&self) -> usize {
-        self.len
+        self.content.len()
     }
 
-    /// True if there's no lines in preview.
     pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
-    /// Select the root node and reset the view.
-    pub fn select_root(&mut self, colors: &Colors) -> Result<()> {
-        self.tree.select_root();
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-        Ok(())
-    }
-
-    /// Unselect every child node.
-    pub fn unselect_children(&mut self) {
-        self.tree.unselect_children()
-    }
-
-    /// Select the "next" element of the tree if any.
-    /// This is the element immediatly below the current one.
-    pub fn select_next(&mut self, colors: &Colors) -> Result<()> {
-        if self.selected_index < self.content.len() {
-            self.tree.increase_required_height();
-            self.unselect_children();
-            self.selected_index += 1;
-            self.update_tree_position_from_index(colors)?;
-        }
-        Ok(())
-    }
-
-    /// Select the previous sibling if any.
-    /// This is the element immediatly below the current one.
-    pub fn select_prev(&mut self, colors: &Colors) -> Result<()> {
-        if self.selected_index > 0 {
-            self.tree.decrease_required_height();
-            self.unselect_children();
-            self.selected_index -= 1;
-            self.update_tree_position_from_index(colors)?;
-        }
-        Ok(())
-    }
-
-    /// Move up 10 times.
-    pub fn page_up(&mut self, colors: &Colors) -> Result<()> {
-        if self.selected_index > 10 {
-            self.selected_index -= 10;
-        } else {
-            self.selected_index = 1;
-        }
-        self.update_tree_position_from_index(colors)
-    }
-
-    /// Move down 10 times
-    pub fn page_down(&mut self, colors: &Colors) -> Result<()> {
-        self.selected_index += 10;
-        if self.selected_index > self.content.len() {
-            if !self.content.is_empty() {
-                self.selected_index = self.content.len();
-            } else {
-                self.selected_index = 1;
-            }
-        }
-        self.update_tree_position_from_index(colors)
-    }
-
-    /// Update the position of the selected element from its index.
-    pub fn update_tree_position_from_index(&mut self, colors: &Colors) -> Result<()> {
-        self.tree.position = self.tree.position_from_index(self.selected_index);
-        let (_, _, node) = self.tree.select_from_position()?;
-        self.tree.current_node = node;
-        (_, self.content) = self.tree.into_navigable_content(colors);
-        Ok(())
-    }
-
-    /// Select the first child, if any.
-    pub fn select_first_child(&mut self, colors: &Colors) -> Result<()> {
-        self.tree.select_first_child()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-        Ok(())
-    }
-
-    /// Select the parent of current node.
-    pub fn select_parent(&mut self, colors: &Colors) -> Result<()> {
-        self.tree.select_parent()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-        Ok(())
-    }
-
-    /// Select the last leaf of the tree (ie the last line.)
-    pub fn go_to_bottom_leaf(&mut self, colors: &Colors) -> Result<()> {
-        self.tree.go_to_bottom_leaf()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-        Ok(())
-    }
-
-    /// Make a preview of the tree.
-    pub fn make_preview(&mut self, colors: &Colors) {
-        (self.selected_index, self.content) = self.tree.into_navigable_content(colors);
-    }
-
-    /// Calculates the top, bottom and lenght of the view, depending on which element
-    /// is selected and the size of the window used to display.
-    pub fn calculate_tree_window(&self, terminal_height: usize) -> (usize, usize, usize) {
-        let length = self.content.len();
-
-        let top: usize;
-        let bottom: usize;
-        let window_height = terminal_height - ContentWindow::WINDOW_MARGIN_TOP;
-        if self.selected_index < terminal_height - 1 {
-            top = 0;
-            bottom = window_height;
-        } else {
-            let padding = std::cmp::max(10, terminal_height / 2);
-            top = self.selected_index - padding;
-            bottom = top + window_height;
-        }
-
-        (top, bottom, length)
+        self.content.is_empty()
     }
 }
 
@@ -1131,16 +1157,41 @@ macro_rules! impl_window {
 
 /// A tuple with `(ColoredString, String, ColoredString)`.
 /// Used to iter and impl window trait in tree mode.
-pub type ColoredTriplet = (ColoredString, String, ColoredString);
+pub type ColoredTriplet = (String, String, ColoredString);
 
+pub trait MakeTriplet {
+    fn make(
+        fileinfo: &FileInfo,
+        prefix: &str,
+        filename_text: String,
+        color_effect: ColorEffect,
+        current_path: &std::path::Path,
+    ) -> ColoredTriplet;
+}
+
+impl MakeTriplet for ColoredTriplet {
+    #[inline]
+    fn make(
+        fileinfo: &FileInfo,
+        prefix: &str,
+        filename_text: String,
+        color_effect: ColorEffect,
+        current_path: &std::path::Path,
+    ) -> ColoredTriplet {
+        (
+            fileinfo.format_no_filename().unwrap_or_default(),
+            prefix.to_owned(),
+            ColoredString::new(filename_text, color_effect, current_path.to_owned()),
+        )
+    }
+}
 /// A vector of highlighted strings
 pub type VecSyntaxedString = Vec<SyntaxedString>;
 
 impl_window!(HLContent, VecSyntaxedString);
 impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
-impl_window!(PdfContent, String);
-impl_window!(ZipContent, String);
+impl_window!(ArchiveContent, String);
 impl_window!(MediaContent, String);
 impl_window!(Directory, ColoredTriplet);
 impl_window!(Diff, String);
@@ -1149,76 +1200,3 @@ impl_window!(ColoredText, String);
 impl_window!(Socket, String);
 impl_window!(BlockDevice, String);
 impl_window!(FifoCharDevice, String);
-
-fn is_ext_compressed(ext: &str) -> bool {
-    matches!(
-        ext,
-        "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
-    )
-}
-
-/// True iff the extension is a known (by me) image extension.
-pub fn is_ext_image(ext: &str) -> bool {
-    matches!(
-        ext,
-        "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "raw" | "cr2" | "nef" | "orf" | "sr2"
-    )
-}
-
-fn is_ext_audio(ext: &str) -> bool {
-    matches!(
-        ext,
-        "ogg"
-            | "ogm"
-            | "riff"
-            | "mp2"
-            | "mp3"
-            | "wm"
-            | "qt"
-            | "ac3"
-            | "dts"
-            | "aac"
-            | "mac"
-            | "flac"
-    )
-}
-
-fn is_ext_video(ext: &str) -> bool {
-    matches!(ext, "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg")
-}
-
-fn is_ext_font(ext: &str) -> bool {
-    matches!(ext, "ttf" | "otf")
-}
-
-fn is_ext_svg(ext: &str) -> bool {
-    matches!(ext, "svg" | "svgz")
-}
-
-fn is_ext_pdf(ext: &str) -> bool {
-    ext == "pdf"
-}
-
-fn is_ext_iso(ext: &str) -> bool {
-    ext == "iso"
-}
-
-fn is_ext_notebook(ext: &str) -> bool {
-    ext == "ipynb"
-}
-
-fn is_ext_doc(ext: &str) -> bool {
-    matches!(ext, "doc" | "docx" | "odt" | "sxw")
-}
-
-fn is_ext_epub(ext: &str) -> bool {
-    ext == "epub"
-}
-
-fn catch_unwind_silent<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) -> std::thread::Result<R> {
-    let prev_hook = panic::take_hook();
-    panic::set_hook(Box::new(|_| {}));
-    let result = panic::catch_unwind(f);
-    panic::set_hook(prev_hook);
-    result
-}

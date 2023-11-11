@@ -1,16 +1,20 @@
 use std::borrow::Borrow;
+use std::fs::metadata;
 use std::io::BufRead;
+use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 
 use anyhow::{Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
+use rand::Rng;
 use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
-use users::{get_current_uid, get_user_by_uid};
 
+use crate::constant_strings_paths::{CALC_PDF_PATH, THUMBNAIL_PATH};
 use crate::content_window::ContentWindow;
 use crate::fileinfo::human_size;
 use crate::nvim::nvim;
+use crate::users::Users;
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
 pub fn init_term() -> Result<Term> {
@@ -51,16 +55,6 @@ pub fn disk_space(disks: &[Disk], path: &Path) -> String {
     disk_space_used(disk_used_by_path(disks, path))
 }
 
-/// Takes a disk and returns its mount point.
-/// Returns `None` if it received `None`.
-/// It's a poor fix to support OSX where `sysinfo::Disk` doesn't implement `PartialEq`.
-pub fn opt_mount_point(disk: Option<&Disk>) -> Option<&std::path::Path> {
-    let Some(disk) = disk else {
-        return None;
-    };
-    Some(disk.mount_point())
-}
-
 /// Print the path on the stdout.
 pub fn print_on_quit(path_string: &str) {
     println!("{path_string}")
@@ -86,18 +80,26 @@ pub fn filename_from_path(path: &std::path::Path) -> Result<&str> {
         .context("couldn't parse the filename")
 }
 
+/// Uid of the current user.
+/// Read from `/proc/self`.
+/// Should never fail.
+pub fn current_uid() -> Result<u32> {
+    Ok(metadata("/proc/self").map(|metadata| metadata.uid())?)
+}
+
 /// Get the current username as a String.
+/// Read from `/proc/self` and then `/etc/passwd` and should never fail.
 pub fn current_username() -> Result<String> {
-    let user = get_user_by_uid(get_current_uid()).context("Couldn't read username")?;
-    Ok(user
-        .name()
-        .to_str()
-        .context("Couldn't read username")?
-        .to_owned())
+    Users::new()
+        .get_user_by_uid(current_uid()?)
+        .context("Couldn't read my own name")
 }
 
 /// True iff the command is available in $PATH.
-pub fn is_program_in_path(program: &str) -> bool {
+pub fn is_program_in_path<S>(program: S) -> bool
+where
+    S: Into<String> + std::fmt::Display,
+{
     if let Ok(path) = std::env::var("PATH") {
         for p in path.split(':') {
             let p_str = &format!("{p}/{program}");
@@ -127,10 +129,14 @@ pub fn set_clipboard(content: String) -> Result<()> {
     Ok(())
 }
 
+/// Convert a row into a `crate::fm::ContentWindow` index.
+/// Just remove the header rows.
 pub fn row_to_window_index(row: u16) -> usize {
     row as usize - ContentWindow::HEADER_ROWS
 }
 
+/// Convert a string into a valid, expanded and canonicalized path.
+/// Doesn't check if the path exists.
 pub fn string_to_path(path_string: &str) -> Result<std::path::PathBuf> {
     let expanded_cow_path = shellexpand::tilde(&path_string);
     let expanded_target: &str = expanded_cow_path.borrow();
@@ -141,11 +147,40 @@ pub fn args_is_empty(args: &[String]) -> bool {
     args.is_empty() || args[0] == *""
 }
 
+/// True if the executable is "sudo"
 pub fn is_sudo_command(executable: &str) -> bool {
     matches!(executable, "sudo")
 }
 
+/// Open the path in neovim.
 pub fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
     let command = &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>");
     let _ = nvim(nvim_server, command);
+}
+
+/// Creates a random string.
+/// The string starts with `fm-` and contains 7 random alphanumeric characters.
+pub fn random_name() -> String {
+    let mut rand_str = String::with_capacity(10);
+    rand_str.push_str("fm-");
+    rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(7)
+        .for_each(|ch| rand_str.push(ch as char));
+    rand_str.push_str(".txt");
+    rand_str
+}
+
+/// Clear the temporary file used by fm for previewing.
+pub fn clear_tmp_file() {
+    let _ = std::fs::remove_file(THUMBNAIL_PATH);
+    let _ = std::fs::remove_file(CALC_PDF_PATH);
+}
+
+/// True if the directory is empty,
+/// False if it's not.
+/// Err if the path doesn't exists or isn't accessible by
+/// the user.
+pub fn is_dir_empty(path: &std::path::Path) -> Result<bool> {
+    Ok(path.read_dir()?.next().is_none())
 }

@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Result};
 use log::info;
-use rand::Rng;
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::thread;
@@ -8,9 +7,10 @@ use std::time::{Duration, SystemTime};
 
 use crate::constant_strings_paths::TMP_FOLDER_PATH;
 use crate::impl_selectable_content;
-use crate::log::write_log_line;
+use crate::log_line;
 use crate::opener::Opener;
 use crate::status::Status;
+use crate::utils::random_name;
 
 /// Struct holding informations about files about to be renamed.
 /// We only need to know which are the original filenames and which
@@ -90,20 +90,9 @@ impl<'a> Bulkrename<'a> {
         Ok(std::fs::metadata(filepath)?.modified()?)
     }
 
-    fn random_name() -> String {
-        let mut rand_str = String::with_capacity(14);
-        rand_str.push_str("fm-");
-        rand::thread_rng()
-            .sample_iter(&rand::distributions::Alphanumeric)
-            .take(7)
-            .for_each(|ch| rand_str.push(ch as char));
-        rand_str.push_str(".txt");
-        rand_str
-    }
-
     fn generate_random_filepath() -> Result<PathBuf> {
         let mut filepath = PathBuf::from(&TMP_FOLDER_PATH);
-        filepath.push(Self::random_name());
+        filepath.push(random_name());
         Ok(filepath)
     }
 
@@ -157,7 +146,7 @@ impl<'a> Bulkrename<'a> {
         Ok(new_names)
     }
 
-    fn delete_temp_file(&self) -> Result<()> {
+    pub fn delete_temp_file(&self) -> Result<()> {
         std::fs::remove_file(&self.temp_file)?;
         Ok(())
     }
@@ -174,11 +163,9 @@ impl<'a> Bulkrename<'a> {
             let new_name = sanitize_filename::sanitize(filename);
             self.rename_file(path, &new_name)?;
             counter += 1;
-            let log_line = format!("Bulk renamed {path} to {new_name}", path = path.display());
-            write_log_line(log_line);
+            log_line!("Bulk renamed {path} to {new_name}", path = path.display());
         }
-        let log_line = format!("Bulk renamed {counter} files");
-        write_log_line(log_line);
+        log_line!("Bulk renamed {counter} files");
         Ok(())
     }
 
@@ -197,20 +184,17 @@ impl<'a> Bulkrename<'a> {
                 };
                 info!("creating: {new_path:?}");
                 std::fs::File::create(&new_path)?;
-                let log_line = format!("Bulk created {new_path}", new_path = new_path.display());
-                write_log_line(log_line);
+                log_line!("Bulk created {new_path}", new_path = new_path.display());
                 counter += 1;
             } else {
                 new_path.push(filename);
                 info!("Bulk creating dir: {}", new_path.display());
                 std::fs::create_dir_all(&new_path)?;
-                let log_line = format!("Bulk created {new_path}", new_path = new_path.display());
-                write_log_line(log_line);
+                log_line!("Bulk created {new_path}", new_path = new_path.display());
                 counter += 1;
             }
         }
-        let log_line = format!("Bulk created {counter} files");
-        write_log_line(log_line);
+        log_line!("Bulk created {counter} files");
         Ok(())
     }
 
@@ -219,6 +203,12 @@ impl<'a> Bulkrename<'a> {
         parent.pop();
         std::fs::rename(path, parent.join(filename))?;
         Ok(())
+    }
+}
+
+impl<'a> Drop for Bulkrename<'a> {
+    fn drop(&mut self) {
+        let _ = self.delete_temp_file();
     }
 }
 
@@ -242,8 +232,7 @@ impl Default for Bulk {
 impl Bulk {
     /// Execute the selected bulk method depending on the index.
     /// First method is a rename of selected files,
-    /// Second is the creation of files,
-    /// Third is the creation of folders.
+    /// Second is the creation of files or folders,
     pub fn execute_bulk(&self, status: &Status) -> Result<()> {
         match self.index {
             0 => Bulkrename::renamer(status.filtered_flagged_files())?.rename(&status.opener),

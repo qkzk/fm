@@ -2,22 +2,24 @@ use std::cmp::min;
 use std::path;
 
 use anyhow::{Context, Result};
-use users::UsersCache;
 
 use crate::args::Args;
 use crate::completion::{Completion, InputCompleted};
-use crate::config::Colors;
+use crate::config::Settings;
 use crate::content_window::ContentWindow;
-use crate::fileinfo::{FileInfo, FileKind, PathContent};
+use crate::fileinfo::{FileInfo, PathContent};
 use crate::filter::FilterKind;
+use crate::history::History;
 use crate::input::Input;
-use crate::mode::Mode;
+use crate::mode::{InputSimple, Mode};
 use crate::opener::execute_in_child;
-use crate::preview::{Directory, Preview};
+use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
+use crate::sort::SortKind;
+use crate::tree::{calculate_top_bottom, Go, To, Tree};
+use crate::users::Users;
 use crate::utils::{row_to_window_index, set_clipboard};
-use crate::visited::History;
 
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
@@ -44,38 +46,51 @@ pub struct Tab {
     /// Lines of the previewed files.
     /// Empty if not in preview mode.
     pub preview: Preview,
-    /// Visited directories
-    pub history: History,
     /// Predefined shortcuts
     pub shortcut: Shortcut,
     /// Last searched string
     pub searched: Option<String>,
-    /// Optional tree view
-    pub directory: Directory,
     /// The filter use before displaying files
     pub filter: FilterKind,
+    /// Visited directories
+    pub history: History,
+    /// Users & groups
+    pub users: Users,
+    pub tree: Tree,
 }
 
 impl Tab {
     /// Creates a new tab from args and height.
-    pub fn new(args: Args, height: usize, users_cache: UsersCache) -> Result<Self> {
+    pub fn new(
+        args: &Args,
+        height: usize,
+        users: Users,
+        settings: &Settings,
+        mount_points: &[&path::Path],
+    ) -> Result<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
-        let directory = Directory::empty(&path, &users_cache)?;
+        let start_dir = if path.is_dir() {
+            &path
+        } else {
+            path.parent().context("")?
+        };
         let filter = FilterKind::All;
-        let show_hidden = false;
-        let path_content = PathContent::new(&path, users_cache, &filter, show_hidden)?;
-        let show_hidden = false;
+        let show_hidden = args.all || settings.all;
+        let mut path_content = PathContent::new(start_dir, &users, &filter, show_hidden)?;
         let mode = Mode::Normal;
         let previous_mode = Mode::Normal;
-        let window = ContentWindow::new(path_content.content.len(), height);
+        let mut window = ContentWindow::new(path_content.content.len(), height);
         let input = Input::default();
         let completion = Completion::default();
         let must_quit = false;
         let preview = Preview::Empty;
-        let mut history = History::default();
-        history.push(&path);
-        let shortcut = Shortcut::new(&path);
+        let history = History::default();
+        let mut shortcut = Shortcut::new(&path);
+        shortcut.extend_with_mount_points(mount_points);
         let searched = None;
+        let index = path_content.select_file(&path);
+        let tree = Tree::default();
+        window.scroll_to(index);
         Ok(Self {
             mode,
             previous_mode,
@@ -86,12 +101,13 @@ impl Tab {
             completion,
             must_quit,
             preview,
-            history,
             shortcut,
             searched,
-            directory,
             filter,
             show_hidden,
+            history,
+            users,
+            tree,
         })
     }
 
@@ -115,7 +131,7 @@ impl Tab {
                 if matches!(self.previous_mode, Mode::Tree) =>
             {
                 self.completion
-                    .search_from_tree(&self.input.string(), &self.directory.content)
+                    .search_from_tree(&self.input.string(), self.tree.filenames())
             }
             Mode::InputCompleted(InputCompleted::Command) => {
                 self.completion.command(&self.input.string())
@@ -128,9 +144,13 @@ impl Tab {
     pub fn refresh_params(&mut self) -> Result<()> {
         self.filter = FilterKind::All;
         self.input.reset();
-        self.preview = Preview::new_empty();
+        self.preview = Preview::empty();
         self.completion.reset();
-        self.directory.clear();
+        if matches!(self.mode, Mode::Tree) {
+            self.make_tree(None)?;
+        } else {
+            self.tree = Tree::default()
+        };
         Ok(())
     }
 
@@ -139,24 +159,53 @@ impl Tab {
     /// displayed files is reset.
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> Result<()> {
-        self.refresh_params()?;
         self.path_content
-            .reset_files(&self.filter, self.show_hidden)?;
+            .reset_files(&self.filter, self.show_hidden, &self.users)?;
         self.window.reset(self.path_content.content.len());
+        self.refresh_params()?;
+        Ok(())
+    }
+
+    /// Refresh the view if files were modified in current directory.
+    /// If a refresh occurs, tries to select the same file as before.
+    /// If it can't, the first file (`.`) is selected.
+    /// Does nothing outside of normal mode.
+    pub fn refresh_if_needed(&mut self) -> Result<()> {
+        if let Mode::Normal = self.mode {
+            if self.is_last_modification_happend_less_than(10)? {
+                self.refresh_and_reselect_file()?
+            }
+        }
+        Ok(())
+    }
+
+    /// True iff the last modification of current folder happened less than `seconds` ago.
+    fn is_last_modification_happend_less_than(&self, seconds: u64) -> Result<bool> {
+        Ok(self.path_content.path.metadata()?.modified()?.elapsed()?
+            < std::time::Duration::new(seconds, 0))
+    }
+
+    /// Refresh the folder, reselect the last selected file, move the window to it.
+    fn refresh_and_reselect_file(&mut self) -> Result<()> {
+        let selected_path = self.selected().context("no selected file")?.path.clone();
+        self.refresh_view()?;
+        let index = self.path_content.select_file(&selected_path);
+        self.scroll_to(index);
         Ok(())
     }
 
     /// Move to the currently selected directory.
     /// Fail silently if the current directory is empty or if the selected
     /// file isn't a directory.
-    pub fn go_to_child(&mut self) -> Result<()> {
+    pub fn go_to_selected_dir(&mut self) -> Result<()> {
+        log::info!("go to selected");
         let childpath = &self
             .path_content
             .selected()
             .context("Empty directory")?
             .path
             .clone();
-        self.history.push(childpath);
+        log::info!("selected : {childpath:?}");
         self.set_pathcontent(childpath)?;
         self.window.reset(self.path_content.content.len());
         self.input.cursor_start();
@@ -185,9 +234,12 @@ impl Tab {
     /// Reset the window.
     /// Add the last path to the history of visited paths.
     pub fn set_pathcontent(&mut self, path: &path::Path) -> Result<()> {
-        self.history.push(path);
+        self.history.push(
+            &self.path_content.path,
+            &self.path_content.selected().context("")?.path,
+        );
         self.path_content
-            .change_directory(path, &self.filter, self.show_hidden)?;
+            .change_directory(path, &self.filter, self.show_hidden, &self.users)?;
         self.window.reset(self.path_content.content.len());
         std::env::set_current_dir(path)?;
         Ok(())
@@ -218,15 +270,6 @@ impl Tab {
     pub fn go_to_index(&mut self, index: usize) {
         self.path_content.select_index(index);
         self.window.scroll_to(index);
-    }
-
-    /// Refresh the existing users.
-    pub fn refresh_users(&mut self, users_cache: UsersCache) -> Result<()> {
-        let last_pathcontent_index = self.path_content.index;
-        self.path_content
-            .refresh_users(users_cache, &self.filter, self.show_hidden)?;
-        self.path_content.select_index(last_pathcontent_index);
-        Ok(())
     }
 
     /// Search in current directory for an file whose name contains `searched_name`,
@@ -262,87 +305,100 @@ impl Tab {
         }
     }
 
-    /// Select the root node of the tree.
-    pub fn tree_select_root(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.unselect_children();
-        self.directory.select_root(colors)
-    }
-
     /// Move to the parent of current path
     pub fn move_to_parent(&mut self) -> Result<()> {
         let path = self.path_content.path.clone();
         let Some(parent) = path.parent() else {
             return Ok(());
         };
+        if self.history.is_this_the_last(parent) {
+            self.back()?;
+            return Ok(());
+        }
         self.set_pathcontent(parent)
+    }
+
+    pub fn back(&mut self) -> Result<()> {
+        if self.history.content.is_empty() {
+            return Ok(());
+        }
+        let Some((path, file)) = self.history.content.pop() else {
+            return Ok(());
+        };
+        self.set_pathcontent(&path)?;
+        let index = self.path_content.select_file(&file);
+        self.scroll_to(index);
+        self.history.content.pop();
+        if let Mode::Tree = self.mode {
+            self.make_tree(None)?
+        }
+
+        Ok(())
     }
 
     /// Select the parent of current node.
     /// If we were at the root node, move to the parent and make a new tree.
-    pub fn tree_select_parent(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.unselect_children();
-        if self.directory.tree.position.len() <= 1 {
-            self.move_to_parent()?;
-            self.make_tree(colors)?
+    pub fn tree_select_parent(&mut self) -> Result<()> {
+        if self.tree.is_on_root() {
+            let Some(parent) = self.tree.root_path().parent() else {
+                return Ok(());
+            };
+            self.set_pathcontent(parent.to_owned().as_ref())?;
+            self.make_tree(Some(self.path_content.sort_kind.clone()))
+        } else {
+            self.tree.go(To::Parent);
+            Ok(())
         }
-        self.directory.select_parent(colors)
     }
 
     /// Move down 10 times in the tree
-    pub fn tree_page_down(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.increase_required_height_by_ten();
-        self.directory.unselect_children();
-        self.directory.page_down(colors)
+    pub fn tree_page_down(&mut self) -> Result<()> {
+        for _ in 1..10 {
+            if self.tree.is_on_last() {
+                break;
+            }
+            self.tree.go(To::Next);
+        }
+        Ok(())
     }
 
     /// Move up 10 times in the tree
-    pub fn tree_page_up(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.decrease_required_height_by_ten();
-        self.directory.unselect_children();
-        self.directory.page_up(colors)
+    pub fn tree_page_up(&mut self) {
+        for _ in 1..10 {
+            if self.tree.is_on_root() {
+                break;
+            }
+            self.tree.go(To::Prev);
+        }
     }
 
     /// Select the next sibling.
-    pub fn tree_select_next(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.select_next(colors)
+    pub fn tree_select_next(&mut self) -> Result<()> {
+        self.tree.go(To::Next);
+        Ok(())
     }
 
     /// Select the previous siblging
-    pub fn tree_select_prev(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.select_prev(colors)
-    }
-
-    /// Select the first child if any.
-    pub fn tree_select_first_child(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.unselect_children();
-        self.directory.select_first_child(colors)
+    pub fn tree_select_prev(&mut self) -> Result<()> {
+        self.tree.go(To::Prev);
+        Ok(())
     }
 
     /// Go to the last leaf.
-    pub fn tree_go_to_bottom_leaf(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.set_required_height_to_max();
-        self.directory.unselect_children();
-        self.directory.go_to_bottom_leaf(colors)
+    pub fn tree_go_to_bottom_leaf(&mut self) -> Result<()> {
+        self.tree.go(To::Last);
+        Ok(())
     }
 
     /// Returns the current path.
-    /// In tree mode :
+    /// If previous mode was tree mode :
     ///     if the selected node is a directory, that's it.
     ///     else, it is the parent of the selected node.
     /// In other modes, it's the current path of pathcontent.
-    pub fn current_directory_path(&mut self) -> &path::Path {
-        match self.mode {
-            Mode::Tree => {
-                let path = &self.directory.tree.current_node.fileinfo.path;
-                if path.is_dir() {
-                    return path;
-                }
-                let Some(parent) = path.parent() else {
-                    return path::Path::new("/");
-                };
-                parent
-            }
-            _ => &self.path_content.path,
+    pub fn directory_of_selected_previous_mode(&self) -> Result<&path::Path> {
+        match self.previous_mode {
+            Mode::Tree => return self.tree.directory_of_selected().context("no parent"),
+            _ => Ok(&self.path_content.path),
         }
     }
 
@@ -352,46 +408,40 @@ impl Tab {
     /// In normal mode it's the current working directory.
     pub fn directory_of_selected(&self) -> Result<&path::Path> {
         match self.mode {
-            Mode::Tree => {
-                let fileinfo = &self.directory.tree.current_node.fileinfo;
-                match fileinfo.file_kind {
-                    FileKind::Directory => Ok(&self.directory.tree.current_node.fileinfo.path),
-                    _ => Ok(fileinfo
-                        .path
-                        .parent()
-                        .context("selected file should have a parent")?),
-                }
-            }
+            Mode::Tree => self.tree.directory_of_selected().context("No parent"),
             _ => Ok(&self.path_content.path),
         }
     }
 
-    /// Optional Fileinfo of the selected element.
-    pub fn selected(&self) -> Option<&FileInfo> {
+    /// Fileinfo of the selected element.
+    pub fn selected(&self) -> Result<FileInfo> {
         match self.mode {
-            Mode::Tree => Some(&self.directory.tree.current_node.fileinfo),
-            _ => self.path_content.selected(),
+            Mode::Tree => {
+                let node = self.tree.selected_node().context("no selected node")?;
+                node.fileinfo(&self.users)
+            }
+            _ => Ok(self
+                .path_content
+                .selected()
+                .context("no selected file")?
+                .to_owned()),
         }
     }
 
     /// Makes a new tree of the current path.
-    pub fn make_tree(&mut self, colors: &Colors) -> Result<()> {
+    pub fn make_tree(&mut self, sort_kind: Option<SortKind>) -> Result<()> {
+        let sort_kind = match sort_kind {
+            Some(sort_kind) => sort_kind,
+            None => SortKind::tree_default(),
+        };
         let path = self.path_content.path.clone();
-        let users_cache = &self.path_content.users_cache;
-        self.directory = Directory::new(
-            &path,
-            users_cache,
-            colors,
-            &self.filter,
-            self.show_hidden,
-            None,
-        )?;
+        let users = &self.users;
+        self.tree = Tree::new(path, 5, sort_kind, users, self.show_hidden, &self.filter);
         Ok(())
     }
 
     /// Set a new mode and save the last one
     pub fn set_mode(&mut self, new_mode: Mode) {
-        log::info!("mode {new_mode}");
         self.previous_mode = self.mode;
         self.mode = new_mode;
     }
@@ -401,9 +451,20 @@ impl Tab {
     /// Returns True if the last mode requires a refresh afterwards.
     pub fn reset_mode(&mut self) -> bool {
         let must_refresh = self.mode.refresh_required();
+        if matches!(self.mode, Mode::InputCompleted(_)) {
+            self.completion.reset();
+        }
         self.mode = self.previous_mode;
         self.previous_mode = Mode::Normal;
         must_refresh
+    }
+
+    pub fn reset_mode_and_view(&mut self) -> Result<()> {
+        if self.reset_mode() {
+            self.refresh_view()
+        } else {
+            Ok(())
+        }
     }
 
     /// Returns true if the current mode requires 2 windows.
@@ -452,6 +513,12 @@ impl Tab {
         self.window.scroll_to(0);
     }
 
+    /// Insert a char in the input string.
+    pub fn input_insert(&mut self, char: char) -> Result<()> {
+        self.input.insert(char);
+        Ok(())
+    }
+
     /// Add a char to input string, look for a possible completion.
     pub fn text_insert_and_complete(&mut self, c: char) -> Result<()> {
         self.input.insert(c);
@@ -460,24 +527,9 @@ impl Tab {
 
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node. Reset the display.
-    pub fn tree_go_to_root(&mut self, colors: &Colors) -> Result<()> {
-        self.directory.tree.reset_required_height();
-        self.tree_select_root(colors)
-    }
-
-    /// Select the first child of the current node and reset the display.
-    pub fn select_first_child(&mut self, colors: &Colors) -> Result<()> {
-        self.tree_select_first_child(colors)
-    }
-
-    /// Select the next sibling of the current node.
-    pub fn select_next(&mut self, colors: &Colors) -> Result<()> {
-        self.tree_select_next(colors)
-    }
-
-    /// Select the previous sibling of the current node.
-    pub fn select_prev(&mut self, colors: &Colors) -> Result<()> {
-        self.tree_select_prev(colors)
+    pub fn tree_go_to_root(&mut self) -> Result<()> {
+        self.tree.go(To::Root);
+        Ok(())
     }
 
     /// Copy the selected filename to the clipboard. Only the filename.
@@ -535,10 +587,15 @@ impl Tab {
     }
 
     fn preview_page_up(&mut self) {
-        if self.window.top > 0 {
-            let skip = min(self.window.top, 30);
-            self.window.bottom -= skip;
-            self.window.top -= skip;
+        match &mut self.preview {
+            Preview::Ueberzug(ref mut image) => image.up_one_row(),
+            _ => {
+                if self.window.top > 0 {
+                    let skip = min(self.window.top, 30);
+                    self.window.bottom -= skip;
+                    self.window.top -= skip;
+                }
+            }
         }
     }
 
@@ -563,18 +620,23 @@ impl Tab {
     }
 
     fn preview_page_down(&mut self) {
-        if self.window.bottom < self.preview.len() {
-            let skip = min(self.preview.len() - self.window.bottom, 30);
-            self.window.bottom += skip;
-            self.window.top += skip;
+        match &mut self.preview {
+            Preview::Ueberzug(ref mut image) => image.down_one_row(),
+            _ => {
+                if self.window.bottom < self.preview.len() {
+                    let skip = min(self.preview.len() - self.window.bottom, 30);
+                    self.window.bottom += skip;
+                    self.window.top += skip;
+                }
+            }
         }
     }
 
     /// Select a given row, if there's something in it.
-    pub fn select_row(&mut self, row: u16, colors: &Colors, term_height: usize) -> Result<()> {
+    pub fn select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
         match self.mode {
             Mode::Normal => self.normal_select_row(row),
-            Mode::Tree => self.tree_select_row(row, colors, term_height)?,
+            Mode::Tree => self.tree_select_row(row, term_height)?,
             _ => (),
         }
         Ok(())
@@ -587,16 +649,13 @@ impl Tab {
         self.window.scroll_to(index);
     }
 
-    fn tree_select_row(&mut self, row: u16, colors: &Colors, term_height: usize) -> Result<()> {
-        let screen_index = row_to_window_index(row) + 1;
-        // term.height = canvas.height + 2 rows for the canvas border
-        let (top, _, _) = self.directory.calculate_tree_window(term_height - 2);
+    fn tree_select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
+        let screen_index = row_to_window_index(row);
+        let (selected_index, content) = self.tree.into_navigable_content(&self.users);
+        let (top, _) = calculate_top_bottom(selected_index, term_height - 2);
         let index = screen_index + top;
-        self.directory.tree.unselect_children();
-        self.directory.tree.position = self.directory.tree.position_from_index(index);
-        let (_, _, node) = self.directory.tree.select_from_position()?;
-        self.directory.make_preview(colors);
-        self.directory.tree.current_node = node;
+        let (_, _, colored_path) = content.get(index).context("no selected file")?;
+        self.tree.go(To::Path(&colored_path.path));
         Ok(())
     }
 
@@ -609,7 +668,7 @@ impl Tab {
     /// by extension.
     /// The first letter is used to identify the method.
     /// If the user types an uppercase char, the sort is reverse.
-    pub fn sort(&mut self, c: char, colors: &Colors) -> Result<()> {
+    pub fn sort(&mut self, c: char) -> Result<()> {
         if self.path_content.content.is_empty() {
             return Ok(());
         }
@@ -623,10 +682,8 @@ impl Tab {
                 self.path_content.select_index(0);
             }
             Mode::Tree => {
-                self.directory.tree.update_sort_from_char(c);
-                self.directory.tree.sort();
-                self.tree_select_root(colors)?;
-                self.directory.tree.into_navigable_content(colors);
+                self.path_content.update_sort_from_char(c);
+                self.make_tree(Some(self.path_content.sort_kind.clone()))?;
             }
             _ => (),
         }
@@ -646,5 +703,24 @@ impl Tab {
         args.push(path);
         execute_in_child(command, &args)?;
         Ok(true)
+    }
+
+    pub fn rename(&mut self) -> Result<()> {
+        let old_name: String = if matches!(self.mode, Mode::Tree) {
+            self.tree
+                .selected_path()
+                .file_name()
+                .context("no filename")?
+                .to_string_lossy()
+                .into()
+        } else {
+            let Ok(fileinfo) = self.selected() else {
+                return Ok(());
+            };
+            fileinfo.filename.to_owned()
+        };
+        self.input.replace(&old_name);
+        self.set_mode(Mode::InputSimple(InputSimple::Rename));
+        Ok(())
     }
 }

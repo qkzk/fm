@@ -492,8 +492,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: exiting preview doesn't refresh
 - [x] Mode should know if a refresh is required after leaving them.
 
-## Current dev
-
 ### Version 0.1.22
 
 - [x] FIX: copying 0 bytes crash progress bar thread
@@ -564,8 +562,74 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Not accessible file in tree mode crashes the application
 - [x] Look for nvim listen address in `ss -l` output
 
+## Current dev
+
+### Version 0.1.23
+
+- [x] preview tar archive
+- [x] Jump mode : 'Space' Toggle flag, 'u' remove all flags, 'Enter' jump to the file
+- [x] FIX: copy / move while existing file already exist use another name
+- [x] Jump mode (display flagged files) should allow to delete / trash the flagged files
+- [x] binary preview also display parsed ASCII strings
+- [x] skim fuzzy find (ctrl-f) starts from current dir, not current selected file
+- [x] open/file pick flagged files if there are, use selected file instead
+- [x] regroup openers when opening multiple files.
+- [x] refresh every 10 seconds. If no file in current dir has changed, nothing happens.
+- [x] scroll in preview second screen
+- [x] FIX sending `Event::User(())` events from refresher hangs skim. Use `Event(Key::AltPageUp)` which is now reserved.
+- [x] allow file selection from args : -p filename selects the file from parent dir
+- [x] more args : dual pane, preview second, display full, show hidden
+- [x] history: when moving back select back the file we were at
+- [x] use yellow block char to make flagged files more visibles.
+- [x] move input 1 char right since we inserted a space
+- [x] preview pdf with ueberzug. First page extracted with poppler -> cairo -> thumbnail -> ueberzug
+- [x] FIX: when encrypted drive is already mounted don't let user mount it again
+- [x] FIX: group & owner metadata alignement in tree mode
+- [x] Tree mode Copy / Move / New should copy in selected directory not root of tree
+- [x] Allow scrolling in preview pdf. Required a lot of change in Preview::ueberzug. Update thumbnail when required.
+- [x] Flag the selected file if no file is flagged before entering delete mode or trashing a file.
+- [x] FIX: fuzzy finder should do nothing if escape (quit?) is inputed
+- [x] preview openoffice / office documents as images. Don't use pandoc for .doc .odb etc. previews
+- [x] mtp mount with gio [nnn plugin](https://github.com/jarun/nnn/blob/master/plugins/mtpmount)
+  - [x] add MTP mount points to shortcuts
+  - [x] list, mount, unmount mtp mount points
+- [x] bulk, skim & removable are `None` until first use.
+- [x] remove dependencies
+- [x] complete refactor of many files.
+- [x] Use `lazy_static` to load `Colors` configuration. Don't use a cache. Calculate every color for every extension
+- [x] allow rgb colors in config file
+- [x] FIX: can't read filename from / ... which crashes the app.
+- [x] FIX: exploring root folder leads to wrong first line display.
+- [x] allow seveval palettes for normal file colors
+- [x] move every lazy_static configuration into config.
+- [x] FIX: encrypted are never shown as mounted
+- [x] Tree remade without recursion. Use an `HashMap<PathBuf, Node>`
+  - [x] FIX: folders are max depth hangs the app
+  - [x] FIX: rename renames the root path
+  - [x] FIX: scrolling to bottom of tree is bugged
+  - [x] FIX: scrolling starts 1 row to low
+  - [x] FIX: filename in first line
+  - [x] FIX: can't "open" a folder to redo the tree there
+  - [x] FIX: move back from root should redo the parent tree
+  - [x] FIX: move up from to go to last and vice versa
+  - [x] FIX: enter a dir from normal mode shouldn't set mode tree
+  - [x] Use a generic trait for movements
+  - [x] FIX: first line position for tree
+  - [x] FIX: searching for file very low don't scroll there
+  - [x] FIX: search can only find the first match
+  - [x] FIX: leaving preview doesn't reset tree
+  - [x] Add a link to previous and next node in Node. Simplify navigation, increase ram usage :/
+  - [x] test everything
+  - [x] refactor
+  - [x] document
+
 ## TODO
 
+- [ ] mount usb key - should be merged with mtp
+- [ ] document filepicking (from my config etc.).
+- [ ] avoid multiple refreshs if we edit files ourself
+- [ ] FIX: tab.selected() should return Option<&FileInfo>
+- [ ] use widget for every drawable element. First line should be a collection of widget which are drawned
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 - [ ] remote control
@@ -630,8 +694,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## BUGS
 
-- [ ] creates $ENV{HOME} folders everywhere -
-      a new version of log4rs seems to solve this, it's not deplayed to crates.io yet
 - [ ] tree mode : index are offset by one
 
 ## Won't do
@@ -640,17 +702,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 All of this stuff can be done easily through a shell command or automatically. I'm not sure I wan't to bloat fm with it.
 
-- [ ] auto mount usb keys ??? [rusb](https://github.com/a1ien/rusb) -- just use udiskie (started automatically) and udiskie-umount /mount/point
-      just use udiskie
-- [ ] mtp... but fast [libmtp.rs](https://docs.rs/libmtp-rs/0.7.7/libmtp_rs/)
-- [ ] connexion to remote servers [removefs](https://crates.io/crates/remotefs) [termscp](https://crates.io/crates/termscp)
-
-  - ssh
-  - sftp
-  - ftp
-  - google drive
-
-  or just use sshfs...
+- [ ] auto mount usb keys ??? just use udiskie (started automatically) and udiskie-umount /mount/point
+- [ ] cloud services (apple, microsoft, google, dropbox etc.)
+- [ ] ftp
 
 ## Sources
 

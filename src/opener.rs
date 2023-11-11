@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::env;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -16,23 +15,8 @@ use crate::constant_strings_paths::{
 };
 use crate::decompress::{decompress_gz, decompress_xz, decompress_zip};
 use crate::fileinfo::extract_extension;
-use crate::log::write_log_line;
-
-fn find_it<P>(exe_name: P) -> Option<PathBuf>
-where
-    P: AsRef<Path>,
-{
-    env::var_os("PATH").and_then(|paths| {
-        env::split_paths(&paths).find_map(|dir| {
-            let full_path = dir.join(&exe_name);
-            if full_path.is_file() {
-                Some(full_path)
-            } else {
-                None
-            }
-        })
-    })
-}
+use crate::log_line;
+use crate::utils::is_program_in_path;
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
@@ -51,8 +35,8 @@ pub enum ExtensionKind {
 
 // TODO: move those associations to a config file
 impl ExtensionKind {
-    fn parse(ext: &str) -> Self {
-        match ext.to_lowercase().as_str() {
+    fn matcher(ext: &str) -> Self {
+        match ext {
             "avif" | "bmp" | "gif" | "png" | "jpg" | "jpeg" | "pgm" | "ppm" | "webp" | "tiff" => {
                 Self::Bitmap
             }
@@ -126,7 +110,6 @@ impl OpenerAssociation {
                     ExtensionKind::Text,
                     OpenerInfo::external(DEFAULT_TEXT_OPENER),
                 ),
-                (ExtensionKind::Default, OpenerInfo::external(DEFAULT_OPENER)),
                 (
                     ExtensionKind::Vectorial,
                     OpenerInfo::external(DEFAULT_VECTORIAL_OPENER),
@@ -138,23 +121,24 @@ impl OpenerAssociation {
                 (
                     ExtensionKind::Internal(InternalVariant::DecompressZip),
                     OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressZip))
-                        .unwrap(),
+                        .unwrap_or_default(),
                 ),
                 (
                     ExtensionKind::Internal(InternalVariant::DecompressGz),
                     OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressGz))
-                        .unwrap(),
+                        .unwrap_or_default(),
                 ),
                 (
                     ExtensionKind::Internal(InternalVariant::DecompressXz),
                     OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressXz))
-                        .unwrap(),
+                        .unwrap_or_default(),
                 ),
                 (
                     ExtensionKind::Internal(InternalVariant::NotSupported),
                     OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::NotSupported))
-                        .unwrap(),
+                        .unwrap_or_default(),
                 ),
+                (ExtensionKind::Default, OpenerInfo::external(DEFAULT_OPENER)),
             ]),
         }
     }
@@ -189,7 +173,8 @@ macro_rules! open_file_with {
 
 impl OpenerAssociation {
     fn opener_info(&self, ext: &str) -> Option<&OpenerInfo> {
-        self.association.get(&ExtensionKind::parse(ext))
+        self.association
+            .get(&ExtensionKind::matcher(&ext.to_lowercase()))
     }
 
     fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
@@ -209,7 +194,7 @@ impl OpenerAssociation {
     fn validate_openers(&mut self) {
         self.association.retain(|_, opener| {
             opener.external_program.is_none()
-                || find_it(opener.external_program.as_ref().unwrap()).is_some()
+                || is_program_in_path(opener.external_program.as_ref().unwrap())
         });
     }
 }
@@ -228,13 +213,23 @@ pub enum InternalVariant {
 
 /// A way to open one kind of files.
 /// It's either an internal method or an external program.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct OpenerInfo {
     /// The external program used to open the file.
     pub external_program: Option<String>,
     /// The internal variant kind.
     pub internal_variant: Option<InternalVariant>,
     use_term: bool,
+}
+
+impl Default for OpenerInfo {
+    fn default() -> Self {
+        Self {
+            external_program: Some(DEFAULT_OPENER.0.to_owned()),
+            internal_variant: None,
+            use_term: false,
+        }
+    }
 }
 
 impl OpenerInfo {
@@ -310,6 +305,46 @@ impl Opener {
         }
     }
 
+    /// Open multiple files.
+    /// Files sharing an opener are opened in a single command ie.: `nvim a.txt b.rs c.py`.
+    /// Only files opened with an external opener are supported.
+    pub fn open_multiple(&self, file_paths: &[PathBuf]) -> Result<()> {
+        let openers = self.regroup_openers(file_paths);
+        for (open_info, file_paths) in openers.iter() {
+            let file_paths_str = Self::collect_paths_as_str(file_paths);
+            let mut args: Vec<&str> = vec![open_info.external_program.as_ref().unwrap()];
+            args.extend(&file_paths_str);
+            self.open_with_args(args, open_info.use_term)?;
+        }
+        Ok(())
+    }
+
+    /// Create an hashmap of openers -> [files].
+    /// Each file in the collection share the same opener.
+    fn regroup_openers(&self, file_paths: &[PathBuf]) -> HashMap<OpenerInfo, Vec<PathBuf>> {
+        let mut openers: HashMap<OpenerInfo, Vec<PathBuf>> = HashMap::new();
+        for file_path in file_paths.iter() {
+            let open_info = self.get_opener(extract_extension(file_path));
+            if open_info.external_program.is_some() {
+                openers
+                    .entry(open_info.to_owned())
+                    .and_modify(|files| files.push((*file_path).to_owned()))
+                    .or_insert(vec![(*file_path).to_owned()]);
+            }
+        }
+        openers
+    }
+
+    /// Convert a slice of `PathBuf` into their string representation.
+    /// Files which are directory are skipped.
+    fn collect_paths_as_str(file_paths: &[PathBuf]) -> Vec<&str> {
+        file_paths
+            .iter()
+            .filter(|fp| !fp.is_dir())
+            .filter_map(|fp| fp.to_str())
+            .collect()
+    }
+
     /// Open a file, using the configured method.
     /// It may fail if the program changed after reading the config file.
     /// It may also fail if the program can't handle this kind of files.
@@ -359,6 +394,10 @@ impl Opener {
             .to_str()
             .context("open with: can't parse filepath to str")?;
         let args = vec![program, strpath];
+        self.open_with_args(args, use_term)
+    }
+
+    fn open_with_args(&self, args: Vec<&str>, use_term: bool) -> Result<std::process::Child> {
         if use_term {
             self.open_terminal(args)
         } else {
@@ -394,8 +433,7 @@ pub fn execute_in_child<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     args: &[&str],
 ) -> Result<std::process::Child> {
     info!("execute_in_child. executable: {exe:?}, arguments: {args:?}");
-    let log_line = format!("Execute: {exe:?}, arguments: {args:?}");
-    write_log_line(log_line);
+    log_line!("Execute: {exe:?}, arguments: {args:?}");
     Ok(Command::new(exe).args(args).spawn()?)
 }
 
@@ -425,7 +463,7 @@ where
     P: AsRef<Path>,
 {
     info!("execute_in_child_without_output_with_path. executable: {exe:?}, arguments: {args:?}");
-    let params = if let Some(args) = args { args } else { &[] };
+    let params = args.unwrap_or(&[]);
     Ok(Command::new(exe)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -449,6 +487,37 @@ pub fn execute_and_capture_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
+        .spawn()?;
+    let output = child.wait_with_output()?;
+    if output.status.success() {
+        Ok(String::from_utf8(output.stdout)?)
+    } else {
+        Err(anyhow!(
+            "execute_and_capture_output: command didn't finish properly",
+        ))
+    }
+}
+
+/// Execute a command with options in a fork.
+/// Wait for termination and return either :
+/// `Ok(stdout)` if the status code is 0
+/// an Error otherwise
+/// Branch stdin and stderr to /dev/null
+pub fn execute_and_capture_output_with_path<
+    S: AsRef<std::ffi::OsStr> + fmt::Debug,
+    P: AsRef<Path>,
+>(
+    exe: S,
+    path: P,
+    args: &[&str],
+) -> Result<String> {
+    info!("execute_and_capture_output. executable: {exe:?}, arguments: {args:?}",);
+    let child = Command::new(exe)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .current_dir(path)
         .spawn()?;
     let output = child.wait_with_output()?;
     if output.status.success() {

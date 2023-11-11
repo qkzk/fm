@@ -74,16 +74,31 @@ pub fn read_last_log_line() -> String {
 /// Write a new log line to the global variable `LAST_LOG_LINE`.
 /// It uses `lazy_static` to manipulate the global variable.
 /// Fail silently if the global variable can't be written.
-fn write_last_log_line(log: &str) {
+fn write_last_log_line<S>(log: S)
+where
+    S: Into<String> + std::fmt::Display,
+{
     let Ok(mut new_log_line) = LAST_LOG_LINE.write() else {
         return;
     };
-    *new_log_line = log.to_owned();
+    *new_log_line = log.to_string();
 }
 
 /// Write a line to both the global variable `LAST_LOG_LINE` and the special log
 /// which can be displayed with Alt+l
-pub fn write_log_line(log_line: String) {
+pub fn write_log_line<S>(log_line: S)
+where
+    S: Into<String> + std::fmt::Display,
+{
     log::info!(target: "special", "{log_line}");
-    write_last_log_line(&log_line);
+    write_last_log_line(log_line);
+}
+
+#[macro_export]
+macro_rules! log_line {
+    ($($arg:tt)+) => (
+    $crate::log::write_log_line(
+      format!($($arg)+)
+    )
+  );
 }

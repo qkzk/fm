@@ -3,8 +3,7 @@ use std::fs::{self, ReadDir};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 
-use crate::fileinfo::PathContent;
-use crate::preview::ColoredTriplet;
+use crate::{fileinfo::PathContent, tree::Filenames};
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
@@ -74,11 +73,13 @@ impl Completion {
     fn update(&mut self, proposals: Vec<String>) {
         self.index = 0;
         self.proposals = proposals;
+        self.proposals.dedup()
     }
 
     fn extend(&mut self, proposals: &[String]) {
         self.index = 0;
-        self.proposals.extend_from_slice(proposals)
+        self.proposals.extend_from_slice(proposals);
+        self.proposals.dedup()
     }
 
     /// Empty the proposals `Vec`.
@@ -98,7 +99,6 @@ impl Completion {
         }
         self.extend_absolute_paths(&parent, &last_name);
         self.extend_relative_paths(current_path, &last_name);
-        self.proposals.dedup();
         Ok(())
     }
 
@@ -212,16 +212,11 @@ impl Completion {
     }
 
     /// Looks for file within tree completing what the user typed.
-    pub fn search_from_tree(
-        &mut self,
-        input_string: &str,
-        content: &[ColoredTriplet],
-    ) -> Result<()> {
+    pub fn search_from_tree(&mut self, input_string: &str, content: Filenames) -> Result<()> {
         self.update(
             content
-                .iter()
-                .filter(|(_, _, s)| s.text.contains(input_string))
-                .map(|(_, _, s)| s.text.replace("▸ ", "").replace("▾ ", ""))
+                .filter(|&p| p.contains(input_string))
+                .map(|p| p.replace("▸ ", "").replace("▾ ", ""))
                 .collect(),
         );
 

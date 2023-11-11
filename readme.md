@@ -11,16 +11,19 @@ Written in rust.
 [docrs]: https://docs.rs/fm-tui/0.1.0
 
 ```
-FM : dired like file manager
-
+A TUI file manager inspired by dired and ranger
 
 Usage: fm [OPTIONS]
 
 Options:
-  -p, --path <PATH>      Starting path [default: .]
+  -p, --path <PATH>      Starting path. directory or file [default: .]
   -s, --server <SERVER>  Nvim server [default: ]
-  -h, --help             Print help information
-  -V, --version          Print version information
+  -D, --dual <DUAL>      Dual pane ? [possible values: true, false]
+  -S, --simple <SIMPLE>  Display files metadata ? [possible values: true, false]
+  -P, --preview          Use second pane as preview ? default to false
+  -A, --all              Display all files (hidden)
+  -h, --help             Print help
+  -V, --version          Print version
 ```
 
 ## Platform
@@ -59,6 +62,7 @@ If you added the [recommanded function](#cd-on-quit) to your bashrc/zshrc, simpl
 ## Features
 
 Some features depends on external programs to keep fm from being really bloated.
+I try to implement every feature I can think of.
 
 ### Navigation
 
@@ -96,28 +100,30 @@ Many ways to jump somewhere :
 ### Display
 
 - Change display, removing details with Alt+e or display a single pane with Alt+d
-- Preview most of files (text, highlighted code, binary, pdf, exif details, video/audio details, archives) with P
+- Preview most of files (text, highlighted code, binary, pdf, exif details, image/video, audio details, archives, MS-office & OpenOffice documents) with P
 - Toggle the tree view with t. Fold selected folder with z. Unfold every folder with Z, fold every folder with Alt+z.
 - Enter preview mode with Alt+P. Every file is previewed in the second pane.
 - Filter the view (by extension, name, directory only, all files) with F
-- Find files with / (with completion: Tab, enter to search), 
+- Find files with / (with completion: Tab, enter to search),
 - flag files matching a regex with w
 
-### Fuzzy finder
+### Fuzzy finders
 
-- Use the integrated fuzzy finder (forked version of skim, an fzf clone) with Ctrl+f to navigate quickly
-- The same fuzzy finder can find specific lines in files with Ctrl+s
-- Another fuzzy finder is available for your keybinds with Alt+h
+- Ctrl-f : search in filenames and move there,
+- Ctrl-s : search for a line in file content and move there,
+- Alt-h : search for a keybinding and execute the action.
+
+We use a fork of [skim](https://github.com/lotabout/skim), an fzf clone written in rust.
 
 ### Neovim filepicker
 
 When you open a file with i, it will send an event to Neovim and open it in a new buffer.
-Recent versions of neovim export the RPC server address to an environment variable which is read if no argument
-is provided.
 
 It should always work, even outside of neovim.
 
-It's also possible to pass the RPC server address with `fm -s address`.
+The RPC server address is found by looking for neovim in /proc. If it fails, we can still look for an
+environment variable set by neovim itself.
+Finally, it's also possible to pass the RPC server address with `fm -s address`.
 
 ### cd on quit
 
@@ -177,6 +183,8 @@ Expansions :
 - Contol MOCP with Ctrl+arrows. Ctrl+Left, Ctrl+Right: previous or next song. Ctrl+Down: Toggle pause. Ctrl+Up: add current folder to playlist
 - Set the selected image as wallpaper with W.
 - _Experimental_ enter "command mode" with ':'. Type the name of a command and it will be executed.
+- Mount a remote filesystem using ssfhs with Alt-r.
+- Mount a MTP device with Alt-R.
 
 Most of those features are inspired by ranger and alternatives (Midnight commander, nnn, lf etc.), the look and feel by dired.
 
@@ -289,7 +297,6 @@ Every configuration file is saved in `~/.config/fm/`
 
 You can configure :
 
-- **Colors** for non standard file types (directory, socket, char device, block device)
 - **Keybindings**. Some should be left as they are, but all keybindings can be configured.
   use the provided config file as a default.
   Multiple keys can be bound the the same action.
@@ -309,12 +316,17 @@ You can configure :
 - **TUI applications**. Some classic TUI applications like htop, glances, btop, lazygit are already there.
   Open the menu with `S` and pick the desired one. It will only work with a TUI application like HTOP,
   not a CLI application like bat.
+- **Colors** of files.
+  Non standard files (directory, char devices, block devices, symlinks, sockets, fifo) have their own configurable colors.
+  You can use ansi colors or rgb values.
+  Standard files are colored by their extension and you can use 3 differents palettes (red-green, red-blue or green-blue).
+  Every extension has its own random color.
 
 ## External dependencies
 
 Most of the openers and tui applications are configurable from config files. Some are hardcoded if their command is quite specific or if I couldn't find a workaround.
 
-- [lsblk](https://linux.die.net/man/8/lsblk): list encroytped devices
+- [lsblk](https://linux.die.net/man/8/lsblk): list encrytped devices
 - [faillock](https://linux.die.net/man/8/faillock): reset failed sudo attempts
 - [Cryptsetup](https://gitlab.com/cryptsetup/cryptsetup): decrypt & mount encrypted devices
 - [Nitrogen](https://github.com/l3ib/nitrogen/): set up a wallpaper
@@ -323,9 +335,10 @@ Most of the openers and tui applications are configurable from config files. Som
 - [Ueberzug](https://github.com/LalleSX/ueberzug) display images in your terminal. Used to preview images. This one may be tricky to install from source since the original maintener nuked his project. It's still available in many package managers.
 - [isoinfo](https://command-not-found.com/isoinfo) allow the content preview of an iso file
 - [jupyter](https://jupyter.org/) preview jupyter notebooks by converting them to markdown
-- [pandoc](https://pandoc.org) preview open documents by converting them to markdown with pandoc
+- [pandoc](https://pandoc.org) preview epub by converting them to markdown with pandoc
 - [fontimage](https://fontforge.org/docs/fontutils/fontimage.html) preview fonts by creating a thumbnail
 - [rsvg-convert](https://github.com/brion/librsvg) preview svg by creating a thumbnail
+- [libreoffice](https://www.libreoffice.org) preview open & MS-office documents
 
 ## Contribution
 

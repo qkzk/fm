@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use skim::prelude::*;
 use tuikit::term::Term;
 
@@ -10,24 +11,22 @@ use crate::utils::is_program_in_path;
 /// It's a simple wrapper around `Skim` which is used to simplify the interface.
 pub struct Skimer {
     skim: Skim,
-    previewer: String,
-    file_matcher: String,
+    previewer: &'static str,
+    file_matcher: &'static str,
 }
 
 impl Skimer {
     /// Creates a new `Skimer` instance.
     /// `term` is an `Arc<term>` clone of the default term.
     /// It tries to preview with `bat`, but choose `cat` if it can't.
-    pub fn new(term: Arc<Term>) -> Self {
-        Self {
+    pub fn new(term: Arc<Term>) -> Result<Self> {
+        Ok(Self {
             skim: Skim::new_from_term(term),
             previewer: pick_first_installed(&[BAT_EXECUTABLE, CAT_EXECUTABLE])
-                .expect("Skimer new: at least a previewer should be installed")
-                .to_owned(),
+                .context("Neither bat nor cat are installed")?,
             file_matcher: pick_first_installed(&[RG_EXECUTABLE, GREP_EXECUTABLE])
-                .expect("Skimer new: at least a line matcher should be installed")
-                .to_owned(),
-        }
+                .context("Neither ripgrep nor grep are installed")?,
+        })
     }
 
     /// Call skim on its term.
@@ -36,29 +35,40 @@ impl Skimer {
     /// The preview is enabled by default and we assume the previewer won't be uninstalled during the lifetime
     /// of the application.
     pub fn search_filename(&self, path_str: &str) -> Vec<Arc<dyn SkimItem>> {
-        self.skim
-            .run_internal(None, path_str.to_owned(), Some(&self.previewer), None)
-            .map(|out| out.selected_items)
-            .unwrap_or_else(Vec::new)
+        let Some(output) =
+            self.skim
+                .run_internal(None, path_str.to_owned(), Some(self.previewer), None)
+        else {
+            return vec![];
+        };
+        if output.is_abort {
+            vec![]
+        } else {
+            output.selected_items
+        }
     }
 
     /// Call skim on its term.
     /// Returns the file whose line match a pattern from current folder using ripgrep or grep.
-    pub fn search_line_in_file(&self) -> Vec<Arc<dyn SkimItem>> {
-        self.skim
-            .run_internal(
-                None,
-                "".to_owned(),
-                None,
-                Some(self.file_matcher.to_owned()),
-            )
-            .map(|out| out.selected_items)
-            .unwrap_or_else(Vec::new)
+    pub fn search_line_in_file(&self, path_str: &str) -> Vec<Arc<dyn SkimItem>> {
+        let Some(output) = self.skim.run_internal(
+            None,
+            path_str.to_owned(),
+            None,
+            Some(self.file_matcher.to_owned()),
+        ) else {
+            return vec![];
+        };
+        if output.is_abort {
+            vec![]
+        } else {
+            output.selected_items
+        }
     }
 
     /// Search in a text content, splitted by line.
     /// Returns the selected line.
-    pub fn search_in_text(&self, text: String) -> Vec<Arc<dyn SkimItem>> {
+    pub fn search_in_text(&self, text: &str) -> Vec<Arc<dyn SkimItem>> {
         let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
         for line in text.lines().rev() {
             let _ = tx_item.send(Arc::new(StringWrapper {
@@ -66,10 +76,17 @@ impl Skimer {
             }));
         }
         drop(tx_item); // so that skim could know when to stop waiting for more items.
-        self.skim
+        let Some(output) = self
+            .skim
             .run_internal(Some(rx_item), "".to_owned(), None, None)
-            .map(|out| out.selected_items)
-            .unwrap_or_else(Vec::new)
+        else {
+            return vec![];
+        };
+        if output.is_abort {
+            vec![]
+        } else {
+            output.selected_items
+        }
     }
 }
 
@@ -89,7 +106,9 @@ impl SkimItem for StringWrapper {
 
 fn pick_first_installed<'a>(commands: &'a [&'a str]) -> Option<&'a str> {
     for command in commands {
-        let Some(program) = command.split_whitespace().next() else { continue };
+        let Some(program) = command.split_whitespace().next() else {
+            continue;
+        };
         if is_program_in_path(program) {
             return Some(command);
         }

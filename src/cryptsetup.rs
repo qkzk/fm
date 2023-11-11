@@ -2,7 +2,7 @@ use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
 use log::info;
-use sysinfo::{DiskExt, System, SystemExt};
+use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
 use crate::constant_strings_paths::{CRYPTSETUP, LSBLK};
 use crate::impl_selectable_content;
@@ -33,16 +33,6 @@ fn get_devices() -> Result<String> {
         .stderr(Stdio::null())
         .output()?;
     Ok(String::from_utf8(output.stdout)?)
-}
-
-/// Parse the output of an lsblk detailed output and filter the line
-/// Containing "crypto" aka Luks encrypted crypto devices
-fn filter_crypto_devices_lines(output: String, key: &str) -> Vec<String> {
-    output
-        .lines()
-        .filter(|line| line.contains(key))
-        .map(|line| line.into())
-        .collect()
 }
 
 /// True iff `lsblk` and `cryptsetup` are in path.
@@ -112,14 +102,14 @@ impl CryptoDevice {
     }
 
     pub fn mount_point(&self) -> Option<String> {
-        let system_info = System::new_all();
-        system_info
+        let mut system = System::new_with_specifics(RefreshKind::new().with_disks());
+        system.refresh_disks_list();
+        system
             .disks()
             .iter()
             .map(|d| d.mount_point())
-            .map(|p| p.to_str())
-            .filter(|s| s.is_some())
-            .map(|s| s.unwrap().to_owned())
+            .filter_map(|p| p.to_str())
+            .map(|s| s.to_owned())
             .find(|s| s.contains(&self.uuid))
     }
 
@@ -320,9 +310,10 @@ pub struct CryptoDeviceOpener {
 impl CryptoDeviceOpener {
     /// Updates itself from the output of cryptsetup.
     pub fn update(&mut self) -> Result<()> {
-        self.content = filter_crypto_devices_lines(get_devices()?, "crypto")
-            .iter()
-            .map(|line| CryptoDevice::from_line(line))
+        self.content = get_devices()?
+            .lines()
+            .filter(|line| line.contains("crypto"))
+            .map(CryptoDevice::from_line)
             .filter_map(|r| r.ok())
             .collect();
         self.index = 0;

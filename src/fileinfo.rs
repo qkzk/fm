@@ -8,14 +8,16 @@ use chrono::offset::Local;
 use chrono::DateTime;
 use log::info;
 use tuikit::prelude::{Attr, Color, Effect};
-use users::{Groups, Users, UsersCache};
 
-use crate::config::{str_to_tuikit, Colors};
+use crate::colors::extension_color;
+use crate::config::COLORS;
 use crate::constant_strings_paths::PERMISSIONS_STR;
 use crate::filter::FilterKind;
 use crate::git::git;
 use crate::impl_selectable_content;
 use crate::sort::SortKind;
+use crate::tree::Node;
+use crate::users::Users;
 use crate::utils::filename_from_path;
 
 type Valid = bool;
@@ -64,7 +66,7 @@ impl FileKind<Valid> {
     /// Returns the expected first symbol from `ln -l` line.
     /// d for directory, s for socket, . for file, c for char device,
     /// b for block, l for links.
-    fn extract_dir_symbol(&self) -> char {
+    fn dir_symbol(&self) -> char {
         match self {
             FileKind::Fifo => 'p',
             FileKind::Socket => 's',
@@ -157,58 +159,16 @@ pub struct FileInfo {
 }
 
 impl FileInfo {
-    /// Reads every information about a file from its metadata and returs
-    /// a new `FileInfo` object if we can create one.
-    pub fn new(direntry: &DirEntry, users_cache: &UsersCache) -> Result<FileInfo> {
-        let path = direntry.path();
-        let filename = extract_filename(direntry)?;
-
-        Self::create_from_metadata_and_filename(&path, &filename, users_cache)
-    }
-
-    /// Creates a fileinfo from a path and a filename.
-    /// The filename is used when we create the fileinfo for "." and ".." in every folder.
-    pub fn from_path_with_name(
-        path: &path::Path,
-        filename: &str,
-        users_cache: &UsersCache,
-    ) -> Result<Self> {
-        Self::create_from_metadata_and_filename(path, filename, users_cache)
-    }
-
-    pub fn from_path(path: &path::Path, users_cache: &UsersCache) -> Result<Self> {
-        let filename = path
-            .file_name()
-            .context("from path: couldn't read filenale")?
-            .to_str()
-            .context("from path: couldn't parse filenale")?;
-        Self::create_from_metadata_and_filename(path, filename, users_cache)
-    }
-
-    fn metadata(&self) -> Result<std::fs::Metadata> {
-        Ok(symlink_metadata(&self.path)?)
-    }
-
-    pub fn permissions(&self) -> Result<String> {
-        Ok(extract_permissions_string(&self.metadata()?))
-    }
-
-    fn create_from_metadata_and_filename(
-        path: &path::Path,
-        filename: &str,
-        users_cache: &UsersCache,
-    ) -> Result<Self> {
-        let filename = filename.to_owned();
+    pub fn new(path: &path::Path, users: &Users) -> Result<Self> {
+        let filename = extract_filename(path)?;
         let metadata = symlink_metadata(path)?;
         let path = path.to_owned();
-        let owner = extract_owner(&metadata, users_cache)?;
-        let group = extract_group(&metadata, users_cache)?;
+        let owner = extract_owner(&metadata, users)?;
+        let group = extract_group(&metadata, users)?;
         let system_time = extract_datetime(&metadata)?;
         let is_selected = false;
         let true_size = extract_file_size(&metadata);
-
         let file_kind = FileKind::new(&metadata, &path);
-
         let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
         let kind_format = filekind_and_filename(&filename, &file_kind);
@@ -228,6 +188,30 @@ impl FileInfo {
         })
     }
 
+    /// Reads every information about a file from its metadata and returs
+    /// a new `FileInfo` object if we can create one.
+    pub fn from_direntry(direntry: &DirEntry, users: &Users) -> Result<FileInfo> {
+        Self::new(&direntry.path(), users)
+    }
+
+    /// Creates a fileinfo from a path and a filename.
+    /// The filename is used when we create the fileinfo for "." and ".." in every folder.
+    pub fn from_path_with_name(path: &path::Path, filename: &str, users: &Users) -> Result<Self> {
+        let mut file_info = Self::new(path, users)?;
+        file_info.filename = filename.to_owned();
+        file_info.kind_format = filekind_and_filename(filename, &file_info.file_kind);
+        Ok(file_info)
+    }
+
+    fn metadata(&self) -> Result<std::fs::Metadata> {
+        Ok(symlink_metadata(&self.path)?)
+    }
+
+    /// String representation of file permissions
+    pub fn permissions(&self) -> Result<String> {
+        Ok(extract_permissions_string(&self.metadata()?))
+    }
+
     /// Format the file line.
     /// Since files can have different owners in the same directory, we need to
     /// know the maximum size of owner column for formatting purpose.
@@ -245,15 +229,13 @@ impl FileInfo {
     }
 
     fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
+        let owner = format!("{owner:.owner_col_width$}", owner = self.owner,);
+        let group = format!("{group:.group_col_width$}", group = self.group,);
         let repr = format!(
             "{dir_symbol}{permissions} {file_size} {owner:<owner_col_width$} {group:<group_col_width$} {system_time}",
             dir_symbol = self.dir_symbol(),
             permissions = self.permissions()?,
             file_size = self.size_column,
-            owner = self.owner,
-            owner_col_width = owner_col_width,
-            group = self.group,
-            group_col_width = group_col_width,
             system_time = self.system_time,
         );
         Ok(repr)
@@ -266,7 +248,7 @@ impl FileInfo {
     }
 
     pub fn dir_symbol(&self) -> char {
-        self.file_kind.extract_dir_symbol()
+        self.file_kind.dir_symbol()
     }
 
     pub fn format_simple(&self) -> Result<String> {
@@ -283,6 +265,7 @@ impl FileInfo {
         self.is_selected = false;
     }
 
+    /// True iff the file is hidden (aka starts with a '.').
     pub fn is_hidden(&self) -> bool {
         self.filename.starts_with('.')
     }
@@ -291,13 +274,16 @@ impl FileInfo {
         self.path.is_dir()
     }
 
-    /// Name of proper files, empty string for `.` and `..`.
+    /// Formated proper name.
+    /// "/ " for `.`
     pub fn filename_without_dot_dotdot(&self) -> String {
-        let name = &self.filename;
-        if name == "." || name == ".." {
-            "".to_owned()
-        } else {
-            format!("/{name} ")
+        match self.filename.as_ref() {
+            "." => "/ ".to_owned(),
+            ".." => format!(
+                "/{name} ",
+                name = extract_filename(&self.path).unwrap_or_default()
+            ),
+            _ => format!("/{name} ", name = self.filename),
         }
     }
 }
@@ -315,7 +301,6 @@ pub struct PathContent {
     /// The kind of sort used to display the files.
     pub sort_kind: SortKind,
     used_space: u64,
-    pub users_cache: UsersCache,
 }
 
 impl PathContent {
@@ -324,12 +309,12 @@ impl PathContent {
     /// Selects the first file if any.
     pub fn new(
         path: &path::Path,
-        users_cache: UsersCache,
+        users: &Users,
         filter: &FilterKind,
         show_hidden: bool,
     ) -> Result<Self> {
         let path = path.to_owned();
-        let mut content = Self::files(&path, show_hidden, filter, &users_cache)?;
+        let mut content = Self::files(&path, show_hidden, filter, users)?;
         let sort_kind = SortKind::default();
         sort_kind.sort(&mut content);
         let selected_index: usize = 0;
@@ -344,7 +329,6 @@ impl PathContent {
             index: selected_index,
             sort_kind,
             used_space,
-            users_cache,
         })
     }
 
@@ -353,8 +337,9 @@ impl PathContent {
         path: &path::Path,
         filter: &FilterKind,
         show_hidden: bool,
+        users: &Users,
     ) -> Result<()> {
-        self.content = Self::files(path, show_hidden, filter, &self.users_cache)?;
+        self.content = Self::files(path, show_hidden, filter, users)?;
         self.sort_kind.sort(&mut self.content);
         self.index = 0;
         if !self.content.is_empty() {
@@ -369,24 +354,24 @@ impl PathContent {
         path: &path::Path,
         show_hidden: bool,
         filter_kind: &FilterKind,
-        users_cache: &UsersCache,
+        users: &Users,
     ) -> Result<Vec<FileInfo>> {
-        let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users_cache)?;
+        let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users)?;
 
-        let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users_cache)?;
+        let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users)?;
         if let Some(true_files) =
-            files_collection(&fileinfo, users_cache, show_hidden, filter_kind, false)
+            files_collection(&fileinfo.path, users, show_hidden, filter_kind, false)
         {
             files.extend(true_files);
         }
         Ok(files)
     }
 
-    fn create_dot_dotdot(path: &path::Path, users_cache: &UsersCache) -> Result<Vec<FileInfo>> {
-        let current = FileInfo::from_path_with_name(path, ".", users_cache)?;
+    fn create_dot_dotdot(path: &path::Path, users: &Users) -> Result<Vec<FileInfo>> {
+        let current = FileInfo::from_path_with_name(path, ".", users)?;
         match path.parent() {
             Some(parent) => {
-                let parent = FileInfo::from_path_with_name(parent, "..", users_cache)?;
+                let parent = FileInfo::from_path_with_name(parent, "..", users)?;
                 Ok(vec![current, parent])
             }
             None => Ok(vec![current]),
@@ -430,8 +415,13 @@ impl PathContent {
     /// Reset the current file content.
     /// Reads and sort the content with current key.
     /// Select the first file if any.
-    pub fn reset_files(&mut self, filter: &FilterKind, show_hidden: bool) -> Result<()> {
-        self.content = Self::files(&self.path, show_hidden, filter, &self.users_cache)?;
+    pub fn reset_files(
+        &mut self,
+        filter: &FilterKind,
+        show_hidden: bool,
+        users: &Users,
+    ) -> Result<()> {
+        self.content = Self::files(&self.path, show_hidden, filter, users)?;
         self.sort_kind = SortKind::default();
         self.sort();
         self.index = 0;
@@ -519,19 +509,18 @@ impl PathContent {
     }
 
     /// Returns an enumeration of the files (`FileInfo`) in content.
-    pub fn enumerate(&mut self) -> Enumerate<std::slice::Iter<'_, FileInfo>> {
+    pub fn enumerate(&self) -> Enumerate<std::slice::Iter<'_, FileInfo>> {
         self.content.iter().enumerate()
     }
 
     /// Refresh the existing users.
     pub fn refresh_users(
         &mut self,
-        users_cache: UsersCache,
+        users: &Users,
         filter: &FilterKind,
         show_hidden: bool,
     ) -> Result<()> {
-        self.users_cache = users_cache;
-        self.reset_files(filter, show_hidden)
+        self.reset_files(filter, show_hidden, users)
     }
 
     /// Returns the correct index jump target to a flagged files.
@@ -551,32 +540,68 @@ impl PathContent {
 
 impl_selectable_content!(FileInfo, PathContent);
 
+fn fileinfo_color(fileinfo: &FileInfo) -> Color {
+    match fileinfo.file_kind {
+        FileKind::Directory => COLORS.directory,
+        FileKind::BlockDevice => COLORS.block,
+        FileKind::CharDevice => COLORS.char,
+        FileKind::Fifo => COLORS.fifo,
+        FileKind::Socket => COLORS.socket,
+        FileKind::SymbolicLink(true) => COLORS.symlink,
+        FileKind::SymbolicLink(false) => COLORS.broken,
+        _ => extension_color(&fileinfo.extension),
+    }
+}
+
+/// Holds a `tuikit::attr::Color` and a `tuikit::attr::Effect`
+/// Both are used to print the file.
+/// When printing we still need to know if the file is flagged,
+/// which may change the `tuikit::attr::Effect`.
+#[derive(Clone, Debug)]
+pub struct ColorEffect {
+    color: Color,
+    pub effect: Effect,
+}
+
+impl ColorEffect {
+    /// Calculates a color and an effect from `fm::file_info::FileInfo`.
+    #[inline]
+    pub fn new(fileinfo: &FileInfo) -> ColorEffect {
+        let color = fileinfo_color(fileinfo);
+
+        let effect = if fileinfo.is_selected {
+            Effect::REVERSE
+        } else {
+            Effect::empty()
+        };
+
+        Self { color, effect }
+    }
+
+    #[inline]
+    pub fn node(fileinfo: &FileInfo, current_node: &Node) -> Self {
+        let mut color_effect = Self::new(fileinfo);
+        if current_node.selected() {
+            color_effect.effect |= Effect::REVERSE;
+        }
+        color_effect
+    }
+
+    /// Makes a new `tuikit::attr::Attr` where `bg` is default.
+    pub fn attr(&self) -> Attr {
+        Attr {
+            fg: self.color,
+            bg: Color::default(),
+            effect: self.effect,
+        }
+    }
+}
+
 /// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
 /// effect.
 /// Selected file is reversed.
-pub fn fileinfo_attr(fileinfo: &FileInfo, colors: &Colors) -> Attr {
-    let fg = match fileinfo.file_kind {
-        FileKind::Directory => str_to_tuikit(&colors.directory),
-        FileKind::BlockDevice => str_to_tuikit(&colors.block),
-        FileKind::CharDevice => str_to_tuikit(&colors.char),
-        FileKind::Fifo => str_to_tuikit(&colors.fifo),
-        FileKind::Socket => str_to_tuikit(&colors.socket),
-        FileKind::SymbolicLink(true) => str_to_tuikit(&colors.symlink),
-        FileKind::SymbolicLink(false) => str_to_tuikit(&colors.broken),
-        _ => colors.color_cache.extension_color(&fileinfo.extension),
-    };
-
-    let effect = if fileinfo.is_selected {
-        Effect::REVERSE
-    } else {
-        Effect::empty()
-    };
-
-    Attr {
-        fg,
-        bg: Color::default(),
-        effect,
-    }
+pub fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
+    ColorEffect::new(fileinfo).attr()
 }
 
 /// True if the file isn't hidden.
@@ -589,19 +614,19 @@ pub fn is_not_hidden(entry: &DirEntry) -> Result<bool> {
     Ok(b)
 }
 
+fn extract_filename(path: &path::Path) -> Result<String> {
+    Ok(path
+        .file_name()
+        .unwrap_or_default()
+        .to_str()
+        .context(format!("Couldn't read filename of {p}", p = path.display()))?
+        .to_owned())
+}
+
 /// Returns the modified time.
 fn extract_datetime(metadata: &Metadata) -> Result<String> {
     let datetime: DateTime<Local> = metadata.modified()?.into();
     Ok(format!("{}", datetime.format("%Y/%m/%d %T")))
-}
-
-/// Returns the filename.
-fn extract_filename(direntry: &DirEntry) -> Result<String> {
-    Ok(direntry
-        .file_name()
-        .to_str()
-        .context("Couldn't read filename")?
-        .to_owned())
 }
 
 /// Reads the permission and converts them into a string.
@@ -621,13 +646,9 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 /// Reads the owner name and returns it as a string.
 /// If it's not possible to get the owner name (happens if the owner exists on a remote machine but not on host),
 /// it returns the uid as a  `Result<String>`.
-fn extract_owner(metadata: &Metadata, users_cache: &UsersCache) -> Result<String> {
-    match users_cache.get_user_by_uid(metadata.uid()) {
-        Some(uid) => Ok(uid
-            .name()
-            .to_str()
-            .context("extract owner: Couldn't parse owner name")?
-            .to_owned()),
+fn extract_owner(metadata: &Metadata, users: &Users) -> Result<String> {
+    match users.get_user_by_uid(metadata.uid()) {
+        Some(name) => Ok(name),
         None => Ok(format!("{}", metadata.uid())),
     }
 }
@@ -635,13 +656,9 @@ fn extract_owner(metadata: &Metadata, users_cache: &UsersCache) -> Result<String
 /// Reads the group name and returns it as a string.
 /// If it's not possible to get the group name (happens if the group exists on a remote machine but not on host),
 /// it returns the gid as a  `Result<String>`.
-fn extract_group(metadata: &Metadata, users_cache: &UsersCache) -> Result<String> {
-    match users_cache.get_group_by_gid(metadata.gid()) {
-        Some(gid) => Ok(gid
-            .name()
-            .to_str()
-            .context("extract group: Couldn't parse group name")?
-            .to_owned()),
+fn extract_group(metadata: &Metadata, users: &Users) -> Result<String> {
+    match users.get_group_by_gid(metadata.gid()) {
+        Some(name) => Ok(name),
         None => Ok(format!("{}", metadata.gid())),
     }
 }
@@ -691,27 +708,24 @@ fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> String 
 /// Files are filtered by filterkind and the display hidden flag.
 /// Returns None if there's no file.
 pub fn files_collection(
-    fileinfo: &FileInfo,
-    users_cache: &UsersCache,
+    path: &path::Path,
+    users: &Users,
     show_hidden: bool,
     filter_kind: &FilterKind,
     keep_dir: bool,
 ) -> Option<Vec<FileInfo>> {
-    match read_dir(&fileinfo.path) {
+    match read_dir(path) {
         Ok(read_dir) => Some(
             read_dir
                 .filter_map(|direntry| direntry.ok())
                 .filter(|direntry| show_hidden || is_not_hidden(direntry).unwrap_or(true))
-                .map(|direntry| FileInfo::new(&direntry, users_cache))
+                .map(|direntry| FileInfo::from_direntry(&direntry, users))
                 .filter_map(|fileinfo| fileinfo.ok())
                 .filter(|fileinfo| filter_kind.filter_by(fileinfo, keep_dir))
                 .collect(),
         ),
         Err(error) => {
-            info!(
-                "Couldn't read path {path} - {error}",
-                path = fileinfo.path.display(),
-            );
+            info!("Couldn't read path {path} - {error}", path = path.display(),);
             None
         }
     }
@@ -722,6 +736,9 @@ const MAX_PATH_ELEM_SIZE: usize = 50;
 /// Shorten a path to be displayed in [`MAX_PATH_ELEM_SIZE`] chars or less.
 /// Each element of the path is shortened if needed.
 pub fn shorten_path(path: &path::Path, size: Option<usize>) -> Result<String> {
+    if path == path::Path::new("/") {
+        return Ok("".to_owned());
+    }
     let size = match size {
         Some(size) => size,
         None => MAX_PATH_ELEM_SIZE,

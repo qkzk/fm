@@ -14,6 +14,8 @@ pub const ACTION_LOG_PATH: &str = "~/.config/fm/log/action_logger.log";
 pub const TRASH_FOLDER_FILES: &str = "~/.local/share/Trash/files";
 /// Path to the trash folder info file
 pub const TRASH_FOLDER_INFO: &str = "~/.local/share/Trash/info";
+/// Trash info files extension. Watchout it includes the final '.'
+pub const TRASH_INFO_EXTENSION: &str = ".trashinfo";
 /// Log file path. Rotating file logs are created in the same directeroy
 pub const LOG_PATH: &str = "~/.config/fm/fm{}";
 /// File where marks are stored.
@@ -51,8 +53,10 @@ pub const HELP_SECOND_SENTENCE: &str = " Keybindings ";
 pub const LOG_FIRST_SENTENCE: &str = " Logs: ";
 /// Description of the content below, aka what is logged there.
 pub const LOG_SECOND_SENTENCE: &str = " Last actions affecting the file tree";
-/// Video thumbnails
-pub const THUMBNAIL_PATH: &str = "/tmp/thumbnail.png";
+/// Ueberzug image thumbnails
+pub const THUMBNAIL_PATH: &str = "/tmp/fm_thumbnail.png";
+/// Libreoffice pdf output
+pub const CALC_PDF_PATH: &str = "/tmp/fm_calc.pdf";
 /// Array of hardcoded shortcuts with standard *nix paths.
 pub const HARDCODED_SHORTCUTS: [&str; 9] = [
     "/",
@@ -71,6 +75,8 @@ pub const RG_EXECUTABLE: &str = "rg --line-number \"{}\"";
 pub const GREP_EXECUTABLE: &str = "grep -rI --line-number \"{}\"";
 pub const SSHFS_EXECUTABLE: &str = "sshfs";
 pub const NOTIFY_EXECUTABLE: &str = "notity-send";
+/// Encrypted devices bind description
+pub const ENCRYPTED_DEVICE_BINDS: &str = "m: mount   --   u: unmount   --   g: go to mount point";
 /// Sort presentation for the second window
 pub const SORT_LINES: [&str; 7] = [
     "k:         by kind (default)",
@@ -180,7 +186,13 @@ pub const SS: &str = "ss";
 pub const LSBLK: &str = "lsblk";
 /// cryptsetup is used to mount encrypted drives
 pub const CRYPTSETUP: &str = "cryptsetup";
+/// gio is used to mount removable devices
+pub const GIO: &str = "gio";
 /// used to get information about fifo files
 pub const LSOF: &str = "lsof";
 /// neovim executable
 pub const NVIM: &str = "nvim";
+/// tar executable
+pub const TAR: &str = "tar";
+/// libreoffice executable
+pub const LIBREOFFICE: &str = "libreoffice";
