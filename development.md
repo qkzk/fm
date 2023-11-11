@@ -623,6 +623,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## Current dev
 
+### Version 0.1.24
+
 ## TODO
 
 - [ ] mount usb key - should be merged with mtp
