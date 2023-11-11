@@ -464,6 +464,9 @@ impl PathContent {
             _ => Ok(false),
         }
     }
+
+    /// Number of files contained in current content.
+    /// It's not the lenght of `self.content` since it includes `.` and `..`.
     pub fn true_len(&self) -> usize {
         match self.path.parent() {
             Some(_) => self.content.len() - 2,
@@ -511,16 +514,6 @@ impl PathContent {
     /// Returns an enumeration of the files (`FileInfo`) in content.
     pub fn enumerate(&self) -> Enumerate<std::slice::Iter<'_, FileInfo>> {
         self.content.iter().enumerate()
-    }
-
-    /// Refresh the existing users.
-    pub fn refresh_users(
-        &mut self,
-        users: &Users,
-        filter: &FilterKind,
-        show_hidden: bool,
-    ) -> Result<()> {
-        self.reset_files(filter, show_hidden, users)
     }
 
     /// Returns the correct index jump target to a flagged files.
