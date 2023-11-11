@@ -102,7 +102,9 @@ impl CryptoDevice {
     }
 
     pub fn mount_point(&self) -> Option<String> {
-        System::new_with_specifics(RefreshKind::new().with_disks())
+        let mut system = System::new_with_specifics(RefreshKind::new().with_disks());
+        system.refresh_disks_list();
+        system
             .disks()
             .iter()
             .map(|d| d.mount_point())

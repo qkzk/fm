@@ -16,6 +16,7 @@ use crate::filter::FilterKind;
 use crate::git::git;
 use crate::impl_selectable_content;
 use crate::sort::SortKind;
+use crate::tree::Node;
 use crate::users::Users;
 use crate::utils::filename_from_path;
 
@@ -158,7 +159,7 @@ pub struct FileInfo {
 }
 
 impl FileInfo {
-    fn new(path: &path::Path, users: &Users) -> Result<Self> {
+    pub fn new(path: &path::Path, users: &Users) -> Result<Self> {
         let filename = extract_filename(path)?;
         let metadata = symlink_metadata(path)?;
         let path = path.to_owned();
@@ -359,7 +360,7 @@ impl PathContent {
 
         let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users)?;
         if let Some(true_files) =
-            files_collection(&fileinfo, users, show_hidden, filter_kind, false)
+            files_collection(&fileinfo.path, users, show_hidden, filter_kind, false)
         {
             files.extend(true_files);
         }
@@ -564,6 +565,7 @@ pub struct ColorEffect {
 
 impl ColorEffect {
     /// Calculates a color and an effect from `fm::file_info::FileInfo`.
+    #[inline]
     pub fn new(fileinfo: &FileInfo) -> ColorEffect {
         let color = fileinfo_color(fileinfo);
 
@@ -574,6 +576,15 @@ impl ColorEffect {
         };
 
         Self { color, effect }
+    }
+
+    #[inline]
+    pub fn node(fileinfo: &FileInfo, current_node: &Node) -> Self {
+        let mut color_effect = Self::new(fileinfo);
+        if current_node.selected() {
+            color_effect.effect |= Effect::REVERSE;
+        }
+        color_effect
     }
 
     /// Makes a new `tuikit::attr::Attr` where `bg` is default.
@@ -697,13 +708,13 @@ fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> String 
 /// Files are filtered by filterkind and the display hidden flag.
 /// Returns None if there's no file.
 pub fn files_collection(
-    fileinfo: &FileInfo,
+    path: &path::Path,
     users: &Users,
     show_hidden: bool,
     filter_kind: &FilterKind,
     keep_dir: bool,
 ) -> Option<Vec<FileInfo>> {
-    match read_dir(&fileinfo.path) {
+    match read_dir(path) {
         Ok(read_dir) => Some(
             read_dir
                 .filter_map(|direntry| direntry.ok())
@@ -714,10 +725,7 @@ pub fn files_collection(
                 .collect(),
         ),
         Err(error) => {
-            info!(
-                "Couldn't read path {path} - {error}",
-                path = fileinfo.path.display(),
-            );
+            info!("Couldn't read path {path} - {error}", path = path.display(),);
             None
         }
     }

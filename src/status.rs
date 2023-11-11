@@ -32,7 +32,7 @@ use crate::password::{
     drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock, PasswordHolder,
     PasswordKind, PasswordUsage,
 };
-use crate::preview::{Directory, Preview};
+use crate::preview::Preview;
 use crate::removable_devices::RemovableDevices;
 use crate::selectable_content::SelectableContent;
 use crate::shell_menu::ShellMenu;
@@ -41,6 +41,7 @@ use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::trash::Trash;
+use crate::tree::Tree;
 use crate::users::Users;
 use crate::utils::{current_username, disk_space, filename_from_path, is_program_in_path};
 
@@ -404,20 +405,11 @@ impl Status {
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
         let sources = self.flagged.content.clone();
 
-        let dest = match self.selected_non_mut().previous_mode {
-            Mode::Tree => self
-                .selected_non_mut()
-                .directory
-                .tree
-                .directory_of_selected()?
-                .display()
-                .to_string(),
-            _ => self
-                .selected_non_mut()
-                .path_content_str()
-                .context("cut or copy: unreadable path")?
-                .to_owned(),
-        };
+        let dest = self
+            .selected_non_mut()
+            .directory_of_selected_previous_mode()?
+            .display()
+            .to_string();
 
         copy_move(cut_or_copy, sources, &dest, Arc::clone(&self.term))?;
         self.clear_flags_and_reset_view()
@@ -581,9 +573,7 @@ impl Status {
 
     /// Drop the current tree, replace it with an empty one.
     pub fn remove_tree(&mut self) -> Result<()> {
-        let path = self.selected_non_mut().path_content.path.clone();
-        let users = &self.selected_non_mut().users;
-        self.selected().directory = Directory::empty(&path, users)?;
+        self.selected().tree = Tree::default();
         Ok(())
     }
 
@@ -597,12 +587,12 @@ impl Status {
         if self.selected_non_mut().path_content.is_empty() {
             return Ok(());
         }
-        let Some(file_info) = self.selected_non_mut().selected() else {
+        let Ok(file_info) = self.selected_non_mut().selected() else {
             return Ok(());
         };
         match file_info.file_kind {
             FileKind::NormalFile => {
-                let preview = Preview::file(file_info).unwrap_or_default();
+                let preview = Preview::file(&file_info).unwrap_or_default();
                 self.selected().set_mode(Mode::Preview);
                 self.selected().window.reset(preview.len());
                 self.selected().preview = preview;
@@ -617,16 +607,15 @@ impl Status {
     pub fn tree(&mut self) -> Result<()> {
         if let Mode::Tree = self.selected_non_mut().mode {
             {
-                let tab: &mut Tab = self.selected();
+                let tab = self.selected();
+                tab.tree = Tree::default();
                 tab.refresh_view()
             }?;
             self.selected().set_mode(Mode::Normal)
         } else {
             self.display_full = true;
-            self.selected().make_tree()?;
+            self.selected().make_tree(None)?;
             self.selected().set_mode(Mode::Tree);
-            let len = self.selected_non_mut().directory.len();
-            self.selected().window.reset(len);
         }
         Ok(())
     }
@@ -652,13 +641,8 @@ impl Status {
             .selected()
             .context("force preview: No file to select")?;
         let preview = match fileinfo.file_kind {
-            FileKind::Directory => Preview::directory(
-                fileinfo,
-                &self.tabs[0].users,
-                &self.tabs[0].filter,
-                self.tabs[0].show_hidden,
-            ),
-            _ => Preview::file(fileinfo),
+            FileKind::Directory => Preview::directory(&fileinfo, &self.tabs[0].users),
+            _ => Preview::file(&fileinfo),
         };
         self.tabs[1].preview = preview.unwrap_or_default();
 
@@ -691,17 +675,16 @@ impl Status {
 
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
-        let filepath = &self
-            .selected_non_mut()
-            .selected()
-            .context("Empty directory")?
-            .path
-            .clone();
-        let opener = self.opener.open_info(filepath);
+        let filepath = if matches!(self.selected_non_mut().mode, Mode::Tree) {
+            self.selected_non_mut().tree.selected_path().to_owned()
+        } else {
+            self.selected_non_mut().selected()?.path.to_owned()
+        };
+        let opener = self.opener.open_info(&filepath);
         if let Some(InternalVariant::NotSupported) = opener.internal_variant.as_ref() {
             self.mount_iso_drive()?;
         } else {
-            match self.opener.open(filepath) {
+            match self.opener.open(&filepath) {
                 Ok(_) => (),
                 Err(e) => info!(
                     "Error opening {:?}: {:?}",
@@ -928,7 +911,7 @@ impl Status {
         self.refresh_users()?;
         self.selected().refresh_view()?;
         if let Mode::Tree = self.selected_non_mut().mode {
-            self.selected().make_tree()?
+            self.selected().make_tree(None)?
         }
         Ok(())
     }

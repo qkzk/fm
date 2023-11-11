@@ -1,15 +1,20 @@
-use std::path::Path;
+use std::collections::hash_map;
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::iter::FilterMap;
+use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
-use crate::fileinfo::{files_collection, ColorEffect, FileInfo, FileKind};
+use crate::content_window::ContentWindow;
+use crate::fileinfo::{files_collection, ColorEffect, FileInfo};
 use crate::filter::FilterKind;
-use crate::preview::ColoredTriplet;
+use crate::preview::{ColoredTriplet, MakeTriplet};
 use crate::sort::SortKind;
 use crate::users::Users;
 use crate::utils::filename_from_path;
 
-/// Holds a string and its display attributes.
+/// Holds a string, its display attributes and the associated pathbuf.
 #[derive(Clone, Debug)]
 pub struct ColoredString {
     /// A text to be printed. In most case, it should be a filename.
@@ -21,573 +26,570 @@ pub struct ColoredString {
 }
 
 impl ColoredString {
-    fn new(text: String, color_effect: ColorEffect, path: std::path::PathBuf) -> Self {
+    /// Creates a new colored string.
+    pub fn new(text: String, color_effect: ColorEffect, path: std::path::PathBuf) -> Self {
         Self {
             text,
             color_effect,
             path,
         }
     }
-
-    fn from_node(current_node: &Node) -> Self {
-        let text = if current_node.is_dir {
-            if current_node.folded {
-                format!("▸ {}", &current_node.fileinfo.filename)
-            } else {
-                format!("▾ {}", &current_node.fileinfo.filename)
-            }
-        } else {
-            current_node.filename()
-        };
-        Self::new(text, current_node.color_effect(), current_node.filepath())
-    }
 }
 
-/// An element in a tree.
-/// Can be a directory or a file (other kind of file).
-/// Both hold a fileinfo
-#[derive(Clone, Debug)]
+/// An element of a tree.
+/// It's a file/directory, some optional children.
+/// A Node knows if it's folded or selected.
+#[derive(Debug, Clone)]
 pub struct Node {
-    pub fileinfo: FileInfo,
-    pub position: Vec<usize>,
-    pub folded: bool,
-    pub is_dir: bool,
-    pub metadata_line: String,
+    path: PathBuf,
+    children: Option<Vec<PathBuf>>,
+    folded: bool,
+    selected: bool,
+    prev: Option<PathBuf>,
+    next: Option<PathBuf>,
 }
 
 impl Node {
-    /// Returns a copy of the filename.
-    pub fn filename(&self) -> String {
-        self.fileinfo.filename.to_owned()
+    /// Creates a new Node from a path and its children.
+    /// By default it's not selected nor folded.
+    fn new(path: &Path, children: Option<Vec<PathBuf>>) -> Self {
+        Self {
+            path: path.to_owned(),
+            children,
+            folded: false,
+            selected: false,
+            prev: None,
+            next: None,
+        }
     }
 
-    /// Returns a copy of the filepath.
-    pub fn filepath(&self) -> std::path::PathBuf {
-        self.fileinfo.path.to_owned()
+    fn fold(&mut self) {
+        self.folded = true
     }
 
-    fn color_effect(&self) -> ColorEffect {
-        ColorEffect::new(&self.fileinfo)
+    fn unfold(&mut self) {
+        self.folded = false
+    }
+
+    fn toggle_fold(&mut self) {
+        self.folded = !self.folded
     }
 
     fn select(&mut self) {
-        self.fileinfo.select()
+        self.selected = true
     }
 
     fn unselect(&mut self) {
-        self.fileinfo.unselect()
+        self.selected = false
     }
 
-    /// Toggle the fold status of a node.
-    pub fn toggle_fold(&mut self) {
-        self.folded = !self.folded;
+    /// Is the node selected ?
+    pub fn selected(&self) -> bool {
+        self.selected
     }
 
-    fn from_fileinfo(fileinfo: FileInfo, parent_position: Vec<usize>) -> Result<Self> {
-        let is_dir = matches!(fileinfo.file_kind, FileKind::Directory);
-        Ok(Self {
-            is_dir,
-            metadata_line: fileinfo.format_no_filename()?,
-            fileinfo,
-            position: parent_position,
-            folded: false,
-        })
+    /// Creates a new fileinfo from the node.
+    pub fn fileinfo(&self, users: &Users) -> Result<FileInfo> {
+        FileInfo::new(&self.path, users)
     }
 
-    fn empty(fileinfo: FileInfo) -> Self {
-        Self {
-            fileinfo,
-            position: vec![0],
-            folded: false,
-            is_dir: false,
-            metadata_line: "".to_owned(),
+    #[inline]
+    fn set_children(&mut self, children: Option<Vec<PathBuf>>) {
+        self.children = children
+    }
+
+    #[inline]
+    fn have_children(self: &Node) -> bool {
+        !self.folded && self.children.is_some()
+    }
+}
+
+/// Describe a movement in a navigable structure
+pub trait Go {
+    fn go(&mut self, to: To);
+}
+
+/// Describes a direction for the next selected tree element.
+pub enum To<'a> {
+    Next,
+    Prev,
+    Root,
+    Last,
+    Parent,
+    Path(&'a Path),
+}
+
+impl Go for Tree {
+    /// Select another element from a tree.
+    fn go(&mut self, to: To) {
+        if self.is_empty() {
+            return;
+        }
+        match to {
+            To::Next => self.select_next(),
+            To::Prev => self.select_prev(),
+            To::Root => self.select_root(),
+            To::Last => self.select_last(),
+            To::Parent => self.select_parent(),
+            To::Path(path) => self.select_path(path, true),
         }
     }
 }
 
-/// Holds a recursive view of a directory.
-/// Creation can be long as is explores every subfolder to a certain depth.
-/// Parsing into a vector of "prefix" (String) and `ColoredString` is a depthfirst search
-/// and it can be long too.
-#[derive(Clone, Debug)]
+/// A FileSystem tree of nodes.
+/// Internally it's a wrapper around an `std::collections::HashMap<PathBuf, Node>`
+/// It also holds informations about the required height of the tree.
+#[derive(Debug, Clone, Default)]
 pub struct Tree {
-    pub node: Node,
-    pub leaves: Vec<Tree>,
-    pub position: Vec<usize>,
-    pub current_node: Node,
-    sort_kind: SortKind,
+    root_path: PathBuf,
+    selected: PathBuf,
+    last_path: PathBuf,
+    nodes: HashMap<PathBuf, Node>,
     required_height: usize,
 }
 
 impl Tree {
-    /// The max depth when exploring a tree.
-    /// ATM it's a constant, in future versions it may change
-    /// It may be better to stop the recursion when too much file
-    /// are present and the exploration is slow.
-    pub const MAX_DEPTH: usize = 5;
-    pub const REQUIRED_HEIGHT: usize = 80;
-    const MAX_INDEX: usize = 2 << 20;
+    pub const DEFAULT_REQUIRED_HEIGHT: usize = 80;
 
-    pub fn set_required_height_to_max(&mut self) {
-        self.set_required_height(Self::MAX_INDEX)
-    }
-
-    /// Set the required height to a given value.
-    /// The required height is used to stop filling the view content.
-    pub fn set_required_height(&mut self, height: usize) {
-        self.required_height = height
-    }
-
-    /// The required height is used to stop filling the view content.
-    pub fn increase_required_height(&mut self) {
-        if self.required_height < Self::MAX_INDEX {
-            self.required_height += 1;
-        }
-    }
-
-    /// Add 10 to the required height.
-    /// The required height is used to stop filling the view content.
-    pub fn increase_required_height_by_ten(&mut self) {
-        if self.required_height < Self::MAX_INDEX {
-            self.required_height += 10;
-        }
-    }
-
-    /// Reset the required height to its default value : Self::MAX_HEIGHT
-    /// The required height is used to stop filling the view content.
-    pub fn reset_required_height(&mut self) {
-        self.required_height = Self::REQUIRED_HEIGHT
-    }
-
-    /// Decrement the required height if possible.
-    /// The required height is used to stop filling the view content.
-    pub fn decrease_required_height(&mut self) {
-        if self.required_height > Self::REQUIRED_HEIGHT {
-            self.required_height -= 1;
-        }
-    }
-
-    /// Decrease the required height by 10 if possible
-    /// The required height is used to stop filling the view content.
-    pub fn decrease_required_height_by_ten(&mut self) {
-        if self.required_height >= Self::REQUIRED_HEIGHT + 10 {
-            self.required_height -= 10;
-        }
-    }
-
-    /// Recursively explore every subfolder to a certain depth.
-    /// We start from `path` and add this node first.
-    /// Then, for every subfolder, we start again.
-    /// Files in path are added as simple nodes.
-    /// Both (subfolder and files) ends in a collections of leaves.
-    pub fn from_path(
-        path: &Path,
-        max_depth: usize,
+    /// Creates a new tree, exploring every node untill depth is reached.
+    pub fn new(
+        root_path: PathBuf,
+        depth: usize,
+        sort_kind: SortKind,
         users: &Users,
-        filter_kind: &FilterKind,
         show_hidden: bool,
-        parent_position: Vec<usize>,
-    ) -> Result<Self> {
-        Self::create_tree_from_fileinfo(
-            FileInfo::from_path_with_name(path, filename_from_path(path)?, users)?,
-            max_depth,
+        filter_kind: &FilterKind,
+    ) -> Self {
+        let (mut nodes, last_path) = Self::make_nodes(
+            &root_path,
+            depth,
+            sort_kind,
             users,
-            filter_kind,
             show_hidden,
-            parent_position,
-        )
-    }
-
-    /// Clear every vector attributes of the tree.
-    /// It's used to free some unused memory.
-    pub fn clear(&mut self) {
-        self.leaves = vec![];
-        self.position = vec![];
-    }
-
-    /// A reference to the holded node fileinfo.
-    pub fn file(&self) -> &FileInfo {
-        &self.node.fileinfo
-    }
-
-    fn create_tree_from_fileinfo(
-        fileinfo: FileInfo,
-        max_depth: usize,
-        users: &Users,
-        filter_kind: &FilterKind,
-        display_hidden: bool,
-        parent_position: Vec<usize>,
-    ) -> Result<Self> {
-        let sort_kind = SortKind::tree_default();
-        let leaves = Self::make_leaves(
-            &fileinfo,
-            max_depth,
-            users,
-            display_hidden,
             filter_kind,
-            &sort_kind,
-            parent_position.clone(),
-        )?;
-        let node = Node::from_fileinfo(fileinfo, parent_position)?;
-        let position = vec![0];
-        let current_node = node.clone();
-        Ok(Self {
-            node,
-            leaves,
-            position,
-            current_node,
-            sort_kind,
-            required_height: Self::REQUIRED_HEIGHT,
-        })
+        );
+        let Some(root_node) = nodes.get_mut(&root_path) else {
+            unreachable!("root path should be in nodes");
+        };
+        root_node.select();
+
+        Self {
+            selected: root_path.clone(),
+            root_path,
+            last_path,
+            nodes,
+            required_height: Self::DEFAULT_REQUIRED_HEIGHT,
+        }
     }
 
-    fn make_leaves(
-        fileinfo: &FileInfo,
-        max_depth: usize,
+    #[inline]
+    fn make_nodes(
+        root_path: &PathBuf,
+        depth: usize,
+        sort_kind: SortKind,
         users: &Users,
-        display_hidden: bool,
+        show_hidden: bool,
         filter_kind: &FilterKind,
-        sort_kind: &SortKind,
-        parent_position: Vec<usize>,
-    ) -> Result<Vec<Tree>> {
-        if max_depth == 0 {
-            return Ok(vec![]);
+    ) -> (HashMap<PathBuf, Node>, PathBuf) {
+        // keep track of the depth
+        let root_depth = root_path.components().collect::<Vec<_>>().len();
+        let mut stack = vec![root_path.to_owned()];
+        let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
+        let mut last_path = root_path.to_owned();
+
+        while let Some(current_path) = stack.pop() {
+            let reached_depth = current_path.components().collect::<Vec<_>>().len();
+            if reached_depth >= depth + root_depth {
+                continue;
+            }
+            let children_will_be_added = depth + root_depth > 1 + reached_depth;
+            let mut current_node = Node::new(&current_path, None);
+            if children_will_be_added && current_path.is_dir() && !current_path.is_symlink() {
+                if let Some(mut files) =
+                    files_collection(&current_path, users, show_hidden, filter_kind, true)
+                {
+                    sort_kind.sort(&mut files);
+                    let children = Self::make_children_and_stack_them(&mut stack, &files);
+                    if !children.is_empty() {
+                        current_node.set_children(Some(children));
+                    }
+                };
+            }
+
+            if let Some(last_node) = nodes.get_mut(&last_path) {
+                last_node.next = Some(current_path.to_owned());
+            }
+            current_node.prev = Some(last_path);
+            nodes.insert(current_path.to_owned(), current_node);
+            last_path = current_path.to_owned();
         }
-        let FileKind::Directory = fileinfo.file_kind else {
-            return Ok(vec![]);
+        let Some(root_node) = nodes.get_mut(root_path) else {
+            unreachable!("root_path should be in nodes");
         };
-        let Some(mut files) = files_collection(fileinfo, users, display_hidden, filter_kind, true)
-        else {
-            return Ok(vec![]);
+        root_node.prev = Some(last_path.to_owned());
+        let Some(last_node) = nodes.get_mut(&last_path) else {
+            unreachable!("last_path should be in nodes");
         };
-        sort_kind.sort(&mut files);
-        let leaves = files
+        last_node.next = Some(root_path.to_owned());
+        (nodes, last_path)
+    }
+
+    #[inline]
+    fn make_children_and_stack_them(stack: &mut Vec<PathBuf>, files: &[FileInfo]) -> Vec<PathBuf> {
+        files
             .iter()
-            .enumerate()
-            .map(|(index, fileinfo)| {
-                let mut position = parent_position.clone();
-                position.push(files.len() - index - 1);
-                Self::create_tree_from_fileinfo(
-                    fileinfo.to_owned(),
-                    max_depth - 1,
-                    users,
-                    filter_kind,
-                    display_hidden,
-                    position,
-                )
+            .map(|fileinfo| fileinfo.path.to_owned())
+            .map(|path| {
+                stack.push(path.to_owned());
+                path
             })
-            .filter_map(|r| r.ok())
-            .collect();
-
-        Ok(leaves)
+            .collect()
     }
 
-    /// Sort the leaves with current sort kind.
-    pub fn sort(&mut self) {
-        let sort_kind = self.sort_kind.clone();
-        self.sort_tree_by_kind(&sort_kind);
+    /// Root path of the tree.
+    pub fn root_path(&self) -> &Path {
+        self.root_path.as_path()
     }
 
-    fn sort_tree_by_kind(&mut self, sort_kind: &SortKind) {
-        sort_kind.sort_tree(&mut self.leaves);
-        for tree in self.leaves.iter_mut() {
-            tree.sort_tree_by_kind(sort_kind);
-        }
+    /// Selected path
+    pub fn selected_path(&self) -> &Path {
+        self.selected.as_path()
     }
 
-    /// Creates an empty tree. Used when the user changes the CWD and hasn't displayed
-    /// a tree yet.
-    pub fn empty(path: &Path, users: &Users) -> Result<Self> {
-        let filename = filename_from_path(path)?;
-        let fileinfo = FileInfo::from_path_with_name(path, filename, users)?;
-        let node = Node::empty(fileinfo);
-        let leaves = vec![];
-        let position = vec![0];
-        let current_node = node.clone();
-        let sort_kind = SortKind::tree_default();
-        let required_height = 0;
-        Ok(Self {
-            node,
-            leaves,
-            position,
-            current_node,
-            sort_kind,
-            required_height,
-        })
+    /// Selected node
+    pub fn selected_node(&self) -> Option<&Node> {
+        self.nodes.get(&self.selected)
     }
 
-    pub fn update_sort_from_char(&mut self, c: char) {
-        self.sort_kind.update_from_char(c)
-    }
-
-    /// Select the root node of the tree.
-    pub fn select_root(&mut self) {
-        self.node.select();
-        self.position = vec![0]
-    }
-
-    /// Unselect every node in the tree.
-    pub fn unselect_children(&mut self) {
-        self.node.unselect();
-        for tree in self.leaves.iter_mut() {
-            tree.unselect_children()
-        }
-    }
-
-    /// Fold every node in the tree.
-    pub fn fold_children(&mut self) {
-        self.node.folded = true;
-        for tree in self.leaves.iter_mut() {
-            tree.fold_children()
-        }
-    }
-
-    /// Unfold every node in the tree.
-    pub fn unfold_children(&mut self) {
-        self.node.folded = false;
-        for tree in self.leaves.iter_mut() {
-            tree.unfold_children()
-        }
-    }
-
-    /// Select the next "brother/sister" of a node.
-    /// Sibling have the same parents (ie. are in the same directory).
-    /// Since the position may be wrong (aka the current node is already the last child of
-    /// it's parent) we have to adjust the postion afterwards.
-    pub fn select_next_sibling(&mut self) -> Result<()> {
-        if self.position.is_empty() {
-            self.position = vec![0]
+    /// The folder containing the selected node.
+    /// Itself if selected is a directory.
+    pub fn directory_of_selected(&self) -> Option<&Path> {
+        if self.selected.is_dir() && !self.selected.is_symlink() {
+            Some(self.selected.as_path())
         } else {
-            let len = self.position.len();
-            self.position[len - 1] += 1;
-            let (depth, last_cord, node) = self.select_from_position()?;
-            self.fix_position(depth, last_cord);
-            self.current_node = node;
+            self.selected.parent()
         }
-        Ok(())
     }
 
-    /// Select the previous "brother/sister" of a node.
-    /// Sibling have the same parents (ie. are in the same directory).
-    /// Since the position may be wrong (aka the current node is already the first child of
-    /// it's parent) we have to adjust the postion afterwards.
-    pub fn select_prev_sibling(&mut self) -> Result<()> {
-        if self.position.is_empty() {
-            self.position = vec![0]
-        } else {
-            let len = self.position.len();
-            if self.position[len - 1] > 0 {
-                self.position[len - 1] -= 1;
+    /// Relative path of selected from rootpath.
+    pub fn selected_path_relative_to_root(&self) -> Result<&Path> {
+        Ok(self.selected.strip_prefix(&self.root_path)?)
+    }
+
+    /// Number of nodes
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
+
+    /// True if there's no node.
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+
+    /// True if selected is root.
+    pub fn is_on_root(&self) -> bool {
+        self.selected == self.root_path
+    }
+
+    /// True if selected is the last file
+    pub fn is_on_last(&self) -> bool {
+        self.selected == self.last_path
+    }
+
+    /// Select next sibling or the next sibling of the parent
+    fn select_next(&mut self) {
+        if let Some(next_path) = self.find_next_path() {
+            self.select_path(&next_path, false);
+            self.increment_required_height()
+        }
+    }
+
+    fn find_next_path(&self) -> Option<PathBuf> {
+        if let Some(selected_node) = self.nodes.get(&self.selected) {
+            if let Some(next_path) = &selected_node.next {
+                return Some(next_path.to_owned());
+            }
+        }
+        unreachable!("every node should have a next");
+    }
+
+    /// Select previous sibling or the parent
+    fn select_prev(&mut self) {
+        if self.is_on_root() {
+            self.select_last();
+        } else if let Some(previous_path) = self.find_prev_path() {
+            self.select_path(&previous_path, false);
+            self.decrement_required_height()
+        }
+    }
+
+    fn find_prev_path(&self) -> Option<PathBuf> {
+        if let Some(selected_node) = self.nodes.get(&self.selected) {
+            if let Some(prev_path) = &selected_node.prev {
+                return Some(prev_path.to_owned());
+            }
+        }
+        unreachable!("every node should have a prev");
+    }
+
+    fn select_root(&mut self) {
+        let root_path = self.root_path.to_owned();
+        self.select_path(&root_path, false);
+        self.reset_required_height()
+    }
+
+    fn select_last(&mut self) {
+        let last_path = self.last_path.to_owned();
+        self.select_path(&last_path, false);
+        self.set_required_height_to_max()
+    }
+
+    fn select_parent(&mut self) {
+        if let Some(parent_path) = self.selected.parent() {
+            self.select_path(parent_path.to_owned().as_path(), false);
+            self.decrement_required_height()
+        }
+    }
+
+    fn select_path(&mut self, dest_path: &Path, set_height: bool) {
+        if dest_path == self.selected {
+            return;
+        }
+        let Some(dest_node) = self.nodes.get_mut(dest_path) else {
+            return;
+        };
+        dest_node.select();
+        let Some(selected_node) = self.nodes.get_mut(&self.selected) else {
+            unreachable!("current_node should be in nodes");
+        };
+        selected_node.unselect();
+        self.selected = dest_path.to_owned();
+        if set_height {
+            self.set_required_height_to_max()
+        }
+    }
+
+    fn increment_required_height(&mut self) {
+        if self.required_height < usize::MAX {
+            self.required_height += 1
+        }
+    }
+
+    fn decrement_required_height(&mut self) {
+        if self.required_height > Self::DEFAULT_REQUIRED_HEIGHT {
+            self.required_height -= 1
+        }
+    }
+
+    fn set_required_height_to_max(&mut self) {
+        self.required_height = usize::MAX
+    }
+
+    fn reset_required_height(&mut self) {
+        self.required_height = Self::DEFAULT_REQUIRED_HEIGHT
+    }
+
+    /// Fold selected node
+    pub fn toggle_fold(&mut self) {
+        if let Some(node) = self.nodes.get_mut(&self.selected) {
+            node.toggle_fold();
+        }
+    }
+
+    /// Fold all node from root to end
+    pub fn fold_all(&mut self) {
+        for (_, node) in self.nodes.iter_mut() {
+            node.fold()
+        }
+    }
+
+    /// Unfold all node from root to end
+    pub fn unfold_all(&mut self) {
+        for (_, node) in self.nodes.iter_mut() {
+            node.unfold()
+        }
+    }
+
+    /// Select the first node whose filename match a pattern.
+    /// If the selected file match, the next match will be selected.
+    pub fn search_first_match(&mut self, pattern: &str) {
+        let Some(found_path) = self.deep_first_search(pattern) else {
+            return;
+        };
+        self.select_path(found_path.to_owned().as_path(), true);
+    }
+
+    fn deep_first_search(&self, pattern: &str) -> Option<PathBuf> {
+        let mut stack = vec![self.root_path.as_path()];
+        let mut found = vec![];
+
+        while let Some(path) = stack.pop() {
+            if path_filename_contains(path, pattern) {
+                found.push(path.to_path_buf());
+            }
+            let Some(current_node) = self.nodes.get(path) else {
+                continue;
+            };
+
+            if current_node.have_children() {
+                let Some(children) = &current_node.children else {
+                    continue;
+                };
+                for leaf in children.iter() {
+                    stack.push(leaf);
+                }
+            }
+        }
+        self.pick_best_match(&found)
+    }
+
+    fn pick_best_match(&self, found: &[PathBuf]) -> Option<PathBuf> {
+        if found.is_empty() {
+            return None;
+        }
+        if let Some(position) = found.iter().position(|path| path == &self.selected) {
+            // selected is in found
+            if position + 1 < found.len() {
+                // selected isn't last, use next elem
+                Some(found[position + 1].to_owned())
             } else {
-                self.select_parent()?
+                // selected is last
+                Some(found[0].to_owned())
             }
-            let (depth, last_cord, node) = self.select_from_position()?;
-            self.fix_position(depth, last_cord);
-            self.current_node = node;
-        }
-        Ok(())
-    }
-
-    fn fix_position(&mut self, depth: usize, last_cord: usize) {
-        self.position.truncate(depth + 1);
-        self.position[depth] = last_cord;
-    }
-
-    /// Select the first child of a current node.
-    /// Does nothing if the node has no child.
-    pub fn select_first_child(&mut self) -> Result<()> {
-        if self.position.is_empty() {
-            self.position = vec![0]
-        }
-        self.position.push(0);
-        let (depth, last_cord, node) = self.select_from_position()?;
-        self.fix_position(depth, last_cord);
-        self.current_node = node;
-        Ok(())
-    }
-
-    /// Move to the parent of current node.
-    /// If the parent is the root node, it will do nothing.
-    pub fn select_parent(&mut self) -> Result<()> {
-        if self.position.is_empty() {
-            self.position = vec![0];
         } else {
-            self.position.pop();
-            if self.position.is_empty() {
-                self.position.push(0)
-            }
-            let (depth, last_cord, node) = self.select_from_position()?;
-            self.fix_position(depth, last_cord);
-            self.current_node = node
+            // selected isn't in found, use first match
+            Some(found[0].to_owned())
         }
-        Ok(())
     }
 
-    /// Move to the last leaf (bottom line on screen).
-    /// We use a simple trick since we can't know how much node there is
-    /// at every step.
-    /// We first create a position with max value (usize::MAX) and max size (Self::MAX_DEPTH).
-    /// Then we select this node and adjust the position.
-    pub fn go_to_bottom_leaf(&mut self) -> Result<()> {
-        self.position = vec![Self::MAX_INDEX; Self::MAX_DEPTH];
-        let (depth, last_cord, node) = self.select_from_position()?;
-        self.fix_position(depth, last_cord);
-        self.current_node = node;
-        Ok(())
-    }
-
-    /// Select the node at a given position.
-    /// Returns the reached depth, the last index and a copy of the node itself.
-    pub fn select_from_position(&mut self) -> Result<(usize, usize, Node)> {
-        let (tree, reached_depth, last_cord) = self.explore_position(true);
-        tree.node.select();
-        Ok((reached_depth, last_cord, tree.node.clone()))
-    }
-
-    /// Depth first traversal of the tree.
-    /// We navigate into the tree and format every element into a pair :
-    /// - a prefix, wich is a string made of glyphs displaying the tree,
-    /// - a colored string to be colored relatively to the file type.
-    /// This method has to parse all the content until the bottom of screen
-    /// is reached. There's no way atm to avoid parsing the first lines
-    /// since the "prefix" (straight lines at left of screen) can reach
-    /// the whole screen.
-    pub fn into_navigable_content(&mut self) -> (usize, Vec<ColoredTriplet>) {
-        let required_height = self.required_height;
-        let mut stack = vec![("".to_owned(), self)];
+    /// Returns a navigable vector of `ColoredTriplet` and the index of selected file
+    pub fn into_navigable_content(&self, users: &Users) -> (usize, Vec<ColoredTriplet>) {
+        let mut stack = vec![("".to_owned(), self.root_path.as_path())];
         let mut content = vec![];
         let mut selected_index = 0;
 
-        while let Some((prefix, current)) = stack.pop() {
-            if current.node.fileinfo.is_selected {
+        while let Some((prefix, path)) = stack.pop() {
+            let Some(node) = self.nodes.get(path) else {
+                continue;
+            };
+
+            if node.selected {
                 selected_index = content.len();
             }
 
-            content.push((
-                current.node.metadata_line.to_owned(),
-                prefix.to_owned(),
-                ColoredString::from_node(&current.node),
+            let Ok(fileinfo) = FileInfo::new(path, users) else {
+                continue;
+            };
+
+            content.push(<ColoredTriplet as MakeTriplet>::make(
+                &fileinfo,
+                &prefix,
+                filename_format(path, node),
+                ColorEffect::node(&fileinfo, node),
+                path,
             ));
 
-            if !current.node.folded {
-                let first_prefix = first_prefix(prefix.clone());
-                let other_prefix = other_prefix(prefix);
-
-                let mut leaves = current.leaves.iter_mut();
-                let Some(first_leaf) = leaves.next() else {
-                    continue;
-                };
-                stack.push((first_prefix.clone(), first_leaf));
-
-                for leaf in leaves {
-                    stack.push((other_prefix.clone(), leaf));
-                }
+            if node.have_children() {
+                Self::stack_children(&mut stack, prefix, node);
             }
-            if content.len() > required_height {
+
+            if content.len() > self.required_height {
                 break;
             }
         }
         (selected_index, content)
     }
 
-    /// Select the first node matching a key.
-    /// We use a breath first search algorithm to ensure we select the less deep one.
-    pub fn select_first_match(&mut self, key: &str) -> Option<Vec<usize>> {
-        if self.node.fileinfo.filename.contains(key) {
-            return Some(self.node.position.clone());
-        }
-
-        for tree in self.leaves.iter_mut().rev() {
-            let Some(position) = tree.select_first_match(key) else {
-                continue;
-            };
-            return Some(position);
-        }
-
-        None
+    /// An iterator over filenames.
+    /// It allows us to iter explicitely over filenames
+    /// while avoiding another allocation by collecting into a `Vec`
+    #[inline]
+    pub fn filenames(&self) -> Filenames<'_> {
+        let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
+        let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
+        self.nodes.keys().filter_map(to_filename).filter_map(to_str)
     }
 
-    // TODO! refactor to return the new position vector and use it.
-    /// Recursively explore the tree while only selecting the
-    /// node from the position.
-    /// Returns the reached tree, the reached depth and the last index.
-    /// It may be used to fix the position.
-    /// position is a vector of node indexes. At each step, we select the
-    /// existing node.
-    /// If `unfold` is set to true, it will unfold the trees as it traverses
-    /// them.
-    /// Since this method is used to fold every node, this parameter is required.
-    pub fn explore_position(&mut self, unfold: bool) -> (&mut Tree, usize, usize) {
-        let mut tree = self;
-        let pos = tree.position.clone();
-        let mut last_cord = 0;
-        let mut reached_depth = 0;
+    #[inline]
+    fn stack_children<'a>(
+        stack: &mut Vec<(String, &'a Path)>,
+        prefix: String,
+        current_node: &'a Node,
+    ) {
+        let first_prefix = first_prefix(prefix.clone());
+        let other_prefix = other_prefix(prefix);
 
-        for (depth, &coord) in pos.iter().skip(1).enumerate() {
-            if unfold {
-                tree.node.folded = false;
-            }
-            last_cord = coord;
-            if depth > pos.len() || tree.leaves.is_empty() {
-                break;
-            }
-            if coord >= tree.leaves.len() {
-                last_cord = tree.leaves.len() - 1;
-            }
-            let len = tree.leaves.len();
-            tree = &mut tree.leaves[len - 1 - last_cord];
-            reached_depth += 1;
-        }
-        (tree, reached_depth, last_cord)
-    }
+        let Some(children) = &current_node.children else {
+            return;
+        };
+        let mut children = children.iter();
+        let Some(first_leaf) = children.next() else {
+            return;
+        };
+        stack.push((first_prefix.clone(), first_leaf));
 
-    pub fn position_from_index(&self, index: usize) -> Vec<usize> {
-        let mut stack = vec![];
-        stack.push(self);
-
-        let mut visited = self;
-        let mut counter = 0;
-        while let Some(current) = stack.pop() {
-            counter += 1;
-            visited = current;
-            if counter == index {
-                break;
-            }
-            if !current.node.folded {
-                for leaf in current.leaves.iter() {
-                    stack.push(leaf);
-                }
-            }
-        }
-
-        visited.node.position.clone()
-    }
-
-    pub fn directory_of_selected(&self) -> Result<&std::path::Path> {
-        let fileinfo = &self.current_node.fileinfo;
-
-        match fileinfo.file_kind {
-            FileKind::Directory => Ok(&self.current_node.fileinfo.path),
-            _ => Ok(fileinfo
-                .path
-                .parent()
-                .context("selected file should have a parent")?),
+        for leaf in children {
+            stack.push((other_prefix.clone(), leaf));
         }
     }
 }
 
+#[inline]
 fn first_prefix(mut prefix: String) -> String {
     prefix.push(' ');
-    prefix = prefix.replace("└──", "   ");
-    prefix = prefix.replace("├──", "│  ");
+    prefix = prefix.replace("└──", "  ");
+    prefix = prefix.replace("├──", "│ ");
     prefix.push_str("└──");
     prefix
 }
 
+#[inline]
 fn other_prefix(mut prefix: String) -> String {
     prefix.push(' ');
-    prefix = prefix.replace("└──", "   ");
-    prefix = prefix.replace("├──", "│  ");
+    prefix = prefix.replace("└──", "  ");
+    prefix = prefix.replace("├──", "│ ");
     prefix.push_str("├──");
     prefix
 }
+
+#[inline]
+fn filename_format(current_path: &Path, current_node: &Node) -> String {
+    let filename = filename_from_path(current_path)
+        .unwrap_or_default()
+        .to_owned();
+
+    if current_path.is_dir() && !current_path.is_symlink() {
+        if current_node.folded {
+            format!("▸ {}", filename)
+        } else {
+            format!("▾ {}", filename)
+        }
+    } else {
+        filename
+    }
+}
+
+/// Emulate a `ContentWindow`, returning the top and bottom index of displayable files.
+pub fn calculate_top_bottom(selected_index: usize, terminal_height: usize) -> (usize, usize) {
+    let window_height = terminal_height - ContentWindow::WINDOW_MARGIN_TOP;
+    let top = if selected_index < window_height {
+        0
+    } else {
+        selected_index - 10.max(terminal_height / 2)
+    };
+    let bottom = top + window_height;
+
+    (top, bottom)
+}
+
+fn path_filename_contains(path: &Path, pattern: &str) -> bool {
+    path.file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .contains(pattern)
+}
+
+type FnPbOsstr = fn(&PathBuf) -> Option<&OsStr>;
+type FilterHashMap<'a> = FilterMap<hash_map::Keys<'a, PathBuf, Node>, FnPbOsstr>;
+/// An iterator over filenames of a HashMap<PathBuf, Node>
+pub type Filenames<'a> = FilterMap<FilterHashMap<'a>, fn(&OsStr) -> Option<&str>>;

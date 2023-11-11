@@ -13,11 +13,13 @@ use crate::history::History;
 use crate::input::Input;
 use crate::mode::{InputSimple, Mode};
 use crate::opener::execute_in_child;
-use crate::preview::{Directory, Preview};
+use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
 use crate::shortcut::Shortcut;
+use crate::sort::SortKind;
+use crate::tree::{calculate_top_bottom, Go, To, Tree};
 use crate::users::Users;
-use crate::utils::{filename_from_path, row_to_window_index, set_clipboard};
+use crate::utils::{row_to_window_index, set_clipboard};
 
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
@@ -48,14 +50,13 @@ pub struct Tab {
     pub shortcut: Shortcut,
     /// Last searched string
     pub searched: Option<String>,
-    /// Optional tree view
-    pub directory: Directory,
     /// The filter use before displaying files
     pub filter: FilterKind,
     /// Visited directories
     pub history: History,
     /// Users & groups
     pub users: Users,
+    pub tree: Tree,
 }
 
 impl Tab {
@@ -73,7 +74,6 @@ impl Tab {
         } else {
             path.parent().context("")?
         };
-        let directory = Directory::empty(start_dir, &users)?;
         let filter = FilterKind::All;
         let show_hidden = args.all || settings.all;
         let mut path_content = PathContent::new(start_dir, &users, &filter, show_hidden)?;
@@ -89,6 +89,7 @@ impl Tab {
         shortcut.extend_with_mount_points(mount_points);
         let searched = None;
         let index = path_content.select_file(&path);
+        let tree = Tree::default();
         window.scroll_to(index);
         Ok(Self {
             mode,
@@ -102,11 +103,11 @@ impl Tab {
             preview,
             shortcut,
             searched,
-            directory,
             filter,
             show_hidden,
             history,
             users,
+            tree,
         })
     }
 
@@ -130,7 +131,7 @@ impl Tab {
                 if matches!(self.previous_mode, Mode::Tree) =>
             {
                 self.completion
-                    .search_from_tree(&self.input.string(), &self.directory.content)
+                    .search_from_tree(&self.input.string(), self.tree.filenames())
             }
             Mode::InputCompleted(InputCompleted::Command) => {
                 self.completion.command(&self.input.string())
@@ -145,7 +146,11 @@ impl Tab {
         self.input.reset();
         self.preview = Preview::empty();
         self.completion.reset();
-        self.directory.clear();
+        if matches!(self.mode, Mode::Tree) {
+            self.make_tree(None)?;
+        } else {
+            self.tree = Tree::default()
+        };
         Ok(())
     }
 
@@ -154,10 +159,10 @@ impl Tab {
     /// displayed files is reset.
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> Result<()> {
-        self.refresh_params()?;
         self.path_content
             .reset_files(&self.filter, self.show_hidden, &self.users)?;
         self.window.reset(self.path_content.content.len());
+        self.refresh_params()?;
         Ok(())
     }
 
@@ -192,13 +197,15 @@ impl Tab {
     /// Move to the currently selected directory.
     /// Fail silently if the current directory is empty or if the selected
     /// file isn't a directory.
-    pub fn go_to_child(&mut self) -> Result<()> {
+    pub fn go_to_selected_dir(&mut self) -> Result<()> {
+        log::info!("go to selected");
         let childpath = &self
             .path_content
             .selected()
             .context("Empty directory")?
             .path
             .clone();
+        log::info!("selected : {childpath:?}");
         self.set_pathcontent(childpath)?;
         self.window.reset(self.path_content.content.len());
         self.input.cursor_start();
@@ -298,12 +305,6 @@ impl Tab {
         }
     }
 
-    /// Select the root node of the tree.
-    pub fn tree_select_root(&mut self) -> Result<()> {
-        self.directory.unselect_children();
-        self.directory.select_root()
-    }
-
     /// Move to the parent of current path
     pub fn move_to_parent(&mut self) -> Result<()> {
         let path = self.path_content.path.clone();
@@ -329,7 +330,7 @@ impl Tab {
         self.scroll_to(index);
         self.history.content.pop();
         if let Mode::Tree = self.mode {
-            self.make_tree()?
+            self.make_tree(None)?
         }
 
         Ok(())
@@ -338,69 +339,66 @@ impl Tab {
     /// Select the parent of current node.
     /// If we were at the root node, move to the parent and make a new tree.
     pub fn tree_select_parent(&mut self) -> Result<()> {
-        self.directory.unselect_children();
-        if self.directory.tree.position.len() <= 1 {
-            self.move_to_parent()?;
-            self.make_tree()?
+        if self.tree.is_on_root() {
+            let Some(parent) = self.tree.root_path().parent() else {
+                return Ok(());
+            };
+            self.set_pathcontent(parent.to_owned().as_ref())?;
+            self.make_tree(Some(self.path_content.sort_kind.clone()))
+        } else {
+            self.tree.go(To::Parent);
+            Ok(())
         }
-        self.directory.select_parent()
     }
 
     /// Move down 10 times in the tree
     pub fn tree_page_down(&mut self) -> Result<()> {
-        self.directory.tree.increase_required_height_by_ten();
-        self.directory.unselect_children();
-        self.directory.page_down()
+        for _ in 1..10 {
+            if self.tree.is_on_last() {
+                break;
+            }
+            self.tree.go(To::Next);
+        }
+        Ok(())
     }
 
     /// Move up 10 times in the tree
-    pub fn tree_page_up(&mut self) -> Result<()> {
-        self.directory.tree.decrease_required_height_by_ten();
-        self.directory.unselect_children();
-        self.directory.page_up()
+    pub fn tree_page_up(&mut self) {
+        for _ in 1..10 {
+            if self.tree.is_on_root() {
+                break;
+            }
+            self.tree.go(To::Prev);
+        }
     }
 
     /// Select the next sibling.
     pub fn tree_select_next(&mut self) -> Result<()> {
-        self.directory.select_next()
+        self.tree.go(To::Next);
+        Ok(())
     }
 
     /// Select the previous siblging
     pub fn tree_select_prev(&mut self) -> Result<()> {
-        self.directory.select_prev()
-    }
-
-    /// Select the first child if any.
-    pub fn tree_select_first_child(&mut self) -> Result<()> {
-        self.directory.unselect_children();
-        self.directory.select_first_child()
+        self.tree.go(To::Prev);
+        Ok(())
     }
 
     /// Go to the last leaf.
     pub fn tree_go_to_bottom_leaf(&mut self) -> Result<()> {
-        self.directory.tree.set_required_height_to_max();
-        self.directory.unselect_children();
-        self.directory.go_to_bottom_leaf()
+        self.tree.go(To::Last);
+        Ok(())
     }
 
     /// Returns the current path.
-    /// In tree mode :
+    /// If previous mode was tree mode :
     ///     if the selected node is a directory, that's it.
     ///     else, it is the parent of the selected node.
     /// In other modes, it's the current path of pathcontent.
-    pub fn current_directory_path(&mut self) -> &path::Path {
-        match self.mode {
-            Mode::Tree => {
-                let path = &self.directory.tree.current_node.fileinfo.path;
-                if path.is_dir() {
-                    return path;
-                }
-                let Some(parent) = path.parent() else {
-                    return path::Path::new("/");
-                };
-                parent
-            }
-            _ => &self.path_content.path,
+    pub fn directory_of_selected_previous_mode(&self) -> Result<&path::Path> {
+        match self.previous_mode {
+            Mode::Tree => return self.tree.directory_of_selected().context("no parent"),
+            _ => Ok(&self.path_content.path),
         }
     }
 
@@ -410,24 +408,35 @@ impl Tab {
     /// In normal mode it's the current working directory.
     pub fn directory_of_selected(&self) -> Result<&path::Path> {
         match self.mode {
-            Mode::Tree => self.directory.tree.directory_of_selected(),
+            Mode::Tree => self.tree.directory_of_selected().context("No parent"),
             _ => Ok(&self.path_content.path),
         }
     }
 
-    /// Optional Fileinfo of the selected element.
-    pub fn selected(&self) -> Option<&FileInfo> {
+    /// Fileinfo of the selected element.
+    pub fn selected(&self) -> Result<FileInfo> {
         match self.mode {
-            Mode::Tree => Some(&self.directory.tree.current_node.fileinfo),
-            _ => self.path_content.selected(),
+            Mode::Tree => {
+                let node = self.tree.selected_node().context("no selected node")?;
+                node.fileinfo(&self.users)
+            }
+            _ => Ok(self
+                .path_content
+                .selected()
+                .context("no selected file")?
+                .to_owned()),
         }
     }
 
     /// Makes a new tree of the current path.
-    pub fn make_tree(&mut self) -> Result<()> {
+    pub fn make_tree(&mut self, sort_kind: Option<SortKind>) -> Result<()> {
+        let sort_kind = match sort_kind {
+            Some(sort_kind) => sort_kind,
+            None => SortKind::tree_default(),
+        };
         let path = self.path_content.path.clone();
         let users = &self.users;
-        self.directory = Directory::new(&path, users, &self.filter, self.show_hidden, None)?;
+        self.tree = Tree::new(path, 5, sort_kind, users, self.show_hidden, &self.filter);
         Ok(())
     }
 
@@ -519,23 +528,8 @@ impl Tab {
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node. Reset the display.
     pub fn tree_go_to_root(&mut self) -> Result<()> {
-        self.directory.tree.reset_required_height();
-        self.tree_select_root()
-    }
-
-    /// Select the first child of the current node and reset the display.
-    pub fn select_first_child(&mut self) -> Result<()> {
-        self.tree_select_first_child()
-    }
-
-    /// Select the next sibling of the current node.
-    pub fn select_next(&mut self) -> Result<()> {
-        self.tree_select_next()
-    }
-
-    /// Select the previous sibling of the current node.
-    pub fn select_prev(&mut self) -> Result<()> {
-        self.tree_select_prev()
+        self.tree.go(To::Root);
+        Ok(())
     }
 
     /// Copy the selected filename to the clipboard. Only the filename.
@@ -656,15 +650,12 @@ impl Tab {
     }
 
     fn tree_select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
-        let screen_index = row_to_window_index(row) + 1;
-        // term.height = canvas.height + 2 rows for the canvas border
-        let (top, _, _) = self.directory.calculate_tree_window(term_height - 2);
+        let screen_index = row_to_window_index(row);
+        let (selected_index, content) = self.tree.into_navigable_content(&self.users);
+        let (top, _) = calculate_top_bottom(selected_index, term_height - 2);
         let index = screen_index + top;
-        self.directory.tree.unselect_children();
-        self.directory.tree.position = self.directory.tree.position_from_index(index);
-        let (_, _, node) = self.directory.tree.select_from_position()?;
-        self.directory.make_preview();
-        self.directory.tree.current_node = node;
+        let (_, _, colored_path) = content.get(index).context("no selected file")?;
+        self.tree.go(To::Path(&colored_path.path));
         Ok(())
     }
 
@@ -691,10 +682,8 @@ impl Tab {
                 self.path_content.select_index(0);
             }
             Mode::Tree => {
-                self.directory.tree.update_sort_from_char(c);
-                self.directory.tree.sort();
-                self.tree_select_root()?;
-                self.directory.tree.into_navigable_content();
+                self.path_content.update_sort_from_char(c);
+                self.make_tree(Some(self.path_content.sort_kind.clone()))?;
             }
             _ => (),
         }
@@ -717,21 +706,21 @@ impl Tab {
     }
 
     pub fn rename(&mut self) -> Result<()> {
-        if self.selected().is_some() {
-            let old_name = match self.mode {
-                Mode::Tree => self.directory.tree.current_node.filename(),
-                _ => filename_from_path(
-                    &self
-                        .path_content
-                        .selected()
-                        .context("Event rename: no file in current directory")?
-                        .path,
-                )?
-                .to_owned(),
+        let old_name: String = if matches!(self.mode, Mode::Tree) {
+            self.tree
+                .selected_path()
+                .file_name()
+                .context("no filename")?
+                .to_string_lossy()
+                .into()
+        } else {
+            let Ok(fileinfo) = self.selected() else {
+                return Ok(());
             };
-            self.input.replace(&old_name);
-            self.set_mode(Mode::InputSimple(InputSimple::Rename));
-        }
+            fileinfo.filename.to_owned()
+        };
+        self.input.replace(&old_name);
+        self.set_mode(Mode::InputSimple(InputSimple::Rename));
         Ok(())
     }
 }

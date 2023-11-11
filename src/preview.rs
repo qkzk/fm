@@ -21,9 +21,10 @@ use crate::constant_strings_paths::{
 };
 use crate::content_window::ContentWindow;
 use crate::decompress::{list_files_tar, list_files_zip};
-use crate::fileinfo::{FileInfo, FileKind};
+use crate::fileinfo::{ColorEffect, FileInfo, FileKind};
 use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
+use crate::sort::SortKind;
 use crate::tree::{ColoredString, Tree};
 use crate::users::Users;
 use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path};
@@ -114,19 +115,11 @@ impl Preview {
     /// Creates a new `Directory` from the file_info
     /// It explores recursivelly the directory and creates a tree.
     /// The recursive exploration is limited to depth 2.
-    pub fn directory(
-        file_info: &FileInfo,
-        users: &Users,
-        filter: &FilterKind,
-        show_hidden: bool,
-    ) -> Result<Self> {
+    pub fn directory(file_info: &FileInfo, users: &Users) -> Result<Self> {
         Ok(Self::Directory(Directory::new(
-            &file_info.path,
+            file_info.path.to_owned(),
             users,
-            filter,
-            show_hidden,
-            Some(2),
-        )?))
+        )))
     }
 
     /// Creates a new preview instance based on the filekind and the extension of
@@ -1049,181 +1042,34 @@ impl ColoredText {
 #[derive(Clone, Debug)]
 pub struct Directory {
     pub content: Vec<ColoredTriplet>,
-    pub tree: Tree,
-    len: usize,
-    pub selected_index: usize,
 }
 
 impl Directory {
-    /// Creates a new tree view of the directory.
-    /// We only hold the result here, since the tree itself has now usage atm.
-    pub fn new(
-        path: &Path,
-        users: &Users,
-        filter_kind: &FilterKind,
-        show_hidden: bool,
-        max_depth: Option<usize>,
-    ) -> Result<Self> {
-        let max_depth = match max_depth {
-            Some(max_depth) => max_depth,
-            None => Tree::MAX_DEPTH,
-        };
+    pub fn new(path: PathBuf, users: &Users) -> Self {
+        let tree = Tree::new(
+            path,
+            4,
+            SortKind::tree_default(),
+            users,
+            false,
+            &FilterKind::All,
+        );
 
-        let mut tree = Tree::from_path(path, max_depth, users, filter_kind, show_hidden, vec![0])?;
-        tree.select_root();
-        let (selected_index, content) = tree.into_navigable_content();
-        Ok(Self {
-            tree,
-            len: content.len(),
-            content,
-            selected_index,
-        })
+        let (_selected_index, content) = tree.into_navigable_content(users);
+
+        Self { content }
     }
 
-    /// Creates an empty directory preview.
-    pub fn empty(path: &Path, users: &Users) -> Result<Self> {
-        Ok(Self {
-            tree: Tree::empty(path, users)?,
-            len: 0,
-            content: vec![],
-            selected_index: 0,
-        })
+    pub fn empty() -> Self {
+        Self { content: vec![] }
     }
 
-    /// Reset the attributes to default one and free some unused memory.
-    pub fn clear(&mut self) {
-        self.len = 0;
-        self.content = vec![];
-        self.selected_index = 0;
-        self.tree.clear();
-    }
-
-    /// Number of displayed lines.
     pub fn len(&self) -> usize {
-        self.len
+        self.content.len()
     }
 
-    /// True if there's no lines in preview.
     pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
-    /// Select the root node and reset the view.
-    pub fn select_root(&mut self) -> Result<()> {
-        self.tree.select_root();
-        (self.selected_index, self.content) = self.tree.into_navigable_content();
-        self.update_tree_position_from_index()?;
-        Ok(())
-    }
-
-    /// Unselect every child node.
-    pub fn unselect_children(&mut self) {
-        self.tree.unselect_children()
-    }
-
-    /// Select the "next" element of the tree if any.
-    /// This is the element immediatly below the current one.
-    pub fn select_next(&mut self) -> Result<()> {
-        if self.selected_index < self.content.len() {
-            self.tree.increase_required_height();
-            self.unselect_children();
-            self.selected_index += 1;
-            self.update_tree_position_from_index()?;
-        }
-        Ok(())
-    }
-
-    /// Select the previous sibling if any.
-    /// This is the element immediatly below the current one.
-    pub fn select_prev(&mut self) -> Result<()> {
-        if self.selected_index > 0 {
-            self.tree.decrease_required_height();
-            self.unselect_children();
-            self.selected_index -= 1;
-            self.update_tree_position_from_index()?;
-        }
-        Ok(())
-    }
-
-    /// Move up 10 times.
-    pub fn page_up(&mut self) -> Result<()> {
-        if self.selected_index > 10 {
-            self.selected_index -= 10;
-        } else {
-            self.selected_index = 1;
-        }
-        self.update_tree_position_from_index()
-    }
-
-    /// Move down 10 times
-    pub fn page_down(&mut self) -> Result<()> {
-        self.selected_index += 10;
-        if self.selected_index > self.content.len() {
-            if !self.content.is_empty() {
-                self.selected_index = self.content.len();
-            } else {
-                self.selected_index = 1;
-            }
-        }
-        self.update_tree_position_from_index()
-    }
-
-    /// Update the position of the selected element from its index.
-    pub fn update_tree_position_from_index(&mut self) -> Result<()> {
-        self.tree.position = self.tree.position_from_index(self.selected_index);
-        let (_, _, node) = self.tree.select_from_position()?;
-        self.tree.current_node = node;
-        (_, self.content) = self.tree.into_navigable_content();
-        Ok(())
-    }
-
-    /// Select the first child, if any.
-    pub fn select_first_child(&mut self) -> Result<()> {
-        self.tree.select_first_child()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content();
-        self.update_tree_position_from_index()?;
-        Ok(())
-    }
-
-    /// Select the parent of current node.
-    pub fn select_parent(&mut self) -> Result<()> {
-        self.tree.select_parent()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content();
-        self.update_tree_position_from_index()?;
-        Ok(())
-    }
-
-    /// Select the last leaf of the tree (ie the last line.)
-    pub fn go_to_bottom_leaf(&mut self) -> Result<()> {
-        self.tree.go_to_bottom_leaf()?;
-        (self.selected_index, self.content) = self.tree.into_navigable_content();
-        self.update_tree_position_from_index()?;
-        Ok(())
-    }
-
-    /// Make a preview of the tree.
-    pub fn make_preview(&mut self) {
-        (self.selected_index, self.content) = self.tree.into_navigable_content();
-    }
-
-    /// Calculates the top, bottom and lenght of the view, depending on which element
-    /// is selected and the size of the window used to display.
-    pub fn calculate_tree_window(&self, terminal_height: usize) -> (usize, usize, usize) {
-        let length = self.content.len();
-
-        let top: usize;
-        let bottom: usize;
-        let window_height = terminal_height - ContentWindow::WINDOW_MARGIN_TOP;
-        if self.selected_index < terminal_height - 1 {
-            top = 0;
-            bottom = window_height;
-        } else {
-            let padding = std::cmp::max(10, terminal_height / 2);
-            top = self.selected_index - padding;
-            bottom = top + window_height;
-        }
-
-        (top, bottom, length)
+        self.content.is_empty()
     }
 }
 
@@ -1313,6 +1159,32 @@ macro_rules! impl_window {
 /// Used to iter and impl window trait in tree mode.
 pub type ColoredTriplet = (String, String, ColoredString);
 
+pub trait MakeTriplet {
+    fn make(
+        fileinfo: &FileInfo,
+        prefix: &str,
+        filename_text: String,
+        color_effect: ColorEffect,
+        current_path: &std::path::Path,
+    ) -> ColoredTriplet;
+}
+
+impl MakeTriplet for ColoredTriplet {
+    #[inline]
+    fn make(
+        fileinfo: &FileInfo,
+        prefix: &str,
+        filename_text: String,
+        color_effect: ColorEffect,
+        current_path: &std::path::Path,
+    ) -> ColoredTriplet {
+        (
+            fileinfo.format_no_filename().unwrap_or_default(),
+            prefix.to_owned(),
+            ColoredString::new(filename_text, color_effect, current_path.to_owned()),
+        )
+    }
+}
 /// A vector of highlighted strings
 pub type VecSyntaxedString = Vec<SyntaxedString>;
 

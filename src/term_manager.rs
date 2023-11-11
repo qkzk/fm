@@ -25,6 +25,7 @@ use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::trash::TrashInfo;
+use crate::tree::calculate_top_bottom;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -136,16 +137,8 @@ impl<'a> Draw for WinMain<'a> {
             self.preview_as_second_pane(canvas)?;
             return Ok(());
         }
-        match self.tab.mode {
-            Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
-            Mode::Tree => self.tree(self.status, self.tab, canvas),
-            Mode::Normal => self.files(self.status, self.tab, canvas),
-            _ => match self.tab.previous_mode {
-                Mode::Tree => self.tree(self.status, self.tab, canvas),
-                _ => self.files(self.status, self.tab, canvas),
-            },
-        }?;
-        self.first_line(self.disk_space, canvas)?;
+        let opt_index = self.draw_content(canvas)?;
+        self.first_line(self.disk_space, canvas, opt_index)?;
         Ok(())
     }
 }
@@ -176,6 +169,18 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
+    fn draw_content(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
+        match self.tab.mode {
+            Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
+            Mode::Tree => self.trees(self.status, self.tab, canvas),
+            Mode::Normal => self.files(self.status, self.tab, canvas),
+            _ => match self.tab.previous_mode {
+                Mode::Tree => self.trees(self.status, self.tab, canvas),
+                _ => self.files(self.status, self.tab, canvas),
+            },
+        }
+    }
+
     /// Display the top line on terminal.
     /// Its content depends on the mode.
     /// In normal mode we display the path and number of files.
@@ -183,11 +188,16 @@ impl<'a> WinMain<'a> {
     /// something else.
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
-    fn first_line(&self, disk_space: &str, canvas: &mut dyn Canvas) -> Result<()> {
+    fn first_line(
+        &self,
+        disk_space: &str,
+        canvas: &mut dyn Canvas,
+        opt_index: Option<usize>,
+    ) -> Result<()> {
         draw_colored_strings(
             0,
             0,
-            self.create_first_row(disk_space)?,
+            self.create_first_row(disk_space, opt_index)?,
             canvas,
             self.attributes.is_selected,
         )
@@ -197,10 +207,10 @@ impl<'a> WinMain<'a> {
         match tab.mode {
             Mode::Normal | Mode::Tree => {
                 if !status.display_full {
-                    let Some(file) = tab.selected() else {
+                    let Ok(file) = tab.selected() else {
                         return Ok(0);
                     };
-                    self.second_line_detailed(file, status, canvas)
+                    self.second_line_detailed(&file, status, canvas)
                 } else {
                     self.second_line_simple(status, canvas)
                 }
@@ -236,11 +246,11 @@ impl<'a> WinMain<'a> {
         )?)
     }
 
-    fn normal_first_row(&self, disk_space: &str) -> Result<Vec<String>> {
+    fn normal_first_row(&self, disk_space: &str, opt_index: Option<usize>) -> Result<Vec<String>> {
         Ok(vec![
             format!(" {}", shorten_path(&self.tab.path_content.path, None)?),
-            self.first_row_filename(),
-            self.first_row_position(),
+            self.first_row_filename()?,
+            self.first_row_position(opt_index),
             format!("{}  ", self.tab.path_content.used_space()),
             format!(" Avail: {disk_space}  "),
             format!(" {} ", self.tab.path_content.git_string()?),
@@ -249,24 +259,37 @@ impl<'a> WinMain<'a> {
         ])
     }
 
-    fn first_row_filename(&self) -> String {
+    fn first_row_filename(&self) -> Result<String> {
         match self.tab.mode {
-            Mode::Tree => "".to_owned(),
+            Mode::Tree => Ok(format!(
+                "/{rel}",
+                rel = self.tab.tree.selected_path_relative_to_root()?.display()
+            )),
             _ => {
                 if let Some(fileinfo) = self.tab.path_content.selected() {
-                    fileinfo.filename_without_dot_dotdot()
+                    Ok(fileinfo.filename_without_dot_dotdot())
                 } else {
-                    "".to_owned()
+                    Ok("".to_owned())
                 }
             }
         }
     }
 
-    fn first_row_position(&self) -> String {
+    fn first_row_position(&self, opt_index: Option<usize>) -> String {
+        if matches!(self.tab.mode, Mode::Tree) {
+            let Some(selected_index) = opt_index else {
+                return "".to_owned();
+            };
+            return format!(
+                " {position} / {len} ",
+                position = selected_index + 1,
+                len = self.tab.tree.len()
+            );
+        };
         format!(
-            " {} / {} ",
-            self.tab.path_content.index + 1,
-            self.tab.path_content.true_len() + 2
+            " {index} / {len} ",
+            index = self.tab.path_content.index + 1,
+            len = self.tab.path_content.true_len() + 2
         )
     }
 
@@ -295,7 +318,7 @@ impl<'a> WinMain<'a> {
         ]
     }
 
-    fn pick_previewed_fileinfo(&self) -> Option<&FileInfo> {
+    fn pick_previewed_fileinfo(&self) -> Result<FileInfo> {
         if self.status.dual_pane && self.status.preview_second {
             self.status.tabs[0].selected()
         } else {
@@ -304,7 +327,7 @@ impl<'a> WinMain<'a> {
     }
 
     fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
-        if let Some(fileinfo) = self.pick_previewed_fileinfo() {
+        if let Ok(fileinfo) = self.pick_previewed_fileinfo() {
             let mut strings = vec![" Preview ".to_owned()];
             if !tab.preview.is_empty() {
                 let index = match &tab.preview {
@@ -320,10 +343,10 @@ impl<'a> WinMain<'a> {
         }
     }
 
-    fn create_first_row(&self, disk_space: &str) -> Result<Vec<String>> {
+    fn create_first_row(&self, disk_space: &str, opt_index: Option<usize>) -> Result<Vec<String>> {
         let tab = self.status.selected_non_mut();
         let first_row = match tab.mode {
-            Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
+            Mode::Normal | Mode::Tree => self.normal_first_row(disk_space, opt_index)?,
             Mode::Preview => match &tab.preview {
                 Preview::Text(text_content) => match text_content.kind {
                     TextKind::HELP => Self::help_first_row(),
@@ -333,7 +356,7 @@ impl<'a> WinMain<'a> {
                 _ => self.default_preview_first_line(tab),
             },
             _ => match self.tab.previous_mode {
-                Mode::Normal | Mode::Tree => self.normal_first_row(disk_space)?,
+                Mode::Normal | Mode::Tree => self.normal_first_row(disk_space, opt_index)?,
                 _ => vec![],
             },
         };
@@ -347,7 +370,7 @@ impl<'a> WinMain<'a> {
     /// We reverse the attributes of the selected one, underline the flagged files.
     /// When we display a simpler version, the second line is used to display the
     /// metadata of the selected file.
-    fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+    fn files(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
         let len = tab.path_content.content.len();
         let group_size: usize;
         let owner_size: usize;
@@ -384,7 +407,7 @@ impl<'a> WinMain<'a> {
         if !self.attributes.has_window_below {
             self.log_line(canvas)?;
         }
-        Ok(())
+        Ok(None)
     }
 
     fn log_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -393,12 +416,19 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn tree(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
+    fn trees(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
         let left_margin = if status.display_full { 1 } else { 3 };
         let (_, height) = canvas.size()?;
-        let (top, bottom, len) = tab.directory.calculate_tree_window(height);
+        let (selected_index, content) = tab.tree.into_navigable_content(&tab.users);
+        let (top, bottom) = calculate_top_bottom(selected_index, height);
+        let length = content.len();
 
-        for (i, (metadata, prefix, colored_string)) in tab.directory.window(top, bottom, len) {
+        for (i, (metadata, prefix, colored_string)) in content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(length, bottom + 1))
+        {
             let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
             let mut attr = colored_string.color_effect.attr();
             if status.flagged.contains(&colored_string.path) {
@@ -411,18 +441,19 @@ impl<'a> WinMain<'a> {
             } else {
                 0
             };
-            let col_tree_prefix = canvas.print(row, left_margin + col_metadata, prefix)?;
+            let offset = if i == 0 { 1 } else { 0 };
+
+            let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, prefix)?;
             canvas.print_with_attr(
                 row,
-                left_margin + col_metadata + col_tree_prefix,
+                left_margin + col_metadata + col_tree_prefix + offset,
                 &colored_string.text,
                 attr,
             )?;
         }
         self.second_line(status, tab, canvas)?;
-        Ok(())
+        Ok(Some(selected_index))
     }
-
     fn print_line_number(
         row_position_in_canvas: usize,
         line_number_to_print: usize,
@@ -443,7 +474,12 @@ impl<'a> WinMain<'a> {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(&self, tab: &Tab, window: &ContentWindow, canvas: &mut dyn Canvas) -> Result<()> {
+    fn preview(
+        &self,
+        tab: &Tab,
+        window: &ContentWindow,
+        canvas: &mut dyn Canvas,
+    ) -> Result<Option<usize>> {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
         match &tab.preview {
@@ -533,7 +569,7 @@ impl<'a> WinMain<'a> {
 
             Preview::Empty => (),
         }
-        Ok(())
+        Ok(None)
     }
 }
 
@@ -937,9 +973,9 @@ impl<'a> WinSecondary<'a> {
         }
         let dest = match tab.previous_mode {
             Mode::Tree => tab
-                .directory
                 .tree
-                .directory_of_selected()?
+                .directory_of_selected()
+                .context("No directory_of_selected")?
                 .display()
                 .to_string(),
             _ => tab.path_content.path_to_str(),

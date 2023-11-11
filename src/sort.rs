@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use crate::{fileinfo::FileInfo, tree::Tree};
+use crate::fileinfo::FileInfo;
 
 /// Different kind of sort
 #[derive(Debug, Clone, Default)]
@@ -118,7 +118,6 @@ impl SortKind {
         slice.sort_unstable_by(|a, b| Ordering::reverse(f(a).cmp(f(b))))
     }
 
-    // TODO! refactor both methods.
     // A second version should take 2 parameters.
     // 1. the way to access the data depending on T where files: &mut [T],
     // 2. a closure returning the correct data.
@@ -140,27 +139,6 @@ impl SortKind {
                 SortBy::Date => Self::reversed_sort_by_key_hrtb(files, |f| &f.system_time),
                 SortBy::Size => Self::reversed_sort_by_key_hrtb(files, |f| &f.true_size),
                 SortBy::Exte => Self::reversed_sort_by_key_hrtb(files, |f| &f.extension),
-            }
-        }
-    }
-
-    /// Sort leaves of a tree depending of enum variants.
-    pub fn sort_tree(&self, trees: &mut [Tree]) {
-        if let Order::Ascending = self.order {
-            match self.sort_by {
-                SortBy::Kind => Self::sort_by_key_hrtb(trees, |f| &f.file().kind_format),
-                SortBy::File => Self::sort_by_key_hrtb(trees, |f| &f.file().filename),
-                SortBy::Date => Self::sort_by_key_hrtb(trees, |f| &f.file().system_time),
-                SortBy::Size => Self::sort_by_key_hrtb(trees, |f| &f.file().true_size),
-                SortBy::Exte => Self::sort_by_key_hrtb(trees, |f| &f.file().extension),
-            }
-        } else {
-            match self.sort_by {
-                SortBy::Kind => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().kind_format),
-                SortBy::File => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().filename),
-                SortBy::Date => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().system_time),
-                SortBy::Size => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().true_size),
-                SortBy::Exte => Self::reversed_sort_by_key_hrtb(trees, |f| &f.file().extension),
             }
         }
     }

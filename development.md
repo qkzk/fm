@@ -602,12 +602,34 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: exploring root folder leads to wrong first line display.
 - [x] allow seveval palettes for normal file colors
 - [x] move every lazy_static configuration into config.
+- [x] FIX: encrypted are never shown as mounted
 - [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
+- [ ] Tree remade without recursion. Use an `HashMap<PathBuf, Node>`
+  - [x] FIX: folders are max depth hangs the app
+  - [x] FIX: rename renames the root path
+  - [x] FIX: scrolling to bottom of tree is bugged
+  - [x] FIX: scrolling starts 1 row to low
+  - [x] FIX: filename in first line
+  - [x] FIX: can't "open" a folder to redo the tree there
+  - [x] FIX: move back from root should redo the parent tree
+  - [x] FIX: move up from to go to last and vice versa
+  - [x] FIX: enter a dir from normal mode shouldn't set mode tree
+  - [x] Use a generic trait for movements
+  - [x] FIX: first line position for tree
+  - [x] FIX: searching for file very low don't scroll there
+  - [x] FIX: search can only find the first match
+  - [x] FIX: leaving preview doesn't reset tree
+  - [x] Add a link to previous and next node in Node. Simplify navigation, increase ram usage :/
+  - [x] test everything
+  - [x] refactor
+  - [x] document
 
 ## TODO
 
+- [ ] FIX: tab.selected() should return Option<&FileInfo>
+- [ ] use widget for every drawable element. First line should be a collection of widget which are drawned
 - [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
       Scroll to second element if needed
 - [ ] remote control

@@ -19,8 +19,9 @@ use crate::log_line;
 use crate::mocp::Mocp;
 use crate::mocp::MOCP;
 use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
+use crate::opener::execute_and_capture_output_with_path;
 use crate::opener::{
-    execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
+    execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path,
 };
 use crate::password::{PasswordKind, PasswordUsage};
@@ -73,17 +74,13 @@ impl EventAction {
         let tab = status.selected_non_mut();
 
         match tab.mode {
-            Mode::Normal => {
-                let Some(file) = tab.path_content.selected() else {
+            Mode::Normal | Mode::Tree => {
+                let Ok(file) = tab.selected() else {
                     return Ok(());
                 };
                 let path = file.path.clone();
                 status.toggle_flag_on_path(&path);
                 status.selected().down_one_row();
-            }
-            Mode::Tree => {
-                let path = tab.directory.tree.current_node.filepath();
-                status.toggle_flag_on_path(&path);
             }
             _ => (),
         }
@@ -241,11 +238,10 @@ impl EventAction {
     /// Display the help which can be navigated and displays the configrable
     /// binds.
     pub fn help(status: &mut Status) -> Result<()> {
-        let help = status.help.clone();
-        let tab = status.selected();
-        tab.set_mode(Mode::Preview);
-        tab.preview = Preview::help(&help);
-        tab.window.reset(tab.preview.len());
+        status.selected().set_mode(Mode::Preview);
+        status.selected().preview = Preview::help(&status.help);
+        let len = status.selected_non_mut().preview.len();
+        status.selected().window.reset(len);
         Ok(())
     }
 
@@ -286,12 +282,7 @@ impl EventAction {
     /// Once a quit event is received, we change a flag and break the main loop.
     /// It's usefull to reset the cursor before leaving the application.
     pub fn quit(tab: &mut Tab) -> Result<()> {
-        if let Mode::Tree = tab.mode {
-            tab.refresh_view()?;
-            tab.set_mode(Mode::Normal)
-        } else {
-            tab.must_quit = true;
-        }
+        tab.must_quit = true;
         Ok(())
     }
     /// Toggle the display of hidden files.
@@ -302,7 +293,7 @@ impl EventAction {
             .reset_files(&tab.filter, tab.show_hidden, &tab.users)?;
         tab.window.reset(tab.path_content.content.len());
         if let Mode::Tree = tab.mode {
-            tab.make_tree()?
+            tab.make_tree(None)?
         }
         Ok(())
     }
@@ -378,7 +369,7 @@ impl EventAction {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn shortcut(tab: &mut Tab) -> Result<()> {
-        std::env::set_current_dir(tab.current_directory_path())?;
+        std::env::set_current_dir(tab.directory_of_selected()?)?;
         tab.shortcut.update_git_root();
         tab.set_mode(Mode::Navigate(Navigate::Shortcut));
         Ok(())
@@ -396,7 +387,7 @@ impl EventAction {
         };
         let nvim_server = status.nvim_server.clone();
         if status.flagged.is_empty() {
-            let Some(fileinfo) = status.selected_non_mut().selected() else {
+            let Ok(fileinfo) = status.selected_non_mut().selected() else {
                 return Ok(());
             };
             let Some(path_str) = fileinfo.path.to_str() else {
@@ -460,7 +451,7 @@ impl EventAction {
             log_line!("{DEFAULT_DRAGNDROP} must be installed.");
             return Ok(());
         }
-        let Some(file) = status.selected_non_mut().selected() else {
+        let Ok(file) = status.selected_non_mut().selected() else {
             return Ok(());
         };
         let path_str = file
@@ -474,12 +465,12 @@ impl EventAction {
 
     pub fn search_next(status: &mut Status) -> Result<()> {
         let tab = status.selected();
+        let Some(searched) = tab.searched.clone() else {
+            return Ok(());
+        };
         match tab.mode {
-            Mode::Tree => (),
+            Mode::Tree => tab.tree.search_first_match(&searched),
             _ => {
-                let Some(searched) = tab.searched.clone() else {
-                    return Ok(());
-                };
                 let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
                 tab.search_from(&searched, next_index);
                 status.update_second_pane_for_preview()?;
@@ -527,7 +518,7 @@ impl EventAction {
             Mode::Navigate(Navigate::CliInfo) => status.cli_info.next(),
             Mode::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
             Mode::InputCompleted(_) => status.selected().completion.next(),
-            Mode::Tree => status.selected().select_next()?,
+            Mode::Tree => status.selected().tree_select_next()?,
             _ => (),
         };
         status.update_second_pane_for_preview()
@@ -556,7 +547,11 @@ impl EventAction {
         match tab.mode {
             Mode::Normal => LeaveMode::open_file(status),
             Mode::Tree => {
-                tab.select_first_child()?;
+                if tab.tree.selected_path().is_file() {
+                    tab.tree_select_next()?;
+                } else {
+                    LeaveMode::open_file(status)?;
+                };
                 status.update_second_pane_for_preview()
             }
             Mode::InputSimple(_) | Mode::InputCompleted(_) => {
@@ -622,7 +617,7 @@ impl EventAction {
             }
             Mode::Preview => tab.page_up(),
             Mode::Tree => {
-                tab.tree_page_up()?;
+                tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
             }
             _ => (),
@@ -706,7 +701,10 @@ impl EventAction {
             }
             Mode::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status)?,
             Mode::InputCompleted(InputCompleted::Command) => LeaveMode::command(status)?,
-            Mode::Normal => LeaveMode::open_file(status)?,
+            Mode::Normal => {
+                LeaveMode::open_file(status)?;
+                must_reset_mode = false;
+            }
             Mode::Tree => LeaveMode::tree(status)?,
             Mode::NeedConfirmation(_)
             | Mode::Preview
@@ -799,7 +797,7 @@ impl EventAction {
             return Ok(());
         }
         if let Mode::Normal | Mode::Tree = tab.mode {
-            let Some(file_info) = tab.selected() else {
+            let Ok(file_info) = tab.selected() else {
                 return Ok(());
             };
             info!("selected {:?}", file_info);
@@ -895,18 +893,15 @@ impl EventAction {
     /// Fold the current node of the tree.
     /// Has no effect on "file" nodes.
     pub fn tree_fold(tab: &mut Tab) -> Result<()> {
-        let (tree, _, _) = tab.directory.tree.explore_position(false);
-        tree.node.toggle_fold();
-        tab.directory.make_preview();
-        tab.select_next()
+        tab.tree.toggle_fold();
+        Ok(())
     }
 
     /// Unfold every child node in the tree.
     /// Recursively explore the tree and unfold every node.
     /// Reset the display.
     pub fn tree_unfold_all(tab: &mut Tab) -> Result<()> {
-        tab.directory.tree.unfold_children();
-        tab.directory.make_preview();
+        tab.tree.unfold_all();
         Ok(())
     }
 
@@ -914,8 +909,7 @@ impl EventAction {
     /// Recursively explore the tree and fold every node.
     /// Reset the display.
     pub fn tree_fold_all(tab: &mut Tab) -> Result<()> {
-        tab.directory.tree.fold_children();
-        tab.directory.make_preview();
+        tab.tree.fold_all();
         Ok(())
     }
 
@@ -1103,7 +1097,11 @@ impl Display for NodeCreation {
 impl NodeCreation {
     fn create(&self, tab: &mut Tab) -> Result<()> {
         let root_path = match tab.previous_mode {
-            Mode::Tree => tab.directory.tree.directory_of_selected()?.to_owned(),
+            Mode::Tree => tab
+                .tree
+                .directory_of_selected()
+                .context("no parent")?
+                .to_owned(),
             _ => tab.path_content.path.clone(),
         };
         log::info!("root_path: {root_path:?}");
@@ -1141,11 +1139,14 @@ impl LeaveMode {
     /// Open the file with configured opener or enter the directory.
     pub fn open_file(status: &mut Status) -> Result<()> {
         let tab = status.selected();
+        if matches!(tab.mode, Mode::Tree) {
+            return EventAction::open_file(status);
+        };
         if tab.path_content.is_empty() {
             return Ok(());
         }
         if tab.path_content.is_selected_dir()? {
-            tab.go_to_child()
+            tab.go_to_selected_dir()
         } else {
             EventAction::open_file(status)
         }
@@ -1296,15 +1297,15 @@ impl LeaveMode {
     /// We only try to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
     pub fn rename(tab: &mut Tab) -> Result<()> {
-        let fileinfo = match tab.previous_mode {
-            Mode::Tree => &tab.directory.tree.current_node.fileinfo,
-            _ => tab
-                .path_content
+        let original_path = if let Mode::Tree = tab.previous_mode {
+            tab.tree.selected_path()
+        } else {
+            tab.path_content
                 .selected()
-                .context("rename: couldnt parse selected")?,
+                .context("rename: couldn't parse selected file")?
+                .path
+                .as_path()
         };
-
-        let original_path = &fileinfo.path;
         if let Some(parent) = original_path.parent() {
             let new_path = parent.join(sanitize_filename::sanitize(tab.input.string()));
             info!(
@@ -1365,7 +1366,7 @@ impl LeaveMode {
     /// The current order of files is used.
     pub fn search(status: &mut Status) -> Result<()> {
         let tab = status.selected();
-        let searched = tab.input.string();
+        let searched = &tab.input.string();
         tab.input.reset();
         if searched.is_empty() {
             tab.searched = None;
@@ -1374,19 +1375,12 @@ impl LeaveMode {
         tab.searched = Some(searched.clone());
         match tab.previous_mode {
             Mode::Tree => {
-                tab.directory.tree.unselect_children();
-                if let Some(position) = tab.directory.tree.select_first_match(&searched) {
-                    tab.directory.tree.position = position;
-                    (_, _, tab.directory.tree.current_node) =
-                        tab.directory.tree.select_from_position()?;
-                } else {
-                    tab.directory.tree.select_root()
-                };
-                tab.directory.make_preview();
+                log::info!("searching in tree");
+                tab.tree.search_first_match(searched);
             }
             _ => {
                 let next_index = tab.path_content.index;
-                tab.search_from(&searched, next_index);
+                tab.search_from(searched, next_index);
             }
         };
         status.update_second_pane_for_preview()
@@ -1443,14 +1437,15 @@ impl LeaveMode {
 
     /// Execute the selected node if it's a file else enter the directory.
     pub fn tree(status: &mut Status) -> Result<()> {
-        let tab = status.selected();
-        let node = tab.directory.tree.current_node.clone();
-        if !node.is_dir {
-            EventAction::open_file(status)
-        } else {
-            tab.set_pathcontent(&node.filepath())?;
-            tab.make_tree()?;
+        let path = status.selected_non_mut().selected()?.path;
+        let is_dir = path.is_dir();
+        if is_dir {
+            status.selected().set_pathcontent(&path)?;
+            status.selected().make_tree(None)?;
+            status.selected().set_mode(Mode::Tree);
             Ok(())
+        } else {
+            EventAction::open_file(status)
         }
     }
 
@@ -1520,7 +1515,7 @@ impl LeaveMode {
         tab.path_content
             .reset_files(&tab.filter, tab.show_hidden, &tab.users)?;
         if let Mode::Tree = tab.previous_mode {
-            tab.make_tree()?;
+            tab.make_tree(None)?;
         }
         tab.window.reset(tab.path_content.content.len());
         Ok(())
@@ -1549,15 +1544,18 @@ impl LeaveMode {
         };
 
         let (username, hostname, remote_path) = (strings[0], strings[1], strings[2]);
-        let current_path: &str = tab
-            .current_directory_path()
-            .to_str()
-            .context("couldn't parse the path")?;
+        let current_path: &str = &tab
+            .directory_of_selected_previous_mode()?
+            .display()
+            .to_string();
         let first_arg = &format!("{username}@{hostname}:{remote_path}");
-        let command_output =
-            execute_and_capture_output(SSHFS_EXECUTABLE, &[first_arg, current_path]);
-        info!("{SSHFS_EXECUTABLE} output {command_output:?}");
-        log_line!("{SSHFS_EXECUTABLE} output {command_output:?}");
+        let command_output = execute_and_capture_output_with_path(
+            SSHFS_EXECUTABLE,
+            current_path,
+            &[first_arg, current_path],
+        );
+        info!("{SSHFS_EXECUTABLE} {strings:?} output {command_output:?}");
+        log_line!("{SSHFS_EXECUTABLE} {strings:?} output {command_output:?}");
         Ok(())
     }
 }
