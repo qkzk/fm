@@ -10,6 +10,7 @@ pub trait SelectableContent<T> {
     fn selected(&self) -> Option<&T>;
     fn index(&self) -> usize;
     fn content(&self) -> &Vec<T>;
+    fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr;
 }
 
 /// Implement the `SelectableContent` for struct `$struc` with content type `$content_type`.
@@ -72,6 +73,15 @@ macro_rules! impl_selectable_content {
             /// A reference to the content.
             fn content(&self) -> &Vec<$content_type> {
                 &self.content
+            }
+
+            /// Reverse the received effect if the index match the selected index.
+            fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr {
+                let mut attr = *attr;
+                if index == self.index() {
+                    attr.effect |= tuikit::attr::Effect::REVERSE;
+                }
+                attr
             }
         }
     };

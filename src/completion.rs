@@ -229,6 +229,15 @@ impl Completion {
     pub fn complete_input_string(&self, input_string: &str) -> Option<&str> {
         self.current_proposition().strip_prefix(input_string)
     }
+
+    /// Reverse the received effect if the index match the selected index.
+    pub fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr {
+        let mut attr = *attr;
+        if index == self.index {
+            attr.effect |= tuikit::attr::Effect::REVERSE;
+        }
+        attr
+    }
 }
 
 fn file_match_input(dir_entry: &std::fs::DirEntry, input_string: &str) -> bool {
