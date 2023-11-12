@@ -10,7 +10,6 @@ use tuikit::prelude::*;
 use tuikit::term::Term;
 
 use crate::completion::InputCompleted;
-use crate::compress::CompressionMethod;
 use crate::constant_strings_paths::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
     LOG_SECOND_SENTENCE,
@@ -24,7 +23,6 @@ use crate::preview::{Preview, TextKind, Window};
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
-use crate::trash::TrashInfo;
 use crate::tree::calculate_top_bottom;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
@@ -661,15 +659,14 @@ impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
         match self.tab.mode {
-            Mode::Navigate(mode) => self.navigate(mode, canvas),
-            Mode::NeedConfirmation(mode) => self.confirm(self.status, self.tab, mode, canvas),
-            Mode::InputCompleted(_) => self.completion(self.tab, canvas),
-            Mode::InputSimple(mode) => Self::display_static_lines(mode.lines(), canvas),
+            Mode::Navigate(mode) => self.draw_navigate(mode, canvas),
+            Mode::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
+            Mode::InputCompleted(_) => self.draw_completion(canvas),
+            Mode::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
             _ => Ok(()),
         }?;
-        self.cursor(self.tab, canvas)?;
-        self.first_line(self.tab, canvas)?;
-        Ok(())
+        self.draw_cursor(canvas)?;
+        WinSecondaryFirstLine::new(self.tab)?.draw(canvas)
     }
 }
 
@@ -686,12 +683,357 @@ impl<'a> WinSecondary<'a> {
         }
     }
 
-    fn first_line(&self, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        draw_colored_strings(0, 0, &self.create_first_row(tab)?, canvas, false)
+    /// Display the possible completion items. The currently selected one is
+    /// reversed.
+    fn draw_completion(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.set_cursor(0, self.tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
+        for (row, candidate) in self.tab.completion.proposals.iter().enumerate() {
+            let mut attr = Attr::default();
+            if row == self.tab.completion.index {
+                attr.effect |= Effect::REVERSE;
+            }
+            canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, candidate, attr)?;
+        }
+        Ok(())
     }
 
-    fn create_first_row(&self, tab: &Tab) -> Result<Vec<String>> {
-        let first_row = match tab.mode {
+    fn draw_static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {
+        for (row, line, attr) in enumerated_colored_iter!(lines) {
+            canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, line, *attr)?;
+        }
+        Ok(())
+    }
+
+    /// Display a cursor in the top row, at a correct column.
+    fn draw_cursor(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        match self.tab.mode {
+            Mode::Normal | Mode::Tree | Mode::Navigate(_) | Mode::Preview => {
+                canvas.show_cursor(false)?;
+            }
+            Mode::InputSimple(InputSimple::Sort) => {
+                canvas.show_cursor(true)?;
+                canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
+            }
+            Mode::InputSimple(InputSimple::Password(_, _, _)) => {
+                canvas.show_cursor(true)?;
+                canvas.set_cursor(
+                    0,
+                    Self::PASSWORD_CURSOR_OFFSET + self.tab.input.cursor_index,
+                )?;
+            }
+            Mode::InputSimple(_) | Mode::InputCompleted(_) => {
+                canvas.show_cursor(true)?;
+                canvas.set_cursor(0, Self::EDIT_BOX_OFFSET + self.tab.input.cursor_index)?;
+            }
+            Mode::NeedConfirmation(confirmed_action) => {
+                canvas.show_cursor(true)?;
+                canvas.set_cursor(0, confirmed_action.cursor_offset())?;
+            }
+        }
+        Ok(())
+    }
+
+    fn draw_navigate(&self, navigable_mode: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
+        match navigable_mode {
+            Navigate::Bulk => self.draw_bulk(canvas),
+            Navigate::CliInfo => self.draw_cli_info(canvas),
+            Navigate::Compress => self.draw_compress(canvas),
+            Navigate::EncryptedDrive => self.draw_encrypted_drive(canvas),
+            Navigate::History => self.draw_history(canvas),
+            Navigate::Jump => self.draw_destination(canvas, &self.status.flagged),
+            Navigate::Marks(_) => self.draw_marks(self.status, canvas),
+            Navigate::RemovableDevices => self.draw_removable(canvas),
+            Navigate::ShellMenu => self.draw_shell_menu(self.status, canvas),
+            Navigate::Shortcut => self.draw_destination(canvas, &self.tab.shortcut),
+            Navigate::Trash => self.draw_trash(canvas),
+        }
+    }
+
+    /// Display the possible destinations from a selectable content of PathBuf.
+    fn draw_destination(
+        &self,
+        canvas: &mut dyn Canvas,
+        selectable: &impl SelectableContent<PathBuf>,
+    ) -> Result<()> {
+        canvas.print(0, 0, "Go to...")?;
+        let content = &selectable.content();
+        for (row, path, attr) in enumerated_colored_iter!(content) {
+            let mut attr = *attr;
+            if row == selectable.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                path.to_str().context("Unreadable filename")?,
+                attr,
+            );
+        }
+        Ok(())
+    }
+
+    fn draw_history(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let selectable = &self.tab.history;
+        canvas.print(0, 0, "Go to...")?;
+        let content = &selectable.content();
+        for (row, pair, attr) in enumerated_colored_iter!(content) {
+            let mut attr = *attr;
+            if row == selectable.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                pair.0.to_str().context("Unreadable filename")?,
+                attr,
+            );
+        }
+        Ok(())
+    }
+
+    fn draw_bulk(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let selectable = &self.status.bulk;
+        if let Some(selectable) = selectable {
+            canvas.print(0, 0, "Action...")?;
+            let content = &selectable.content();
+            for (row, text, attr) in enumerated_colored_iter!(content) {
+                let mut attr = *attr;
+                if row == selectable.index() {
+                    attr.effect |= Effect::REVERSE;
+                }
+                let _ =
+                    canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr);
+            }
+        }
+        Ok(())
+    }
+
+    fn draw_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let selectable = &self.status.trash;
+        canvas.print(
+            1,
+            0,
+            "Enter: restore the selected file  --  x: delete permanently",
+        )?;
+        let content = &selectable.content();
+        if content.is_empty() {
+            let _ = canvas.print_with_attr(
+                ContentWindow::WINDOW_MARGIN_TOP + 2,
+                4,
+                "Trash is empty",
+                ATTR_YELLOW_BOLD,
+            );
+        } else {
+            for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
+                let mut attr = *attr;
+                if row == selectable.index() {
+                    attr.effect |= Effect::REVERSE;
+                }
+                let _ = canvas.print_with_attr(
+                    row + ContentWindow::WINDOW_MARGIN_TOP,
+                    4,
+                    &format!("{trashinfo}"),
+                    attr,
+                );
+            }
+        }
+        Ok(())
+    }
+
+    fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let selectable = &self.status.compression;
+        canvas.print_with_attr(
+            1,
+            0,
+            "Archive and compress the flagged files. Pick a compression algorithm.",
+            Self::ATTR_YELLOW,
+        )?;
+        let content = &selectable.content();
+        for (row, compression_method, attr) in enumerated_colored_iter!(content) {
+            let mut attr = *attr;
+            if row == selectable.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                &format!("{compression_method}"),
+                attr,
+            );
+        }
+        Ok(())
+    }
+
+    fn draw_marks(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
+
+        for ((row, line), attr) in std::iter::zip(
+            status.marks.as_strings().iter().enumerate(),
+            MENU_COLORS.iter().cycle(),
+        ) {
+            let mut attr = *attr;
+            if row == status.marks.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+
+            canvas.print_with_attr(row + 4, 3, line, attr)?;
+        }
+        Ok(())
+    }
+
+    fn draw_shell_menu(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
+
+        let tab = status.selected_non_mut();
+        for ((row, (command, _)), attr) in std::iter::zip(
+            status.shell_menu.content.iter().enumerate(),
+            MENU_COLORS.iter().cycle(),
+        ) {
+            let mut attr = *attr;
+            if row == status.shell_menu.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            let row = calc_line_row(row, &tab.window) + 2;
+
+            canvas.print_with_attr(row, 3, command, attr)?;
+        }
+        Ok(())
+    }
+
+    fn draw_cli_info(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
+
+        let tab = self.status.selected_non_mut();
+        for ((row, command), attr) in std::iter::zip(
+            self.status.cli_info.content.iter().enumerate(),
+            MENU_COLORS.iter().cycle(),
+        ) {
+            let mut attr = *attr;
+            if row == self.status.cli_info.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            let row = calc_line_row(row, &tab.window) + 2;
+
+            canvas.print_with_attr(row, 3, command, attr)?;
+        }
+        Ok(())
+    }
+
+    fn draw_encrypted_drive(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
+        for (i, device) in self.status.encrypted_devices.content.iter().enumerate() {
+            let row = calc_line_row(i, &self.tab.window) + 2;
+            let mut not_mounted_attr = Attr::default();
+            let mut mounted_attr = Attr::from(Color::BLUE);
+            if i == self.status.encrypted_devices.index() {
+                not_mounted_attr.effect |= Effect::REVERSE;
+                mounted_attr.effect |= Effect::REVERSE;
+            }
+            if self.status.encrypted_devices.content[i].is_mounted() {
+                canvas.print_with_attr(row, 3, &device.as_string()?, mounted_attr)?;
+            } else {
+                canvas.print_with_attr(row, 3, &device.as_string()?, not_mounted_attr)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn draw_removable(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
+        if let Some(removable) = &self.status.removable_devices {
+            for (i, removable) in removable.content.iter().enumerate() {
+                let row = calc_line_row(i, &self.tab.window) + 2;
+                let mut not_mounted_attr = Attr::default();
+                let mut mounted_attr = Attr::from(Color::BLUE);
+                if i == self.status.encrypted_devices.index() {
+                    not_mounted_attr.effect |= Effect::REVERSE;
+                    mounted_attr.effect |= Effect::REVERSE;
+                }
+                if removable.is_mounted {
+                    canvas.print_with_attr(row, 3, &removable.device_name, mounted_attr)?;
+                } else {
+                    canvas.print_with_attr(row, 3, &removable.device_name, not_mounted_attr)?;
+                }
+            }
+        }
+        Ok(())
+    }
+    /// Display a list of edited (deleted, copied, moved, trashed) files for confirmation
+    fn draw_confirm(
+        &self,
+        confirmed_mode: NeedConfirmation,
+        canvas: &mut dyn Canvas,
+    ) -> Result<()> {
+        info!("confirmed action: {:?}", confirmed_mode);
+        match confirmed_mode {
+            NeedConfirmation::EmptyTrash => {
+                if self.status.trash.is_empty() {
+                    let _ = canvas.print_with_attr(
+                        ContentWindow::WINDOW_MARGIN_TOP + 2,
+                        4,
+                        "Trash is empty",
+                        ATTR_YELLOW_BOLD,
+                    );
+                } else {
+                    for (row, trashinfo) in self.status.trash.content().iter().enumerate() {
+                        canvas.print_with_attr(
+                            row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                            4,
+                            &format!("{trashinfo}"),
+                            Attr::default(),
+                        )?;
+                    }
+                }
+            }
+            _ => {
+                for (row, path) in self.status.flagged.content.iter().enumerate() {
+                    canvas.print_with_attr(
+                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                        4,
+                        path.to_str().context("Unreadable filename")?,
+                        Attr::default(),
+                    )?;
+                }
+            }
+        }
+        let dest = match self.tab.previous_mode {
+            Mode::Tree => self
+                .tab
+                .tree
+                .directory_of_selected()
+                .context("No directory_of_selected")?
+                .display()
+                .to_string(),
+            _ => self.tab.path_content.path_to_str(),
+        };
+        canvas.print_with_attr(
+            2,
+            3,
+            &confirmed_mode.confirmation_string(&dest),
+            ATTR_YELLOW_BOLD,
+        )?;
+
+        Ok(())
+    }
+}
+
+impl<'a> Widget for WinSecondary<'a> {}
+
+struct WinSecondaryFirstLine {
+    content: Vec<String>,
+}
+
+impl Draw for WinSecondaryFirstLine {
+    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+        draw_colored_strings(0, 0, &self.content, canvas, false)?;
+        Ok(())
+    }
+}
+
+impl WinSecondaryFirstLine {
+    fn new(tab: &Tab) -> Result<Self> {
+        let content = match tab.mode {
             Mode::NeedConfirmation(confirmed_action) => {
                 vec![format!("{confirmed_action}"), " (y/n)".to_owned()]
             }
@@ -723,355 +1065,9 @@ impl<'a> WinSecondary<'a> {
                 vec![tab.mode.to_string(), tab.input.string()]
             }
         };
-        Ok(first_row)
-    }
-
-    /// Display the possible completion items. The currently selected one is
-    /// reversed.
-    fn completion(&self, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.set_cursor(0, tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
-        for (row, candidate) in tab.completion.proposals.iter().enumerate() {
-            let mut attr = Attr::default();
-            if row == tab.completion.index {
-                attr.effect |= Effect::REVERSE;
-            }
-            canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, candidate, attr)?;
-        }
-        Ok(())
-    }
-
-    fn display_static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {
-        for (row, line, attr) in enumerated_colored_iter!(lines) {
-            canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, line, *attr)?;
-        }
-        Ok(())
-    }
-
-    /// Display a cursor in the top row, at a correct column.
-    fn cursor(&self, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        match tab.mode {
-            Mode::Normal | Mode::Tree | Mode::Navigate(_) | Mode::Preview => {
-                canvas.show_cursor(false)?;
-            }
-            Mode::InputSimple(InputSimple::Sort) => {
-                canvas.show_cursor(true)?;
-                canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
-            }
-            Mode::InputSimple(InputSimple::Password(_, _, _)) => {
-                canvas.show_cursor(true)?;
-                canvas.set_cursor(0, Self::PASSWORD_CURSOR_OFFSET + tab.input.cursor_index)?;
-            }
-            Mode::InputSimple(_) | Mode::InputCompleted(_) => {
-                canvas.show_cursor(true)?;
-                canvas.set_cursor(0, Self::EDIT_BOX_OFFSET + tab.input.cursor_index)?;
-            }
-            Mode::NeedConfirmation(confirmed_action) => {
-                canvas.show_cursor(true)?;
-                canvas.set_cursor(0, confirmed_action.cursor_offset())?;
-            }
-        }
-        Ok(())
-    }
-
-    fn navigate(&self, navigable_mode: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
-        match navigable_mode {
-            Navigate::Bulk => self.bulk(canvas, &self.status.bulk),
-            Navigate::CliInfo => self.cli_info(self.status, canvas),
-            Navigate::Compress => self.compress(canvas, &self.status.compression),
-            Navigate::EncryptedDrive => self.encrypted_drive(self.status, self.tab, canvas),
-            Navigate::RemovableDevices => self.removable_devices(self.status, self.tab, canvas),
-            Navigate::History => self.history(canvas, &self.tab.history),
-            Navigate::Jump => self.destination(canvas, &self.status.flagged),
-            Navigate::Marks(_) => self.marks(self.status, canvas),
-            Navigate::ShellMenu => self.shell_menu(self.status, canvas),
-            Navigate::Shortcut => self.destination(canvas, &self.tab.shortcut),
-            Navigate::Trash => self.trash(canvas, &self.status.trash),
-        }
-    }
-
-    /// Display the possible destinations from a selectable content of PathBuf.
-    fn destination(
-        &self,
-        canvas: &mut dyn Canvas,
-        selectable: &impl SelectableContent<PathBuf>,
-    ) -> Result<()> {
-        canvas.print(0, 0, "Go to...")?;
-        let content = &selectable.content();
-        for (row, path, attr) in enumerated_colored_iter!(content) {
-            let mut attr = *attr;
-            if row == selectable.index() {
-                attr.effect |= Effect::REVERSE;
-            }
-            let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP,
-                4,
-                path.to_str().context("Unreadable filename")?,
-                attr,
-            );
-        }
-        Ok(())
-    }
-
-    fn history(
-        &self,
-        canvas: &mut dyn Canvas,
-        selectable: &impl SelectableContent<(PathBuf, PathBuf)>,
-    ) -> Result<()> {
-        canvas.print(0, 0, "Go to...")?;
-        let content = &selectable.content();
-        for (row, pair, attr) in enumerated_colored_iter!(content) {
-            let mut attr = *attr;
-            if row == selectable.index() {
-                attr.effect |= Effect::REVERSE;
-            }
-            let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP,
-                4,
-                pair.0.to_str().context("Unreadable filename")?,
-                attr,
-            );
-        }
-        Ok(())
-    }
-
-    fn bulk(
-        &self,
-        canvas: &mut dyn Canvas,
-        selectable: &Option<impl SelectableContent<String>>,
-    ) -> Result<()> {
-        if let Some(selectable) = selectable {
-            canvas.print(0, 0, "Action...")?;
-            let content = &selectable.content();
-            for (row, text, attr) in enumerated_colored_iter!(content) {
-                let mut attr = *attr;
-                if row == selectable.index() {
-                    attr.effect |= Effect::REVERSE;
-                }
-                let _ =
-                    canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr);
-            }
-        }
-        Ok(())
-    }
-
-    fn trash(
-        &self,
-        canvas: &mut dyn Canvas,
-        selectable: &impl SelectableContent<TrashInfo>,
-    ) -> Result<()> {
-        canvas.print(
-            1,
-            0,
-            "Enter: restore the selected file  --  x: delete permanently",
-        )?;
-        let content = &selectable.content();
-        if content.is_empty() {
-            let _ = canvas.print_with_attr(
-                ContentWindow::WINDOW_MARGIN_TOP + 2,
-                4,
-                "Trash is empty",
-                ATTR_YELLOW_BOLD,
-            );
-        } else {
-            for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
-                let mut attr = *attr;
-                if row == selectable.index() {
-                    attr.effect |= Effect::REVERSE;
-                }
-                let _ = canvas.print_with_attr(
-                    row + ContentWindow::WINDOW_MARGIN_TOP,
-                    4,
-                    &format!("{trashinfo}"),
-                    attr,
-                );
-            }
-        }
-        Ok(())
-    }
-
-    fn compress(
-        &self,
-        canvas: &mut dyn Canvas,
-        selectable: &impl SelectableContent<CompressionMethod>,
-    ) -> Result<()> {
-        canvas.print_with_attr(
-            1,
-            0,
-            "Archive and compress the flagged files. Pick a compression algorithm.",
-            Self::ATTR_YELLOW,
-        )?;
-        let content = &selectable.content();
-        for (row, compression_method, attr) in enumerated_colored_iter!(content) {
-            let mut attr = *attr;
-            if row == selectable.index() {
-                attr.effect |= Effect::REVERSE;
-            }
-
-            let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP,
-                4,
-                &format!("{compression_method}"),
-                attr,
-            );
-        }
-        Ok(())
-    }
-
-    fn marks(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
-
-        for ((row, line), attr) in std::iter::zip(
-            status.marks.as_strings().iter().enumerate(),
-            MENU_COLORS.iter().cycle(),
-        ) {
-            let mut attr = *attr;
-            if row == status.marks.index() {
-                attr.effect |= Effect::REVERSE;
-            }
-
-            canvas.print_with_attr(row + 4, 3, line, attr)?;
-        }
-        Ok(())
-    }
-
-    fn shell_menu(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
-
-        let tab = status.selected_non_mut();
-        for ((row, (command, _)), attr) in std::iter::zip(
-            status.shell_menu.content.iter().enumerate(),
-            MENU_COLORS.iter().cycle(),
-        ) {
-            let mut attr = *attr;
-            if row == status.shell_menu.index() {
-                attr.effect |= Effect::REVERSE;
-            }
-            let row = calc_line_row(row, &tab.window) + 2;
-
-            canvas.print_with_attr(row, 3, command, attr)?;
-        }
-        Ok(())
-    }
-
-    fn cli_info(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
-
-        let tab = status.selected_non_mut();
-        for ((row, command), attr) in std::iter::zip(
-            status.cli_info.content.iter().enumerate(),
-            MENU_COLORS.iter().cycle(),
-        ) {
-            let mut attr = *attr;
-            if row == status.cli_info.index() {
-                attr.effect |= Effect::REVERSE;
-            }
-            let row = calc_line_row(row, &tab.window) + 2;
-
-            canvas.print_with_attr(row, 3, command, attr)?;
-        }
-        Ok(())
-    }
-
-    fn encrypted_drive(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
-        for (i, device) in status.encrypted_devices.content.iter().enumerate() {
-            let row = calc_line_row(i, &tab.window) + 2;
-            let mut not_mounted_attr = Attr::default();
-            let mut mounted_attr = Attr::from(Color::BLUE);
-            if i == status.encrypted_devices.index() {
-                not_mounted_attr.effect |= Effect::REVERSE;
-                mounted_attr.effect |= Effect::REVERSE;
-            }
-            if status.encrypted_devices.content[i].is_mounted() {
-                canvas.print_with_attr(row, 3, &device.as_string()?, mounted_attr)?;
-            } else {
-                canvas.print_with_attr(row, 3, &device.as_string()?, not_mounted_attr)?;
-            }
-        }
-        Ok(())
-    }
-
-    fn removable_devices(&self, status: &Status, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
-        if let Some(removable) = &status.removable_devices {
-            for (i, removable) in removable.content.iter().enumerate() {
-                let row = calc_line_row(i, &tab.window) + 2;
-                let mut not_mounted_attr = Attr::default();
-                let mut mounted_attr = Attr::from(Color::BLUE);
-                if i == status.encrypted_devices.index() {
-                    not_mounted_attr.effect |= Effect::REVERSE;
-                    mounted_attr.effect |= Effect::REVERSE;
-                }
-                if removable.is_mounted {
-                    canvas.print_with_attr(row, 3, &removable.device_name, mounted_attr)?;
-                } else {
-                    canvas.print_with_attr(row, 3, &removable.device_name, not_mounted_attr)?;
-                }
-            }
-        }
-        Ok(())
-    }
-    /// Display a list of edited (deleted, copied, moved, trashed) files for confirmation
-    fn confirm(
-        &self,
-        status: &Status,
-        tab: &Tab,
-        confirmed_mode: NeedConfirmation,
-        canvas: &mut dyn Canvas,
-    ) -> Result<()> {
-        info!("confirmed action: {:?}", confirmed_mode);
-        match confirmed_mode {
-            NeedConfirmation::EmptyTrash => {
-                if status.trash.is_empty() {
-                    let _ = canvas.print_with_attr(
-                        ContentWindow::WINDOW_MARGIN_TOP + 2,
-                        4,
-                        "Trash is empty",
-                        ATTR_YELLOW_BOLD,
-                    );
-                } else {
-                    for (row, trashinfo) in status.trash.content().iter().enumerate() {
-                        canvas.print_with_attr(
-                            row + ContentWindow::WINDOW_MARGIN_TOP + 2,
-                            4,
-                            &format!("{trashinfo}"),
-                            Attr::default(),
-                        )?;
-                    }
-                }
-            }
-            _ => {
-                for (row, path) in status.flagged.content.iter().enumerate() {
-                    canvas.print_with_attr(
-                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
-                        4,
-                        path.to_str().context("Unreadable filename")?,
-                        Attr::default(),
-                    )?;
-                }
-            }
-        }
-        let dest = match tab.previous_mode {
-            Mode::Tree => tab
-                .tree
-                .directory_of_selected()
-                .context("No directory_of_selected")?
-                .display()
-                .to_string(),
-            _ => tab.path_content.path_to_str(),
-        };
-        canvas.print_with_attr(
-            2,
-            3,
-            &confirmed_mode.confirmation_string(&dest),
-            ATTR_YELLOW_BOLD,
-        )?;
-
-        Ok(())
+        Ok(Self { content })
     }
 }
-
-impl<'a> Widget for WinSecondary<'a> {}
 
 /// Is responsible for displaying content in the terminal.
 /// It uses an already created terminal.
