@@ -858,6 +858,7 @@ impl EventAction {
             Self::toggle_flag(status)?;
         }
 
+        status.trash.update()?;
         for flagged in status.flagged.content.iter() {
             status.trash.trash(flagged)?;
         }
@@ -868,6 +869,7 @@ impl EventAction {
     /// Ask the user if he wants to empty the trash.
     /// It requires a confimation before doing anything
     pub fn trash_empty(status: &mut Status) -> Result<()> {
+        status.trash.update()?;
         status
             .selected()
             .set_mode(Mode::NeedConfirmation(NeedConfirmation::EmptyTrash));
