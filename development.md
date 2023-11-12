@@ -627,6 +627,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Version 0.1.24
 
+- [ ] refactor term manager. Separate content construction from drawing.
+  - [ ] struct for every drawable element
+  - [ ] Draw trait
+
 ## TODO
 
 - [ ] mount usb key - should be merged with mtp

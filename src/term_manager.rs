@@ -157,8 +157,7 @@ impl<'a> Draw for WinMain<'a> {
             opt_index,
             self.attributes.is_selected,
             self.status,
-            self.tab,
-        )
+        )?
         .draw(canvas)?;
         // self.first_line(self.disk_space, canvas, opt_index)?;
         Ok(())
@@ -191,7 +190,7 @@ impl<'a> WinMain<'a> {
     fn preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let tab = &self.status.tabs[1];
         self.preview(tab, &tab.window, canvas)?;
-        draw_colored_strings(0, 0, self.default_preview_first_line(tab), canvas, false)?;
+        draw_colored_strings(0, 0, &self.default_preview_first_line(tab), canvas, false)?;
         Ok(())
     }
 
@@ -439,15 +438,12 @@ impl<'a> WinMain<'a> {
     }
 }
 
-struct WinMainFirstLine<'a> {
-    disk_space: &'a str,
-    opt_index: Option<usize>,
+struct WinMainFirstLine {
+    content: Vec<String>,
     is_selected: bool,
-    status: &'a Status,
-    tab: &'a Tab,
 }
 
-impl<'a> Draw for WinMainFirstLine<'a> {
+impl Draw for WinMainFirstLine {
     /// Display the top line on terminal.
     /// Its content depends on the mode.
     /// In normal mode we display the path and number of files.
@@ -456,82 +452,74 @@ impl<'a> Draw for WinMainFirstLine<'a> {
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        draw_colored_strings(
-            0,
-            0,
-            self.create_first_row(self.disk_space, self.opt_index)?,
-            canvas,
-            self.is_selected,
-        )?;
+        draw_colored_strings(0, 0, &self.content, canvas, self.is_selected)?;
         Ok(())
     }
 }
 
-impl<'a> WinMainFirstLine<'a> {
+impl WinMainFirstLine {
     fn new(
-        disk_space: &'a str,
+        disk_space: &str,
         opt_index: Option<usize>,
         is_selected: bool,
-        status: &'a Status,
-        tab: &'a Tab,
-    ) -> Self {
-        Self {
-            disk_space,
-            opt_index,
-            is_selected,
-            status,
-            tab,
-        }
-    }
-
-    fn create_first_row(&self, disk_space: &str, opt_index: Option<usize>) -> Result<Vec<String>> {
-        let tab = self.status.selected_non_mut();
-        let first_row = match tab.mode {
-            Mode::Normal | Mode::Tree => self.normal_first_row(disk_space, opt_index)?,
+        status: &Status,
+    ) -> Result<Self> {
+        let tab = status.selected_non_mut();
+        let content = match tab.mode {
+            Mode::Normal | Mode::Tree => {
+                Self::normal_first_row(status, tab, disk_space, opt_index)?
+            }
             Mode::Preview => match &tab.preview {
                 Preview::Text(text_content) => match text_content.kind {
                     TextKind::HELP => Self::help_first_row(),
                     TextKind::LOG => Self::log_first_row(),
-                    _ => self.default_preview_first_line(tab),
+                    _ => Self::default_preview_first_line(status, tab),
                 },
-                _ => self.default_preview_first_line(tab),
+                _ => Self::default_preview_first_line(status, tab),
             },
-            _ => match self.tab.previous_mode {
-                Mode::Normal | Mode::Tree => self.normal_first_row(disk_space, opt_index)?,
+            _ => match tab.previous_mode {
+                Mode::Normal | Mode::Tree => {
+                    Self::normal_first_row(status, tab, disk_space, opt_index)?
+                }
                 _ => vec![],
             },
         };
-        Ok(first_row)
+        Ok(Self {
+            content,
+            is_selected,
+        })
     }
 
-    fn normal_first_row(&self, disk_space: &str, opt_index: Option<usize>) -> Result<Vec<String>> {
+    fn normal_first_row(
+        status: &Status,
+        tab: &Tab,
+        disk_space: &str,
+        opt_index: Option<usize>,
+    ) -> Result<Vec<String>> {
         Ok(vec![
-            self.shorten_path()?,
-            self.first_row_selected_file()?,
-            self.first_row_position(opt_index),
-            self.used_space(),
-            self.disk_space(disk_space),
-            self.git_string()?,
-            self.first_row_flags(),
-            self.sort_kind(),
+            Self::shorten_path(tab)?,
+            Self::first_row_selected_file(tab)?,
+            Self::first_row_position(tab, opt_index),
+            Self::used_space(tab),
+            Self::disk_space(disk_space),
+            Self::git_string(tab)?,
+            Self::first_row_flags(status),
+            Self::sort_kind(tab),
         ])
     }
 
-    fn shorten_path(&self) -> Result<String> {
-        Ok(format!(
-            " {}",
-            shorten_path(&self.tab.path_content.path, None)?
-        ))
+    fn shorten_path(tab: &Tab) -> Result<String> {
+        Ok(format!(" {}", shorten_path(&tab.path_content.path, None)?))
     }
 
-    fn first_row_selected_file(&self) -> Result<String> {
-        match self.tab.mode {
+    fn first_row_selected_file(tab: &Tab) -> Result<String> {
+        match tab.mode {
             Mode::Tree => Ok(format!(
                 "/{rel}",
-                rel = shorten_path(self.tab.tree.selected_path_relative_to_root()?, Some(18))?
+                rel = shorten_path(tab.tree.selected_path_relative_to_root()?, Some(18))?
             )),
             _ => {
-                if let Some(fileinfo) = self.tab.path_content.selected() {
+                if let Some(fileinfo) = tab.path_content.selected() {
                     Ok(fileinfo.filename_without_dot_dotdot())
                 } else {
                     Ok("".to_owned())
@@ -540,43 +528,43 @@ impl<'a> WinMainFirstLine<'a> {
         }
     }
 
-    fn first_row_position(&self, opt_index: Option<usize>) -> String {
-        if matches!(self.tab.mode, Mode::Tree) {
+    fn first_row_position(tab: &Tab, opt_index: Option<usize>) -> String {
+        if matches!(tab.mode, Mode::Tree) {
             let Some(selected_index) = opt_index else {
                 return "".to_owned();
             };
             return format!(
                 " {position} / {len} ",
                 position = selected_index + 1,
-                len = self.tab.tree.len()
+                len = tab.tree.len()
             );
         };
         format!(
             " {index} / {len} ",
-            index = self.tab.path_content.index + 1,
-            len = self.tab.path_content.len()
+            index = tab.path_content.index + 1,
+            len = tab.path_content.len()
         )
     }
 
-    fn used_space(&self) -> String {
-        format!("{}  ", self.tab.path_content.used_space())
+    fn used_space(tab: &Tab) -> String {
+        format!("{}  ", tab.path_content.used_space())
     }
 
-    fn disk_space(&self, disk_space: &str) -> String {
+    fn disk_space(disk_space: &str) -> String {
         format!(" Avail: {disk_space}  ")
     }
 
-    fn git_string(&self) -> Result<String> {
-        Ok(format!(" {} ", self.tab.path_content.git_string()?))
+    fn git_string(tab: &Tab) -> Result<String> {
+        Ok(format!(" {} ", tab.path_content.git_string()?))
     }
 
-    fn sort_kind(&self) -> String {
-        format!(" {} ", &self.tab.path_content.sort_kind)
+    fn sort_kind(tab: &Tab) -> String {
+        format!(" {} ", &tab.path_content.sort_kind)
     }
 
-    fn first_row_flags(&self) -> String {
-        let nb_flagged = self.status.flagged.len();
-        let flag_string = if self.status.flagged.len() > 1 {
+    fn first_row_flags(status: &Status) -> String {
+        let nb_flagged = status.flagged.len();
+        let flag_string = if status.flagged.len() > 1 {
             "flags"
         } else {
             "flag"
@@ -599,16 +587,16 @@ impl<'a> WinMainFirstLine<'a> {
         ]
     }
 
-    fn pick_previewed_fileinfo(&self) -> Result<FileInfo> {
-        if self.status.dual_pane && self.status.preview_second {
-            self.status.tabs[0].selected()
+    fn pick_previewed_fileinfo(status: &Status) -> Result<FileInfo> {
+        if status.dual_pane && status.preview_second {
+            status.tabs[0].selected()
         } else {
-            self.status.selected_non_mut().selected()
+            status.selected_non_mut().selected()
         }
     }
 
-    fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
-        if let Ok(fileinfo) = self.pick_previewed_fileinfo() {
+    fn default_preview_first_line(status: &Status, tab: &Tab) -> Vec<String> {
+        if let Ok(fileinfo) = Self::pick_previewed_fileinfo(status) {
             let mut strings = vec![" Preview ".to_owned()];
             if !tab.preview.is_empty() {
                 let index = match &tab.preview {
@@ -711,7 +699,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn first_line(&self, tab: &Tab, canvas: &mut dyn Canvas) -> Result<()> {
-        draw_colored_strings(0, 0, self.create_first_row(tab)?, canvas, false)
+        draw_colored_strings(0, 0, &self.create_first_row(tab)?, canvas, false)
     }
 
     fn create_first_row(&self, tab: &Tab) -> Result<Vec<String>> {
@@ -1290,7 +1278,7 @@ const fn color_to_attr(color: Color) -> Attr {
 fn draw_colored_strings(
     row: usize,
     offset: usize,
-    strings: Vec<String>,
+    strings: &[String],
     canvas: &mut dyn Canvas,
     effect_reverse: bool,
 ) -> Result<()> {
