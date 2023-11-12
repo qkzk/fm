@@ -12,7 +12,7 @@ use tuikit::term::Term;
 use crate::completion::InputCompleted;
 use crate::constant_strings_paths::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
-    LOG_SECOND_SENTENCE,
+    LOG_SECOND_SENTENCE, TRASH_CONFIRM_LINE,
 };
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
@@ -23,6 +23,7 @@ use crate::preview::{Preview, TextKind, Window};
 use crate::selectable_content::SelectableContent;
 use crate::status::Status;
 use crate::tab::Tab;
+use crate::trash::Trash;
 use crate::tree::calculate_top_bottom;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
@@ -741,9 +742,9 @@ impl<'a> WinSecondary<'a> {
             Navigate::EncryptedDrive => self.draw_encrypted_drive(canvas),
             Navigate::History => self.draw_history(canvas),
             Navigate::Jump => self.draw_destination(canvas, &self.status.flagged),
-            Navigate::Marks(_) => self.draw_marks(self.status, canvas),
+            Navigate::Marks(_) => self.draw_marks(canvas),
             Navigate::RemovableDevices => self.draw_removable(canvas),
-            Navigate::ShellMenu => self.draw_shell_menu(self.status, canvas),
+            Navigate::ShellMenu => self.draw_shell_menu(canvas),
             Navigate::Shortcut => self.draw_destination(canvas, &self.tab.shortcut),
             Navigate::Trash => self.draw_trash(canvas),
         }
@@ -756,7 +757,7 @@ impl<'a> WinSecondary<'a> {
         selectable: &impl SelectableContent<PathBuf>,
     ) -> Result<()> {
         canvas.print(0, 0, "Go to...")?;
-        let content = &selectable.content();
+        let content = selectable.content();
         for (row, path, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
@@ -775,7 +776,7 @@ impl<'a> WinSecondary<'a> {
     fn draw_history(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.tab.history;
         canvas.print(0, 0, "Go to...")?;
-        let content = &selectable.content();
+        let content = selectable.content();
         for (row, pair, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
@@ -795,7 +796,7 @@ impl<'a> WinSecondary<'a> {
         let selectable = &self.status.bulk;
         if let Some(selectable) = selectable {
             canvas.print(0, 0, "Action...")?;
-            let content = &selectable.content();
+            let content = selectable.content();
             for (row, text, attr) in enumerated_colored_iter!(content) {
                 let mut attr = *attr;
                 if row == selectable.index() {
@@ -809,35 +810,30 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let selectable = &self.status.trash;
-        canvas.print(
-            1,
-            0,
-            "Enter: restore the selected file  --  x: delete permanently",
-        )?;
-        let content = &selectable.content();
-        if content.is_empty() {
-            let _ = canvas.print_with_attr(
-                ContentWindow::WINDOW_MARGIN_TOP + 2,
-                4,
-                "Trash is empty",
-                ATTR_YELLOW_BOLD,
-            );
+        let trash = &self.status.trash;
+        if trash.content().is_empty() {
+            self.draw_already_empty_trash(canvas)
         } else {
-            for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
-                let mut attr = *attr;
-                if row == selectable.index() {
-                    attr.effect |= Effect::REVERSE;
-                }
-                let _ = canvas.print_with_attr(
-                    row + ContentWindow::WINDOW_MARGIN_TOP,
-                    4,
-                    &format!("{trashinfo}"),
-                    attr,
-                );
-            }
-        }
+            self.draw_trash_content(canvas, trash)
+        };
         Ok(())
+    }
+
+    fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
+        let _ = canvas.print(1, 2, TRASH_CONFIRM_LINE);
+        let content = trash.content();
+        for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
+            let mut attr = *attr;
+            if row == trash.index() {
+                attr.effect |= Effect::REVERSE;
+            }
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                &format!("{trashinfo}"),
+                attr,
+            );
+        }
     }
 
     fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -848,7 +844,7 @@ impl<'a> WinSecondary<'a> {
             "Archive and compress the flagged files. Pick a compression algorithm.",
             Self::ATTR_YELLOW,
         )?;
-        let content = &selectable.content();
+        let content = selectable.content();
         for (row, compression_method, attr) in enumerated_colored_iter!(content) {
             let mut attr = *attr;
             if row == selectable.index() {
@@ -865,15 +861,15 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn draw_marks(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_marks(&self, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.print_with_attr(2, 1, "mark  path", Self::ATTR_YELLOW)?;
 
         for ((row, line), attr) in std::iter::zip(
-            status.marks.as_strings().iter().enumerate(),
+            self.status.marks.as_strings().iter().enumerate(),
             MENU_COLORS.iter().cycle(),
         ) {
             let mut attr = *attr;
-            if row == status.marks.index() {
+            if row == self.status.marks.index() {
                 attr.effect |= Effect::REVERSE;
             }
 
@@ -882,16 +878,16 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn draw_shell_menu(&self, status: &Status, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_shell_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
 
-        let tab = status.selected_non_mut();
+        let tab = self.status.selected_non_mut();
         for ((row, (command, _)), attr) in std::iter::zip(
-            status.shell_menu.content.iter().enumerate(),
+            self.status.shell_menu.content.iter().enumerate(),
             MENU_COLORS.iter().cycle(),
         ) {
             let mut attr = *attr;
-            if row == status.shell_menu.index() {
+            if row == self.status.shell_menu.index() {
                 attr.effect |= Effect::REVERSE;
             }
             let row = calc_line_row(row, &tab.window) + 2;
@@ -968,27 +964,13 @@ impl<'a> WinSecondary<'a> {
         info!("confirmed action: {:?}", confirmed_mode);
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => self.draw_confirm_empty_trash(canvas)?,
-            _ => {
-                for (row, path) in self.status.flagged.content.iter().enumerate() {
-                    canvas.print_with_attr(
-                        row + ContentWindow::WINDOW_MARGIN_TOP + 2,
-                        4,
-                        path.to_str().context("Unreadable filename")?,
-                        Attr::default(),
-                    )?;
-                }
-            }
+            _ => self.draw_confirm_default(canvas)?,
         }
-        let dest = match self.tab.previous_mode {
-            Mode::Tree => self
-                .tab
-                .tree
-                .directory_of_selected()
-                .context("No directory_of_selected")?
-                .display()
-                .to_string(),
-            _ => self.tab.path_content.path_to_str(),
-        };
+        let dest = self
+            .tab
+            .directory_of_selected_previous_mode()?
+            .display()
+            .to_string();
         canvas.print_with_attr(
             2,
             3,
@@ -996,6 +978,18 @@ impl<'a> WinSecondary<'a> {
             ATTR_YELLOW_BOLD,
         )?;
 
+        Ok(())
+    }
+
+    fn draw_confirm_default(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        for (row, path) in self.status.flagged.content.iter().enumerate() {
+            canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                4,
+                path.to_str().context("Unreadable filename")?,
+                Attr::default(),
+            )?;
+        }
         Ok(())
     }
 
@@ -1038,7 +1032,7 @@ struct WinSecondaryFirstLine {
 
 impl Draw for WinSecondaryFirstLine {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        draw_colored_strings(0, 0, &self.content, canvas, false)?;
+        draw_colored_strings(0, 1, &self.content, canvas, false)?;
         Ok(())
     }
 }

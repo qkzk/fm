@@ -164,6 +164,7 @@ pub const RENAME_LINES: [&str; 3] = [
     "",
     "Nothing is done if the file already exists",
 ];
+pub const TRASH_CONFIRM_LINE: &str = "Enter: restore the selected file  --  x: delete permanently";
 /// Executable commands whose output is a text to be displayed in terminal
 pub const CLI_INFO_COMMANDS: [&str; 4] = ["duf", "inxi -v 2 --color", "neofetch", "lsusb"];
 /// Wallpaper executable
