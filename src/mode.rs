@@ -39,7 +39,7 @@ impl NeedConfirmation {
     /// Since we ask the user confirmation, we need to know how much space
     /// is needed.
     pub fn cursor_offset(&self) -> usize {
-        self.to_string().len() + 8
+        self.to_string().len() + 9
     }
 
     /// A confirmation message to be displayed before executing the mode.

@@ -687,7 +687,6 @@ impl<'a> WinSecondary<'a> {
     /// Display the possible completion items. The currently selected one is
     /// reversed.
     fn draw_completion(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.set_cursor(0, self.tab.input.cursor_index + Self::EDIT_BOX_OFFSET)?;
         for (row, candidate) in self.tab.completion.proposals.iter().enumerate() {
             let mut attr = Attr::default();
             if row == self.tab.completion.index {
