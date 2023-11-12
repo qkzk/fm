@@ -1001,21 +1001,30 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_confirm_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
         if self.status.trash.is_empty() {
-            let _ = canvas.print_with_attr(
-                ContentWindow::WINDOW_MARGIN_TOP + 2,
-                4,
-                "Trash is empty",
-                ATTR_YELLOW_BOLD,
-            );
+            self.draw_already_empty_trash(canvas)
         } else {
-            for (row, trashinfo) in self.status.trash.content().iter().enumerate() {
-                canvas.print_with_attr(
-                    row + ContentWindow::WINDOW_MARGIN_TOP + 2,
-                    4,
-                    &format!("{trashinfo}"),
-                    Attr::default(),
-                )?;
-            }
+            self.draw_confirm_non_empty_trash(canvas)?
+        }
+        Ok(())
+    }
+
+    fn draw_already_empty_trash(&self, canvas: &mut dyn Canvas) {
+        let _ = canvas.print_with_attr(
+            ContentWindow::WINDOW_MARGIN_TOP + 2,
+            4,
+            "Trash is empty",
+            ATTR_YELLOW_BOLD,
+        );
+    }
+
+    fn draw_confirm_non_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        for (row, trashinfo) in self.status.trash.content().iter().enumerate() {
+            canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                4,
+                &format!("{trashinfo}"),
+                Attr::default(),
+            )?;
         }
         Ok(())
     }
