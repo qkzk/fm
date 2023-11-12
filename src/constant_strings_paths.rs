@@ -111,8 +111,14 @@ pub const FILTER_LINES: [&str; 6] = [
     "a:             reset",
 ];
 /// Password input presentation for the second window
-pub const PASSWORD_LINES: [&str; 1] =
-    ["Type your password. It will be forgotten immediatly after use."];
+pub const PASSWORD_LINES_SUDO: [&str; 2] = [
+    "Type your sudo password.",
+    "It will be forgotten immediatly after use.",
+];
+pub const PASSWORD_LINES_DEVICE: [&str; 2] = [
+    "Type the device passkey.",
+    "It will be forgotten immediatly after use.",
+];
 /// Shell presentation for the second window
 pub const SHELL_LINES: [&str; 11] = [
     "Type a shell command",

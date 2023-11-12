@@ -630,6 +630,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] refactor term manager. Separate content construction from drawing.
   - [ ] struct for every drawable element
   - [ ] Draw trait
+- [x] better messages when asking a password
 
 ## TODO
 

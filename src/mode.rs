@@ -2,8 +2,9 @@ use std::fmt;
 
 use crate::completion::InputCompleted;
 use crate::constant_strings_paths::{
-    CHMOD_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES, PASSWORD_LINES,
-    REGEX_LINES, REMOTE_LINES, RENAME_LINES, SHELL_LINES, SORT_LINES,
+    CHMOD_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES,
+    PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES, RENAME_LINES,
+    SHELL_LINES, SORT_LINES,
 };
 use crate::cryptsetup::BlockDeviceAction;
 use crate::password::{PasswordKind, PasswordUsage};
@@ -109,7 +110,8 @@ impl InputSimple {
             Self::Filter => &FILTER_LINES,
             Self::Newdir => &NEWDIR_LINES,
             Self::Newfile => &NEWFILE_LINES,
-            Self::Password(_, _, _) => &PASSWORD_LINES,
+            Self::Password(PasswordKind::SUDO, _, _) => &PASSWORD_LINES_SUDO,
+            Self::Password(PasswordKind::CRYPTSETUP, _, _) => &PASSWORD_LINES_DEVICE,
             Self::RegexMatch => &REGEX_LINES,
             Self::Rename => &RENAME_LINES,
             Self::SetNvimAddr => &NVIM_ADDRESS_LINES,
