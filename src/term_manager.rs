@@ -810,7 +810,7 @@ impl<'a> WinSecondary<'a> {
         let content = trash.content();
         for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
             let attr = trash.attr(row, attr);
-            let _ = Self::draw_content_line(canvas, row, &trashinfo.to_string(), attr);
+            let _ = Self::draw_content_line(canvas, row + 2, &trashinfo.to_string(), attr);
         }
     }
 

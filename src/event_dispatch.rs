@@ -74,7 +74,7 @@ impl EventDispatcher {
             Mode::InputCompleted(_) => tab.text_insert_and_complete(c),
             Mode::Normal | Mode::Tree => self.key_matcher(status, Key::Char(c)),
             Mode::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
-            Mode::Navigate(Navigate::Trash) if c == 'x' => status.trash_remove(),
+            Mode::Navigate(Navigate::Trash) if c == 'x' => status.trash_delete_permanently(),
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'm' => status.mount_encrypted_drive(),
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'g' => status.go_to_encrypted_drive(),
             Mode::Navigate(Navigate::EncryptedDrive) if c == 'u' => status.umount_encrypted_drive(),

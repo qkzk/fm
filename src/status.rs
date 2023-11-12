@@ -427,8 +427,8 @@ impl Status {
         Ok(())
     }
 
-    pub fn trash_remove(&mut self) -> Result<()> {
-        self.trash.remove()
+    pub fn trash_delete_permanently(&mut self) -> Result<()> {
+        self.trash.delete_permanently()
     }
     /// Move the selected flagged file to the trash.
     pub fn trash_single_flagged(&mut self) -> Result<()> {

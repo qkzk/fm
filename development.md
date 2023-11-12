@@ -631,7 +631,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] struct for every drawable element
   - [ ] Draw trait
 - [x] better messages when asking a password
-- [ ] FIX: trash is buggy. Can't delete definitely. Display is wrong when empty.
+- [x] FIX: trash is buggy. Can't delete definitely. Display is wrong when empty.
 
 ## TODO
 

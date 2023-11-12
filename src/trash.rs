@@ -321,7 +321,7 @@ impl Trash {
 
     fn empty_trash_dirs(&self) -> Result<(), std::io::Error> {
         Self::empty_dir(&self.trash_folder_files)?;
-        Self::empty_dir(&self.trash_folder_files)
+        Self::empty_dir(&self.trash_folder_info)
     }
 
     fn empty_dir(dir: &str) -> Result<(), std::io::Error> {
@@ -392,7 +392,7 @@ impl Trash {
     }
 
     /// Deletes a file permanently from the trash.
-    pub fn remove(&mut self) -> Result<()> {
+    pub fn delete_permanently(&mut self) -> Result<()> {
         if self.is_empty() {
             return Ok(());
         }
