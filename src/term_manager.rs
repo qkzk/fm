@@ -675,7 +675,7 @@ impl<'a> WinSecondary<'a> {
     const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
     const EDIT_BOX_OFFSET: usize = 10;
     const SORT_CURSOR_OFFSET: usize = 38;
-    const PASSWORD_CURSOR_OFFSET: usize = 8;
+    const PASSWORD_CURSOR_OFFSET: usize = 9;
 
     fn new(status: &'a Status, index: usize) -> Self {
         Self {

@@ -632,7 +632,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] Draw trait
 - [x] better messages when asking a password
 - [x] FIX: trash is buggy. Can't delete definitely. Display is wrong when empty.
-- [ ] FIX: cursor is off by one in password
+- [x] FIX: cursor is off by one in password
 
 ## TODO
 
