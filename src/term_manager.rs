@@ -967,25 +967,7 @@ impl<'a> WinSecondary<'a> {
     ) -> Result<()> {
         info!("confirmed action: {:?}", confirmed_mode);
         match confirmed_mode {
-            NeedConfirmation::EmptyTrash => {
-                if self.status.trash.is_empty() {
-                    let _ = canvas.print_with_attr(
-                        ContentWindow::WINDOW_MARGIN_TOP + 2,
-                        4,
-                        "Trash is empty",
-                        ATTR_YELLOW_BOLD,
-                    );
-                } else {
-                    for (row, trashinfo) in self.status.trash.content().iter().enumerate() {
-                        canvas.print_with_attr(
-                            row + ContentWindow::WINDOW_MARGIN_TOP + 2,
-                            4,
-                            &format!("{trashinfo}"),
-                            Attr::default(),
-                        )?;
-                    }
-                }
-            }
+            NeedConfirmation::EmptyTrash => self.draw_confirm_empty_trash(canvas)?,
             _ => {
                 for (row, path) in self.status.flagged.content.iter().enumerate() {
                     canvas.print_with_attr(
@@ -1014,6 +996,27 @@ impl<'a> WinSecondary<'a> {
             ATTR_YELLOW_BOLD,
         )?;
 
+        Ok(())
+    }
+
+    fn draw_confirm_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        if self.status.trash.is_empty() {
+            let _ = canvas.print_with_attr(
+                ContentWindow::WINDOW_MARGIN_TOP + 2,
+                4,
+                "Trash is empty",
+                ATTR_YELLOW_BOLD,
+            );
+        } else {
+            for (row, trashinfo) in self.status.trash.content().iter().enumerate() {
+                canvas.print_with_attr(
+                    row + ContentWindow::WINDOW_MARGIN_TOP + 2,
+                    4,
+                    &format!("{trashinfo}"),
+                    Attr::default(),
+                )?;
+            }
+        }
         Ok(())
     }
 }
