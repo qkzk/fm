@@ -148,7 +148,7 @@ impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
         if self.status.dual_pane && self.is_right() && self.status.preview_second {
-            self.preview_as_second_pane(canvas)?;
+            self.draw_preview_as_second_pane(canvas)?;
             return Ok(());
         }
         let opt_index = self.draw_content(canvas)?;
@@ -187,43 +187,11 @@ impl<'a> WinMain<'a> {
         self.attributes.is_right()
     }
 
-    fn preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let tab = &self.status.tabs[1];
-        self.preview(tab, &tab.window, canvas)?;
-        draw_colored_strings(0, 0, &self.default_preview_first_line(tab), canvas, false)?;
-        Ok(())
-    }
-
     fn draw_content(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
         match self.tab.display_mode() {
-            Mode::Preview => self.preview(self.tab, &self.tab.window, canvas),
+            Mode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas),
             Mode::Tree => self.draw_tree(canvas),
             _ => self.draw_files(canvas),
-        }
-    }
-
-    fn pick_previewed_fileinfo(&self) -> Result<FileInfo> {
-        if self.status.dual_pane && self.status.preview_second {
-            self.status.tabs[0].selected()
-        } else {
-            self.status.selected_non_mut().selected()
-        }
-    }
-
-    fn default_preview_first_line(&self, tab: &Tab) -> Vec<String> {
-        if let Ok(fileinfo) = self.pick_previewed_fileinfo() {
-            let mut strings = vec![" Preview ".to_owned()];
-            if !tab.preview.is_empty() {
-                let index = match &tab.preview {
-                    Preview::Ueberzug(image) => image.index + 1,
-                    _ => tab.window.bottom,
-                };
-                strings.push(format!(" {index} / {len} ", len = tab.preview.len()));
-            };
-            strings.push(format!(" {} ", fileinfo.path.display()));
-            strings
-        } else {
-            vec!["".to_owned()]
         }
     }
 
@@ -270,15 +238,9 @@ impl<'a> WinMain<'a> {
         }
         let _ = WinMainSecondLine::new(self.status, self.tab).draw(canvas);
         if !self.attributes.has_window_below {
-            self.log_line(canvas)?;
+            let _ = LogLine {}.draw(canvas);
         }
         Ok(None)
-    }
-
-    fn log_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let (_, height) = canvas.size()?;
-        canvas.print_with_attr(height - 1, 4, &read_last_log_line(), ATTR_YELLOW_BOLD)?;
-        Ok(())
     }
 
     fn draw_tree(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
@@ -320,7 +282,7 @@ impl<'a> WinMain<'a> {
         Ok(Some(selected_index))
     }
 
-    fn print_line_number(
+    fn draw_line_number(
         row_position_in_canvas: usize,
         line_number_to_print: usize,
         canvas: &mut dyn Canvas,
@@ -340,7 +302,7 @@ impl<'a> WinMain<'a> {
     /// else the content is supposed to be text and shown as such.
     /// It may fail to recognize some usual extensions, notably `.toml`.
     /// It may fail to recognize small files (< 1024 bytes).
-    fn preview(
+    fn draw_preview(
         &self,
         tab: &Tab,
         window: &ContentWindow,
@@ -352,7 +314,7 @@ impl<'a> WinMain<'a> {
             Preview::Syntaxed(syntaxed) => {
                 for (i, vec_line) in (*syntaxed).window(window.top, window.bottom, length) {
                     let row_position = calc_line_row(i, window);
-                    Self::print_line_number(row_position, i + 1, canvas)?;
+                    Self::draw_line_number(row_position, i + 1, canvas)?;
                     for token in vec_line.iter() {
                         token.print(canvas, row_position, line_number_width)?;
                     }
@@ -436,6 +398,19 @@ impl<'a> WinMain<'a> {
             Preview::Empty => (),
         }
         Ok(None)
+    }
+
+    fn draw_preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let tab = &self.status.tabs[1];
+        self.draw_preview(tab, &tab.window, canvas)?;
+        draw_colored_strings(
+            0,
+            0,
+            &WinMainFirstLine::default_preview_first_line(self.status, tab),
+            canvas,
+            false,
+        )?;
+        Ok(())
     }
 }
 
@@ -665,6 +640,16 @@ impl WinMainSecondLine {
             Some(status.selected_non_mut().filter.to_string()),
             Some(ATTR_YELLOW_BOLD),
         )
+    }
+}
+
+struct LogLine {}
+
+impl Draw for LogLine {
+    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+        let (_, height) = canvas.size()?;
+        canvas.print_with_attr(height - 1, 4, &read_last_log_line(), ATTR_YELLOW_BOLD)?;
+        Ok(())
     }
 }
 
