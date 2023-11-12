@@ -319,6 +319,7 @@ impl<'a> WinMain<'a> {
         let _ = WinMainSecondLine::new(self.status, self.tab).draw(canvas);
         Ok(Some(selected_index))
     }
+
     fn print_line_number(
         row_position_in_canvas: usize,
         line_number_to_print: usize,
@@ -613,55 +614,57 @@ impl WinMainFirstLine {
     }
 }
 
-struct WinMainSecondLine<'a> {
-    status: &'a Status,
-    tab: &'a Tab,
+struct WinMainSecondLine {
+    content: Option<String>,
+    attr: Option<Attr>,
 }
 
-impl<'a> Draw for WinMainSecondLine<'a> {
+impl Draw for WinMainSecondLine {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        match self.tab.mode {
-            Mode::Normal | Mode::Tree => {
-                if !self.status.display_full {
-                    let Ok(file) = self.tab.selected() else {
-                        return Ok(());
-                    };
-                    self.second_line_detailed(&file, canvas)
-                } else {
-                    self.second_line_simple(canvas)
-                }
-            }
-            _ => Ok(0),
-        }?;
+        match (&self.content, &self.attr) {
+            (Some(content), Some(attr)) => canvas.print_with_attr(1, 1, content, *attr)?,
+            _ => 0,
+        };
         Ok(())
     }
 }
 
-impl<'a> WinMainSecondLine<'a> {
-    fn new(status: &'a Status, tab: &'a Tab) -> Self {
-        Self { status, tab }
+impl WinMainSecondLine {
+    fn new(status: &Status, tab: &Tab) -> Self {
+        let (content, attr) = match tab.mode {
+            Mode::Normal | Mode::Tree => {
+                if !status.display_full {
+                    if let Ok(file) = tab.selected() {
+                        Self::second_line_detailed(&file)
+                    } else {
+                        (None, None)
+                    }
+                } else {
+                    Self::second_line_simple(status)
+                }
+            }
+            _ => (None, None),
+        };
+        Self { content, attr }
     }
 
-    fn second_line_detailed(&self, file: &FileInfo, canvas: &mut dyn Canvas) -> Result<usize> {
+    fn second_line_detailed(file: &FileInfo) -> (Option<String>, Option<Attr>) {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
         let mut attr = fileinfo_attr(file);
         attr.effect ^= Effect::REVERSE;
 
-        if self.status.flagged.contains(&file.path) {
-            canvas.print_with_attr(1, 0, "█", ATTR_YELLOW_BOLD)?;
-            attr.effect |= Effect::BOLD;
-        }
-        Ok(canvas.print_with_attr(1, 1, &file.format(owner_size, group_size)?, attr)?)
+        (
+            Some(file.format(owner_size, group_size).unwrap_or_default()),
+            Some(attr),
+        )
     }
 
-    fn second_line_simple(&self, canvas: &mut dyn Canvas) -> Result<usize> {
-        Ok(canvas.print_with_attr(
-            1,
-            1,
-            &format!("{}", &self.status.selected_non_mut().filter),
-            ATTR_YELLOW_BOLD,
-        )?)
+    fn second_line_simple(status: &Status) -> (Option<String>, Option<Attr>) {
+        (
+            Some(status.selected_non_mut().filter.to_string()),
+            Some(ATTR_YELLOW_BOLD),
+        )
     }
 }
 
