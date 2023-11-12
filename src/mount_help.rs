@@ -24,4 +24,6 @@ pub trait MountHelper {
 
     /// String representation of the device
     fn as_string(&self) -> Result<String>;
+
+    fn device_name(&self) -> Result<String>;
 }

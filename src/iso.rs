@@ -146,4 +146,8 @@ impl MountHelper for IsoDevice {
             Ok(format!("not mounted {}", self.path))
         }
     }
+
+    fn device_name(&self) -> Result<String> {
+        Ok(self.path.to_owned())
+    }
 }

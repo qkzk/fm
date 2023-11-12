@@ -864,42 +864,48 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_encrypted_drive(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
-        for (i, device) in self.status.encrypted_devices.content.iter().enumerate() {
-            let row = calc_line_row(i, &self.tab.window) + 2;
-            let mut not_mounted_attr = Attr::default();
-            let mut mounted_attr = Attr::from(Color::BLUE);
-            if i == self.status.encrypted_devices.index() {
-                not_mounted_attr.effect |= Effect::REVERSE;
-                mounted_attr.effect |= Effect::REVERSE;
-            }
-            if self.status.encrypted_devices.content[i].is_mounted() {
-                canvas.print_with_attr(row, 3, &device.as_string()?, mounted_attr)?;
-            } else {
-                canvas.print_with_attr(row, 3, &device.as_string()?, not_mounted_attr)?;
-            }
+        self.draw_mountable_devices(&self.status.encrypted_devices, canvas)
+    }
+
+    fn draw_removable(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        if let Some(removables) = &self.status.removable_devices {
+            self.draw_mountable_devices(removables, canvas)?;
         }
         Ok(())
     }
 
-    fn draw_removable(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_mountable_devices<T>(
+        &self,
+        selectable: &impl SelectableContent<T>,
+        canvas: &mut dyn Canvas,
+    ) -> Result<()>
+    where
+        T: MountHelper,
+    {
         canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
-        if let Some(removable) = &self.status.removable_devices {
-            for (i, device) in removable.content.iter().enumerate() {
-                let row = calc_line_row(i, &self.tab.window) + 2;
-                let mut not_mounted_attr = Attr::default();
-                let mut mounted_attr = Attr::from(Color::BLUE);
-                if i == removable.index {
-                    not_mounted_attr.effect |= Effect::REVERSE;
-                    mounted_attr.effect |= Effect::REVERSE;
-                }
-                if device.is_mounted {
-                    canvas.print_with_attr(row, 3, &device.device_name, mounted_attr)?;
-                } else {
-                    canvas.print_with_attr(row, 3, &device.device_name, not_mounted_attr)?;
-                }
-            }
+        for (i, device) in selectable.content().iter().enumerate() {
+            self.draw_mountable_device(selectable, i, device, canvas)?
         }
+        Ok(())
+    }
+
+    fn draw_mountable_device<T>(
+        &self,
+        selectable: &impl SelectableContent<T>,
+        index: usize,
+        device: &T,
+        canvas: &mut dyn Canvas,
+    ) -> Result<()>
+    where
+        T: MountHelper,
+    {
+        let row = calc_line_row(index, &self.tab.window) + 2;
+        let attr = if device.is_mounted() {
+            selectable.attr(index, &Attr::from(Color::BLUE))
+        } else {
+            selectable.attr(index, &Attr::default())
+        };
+        canvas.print_with_attr(row, 3, &device.device_name()?, attr)?;
         Ok(())
     }
 

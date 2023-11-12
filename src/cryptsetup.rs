@@ -279,6 +279,10 @@ impl MountHelper for CryptoDevice {
             format!("{} - not mounted", self.path)
         })
     }
+
+    fn device_name(&self) -> Result<String> {
+        self.as_string()
+    }
 }
 
 /// Holds the device itself and its passwords.

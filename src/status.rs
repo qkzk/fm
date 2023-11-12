@@ -829,10 +829,10 @@ impl Status {
         let Some(device) = devices.selected_mut() else {
             return Ok(());
         };
-        if device.is_mounted {
+        if device.is_mounted() {
             return Ok(());
         }
-        device.mount()?;
+        device.mount_simple()?;
         Ok(())
     }
 
@@ -843,10 +843,10 @@ impl Status {
         let Some(device) = devices.selected_mut() else {
             return Ok(());
         };
-        if !device.is_mounted {
+        if !device.is_mounted() {
             return Ok(());
         }
-        device.umount()?;
+        device.umount_simple()?;
         Ok(())
     }
 
@@ -857,7 +857,7 @@ impl Status {
         let Some(device) = devices.selected() else {
             return Ok(());
         };
-        if !device.is_mounted {
+        if !device.is_mounted() {
             return Ok(());
         }
         let path = std::path::PathBuf::from(&device.path);
