@@ -58,7 +58,7 @@ pub fn read_log() -> Result<Vec<String>> {
 }
 
 lazy_static! {
-    static ref LAST_LOG_LINE: RwLock<String> = RwLock::new("".to_string());
+    static ref LAST_LOG_LINE: RwLock<String> = RwLock::new("".to_owned());
 }
 
 /// Read the last value of the "log line".
@@ -68,7 +68,7 @@ pub fn read_last_log_line() -> String {
     let Ok(last_log_line) = LAST_LOG_LINE.read() else {
         return "".to_owned();
     };
-    last_log_line.to_string()
+    last_log_line.to_owned()
 }
 
 /// Write a new log line to the global variable `LAST_LOG_LINE`.

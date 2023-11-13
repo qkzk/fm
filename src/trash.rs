@@ -46,11 +46,11 @@ impl TrashInfo {
     fn to_string(&self) -> Result<String> {
         Ok(format!(
             "[Trash Info]
-Path={}
-DeletionDate={}
+Path={origin}
+DeletionDate={date}
 ",
-            url_escape::encode_fragment(path_to_string(&self.origin)?),
-            self.deletion_date
+            origin = url_escape::encode_fragment(&self.origin.to_string_lossy()),
+            date = self.deletion_date
         ))
     }
 
@@ -170,7 +170,7 @@ impl std::fmt::Display for TrashInfo {
         write!(
             f,
             "{} - trashed on {}",
-            path_to_string(&self.origin).unwrap_or_default(),
+            &self.origin.display(),
             self.deletion_date
         )
     }
@@ -417,11 +417,6 @@ impl Trash {
 }
 
 impl_selectable_content!(TrashInfo, Trash);
-
-fn path_to_string(path: &Path) -> Result<&str> {
-    path.to_str()
-        .context("path_to_string: couldn't parse origin into string")
-}
 
 fn parsed_date_from_path_info(ds: &str) -> Result<()> {
     NaiveDateTime::parse_from_str(ds, TRASHINFO_DATETIME_FORMAT)?;

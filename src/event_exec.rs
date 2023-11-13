@@ -31,6 +31,7 @@ use crate::selectable_content::SelectableContent;
 use crate::shell_parser::ShellCommandParser;
 use crate::status::Status;
 use crate::tab::Tab;
+use crate::utils::path_to_string;
 use crate::utils::{
     args_is_empty, is_program_in_path, is_sudo_command, open_in_current_neovim, string_to_path,
 };
@@ -390,14 +391,11 @@ impl EventAction {
             let Ok(fileinfo) = status.selected_non_mut().selected() else {
                 return Ok(());
             };
-            let Some(path_str) = fileinfo.path.to_str() else {
-                return Ok(());
-            };
-            open_in_current_neovim(path_str, &nvim_server);
+            open_in_current_neovim(&fileinfo.path, &nvim_server);
         } else {
             let flagged = status.flagged.content.clone();
             for file_path in flagged.iter() {
-                open_in_current_neovim(&file_path.display().to_string(), &nvim_server)
+                open_in_current_neovim(file_path, &nvim_server)
             }
         }
 
@@ -1546,10 +1544,7 @@ impl LeaveMode {
         };
 
         let (username, hostname, remote_path) = (strings[0], strings[1], strings[2]);
-        let current_path: &str = &tab
-            .directory_of_selected_previous_mode()?
-            .display()
-            .to_string();
+        let current_path: &str = &path_to_string(&tab.directory_of_selected_previous_mode()?);
         let first_arg = &format!("{username}@{hostname}:{remote_path}");
         let command_output = execute_and_capture_output_with_path(
             SSHFS_EXECUTABLE,

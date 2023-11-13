@@ -27,7 +27,7 @@ use crate::opener::execute_and_capture_output_without_check;
 use crate::sort::SortKind;
 use crate::tree::{ColoredString, Tree};
 use crate::users::Users;
-use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path};
+use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
 
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.
@@ -383,7 +383,7 @@ impl BlockDevice {
             .args([
                 "-lfo",
                 "FSTYPE,PATH,LABEL,UUID,FSVER,MOUNTPOINT,MODEL,SIZE,FSAVAIL,FSUSE%",
-                &fileinfo.path.display().to_string(),
+                &path_to_string(&fileinfo.path),
             ])
             .output()
         {
@@ -416,7 +416,7 @@ impl FifoCharDevice {
     fn new(fileinfo: &FileInfo) -> Self {
         let content: Vec<String>;
         if let Ok(output) = std::process::Command::new(LSOF)
-            .arg(&fileinfo.path.display().to_string())
+            .arg(path_to_string(&fileinfo.path))
             .output()
         {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
@@ -845,7 +845,7 @@ impl Ueberzug {
     }
 
     fn office_thumbnail(calc_path: &Path) -> Result<Self> {
-        let calc_str = calc_path.display().to_string();
+        let calc_str = path_to_string(&calc_path);
         let args = vec!["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
         let output = std::process::Command::new(LIBREOFFICE)
             .args(args)

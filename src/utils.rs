@@ -153,8 +153,11 @@ pub fn is_sudo_command(executable: &str) -> bool {
 }
 
 /// Open the path in neovim.
-pub fn open_in_current_neovim(path_str: &str, nvim_server: &str) {
-    let command = &format!("<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>");
+pub fn open_in_current_neovim(path: &Path, nvim_server: &str) {
+    let command = &format!(
+        "<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>",
+        path_str = path.display()
+    );
     let _ = nvim(nvim_server, command);
 }
 
@@ -183,4 +186,11 @@ pub fn clear_tmp_file() {
 /// the user.
 pub fn is_dir_empty(path: &std::path::Path) -> Result<bool> {
     Ok(path.read_dir()?.next().is_none())
+}
+
+pub fn path_to_string<P>(path: &P) -> String
+where
+    P: AsRef<std::path::Path>,
+{
+    path.as_ref().to_string_lossy().into_owned()
 }

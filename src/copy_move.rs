@@ -7,10 +7,11 @@ use anyhow::{Context, Result};
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use log::info;
-use tuikit::prelude::{Attr, Color, Effect, Event, Key, Term};
+use tuikit::prelude::{Attr, Color, Effect, Term};
 
 use crate::constant_strings_paths::NOTIFY_EXECUTABLE;
 use crate::fileinfo::human_size;
+use crate::keybindings::REFRESH_EVENT;
 use crate::log_line;
 use crate::opener::execute_in_child;
 use crate::utils::{is_program_in_path, random_name};
@@ -137,12 +138,15 @@ impl CopyMove {
 ///
 /// This quite complex behavior is the only way I could find to keep the progress bar while allowing to
 /// create copies of files in the same dir.
-pub fn copy_move(
+pub fn copy_move<P>(
     copy_or_move: CopyMove,
     sources: Vec<PathBuf>,
-    dest: &str,
+    dest: P,
     term: Arc<Term>,
-) -> Result<()> {
+) -> Result<()>
+where
+    P: AsRef<std::path::Path>,
+{
     let c_term = Arc::clone(&term);
     let (in_mem, pb, options) = copy_or_move.setup_progress_bar(term.term_size()?)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
@@ -164,7 +168,7 @@ pub fn copy_move(
             }
         };
 
-        let _ = c_term.send_event(Event::Key(Key::AltPageUp));
+        let _ = c_term.send_event(REFRESH_EVENT);
 
         if let Err(e) = conflict_handler.solve_conflicts() {
             info!("Conflict Handler error: {e}");
@@ -180,28 +184,31 @@ struct ConflictHandler {
     /// The destination of the files.
     /// If there's no conflicting filenames, it's their final destination
     /// otherwise it's a temporary folder we'll create.
-    temp_dest: String,
+    temp_dest: PathBuf,
     /// True iff there's at least one file name conflict:
     /// an already existing file in the destination with the same name
     /// as a file from source.
     has_conflict: bool,
     /// Defined to the final destination if there's a conflict.
     /// None otherwise.
-    final_dest: Option<String>,
+    final_dest: Option<PathBuf>,
 }
 
 impl ConflictHandler {
     /// Creates a new `ConflictHandler` instance.
     /// We check for conflict and create the temporary folder if needed.
-    fn new(dest: &str, sources: &[PathBuf]) -> Result<Self> {
-        let has_conflict = ConflictHandler::check_filename_conflict(sources, dest)?;
-        let temp_dest: String;
-        let final_dest: Option<String>;
+    fn new<P>(dest: P, sources: &[PathBuf]) -> Result<Self>
+    where
+        P: AsRef<std::path::Path>,
+    {
+        let has_conflict = ConflictHandler::check_filename_conflict(sources, &dest)?;
+        let temp_dest: PathBuf;
+        let final_dest: Option<PathBuf>;
         if has_conflict {
-            temp_dest = Self::create_temporary_destination(dest)?;
-            final_dest = Some(dest.to_owned());
+            temp_dest = Self::create_temporary_destination(&dest)?;
+            final_dest = Some(dest.as_ref().to_path_buf());
         } else {
-            temp_dest = dest.to_owned();
+            temp_dest = dest.as_ref().to_path_buf();
             final_dest = None;
         };
 
@@ -214,12 +221,15 @@ impl ConflictHandler {
 
     /// Creates a randomly named folder in the destination.
     /// The name is `fm-random` where `random` is a random string of length 7.
-    fn create_temporary_destination(dest: &str) -> Result<String> {
-        let mut temp_dest = std::path::PathBuf::from(dest);
+    fn create_temporary_destination<P>(dest: P) -> Result<PathBuf>
+    where
+        P: AsRef<std::path::Path>,
+    {
+        let mut temp_dest = dest.as_ref().to_path_buf();
         let rand_str = random_name();
         temp_dest.push(rand_str);
         std::fs::create_dir(&temp_dest)?;
-        Ok(temp_dest.display().to_string())
+        Ok(temp_dest)
     }
 
     /// Move every file from `temp_dest` to `final_dest` and delete `temp_dest`.
@@ -251,11 +261,10 @@ impl ConflictHandler {
             .context("Couldn't cast the filename")?
             .to_owned();
 
-        let mut final_dest = std::path::PathBuf::from(
-            self.final_dest
-                .clone()
-                .context("Final dest shouldn't be None")?,
-        );
+        let mut final_dest = self
+            .final_dest
+            .clone()
+            .context("Final dest shouldn't be None")?;
         final_dest.push(&file_name);
         while final_dest.exists() {
             final_dest.pop();
@@ -267,16 +276,14 @@ impl ConflictHandler {
     }
 
     /// True iff `dest` contains any file with the same file name as one of `sources`.
-    fn check_filename_conflict(sources: &[PathBuf], dest: &str) -> Result<bool> {
+    fn check_filename_conflict<P>(sources: &[PathBuf], dest: P) -> Result<bool>
+    where
+        P: AsRef<std::path::Path>,
+    {
         for file in sources {
-            let filename = file
-                .file_name()
-                .context("Couldn't read filename")?
-                .to_str()
-                .context("Couldn't cast filename into str")?
-                .to_owned();
-            let mut new_path = std::path::PathBuf::from(dest);
-            new_path.push(&filename);
+            let filename = file.file_name().context("Couldn't read filename")?;
+            let mut new_path = dest.as_ref().to_path_buf();
+            new_path.push(filename);
             if new_path.exists() {
                 return Ok(true);
             }

@@ -18,7 +18,7 @@ use crate::impl_selectable_content;
 use crate::sort::SortKind;
 use crate::tree::Node;
 use crate::users::Users;
-use crate::utils::filename_from_path;
+use crate::utils::{filename_from_path, path_to_string};
 
 type Valid = bool;
 
@@ -381,7 +381,7 @@ impl PathContent {
     /// Convert a path to a &str.
     /// It may fails if the path contains non valid utf-8 chars.
     pub fn path_to_str(&self) -> String {
-        self.path.display().to_string()
+        path_to_string(&self.path)
     }
 
     /// Sort the file with current key.
@@ -433,7 +433,7 @@ impl PathContent {
 
     /// Path of the currently selected file.
     pub fn selected_path_string(&self) -> Option<String> {
-        Some(self.selected()?.path.display().to_string())
+        Some(path_to_string(&self.selected()?.path))
     }
 
     /// True if the path starts with a subpath.

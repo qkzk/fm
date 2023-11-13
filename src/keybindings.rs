@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
 
-use tuikit::prelude::{from_keyname, Key};
+use tuikit::prelude::{from_keyname, Event, Key};
 
 use crate::action_map::ActionMap;
 use crate::constant_strings_paths::CONFIG_PATH;
@@ -22,6 +22,12 @@ impl Default for Bindings {
         Self::new()
     }
 }
+
+/// Reserved key used to  send refresh event
+/// This key can't be bound to anything.
+pub const REFRESH_KEY: Key = Key::AltPageUp;
+/// Refresh event, using a reserved key.
+pub const REFRESH_EVENT: Event = Event::Key(REFRESH_KEY);
 
 impl Bindings {
     fn new() -> Self {
@@ -178,7 +184,7 @@ impl Bindings {
     fn keymap_is_reserved(&self, keymap: &Key) -> bool {
         match *keymap {
             // used to send refresh requests.
-            Key::AltPageUp => true,
+            REFRESH_KEY => true,
             _ => false,
         }
     }

@@ -25,5 +25,16 @@ pub trait MountHelper {
     /// String representation of the device
     fn as_string(&self) -> Result<String>;
 
+    /// Name of the device
     fn device_name(&self) -> Result<String>;
+
+    /// Default attr.
+    /// Foreground is blue when device is mounted, white otherwise.
+    fn attr(&self) -> tuikit::attr::Attr {
+        if self.is_mounted() {
+            tuikit::attr::Attr::from(tuikit::attr::Color::BLUE)
+        } else {
+            tuikit::attr::Attr::default()
+        }
+    }
 }

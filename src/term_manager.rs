@@ -25,6 +25,7 @@ use crate::status::Status;
 use crate::tab::Tab;
 use crate::trash::Trash;
 use crate::tree::calculate_top_bottom;
+use crate::utils::path_to_string;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -673,8 +674,8 @@ impl<'a> Draw for WinSecondary<'a> {
 
 impl<'a> WinSecondary<'a> {
     const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
-    const EDIT_BOX_OFFSET: usize = 10;
-    const SORT_CURSOR_OFFSET: usize = 38;
+    const EDIT_BOX_OFFSET: usize = 11;
+    const SORT_CURSOR_OFFSET: usize = 39;
     const PASSWORD_CURSOR_OFFSET: usize = 9;
 
     fn new(status: &'a Status, index: usize) -> Self {
@@ -687,8 +688,9 @@ impl<'a> WinSecondary<'a> {
     /// Display the possible completion items. The currently selected one is
     /// reversed.
     fn draw_completion(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        for (row, candidate) in self.tab.completion.proposals.iter().enumerate() {
-            let attr = self.tab.completion.attr(row, &Attr::default());
+        let content = &self.tab.completion.proposals;
+        for (row, candidate, attr) in enumerated_colored_iter!(content) {
+            let attr = self.tab.completion.attr(row, attr);
             Self::draw_content_line(canvas, row, candidate, attr)?;
         }
         Ok(())
@@ -783,8 +785,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_bulk(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let selectable = &self.status.bulk;
-        if let Some(selectable) = selectable {
+        if let Some(selectable) = &self.status.bulk {
             canvas.print(0, 0, "Action...")?;
             let content = selectable.content();
             for (row, text, attr) in enumerated_colored_iter!(content) {
@@ -798,7 +799,7 @@ impl<'a> WinSecondary<'a> {
     fn draw_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let trash = &self.status.trash;
         if trash.content().is_empty() {
-            self.draw_already_empty_trash(canvas)
+            self.draw_trash_is_empty(canvas)
         } else {
             self.draw_trash_content(canvas, trash)
         };
@@ -817,15 +818,16 @@ impl<'a> WinSecondary<'a> {
     fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.compression;
         canvas.print_with_attr(
-            1,
-            0,
-            "Archive and compress the flagged files. Pick a compression algorithm.",
+            2,
+            2,
+            "Archive and compress the flagged files.",
             Self::ATTR_YELLOW,
         )?;
+        canvas.print_with_attr(3, 2, "Pick a compression algorithm.", Self::ATTR_YELLOW)?;
         let content = selectable.content();
         for (row, compression_method, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);
-            Self::draw_content_line(canvas, row, &compression_method.to_string(), attr)?;
+            Self::draw_content_line(canvas, row + 3, &compression_method.to_string(), attr)?;
         }
         Ok(())
     }
@@ -900,11 +902,7 @@ impl<'a> WinSecondary<'a> {
         T: MountHelper,
     {
         let row = calc_line_row(index, &self.tab.window) + 2;
-        let attr = if device.is_mounted() {
-            selectable.attr(index, &Attr::from(Color::BLUE))
-        } else {
-            selectable.attr(index, &Attr::default())
-        };
+        let attr = selectable.attr(index, &device.attr());
         canvas.print_with_attr(row, 3, &device.device_name()?, attr)?;
         Ok(())
     }
@@ -916,15 +914,11 @@ impl<'a> WinSecondary<'a> {
         canvas: &mut dyn Canvas,
     ) -> Result<()> {
         info!("confirmed action: {:?}", confirmed_mode);
-        let dest = self
-            .tab
-            .directory_of_selected_previous_mode()?
-            .display()
-            .to_string();
+        let dest = path_to_string(&self.tab.directory_of_selected_previous_mode()?);
 
         Self::draw_content_line(
             canvas,
-            2,
+            0,
             &confirmed_mode.confirmation_string(&dest),
             ATTR_YELLOW_BOLD,
         )?;
@@ -940,7 +934,7 @@ impl<'a> WinSecondary<'a> {
         for (row, path, attr) in enumerated_colored_iter!(content) {
             Self::draw_content_line(
                 canvas,
-                row,
+                row + 2,
                 path.to_str().context("Unreadable filename")?,
                 *attr,
             )?;
@@ -951,14 +945,14 @@ impl<'a> WinSecondary<'a> {
     fn draw_confirm_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
         log::info!("draw_confirm_empty_trash");
         if self.status.trash.is_empty() {
-            self.draw_already_empty_trash(canvas)
+            self.draw_trash_is_empty(canvas)
         } else {
             self.draw_confirm_non_empty_trash(canvas)?
         }
         Ok(())
     }
 
-    fn draw_already_empty_trash(&self, canvas: &mut dyn Canvas) {
+    fn draw_trash_is_empty(&self, canvas: &mut dyn Canvas) {
         let _ = Self::draw_content_line(canvas, 0, "Trash is empty", ATTR_YELLOW_BOLD);
     }
 
@@ -970,6 +964,7 @@ impl<'a> WinSecondary<'a> {
         }
         Ok(())
     }
+
     fn draw_content_line(
         canvas: &mut dyn Canvas,
         row: usize,

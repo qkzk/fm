@@ -4,7 +4,8 @@ use std::thread;
 use std::time::Duration;
 
 use anyhow::Result;
-use tuikit::prelude::{Event, Key};
+
+use crate::keybindings::REFRESH_EVENT;
 
 /// Allows refresh if the current path has been modified externally.
 pub struct Refresher {
@@ -21,7 +22,6 @@ impl Refresher {
     /// Event sent to Fm event poller which is interpreted
     /// as a request for refresh.
     /// This key can't be bound to anything (who would use that ?).
-    const REFRESH_EVENT: Event = Event::Key(Key::AltPageUp);
 
     /// Spawn a thread which sends events to the terminal.
     /// Those events are interpreted as refresh requests.
@@ -48,7 +48,7 @@ impl Refresher {
             thread::sleep(Duration::from_millis(100));
             if counter >= Self::TEN_SECONDS_IN_DECISECONDS {
                 counter = 0;
-                if term.send_event(Self::REFRESH_EVENT).is_err() {
+                if term.send_event(REFRESH_EVENT).is_err() {
                     break;
                 }
             }

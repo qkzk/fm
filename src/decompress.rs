@@ -5,6 +5,7 @@ use std::path::Path;
 use tar::Archive;
 
 use crate::constant_strings_paths::TAR;
+use crate::utils::path_to_string;
 
 /// Decompress a zipped compressed file into its parent directory.
 pub fn decompress_zip(source: &Path) -> Result<()> {
@@ -64,7 +65,7 @@ where
 {
     if let Ok(output) = std::process::Command::new(TAR)
         .arg("tvf")
-        .arg(source.as_ref().display().to_string())
+        .arg(path_to_string(&source))
         .output()
     {
         let output = String::from_utf8(output.stdout).unwrap_or_default();

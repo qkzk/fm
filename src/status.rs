@@ -405,13 +405,11 @@ impl Status {
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
         let sources = self.flagged.content.clone();
 
-        let dest = self
+        let dest = &self
             .selected_non_mut()
-            .directory_of_selected_previous_mode()?
-            .display()
-            .to_string();
+            .directory_of_selected_previous_mode()?;
 
-        copy_move(cut_or_copy, sources, &dest, Arc::clone(&self.term))?;
+        copy_move(cut_or_copy, sources, dest, Arc::clone(&self.term))?;
         self.clear_flags_and_reset_view()
     }
 
