@@ -638,6 +638,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] it seems to work, code still messy
   - [ ] test everything
   - [ ] refactor: clean refresh etc. methods
+- [x] NVIM listen address won't update if neovim is restarted while fm is still running
 
 ## TODO
 

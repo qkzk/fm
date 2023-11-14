@@ -13,6 +13,7 @@ use tuikit::term::Term;
 use crate::constant_strings_paths::{CALC_PDF_PATH, THUMBNAIL_PATH};
 use crate::content_window::ContentWindow;
 use crate::fileinfo::human_size;
+use crate::log_line;
 use crate::nvim::nvim;
 use crate::users::Users;
 
@@ -155,10 +156,19 @@ pub fn is_sudo_command(executable: &str) -> bool {
 /// Open the path in neovim.
 pub fn open_in_current_neovim(path: &Path, nvim_server: &str) {
     let command = &format!(
-        "<esc>:e {path_str}<cr><esc>:set number<cr><esc>:close<cr>",
-        path_str = path.display()
+        "<esc>:e {path}<cr><esc>:set number<cr><esc>:close<cr>",
+        path = path.display()
     );
-    let _ = nvim(nvim_server, command);
+    match nvim(nvim_server, command) {
+        Ok(()) => log_line!(
+            "Opened {path} in neovim at {nvim_server}",
+            path = path.display()
+        ),
+        Err(error) => log_line!(
+            "Couldn't open {path} in neovim. Error {error:?}",
+            path = path.display()
+        ),
+    }
 }
 
 /// Creates a random string.

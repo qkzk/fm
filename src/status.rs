@@ -379,7 +379,6 @@ impl Status {
         } else if path.is_dir() {
             tab.set_pathcontent(&path)?;
         }
-
         Ok(())
     }
 
@@ -989,15 +988,10 @@ impl Status {
         }
     }
 
-    pub fn read_nvim_listen_address_if_needed(&mut self) {
-        if !self.nvim_server.is_empty() {
-            return;
-        }
+    pub fn update_nvim_listen_address(&mut self) {
         if let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") {
             self.nvim_server = nvim_listen_address;
-            return;
-        };
-        if let Ok(nvim_listen_address) = Self::parse_nvim_address_from_ss_output() {
+        } else if let Ok(nvim_listen_address) = Self::parse_nvim_address_from_ss_output() {
             self.nvim_server = nvim_listen_address;
         }
     }

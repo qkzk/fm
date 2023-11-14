@@ -393,7 +393,7 @@ impl EventAction {
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
     pub fn nvim_filepicker(status: &mut Status) -> Result<()> {
-        status.read_nvim_listen_address_if_needed();
+        status.update_nvim_listen_address();
         if status.nvim_server.is_empty() {
             return Ok(());
         };
@@ -479,12 +479,12 @@ impl EventAction {
         };
         match tab.display_mode {
             DisplayMode::Tree => tab.tree.search_first_match(&searched),
-            _ => {
-                let next_index = (tab.path_content.index + 1) % tab.path_content.content.len();
-                tab.search_from(&searched, next_index);
-                status.update_second_pane_for_preview()?;
+            DisplayMode::Normal => tab.normal_search_next(&searched),
+            DisplayMode::Preview => {
+                return Ok(());
             }
         }
+        status.set_second_pane_for_preview()?;
         Ok(())
     }
 
@@ -781,9 +781,8 @@ impl EventAction {
 
     /// Change tab in normal mode.
     pub fn backtab(status: &mut Status) -> Result<()> {
-        match status.selected().edit_mode {
-            EditMode::Nothing => status.prev(),
-            _ => (),
+        if matches!(status.selected_non_mut().edit_mode, EditMode::Nothing) {
+            status.prev()
         };
         Ok(())
     }

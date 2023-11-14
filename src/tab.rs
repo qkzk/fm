@@ -172,10 +172,10 @@ impl Tab {
     /// If it can't, the first file (`.`) is selected.
     /// Does nothing outside of normal mode.
     pub fn refresh_if_needed(&mut self) -> Result<()> {
-        if !matches!(self.display_mode, DisplayMode::Preview) {
-            if self.is_last_modification_happend_less_than(10)? {
-                self.refresh_and_reselect_file()?
-            }
+        if !matches!(self.display_mode, DisplayMode::Preview)
+            && self.is_last_modification_happend_less_than(10)?
+        {
+            self.refresh_and_reselect_file()?
         }
         Ok(())
     }
@@ -304,6 +304,11 @@ impl Tab {
         if found {
             self.go_to_index(next_index)
         }
+    }
+
+    pub fn normal_search_next(&mut self, searched: &str) {
+        let next_index = (self.path_content.index + 1) % self.path_content.content.len();
+        self.search_from(searched, next_index);
     }
 
     /// Move to the parent of current path
