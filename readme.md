@@ -35,7 +35,7 @@ Linux is the only supported platform.
 
 ## Video
 
-<blockquote class="imgur-embed-pub" lang="en" data-id="a/9nV8uj3" data-context="false" ><a href="//imgur.com/a/9nV8uj3">fm a tui file manager written in rust</a></blockquote><script async src="//s.imgur.com/min/embed.js" charset="utf-8"></script>
+![fm](https://github.com/qkzk/fm/blob/v0.1.23-dev/fm.gif?raw=true)
 
 ## Installation
 
