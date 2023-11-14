@@ -5,8 +5,8 @@
 
 [cratesio-image]: https://img.shields.io/crates/v/fm-tui.svg
 [cratesio]: https://crates.io/crates/fm-tui
-[docsrs-badge]: https://img.shields.io/docsrs/fm-tui/0.1.0
-[docrs]: https://docs.rs/fm-tui/0.1.0
+[docsrs-badge]: https://img.shields.io/docsrs/fm-tui/0.1.23
+[docrs]: https://docs.rs/fm-tui/0.1.23
 
 ```
 A TUI file manager inspired by dired and ranger
