@@ -555,26 +555,19 @@ impl Tab {
         self.window.scroll_to(self.preview.len() - 1)
     }
 
-    /// Move up 10 rows in normal mode.
-    /// In other modes where vertical scrolling is possible (atm Preview),
-    /// if moves up one page.
-    pub fn page_up(&mut self) {
-        match self.display_mode {
-            DisplayMode::Normal => {
-                let up_index = if self.path_content.index > 10 {
-                    self.path_content.index - 10
-                } else {
-                    0
-                };
-                self.path_content.select_index(up_index);
-                self.window.scroll_to(up_index)
-            }
-            DisplayMode::Preview => self.preview_page_up(),
-            _ => (),
-        }
+    /// Move 10 files up
+    pub fn normal_page_up(&mut self) {
+        let up_index = if self.path_content.index > 10 {
+            self.path_content.index - 10
+        } else {
+            0
+        };
+        self.path_content.select_index(up_index);
+        self.window.scroll_to(up_index)
     }
 
-    fn preview_page_up(&mut self) {
+    /// Move 30 lines up or an image in Ueberzug.
+    pub fn preview_page_up(&mut self) {
         match &mut self.preview {
             Preview::Ueberzug(ref mut image) => image.up_one_row(),
             _ => {
@@ -587,18 +580,8 @@ impl Tab {
         }
     }
 
-    /// Move down 10 rows in normal mode.
-    /// In other modes where vertical scrolling is possible (atm Preview),
-    /// if moves down one page.
-    pub fn page_down(&mut self) {
-        match self.display_mode {
-            DisplayMode::Normal => self.normal_page_down(),
-            DisplayMode::Preview => self.preview_page_down(),
-            _ => (),
-        }
-    }
-
-    fn normal_page_down(&mut self) {
+    /// Move down 10 rows
+    pub fn normal_page_down(&mut self) {
         let down_index = min(
             self.path_content.content.len() - 1,
             self.path_content.index + 10,
@@ -607,7 +590,8 @@ impl Tab {
         self.window.scroll_to(down_index);
     }
 
-    fn preview_page_down(&mut self) {
+    /// Move down 30 rows except for Ueberzug where it moves 1 image down
+    pub fn preview_page_down(&mut self) {
         match &mut self.preview {
             Preview::Ueberzug(ref mut image) => image.down_one_row(),
             _ => {
@@ -671,7 +655,9 @@ impl Tab {
             }
             DisplayMode::Tree => {
                 self.path_content.update_sort_from_char(c);
+                let selected_path = self.tree.selected_path().to_owned();
                 self.make_tree(Some(self.path_content.sort_kind.clone()))?;
+                self.tree.go(To::Path(&selected_path));
             }
             _ => (),
         }

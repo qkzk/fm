@@ -650,10 +650,10 @@ impl EventAction {
         let tab = status.selected();
         match tab.display_mode {
             DisplayMode::Normal => {
-                tab.page_up();
+                tab.normal_page_up();
                 status.update_second_pane_for_preview()?;
             }
-            DisplayMode::Preview => tab.page_up(),
+            DisplayMode::Preview => tab.preview_page_up(),
             DisplayMode::Tree => {
                 tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
@@ -667,10 +667,10 @@ impl EventAction {
         let tab = status.selected();
         match tab.display_mode {
             DisplayMode::Normal => {
-                tab.page_down();
+                tab.normal_page_down();
                 status.update_second_pane_for_preview()?;
             }
-            DisplayMode::Preview => tab.page_down(),
+            DisplayMode::Preview => tab.preview_page_down(),
             DisplayMode::Tree => {
                 tab.tree_page_down()?;
                 status.update_second_pane_for_preview()?;
