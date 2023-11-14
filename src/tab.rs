@@ -466,31 +466,19 @@ impl Tab {
     }
 
     /// Move down one row if possible.
-    pub fn down_one_row(&mut self) {
-        match self.display_mode {
-            DisplayMode::Normal => {
-                self.path_content.unselect_current();
-                self.path_content.next();
-                self.path_content.select_current();
-                self.window.scroll_down_one(self.path_content.index)
-            }
-            DisplayMode::Preview => self.preview_page_down(),
-            _ => (),
-        }
+    pub fn normal_down_one_row(&mut self) {
+        self.path_content.unselect_current();
+        self.path_content.next();
+        self.path_content.select_current();
+        self.window.scroll_down_one(self.path_content.index)
     }
 
     /// Move up one row if possible.
-    pub fn up_one_row(&mut self) {
-        match self.display_mode {
-            DisplayMode::Normal => {
-                self.path_content.unselect_current();
-                self.path_content.prev();
-                self.path_content.select_current();
-                self.window.scroll_up_one(self.path_content.index)
-            }
-            DisplayMode::Preview => self.preview_page_up(),
-            _ => (),
-        }
+    pub fn normal_up_one_row(&mut self) {
+        self.path_content.unselect_current();
+        self.path_content.prev();
+        self.path_content.select_current();
+        self.window.scroll_up_one(self.path_content.index)
     }
 
     /// Move to the top of the current directory.

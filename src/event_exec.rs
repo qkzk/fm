@@ -83,7 +83,7 @@ impl EventAction {
             };
             let path = file.path.clone();
             status.toggle_flag_on_path(&path);
-            status.selected().down_one_row();
+            status.selected().normal_down_one_row();
         };
         Ok(())
     }
@@ -513,16 +513,19 @@ impl EventAction {
     fn move_display_up(status: &mut Status) -> Result<()> {
         let tab = status.selected();
         match tab.display_mode {
-            DisplayMode::Normal | DisplayMode::Preview => tab.up_one_row(),
+            DisplayMode::Normal => tab.normal_up_one_row(),
+            DisplayMode::Preview => tab.preview_page_up(),
             DisplayMode::Tree => tab.tree_select_prev()?,
         }
         Ok(())
     }
 
     fn move_display_down(status: &mut Status) -> Result<()> {
-        match status.selected().display_mode {
-            DisplayMode::Normal | DisplayMode::Preview => status.selected().down_one_row(),
-            DisplayMode::Tree => status.selected().tree_select_next()?,
+        let tab = status.selected();
+        match tab.display_mode {
+            DisplayMode::Normal => tab.normal_down_one_row(),
+            DisplayMode::Preview => tab.preview_page_down(),
+            DisplayMode::Tree => tab.tree_select_next()?,
         }
         Ok(())
     }
