@@ -35,7 +35,7 @@ Linux is the only supported platform.
 
 ## Video
 
-![fm](./fm.gif)
+![fm](https://i.imgur.com/VxUtGDS.mp4)
 
 ## Installation
 
