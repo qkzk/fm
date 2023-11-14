@@ -153,13 +153,7 @@ pub enum Navigate {
 /// Different mode in which the application can be.
 /// It dictates the reaction to event and what to display.
 #[derive(Clone, Copy)]
-pub enum Mode {
-    /// Default mode: display the files
-    Normal,
-    /// Display files in a tree
-    Tree,
-    /// We'll be able to complete the input string with
-    /// different kind of completed items (exec, goto, search)
+pub enum EditMode {
     InputCompleted(InputCompleted),
     /// Select a target and navigate to it
     Navigate(Navigate),
@@ -167,70 +161,79 @@ pub enum Mode {
     /// delete, move, copy
     NeedConfirmation(NeedConfirmation),
     /// Preview a file content
-    Preview,
-    /// Modes requiring an input that can't be completed
     InputSimple(InputSimple),
+    /// No action is currently performed
+    Nothing,
 }
 
-impl Mode {
+impl fmt::Display for EditMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            EditMode::InputSimple(InputSimple::Rename) => write!(f, "Rename:  "),
+            EditMode::InputSimple(InputSimple::Chmod) => write!(f, "Chmod:   "),
+            EditMode::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
+            EditMode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
+            EditMode::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
+            EditMode::InputSimple(InputSimple::SetNvimAddr) => write!(f, "Neovim:  "),
+            EditMode::InputSimple(InputSimple::Shell) => write!(f, "Shell:   "),
+            EditMode::InputSimple(InputSimple::Sort) => {
+                write!(f, "Sort: Kind Name Modif Size Ext Rev :")
+            }
+            EditMode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
+            EditMode::InputSimple(InputSimple::Password(password_kind, _, _)) => {
+                write!(f, "{password_kind}")
+            }
+            EditMode::InputSimple(InputSimple::Remote) => write!(f, "Remote:  "),
+
+            EditMode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
+            EditMode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
+            EditMode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
+            EditMode::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
+            EditMode::InputCompleted(InputCompleted::Command) => write!(f, "Command:  "),
+            EditMode::Navigate(Navigate::Marks(_)) => write!(f, "Marks jump:"),
+            EditMode::Navigate(Navigate::Jump) => write!(
+                f,
+                "Flagged files: <Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash"
+            ),
+            EditMode::Navigate(Navigate::History) => write!(f, "History :"),
+            EditMode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
+            EditMode::Navigate(Navigate::Trash) => write!(f, "Trash :"),
+            EditMode::Navigate(Navigate::ShellMenu) => {
+                write!(f, "Start a new shell running a command:")
+            }
+            EditMode::Navigate(Navigate::Bulk) => {
+                write!(f, "Bulk: rename flagged files or create new files")
+            }
+            EditMode::Navigate(Navigate::Compress) => write!(f, "Compress :"),
+            EditMode::Navigate(Navigate::EncryptedDrive) => {
+                write!(f, "Encrypted devices :")
+            }
+            EditMode::Navigate(Navigate::RemovableDevices) => {
+                write!(f, "Removable devices :")
+            }
+            EditMode::Navigate(Navigate::CliInfo) => write!(f, "Display infos :"),
+            EditMode::NeedConfirmation(_) => write!(f, "Y/N   :"),
+            EditMode::Nothing => write!(f, ""),
+        }
+    }
+}
+
+#[derive(Default)]
+pub enum DisplayMode {
+    #[default]
+    /// Display the files like `ls -lh` does
+    Normal,
+    /// Display files like `tree` does
+    Tree,
+    /// Preview a file or directory
+    Preview,
+}
+
+impl DisplayMode {
     /// True if the mode requires a view refresh when left.
     /// Most modes don't, since they don't display their content in the first window.
     /// content. But `Mode::Preview` does, since it uses the main window.
     pub fn refresh_required(&self) -> bool {
-        matches!(*self, Mode::Preview)
-    }
-}
-
-impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Mode::Normal => write!(f, "Normal:  "),
-            Mode::Tree => write!(f, "Tree:    "),
-            Mode::InputSimple(InputSimple::Rename) => write!(f, "Rename:  "),
-            Mode::InputSimple(InputSimple::Chmod) => write!(f, "Chmod:   "),
-            Mode::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
-            Mode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
-            Mode::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
-            Mode::InputSimple(InputSimple::SetNvimAddr) => write!(f, "Neovim:  "),
-            Mode::InputSimple(InputSimple::Shell) => write!(f, "Shell:   "),
-            Mode::InputSimple(InputSimple::Sort) => {
-                write!(f, "Sort: Kind Name Modif Size Ext Rev :")
-            }
-            Mode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
-            Mode::InputSimple(InputSimple::Password(password_kind, _, _)) => {
-                write!(f, "{password_kind}")
-            }
-            Mode::InputSimple(InputSimple::Remote) => write!(f, "Remote:  "),
-
-            Mode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
-            Mode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
-            Mode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
-            Mode::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
-            Mode::InputCompleted(InputCompleted::Command) => write!(f, "Command:  "),
-            Mode::Navigate(Navigate::Marks(_)) => write!(f, "Marks jump:"),
-            Mode::Navigate(Navigate::Jump) => write!(
-                f,
-                "Flagged files: <Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash"
-            ),
-            Mode::Navigate(Navigate::History) => write!(f, "History :"),
-            Mode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
-            Mode::Navigate(Navigate::Trash) => write!(f, "Trash :"),
-            Mode::Navigate(Navigate::ShellMenu) => {
-                write!(f, "Start a new shell running a command:")
-            }
-            Mode::Navigate(Navigate::Bulk) => {
-                write!(f, "Bulk: rename flagged files or create new files")
-            }
-            Mode::Navigate(Navigate::Compress) => write!(f, "Compress :"),
-            Mode::Navigate(Navigate::EncryptedDrive) => {
-                write!(f, "Encrypted devices :")
-            }
-            Mode::Navigate(Navigate::RemovableDevices) => {
-                write!(f, "Removable devices :")
-            }
-            Mode::Navigate(Navigate::CliInfo) => write!(f, "Display infos :"),
-            Mode::NeedConfirmation(_) => write!(f, "Y/N   :"),
-            Mode::Preview => write!(f, "Preview : "),
-        }
+        matches!(*self, DisplayMode::Preview)
     }
 }

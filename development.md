@@ -633,6 +633,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] better messages when asking a password
 - [x] FIX: trash is buggy. Can't delete definitely. Display is wrong when empty.
 - [x] FIX: cursor is off by one in password
+- [ ] display mode / edit mode. Separate display (normal, tree, preview) from any other mode.
+      Should lead to cleaner code
+  - [x] it seems to work, code still messy
+  - [ ] test everything
+  - [ ] refactor: clean refresh etc. methods
 
 ## TODO
 

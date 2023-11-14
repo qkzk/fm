@@ -17,7 +17,7 @@ use crate::constant_strings_paths::{
 use crate::content_window::ContentWindow;
 use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
 use crate::log::read_last_log_line;
-use crate::mode::{InputSimple, MarkAction, Mode, Navigate, NeedConfirmation};
+use crate::mode::{DisplayMode, EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
 use crate::mount_help::MountHelper;
 use crate::preview::{Preview, TextKind, Window};
 use crate::selectable_content::SelectableContent;
@@ -188,10 +188,10 @@ impl<'a> WinMain<'a> {
     }
 
     fn draw_content(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
-        match self.tab.display_mode() {
-            Mode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas),
-            Mode::Tree => self.draw_tree(canvas),
-            _ => self.draw_files(canvas),
+        match &self.tab.display_mode {
+            DisplayMode::Normal => self.draw_files(canvas),
+            DisplayMode::Tree => self.draw_tree(canvas),
+            DisplayMode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas),
         }
     }
 
@@ -441,23 +441,17 @@ impl WinMainFirstLine {
         status: &Status,
     ) -> Result<Self> {
         let tab = status.selected_non_mut();
-        let content = match tab.mode {
-            Mode::Normal | Mode::Tree => {
+        let content = match tab.display_mode {
+            DisplayMode::Normal | DisplayMode::Tree => {
                 Self::normal_first_row(status, tab, disk_space, opt_index)?
             }
-            Mode::Preview => match &tab.preview {
+            DisplayMode::Preview => match &tab.preview {
                 Preview::Text(text_content) => match text_content.kind {
                     TextKind::HELP => Self::help_first_row(),
                     TextKind::LOG => Self::log_first_row(),
                     _ => Self::default_preview_first_line(status, tab),
                 },
                 _ => Self::default_preview_first_line(status, tab),
-            },
-            _ => match tab.previous_mode {
-                Mode::Normal | Mode::Tree => {
-                    Self::normal_first_row(status, tab, disk_space, opt_index)?
-                }
-                _ => vec![],
             },
         };
         Ok(Self {
@@ -489,8 +483,8 @@ impl WinMainFirstLine {
     }
 
     fn first_row_selected_file(tab: &Tab) -> Result<String> {
-        match tab.mode {
-            Mode::Tree => Ok(format!(
+        match tab.display_mode {
+            DisplayMode::Tree => Ok(format!(
                 "/{rel}",
                 rel = shorten_path(tab.tree.selected_path_relative_to_root()?, Some(18))?
             )),
@@ -505,7 +499,7 @@ impl WinMainFirstLine {
     }
 
     fn first_row_position(tab: &Tab, opt_index: Option<usize>) -> String {
-        if matches!(tab.mode, Mode::Tree) {
+        if matches!(tab.display_mode, DisplayMode::Tree) {
             let Some(selected_index) = opt_index else {
                 return "".to_owned();
             };
@@ -606,8 +600,8 @@ impl Draw for WinMainSecondLine {
 
 impl WinMainSecondLine {
     fn new(status: &Status, tab: &Tab) -> Self {
-        let (content, attr) = match tab.mode {
-            Mode::Normal | Mode::Tree => {
+        let (content, attr) = match tab.display_mode {
+            DisplayMode::Normal | DisplayMode::Tree => {
                 if !status.display_full {
                     if let Ok(file) = tab.selected() {
                         Self::second_line_detailed(&file)
@@ -660,11 +654,11 @@ struct WinSecondary<'a> {
 impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
-        match self.tab.mode {
-            Mode::Navigate(mode) => self.draw_navigate(mode, canvas),
-            Mode::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
-            Mode::InputCompleted(_) => self.draw_completion(canvas),
-            Mode::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
+        match self.tab.edit_mode {
+            EditMode::Navigate(mode) => self.draw_navigate(mode, canvas),
+            EditMode::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
+            EditMode::InputCompleted(_) => self.draw_completion(canvas),
+            EditMode::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
             _ => Ok(()),
         }?;
         self.draw_cursor(canvas)?;
@@ -705,26 +699,26 @@ impl<'a> WinSecondary<'a> {
 
     /// Display a cursor in the top row, at a correct column.
     fn draw_cursor(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        match self.tab.mode {
-            Mode::Normal | Mode::Tree | Mode::Navigate(_) | Mode::Preview => {
+        match self.tab.edit_mode {
+            EditMode::Navigate(_) | EditMode::Nothing => {
                 canvas.show_cursor(false)?;
             }
-            Mode::InputSimple(InputSimple::Sort) => {
+            EditMode::InputSimple(InputSimple::Sort) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
             }
-            Mode::InputSimple(InputSimple::Password(_, _, _)) => {
+            EditMode::InputSimple(InputSimple::Password(_, _, _)) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(
                     0,
                     Self::PASSWORD_CURSOR_OFFSET + self.tab.input.cursor_index,
                 )?;
             }
-            Mode::InputSimple(_) | Mode::InputCompleted(_) => {
+            EditMode::InputSimple(_) | EditMode::InputCompleted(_) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, Self::EDIT_BOX_OFFSET + self.tab.input.cursor_index)?;
             }
-            Mode::NeedConfirmation(confirmed_action) => {
+            EditMode::NeedConfirmation(confirmed_action) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, confirmed_action.cursor_offset())?;
             }
@@ -914,7 +908,7 @@ impl<'a> WinSecondary<'a> {
         canvas: &mut dyn Canvas,
     ) -> Result<()> {
         info!("confirmed action: {:?}", confirmed_mode);
-        let dest = path_to_string(&self.tab.directory_of_selected_previous_mode()?);
+        let dest = path_to_string(&self.tab.directory_of_selected()?);
 
         Self::draw_content_line(
             canvas,
@@ -991,22 +985,22 @@ impl Draw for WinSecondaryFirstLine {
 
 impl WinSecondaryFirstLine {
     fn new(tab: &Tab) -> Result<Self> {
-        let content = match tab.mode {
-            Mode::NeedConfirmation(confirmed_action) => {
+        let content = match tab.edit_mode {
+            EditMode::NeedConfirmation(confirmed_action) => {
                 vec![format!("{confirmed_action}"), " (y/n)".to_owned()]
             }
-            Mode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
+            EditMode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
                 vec!["Jump to...".to_owned()]
             }
-            Mode::Navigate(Navigate::Marks(MarkAction::New)) => {
+            EditMode::Navigate(Navigate::Marks(MarkAction::New)) => {
                 vec!["Save mark...".to_owned()]
             }
-            Mode::InputSimple(InputSimple::Password(password_kind, _encrypted_action, _)) => {
+            EditMode::InputSimple(InputSimple::Password(password_kind, _encrypted_action, _)) => {
                 info!("term: password");
                 vec![format!("{password_kind}"), tab.input.password()]
             }
-            Mode::InputCompleted(mode) => {
-                let mut completion_strings = vec![tab.mode.to_string(), tab.input.string()];
+            EditMode::InputCompleted(mode) => {
+                let mut completion_strings = vec![tab.edit_mode.to_string(), tab.input.string()];
                 if let Some(completion) = tab.completion.complete_input_string(&tab.input.string())
                 {
                     completion_strings.push(completion.to_owned())
@@ -1020,7 +1014,7 @@ impl WinSecondaryFirstLine {
                 completion_strings
             }
             _ => {
-                vec![tab.mode.to_string(), tab.input.string()]
+                vec![tab.edit_mode.to_string(), tab.input.string()]
             }
         };
         Ok(Self { content })

@@ -11,7 +11,7 @@ use crate::fileinfo::{FileInfo, PathContent};
 use crate::filter::FilterKind;
 use crate::history::History;
 use crate::input::Input;
-use crate::mode::{InputSimple, Mode};
+use crate::mode::{DisplayMode, EditMode, InputSimple};
 use crate::opener::execute_in_child;
 use crate::preview::Preview;
 use crate::selectable_content::SelectableContent;
@@ -24,10 +24,10 @@ use crate::utils::{row_to_window_index, set_clipboard};
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
 pub struct Tab {
+    /// Kind of display
+    pub display_mode: DisplayMode,
     /// The mode the application is currenty in
-    pub mode: Mode,
-    /// The mode previously set
-    pub previous_mode: Mode,
+    pub edit_mode: EditMode,
     /// The indexes of displayed file
     pub window: ContentWindow,
     /// The typed input by the user
@@ -77,8 +77,8 @@ impl Tab {
         let filter = FilterKind::All;
         let show_hidden = args.all || settings.all;
         let mut path_content = PathContent::new(start_dir, &users, &filter, show_hidden)?;
-        let mode = Mode::Normal;
-        let previous_mode = Mode::Normal;
+        let display_mode = DisplayMode::default();
+        let edit_mode = EditMode::Nothing;
         let mut window = ContentWindow::new(path_content.content.len(), height);
         let input = Input::default();
         let completion = Completion::default();
@@ -92,8 +92,8 @@ impl Tab {
         let tree = Tree::default();
         window.scroll_to(index);
         Ok(Self {
-            mode,
-            previous_mode,
+            display_mode,
+            edit_mode,
             window,
             input,
             path_content,
@@ -113,27 +113,27 @@ impl Tab {
 
     /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> Result<()> {
-        match self.mode {
-            Mode::InputCompleted(InputCompleted::Goto) => {
+        match self.edit_mode {
+            EditMode::InputCompleted(InputCompleted::Goto) => {
                 let current_path = self.path_content_str().unwrap_or_default().to_owned();
                 self.completion.goto(&self.input.string(), &current_path)
             }
-            Mode::InputCompleted(InputCompleted::Exec) => {
+            EditMode::InputCompleted(InputCompleted::Exec) => {
                 self.completion.exec(&self.input.string())
             }
-            Mode::InputCompleted(InputCompleted::Search)
-                if matches!(self.previous_mode, Mode::Normal) =>
+            EditMode::InputCompleted(InputCompleted::Search)
+                if matches!(self.display_mode, DisplayMode::Normal) =>
             {
                 self.completion
                     .search_from_normal(&self.input.string(), &self.path_content)
             }
-            Mode::InputCompleted(InputCompleted::Search)
-                if matches!(self.previous_mode, Mode::Tree) =>
+            EditMode::InputCompleted(InputCompleted::Search)
+                if matches!(self.display_mode, DisplayMode::Tree) =>
             {
                 self.completion
                     .search_from_tree(&self.input.string(), self.tree.filenames())
             }
-            Mode::InputCompleted(InputCompleted::Command) => {
+            EditMode::InputCompleted(InputCompleted::Command) => {
                 self.completion.command(&self.input.string())
             }
             _ => Ok(()),
@@ -146,7 +146,8 @@ impl Tab {
         self.input.reset();
         self.preview = Preview::empty();
         self.completion.reset();
-        if matches!(self.mode, Mode::Tree) {
+        self.set_edit_mode(EditMode::Nothing);
+        if matches!(self.display_mode, DisplayMode::Tree) {
             self.make_tree(None)?;
         } else {
             self.tree = Tree::default()
@@ -171,7 +172,7 @@ impl Tab {
     /// If it can't, the first file (`.`) is selected.
     /// Does nothing outside of normal mode.
     pub fn refresh_if_needed(&mut self) -> Result<()> {
-        if let Mode::Normal = self.mode {
+        if !matches!(self.display_mode, DisplayMode::Preview) {
             if self.is_last_modification_happend_less_than(10)? {
                 self.refresh_and_reselect_file()?
             }
@@ -329,7 +330,7 @@ impl Tab {
         let index = self.path_content.select_file(&file);
         self.scroll_to(index);
         self.history.content.pop();
-        if let Mode::Tree = self.mode {
+        if let DisplayMode::Tree = self.display_mode {
             self.make_tree(None)?
         }
 
@@ -390,33 +391,21 @@ impl Tab {
         Ok(())
     }
 
-    /// Returns the current path.
-    /// If previous mode was tree mode :
-    ///     if the selected node is a directory, that's it.
-    ///     else, it is the parent of the selected node.
-    /// In other modes, it's the current path of pathcontent.
-    pub fn directory_of_selected_previous_mode(&self) -> Result<&path::Path> {
-        match self.previous_mode {
-            Mode::Tree => return self.tree.directory_of_selected().context("no parent"),
-            _ => Ok(&self.path_content.path),
-        }
-    }
-
     /// Returns the directory owning the selected file.
     /// In Tree mode, it's the current directory if the selected node is a directory,
     /// its parent otherwise.
     /// In normal mode it's the current working directory.
     pub fn directory_of_selected(&self) -> Result<&path::Path> {
-        match self.mode {
-            Mode::Tree => self.tree.directory_of_selected().context("No parent"),
+        match self.display_mode {
+            DisplayMode::Tree => self.tree.directory_of_selected().context("No parent"),
             _ => Ok(&self.path_content.path),
         }
     }
 
     /// Fileinfo of the selected element.
     pub fn selected(&self) -> Result<FileInfo> {
-        match self.mode {
-            Mode::Tree => {
+        match self.display_mode {
+            DisplayMode::Tree => {
                 let node = self.tree.selected_node().context("no selected node")?;
                 node.fileinfo(&self.users)
             }
@@ -441,76 +430,77 @@ impl Tab {
     }
 
     /// Set a new mode and save the last one
-    pub fn set_mode(&mut self, new_mode: Mode) {
-        self.previous_mode = self.mode;
-        self.mode = new_mode;
+    pub fn set_edit_mode(&mut self, new_mode: EditMode) {
+        self.edit_mode = new_mode;
     }
 
-    /// Reset the last mode.
-    /// The last mode is set to normal again.
-    /// Returns True if the last mode requires a refresh afterwards.
-    pub fn reset_mode(&mut self) -> bool {
-        let must_refresh = self.mode.refresh_required();
-        if matches!(self.mode, Mode::InputCompleted(_)) {
+    pub fn set_display_mode(&mut self, new_display_mode: DisplayMode) {
+        self.display_mode = new_display_mode
+    }
+
+    /// Reset the modes :
+    /// - edit_mode is set to Nothing,
+    /// - display_mode is set to Normal.
+
+    pub fn reset_edit_mode(&mut self) -> bool {
+        if matches!(self.edit_mode, EditMode::InputCompleted(_)) {
             self.completion.reset();
         }
-        self.mode = self.previous_mode;
-        self.previous_mode = Mode::Normal;
+        let must_refresh = matches!(self.display_mode, DisplayMode::Preview);
+        self.edit_mode = EditMode::Nothing;
         must_refresh
     }
 
     pub fn reset_mode_and_view(&mut self) -> Result<()> {
-        if self.reset_mode() {
-            self.refresh_view()
-        } else {
-            Ok(())
+        if matches!(self.display_mode, DisplayMode::Preview) {
+            self.set_display_mode(DisplayMode::Normal);
         }
+        self.reset_edit_mode();
+        self.refresh_view()
     }
 
     /// Returns true if the current mode requires 2 windows.
     /// Only Tree, Normal & Preview doesn't require 2 windows.
     pub fn need_second_window(&self) -> bool {
-        !matches!(self.mode, Mode::Normal | Mode::Tree | Mode::Preview)
+        !matches!(self.edit_mode, EditMode::Nothing)
     }
 
     /// Move down one row if possible.
     pub fn down_one_row(&mut self) {
-        match self.mode {
-            Mode::Normal => {
+        match self.display_mode {
+            DisplayMode::Normal => {
                 self.path_content.unselect_current();
                 self.path_content.next();
                 self.path_content.select_current();
                 self.window.scroll_down_one(self.path_content.index)
             }
-            Mode::Preview => self.preview_page_down(),
+            DisplayMode::Preview => self.preview_page_down(),
             _ => (),
         }
     }
 
     /// Move up one row if possible.
     pub fn up_one_row(&mut self) {
-        match self.mode {
-            Mode::Normal => {
+        match self.display_mode {
+            DisplayMode::Normal => {
                 self.path_content.unselect_current();
                 self.path_content.prev();
                 self.path_content.select_current();
                 self.window.scroll_up_one(self.path_content.index)
             }
-            Mode::Preview => self.preview_page_up(),
+            DisplayMode::Preview => self.preview_page_up(),
             _ => (),
         }
     }
 
     /// Move to the top of the current directory.
-    pub fn go_top(&mut self) {
-        match self.mode {
-            Mode::Normal => self.path_content.select_index(0),
-            Mode::Preview => (),
-            _ => {
-                return;
-            }
-        }
-        self.window.scroll_to(0);
+    pub fn normal_go_top(&mut self) {
+        self.path_content.select_index(0);
+        self.window.scroll_to(0)
+    }
+
+    pub fn preview_go_top(&mut self) {
+        self.window.scroll_to(0)
     }
 
     /// Insert a char in the input string.
@@ -555,24 +545,22 @@ impl Tab {
     }
 
     /// Move to the bottom of current view.
-    pub fn go_bottom(&mut self) {
-        match self.mode {
-            Mode::Normal => {
-                let last_index = self.path_content.content.len() - 1;
-                self.path_content.select_index(last_index);
-                self.window.scroll_to(last_index)
-            }
-            Mode::Preview => self.window.scroll_to(self.preview.len() - 1),
-            _ => (),
-        }
+    pub fn normal_go_bottom(&mut self) {
+        let last_index = self.path_content.content.len() - 1;
+        self.path_content.select_index(last_index);
+        self.window.scroll_to(last_index)
+    }
+
+    pub fn preview_go_bottom(&mut self) {
+        self.window.scroll_to(self.preview.len() - 1)
     }
 
     /// Move up 10 rows in normal mode.
     /// In other modes where vertical scrolling is possible (atm Preview),
     /// if moves up one page.
     pub fn page_up(&mut self) {
-        match self.mode {
-            Mode::Normal => {
+        match self.display_mode {
+            DisplayMode::Normal => {
                 let up_index = if self.path_content.index > 10 {
                     self.path_content.index - 10
                 } else {
@@ -581,7 +569,7 @@ impl Tab {
                 self.path_content.select_index(up_index);
                 self.window.scroll_to(up_index)
             }
-            Mode::Preview => self.preview_page_up(),
+            DisplayMode::Preview => self.preview_page_up(),
             _ => (),
         }
     }
@@ -603,9 +591,9 @@ impl Tab {
     /// In other modes where vertical scrolling is possible (atm Preview),
     /// if moves down one page.
     pub fn page_down(&mut self) {
-        match self.mode {
-            Mode::Normal => self.normal_page_down(),
-            Mode::Preview => self.preview_page_down(),
+        match self.display_mode {
+            DisplayMode::Normal => self.normal_page_down(),
+            DisplayMode::Preview => self.preview_page_down(),
             _ => (),
         }
     }
@@ -634,9 +622,9 @@ impl Tab {
 
     /// Select a given row, if there's something in it.
     pub fn select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
-        match self.mode {
-            Mode::Normal => self.normal_select_row(row),
-            Mode::Tree => self.tree_select_row(row, term_height)?,
+        match self.display_mode {
+            DisplayMode::Normal => self.normal_select_row(row),
+            DisplayMode::Tree => self.tree_select_row(row, term_height)?,
             _ => (),
         }
         Ok(())
@@ -672,16 +660,16 @@ impl Tab {
         if self.path_content.content.is_empty() {
             return Ok(());
         }
-        self.reset_mode();
-        match self.mode {
-            Mode::Normal => {
+        self.reset_edit_mode();
+        match self.display_mode {
+            DisplayMode::Normal => {
                 self.path_content.unselect_current();
                 self.path_content.update_sort_from_char(c);
                 self.path_content.sort();
-                self.go_top();
+                self.normal_go_top();
                 self.path_content.select_index(0);
             }
-            Mode::Tree => {
+            DisplayMode::Tree => {
                 self.path_content.update_sort_from_char(c);
                 self.make_tree(Some(self.path_content.sort_kind.clone()))?;
             }
@@ -699,14 +687,14 @@ impl Tab {
         let path = &self
             .path_content
             .selected_path_string()
-            .context("execute custom: can't find command")?;
+            .context("execute custom: no selected file")?;
         args.push(path);
         execute_in_child(command, &args)?;
         Ok(true)
     }
 
     pub fn rename(&mut self) -> Result<()> {
-        let old_name: String = if matches!(self.mode, Mode::Tree) {
+        let old_name: String = if matches!(self.display_mode, DisplayMode::Tree) {
             self.tree
                 .selected_path()
                 .file_name()
@@ -720,19 +708,7 @@ impl Tab {
             fileinfo.filename.to_owned()
         };
         self.input.replace(&old_name);
-        self.set_mode(Mode::InputSimple(InputSimple::Rename));
+        self.set_edit_mode(EditMode::InputSimple(InputSimple::Rename));
         Ok(())
-    }
-
-    pub fn display_mode(&self) -> Mode {
-        match self.mode {
-            Mode::Preview => Mode::Preview,
-            Mode::Normal => Mode::Normal,
-            Mode::Tree => Mode::Tree,
-            _ => match self.previous_mode {
-                Mode::Tree => Mode::Tree,
-                _ => Mode::Normal,
-            },
-        }
     }
 }

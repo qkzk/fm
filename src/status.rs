@@ -25,7 +25,7 @@ use crate::flagged::Flagged;
 use crate::iso::IsoDevice;
 use crate::log_line;
 use crate::marks::Marks;
-use crate::mode::{InputSimple, Mode, NeedConfirmation};
+use crate::mode::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
 use crate::mount_help::MountHelper;
 use crate::opener::{InternalVariant, Opener};
 use crate::password::{
@@ -405,9 +405,7 @@ impl Status {
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
         let sources = self.flagged.content.clone();
 
-        let dest = &self
-            .selected_non_mut()
-            .directory_of_selected_previous_mode()?;
+        let dest = &self.selected_non_mut().directory_of_selected()?;
 
         copy_move(cut_or_copy, sources, dest, Arc::clone(&self.term))?;
         self.clear_flags_and_reset_view()
@@ -591,7 +589,7 @@ impl Status {
         match file_info.file_kind {
             FileKind::NormalFile => {
                 let preview = Preview::file(&file_info).unwrap_or_default();
-                self.selected().set_mode(Mode::Preview);
+                self.selected().set_display_mode(DisplayMode::Preview);
                 self.selected().window.reset(preview.len());
                 self.selected().preview = preview;
             }
@@ -603,17 +601,17 @@ impl Status {
     }
 
     pub fn tree(&mut self) -> Result<()> {
-        if let Mode::Tree = self.selected_non_mut().mode {
+        if let DisplayMode::Tree = self.selected_non_mut().display_mode {
             {
                 let tab = self.selected();
                 tab.tree = Tree::default();
                 tab.refresh_view()
             }?;
-            self.selected().set_mode(Mode::Normal)
+            self.selected().set_display_mode(DisplayMode::Normal)
         } else {
             self.display_full = true;
             self.selected().make_tree(None)?;
-            self.selected().set_mode(Mode::Tree);
+            self.selected().set_display_mode(DisplayMode::Tree);
         }
         Ok(())
     }
@@ -634,7 +632,8 @@ impl Status {
             return Ok(());
         }
 
-        self.tabs[1].set_mode(Mode::Preview);
+        self.tabs[1].set_display_mode(DisplayMode::Preview);
+        self.tabs[1].set_edit_mode(EditMode::Nothing);
         let fileinfo = self.tabs[0]
             .selected()
             .context("force preview: No file to select")?;
@@ -673,7 +672,7 @@ impl Status {
 
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
-        let filepath = if matches!(self.selected_non_mut().mode, Mode::Tree) {
+        let filepath = if matches!(self.selected_non_mut().display_mode, DisplayMode::Tree) {
             self.selected_non_mut().tree.selected_path().to_owned()
         } else {
             self.selected_non_mut().selected()?.path.to_owned()
@@ -872,7 +871,7 @@ impl Status {
     ) -> Result<()> {
         info!("event ask password");
         self.selected()
-            .set_mode(Mode::InputSimple(InputSimple::Password(
+            .set_edit_mode(EditMode::InputSimple(InputSimple::Password(
                 password_kind,
                 encrypted_action,
                 password_dest,
@@ -888,7 +887,7 @@ impl Status {
             let tab: &mut Tab = self.selected();
             tab.refresh_view()
         }?;
-        self.selected().reset_mode();
+        self.selected().reset_edit_mode();
         self.refresh_status()
     }
 
@@ -899,7 +898,7 @@ impl Status {
             self.selected().set_pathcontent(&path)?;
         }
         self.selected().refresh_view()?;
-        self.selected().reset_mode();
+        self.selected().reset_edit_mode();
         self.refresh_status()
     }
 
@@ -908,7 +907,7 @@ impl Status {
         self.force_clear();
         self.refresh_users()?;
         self.selected().refresh_view()?;
-        if let Mode::Tree = self.selected_non_mut().mode {
+        if let DisplayMode::Tree = self.selected_non_mut().display_mode {
             self.selected().make_tree(None)?
         }
         Ok(())
@@ -937,7 +936,7 @@ impl Status {
             }
         }
         log_line!("Deleted {nb} flagged files");
-        self.selected().reset_mode();
+        self.selected().reset_edit_mode();
         self.clear_flags_and_reset_view()?;
         self.refresh_status()
     }
@@ -945,13 +944,13 @@ impl Status {
     /// Empty the trash folder permanently.
     pub fn confirm_trash_empty(&mut self) -> Result<()> {
         self.trash.empty_trash()?;
-        self.selected().reset_mode();
+        self.selected().reset_edit_mode();
         self.clear_flags_and_reset_view()?;
         Ok(())
     }
 
     fn run_sudo_command(&mut self) -> Result<()> {
-        self.selected().set_mode(Mode::Normal);
+        self.selected().set_edit_mode(EditMode::Nothing);
         reset_sudo_faillock()?;
         let Some(sudo_command) = &self.sudo_command else {
             return Ok(());
@@ -1026,9 +1025,9 @@ impl Status {
         if c == 'y' {
             let _ = self.match_confirmed_mode(confirmed_action);
         }
-        if self.selected().reset_mode() {
-            self.selected().refresh_view()?;
-        }
+        self.selected().reset_edit_mode();
+        self.selected().refresh_view()?;
+
         Ok(())
     }
 
