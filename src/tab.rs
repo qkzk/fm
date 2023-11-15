@@ -359,7 +359,7 @@ impl Tab {
 
     /// Move down 10 times in the tree
     pub fn tree_page_down(&mut self) -> Result<()> {
-        self.tree.page_down()
+        self.tree.page_down();
         Ok(())
     }
 

@@ -46,8 +46,8 @@ pub struct Node {
     folded: bool,
     selected: bool,
     reachable: bool,
-    prev: Option<PathBuf>,
-    next: Option<PathBuf>,
+    prev: PathBuf,
+    next: PathBuf,
 }
 
 impl Node {
@@ -60,8 +60,8 @@ impl Node {
             folded: false,
             selected: false,
             reachable: true,
-            prev: None,
-            next: None,
+            next: PathBuf::default(),
+            prev: PathBuf::default(),
         }
     }
 
@@ -148,7 +148,7 @@ pub struct Tree {
 impl Tree {
     pub const DEFAULT_REQUIRED_HEIGHT: usize = 80;
 
-    /// Creates a new tree, exploring every node untill depth is reached.
+    /// Creates a new tree, exploring every node until depth is reached.
     pub fn new(
         root_path: PathBuf,
         depth: usize,
@@ -157,7 +157,7 @@ impl Tree {
         show_hidden: bool,
         filter_kind: &FilterKind,
     ) -> Self {
-        let (mut nodes, last_path) = Self::make_nodes(
+        let nodes = Self::make_nodes(
             &root_path,
             depth,
             sort_kind,
@@ -165,10 +165,6 @@ impl Tree {
             show_hidden,
             filter_kind,
         );
-        let Some(root_node) = nodes.get_mut(&root_path) else {
-            unreachable!("root path should be in nodes");
-        };
-        root_node.select();
 
         Self {
             selected: root_path.clone(),
@@ -186,7 +182,7 @@ impl Tree {
         users: &Users,
         show_hidden: bool,
         filter_kind: &FilterKind,
-    ) -> (HashMap<PathBuf, Node>, PathBuf) {
+    ) -> HashMap<PathBuf, Node> {
         // keep track of the depth
         let root_depth = root_path.components().collect::<Vec<_>>().len();
         let mut stack = vec![root_path.to_owned()];
@@ -213,21 +209,22 @@ impl Tree {
             }
 
             if let Some(last_node) = nodes.get_mut(&last_path) {
-                last_node.next = Some(current_path.to_owned());
+                last_node.next = current_path.to_owned();
             }
-            current_node.prev = Some(last_path);
+            current_node.prev = last_path;
             nodes.insert(current_path.to_owned(), current_node);
             last_path = current_path.to_owned();
         }
         let Some(root_node) = nodes.get_mut(root_path) else {
             unreachable!("root_path should be in nodes");
         };
-        root_node.prev = Some(last_path.to_owned());
+        root_node.prev = last_path.to_owned();
+        root_node.select();
         let Some(last_node) = nodes.get_mut(&last_path) else {
             unreachable!("last_path should be in nodes");
         };
-        last_node.next = Some(root_path.to_owned());
-        (nodes, last_path)
+        last_node.next = root_path.to_owned();
+        nodes
     }
 
     #[inline]
@@ -241,46 +238,6 @@ impl Tree {
             })
             .collect()
     }
-
-    // FIX: works for folding, panic! for unfolding
-    // pub fn update(&mut self) {
-    //     let selected_path = self.selected.to_owned();
-    //
-    //     let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
-    //     let mut stack = vec![self.root_path.to_owned()];
-    //     let mut last_path = self.root_path.to_owned();
-    //
-    //     while let Some(current_path) = stack.pop() {
-    //         let Some(current_node) = self.nodes.get_mut(&current_path) else {
-    //             continue;
-    //         };
-    //
-    //         if current_node.have_children() {
-    //             let Some(children) = &current_node.children else {
-    //                 unreachable!("node should have children");
-    //             };
-    //             stack.extend_from_slice(children);
-    //         }
-    //
-    //         if let Some(last_node) = nodes.get_mut(&last_path) {
-    //             last_node.next = Some(current_path.to_owned());
-    //         }
-    //         current_node.prev = Some(last_path);
-    //         nodes.insert(current_path.to_owned(), current_node.to_owned());
-    //         last_path = current_path.to_owned();
-    //     }
-    //     let Some(root_node) = nodes.get_mut(&self.root_path) else {
-    //         unreachable!("root_path should be in nodes");
-    //     };
-    //     root_node.prev = Some(last_path.to_owned());
-    //     let Some(last_node) = nodes.get_mut(&last_path) else {
-    //         unreachable!("last_path should be in nodes");
-    //     };
-    //     last_node.next = Some(self.root_path.to_owned());
-    //     self.nodes = nodes;
-    //
-    //     self.select_path(&selected_path, true);
-    // }
 
     /// Root path of the tree.
     pub fn root_path(&self) -> &Path {
@@ -343,15 +300,14 @@ impl Tree {
         let mut current_path = self.selected.to_owned();
         loop {
             if let Some(current_node) = self.nodes.get(&current_path) {
-                if let Some(next_path) = &current_node.next {
-                    let Some(next_node) = self.nodes.get(next_path) else {
-                        unreachable!("");
-                    };
-                    if next_node.reachable {
-                        return next_path.to_owned();
-                    } else {
-                        current_path = next_path.to_owned();
-                    }
+                let next_path = &current_node.next;
+                let Some(next_node) = self.nodes.get(next_path) else {
+                    unreachable!("");
+                };
+                if next_node.reachable {
+                    return next_path.to_owned();
+                } else {
+                    current_path = next_path.to_owned();
                 }
             }
         }
@@ -373,15 +329,14 @@ impl Tree {
         let mut current_path = self.selected.to_owned();
         loop {
             if let Some(current_node) = self.nodes.get(&current_path) {
-                if let Some(prev_path) = &current_node.prev {
-                    let Some(prev_node) = self.nodes.get(prev_path) else {
-                        unreachable!("");
-                    };
-                    if prev_node.reachable {
-                        return prev_path.to_owned();
-                    } else {
-                        current_path = prev_path.to_owned();
-                    }
+                let prev_path = &current_node.prev;
+                let Some(prev_node) = self.nodes.get(prev_path) else {
+                    unreachable!("");
+                };
+                if prev_node.reachable {
+                    return prev_path.to_owned();
+                } else {
+                    current_path = prev_path.to_owned();
                 }
             }
         }
