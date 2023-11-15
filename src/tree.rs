@@ -71,10 +71,6 @@ impl Node {
         self.folded = false
     }
 
-    fn toggle_fold(&mut self) {
-        self.folded = !self.folded
-    }
-
     fn select(&mut self) {
         self.selected = true
     }
@@ -246,6 +242,46 @@ impl Tree {
             .collect()
     }
 
+    // FIX: works for folding, panic! for unfolding
+    pub fn update(&mut self) {
+        let selected_path = self.selected.to_owned();
+
+        let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
+        let mut stack = vec![self.root_path.to_owned()];
+        let mut last_path = self.root_path.to_owned();
+
+        while let Some(current_path) = stack.pop() {
+            let Some(current_node) = self.nodes.get_mut(&current_path) else {
+                unreachable!("current path should be in nodes");
+            };
+
+            if current_node.have_children() {
+                let Some(children) = &current_node.children else {
+                    unreachable!("node should have children");
+                };
+                stack.extend_from_slice(children);
+            }
+
+            if let Some(last_node) = nodes.get_mut(&last_path) {
+                last_node.next = Some(current_path.to_owned());
+            }
+            current_node.prev = Some(last_path);
+            nodes.insert(current_path.to_owned(), current_node.to_owned());
+            last_path = current_path.to_owned();
+        }
+        let Some(root_node) = nodes.get_mut(&self.root_path) else {
+            unreachable!("root_path should be in nodes");
+        };
+        root_node.prev = Some(last_path.to_owned());
+        let Some(last_node) = nodes.get_mut(&last_path) else {
+            unreachable!("last_path should be in nodes");
+        };
+        last_node.next = Some(self.root_path.to_owned());
+        self.nodes = nodes;
+
+        self.select_path(&selected_path, true);
+    }
+
     /// Root path of the tree.
     pub fn root_path(&self) -> &Path {
         self.root_path.as_path()
@@ -390,9 +426,16 @@ impl Tree {
     }
 
     /// Fold selected node
-    pub fn toggle_fold(&mut self) {
+    pub fn toggle_fold(&mut self) -> bool {
         if let Some(node) = self.nodes.get_mut(&self.selected) {
-            node.toggle_fold();
+            if node.folded {
+                node.unfold()
+            } else {
+                node.fold()
+            }
+            true
+        } else {
+            false
         }
     }
 
@@ -401,6 +444,7 @@ impl Tree {
         for (_, node) in self.nodes.iter_mut() {
             node.fold()
         }
+        self.select_root()
     }
 
     /// Unfold all node from root to end

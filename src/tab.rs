@@ -428,9 +428,15 @@ impl Tab {
             Some(sort_kind) => sort_kind,
             None => SortKind::tree_default(),
         };
+        self.path_content.sort_kind = sort_kind.to_owned();
         let path = self.path_content.path.clone();
         let users = &self.users;
         self.tree = Tree::new(path, 5, sort_kind, users, self.show_hidden, &self.filter);
+        Ok(())
+    }
+
+    pub fn tree_update(&mut self) -> Result<()> {
+        self.tree.update();
         Ok(())
     }
 
