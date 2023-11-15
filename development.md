@@ -638,7 +638,44 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] it seems to work, code still messy
   - [ ] test everything
   - [ ] refactor: clean refresh etc. methods
-- [x] NVIM listen address won't update if neovim is restarted while fm is still running
+- [x] FIX: NVIM listen address won't update if neovim is restarted while fm is still running
+- [ ] read click event (ouch where ?)
+- [ ] BUG: next is wrong when folded.
+      possibles fixes:
+
+      1. don't use links but loops
+      2. fold should be spread (reexplore the tree without mutating nodes)
+      3. use : do while not folded  { select_next() }
+
+- [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
+- [ ] separate display_modes completely. Normal -> lsl (?), Tree, Preview.
+      PathContent is only used in Normal and should be associated with it.
+      Reseting display should switch back to user setted display.
+      Preview isn't like Normal & Tree since it doesn't display files at all.
+
+      ```
+      fm
+      |- src
+          |- main             <- run the main loop aka bin crate
+          |- lib
+          |   |- display-mode     <- only affect what is displayed
+          |   |   |- lsl.rs
+          |   |   |- tree.rs
+          |   |   |- preview.rs
+          |   |- edit-mode        <- affect things outside fm
+          |   |   |- bulk.rs
+          |   |   |... 1 per mode
+          |
+          |   |- external         <- shell commands & whatever related things
+          |   |- interaction      <- received event -> polled -> action -> change state
+          |   |   |- event reader
+          |   |   |- event -> action
+          |   |   |- event dispatch
+          |   |   |- action exec
+          |   |- fs model         <- file, directory, tree (?) think of them as Traits
+          |   |- app              <- state of the app
+              |- ???              <- anything else. utils, whatever
+      ```
 
 ## TODO
 
