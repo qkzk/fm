@@ -657,22 +657,22 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       |- src
           |- main             <- run the main loop aka bin crate
           |- lib
-          |   |- display-mode     <- only affect what is displayed
-          |   |   |- lsl.rs
-          |   |   |- tree.rs
-          |   |   |- preview.rs
-          |   |- edit-mode        <- affect things outside fm
-          |   |   |- bulk.rs
-          |   |   |... 1 per mode
-          |
-          |   |- external         <- shell commands & whatever related things
-          |   |- interaction      <- received event -> polled -> action -> change state
-          |   |   |- event reader
-          |   |   |- event -> action
-          |   |   |- event dispatch
-          |   |   |- action exec
-          |   |- fs model         <- file, directory, tree (?) think of them as Traits
-          |   |- app              <- state of the app
+              |- display-mode     <- only affect what is displayed
+              |   |- lsl.rs
+              |   |- tree.rs
+              |   |- preview.rs
+              |- edit-mode        <- affect things outside fm
+              |   |- bulk.rs
+              |   |... 1 per mode
+
+              |- external         <- shell commands & whatever related things
+              |- interaction      <- received event -> polled -> action -> change state
+              |   |- event reader
+              |   |- event -> action
+              |   |- event dispatch
+              |   |- action exec
+              |- fs model         <- file, directory, tree (?) think of them as Traits
+              |- app              <- state of the app
               |- ???              <- anything else. utils, whatever
       ```
 
