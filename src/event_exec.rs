@@ -939,9 +939,7 @@ impl EventAction {
     /// Fold the current node of the tree.
     /// Has no effect on "file" nodes.
     pub fn tree_fold(tab: &mut Tab) -> Result<()> {
-        if tab.tree.toggle_fold() {
-            tab.tree_update()?
-        }
+        tab.tree.toggle_fold();
         Ok(())
     }
 

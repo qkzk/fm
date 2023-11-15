@@ -45,6 +45,7 @@ pub struct Node {
     children: Option<Vec<PathBuf>>,
     folded: bool,
     selected: bool,
+    reachable: bool,
     prev: Option<PathBuf>,
     next: Option<PathBuf>,
 }
@@ -58,6 +59,7 @@ impl Node {
             children,
             folded: false,
             selected: false,
+            reachable: true,
             prev: None,
             next: None,
         }
@@ -139,7 +141,6 @@ impl Go for Tree {
 pub struct Tree {
     root_path: PathBuf,
     selected: PathBuf,
-    last_path: PathBuf,
     nodes: HashMap<PathBuf, Node>,
     required_height: usize,
 }
@@ -172,7 +173,6 @@ impl Tree {
         Self {
             selected: root_path.clone(),
             root_path,
-            last_path,
             nodes,
             required_height: Self::DEFAULT_REQUIRED_HEIGHT,
         }
@@ -243,44 +243,44 @@ impl Tree {
     }
 
     // FIX: works for folding, panic! for unfolding
-    pub fn update(&mut self) {
-        let selected_path = self.selected.to_owned();
-
-        let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
-        let mut stack = vec![self.root_path.to_owned()];
-        let mut last_path = self.root_path.to_owned();
-
-        while let Some(current_path) = stack.pop() {
-            let Some(current_node) = self.nodes.get_mut(&current_path) else {
-                unreachable!("current path should be in nodes");
-            };
-
-            if current_node.have_children() {
-                let Some(children) = &current_node.children else {
-                    unreachable!("node should have children");
-                };
-                stack.extend_from_slice(children);
-            }
-
-            if let Some(last_node) = nodes.get_mut(&last_path) {
-                last_node.next = Some(current_path.to_owned());
-            }
-            current_node.prev = Some(last_path);
-            nodes.insert(current_path.to_owned(), current_node.to_owned());
-            last_path = current_path.to_owned();
-        }
-        let Some(root_node) = nodes.get_mut(&self.root_path) else {
-            unreachable!("root_path should be in nodes");
-        };
-        root_node.prev = Some(last_path.to_owned());
-        let Some(last_node) = nodes.get_mut(&last_path) else {
-            unreachable!("last_path should be in nodes");
-        };
-        last_node.next = Some(self.root_path.to_owned());
-        self.nodes = nodes;
-
-        self.select_path(&selected_path, true);
-    }
+    // pub fn update(&mut self) {
+    //     let selected_path = self.selected.to_owned();
+    //
+    //     let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
+    //     let mut stack = vec![self.root_path.to_owned()];
+    //     let mut last_path = self.root_path.to_owned();
+    //
+    //     while let Some(current_path) = stack.pop() {
+    //         let Some(current_node) = self.nodes.get_mut(&current_path) else {
+    //             continue;
+    //         };
+    //
+    //         if current_node.have_children() {
+    //             let Some(children) = &current_node.children else {
+    //                 unreachable!("node should have children");
+    //             };
+    //             stack.extend_from_slice(children);
+    //         }
+    //
+    //         if let Some(last_node) = nodes.get_mut(&last_path) {
+    //             last_node.next = Some(current_path.to_owned());
+    //         }
+    //         current_node.prev = Some(last_path);
+    //         nodes.insert(current_path.to_owned(), current_node.to_owned());
+    //         last_path = current_path.to_owned();
+    //     }
+    //     let Some(root_node) = nodes.get_mut(&self.root_path) else {
+    //         unreachable!("root_path should be in nodes");
+    //     };
+    //     root_node.prev = Some(last_path.to_owned());
+    //     let Some(last_node) = nodes.get_mut(&last_path) else {
+    //         unreachable!("last_path should be in nodes");
+    //     };
+    //     last_node.next = Some(self.root_path.to_owned());
+    //     self.nodes = nodes;
+    //
+    //     self.select_path(&selected_path, true);
+    // }
 
     /// Root path of the tree.
     pub fn root_path(&self) -> &Path {
@@ -328,44 +328,81 @@ impl Tree {
     }
 
     /// True if selected is the last file
-    pub fn is_on_last(&self) -> bool {
-        self.selected == self.last_path
+    fn is_on_last(&self) -> bool {
+        self.find_next_path() == self.root_path
     }
 
     /// Select next sibling or the next sibling of the parent
     fn select_next(&mut self) {
-        if let Some(next_path) = self.find_next_path() {
-            self.select_path(&next_path, false);
-            self.increment_required_height()
-        }
+        let next_path = self.find_next_path();
+        self.select_path(&next_path, false);
+        self.increment_required_height()
     }
 
-    fn find_next_path(&self) -> Option<PathBuf> {
-        if let Some(selected_node) = self.nodes.get(&self.selected) {
-            if let Some(next_path) = &selected_node.next {
-                return Some(next_path.to_owned());
+    fn find_next_path(&self) -> PathBuf {
+        let mut current_path = self.selected.to_owned();
+        loop {
+            if let Some(current_node) = self.nodes.get(&current_path) {
+                if let Some(next_path) = &current_node.next {
+                    let Some(next_node) = self.nodes.get(next_path) else {
+                        unreachable!("");
+                    };
+                    if next_node.reachable {
+                        return next_path.to_owned();
+                    } else {
+                        current_path = next_path.to_owned();
+                    }
+                }
             }
         }
-        unreachable!("every node should have a next");
     }
 
     /// Select previous sibling or the parent
     fn select_prev(&mut self) {
-        if self.is_on_root() {
-            self.select_last();
-        } else if let Some(previous_path) = self.find_prev_path() {
-            self.select_path(&previous_path, false);
+        let must_increase = self.is_on_root();
+        let previous_path = self.find_prev_path();
+        self.select_path(&previous_path, false);
+        if must_increase {
+            self.set_required_height_to_max()
+        } else {
             self.decrement_required_height()
         }
     }
 
-    fn find_prev_path(&self) -> Option<PathBuf> {
-        if let Some(selected_node) = self.nodes.get(&self.selected) {
-            if let Some(prev_path) = &selected_node.prev {
-                return Some(prev_path.to_owned());
+    fn find_prev_path(&self) -> PathBuf {
+        let mut current_path = self.selected.to_owned();
+        loop {
+            if let Some(current_node) = self.nodes.get(&current_path) {
+                if let Some(prev_path) = &current_node.prev {
+                    let Some(prev_node) = self.nodes.get(prev_path) else {
+                        unreachable!("");
+                    };
+                    if prev_node.reachable {
+                        return prev_path.to_owned();
+                    } else {
+                        current_path = prev_path.to_owned();
+                    }
+                }
             }
         }
-        unreachable!("every node should have a prev");
+    }
+
+    pub fn page_up(&mut self) {
+        for _ in 1..10 {
+            if self.is_on_root() {
+                break;
+            }
+            self.go(To::Prev);
+        }
+    }
+
+    pub fn page_down(&mut self) {
+        for _ in 1..10 {
+            if self.is_on_last() {
+                break;
+            }
+            self.go(To::Next);
+        }
     }
 
     fn select_root(&mut self) {
@@ -375,9 +412,8 @@ impl Tree {
     }
 
     fn select_last(&mut self) {
-        let last_path = self.last_path.to_owned();
-        self.select_path(&last_path, false);
-        self.set_required_height_to_max()
+        self.select_root();
+        self.select_prev();
     }
 
     fn select_parent(&mut self) {
@@ -426,16 +462,40 @@ impl Tree {
     }
 
     /// Fold selected node
-    pub fn toggle_fold(&mut self) -> bool {
+    pub fn toggle_fold(&mut self) {
         if let Some(node) = self.nodes.get_mut(&self.selected) {
             if node.folded {
-                node.unfold()
+                node.unfold();
+                self.make_children_reachable()
             } else {
-                node.fold()
+                node.fold();
+                self.make_children_unreachable()
             }
-            true
-        } else {
-            false
+        }
+    }
+
+    fn children_of_selected(&self) -> Vec<PathBuf> {
+        self.nodes
+            .keys()
+            .filter(|p| p.starts_with(&self.selected) && p != &&self.selected)
+            .map(|p| p.to_owned())
+            .collect()
+    }
+
+    fn make_children_reachable(&mut self) {
+        for path in self.children_of_selected().iter() {
+            if let Some(child_node) = self.nodes.get_mut(path) {
+                child_node.reachable = true;
+                child_node.unfold();
+            };
+        }
+    }
+
+    fn make_children_unreachable(&mut self) {
+        for path in self.children_of_selected().iter() {
+            if let Some(child_node) = self.nodes.get_mut(path) {
+                child_node.reachable = false;
+            };
         }
     }
 

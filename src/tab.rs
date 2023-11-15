@@ -359,23 +359,13 @@ impl Tab {
 
     /// Move down 10 times in the tree
     pub fn tree_page_down(&mut self) -> Result<()> {
-        for _ in 1..10 {
-            if self.tree.is_on_last() {
-                break;
-            }
-            self.tree.go(To::Next);
-        }
+        self.tree.page_down()
         Ok(())
     }
 
     /// Move up 10 times in the tree
     pub fn tree_page_up(&mut self) {
-        for _ in 1..10 {
-            if self.tree.is_on_root() {
-                break;
-            }
-            self.tree.go(To::Prev);
-        }
+        self.tree.page_up()
     }
 
     /// Select the next sibling.
@@ -432,11 +422,6 @@ impl Tab {
         let path = self.path_content.path.clone();
         let users = &self.users;
         self.tree = Tree::new(path, 5, sort_kind, users, self.show_hidden, &self.filter);
-        Ok(())
-    }
-
-    pub fn tree_update(&mut self) -> Result<()> {
-        self.tree.update();
         Ok(())
     }
 

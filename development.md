@@ -640,12 +640,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] refactor: clean refresh etc. methods
 - [x] FIX: NVIM listen address won't update if neovim is restarted while fm is still running
 - [ ] read click event (ouch where ?)
-- [ ] BUG: next is wrong when folded.
-      possibles fixes:
+- [x] FIX: next is wrong when folded.
+      Needs a lot of change. Can't fix everything. ATM if a childnode is folded, unfolding also unfolds every child.
+      IDK how to avoid that without rewriting everything.
 
-      1. don't use links but loops
-      2. fold should be spread (reexplore the tree without mutating nodes)
-      3. use : do while not folded  { select_next() }
+      We need to do next on node until we reach a displayed node. It's not good.
 
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
 - [ ] separate display_modes completely. Normal -> lsl (?), Tree, Preview.
