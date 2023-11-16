@@ -3,13 +3,13 @@ use std::io::prelude::*;
 use std::io::Write;
 
 use anyhow::Result;
-
-use crate::impl_selectable_content;
-use crate::log_line;
 use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
 use flate2::Compression;
 use lzma::LzmaWriter;
 use zip::write::FileOptions;
+
+use crate::impl_selectable_content;
+use crate::log_line;
 
 /// Different kind of compression methods
 #[derive(Debug)]

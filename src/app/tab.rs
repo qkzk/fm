@@ -3,7 +3,6 @@ use std::path;
 
 use anyhow::{Context, Result};
 
-use crate::args::Args;
 use crate::config::Settings;
 use crate::display_mode::ContentWindow;
 use crate::display_mode::FileInfo;
@@ -18,8 +17,9 @@ use crate::edit_mode::SelectableContent;
 use crate::edit_mode::Shortcut;
 use crate::edit_mode::SortKind;
 use crate::edit_mode::{Completion, InputCompleted};
+use crate::io::execute_in_child;
+use crate::io::Args;
 use crate::mode::{DisplayMode, EditMode, InputSimple};
-use crate::opener::execute_in_child;
 use crate::utils::{row_to_window_index, set_clipboard};
 
 /// Holds every thing about the current tab of the application.

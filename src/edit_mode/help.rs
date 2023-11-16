@@ -2,7 +2,7 @@ use anyhow::Result;
 use strfmt::strfmt;
 
 use crate::config::Bindings;
-use crate::opener::Opener;
+use crate::io::Opener;
 
 /// Help message to be displayed when help key is pressed.
 /// Default help key is `'h'`.

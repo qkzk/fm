@@ -10,9 +10,9 @@ use crate::config::load_config;
 use crate::constant_strings_paths::{CONFIG_PATH, OPENER_PATH};
 use crate::edit_mode::Help;
 use crate::interaction::EventDispatcher;
-use crate::log::set_loggers;
-use crate::opener::{load_opener, Opener};
-use crate::term_manager::{Display, EventReader};
+use crate::io::set_loggers;
+use crate::io::{load_opener, Opener};
+use crate::io::{Display, EventReader};
 use crate::utils::{clear_tmp_file, init_term, print_on_quit};
 
 /// Holds everything about the application itself.

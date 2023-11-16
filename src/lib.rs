@@ -1,15 +1,11 @@
 pub mod app;
-pub mod args;
 pub mod config;
 pub mod constant_strings_paths;
 pub mod display_mode;
 pub mod edit_mode;
 pub mod flagged;
-pub mod git;
 pub mod interaction;
-pub mod log;
+pub mod io;
 pub mod mode;
-pub mod opener;
 pub mod skim;
-pub mod term_manager;
 pub mod utils;

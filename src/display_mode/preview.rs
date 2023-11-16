@@ -27,7 +27,7 @@ use crate::constant_strings_paths::{
 use crate::edit_mode::FilterKind;
 use crate::edit_mode::SortKind;
 use crate::edit_mode::{list_files_tar, list_files_zip};
-use crate::opener::execute_and_capture_output_without_check;
+use crate::io::execute_and_capture_output_without_check;
 use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
 
 /// Different kind of extension for grouped by previewers.

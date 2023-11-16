@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use crate::constant_strings_paths::{CONFIG_FOLDER, HARDCODED_SHORTCUTS};
-use crate::git::git_root;
 use crate::impl_selectable_content;
+use crate::io::git_root;
 use crate::utils::current_uid;
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.

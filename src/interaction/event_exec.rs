@@ -23,15 +23,15 @@ use crate::edit_mode::ShellCommandParser;
 use crate::edit_mode::MOCP;
 use crate::edit_mode::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
 use crate::edit_mode::{PasswordKind, PasswordUsage};
-use crate::log::read_log;
-use crate::log_line;
-use crate::mode::DisplayMode;
-use crate::mode::{EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
-use crate::opener::execute_and_capture_output_with_path;
-use crate::opener::{
+use crate::io::execute_and_capture_output_with_path;
+use crate::io::read_log;
+use crate::io::{
     execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path,
 };
+use crate::log_line;
+use crate::mode::DisplayMode;
+use crate::mode::{EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
 use crate::utils::path_to_string;
 use crate::utils::{
     args_is_empty, is_program_in_path, is_sudo_command, open_in_current_neovim, string_to_path,

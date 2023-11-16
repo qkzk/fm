@@ -97,7 +97,7 @@ where
 #[macro_export]
 macro_rules! log_line {
     ($($arg:tt)+) => (
-    $crate::log::write_log_line(
+    $crate::io::write_log_line(
       format!($($arg)+)
     )
   );

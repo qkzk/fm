@@ -24,7 +24,7 @@ use crate::edit_mode::InputCompleted;
 use crate::edit_mode::MountHelper;
 use crate::edit_mode::SelectableContent;
 use crate::edit_mode::Trash;
-use crate::log::read_last_log_line;
+use crate::io::read_last_log_line;
 use crate::mode::{DisplayMode, EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
 use crate::utils::path_to_string;
 
