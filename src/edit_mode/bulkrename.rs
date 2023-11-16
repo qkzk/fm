@@ -5,11 +5,11 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
+use crate::app::Status;
 use crate::constant_strings_paths::TMP_FOLDER_PATH;
 use crate::impl_selectable_content;
 use crate::log_line;
 use crate::opener::Opener;
-use crate::status::Status;
 use crate::utils::random_name;
 
 /// Struct holding informations about files about to be renamed.

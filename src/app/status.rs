@@ -12,6 +12,7 @@ use sysinfo::{Disk, DiskExt, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
+use super::Tab;
 use crate::args::Args;
 use crate::config::Settings;
 use crate::constant_strings_paths::{NVIM, SS, TUIS_PATH};
@@ -39,7 +40,6 @@ use crate::mode::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
 use crate::opener::{InternalVariant, Opener};
 use crate::preview::Preview;
 use crate::skim::Skimer;
-use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::tree::Tree;
 use crate::users::Users;

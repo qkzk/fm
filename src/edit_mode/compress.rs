@@ -14,21 +14,21 @@ use zip::write::FileOptions;
 /// Different kind of compression methods
 #[derive(Debug)]
 pub enum CompressionMethod {
-    ZIP,
-    DEFLATE,
-    GZ,
-    ZLIB,
-    LZMA,
+    Zip,
+    Deflate,
+    Gz,
+    Zlib,
+    Lzma,
 }
 
 impl Display for CompressionMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::ZIP => write!(f, "ZIP:     archive.zip"),
-            Self::DEFLATE => write!(f, "DEFLATE: archive.tar.gz"),
-            Self::LZMA => write!(f, "LZMA:    archive.tar.xz"),
-            Self::GZ => write!(f, "GZ:      archive.tar.gz"),
-            Self::ZLIB => write!(f, "ZLIB:    archive.tar.xz"),
+            Self::Zip => write!(f, "ZIP:     archive.zip"),
+            Self::Deflate => write!(f, "DEFLATE: archive.tar.gz"),
+            Self::Lzma => write!(f, "LZMA:    archive.tar.xz"),
+            Self::Gz => write!(f, "GZ:      archive.tar.gz"),
+            Self::Zlib => write!(f, "ZLIB:    archive.tar.xz"),
         }
     }
 }
@@ -43,11 +43,11 @@ impl Default for Compresser {
     fn default() -> Self {
         Self {
             content: vec![
-                CompressionMethod::ZIP,
-                CompressionMethod::LZMA,
-                CompressionMethod::ZLIB,
-                CompressionMethod::GZ,
-                CompressionMethod::DEFLATE,
+                CompressionMethod::Zip,
+                CompressionMethod::Lzma,
+                CompressionMethod::Zlib,
+                CompressionMethod::Gz,
+                CompressionMethod::Deflate,
             ],
             index: 0,
         }
@@ -63,13 +63,13 @@ impl Compresser {
             return Ok(());
         };
         match selected {
-            CompressionMethod::DEFLATE => {
+            CompressionMethod::Deflate => {
                 Self::defl(Self::archive(here, "archive.tar.gz")?, files)?
             }
-            CompressionMethod::GZ => Self::gzip(Self::archive(here, "archive.tar.gz")?, files)?,
-            CompressionMethod::ZLIB => Self::zlib(Self::archive(here, "archive.tar.xz")?, files)?,
-            CompressionMethod::ZIP => Self::zip(Self::archive(here, "archive.zip")?, files)?,
-            CompressionMethod::LZMA => Self::lzma(Self::archive(here, "archive.tar.xz")?, files)?,
+            CompressionMethod::Gz => Self::gzip(Self::archive(here, "archive.tar.gz")?, files)?,
+            CompressionMethod::Zlib => Self::zlib(Self::archive(here, "archive.tar.xz")?, files)?,
+            CompressionMethod::Zip => Self::zip(Self::archive(here, "archive.zip")?, files)?,
+            CompressionMethod::Lzma => Self::lzma(Self::archive(here, "archive.tar.xz")?, files)?,
         }
         log_line!("Compressed with {selected}");
         Ok(())

@@ -8,6 +8,8 @@ use anyhow::{anyhow, Context, Result};
 use log::info;
 
 use super::ActionMap;
+use crate::app::Status;
+use crate::app::Tab;
 use crate::completion::InputCompleted;
 use crate::constant_strings_paths::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
@@ -30,8 +32,6 @@ use crate::opener::{
     execute_in_child_without_output_with_path,
 };
 use crate::preview::{ExtensionKind, Preview};
-use crate::status::Status;
-use crate::tab::Tab;
 use crate::utils::path_to_string;
 use crate::utils::{
     args_is_empty, is_program_in_path, is_sudo_command, open_in_current_neovim, string_to_path,

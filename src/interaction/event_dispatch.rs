@@ -2,9 +2,9 @@ use anyhow::Result;
 use tuikit::prelude::{Event, Key, MouseButton};
 
 use super::event_exec::{EventAction, LeaveMode};
+use crate::app::Status;
 use crate::config::Bindings;
 use crate::mode::{DisplayMode, EditMode, InputSimple, MarkAction, Navigate};
-use crate::status::Status;
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.

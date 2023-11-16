@@ -15,8 +15,6 @@ pub mod opener;
 pub mod preview;
 pub mod refresher;
 pub mod skim;
-pub mod status;
-pub mod tab;
 pub mod term_manager;
 pub mod tree;
 pub mod users;

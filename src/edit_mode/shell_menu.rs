@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
 
+use crate::app::Status;
 use crate::impl_selectable_content;
 use crate::log_line;
 use crate::opener::{execute_in_child_without_output, execute_in_child_without_output_with_path};
-use crate::status::Status;
 use crate::utils::is_program_in_path;
 
 #[derive(Clone)]

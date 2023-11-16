@@ -9,6 +9,8 @@ use tuikit::event::Event;
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
+use crate::app::Status;
+use crate::app::Tab;
 use crate::completion::InputCompleted;
 use crate::constant_strings_paths::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
@@ -22,8 +24,6 @@ use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
 use crate::log::read_last_log_line;
 use crate::mode::{DisplayMode, EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
 use crate::preview::{Preview, TextKind, Window};
-use crate::status::Status;
-use crate::tab::Tab;
 use crate::tree::calculate_top_bottom;
 use crate::utils::path_to_string;
 

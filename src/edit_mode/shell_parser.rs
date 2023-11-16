@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 
-use crate::status::Status;
+use crate::app::Status;
 
 /// Expanded tokens from a configured command.
 /// %s is converted into a `Selected`

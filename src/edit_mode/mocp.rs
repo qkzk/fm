@@ -1,12 +1,12 @@
 use anyhow::Result;
 use log::info;
 
+use crate::app::Status;
+use crate::app::Tab;
 use crate::constant_strings_paths::DEFAULT_AUDIO_OPENER;
 use crate::opener::{
     execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
 };
-use crate::status::Status;
-use crate::tab::Tab;
 
 pub const MOCP: &str = DEFAULT_AUDIO_OPENER.0;
 
