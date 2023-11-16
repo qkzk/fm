@@ -174,6 +174,7 @@ impl Tree {
         }
     }
 
+    // TODO: refactor into small functions
     #[inline]
     fn make_nodes(
         root_path: &PathBuf,
