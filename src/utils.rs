@@ -12,9 +12,9 @@ use tuikit::term::Term;
 
 use crate::constant_strings_paths::{CALC_PDF_PATH, THUMBNAIL_PATH};
 use crate::content_window::ContentWindow;
+use crate::edit_mode::nvim;
 use crate::fileinfo::human_size;
 use crate::log_line;
-use crate::nvim::nvim;
 use crate::users::Users;
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.

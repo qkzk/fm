@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::password::PasswordHolder;
+use super::PasswordHolder;
 
 /// Bunch of methods used to mount / unmount a block device or a device image file.
 pub trait MountHelper {

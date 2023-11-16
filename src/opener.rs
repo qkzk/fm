@@ -13,7 +13,7 @@ use crate::constant_strings_paths::{
     DEFAULT_AUDIO_OPENER, DEFAULT_IMAGE_OPENER, DEFAULT_OFFICE_OPENER, DEFAULT_OPENER,
     DEFAULT_READABLE_OPENER, DEFAULT_TEXT_OPENER, DEFAULT_VECTORIAL_OPENER, DEFAULT_VIDEO_OPENER,
 };
-use crate::decompress::{decompress_gz, decompress_xz, decompress_zip};
+use crate::edit_mode::{decompress_gz, decompress_xz, decompress_zip};
 use crate::fileinfo::extract_extension;
 use crate::log_line;
 use crate::utils::is_program_in_path;

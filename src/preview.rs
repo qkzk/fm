@@ -20,11 +20,11 @@ use crate::constant_strings_paths::{
     PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
 };
 use crate::content_window::ContentWindow;
-use crate::decompress::{list_files_tar, list_files_zip};
+use crate::edit_mode::FilterKind;
+use crate::edit_mode::SortKind;
+use crate::edit_mode::{list_files_tar, list_files_zip};
 use crate::fileinfo::{ColorEffect, FileInfo, FileKind};
-use crate::filter::FilterKind;
 use crate::opener::execute_and_capture_output_without_check;
-use crate::sort::SortKind;
 use crate::tree::{ColoredString, Tree};
 use crate::users::Users;
 use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};

@@ -1,9 +1,8 @@
 use anyhow::{anyhow, Result};
 use log::info;
 
-use crate::{
-    mount_help::MountHelper,
-    password::{execute_sudo_command, execute_sudo_command_with_password, PasswordHolder},
+use super::{
+    execute_sudo_command, execute_sudo_command_with_password, MountHelper, PasswordHolder,
 };
 
 /// Used to mount an iso file as a loop device.

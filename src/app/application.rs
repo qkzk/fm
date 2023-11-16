@@ -6,7 +6,7 @@ use tuikit::prelude::Event;
 
 use crate::config::load_config;
 use crate::constant_strings_paths::{CONFIG_PATH, OPENER_PATH};
-use crate::help::Help;
+use crate::edit_mode::Help;
 use crate::interaction::EventDispatcher;
 use crate::log::set_loggers;
 use crate::opener::{load_opener, Opener};

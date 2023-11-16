@@ -13,34 +13,34 @@ use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
 use crate::args::Args;
-use crate::bulkrename::Bulk;
-use crate::cli_info::CliInfo;
-use crate::compress::Compresser;
 use crate::config::Settings;
 use crate::constant_strings_paths::{NVIM, SS, TUIS_PATH};
-use crate::copy_move::{copy_move, CopyMove};
-use crate::cryptsetup::{BlockDeviceAction, CryptoDeviceOpener};
-use crate::fileinfo::FileKind;
-use crate::flagged::Flagged;
-use crate::iso::IsoDevice;
-use crate::log_line;
-use crate::marks::Marks;
-use crate::mode::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
-use crate::mount_help::MountHelper;
-use crate::opener::{InternalVariant, Opener};
-use crate::password::{
+use crate::edit_mode::Bulk;
+use crate::edit_mode::CliInfo;
+use crate::edit_mode::Compresser;
+use crate::edit_mode::IsoDevice;
+use crate::edit_mode::Marks;
+use crate::edit_mode::MountHelper;
+use crate::edit_mode::RemovableDevices;
+use crate::edit_mode::SelectableContent;
+use crate::edit_mode::ShellCommandParser;
+use crate::edit_mode::ShellMenu;
+use crate::edit_mode::Trash;
+use crate::edit_mode::{copy_move, CopyMove};
+use crate::edit_mode::{
     drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock, PasswordHolder,
     PasswordKind, PasswordUsage,
 };
+use crate::edit_mode::{BlockDeviceAction, CryptoDeviceOpener};
+use crate::fileinfo::FileKind;
+use crate::flagged::Flagged;
+use crate::log_line;
+use crate::mode::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
+use crate::opener::{InternalVariant, Opener};
 use crate::preview::Preview;
-use crate::removable_devices::RemovableDevices;
-use crate::selectable_content::SelectableContent;
-use crate::shell_menu::ShellMenu;
-use crate::shell_parser::ShellCommandParser;
 use crate::skim::Skimer;
 use crate::tab::Tab;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
-use crate::trash::Trash;
 use crate::tree::Tree;
 use crate::users::Users;
 use crate::utils::{current_username, disk_space, filename_from_path, is_program_in_path};

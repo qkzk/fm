@@ -7,10 +7,10 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 
 use crate::content_window::ContentWindow;
+use crate::edit_mode::FilterKind;
+use crate::edit_mode::SortKind;
 use crate::fileinfo::{files_collection, ColorEffect, FileInfo};
-use crate::filter::FilterKind;
 use crate::preview::{ColoredTriplet, MakeTriplet};
-use crate::sort::SortKind;
 use crate::users::Users;
 use crate::utils::filename_from_path;
 

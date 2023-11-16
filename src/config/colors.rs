@@ -2,7 +2,7 @@ use std::hash::Hasher;
 
 use tuikit::attr::Color;
 
-use super::COLORER;
+use crate::config::COLORER;
 
 /// No attr but 3 static methods.
 pub struct Colorer {}

@@ -6,8 +6,8 @@ use crate::constant_strings_paths::{
     PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES, RENAME_LINES,
     SHELL_LINES, SORT_LINES,
 };
-use crate::cryptsetup::BlockDeviceAction;
-use crate::password::{PasswordKind, PasswordUsage};
+use crate::edit_mode::BlockDeviceAction;
+use crate::edit_mode::{PasswordKind, PasswordUsage};
 
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.

@@ -12,12 +12,16 @@ use crate::completion::InputCompleted;
 use crate::constant_strings_paths::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
 };
-use crate::cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
-use crate::filter::FilterKind;
+use crate::edit_mode::FilterKind;
+use crate::edit_mode::Mocp;
+use crate::edit_mode::RemovableDevices;
+use crate::edit_mode::SelectableContent;
+use crate::edit_mode::ShellCommandParser;
+use crate::edit_mode::MOCP;
+use crate::edit_mode::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
+use crate::edit_mode::{PasswordKind, PasswordUsage};
 use crate::log::read_log;
 use crate::log_line;
-use crate::mocp::Mocp;
-use crate::mocp::MOCP;
 use crate::mode::DisplayMode;
 use crate::mode::{EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
 use crate::opener::execute_and_capture_output_with_path;
@@ -25,11 +29,7 @@ use crate::opener::{
     execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path,
 };
-use crate::password::{PasswordKind, PasswordUsage};
 use crate::preview::{ExtensionKind, Preview};
-use crate::removable_devices::RemovableDevices;
-use crate::selectable_content::SelectableContent;
-use crate::shell_parser::ShellCommandParser;
 use crate::status::Status;
 use crate::tab::Tab;
 use crate::utils::path_to_string;

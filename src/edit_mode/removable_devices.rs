@@ -1,10 +1,10 @@
 use anyhow::{anyhow, Result};
 
+use super::MountHelper;
+use super::PasswordHolder;
 use crate::{
     constant_strings_paths::GIO,
     impl_selectable_content,
-    mount_help::MountHelper,
-    password::PasswordHolder,
     utils::{current_uid, is_dir_empty, is_program_in_path},
 };
 

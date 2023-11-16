@@ -20,7 +20,7 @@ pub trait SelectableContent<T> {
 #[macro_export]
 macro_rules! impl_selectable_content {
     ($content_type:ident, $struct:ident) => {
-        use $crate::selectable_content::SelectableContent;
+        use $crate::edit_mode::SelectableContent;
 
         /// Implement a selectable content for this struct.
         /// This trait allows to navigate through a vector of element `content_type`.

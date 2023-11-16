@@ -4,13 +4,13 @@ use anyhow::{anyhow, Context, Result};
 use log::info;
 use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
-use crate::constant_strings_paths::{CRYPTSETUP, LSBLK};
-use crate::impl_selectable_content;
-use crate::mount_help::MountHelper;
-use crate::password::{
+use super::mount_help::MountHelper;
+use super::password::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
     reset_sudo_faillock, PasswordHolder, PasswordKind,
 };
+use crate::constant_strings_paths::{CRYPTSETUP, LSBLK};
+use crate::impl_selectable_content;
 use crate::utils::{current_username, is_program_in_path};
 
 /// Possible actions on encrypted drives
@@ -282,23 +282,6 @@ impl MountHelper for CryptoDevice {
 
     fn device_name(&self) -> Result<String> {
         self.as_string()
-    }
-}
-
-/// Holds the device itself and its passwords.
-#[derive(Debug, Clone, Default)]
-pub struct CryptoDeviceMounter {
-    pub cryptdevice: CryptoDevice,
-    pub password_holder: PasswordHolder,
-}
-
-impl CryptoDeviceMounter {
-    /// Reads a device from  a line of text from cryptsetup.
-    pub fn from_line(line: &str) -> Result<Self> {
-        Ok(Self {
-            cryptdevice: CryptoDevice::from_line(line)?,
-            password_holder: PasswordHolder::default(),
-        })
     }
 }
 
