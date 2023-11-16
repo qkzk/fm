@@ -16,6 +16,10 @@ use super::Tab;
 use crate::args::Args;
 use crate::config::Settings;
 use crate::constant_strings_paths::{NVIM, SS, TUIS_PATH};
+use crate::display_mode::FileKind;
+use crate::display_mode::Preview;
+use crate::display_mode::Tree;
+use crate::display_mode::Users;
 use crate::edit_mode::Bulk;
 use crate::edit_mode::CliInfo;
 use crate::edit_mode::Compresser;
@@ -33,16 +37,12 @@ use crate::edit_mode::{
     PasswordKind, PasswordUsage,
 };
 use crate::edit_mode::{BlockDeviceAction, CryptoDeviceOpener};
-use crate::fileinfo::FileKind;
 use crate::flagged::Flagged;
 use crate::log_line;
 use crate::mode::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
 use crate::opener::{InternalVariant, Opener};
-use crate::preview::Preview;
 use crate::skim::Skimer;
 use crate::term_manager::MIN_WIDTH_FOR_DUAL_PANE;
-use crate::tree::Tree;
-use crate::users::Users;
 use crate::utils::{current_username, disk_space, filename_from_path, is_program_in_path};
 
 /// Holds every mutable parameter of the application itself, except for

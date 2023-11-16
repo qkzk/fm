@@ -6,12 +6,13 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
+use super::files_collection;
+use super::Users;
+use super::{ColorEffect, FileInfo};
+use super::{ColoredTriplet, MakeTriplet};
 use crate::content_window::ContentWindow;
 use crate::edit_mode::FilterKind;
 use crate::edit_mode::SortKind;
-use crate::fileinfo::{files_collection, ColorEffect, FileInfo};
-use crate::preview::{ColoredTriplet, MakeTriplet};
-use crate::users::Users;
 use crate::utils::filename_from_path;
 
 /// Holds a string, its display attributes and the associated pathbuf.

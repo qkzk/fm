@@ -14,6 +14,7 @@ use crate::completion::InputCompleted;
 use crate::constant_strings_paths::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
 };
+use crate::display_mode::{ExtensionKind, Preview};
 use crate::edit_mode::FilterKind;
 use crate::edit_mode::Mocp;
 use crate::edit_mode::RemovableDevices;
@@ -31,7 +32,6 @@ use crate::opener::{
     execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path,
 };
-use crate::preview::{ExtensionKind, Preview};
 use crate::utils::path_to_string;
 use crate::utils::{
     args_is_empty, is_program_in_path, is_sudo_command, open_in_current_neovim, string_to_path,

@@ -15,6 +15,9 @@ use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
 
+use super::Users;
+use super::{ColorEffect, FileInfo, FileKind};
+use super::{ColoredString, Tree};
 use crate::constant_strings_paths::{
     CALC_PDF_PATH, DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
     PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
@@ -23,10 +26,7 @@ use crate::content_window::ContentWindow;
 use crate::edit_mode::FilterKind;
 use crate::edit_mode::SortKind;
 use crate::edit_mode::{list_files_tar, list_files_zip};
-use crate::fileinfo::{ColorEffect, FileInfo, FileKind};
 use crate::opener::execute_and_capture_output_without_check;
-use crate::tree::{ColoredString, Tree};
-use crate::users::Users;
 use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
 
 /// Different kind of extension for grouped by previewers.
@@ -536,7 +536,7 @@ impl HLContent {
         syntax_ref: &SyntaxReference,
     ) -> Result<Vec<Vec<SyntaxedString>>> {
         let mut monokai = BufReader::new(Cursor::new(include_bytes!(
-            "../assets/themes/Monokai_Extended.tmTheme"
+            "../../assets/themes/Monokai_Extended.tmTheme"
         )));
         let theme = ThemeSet::load_from_reader(&mut monokai)?;
         let mut highlighted_content = vec![];

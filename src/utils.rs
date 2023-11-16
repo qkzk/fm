@@ -12,10 +12,10 @@ use tuikit::term::Term;
 
 use crate::constant_strings_paths::{CALC_PDF_PATH, THUMBNAIL_PATH};
 use crate::content_window::ContentWindow;
+use crate::display_mode::human_size;
+use crate::display_mode::Users;
 use crate::edit_mode::nvim;
-use crate::fileinfo::human_size;
 use crate::log_line;
-use crate::users::Users;
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
 pub fn init_term() -> Result<Term> {

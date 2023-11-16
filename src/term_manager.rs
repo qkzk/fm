@@ -17,14 +17,15 @@ use crate::constant_strings_paths::{
     LOG_SECOND_SENTENCE, TRASH_CONFIRM_LINE,
 };
 use crate::content_window::ContentWindow;
+use crate::display_mode::calculate_top_bottom;
+use crate::display_mode::shorten_path;
+use crate::display_mode::{fileinfo_attr, FileInfo};
+use crate::display_mode::{Preview, TextKind, Window};
 use crate::edit_mode::MountHelper;
 use crate::edit_mode::SelectableContent;
 use crate::edit_mode::Trash;
-use crate::fileinfo::{fileinfo_attr, shorten_path, FileInfo};
 use crate::log::read_last_log_line;
 use crate::mode::{DisplayMode, EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
-use crate::preview::{Preview, TextKind, Window};
-use crate::tree::calculate_top_bottom;
 use crate::utils::path_to_string;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.

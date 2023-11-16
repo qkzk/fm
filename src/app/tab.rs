@@ -7,18 +7,19 @@ use crate::args::Args;
 use crate::completion::{Completion, InputCompleted};
 use crate::config::Settings;
 use crate::content_window::ContentWindow;
+use crate::display_mode::FileInfo;
+use crate::display_mode::PathContent;
+use crate::display_mode::Preview;
+use crate::display_mode::Users;
+use crate::display_mode::{calculate_top_bottom, Go, To, Tree};
 use crate::edit_mode::FilterKind;
 use crate::edit_mode::History;
 use crate::edit_mode::Input;
 use crate::edit_mode::SelectableContent;
 use crate::edit_mode::Shortcut;
 use crate::edit_mode::SortKind;
-use crate::fileinfo::{FileInfo, PathContent};
 use crate::mode::{DisplayMode, EditMode, InputSimple};
 use crate::opener::execute_in_child;
-use crate::preview::Preview;
-use crate::tree::{calculate_top_bottom, Go, To, Tree};
-use crate::users::Users;
 use crate::utils::{row_to_window_index, set_clipboard};
 
 /// Holds every thing about the current tab of the application.
