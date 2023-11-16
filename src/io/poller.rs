@@ -20,9 +20,4 @@ impl EventReader {
     pub fn poll_event(&self) -> Result<Event> {
         Ok(self.term.poll_event()?)
     }
-
-    /// Height of the current terminal
-    pub fn term_height(&self) -> Result<usize> {
-        Ok(self.term.term_size()?.1)
-    }
 }
