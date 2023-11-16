@@ -6,7 +6,7 @@ use anyhow::{Context, Result};
 use crate::args::Args;
 use crate::completion::{Completion, InputCompleted};
 use crate::config::Settings;
-use crate::content_window::ContentWindow;
+use crate::display_mode::ContentWindow;
 use crate::display_mode::FileInfo;
 use crate::display_mode::PathContent;
 use crate::display_mode::Preview;

@@ -15,6 +15,7 @@ use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
 
+use super::ContentWindow;
 use super::Users;
 use super::{ColorEffect, FileInfo, FileKind};
 use super::{ColoredString, Tree};
@@ -22,7 +23,7 @@ use crate::constant_strings_paths::{
     CALC_PDF_PATH, DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
     PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
 };
-use crate::content_window::ContentWindow;
+
 use crate::edit_mode::FilterKind;
 use crate::edit_mode::SortKind;
 use crate::edit_mode::{list_files_tar, list_files_zip};

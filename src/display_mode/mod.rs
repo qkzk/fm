@@ -1,9 +1,11 @@
+mod content_window;
 mod fileinfo;
 mod lsl;
 mod preview;
 mod tree;
 mod users;
 
+pub use content_window::ContentWindow;
 pub use fileinfo::{
     extract_extension, fileinfo_attr, is_not_hidden, ColorEffect, FileInfo, FileKind,
 };

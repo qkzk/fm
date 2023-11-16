@@ -3,7 +3,6 @@ pub mod args;
 pub mod completion;
 pub mod config;
 pub mod constant_strings_paths;
-pub mod content_window;
 pub mod display_mode;
 pub mod edit_mode;
 pub mod flagged;

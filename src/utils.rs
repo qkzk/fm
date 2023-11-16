@@ -11,8 +11,8 @@ use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 
 use crate::constant_strings_paths::{CALC_PDF_PATH, THUMBNAIL_PATH};
-use crate::content_window::ContentWindow;
 use crate::display_mode::human_size;
+use crate::display_mode::ContentWindow;
 use crate::display_mode::Users;
 use crate::edit_mode::nvim;
 use crate::log_line;
