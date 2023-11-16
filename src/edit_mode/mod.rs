@@ -1,5 +1,6 @@
 mod bulkrename;
 mod cli_info;
+mod completion;
 mod compress;
 mod copy_move;
 mod cryptsetup;
@@ -24,6 +25,7 @@ mod trash;
 
 pub use bulkrename::Bulk;
 pub use cli_info::CliInfo;
+pub use completion::{Completion, InputCompleted};
 pub use compress::Compresser;
 pub use copy_move::{copy_move, CopyMove};
 pub use cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction, CryptoDeviceOpener};

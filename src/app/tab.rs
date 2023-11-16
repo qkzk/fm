@@ -4,7 +4,6 @@ use std::path;
 use anyhow::{Context, Result};
 
 use crate::args::Args;
-use crate::completion::{Completion, InputCompleted};
 use crate::config::Settings;
 use crate::display_mode::ContentWindow;
 use crate::display_mode::FileInfo;
@@ -18,6 +17,7 @@ use crate::edit_mode::Input;
 use crate::edit_mode::SelectableContent;
 use crate::edit_mode::Shortcut;
 use crate::edit_mode::SortKind;
+use crate::edit_mode::{Completion, InputCompleted};
 use crate::mode::{DisplayMode, EditMode, InputSimple};
 use crate::opener::execute_in_child;
 use crate::utils::{row_to_window_index, set_clipboard};

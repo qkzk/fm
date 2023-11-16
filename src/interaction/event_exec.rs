@@ -10,12 +10,12 @@ use log::info;
 use super::ActionMap;
 use crate::app::Status;
 use crate::app::Tab;
-use crate::completion::InputCompleted;
 use crate::constant_strings_paths::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
 };
 use crate::display_mode::{ExtensionKind, Preview};
 use crate::edit_mode::FilterKind;
+use crate::edit_mode::InputCompleted;
 use crate::edit_mode::Mocp;
 use crate::edit_mode::RemovableDevices;
 use crate::edit_mode::SelectableContent;

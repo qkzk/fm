@@ -11,7 +11,6 @@ use tuikit::term::Term;
 
 use crate::app::Status;
 use crate::app::Tab;
-use crate::completion::InputCompleted;
 use crate::constant_strings_paths::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
     LOG_SECOND_SENTENCE, TRASH_CONFIRM_LINE,
@@ -21,6 +20,7 @@ use crate::display_mode::shorten_path;
 use crate::display_mode::ContentWindow;
 use crate::display_mode::{fileinfo_attr, FileInfo};
 use crate::display_mode::{Preview, TextKind, Window};
+use crate::edit_mode::InputCompleted;
 use crate::edit_mode::MountHelper;
 use crate::edit_mode::SelectableContent;
 use crate::edit_mode::Trash;

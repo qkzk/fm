@@ -1,12 +1,12 @@
 use std::fmt;
 
-use crate::completion::InputCompleted;
 use crate::constant_strings_paths::{
     CHMOD_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES,
     PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES, RENAME_LINES,
     SHELL_LINES, SORT_LINES,
 };
 use crate::edit_mode::BlockDeviceAction;
+use crate::edit_mode::InputCompleted;
 use crate::edit_mode::{PasswordKind, PasswordUsage};
 
 /// Different kind of mark actions.

@@ -1,6 +1,5 @@
 pub mod app;
 pub mod args;
-pub mod completion;
 pub mod config;
 pub mod constant_strings_paths;
 pub mod display_mode;
