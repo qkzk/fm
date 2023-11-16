@@ -13,7 +13,6 @@ use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
 use crate::app::Tab;
-use crate::common::Flagged;
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
 use crate::common::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
 use crate::common::{NVIM, SS, TUIS_PATH};
@@ -26,6 +25,7 @@ use crate::display_mode::Users;
 use crate::edit_mode::Bulk;
 use crate::edit_mode::CliInfo;
 use crate::edit_mode::Compresser;
+use crate::edit_mode::Flagged;
 use crate::edit_mode::IsoDevice;
 use crate::edit_mode::Marks;
 use crate::edit_mode::MountHelper;
