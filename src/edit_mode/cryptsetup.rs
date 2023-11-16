@@ -9,9 +9,9 @@ use super::password::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
     reset_sudo_faillock, PasswordHolder, PasswordKind,
 };
-use crate::constant_strings_paths::{CRYPTSETUP, LSBLK};
+use crate::common::{current_username, is_program_in_path};
+use crate::common::{CRYPTSETUP, LSBLK};
 use crate::impl_selectable_content;
-use crate::utils::{current_username, is_program_in_path};
 
 /// Possible actions on encrypted drives
 #[derive(Debug, Clone, Copy)]

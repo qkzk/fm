@@ -7,11 +7,11 @@ use log::info;
 
 use super::users::Users;
 use super::{is_not_hidden, FileInfo, FileKind};
+use crate::common::{filename_from_path, path_to_string};
 use crate::edit_mode::FilterKind;
 use crate::edit_mode::SortKind;
 use crate::impl_selectable_content;
 use crate::io::git;
-use crate::utils::{filename_from_path, path_to_string};
 
 /// Holds the information about file in the current directory.
 /// We know about the current path, the files themselves, the selected index,

@@ -11,7 +11,8 @@ use tuikit::term::Term;
 
 use crate::app::Status;
 use crate::app::Tab;
-use crate::constant_strings_paths::{
+use crate::common::path_to_string;
+use crate::common::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
     LOG_SECOND_SENTENCE, TRASH_CONFIRM_LINE,
 };
@@ -26,7 +27,6 @@ use crate::edit_mode::SelectableContent;
 use crate::edit_mode::Trash;
 use crate::io::read_last_log_line;
 use crate::mode::{DisplayMode, EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
-use crate::utils::path_to_string;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {

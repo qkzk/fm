@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
 
 use crate::app::Status;
+use crate::common::is_program_in_path;
 use crate::impl_selectable_content;
 use crate::io::{execute_in_child_without_output, execute_in_child_without_output_with_path};
 use crate::log_line;
-use crate::utils::is_program_in_path;
 
 #[derive(Clone)]
 pub struct ShellMenu {

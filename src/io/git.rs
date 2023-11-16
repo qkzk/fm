@@ -10,7 +10,7 @@ use std::process;
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::utils::is_program_in_path;
+use crate::common::is_program_in_path;
 
 #[derive(Default)]
 struct GitStatus {

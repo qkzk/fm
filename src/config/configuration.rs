@@ -6,8 +6,8 @@ use tuikit::attr::Color;
 
 use super::Bindings;
 use super::Colorer;
-use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
-use crate::utils::is_program_in_path;
+use crate::common::is_program_in_path;
+use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 
 /// Starting settings.
 /// those values are updated from the yaml config file

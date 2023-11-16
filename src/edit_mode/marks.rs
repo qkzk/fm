@@ -5,10 +5,10 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 use log::info;
 
-use crate::constant_strings_paths::MARKS_FILEPATH;
+use crate::common::read_lines;
+use crate::common::MARKS_FILEPATH;
 use crate::impl_selectable_content;
 use crate::log_line;
-use crate::utils::read_lines;
 
 /// Holds the marks created by the user.
 /// It's an ordered map between any char (except :) and a PathBuf.

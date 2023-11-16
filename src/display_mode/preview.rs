@@ -19,16 +19,16 @@ use super::ContentWindow;
 use super::Users;
 use super::{ColorEffect, FileInfo, FileKind};
 use super::{ColoredString, Tree};
-use crate::constant_strings_paths::{
+use crate::common::{
     CALC_PDF_PATH, DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
     PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
 };
 
+use crate::common::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
 use crate::edit_mode::FilterKind;
 use crate::edit_mode::SortKind;
 use crate::edit_mode::{list_files_tar, list_files_zip};
 use crate::io::execute_and_capture_output_without_check;
-use crate::utils::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
 
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.

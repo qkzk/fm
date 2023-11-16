@@ -6,11 +6,11 @@ use std::thread;
 use std::time::{Duration, SystemTime};
 
 use crate::app::Status;
-use crate::constant_strings_paths::TMP_FOLDER_PATH;
+use crate::common::random_name;
+use crate::common::TMP_FOLDER_PATH;
 use crate::impl_selectable_content;
 use crate::io::Opener;
 use crate::log_line;
-use crate::utils::random_name;
 
 /// Struct holding informations about files about to be renamed.
 /// We only need to know which are the original filenames and which

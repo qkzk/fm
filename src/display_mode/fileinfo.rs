@@ -10,9 +10,9 @@ use tuikit::prelude::{Attr, Color, Effect};
 use super::Node;
 use super::Users;
 use super::{human_size, read_symlink_dest};
+use crate::common::PERMISSIONS_STR;
 use crate::config::extension_color;
 use crate::config::COLORS;
-use crate::constant_strings_paths::PERMISSIONS_STR;
 
 type Valid = bool;
 

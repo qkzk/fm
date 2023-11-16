@@ -10,7 +10,11 @@ use log::info;
 use super::ActionMap;
 use crate::app::Status;
 use crate::app::Tab;
-use crate::constant_strings_paths::{
+use crate::common::path_to_string;
+use crate::common::{
+    args_is_empty, is_program_in_path, is_sudo_command, open_in_current_neovim, string_to_path,
+};
+use crate::common::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
 };
 use crate::display_mode::{ExtensionKind, Preview};
@@ -32,10 +36,6 @@ use crate::io::{
 use crate::log_line;
 use crate::mode::DisplayMode;
 use crate::mode::{EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
-use crate::utils::path_to_string;
-use crate::utils::{
-    args_is_empty, is_program_in_path, is_sudo_command, open_in_current_neovim, string_to_path,
-};
 
 /// Links events from tuikit to custom actions.
 /// It mutates `Status` or its children `Tab`.

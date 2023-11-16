@@ -9,14 +9,14 @@ use serde_yaml;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
-use crate::constant_strings_paths::{
+use crate::common::is_program_in_path;
+use crate::common::{
     DEFAULT_AUDIO_OPENER, DEFAULT_IMAGE_OPENER, DEFAULT_OFFICE_OPENER, DEFAULT_OPENER,
     DEFAULT_READABLE_OPENER, DEFAULT_TEXT_OPENER, DEFAULT_VECTORIAL_OPENER, DEFAULT_VIDEO_OPENER,
 };
 use crate::display_mode::extract_extension;
 use crate::edit_mode::{decompress_gz, decompress_xz, decompress_zip};
 use crate::log_line;
-use crate::utils::is_program_in_path;
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]

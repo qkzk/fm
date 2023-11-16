@@ -3,9 +3,9 @@ use anyhow::{anyhow, Result};
 use super::MountHelper;
 use super::PasswordHolder;
 use crate::{
-    constant_strings_paths::GIO,
+    common::GIO,
+    common::{current_uid, is_dir_empty, is_program_in_path},
     impl_selectable_content,
-    utils::{current_uid, is_dir_empty, is_program_in_path},
 };
 
 /// Holds info about removable devices.

@@ -8,10 +8,10 @@ use log::info;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 
-use crate::constant_strings_paths::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO, TRASH_INFO_EXTENSION};
+use crate::common::read_lines;
+use crate::common::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO, TRASH_INFO_EXTENSION};
 use crate::impl_selectable_content;
 use crate::log_line;
-use crate::utils::read_lines;
 
 const TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 

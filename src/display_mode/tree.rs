@@ -12,9 +12,9 @@ use super::Users;
 use super::{ColorEffect, FileInfo};
 use super::{ColoredTriplet, MakeTriplet};
 
+use crate::common::filename_from_path;
 use crate::edit_mode::FilterKind;
 use crate::edit_mode::SortKind;
-use crate::utils::filename_from_path;
 
 /// Holds a string, its display attributes and the associated pathbuf.
 #[derive(Clone, Debug)]

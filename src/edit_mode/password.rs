@@ -4,8 +4,8 @@ use std::process::{Command, Stdio};
 use anyhow::{Context, Result};
 use log::info;
 
+use crate::common::current_username;
 use crate::log_line;
-use crate::utils::current_username;
 
 /// Different kind of password
 #[derive(Debug, Clone, Copy)]

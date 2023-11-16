@@ -9,12 +9,12 @@ use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, Pr
 use log::info;
 use tuikit::prelude::{Attr, Color, Effect, Term};
 
+use crate::common::NOTIFY_EXECUTABLE;
+use crate::common::{is_program_in_path, random_name};
 use crate::config::REFRESH_EVENT;
-use crate::constant_strings_paths::NOTIFY_EXECUTABLE;
 use crate::display_mode::human_size;
 use crate::io::execute_in_child;
 use crate::log_line;
-use crate::utils::{is_program_in_path, random_name};
 
 /// Display the updated progress bar on the terminal.
 fn handle_progress_display(

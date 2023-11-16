@@ -3,10 +3,10 @@ use std::process::{Command, Stdio};
 use anyhow::Result;
 use log::info;
 
-use crate::constant_strings_paths::CLI_INFO_COMMANDS;
+use crate::common::is_program_in_path;
+use crate::common::CLI_INFO_COMMANDS;
 use crate::impl_selectable_content;
 use crate::log_line;
-use crate::utils::is_program_in_path;
 
 /// Holds the command line commands we can run and display
 /// without leaving FM.

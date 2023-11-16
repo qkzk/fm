@@ -10,7 +10,7 @@ use rand::Rng;
 use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 
-use crate::constant_strings_paths::{CALC_PDF_PATH, THUMBNAIL_PATH};
+use crate::common::{CALC_PDF_PATH, THUMBNAIL_PATH};
 use crate::display_mode::human_size;
 use crate::display_mode::ContentWindow;
 use crate::display_mode::Users;

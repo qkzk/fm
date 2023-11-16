@@ -4,8 +4,8 @@ use std::fs::File;
 use std::path::Path;
 use tar::Archive;
 
-use crate::constant_strings_paths::TAR;
-use crate::utils::path_to_string;
+use crate::common::path_to_string;
+use crate::common::TAR;
 
 /// Decompress a zipped compressed file into its parent directory.
 pub fn decompress_zip(source: &Path) -> Result<()> {

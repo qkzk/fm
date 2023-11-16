@@ -4,8 +4,8 @@ use anyhow::Result;
 use lazy_static::lazy_static;
 use log4rs;
 
-use crate::constant_strings_paths::{ACTION_LOG_PATH, LOG_CONFIG_PATH};
-use crate::utils::extract_lines;
+use crate::common::extract_lines;
+use crate::common::{ACTION_LOG_PATH, LOG_CONFIG_PATH};
 
 // static ENV_HOME: &str = "$ENV{HOME}";
 

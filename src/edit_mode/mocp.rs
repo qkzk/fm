@@ -3,7 +3,7 @@ use log::info;
 
 use crate::app::Status;
 use crate::app::Tab;
-use crate::constant_strings_paths::DEFAULT_AUDIO_OPENER;
+use crate::common::DEFAULT_AUDIO_OPENER;
 use crate::io::{
     execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
 };
