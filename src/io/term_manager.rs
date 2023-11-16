@@ -407,7 +407,7 @@ impl<'a> WinMain<'a> {
         draw_colored_strings(
             0,
             0,
-            &WinMainFirstLine::default_preview_first_line(self.status, tab),
+            &PreviewFirstLine::make_default_preview(self.status, tab),
             canvas,
             false,
         )?;
@@ -444,46 +444,43 @@ impl WinMainFirstLine {
         let tab = status.selected_non_mut();
         let content = match tab.display_mode {
             DisplayMode::Normal | DisplayMode::Tree => {
-                Self::normal_first_row(status, tab, disk_space, opt_index)?
+                FilesFirstLine::make_files(status, tab, disk_space, opt_index)?
             }
-            DisplayMode::Preview => match &tab.preview {
-                Preview::Text(text_content) => match text_content.kind {
-                    TextKind::HELP => Self::help_first_row(),
-                    TextKind::LOG => Self::log_first_row(),
-                    _ => Self::default_preview_first_line(status, tab),
-                },
-                _ => Self::default_preview_first_line(status, tab),
-            },
+            DisplayMode::Preview => PreviewFirstLine::make_preview(status, tab),
         };
         Ok(Self {
             content,
             is_selected,
         })
     }
+}
 
-    fn normal_first_row(
+struct FilesFirstLine;
+
+impl FilesFirstLine {
+    fn make_files(
         status: &Status,
         tab: &Tab,
         disk_space: &str,
         opt_index: Option<usize>,
     ) -> Result<Vec<String>> {
         Ok(vec![
-            Self::shorten_path(tab)?,
-            Self::first_row_selected_file(tab)?,
-            Self::first_row_position(tab, opt_index),
-            Self::used_space(tab),
-            Self::disk_space(disk_space),
-            Self::git_string(tab)?,
-            Self::first_row_flags(status),
-            Self::sort_kind(tab),
+            Self::string_shorten_path(tab)?,
+            Self::string_first_row_selected_file(tab)?,
+            Self::string_first_row_position(tab, opt_index),
+            Self::string_used_space(tab),
+            Self::string_disk_space(disk_space),
+            Self::string_git_string(tab)?,
+            Self::string_first_row_flags(status),
+            Self::string_sort_kind(tab),
         ])
     }
 
-    fn shorten_path(tab: &Tab) -> Result<String> {
+    fn string_shorten_path(tab: &Tab) -> Result<String> {
         Ok(format!(" {}", shorten_path(&tab.path_content.path, None)?))
     }
 
-    fn first_row_selected_file(tab: &Tab) -> Result<String> {
+    fn string_first_row_selected_file(tab: &Tab) -> Result<String> {
         match tab.display_mode {
             DisplayMode::Tree => Ok(format!(
                 "/{rel}",
@@ -499,7 +496,7 @@ impl WinMainFirstLine {
         }
     }
 
-    fn first_row_position(tab: &Tab, opt_index: Option<usize>) -> String {
+    fn string_first_row_position(tab: &Tab, opt_index: Option<usize>) -> String {
         if matches!(tab.display_mode, DisplayMode::Tree) {
             let Some(selected_index) = opt_index else {
                 return "".to_owned();
@@ -517,23 +514,23 @@ impl WinMainFirstLine {
         )
     }
 
-    fn used_space(tab: &Tab) -> String {
+    fn string_used_space(tab: &Tab) -> String {
         format!("{}  ", tab.path_content.used_space())
     }
 
-    fn disk_space(disk_space: &str) -> String {
+    fn string_disk_space(disk_space: &str) -> String {
         format!(" Avail: {disk_space}  ")
     }
 
-    fn git_string(tab: &Tab) -> Result<String> {
+    fn string_git_string(tab: &Tab) -> Result<String> {
         Ok(format!(" {} ", tab.path_content.git_string()?))
     }
 
-    fn sort_kind(tab: &Tab) -> String {
+    fn string_sort_kind(tab: &Tab) -> String {
         format!(" {} ", &tab.path_content.sort_kind)
     }
 
-    fn first_row_flags(status: &Status) -> String {
+    fn string_first_row_flags(status: &Status) -> String {
         let nb_flagged = status.flagged.len();
         let flag_string = if status.flagged.len() > 1 {
             "flags"
@@ -542,8 +539,23 @@ impl WinMainFirstLine {
         };
         format!(" {nb_flagged} {flag_string} ",)
     }
+}
 
-    fn help_first_row() -> Vec<String> {
+struct PreviewFirstLine;
+
+impl PreviewFirstLine {
+    fn make_preview(status: &Status, tab: &Tab) -> Vec<String> {
+        match &tab.preview {
+            Preview::Text(text_content) => match text_content.kind {
+                TextKind::HELP => Self::make_help(),
+                TextKind::LOG => Self::make_log(),
+                _ => Self::make_default_preview(status, tab),
+            },
+            _ => Self::make_default_preview(status, tab),
+        }
+    }
+
+    fn make_help() -> Vec<String> {
         vec![
             HELP_FIRST_SENTENCE.to_owned(),
             format!(" Version: {v} ", v = std::env!("CARGO_PKG_VERSION")),
@@ -551,14 +563,14 @@ impl WinMainFirstLine {
         ]
     }
 
-    fn log_first_row() -> Vec<String> {
+    fn make_log() -> Vec<String> {
         vec![
             LOG_FIRST_SENTENCE.to_owned(),
             LOG_SECOND_SENTENCE.to_owned(),
         ]
     }
 
-    fn pick_previewed_fileinfo(status: &Status) -> Result<FileInfo> {
+    fn _pick_previewed_fileinfo(status: &Status) -> Result<FileInfo> {
         if status.dual_pane && status.preview_second {
             status.tabs[0].selected()
         } else {
@@ -566,8 +578,8 @@ impl WinMainFirstLine {
         }
     }
 
-    fn default_preview_first_line(status: &Status, tab: &Tab) -> Vec<String> {
-        if let Ok(fileinfo) = Self::pick_previewed_fileinfo(status) {
+    fn make_default_preview(status: &Status, tab: &Tab) -> Vec<String> {
+        if let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) {
             let mut strings = vec![" Preview ".to_owned()];
             if !tab.preview.is_empty() {
                 let index = match &tab.preview {
@@ -638,7 +650,7 @@ impl WinMainSecondLine {
     }
 }
 
-struct LogLine {}
+struct LogLine;
 
 impl Draw for LogLine {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
@@ -652,6 +664,7 @@ struct WinSecondary<'a> {
     status: &'a Status,
     tab: &'a Tab,
 }
+
 impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
@@ -660,7 +673,7 @@ impl<'a> Draw for WinSecondary<'a> {
             EditMode::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
             EditMode::InputCompleted(_) => self.draw_completion(canvas),
             EditMode::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
-            _ => Ok(()),
+            _ => return Ok(()),
         }?;
         self.draw_cursor(canvas)?;
         WinSecondaryFirstLine::new(self.tab)?.draw(canvas)
@@ -1039,18 +1052,6 @@ impl Display {
         Self { term }
     }
 
-    /// Used to force a display of the cursor before leaving the application.
-    /// Most of the times we don't need a cursor and it's hidden. We have to
-    /// do it unless the shell won't display a cursor anymore.
-    pub fn show_cursor(&self) -> Result<()> {
-        Ok(self.term.show_cursor(true)?)
-    }
-
-    fn hide_cursor(&self) -> Result<()> {
-        self.term.set_cursor(0, 0)?;
-        Ok(self.term.show_cursor(false)?)
-    }
-
     /// Display every possible content in the terminal.
     ///
     /// The top line
@@ -1069,15 +1070,15 @@ impl Display {
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
     pub fn display_all(&mut self, status: &Status) -> Result<()> {
-        self.hide_cursor()?;
+        self._hide_cursor()?;
         self.term.clear()?;
 
         let (width, _) = self.term.term_size()?;
         let disk_spaces = status.disk_spaces_per_tab();
         if status.dual_pane && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self.draw_dual_pane(status, &disk_spaces.0, &disk_spaces.1)?
+            self._draw_dual_pane(status, &disk_spaces.0, &disk_spaces.1)?
         } else {
-            self.draw_single_pane(status, &disk_spaces.0)?
+            self._draw_single_pane(status, &disk_spaces.0)?
         }
 
         Ok(self.term.present()?)
@@ -1085,13 +1086,31 @@ impl Display {
 
     /// Hide the curose, clear the terminal and present.
     pub fn force_clear(&mut self) -> Result<()> {
-        self.hide_cursor()?;
+        self._hide_cursor()?;
         self.term.clear()?;
         self.term.present()?;
         Ok(())
     }
 
-    fn size_for_second_window(&self, tab: &Tab) -> Result<usize> {
+    /// Used to force a display of the cursor before leaving the application.
+    /// Most of the times we don't need a cursor and it's hidden. We have to
+    /// do it unless the shell won't display a cursor anymore.
+    pub fn show_cursor(&self) -> Result<()> {
+        Ok(self.term.show_cursor(true)?)
+    }
+
+    fn _hide_cursor(&self) -> Result<()> {
+        self.term.set_cursor(0, 0)?;
+        Ok(self.term.show_cursor(false)?)
+    }
+
+    /// Reads and returns the `tuikit::term::Term` height.
+    pub fn height(&self) -> Result<usize> {
+        let (_, height) = self.term.term_size()?;
+        Ok(height)
+    }
+
+    fn _size_for_second_window(&self, tab: &Tab) -> Result<usize> {
         if tab.need_second_window() {
             Ok(self.height()? / 2)
         } else {
@@ -1099,7 +1118,7 @@ impl Display {
         }
     }
 
-    fn vertical_split<'a>(
+    fn _vertical_split<'a>(
         &self,
         win_main: &'a WinMain,
         win_secondary: &'a WinSecondary,
@@ -1123,7 +1142,7 @@ impl Display {
             ))
     }
 
-    fn borders(&self, status: &Status) -> (Attr, Attr) {
+    fn _borders(&self, status: &Status) -> (Attr, Attr) {
         if status.index == 0 {
             (Self::SELECTED_BORDER, Self::INERT_BORDER)
         } else {
@@ -1131,7 +1150,7 @@ impl Display {
         }
     }
 
-    fn draw_dual_pane(
+    fn _draw_dual_pane(
         &mut self,
         status: &Status,
         disk_space_tab_0: &str,
@@ -1155,17 +1174,17 @@ impl Display {
         let win_main_right = WinMain::new(status, 1, disk_space_tab_1, attributes_right);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
-        let (border_left, border_right) = self.borders(status);
-        let percent_left = self.size_for_second_window(&status.tabs[0])?;
-        let percent_right = self.size_for_second_window(&status.tabs[1])?;
+        let (border_left, border_right) = self._borders(status);
+        let percent_left = self._size_for_second_window(&status.tabs[0])?;
+        let percent_right = self._size_for_second_window(&status.tabs[1])?;
         let hsplit = HSplit::default()
-            .split(self.vertical_split(
+            .split(self._vertical_split(
                 &win_main_left,
                 &win_second_left,
                 border_left,
                 percent_left,
             )?)
-            .split(self.vertical_split(
+            .split(self._vertical_split(
                 &win_main_right,
                 &win_second_right,
                 border_right,
@@ -1174,7 +1193,7 @@ impl Display {
         Ok(self.term.draw(&hsplit)?)
     }
 
-    fn draw_single_pane(&mut self, status: &Status, disk_space_tab_0: &str) -> Result<()> {
+    fn _draw_single_pane(&mut self, status: &Status, disk_space_tab_0: &str) -> Result<()> {
         let attributes_left = WinMainAttributes::new(
             0,
             TabPosition::Left,
@@ -1183,20 +1202,14 @@ impl Display {
         );
         let win_main_left = WinMain::new(status, 0, disk_space_tab_0, attributes_left);
         let win_second_left = WinSecondary::new(status, 0);
-        let percent_left = self.size_for_second_window(&status.tabs[0])?;
-        let win = self.vertical_split(
+        let percent_left = self._size_for_second_window(&status.tabs[0])?;
+        let win = self._vertical_split(
             &win_main_left,
             &win_second_left,
             Self::SELECTED_BORDER,
             percent_left,
         )?;
         Ok(self.term.draw(&win)?)
-    }
-
-    /// Reads and returns the `tuikit::term::Term` height.
-    pub fn height(&self) -> Result<usize> {
-        let (_, height) = self.term.term_size()?;
-        Ok(height)
     }
 }
 
