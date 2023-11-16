@@ -7,5 +7,4 @@ pub mod flagged;
 pub mod interaction;
 pub mod io;
 pub mod mode;
-pub mod skim;
 pub mod utils;

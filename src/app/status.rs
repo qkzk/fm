@@ -12,11 +12,12 @@ use sysinfo::{Disk, DiskExt, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
-use super::Tab;
+use crate::app::Tab;
 use crate::config::Settings;
 use crate::constant_strings_paths::{NVIM, SS, TUIS_PATH};
 use crate::display_mode::FileKind;
 use crate::display_mode::Preview;
+use crate::display_mode::Skimer;
 use crate::display_mode::Tree;
 use crate::display_mode::Users;
 use crate::edit_mode::Bulk;
@@ -42,7 +43,6 @@ use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{InternalVariant, Opener};
 use crate::log_line;
 use crate::mode::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
-use crate::skim::Skimer;
 use crate::utils::{current_username, disk_space, filename_from_path, is_program_in_path};
 
 /// Holds every mutable parameter of the application itself, except for

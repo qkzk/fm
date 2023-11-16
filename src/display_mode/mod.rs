@@ -2,6 +2,7 @@ mod content_window;
 mod fileinfo;
 mod lsl;
 mod preview;
+mod skim;
 mod tree;
 mod users;
 
@@ -11,5 +12,6 @@ pub use fileinfo::{
 };
 pub use lsl::{files_collection, human_size, read_symlink_dest, shorten_path, PathContent};
 pub use preview::{ColoredTriplet, ExtensionKind, MakeTriplet, Preview, TextKind, Window};
+pub use skim::{print_ansi_str, Skimer};
 pub use tree::{calculate_top_bottom, ColoredString, Filenames, Go, Node, To, Tree};
 pub use users::Users;
