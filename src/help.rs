@@ -1,7 +1,7 @@
 use anyhow::Result;
 use strfmt::strfmt;
 
-use crate::keybindings::Bindings;
+use crate::config::Bindings;
 use crate::opener::Opener;
 
 /// Help message to be displayed when help key is pressed.

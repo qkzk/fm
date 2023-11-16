@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 
-use crate::keybindings::REFRESH_EVENT;
+use crate::config::REFRESH_EVENT;
 
 /// Allows refresh if the current path has been modified externally.
 pub struct Refresher {

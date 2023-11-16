@@ -9,9 +9,9 @@ use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, Pr
 use log::info;
 use tuikit::prelude::{Attr, Color, Effect, Term};
 
+use crate::config::REFRESH_EVENT;
 use crate::constant_strings_paths::NOTIFY_EXECUTABLE;
 use crate::fileinfo::human_size;
-use crate::keybindings::REFRESH_EVENT;
 use crate::log_line;
 use crate::opener::execute_in_child;
 use crate::utils::{is_program_in_path, random_name};

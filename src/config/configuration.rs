@@ -4,9 +4,9 @@ use anyhow::Result;
 use serde_yaml;
 use tuikit::attr::Color;
 
-use crate::colors::Colorer;
+use super::Bindings;
+use super::Colorer;
 use crate::constant_strings_paths::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
-use crate::keybindings::Bindings;
 use crate::utils::is_program_in_path;
 
 /// Starting settings.

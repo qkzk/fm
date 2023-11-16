@@ -9,7 +9,7 @@ use chrono::DateTime;
 use log::info;
 use tuikit::prelude::{Attr, Color, Effect};
 
-use crate::colors::extension_color;
+use crate::config::extension_color;
 use crate::config::COLORS;
 use crate::constant_strings_paths::PERMISSIONS_STR;
 use crate::filter::FilterKind;
