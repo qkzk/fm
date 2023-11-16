@@ -4,6 +4,7 @@ use std::path;
 use anyhow::{Context, Result};
 
 use crate::common::{row_to_window_index, set_clipboard};
+use crate::common::{DisplayMode, EditMode, InputSimple};
 use crate::config::Settings;
 use crate::display_mode::ContentWindow;
 use crate::display_mode::FileInfo;
@@ -20,7 +21,6 @@ use crate::edit_mode::SortKind;
 use crate::edit_mode::{Completion, InputCompleted};
 use crate::io::execute_in_child;
 use crate::io::Args;
-use crate::mode::{DisplayMode, EditMode, InputSimple};
 
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.

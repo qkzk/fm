@@ -13,7 +13,9 @@ use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
 use crate::app::Tab;
+use crate::common::Flagged;
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
+use crate::common::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
 use crate::common::{NVIM, SS, TUIS_PATH};
 use crate::config::Settings;
 use crate::display_mode::FileKind;
@@ -38,12 +40,10 @@ use crate::edit_mode::{
     PasswordKind, PasswordUsage,
 };
 use crate::edit_mode::{BlockDeviceAction, CryptoDeviceOpener};
-use crate::flagged::Flagged;
 use crate::io::Args;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{InternalVariant, Opener};
 use crate::log_line;
-use crate::mode::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
 
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.
