@@ -12,7 +12,6 @@ pub mod interaction;
 pub mod log;
 pub mod mode;
 pub mod opener;
-pub mod refresher;
 pub mod skim;
 pub mod term_manager;
 pub mod utils;

@@ -4,6 +4,7 @@ use anyhow::Result;
 use log::info;
 use tuikit::prelude::Event;
 
+use super::Refresher;
 use super::Status;
 use crate::config::load_config;
 use crate::constant_strings_paths::{CONFIG_PATH, OPENER_PATH};
@@ -11,7 +12,6 @@ use crate::edit_mode::Help;
 use crate::interaction::EventDispatcher;
 use crate::log::set_loggers;
 use crate::opener::{load_opener, Opener};
-use crate::refresher::Refresher;
 use crate::term_manager::{Display, EventReader};
 use crate::utils::{clear_tmp_file, init_term, print_on_quit};
 
