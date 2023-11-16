@@ -1,7 +1,7 @@
 use anyhow::Result;
 use strum_macros::{Display, EnumIter, EnumString};
 
-use crate::event_exec::{EventAction, LeaveMode};
+use super::{EventAction, LeaveMode};
 use crate::status::Status;
 
 /// Different kind of action which can be mapped to a key.

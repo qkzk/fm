@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tuikit::prelude::{Event, Key, MouseButton};
 
-use crate::event_exec::{EventAction, LeaveMode};
+use super::event_exec::{EventAction, LeaveMode};
 use crate::keybindings::Bindings;
 use crate::mode::{DisplayMode, EditMode, InputSimple, MarkAction, Navigate};
 use crate::status::Status;

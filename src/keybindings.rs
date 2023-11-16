@@ -4,8 +4,8 @@ use std::string::ToString;
 
 use tuikit::prelude::{from_keyname, Event, Key};
 
-use crate::action_map::ActionMap;
 use crate::constant_strings_paths::CONFIG_PATH;
+use crate::interaction::ActionMap;
 
 /// Holds an hashmap between keys and actions.
 #[derive(Clone, Debug)]

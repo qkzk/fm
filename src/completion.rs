@@ -3,7 +3,7 @@ use std::fs::{self, ReadDir};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 
-use crate::{fileinfo::PathContent, tree::Filenames};
+use crate::{fileinfo::PathContent, interaction::ActionMap, tree::Filenames};
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
@@ -170,7 +170,7 @@ impl Completion {
 
     /// Looks for fm actions completing the one typed by the user.
     pub fn command(&mut self, input_string: &str) -> Result<()> {
-        let proposals = crate::action_map::ActionMap::iter()
+        let proposals = ActionMap::iter()
             .filter(|command| {
                 command
                     .to_string()

@@ -7,7 +7,7 @@ use std::str::FromStr;
 use anyhow::{anyhow, Context, Result};
 use log::info;
 
-use crate::action_map::ActionMap;
+use super::ActionMap;
 use crate::completion::InputCompleted;
 use crate::constant_strings_paths::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
