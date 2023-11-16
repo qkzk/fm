@@ -5,9 +5,9 @@ use std::path;
 use anyhow::{Context, Result};
 use log::info;
 
-use super::users::Users;
-use super::{is_not_hidden, FileInfo, FileKind};
 use crate::common::{filename_from_path, path_to_string};
+use crate::display_mode::users::Users;
+use crate::display_mode::{is_not_hidden, FileInfo, FileKind};
 use crate::edit_mode::FilterKind;
 use crate::edit_mode::SortKind;
 use crate::impl_selectable_content;

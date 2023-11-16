@@ -15,14 +15,14 @@ use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
 
-use super::ContentWindow;
-use super::Users;
-use super::{ColorEffect, FileInfo, FileKind};
-use super::{ColoredString, Tree};
 use crate::common::{
     CALC_PDF_PATH, DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
     PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
 };
+use crate::display_mode::ContentWindow;
+use crate::display_mode::Users;
+use crate::display_mode::{ColorEffect, FileInfo, FileKind};
+use crate::display_mode::{ColoredString, Tree};
 
 use crate::common::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
 use crate::edit_mode::FilterKind;

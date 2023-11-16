@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use log::info;
 
-use super::{
+use crate::edit_mode::{
     execute_sudo_command, execute_sudo_command_with_password, MountHelper, PasswordHolder,
 };
 

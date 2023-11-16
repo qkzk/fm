@@ -4,13 +4,13 @@ use anyhow::{anyhow, Context, Result};
 use log::info;
 use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
-use super::mount_help::MountHelper;
-use super::password::{
+use crate::common::{current_username, is_program_in_path};
+use crate::common::{CRYPTSETUP, LSBLK};
+use crate::edit_mode::mount_help::MountHelper;
+use crate::edit_mode::password::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
     reset_sudo_faillock, PasswordHolder, PasswordKind,
 };
-use crate::common::{current_username, is_program_in_path};
-use crate::common::{CRYPTSETUP, LSBLK};
 use crate::impl_selectable_content;
 
 /// Possible actions on encrypted drives

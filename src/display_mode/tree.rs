@@ -6,11 +6,11 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
-use super::files_collection;
-use super::ContentWindow;
-use super::Users;
-use super::{ColorEffect, FileInfo};
-use super::{ColoredTriplet, MakeTriplet};
+use crate::display_mode::files_collection;
+use crate::display_mode::ContentWindow;
+use crate::display_mode::Users;
+use crate::display_mode::{ColorEffect, FileInfo};
+use crate::display_mode::{ColoredTriplet, MakeTriplet};
 
 use crate::common::filename_from_path;
 use crate::edit_mode::FilterKind;

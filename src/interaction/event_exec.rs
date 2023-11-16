@@ -7,7 +7,6 @@ use std::str::FromStr;
 use anyhow::{anyhow, Context, Result};
 use log::info;
 
-use super::ActionMap;
 use crate::app::Status;
 use crate::app::Tab;
 use crate::common::path_to_string;
@@ -29,6 +28,7 @@ use crate::edit_mode::ShellCommandParser;
 use crate::edit_mode::MOCP;
 use crate::edit_mode::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
 use crate::edit_mode::{PasswordKind, PasswordUsage};
+use crate::interaction::ActionMap;
 use crate::io::execute_and_capture_output_with_path;
 use crate::io::read_log;
 use crate::io::{

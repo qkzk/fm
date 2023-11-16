@@ -4,8 +4,8 @@ use anyhow::Result;
 use log::info;
 use tuikit::prelude::Event;
 
-use super::Refresher;
-use super::Status;
+use crate::app::Refresher;
+use crate::app::Status;
 use crate::common::{clear_tmp_file, init_term, print_on_quit};
 use crate::common::{CONFIG_PATH, OPENER_PATH};
 use crate::config::load_config;

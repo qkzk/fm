@@ -627,17 +627,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Version 0.1.24
 
-- [ ] refactor term manager. Separate content construction from drawing.
-  - [ ] struct for every drawable element
-  - [ ] Draw trait
+- [x] refactor term manager. Separate content construction from drawing.
 - [x] better messages when asking a password
 - [x] FIX: trash is buggy. Can't delete definitely. Display is wrong when empty.
 - [x] FIX: cursor is off by one in password
-- [ ] display mode / edit mode. Separate display (normal, tree, preview) from any other mode.
-      Should lead to cleaner code
-  - [x] it seems to work, code still messy
-  - [ ] test everything
-  - [ ] refactor: clean refresh etc. methods
+- [x] display mode / edit mode. Separate display (normal, tree, preview) from any other mode.
 - [x] FIX: NVIM listen address won't update if neovim is restarted while fm is still running
 - [ ] read click event (ouch where ?)
 - [x] FIX: next is wrong when folded.
@@ -651,30 +645,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       PathContent is only used in Normal and should be associated with it.
       Reseting display should switch back to user setted display.
       Preview isn't like Normal & Tree since it doesn't display files at all.
-
-      ```
-      fm
-      |- src
-          |- main             <- run the main loop aka bin crate
-          |- lib
-              |- display-mode     <- only affect what is displayed
-              |   |- lsl.rs
-              |   |- tree.rs
-              |   |- preview.rs
-              |- edit-mode        <- affect things outside fm
-              |   |- bulk.rs
-              |   |... 1 per mode
-
-              |- external         <- shell commands & whatever related things
-              |- interaction      <- received event -> polled -> action -> change state
-              |   |- event reader
-              |   |- event -> action
-              |   |- event dispatch
-              |   |- action exec
-              |- fs model         <- file, directory, tree (?) think of them as Traits
-              |- app              <- state of the app
-              |- ???              <- anything else. utils, whatever
-      ```
+  - [x] move every src to a related folder
 
 ## TODO
 

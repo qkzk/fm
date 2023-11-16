@@ -7,12 +7,12 @@ use chrono::offset::Local;
 use chrono::DateTime;
 use tuikit::prelude::{Attr, Color, Effect};
 
-use super::Node;
-use super::Users;
-use super::{human_size, read_symlink_dest};
 use crate::common::PERMISSIONS_STR;
 use crate::config::extension_color;
 use crate::config::COLORS;
+use crate::display_mode::Node;
+use crate::display_mode::Users;
+use crate::display_mode::{human_size, read_symlink_dest};
 
 type Valid = bool;
 

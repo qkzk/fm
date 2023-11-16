@@ -4,10 +4,10 @@ use anyhow::Result;
 use serde_yaml;
 use tuikit::attr::Color;
 
-use super::Bindings;
-use super::Colorer;
 use crate::common::is_program_in_path;
 use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
+use crate::config::Bindings;
+use crate::config::Colorer;
 
 /// Starting settings.
 /// those values are updated from the yaml config file
