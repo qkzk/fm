@@ -278,10 +278,7 @@ impl EventAction {
         if !matches!(tab.edit_mode, EditMode::Nothing) {
             return Ok(());
         }
-        match tab.display_mode {
-            DisplayMode::Tree => (),
-            _ => tab.set_edit_mode(EditMode::InputSimple(InputSimple::RegexMatch)),
-        }
+        tab.set_edit_mode(EditMode::InputSimple(InputSimple::RegexMatch));
         Ok(())
     }
 
@@ -1295,7 +1292,7 @@ impl LeaveMode {
     }
 
     /// Select the first file matching the typed regex in current dir.
-    pub fn regex(status: &mut Status) -> Result<(), regex::Error> {
+    pub fn regex(status: &mut Status) -> Result<()> {
         status.select_from_regex()?;
         status.selected().input.reset();
         Ok(())

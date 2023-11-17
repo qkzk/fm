@@ -6,7 +6,6 @@ use std::sync::Arc;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use log::info;
-use regex::Regex;
 use skim::SkimItem;
 use sysinfo::{Disk, DiskExt, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
@@ -20,7 +19,6 @@ use crate::io::Args;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{InternalVariant, Opener};
 use crate::log_line;
-use crate::modes::Bulk;
 use crate::modes::CliInfo;
 use crate::modes::Compresser;
 use crate::modes::FileKind;
@@ -42,6 +40,7 @@ use crate::modes::{
     drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock, PasswordHolder,
     PasswordKind, PasswordUsage,
 };
+use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::modes::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
 
@@ -477,17 +476,17 @@ impl Status {
     }
 
     /// Flag every file matching a typed regex.
-    pub fn select_from_regex(&mut self) -> Result<(), regex::Error> {
-        if self.selected_non_mut().input.string().is_empty() {
+    pub fn select_from_regex(&mut self) -> Result<()> {
+        let input = self.selected_non_mut().input.string();
+        if input.is_empty() {
             return Ok(());
         }
-        self.flagged.clear();
-        let re = Regex::new(&self.selected_non_mut().input.string())?;
-        for file in self.tabs[self.index].path_content.content.iter() {
-            if re.is_match(&file.path.to_string_lossy()) {
-                self.flagged.push(file.path.clone());
-            }
-        }
+        let paths = match self.selected_non_mut().display_mode {
+            DisplayMode::Normal => self.tabs[self.index].path_content.paths(),
+            DisplayMode::Tree => self.tabs[self.index].tree.paths(),
+            DisplayMode::Preview => return Ok(()),
+        };
+        regex_matcher(input, &paths, &mut self.flagged)?;
         Ok(())
     }
 

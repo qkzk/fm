@@ -646,6 +646,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       Reseting display should switch back to user setted display.
       Preview isn't like Normal & Tree since it doesn't display files at all.
   - [x] move every src to a related folder
+  - [x] refactor regex. Allow regex match in tree
 
 ## TODO
 

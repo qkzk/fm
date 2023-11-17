@@ -16,6 +16,7 @@ mod mocp;
 mod mount_help;
 mod nvim;
 mod password;
+mod regex;
 mod removable_devices;
 mod selectable_content;
 mod shell_menu;
@@ -47,6 +48,7 @@ pub use password::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
     reset_sudo_faillock, PasswordHolder, PasswordKind, PasswordUsage,
 };
+pub use regex::regex_matcher;
 pub use removable_devices::RemovableDevices;
 pub use selectable_content::SelectableContent;
 pub use shell_menu::ShellMenu;

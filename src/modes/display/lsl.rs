@@ -238,6 +238,14 @@ impl PathContent {
         self.select_index(index);
         index
     }
+
+    /// Returns a vector of paths from content
+    pub fn paths(&self) -> Vec<&path::Path> {
+        self.content
+            .iter()
+            .map(|fileinfo| fileinfo.path.as_path())
+            .collect()
+    }
 }
 
 impl_selectable_content!(FileInfo, PathContent);

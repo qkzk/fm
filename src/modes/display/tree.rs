@@ -572,6 +572,11 @@ impl Tree {
         self.nodes.keys().filter_map(to_filename).filter_map(to_str)
     }
 
+    /// Vector of `Path` of nodes.
+    pub fn paths(&self) -> Vec<&Path> {
+        self.nodes.keys().map(|p| p.as_path()).collect()
+    }
+
     #[inline]
     fn stack_children<'a>(
         stack: &mut Vec<(String, &'a Path)>,
