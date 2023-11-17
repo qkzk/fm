@@ -698,4 +698,32 @@ impl Tab {
         self.set_edit_mode(EditMode::InputSimple(InputSimple::Rename));
         Ok(())
     }
+
+    /// Jump to the jump target.
+    /// Change the pathcontent and the tree if the jump target isn't in the
+    /// currently displayed files.
+    pub fn jump(&mut self, jump_target: path::PathBuf) -> Result<()> {
+        let target_dir = match jump_target.parent() {
+            Some(parent) => parent,
+            None => &jump_target,
+        };
+        match self.display_mode {
+            DisplayMode::Preview => return Ok(()),
+            DisplayMode::Normal => {
+                if !self.path_content.paths().contains(&target_dir) {
+                    self.set_pathcontent(target_dir)?
+                }
+                let index = self.path_content.select_file(&jump_target);
+                self.scroll_to(index)
+            }
+            DisplayMode::Tree => {
+                if !self.tree.paths().contains(&target_dir) {
+                    self.set_pathcontent(target_dir)?;
+                    self.make_tree(None)?
+                }
+                self.tree.go(To::Path(&jump_target))
+            }
+        }
+        Ok(())
+    }
 }

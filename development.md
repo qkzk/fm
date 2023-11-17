@@ -647,6 +647,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       Preview isn't like Normal & Tree since it doesn't display files at all.
   - [x] move every src to a related folder
   - [x] refactor regex. Allow regex match in tree
+  - [x] FIX: can't jump to file from tree mode
 
 ## TODO
 

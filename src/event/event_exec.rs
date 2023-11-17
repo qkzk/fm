@@ -1281,13 +1281,7 @@ impl LeaveMode {
             return Ok(());
         };
         let jump_target = jump_target.to_owned();
-        let target_dir = match jump_target.parent() {
-            Some(parent) => parent,
-            None => &jump_target,
-        };
-        status.selected().set_pathcontent(target_dir)?;
-        let index = status.selected().path_content.select_file(&jump_target);
-        status.selected().scroll_to(index);
+        status.selected().jump(jump_target)?;
         status.update_second_pane_for_preview()
     }
 
