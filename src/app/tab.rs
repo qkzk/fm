@@ -25,9 +25,10 @@ use crate::io::Args;
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
 pub struct Tab {
-    /// Kind of display
+    /// Kind of display: `Preview, Normal, Tree`
     pub display_mode: DisplayMode,
-    /// The mode the application is currenty in
+    /// The edit mode the application is currenty in.
+    /// Most of the time is spent in `EditMode::Nothing`
     pub edit_mode: EditMode,
     /// The indexes of displayed file
     pub window: ContentWindow,
