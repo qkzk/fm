@@ -6,12 +6,12 @@ use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
 use crate::common::{current_username, is_program_in_path};
 use crate::common::{CRYPTSETUP, LSBLK};
-use crate::edit_mode::mount_help::MountHelper;
-use crate::edit_mode::password::{
+use crate::impl_selectable_content;
+use crate::modes::MountHelper;
+use crate::modes::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
     reset_sudo_faillock, PasswordHolder, PasswordKind,
 };
-use crate::impl_selectable_content;
 
 /// Possible actions on encrypted drives
 #[derive(Debug, Clone, Copy)]

@@ -16,16 +16,6 @@ use crate::common::{
 use crate::common::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
 };
-use crate::display_mode::{ExtensionKind, Preview};
-use crate::edit_mode::FilterKind;
-use crate::edit_mode::InputCompleted;
-use crate::edit_mode::Mocp;
-use crate::edit_mode::RemovableDevices;
-use crate::edit_mode::SelectableContent;
-use crate::edit_mode::ShellCommandParser;
-use crate::edit_mode::MOCP;
-use crate::edit_mode::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
-use crate::edit_mode::{PasswordKind, PasswordUsage};
 use crate::event::ActionMap;
 use crate::io::execute_and_capture_output_with_path;
 use crate::io::read_log;
@@ -35,7 +25,17 @@ use crate::io::{
 };
 use crate::log_line;
 use crate::modes::DisplayMode;
+use crate::modes::FilterKind;
+use crate::modes::InputCompleted;
+use crate::modes::Mocp;
+use crate::modes::RemovableDevices;
+use crate::modes::SelectableContent;
+use crate::modes::ShellCommandParser;
+use crate::modes::MOCP;
+use crate::modes::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
 use crate::modes::{EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
+use crate::modes::{ExtensionKind, Preview};
+use crate::modes::{PasswordKind, PasswordUsage};
 
 /// Links events from tuikit to custom actions.
 /// It mutates `Status` or its children `Tab`.

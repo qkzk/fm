@@ -6,15 +6,15 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
-use crate::display_mode::files_collection;
-use crate::display_mode::ContentWindow;
-use crate::display_mode::Users;
-use crate::display_mode::{ColorEffect, FileInfo};
-use crate::display_mode::{ColoredTriplet, MakeTriplet};
+use crate::modes::files_collection;
+use crate::modes::ContentWindow;
+use crate::modes::Users;
+use crate::modes::{ColorEffect, FileInfo};
+use crate::modes::{ColoredTriplet, MakeTriplet};
 
 use crate::common::filename_from_path;
-use crate::edit_mode::FilterKind;
-use crate::edit_mode::SortKind;
+use crate::modes::FilterKind;
+use crate::modes::SortKind;
 
 /// Holds a string, its display attributes and the associated pathbuf.
 #[derive(Clone, Debug)]

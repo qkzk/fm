@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 
-use crate::edit_mode::MountHelper;
-use crate::edit_mode::PasswordHolder;
+use crate::modes::MountHelper;
+use crate::modes::PasswordHolder;
 use crate::{
     common::GIO,
     common::{current_uid, is_dir_empty, is_program_in_path},

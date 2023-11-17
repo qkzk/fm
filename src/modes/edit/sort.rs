@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use crate::display_mode::FileInfo;
+use crate::modes::FileInfo;
 
 /// Different kind of sort
 #[derive(Debug, Clone, Default)]

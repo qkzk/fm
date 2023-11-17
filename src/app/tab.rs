@@ -5,21 +5,21 @@ use anyhow::{Context, Result};
 
 use crate::common::{row_to_window_index, set_clipboard};
 use crate::config::Settings;
-use crate::display_mode::ContentWindow;
-use crate::display_mode::FileInfo;
-use crate::display_mode::PathContent;
-use crate::display_mode::Preview;
-use crate::display_mode::Users;
-use crate::display_mode::{calculate_top_bottom, Go, To, Tree};
-use crate::edit_mode::FilterKind;
-use crate::edit_mode::History;
-use crate::edit_mode::Input;
-use crate::edit_mode::SelectableContent;
-use crate::edit_mode::Shortcut;
-use crate::edit_mode::SortKind;
-use crate::edit_mode::{Completion, InputCompleted};
 use crate::io::execute_in_child;
 use crate::io::Args;
+use crate::modes::ContentWindow;
+use crate::modes::FileInfo;
+use crate::modes::FilterKind;
+use crate::modes::History;
+use crate::modes::Input;
+use crate::modes::PathContent;
+use crate::modes::Preview;
+use crate::modes::SelectableContent;
+use crate::modes::Shortcut;
+use crate::modes::SortKind;
+use crate::modes::Users;
+use crate::modes::{calculate_top_bottom, Go, To, Tree};
+use crate::modes::{Completion, InputCompleted};
 use crate::modes::{DisplayMode, EditMode, InputSimple};
 
 /// Holds every thing about the current tab of the application.

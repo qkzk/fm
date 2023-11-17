@@ -15,17 +15,17 @@ use crate::common::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
     LOG_SECOND_SENTENCE, TRASH_CONFIRM_LINE,
 };
-use crate::display_mode::calculate_top_bottom;
-use crate::display_mode::shorten_path;
-use crate::display_mode::ContentWindow;
-use crate::display_mode::{fileinfo_attr, FileInfo};
-use crate::display_mode::{Preview, TextKind, Window};
-use crate::edit_mode::InputCompleted;
-use crate::edit_mode::MountHelper;
-use crate::edit_mode::SelectableContent;
-use crate::edit_mode::Trash;
 use crate::io::read_last_log_line;
+use crate::modes::calculate_top_bottom;
+use crate::modes::shorten_path;
+use crate::modes::ContentWindow;
+use crate::modes::InputCompleted;
+use crate::modes::MountHelper;
+use crate::modes::SelectableContent;
+use crate::modes::Trash;
+use crate::modes::{fileinfo_attr, FileInfo};
 use crate::modes::{DisplayMode, EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
+use crate::modes::{Preview, TextKind, Window};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {

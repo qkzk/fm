@@ -5,9 +5,9 @@ use crate::common::{
     PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES, RENAME_LINES,
     SHELL_LINES, SORT_LINES,
 };
-use crate::edit_mode::BlockDeviceAction;
-use crate::edit_mode::InputCompleted;
-use crate::edit_mode::{PasswordKind, PasswordUsage};
+use crate::modes::BlockDeviceAction;
+use crate::modes::InputCompleted;
+use crate::modes::{PasswordKind, PasswordUsage};
 
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.

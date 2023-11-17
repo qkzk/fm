@@ -19,16 +19,16 @@ use crate::common::{
     CALC_PDF_PATH, DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
     PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
 };
-use crate::display_mode::ContentWindow;
-use crate::display_mode::Users;
-use crate::display_mode::{ColorEffect, FileInfo, FileKind};
-use crate::display_mode::{ColoredString, Tree};
+use crate::modes::ContentWindow;
+use crate::modes::Users;
+use crate::modes::{ColorEffect, FileInfo, FileKind};
+use crate::modes::{ColoredString, Tree};
 
 use crate::common::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
-use crate::edit_mode::FilterKind;
-use crate::edit_mode::SortKind;
-use crate::edit_mode::{list_files_tar, list_files_zip};
 use crate::io::execute_and_capture_output_without_check;
+use crate::modes::FilterKind;
+use crate::modes::SortKind;
+use crate::modes::{list_files_tar, list_files_zip};
 
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.
@@ -537,7 +537,7 @@ impl HLContent {
         syntax_ref: &SyntaxReference,
     ) -> Result<Vec<Vec<SyntaxedString>>> {
         let mut monokai = BufReader::new(Cursor::new(include_bytes!(
-            "../../assets/themes/Monokai_Extended.tmTheme"
+            "../../../assets/themes/Monokai_Extended.tmTheme"
         )));
         let theme = ThemeSet::load_from_reader(&mut monokai)?;
         let mut highlighted_content = vec![];

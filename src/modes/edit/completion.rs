@@ -3,7 +3,7 @@ use std::fs::{self, ReadDir};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 
-use crate::{display_mode::Filenames, display_mode::PathContent, event::ActionMap};
+use crate::{event::ActionMap, modes::Filenames, modes::PathContent};
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]

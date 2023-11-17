@@ -14,9 +14,9 @@ use crate::common::{
     DEFAULT_AUDIO_OPENER, DEFAULT_IMAGE_OPENER, DEFAULT_OFFICE_OPENER, DEFAULT_OPENER,
     DEFAULT_READABLE_OPENER, DEFAULT_TEXT_OPENER, DEFAULT_VECTORIAL_OPENER, DEFAULT_VIDEO_OPENER,
 };
-use crate::display_mode::extract_extension;
-use crate::edit_mode::{decompress_gz, decompress_xz, decompress_zip};
 use crate::log_line;
+use crate::modes::extract_extension;
+use crate::modes::{decompress_gz, decompress_xz, decompress_zip};
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]

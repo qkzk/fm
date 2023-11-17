@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use regex::Regex;
 
-use crate::display_mode::{FileInfo, FileKind};
+use crate::modes::{FileInfo, FileKind};
 
 /// Different kinds of filters.
 /// By extension, by name, only the directory or all files.

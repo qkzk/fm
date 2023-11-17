@@ -6,12 +6,12 @@ use anyhow::{Context, Result};
 use log::info;
 
 use crate::common::{filename_from_path, path_to_string};
-use crate::display_mode::users::Users;
-use crate::display_mode::{is_not_hidden, FileInfo, FileKind};
-use crate::edit_mode::FilterKind;
-use crate::edit_mode::SortKind;
 use crate::impl_selectable_content;
 use crate::io::git;
+use crate::modes::FilterKind;
+use crate::modes::SortKind;
+use crate::modes::Users;
+use crate::modes::{is_not_hidden, FileInfo, FileKind};
 
 /// Holds the information about file in the current directory.
 /// We know about the current path, the files themselves, the selected index,

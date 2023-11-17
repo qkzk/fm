@@ -12,9 +12,9 @@ use tuikit::prelude::{Attr, Color, Effect, Term};
 use crate::common::NOTIFY_EXECUTABLE;
 use crate::common::{is_program_in_path, random_name};
 use crate::config::REFRESH_EVENT;
-use crate::display_mode::human_size;
 use crate::io::execute_in_child;
 use crate::log_line;
+use crate::modes::human_size;
 
 /// Display the updated progress bar on the terminal.
 fn handle_progress_display(

@@ -11,11 +11,11 @@ use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 
 use crate::common::{CALC_PDF_PATH, THUMBNAIL_PATH};
-use crate::display_mode::human_size;
-use crate::display_mode::ContentWindow;
-use crate::display_mode::Users;
-use crate::edit_mode::nvim;
 use crate::log_line;
+use crate::modes::human_size;
+use crate::modes::nvim;
+use crate::modes::ContentWindow;
+use crate::modes::Users;
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
 pub fn init_term() -> Result<Term> {

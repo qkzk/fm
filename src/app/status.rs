@@ -16,33 +16,33 @@ use crate::app::Tab;
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
 use crate::common::{NVIM, SS, TUIS_PATH};
 use crate::config::Settings;
-use crate::display_mode::FileKind;
-use crate::display_mode::Preview;
-use crate::display_mode::Skimer;
-use crate::display_mode::Tree;
-use crate::display_mode::Users;
-use crate::edit_mode::Bulk;
-use crate::edit_mode::CliInfo;
-use crate::edit_mode::Compresser;
-use crate::edit_mode::Flagged;
-use crate::edit_mode::IsoDevice;
-use crate::edit_mode::Marks;
-use crate::edit_mode::MountHelper;
-use crate::edit_mode::RemovableDevices;
-use crate::edit_mode::SelectableContent;
-use crate::edit_mode::ShellCommandParser;
-use crate::edit_mode::ShellMenu;
-use crate::edit_mode::Trash;
-use crate::edit_mode::{copy_move, CopyMove};
-use crate::edit_mode::{
-    drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock, PasswordHolder,
-    PasswordKind, PasswordUsage,
-};
-use crate::edit_mode::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::io::Args;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{InternalVariant, Opener};
 use crate::log_line;
+use crate::modes::Bulk;
+use crate::modes::CliInfo;
+use crate::modes::Compresser;
+use crate::modes::FileKind;
+use crate::modes::Flagged;
+use crate::modes::IsoDevice;
+use crate::modes::Marks;
+use crate::modes::MountHelper;
+use crate::modes::Preview;
+use crate::modes::RemovableDevices;
+use crate::modes::SelectableContent;
+use crate::modes::ShellCommandParser;
+use crate::modes::ShellMenu;
+use crate::modes::Skimer;
+use crate::modes::Trash;
+use crate::modes::Tree;
+use crate::modes::Users;
+use crate::modes::{copy_move, CopyMove};
+use crate::modes::{
+    drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock, PasswordHolder,
+    PasswordKind, PasswordUsage,
+};
+use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::modes::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
 
 /// Holds every mutable parameter of the application itself, except for
