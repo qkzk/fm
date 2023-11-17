@@ -503,7 +503,7 @@ impl FilesFirstLine {
     }
 
     fn string_sort_kind(tab: &Tab) -> String {
-        format!(" {} ", &tab.path_content.sort_kind)
+        format!(" {} ", &tab.sort_kind)
     }
 
     fn string_first_row_flags(status: &Status) -> String {

@@ -23,8 +23,6 @@ pub struct PathContent {
     pub content: Vec<FileInfo>,
     /// The index of the selected file.
     pub index: usize,
-    /// The kind of sort used to display the files.
-    pub sort_kind: SortKind,
     used_space: u64,
 }
 
@@ -52,7 +50,6 @@ impl PathContent {
             path,
             content,
             index: selected_index,
-            sort_kind,
             used_space,
         })
     }
@@ -63,9 +60,10 @@ impl PathContent {
         filter: &FilterKind,
         show_hidden: bool,
         users: &Users,
+        sort_kind: &SortKind,
     ) -> Result<()> {
         self.content = Self::files(path, show_hidden, filter, users)?;
-        self.sort_kind.sort(&mut self.content);
+        sort_kind.sort(&mut self.content);
         self.index = 0;
         if !self.content.is_empty() {
             self.content[0].select()
@@ -110,8 +108,8 @@ impl PathContent {
     }
 
     /// Sort the file with current key.
-    pub fn sort(&mut self) {
-        self.sort_kind.sort(&mut self.content)
+    pub fn sort(&mut self, sort_kind: &SortKind) {
+        sort_kind.sort(&mut self.content)
     }
 
     /// Calculates the size of the owner column.
@@ -147,8 +145,8 @@ impl PathContent {
         users: &Users,
     ) -> Result<()> {
         self.content = Self::files(&self.path, show_hidden, filter, users)?;
-        self.sort_kind = SortKind::default();
-        self.sort();
+        let sort_kind = SortKind::default();
+        self.sort(&sort_kind);
         self.index = 0;
         if !self.content.is_empty() {
             self.content[self.index].select();
@@ -200,11 +198,6 @@ impl PathContent {
     /// A string representation of the git status of the path.
     pub fn git_string(&self) -> Result<String> {
         git(&self.path)
-    }
-
-    /// Update the kind of sort from a char typed by the user.
-    pub fn update_sort_from_char(&mut self, c: char) {
-        self.sort_kind.update_from_char(c)
     }
 
     /// Unselect the current item.

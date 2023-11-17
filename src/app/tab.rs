@@ -57,7 +57,10 @@ pub struct Tab {
     pub history: History,
     /// Users & groups
     pub users: Users,
+    /// Tree representation of the same path
     pub tree: Tree,
+    /// The kind of sort used to display the files.
+    pub sort_kind: SortKind,
 }
 
 impl Tab {
@@ -91,6 +94,7 @@ impl Tab {
         let searched = None;
         let index = path_content.select_file(&path);
         let tree = Tree::default();
+        let sort_kind = SortKind::default();
         window.scroll_to(index);
         Ok(Self {
             display_mode,
@@ -109,6 +113,7 @@ impl Tab {
             history,
             users,
             tree,
+            sort_kind,
         })
     }
 
@@ -166,6 +171,11 @@ impl Tab {
         self.window.reset(self.path_content.content.len());
         self.refresh_params()?;
         Ok(())
+    }
+
+    /// Update the kind of sort from a char typed by the user.
+    pub fn update_sort_from_char(&mut self, c: char) {
+        self.sort_kind.update_from_char(c)
     }
 
     /// Refresh the view if files were modified in current directory.
@@ -240,8 +250,13 @@ impl Tab {
             &self.path_content.path,
             &self.path_content.selected().context("")?.path,
         );
-        self.path_content
-            .change_directory(path, &self.filter, self.show_hidden, &self.users)?;
+        self.path_content.change_directory(
+            path,
+            &self.filter,
+            self.show_hidden,
+            &self.users,
+            &self.sort_kind,
+        )?;
         self.window.reset(self.path_content.content.len());
         std::env::set_current_dir(path)?;
         Ok(())
@@ -351,7 +366,7 @@ impl Tab {
                 return Ok(());
             };
             self.set_pathcontent(parent.to_owned().as_ref())?;
-            self.make_tree(Some(self.path_content.sort_kind.clone()))
+            self.make_tree(Some(self.sort_kind.clone()))
         } else {
             self.tree.go(To::Parent);
             Ok(())
@@ -419,7 +434,7 @@ impl Tab {
             Some(sort_kind) => sort_kind,
             None => SortKind::tree_default(),
         };
-        self.path_content.sort_kind = sort_kind.to_owned();
+        self.sort_kind = sort_kind.to_owned();
         let path = self.path_content.path.clone();
         let users = &self.users;
         self.tree = Tree::new(path, 5, sort_kind, users, self.show_hidden, &self.filter);
@@ -633,15 +648,15 @@ impl Tab {
         match self.display_mode {
             DisplayMode::Normal => {
                 self.path_content.unselect_current();
-                self.path_content.update_sort_from_char(c);
-                self.path_content.sort();
+                self.update_sort_from_char(c);
+                self.path_content.sort(&self.sort_kind);
                 self.normal_go_top();
                 self.path_content.select_index(0);
             }
             DisplayMode::Tree => {
-                self.path_content.update_sort_from_char(c);
+                self.update_sort_from_char(c);
                 let selected_path = self.tree.selected_path().to_owned();
-                self.make_tree(Some(self.path_content.sort_kind.clone()))?;
+                self.make_tree(Some(self.sort_kind.clone()))?;
                 self.tree.go(To::Path(&selected_path));
             }
             _ => (),
