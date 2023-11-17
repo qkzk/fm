@@ -10,9 +10,10 @@ use crate::common::{clear_tmp_file, init_term, print_on_quit};
 use crate::common::{CONFIG_PATH, OPENER_PATH};
 use crate::config::load_config;
 use crate::event::EventDispatcher;
+use crate::event::EventReader;
 use crate::io::set_loggers;
+use crate::io::Display;
 use crate::io::{load_opener, Opener};
-use crate::io::{Display, EventReader};
 use crate::modes::Help;
 
 /// Holds everything about the application itself.
