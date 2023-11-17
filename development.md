@@ -648,6 +648,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] move every src to a related folder
   - [x] refactor regex. Allow regex match in tree
   - [x] FIX: can't jump to file from tree mode
+  - [x] refactor chmod into its own mod
 
 ## TODO
 

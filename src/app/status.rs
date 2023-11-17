@@ -1,5 +1,4 @@
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -19,7 +18,6 @@ use crate::io::Args;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{InternalVariant, Opener};
 use crate::log_line;
-use crate::modes::CliInfo;
 use crate::modes::Compresser;
 use crate::modes::FileKind;
 use crate::modes::Flagged;
@@ -42,6 +40,7 @@ use crate::modes::{
 };
 use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
+use crate::modes::{CliInfo, Permissions};
 use crate::modes::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
 
 /// Holds every mutable parameter of the application itself, except for
@@ -97,9 +96,6 @@ pub struct Status {
 }
 
 impl Status {
-    /// Max valid permission number, ie `0o777`.
-    pub const MAX_PERMISSIONS: u32 = 0o777;
-
     /// Creates a new status for the application.
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
@@ -455,18 +451,6 @@ impl Status {
     pub fn click(&mut self, row: u16, col: u16, current_height: usize) -> Result<()> {
         self.select_pane(col)?;
         self.selected().select_row(row, current_height)
-    }
-
-    /// Set the permissions of the flagged files according to a given permission.
-    /// If the permission are invalid or if the user can't edit them, it may fail.
-    pub fn set_permissions<P>(path: P, permissions: u32) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        Ok(std::fs::set_permissions(
-            path,
-            std::fs::Permissions::from_mode(permissions),
-        )?)
     }
 
     pub fn input_regex(&mut self, char: char) -> Result<()> {
@@ -1046,6 +1030,21 @@ impl Status {
             self.select_tab(0)?;
         }
         Ok(())
+    }
+
+    /// Change permission of the flagged files.
+    /// Once the user has typed an octal permission like 754, it's applied to
+    /// the file.
+    /// Nothing is done if the user typed nothing or an invalid permission like
+    /// 955.
+    pub fn chmod(&mut self) -> Result<()> {
+        if self.selected().input.is_empty() || self.flagged.is_empty() {
+            return Ok(());
+        }
+        let input_permission = &self.selected().input.string();
+        Permissions::set_permissions_of_flagged(input_permission, &mut self.flagged)?;
+        self.selected().refresh_view()?;
+        self.reset_tabs_view()
     }
 }
 

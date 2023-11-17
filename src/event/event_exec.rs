@@ -1251,20 +1251,7 @@ impl LeaveMode {
     /// Nothing is done if the user typed nothing or an invalid permission like
     /// 955.
     pub fn chmod(status: &mut Status) -> Result<()> {
-        if status.selected().input.is_empty() || status.flagged.is_empty() {
-            return Ok(());
-        }
-        let input_permission = &status.selected().input.string();
-        let permissions: u32 = u32::from_str_radix(input_permission, 8).unwrap_or(0_u32);
-        if permissions <= Status::MAX_PERMISSIONS {
-            for path in status.flagged.content.iter() {
-                Status::set_permissions(path, permissions)?
-            }
-            status.flagged.clear();
-            log_line!("Changed permissions to {input_permission}");
-        }
-        status.selected().refresh_view()?;
-        status.reset_tabs_view()
+        status.chmod()
     }
 
     pub fn set_nvim_addr(status: &mut Status) -> Result<()> {
