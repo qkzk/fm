@@ -10,7 +10,7 @@ use crate::common::{clear_tmp_file, init_term, print_on_quit};
 use crate::common::{CONFIG_PATH, OPENER_PATH};
 use crate::config::load_config;
 use crate::edit_mode::Help;
-use crate::interaction::EventDispatcher;
+use crate::event::EventDispatcher;
 use crate::io::set_loggers;
 use crate::io::{load_opener, Opener};
 use crate::io::{Display, EventReader};
