@@ -1,5 +1,4 @@
 use std::borrow::Borrow;
-use std::fmt::Display;
 use std::fs;
 use std::path;
 use std::str::FromStr;
@@ -28,6 +27,7 @@ use crate::modes::DisplayMode;
 use crate::modes::FilterKind;
 use crate::modes::InputCompleted;
 use crate::modes::Mocp;
+use crate::modes::NodeCreation;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
 use crate::modes::ShellCommandParser;
@@ -1123,49 +1123,6 @@ impl EventAction {
     }
 }
 
-enum NodeCreation {
-    Newfile,
-    Newdir,
-}
-
-impl Display for NodeCreation {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::Newfile => write!(f, "file"),
-            Self::Newdir => write!(f, "directory"),
-        }
-    }
-}
-
-impl NodeCreation {
-    fn create(&self, tab: &mut Tab) -> Result<()> {
-        let root_path = match tab.display_mode {
-            DisplayMode::Tree => tab
-                .tree
-                .directory_of_selected()
-                .context("no parent")?
-                .to_owned(),
-            _ => tab.path_content.path.clone(),
-        };
-        log::info!("root_path: {root_path:?}");
-        let path = root_path.join(sanitize_filename::sanitize(tab.input.string()));
-        if path.exists() {
-            log_line!("{self} {path} already exists", path = path.display());
-        } else {
-            match self {
-                Self::Newdir => {
-                    fs::create_dir_all(&path)?;
-                }
-                Self::Newfile => {
-                    fs::File::create(&path)?;
-                }
-            }
-            log_line!("Created new {self}: {path}", path = path.display());
-        }
-        tab.refresh_view()
-    }
-}
-
 /// Methods called when executing something with Enter key.
 pub struct LeaveMode;
 
@@ -1354,7 +1311,8 @@ impl LeaveMode {
     /// Nothing is done if the file already exists.
     /// Filename is sanitized before processing.
     pub fn new_file(tab: &mut Tab) -> Result<()> {
-        NodeCreation::Newfile.create(tab)
+        NodeCreation::Newfile.create(tab)?;
+        tab.refresh_view()
     }
 
     /// Creates a new directory with input string as name.
@@ -1363,7 +1321,8 @@ impl LeaveMode {
     /// ie. the user can create `newdir` or `newdir/newfolder`.
     /// Directory name is sanitized before processing.
     pub fn new_dir(tab: &mut Tab) -> Result<()> {
-        NodeCreation::Newdir.create(tab)
+        NodeCreation::Newdir.create(tab)?;
+        tab.refresh_view()
     }
 
     /// Tries to execute the selected file with an executable which is read
