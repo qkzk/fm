@@ -81,6 +81,7 @@ impl MountHelper for IsoDevice {
             &passwords.sudo()?,
             root_path,
         )?;
+        passwords.reset();
         if !success {
             return Ok(false);
         }
@@ -109,6 +110,7 @@ impl MountHelper for IsoDevice {
                 &passwords.sudo()?,
                 root_path,
             )?;
+            passwords.reset();
             if !success {
                 return Ok(false);
             }

@@ -159,6 +159,7 @@ impl CryptoDevice {
                 &password.cryptsetup()?,
                 root_path,
             )?;
+            password.reset();
             log_info!("stdout: {}\nstderr: {}", stdout, stderr);
             if !success {
                 return Ok(false);
@@ -260,6 +261,7 @@ impl MountHelper for CryptoDevice {
         // sudo
         let (success, _, _) =
             execute_sudo_command_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
+        password.reset();
         if !success {
             return Ok(false);
         }
