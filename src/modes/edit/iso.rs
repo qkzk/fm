@@ -1,9 +1,7 @@
 use anyhow::{anyhow, Result};
 
 use crate::log_info;
-use crate::modes::{
-    execute_sudo_command, execute_sudo_command_with_password, MountHelper, PasswordHolder,
-};
+use crate::modes::{execute_sudo_command, set_sudo_session, MountHelper, PasswordHolder};
 
 /// Used to mount an iso file as a loop device.
 /// Holds info about its source (`path`) and optional mountpoint (`mountpoints`).
@@ -73,15 +71,10 @@ impl MountHelper for IsoDevice {
         self.is_mounted
     }
 
-    fn umount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
-        let root_path = std::path::Path::new("/");
+    fn umount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
         // sudo
-        let (success, _, _) = execute_sudo_command_with_password(
-            &["-S", "ls", "/root"],
-            &passwords.sudo()?,
-            root_path,
-        )?;
-        passwords.reset();
+        let success = set_sudo_session(password)?;
+        password.reset();
         if !success {
             return Ok(false);
         }
@@ -98,19 +91,14 @@ impl MountHelper for IsoDevice {
         Ok(success)
     }
 
-    fn mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
-        let root_path = std::path::Path::new("/");
-        log_info!("iso mount: {username}, {passwords:?}");
+    fn mount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
+        log_info!("iso mount: {username}, {password:?}");
         if self.is_mounted {
             Err(anyhow!("iso device mount: device is already mounted"))
         } else {
             // sudo
-            let (success, _, _) = execute_sudo_command_with_password(
-                &["ls", "/root"],
-                &passwords.sudo()?,
-                root_path,
-            )?;
-            passwords.reset();
+            let success = set_sudo_session(password)?;
+            password.reset();
             if !success {
                 return Ok(false);
             }

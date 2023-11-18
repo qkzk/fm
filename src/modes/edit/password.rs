@@ -198,3 +198,11 @@ pub fn reset_sudo_faillock() -> Result<()> {
         .spawn()?;
     Ok(())
 }
+
+pub fn set_sudo_session(password: &PasswordHolder) -> Result<bool> {
+    let root_path = std::path::Path::new("/");
+    // sudo
+    let (success, _, _) =
+        execute_sudo_command_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
+    Ok(success)
+}

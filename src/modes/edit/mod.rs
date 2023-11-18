@@ -49,7 +49,7 @@ pub use node_creation::NodeCreation;
 pub use nvim::nvim;
 pub use password::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
-    reset_sudo_faillock, PasswordHolder, PasswordKind, PasswordUsage,
+    reset_sudo_faillock, set_sudo_session, PasswordHolder, PasswordKind, PasswordUsage,
 };
 pub use permissions::Permissions;
 pub use regex::regex_matcher;

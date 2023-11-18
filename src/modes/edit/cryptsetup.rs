@@ -5,11 +5,11 @@ use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
 use crate::common::{current_username, is_program_in_path};
 use crate::common::{CRYPTSETUP, LSBLK};
-use crate::modes::MountHelper;
 use crate::modes::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
     reset_sudo_faillock, PasswordHolder, PasswordKind,
 };
+use crate::modes::{set_sudo_session, MountHelper};
 use crate::{impl_selectable_content, log_info};
 
 /// Possible actions on encrypted drives
@@ -148,9 +148,9 @@ impl CryptoDevice {
             Err(anyhow!("luks open mount: device is already mounted"))
         } else {
             // sudo
-            let (success, _, _) =
-                execute_sudo_command_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
+            let success = set_sudo_session(password)?;
             if !success {
+                password.reset();
                 return Ok(false);
             }
             // open
@@ -256,11 +256,9 @@ impl MountHelper for CryptoDevice {
     }
 
     fn umount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool> {
-        let root_path = std::path::Path::new("/");
         self.set_device_name()?;
         // sudo
-        let (success, _, _) =
-            execute_sudo_command_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
+        let success = set_sudo_session(password)?;
         password.reset();
         if !success {
             return Ok(false);
