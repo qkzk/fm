@@ -890,18 +890,31 @@ impl Status {
     pub fn execute_password_command(&mut self) -> Result<()> {
         match self.selected_non_mut().edit_mode {
             EditMode::InputSimple(InputSimple::Password(password_kind, action, dest)) => {
-                let password = self.selected_non_mut().input.string();
-                self.selected().input.reset();
-                match password_kind {
-                    PasswordKind::SUDO => self.password_holder.set_sudo(password),
-                    PasswordKind::CRYPTSETUP => self.password_holder.set_cryptsetup(password),
-                }
-                self.selected().reset_edit_mode();
-                self.dispatch_password(dest, action)?;
+                self._execute_password_command(password_kind, action, dest)?;
             }
-            _ => unreachable!("edit_mode should be a `InputSimple::Password`"),
+            _ => {
+                return Err(anyhow!(
+                    "execute_password_command: edit_mode should be `InputSimple::Password`"
+                ))
+            }
         }
         Ok(())
+    }
+
+    fn _execute_password_command(
+        &mut self,
+        password_kind: PasswordKind,
+        action: Option<BlockDeviceAction>,
+        dest: PasswordUsage,
+    ) -> Result<()> {
+        let password = self.selected_non_mut().input.string();
+        self.selected().input.reset();
+        match password_kind {
+            PasswordKind::SUDO => self.password_holder.set_sudo(password),
+            PasswordKind::CRYPTSETUP => self.password_holder.set_cryptsetup(password),
+        }
+        self.selected().reset_edit_mode();
+        self.dispatch_password(dest, action)
     }
 
     /// Execute a new mark, saving it to a config file for futher use.
