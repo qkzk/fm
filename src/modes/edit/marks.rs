@@ -3,12 +3,11 @@ use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
-use log::info;
 
 use crate::common::read_lines;
 use crate::common::MARKS_FILEPATH;
-use crate::impl_selectable_content;
 use crate::log_line;
+use crate::{impl_selectable_content, log_info};
 
 /// Holds the marks created by the user.
 /// It's an ordered map between any char (except :) and a PathBuf.
@@ -63,7 +62,7 @@ impl Marks {
             used_chars,
         };
         if must_save {
-            info!("Wrong marks found, will save it again");
+            log_info!("Wrong marks found, will save it again");
             let _ = marks.save_marks();
         }
         marks

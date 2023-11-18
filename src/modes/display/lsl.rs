@@ -3,15 +3,14 @@ use std::iter::Enumerate;
 use std::path;
 
 use anyhow::{Context, Result};
-use log::info;
 
 use crate::common::{filename_from_path, path_to_string};
-use crate::impl_selectable_content;
 use crate::io::git;
 use crate::modes::FilterKind;
 use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{is_not_hidden, FileInfo, FileKind};
+use crate::{impl_selectable_content, log_info};
 
 /// Holds the information about file in the current directory.
 /// We know about the current path, the files themselves, the selected index,
@@ -322,7 +321,7 @@ pub fn files_collection(
                 .collect(),
         ),
         Err(error) => {
-            info!("Couldn't read path {path} - {error}", path = path.display(),);
+            log_info!("Couldn't read path {path} - {error}", path = path.display(),);
             None
         }
     }

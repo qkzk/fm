@@ -1,5 +1,7 @@
 use anyhow::{anyhow, Result};
 
+use crate::log_info;
+use crate::log_line;
 use crate::modes::MountHelper;
 use crate::modes::PasswordHolder;
 use crate::{
@@ -89,7 +91,7 @@ impl Removable {
         let path = format!("/run/user/{uid}/gvfs/mtp:host={device_name}");
         let pb_path = std::path::Path::new(&path);
         let is_mounted = pb_path.exists() && !is_dir_empty(pb_path)?;
-        log::info!("gio {device_name} - is_mounted {is_mounted}");
+        log_info!("gio {device_name} - is_mounted {is_mounted}");
         Ok(Self {
             device_name,
             path,
@@ -148,10 +150,10 @@ impl MountHelper for Removable {
             .spawn()?
             .wait()?
             .success();
-        log::info!(
-            target: "special",
+        log_line!(
             "Mounted {device}. Success ? {success}",
-            device=self.device_name, success=self.is_mounted
+            device = self.device_name,
+            success = self.is_mounted
         );
         Ok(self.is_mounted)
     }
@@ -172,11 +174,10 @@ impl MountHelper for Removable {
             .spawn()?
             .wait()?
             .success();
-        log::info!(
-            target: "special",
+        log_line!(
             "Unmounted {device}. Success ? {success}",
-            device=self.device_name,
-            success=!self.is_mounted
+            device = self.device_name,
+            success = !self.is_mounted
         );
         Ok(!self.is_mounted)
     }

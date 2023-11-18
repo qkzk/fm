@@ -4,14 +4,11 @@ use std::path;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
-use log::info;
 
 use crate::app::Status;
 use crate::app::Tab;
 use crate::common::path_to_string;
-use crate::common::{
-    args_is_empty, is_program_in_path, is_sudo_command, open_in_current_neovim, string_to_path,
-};
+use crate::common::{is_program_in_path, open_in_current_neovim, string_to_path};
 use crate::common::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
 };
@@ -22,7 +19,9 @@ use crate::io::{
     execute_and_capture_output_without_check, execute_in_child,
     execute_in_child_without_output_with_path,
 };
+use crate::log_info;
 use crate::log_line;
+use crate::modes::lsblk_and_cryptsetup_installed;
 use crate::modes::DisplayMode;
 use crate::modes::FilterKind;
 use crate::modes::InputCompleted;
@@ -32,10 +31,8 @@ use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
 use crate::modes::ShellCommandParser;
 use crate::modes::MOCP;
-use crate::modes::{lsblk_and_cryptsetup_installed, BlockDeviceAction};
 use crate::modes::{EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
 use crate::modes::{ExtensionKind, Preview};
-use crate::modes::{PasswordKind, PasswordUsage};
 
 /// Links events from tuikit to custom actions.
 /// It mutates `Status` or its children `Tab`.
@@ -702,10 +699,10 @@ impl EventAction {
                 must_refresh = false;
                 LeaveMode::filter(status.selected())?
             }
-            EditMode::InputSimple(InputSimple::Password(kind, action, dest)) => {
+            EditMode::InputSimple(InputSimple::Password(_, _, _)) => {
                 must_refresh = false;
                 must_reset_mode = false;
-                LeaveMode::password(status, kind, dest, action)?
+                LeaveMode::password(status)?
             }
             EditMode::InputSimple(InputSimple::Remote) => LeaveMode::remote(status.selected())?,
             EditMode::Navigate(Navigate::Jump) => {
@@ -839,7 +836,7 @@ impl EventAction {
             let Ok(file_info) = tab.selected() else {
                 return Ok(());
             };
-            info!("selected {:?}", file_info);
+            log_info!("selected {:?}", file_info);
             tab.preview = Preview::mediainfo(&file_info.path)?;
             tab.window.reset(tab.preview.len());
             tab.set_display_mode(DisplayMode::Preview);
@@ -990,7 +987,7 @@ impl EventAction {
             shellexpand::tilde(CONFIG_PATH).to_string(),
         )) {
             Ok(_) => (),
-            Err(e) => info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
+            Err(e) => log_info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
         }
         Ok(())
     }
@@ -1107,13 +1104,13 @@ impl EventAction {
 
     /// Execute a custom event on the selected file
     pub fn custom(status: &mut Status, string: &String) -> Result<()> {
-        info!("custom {string}");
+        log_info!("custom {string}");
         let parser = ShellCommandParser::new(string);
         let mut args = parser.compute(status)?;
         let command = args.remove(0);
         let args: Vec<&str> = args.iter().map(|s| &**s).collect();
         let output = execute_and_capture_output_without_check(command, &args)?;
-        info!("output {output}");
+        log_info!("output {output}");
         Ok(())
     }
 
@@ -1194,7 +1191,7 @@ impl LeaveMode {
 
     pub fn cli_info(status: &mut Status) -> Result<()> {
         let output = status.cli_info.execute()?;
-        info!("output\n{output}");
+        log_info!("output\n{output}");
         status.selected().set_display_mode(DisplayMode::Preview);
         let preview = Preview::cli_info(&output);
         status.selected().window.reset(preview.len());
@@ -1243,35 +1240,7 @@ impl LeaveMode {
     /// `Ok(false)` if we should stay in the current mode (aka, a password is required)
     /// It won't return an `Err` if the command fail.
     pub fn shell(status: &mut Status) -> Result<bool> {
-        let shell_command = status.selected_non_mut().input.string();
-        let mut args = ShellCommandParser::new(&shell_command).compute(status)?;
-        info!("command {shell_command} args: {args:?}");
-        if args_is_empty(&args) {
-            status.selected().set_edit_mode(EditMode::Nothing);
-            return Ok(true);
-        }
-        let executable = args.remove(0);
-        if is_sudo_command(&executable) {
-            status.sudo_command = Some(shell_command);
-            status.ask_password(PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
-            Ok(false)
-        } else {
-            if !is_program_in_path(&executable) {
-                return Ok(true);
-            }
-            let current_directory = status
-                .selected_non_mut()
-                .directory_of_selected()?
-                .to_owned();
-            let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-            execute_in_child_without_output_with_path(
-                executable,
-                current_directory,
-                Some(&params),
-            )?;
-            status.selected().set_edit_mode(EditMode::Nothing);
-            Ok(true)
-        }
+        status.parse_shell_command()
     }
 
     /// Execute a rename of the selected file.
@@ -1290,7 +1259,7 @@ impl LeaveMode {
         };
         if let Some(parent) = original_path.parent() {
             let new_path = parent.join(sanitize_filename::sanitize(tab.input.string()));
-            info!(
+            log_info!(
                 "renaming: original: {} - new: {}",
                 original_path.display(),
                 new_path.display()
@@ -1359,7 +1328,7 @@ impl LeaveMode {
         tab.searched = Some(searched.clone());
         match tab.display_mode {
             DisplayMode::Tree => {
-                log::info!("searching in tree");
+                log_info!("searching in tree");
                 tab.tree.search_first_match(searched);
             }
             _ => {
@@ -1415,7 +1384,7 @@ impl LeaveMode {
         tab.history.drop_queue();
         let index = tab.path_content.select_file(&file);
         tab.scroll_to(index);
-        log::info!("leave history {path:?} {file:?} {index}");
+        log_info!("leave history {path:?} {file:?} {index}");
         status.update_second_pane_for_preview()
     }
 
@@ -1433,20 +1402,9 @@ impl LeaveMode {
         }
     }
 
-    /// Store a password of some kind (sudo or device passphrase).
-    fn password(
-        status: &mut Status,
-        password_kind: PasswordKind,
-        dest: PasswordUsage,
-        action: Option<BlockDeviceAction>,
-    ) -> Result<()> {
-        let password = status.selected_non_mut().input.string();
-        match password_kind {
-            PasswordKind::SUDO => status.password_holder.set_sudo(password),
-            PasswordKind::CRYPTSETUP => status.password_holder.set_cryptsetup(password),
-        }
-        status.selected().reset_edit_mode();
-        status.dispatch_password(dest, action)
+    /// Execute a password command (sudo or device passphrase).
+    fn password(status: &mut Status) -> Result<()> {
+        status.execute_password_command()
     }
 
     /// Compress the flagged files into an archive.
@@ -1515,12 +1473,12 @@ impl LeaveMode {
         tab.input.reset();
 
         if !is_program_in_path(SSHFS_EXECUTABLE) {
-            info!("{SSHFS_EXECUTABLE} isn't in path");
+            log_info!("{SSHFS_EXECUTABLE} isn't in path");
             return Ok(());
         }
 
         if strings.len() != 3 {
-            info!(
+            log_info!(
                 "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3, got {nb}",
                 nb = strings.len()
             );
@@ -1535,7 +1493,7 @@ impl LeaveMode {
             current_path,
             &[first_arg, current_path],
         );
-        info!("{SSHFS_EXECUTABLE} {strings:?} output {command_output:?}");
+        log_info!("{SSHFS_EXECUTABLE} {strings:?} output {command_output:?}");
         log_line!("{SSHFS_EXECUTABLE} {strings:?} output {command_output:?}");
         Ok(())
     }

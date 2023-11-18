@@ -6,6 +6,7 @@ use std::time::Duration;
 use anyhow::Result;
 
 use crate::config::REFRESH_EVENT;
+use crate::log_info;
 
 /// Allows refresh if the current path has been modified externally.
 pub struct Refresher {
@@ -38,7 +39,7 @@ impl Refresher {
         let handle = thread::spawn(move || loop {
             match rx.try_recv() {
                 Ok(_) | Err(TryRecvError::Disconnected) => {
-                    log::info!("terminating refresher");
+                    log_info!("terminating refresher");
                     let _ = term.show_cursor(true);
                     return;
                 }

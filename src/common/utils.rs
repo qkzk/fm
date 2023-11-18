@@ -11,6 +11,7 @@ use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 
 use crate::common::{CALC_PDF_PATH, THUMBNAIL_PATH};
+use crate::log_info;
 use crate::log_line;
 use crate::modes::human_size;
 use crate::modes::nvim;
@@ -118,7 +119,7 @@ pub fn extract_lines(content: String) -> Vec<String> {
 }
 
 pub fn set_clipboard(content: String) -> Result<()> {
-    log::info!("copied to clipboard: {}", content);
+    log_info!("copied to clipboard: {}", content);
     let Ok(mut ctx) = ClipboardContext::new() else {
         return Ok(());
     };
@@ -203,4 +204,26 @@ where
     P: AsRef<std::path::Path>,
 {
     path.as_ref().to_string_lossy().into_owned()
+}
+
+/// True iff the last modification of given path happened less than `seconds` ago.
+/// If the path has a modified time in future (ie. poorly configured iso file) it
+/// will log an error and returns false.
+pub fn has_last_modification_happened_less_than<P>(path: P, seconds: u64) -> Result<bool>
+where
+    P: AsRef<std::path::Path>,
+{
+    let modified = path.as_ref().metadata()?.modified()?;
+    if let Ok(elapsed) = modified.elapsed() {
+        let need_refresh = elapsed < std::time::Duration::new(seconds, 0);
+        Ok(need_refresh)
+    } else {
+        let dt: chrono::DateTime<chrono::offset::Utc> = modified.into();
+        let fmt = dt.format("%Y/%m/%d %T");
+        log_info!(
+            "Error for {path} modified datetime {fmt} is in future",
+            path = path.as_ref().display(),
+        );
+        Ok(false)
+    }
 }

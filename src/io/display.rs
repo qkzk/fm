@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use log::info;
 use tuikit::attr::*;
 use tuikit::prelude::*;
 use tuikit::term::Term;
@@ -16,6 +15,7 @@ use crate::common::{
     LOG_SECOND_SENTENCE, TRASH_CONFIRM_LINE,
 };
 use crate::io::read_last_log_line;
+use crate::log_info;
 use crate::modes::calculate_top_bottom;
 use crate::modes::shorten_path;
 use crate::modes::ContentWindow;
@@ -897,7 +897,7 @@ impl<'a> WinSecondary<'a> {
         confirmed_mode: NeedConfirmation,
         canvas: &mut dyn Canvas,
     ) -> Result<()> {
-        info!("confirmed action: {:?}", confirmed_mode);
+        log_info!("confirmed action: {:?}", confirmed_mode);
         let dest = path_to_string(&self.tab.directory_of_selected()?);
 
         Self::draw_content_line(
@@ -927,7 +927,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_confirm_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        log::info!("draw_confirm_empty_trash");
+        log_info!("draw_confirm_empty_trash");
         if self.status.trash.is_empty() {
             self.draw_trash_is_empty(canvas)
         } else {
@@ -986,7 +986,7 @@ impl WinSecondaryFirstLine {
                 vec!["Save mark...".to_owned()]
             }
             EditMode::InputSimple(InputSimple::Password(password_kind, _encrypted_action, _)) => {
-                info!("term: password");
+                log_info!("term: password");
                 vec![format!("{password_kind}"), tab.input.password()]
             }
             EditMode::InputCompleted(mode) => {

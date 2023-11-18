@@ -2,7 +2,7 @@ use anyhow::Result;
 use tuikit::prelude::{Event, Key, MouseButton};
 
 use crate::app::Status;
-use crate::config::Bindings;
+use crate::config::{Bindings, REFRESH_EVENT};
 use crate::event::event_exec::{EventAction, LeaveMode};
 use crate::modes::{DisplayMode, EditMode, InputSimple, MarkAction, Navigate};
 
@@ -48,7 +48,7 @@ impl EventDispatcher {
             // reserved keybind which can't be bound to anything.
             // using `Key::User(())` conflicts with skim internal which
             // interpret this event as a signal(1)
-            Event::Key(Key::AltPageUp) => status.selected().refresh_if_needed()?,
+            REFRESH_EVENT => status.selected().refresh_if_needed()?,
 
             Event::Resize { width, height } => status.resize(width, height)?,
             Event::Key(Key::Char(c)) => self.char(status, c)?,

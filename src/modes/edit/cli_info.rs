@@ -1,11 +1,11 @@
 use std::process::{Command, Stdio};
 
 use anyhow::Result;
-use log::info;
 
 use crate::common::is_program_in_path;
 use crate::common::CLI_INFO_COMMANDS;
 use crate::impl_selectable_content;
+use crate::log_info;
 use crate::log_line;
 
 /// Holds the command line commands we can run and display
@@ -44,7 +44,7 @@ impl CliInfo {
     /// Long running commands may freeze the display.
     pub fn execute(&self) -> Result<String> {
         let args = self.commands[self.index].clone();
-        info!("execute. {args:?}");
+        log_info!("execute. {args:?}");
         log_line!("Executed {args:?}");
         let child = Command::new(args[0])
             .args(&args[1..])

@@ -2,9 +2,9 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use anyhow::{Context, Result};
-use log::info;
 
 use crate::common::current_username;
+use crate::log_info;
 use crate::log_line;
 
 /// Different kind of password
@@ -131,7 +131,7 @@ where
     S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
     P: AsRef<std::path::Path> + std::fmt::Debug,
 {
-    info!("sudo_with_password {args:?} CWD {path:?}");
+    log_info!("sudo_with_password {args:?} CWD {path:?}");
     log_line!("running sudo command with password. args: {args:?}, CWD: {path:?}");
     let mut child = new_sudo_command_awaiting_password(args, path)?;
     inject_password(password, &mut child)?;
@@ -163,7 +163,7 @@ pub fn execute_sudo_command<S>(args: &[S]) -> Result<(bool, String, String)>
 where
     S: AsRef<std::ffi::OsStr> + std::fmt::Debug,
 {
-    info!("running sudo {:?}", args);
+    log_info!("running sudo {:?}", args);
     log_line!("running sudo command. {args:?}");
     let child = new_sudo_command_passwordless(args)?;
     let output = child.wait_with_output()?;

@@ -1,17 +1,16 @@
 use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
-use log::info;
 use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
 use crate::common::{current_username, is_program_in_path};
 use crate::common::{CRYPTSETUP, LSBLK};
-use crate::impl_selectable_content;
 use crate::modes::MountHelper;
 use crate::modes::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
     reset_sudo_faillock, PasswordHolder, PasswordKind,
 };
+use crate::{impl_selectable_content, log_info};
 
 /// Possible actions on encrypted drives
 #[derive(Debug, Clone, Copy)]
@@ -123,7 +122,7 @@ impl CryptoDevice {
             .stderr(Stdio::piped())
             .spawn()?;
         let output = child.wait_with_output()?;
-        info!(
+        log_info!(
             "is opened ? output of lsblk\nstdout: {}\nstderr{}",
             String::from_utf8(output.stdout.clone())?,
             String::from_utf8(output.stderr)?
@@ -160,7 +159,7 @@ impl CryptoDevice {
                 &password.cryptsetup()?,
                 root_path,
             )?;
-            info!("stdout: {}\nstderr: {}", stdout, stderr);
+            log_info!("stdout: {}\nstderr: {}", stdout, stderr);
             if !success {
                 return Ok(false);
             }
@@ -174,13 +173,13 @@ impl CryptoDevice {
         }
         // close
         let (success, stdout, stderr) = execute_sudo_command(&self.format_luksclose_parameters())?;
-        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         if !success {
             return Ok(false);
         }
         // sudo -k
         let (success, stdout, stderr) = execute_sudo_command(&["-k".to_owned()])?;
-        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         Ok(success)
     }
 }
@@ -239,14 +238,14 @@ impl MountHelper for CryptoDevice {
         // mkdir
         let (success, stdout, stderr) =
             execute_sudo_command(&self.format_mkdir_parameters(username))?;
-        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         if !success {
             return Ok(false);
         }
         // mount
         let (success, stdout, stderr) =
             execute_sudo_command(&self.format_mount_parameters(username))?;
-        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         if !success {
             return Ok(false);
         }
@@ -266,7 +265,7 @@ impl MountHelper for CryptoDevice {
         }
         // unmount
         let (_, stdout, stderr) = execute_sudo_command(&self.format_umount_parameters(username))?;
-        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
 
         Ok(true)
     }

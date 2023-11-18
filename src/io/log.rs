@@ -102,3 +102,55 @@ macro_rules! log_line {
     )
   );
 }
+
+lazy_static! {
+    static ref LAST_LOG_INFO: RwLock<String> = RwLock::new("".to_owned());
+}
+
+/// Read the last value of the "log info".
+/// It's a global string created with `lazy_static!(...)`
+/// Fail silently if the global variable can't be read and returns an empty string.
+fn read_last_log_info() -> String {
+    let Ok(last_log_line) = LAST_LOG_INFO.read() else {
+        return "".to_owned();
+    };
+    last_log_line.to_owned()
+}
+
+/// Write a new log info to the global variable `LAST_LOG_INFO`.
+/// It uses `lazy_static` to manipulate the global variable.
+/// Fail silently if the global variable can't be written.
+fn write_last_log_info<S>(log: &S)
+where
+    S: Into<String> + std::fmt::Display,
+{
+    let Ok(mut new_log_info) = LAST_LOG_INFO.write() else {
+        return;
+    };
+    *new_log_info = log.to_string();
+}
+
+/// Write a line to both the global variable `LAST_LOG_INFO` and the info log
+/// Won't write the same line multiple times during the same execution.
+pub fn write_log_info_once<S>(log_line: S)
+where
+    S: Into<String> + std::fmt::Display,
+{
+    if read_last_log_info() != log_line.to_string() {
+        write_last_log_info(&log_line);
+        log::info!("{log_line}");
+    }
+}
+
+/// Log a formated message to the default log.
+/// Won't write anything if the same message is sent multiple times.
+/// It uses `log::info!` internally.
+/// It accepts the same formatted messages as `format`.
+#[macro_export]
+macro_rules! log_info {
+    ($($arg:tt)+) => (
+    $crate::io::write_log_info_once(
+      format!($($arg)+)
+    )
+  );
+}

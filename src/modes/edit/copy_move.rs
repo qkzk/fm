@@ -6,15 +6,14 @@ use std::thread;
 use anyhow::{Context, Result};
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
-use log::info;
 use tuikit::prelude::{Attr, Color, Effect, Term};
 
 use crate::common::NOTIFY_EXECUTABLE;
 use crate::common::{is_program_in_path, random_name};
 use crate::config::REFRESH_EVENT;
 use crate::io::execute_in_child;
-use crate::log_line;
 use crate::modes::human_size;
+use crate::{log_info, log_line};
 
 /// Display the updated progress bar on the terminal.
 fn handle_progress_display(
@@ -90,7 +89,7 @@ impl CopyMove {
     fn log_and_notify(&self, hs_bytes: String) {
         let message = format!("{preterit} {hs_bytes} bytes", preterit = self.preterit());
         let _ = notify(&message);
-        info!("{message}");
+        log_info!("{message}");
         log_line!("{message}");
     }
 
@@ -163,7 +162,7 @@ where
         ) {
             Ok(transfered_bytes) => transfered_bytes,
             Err(e) => {
-                info!("copy move couldn't copy: {e:?}");
+                log_info!("copy move couldn't copy: {e:?}");
                 0
             }
         };
@@ -171,7 +170,7 @@ where
         let _ = c_term.send_event(REFRESH_EVENT);
 
         if let Err(e) = conflict_handler.solve_conflicts() {
-            info!("Conflict Handler error: {e}");
+            log_info!("Conflict Handler error: {e}");
         }
 
         copy_or_move.log_and_notify(human_size(transfered_bytes));

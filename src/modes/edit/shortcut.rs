@@ -6,6 +6,7 @@ use crate::common::current_uid;
 use crate::common::{CONFIG_FOLDER, HARDCODED_SHORTCUTS};
 use crate::impl_selectable_content;
 use crate::io::git_root;
+use crate::log_info;
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.
 /// Also know which shortcut is currently selected by the user.
@@ -111,7 +112,7 @@ impl Shortcut {
                 .map(|direntry| direntry.path())
                 .collect(),
             Err(error) => {
-                log::info!(
+                log_info!(
                     "unreadable gvfs {mtp_mount_point}: {error:?} ",
                     mtp_mount_point = mtp_mount_point.display(),
                 );

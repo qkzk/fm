@@ -3,10 +3,11 @@ use std::path;
 
 use anyhow::{Context, Result};
 
-use crate::common::{row_to_window_index, set_clipboard};
+use crate::common::{has_last_modification_happened_less_than, row_to_window_index, set_clipboard};
 use crate::config::Settings;
 use crate::io::execute_in_child;
 use crate::io::Args;
+use crate::log_info;
 use crate::modes::ContentWindow;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
@@ -185,17 +186,11 @@ impl Tab {
     /// Does nothing outside of normal mode.
     pub fn refresh_if_needed(&mut self) -> Result<()> {
         if !matches!(self.display_mode, DisplayMode::Preview)
-            && self.is_last_modification_happend_less_than(10)?
+            && has_last_modification_happened_less_than(&self.path_content.path, 10)?
         {
             self.refresh_and_reselect_file()?
         }
         Ok(())
-    }
-
-    /// True iff the last modification of current folder happened less than `seconds` ago.
-    fn is_last_modification_happend_less_than(&self, seconds: u64) -> Result<bool> {
-        Ok(self.path_content.path.metadata()?.modified()?.elapsed()?
-            < std::time::Duration::new(seconds, 0))
     }
 
     /// Refresh the folder, reselect the last selected file, move the window to it.
@@ -211,14 +206,14 @@ impl Tab {
     /// Fail silently if the current directory is empty or if the selected
     /// file isn't a directory.
     pub fn go_to_selected_dir(&mut self) -> Result<()> {
-        log::info!("go to selected");
+        log_info!("go to selected");
         let childpath = &self
             .path_content
             .selected()
             .context("Empty directory")?
             .path
             .clone();
-        log::info!("selected : {childpath:?}");
+        log_info!("selected : {childpath:?}");
         self.set_pathcontent(childpath)?;
         self.window.reset(self.path_content.content.len());
         self.input.cursor_start();

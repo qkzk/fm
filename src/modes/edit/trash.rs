@@ -4,13 +4,13 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use chrono::{Local, NaiveDateTime};
-use log::info;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 
 use crate::common::read_lines;
 use crate::common::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO, TRASH_INFO_EXTENSION};
 use crate::impl_selectable_content;
+use crate::log_info;
 use crate::log_line;
 
 const TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
@@ -61,11 +61,11 @@ DeletionDate={date}
     /// Path=/home/quentin/Documents
     /// DeletionDate=2022-12-31T22:45:55
     pub fn write_trash_info(&self, dest: &Path) -> Result<()> {
-        info!("writing trash_info {} for {:?}", self, dest);
+        log_info!("writing trash_info {} for {:?}", self, dest);
 
         let mut file = std::fs::File::create(dest)?;
         if let Err(e) = write!(file, "{}", self.to_string()?) {
-            info!("Couldn't write to trash file: {}", e)
+            log_info!("Couldn't write to trash file: {}", e)
         }
         Ok(())
     }
@@ -245,7 +245,7 @@ impl Trash {
                 Ok(content)
             }
             Err(error) => {
-                info!("Couldn't read path {:?} - {}", trash_folder_info, error);
+                log_info!("Couldn't read path {:?} - {}", trash_folder_info, error);
                 Err(anyhow!(error))
             }
         }
@@ -291,7 +291,7 @@ impl Trash {
         let trashfile_filename = &self.trashfile_path(dest_file_name);
         match std::fs::rename(&trash_info.origin, trashfile_filename) {
             Err(error) => {
-                log::info!("Couldn't trash {trash_info}. Error: {error:?}");
+                log_info!("Couldn't trash {trash_info}. Error: {error:?}");
                 Ok(())
             }
             Ok(()) => {
@@ -304,7 +304,7 @@ impl Trash {
     }
 
     fn log_trash_add(origin: &Path, dest_file_name: &str) {
-        info!("moved to trash {:?} -> {:?}", origin, dest_file_name);
+        log_info!("moved to trash {:?} -> {:?}", origin, dest_file_name);
         log_line!("moved to trash {:?} -> {:?}", origin, dest_file_name);
     }
 
@@ -331,7 +331,7 @@ impl Trash {
 
     fn log_trash_empty(number_of_elements: usize) {
         log_line!("Emptied the trash: {number_of_elements} files permanently deleted");
-        info!("Emptied the trash: {number_of_elements} files permanently deleted");
+        log_info!("Emptied the trash: {number_of_elements} files permanently deleted");
     }
 
     fn remove_selected_file(&mut self) -> Result<(PathBuf, PathBuf, PathBuf)> {

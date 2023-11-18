@@ -650,6 +650,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: can't jump to file from tree mode
   - [x] refactor chmod into its own mod
   - [x] refactor node creation (file or directory) in its own mod
+  - [ ] refactor password.
+    - use only one enum and hold passwords somewhere else
+  - [x] FIX: browsing a file where "modified" time is in future crashes the application.
+        The error comes from refresher.rs and happens with poorly configured iso files.
+    - [x] Fix the error itself,
+    - [x] log a message when we encounter such a file, since there's not much we can do
+    - [x] prevent logging the same file multiple times. Massive change which requires a new lazystatic element
 
 ## TODO
 

@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
-use log::info;
 
+use crate::log_info;
 use crate::modes::{
     execute_sudo_command, execute_sudo_command_with_password, MountHelper, PasswordHolder,
 };
@@ -22,7 +22,7 @@ impl IsoDevice {
 
     /// Creates a new instance from an iso file path.
     pub fn from_path(path: String) -> Self {
-        log::info!("IsoDevice from_path: {path}");
+        log_info!("IsoDevice from_path: {path}");
         Self {
             path,
             ..Default::default()
@@ -87,19 +87,19 @@ impl MountHelper for IsoDevice {
         // unmount
         let (success, stdout, stderr) =
             execute_sudo_command(&self.format_umount_parameters(username))?;
-        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         if success {
             self.is_mounted = false;
         }
         // sudo -k
         let (success, stdout, stderr) = execute_sudo_command(&["-k"])?;
-        info!("stdout: {}\nstderr: {}", stdout, stderr);
+        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         Ok(success)
     }
 
     fn mount(&mut self, username: &str, passwords: &mut PasswordHolder) -> Result<bool> {
         let root_path = std::path::Path::new("/");
-        info!("iso mount: {username}, {passwords:?}");
+        log_info!("iso mount: {username}, {passwords:?}");
         if self.is_mounted {
             Err(anyhow!("iso device mount: device is already mounted"))
         } else {
@@ -115,14 +115,14 @@ impl MountHelper for IsoDevice {
             // mkdir
             let (success, stdout, stderr) =
                 execute_sudo_command(&self.format_mkdir_parameters(username))?;
-            info!("stdout: {}\nstderr: {}", stdout, stderr);
+            log_info!("stdout: {}\nstderr: {}", stdout, stderr);
             let mut last_success = false;
             if success {
                 // mount
                 let (success, stdout, stderr) =
                     execute_sudo_command(&self.format_mount_parameters(username))?;
                 last_success = success;
-                info!("stdout: {}\nstderr: {}", stdout, stderr);
+                log_info!("stdout: {}\nstderr: {}", stdout, stderr);
                 // sudo -k
                 self.is_mounted = success;
             } else {

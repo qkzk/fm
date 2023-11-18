@@ -4,20 +4,20 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use log::info;
 use skim::SkimItem;
 use sysinfo::{Disk, DiskExt, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
 use crate::app::Tab;
+use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
 use crate::common::{NVIM, SS, TUIS_PATH};
 use crate::config::Settings;
+use crate::io::execute_in_child_without_output_with_path;
 use crate::io::Args;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{InternalVariant, Opener};
-use crate::log_line;
 use crate::modes::Compresser;
 use crate::modes::FileKind;
 use crate::modes::Flagged;
@@ -42,6 +42,7 @@ use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::modes::{CliInfo, Permissions};
 use crate::modes::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
+use crate::{log_info, log_line};
 
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.
@@ -206,7 +207,7 @@ impl Status {
 
     fn quit() -> ! {
         eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example");
-        info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");
+        log_info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");
         std::process::exit(1);
     }
 
@@ -665,7 +666,7 @@ impl Status {
         } else {
             match self.opener.open(&filepath) {
                 Ok(_) => (),
-                Err(e) => info!(
+                Err(e) => log_info!(
                     "Error opening {:?}: {:?}",
                     self.selected_non_mut().path_content.selected(),
                     e
@@ -684,11 +685,7 @@ impl Status {
     /// `/run/media/$CURRENT_USER/fm_iso`
     /// Ask a sudo password first if needed. It should always be the case.
     pub fn mount_iso_drive(&mut self) -> Result<()> {
-        let path = self
-            .selected_non_mut()
-            .path_content
-            .selected_path_string()
-            .context("Couldn't parse the path")?;
+        let path = path_to_string(&self.selected_non_mut().selected()?.path);
         if self.iso_device.is_none() {
             self.iso_device = Some(IsoDevice::from_path(path));
         }
@@ -702,7 +699,7 @@ impl Status {
                 )?;
             } else {
                 if iso_device.mount(&current_username()?, &mut self.password_holder)? {
-                    info!("iso mounter mounted {iso_device:?}");
+                    log_info!("iso mounter mounted {iso_device:?}");
 
                     log_line!("iso : {}", iso_device.as_string()?);
                     let path = iso_device.mountpoints.clone().context("no mount point")?;
@@ -844,20 +841,66 @@ impl Status {
         self.selected().refresh_view()
     }
 
+    pub fn parse_shell_command(&mut self) -> Result<bool> {
+        let shell_command = self.selected_non_mut().input.string();
+        let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
+        log_info!("command {shell_command} args: {args:?}");
+        if args_is_empty(&args) {
+            self.selected().set_edit_mode(EditMode::Nothing);
+            return Ok(true);
+        }
+        let executable = args.remove(0);
+        if is_sudo_command(&executable) {
+            self.sudo_command = Some(shell_command);
+            self.ask_password(PasswordKind::SUDO, None, PasswordUsage::SUDOCOMMAND)?;
+            Ok(false)
+        } else {
+            if !is_program_in_path(&executable) {
+                return Ok(true);
+            }
+            let current_directory = self.selected_non_mut().directory_of_selected()?.to_owned();
+            let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+            execute_in_child_without_output_with_path(
+                executable,
+                current_directory,
+                Some(&params),
+            )?;
+            self.selected().set_edit_mode(EditMode::Nothing);
+            Ok(true)
+        }
+    }
+
     /// Ask for a password of some kind (sudo or device passphrase).
-    pub fn ask_password(
+    fn ask_password(
         &mut self,
         password_kind: PasswordKind,
         encrypted_action: Option<BlockDeviceAction>,
         password_dest: PasswordUsage,
     ) -> Result<()> {
-        info!("event ask password");
+        log_info!("event ask password");
         self.selected()
             .set_edit_mode(EditMode::InputSimple(InputSimple::Password(
                 password_kind,
                 encrypted_action,
                 password_dest,
             )));
+        Ok(())
+    }
+
+    pub fn execute_password_command(&mut self) -> Result<()> {
+        match self.selected_non_mut().edit_mode {
+            EditMode::InputSimple(InputSimple::Password(password_kind, action, dest)) => {
+                let password = self.selected_non_mut().input.string();
+                self.selected().input.reset();
+                match password_kind {
+                    PasswordKind::SUDO => self.password_holder.set_sudo(password),
+                    PasswordKind::CRYPTSETUP => self.password_holder.set_cryptsetup(password),
+                }
+                self.selected().reset_edit_mode();
+                self.dispatch_password(dest, action)?;
+            }
+            _ => unreachable!("edit_mode should be a `InputSimple::Password`"),
+        }
         Ok(())
     }
 

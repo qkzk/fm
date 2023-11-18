@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use log::info;
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::thread;
@@ -8,9 +7,9 @@ use std::time::{Duration, SystemTime};
 use crate::app::Status;
 use crate::common::random_name;
 use crate::common::TMP_FOLDER_PATH;
-use crate::impl_selectable_content;
 use crate::io::Opener;
 use crate::log_line;
+use crate::{impl_selectable_content, log_info};
 
 /// Struct holding informations about files about to be renamed.
 /// We only need to know which are the original filenames and which
@@ -35,7 +34,7 @@ impl<'a> Bulkrename<'a> {
 
     pub fn creator(path_str: &'a str) -> Result<Self> {
         let temp_file = Self::generate_random_filepath()?;
-        info!("created {temp_file:?}");
+        log_info!("created {temp_file:?}");
         Ok(Self {
             original_filepath: None,
             parent_dir: Some(path_str),
@@ -119,7 +118,7 @@ impl<'a> Bulkrename<'a> {
     }
 
     fn open_temp_file_with_editor(&self, opener: &Opener) -> Result<()> {
-        info!("opening tempory file {:?}", self.temp_file);
+        log_info!("opening tempory file {:?}", self.temp_file);
         opener.open(&self.temp_file)
     }
 
@@ -178,17 +177,17 @@ impl<'a> Bulkrename<'a> {
                 let Some(parent) = new_path.parent() else {
                     return Ok(());
                 };
-                info!("Bulk new files. Creating parent: {}", parent.display());
+                log_info!("Bulk new files. Creating parent: {}", parent.display());
                 if std::fs::create_dir_all(parent).is_err() {
                     continue;
                 };
-                info!("creating: {new_path:?}");
+                log_info!("creating: {new_path:?}");
                 std::fs::File::create(&new_path)?;
                 log_line!("Bulk created {new_path}", new_path = new_path.display());
                 counter += 1;
             } else {
                 new_path.push(filename);
-                info!("Bulk creating dir: {}", new_path.display());
+                log_info!("Bulk creating dir: {}", new_path.display());
                 std::fs::create_dir_all(&new_path)?;
                 log_line!("Bulk created {new_path}", new_path = new_path.display());
                 counter += 1;

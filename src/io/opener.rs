@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
-use log::info;
 use serde_yaml;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
@@ -14,9 +13,9 @@ use crate::common::{
     DEFAULT_AUDIO_OPENER, DEFAULT_IMAGE_OPENER, DEFAULT_OFFICE_OPENER, DEFAULT_OPENER,
     DEFAULT_READABLE_OPENER, DEFAULT_TEXT_OPENER, DEFAULT_VECTORIAL_OPENER, DEFAULT_VIDEO_OPENER,
 };
-use crate::log_line;
 use crate::modes::extract_extension;
 use crate::modes::{decompress_gz, decompress_xz, decompress_zip};
+use crate::{log_info, log_line};
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
@@ -71,7 +70,7 @@ impl ExtensionKind {
             // we can't use the "basic" opener to mount them.
             // ATM this is the only extension we can't open, it may change in the future.
             "iso" => {
-                info!("extension kind iso");
+                log_info!("extension kind iso");
                 Self::Internal(InternalVariant::NotSupported)
             }
             _ => Self::Default,
@@ -188,7 +187,7 @@ impl OpenerAssociation {
         open_file_with!(self, "video", Video, yaml);
 
         self.validate_openers();
-        info!("update from file");
+        log_info!("update from file");
     }
 
     fn validate_openers(&mut self) {
@@ -432,7 +431,7 @@ pub fn execute_in_child<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     exe: S,
     args: &[&str],
 ) -> Result<std::process::Child> {
-    info!("execute_in_child. executable: {exe:?}, arguments: {args:?}");
+    log_info!("execute_in_child. executable: {exe:?}, arguments: {args:?}");
     log_line!("Execute: {exe:?}, arguments: {args:?}");
     Ok(Command::new(exe).args(args).spawn()?)
 }
@@ -444,7 +443,7 @@ pub fn execute_in_child_without_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     exe: S,
     args: &[&str],
 ) -> Result<std::process::Child> {
-    info!("execute_in_child_without_output. executable: {exe:?}, arguments: {args:?}",);
+    log_info!("execute_in_child_without_output. executable: {exe:?}, arguments: {args:?}",);
     Ok(Command::new(exe)
         .args(args)
         .stdin(Stdio::null())
@@ -462,7 +461,9 @@ where
     S: AsRef<std::ffi::OsStr> + fmt::Debug,
     P: AsRef<Path>,
 {
-    info!("execute_in_child_without_output_with_path. executable: {exe:?}, arguments: {args:?}");
+    log_info!(
+        "execute_in_child_without_output_with_path. executable: {exe:?}, arguments: {args:?}"
+    );
     let params = args.unwrap_or(&[]);
     Ok(Command::new(exe)
         .stdin(Stdio::null())
@@ -481,7 +482,7 @@ pub fn execute_and_capture_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     exe: S,
     args: &[&str],
 ) -> Result<String> {
-    info!("execute_and_capture_output. executable: {exe:?}, arguments: {args:?}",);
+    log_info!("execute_and_capture_output. executable: {exe:?}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)
         .stdin(Stdio::null())
@@ -511,7 +512,7 @@ pub fn execute_and_capture_output_with_path<
     path: P,
     args: &[&str],
 ) -> Result<String> {
-    info!("execute_and_capture_output. executable: {exe:?}, arguments: {args:?}",);
+    log_info!("execute_and_capture_output. executable: {exe:?}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)
         .stdin(Stdio::null())
@@ -536,7 +537,7 @@ pub fn execute_and_capture_output_without_check<S: AsRef<std::ffi::OsStr> + fmt:
     exe: S,
     args: &[&str],
 ) -> Result<String> {
-    info!("execute_and_capture_output_without_check. executable: {exe:?}, arguments: {args:?}",);
+    log_info!("execute_and_capture_output_without_check. executable: {exe:?}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)
         .stdin(Stdio::null())

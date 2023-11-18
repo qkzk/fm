@@ -6,6 +6,7 @@ use tuikit::prelude::{from_keyname, Event, Key};
 
 use crate::common::CONFIG_PATH;
 use crate::event::ActionMap;
+use crate::log_info;
 
 /// Holds an hashmap between keys and actions.
 #[derive(Clone, Debug)]
@@ -159,11 +160,11 @@ impl Bindings {
         };
         for yaml_key in mappings.keys() {
             let Some(key_string) = yaml_key.as_str() else {
-                log::info!("{CONFIG_PATH}: Keybinding {yaml_key:?} is unreadable");
+                log_info!("{CONFIG_PATH}: Keybinding {yaml_key:?} is unreadable");
                 continue;
             };
             let Some(keymap) = from_keyname(key_string) else {
-                log::info!("{CONFIG_PATH}: Keybinding {key_string} is unknown");
+                log_info!("{CONFIG_PATH}: Keybinding {key_string} is unknown");
                 continue;
             };
             if self.keymap_is_reserved(&keymap) {
@@ -173,7 +174,7 @@ impl Bindings {
                 continue;
             };
             let Ok(action) = ActionMap::from_str(action_str) else {
-                log::info!("{CONFIG_PATH}: Action {action_str} is unknown");
+                log_info!("{CONFIG_PATH}: Action {action_str} is unknown");
                 continue;
             };
             self.binds.insert(keymap, action);
@@ -196,18 +197,18 @@ impl Bindings {
         let mut custom = vec![];
         for yaml_key in mappings.keys() {
             let Some(key_string) = yaml_key.as_str() else {
-                log::info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
+                log_info!("~/.config/fm/config.yaml: Keybinding {yaml_key:?} is unreadable");
                 continue;
             };
             let Some(keymap) = from_keyname(key_string) else {
-                log::info!("~/.config/fm/config.yaml: Keybinding {key_string} is unknown");
+                log_info!("~/.config/fm/config.yaml: Keybinding {key_string} is unknown");
                 continue;
             };
             let Some(custom_str) = yaml[yaml_key].as_str() else {
                 continue;
             };
             let action = ActionMap::Custom(custom_str.to_owned());
-            log::info!("custom bind {keymap:?}, {action}");
+            log_info!("custom bind {keymap:?}, {custom_str}");
             self.binds.insert(keymap, action.clone());
             custom.push(format!("{keymap:?}:        {custom_str}\n"));
         }

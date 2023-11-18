@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use log::info;
 use tuikit::prelude::Event;
 
 use crate::app::Refresher;
@@ -14,6 +13,7 @@ use crate::event::EventReader;
 use crate::io::set_loggers;
 use crate::io::Display;
 use crate::io::{load_opener, Opener};
+use crate::log_info;
 use crate::modes::Help;
 
 /// Holds everything about the application itself.
@@ -53,7 +53,7 @@ impl FM {
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = load_opener(OPENER_PATH, &config.terminal).unwrap_or_else(|_| {
             eprintln!("Couldn't read the opener config file at {OPENER_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/opener.yaml for an example. Using default.");
-            info!("Couldn't read opener file at {OPENER_PATH}. Using default.");
+            log_info!("Couldn't read opener file at {OPENER_PATH}. Using default.");
             Opener::new(&config.terminal)
         });
         let help = Help::from_keybindings(&config.binds, &opener)?.help;
@@ -118,7 +118,7 @@ impl FM {
         let final_path = self.status.selected_path_str().to_owned();
         self.refresher.quit()?;
         print_on_quit(&final_path);
-        info!("fm is shutting down");
+        log_info!("fm is shutting down");
         Ok(())
     }
 }
@@ -127,6 +127,6 @@ impl FM {
 /// Used when the config can't be read.
 fn exit_wrong_config() -> ! {
     eprintln!("Couldn't load the config file at {CONFIG_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/config.yaml for an example.");
-    info!("Couldn't read the config file {CONFIG_PATH}");
+    log_info!("Couldn't read the config file {CONFIG_PATH}");
     std::process::exit(1)
 }

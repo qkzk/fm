@@ -9,7 +9,6 @@ use std::slice::Iter;
 
 use anyhow::{anyhow, Context, Result};
 use content_inspector::{inspect, ContentType};
-use log::info;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
@@ -19,6 +18,7 @@ use crate::common::{
     CALC_PDF_PATH, DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
     PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
 };
+use crate::log_info;
 use crate::modes::ContentWindow;
 use crate::modes::Users;
 use crate::modes::{ColorEffect, FileInfo, FileKind};
@@ -852,7 +852,7 @@ impl Ueberzug {
             .args(args)
             .output()?;
         if !output.stderr.is_empty() {
-            info!(
+            log_info!(
                 "libreoffice conversion output: {} {}",
                 String::from_utf8(output.stdout).unwrap_or_default(),
                 String::from_utf8(output.stderr).unwrap_or_default()
@@ -881,7 +881,7 @@ impl Ueberzug {
     fn make_thumbnail(exe: &str, args: &[&str]) -> Result<()> {
         let output = std::process::Command::new(exe).args(args).output()?;
         if !output.stderr.is_empty() {
-            info!(
+            log_info!(
                 "make thumbnail output: {} {}",
                 String::from_utf8(output.stdout).unwrap_or_default(),
                 String::from_utf8(output.stderr).unwrap_or_default()
@@ -1086,7 +1086,7 @@ impl Diff {
                 .lines()
                 .map(|s| s.to_owned())
                 .collect();
-        info!("{DIFF}:\n{content:?}");
+        log_info!("{DIFF}:\n{content:?}");
 
         Ok(Self {
             length: content.len(),
@@ -1112,7 +1112,7 @@ impl Iso {
                 .lines()
                 .map(|s| s.to_owned())
                 .collect();
-        info!("{ISOINFO}:\n{content:?}");
+        log_info!("{ISOINFO}:\n{content:?}");
 
         Ok(Self {
             length: content.len(),

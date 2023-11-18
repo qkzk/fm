@@ -3,6 +3,7 @@ use strfmt::strfmt;
 
 use crate::config::Bindings;
 use crate::io::Opener;
+use crate::log_info;
 
 /// Help message to be displayed when help key is pressed.
 /// Default help key is `'h'`.
@@ -143,7 +144,7 @@ impl Help {
     pub fn from_keybindings(binds: &Bindings, opener: &Opener) -> Result<Self> {
         let mut strings = binds.keybind_reversed();
         let openers = opener.opener_association.as_map_of_strings();
-        log::info!("{openers:?}");
+        log_info!("{openers:?}");
         strings.extend(openers);
         let mut help = strfmt(HELP_TO_FORMAT, &strings)?;
         help = Self::complete_with_custom_binds(&binds.custom, help);
