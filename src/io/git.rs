@@ -12,7 +12,7 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::common::is_program_in_path;
 
-use crate::io::execute_and_output;
+use crate::io::execute_and_output_no_log;
 
 #[derive(Default)]
 struct GitStatus {
@@ -123,9 +123,9 @@ impl GitStatus {
 }
 
 fn porcelain2() -> Result<std::process::Output> {
-    execute_and_output(
+    execute_and_output_no_log(
         "git",
-        &[
+        [
             "status",
             "--porcelain=v2",
             "-z",

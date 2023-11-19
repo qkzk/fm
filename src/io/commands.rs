@@ -129,12 +129,26 @@ pub fn execute_and_capture_output_without_check<S: AsRef<std::ffi::OsStr> + fmt:
     Ok(String::from_utf8(output.stdout)?)
 }
 
-pub fn execute_and_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
-    exe: S,
-    args: &[S],
-) -> Result<std::process::Output> {
+pub fn execute_and_output<S, I>(exe: S, args: I) -> Result<std::process::Output>
+where
+    S: AsRef<std::ffi::OsStr> + fmt::Debug,
+    I: IntoIterator<Item = S> + fmt::Debug,
+{
+    log_info!("execute_and_output. executable: {exe:?}, arguments: {args:?}",);
     Ok(Command::new(exe)
-        .args(args.iter().map(|a| a.as_ref()).collect::<Vec<_>>())
+        .args(args)
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()?)
+}
+
+pub fn execute_and_output_no_log<S, I>(exe: S, args: I) -> Result<std::process::Output>
+where
+    S: AsRef<std::ffi::OsStr> + fmt::Debug,
+    I: IntoIterator<Item = S> + fmt::Debug,
+{
+    Ok(Command::new(exe)
+        .args(args)
         .stdin(Stdio::null())
         .stderr(Stdio::null())
         .output()?)

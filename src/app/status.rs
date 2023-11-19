@@ -14,9 +14,9 @@ use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
 use crate::common::{NVIM, SS, TUIS_PATH};
 use crate::config::Settings;
-use crate::io::execute_in_child_without_output_with_path;
 use crate::io::Args;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
+use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
 use crate::io::{InternalVariant, Opener};
 use crate::modes::Compresser;
 use crate::modes::FileKind;
@@ -1043,7 +1043,7 @@ impl Status {
         if !is_program_in_path(SS) {
             return Err(anyhow!("{SS} isn't installed"));
         }
-        if let Ok(output) = std::process::Command::new(SS).arg("-l").output() {
+        if let Ok(output) = execute_and_output(SS, ["-l"]) {
             let output = String::from_utf8(output.stdout).unwrap_or_default();
             let content: String = output
                 .split(&['\n', '\t', ' '])
