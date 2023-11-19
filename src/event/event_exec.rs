@@ -173,18 +173,13 @@ impl EventAction {
             tab.refresh_params()
         }
     }
+
     /// Enter a copy paste mode.
     /// A confirmation is asked before copying all flagged files to
     /// the current directory.
     /// Does nothing if no file is flagged.
     pub fn copy_paste(status: &mut Status) -> Result<()> {
-        if status.flagged.is_empty() {
-            return Ok(());
-        }
-        status
-            .selected()
-            .set_edit_mode(EditMode::NeedConfirmation(NeedConfirmation::Copy));
-        Ok(())
+        Self::set_copy_paste(status, NeedConfirmation::Copy)
     }
 
     /// Enter the 'move' mode.
@@ -192,12 +187,16 @@ impl EventAction {
     /// the current directory.
     /// Does nothing if no file is flagged.
     pub fn cut_paste(status: &mut Status) -> Result<()> {
+        Self::set_copy_paste(status, NeedConfirmation::Move)
+    }
+
+    fn set_copy_paste(status: &mut Status, copy_or_move: NeedConfirmation) -> Result<()> {
         if status.flagged.is_empty() {
             return Ok(());
         }
         status
             .selected()
-            .set_edit_mode(EditMode::NeedConfirmation(NeedConfirmation::Move));
+            .set_edit_mode(EditMode::NeedConfirmation(copy_or_move));
         Ok(())
     }
 
@@ -413,7 +412,7 @@ impl EventAction {
     }
 
     /// Enter the filter mode, where you can filter.
-    /// See `crate::filter::Filter` for more details.
+    /// See `crate::modes::Filter` for more details.
     pub fn filter(tab: &mut Tab) -> Result<()> {
         tab.set_edit_mode(EditMode::InputSimple(InputSimple::Filter));
         Ok(())
@@ -430,20 +429,20 @@ impl EventAction {
         let home_cow = shellexpand::tilde("~");
         let home: &str = home_cow.borrow();
         let path = std::fs::canonicalize(home)?;
-        tab.set_pathcontent(&path)?;
+        tab.cd(&path)?;
         status.update_second_pane_for_preview()
     }
 
     pub fn go_root(status: &mut Status) -> Result<()> {
         let tab = status.selected();
         let root_path = std::path::PathBuf::from("/");
-        tab.set_pathcontent(&root_path)?;
+        tab.cd(&root_path)?;
         status.update_second_pane_for_preview()
     }
 
     pub fn go_start(status: &mut Status) -> Result<()> {
         let start_folder = status.start_folder.clone();
-        status.selected().set_pathcontent(&start_folder)?;
+        status.selected().cd(&start_folder)?;
         status.update_second_pane_for_preview()
     }
 
@@ -1154,7 +1153,7 @@ impl LeaveMode {
         let marks = status.marks.clone();
         let tab = status.selected();
         if let Some((_, path)) = marks.selected() {
-            tab.set_pathcontent(path)?;
+            tab.cd(path)?;
             tab.window.reset(tab.path_content.content.len());
             tab.input.reset();
         }
@@ -1351,7 +1350,7 @@ impl LeaveMode {
         let completed = tab.completion.current_proposition();
         let path = string_to_path(completed)?;
         tab.input.reset();
-        tab.set_pathcontent(&path)?;
+        tab.cd(&path)?;
         tab.window.reset(tab.path_content.content.len());
         status.update_second_pane_for_preview()
     }
@@ -1366,7 +1365,7 @@ impl LeaveMode {
             .selected()
             .context("exec shortcut: empty shortcuts")?
             .clone();
-        tab.set_pathcontent(&path)?;
+        tab.cd(&path)?;
         tab.refresh_view()?;
         status.update_second_pane_for_preview()
     }
@@ -1380,7 +1379,7 @@ impl LeaveMode {
             .selected()
             .context("exec history: path unreachable")?
             .clone();
-        tab.set_pathcontent(&path)?;
+        tab.cd(&path)?;
         tab.history.drop_queue();
         let index = tab.path_content.select_file(&file);
         tab.scroll_to(index);
@@ -1393,7 +1392,7 @@ impl LeaveMode {
         let path = status.selected_non_mut().selected()?.path;
         let is_dir = path.is_dir();
         if is_dir {
-            status.selected().set_pathcontent(&path)?;
+            status.selected().cd(&path)?;
             status.selected().make_tree(None)?;
             status.selected().set_display_mode(DisplayMode::Tree);
             Ok(())

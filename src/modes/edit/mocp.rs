@@ -46,7 +46,7 @@ impl Mocp {
         let Some(filename) = filename.to_str() else {
             return Ok(());
         };
-        tab.set_pathcontent(parent)?;
+        tab.cd(parent)?;
         tab.search_from(filename, 0);
         Ok(())
     }

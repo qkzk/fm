@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use crate::modes::FileInfo;
 
 /// Different kind of sort
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Copy)]
 enum SortBy {
     #[default]
     /// Directory first
@@ -32,7 +32,7 @@ impl std::fmt::Display for SortBy {
 }
 
 /// Ascending or descending sort
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Copy)]
 enum Order {
     #[default]
     /// Ascending order
@@ -50,7 +50,7 @@ impl Order {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Copy)]
 /// Describe a way of sorting
 pub struct SortKind {
     /// The key used to sort the files

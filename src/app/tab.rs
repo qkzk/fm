@@ -214,7 +214,7 @@ impl Tab {
             .path
             .clone();
         log_info!("selected : {childpath:?}");
-        self.set_pathcontent(childpath)?;
+        self.cd(childpath)?;
         self.window.reset(self.path_content.content.len());
         self.input.cursor_start();
         Ok(())
@@ -241,7 +241,7 @@ impl Tab {
     /// Set the pathcontent to a new path.
     /// Reset the window.
     /// Add the last path to the history of visited paths.
-    pub fn set_pathcontent(&mut self, path: &path::Path) -> Result<()> {
+    pub fn cd(&mut self, path: &path::Path) -> Result<()> {
         self.history.push(
             &self.path_content.path,
             &self.path_content.selected().context("")?.path,
@@ -253,6 +253,9 @@ impl Tab {
             &self.users,
             &self.sort_kind,
         )?;
+        if matches!(self.display_mode, DisplayMode::Tree) {
+            self.make_tree(Some(self.sort_kind))?;
+        }
         self.window.reset(self.path_content.content.len());
         std::env::set_current_dir(path)?;
         Ok(())
@@ -333,7 +336,7 @@ impl Tab {
             self.back()?;
             return Ok(());
         }
-        self.set_pathcontent(parent)
+        self.cd(parent)
     }
 
     pub fn back(&mut self) -> Result<()> {
@@ -343,7 +346,7 @@ impl Tab {
         let Some((path, file)) = self.history.content.pop() else {
             return Ok(());
         };
-        self.set_pathcontent(&path)?;
+        self.cd(&path)?;
         let index = self.path_content.select_file(&file);
         self.scroll_to(index);
         self.history.content.pop();
@@ -361,8 +364,8 @@ impl Tab {
             let Some(parent) = self.tree.root_path().parent() else {
                 return Ok(());
             };
-            self.set_pathcontent(parent.to_owned().as_ref())?;
-            self.make_tree(Some(self.sort_kind.clone()))
+            self.cd(parent.to_owned().as_ref())?;
+            self.make_tree(Some(self.sort_kind))
         } else {
             self.tree.go(To::Parent);
             Ok(())
@@ -652,7 +655,7 @@ impl Tab {
             DisplayMode::Tree => {
                 self.update_sort_from_char(c);
                 let selected_path = self.tree.selected_path().to_owned();
-                self.make_tree(Some(self.sort_kind.clone()))?;
+                self.make_tree(Some(self.sort_kind))?;
                 self.tree.go(To::Path(&selected_path));
             }
             _ => (),
@@ -706,14 +709,14 @@ impl Tab {
             DisplayMode::Preview => return Ok(()),
             DisplayMode::Normal => {
                 if !self.path_content.paths().contains(&target_dir) {
-                    self.set_pathcontent(target_dir)?
+                    self.cd(target_dir)?
                 }
                 let index = self.path_content.select_file(&jump_target);
                 self.scroll_to(index)
             }
             DisplayMode::Tree => {
                 if !self.tree.paths().contains(&target_dir) {
-                    self.set_pathcontent(target_dir)?;
+                    self.cd(target_dir)?;
                     self.make_tree(None)?
                 }
                 self.tree.go(To::Path(&jump_target))

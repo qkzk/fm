@@ -367,11 +367,11 @@ impl Status {
             let Some(parent) = path.parent() else {
                 return Ok(());
             };
-            tab.set_pathcontent(parent)?;
+            tab.cd(parent)?;
             let filename = filename_from_path(&path)?;
             tab.search_from(filename, 0);
         } else if path.is_dir() {
-            tab.set_pathcontent(&path)?;
+            tab.cd(&path)?;
         }
         Ok(())
     }
@@ -701,7 +701,7 @@ impl Status {
 
                     log_line!("iso : {}", iso_device.as_string()?);
                     let path = iso_device.mountpoints.clone().context("no mount point")?;
-                    self.selected().set_pathcontent(&path)?;
+                    self.selected().cd(&path)?;
                 };
                 self.iso_device = None;
             };
@@ -770,7 +770,7 @@ impl Status {
         };
         let tab = self.selected();
         let path = std::path::PathBuf::from(mount_point);
-        tab.set_pathcontent(&path)?;
+        tab.cd(&path)?;
         tab.refresh_view()
     }
 
@@ -835,7 +835,7 @@ impl Status {
             return Ok(());
         }
         let path = std::path::PathBuf::from(&device.path);
-        self.selected().set_pathcontent(&path)?;
+        self.selected().cd(&path)?;
         self.selected().refresh_view()
     }
 
@@ -931,7 +931,7 @@ impl Status {
     /// If the saved path is invalid, it does nothing but reset the view.
     pub fn marks_jump_char(&mut self, c: char) -> Result<()> {
         if let Some(path) = self.marks.get(c) {
-            self.selected().set_pathcontent(&path)?;
+            self.selected().cd(&path)?;
         }
         self.selected().refresh_view()?;
         self.selected().reset_edit_mode();

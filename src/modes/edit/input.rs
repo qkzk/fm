@@ -83,12 +83,6 @@ impl Input {
         self.cursor_index += 1
     }
 
-    /// Clear the chars in input
-    pub fn clear(&mut self) {
-        self.chars.clear();
-        self.cursor_index = 0;
-    }
-
     /// Replace the content with the new content.
     /// Put the cursor at the end.
     ///
