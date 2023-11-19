@@ -319,32 +319,33 @@ impl Status {
     /// Run a command directly from help.
     /// Search a command in skim, if it's a keybinding, run it directly.
     /// If the result can't be parsed, nothing is done.
-    pub fn skim_find_keybinding(&mut self) -> Result<()> {
+    pub fn skim_find_keybinding_and_run(&mut self) -> Result<()> {
         self.skim_init();
-        self._skim_find_keybinding();
+        if let Ok(key) = self._skim_find_keybinding() {
+            let _ = self.term.send_event(Event::Key(key));
+        };
         self.drop_skim()
     }
 
-    fn _skim_find_keybinding(&mut self) {
+    fn _skim_find_keybinding(&mut self) -> Result<tuikit::prelude::Key> {
         let Some(Ok(skimer)) = &mut self.skimer else {
-            return;
+            return Err(anyhow!("Skim isn't initialised"));
         };
         let skim = skimer.search_in_text(&self.help);
         let Some(output) = skim.first() else {
-            return;
+            return Err(anyhow!("Skim hasn't sent anything"));
         };
         let line = output.output().into_owned();
         let Some(keybind) = line.split(':').next() else {
-            return;
+            return Err(anyhow!("No keybind found"));
         };
         let Some(keyname) = parse_keyname(keybind) else {
-            return;
+            return Err(anyhow!("No keyname found for {keybind}"));
         };
         let Some(key) = from_keyname(&keyname) else {
-            return;
+            return Err(anyhow!("{keyname} isn't a valid Key name."));
         };
-        let event = Event::Key(key);
-        let _ = self.term.send_event(event);
+        Ok(key)
     }
 
     fn _update_tab_from_skim_line_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {

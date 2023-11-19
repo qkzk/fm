@@ -792,7 +792,7 @@ impl EventAction {
 
     /// Start a fuzzy find for a keybinding with skim.
     pub fn fuzzyfind_help(status: &mut Status) -> Result<()> {
-        status.skim_find_keybinding()
+        status.skim_find_keybinding_and_run()
     }
 
     /// Copy the filename of the selected file in normal mode.
