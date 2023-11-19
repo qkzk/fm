@@ -156,7 +156,10 @@ impl CryptoDevice {
             // open
             let (success, stdout, stderr) = execute_sudo_command_with_password(
                 &self.format_luksopen_parameters(),
-                &password.cryptsetup()?,
+                &password
+                    .cryptsetup()
+                    .as_ref()
+                    .context("cryptsetup password isn't set")?,
                 root_path,
             )?;
             password.reset();

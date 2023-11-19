@@ -57,17 +57,13 @@ impl PasswordHolder {
     }
 
     /// Reads the cryptsetup password
-    pub fn cryptsetup(&self) -> Result<Password> {
-        self.cryptsetup
-            .clone()
-            .context("PasswordHolder: cryptsetup password isn't set")
+    pub fn cryptsetup(&self) -> &Option<Password> {
+        &self.cryptsetup
     }
 
     /// Reads the sudo password
-    pub fn sudo(&self) -> Result<Password> {
-        self.sudo
-            .clone()
-            .context("PasswordHolder: sudo password isn't set")
+    pub fn sudo(&self) -> &Option<Password> {
+        &self.sudo
     }
 
     /// True if the sudo password was set
@@ -199,10 +195,18 @@ pub fn reset_sudo_faillock() -> Result<()> {
     Ok(())
 }
 
+/// Execute `sudo -S ls -l /root`, passing the password into `stdin`.
+/// It sets a sudo session which will be reset later.
 pub fn set_sudo_session(password: &PasswordHolder) -> Result<bool> {
     let root_path = std::path::Path::new("/");
     // sudo
-    let (success, _, _) =
-        execute_sudo_command_with_password(&["ls", "/root"], &password.sudo()?, root_path)?;
+    let (success, _, _) = execute_sudo_command_with_password(
+        &["ls", "/root"],
+        &password
+            .sudo()
+            .as_ref()
+            .context("sudo password isn't set")?,
+        root_path,
+    )?;
     Ok(success)
 }

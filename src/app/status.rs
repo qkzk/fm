@@ -999,7 +999,11 @@ impl Status {
         }
         execute_sudo_command_with_password(
             &args[1..],
-            &self.password_holder.sudo()?,
+            &self
+                .password_holder
+                .sudo()
+                .as_ref()
+                .context("sudo password isn't set")?,
             self.selected_non_mut().directory_of_selected()?,
         )?;
         self.password_holder.reset();
