@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 
 use crate::io::{execute_sudo_command, set_sudo_session};
 use crate::log_info;
-use crate::modes::{MountHelper, PasswordHolder};
+use crate::modes::{MountCommands, MountParameters, MountRepr, PasswordHolder};
 
 /// Used to mount an iso file as a loop device.
 /// Holds info about its source (`path`) and optional mountpoint (`mountpoints`).
@@ -36,7 +36,7 @@ impl IsoDevice {
     }
 }
 
-impl MountHelper for IsoDevice {
+impl MountParameters for IsoDevice {
     fn format_mkdir_parameters(&self, username: &str) -> [String; 3] {
         [
             "mkdir".to_owned(),
@@ -67,7 +67,9 @@ impl MountHelper for IsoDevice {
             ),
         ]
     }
+}
 
+impl MountCommands for IsoDevice {
     fn is_mounted(&self) -> bool {
         self.is_mounted
     }
@@ -123,7 +125,9 @@ impl MountHelper for IsoDevice {
             Ok(last_success)
         }
     }
+}
 
+impl MountRepr for IsoDevice {
     /// String representation of the device.
     fn as_string(&self) -> Result<String> {
         if let Some(ref mount_point) = self.mountpoints {

@@ -8,7 +8,7 @@ use crate::io::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
     reset_sudo_faillock, set_sudo_session,
 };
-use crate::modes::MountHelper;
+use crate::modes::{MountCommands, MountParameters, MountRepr};
 use crate::modes::{PasswordHolder, PasswordKind};
 use crate::{impl_selectable_content, log_info};
 
@@ -174,7 +174,7 @@ impl CryptoDevice {
     }
 }
 
-impl MountHelper for CryptoDevice {
+impl MountParameters for CryptoDevice {
     fn format_mkdir_parameters(&self, username: &str) -> [String; 3] {
         [
             "mkdir".to_owned(),
@@ -197,7 +197,9 @@ impl MountHelper for CryptoDevice {
             format!("/run/media/{}/{}", username, self.device_name()),
         ]
     }
+}
 
+impl MountCommands for CryptoDevice {
     /// True if there's a mount point for this drive.
     /// It's only valid if we mounted the device since it requires
     /// the uuid to be in the mount point.
@@ -240,7 +242,9 @@ impl MountHelper for CryptoDevice {
 
         Ok(true)
     }
+}
 
+impl MountRepr for CryptoDevice {
     /// String representation of the device.
     fn as_string(&self) -> Result<String> {
         Ok(if let Some(mount_point) = self.mount_point() {

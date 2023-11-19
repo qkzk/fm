@@ -3,8 +3,8 @@ use anyhow::{anyhow, Result};
 use crate::io::execute_and_output;
 use crate::log_info;
 use crate::log_line;
-use crate::modes::MountHelper;
 use crate::modes::PasswordHolder;
+use crate::modes::{MountCommands, MountRepr};
 use crate::{
     common::GIO,
     common::{current_uid, is_dir_empty, is_program_in_path},
@@ -68,7 +68,7 @@ impl RemovableDevices {
 /// if the device is mounted.
 #[derive(Debug, Clone, Default)]
 pub struct Removable {
-    pub device_name: String,
+    pub name: String,
     pub path: String,
     pub is_mounted: bool,
 }
@@ -80,18 +80,18 @@ impl Removable {
     /// including MTP (aka Android) devices.
     /// We don't check if the device actually exists, we just create the instance.
     fn from_gio(line: &str) -> Result<Self> {
-        let device_name = line
+        let name = line
             .replace("activation_root=mtp://", "")
             .replace('/', "")
             .trim()
             .to_owned();
         let uid = current_uid()?;
-        let path = format!("/run/user/{uid}/gvfs/mtp:host={device_name}");
+        let path = format!("/run/user/{uid}/gvfs/mtp:host={name}");
         let pb_path = std::path::Path::new(&path);
         let is_mounted = pb_path.exists() && !is_dir_empty(pb_path)?;
-        log_info!("gio {device_name} - is_mounted {is_mounted}");
+        log_info!("gio {name} - is_mounted {is_mounted}");
         Ok(Self {
-            device_name,
+            name,
             path,
             is_mounted,
         })
@@ -99,7 +99,7 @@ impl Removable {
 
     /// Format itself as a valid `gio mount $device` argument.
     fn format_for_gio(&self) -> String {
-        format!("mtp://{name}", name = self.device_name)
+        format!("mtp://{name}", name = self.name)
     }
 
     pub fn mount_simple(&mut self) -> Result<bool> {
@@ -111,22 +111,7 @@ impl Removable {
     }
 }
 
-impl MountHelper for Removable {
-    /// Parameters used to `sudo mkdir mountpoint`
-    fn format_mkdir_parameters(&self, _username: &str) -> [String; 3] {
-        unreachable!("no need for mkdir when mounting an MTP device")
-    }
-
-    /// Parameters used to mount the device
-    fn format_mount_parameters(&mut self, _username: &str) -> Vec<String> {
-        unreachable!("no need for mount parameters when mounting an MTP device")
-    }
-
-    /// Parameters used to umount the device
-    fn format_umount_parameters(&self, _username: &str) -> Vec<String> {
-        unreachable!("no need for umount parameters when mounting an MTP device")
-    }
-
+impl MountCommands for Removable {
     /// True if the device is mounted
     fn is_mounted(&self) -> bool {
         self.is_mounted
@@ -134,19 +119,19 @@ impl MountHelper for Removable {
 
     /// Mount a non mounted removable device.
     /// `Err` if the device is already mounted.
-    /// Runs a `gio mount $device_name` command and check
+    /// Runs a `gio mount $name` command and check
     /// the result.
     /// The `is_mounted` flag is updated accordingly to the result.
     fn mount(&mut self, _: &str, _: &mut PasswordHolder) -> Result<bool> {
         if self.is_mounted {
-            return Err(anyhow!("Already mounted {name}", name = self.device_name));
+            return Err(anyhow!("Already mounted {name}", name = self.name));
         }
         self.is_mounted = execute_and_output(GIO, ["mount", &self.format_for_gio()])?
             .status
             .success();
         log_line!(
             "Mounted {device}. Success ? {success}",
-            device = self.device_name,
+            device = self.name,
             success = self.is_mounted
         );
         Ok(self.is_mounted)
@@ -159,22 +144,24 @@ impl MountHelper for Removable {
     /// The `is_mounted` flag is updated accordingly to the result.
     fn umount(&mut self, _: &str, _: &mut PasswordHolder) -> Result<bool> {
         if !self.is_mounted {
-            return Err(anyhow!("Not mounted {name}", name = self.device_name));
+            return Err(anyhow!("Not mounted {name}", name = self.name));
         }
         self.is_mounted = execute_and_output(GIO, ["mount", &self.format_for_gio(), "-u"])?
             .status
             .success();
         log_line!(
             "Unmounted {device}. Success ? {success}",
-            device = self.device_name,
+            device = self.name,
             success = !self.is_mounted
         );
         Ok(!self.is_mounted)
     }
+}
 
+impl MountRepr for Removable {
     /// String representation of the device
     fn as_string(&self) -> Result<String> {
-        Ok(self.device_name.to_owned())
+        Ok(self.name.to_owned())
     }
 
     fn device_name(&self) -> Result<String> {

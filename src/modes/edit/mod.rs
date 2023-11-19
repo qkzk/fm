@@ -44,7 +44,7 @@ pub use iso::IsoDevice;
 pub use marks::Marks;
 pub use mocp::Mocp;
 pub use mocp::MOCP;
-pub use mount_help::MountHelper;
+pub use mount_help::{MountCommands, MountParameters, MountRepr};
 pub use node_creation::NodeCreation;
 pub use nvim::nvim;
 pub use password::{PasswordHolder, PasswordKind, PasswordUsage};

@@ -24,7 +24,6 @@ use crate::modes::FileKind;
 use crate::modes::Flagged;
 use crate::modes::IsoDevice;
 use crate::modes::Marks;
-use crate::modes::MountHelper;
 use crate::modes::Preview;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
@@ -39,6 +38,7 @@ use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::modes::{CliInfo, Permissions};
 use crate::modes::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
+use crate::modes::{MountCommands, MountRepr};
 use crate::modes::{PasswordHolder, PasswordKind, PasswordUsage};
 use crate::{log_info, log_line};
 

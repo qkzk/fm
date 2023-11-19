@@ -3,16 +3,7 @@ use anyhow::Result;
 use crate::modes::PasswordHolder;
 
 /// Bunch of methods used to mount / unmount a block device or a device image file.
-pub trait MountHelper {
-    /// Parameters used to `sudo mkdir mountpoint`
-    fn format_mkdir_parameters(&self, username: &str) -> [String; 3];
-
-    /// Parameters used to mount the device
-    fn format_mount_parameters(&mut self, username: &str) -> Vec<String>;
-
-    /// Parameters used to umount the device
-    fn format_umount_parameters(&self, username: &str) -> Vec<String>;
-
+pub trait MountCommands {
     /// True if the device is mounted
     fn is_mounted(&self) -> bool;
 
@@ -21,7 +12,10 @@ pub trait MountHelper {
 
     /// Unmount the device
     fn umount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool>;
+}
 
+/// Methods used to display the mounted device in terminal
+pub trait MountRepr: MountCommands {
     /// String representation of the device
     fn as_string(&self) -> Result<String>;
 
@@ -37,4 +31,16 @@ pub trait MountHelper {
             tuikit::attr::Attr::default()
         }
     }
+}
+
+/// Parameters used to create the commands : mkdir, mount & umount.
+pub trait MountParameters {
+    /// Parameters used to `sudo mkdir mountpoint`
+    fn format_mkdir_parameters(&self, username: &str) -> [String; 3];
+
+    /// Parameters used to mount the device
+    fn format_mount_parameters(&mut self, username: &str) -> Vec<String>;
+
+    /// Parameters used to umount the device
+    fn format_umount_parameters(&self, username: &str) -> Vec<String>;
 }

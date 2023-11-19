@@ -20,7 +20,7 @@ use crate::modes::calculate_top_bottom;
 use crate::modes::shorten_path;
 use crate::modes::ContentWindow;
 use crate::modes::InputCompleted;
-use crate::modes::MountHelper;
+use crate::modes::MountRepr;
 use crate::modes::SelectableContent;
 use crate::modes::Trash;
 use crate::modes::{fileinfo_attr, FileInfo};
@@ -866,7 +866,7 @@ impl<'a> WinSecondary<'a> {
         canvas: &mut dyn Canvas,
     ) -> Result<()>
     where
-        T: MountHelper,
+        T: MountRepr,
     {
         canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
         for (i, device) in selectable.content().iter().enumerate() {
@@ -883,7 +883,7 @@ impl<'a> WinSecondary<'a> {
         canvas: &mut dyn Canvas,
     ) -> Result<()>
     where
-        T: MountHelper,
+        T: MountRepr,
     {
         let row = calc_line_row(index, &self.tab.window) + 2;
         let attr = selectable.attr(index, &device.attr());
