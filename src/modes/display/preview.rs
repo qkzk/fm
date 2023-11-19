@@ -25,7 +25,7 @@ use crate::modes::{ColorEffect, FileInfo, FileKind};
 use crate::modes::{ColoredString, Tree};
 
 use crate::common::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
-use crate::io::execute_and_capture_output_without_check;
+use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_log};
 use crate::modes::FilterKind;
 use crate::modes::SortKind;
 use crate::modes::{list_files_tar, list_files_zip};
@@ -347,7 +347,7 @@ impl Socket {
     /// See `man ss` for a description of the arguments.
     fn new(fileinfo: &FileInfo) -> Self {
         let content: Vec<String>;
-        if let Ok(output) = std::process::Command::new(SS).arg("-lpmepiT").output() {
+        if let Ok(output) = execute_and_output_no_log(SS, ["-lpmepiT"]) {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
             content = s
                 .lines()
@@ -380,14 +380,14 @@ impl BlockDevice {
     /// See `man ss` for a description of the arguments.
     fn new(fileinfo: &FileInfo) -> Self {
         let content: Vec<String>;
-        if let Ok(output) = std::process::Command::new(LSBLK)
-            .args([
+        if let Ok(output) = execute_and_output_no_log(
+            LSBLK,
+            [
                 "-lfo",
                 "FSTYPE,PATH,LABEL,UUID,FSVER,MOUNTPOINT,MODEL,SIZE,FSAVAIL,FSUSE%",
                 &path_to_string(&fileinfo.path),
-            ])
-            .output()
-        {
+            ],
+        ) {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
             content = s.lines().map(|s| s.to_owned()).collect();
         } else {
@@ -416,9 +416,8 @@ impl FifoCharDevice {
     /// See `man lsof` for a description of the arguments.
     fn new(fileinfo: &FileInfo) -> Self {
         let content: Vec<String>;
-        if let Ok(output) = std::process::Command::new(LSOF)
-            .arg(path_to_string(&fileinfo.path))
-            .output()
+        if let Ok(output) =
+            execute_and_output_no_log(LSOF, [path_to_string(&fileinfo.path).as_str()])
         {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
             content = s.lines().map(|s| s.to_owned()).collect();
@@ -748,7 +747,7 @@ pub struct MediaContent {
 impl MediaContent {
     fn new(path: &Path) -> Result<Self> {
         let content: Vec<String>;
-        if let Ok(output) = std::process::Command::new(MEDIAINFO).arg(path).output() {
+        if let Ok(output) = execute_and_output_no_log(MEDIAINFO, [path_to_string(&path).as_str()]) {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
             content = s.lines().map(|s| s.to_owned()).collect();
         } else {
@@ -848,9 +847,7 @@ impl Ueberzug {
     fn office_thumbnail(calc_path: &Path) -> Result<Self> {
         let calc_str = path_to_string(&calc_path);
         let args = vec!["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
-        let output = std::process::Command::new(LIBREOFFICE)
-            .args(args)
-            .output()?;
+        let output = execute_and_output_no_log(LIBREOFFICE, args)?;
         if !output.stderr.is_empty() {
             log_info!(
                 "libreoffice conversion output: {} {}",
@@ -879,7 +876,7 @@ impl Ueberzug {
     }
 
     fn make_thumbnail(exe: &str, args: &[&str]) -> Result<()> {
-        let output = std::process::Command::new(exe).args(args).output()?;
+        let output = execute_and_output_no_log(exe, args.to_owned())?;
         if !output.stderr.is_empty() {
             log_info!(
                 "make thumbnail output: {} {}",

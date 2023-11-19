@@ -6,7 +6,6 @@
 
 use std::fmt::Write as _;
 use std::path::Path;
-use std::process;
 
 use anyhow::{anyhow, Context, Result};
 
@@ -162,12 +161,7 @@ pub fn git(path: &Path) -> Result<String> {
 /// Returns the git root.
 /// Returns an error outside of a git repository.
 pub fn git_root() -> Result<String> {
-    let output = process::Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .stdin(process::Stdio::null())
-        .stderr(process::Stdio::null())
-        .output()?;
-
+    let output = execute_and_output_no_log("git", ["rev-parse", "--show-toplevel"])?;
     if !output.status.success() {
         // We're most likely not in a Git repo
         return Err(anyhow!("git root: git command returned an error"));

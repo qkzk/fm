@@ -1,10 +1,9 @@
-use std::process::{Command, Stdio};
-
 use anyhow::Result;
 
 use crate::common::is_program_in_path;
 use crate::common::CLI_INFO_COMMANDS;
 use crate::impl_selectable_content;
+use crate::io::execute_with_ansi_colors;
 use crate::log_info;
 use crate::log_line;
 
@@ -46,15 +45,7 @@ impl CliInfo {
         let args = self.commands[self.index].clone();
         log_info!("execute. {args:?}");
         log_line!("Executed {args:?}");
-        let child = Command::new(args[0])
-            .args(&args[1..])
-            .env("CLICOLOR_FORCE", "1")
-            .env("COLORTERM", "ansi")
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()?;
-        let command_output = child.wait_with_output()?;
+        let command_output = execute_with_ansi_colors(&args)?;
         let text_output = {
             if command_output.status.success() {
                 String::from_utf8(command_output.stdout)?

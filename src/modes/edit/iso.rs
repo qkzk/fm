@@ -1,7 +1,8 @@
 use anyhow::{anyhow, Result};
 
+use crate::io::{execute_sudo_command, set_sudo_session};
 use crate::log_info;
-use crate::modes::{execute_sudo_command, set_sudo_session, MountHelper, PasswordHolder};
+use crate::modes::{MountHelper, PasswordHolder};
 
 /// Used to mount an iso file as a loop device.
 /// Holds info about its source (`path`) and optional mountpoint (`mountpoints`).

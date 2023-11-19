@@ -16,6 +16,7 @@ use crate::common::{NVIM, SS, TUIS_PATH};
 use crate::config::Settings;
 use crate::io::Args;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
+use crate::io::{drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock};
 use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
 use crate::io::{InternalVariant, Opener};
 use crate::modes::Compresser;
@@ -34,14 +35,11 @@ use crate::modes::Trash;
 use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, CopyMove};
-use crate::modes::{
-    drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock, PasswordHolder,
-    PasswordKind, PasswordUsage,
-};
 use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::modes::{CliInfo, Permissions};
 use crate::modes::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
+use crate::modes::{PasswordHolder, PasswordKind, PasswordUsage};
 use crate::{log_info, log_line};
 
 /// Holds every mutable parameter of the application itself, except for
@@ -999,8 +997,7 @@ impl Status {
         }
         execute_sudo_command_with_password(
             &args[1..],
-            &self
-                .password_holder
+            self.password_holder
                 .sudo()
                 .as_ref()
                 .context("sudo password isn't set")?,

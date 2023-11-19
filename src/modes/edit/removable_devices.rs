@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 
+use crate::io::execute_and_output;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::MountHelper;
@@ -31,10 +32,7 @@ impl RemovableDevices {
         if !is_program_in_path(GIO) {
             return None;
         }
-        let Ok(output) = std::process::Command::new(GIO)
-            .args(["mount", "-li"])
-            .output()
-        else {
+        let Ok(output) = execute_and_output(GIO, ["mount", "-li"]) else {
             return None;
         };
         let Ok(stdout) = String::from_utf8(output.stdout) else {
@@ -143,12 +141,8 @@ impl MountHelper for Removable {
         if self.is_mounted {
             return Err(anyhow!("Already mounted {name}", name = self.device_name));
         }
-        self.is_mounted = std::process::Command::new(GIO)
-            .args(vec!["mount", &self.format_for_gio()])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn()?
-            .wait()?
+        self.is_mounted = execute_and_output(GIO, ["mount", &self.format_for_gio()])?
+            .status
             .success();
         log_line!(
             "Mounted {device}. Success ? {success}",
@@ -167,12 +161,8 @@ impl MountHelper for Removable {
         if !self.is_mounted {
             return Err(anyhow!("Not mounted {name}", name = self.device_name));
         }
-        self.is_mounted = !std::process::Command::new(GIO)
-            .args(vec!["mount", &self.format_for_gio(), "-u"])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn()?
-            .wait()?
+        self.is_mounted = execute_and_output(GIO, ["mount", &self.format_for_gio(), "-u"])?
+            .status
             .success();
         log_line!(
             "Unmounted {device}. Success ? {success}",

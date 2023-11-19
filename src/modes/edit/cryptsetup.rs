@@ -1,15 +1,15 @@
-use std::process::{Command, Stdio};
-
 use anyhow::{anyhow, Context, Result};
 use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
 use crate::common::{current_username, is_program_in_path};
 use crate::common::{CRYPTSETUP, LSBLK};
-use crate::modes::{
+use crate::io::execute_and_output;
+use crate::io::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
-    reset_sudo_faillock, PasswordHolder, PasswordKind,
+    reset_sudo_faillock, set_sudo_session,
 };
-use crate::modes::{set_sudo_session, MountHelper};
+use crate::modes::MountHelper;
+use crate::modes::{PasswordHolder, PasswordKind};
 use crate::{impl_selectable_content, log_info};
 
 /// Possible actions on encrypted drives
@@ -26,11 +26,7 @@ pub enum BlockDeviceAction {
 /// ```
 /// as a String.
 fn get_devices() -> Result<String> {
-    let output = Command::new(LSBLK)
-        .args(&vec!["-l", "-o", "FSTYPE,PATH,UUID,FSVER,MOUNTPOINT"])
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()?;
+    let output = execute_and_output(LSBLK, ["-l", "-o", "FSTYPE,PATH,UUID,FSVER,MOUNTPOINT"])?;
     Ok(String::from_utf8(output.stdout)?)
 }
 
@@ -117,15 +113,7 @@ impl CryptoDevice {
     }
 
     fn set_device_name(&mut self) -> Result<()> {
-        let child = Command::new(LSBLK)
-            .arg("-l")
-            .arg("-n")
-            .arg(self.path.clone())
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
-        let output = child.wait_with_output()?;
+        let output = execute_and_output(LSBLK, ["-l", "-n", self.path.as_str()])?;
         log_info!(
             "is opened ? output of lsblk\nstdout: {}\nstderr{}",
             String::from_utf8(output.stdout.clone())?,
@@ -160,7 +148,7 @@ impl CryptoDevice {
             // open
             let (success, stdout, stderr) = execute_sudo_command_with_password(
                 &self.format_luksopen_parameters(),
-                &password
+                password
                     .cryptsetup()
                     .as_ref()
                     .context("cryptsetup password isn't set")?,

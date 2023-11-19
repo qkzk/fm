@@ -657,6 +657,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] Fix the error itself,
     - [x] log a message when we encounter such a file, since there's not much we can do
     - [x] prevent logging the same file multiple times. Massive change which requires a new lazystatic element
+  - [x] regroup commands in one place
 
 ## TODO
 
