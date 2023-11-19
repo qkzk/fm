@@ -425,18 +425,16 @@ impl EventAction {
 
     /// Move to $HOME aka ~.
     pub fn home(status: &mut Status) -> Result<()> {
-        let tab = status.selected();
         let home_cow = shellexpand::tilde("~");
         let home: &str = home_cow.borrow();
         let path = std::fs::canonicalize(home)?;
-        tab.cd(&path)?;
+        status.selected().cd(&path)?;
         status.update_second_pane_for_preview()
     }
 
     pub fn go_root(status: &mut Status) -> Result<()> {
-        let tab = status.selected();
         let root_path = std::path::PathBuf::from("/");
-        tab.cd(&root_path)?;
+        status.selected().cd(&root_path)?;
         status.update_second_pane_for_preview()
     }
 
