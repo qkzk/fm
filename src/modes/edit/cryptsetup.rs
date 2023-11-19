@@ -82,6 +82,12 @@ impl CryptoDevice {
         Ok(())
     }
 
+    fn device_name(&self) -> String {
+        self.device_name
+            .clone()
+            .unwrap_or_else(|| self.uuid.clone())
+    }
+
     fn format_luksopen_parameters(&self) -> [String; 4] {
         [
             CRYPTSETUP.to_owned(),
@@ -94,9 +100,7 @@ impl CryptoDevice {
         [
             CRYPTSETUP.to_owned(),
             "luksClose".to_owned(),
-            self.device_name
-                .clone()
-                .unwrap_or_else(|| self.uuid.clone()),
+            self.device_name(),
         ]
     }
 
@@ -178,12 +182,6 @@ impl CryptoDevice {
         // close
         let (success, stdout, stderr) = execute_sudo_command(&self.format_luksclose_parameters())?;
         log_info!("stdout: {}\nstderr: {}", stdout, stderr);
-        if !success {
-            return Ok(false);
-        }
-        // sudo -k
-        let (success, stdout, stderr) = execute_sudo_command(&["-k".to_owned()])?;
-        log_info!("stdout: {}\nstderr: {}", stdout, stderr);
         Ok(success)
     }
 }
@@ -193,13 +191,7 @@ impl MountHelper for CryptoDevice {
         [
             "mkdir".to_owned(),
             "-p".to_owned(),
-            format!(
-                "/run/media/{}/{}",
-                username,
-                self.device_name
-                    .clone()
-                    .unwrap_or_else(|| self.uuid.clone())
-            ),
+            format!("/run/media/{}/{}", username, self.device_name()),
         ]
     }
 
@@ -207,26 +199,14 @@ impl MountHelper for CryptoDevice {
         vec![
             "mount".to_owned(),
             format!("/dev/mapper/{}", self.uuid),
-            format!(
-                "/run/media/{}/{}",
-                username,
-                self.device_name
-                    .clone()
-                    .unwrap_or_else(|| self.uuid.clone())
-            ),
+            format!("/run/media/{}/{}", username, self.device_name()),
         ]
     }
 
     fn format_umount_parameters(&self, username: &str) -> Vec<String> {
         vec![
             "umount".to_owned(),
-            format!(
-                "/run/media/{}/{}",
-                username,
-                self.device_name
-                    .clone()
-                    .unwrap_or_else(|| self.uuid.clone())
-            ),
+            format!("/run/media/{}/{}", username, self.device_name()),
         ]
     }
 
