@@ -12,6 +12,8 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::common::is_program_in_path;
 
+use crate::io::execute_and_output;
+
 #[derive(Default)]
 struct GitStatus {
     branch: Option<String>,
@@ -120,18 +122,17 @@ impl GitStatus {
     }
 }
 
-fn porcelain2() -> Result<std::process::Output, std::io::Error> {
-    process::Command::new("git")
-        .args([
+fn porcelain2() -> Result<std::process::Output> {
+    execute_and_output(
+        "git",
+        &[
             "status",
             "--porcelain=v2",
             "-z",
             "--branch",
             "--untracked-files=all",
-        ])
-        .stdin(process::Stdio::null())
-        .stderr(process::Stdio::null())
-        .output()
+        ],
+    )
 }
 
 /// Returns a string representation of the git status of this path.
