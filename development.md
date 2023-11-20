@@ -646,20 +646,20 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       Reseting display should switch back to user setted display.
       Preview isn't like Normal & Tree since it doesn't display files at all.
   - [x] move every src to a related folder
-  - [x] refactor regex. Allow regex match in tree
-  - [x] FIX: can't jump to file from tree mode
-  - [x] refactor chmod into its own mod
-  - [x] refactor node creation (file or directory) in its own mod
-  - [ ] refactor password.
-    - use only one enum and hold passwords somewhere else
-  - [x] FIX: browsing a file where "modified" time is in future crashes the application.
-        The error comes from refresher.rs and happens with poorly configured iso files.
-    - [x] Fix the error itself,
-    - [x] log a message when we encounter such a file, since there's not much we can do
-    - [x] prevent logging the same file multiple times. Massive change which requires a new lazystatic element
-  - [x] regroup commands in one place
-  - [x] FIX: clicking outside above files crashes
-  - [x] Clickable first line. Each first line element can be clicked, resulting in an action
+- [x] refactor regex. Allow regex match in tree
+- [x] FIX: can't jump to file from tree mode
+- [x] refactor chmod into its own mod
+- [x] refactor node creation (file or directory) in its own mod
+- [ ] refactor password.
+- use only one enum and hold passwords somewhere else
+- [x] FIX: browsing a file where "modified" time is in future crashes the application.
+      The error comes from refresher.rs and happens with poorly configured iso files.
+- [x] Fix the error itself,
+- [x] log a message when we encounter such a file, since there's not much we can do
+- [x] prevent logging the same file multiple times. Massive change which requires a new lazystatic element
+- [x] regroup commands in one place
+- [x] FIX: clicking outside above files crashes
+- [x] Clickable first line. Each first line element can be clicked, resulting in an action
 
 ## TODO
 
