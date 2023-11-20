@@ -138,6 +138,20 @@ impl Go for Tree {
     }
 }
 
+/// Trait allowing to measure the depth of something.
+trait Depth {
+    fn depth(&self) -> usize;
+}
+
+impl Depth for PathBuf {
+    /// Measure the number of components of a `PathBuf`.
+    /// For absolute paths, it's the number of folders plus one for / and one for the file itself.
+    #[inline]
+    fn depth(&self) -> usize {
+        self.components().collect::<Vec<_>>().len()
+    }
+}
+
 /// A FileSystem tree of nodes.
 /// Internally it's a wrapper around an `std::collections::HashMap<PathBuf, Node>`
 /// It also holds informations about the required height of the tree.
@@ -189,75 +203,85 @@ impl Tree {
         filter_kind: &FilterKind,
     ) -> HashMap<PathBuf, Node> {
         // keep track of the depth
-        let root_depth = root_path.components().collect::<Vec<_>>().len();
+        let root_depth = root_path.depth();
         let mut stack = vec![root_path.to_owned()];
         let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
         let mut last_path = root_path.to_owned();
         let mut index = 0;
 
         while let Some(current_path) = stack.pop() {
-            let reached_depth = current_path.components().collect::<Vec<_>>().len();
-            if reached_depth >= depth + root_depth {
+            let current_depth = current_path.depth();
+            if current_depth >= depth + root_depth {
                 continue;
             }
-            let children = Self::create_children(
-                &mut stack,
-                depth,
-                root_depth,
-                reached_depth,
-                &current_path,
-                users,
-                show_hidden,
-                filter_kind,
-                sort_kind,
-            );
+            let children_will_be_added = depth + root_depth > 1 + current_depth;
+            let children =
+                if children_will_be_added && current_path.is_dir() && !current_path.is_symlink() {
+                    Self::create_children(
+                        &mut stack,
+                        &current_path,
+                        users,
+                        show_hidden,
+                        filter_kind,
+                        sort_kind,
+                    )
+                } else {
+                    None
+                };
             let current_node = Node::new(&current_path, children, &last_path, index);
-
-            if let Some(last_node) = nodes.get_mut(&last_path) {
-                last_node.next = current_path.to_owned();
-            }
-            nodes.insert(current_path.to_owned(), current_node);
+            Self::set_next_for_last(&mut nodes, &current_path, &last_path);
             last_path = current_path.to_owned();
+            nodes.insert(current_path, current_node);
             index += 1;
         }
+        Self::set_prev_for_root(&mut nodes, root_path, &last_path);
+        Self::set_next_for_last(&mut nodes, root_path, &last_path);
+        nodes
+    }
+
+    #[inline]
+    fn set_prev_for_root(
+        nodes: &mut HashMap<PathBuf, Node>,
+        root_path: &PathBuf,
+        last_path: &PathBuf,
+    ) {
         let Some(root_node) = nodes.get_mut(root_path) else {
             unreachable!("root_path should be in nodes");
         };
         root_node.prev = last_path.to_owned();
         root_node.select();
-        let Some(last_node) = nodes.get_mut(&last_path) else {
-            unreachable!("last_path should be in nodes");
+    }
+
+    #[inline]
+    fn set_next_for_last(
+        nodes: &mut HashMap<PathBuf, Node>,
+        root_path: &PathBuf,
+        last_path: &PathBuf,
+    ) {
+        if let Some(last_node) = nodes.get_mut(last_path) {
+            last_node.next = root_path.to_owned();
         };
-        last_node.next = root_path.to_owned();
-        nodes
     }
 
     #[inline]
     fn create_children(
         stack: &mut Vec<PathBuf>,
-        depth: usize,
-        root_depth: usize,
-        reached_depth: usize,
         current_path: &Path,
         users: &Users,
         show_hidden: bool,
         filter_kind: &FilterKind,
         sort_kind: SortKind,
     ) -> Option<Vec<PathBuf>> {
-        let mut node_children = None;
-        let children_will_be_added = depth + root_depth > 1 + reached_depth;
-        if children_will_be_added && current_path.is_dir() && !current_path.is_symlink() {
-            if let Some(mut files) =
-                files_collection(&current_path, users, show_hidden, filter_kind, true)
-            {
-                sort_kind.sort(&mut files);
-                let children = Self::make_children_and_stack_them(stack, &files);
-                if !children.is_empty() {
-                    node_children = Some(children);
-                }
+        if let Some(mut files) =
+            files_collection(current_path, users, show_hidden, filter_kind, true)
+        {
+            sort_kind.sort(&mut files);
+            let children = Self::make_children_and_stack_them(stack, &files);
+            if !children.is_empty() {
+                return Some(children);
             }
         }
-        node_children
+        None
     }
 
     #[inline]
