@@ -679,21 +679,23 @@ impl Tab {
         Ok(true)
     }
 
+    /// Enter rename mode.
+    /// Get the name of the selected file (from path_content or tree) and
+    /// use it to replace the input string.
+    /// If the selected file is the root path (.) or its parent (..),
+    /// it exits immediatly, doing nothing.
     pub fn rename(&mut self) -> Result<()> {
-        let old_name: String = if matches!(self.display_mode, DisplayMode::Tree) {
-            self.tree
-                .selected_path()
-                .file_name()
-                .context("no filename")?
-                .to_string_lossy()
-                .into()
-        } else {
-            let Ok(fileinfo) = self.selected() else {
+        let selected = self.selected()?;
+        if selected.path == self.path_content.path {
+            return Ok(());
+        }
+        if let Some(parent) = self.path_content.path.parent() {
+            if selected.path == parent {
                 return Ok(());
-            };
-            fileinfo.filename.to_owned()
-        };
-        self.input.replace(&old_name);
+            }
+        }
+        let old_name = &selected.filename;
+        self.input.replace(old_name);
         self.set_edit_mode(EditMode::InputSimple(InputSimple::Rename));
         Ok(())
     }
