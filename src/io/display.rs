@@ -491,11 +491,11 @@ impl FilesFirstLine {
     }
 
     fn string_used_space(tab: &Tab) -> String {
-        format!("{}  ", tab.path_content.used_space())
+        format!(" {} ", tab.path_content.used_space())
     }
 
     fn string_disk_space(disk_space: &str) -> String {
-        format!(" Avail: {disk_space}  ")
+        format!(" Avail: {disk_space} ")
     }
 
     fn string_git_string(tab: &Tab) -> Result<String> {
@@ -508,11 +508,7 @@ impl FilesFirstLine {
 
     fn string_first_row_flags(status: &Status) -> String {
         let nb_flagged = status.flagged.len();
-        let flag_string = if status.flagged.len() > 1 {
-            "flags"
-        } else {
-            "flag"
-        };
+        let flag_string = if nb_flagged > 1 { "flags" } else { "flag" };
         format!(" {nb_flagged} {flag_string} ",)
     }
 }
