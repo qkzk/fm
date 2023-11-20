@@ -604,7 +604,11 @@ impl Tab {
     }
 
     /// Select a given row, if there's something in it.
+    /// Returns an error if the clicked row is above the headers margin.
     pub fn select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
+        if row < ContentWindow::HEADER_ROWS as u16 {
+            return Err(anyhow::anyhow!("Clicked below headers"));
+        }
         match self.display_mode {
             DisplayMode::Normal => self.normal_select_row(row),
             DisplayMode::Tree => self.tree_select_row(row, term_height)?,

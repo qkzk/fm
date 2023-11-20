@@ -36,14 +36,15 @@ impl EventDispatcher {
                 EventAction::move_down(status)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
-                status.click(row, col, current_height)?;
+                let _ = status.click(row, col, current_height);
             }
             Event::Key(
                 Key::SingleClick(MouseButton::Right, row, col)
                 | Key::DoubleClick(MouseButton::Left, row, col),
             ) => {
-                status.click(row, col, current_height)?;
-                LeaveMode::right_click(status)?;
+                if let Ok(()) = status.click(row, col, current_height) {
+                    LeaveMode::right_click(status)?;
+                }
             }
             // reserved keybind which can't be bound to anything.
             // using `Key::User(())` conflicts with skim internal which

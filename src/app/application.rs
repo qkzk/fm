@@ -25,7 +25,7 @@ pub struct FM {
     /// Associate the event to a method, modifing the status.
     event_dispatcher: EventDispatcher,
     /// Current status of the application. Mostly the filetrees
-    status: Status,
+    pub status: Status,
     /// Responsible for the display on screen.
     display: Display,
     /// Refresher is used to force a refresh when a file has been modified externally.
