@@ -637,8 +637,8 @@ impl Tree {
         prefix: String,
         current_node: &'a Node,
     ) {
-        let first_prefix = first_prefix(prefix.clone());
-        let other_prefix = other_prefix(prefix);
+        let first_prefix = first_prefix(&prefix);
+        let other_prefix = other_prefix(&prefix);
 
         let Some(children) = &current_node.children else {
             return;
@@ -647,7 +647,7 @@ impl Tree {
         let Some(first_leaf) = children.next() else {
             return;
         };
-        stack.push((first_prefix.clone(), first_leaf));
+        stack.push((first_prefix, first_leaf));
 
         for leaf in children {
             stack.push((other_prefix.clone(), leaf));
@@ -656,7 +656,8 @@ impl Tree {
 }
 
 #[inline]
-fn first_prefix(mut prefix: String) -> String {
+fn first_prefix(prefix: &str) -> String {
+    let mut prefix = prefix.to_string();
     prefix.push(' ');
     prefix = prefix.replace("└──", "  ");
     prefix = prefix.replace("├──", "│ ");
@@ -665,7 +666,8 @@ fn first_prefix(mut prefix: String) -> String {
 }
 
 #[inline]
-fn other_prefix(mut prefix: String) -> String {
+fn other_prefix(prefix: &str) -> String {
+    let mut prefix = prefix.to_string();
     prefix.push(' ');
     prefix = prefix.replace("└──", "  ");
     prefix = prefix.replace("├──", "│ ");
