@@ -633,7 +633,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: cursor is off by one in password
 - [x] display mode / edit mode. Separate display (normal, tree, preview) from any other mode.
 - [x] FIX: NVIM listen address won't update if neovim is restarted while fm is still running
-- [ ] read click event (ouch where ?)
 - [x] FIX: next is wrong when folded.
       Needs a lot of change. Can't fix everything. ATM if a childnode is folded, unfolding also unfolds every child.
       IDK how to avoid that without rewriting everything.
@@ -651,7 +650,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] refactor chmod into its own mod
 - [x] refactor node creation (file or directory) in its own mod
 - [ ] refactor password.
-- use only one enum and hold passwords somewhere else
+      only one enum and hold passwords somewhere else
 - [x] FIX: browsing a file where "modified" time is in future crashes the application.
       The error comes from refresher.rs and happens with poorly configured iso files.
 - [x] Fix the error itself,
