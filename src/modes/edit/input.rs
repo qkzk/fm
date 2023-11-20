@@ -74,7 +74,7 @@ impl Input {
 
     /// Returns a string of * for every char typed.
     pub fn password(&self) -> String {
-        self.chars.iter().map(|_| '*').collect()
+        "*".repeat(self.len())
     }
 
     /// Insert an utf-8 char into the input at cursor index.
