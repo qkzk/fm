@@ -56,7 +56,7 @@ pub struct Node {
 impl Node {
     /// Creates a new Node from a path and its children.
     /// By default it's not selected nor folded.
-    fn new(path: &Path, children: Option<Vec<PathBuf>>) -> Self {
+    fn new(path: &Path, children: Option<Vec<PathBuf>>, prev: &Path, index: usize) -> Self {
         Self {
             path: path.to_owned(),
             children,
@@ -64,8 +64,8 @@ impl Node {
             selected: false,
             reachable: true,
             next: PathBuf::default(),
-            prev: PathBuf::default(),
-            index: 0,
+            prev: prev.to_owned(),
+            index,
         }
     }
 
@@ -95,19 +95,9 @@ impl Node {
         self.index
     }
 
-    /// Set the index of the node.
-    fn set_index(&mut self, index: usize) {
-        self.index = index
-    }
-
     /// Creates a new fileinfo from the node.
     pub fn fileinfo(&self, users: &Users) -> Result<FileInfo> {
         FileInfo::new(&self.path, users)
-    }
-
-    #[inline]
-    fn set_children(&mut self, children: Option<Vec<PathBuf>>) {
-        self.children = children
     }
 
     #[inline]
@@ -203,35 +193,32 @@ impl Tree {
         let mut stack = vec![root_path.to_owned()];
         let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
         let mut last_path = root_path.to_owned();
-        let mut counter = 0;
+        let mut index = 0;
 
         while let Some(current_path) = stack.pop() {
             let reached_depth = current_path.components().collect::<Vec<_>>().len();
             if reached_depth >= depth + root_depth {
                 continue;
             }
-            let children_will_be_added = depth + root_depth > 1 + reached_depth;
-            let mut current_node = Node::new(&current_path, None);
-            if children_will_be_added && current_path.is_dir() && !current_path.is_symlink() {
-                if let Some(mut files) =
-                    files_collection(&current_path, users, show_hidden, filter_kind, true)
-                {
-                    sort_kind.sort(&mut files);
-                    let children = Self::make_children_and_stack_them(&mut stack, &files);
-                    if !children.is_empty() {
-                        current_node.set_children(Some(children));
-                    }
-                };
-            }
+            let children = Self::create_children(
+                &mut stack,
+                depth,
+                root_depth,
+                reached_depth,
+                &current_path,
+                users,
+                show_hidden,
+                filter_kind,
+                sort_kind,
+            );
+            let current_node = Node::new(&current_path, children, &last_path, index);
 
             if let Some(last_node) = nodes.get_mut(&last_path) {
                 last_node.next = current_path.to_owned();
             }
-            current_node.prev = last_path;
-            current_node.set_index(counter);
             nodes.insert(current_path.to_owned(), current_node);
             last_path = current_path.to_owned();
-            counter += 1;
+            index += 1;
         }
         let Some(root_node) = nodes.get_mut(root_path) else {
             unreachable!("root_path should be in nodes");
@@ -243,6 +230,34 @@ impl Tree {
         };
         last_node.next = root_path.to_owned();
         nodes
+    }
+
+    #[inline]
+    fn create_children(
+        stack: &mut Vec<PathBuf>,
+        depth: usize,
+        root_depth: usize,
+        reached_depth: usize,
+        current_path: &Path,
+        users: &Users,
+        show_hidden: bool,
+        filter_kind: &FilterKind,
+        sort_kind: SortKind,
+    ) -> Option<Vec<PathBuf>> {
+        let mut node_children = None;
+        let children_will_be_added = depth + root_depth > 1 + reached_depth;
+        if children_will_be_added && current_path.is_dir() && !current_path.is_symlink() {
+            if let Some(mut files) =
+                files_collection(&current_path, users, show_hidden, filter_kind, true)
+            {
+                sort_kind.sort(&mut files);
+                let children = Self::make_children_and_stack_them(stack, &files);
+                if !children.is_empty() {
+                    node_children = Some(children);
+                }
+            }
+        }
+        node_children
     }
 
     #[inline]
