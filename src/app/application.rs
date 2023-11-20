@@ -92,8 +92,7 @@ impl FM {
 
     /// Update itself, changing its status.
     pub fn update(&mut self, event: Event) -> Result<()> {
-        self.event_dispatcher
-            .dispatch(&mut self.status, event, self.display.height()?)?;
+        self.event_dispatcher.dispatch(&mut self.status, event)?;
         self.status.refresh_disks();
         Ok(())
     }

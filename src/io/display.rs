@@ -7,6 +7,7 @@ use tuikit::attr::*;
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
+use crate::app::FirstLine;
 use crate::app::Status;
 use crate::app::Tab;
 use crate::common::path_to_string;
@@ -17,7 +18,6 @@ use crate::common::{
 use crate::io::read_last_log_line;
 use crate::log_info;
 use crate::modes::calculate_top_bottom;
-use crate::modes::shorten_path;
 use crate::modes::ContentWindow;
 use crate::modes::InputCompleted;
 use crate::modes::MountRepr;
@@ -117,7 +117,6 @@ impl WinMainAttributes {
 struct WinMain<'a> {
     status: &'a Status,
     tab: &'a Tab,
-    disk_space: &'a str,
     attributes: WinMainAttributes,
 }
 
@@ -128,14 +127,8 @@ impl<'a> Draw for WinMain<'a> {
             self.draw_preview_as_second_pane(canvas)?;
             return Ok(());
         }
-        let opt_index = self.draw_content(canvas)?;
-        WinMainFirstLine::new(
-            self.disk_space,
-            opt_index,
-            self.attributes.is_selected,
-            self.status,
-        )?
-        .draw(canvas)?;
+        self.draw_content(canvas)?;
+        WinMainFirstLine::new(self.attributes.is_selected, self.status)?.draw(canvas)?;
         // self.first_line(self.disk_space, canvas, opt_index)?;
         Ok(())
     }
@@ -146,16 +139,10 @@ impl<'a> Widget for WinMain<'a> {}
 impl<'a> WinMain<'a> {
     const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
 
-    fn new(
-        status: &'a Status,
-        index: usize,
-        disk_space: &'a str,
-        attributes: WinMainAttributes,
-    ) -> Self {
+    fn new(status: &'a Status, index: usize, attributes: WinMainAttributes) -> Self {
         Self {
             status,
             tab: &status.tabs[index],
-            disk_space,
             attributes,
         }
     }
@@ -391,12 +378,12 @@ impl<'a> WinMain<'a> {
     }
 }
 
-struct WinMainFirstLine {
-    content: Vec<String>,
+struct WinMainFirstLine<'a> {
     is_selected: bool,
+    status: &'a Status,
 }
 
-impl Draw for WinMainFirstLine {
+impl<'a> Draw for WinMainFirstLine<'a> {
     /// Display the top line on terminal.
     /// Its content depends on the mode.
     /// In normal mode we display the path and number of files.
@@ -405,118 +392,31 @@ impl Draw for WinMainFirstLine {
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        draw_colored_strings(0, 0, &self.content, canvas, self.is_selected)?;
+        let content = match self.status.selected_non_mut().display_mode {
+            DisplayMode::Normal | DisplayMode::Tree => {
+                FirstLine::new(self.status)?.strings().to_owned()
+            }
+            DisplayMode::Preview => PreviewFirstLine::make_preview(self.status),
+        };
+        draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
         Ok(())
     }
 }
 
-impl WinMainFirstLine {
-    fn new(
-        disk_space: &str,
-        opt_index: Option<usize>,
-        is_selected: bool,
-        status: &Status,
-    ) -> Result<Self> {
-        let tab = status.selected_non_mut();
-        let content = match tab.display_mode {
-            DisplayMode::Normal | DisplayMode::Tree => {
-                FilesFirstLine::make_files(status, tab, disk_space, opt_index)?
-            }
-            DisplayMode::Preview => PreviewFirstLine::make_preview(status, tab),
-        };
+impl<'a> WinMainFirstLine<'a> {
+    fn new(is_selected: bool, status: &'a Status) -> Result<Self> {
         Ok(Self {
-            content,
             is_selected,
+            status,
         })
-    }
-}
-
-struct FilesFirstLine;
-
-impl FilesFirstLine {
-    fn make_files(
-        status: &Status,
-        tab: &Tab,
-        disk_space: &str,
-        opt_index: Option<usize>,
-    ) -> Result<Vec<String>> {
-        Ok(vec![
-            Self::string_shorten_path(tab)?,
-            Self::string_first_row_selected_file(tab)?,
-            Self::string_first_row_position(tab, opt_index),
-            Self::string_used_space(tab),
-            Self::string_disk_space(disk_space),
-            Self::string_git_string(tab)?,
-            Self::string_first_row_flags(status),
-            Self::string_sort_kind(tab),
-        ])
-    }
-
-    fn string_shorten_path(tab: &Tab) -> Result<String> {
-        Ok(format!(" {}", shorten_path(&tab.path_content.path, None)?))
-    }
-
-    fn string_first_row_selected_file(tab: &Tab) -> Result<String> {
-        match tab.display_mode {
-            DisplayMode::Tree => Ok(format!(
-                "/{rel}",
-                rel = shorten_path(tab.tree.selected_path_relative_to_root()?, Some(18))?
-            )),
-            _ => {
-                if let Some(fileinfo) = tab.path_content.selected() {
-                    Ok(fileinfo.filename_without_dot_dotdot())
-                } else {
-                    Ok("".to_owned())
-                }
-            }
-        }
-    }
-
-    fn string_first_row_position(tab: &Tab, opt_index: Option<usize>) -> String {
-        if matches!(tab.display_mode, DisplayMode::Tree) {
-            let Some(selected_index) = opt_index else {
-                return "".to_owned();
-            };
-            return format!(
-                " {position} / {len} ",
-                position = selected_index + 1,
-                len = tab.tree.len()
-            );
-        };
-        format!(
-            " {index} / {len} ",
-            index = tab.path_content.index + 1,
-            len = tab.path_content.len()
-        )
-    }
-
-    fn string_used_space(tab: &Tab) -> String {
-        format!(" {} ", tab.path_content.used_space())
-    }
-
-    fn string_disk_space(disk_space: &str) -> String {
-        format!(" Avail: {disk_space} ")
-    }
-
-    fn string_git_string(tab: &Tab) -> Result<String> {
-        Ok(format!(" {} ", tab.path_content.git_string()?))
-    }
-
-    fn string_sort_kind(tab: &Tab) -> String {
-        format!(" {} ", &tab.sort_kind)
-    }
-
-    fn string_first_row_flags(status: &Status) -> String {
-        let nb_flagged = status.flagged.len();
-        let flag_string = if nb_flagged > 1 { "flags" } else { "flag" };
-        format!(" {nb_flagged} {flag_string} ",)
     }
 }
 
 struct PreviewFirstLine;
 
 impl PreviewFirstLine {
-    fn make_preview(status: &Status, tab: &Tab) -> Vec<String> {
+    fn make_preview(status: &Status) -> Vec<String> {
+        let tab = status.selected_non_mut();
         match &tab.preview {
             Preview::Text(text_content) => match text_content.kind {
                 TextKind::HELP => Self::make_help(),
@@ -1046,11 +946,10 @@ impl Display {
         self.term.clear()?;
 
         let (width, _) = self.term.term_size()?;
-        let disk_spaces = status.disk_spaces_per_tab();
         if status.dual_pane && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self._draw_dual_pane(status, &disk_spaces.0, &disk_spaces.1)?
+            self._draw_dual_pane(status)?
         } else {
-            self._draw_single_pane(status, &disk_spaces.0)?
+            self._draw_single_pane(status)?
         }
 
         Ok(self.term.present()?)
@@ -1122,12 +1021,7 @@ impl Display {
         }
     }
 
-    fn _draw_dual_pane(
-        &mut self,
-        status: &Status,
-        disk_space_tab_0: &str,
-        disk_space_tab_1: &str,
-    ) -> Result<()> {
+    fn _draw_dual_pane(&mut self, status: &Status) -> Result<()> {
         let (width, _) = self.term.term_size()?;
         let (first_selected, second_selected) = (status.index == 0, status.index == 1);
         let attributes_left = WinMainAttributes::new(
@@ -1136,14 +1030,14 @@ impl Display {
             first_selected,
             status.tabs[0].need_second_window(),
         );
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, attributes_left);
+        let win_main_left = WinMain::new(status, 0, attributes_left);
         let attributes_right = WinMainAttributes::new(
             width / 2,
             TabPosition::Right,
             second_selected,
             status.tabs[1].need_second_window(),
         );
-        let win_main_right = WinMain::new(status, 1, disk_space_tab_1, attributes_right);
+        let win_main_right = WinMain::new(status, 1, attributes_right);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let (border_left, border_right) = self._borders(status);
@@ -1165,14 +1059,14 @@ impl Display {
         Ok(self.term.draw(&hsplit)?)
     }
 
-    fn _draw_single_pane(&mut self, status: &Status, disk_space_tab_0: &str) -> Result<()> {
+    fn _draw_single_pane(&mut self, status: &Status) -> Result<()> {
         let attributes_left = WinMainAttributes::new(
             0,
             TabPosition::Left,
             true,
             status.tabs[0].need_second_window(),
         );
-        let win_main_left = WinMain::new(status, 0, disk_space_tab_0, attributes_left);
+        let win_main_left = WinMain::new(status, 0, attributes_left);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self._size_for_second_window(&status.tabs[0])?;
         let win = self._vertical_split(

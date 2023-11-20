@@ -203,3 +203,7 @@ pub const NVIM: &str = "nvim";
 pub const TAR: &str = "tar";
 /// libreoffice executable
 pub const LIBREOFFICE: &str = "libreoffice";
+/// lazygit
+pub const LAZYGIT: &str = "lazygit";
+/// duf
+pub const NCDU: &str = "ncdu";

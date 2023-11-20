@@ -4,7 +4,7 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::app::Status;
 use crate::config::{Bindings, REFRESH_EVENT};
 use crate::event::event_exec::{EventAction, LeaveMode};
-use crate::modes::{DisplayMode, EditMode, InputSimple, MarkAction, Navigate};
+use crate::modes::{ContentWindow, DisplayMode, EditMode, InputSimple, MarkAction, Navigate};
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -25,33 +25,38 @@ impl EventDispatcher {
     /// Only non keyboard events are dealt here directly.
     /// Keyboard events are configurable and are sent to specific functions
     /// which needs to know those keybindings.
-    pub fn dispatch(&self, status: &mut Status, ev: Event, current_height: usize) -> Result<()> {
+    pub fn dispatch(&self, status: &mut Status, ev: Event) -> Result<()> {
         match ev {
             Event::Key(Key::WheelUp(_, col, _)) => {
-                status.select_pane(col)?;
+                EventAction::select_pane(status, col)?;
                 EventAction::move_up(status)?;
             }
             Event::Key(Key::WheelDown(_, col, _)) => {
-                status.select_pane(col)?;
+                EventAction::select_pane(status, col)?;
                 EventAction::move_down(status)?;
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
-                let _ = status.click(row, col, current_height);
+                EventAction::select_pane(status, col)?;
+                if row < ContentWindow::HEADER_ROWS as u16 {
+                    EventAction::click_first_line(col, status)?;
+                } else {
+                    let _ = EventAction::click_files(status, row, col);
+                }
             }
             Event::Key(
                 Key::SingleClick(MouseButton::Right, row, col)
                 | Key::DoubleClick(MouseButton::Left, row, col),
             ) => {
-                if let Ok(()) = status.click(row, col, current_height) {
+                if let Ok(()) = EventAction::click_files(status, row, col) {
                     LeaveMode::right_click(status)?;
                 }
             }
             // reserved keybind which can't be bound to anything.
             // using `Key::User(())` conflicts with skim internal which
             // interpret this event as a signal(1)
-            REFRESH_EVENT => status.selected().refresh_if_needed()?,
+            REFRESH_EVENT => EventAction::refresh_if_needed(status.selected())?,
 
-            Event::Resize { width, height } => status.resize(width, height)?,
+            Event::Resize { width, height } => EventAction::resize(status, width, height)?,
             Event::Key(Key::Char(c)) => self.char(status, c)?,
             Event::Key(key) => self.key_matcher(status, key)?,
             _ => (),

@@ -659,6 +659,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] prevent logging the same file multiple times. Massive change which requires a new lazystatic element
   - [x] regroup commands in one place
   - [x] FIX: clicking outside above files crashes
+  - [x] Clickable first line. Each first line element can be clicked, resulting in an action
 
 ## TODO
 

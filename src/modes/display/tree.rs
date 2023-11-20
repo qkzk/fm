@@ -50,6 +50,7 @@ pub struct Node {
     reachable: bool,
     prev: PathBuf,
     next: PathBuf,
+    index: usize,
 }
 
 impl Node {
@@ -64,6 +65,7 @@ impl Node {
             reachable: true,
             next: PathBuf::default(),
             prev: PathBuf::default(),
+            index: 0,
         }
     }
 
@@ -86,6 +88,16 @@ impl Node {
     /// Is the node selected ?
     pub fn selected(&self) -> bool {
         self.selected
+    }
+
+    /// The index of the node in displayed tree
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
+    /// Set the index of the node.
+    fn set_index(&mut self, index: usize) {
+        self.index = index
     }
 
     /// Creates a new fileinfo from the node.
@@ -191,6 +203,7 @@ impl Tree {
         let mut stack = vec![root_path.to_owned()];
         let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
         let mut last_path = root_path.to_owned();
+        let mut counter = 0;
 
         while let Some(current_path) = stack.pop() {
             let reached_depth = current_path.components().collect::<Vec<_>>().len();
@@ -215,8 +228,10 @@ impl Tree {
                 last_node.next = current_path.to_owned();
             }
             current_node.prev = last_path;
+            current_node.set_index(counter);
             nodes.insert(current_path.to_owned(), current_node);
             last_path = current_path.to_owned();
+            counter += 1;
         }
         let Some(root_node) = nodes.get_mut(root_path) else {
             unreachable!("root_path should be in nodes");

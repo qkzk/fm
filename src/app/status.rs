@@ -19,7 +19,6 @@ use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock};
 use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
 use crate::io::{InternalVariant, Opener};
-use crate::modes::Compresser;
 use crate::modes::FileKind;
 use crate::modes::Flagged;
 use crate::modes::IsoDevice;
@@ -37,10 +36,13 @@ use crate::modes::{copy_move, CopyMove};
 use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::modes::{CliInfo, Permissions};
+use crate::modes::{Compresser, ContentWindow};
 use crate::modes::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
 use crate::modes::{MountCommands, MountRepr};
 use crate::modes::{PasswordHolder, PasswordKind, PasswordUsage};
 use crate::{log_info, log_line};
+
+use super::FirstLine;
 
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.
@@ -448,9 +450,14 @@ impl Status {
         Ok(())
     }
 
-    pub fn click(&mut self, row: u16, col: u16, current_height: usize) -> Result<()> {
+    pub fn click(&mut self, row: u16, col: u16) -> Result<()> {
         self.select_pane(col)?;
-        self.selected().select_row(row, current_height)
+        if row < ContentWindow::HEADER_ROWS as u16 {
+            return Err(anyhow::anyhow!("Clicked below headers"));
+        }
+        let (_, current_height) = self.term_size()?;
+        self.selected().select_row(row, current_height)?;
+        Ok(())
     }
 
     pub fn input_regex(&mut self, char: char) -> Result<()> {
@@ -513,13 +520,10 @@ impl Status {
         self.system_info.disks()
     }
 
-    /// Returns a pair of disk spaces for both tab.
-    pub fn disk_spaces_per_tab(&self) -> (String, String) {
+    /// Returns a the disk spaces for the selected tab..
+    pub fn disk_spaces_of_selected(&self) -> String {
         let disks = self.disks();
-        (
-            disk_space(disks, &self.tabs[0].path_content.path),
-            disk_space(disks, &self.tabs[1].path_content.path),
-        )
+        disk_space(disks, &self.tabs[self.index].path_content.path)
     }
 
     /// Returns the mount points of every disk.
@@ -1090,6 +1094,15 @@ impl Status {
         Ok(())
     }
 
+    pub fn first_line_action(&mut self, col: u16) -> Result<()> {
+        if matches!(self.selected_non_mut().display_mode, DisplayMode::Preview) {
+            return Ok(());
+        }
+        let first_line = FirstLine::new(self)?;
+        let action = first_line.action(col as usize);
+        action.matcher(self)
+    }
+
     /// Change permission of the flagged files.
     /// Once the user has typed an octal permission like 754, it's applied to
     /// the file.
@@ -1103,6 +1116,19 @@ impl Status {
         Permissions::set_permissions_of_flagged(input_permission, &mut self.flagged)?;
         self.selected().refresh_view()?;
         self.reset_tabs_view()
+    }
+
+    pub fn set_mode_chmod(&mut self) -> Result<()> {
+        if self.selected().path_content.is_empty() {
+            return Ok(());
+        }
+        self.selected()
+            .set_edit_mode(EditMode::InputSimple(InputSimple::Chmod));
+        if self.flagged.is_empty() {
+            self.flagged
+                .push(self.tabs[self.index].selected().unwrap().path.clone());
+        };
+        Ok(())
     }
 }
 

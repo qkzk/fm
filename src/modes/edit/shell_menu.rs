@@ -63,7 +63,7 @@ impl ShellMenu {
         Ok(())
     }
 
-    fn require_cwd_and_command(status: &Status, command: &str) -> Result<()> {
+    pub fn require_cwd_and_command(status: &Status, command: &str) -> Result<()> {
         let tab = status.selected_non_mut();
         let path = tab
             .directory_of_selected()?

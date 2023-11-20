@@ -8,6 +8,8 @@ use anyhow::{anyhow, Context, Result};
 use crate::app::Status;
 use crate::app::Tab;
 use crate::common::path_to_string;
+use crate::common::LAZYGIT;
+use crate::common::NCDU;
 use crate::common::{is_program_in_path, open_in_current_neovim, string_to_path};
 use crate::common::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
@@ -87,18 +89,7 @@ impl EventAction {
 
     /// Change to CHMOD mode allowing to edit permissions of a file.
     pub fn chmod(status: &mut Status) -> Result<()> {
-        if status.selected().path_content.is_empty() {
-            return Ok(());
-        }
-        status
-            .selected()
-            .set_edit_mode(EditMode::InputSimple(InputSimple::Chmod));
-        if status.flagged.is_empty() {
-            status
-                .flagged
-                .push(status.tabs[status.index].selected().unwrap().path.clone());
-        };
-        Ok(())
+        status.set_mode_chmod()
     }
 
     /// Enter JUMP mode, allowing to jump to any flagged file.
@@ -823,6 +814,10 @@ impl EventAction {
         tab.refresh_if_needed()
     }
 
+    pub fn resize(status: &mut Status, width: usize, height: usize) -> Result<()> {
+        status.resize(width, height)
+    }
+
     /// Display mediainfo details of an image
     pub fn mediainfo(tab: &mut Tab) -> Result<()> {
         if !is_program_in_path(MEDIAINFO) {
@@ -1114,6 +1109,34 @@ impl EventAction {
     pub fn remote_mount(tab: &mut Tab) -> Result<()> {
         tab.set_edit_mode(EditMode::InputSimple(InputSimple::Remote));
         Ok(())
+    }
+
+    pub fn click_files(status: &mut Status, row: u16, col: u16) -> Result<()> {
+        status.click(row, col)
+    }
+
+    pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
+        status.select_pane(col)
+    }
+
+    pub fn click_first_line(col: u16, status: &mut Status) -> Result<()> {
+        status.first_line_action(col)
+    }
+
+    pub fn lazygit(status: &mut Status) -> Result<()> {
+        Self::open_program(status, LAZYGIT)
+    }
+
+    pub fn ncdu(status: &mut Status) -> Result<()> {
+        Self::open_program(status, NCDU)
+    }
+
+    pub fn open_program(status: &mut Status, program: &str) -> Result<()> {
+        if is_program_in_path(program) {
+            crate::modes::ShellMenu::require_cwd_and_command(status, program)
+        } else {
+            Ok(())
+        }
     }
 }
 
