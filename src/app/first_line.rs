@@ -70,7 +70,7 @@ impl FirstLine {
     /// to measure used space.
     /// It's not the number of bytes used since those strings may contain
     /// any UTF-8 grapheme.
-    fn make_sizes(strings: &Vec<String>) -> Vec<usize> {
+    fn make_sizes(strings: &[String]) -> Vec<usize> {
         strings
             .iter()
             .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
