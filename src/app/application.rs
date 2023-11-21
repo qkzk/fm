@@ -116,6 +116,10 @@ impl FM {
         self.display.show_cursor()?;
         let final_path = self.status.selected_path_str().to_owned();
         self.refresher.quit()?;
+        drop(self.event_reader);
+        drop(self.event_dispatcher);
+        drop(self.display);
+        drop(self.status);
         print_on_quit(&final_path);
         log_info!("fm is shutting down");
         Ok(())
