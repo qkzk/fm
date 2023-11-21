@@ -168,6 +168,15 @@ impl<'a> WinMain<'a> {
     /// When we display a simpler version, the second line is used to display the
     /// metadata of the selected file.
     fn draw_files(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
+        let _ = WinMainSecondLine::new(self.status, self.tab).draw(canvas);
+        self.draw_files_content(canvas)?;
+        if !self.attributes.has_window_below {
+            let _ = LogLine {}.draw(canvas);
+        }
+        Ok(None)
+    }
+
+    fn draw_files_content(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let len = self.tab.path_content.content.len();
         let group_size: usize;
         let owner_size: usize;
@@ -182,30 +191,56 @@ impl<'a> WinMain<'a> {
         for (i, file) in self
             .tab
             .path_content
-            .content
-            .iter()
             .enumerate()
             .take(min(len, self.tab.window.bottom))
             .skip(self.tab.window.top)
         {
-            let row = i + ContentWindow::WINDOW_MARGIN_TOP - self.tab.window.top;
-            let mut attr = fileinfo_attr(file);
-            let string = if self.status.display_full {
-                file.format(owner_size, group_size)?
-            } else {
-                file.format_simple()?
-            };
-            if self.status.flagged.contains(&file.path) {
-                attr.effect |= Effect::BOLD;
-                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
-            }
-            canvas.print_with_attr(row, 1, &string, attr)?;
+            self.draw_files_line(canvas, group_size, owner_size, i, file)?;
         }
-        let _ = WinMainSecondLine::new(self.status, self.tab).draw(canvas);
-        if !self.attributes.has_window_below {
-            let _ = LogLine {}.draw(canvas);
+        Ok(())
+    }
+
+    fn draw_files_line(
+        &self,
+        canvas: &mut dyn Canvas,
+        group_size: usize,
+        owner_size: usize,
+        i: usize,
+        file: &FileInfo,
+    ) -> Result<()> {
+        let row = i + ContentWindow::WINDOW_MARGIN_TOP - self.tab.window.top;
+        let mut attr = fileinfo_attr(file);
+        let content = self.format_file_content(file, owner_size, group_size)?;
+        self.print_as_flagged(canvas, row, &file.path, &mut attr)?;
+        canvas.print_with_attr(row, 1, &content, attr)?;
+        Ok(())
+    }
+
+    fn format_file_content(
+        &self,
+        file: &FileInfo,
+        owner_size: usize,
+        group_size: usize,
+    ) -> Result<String> {
+        if self.status.display_full {
+            file.format(owner_size, group_size)
+        } else {
+            file.format_simple()
         }
-        Ok(None)
+    }
+
+    fn print_as_flagged(
+        &self,
+        canvas: &mut dyn Canvas,
+        row: usize,
+        path: &std::path::Path,
+        attr: &mut Attr,
+    ) -> Result<()> {
+        if self.status.flagged.contains(path) {
+            attr.effect |= Effect::BOLD;
+            canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
+        }
+        Ok(())
     }
 
     fn draw_tree(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
@@ -245,10 +280,7 @@ impl<'a> WinMain<'a> {
         let (s_metadata, s_prefix, colored_filename) = colored_triplet;
 
         let mut attr = colored_filename.color_effect.attr();
-        if self.status.flagged.contains(&colored_filename.path) {
-            attr.effect |= Effect::BOLD;
-            canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
-        }
+        self.print_as_flagged(canvas, row, &colored_filename.path, &mut attr)?;
 
         let col_metadata = if self.status.display_full {
             canvas.print_with_attr(row, left_margin, s_metadata, attr)?

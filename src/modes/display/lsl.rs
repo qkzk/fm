@@ -114,14 +114,14 @@ impl PathContent {
     /// Calculates the size of the owner column.
     pub fn owner_column_width(&self) -> usize {
         let owner_size_btreeset: std::collections::BTreeSet<usize> =
-            self.content.iter().map(|file| file.owner.len()).collect();
+            self.iter().map(|file| file.owner.len()).collect();
         *owner_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
     /// Calculates the size of the group column.
     pub fn group_column_width(&self) -> usize {
         let group_size_btreeset: std::collections::BTreeSet<usize> =
-            self.content.iter().map(|file| file.group.len()).collect();
+            self.iter().map(|file| file.group.len()).collect();
         *group_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
@@ -219,9 +219,16 @@ impl PathContent {
         self.content[self.index].select();
     }
 
+    /// Returns an iterator of the files (`FileInfo`) in content.
+    #[inline]
+    pub fn iter(&self) -> std::slice::Iter<'_, FileInfo> {
+        self.content.iter()
+    }
+
     /// Returns an enumeration of the files (`FileInfo`) in content.
+    #[inline]
     pub fn enumerate(&self) -> Enumerate<std::slice::Iter<'_, FileInfo>> {
-        self.content.iter().enumerate()
+        self.iter().enumerate()
     }
 
     /// Returns the correct index jump target to a flagged files.

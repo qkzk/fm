@@ -664,6 +664,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: print on quit requires to drop everything holding a terminal
 - [x] Improve refresh actions. Subfolders in tree mode are now watched.
 - [x] Trait LineDisplay for EditMode
+- [x] Split tree & lsl drawing into smaller methods
 
 ## TODO
 
