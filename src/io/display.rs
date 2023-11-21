@@ -21,6 +21,8 @@ use crate::modes::calculate_top_bottom;
 use crate::modes::ContentWindow;
 use crate::modes::InputCompleted;
 use crate::modes::MountRepr;
+use crate::modes::PasswordKind;
+use crate::modes::PasswordUsage;
 use crate::modes::SelectableContent;
 use crate::modes::Trash;
 use crate::modes::{fileinfo_attr, FileInfo};
@@ -593,7 +595,7 @@ impl<'a> WinSecondary<'a> {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
             }
-            EditMode::InputSimple(InputSimple::Password(_, _, _)) => {
+            EditMode::InputSimple(InputSimple::Password(_, _)) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(
                     0,
@@ -881,9 +883,20 @@ impl WinSecondaryFirstLine {
             EditMode::Navigate(Navigate::Marks(MarkAction::New)) => {
                 vec!["Save mark...".to_owned()]
             }
-            EditMode::InputSimple(InputSimple::Password(password_kind, _encrypted_action, _)) => {
-                log_info!("term: password");
-                vec![format!("{password_kind}"), tab.input.password()]
+            EditMode::InputSimple(InputSimple::Password(
+                _,
+                PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP),
+            )) => {
+                vec![
+                    format!("{kind}", kind = PasswordKind::CRYPTSETUP),
+                    tab.input.password(),
+                ]
+            }
+            EditMode::InputSimple(InputSimple::Password(_, _)) => {
+                vec![
+                    format!("{kind}", kind = PasswordKind::SUDO),
+                    tab.input.password(),
+                ]
             }
             EditMode::InputCompleted(mode) => {
                 let mut completion_strings = vec![tab.edit_mode.to_string(), tab.input.string()];

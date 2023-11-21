@@ -687,7 +687,7 @@ impl EventAction {
                 must_refresh = false;
                 LeaveMode::filter(status.selected())?
             }
-            EditMode::InputSimple(InputSimple::Password(_, _, _)) => {
+            EditMode::InputSimple(InputSimple::Password(_, _)) => {
                 must_refresh = false;
                 must_reset_mode = false;
                 LeaveMode::password(status)?

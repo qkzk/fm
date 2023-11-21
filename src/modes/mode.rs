@@ -94,7 +94,7 @@ pub enum InputSimple {
     /// Set a new neovim RPC address
     SetNvimAddr,
     /// Input a password (chars a replaced by *)
-    Password(PasswordKind, Option<BlockDeviceAction>, PasswordUsage),
+    Password(Option<BlockDeviceAction>, PasswordUsage),
     /// Shell command execute as is
     Shell,
     /// Mount a remote directory with sshfs
@@ -110,8 +110,13 @@ impl InputSimple {
             Self::Filter => &FILTER_LINES,
             Self::Newdir => &NEWDIR_LINES,
             Self::Newfile => &NEWFILE_LINES,
-            Self::Password(PasswordKind::SUDO, _, _) => &PASSWORD_LINES_SUDO,
-            Self::Password(PasswordKind::CRYPTSETUP, _, _) => &PASSWORD_LINES_DEVICE,
+            Self::Password(_, PasswordUsage::CRYPTSETUP(PasswordKind::SUDO)) => {
+                &PASSWORD_LINES_SUDO
+            }
+            Self::Password(_, PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP)) => {
+                &PASSWORD_LINES_DEVICE
+            }
+            Self::Password(_, _) => &PASSWORD_LINES_SUDO,
             Self::RegexMatch => &REGEX_LINES,
             Self::Rename => &RENAME_LINES,
             Self::SetNvimAddr => &NVIM_ADDRESS_LINES,
@@ -180,9 +185,10 @@ impl fmt::Display for EditMode {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }
             EditMode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
-            EditMode::InputSimple(InputSimple::Password(password_kind, _, _)) => {
+            EditMode::InputSimple(InputSimple::Password(_,PasswordUsage::CRYPTSETUP( password_kind))) => {
                 write!(f, "{password_kind}")
             }
+            EditMode::InputSimple(InputSimple::Password(_,_)) => write!(f, " sudo: "),
             EditMode::InputSimple(InputSimple::Remote) => write!(f, "Remote:  "),
 
             EditMode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),

@@ -650,7 +650,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] refactor chmod into its own mod
 - [x] refactor node creation (file or directory) in its own mod
 - [ ] refactor password.
-      only one enum and hold passwords somewhere else
+  - [x] only one enum
+  - [ ] hold passwords somewhere else
 - [x] FIX: browsing a file where "modified" time is in future crashes the application.
       The error comes from refresher.rs and happens with poorly configured iso files.
 - [x] Fix the error itself,

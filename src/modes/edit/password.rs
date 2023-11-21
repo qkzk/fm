@@ -23,7 +23,7 @@ impl std::fmt::Display for PasswordKind {
 #[derive(Debug, Clone, Copy)]
 pub enum PasswordUsage {
     ISO,
-    CRYPTSETUP,
+    CRYPTSETUP(PasswordKind),
     SUDOCOMMAND,
 }
 
