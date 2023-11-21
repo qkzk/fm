@@ -684,32 +684,38 @@ impl Status {
         self.opener.open_multiple(self.flagged.content())
     }
 
+    fn ensure_iso_device_is_some(&mut self) -> Result<()> {
+        if self.iso_device.is_none() {
+            let path = path_to_string(&self.selected_non_mut().selected()?.path);
+            self.iso_device = Some(IsoDevice::from_path(path));
+        }
+        Ok(())
+    }
+
     /// Mount the currently selected file (which should be an .iso file) to
     /// `/run/media/$CURRENT_USER/fm_iso`
     /// Ask a sudo password first if needed. It should always be the case.
-    pub fn mount_iso_drive(&mut self) -> Result<()> {
-        let path = path_to_string(&self.selected_non_mut().selected()?.path);
-        if self.iso_device.is_none() {
-            self.iso_device = Some(IsoDevice::from_path(path));
-        }
-        if let Some(ref mut iso_device) = self.iso_device {
-            if !self.password_holder.has_sudo() {
-                self.ask_password(
-                    PasswordKind::SUDO,
-                    Some(BlockDeviceAction::MOUNT),
-                    PasswordUsage::ISO,
-                )?;
-            } else {
-                if iso_device.mount(&current_username()?, &mut self.password_holder)? {
-                    log_info!("iso mounter mounted {iso_device:?}");
-
-                    log_line!("iso : {}", iso_device.as_string()?);
-                    let path = iso_device.mountpoints.clone().context("no mount point")?;
-                    self.selected().cd(&path)?;
-                };
-                self.iso_device = None;
+    fn mount_iso_drive(&mut self) -> Result<()> {
+        if !self.password_holder.has_sudo() {
+            self.ask_password(
+                PasswordKind::SUDO,
+                Some(BlockDeviceAction::MOUNT),
+                PasswordUsage::ISO,
+            )?;
+        } else {
+            self.ensure_iso_device_is_some()?;
+            let Some(ref mut iso_device) = self.iso_device else {
+                return Ok(());
             };
-        }
+            if iso_device.mount(&current_username()?, &mut self.password_holder)? {
+                log_info!("iso mounter mounted {iso_device:?}");
+                log_line!("iso : {}", iso_device.as_string()?);
+                let path = iso_device.mountpoints.clone().context("no mount point")?;
+                self.selected().cd(&path)?;
+            };
+            self.iso_device = None;
+        };
+
         Ok(())
     }
 
