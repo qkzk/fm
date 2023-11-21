@@ -703,6 +703,7 @@ fn filename_format(current_path: &Path, current_node: &Node) -> String {
 }
 
 /// Emulate a `ContentWindow`, returning the top and bottom index of displayable files.
+#[inline]
 pub fn calculate_top_bottom(selected_index: usize, terminal_height: usize) -> (usize, usize) {
     let window_height = terminal_height - ContentWindow::WINDOW_MARGIN_TOP;
     let top = if selected_index < window_height {

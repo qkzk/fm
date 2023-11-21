@@ -18,6 +18,7 @@ use crate::common::{
 use crate::io::read_last_log_line;
 use crate::log_info;
 use crate::modes::calculate_top_bottom;
+use crate::modes::ColoredTriplet;
 use crate::modes::ContentWindow;
 use crate::modes::LineDisplay;
 use crate::modes::MountRepr;
@@ -87,7 +88,7 @@ struct WinMainAttributes {
     /// horizontal position, in cells
     x_position: usize,
     /// is this the first (left) or second (right) window ?
-    is_left: TabPosition,
+    tab_position: TabPosition,
     /// is this tab selected ?
     is_selected: bool,
     /// is there a secondary window ?
@@ -97,20 +98,20 @@ struct WinMainAttributes {
 impl WinMainAttributes {
     fn new(
         x_position: usize,
-        is_second: TabPosition,
+        tab_position: TabPosition,
         is_selected: bool,
         has_window_below: bool,
     ) -> Self {
         Self {
             x_position,
-            is_left: is_second,
+            tab_position,
             is_selected,
             has_window_below,
         }
     }
 
     fn is_right(&self) -> bool {
-        matches!(self.is_left, TabPosition::Right)
+        matches!(self.tab_position, TabPosition::Right)
     }
 }
 
@@ -208,42 +209,63 @@ impl<'a> WinMain<'a> {
     }
 
     fn draw_tree(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
+        let _ = WinMainSecondLine::new(self.status, self.tab).draw(canvas);
+        let selected_index = self.draw_tree_content(canvas)?;
+        Ok(Some(selected_index))
+    }
+
+    fn draw_tree_content(&self, canvas: &mut dyn Canvas) -> Result<usize> {
         let left_margin = if self.status.display_full { 1 } else { 3 };
         let (_, height) = canvas.size()?;
         let (selected_index, content) = self.tab.tree.into_navigable_content(&self.tab.users);
         let (top, bottom) = calculate_top_bottom(selected_index, height);
         let length = content.len();
 
-        for (i, (metadata, prefix, colored_string)) in content
+        for (i, triplet) in content
             .iter()
             .enumerate()
             .skip(top)
             .take(min(length, bottom + 1))
         {
-            let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
-            let mut attr = colored_string.color_effect.attr();
-            if self.status.flagged.contains(&colored_string.path) {
-                attr.effect |= Effect::BOLD;
-                canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
-            }
-
-            let col_metadata = if self.status.display_full {
-                canvas.print_with_attr(row, left_margin, metadata, attr)?
-            } else {
-                0
-            };
-            let offset = if i == 0 { 1 } else { 0 };
-
-            let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, prefix)?;
-            canvas.print_with_attr(
-                row,
-                left_margin + col_metadata + col_tree_prefix + offset,
-                &colored_string.text,
-                attr,
-            )?;
+            self.draw_tree_line(canvas, left_margin, top, i, triplet)?;
         }
-        let _ = WinMainSecondLine::new(self.status, self.tab).draw(canvas);
-        Ok(Some(selected_index))
+        Ok(selected_index)
+    }
+
+    fn draw_tree_line(
+        &self,
+        canvas: &mut dyn Canvas,
+        left_margin: usize,
+        top: usize,
+        i: usize,
+        colored_triplet: &ColoredTriplet,
+    ) -> Result<()> {
+        let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
+
+        let (s_metadata, s_prefix, colored_filename) = colored_triplet;
+
+        let mut attr = colored_filename.color_effect.attr();
+        if self.status.flagged.contains(&colored_filename.path) {
+            attr.effect |= Effect::BOLD;
+            canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
+        }
+
+        let col_metadata = if self.status.display_full {
+            canvas.print_with_attr(row, left_margin, s_metadata, attr)?
+        } else {
+            0
+        };
+
+        let offset = if i == 0 { 1 } else { 0 };
+        let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, s_prefix)?;
+
+        canvas.print_with_attr(
+            row,
+            left_margin + col_metadata + col_tree_prefix + offset,
+            &colored_filename.text,
+            attr,
+        )?;
+        Ok(())
     }
 
     fn draw_line_number(
