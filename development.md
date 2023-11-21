@@ -640,7 +640,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       We need to do next on node until we reach a displayed node. It's not good.
 
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
-- [ ] separate display_modes completely. Normal -> lsl (?), Tree, Preview.
+- [x] separate display_modes completely. Normal -> lsl (?), Tree, Preview.
       PathContent is only used in Normal and should be associated with it.
       Reseting display should switch back to user setted display.
       Preview isn't like Normal & Tree since it doesn't display files at all.
