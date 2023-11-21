@@ -183,22 +183,33 @@ impl Tab {
     /// Refresh the view if files were modified in current directory.
     /// If a refresh occurs, tries to select the same file as before.
     /// If it can't, the first file (`.`) is selected.
-    /// Does nothing outside of normal mode.
+    /// Does nothing in `DisplayMode::Preview`.
     pub fn refresh_if_needed(&mut self) -> Result<()> {
-        if !matches!(self.display_mode, DisplayMode::Preview)
-            && has_last_modification_happened_less_than(&self.path_content.path, 10)?
-        {
-            self.refresh_and_reselect_file()?
+        if match self.display_mode {
+            DisplayMode::Preview => false,
+            DisplayMode::Normal => {
+                has_last_modification_happened_less_than(&self.path_content.path, 10)?
+            }
+            DisplayMode::Tree => self.tree.has_modified_dirs(),
+        } {
+            self.refresh_and_reselect_file()
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     /// Refresh the folder, reselect the last selected file, move the window to it.
     fn refresh_and_reselect_file(&mut self) -> Result<()> {
         let selected_path = self.selected().context("no selected file")?.path.clone();
         self.refresh_view()?;
-        let index = self.path_content.select_file(&selected_path);
-        self.scroll_to(index);
+        match self.display_mode {
+            DisplayMode::Preview => (),
+            DisplayMode::Normal => {
+                let index = self.path_content.select_file(&selected_path);
+                self.scroll_to(index)
+            }
+            DisplayMode::Tree => self.tree.go(To::Path(&selected_path)),
+        }
         Ok(())
     }
 

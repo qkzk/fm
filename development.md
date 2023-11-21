@@ -661,6 +661,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Clickable first line. Each first line element can be clicked, resulting in an action
 - [x] don't allow rename of parent or self folder
 - [x] FIX: print on quit requires to drop everything holding a terminal
+- [x] Improve refresh actions. Subfolders in tree mode are now watched.
 
 ## TODO
 

@@ -6,15 +6,15 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
+use crate::common::filename_from_path;
+use crate::common::has_last_modification_happened_less_than;
 use crate::modes::files_collection;
 use crate::modes::ContentWindow;
+use crate::modes::FilterKind;
+use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{ColorEffect, FileInfo};
 use crate::modes::{ColoredTriplet, MakeTriplet};
-
-use crate::common::filename_from_path;
-use crate::modes::FilterKind;
-use crate::modes::SortKind;
 
 /// Holds a string, its display attributes and the associated pathbuf.
 #[derive(Clone, Debug)]
@@ -629,6 +629,16 @@ impl Tree {
     /// Vector of `Path` of nodes.
     pub fn paths(&self) -> Vec<&Path> {
         self.nodes.keys().map(|p| p.as_path()).collect()
+    }
+
+    /// True if any directory (not symlink to a directory)
+    /// has been modified less than 10 seconds ago.
+    #[inline]
+    pub fn has_modified_dirs(&self) -> bool {
+        self.nodes
+            .keys()
+            .filter(|path| path.is_dir() && !path.is_symlink())
+            .any(|path| has_last_modification_happened_less_than(path, 10).unwrap_or(false))
     }
 
     #[inline]
