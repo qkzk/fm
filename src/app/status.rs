@@ -694,8 +694,7 @@ impl Status {
         }
         if let Some(ref mut iso_device) = self.iso_device {
             if !self.password_holder.has_sudo() {
-                Self::ask_password(
-                    self,
+                self.ask_password(
                     PasswordKind::SUDO,
                     Some(BlockDeviceAction::MOUNT),
                     PasswordUsage::ISO,
@@ -719,8 +718,7 @@ impl Status {
     pub fn umount_iso_drive(&mut self) -> Result<()> {
         if let Some(ref mut iso_device) = self.iso_device {
             if !self.password_holder.has_sudo() {
-                Self::ask_password(
-                    self,
+                self.ask_password(
                     PasswordKind::SUDO,
                     Some(BlockDeviceAction::UMOUNT),
                     PasswordUsage::ISO,
@@ -743,15 +741,13 @@ impl Status {
             return Ok(());
         }
         if !self.password_holder.has_sudo() {
-            Self::ask_password(
-                self,
+            self.ask_password(
                 PasswordKind::SUDO,
                 Some(BlockDeviceAction::MOUNT),
                 PasswordUsage::CRYPTSETUP,
             )
         } else if !self.password_holder.has_cryptsetup() {
-            Self::ask_password(
-                self,
+            self.ask_password(
                 PasswordKind::CRYPTSETUP,
                 Some(BlockDeviceAction::MOUNT),
                 PasswordUsage::CRYPTSETUP,
@@ -789,8 +785,7 @@ impl Status {
             return Ok(());
         }
         if !self.password_holder.has_sudo() {
-            Self::ask_password(
-                self,
+            self.ask_password(
                 PasswordKind::SUDO,
                 Some(BlockDeviceAction::UMOUNT),
                 PasswordUsage::CRYPTSETUP,
@@ -1029,7 +1024,7 @@ impl Status {
                 Some(BlockDeviceAction::UMOUNT) => self.umount_encrypted_drive(),
                 None => Ok(()),
             },
-            PasswordUsage::SUDOCOMMAND => Self::run_sudo_command(self),
+            PasswordUsage::SUDOCOMMAND => self.run_sudo_command(),
         }
     }
 
