@@ -185,7 +185,7 @@ impl fmt::Display for EditMode {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }
             EditMode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
-            EditMode::InputSimple(InputSimple::Password(_,PasswordUsage::CRYPTSETUP( password_kind))) => {
+            EditMode::InputSimple(InputSimple::Password(_,PasswordUsage::CRYPTSETUP(password_kind))) => {
                 write!(f, "{password_kind}")
             }
             EditMode::InputSimple(InputSimple::Password(_,_)) => write!(f, " sudo: "),

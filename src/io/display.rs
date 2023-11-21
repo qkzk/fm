@@ -19,14 +19,12 @@ use crate::io::read_last_log_line;
 use crate::log_info;
 use crate::modes::calculate_top_bottom;
 use crate::modes::ContentWindow;
-use crate::modes::InputCompleted;
+use crate::modes::LineDisplay;
 use crate::modes::MountRepr;
-use crate::modes::PasswordKind;
-use crate::modes::PasswordUsage;
 use crate::modes::SelectableContent;
 use crate::modes::Trash;
 use crate::modes::{fileinfo_attr, FileInfo};
-use crate::modes::{DisplayMode, EditMode, InputSimple, MarkAction, Navigate, NeedConfirmation};
+use crate::modes::{DisplayMode, EditMode, InputSimple, Navigate, NeedConfirmation};
 use crate::modes::{Preview, TextKind, Window};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
@@ -395,10 +393,8 @@ impl<'a> Draw for WinMainFirstLine<'a> {
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let content = match self.status.selected_non_mut().display_mode {
-            DisplayMode::Normal | DisplayMode::Tree => {
-                FirstLine::new(self.status)?.strings().to_owned()
-            }
             DisplayMode::Preview => PreviewFirstLine::make_preview(self.status),
+            _ => FirstLine::new(self.status)?.strings().to_owned(),
         };
         draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
         Ok(())
@@ -873,50 +869,9 @@ impl Draw for WinSecondaryFirstLine {
 
 impl WinSecondaryFirstLine {
     fn new(tab: &Tab) -> Result<Self> {
-        let content = match tab.edit_mode {
-            EditMode::NeedConfirmation(confirmed_action) => {
-                vec![format!("{confirmed_action}"), " (y/n)".to_owned()]
-            }
-            EditMode::Navigate(Navigate::Marks(MarkAction::Jump)) => {
-                vec!["Jump to...".to_owned()]
-            }
-            EditMode::Navigate(Navigate::Marks(MarkAction::New)) => {
-                vec!["Save mark...".to_owned()]
-            }
-            EditMode::InputSimple(InputSimple::Password(
-                _,
-                PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP),
-            )) => {
-                vec![
-                    format!("{kind}", kind = PasswordKind::CRYPTSETUP),
-                    tab.input.password(),
-                ]
-            }
-            EditMode::InputSimple(InputSimple::Password(_, _)) => {
-                vec![
-                    format!("{kind}", kind = PasswordKind::SUDO),
-                    tab.input.password(),
-                ]
-            }
-            EditMode::InputCompleted(mode) => {
-                let mut completion_strings = vec![tab.edit_mode.to_string(), tab.input.string()];
-                if let Some(completion) = tab.completion.complete_input_string(&tab.input.string())
-                {
-                    completion_strings.push(completion.to_owned())
-                }
-                if let InputCompleted::Exec = mode {
-                    let selected_path = &tab.selected().context("can't parse path")?.path;
-                    let selected_path = format!(" {}", selected_path.display());
-
-                    completion_strings.push(selected_path);
-                }
-                completion_strings
-            }
-            _ => {
-                vec![tab.edit_mode.to_string(), tab.input.string()]
-            }
-        };
-        Ok(Self { content })
+        Ok(Self {
+            content: tab.edit_mode.line_display(tab)?,
+        })
     }
 }
 
