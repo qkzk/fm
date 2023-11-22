@@ -37,7 +37,7 @@ use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::modes::{CliInfo, Permissions};
 use crate::modes::{Compresser, ContentWindow};
-use crate::modes::{DisplayMode, EditMode, InputSimple, NeedConfirmation};
+use crate::modes::{Display, Edit, InputSimple, NeedConfirmation};
 use crate::modes::{MountCommands, MountRepr};
 use crate::modes::{PasswordHolder, PasswordKind, PasswordUsage};
 use crate::{log_info, log_line};
@@ -473,9 +473,9 @@ impl Status {
             return Ok(());
         }
         let paths = match self.selected_non_mut().display_mode {
-            DisplayMode::Normal => self.tabs[self.index].path_content.paths(),
-            DisplayMode::Tree => self.tabs[self.index].tree.paths(),
-            DisplayMode::Preview => return Ok(()),
+            Display::Normal => self.tabs[self.index].path_content.paths(),
+            Display::Tree => self.tabs[self.index].tree.paths(),
+            Display::Preview => return Ok(()),
         };
         regex_matcher(input, &paths, &mut self.flagged)?;
         Ok(())
@@ -575,7 +575,7 @@ impl Status {
         match file_info.file_kind {
             FileKind::NormalFile => {
                 let preview = Preview::file(&file_info).unwrap_or_default();
-                self.selected().set_display_mode(DisplayMode::Preview);
+                self.selected().set_display_mode(Display::Preview);
                 self.selected().window.reset(preview.len());
                 self.selected().preview = preview;
             }
@@ -587,17 +587,17 @@ impl Status {
     }
 
     pub fn tree(&mut self) -> Result<()> {
-        if let DisplayMode::Tree = self.selected_non_mut().display_mode {
+        if let Display::Tree = self.selected_non_mut().display_mode {
             {
                 let tab = self.selected();
                 tab.tree = Tree::default();
                 tab.refresh_view()
             }?;
-            self.selected().set_display_mode(DisplayMode::Normal)
+            self.selected().set_display_mode(Display::Normal)
         } else {
             self.display_full = true;
             self.selected().make_tree(None)?;
-            self.selected().set_display_mode(DisplayMode::Tree);
+            self.selected().set_display_mode(Display::Tree);
         }
         Ok(())
     }
@@ -618,8 +618,8 @@ impl Status {
             return Ok(());
         }
 
-        self.tabs[1].set_display_mode(DisplayMode::Preview);
-        self.tabs[1].set_edit_mode(EditMode::Nothing);
+        self.tabs[1].set_display_mode(Display::Preview);
+        self.tabs[1].set_edit_mode(Edit::Nothing);
         let fileinfo = self.tabs[0]
             .selected()
             .context("force preview: No file to select")?;
@@ -658,7 +658,7 @@ impl Status {
 
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
-        let filepath = if matches!(self.selected_non_mut().display_mode, DisplayMode::Tree) {
+        let filepath = if matches!(self.selected_non_mut().display_mode, Display::Tree) {
             self.selected_non_mut().tree.selected_path().to_owned()
         } else {
             self.selected_non_mut().selected()?.path.to_owned()
@@ -839,7 +839,7 @@ impl Status {
         let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
         log_info!("command {shell_command} args: {args:?}");
         if args_is_empty(&args) {
-            self.selected().set_edit_mode(EditMode::Nothing);
+            self.selected().set_edit_mode(Edit::Nothing);
             return Ok(true);
         }
         let executable = args.remove(0);
@@ -858,7 +858,7 @@ impl Status {
                 current_directory,
                 Some(&params),
             )?;
-            self.selected().set_edit_mode(EditMode::Nothing);
+            self.selected().set_edit_mode(Edit::Nothing);
             Ok(true)
         }
     }
@@ -871,7 +871,7 @@ impl Status {
     ) -> Result<()> {
         log_info!("event ask password");
         self.selected()
-            .set_edit_mode(EditMode::InputSimple(InputSimple::Password(
+            .set_edit_mode(Edit::InputSimple(InputSimple::Password(
                 encrypted_action,
                 password_dest,
             )));
@@ -880,7 +880,7 @@ impl Status {
 
     pub fn execute_password_command(&mut self) -> Result<()> {
         match self.selected_non_mut().edit_mode {
-            EditMode::InputSimple(InputSimple::Password(action, dest)) => {
+            Edit::InputSimple(InputSimple::Password(action, dest)) => {
                 self._execute_password_command(action, dest)?;
             }
             _ => {
@@ -937,7 +937,7 @@ impl Status {
         self.force_clear();
         self.refresh_users()?;
         self.selected().refresh_view()?;
-        if let DisplayMode::Tree = self.selected_non_mut().display_mode {
+        if let Display::Tree = self.selected_non_mut().display_mode {
             self.selected().make_tree(None)?
         }
         Ok(())
@@ -980,7 +980,7 @@ impl Status {
     }
 
     fn run_sudo_command(&mut self) -> Result<()> {
-        self.selected().set_edit_mode(EditMode::Nothing);
+        self.selected().set_edit_mode(Edit::Nothing);
         reset_sudo_faillock()?;
         let Some(sudo_command) = &self.sudo_command else {
             return Ok(());
@@ -1084,7 +1084,7 @@ impl Status {
     }
 
     pub fn first_line_action(&mut self, col: u16) -> Result<()> {
-        if matches!(self.selected_non_mut().display_mode, DisplayMode::Preview) {
+        if matches!(self.selected_non_mut().display_mode, Display::Preview) {
             return Ok(());
         }
         let first_line = FirstLine::new(self)?;
@@ -1112,7 +1112,7 @@ impl Status {
             return Ok(());
         }
         self.selected()
-            .set_edit_mode(EditMode::InputSimple(InputSimple::Chmod));
+            .set_edit_mode(Edit::InputSimple(InputSimple::Chmod));
         if self.flagged.is_empty() {
             self.flagged
                 .push(self.tabs[self.index].selected().unwrap().path.clone());

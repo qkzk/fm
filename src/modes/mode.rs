@@ -38,22 +38,22 @@ impl NeedConfirmation {
     /// Offset before the cursor.
     /// Since we ask the user confirmation, we need to know how much space
     /// is needed.
+    #[must_use]
     pub fn cursor_offset(&self) -> usize {
         self.to_string().len() + 9
     }
 
     /// A confirmation message to be displayed before executing the mode.
     /// When files are moved or copied the destination is displayed.
+    #[must_use]
     pub fn confirmation_string(&self, destination: &str) -> String {
         match *self {
-            NeedConfirmation::Copy => {
-                format!("Files will be copied to {}", destination)
+            Self::Copy => {
+                format!("Files will be copied to {destination}")
             }
-            NeedConfirmation::Delete | NeedConfirmation::EmptyTrash => {
-                "Files will be deleted permanently".to_owned()
-            }
-            NeedConfirmation::Move => {
-                format!("Files will be moved to {}", destination)
+            Self::Delete | Self::EmptyTrash => "Files will be deleted permanently".to_owned(),
+            Self::Move => {
+                format!("Files will be moved to {destination}")
             }
         }
     }
@@ -104,7 +104,8 @@ pub enum InputSimple {
 impl InputSimple {
     /// Returns a vector of static &str describing what
     /// the mode does.
-    pub fn lines(&self) -> &'static [&'static str] {
+    #[must_use]
+    pub const fn lines(&self) -> &'static [&'static str] {
         match *self {
             Self::Chmod => &CHMOD_LINES,
             Self::Filter => &FILTER_LINES,
@@ -158,7 +159,7 @@ pub enum Navigate {
 /// Different mode in which the application can be.
 /// It dictates the reaction to event and what to display.
 #[derive(Clone, Copy)]
-pub enum EditMode {
+pub enum Edit {
     InputCompleted(InputCompleted),
     /// Select a target and navigate to it
     Navigate(Navigate),
@@ -171,61 +172,61 @@ pub enum EditMode {
     Nothing,
 }
 
-impl fmt::Display for EditMode {
+impl fmt::Display for Edit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            EditMode::InputSimple(InputSimple::Rename) => write!(f, "Rename:  "),
-            EditMode::InputSimple(InputSimple::Chmod) => write!(f, "Chmod:   "),
-            EditMode::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
-            EditMode::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
-            EditMode::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
-            EditMode::InputSimple(InputSimple::SetNvimAddr) => write!(f, "Neovim:  "),
-            EditMode::InputSimple(InputSimple::Shell) => write!(f, "Shell:   "),
-            EditMode::InputSimple(InputSimple::Sort) => {
+            Self::InputSimple(InputSimple::Rename) => write!(f, "Rename:  "),
+            Self::InputSimple(InputSimple::Chmod) => write!(f, "Chmod:   "),
+            Self::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
+            Self::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
+            Self::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
+            Self::InputSimple(InputSimple::SetNvimAddr) => write!(f, "Neovim:  "),
+            Self::InputSimple(InputSimple::Shell) => write!(f, "Shell:   "),
+            Self::InputSimple(InputSimple::Sort) => {
                 write!(f, "Sort: Kind Name Modif Size Ext Rev :")
             }
-            EditMode::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
-            EditMode::InputSimple(InputSimple::Password(_,PasswordUsage::CRYPTSETUP(password_kind))) => {
+            Self::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
+            Self::InputSimple(InputSimple::Password(_,PasswordUsage::CRYPTSETUP(password_kind))) => {
                 write!(f, "{password_kind}")
             }
-            EditMode::InputSimple(InputSimple::Password(_,_)) => write!(f, " sudo: "),
-            EditMode::InputSimple(InputSimple::Remote) => write!(f, "Remote:  "),
+            Self::InputSimple(InputSimple::Password(_,_)) => write!(f, " sudo: "),
+            Self::InputSimple(InputSimple::Remote) => write!(f, "Remote:  "),
 
-            EditMode::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
-            EditMode::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
-            EditMode::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
-            EditMode::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
-            EditMode::InputCompleted(InputCompleted::Command) => write!(f, "Command:  "),
-            EditMode::Navigate(Navigate::Marks(_)) => write!(f, "Marks jump:"),
-            EditMode::Navigate(Navigate::Jump) => write!(
+            Self::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
+            Self::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
+            Self::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
+            Self::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
+            Self::InputCompleted(InputCompleted::Command) => write!(f, "Command:  "),
+            Self::Navigate(Navigate::Marks(_)) => write!(f, "Marks jump:"),
+            Self::Navigate(Navigate::Jump) => write!(
                 f,
                 "Flagged files: <Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash"
             ),
-            EditMode::Navigate(Navigate::History) => write!(f, "History :"),
-            EditMode::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
-            EditMode::Navigate(Navigate::Trash) => write!(f, "Trash :"),
-            EditMode::Navigate(Navigate::ShellMenu) => {
+            Self::Navigate(Navigate::History) => write!(f, "History :"),
+            Self::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
+            Self::Navigate(Navigate::Trash) => write!(f, "Trash :"),
+            Self::Navigate(Navigate::ShellMenu) => {
                 write!(f, "Start a new shell running a command:")
             }
-            EditMode::Navigate(Navigate::Bulk) => {
+            Self::Navigate(Navigate::Bulk) => {
                 write!(f, "Bulk: rename flagged files or create new files")
             }
-            EditMode::Navigate(Navigate::Compress) => write!(f, "Compress :"),
-            EditMode::Navigate(Navigate::EncryptedDrive) => {
+            Self::Navigate(Navigate::Compress) => write!(f, "Compress :"),
+            Self::Navigate(Navigate::EncryptedDrive) => {
                 write!(f, "Encrypted devices :")
             }
-            EditMode::Navigate(Navigate::RemovableDevices) => {
+            Self::Navigate(Navigate::RemovableDevices) => {
                 write!(f, "Removable devices :")
             }
-            EditMode::Navigate(Navigate::CliInfo) => write!(f, "Display infos :"),
-            EditMode::NeedConfirmation(_) => write!(f, "Y/N   :"),
-            EditMode::Nothing => write!(f, ""),
+            Self::Navigate(Navigate::CliInfo) => write!(f, "Display infos :"),
+            Self::NeedConfirmation(_) => write!(f, "Y/N   :"),
+            Self::Nothing => write!(f, ""),
         }
     }
 }
 
 #[derive(Default)]
-pub enum DisplayMode {
+pub enum Display {
     #[default]
     /// Display the files like `ls -lh` does
     Normal,
@@ -233,13 +234,4 @@ pub enum DisplayMode {
     Tree,
     /// Preview a file or directory
     Preview,
-}
-
-impl DisplayMode {
-    /// True if the mode requires a view refresh when left.
-    /// Most modes don't, since they don't display their content in the first window.
-    /// content. But `Mode::Preview` does, since it uses the main window.
-    pub fn refresh_required(&self) -> bool {
-        matches!(*self, DisplayMode::Preview)
-    }
 }

@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 
 use crate::app::Tab;
 use crate::modes::{
-    EditMode, InputCompleted, InputSimple, MarkAction, Navigate, NeedConfirmation, PasswordKind,
+    Edit, InputCompleted, InputSimple, MarkAction, Navigate, NeedConfirmation, PasswordKind,
     PasswordUsage,
 };
 
@@ -10,14 +10,14 @@ pub trait LineDisplay {
     fn line_display(&self, tab: &Tab) -> Result<Vec<String>>;
 }
 
-impl LineDisplay for EditMode {
+impl LineDisplay for Edit {
     fn line_display(&self, tab: &Tab) -> Result<Vec<String>> {
         match self {
-            EditMode::Navigate(mode) => mode.line_display(tab),
-            EditMode::InputSimple(mode) => mode.line_display(tab),
-            EditMode::InputCompleted(mode) => mode.line_display(tab),
-            EditMode::NeedConfirmation(mode) => mode.line_display(tab),
-            EditMode::Nothing => Ok(vec![]),
+            Edit::Navigate(mode) => mode.line_display(tab),
+            Edit::InputSimple(mode) => mode.line_display(tab),
+            Edit::InputCompleted(mode) => mode.line_display(tab),
+            Edit::NeedConfirmation(mode) => mode.line_display(tab),
+            Edit::Nothing => Ok(vec![]),
         }
     }
 }
@@ -38,7 +38,7 @@ impl LineDisplay for Navigate {
                 vec!["Save mark...".to_owned()]
             }
             _ => {
-                vec![EditMode::Navigate(*self).to_string()]
+                vec![Edit::Navigate(*self).to_string()]
             }
         };
         Ok(content)
@@ -71,7 +71,7 @@ impl LineDisplay for InputSimple {
                 vec![PasswordKind::SUDO.to_string(), tab.input.password()]
             }
             _ => {
-                vec![EditMode::InputSimple(*self).to_string(), tab.input.string()]
+                vec![Edit::InputSimple(*self).to_string(), tab.input.string()]
             }
         };
         Ok(content)

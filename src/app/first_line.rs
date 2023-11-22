@@ -3,7 +3,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::app::{Status, Tab};
 use crate::event::ActionMap;
-use crate::modes::{shorten_path, DisplayMode, SelectableContent};
+use crate::modes::{shorten_path, Display, SelectableContent};
 
 /// Action for every element of the first line.
 /// It should match the order of the `FirstLine::make_string` static method.
@@ -109,7 +109,7 @@ impl FirstLine {
 
     fn string_first_row_selected_file(tab: &Tab) -> Result<String> {
         match tab.display_mode {
-            DisplayMode::Tree => Ok(format!(
+            Display::Tree => Ok(format!(
                 "/{rel}",
                 rel = shorten_path(tab.tree.selected_path_relative_to_root()?, Some(18))?
             )),
@@ -126,7 +126,7 @@ impl FirstLine {
     fn string_first_row_position(tab: &Tab) -> Result<String> {
         let len: usize;
         let index: usize;
-        if matches!(tab.display_mode, DisplayMode::Tree) {
+        if matches!(tab.display_mode, Display::Tree) {
             index = tab.tree.selected_node().context("no node")?.index() + 1;
             len = tab.tree.len();
         } else {

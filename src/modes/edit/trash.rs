@@ -23,15 +23,15 @@ const TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 /// - what name it was given when trashed,
 /// - when it was trashed
 #[derive(Debug, Clone)]
-pub struct TrashInfo {
+pub struct Info {
     origin: PathBuf,
     dest_name: String,
     deletion_date: String,
 }
 
-impl TrashInfo {
-    /// Returns a new `TrashInfo` instance.
-    /// The deletion_date is calculated on creation, before the file is actually trashed.
+impl Info {
+    /// Returns a new `Info` instance.
+    /// The `deletion_date` is calculated on creation, before the file is actually trashed.
     pub fn new(origin: &Path, dest_name: &str) -> Self {
         let date = Local::now();
         let deletion_date = format!("{}", date.format(TRASHINFO_DATETIME_FORMAT));
@@ -43,29 +43,35 @@ impl TrashInfo {
         }
     }
 
-    fn to_string(&self) -> Result<String> {
-        Ok(format!(
+    fn format(&self) -> String {
+        format!(
             "[Trash Info]
 Path={origin}
 DeletionDate={date}
 ",
             origin = url_escape::encode_fragment(&self.origin.to_string_lossy()),
             date = self.deletion_date
-        ))
+        )
     }
 
     /// Write itself into a .trashinfo file.
     /// The format looks like :
     ///
+    /// ```no_rust
     /// [TrashInfo]
     /// Path=/home/quentin/Documents
     /// DeletionDate=2022-12-31T22:45:55
+    /// ```
+    /// # Errors
+    ///
+    /// This function uses [`std::fs::File::create`] internally and may fail
+    /// for the same reasons.
     pub fn write_trash_info(&self, dest: &Path) -> Result<()> {
         log_info!("writing trash_info {} for {:?}", self, dest);
 
         let mut file = std::fs::File::create(dest)?;
-        if let Err(e) = write!(file, "{}", self.to_string()?) {
-            log_info!("Couldn't write to trash file: {}", e)
+        if let Err(e) = write!(file, "{}", self.format()) {
+            log_info!("Couldn't write to trash file: {}", e);
         }
         Ok(())
     }
@@ -91,9 +97,9 @@ DeletionDate={date}
             (Some(origin), Some(deletion_date)) => {
                 let dest_name = Self::get_dest_name(trash_info_file)?;
                 Ok(Self {
+                    origin,
                     dest_name,
                     deletion_date,
-                    origin,
                 })
             }
             _ => Err(anyhow!("Couldn't parse the trash info file")),
@@ -165,7 +171,7 @@ DeletionDate={date}
     }
 }
 
-impl std::fmt::Display for TrashInfo {
+impl std::fmt::Display for Info {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
@@ -184,7 +190,7 @@ impl std::fmt::Display for TrashInfo {
 #[derive(Clone)]
 pub struct Trash {
     /// Trashed files info.
-    content: Vec<TrashInfo>,
+    content: Vec<Info>,
     index: usize,
     /// The path to the trashed files
     pub trash_folder_files: String,
@@ -212,6 +218,11 @@ impl Trash {
 
     /// Creates an empty view of the trash.
     /// No file is read here, we wait for the user to open the trash first.
+    ///
+    /// # Errors
+    ///
+    /// This function uses [`std::fs::create_dir_all`] internally and may fail
+    /// for the same reasons.
     pub fn new() -> Result<Self> {
         let trash_folder_files = shellexpand::tilde(TRASH_FOLDER_FILES).to_string();
         let trash_folder_info = shellexpand::tilde(TRASH_FOLDER_INFO).to_string();
@@ -229,17 +240,17 @@ impl Trash {
         })
     }
 
-    fn parse_updated_content(trash_folder_info: &str) -> Result<Vec<TrashInfo>> {
+    fn parse_updated_content(trash_folder_info: &str) -> Result<Vec<Info>> {
         match read_dir(trash_folder_info) {
             Ok(read_dir) => {
-                let content: Vec<TrashInfo> = read_dir
-                    .filter_map(|res_direntry| res_direntry.ok())
+                let content: Vec<Info> = read_dir
+                    .filter_map(std::result::Result::ok)
                     .filter(|direntry| direntry.path().extension().is_some())
                     .filter(|direntry| {
                         direntry.path().extension().unwrap().to_str().unwrap() == "trashinfo"
                     })
-                    .map(|direntry| TrashInfo::from_trash_info_file(&direntry.path()))
-                    .filter_map(|trashinfo_res| trashinfo_res.ok())
+                    .map(|direntry| Info::from_trash_info_file(&direntry.path()))
+                    .filter_map(std::result::Result::ok)
                     .collect();
 
                 Ok(content)
@@ -253,6 +264,11 @@ impl Trash {
 
     /// Parse the info files into a new instance.
     /// Only the file we can parse are read.
+    ///
+    /// # Errors
+    ///
+    /// This function may fail if the `trash_folder_info` can't be parsed correctly.
+    /// If any file is listed in `trash_folder_info` but doesn't exist.
     pub fn update(&mut self) -> Result<()> {
         self.index = 0;
         self.content = Self::parse_updated_content(&self.trash_folder_info)?;
@@ -260,7 +276,15 @@ impl Trash {
     }
 
     /// Move a file to the trash folder and create a new trash info file.
-    /// Add a new TrashInfo to the content.
+    /// Add a new `TrashInfo` to the content.
+    ///
+    /// # Errors
+    ///
+    /// This function may fail if the origin path is a relative path.
+    /// We have no way to know where the file is exactly located.
+    ///
+    /// It may also fail  if the trash folder can't be located, we wouldn't be
+    /// able to create a new path for the file.
     pub fn trash(&mut self, origin: &Path) -> Result<()> {
         if origin.is_relative() {
             return Err(anyhow!("trash: origin path should be absolute"));
@@ -268,7 +292,7 @@ impl Trash {
 
         let dest_file_name = self.pick_dest_name(origin)?;
 
-        self.execute_trash(TrashInfo::new(origin, &dest_file_name), &dest_file_name)
+        self.execute_trash(Info::new(origin, &dest_file_name), &dest_file_name)
     }
 
     fn concat_path(root: &str, filename: &str) -> PathBuf {
@@ -287,20 +311,16 @@ impl Trash {
         Self::concat_path(&self.trash_folder_info, &dest_trashinfo_name)
     }
 
-    fn execute_trash(&mut self, trash_info: TrashInfo, dest_file_name: &str) -> Result<()> {
+    fn execute_trash(&mut self, trash_info: Info, dest_file_name: &str) -> Result<()> {
         let trashfile_filename = &self.trashfile_path(dest_file_name);
-        match std::fs::rename(&trash_info.origin, trashfile_filename) {
-            Err(error) => {
-                log_info!("Couldn't trash {trash_info}. Error: {error:?}");
-                Ok(())
-            }
-            Ok(()) => {
-                Self::log_trash_add(&trash_info.origin, dest_file_name);
-                trash_info.write_trash_info(&self.trashinfo_path(dest_file_name))?;
-                self.content.push(trash_info);
-                Ok(())
-            }
+        if let Err(error) = std::fs::rename(&trash_info.origin, trashfile_filename) {
+            log_info!("Couldn't trash {trash_info}. Error: {error:?}");
+        } else {
+            Self::log_trash_add(&trash_info.origin, dest_file_name);
+            trash_info.write_trash_info(&self.trashinfo_path(dest_file_name))?;
+            self.content.push(trash_info);
         }
+        Ok(())
     }
 
     fn log_trash_add(origin: &Path, dest_file_name: &str) {
@@ -311,6 +331,15 @@ impl Trash {
     /// Empty the trash, removing all the files and the trashinfo.
     /// This action requires a confirmation.
     /// Watchout, it may delete files that weren't parsed.
+    ///
+    /// # Errors
+    ///
+    /// This method may fail if the trashfolder was moved or deleted or simply doesn't exist.
+    /// This method uses `std::fs::remove_dir` internally, which may fail.
+    ///
+    /// See [`std::fs::remove_file`] and [`std::fs::remove_dir`].
+    ///
+    /// `remove_dir_all` will fail if `remove_dir` or `remove_file` fail on any constituent paths, including the root path.
     pub fn empty_trash(&mut self) -> Result<()> {
         self.empty_trash_dirs()?;
         let number_of_elements = self.content.len();
@@ -337,11 +366,11 @@ impl Trash {
     fn remove_selected_file(&mut self) -> Result<(PathBuf, PathBuf, PathBuf)> {
         if self.is_empty() {
             return Err(anyhow!(
-                "remove selected file: Can't restore from an empty trash",
+                "remove selected file: Can't restore from an empty trash"
             ));
         }
         let trashinfo = &self.content[self.index];
-        let origin = trashinfo.origin.to_owned();
+        let origin = trashinfo.origin.clone();
 
         let parent = find_parent(&trashinfo.origin)?;
 
@@ -349,11 +378,11 @@ impl Trash {
         let trashed_file_info = self.trashinfo_path(&trashinfo.dest_name);
 
         if !trashed_file_content.exists() {
-            return Err(anyhow!("trash restore: Couldn't find the trashed file",));
+            return Err(anyhow!("trash restore: Couldn't find the trashed file"));
         }
 
         if !trashed_file_info.exists() {
-            return Err(anyhow!("trash restore: Couldn't find the trashed info",));
+            return Err(anyhow!("trash restore: Couldn't find the trashed info"));
         }
 
         self.remove_from_content_and_delete_trashinfo(&trashed_file_info)?;
@@ -369,6 +398,16 @@ impl Trash {
 
     /// Restores a file from the trash to its previous directory.
     /// If the parent (or ancestor) folder were deleted, it is recreated.
+    ///
+    /// # Errors
+    ///
+    /// Will return an error if the file isn't trashed properly :
+    /// - missing .trashinfo
+    /// - missing file itself
+    ///
+    /// It may also fail if the file can't be restored :
+    /// For example, if the original path of the file is now
+    /// in a directory where the user has no permission to write.
     pub fn restore(&mut self) -> Result<()> {
         if self.is_empty() {
             return Ok(());
@@ -381,7 +420,7 @@ impl Trash {
 
     fn execute_restore(origin: &Path, trashed_file_content: &Path, parent: &Path) -> Result<()> {
         if !parent.exists() {
-            std::fs::create_dir_all(parent)?
+            std::fs::create_dir_all(parent)?;
         }
         std::fs::rename(trashed_file_content, origin)?;
         Ok(())
@@ -392,6 +431,12 @@ impl Trash {
     }
 
     /// Deletes a file permanently from the trash.
+    ///
+    /// # Errors
+    ///
+    /// Will return an error if the selected file isn't trashed properly:
+    /// - missing .trashinfo
+    /// - missing file itself.
     pub fn delete_permanently(&mut self) -> Result<()> {
         if self.is_empty() {
             return Ok(());
@@ -403,7 +448,7 @@ impl Trash {
         Self::log_trash_remove(&trashed_file_content);
 
         if self.index > 0 {
-            self.index -= 1
+            self.index -= 1;
         }
         Ok(())
     }
@@ -416,7 +461,7 @@ impl Trash {
     }
 }
 
-impl_selectable_content!(TrashInfo, Trash);
+impl_selectable_content!(Info, Trash);
 
 fn parsed_date_from_path_info(ds: &str) -> Result<()> {
     NaiveDateTime::parse_from_str(ds, TRASHINFO_DATETIME_FORMAT)?;
@@ -444,7 +489,7 @@ where
     P: std::convert::AsRef<std::path::Path> + std::marker::Copy,
 {
     if !std::path::PathBuf::from(path).exists() {
-        std::fs::create_dir_all(path)?
+        std::fs::create_dir_all(path)?;
     }
     Ok(())
 }

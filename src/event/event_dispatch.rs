@@ -4,7 +4,7 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::app::Status;
 use crate::config::{Bindings, REFRESH_EVENT};
 use crate::event::event_exec::{EventAction, LeaveMode};
-use crate::modes::{ContentWindow, DisplayMode, EditMode, InputSimple, MarkAction, Navigate};
+use crate::modes::{ContentWindow, Display, Edit, InputSimple, MarkAction, Navigate};
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -74,35 +74,29 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, c: char) -> Result<()> {
         let tab = status.selected();
         match tab.edit_mode {
-            EditMode::InputSimple(InputSimple::Sort) => tab.sort(c),
-            EditMode::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
-            EditMode::InputSimple(_) => tab.input_insert(c),
-            EditMode::InputCompleted(_) => tab.text_insert_and_complete(c),
-            EditMode::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
-            EditMode::Navigate(Navigate::Trash) if c == 'x' => status.trash_delete_permanently(),
-            EditMode::Navigate(Navigate::EncryptedDrive) if c == 'm' => {
-                status.mount_encrypted_drive()
-            }
-            EditMode::Navigate(Navigate::EncryptedDrive) if c == 'g' => {
-                status.go_to_encrypted_drive()
-            }
-            EditMode::Navigate(Navigate::EncryptedDrive) if c == 'u' => {
-                status.umount_encrypted_drive()
-            }
-            EditMode::Navigate(Navigate::RemovableDevices) if c == 'm' => status.mount_removable(),
-            EditMode::Navigate(Navigate::RemovableDevices) if c == 'g' => status.go_to_removable(),
-            EditMode::Navigate(Navigate::RemovableDevices) if c == 'u' => status.umount_removable(),
-            EditMode::Navigate(Navigate::Jump) if c == ' ' => status.jump_remove_selected_flagged(),
-            EditMode::Navigate(Navigate::Jump) if c == 'u' => status.clear_flags_and_reset_view(),
-            EditMode::Navigate(Navigate::Jump) if c == 'x' => status.delete_single_flagged(),
-            EditMode::Navigate(Navigate::Jump) if c == 'X' => status.trash_single_flagged(),
-            EditMode::Navigate(Navigate::Marks(MarkAction::Jump)) => status.marks_jump_char(c),
-            EditMode::Navigate(Navigate::Marks(MarkAction::New)) => status.marks_new(c),
-            EditMode::Navigate(_) => tab.reset_mode_and_view(),
-            EditMode::Nothing if matches!(tab.display_mode, DisplayMode::Preview) => {
+            Edit::InputSimple(InputSimple::Sort) => tab.sort(c),
+            Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
+            Edit::InputSimple(_) => tab.input_insert(c),
+            Edit::InputCompleted(_) => tab.text_insert_and_complete(c),
+            Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
+            Edit::Navigate(Navigate::Trash) if c == 'x' => status.trash_delete_permanently(),
+            Edit::Navigate(Navigate::EncryptedDrive) if c == 'm' => status.mount_encrypted_drive(),
+            Edit::Navigate(Navigate::EncryptedDrive) if c == 'g' => status.go_to_encrypted_drive(),
+            Edit::Navigate(Navigate::EncryptedDrive) if c == 'u' => status.umount_encrypted_drive(),
+            Edit::Navigate(Navigate::RemovableDevices) if c == 'm' => status.mount_removable(),
+            Edit::Navigate(Navigate::RemovableDevices) if c == 'g' => status.go_to_removable(),
+            Edit::Navigate(Navigate::RemovableDevices) if c == 'u' => status.umount_removable(),
+            Edit::Navigate(Navigate::Jump) if c == ' ' => status.jump_remove_selected_flagged(),
+            Edit::Navigate(Navigate::Jump) if c == 'u' => status.clear_flags_and_reset_view(),
+            Edit::Navigate(Navigate::Jump) if c == 'x' => status.delete_single_flagged(),
+            Edit::Navigate(Navigate::Jump) if c == 'X' => status.trash_single_flagged(),
+            Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => status.marks_jump_char(c),
+            Edit::Navigate(Navigate::Marks(MarkAction::New)) => status.marks_new(c),
+            Edit::Navigate(_) => tab.reset_mode_and_view(),
+            Edit::Nothing if matches!(tab.display_mode, Display::Preview) => {
                 tab.reset_mode_and_view()
             }
-            EditMode::Nothing => self.key_matcher(status, Key::Char(c)),
+            Edit::Nothing => self.key_matcher(status, Key::Char(c)),
         }
     }
 }

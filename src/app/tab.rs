@@ -21,16 +21,16 @@ use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{calculate_top_bottom, Go, To, Tree};
 use crate::modes::{Completion, InputCompleted};
-use crate::modes::{DisplayMode, EditMode, InputSimple};
+use crate::modes::{Display, Edit, InputSimple};
 
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
 pub struct Tab {
     /// Kind of display: `Preview, Normal, Tree`
-    pub display_mode: DisplayMode,
+    pub display_mode: Display,
     /// The edit mode the application is currenty in.
     /// Most of the time is spent in `EditMode::Nothing`
-    pub edit_mode: EditMode,
+    pub edit_mode: Edit,
     /// The indexes of displayed file
     pub window: ContentWindow,
     /// The typed input by the user
@@ -83,8 +83,8 @@ impl Tab {
         let filter = FilterKind::All;
         let show_hidden = args.all || settings.all;
         let mut path_content = PathContent::new(start_dir, &users, &filter, show_hidden)?;
-        let display_mode = DisplayMode::default();
-        let edit_mode = EditMode::Nothing;
+        let display_mode = Display::default();
+        let edit_mode = Edit::Nothing;
         let mut window = ContentWindow::new(path_content.content.len(), height);
         let input = Input::default();
         let completion = Completion::default();
@@ -122,26 +122,26 @@ impl Tab {
     /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> Result<()> {
         match self.edit_mode {
-            EditMode::InputCompleted(InputCompleted::Goto) => {
+            Edit::InputCompleted(InputCompleted::Goto) => {
                 let current_path = self.path_content_str().unwrap_or_default().to_owned();
                 self.completion.goto(&self.input.string(), &current_path)
             }
-            EditMode::InputCompleted(InputCompleted::Exec) => {
+            Edit::InputCompleted(InputCompleted::Exec) => {
                 self.completion.exec(&self.input.string())
             }
-            EditMode::InputCompleted(InputCompleted::Search)
-                if matches!(self.display_mode, DisplayMode::Normal) =>
+            Edit::InputCompleted(InputCompleted::Search)
+                if matches!(self.display_mode, Display::Normal) =>
             {
                 self.completion
                     .search_from_normal(&self.input.string(), &self.path_content)
             }
-            EditMode::InputCompleted(InputCompleted::Search)
-                if matches!(self.display_mode, DisplayMode::Tree) =>
+            Edit::InputCompleted(InputCompleted::Search)
+                if matches!(self.display_mode, Display::Tree) =>
             {
                 self.completion
                     .search_from_tree(&self.input.string(), self.tree.filenames())
             }
-            EditMode::InputCompleted(InputCompleted::Command) => {
+            Edit::InputCompleted(InputCompleted::Command) => {
                 self.completion.command(&self.input.string())
             }
             _ => Ok(()),
@@ -154,8 +154,8 @@ impl Tab {
         self.input.reset();
         self.preview = Preview::empty();
         self.completion.reset();
-        self.set_edit_mode(EditMode::Nothing);
-        if matches!(self.display_mode, DisplayMode::Tree) {
+        self.set_edit_mode(Edit::Nothing);
+        if matches!(self.display_mode, Display::Tree) {
             self.make_tree(None)?;
         } else {
             self.tree = Tree::default()
@@ -186,11 +186,11 @@ impl Tab {
     /// Does nothing in `DisplayMode::Preview`.
     pub fn refresh_if_needed(&mut self) -> Result<()> {
         if match self.display_mode {
-            DisplayMode::Preview => false,
-            DisplayMode::Normal => {
+            Display::Preview => false,
+            Display::Normal => {
                 has_last_modification_happened_less_than(&self.path_content.path, 10)?
             }
-            DisplayMode::Tree => self.tree.has_modified_dirs(),
+            Display::Tree => self.tree.has_modified_dirs(),
         } {
             self.refresh_and_reselect_file()
         } else {
@@ -203,12 +203,12 @@ impl Tab {
         let selected_path = self.selected().context("no selected file")?.path.clone();
         self.refresh_view()?;
         match self.display_mode {
-            DisplayMode::Preview => (),
-            DisplayMode::Normal => {
+            Display::Preview => (),
+            Display::Normal => {
                 let index = self.path_content.select_file(&selected_path);
                 self.scroll_to(index)
             }
-            DisplayMode::Tree => self.tree.go(To::Path(&selected_path)),
+            Display::Tree => self.tree.go(To::Path(&selected_path)),
         }
         Ok(())
     }
@@ -264,7 +264,7 @@ impl Tab {
             &self.users,
             &self.sort_kind,
         )?;
-        if matches!(self.display_mode, DisplayMode::Tree) {
+        if matches!(self.display_mode, Display::Tree) {
             self.make_tree(Some(self.sort_kind))?;
         }
         self.window.reset(self.path_content.content.len());
@@ -361,7 +361,7 @@ impl Tab {
         let index = self.path_content.select_file(&file);
         self.scroll_to(index);
         self.history.content.pop();
-        if let DisplayMode::Tree = self.display_mode {
+        if let Display::Tree = self.display_mode {
             self.make_tree(None)?
         }
 
@@ -418,7 +418,7 @@ impl Tab {
     /// In normal mode it's the current working directory.
     pub fn directory_of_selected(&self) -> Result<&path::Path> {
         match self.display_mode {
-            DisplayMode::Tree => self.tree.directory_of_selected().context("No parent"),
+            Display::Tree => self.tree.directory_of_selected().context("No parent"),
             _ => Ok(&self.path_content.path),
         }
     }
@@ -426,7 +426,7 @@ impl Tab {
     /// Fileinfo of the selected element.
     pub fn selected(&self) -> Result<FileInfo> {
         match self.display_mode {
-            DisplayMode::Tree => {
+            Display::Tree => {
                 let node = self.tree.selected_node().context("no selected node")?;
                 node.fileinfo(&self.users)
             }
@@ -452,11 +452,11 @@ impl Tab {
     }
 
     /// Set a new mode and save the last one
-    pub fn set_edit_mode(&mut self, new_mode: EditMode) {
+    pub fn set_edit_mode(&mut self, new_mode: Edit) {
         self.edit_mode = new_mode;
     }
 
-    pub fn set_display_mode(&mut self, new_display_mode: DisplayMode) {
+    pub fn set_display_mode(&mut self, new_display_mode: Display) {
         self.display_mode = new_display_mode
     }
 
@@ -465,17 +465,17 @@ impl Tab {
     /// - display_mode is set to Normal.
 
     pub fn reset_edit_mode(&mut self) -> bool {
-        if matches!(self.edit_mode, EditMode::InputCompleted(_)) {
+        if matches!(self.edit_mode, Edit::InputCompleted(_)) {
             self.completion.reset();
         }
-        let must_refresh = matches!(self.display_mode, DisplayMode::Preview);
-        self.edit_mode = EditMode::Nothing;
+        let must_refresh = matches!(self.display_mode, Display::Preview);
+        self.edit_mode = Edit::Nothing;
         must_refresh
     }
 
     pub fn reset_mode_and_view(&mut self) -> Result<()> {
-        if matches!(self.display_mode, DisplayMode::Preview) {
-            self.set_display_mode(DisplayMode::Normal);
+        if matches!(self.display_mode, Display::Preview) {
+            self.set_display_mode(Display::Normal);
         }
         self.reset_edit_mode();
         self.refresh_view()
@@ -484,7 +484,7 @@ impl Tab {
     /// Returns true if the current mode requires 2 windows.
     /// Only Tree, Normal & Preview doesn't require 2 windows.
     pub fn need_second_window(&self) -> bool {
-        !matches!(self.edit_mode, EditMode::Nothing)
+        !matches!(self.edit_mode, Edit::Nothing)
     }
 
     /// Move down one row if possible.
@@ -618,8 +618,8 @@ impl Tab {
     /// Returns an error if the clicked row is above the headers margin.
     pub fn select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
         match self.display_mode {
-            DisplayMode::Normal => self.normal_select_row(row),
-            DisplayMode::Tree => self.tree_select_row(row, term_height)?,
+            Display::Normal => self.normal_select_row(row),
+            Display::Tree => self.tree_select_row(row, term_height)?,
             _ => (),
         }
         Ok(())
@@ -657,14 +657,14 @@ impl Tab {
         }
         self.reset_edit_mode();
         match self.display_mode {
-            DisplayMode::Normal => {
+            Display::Normal => {
                 self.path_content.unselect_current();
                 self.update_sort_from_char(c);
                 self.path_content.sort(&self.sort_kind);
                 self.normal_go_top();
                 self.path_content.select_index(0);
             }
-            DisplayMode::Tree => {
+            Display::Tree => {
                 self.update_sort_from_char(c);
                 let selected_path = self.tree.selected_path().to_owned();
                 self.make_tree(Some(self.sort_kind))?;
@@ -707,7 +707,7 @@ impl Tab {
         }
         let old_name = &selected.filename;
         self.input.replace(old_name);
-        self.set_edit_mode(EditMode::InputSimple(InputSimple::Rename));
+        self.set_edit_mode(Edit::InputSimple(InputSimple::Rename));
         Ok(())
     }
 
@@ -720,15 +720,15 @@ impl Tab {
             None => &jump_target,
         };
         match self.display_mode {
-            DisplayMode::Preview => return Ok(()),
-            DisplayMode::Normal => {
+            Display::Preview => return Ok(()),
+            Display::Normal => {
                 if !self.path_content.paths().contains(&target_dir) {
                     self.cd(target_dir)?
                 }
                 let index = self.path_content.select_file(&jump_target);
                 self.scroll_to(index)
             }
-            DisplayMode::Tree => {
+            Display::Tree => {
                 if !self.tree.paths().contains(&target_dir) {
                     self.cd(target_dir)?;
                     self.make_tree(None)?

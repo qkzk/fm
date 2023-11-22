@@ -55,15 +55,15 @@ impl CopyMove {
 
     fn verb(&self) -> &str {
         match self {
-            CopyMove::Copy => "copy",
-            CopyMove::Move => "move",
+            Self::Copy => "copy",
+            Self::Move => "move",
         }
     }
 
     fn preterit(&self) -> &str {
         match self {
-            CopyMove::Copy => "copied",
-            CopyMove::Move => "moved",
+            Self::Copy => "copied",
+            Self::Move => "moved",
         }
     }
 
@@ -81,12 +81,12 @@ impl CopyMove {
         F: FnMut(fs_extra::TransitProcess) -> fs_extra::dir::TransitProcessResult,
     {
         match self {
-            CopyMove::Copy => fs_extra::copy_items_with_progress,
-            CopyMove::Move => fs_extra::move_items_with_progress,
+            Self::Copy => fs_extra::copy_items_with_progress,
+            Self::Move => fs_extra::move_items_with_progress,
         }
     }
 
-    fn log_and_notify(&self, hs_bytes: String) {
+    fn log_and_notify(&self, hs_bytes: &str) {
         let message = format!("{preterit} {hs_bytes} bytes", preterit = self.preterit());
         let _ = notify(&message);
         log_info!("{message}");
@@ -173,7 +173,7 @@ where
             log_info!("Conflict Handler error: {e}");
         }
 
-        copy_or_move.log_and_notify(human_size(transfered_bytes));
+        copy_or_move.log_and_notify(&human_size(transfered_bytes));
     });
     Ok(())
 }

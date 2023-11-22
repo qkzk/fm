@@ -25,7 +25,7 @@ use crate::modes::MountRepr;
 use crate::modes::SelectableContent;
 use crate::modes::Trash;
 use crate::modes::{fileinfo_attr, FileInfo};
-use crate::modes::{DisplayMode, EditMode, InputSimple, Navigate, NeedConfirmation};
+use crate::modes::{Display as DisplayMode, Edit, InputSimple, Navigate, NeedConfirmation};
 use crate::modes::{Preview, TextKind, Window};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
@@ -593,10 +593,10 @@ impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
         match self.tab.edit_mode {
-            EditMode::Navigate(mode) => self.draw_navigate(mode, canvas),
-            EditMode::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
-            EditMode::InputCompleted(_) => self.draw_completion(canvas),
-            EditMode::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
+            Edit::Navigate(mode) => self.draw_navigate(mode, canvas),
+            Edit::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
+            Edit::InputCompleted(_) => self.draw_completion(canvas),
+            Edit::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
             _ => return Ok(()),
         }?;
         self.draw_cursor(canvas)?;
@@ -638,25 +638,25 @@ impl<'a> WinSecondary<'a> {
     /// Display a cursor in the top row, at a correct column.
     fn draw_cursor(&self, canvas: &mut dyn Canvas) -> Result<()> {
         match self.tab.edit_mode {
-            EditMode::Navigate(_) | EditMode::Nothing => {
+            Edit::Navigate(_) | Edit::Nothing => {
                 canvas.show_cursor(false)?;
             }
-            EditMode::InputSimple(InputSimple::Sort) => {
+            Edit::InputSimple(InputSimple::Sort) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
             }
-            EditMode::InputSimple(InputSimple::Password(_, _)) => {
+            Edit::InputSimple(InputSimple::Password(_, _)) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(
                     0,
                     Self::PASSWORD_CURSOR_OFFSET + self.tab.input.cursor_index,
                 )?;
             }
-            EditMode::InputSimple(_) | EditMode::InputCompleted(_) => {
+            Edit::InputSimple(_) | Edit::InputCompleted(_) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, Self::EDIT_BOX_OFFSET + self.tab.input.cursor_index)?;
             }
-            EditMode::NeedConfirmation(confirmed_action) => {
+            Edit::NeedConfirmation(confirmed_action) => {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(0, confirmed_action.cursor_offset())?;
             }

@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 
 use crate::app::Tab;
 use crate::log_line;
-use crate::modes::DisplayMode;
+use crate::modes::Display as DisplayMode;
 
 /// Used to create of files or directory.
 pub enum NodeCreation {
