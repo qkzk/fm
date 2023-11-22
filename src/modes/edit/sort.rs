@@ -21,11 +21,11 @@ enum SortBy {
 impl std::fmt::Display for SortBy {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let sort_by = match &self {
-            SortBy::Exte => "Exte",
-            SortBy::Date => "Date",
-            SortBy::File => "File",
-            SortBy::Size => "Size",
-            SortBy::Kind => "Kind",
+            Self::Exte => "Exte",
+            Self::Date => "Date",
+            Self::File => "File",
+            Self::Size => "Size",
+            Self::Kind => "Kind",
         };
         write!(f, "{sort_by}")
     }
@@ -42,7 +42,7 @@ enum Order {
 }
 
 impl Order {
-    fn reverse(&self) -> Self {
+    const fn reverse(self) -> Self {
         match self {
             Self::Descending => Self::Ascending,
             Self::Ascending => Self::Descending,
@@ -62,7 +62,8 @@ pub struct SortKind {
 impl SortKind {
     /// Default kind of sort for a tree view.
     /// Since files are in reverse order, we need to sort in descending order.
-    pub fn tree_default() -> Self {
+    #[must_use]
+    pub const fn tree_default() -> Self {
         Self {
             sort_by: SortBy::Kind,
             order: Order::Descending,
@@ -87,9 +88,9 @@ impl SortKind {
         }
         if c != 'r' {
             if c.is_uppercase() {
-                self.order = Order::Descending
+                self.order = Order::Descending;
             } else {
-                self.order = Order::Ascending
+                self.order = Order::Ascending;
             }
         }
     }
@@ -102,7 +103,7 @@ impl SortKind {
         F: for<'a> Fn(&'a T) -> &'a K,
         K: Ord + ?Sized,
     {
-        slice.sort_unstable_by(|a, b| f(a).cmp(f(b)))
+        slice.sort_unstable_by(|a, b| f(a).cmp(f(b)));
     }
 
     /// Use Higher Rank Trait Bounds
@@ -115,7 +116,7 @@ impl SortKind {
         F: for<'a> Fn(&'a T) -> &'a K,
         K: Ord + ?Sized,
     {
-        slice.sort_unstable_by(|a, b| Ordering::reverse(f(a).cmp(f(b))))
+        slice.sort_unstable_by(|a, b| Ordering::reverse(f(a).cmp(f(b))));
     }
 
     // A second version should take 2 parameters.
@@ -124,7 +125,7 @@ impl SortKind {
 
     /// Sort a collection of file depending of enum variants.
     pub fn sort(&self, files: &mut [FileInfo]) {
-        if let Order::Ascending = self.order {
+        if matches!(self.order, Order::Ascending) {
             match self.sort_by {
                 SortBy::Kind => Self::sort_by_key_hrtb(files, |f| &f.kind_format),
                 SortBy::File => Self::sort_by_key_hrtb(files, |f| &f.filename),

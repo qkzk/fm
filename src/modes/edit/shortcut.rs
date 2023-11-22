@@ -24,6 +24,7 @@ impl Shortcut {
     /// Creates the hardcoded shortcuts
     /// Add the config folder and the git root
     ///(no mount point yet).
+    #[must_use]
     pub fn new(start_folder: &Path) -> Self {
         let mut shortcuts = Self::hardcoded_shortcuts();
         shortcuts = Self::with_home_path(shortcuts);
@@ -67,11 +68,7 @@ impl Shortcut {
     }
 
     fn git_root_or_cwd() -> PathBuf {
-        if let Ok(git_root) = git_root() {
-            PathBuf::from(git_root)
-        } else {
-            std::env::current_dir().unwrap()
-        }
+        git_root().map_or_else(|_| std::env::current_dir().unwrap(), PathBuf::from)
     }
 
     fn with_git_root(mut shortcuts: Vec<PathBuf>) -> Vec<PathBuf> {
@@ -81,7 +78,7 @@ impl Shortcut {
 
     fn clear_doublons(&mut self) {
         self.content.dedup();
-        self.content = dedup_slow(self.content.clone())
+        self.content = dedup_slow(self.content.clone());
     }
 
     pub fn update_git_root(&mut self) {
@@ -92,7 +89,7 @@ impl Shortcut {
     pub fn extend_with_mount_points(&mut self, mount_points: &[&Path]) {
         self.content
             .extend(mount_points.iter().map(|p| p.to_path_buf()));
-        self.extend_with_mtp()
+        self.extend_with_mtp();
     }
 
     /// Update the shortcuts with MTP mount points
@@ -107,7 +104,7 @@ impl Shortcut {
 
         let mount_points: Vec<PathBuf> = match std::fs::read_dir(&mtp_mount_point) {
             Ok(read_dir) => read_dir
-                .filter_map(|direntry| direntry.ok())
+                .filter_map(std::result::Result::ok)
                 .filter(|direntry| direntry.path().is_dir())
                 .map(|direntry| direntry.path())
                 .collect(),
@@ -119,7 +116,7 @@ impl Shortcut {
                 return;
             }
         };
-        self.content.extend(mount_points)
+        self.content.extend(mount_points);
     }
 
     /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
@@ -142,7 +139,7 @@ where
     for i in 0..elems.len() {
         for j in (i + 1)..elems.len() {
             if elems[i] == elems[j] {
-                to_remove.push(j)
+                to_remove.push(j);
             }
         }
     }
