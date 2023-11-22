@@ -600,7 +600,7 @@ impl<'a> Draw for WinSecondary<'a> {
             _ => return Ok(()),
         }?;
         self.draw_cursor(canvas)?;
-        WinSecondaryFirstLine::new(self.tab)?.draw(canvas)
+        WinSecondaryFirstLine::new(self.tab).draw(canvas)
     }
 }
 
@@ -922,10 +922,10 @@ impl Draw for WinSecondaryFirstLine {
 }
 
 impl WinSecondaryFirstLine {
-    fn new(tab: &Tab) -> Result<Self> {
-        Ok(Self {
-            content: tab.edit_mode.line_display(tab)?,
-        })
+    fn new(tab: &Tab) -> Self {
+        Self {
+            content: tab.edit_mode.line_display(tab),
+        }
     }
 }
 

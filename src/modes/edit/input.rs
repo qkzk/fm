@@ -17,17 +17,33 @@ impl Input {
         self.cursor_index = 0;
     }
 
-    /// Move the cursor to the start
-    pub fn cursor_start(&mut self) {
-        self.cursor_index = 0;
-    }
-
     pub fn len(&self) -> usize {
         self.chars.len()
     }
 
     pub fn is_empty(&self) -> bool {
         self.chars.is_empty()
+    }
+
+    /// Returns the content typed by the user as a String.
+    pub fn string(&self) -> String {
+        self.chars.join("")
+    }
+
+    /// Returns a string of * for every char typed.
+    pub fn password(&self) -> String {
+        "*".repeat(self.len())
+    }
+
+    /// Insert an utf-8 char into the input at cursor index.
+    pub fn insert(&mut self, c: char) {
+        self.chars.insert(self.cursor_index, String::from(c));
+        self.cursor_index += 1;
+    }
+
+    /// Move the cursor to the start
+    pub fn cursor_start(&mut self) {
+        self.cursor_index = 0;
     }
 
     /// Move the cursor to the end
@@ -38,14 +54,14 @@ impl Input {
     /// Move the cursor left if possible
     pub fn cursor_left(&mut self) {
         if self.cursor_index > 0 {
-            self.cursor_index -= 1
+            self.cursor_index -= 1;
         }
     }
 
     /// Move the cursor right if possible
     pub fn cursor_right(&mut self) {
         if self.cursor_index < self.len() {
-            self.cursor_index += 1
+            self.cursor_index += 1;
         }
     }
 
@@ -67,22 +83,6 @@ impl Input {
             .collect();
     }
 
-    /// Returns the content typed by the user as a String.
-    pub fn string(&self) -> String {
-        self.chars.join("")
-    }
-
-    /// Returns a string of * for every char typed.
-    pub fn password(&self) -> String {
-        "*".repeat(self.len())
-    }
-
-    /// Insert an utf-8 char into the input at cursor index.
-    pub fn insert(&mut self, c: char) {
-        self.chars.insert(self.cursor_index, String::from(c));
-        self.cursor_index += 1
-    }
-
     /// Replace the content with the new content.
     /// Put the cursor at the end.
     ///
@@ -97,6 +97,6 @@ impl Input {
             .iter()
             .map(|s| s.to_string())
             .collect();
-        self.cursor_index = self.len()
+        self.cursor_end();
     }
 }
