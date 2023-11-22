@@ -23,6 +23,12 @@ impl Display for NodeCreation {
 }
 
 impl NodeCreation {
+    /// Create a new file or directory in current dir.
+    /// The filename is read from inputstring.
+    ///
+    /// # Errors
+    ///
+    /// It may fail if the node creation fail. See [`std::fs::create_dir_all`] and [`std::fs::File::create`]
     pub fn create(&self, tab: &mut Tab) -> Result<()> {
         let root_path = Self::root_path(tab)?;
         let path = root_path.join(sanitize_filename::sanitize(tab.input.string()));

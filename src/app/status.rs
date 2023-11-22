@@ -477,7 +477,7 @@ impl Status {
             Display::Tree => self.tabs[self.index].tree.paths(),
             Display::Preview => return Ok(()),
         };
-        regex_matcher(input, &paths, &mut self.flagged)?;
+        regex_matcher(&input, &paths, &mut self.flagged)?;
         Ok(())
     }
 

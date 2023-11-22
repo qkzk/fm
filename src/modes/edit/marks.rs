@@ -10,7 +10,7 @@ use crate::log_line;
 use crate::{impl_selectable_content, log_info};
 
 /// Holds the marks created by the user.
-/// It's an ordered map between any char (except :) and a PathBuf.
+/// It's an ordered map between any char (except :) and a `PathBuf`.
 #[derive(Clone)]
 pub struct Marks {
     save_path: PathBuf,
@@ -22,11 +22,13 @@ pub struct Marks {
 
 impl Marks {
     /// True if there's no marks yet
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.content.is_empty()
     }
 
     /// The number of saved marks
+    #[must_use]
     pub fn len(&self) -> usize {
         self.content.len()
     }
@@ -34,6 +36,7 @@ impl Marks {
     /// Reads the marks stored in the config file (~/.config/fm/marks.cfg).
     /// If an invalid marks is read, only the valid ones are kept
     /// and the file is saved again.
+    #[must_use]
     pub fn read_from_config_file() -> Self {
         let path = PathBuf::from(shellexpand::tilde(&MARKS_FILEPATH).to_string());
         Self::read_from_file(path)
@@ -69,8 +72,9 @@ impl Marks {
     }
 
     /// Returns an optional marks associated to a char bind.
+    #[must_use]
     pub fn get(&self, key: char) -> Option<PathBuf> {
-        for (ch, dest) in self.content.iter() {
+        for (ch, dest) in &self.content {
             if &key == ch {
                 return Some(dest.clone());
             }
@@ -84,19 +88,26 @@ impl Marks {
         if sp.len() != 2 {
             return Err(anyhow!("marks: parse_line: Invalid mark line: {line}"));
         }
-        if let Some(ch) = sp[0].chars().next() {
-            let path = PathBuf::from(sp[1]);
-            Ok((ch, path))
-        } else {
-            Err(anyhow!(
-                "marks: parse line
-                Invalid first character in: {line}"
-            ))
-        }
+        sp[0].chars().next().map_or_else(
+            || {
+                Err(anyhow!(
+                    "marks: parse line
+                 Invalid first character in: {line}"
+                ))
+            },
+            |ch| {
+                let path = PathBuf::from(sp[1]);
+                Ok((ch, path))
+            },
+        )
     }
 
     /// Store a new mark in the config file.
     /// If an update is done, the marks are saved again.
+    ///
+    /// # Errors
+    ///
+    /// It may fail if writing to the marks file fails.
     pub fn new_mark(&mut self, ch: char, path: &Path) -> Result<()> {
         if ch == ':' {
             log_line!("new mark - ':' can't be used as a mark");
@@ -105,7 +116,7 @@ impl Marks {
         if self.used_chars.contains(&ch) {
             self.update_mark(ch, path);
         } else {
-            self.content.push((ch, path.to_path_buf()))
+            self.content.push((ch, path.to_path_buf()));
         }
 
         self.save_marks()?;
@@ -122,14 +133,14 @@ impl Marks {
             }
         }
         if let Some(found_index) = found_index {
-            self.content[found_index] = (ch, path.to_path_buf())
+            self.content[found_index] = (ch, path.to_path_buf());
         }
     }
 
     fn save_marks(&self) -> Result<()> {
         let file = std::fs::File::create(&self.save_path)?;
         let mut buf = BufWriter::new(file);
-        for (ch, path) in self.content.iter() {
+        for (ch, path) in &self.content {
             writeln!(buf, "{}:{}", ch, Self::path_as_string(path)?)?;
         }
         Ok(())
@@ -143,14 +154,15 @@ impl Marks {
     }
 
     /// Returns a vector of strings like "d: /dev" for every mark.
+    #[must_use]
     pub fn as_strings(&self) -> Vec<String> {
         self.content
             .iter()
-            .map(|(ch, path)| Self::format_mark(ch, path))
+            .map(|(ch, path)| Self::format_mark(*ch, path))
             .collect()
     }
 
-    fn format_mark(ch: &char, path: &Path) -> String {
+    fn format_mark(ch: char, path: &Path) -> String {
         format!("{ch}    {path}", path = path.display())
     }
 }

@@ -8,18 +8,34 @@ pub trait MountCommands {
     fn is_mounted(&self) -> bool;
 
     /// Mount the device
+    ///
+    /// # Errors
+    ///
+    /// It may fail if mounting returns an error
     fn mount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool>;
 
     /// Unmount the device
+    ///
+    /// # Errors
+    ///
+    /// It may fail if unmounting returns an error
     fn umount(&mut self, username: &str, password: &mut PasswordHolder) -> Result<bool>;
 }
 
 /// Methods used to display the mounted device in terminal
 pub trait MountRepr: MountCommands {
     /// String representation of the device
+    ///
+    /// # Errors
+    ///
+    /// It may fail while parsing a path
     fn as_string(&self) -> Result<String>;
 
     /// Name of the device
+    ///
+    /// # Errors
+    ///
+    /// It may fail while accessing the device name
     fn device_name(&self) -> Result<String>;
 
     /// Default attr.

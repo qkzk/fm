@@ -11,6 +11,9 @@ pub struct Permissions;
 
 impl Permissions {
     /// Set the permissions of the flagged files according to a given permission.
+    ///
+    /// # Errors
+    ///
     /// If the permission are invalid or if the user can't edit them, it may fail.
     fn set_permissions<P>(path: P, mode: Mode) -> std::io::Result<()>
     where
@@ -24,12 +27,16 @@ impl Permissions {
     /// the file.
     /// Nothing is done if the user typed nothing or an invalid permission like
     /// 955.
+    ///
+    /// # Errors
+    ///
+    /// It may fail if the permissions can't be set by the user.
     pub fn set_permissions_of_flagged(mode_str: &str, flagged: &mut Flagged) -> Result<()> {
         let Some(mode) = _Mode::from_str(mode_str) else {
             return Ok(());
         };
-        for path in flagged.content.iter() {
-            Self::set_permissions(path, mode.octal())?
+        for path in &flagged.content {
+            Self::set_permissions(path, mode.octal())?;
         }
         flagged.clear();
         log_line!("Changed permissions to {mode_str}");
@@ -43,7 +50,7 @@ impl _Mode {
     /// Max valid mode, ie `0o777`.
     const MAX_MODE: Mode = 0o777;
 
-    fn octal(&self) -> Mode {
+    const fn octal(&self) -> Mode {
         self.0
     }
 
@@ -56,7 +63,7 @@ impl _Mode {
         None
     }
 
-    fn is_valid_permissions(mode: Mode) -> bool {
+    const fn is_valid_permissions(mode: Mode) -> bool {
         0 < mode && mode <= Self::MAX_MODE
     }
 }

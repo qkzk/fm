@@ -23,6 +23,10 @@ pub struct Mocp {}
 
 impl Mocp {
     /// Add a song or a folder to MOC playlist. Start it first...
+    ///
+    /// # Errors
+    ///
+    /// It should never fail.
     pub fn add_to_playlist(tab: &Tab) -> Result<()> {
         let _ = execute_and_capture_output_without_check(MOCP, &["-S"]);
         let Some(path_str) = tab.path_content.selected_path_string() else {
@@ -34,6 +38,10 @@ impl Mocp {
     }
 
     /// Move to the currently playing song.
+    ///
+    /// # Errors
+    ///
+    /// It may fail if the command `mocp -Q %file` fails
     pub fn go_to_song(tab: &mut Tab) -> Result<()> {
         let output = execute_and_capture_output_without_check(MOCP, &["-Q", "%file"])?;
         let filepath = std::path::PathBuf::from(output.trim());
@@ -54,6 +62,10 @@ impl Mocp {
     /// Toggle play/pause on MOC.
     /// Starts the server if needed, preventing the output to fill the screen.
     /// Then toggle play/pause
+    ///
+    /// # Errors
+    ///
+    /// It should never fail
     pub fn toggle_pause(status: &mut Status) -> Result<()> {
         log_info!("mocp toggle pause");
         match execute_and_capture_output(MOCP, &["-i"]) {
@@ -85,6 +97,10 @@ impl Mocp {
     }
 
     /// Skip to the next song in MOC
+    ///
+    /// # Errors
+    ///
+    /// It should never fail
     pub fn next() -> Result<()> {
         log_info!("mocp next");
         let _ = execute_and_capture_output_without_check(MOCP, &["-f"]);
@@ -92,6 +108,10 @@ impl Mocp {
     }
 
     /// Go to the previous song in MOC
+    ///
+    /// # Errors
+    ///
+    /// It should never fail
     pub fn previous() -> Result<()> {
         log_info!("mocp previous");
         let _ = execute_and_capture_output_without_check(MOCP, &["-r"]);
@@ -101,6 +121,10 @@ impl Mocp {
     /// Clear the playlist
     /// Since clearing the playlist exit the server,
     /// we have to restart it afterwards.
+    ///
+    /// # Errors
+    ///
+    /// It should never fail
     pub fn clear() -> Result<()> {
         log_info!("mocp clear");
         // Clear the playlist **and exit**

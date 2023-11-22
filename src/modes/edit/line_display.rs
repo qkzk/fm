@@ -7,17 +7,22 @@ use crate::modes::{
 };
 
 pub trait LineDisplay {
+    /// Returns a displayable representation of the object as a vector of `String`s
+    ///
+    /// # Errors
+    ///
+    /// It may fail since most string conversion can fail.
     fn line_display(&self, tab: &Tab) -> Result<Vec<String>>;
 }
 
 impl LineDisplay for Edit {
     fn line_display(&self, tab: &Tab) -> Result<Vec<String>> {
         match self {
-            Edit::Navigate(mode) => mode.line_display(tab),
-            Edit::InputSimple(mode) => mode.line_display(tab),
-            Edit::InputCompleted(mode) => mode.line_display(tab),
-            Edit::NeedConfirmation(mode) => mode.line_display(tab),
-            Edit::Nothing => Ok(vec![]),
+            Self::Navigate(mode) => mode.line_display(tab),
+            Self::InputSimple(mode) => mode.line_display(tab),
+            Self::InputCompleted(mode) => mode.line_display(tab),
+            Self::NeedConfirmation(mode) => mode.line_display(tab),
+            Self::Nothing => Ok(vec![]),
         }
     }
 }
@@ -31,10 +36,10 @@ impl LineDisplay for NeedConfirmation {
 impl LineDisplay for Navigate {
     fn line_display(&self, _tab: &Tab) -> Result<Vec<String>> {
         let content = match self {
-            Navigate::Marks(MarkAction::Jump) => {
+            Self::Marks(MarkAction::Jump) => {
                 vec!["Jump to...".to_owned()]
             }
-            Navigate::Marks(MarkAction::New) => {
+            Self::Marks(MarkAction::New) => {
                 vec!["Save mark...".to_owned()]
             }
             _ => {
@@ -49,9 +54,9 @@ impl LineDisplay for InputCompleted {
     fn line_display(&self, tab: &Tab) -> Result<Vec<String>> {
         let mut completion_strings = vec![tab.edit_mode.to_string(), tab.input.string()];
         if let Some(completion) = tab.completion.complete_input_string(&tab.input.string()) {
-            completion_strings.push(completion.to_owned())
+            completion_strings.push(completion.to_owned());
         }
-        if let InputCompleted::Exec = *self {
+        if matches!(*self, Self::Exec) {
             let selected_path = &tab.selected().context("can't parse path")?.path;
             let selected_path = format!(" {}", selected_path.display());
 
@@ -64,10 +69,10 @@ impl LineDisplay for InputCompleted {
 impl LineDisplay for InputSimple {
     fn line_display(&self, tab: &Tab) -> Result<Vec<String>> {
         let content = match self {
-            InputSimple::Password(_, PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP)) => {
+            Self::Password(_, PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP)) => {
                 vec![PasswordKind::CRYPTSETUP.to_string(), tab.input.password()]
             }
-            InputSimple::Password(_, _) => {
+            Self::Password(_, _) => {
                 vec![PasswordKind::SUDO.to_string(), tab.input.password()]
             }
             _ => {

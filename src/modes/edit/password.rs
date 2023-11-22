@@ -39,31 +39,35 @@ pub struct PasswordHolder {
 impl PasswordHolder {
     /// Set the sudo password.
     pub fn set_sudo(&mut self, password: Password) {
-        self.sudo = Some(password)
+        self.sudo = Some(password);
     }
 
     /// Set the encrypted device passphrase
     pub fn set_cryptsetup(&mut self, passphrase: Password) {
-        self.cryptsetup = Some(passphrase)
+        self.cryptsetup = Some(passphrase);
     }
 
     /// Reads the cryptsetup password
-    pub fn cryptsetup(&self) -> &Option<Password> {
+    #[must_use]
+    pub const fn cryptsetup(&self) -> &Option<Password> {
         &self.cryptsetup
     }
 
     /// Reads the sudo password
-    pub fn sudo(&self) -> &Option<Password> {
+    #[must_use]
+    pub const fn sudo(&self) -> &Option<Password> {
         &self.sudo
     }
 
     /// True if the sudo password was set
-    pub fn has_sudo(&self) -> bool {
+    #[must_use]
+    pub const fn has_sudo(&self) -> bool {
         self.sudo.is_some()
     }
 
     /// True if the encrypted device passphrase was set
-    pub fn has_cryptsetup(&self) -> bool {
+    #[must_use]
+    pub const fn has_cryptsetup(&self) -> bool {
         self.cryptsetup.is_some()
     }
 

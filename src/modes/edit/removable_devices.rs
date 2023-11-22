@@ -43,7 +43,7 @@ impl RemovableDevices {
             .lines()
             .filter(|line| line.contains("activation_root"))
             .map(Removable::from_gio)
-            .filter_map(|removable| removable.ok())
+            .filter_map(std::result::Result::ok)
             .collect();
 
         if content.is_empty() {
@@ -161,7 +161,7 @@ impl MountCommands for Removable {
 impl MountRepr for Removable {
     /// String representation of the device
     fn as_string(&self) -> Result<String> {
-        Ok(self.name.to_owned())
+        Ok(self.name.clone())
     }
 
     fn device_name(&self) -> Result<String> {

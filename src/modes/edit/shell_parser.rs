@@ -40,6 +40,7 @@ pub struct ShellCommandParser {
 
 impl ShellCommandParser {
     /// Parse a command into a list of tokens
+    #[must_use]
     pub fn new(command: &str) -> Self {
         Self {
             parsed: Self::parse(command),
@@ -51,11 +52,19 @@ impl ShellCommandParser {
     }
 
     /// Compute the command back into an arg list to be executed.
+    ///
+    /// # Errors
+    ///
+    /// May fail if :
+    /// - The current directory name can't be decoded to utf-8
+    /// - The selected filename can't be decoded to utf-8
+    /// - The directory is empty
+    /// - The file extention can't be decoded to utf-8
     pub fn compute(&self, status: &Status) -> Result<Vec<String>> {
         let mut computed = vec![];
-        for token in self.parsed.iter() {
+        for token in &self.parsed {
             match token {
-                Token::Arg(string) => computed.push(string.to_owned()),
+                Token::Arg(string) => computed.push(string.clone()),
                 Token::Selected => {
                     computed.push(Self::selected(status)?);
                 }
@@ -95,8 +104,7 @@ impl ShellCommandParser {
             .selected_non_mut()
             .selected()
             .context("Empty directory")?
-            .filename
-            .clone())
+            .filename)
     }
 
     fn extension(status: &Status) -> Result<String> {
@@ -104,8 +112,7 @@ impl ShellCommandParser {
             .selected_non_mut()
             .selected()
             .context("Empty directory")?
-            .extension
-            .clone())
+            .extension)
     }
 
     fn flagged(status: &Status) -> Vec<String> {
@@ -114,7 +121,7 @@ impl ShellCommandParser {
             .content
             .iter()
             .map(|path| path.to_str())
-            .filter(|s| s.is_some())
+            .filter(std::option::Option::is_some)
             .map(|s| s.unwrap().to_owned())
             .collect()
     }
