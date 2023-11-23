@@ -17,15 +17,13 @@ pub enum FilterKind {
 impl FilterKind {
     /// Parse the input string into a filter.
     /// It shouldn't fail but use a `Filter::All` if the string isn't parsable;
+    #[must_use]
     pub fn from_input(input: &str) -> Self {
         let words: Vec<&str> = input.split_whitespace().collect();
-        if words.is_empty() {
-            return Self::All;
-        }
-        match words[0] {
-            "d" => Self::Directory,
-            "e" if words.len() > 1 => Self::Extension(words[1].to_owned()),
-            "n" if words.len() > 1 => Self::Name(words[1].to_owned()),
+        match words.first() {
+            Some(&"d") => Self::Directory,
+            Some(&"e") if words.len() > 1 => Self::Extension(words[1].to_owned()),
+            Some(&"n") if words.len() > 1 => Self::Name(words[1].to_owned()),
             _ => Self::All,
         }
     }
@@ -33,6 +31,7 @@ impl FilterKind {
     /// Apply the selected filter to the file list.
     /// It's a "key" used by the Filter method to hold the files matching this
     /// filter.
+    #[must_use]
     pub fn filter_by(&self, fileinfo: &FileInfo, keep_dirs: bool) -> bool {
         match self {
             Self::Extension(ext) => Self::filter_by_extension(fileinfo, ext, keep_dirs),

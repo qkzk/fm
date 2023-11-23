@@ -42,23 +42,26 @@ impl Flagged {
 
     /// Empty the flagged files.
     pub fn clear(&mut self) {
-        self.content.clear()
+        self.content.clear();
     }
 
     /// True if the `path` is flagged.
     /// Since we maintain the content sorted, we can use a binary search and
     /// compensate a little bit with using a vector instead of a set.
     #[inline]
+    #[must_use]
     pub fn contains(&self, path: &Path) -> bool {
         self.content.binary_search(&path.to_path_buf()).is_ok()
     }
 
     /// Returns a vector of path which are present in the current directory.
+    #[inline]
+    #[must_use]
     pub fn filtered(&self, current_path: &Path) -> Vec<&Path> {
         self.content
             .iter()
             .filter(|p| p.starts_with(current_path))
-            .map(|p| p.as_path())
+            .map(PathBuf::as_path)
             .collect()
     }
 

@@ -141,6 +141,11 @@ impl Help {
     /// Creates an Help instance from keybindings.
     /// If multiple keybindings are bound to the same action, the last one
     /// is displayed.
+    ///
+    /// # Errors
+    ///
+    /// It may fail if the help string can't be formated properly.
+    /// It should never fail since every Keybinding should be set.
     pub fn from_keybindings(binds: &Bindings, opener: &Opener) -> Result<Self> {
         let mut strings = binds.keybind_reversed();
         let openers = opener.opener_association.as_map_of_strings();
@@ -154,7 +159,7 @@ impl Help {
     fn complete_with_custom_binds(custom_binds: &Option<Vec<String>>, mut help: String) -> String {
         if let Some(customs) = &custom_binds {
             help.push_str(CUSTOM_HELP);
-            for custom in customs.iter() {
+            for custom in customs {
                 help.push_str(custom);
             }
         }
