@@ -390,7 +390,7 @@ fn convert_octal_mode(mode: usize) -> &'static str {
 /// it returns the uid as a  `Result<String>`.
 fn extract_owner(metadata: &Metadata, users: &Users) -> Result<String> {
     match users.get_user_by_uid(metadata.uid()) {
-        Some(name) => Ok(name),
+        Some(name) => Ok(name.to_string()),
         None => Ok(format!("{}", metadata.uid())),
     }
 }
@@ -400,7 +400,7 @@ fn extract_owner(metadata: &Metadata, users: &Users) -> Result<String> {
 /// it returns the gid as a  `Result<String>`.
 fn extract_group(metadata: &Metadata, users: &Users) -> Result<String> {
     match users.get_group_by_gid(metadata.gid()) {
-        Some(name) => Ok(name),
+        Some(name) => Ok(name.to_string()),
         None => Ok(format!("{}", metadata.gid())),
     }
 }

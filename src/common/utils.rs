@@ -95,6 +95,7 @@ pub fn current_username() -> Result<String> {
     Users::new()
         .get_user_by_uid(current_uid()?)
         .context("Couldn't read my own name")
+        .cloned()
 }
 
 /// True iff the command is available in $PATH.
