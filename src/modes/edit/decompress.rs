@@ -9,6 +9,8 @@ use crate::io::execute_and_output;
 
 /// Decompress a zipped compressed file into its parent directory.
 ///
+/// # Errors
+///
 /// It may fail if the file can't be opened or if [`zip::ZipArchive::new`] can't
 /// read the archive.
 pub fn decompress_zip(source: &Path) -> Result<()> {
@@ -25,6 +27,8 @@ pub fn decompress_zip(source: &Path) -> Result<()> {
 
 /// Decompress a gz compressed file into its parent directory.
 ///
+/// # Errors
+///
 /// It may fail if the file can't be opened.
 pub fn decompress_gz(source: &Path) -> Result<()> {
     let tar_gz = File::open(source)?;
@@ -39,6 +43,8 @@ pub fn decompress_gz(source: &Path) -> Result<()> {
 }
 
 /// Decompress a zlib compressed file into its parent directory.
+///
+/// # Errors
 ///
 /// It may fail if the file can't be opened.
 pub fn decompress_xz(source: &Path) -> Result<()> {
