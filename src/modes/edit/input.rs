@@ -17,20 +17,24 @@ impl Input {
         self.cursor_index = 0;
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.chars.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.chars.is_empty()
     }
 
     /// Returns the content typed by the user as a String.
+    #[must_use]
     pub fn string(&self) -> String {
         self.chars.join("")
     }
 
     /// Returns a string of * for every char typed.
+    #[must_use]
     pub fn password(&self) -> String {
         "*".repeat(self.len())
     }
@@ -79,7 +83,7 @@ impl Input {
             .chars
             .iter()
             .take(self.cursor_index)
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .collect();
     }
 
@@ -95,7 +99,7 @@ impl Input {
         self.chars = UnicodeSegmentation::graphemes(content, true)
             .collect::<Vec<&str>>()
             .iter()
-            .map(|s| s.to_string())
+            .map(|s| (*s).to_string())
             .collect();
         self.cursor_end();
     }

@@ -20,7 +20,7 @@ impl History {
         let pair = (path.to_owned(), file.to_owned());
         if !self.content.contains(&pair) {
             self.content.push(pair);
-            self.index = self.len() - 1
+            self.index = self.len() - 1;
         }
     }
 
@@ -33,9 +33,9 @@ impl History {
         let final_length = self.len() - self.index + 1;
         self.content.truncate(final_length);
         if self.is_empty() {
-            self.index = 0
+            self.index = 0;
         } else {
-            self.index = self.len() - 1
+            self.index = self.len() - 1;
         }
     }
 
@@ -43,6 +43,7 @@ impl History {
     /// path as the one given.
     /// Doesn't check the associated file.
     /// false if the stack is empty.
+    #[must_use]
     pub fn is_this_the_last(&self, path: &Path) -> bool {
         if self.is_empty() {
             return false;

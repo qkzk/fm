@@ -20,6 +20,7 @@ impl IsoDevice {
     const FILENAME: &str = "fm_iso";
 
     /// Creates a new instance from an iso file path.
+    #[must_use]
     pub fn from_path(path: String) -> Self {
         log_info!("IsoDevice from_path: {path}");
         Self {
@@ -28,7 +29,7 @@ impl IsoDevice {
         }
     }
 
-    fn mountpoints(&self, username: &str) -> std::path::PathBuf {
+    fn mountpoints(username: &str) -> std::path::PathBuf {
         let mut mountpoint = std::path::PathBuf::from("/run/media");
         mountpoint.push(username);
         mountpoint.push(Self::FILENAME);
@@ -46,7 +47,7 @@ impl MountParameters for IsoDevice {
     }
 
     fn format_mount_parameters(&mut self, username: &str) -> Vec<String> {
-        let mountpoints = self.mountpoints(username);
+        let mountpoints = Self::mountpoints(username);
         self.mountpoints = Some(mountpoints.clone());
         vec![
             "mount".to_owned(),
@@ -63,7 +64,7 @@ impl MountParameters for IsoDevice {
             format!(
                 "/run/media/{}/{}",
                 username,
-                self.mountpoints(username).display(),
+                Self::mountpoints(username).display(),
             ),
         ]
     }
@@ -130,18 +131,19 @@ impl MountCommands for IsoDevice {
 impl MountRepr for IsoDevice {
     /// String representation of the device.
     fn as_string(&self) -> Result<String> {
-        if let Some(ref mount_point) = self.mountpoints {
-            Ok(format!(
-                "mounted {} to {}",
-                self.path,
-                mount_point.display()
-            ))
-        } else {
-            Ok(format!("not mounted {}", self.path))
-        }
+        self.mountpoints.as_ref().map_or_else(
+            || Ok(format!("not mounted {}", self.path)),
+            |mount_point| {
+                Ok(format!(
+                    "mounted {} to {}",
+                    self.path,
+                    mount_point.display()
+                ))
+            },
+        )
     }
 
     fn device_name(&self) -> Result<String> {
-        Ok(self.path.to_owned())
+        Ok(self.path.clone())
     }
 }
