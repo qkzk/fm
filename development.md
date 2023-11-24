@@ -668,6 +668,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] cargo clippy -- -D clippy::pedantic -D clippy::nursery
       1100 -> 891 errors
 - [x] FIX: resizing deselects the current file.
+- [ ] refactor file opening. It's a mess
 
 ## TODO
 

@@ -210,12 +210,23 @@ pub enum InternalVariant {
     NotSupported,
 }
 
+impl InternalVariant {
+    fn open(&self, filepath: &Path) -> Result<()> {
+        match self {
+            Self::DecompressZip => decompress_zip(filepath),
+            Self::DecompressXz => decompress_xz(filepath),
+            Self::DecompressGz => decompress_gz(filepath),
+            Self::NotSupported => Err(anyhow!("Can't be opened directly")),
+        }
+    }
+}
+
 /// A way to open one kind of files.
 /// It's either an internal method or an external program.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct OpenerInfo {
     /// The external program used to open the file.
-    pub external_program: Option<String>,
+    external_program: Option<String>,
     /// The internal variant kind.
     pub internal_variant: Option<InternalVariant>,
     use_term: bool,
@@ -255,11 +266,30 @@ impl OpenerInfo {
         }
     }
 
+    fn is_external(&self) -> bool {
+        self.external_program.is_some()
+    }
+
+    fn is_internal(&self) -> bool {
+        self.internal_variant.is_some()
+    }
+
     fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
         Some(Self::external((
             yaml.get("opener")?.as_str()?,
             yaml.get("use_term")?.as_bool()?,
         )))
+    }
+
+    fn open_internal(&self, filepath: &Path) -> Result<()> {
+        if self.is_internal() {
+            self.internal_variant
+                .as_ref()
+                .context("shouldn't be None")?
+                .open(filepath)
+        } else {
+            Err(anyhow!("internal_variant shouldn't be None"))
+        }
     }
 }
 
@@ -296,6 +326,10 @@ impl Opener {
         }
     }
 
+    fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
+        self.opener_association.update_from_file(yaml)
+    }
+
     fn get_opener(&self, extension: &str) -> &OpenerInfo {
         if let Some(opener) = self.opener_association.opener_info(extension) {
             opener
@@ -308,12 +342,8 @@ impl Opener {
     /// Files sharing an opener are opened in a single command ie.: `nvim a.txt b.rs c.py`.
     /// Only files opened with an external opener are supported.
     pub fn open_multiple(&self, file_paths: &[PathBuf]) -> Result<()> {
-        let openers = self.regroup_openers(file_paths);
-        for (open_info, file_paths) in openers.iter() {
-            let file_paths_str = Self::collect_paths_as_str(file_paths);
-            let mut args: Vec<&str> = vec![open_info.external_program.as_ref().unwrap()];
-            args.extend(&file_paths_str);
-            self.open_with_args(args, open_info.use_term)?;
+        for (open_info, file_paths) in &self.regroup_openers(file_paths) {
+            self.open_grouped_files(open_info, file_paths)?;
         }
         Ok(())
     }
@@ -322,9 +352,9 @@ impl Opener {
     /// Each file in the collection share the same opener.
     fn regroup_openers(&self, file_paths: &[PathBuf]) -> HashMap<OpenerInfo, Vec<PathBuf>> {
         let mut openers: HashMap<OpenerInfo, Vec<PathBuf>> = HashMap::new();
-        for file_path in file_paths.iter() {
+        for file_path in file_paths {
             let open_info = self.get_opener(extract_extension(file_path));
-            if open_info.external_program.is_some() {
+            if open_info.is_external() {
                 openers
                     .entry(open_info.to_owned())
                     .and_modify(|files| files.push((*file_path).to_owned()))
@@ -344,29 +374,35 @@ impl Opener {
             .collect()
     }
 
+    fn open_grouped_files(&self, open_info: &OpenerInfo, file_paths: &[PathBuf]) -> Result<()> {
+        let file_paths_str = Self::collect_paths_as_str(file_paths);
+        let mut args: Vec<&str> = vec![open_info
+            .external_program
+            .as_ref()
+            .context("Can't be None")?];
+        args.extend(&file_paths_str);
+        self.open_with_args(args, open_info.use_term)?;
+        Ok(())
+    }
+
     /// Open a file, using the configured method.
     /// It may fail if the program changed after reading the config file.
     /// It may also fail if the program can't handle this kind of files.
     /// This is quite a tricky method, there's many possible failures.
     pub fn open(&self, filepath: &Path) -> Result<()> {
         if filepath.is_dir() {
-            return Err(anyhow!("open! can't execute a directory"));
+            return Err(anyhow!("open can't execute a directory"));
         }
         let extension = extract_extension(filepath);
         let open_info = self.get_opener(extension);
-        if open_info.external_program.is_some() {
-            self.open_with(
-                open_info.external_program.as_ref().unwrap(),
-                open_info.use_term,
-                filepath,
-            )?;
+        if open_info.is_external() {
+            self.open_external(filepath, open_info)?;
+        } else if open_info.is_internal() {
+            open_info.open_internal(filepath)?;
         } else {
-            match open_info.internal_variant.as_ref().unwrap() {
-                InternalVariant::DecompressZip => decompress_zip(filepath)?,
-                InternalVariant::DecompressXz => decompress_xz(filepath)?,
-                InternalVariant::DecompressGz => decompress_gz(filepath)?,
-                InternalVariant::NotSupported => (),
-            };
+            return Err(anyhow!(
+                "open_info should have external or internal variant set."
+            ));
         }
         Ok(())
     }
@@ -380,10 +416,22 @@ impl Opener {
         self.get_opener(extension)
     }
 
+    fn open_external(&self, filepath: &Path, open_info: &OpenerInfo) -> Result<()> {
+        self.open_with(
+            open_info
+                .external_program
+                .as_ref()
+                .context("external_program can't be None")?,
+            open_info.use_term,
+            filepath,
+        )?;
+        Ok(())
+    }
+
     /// Open a file with a given program.
     /// If the program requires a terminal, the terminal itself is opened
     /// and the program and its parameters are sent to it.
-    pub fn open_with(
+    fn open_with(
         &self,
         program: &str,
         use_term: bool,
@@ -404,11 +452,10 @@ impl Opener {
         }
     }
 
-    fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
-        self.opener_association.update_from_file(yaml)
-    }
-
     fn open_directly(&self, mut args: Vec<&str>) -> Result<std::process::Child> {
+        if args.is_empty() {
+            return Err(anyhow!("args shouldn't be empty"));
+        }
         let executable = args.remove(0);
         execute_in_child(executable, &args)
     }
@@ -417,11 +464,6 @@ impl Opener {
     fn open_terminal(&self, mut args: Vec<&str>) -> Result<std::process::Child> {
         args.insert(0, "-e");
         execute_in_child(&self.terminal, &args)
-    }
-
-    /// Returns the Opener association associated to a kind of file.
-    pub fn get(&self, kind: ExtensionKind) -> Option<&OpenerInfo> {
-        self.opener_association.association.get(&kind)
     }
 }
 
