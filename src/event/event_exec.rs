@@ -725,8 +725,9 @@ impl EventAction {
             | Edit::InputSimple(InputSimple::Sort) => (),
             Edit::Nothing => match status.selected_non_mut().display_mode {
                 Display::Normal => {
-                    LeaveMode::open_file(status)?;
+                    must_refresh = false;
                     must_reset_mode = false;
+                    LeaveMode::open_file(status)?;
                 }
                 Display::Tree => LeaveMode::tree(status)?,
                 _ => (),

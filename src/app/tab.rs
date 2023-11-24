@@ -199,7 +199,7 @@ impl Tab {
     }
 
     /// Refresh the folder, reselect the last selected file, move the window to it.
-    fn refresh_and_reselect_file(&mut self) -> Result<()> {
+    pub fn refresh_and_reselect_file(&mut self) -> Result<()> {
         let selected_path = self.selected().context("no selected file")?.path.clone();
         self.refresh_view()?;
         match self.display_mode {

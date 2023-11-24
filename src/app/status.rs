@@ -548,9 +548,12 @@ impl Status {
         let users = Users::new();
         self.tabs[0].users = users.clone();
         self.tabs[1].users = users;
-        self.tabs[0].refresh_view()?;
-        self.tabs[1].refresh_view()?;
         Ok(())
+    }
+
+    pub fn refresh_tabs(&mut self) -> Result<()> {
+        self.tabs[0].refresh_and_reselect_file()?;
+        self.tabs[1].refresh_and_reselect_file()
     }
 
     /// Drop the current tree, replace it with an empty one.
@@ -658,23 +661,16 @@ impl Status {
 
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
-        let filepath = if matches!(self.selected_non_mut().display_mode, Display::Tree) {
-            self.selected_non_mut().tree.selected_path().to_owned()
-        } else {
-            self.selected_non_mut().selected()?.path.to_owned()
-        };
+        let fileinfo = self.selected_non_mut().selected()?;
+        let filepath = fileinfo.path.to_owned();
         let opener = self.opener.open_info(&filepath);
         if let Some(InternalVariant::NotSupported) = opener.internal_variant.as_ref() {
             self.mount_iso_drive()?;
         } else {
             match self.opener.open(&filepath) {
                 Ok(_) => (),
-                Err(e) => log_info!(
-                    "Error opening {:?}: {:?}",
-                    self.selected_non_mut().path_content.selected(),
-                    e
-                ),
-            }
+                Err(e) => log_info!("Error opening {:?}: {:?}", fileinfo, e),
+            };
         }
         Ok(())
     }
@@ -936,10 +932,7 @@ impl Status {
     pub fn refresh_status(&mut self) -> Result<()> {
         self.force_clear();
         self.refresh_users()?;
-        self.selected().refresh_view()?;
-        if let Display::Tree = self.selected_non_mut().display_mode {
-            self.selected().make_tree(None)?
-        }
+        self.refresh_tabs()?;
         Ok(())
     }
 
@@ -949,10 +942,9 @@ impl Status {
     /// up or down.
     pub fn resize(&mut self, width: usize, height: usize) -> Result<()> {
         self.set_dual_pane_if_wide_enough(width)?;
-        self.selected().set_height(height);
-        self.force_clear();
-        self.refresh_users()?;
-        Ok(())
+        self.tabs[0].set_height(height);
+        self.tabs[1].set_height(height);
+        self.refresh_status()
     }
 
     /// Recursively delete all flagged files.

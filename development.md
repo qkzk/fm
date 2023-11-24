@@ -665,6 +665,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Improve refresh actions. Subfolders in tree mode are now watched.
 - [x] Trait LineDisplay for EditMode
 - [x] Split tree & lsl drawing into smaller methods
+- [x] cargo clippy -- -D clippy::pedantic -D clippy::nursery
+      1100 -> 891 errors
+- [x] FIX: resizing deselects the current file.
 
 ## TODO
 
