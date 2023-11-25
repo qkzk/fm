@@ -192,8 +192,9 @@ impl OpenerAssociation {
 
     fn validate_openers(&mut self) {
         self.association.retain(|_, opener| {
-            opener.external_program.is_none()
-                || is_program_in_path(opener.external_program.as_ref().unwrap())
+            opener.is_internal()
+                || (opener.is_external()
+                    && is_program_in_path(opener.external_program().unwrap_or_default()))
         });
     }
 }
@@ -224,54 +225,30 @@ impl InternalVariant {
 /// A way to open one kind of files.
 /// It's either an internal method or an external program.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct OpenerInfo {
-    /// The external program used to open the file.
-    external_program: Option<String>,
-    /// The internal variant kind.
-    pub internal_variant: Option<InternalVariant>,
-    use_term: bool,
+pub enum OpenerInfo {
+    Internal(InternalVariant),
+    External(String, bool),
 }
 
 impl Default for OpenerInfo {
     fn default() -> Self {
-        Self {
-            external_program: Some(DEFAULT_OPENER.0.to_owned()),
-            internal_variant: None,
-            use_term: false,
-        }
+        Self::external(DEFAULT_OPENER)
     }
 }
 
 impl OpenerInfo {
     fn external(opener_pair: (&str, bool)) -> Self {
-        let opener = opener_pair.0;
+        let opener = opener_pair.0.to_owned();
         let use_term = opener_pair.1;
-        Self {
-            external_program: Some(opener.to_owned()),
-            internal_variant: None,
-            use_term,
-        }
+        Self::External(opener, use_term)
     }
 
     fn internal(extension_kind: ExtensionKind) -> Result<Self> {
-        match extension_kind {
-            ExtensionKind::Internal(internal) => Ok(Self {
-                external_program: None,
-                internal_variant: Some(internal),
-                use_term: false,
-            }),
-            _ => Err(anyhow!(
-                "internal: unsupported extension_kind: {extension_kind:?}"
-            )),
+        if let ExtensionKind::Internal(internal) = extension_kind {
+            return Ok(Self::Internal(internal));
+        } else {
+            return Err(anyhow!("Should be an internval variant"));
         }
-    }
-
-    fn is_external(&self) -> bool {
-        self.external_program.is_some()
-    }
-
-    fn is_internal(&self) -> bool {
-        self.internal_variant.is_some()
     }
 
     fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
@@ -281,21 +258,39 @@ impl OpenerInfo {
         )))
     }
 
+    fn is_external(&self) -> bool {
+        matches!(self, Self::External(_, _))
+    }
+
+    fn is_internal(&self) -> bool {
+        !self.is_external()
+    }
+
+    fn external_program(&self) -> Result<&str> {
+        let Self::External(program, _) = self else {
+            return Err(anyhow!("not an external opener"));
+        };
+        return Ok(program);
+    }
+
+    fn use_term(&self) -> Result<bool> {
+        let Self::External(_, use_term) = self else {
+            return Err(anyhow!("not an external opener"));
+        };
+        return Ok(*use_term);
+    }
+
     fn open_internal(&self, filepath: &Path) -> Result<()> {
-        if self.is_internal() {
-            self.internal_variant
-                .as_ref()
-                .context("shouldn't be None")?
-                .open(filepath)
-        } else {
-            Err(anyhow!("internal_variant shouldn't be None"))
-        }
+        let Self::Internal(internal_variant) = self else {
+            return Err(anyhow!("should be an internal variant"));
+        };
+        internal_variant.open(filepath)
     }
 }
 
 impl fmt::Display for OpenerInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> std::fmt::Result {
-        let s = if let Some(external) = &self.external_program {
+        let s = if let Self::External(external, _) = &self {
             external
         } else {
             ""
@@ -376,12 +371,9 @@ impl Opener {
 
     fn open_grouped_files(&self, open_info: &OpenerInfo, file_paths: &[PathBuf]) -> Result<()> {
         let file_paths_str = Self::collect_paths_as_str(file_paths);
-        let mut args: Vec<&str> = vec![open_info
-            .external_program
-            .as_ref()
-            .context("Can't be None")?];
+        let mut args: Vec<&str> = vec![open_info.external_program()?];
         args.extend(&file_paths_str);
-        self.open_with_args(args, open_info.use_term)?;
+        self.open_with_args(args, open_info.use_term()?)?;
         Ok(())
     }
 
@@ -418,11 +410,8 @@ impl Opener {
 
     fn open_external(&self, filepath: &Path, open_info: &OpenerInfo) -> Result<()> {
         self.open_with(
-            open_info
-                .external_program
-                .as_ref()
-                .context("external_program can't be None")?,
-            open_info.use_term,
+            open_info.external_program()?,
+            open_info.use_term()?,
             filepath,
         )?;
         Ok(())

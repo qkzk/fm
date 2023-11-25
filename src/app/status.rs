@@ -14,10 +14,10 @@ use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
 use crate::common::{NVIM, SS, TUIS_PATH};
 use crate::config::Settings;
-use crate::io::Args;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock};
 use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
+use crate::io::{Args, OpenerInfo};
 use crate::io::{InternalVariant, Opener};
 use crate::modes::FileKind;
 use crate::modes::Flagged;
@@ -664,7 +664,7 @@ impl Status {
         let fileinfo = self.selected_non_mut().selected()?;
         let filepath = fileinfo.path.to_owned();
         let opener = self.opener.open_info(&filepath);
-        if let Some(InternalVariant::NotSupported) = opener.internal_variant.as_ref() {
+        if let OpenerInfo::Internal(InternalVariant::NotSupported) = opener {
             self.mount_iso_drive()?;
         } else {
             match self.opener.open(&filepath) {
