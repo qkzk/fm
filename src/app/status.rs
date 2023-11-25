@@ -17,8 +17,8 @@ use crate::config::Settings;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock};
 use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
-use crate::io::{Args, OpenerInfo};
-use crate::io::{InternalVariant, Opener};
+use crate::io::{Args, Info};
+use crate::io::{Internal, Opener};
 use crate::modes::FileKind;
 use crate::modes::Flagged;
 use crate::modes::IsoDevice;
@@ -661,15 +661,17 @@ impl Status {
 
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
-        let fileinfo = self.selected_non_mut().selected()?;
-        let filepath = fileinfo.path.to_owned();
-        let opener = self.opener.open_info(&filepath);
-        if let Some(OpenerInfo::Internal(InternalVariant::NotSupported)) = opener {
+        let filepath = self.selected_non_mut().selected()?.path;
+        let opener_info = self.opener.open_info(&filepath);
+        if let Some(Info::Internal(Internal::Unknown)) = opener_info {
             self.mount_iso_drive()?;
         } else {
-            match self.opener.open(&filepath) {
+            match self.opener.open_single(&filepath) {
                 Ok(_) => (),
-                Err(e) => log_info!("Error opening {:?}: {:?}", fileinfo, e),
+                Err(error) => log_info!(
+                    "Error opening {filepath}: {error:?}",
+                    filepath = filepath.display()
+                ),
             };
         }
         Ok(())
@@ -1079,8 +1081,9 @@ impl Status {
         if matches!(self.selected_non_mut().display_mode, Display::Preview) {
             return Ok(());
         }
-        let first_line = FirstLine::new(self)?;
-        let action = first_line.action(col as usize);
+        let is_right = self.index == 1;
+        let first_line = FirstLine::new(self, self.selected_non_mut())?;
+        let action = first_line.action(col as usize, is_right);
         action.matcher(self)
     }
 

@@ -129,8 +129,13 @@ impl<'a> Draw for WinMain<'a> {
             return Ok(());
         }
         self.draw_content(canvas)?;
-        WinMainFirstLine::new(self.attributes.is_selected, self.status)?.draw(canvas)?;
-        // self.first_line(self.disk_space, canvas, opt_index)?;
+        WinMainFirstLine::new(
+            self.status,
+            self.tab,
+            self.attributes.is_selected,
+            self.attributes.is_right(),
+        )?
+        .draw(canvas)?;
         Ok(())
     }
 }
@@ -433,8 +438,10 @@ impl<'a> WinMain<'a> {
 }
 
 struct WinMainFirstLine<'a> {
-    is_selected: bool,
     status: &'a Status,
+    tab: &'a Tab,
+    is_selected: bool,
+    is_right: bool,
 }
 
 impl<'a> Draw for WinMainFirstLine<'a> {
@@ -446,9 +453,11 @@ impl<'a> Draw for WinMainFirstLine<'a> {
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        let content = match self.status.selected_non_mut().display_mode {
-            DisplayMode::Preview => PreviewFirstLine::make_preview(self.status),
-            _ => FirstLine::new(self.status)?.strings().to_owned(),
+        let content = match self.tab.display_mode {
+            DisplayMode::Preview => PreviewFirstLine::make_preview(self.status, self.tab),
+            _ => FirstLine::new(self.status, self.tab, self.is_selected)?
+                .strings()
+                .to_owned(),
         };
         draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
         Ok(())
@@ -456,10 +465,12 @@ impl<'a> Draw for WinMainFirstLine<'a> {
 }
 
 impl<'a> WinMainFirstLine<'a> {
-    fn new(is_selected: bool, status: &'a Status) -> Result<Self> {
+    fn new(status: &'a Status, tab: &'a Tab, is_selected: bool, is_right: bool) -> Result<Self> {
         Ok(Self {
-            is_selected,
             status,
+            tab,
+            is_selected,
+            is_right,
         })
     }
 }
@@ -467,8 +478,7 @@ impl<'a> WinMainFirstLine<'a> {
 struct PreviewFirstLine;
 
 impl PreviewFirstLine {
-    fn make_preview(status: &Status) -> Vec<String> {
-        let tab = status.selected_non_mut();
+    fn make_preview(status: &Status, tab: &Tab) -> Vec<String> {
         match &tab.preview {
             Preview::Text(text_content) => match text_content.kind {
                 TextKind::HELP => Self::make_help(),

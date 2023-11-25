@@ -22,7 +22,6 @@ const ACTIONS: [ActionMap; 9] = [
 /// A bunch of strings displaying the status of the current directory.
 /// It provides an `action` method to make the first line clickable.
 pub struct FirstLine {
-    tab_index: usize,
     strings: Vec<String>,
     sizes: Vec<usize>,
     width: usize,
@@ -31,16 +30,13 @@ pub struct FirstLine {
 // should it be held somewhere ?
 impl FirstLine {
     /// Create the strings associated with the selected tab directory
-    pub fn new(status: &Status) -> Result<Self> {
-        let tab_index = status.index;
-        let tab = &status.tabs[tab_index];
+    pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
         let (width, _) = status.term.term_size()?;
         let disk_space = status.disk_spaces_of_selected();
         let strings = Self::make_strings(status, tab, disk_space)?;
         let sizes = Self::make_sizes(&strings);
 
         Ok(Self {
-            tab_index,
             strings,
             sizes,
             width,
@@ -83,9 +79,9 @@ impl FirstLine {
     }
 
     /// Action for each associated file.
-    pub fn action(&self, col: usize) -> &ActionMap {
+    pub fn action(&self, col: usize, is_right: bool) -> &ActionMap {
         let mut sum = 0;
-        let offset = self.offset();
+        let offset = self.offset(is_right);
         for (index, size) in self.sizes.iter().enumerate() {
             sum += size;
             if col <= sum + offset {
@@ -95,11 +91,11 @@ impl FirstLine {
         &ActionMap::Nothing
     }
 
-    fn offset(&self) -> usize {
-        if self.tab_index == 0 {
-            1
-        } else {
+    fn offset(&self, is_right: bool) -> usize {
+        if is_right {
             self.width / 2 + 2
+        } else {
+            1
         }
     }
 
