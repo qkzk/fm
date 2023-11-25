@@ -208,7 +208,7 @@ impl Internal {
     }
 }
 
-#[derive(Clone, Hash, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct External(String, bool);
 
 impl External {
@@ -224,32 +224,15 @@ impl External {
         self.1
     }
 
-    /// Open a file with a given program.
-    /// If the program requires a terminal, the terminal itself is opened
-    /// and the program and its parameters are sent to it.
-    fn open_single(&self, path: &Path, term: &str) -> Result<()> {
-        let args = vec![
-            self.program(),
-            path.to_str().context("can't parse path to str")?,
-        ];
-        Self::with_args(args, self.use_term(), term)?;
-        Ok(())
-    }
-
-    fn open_multiple(&self, paths: &[PathBuf], term: &str) -> Result<()> {
+    fn open(&self, paths: &[&str], term: &str) -> Result<()> {
         let mut args: Vec<&str> = vec![self.program()];
-        let paths_str = Self::collect_paths_as_str(paths);
-        args.extend(&paths_str);
-        Self::with_args(args, self.use_term(), term)?;
-        Ok(())
-    }
-
-    fn with_args(args: Vec<&str>, use_term: bool, term: &str) -> Result<std::process::Child> {
-        if use_term {
-            Self::with_term(args, term)
+        args.extend(paths);
+        if self.use_term() {
+            Self::with_term(args, term)?;
         } else {
-            Self::without_term(args)
+            Self::without_term(args)?;
         }
+        Ok(())
     }
 
     fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
@@ -264,16 +247,6 @@ impl External {
     fn with_term(mut args: Vec<&str>, term: &str) -> Result<std::process::Child> {
         args.insert(0, "-e");
         execute_in_child(term, &args)
-    }
-
-    /// Convert a slice of `PathBuf` into their string representation.
-    /// Files which are directory are skipped.
-    fn collect_paths_as_str(paths: &[PathBuf]) -> Vec<&str> {
-        paths
-            .iter()
-            .filter(|fp| !fp.is_dir())
-            .filter_map(|fp| fp.to_str())
-            .collect()
     }
 }
 
@@ -367,7 +340,9 @@ impl Opener {
     /// This is quite a tricky method, there's many possible failures.
     pub fn open_single(&self, path: &Path) -> Result<()> {
         match self.kind(path) {
-            Some(Kind::External(external)) => external.open_single(path, &self.terminal),
+            Some(Kind::External(external)) => {
+                external.open(&[path.to_str().context("couldn't")?], &self.terminal)
+            }
             Some(Kind::Internal(internal)) => internal.open(path),
             None => Err(anyhow!("{p} can't be opened", p = path.display())),
         }
@@ -378,7 +353,7 @@ impl Opener {
     /// Only files opened with an external opener are supported.
     pub fn open_multiple(&self, paths: &[PathBuf]) -> Result<()> {
         for (external, grouped_paths) in &self.regroup_per_opener(paths) {
-            external.open_multiple(grouped_paths, &self.terminal)?;
+            external.open(&Self::collect_paths_as_str(grouped_paths), &self.terminal)?;
         }
         Ok(())
     }
@@ -397,5 +372,15 @@ impl Opener {
                 .or_insert(vec![(*path).to_owned()]);
         }
         openers
+    }
+
+    /// Convert a slice of `PathBuf` into their string representation.
+    /// Files which are directory are skipped.
+    fn collect_paths_as_str(paths: &[PathBuf]) -> Vec<&str> {
+        paths
+            .iter()
+            .filter(|fp| !fp.is_dir())
+            .filter_map(|fp| fp.to_str())
+            .collect()
     }
 }
