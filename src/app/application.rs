@@ -12,7 +12,7 @@ use crate::event::EventDispatcher;
 use crate::event::EventReader;
 use crate::io::set_loggers;
 use crate::io::Display;
-use crate::io::{load_opener, Opener};
+use crate::io::{build_opener, Opener};
 use crate::log_info;
 use crate::modes::Help;
 
@@ -51,7 +51,7 @@ impl FM {
         let term = Arc::new(init_term()?);
         let event_reader = EventReader::new(Arc::clone(&term));
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
-        let opener = load_opener(OPENER_PATH, &config.terminal).unwrap_or_else(|_| {
+        let opener = build_opener(OPENER_PATH, &config.terminal).unwrap_or_else(|_| {
             eprintln!("Couldn't read the opener config file at {OPENER_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/opener.yaml for an example. Using default.");
             log_info!("Couldn't read opener file at {OPENER_PATH}. Using default.");
             Opener::new(&config.terminal)

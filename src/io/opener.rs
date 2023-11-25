@@ -19,7 +19,7 @@ use crate::modes::{decompress_gz, decompress_xz, decompress_zip};
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
-pub enum ExtensionKind {
+enum ExtensionKind {
     #[default]
     Audio,
     Bitmap,
@@ -78,6 +78,17 @@ impl ExtensionKind {
     }
 }
 
+macro_rules! open_file_with {
+    ($self:ident, $key:expr, $variant:ident, $yaml:ident) => {
+        if let Some(o) = OpenerInfo::from_yaml(&$yaml[$key]) {
+            $self
+                .association
+                .entry(ExtensionKind::$variant)
+                .and_modify(|e| *e = o);
+        }
+    };
+}
+
 /// Holds an association map between `ExtensionKind` and `OpenerInfo`.
 /// It's used to know how to open a kind of file.
 #[derive(Clone)]
@@ -91,53 +102,64 @@ impl OpenerAssociation {
             association: HashMap::from([
                 (
                     ExtensionKind::Audio,
-                    OpenerInfo::external(DEFAULT_AUDIO_OPENER),
+                    OpenerInfo::from_external(DEFAULT_AUDIO_OPENER),
                 ),
                 (
                     ExtensionKind::Bitmap,
-                    OpenerInfo::external(DEFAULT_IMAGE_OPENER),
+                    OpenerInfo::from_external(DEFAULT_IMAGE_OPENER),
                 ),
                 (
                     ExtensionKind::Office,
-                    OpenerInfo::external(DEFAULT_OFFICE_OPENER),
+                    OpenerInfo::from_external(DEFAULT_OFFICE_OPENER),
                 ),
                 (
                     ExtensionKind::Readable,
-                    OpenerInfo::external(DEFAULT_READABLE_OPENER),
+                    OpenerInfo::from_external(DEFAULT_READABLE_OPENER),
                 ),
                 (
                     ExtensionKind::Text,
-                    OpenerInfo::external(DEFAULT_TEXT_OPENER),
+                    OpenerInfo::from_external(DEFAULT_TEXT_OPENER),
                 ),
                 (
                     ExtensionKind::Vectorial,
-                    OpenerInfo::external(DEFAULT_VECTORIAL_OPENER),
+                    OpenerInfo::from_external(DEFAULT_VECTORIAL_OPENER),
                 ),
                 (
                     ExtensionKind::Video,
-                    OpenerInfo::external(DEFAULT_VIDEO_OPENER),
+                    OpenerInfo::from_external(DEFAULT_VIDEO_OPENER),
                 ),
                 (
                     ExtensionKind::Internal(InternalVariant::DecompressZip),
-                    OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressZip))
-                        .unwrap_or_default(),
+                    OpenerInfo::from_internal(ExtensionKind::Internal(
+                        InternalVariant::DecompressZip,
+                    ))
+                    .unwrap_or_default(),
                 ),
                 (
                     ExtensionKind::Internal(InternalVariant::DecompressGz),
-                    OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressGz))
-                        .unwrap_or_default(),
+                    OpenerInfo::from_internal(ExtensionKind::Internal(
+                        InternalVariant::DecompressGz,
+                    ))
+                    .unwrap_or_default(),
                 ),
                 (
                     ExtensionKind::Internal(InternalVariant::DecompressXz),
-                    OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::DecompressXz))
-                        .unwrap_or_default(),
+                    OpenerInfo::from_internal(ExtensionKind::Internal(
+                        InternalVariant::DecompressXz,
+                    ))
+                    .unwrap_or_default(),
                 ),
                 (
                     ExtensionKind::Internal(InternalVariant::NotSupported),
-                    OpenerInfo::internal(ExtensionKind::Internal(InternalVariant::NotSupported))
-                        .unwrap_or_default(),
+                    OpenerInfo::from_internal(ExtensionKind::Internal(
+                        InternalVariant::NotSupported,
+                    ))
+                    .unwrap_or_default(),
                 ),
-                (ExtensionKind::Default, OpenerInfo::external(DEFAULT_OPENER)),
+                (
+                    ExtensionKind::Default,
+                    OpenerInfo::from_external(DEFAULT_OPENER),
+                ),
             ]),
         }
     }
@@ -157,20 +179,7 @@ impl OpenerAssociation {
         }
         associations
     }
-}
 
-macro_rules! open_file_with {
-    ($self:ident, $key:expr, $variant:ident, $yaml:ident) => {
-        if let Some(o) = OpenerInfo::from_yaml(&$yaml[$key]) {
-            $self
-                .association
-                .entry(ExtensionKind::$variant)
-                .and_modify(|e| *e = o);
-        }
-    };
-}
-
-impl OpenerAssociation {
     fn opener_info(&self, ext: &str) -> Option<&OpenerInfo> {
         self.association
             .get(&ExtensionKind::matcher(&ext.to_lowercase()))
@@ -191,11 +200,8 @@ impl OpenerAssociation {
     }
 
     fn validate_openers(&mut self) {
-        self.association.retain(|_, opener| {
-            opener.is_internal()
-                || (opener.is_external()
-                    && is_program_in_path(opener.external_program().unwrap_or_default()))
-        });
+        self.association
+            .retain(|_, opener_info| opener_info.is_valid());
     }
 }
 
@@ -232,18 +238,18 @@ pub enum OpenerInfo {
 
 impl Default for OpenerInfo {
     fn default() -> Self {
-        Self::external(DEFAULT_OPENER)
+        Self::from_external(DEFAULT_OPENER)
     }
 }
 
 impl OpenerInfo {
-    fn external(opener_pair: (&str, bool)) -> Self {
+    fn from_external(opener_pair: (&str, bool)) -> Self {
         let opener = opener_pair.0.to_owned();
         let use_term = opener_pair.1;
         Self::External(opener, use_term)
     }
 
-    fn internal(extension_kind: ExtensionKind) -> Result<Self> {
+    fn from_internal(extension_kind: ExtensionKind) -> Result<Self> {
         if let ExtensionKind::Internal(internal) = extension_kind {
             return Ok(Self::Internal(internal));
         } else {
@@ -252,7 +258,7 @@ impl OpenerInfo {
     }
 
     fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
-        Some(Self::external((
+        Some(Self::from_external((
             yaml.get("opener")?.as_str()?,
             yaml.get("use_term")?.as_bool()?,
         )))
@@ -262,22 +268,15 @@ impl OpenerInfo {
         matches!(self, Self::External(_, _))
     }
 
-    fn is_internal(&self) -> bool {
-        !self.is_external()
+    fn is_valid(&self) -> bool {
+        !self.is_external() || is_program_in_path(self.external().unwrap_or_default().0)
     }
 
-    fn external_program(&self) -> Result<&str> {
-        let Self::External(program, _) = self else {
+    fn external(&self) -> Result<(&str, bool)> {
+        let Self::External(program, use_term) = self else {
             return Err(anyhow!("not an external opener"));
         };
-        return Ok(program);
-    }
-
-    fn use_term(&self) -> Result<bool> {
-        let Self::External(_, use_term) = self else {
-            return Err(anyhow!("not an external opener"));
-        };
-        return Ok(*use_term);
+        return Ok((program, *use_term));
     }
 
     fn open_internal(&self, filepath: &Path) -> Result<()> {
@@ -307,7 +306,6 @@ pub struct Opener {
     pub terminal: String,
     /// The association of openers for every kind of files
     pub opener_association: OpenerAssociation,
-    default_opener: OpenerInfo,
 }
 
 impl Opener {
@@ -317,20 +315,30 @@ impl Opener {
         Self {
             terminal: terminal.to_owned(),
             opener_association: OpenerAssociation::new(),
-            default_opener: OpenerInfo::external(DEFAULT_OPENER),
         }
     }
 
-    fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
-        self.opener_association.update_from_file(yaml)
-    }
-
-    fn get_opener(&self, extension: &str) -> &OpenerInfo {
-        if let Some(opener) = self.opener_association.opener_info(extension) {
-            opener
+    /// Open a file, using the configured method.
+    /// It may fail if the program changed after reading the config file.
+    /// It may also fail if the program can't handle this kind of files.
+    /// This is quite a tricky method, there's many possible failures.
+    pub fn open(&self, filepath: &Path) -> Result<()> {
+        if filepath.is_dir() {
+            return Err(anyhow!("open can't execute a directory"));
+        }
+        let extension = extract_extension(filepath);
+        let Some(open_info) = self.get_opener(extension) else {
+            return Err(anyhow!(
+                "no opener defined for {filepath}",
+                filepath = filepath.display()
+            ));
+        };
+        if open_info.is_external() {
+            self.open_external(filepath, open_info)?;
         } else {
-            &self.default_opener
+            open_info.open_internal(filepath)?;
         }
+        Ok(())
     }
 
     /// Open multiple files.
@@ -343,12 +351,30 @@ impl Opener {
         Ok(())
     }
 
+    /// Returns the open info about this file.
+    /// It's used to check if the file can be opened without specific actions or not.
+    /// This opener can't mutate the status and can't ask for a sudo password.
+    /// Some files requires root to be opened (ie. ISO files which are mounted).
+    pub fn open_info(&self, filepath: &Path) -> Option<&OpenerInfo> {
+        self.get_opener(extract_extension(filepath))
+    }
+
+    fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
+        self.opener_association.update_from_file(yaml)
+    }
+
+    fn get_opener(&self, extension: &str) -> Option<&OpenerInfo> {
+        self.opener_association.opener_info(extension)
+    }
+
     /// Create an hashmap of openers -> [files].
     /// Each file in the collection share the same opener.
     fn regroup_openers(&self, file_paths: &[PathBuf]) -> HashMap<OpenerInfo, Vec<PathBuf>> {
         let mut openers: HashMap<OpenerInfo, Vec<PathBuf>> = HashMap::new();
         for file_path in file_paths {
-            let open_info = self.get_opener(extract_extension(file_path));
+            let Some(open_info) = self.get_opener(extract_extension(file_path)) else {
+                continue;
+            };
             if open_info.is_external() {
                 openers
                     .entry(open_info.to_owned())
@@ -371,49 +397,16 @@ impl Opener {
 
     fn open_grouped_files(&self, open_info: &OpenerInfo, file_paths: &[PathBuf]) -> Result<()> {
         let file_paths_str = Self::collect_paths_as_str(file_paths);
-        let mut args: Vec<&str> = vec![open_info.external_program()?];
+        let (external_program, use_term) = open_info.external()?;
+        let mut args: Vec<&str> = vec![external_program];
         args.extend(&file_paths_str);
-        self.open_with_args(args, open_info.use_term()?)?;
+        self.open_with_args(args, use_term)?;
         Ok(())
-    }
-
-    /// Open a file, using the configured method.
-    /// It may fail if the program changed after reading the config file.
-    /// It may also fail if the program can't handle this kind of files.
-    /// This is quite a tricky method, there's many possible failures.
-    pub fn open(&self, filepath: &Path) -> Result<()> {
-        if filepath.is_dir() {
-            return Err(anyhow!("open can't execute a directory"));
-        }
-        let extension = extract_extension(filepath);
-        let open_info = self.get_opener(extension);
-        if open_info.is_external() {
-            self.open_external(filepath, open_info)?;
-        } else if open_info.is_internal() {
-            open_info.open_internal(filepath)?;
-        } else {
-            return Err(anyhow!(
-                "open_info should have external or internal variant set."
-            ));
-        }
-        Ok(())
-    }
-
-    /// Returns the open info about this file.
-    /// It's used to check if the file can be opened without specific actions or not.
-    /// This opener can't mutate the status and can't ask for a sudo password.
-    /// Some files requires root to be opened (ie. ISO files which are mounted).
-    pub fn open_info(&self, filepath: &Path) -> &OpenerInfo {
-        let extension = extract_extension(filepath);
-        self.get_opener(extension)
     }
 
     fn open_external(&self, filepath: &Path, open_info: &OpenerInfo) -> Result<()> {
-        self.open_with(
-            open_info.external_program()?,
-            open_info.use_term()?,
-            filepath,
-        )?;
+        let (external_program, use_term) = open_info.external()?;
+        self.open_with(external_program, use_term, filepath)?;
         Ok(())
     }
 
@@ -459,7 +452,7 @@ impl Opener {
 /// Returns the opener created from opener file with the given terminal
 /// application name.
 /// It may fail if the file can't be read.
-pub fn load_opener(path: &str, terminal: &str) -> Result<Opener> {
+pub fn build_opener(path: &str, terminal: &str) -> Result<Opener> {
     let mut opener = Opener::new(terminal);
     let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
     let yaml = serde_yaml::from_reader(file)?;

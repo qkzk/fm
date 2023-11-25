@@ -664,7 +664,7 @@ impl Status {
         let fileinfo = self.selected_non_mut().selected()?;
         let filepath = fileinfo.path.to_owned();
         let opener = self.opener.open_info(&filepath);
-        if let OpenerInfo::Internal(InternalVariant::NotSupported) = opener {
+        if let Some(OpenerInfo::Internal(InternalVariant::NotSupported)) = opener {
             self.mount_iso_drive()?;
         } else {
             match self.opener.open(&filepath) {
