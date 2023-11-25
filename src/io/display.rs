@@ -129,13 +129,7 @@ impl<'a> Draw for WinMain<'a> {
             return Ok(());
         }
         self.draw_content(canvas)?;
-        WinMainFirstLine::new(
-            self.status,
-            self.tab,
-            self.attributes.is_selected,
-            self.attributes.is_right(),
-        )?
-        .draw(canvas)?;
+        WinMainFirstLine::new(self.status, self.tab, self.attributes.is_selected)?.draw(canvas)?;
         Ok(())
     }
 }
@@ -441,7 +435,6 @@ struct WinMainFirstLine<'a> {
     status: &'a Status,
     tab: &'a Tab,
     is_selected: bool,
-    is_right: bool,
 }
 
 impl<'a> Draw for WinMainFirstLine<'a> {
@@ -455,9 +448,7 @@ impl<'a> Draw for WinMainFirstLine<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let content = match self.tab.display_mode {
             DisplayMode::Preview => PreviewFirstLine::make_preview(self.status, self.tab),
-            _ => FirstLine::new(self.status, self.tab, self.is_selected)?
-                .strings()
-                .to_owned(),
+            _ => FirstLine::new(self.status, self.tab)?.strings().to_owned(),
         };
         draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
         Ok(())
@@ -465,12 +456,11 @@ impl<'a> Draw for WinMainFirstLine<'a> {
 }
 
 impl<'a> WinMainFirstLine<'a> {
-    fn new(status: &'a Status, tab: &'a Tab, is_selected: bool, is_right: bool) -> Result<Self> {
+    fn new(status: &'a Status, tab: &'a Tab, is_selected: bool) -> Result<Self> {
         Ok(Self {
             status,
             tab,
             is_selected,
-            is_right,
         })
     }
 }
