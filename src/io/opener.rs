@@ -223,6 +223,58 @@ impl External {
     fn use_term(&self) -> bool {
         self.1
     }
+
+    /// Open a file with a given program.
+    /// If the program requires a terminal, the terminal itself is opened
+    /// and the program and its parameters are sent to it.
+    fn open_single(&self, path: &Path, term: &str) -> Result<()> {
+        let args = vec![
+            self.program(),
+            path.to_str().context("can't parse path to str")?,
+        ];
+        Self::with_args(args, self.use_term(), term)?;
+        Ok(())
+    }
+
+    fn open_multiple(&self, paths: &[PathBuf], term: &str) -> Result<()> {
+        let mut args: Vec<&str> = vec![self.program()];
+        let paths_str = Self::collect_paths_as_str(paths);
+        args.extend(&paths_str);
+        Self::with_args(args, self.use_term(), term)?;
+        Ok(())
+    }
+
+    fn with_args(args: Vec<&str>, use_term: bool, term: &str) -> Result<std::process::Child> {
+        if use_term {
+            Self::with_term(args, term)
+        } else {
+            Self::without_term(args)
+        }
+    }
+
+    fn without_term(mut args: Vec<&str>) -> Result<std::process::Child> {
+        if args.is_empty() {
+            return Err(anyhow!("args shouldn't be empty"));
+        }
+        let executable = args.remove(0);
+        execute_in_child(executable, &args)
+    }
+
+    // TODO: use terminal specific parameters instead of -e for all terminals
+    fn with_term(mut args: Vec<&str>, term: &str) -> Result<std::process::Child> {
+        args.insert(0, "-e");
+        execute_in_child(term, &args)
+    }
+
+    /// Convert a slice of `PathBuf` into their string representation.
+    /// Files which are directory are skipped.
+    fn collect_paths_as_str(paths: &[PathBuf]) -> Vec<&str> {
+        paths
+            .iter()
+            .filter(|fp| !fp.is_dir())
+            .filter_map(|fp| fp.to_str())
+            .collect()
+    }
 }
 
 /// A way to open one kind of files.
@@ -303,6 +355,9 @@ impl Opener {
     /// This opener can't mutate the status and can't ask for a sudo password.
     /// Some files requires root to be opened (ie. ISO files which are mounted).
     pub fn kind(&self, path: &Path) -> Option<&Kind> {
+        if path.is_dir() {
+            return None;
+        }
         self.association.associate(extract_extension(path))
     }
 
@@ -311,13 +366,8 @@ impl Opener {
     /// It may also fail if the program can't handle this kind of files.
     /// This is quite a tricky method, there's many possible failures.
     pub fn open_single(&self, path: &Path) -> Result<()> {
-        if path.is_dir() {
-            return Err(anyhow!("open can't execute a directory"));
-        }
         match self.kind(path) {
-            Some(Kind::External(External(program, use_term))) => {
-                self.open_external(path, program, *use_term)
-            }
+            Some(Kind::External(external)) => external.open_single(path, &self.terminal),
             Some(Kind::Internal(internal)) => internal.open(path),
             None => Err(anyhow!("{p} can't be opened", p = path.display())),
         }
@@ -327,77 +377,25 @@ impl Opener {
     /// Files sharing an opener are opened in a single command ie.: `nvim a.txt b.rs c.py`.
     /// Only files opened with an external opener are supported.
     pub fn open_multiple(&self, paths: &[PathBuf]) -> Result<()> {
-        for (kind, grouped_paths) in &self.regroup_per_opener(paths) {
-            self.open_grouped_files(kind, grouped_paths)?;
+        for (external, grouped_paths) in &self.regroup_per_opener(paths) {
+            external.open_multiple(grouped_paths, &self.terminal)?;
         }
         Ok(())
     }
 
     /// Create an hashmap of openers -> [files].
     /// Each file in the collection share the same opener.
-    fn regroup_per_opener(&self, paths: &[PathBuf]) -> HashMap<Kind, Vec<PathBuf>> {
-        let mut openers: HashMap<Kind, Vec<PathBuf>> = HashMap::new();
+    fn regroup_per_opener(&self, paths: &[PathBuf]) -> HashMap<External, Vec<PathBuf>> {
+        let mut openers: HashMap<External, Vec<PathBuf>> = HashMap::new();
         for path in paths {
-            let Some(kind) = self.kind(path) else {
+            let Some(Kind::External(pair)) = self.kind(path) else {
                 continue;
             };
-            if kind.is_external() {
-                openers
-                    .entry(kind.to_owned())
-                    .and_modify(|files| files.push((*path).to_owned()))
-                    .or_insert(vec![(*path).to_owned()]);
-            }
+            openers
+                .entry(External(pair.0.to_owned(), pair.1).to_owned())
+                .and_modify(|files| files.push((*path).to_owned()))
+                .or_insert(vec![(*path).to_owned()]);
         }
         openers
-    }
-
-    /// Convert a slice of `PathBuf` into their string representation.
-    /// Files which are directory are skipped.
-    fn collect_paths_as_str(paths: &[PathBuf]) -> Vec<&str> {
-        paths
-            .iter()
-            .filter(|fp| !fp.is_dir())
-            .filter_map(|fp| fp.to_str())
-            .collect()
-    }
-
-    fn open_grouped_files(&self, kind: &Kind, paths: &[PathBuf]) -> Result<()> {
-        let (external_program, use_term) = kind.external_program()?;
-        let mut args: Vec<&str> = vec![external_program];
-        let paths_str = Self::collect_paths_as_str(paths);
-        args.extend(&paths_str);
-        self.with_args(args, use_term)?;
-        Ok(())
-    }
-
-    /// Open a file with a given program.
-    /// If the program requires a terminal, the terminal itself is opened
-    /// and the program and its parameters are sent to it.
-    fn open_external(&self, path: &Path, program: &str, use_term: bool) -> Result<()> {
-        let args = vec![program, path.to_str().context("can't parse path to str")?];
-        self.with_args(args, use_term)?;
-        Ok(())
-    }
-
-    fn with_args(&self, args: Vec<&str>, use_term: bool) -> Result<std::process::Child> {
-        if use_term {
-            self.with_term(args)
-        } else {
-            self.without_term(args)
-        }
-    }
-
-    fn without_term(&self, mut args: Vec<&str>) -> Result<std::process::Child> {
-        if args.is_empty() {
-            return Err(anyhow!("args shouldn't be empty"));
-        }
-        let executable = args.remove(0);
-        execute_in_child(executable, &args)
-    }
-
-    // TODO: use terminal specific parameters instead of -e for all terminals
-    fn with_term(&self, mut args: Vec<&str>) -> Result<std::process::Child> {
-        args.insert(0, "-e");
-        execute_in_child(&self.terminal, &args)
     }
 }
