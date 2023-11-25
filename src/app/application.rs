@@ -5,14 +5,14 @@ use tuikit::prelude::Event;
 
 use crate::app::Refresher;
 use crate::app::Status;
+use crate::common::CONFIG_PATH;
 use crate::common::{clear_tmp_file, init_term, print_on_quit};
-use crate::common::{CONFIG_PATH, OPENER_PATH};
 use crate::config::load_config;
 use crate::event::EventDispatcher;
 use crate::event::EventReader;
 use crate::io::set_loggers;
 use crate::io::Display;
-use crate::io::{build_opener, Opener};
+use crate::io::Opener;
 use crate::log_info;
 use crate::modes::Help;
 
@@ -51,11 +51,7 @@ impl FM {
         let term = Arc::new(init_term()?);
         let event_reader = EventReader::new(Arc::clone(&term));
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
-        let opener = build_opener(OPENER_PATH, &config.terminal).unwrap_or_else(|_| {
-            eprintln!("Couldn't read the opener config file at {OPENER_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/opener.yaml for an example. Using default.");
-            log_info!("Couldn't read opener file at {OPENER_PATH}. Using default.");
-            Opener::new(&config.terminal)
-        });
+        let opener = Opener::new(&config.terminal);
         let help = Help::from_keybindings(&config.binds, &opener)?.help;
         let display = Display::new(Arc::clone(&term));
         let status = Status::new(

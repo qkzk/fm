@@ -37,7 +37,7 @@ pub const DEFAULT_TEXT_OPENER: (&str, bool) = ("nvim", true);
 /// Program used to open unknown files. Does it require a terminal ?
 pub const DEFAULT_OPENER: (&str, bool) = ("xdg-open", false);
 /// Program used to open vectorial images. Does it require a terminal ?
-pub const DEFAULT_VECTORIAL_OPENER: (&str, bool) = ("inkscape", false);
+pub const DEFAULT_VECT_OPENER: (&str, bool) = ("inkscape", false);
 /// Program used to open videos. Does it require a terminal ?
 pub const DEFAULT_VIDEO_OPENER: (&str, bool) = ("mpv", false);
 /// Default program used to drag and drop files

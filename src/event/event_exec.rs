@@ -972,7 +972,7 @@ impl EventAction {
 
     /// Open the config file.
     pub fn open_config(status: &mut Status) -> Result<()> {
-        match status.opener.open(&path::PathBuf::from(
+        match status.opener.open_single(&path::PathBuf::from(
             shellexpand::tilde(CONFIG_PATH).to_string(),
         )) {
             Ok(_) => (),

@@ -10,7 +10,8 @@ use strum_macros::{Display, EnumIter, EnumString};
 use crate::common::is_program_in_path;
 use crate::common::{
     DEFAULT_AUDIO_OPENER, DEFAULT_IMAGE_OPENER, DEFAULT_OFFICE_OPENER, DEFAULT_OPENER,
-    DEFAULT_READABLE_OPENER, DEFAULT_TEXT_OPENER, DEFAULT_VECTORIAL_OPENER, DEFAULT_VIDEO_OPENER,
+    DEFAULT_READABLE_OPENER, DEFAULT_TEXT_OPENER, DEFAULT_VECT_OPENER, DEFAULT_VIDEO_OPENER,
+    OPENER_PATH,
 };
 use crate::io::execute_in_child;
 use crate::log_info;
@@ -19,21 +20,24 @@ use crate::modes::{decompress_gz, decompress_xz, decompress_zip};
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
-enum ExtensionKind {
+enum Extension {
     #[default]
     Audio,
     Bitmap,
     Office,
     Readable,
     Text,
-    Default,
     Vectorial,
     Video,
-    Internal(InternalVariant),
+    Zip,
+    Gz,
+    Xz,
+    Iso,
+    Default,
 }
 
 // TODO: move those associations to a config file
-impl ExtensionKind {
+impl Extension {
     fn matcher(ext: &str) -> Self {
         match ext {
             "avif" | "bmp" | "gif" | "png" | "jpg" | "jpeg" | "pgm" | "ppm" | "webp" | "tiff" => {
@@ -58,20 +62,18 @@ impl ExtensionKind {
 
             "pdf" | "epub" => Self::Readable,
 
-            "zip" => Self::Internal(InternalVariant::DecompressZip),
+            "zip" => Self::Zip,
 
-            "xz" | "7z" => Self::Internal(InternalVariant::DecompressXz),
+            "xz" | "7z" => Self::Xz,
 
-            "lzip" | "lzma" | "rar" | "tgz" | "gz" | "bzip2" => {
-                Self::Internal(InternalVariant::DecompressGz)
-            }
+            "lzip" | "lzma" | "rar" | "tgz" | "gz" | "bzip2" => Self::Gz,
             // iso files can't be mounted without more information than we hold in this enum :
             // we need to be able to change the status of the application to ask for a sudo password.
             // we can't use the "basic" opener to mount them.
             // ATM this is the only extension we can't open, it may change in the future.
             "iso" => {
                 log_info!("extension kind iso");
-                Self::Internal(InternalVariant::NotSupported)
+                Self::Iso
             }
             _ => Self::Default,
         }
@@ -80,112 +82,66 @@ impl ExtensionKind {
 
 macro_rules! open_file_with {
     ($self:ident, $key:expr, $variant:ident, $yaml:ident) => {
-        if let Some(o) = OpenerInfo::from_yaml(&$yaml[$key]) {
+        if let Some(opener) = Info::from_yaml(&$yaml[$key]) {
             $self
                 .association
-                .entry(ExtensionKind::$variant)
-                .and_modify(|e| *e = o);
+                .entry(Extension::$variant)
+                .and_modify(|entry| *entry = opener);
         }
     };
 }
 
-/// Holds an association map between `ExtensionKind` and `OpenerInfo`.
+/// Holds an association map between `Extension` and `Info`.
 /// It's used to know how to open a kind of file.
 #[derive(Clone)]
-pub struct OpenerAssociation {
-    association: HashMap<ExtensionKind, OpenerInfo>,
+pub struct Association {
+    association: HashMap<Extension, Info>,
 }
 
-impl OpenerAssociation {
-    fn new() -> Self {
+impl Default for Association {
+    fn default() -> Self {
         Self {
             association: HashMap::from([
-                (
-                    ExtensionKind::Audio,
-                    OpenerInfo::from_external(DEFAULT_AUDIO_OPENER),
-                ),
-                (
-                    ExtensionKind::Bitmap,
-                    OpenerInfo::from_external(DEFAULT_IMAGE_OPENER),
-                ),
-                (
-                    ExtensionKind::Office,
-                    OpenerInfo::from_external(DEFAULT_OFFICE_OPENER),
-                ),
-                (
-                    ExtensionKind::Readable,
-                    OpenerInfo::from_external(DEFAULT_READABLE_OPENER),
-                ),
-                (
-                    ExtensionKind::Text,
-                    OpenerInfo::from_external(DEFAULT_TEXT_OPENER),
-                ),
-                (
-                    ExtensionKind::Vectorial,
-                    OpenerInfo::from_external(DEFAULT_VECTORIAL_OPENER),
-                ),
-                (
-                    ExtensionKind::Video,
-                    OpenerInfo::from_external(DEFAULT_VIDEO_OPENER),
-                ),
-                (
-                    ExtensionKind::Internal(InternalVariant::DecompressZip),
-                    OpenerInfo::from_internal(ExtensionKind::Internal(
-                        InternalVariant::DecompressZip,
-                    ))
-                    .unwrap_or_default(),
-                ),
-                (
-                    ExtensionKind::Internal(InternalVariant::DecompressGz),
-                    OpenerInfo::from_internal(ExtensionKind::Internal(
-                        InternalVariant::DecompressGz,
-                    ))
-                    .unwrap_or_default(),
-                ),
-                (
-                    ExtensionKind::Internal(InternalVariant::DecompressXz),
-                    OpenerInfo::from_internal(ExtensionKind::Internal(
-                        InternalVariant::DecompressXz,
-                    ))
-                    .unwrap_or_default(),
-                ),
-                (
-                    ExtensionKind::Internal(InternalVariant::NotSupported),
-                    OpenerInfo::from_internal(ExtensionKind::Internal(
-                        InternalVariant::NotSupported,
-                    ))
-                    .unwrap_or_default(),
-                ),
-                (
-                    ExtensionKind::Default,
-                    OpenerInfo::from_external(DEFAULT_OPENER),
-                ),
+                (Extension::Audio, Info::external(DEFAULT_AUDIO_OPENER)),
+                (Extension::Bitmap, Info::external(DEFAULT_IMAGE_OPENER)),
+                (Extension::Office, Info::external(DEFAULT_OFFICE_OPENER)),
+                (Extension::Readable, Info::external(DEFAULT_READABLE_OPENER)),
+                (Extension::Text, Info::external(DEFAULT_TEXT_OPENER)),
+                (Extension::Vectorial, Info::external(DEFAULT_VECT_OPENER)),
+                (Extension::Video, Info::external(DEFAULT_VIDEO_OPENER)),
+                (Extension::Zip, Info::Internal(Internal::Zip)),
+                (Extension::Gz, Info::Internal(Internal::Gz)),
+                (Extension::Xz, Info::Internal(Internal::Xz)),
+                (Extension::Iso, Info::Internal(Internal::Unknown)),
+                (Extension::Default, Info::external(DEFAULT_OPENER)),
             ]),
         }
     }
+}
 
-    /// Converts itself into an hashmap of strings.
-    /// Used to include openers in the help
-    pub fn as_map_of_strings(&self) -> std::collections::HashMap<String, String> {
-        let mut associations: std::collections::HashMap<String, String> = self
-            .association
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
-
-        for s in ExtensionKind::iter() {
-            let s = s.to_string();
-            associations.entry(s).or_insert_with(|| "".to_owned());
-        }
-        associations
+impl Association {
+    fn with_config(mut self, path: &str) -> Self {
+        let Ok(file) =
+            std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))
+        else {
+            eprintln!("Couldn't find opener file at {path}. Using default.");
+            log_info!("Unable to open {path}. Using default opener");
+            return self;
+        };
+        let Ok(yaml) = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file)
+        else {
+            eprintln!("Couldn't read the opener config file at {path}.
+See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/opener.yaml for an example. Using default.");
+            log_info!("Unable to parse openers from {path}. Using default opener");
+            return self;
+        };
+        self.update_associations(yaml);
+        self.validate_openers();
+        log_info!("updated opener from {path}");
+        self
     }
 
-    fn opener_info(&self, ext: &str) -> Option<&OpenerInfo> {
-        self.association
-            .get(&ExtensionKind::matcher(&ext.to_lowercase()))
-    }
-
-    fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
+    fn update_associations(&mut self, yaml: serde_yaml::value::Value) {
         open_file_with!(self, "audio", Audio, yaml);
         open_file_with!(self, "bitmap_image", Bitmap, yaml);
         open_file_with!(self, "libreoffice", Office, yaml);
@@ -194,14 +150,31 @@ impl OpenerAssociation {
         open_file_with!(self, "default", Default, yaml);
         open_file_with!(self, "vectorial_image", Vectorial, yaml);
         open_file_with!(self, "video", Video, yaml);
-
-        self.validate_openers();
-        log_info!("update from file");
     }
 
     fn validate_openers(&mut self) {
+        self.association.retain(|_, info| info.is_valid());
+    }
+
+    /// Converts itself into an hashmap of strings.
+    /// Used to include openers in the help
+    pub fn as_map_of_strings(&self) -> HashMap<String, String> {
+        let mut associations: HashMap<String, String> = self
+            .association
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+
+        for s in Extension::iter() {
+            let s = s.to_string();
+            associations.entry(s).or_insert_with(|| "".to_owned());
+        }
+        associations
+    }
+
+    fn opener_info(&self, ext: &str) -> Option<&Info> {
         self.association
-            .retain(|_, opener_info| opener_info.is_valid());
+            .get(&Extension::matcher(&ext.to_lowercase()))
     }
 }
 
@@ -209,21 +182,21 @@ impl OpenerAssociation {
 /// ATM only one kind of files is supported, compressed ones, which use
 /// libarchive internally.
 #[derive(Clone, Hash, PartialEq, Eq, Debug, Default)]
-pub enum InternalVariant {
+pub enum Internal {
     #[default]
-    DecompressZip,
-    DecompressXz,
-    DecompressGz,
-    NotSupported,
+    Zip,
+    Xz,
+    Gz,
+    Unknown,
 }
 
-impl InternalVariant {
+impl Internal {
     fn open(&self, filepath: &Path) -> Result<()> {
         match self {
-            Self::DecompressZip => decompress_zip(filepath),
-            Self::DecompressXz => decompress_xz(filepath),
-            Self::DecompressGz => decompress_gz(filepath),
-            Self::NotSupported => Err(anyhow!("Can't be opened directly")),
+            Self::Zip => decompress_zip(filepath),
+            Self::Xz => decompress_xz(filepath),
+            Self::Gz => decompress_gz(filepath),
+            Self::Unknown => Err(anyhow!("Can't be opened directly")),
         }
     }
 }
@@ -231,34 +204,26 @@ impl InternalVariant {
 /// A way to open one kind of files.
 /// It's either an internal method or an external program.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub enum OpenerInfo {
-    Internal(InternalVariant),
+pub enum Info {
+    Internal(Internal),
     External(String, bool),
 }
 
-impl Default for OpenerInfo {
+impl Default for Info {
     fn default() -> Self {
-        Self::from_external(DEFAULT_OPENER)
+        Self::external(DEFAULT_OPENER)
     }
 }
 
-impl OpenerInfo {
-    fn from_external(opener_pair: (&str, bool)) -> Self {
+impl Info {
+    fn external(opener_pair: (&str, bool)) -> Self {
         let opener = opener_pair.0.to_owned();
         let use_term = opener_pair.1;
         Self::External(opener, use_term)
     }
 
-    fn from_internal(extension_kind: ExtensionKind) -> Result<Self> {
-        if let ExtensionKind::Internal(internal) = extension_kind {
-            return Ok(Self::Internal(internal));
-        } else {
-            return Err(anyhow!("Should be an internval variant"));
-        }
-    }
-
     fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
-        Some(Self::from_external((
+        Some(Self::external((
             yaml.get("opener")?.as_str()?,
             yaml.get("use_term")?.as_bool()?,
         )))
@@ -269,10 +234,10 @@ impl OpenerInfo {
     }
 
     fn is_valid(&self) -> bool {
-        !self.is_external() || is_program_in_path(self.external().unwrap_or_default().0)
+        !self.is_external() || is_program_in_path(self.external_program().unwrap_or_default().0)
     }
 
-    fn external(&self) -> Result<(&str, bool)> {
+    fn external_program(&self) -> Result<(&str, bool)> {
         let Self::External(program, use_term) = self else {
             return Err(anyhow!("not an external opener"));
         };
@@ -287,7 +252,7 @@ impl OpenerInfo {
     }
 }
 
-impl fmt::Display for OpenerInfo {
+impl fmt::Display for Info {
     fn fmt(&self, f: &mut fmt::Formatter) -> std::fmt::Result {
         let s = if let Self::External(external, _) = &self {
             external
@@ -305,16 +270,16 @@ pub struct Opener {
     /// The name of the configured terminal application
     pub terminal: String,
     /// The association of openers for every kind of files
-    pub opener_association: OpenerAssociation,
+    pub association: Association,
 }
 
 impl Opener {
     /// Creates a new opener instance.
-    /// Default values are used. It may be uptaded with configured ones later.
+    /// Use the configured values from [`crate::common::OPENER_PATH`] if it can be parsed.
     pub fn new(terminal: &str) -> Self {
         Self {
             terminal: terminal.to_owned(),
-            opener_association: OpenerAssociation::new(),
+            association: Association::default().with_config(OPENER_PATH),
         }
     }
 
@@ -322,7 +287,7 @@ impl Opener {
     /// It may fail if the program changed after reading the config file.
     /// It may also fail if the program can't handle this kind of files.
     /// This is quite a tricky method, there's many possible failures.
-    pub fn open(&self, filepath: &Path) -> Result<()> {
+    pub fn open_single(&self, filepath: &Path) -> Result<()> {
         if filepath.is_dir() {
             return Err(anyhow!("open can't execute a directory"));
         }
@@ -355,22 +320,18 @@ impl Opener {
     /// It's used to check if the file can be opened without specific actions or not.
     /// This opener can't mutate the status and can't ask for a sudo password.
     /// Some files requires root to be opened (ie. ISO files which are mounted).
-    pub fn open_info(&self, filepath: &Path) -> Option<&OpenerInfo> {
+    pub fn open_info(&self, filepath: &Path) -> Option<&Info> {
         self.get_opener(extract_extension(filepath))
     }
 
-    fn update_from_file(&mut self, yaml: &serde_yaml::value::Value) {
-        self.opener_association.update_from_file(yaml)
-    }
-
-    fn get_opener(&self, extension: &str) -> Option<&OpenerInfo> {
-        self.opener_association.opener_info(extension)
+    fn get_opener(&self, extension: &str) -> Option<&Info> {
+        self.association.opener_info(extension)
     }
 
     /// Create an hashmap of openers -> [files].
     /// Each file in the collection share the same opener.
-    fn regroup_openers(&self, file_paths: &[PathBuf]) -> HashMap<OpenerInfo, Vec<PathBuf>> {
-        let mut openers: HashMap<OpenerInfo, Vec<PathBuf>> = HashMap::new();
+    fn regroup_openers(&self, file_paths: &[PathBuf]) -> HashMap<Info, Vec<PathBuf>> {
+        let mut openers: HashMap<Info, Vec<PathBuf>> = HashMap::new();
         for file_path in file_paths {
             let Some(open_info) = self.get_opener(extract_extension(file_path)) else {
                 continue;
@@ -395,46 +356,37 @@ impl Opener {
             .collect()
     }
 
-    fn open_grouped_files(&self, open_info: &OpenerInfo, file_paths: &[PathBuf]) -> Result<()> {
+    fn open_grouped_files(&self, open_info: &Info, file_paths: &[PathBuf]) -> Result<()> {
         let file_paths_str = Self::collect_paths_as_str(file_paths);
-        let (external_program, use_term) = open_info.external()?;
+        let (external_program, use_term) = open_info.external_program()?;
         let mut args: Vec<&str> = vec![external_program];
         args.extend(&file_paths_str);
-        self.open_with_args(args, use_term)?;
-        Ok(())
-    }
-
-    fn open_external(&self, filepath: &Path, open_info: &OpenerInfo) -> Result<()> {
-        let (external_program, use_term) = open_info.external()?;
-        self.open_with(external_program, use_term, filepath)?;
+        self.with_args(args, use_term)?;
         Ok(())
     }
 
     /// Open a file with a given program.
     /// If the program requires a terminal, the terminal itself is opened
     /// and the program and its parameters are sent to it.
-    fn open_with(
-        &self,
-        program: &str,
-        use_term: bool,
-        filepath: &std::path::Path,
-    ) -> Result<std::process::Child> {
+    fn open_external(&self, filepath: &Path, open_info: &Info) -> Result<()> {
+        let (external_program, use_term) = open_info.external_program()?;
         let strpath = filepath
             .to_str()
             .context("open with: can't parse filepath to str")?;
-        let args = vec![program, strpath];
-        self.open_with_args(args, use_term)
+        let args = vec![external_program, strpath];
+        self.with_args(args, use_term)?;
+        Ok(())
     }
 
-    fn open_with_args(&self, args: Vec<&str>, use_term: bool) -> Result<std::process::Child> {
+    fn with_args(&self, args: Vec<&str>, use_term: bool) -> Result<std::process::Child> {
         if use_term {
-            self.open_terminal(args)
+            self.with_term(args)
         } else {
-            self.open_directly(args)
+            self.without_term(args)
         }
     }
 
-    fn open_directly(&self, mut args: Vec<&str>) -> Result<std::process::Child> {
+    fn without_term(&self, mut args: Vec<&str>) -> Result<std::process::Child> {
         if args.is_empty() {
             return Err(anyhow!("args shouldn't be empty"));
         }
@@ -443,19 +395,8 @@ impl Opener {
     }
 
     // TODO: use terminal specific parameters instead of -e for all terminals
-    fn open_terminal(&self, mut args: Vec<&str>) -> Result<std::process::Child> {
+    fn with_term(&self, mut args: Vec<&str>) -> Result<std::process::Child> {
         args.insert(0, "-e");
         execute_in_child(&self.terminal, &args)
     }
-}
-
-/// Returns the opener created from opener file with the given terminal
-/// application name.
-/// It may fail if the file can't be read.
-pub fn build_opener(path: &str, terminal: &str) -> Result<Opener> {
-    let mut opener = Opener::new(terminal);
-    let file = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))?;
-    let yaml = serde_yaml::from_reader(file)?;
-    opener.update_from_file(&yaml);
-    Ok(opener)
 }

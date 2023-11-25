@@ -148,7 +148,7 @@ impl Help {
     /// It should never fail since every Keybinding should be set.
     pub fn from_keybindings(binds: &Bindings, opener: &Opener) -> Result<Self> {
         let mut strings = binds.keybind_reversed();
-        let openers = opener.opener_association.as_map_of_strings();
+        let openers = opener.association.as_map_of_strings();
         log_info!("{openers:?}");
         strings.extend(openers);
         let mut help = strfmt(HELP_TO_FORMAT, &strings)?;

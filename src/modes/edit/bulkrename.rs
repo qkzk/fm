@@ -119,7 +119,7 @@ impl<'a> Bulkrename<'a> {
 
     fn open_temp_file_with_editor(&self, opener: &Opener) -> Result<()> {
         log_info!("opening tempory file {:?}", self.temp_file);
-        opener.open(&self.temp_file)
+        opener.open_single(&self.temp_file)
     }
 
     fn is_file_modified(path: &Path, original_modification: std::time::SystemTime) -> Result<bool> {
