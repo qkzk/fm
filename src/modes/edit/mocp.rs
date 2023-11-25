@@ -2,13 +2,13 @@ use anyhow::Result;
 
 use crate::app::Status;
 use crate::app::Tab;
-use crate::common::DEFAULT_AUDIO_OPENER;
+use crate::common::OPENER_AUDIO;
 use crate::io::{
     execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
 };
 use crate::log_info;
 
-pub const MOCP: &str = DEFAULT_AUDIO_OPENER.0;
+pub const MOCP: &str = OPENER_AUDIO.0;
 
 /// A bunch of methods to control MOC.
 /// It relies on the application `mocp` itself to :

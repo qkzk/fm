@@ -17,7 +17,7 @@ use crate::config::Settings;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock};
 use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
-use crate::io::{Args, Info};
+use crate::io::{Args, Kind};
 use crate::io::{Internal, Opener};
 use crate::modes::FileKind;
 use crate::modes::Flagged;
@@ -661,18 +661,15 @@ impl Status {
 
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
-        let filepath = self.selected_non_mut().selected()?.path;
-        let opener_info = self.opener.open_info(&filepath);
-        if let Some(Info::Internal(Internal::Unknown)) = opener_info {
-            self.mount_iso_drive()?;
-        } else {
-            match self.opener.open_single(&filepath) {
-                Ok(_) => (),
-                Err(error) => log_info!(
-                    "Error opening {filepath}: {error:?}",
-                    filepath = filepath.display()
-                ),
-            };
+        let path = self.selected_non_mut().selected()?.path;
+        match self.opener.kind(&path) {
+            Some(Kind::Internal(Internal::NotSupported)) => {
+                let _ = self.mount_iso_drive();
+            }
+            Some(_) => {
+                let _ = self.opener.open_single(&path);
+            }
+            None => (),
         }
         Ok(())
     }

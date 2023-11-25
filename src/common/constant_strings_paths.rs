@@ -25,21 +25,21 @@ pub const TMP_FOLDER_PATH: &str = "/tmp";
 /// Default terminal application used when openening a program in shell or starting a new shell
 pub const DEFAULT_TERMINAL_APPLICATION: &str = "st";
 /// Opener used to play audio files. Does it require a terminal ?
-pub const DEFAULT_AUDIO_OPENER: (&str, bool) = ("mocp", true);
+pub const OPENER_AUDIO: (&str, bool) = ("mocp", true);
 /// Program used to to display images. Does it require a terminal ?
-pub const DEFAULT_IMAGE_OPENER: (&str, bool) = ("viewnior", false);
+pub const OPENER_IMAGE: (&str, bool) = ("viewnior", false);
 /// Program used to open "office" documents (word, libreoffice etc). Does it require a terminal ?
-pub const DEFAULT_OFFICE_OPENER: (&str, bool) = ("libreoffice", false);
+pub const OPENER_OFFICE: (&str, bool) = ("libreoffice", false);
 /// Program used to open readable documents (pdf, ebooks). Does it require a terminal ?
-pub const DEFAULT_READABLE_OPENER: (&str, bool) = ("zathura", false);
+pub const OPENER_READABLE: (&str, bool) = ("zathura", false);
 /// Program used to open text files. Does it require a terminal ?
-pub const DEFAULT_TEXT_OPENER: (&str, bool) = ("nvim", true);
+pub const OPENER_TEXT: (&str, bool) = ("nvim", true);
 /// Program used to open unknown files. Does it require a terminal ?
-pub const DEFAULT_OPENER: (&str, bool) = ("xdg-open", false);
+pub const OPENER_DEFAULT: (&str, bool) = ("xdg-open", false);
 /// Program used to open vectorial images. Does it require a terminal ?
-pub const DEFAULT_VECT_OPENER: (&str, bool) = ("inkscape", false);
+pub const OPENER_VECT: (&str, bool) = ("inkscape", false);
 /// Program used to open videos. Does it require a terminal ?
-pub const DEFAULT_VIDEO_OPENER: (&str, bool) = ("mpv", false);
+pub const OPENER_VIDEO: (&str, bool) = ("mpv", false);
 /// Default program used to drag and drop files
 pub const DEFAULT_DRAGNDROP: &str = "dragon-drop";
 /// Array of text representation of a file permissions.
