@@ -208,12 +208,29 @@ impl Internal {
     }
 }
 
+#[derive(Clone, Hash, PartialEq, Eq, Debug, Default)]
+pub struct External(String, bool);
+
+impl External {
+    fn new(opener_pair: (&str, bool)) -> Self {
+        Self(opener_pair.0.to_owned(), opener_pair.1)
+    }
+
+    fn program(&self) -> &str {
+        self.0.as_str()
+    }
+
+    fn use_term(&self) -> bool {
+        self.1
+    }
+}
+
 /// A way to open one kind of files.
 /// It's either an internal method or an external program.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum Kind {
     Internal(Internal),
-    External(String, bool),
+    External(External),
 }
 
 impl Default for Kind {
@@ -224,9 +241,7 @@ impl Default for Kind {
 
 impl Kind {
     fn external(opener_pair: (&str, bool)) -> Self {
-        let opener = opener_pair.0.to_owned();
-        let use_term = opener_pair.1;
-        Self::External(opener, use_term)
+        Self::External(External::new(opener_pair))
     }
 
     fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
@@ -237,7 +252,7 @@ impl Kind {
     }
 
     fn is_external(&self) -> bool {
-        matches!(self, Self::External(_, _))
+        matches!(self, Self::External(_))
     }
 
     fn is_valid(&self) -> bool {
@@ -245,7 +260,7 @@ impl Kind {
     }
 
     fn external_program(&self) -> Result<(&str, bool)> {
-        let Self::External(program, use_term) = self else {
+        let Self::External(External(program, use_term)) = self else {
             return Err(anyhow!("not an external opener"));
         };
         Ok((program, *use_term))
@@ -254,8 +269,8 @@ impl Kind {
 
 impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter) -> std::fmt::Result {
-        let s = if let Self::External(external, _) = &self {
-            external
+        let s = if let Self::External(External(program, _)) = &self {
+            program
         } else {
             ""
         };
@@ -283,6 +298,14 @@ impl Opener {
         }
     }
 
+    /// Returns the open info about this file.
+    /// It's used to check if the file can be opened without specific actions or not.
+    /// This opener can't mutate the status and can't ask for a sudo password.
+    /// Some files requires root to be opened (ie. ISO files which are mounted).
+    pub fn kind(&self, path: &Path) -> Option<&Kind> {
+        self.association.associate(extract_extension(path))
+    }
+
     /// Open a file, using the configured method.
     /// It may fail if the program changed after reading the config file.
     /// It may also fail if the program can't handle this kind of files.
@@ -292,19 +315,12 @@ impl Opener {
             return Err(anyhow!("open can't execute a directory"));
         }
         match self.kind(path) {
-            Some(Kind::External(program, use_term)) => self.open_external(path, program, *use_term),
+            Some(Kind::External(External(program, use_term))) => {
+                self.open_external(path, program, *use_term)
+            }
             Some(Kind::Internal(internal)) => internal.open(path),
             None => Err(anyhow!("{p} can't be opened", p = path.display())),
         }
-    }
-
-    /// Open a file with a given program.
-    /// If the program requires a terminal, the terminal itself is opened
-    /// and the program and its parameters are sent to it.
-    fn open_external(&self, path: &Path, program: &str, use_term: bool) -> Result<()> {
-        let args = vec![program, path.to_str().context("can't parse path to str")?];
-        self.with_args(args, use_term)?;
-        Ok(())
     }
 
     /// Open multiple files.
@@ -315,14 +331,6 @@ impl Opener {
             self.open_grouped_files(kind, grouped_paths)?;
         }
         Ok(())
-    }
-
-    /// Returns the open info about this file.
-    /// It's used to check if the file can be opened without specific actions or not.
-    /// This opener can't mutate the status and can't ask for a sudo password.
-    /// Some files requires root to be opened (ie. ISO files which are mounted).
-    pub fn kind(&self, path: &Path) -> Option<&Kind> {
-        self.association.associate(extract_extension(path))
     }
 
     /// Create an hashmap of openers -> [files].
@@ -358,6 +366,15 @@ impl Opener {
         let mut args: Vec<&str> = vec![external_program];
         let paths_str = Self::collect_paths_as_str(paths);
         args.extend(&paths_str);
+        self.with_args(args, use_term)?;
+        Ok(())
+    }
+
+    /// Open a file with a given program.
+    /// If the program requires a terminal, the terminal itself is opened
+    /// and the program and its parameters are sent to it.
+    fn open_external(&self, path: &Path, program: &str, use_term: bool) -> Result<()> {
+        let args = vec![program, path.to_str().context("can't parse path to str")?];
         self.with_args(args, use_term)?;
         Ok(())
     }
