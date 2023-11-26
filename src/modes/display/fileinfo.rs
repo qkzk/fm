@@ -10,9 +10,9 @@ use tuikit::prelude::{Attr, Color, Effect};
 use crate::common::PERMISSIONS_STR;
 use crate::config::extension_color;
 use crate::config::COLORS;
-use crate::modes::Node;
 use crate::modes::Users;
 use crate::modes::{human_size, read_symlink_dest};
+use crate::modes::{Node, MAX_MODE};
 
 type Valid = bool;
 
@@ -373,7 +373,7 @@ fn extract_datetime(metadata: &Metadata) -> Result<String> {
 
 /// Reads the permission and converts them into a string.
 fn extract_permissions_string(metadata: &Metadata) -> String {
-    let mode = (metadata.mode() & 511) as usize;
+    let mode = (metadata.mode() & MAX_MODE) as usize;
     let s_o = convert_octal_mode(mode >> 6);
     let s_g = convert_octal_mode((mode >> 3) & 7);
     let s_a = convert_octal_mode(mode & 7);
@@ -381,7 +381,7 @@ fn extract_permissions_string(metadata: &Metadata) -> String {
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`
-fn convert_octal_mode(mode: usize) -> &'static str {
+pub fn convert_octal_mode(mode: usize) -> &'static str {
     PERMISSIONS_STR[mode]
 }
 

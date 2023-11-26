@@ -52,7 +52,7 @@ pub use mount_help::{MountCommands, MountParameters, MountRepr};
 pub use node_creation::NodeCreation;
 pub use nvim::nvim;
 pub use password::{PasswordHolder, PasswordKind, PasswordUsage};
-pub use permissions::Permissions;
+pub use permissions::{parse_input_mode, Permissions, MAX_MODE};
 pub use regex::regex_matcher;
 pub use removable_devices::RemovableDevices;
 pub use selectable_content::SelectableContent;

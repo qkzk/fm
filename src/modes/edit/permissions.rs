@@ -3,11 +3,14 @@ use std::os::unix::fs::PermissionsExt;
 use anyhow::Result;
 
 use crate::log_line;
-use crate::modes::Flagged;
+use crate::modes::{convert_octal_mode, Flagged};
 
 type Mode = u32;
 
 pub struct Permissions;
+
+/// Maximum possible mode, 0o777 = 511 (decimal)
+pub const MAX_MODE: Mode = 0o777;
 
 impl Permissions {
     /// Set the permissions of the flagged files according to a given permission.
@@ -44,11 +47,35 @@ impl Permissions {
     }
 }
 
+type IsValid = bool;
+
+/// Parse an inputstring into a displayed textual permission.
+/// Converts `644` into `rw-r--r--` and like so,
+/// Converts `944` into `???r--r--` and like so,
+/// Converts `66222` into "Mode is too long".
+/// It also returns a flag for any char, set to true if the char
+/// is a valid permission.
+/// It's used to display a valid mode or not.
+pub fn parse_input_mode(mode_str: &str) -> Vec<(&'static str, IsValid)> {
+    if mode_str.len() > 3 {
+        return vec![("Mode is too long", false)];
+    }
+    let mut display = vec![];
+    for char in mode_str.chars() {
+        if char.is_digit(8) {
+            let mode = convert_octal_mode(char.to_digit(8).unwrap_or_default() as usize);
+            display.push((mode, true));
+        } else {
+            display.push(("???", false));
+        }
+    }
+    display
+}
+
 struct _Mode(Mode);
 
 impl _Mode {
     /// Max valid mode, ie `0o777`.
-    const MAX_MODE: Mode = 0o777;
 
     const fn octal(&self) -> Mode {
         self.0
@@ -64,6 +91,6 @@ impl _Mode {
     }
 
     const fn is_valid_permissions(mode: Mode) -> bool {
-        0 < mode && mode <= Self::MAX_MODE
+        mode <= MAX_MODE
     }
 }

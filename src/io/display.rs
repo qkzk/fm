@@ -18,6 +18,7 @@ use crate::common::{
 use crate::io::read_last_log_line;
 use crate::log_info;
 use crate::modes::calculate_top_bottom;
+use crate::modes::parse_input_mode;
 use crate::modes::ColoredTriplet;
 use crate::modes::ContentWindow;
 use crate::modes::LineDisplay;
@@ -600,6 +601,8 @@ impl<'a> Draw for WinSecondary<'a> {
             _ => return Ok(()),
         }?;
         self.draw_cursor(canvas)?;
+        self.draw_second_line(canvas)?;
+
         WinSecondaryFirstLine::new(self.tab).draw(canvas)
     }
 }
@@ -615,6 +618,22 @@ impl<'a> WinSecondary<'a> {
             status,
             tab: &status.tabs[index],
         }
+    }
+
+    fn draw_second_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        if matches!(self.tab.edit_mode, Edit::InputSimple(InputSimple::Chmod)) {
+            let mode_parsed = parse_input_mode(&self.tab.input.string());
+            let mut col = 4;
+            for (text, is_valid) in &mode_parsed {
+                let attr = if *is_valid {
+                    Attr::from(Color::YELLOW)
+                } else {
+                    Attr::from(Color::RED)
+                };
+                col += canvas.print_with_attr(1, col, text, attr)?;
+            }
+        }
+        Ok(())
     }
 
     /// Display the possible completion items. The currently selected one is
