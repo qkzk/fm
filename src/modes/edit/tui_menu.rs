@@ -100,11 +100,6 @@ impl TuiApplications {
         Ok(())
     }
 
-    fn _simple_with_args(status: &Status, args: &[&str]) -> Result<()> {
-        execute_in_child_without_output(&status.opener.terminal, args)?;
-        Ok(())
-    }
-
     fn require_cwd(status: &Status) -> Result<()> {
         let tab = status.selected_non_mut();
         let path = tab.directory_of_selected()?;

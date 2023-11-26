@@ -339,7 +339,7 @@ impl EventAction {
 
     /// Enter the shell menu mode. You can pick a TUI application to be run
     pub fn shell_menu(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::Navigate(Navigate::ShellMenu));
+        tab.set_edit_mode(Edit::Navigate(Navigate::TuiApplication));
         Ok(())
     }
 
@@ -348,7 +348,7 @@ impl EventAction {
     pub fn cli_info(status: &mut Status) -> Result<()> {
         status
             .selected()
-            .set_edit_mode(Edit::Navigate(Navigate::CliInfo));
+            .set_edit_mode(Edit::Navigate(Navigate::CliApplication));
         Ok(())
     }
 
@@ -481,8 +481,8 @@ impl EventAction {
             Edit::Navigate(Navigate::Marks(_)) => status.marks.prev(),
             Edit::Navigate(Navigate::Compress) => status.compression.prev(),
             Edit::Navigate(Navigate::Bulk) => status.bulk_prev(),
-            Edit::Navigate(Navigate::ShellMenu) => status.tui_applications.prev(),
-            Edit::Navigate(Navigate::CliInfo) => status.cli_applications.prev(),
+            Edit::Navigate(Navigate::TuiApplication) => status.tui_applications.prev(),
+            Edit::Navigate(Navigate::CliApplication) => status.cli_applications.prev(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.prev(),
             Edit::InputCompleted(_) => tab.completion.prev(),
             _ => (),
@@ -521,8 +521,8 @@ impl EventAction {
             Edit::Navigate(Navigate::Marks(_)) => status.marks.next(),
             Edit::Navigate(Navigate::Compress) => status.compression.next(),
             Edit::Navigate(Navigate::Bulk) => status.bulk_next(),
-            Edit::Navigate(Navigate::ShellMenu) => status.tui_applications.next(),
-            Edit::Navigate(Navigate::CliInfo) => status.cli_applications.next(),
+            Edit::Navigate(Navigate::TuiApplication) => status.tui_applications.next(),
+            Edit::Navigate(Navigate::CliApplication) => status.cli_applications.next(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
             Edit::InputCompleted(_) => status.selected().completion.next(),
             _ => (),
@@ -702,8 +702,8 @@ impl EventAction {
             Edit::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status)?,
             Edit::Navigate(Navigate::Trash) => LeaveMode::trash(status)?,
             Edit::Navigate(Navigate::Bulk) => LeaveMode::bulk(status)?,
-            Edit::Navigate(Navigate::ShellMenu) => LeaveMode::shellmenu(status)?,
-            Edit::Navigate(Navigate::CliInfo) => {
+            Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status)?,
+            Edit::Navigate(Navigate::CliApplication) => {
                 must_refresh = false;
                 must_reset_mode = false;
                 LeaveMode::cli_info(status)?;

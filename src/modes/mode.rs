@@ -12,7 +12,7 @@ use crate::modes::{PasswordKind, PasswordUsage};
 /// Different kind of mark actions.
 /// Either we jump to an existing mark or we save current path to a mark.
 /// In both case, we'll have to listen to the next char typed.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum MarkAction {
     /// Jump to a selected mark (ie a path associated to a char)
     Jump,
@@ -128,9 +128,10 @@ impl InputSimple {
     }
 }
 
-/// Different modes in which we display a bunch of possible destinations.
-/// In all those mode we can select a destination and move there.
-#[derive(Clone, Copy)]
+/// Different modes in which we display a bunch of possible actions.
+/// In all those mode we can select an action and execute it.
+/// For some of them, it's just moving there, for some it acts on some file.
+#[derive(Clone, Copy, Debug)]
 pub enum Navigate {
     /// Navigate to a flagged file
     Jump,
@@ -138,22 +139,22 @@ pub enum Navigate {
     History,
     /// Navigate to a predefined shortcut
     Shortcut,
-    /// Manipulate a trash file
+    /// Manipulate trash files
     Trash,
     /// Manipulate an encrypted device
     EncryptedDrive,
     /// Removable devices
     RemovableDevices,
-    /// Manipulate an iso file to mount it
+    /// Edit a mark or cd to it
     Marks(MarkAction),
     /// Pick a compression method
     Compress,
     /// Bulk rename, new files, new directories
     Bulk,
     /// Shell menu applications. Start a new shell with this application.
-    ShellMenu,
+    TuiApplication,
     /// Cli info
-    CliInfo,
+    CliApplication,
 }
 
 /// Different mode in which the application can be.
@@ -205,7 +206,7 @@ impl fmt::Display for Edit {
             Self::Navigate(Navigate::History) => write!(f, "History :"),
             Self::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
             Self::Navigate(Navigate::Trash) => write!(f, "Trash :"),
-            Self::Navigate(Navigate::ShellMenu) => {
+            Self::Navigate(Navigate::TuiApplication) => {
                 write!(f, "Start a new shell running a command:")
             }
             Self::Navigate(Navigate::Bulk) => {
@@ -218,7 +219,7 @@ impl fmt::Display for Edit {
             Self::Navigate(Navigate::RemovableDevices) => {
                 write!(f, "Removable devices :")
             }
-            Self::Navigate(Navigate::CliInfo) => write!(f, "Display infos :"),
+            Self::Navigate(Navigate::CliApplication) => write!(f, "Display infos :"),
             Self::NeedConfirmation(_) => write!(f, "Y/N   :"),
             Self::Nothing => write!(f, ""),
         }

@@ -667,14 +667,14 @@ impl<'a> WinSecondary<'a> {
     fn draw_navigate(&self, navigable_mode: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
         match navigable_mode {
             Navigate::Bulk => self.draw_bulk(canvas),
-            Navigate::CliInfo => self.draw_cli_info(canvas),
+            Navigate::CliApplication => self.draw_cli_info(canvas),
             Navigate::Compress => self.draw_compress(canvas),
             Navigate::EncryptedDrive => self.draw_encrypted_drive(canvas),
             Navigate::History => self.draw_history(canvas),
             Navigate::Jump => self.draw_destination(canvas, &self.status.flagged),
             Navigate::Marks(_) => self.draw_marks(canvas),
             Navigate::RemovableDevices => self.draw_removable(canvas),
-            Navigate::ShellMenu => self.draw_shell_menu(canvas),
+            Navigate::TuiApplication => self.draw_shell_menu(canvas),
             Navigate::Shortcut => self.draw_destination(canvas, &self.tab.shortcut),
             Navigate::Trash => self.draw_trash(canvas),
         }
