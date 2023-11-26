@@ -126,10 +126,7 @@ impl Status {
         let nvim_server = args.server.clone();
         let display_full = Self::parse_display_full(args.simple, settings.full);
         let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
-
-        let Ok(tui_applications) = TuiApplications::new(TUIS_PATH) else {
-            Self::quit()
-        };
+        let tui_applications = TuiApplications::new(TUIS_PATH);
         let cli_applications = CliApplications::default();
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let encrypted_devices = CryptoDeviceOpener::default();
@@ -218,12 +215,6 @@ impl Status {
 
     fn display_wide_enough(term: &Arc<Term>) -> Result<bool> {
         Ok(term.term_size()?.0 >= MIN_WIDTH_FOR_DUAL_PANE)
-    }
-
-    fn quit() -> ! {
-        eprintln!("Couldn't load the TUIs config file at {TUIS_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/tuis.yaml for an example");
-        log_info!("Couldn't read tuis file at {TUIS_PATH}. Exiting");
-        std::process::exit(1);
     }
 
     fn parse_display_full(simple_args: Option<bool>, full_config: bool) -> bool {

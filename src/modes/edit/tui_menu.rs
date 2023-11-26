@@ -2,9 +2,9 @@ use anyhow::{Context, Result};
 
 use crate::app::Status;
 use crate::common::is_program_in_path;
-use crate::impl_selectable_content;
 use crate::io::{execute_in_child_without_output, execute_in_child_without_output_with_path};
 use crate::log_line;
+use crate::{impl_selectable_content, log_info};
 
 #[derive(Clone)]
 pub struct TuiApplications {
@@ -22,21 +22,26 @@ impl Default for TuiApplications {
 
 impl TuiApplications {
     /// Creates a new shell menu instance, parsing the `config_file`.
-    ///
-    /// # Errors
-    ///
-    /// It may fail if the file content can't be parsed or if the file can't be read.
-    pub fn new(config_file: &str) -> Result<Self> {
-        let mut shell_menu = Self::default();
-        let file = std::fs::File::open(std::path::Path::new(
-            &shellexpand::tilde(config_file).to_string(),
-        ))?;
-        let yaml = serde_yaml::from_reader(file)?;
-        shell_menu.update_from_file(&yaml);
-        Ok(shell_menu)
+    pub fn new(config_file: &str) -> Self {
+        Self::default().update_from_config(config_file)
     }
 
-    fn update_from_file(&mut self, yaml: &serde_yaml::mapping::Mapping) {
+    fn update_from_config(mut self, config_file: &str) -> Self {
+        let Ok(file) = std::fs::File::open(std::path::Path::new(
+            &shellexpand::tilde(config_file).to_string(),
+        )) else {
+            log_info!("Couldn't open tuis file at {config_file}. Using default");
+            return self;
+        };
+        let Ok(yaml) = serde_yaml::from_reader(file) else {
+            log_info!("Couldn't parse tuis file at {config_file}. Using default");
+            return self;
+        };
+        self.parse_yaml(&yaml);
+        self
+    }
+
+    fn parse_yaml(&mut self, yaml: &serde_yaml::mapping::Mapping) {
         for (key, mapping) in yaml {
             let Some(command) = key.as_str() else {
                 continue;
