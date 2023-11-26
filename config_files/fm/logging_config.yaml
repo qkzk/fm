@@ -1,4 +1,6 @@
 appenders:
+  # DO NOT EDIT
+  # THIS IS READ BY `rustc` DURING COMPILATION
   normal_logger:
     kind: rolling_file
     path: "$ENV{HOME}/.config/fm/log/fm.log"

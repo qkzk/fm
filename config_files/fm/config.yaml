@@ -1,9 +1,18 @@
+# fm configuration file.
+# Each variable is explained below
+
+
 # the terminal emulator, which must be accessible from $PATH
 terminal: st
+
 # configurable colors
-# palette of the normal files. Accepted values are "red-green", "red-blue" and "green-blue"
+
+# Define a palette for the "normal" files. 
+# Accepted values are "red-green", "red-blue" and "green-blue"
 # other value will lead to the default palette which is "green-blue".
 palette: green-blue
+
+# Colors for "non normal" files. The list is below.
 colors:
   # you can define an ANSI color or an rgb color for any kind of file except "normal" files.
   # colors for normal files are calculated on the fly.
@@ -18,7 +27,9 @@ colors:
   socket: cyan
   symlink: magenta
   broken: light_magenta
+
 # keybindings
+# 
 # You can bind any key to any action.
 # List of valid actions is accessible from `help` (default key H) and from the readme.md file.
 # Invalid actions are skipped.
@@ -86,9 +97,12 @@ keys:
   'shift-o': Sort
   'shift-p': Preview
   'shift-t': MediaInfo
+
 # display settings
+# All this settings are bound to keys an can be toggled in the application itself.
+# Only `true` or `false` are accepted here.
 settings:
-  # display all files ?
+  # display hidden files ?
   all: false
   # use a second pane (if the terminal is wide enough) ?
   dual: true
@@ -101,7 +115,7 @@ settings:
 # * Use an unused keybind
 # * Don't use pipe or redirection, it won't be parsed correctly
 # * Use full path for the command : `/usr/bin/ls` not `ls`
-# * Use expensions :
+# * You can use expansions :
 #     Expansions :
 #     - %s: the full path of the currently selected file or folder,
 #     - %f: the list of the full paths of the flagged files.
@@ -109,6 +123,7 @@ settings:
 #     - %n: the filename only.
 #     - %p: the full path of the current directory.
 # Example:
-# 'alt-u': "/usr/bin/ls %f"
+# 'alt-u': "/usr/bin/ls %f" # will run `ls /path/to/the/selected/file`... be won't print anything.
 custom:
+  # open the selected file with chrome
   'alt-u': "/usr/bin/google-chrome-stable %s"
