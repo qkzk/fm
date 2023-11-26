@@ -3,13 +3,22 @@
 /// It implements: `is_empty`, `len`, `next`, `prev`, `selected`.
 /// `selected` returns an optional reference to the value.
 pub trait SelectableContent<T> {
+    /// True iff the content is empty
     fn is_empty(&self) -> bool;
+    /// Number of element in content
     fn len(&self) -> usize;
+    /// Select next element in content
     fn next(&mut self);
+    /// Select previous element in content
     fn prev(&mut self);
+    /// Returns the selected element if content isn't empty
     fn selected(&self) -> Option<&T>;
+    /// Current index of selected element.
+    /// 0 if the content is empty (I know, could be an option)
     fn index(&self) -> usize;
+    /// Reference to the content as a vector.
     fn content(&self) -> &Vec<T>;
+    /// [`tuikit::attr:Attr`] used to display an element
     fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr;
 }
 

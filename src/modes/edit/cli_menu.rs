@@ -12,13 +12,13 @@ use crate::log_line;
 /// Those are non interactive commands displaying some info about the current
 /// file tree or setup.
 #[derive(Clone)]
-pub struct CliInfo {
+pub struct CliApplications {
     pub content: Vec<&'static str>,
     commands: Vec<Vec<&'static str>>,
     index: usize,
 }
 
-impl Default for CliInfo {
+impl Default for CliApplications {
     fn default() -> Self {
         let index = 0;
         let commands: Vec<Vec<&str>> = CLI_INFO_COMMANDS
@@ -37,7 +37,7 @@ impl Default for CliInfo {
     }
 }
 
-impl CliInfo {
+impl CliApplications {
     /// Run the selected command and capture its output.
     /// Some environement variables are first set to ensure the colored output.
     /// Long running commands may freeze the display.
@@ -62,4 +62,4 @@ impl CliInfo {
 }
 
 type StaticStr = &'static str;
-impl_selectable_content!(StaticStr, CliInfo);
+impl_selectable_content!(StaticStr, CliApplications);

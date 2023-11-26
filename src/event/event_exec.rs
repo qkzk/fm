@@ -481,8 +481,8 @@ impl EventAction {
             Edit::Navigate(Navigate::Marks(_)) => status.marks.prev(),
             Edit::Navigate(Navigate::Compress) => status.compression.prev(),
             Edit::Navigate(Navigate::Bulk) => status.bulk_prev(),
-            Edit::Navigate(Navigate::ShellMenu) => status.shell_menu.prev(),
-            Edit::Navigate(Navigate::CliInfo) => status.cli_info.prev(),
+            Edit::Navigate(Navigate::ShellMenu) => status.tui_applications.prev(),
+            Edit::Navigate(Navigate::CliInfo) => status.cli_applications.prev(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.prev(),
             Edit::InputCompleted(_) => tab.completion.prev(),
             _ => (),
@@ -521,8 +521,8 @@ impl EventAction {
             Edit::Navigate(Navigate::Marks(_)) => status.marks.next(),
             Edit::Navigate(Navigate::Compress) => status.compression.next(),
             Edit::Navigate(Navigate::Bulk) => status.bulk_next(),
-            Edit::Navigate(Navigate::ShellMenu) => status.shell_menu.next(),
-            Edit::Navigate(Navigate::CliInfo) => status.cli_info.next(),
+            Edit::Navigate(Navigate::ShellMenu) => status.tui_applications.next(),
+            Edit::Navigate(Navigate::CliInfo) => status.cli_applications.next(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
             Edit::InputCompleted(_) => status.selected().completion.next(),
             _ => (),
@@ -1130,7 +1130,7 @@ impl EventAction {
 
     pub fn open_program(status: &mut Status, program: &str) -> Result<()> {
         if is_program_in_path(program) {
-            crate::modes::ShellMenu::require_cwd_and_command(status, program)
+            crate::modes::TuiApplications::require_cwd_and_command(status, program)
         } else {
             Ok(())
         }
@@ -1203,11 +1203,11 @@ impl LeaveMode {
     }
 
     pub fn shellmenu(status: &mut Status) -> Result<()> {
-        status.shell_menu.execute(status)
+        status.tui_applications.execute(status)
     }
 
     pub fn cli_info(status: &mut Status) -> Result<()> {
-        let output = status.cli_info.execute()?;
+        let output = status.cli_applications.execute()?;
         log_info!("output\n{output}");
         status.selected().set_display_mode(Display::Preview);
         let preview = Preview::cli_info(&output);

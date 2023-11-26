@@ -27,15 +27,15 @@ use crate::modes::Preview;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
 use crate::modes::ShellCommandParser;
-use crate::modes::ShellMenu;
 use crate::modes::Skimer;
 use crate::modes::Trash;
 use crate::modes::Tree;
+use crate::modes::TuiApplications;
 use crate::modes::Users;
 use crate::modes::{copy_move, CopyMove};
 use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
-use crate::modes::{CliInfo, Permissions};
+use crate::modes::{CliApplications, Permissions};
 use crate::modes::{Compresser, ContentWindow};
 use crate::modes::{Display, Edit, InputSimple, NeedConfirmation};
 use crate::modes::{MountCommands, MountRepr};
@@ -67,6 +67,8 @@ pub struct Status {
     skimer: Option<Result<Skimer>>,
     /// do we display one or two tabs ?
     pub dual_pane: bool,
+    /// Info about the running machine. Only used to detect disks
+    /// and their mount points.
     pub system_info: System,
     /// do we display all info or only the filenames ?
     pub display_full: bool,
@@ -86,13 +88,21 @@ pub struct Status {
     pub compression: Compresser,
     /// NVIM RPC server address
     pub nvim_server: String,
+    /// Do we have to clear the screen ?
     pub force_clear: bool,
+    /// Bulk rename
     pub bulk: Option<Bulk>,
-    pub shell_menu: ShellMenu,
-    pub cli_info: CliInfo,
+    /// TUI application
+    pub tui_applications: TuiApplications,
+    /// CLI applications
+    pub cli_applications: CliApplications,
+    /// Folder from which fm was started
     pub start_folder: std::path::PathBuf,
+    /// Hold password between their typing and usage
     pub password_holder: PasswordHolder,
+    /// Last sudo command ran
     pub sudo_command: Option<String>,
+    /// MTP devices
     pub removable_devices: Option<RemovableDevices>,
 }
 
@@ -114,10 +124,10 @@ impl Status {
         let display_full = Self::parse_display_full(args.simple, settings.full);
         let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
 
-        let Ok(shell_menu) = ShellMenu::new(TUIS_PATH) else {
+        let Ok(shell_menu) = TuiApplications::new(TUIS_PATH) else {
             Self::quit()
         };
-        let cli_info = CliInfo::default();
+        let cli_info = CliApplications::default();
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let encrypted_devices = CryptoDeviceOpener::default();
         let trash = Trash::new()?;
@@ -163,9 +173,9 @@ impl Status {
             nvim_server,
             force_clear,
             bulk,
-            shell_menu,
+            tui_applications: shell_menu,
             iso_device,
-            cli_info,
+            cli_applications: cli_info,
             start_folder,
             password_holder,
             sudo_command,
@@ -974,6 +984,8 @@ impl Status {
         self.selected().set_edit_mode(Edit::Nothing);
         reset_sudo_faillock()?;
         let Some(sudo_command) = &self.sudo_command else {
+            self.password_holder.reset();
+            drop_sudo_privileges()?;
             return Ok(());
         };
         let args = ShellCommandParser::new(sudo_command).compute(self)?;
@@ -990,6 +1002,7 @@ impl Status {
         )?;
         self.password_holder.reset();
         drop_sudo_privileges()?;
+        self.sudo_command = None;
         self.refresh_status()
     }
 

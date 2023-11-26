@@ -7,12 +7,12 @@ use crate::io::{execute_in_child_without_output, execute_in_child_without_output
 use crate::log_line;
 
 #[derive(Clone)]
-pub struct ShellMenu {
+pub struct TuiApplications {
     pub content: Vec<(String, bool)>,
     index: usize,
 }
 
-impl Default for ShellMenu {
+impl Default for TuiApplications {
     fn default() -> Self {
         let index = 0;
         let content = vec![("shell".to_owned(), false)];
@@ -20,7 +20,7 @@ impl Default for ShellMenu {
     }
 }
 
-impl ShellMenu {
+impl TuiApplications {
     /// Creates a new shell menu instance, parsing the `config_file`.
     ///
     /// # Errors
@@ -110,4 +110,4 @@ impl ShellMenu {
 
 type SBool = (String, bool);
 
-impl_selectable_content!(SBool, ShellMenu);
+impl_selectable_content!(SBool, TuiApplications);

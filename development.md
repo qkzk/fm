@@ -669,7 +669,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       1100 -> 891 errors
 - [x] FIX: resizing deselects the current file.
 - [x] FIX: first line use selected tab even when not selected
-- [ ] refactor file opening. It's a mess
+- [ ] refactor file opening. It's a mess - WIP
+- [ ] Only store one Selectable thing in status
 
 ## TODO
 
