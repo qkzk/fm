@@ -23,6 +23,7 @@ use crate::modes::FileKind;
 use crate::modes::Flagged;
 use crate::modes::IsoDevice;
 use crate::modes::Marks;
+use crate::modes::Menu;
 use crate::modes::Preview;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
@@ -104,6 +105,8 @@ pub struct Status {
     pub sudo_command: Option<String>,
     /// MTP devices
     pub removable_devices: Option<RemovableDevices>,
+    /// Navigable menu
+    pub menu: Menu,
 }
 
 impl Status {
@@ -124,10 +127,10 @@ impl Status {
         let display_full = Self::parse_display_full(args.simple, settings.full);
         let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
 
-        let Ok(shell_menu) = TuiApplications::new(TUIS_PATH) else {
+        let Ok(tui_applications) = TuiApplications::new(TUIS_PATH) else {
             Self::quit()
         };
-        let cli_info = CliApplications::default();
+        let cli_applications = CliApplications::default();
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let encrypted_devices = CryptoDeviceOpener::default();
         let trash = Trash::new()?;
@@ -154,6 +157,7 @@ impl Status {
             Tab::new(&args, height, users2, settings, &mount_points)?,
         ];
         let removable_devices = None;
+        let menu = Menu::default();
         Ok(Self {
             tabs,
             index,
@@ -173,13 +177,14 @@ impl Status {
             nvim_server,
             force_clear,
             bulk,
-            tui_applications: shell_menu,
+            tui_applications,
             iso_device,
-            cli_applications: cli_info,
+            cli_applications,
             start_folder,
             password_holder,
             sudo_command,
             removable_devices,
+            menu,
         })
     }
 
