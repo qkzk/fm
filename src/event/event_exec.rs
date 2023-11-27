@@ -14,6 +14,7 @@ use crate::common::{is_program_in_path, open_in_current_neovim, string_to_path};
 use crate::common::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
 };
+use crate::config::START_FOLDER;
 use crate::event::ActionMap;
 use crate::io::execute_and_capture_output_with_path;
 use crate::io::read_log;
@@ -419,8 +420,7 @@ impl EventAction {
     }
 
     pub fn go_start(status: &mut Status) -> Result<()> {
-        let start_folder = status.start_folder.clone();
-        status.selected().cd(&start_folder)?;
+        status.selected().cd(&START_FOLDER)?;
         status.update_second_pane_for_preview()
     }
 

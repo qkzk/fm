@@ -97,8 +97,6 @@ pub struct Status {
     pub tui_applications: TuiApplications,
     /// CLI applications
     pub cli_applications: CliApplications,
-    /// Folder from which fm was started
-    pub start_folder: std::path::PathBuf,
     /// Hold password between their typing and usage
     pub password_holder: PasswordHolder,
     /// Last sudo command ran
@@ -122,7 +120,6 @@ impl Status {
     ) -> Result<Self> {
         let args = Args::parse();
         let preview_second = args.preview;
-        let start_folder = std::fs::canonicalize(std::path::PathBuf::from(&args.path))?;
         let nvim_server = args.server.clone();
         let display_full = Self::parse_display_full(args.simple, settings.full);
         let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
@@ -177,7 +174,6 @@ impl Status {
             tui_applications,
             iso_device,
             cli_applications,
-            start_folder,
             password_holder,
             sudo_command,
             removable_devices,

@@ -8,6 +8,7 @@ use crate::app::Status;
 use crate::common::CONFIG_PATH;
 use crate::common::{clear_tmp_file, init_term, print_on_quit};
 use crate::config::load_config;
+use crate::config::START_FOLDER;
 use crate::event::EventDispatcher;
 use crate::event::EventReader;
 use crate::io::set_loggers;
@@ -48,6 +49,10 @@ impl FM {
         let Ok(config) = load_config(CONFIG_PATH) else {
             exit_wrong_config()
         };
+        log_info!(
+            "startfolder : {startfolder}",
+            startfolder = &START_FOLDER.display()
+        );
         let term = Arc::new(init_term()?);
         let event_reader = EventReader::new(Arc::clone(&term));
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
