@@ -79,7 +79,7 @@ impl EventDispatcher {
             Edit::InputSimple(_) => tab.input_insert(c),
             Edit::InputCompleted(_) => tab.text_insert_and_complete(c),
             Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
-            Edit::Navigate(Navigate::Trash) if c == 'x' => status.trash_delete_permanently(),
+            Edit::Navigate(Navigate::Trash) if c == 'x' => status.menu.trash_delete_permanently(),
             Edit::Navigate(Navigate::EncryptedDrive) if c == 'm' => status.mount_encrypted_drive(),
             Edit::Navigate(Navigate::EncryptedDrive) if c == 'g' => status.go_to_encrypted_drive(),
             Edit::Navigate(Navigate::EncryptedDrive) if c == 'u' => status.umount_encrypted_drive(),

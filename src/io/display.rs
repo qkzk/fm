@@ -748,7 +748,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let trash = &self.status.trash;
+        let trash = &self.status.menu.trash;
         if trash.content().is_empty() {
             self.draw_trash_is_empty(canvas)
         } else {
@@ -896,7 +896,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_confirm_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
         log_info!("draw_confirm_empty_trash");
-        if self.status.trash.is_empty() {
+        if self.status.menu.trash.is_empty() {
             self.draw_trash_is_empty(canvas)
         } else {
             self.draw_confirm_non_empty_trash(canvas)?
@@ -909,9 +909,9 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_confirm_non_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let content = self.status.trash.content();
+        let content = self.status.menu.trash.content();
         for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
-            let attr = self.status.trash.attr(row, attr);
+            let attr = self.status.menu.trash.attr(row, attr);
             Self::draw_content_line(canvas, row + 4, &trashinfo.to_string(), attr)?
         }
         Ok(())

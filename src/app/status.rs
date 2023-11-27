@@ -34,7 +34,6 @@ use crate::modes::Preview;
 use crate::modes::SelectableContent;
 use crate::modes::ShellCommandParser;
 use crate::modes::Skimer;
-use crate::modes::Trash;
 use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, CopyMove};
@@ -81,8 +80,6 @@ pub struct Status {
     pub marks: Marks,
     /// The opener used by the application.
     pub opener: Opener,
-    /// The trash
-    pub trash: Trash,
 
     skimer: Option<Result<Skimer>>,
 
@@ -106,7 +103,6 @@ impl Status {
         let display_metadata = Self::parse_display_full(args.simple, settings.full);
         let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
-        let trash = Trash::new()?;
         let force_clear = false;
         let flagged = Flagged::default();
         let marks = Marks::read_from_config_file();
@@ -124,7 +120,7 @@ impl Status {
             Tab::new(&args, height, users, settings, &mount_points)?,
             Tab::new(&args, height, users2, settings, &mount_points)?,
         ];
-        let menu = Menu::default();
+        let menu = Menu::new()?;
         Ok(Self {
             tabs,
             index,
@@ -137,7 +133,6 @@ impl Status {
             system_info: sys,
             display_metadata,
             opener,
-            trash,
             nvim_server,
             force_clear,
             menu,
@@ -371,9 +366,6 @@ impl Status {
         Ok(())
     }
 
-    pub fn trash_delete_permanently(&mut self) -> Result<()> {
-        self.trash.delete_permanently()
-    }
     /// Move the selected flagged file to the trash.
     pub fn trash_single_flagged(&mut self) -> Result<()> {
         let filepath = self
@@ -382,7 +374,7 @@ impl Status {
             .context("no flagged file")?
             .to_owned();
         self.flagged.remove_selected();
-        self.trash.trash(&filepath)?;
+        self.menu.trash.trash(&filepath)?;
         Ok(())
     }
 
@@ -891,7 +883,7 @@ impl Status {
 
     /// Empty the trash folder permanently.
     pub fn confirm_trash_empty(&mut self) -> Result<()> {
-        self.trash.empty_trash()?;
+        self.menu.trash.empty_trash()?;
         self.selected().reset_edit_mode();
         self.clear_flags_and_reset_view()?;
         Ok(())

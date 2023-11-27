@@ -470,7 +470,7 @@ impl EventAction {
             Edit::Nothing => Self::move_display_up(status)?,
             Edit::Navigate(Navigate::Jump) => status.flagged.prev(),
             Edit::Navigate(Navigate::History) => tab.history.prev(),
-            Edit::Navigate(Navigate::Trash) => status.trash.prev(),
+            Edit::Navigate(Navigate::Trash) => status.menu.trash.prev(),
             Edit::Navigate(Navigate::Shortcut) => tab.shortcut.prev(),
             Edit::Navigate(Navigate::Marks(_)) => status.marks.prev(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.prev(),
@@ -510,7 +510,7 @@ impl EventAction {
             Edit::Nothing => Self::move_display_down(status)?,
             Edit::Navigate(Navigate::Jump) => status.flagged.next(),
             Edit::Navigate(Navigate::History) => status.selected().history.next(),
-            Edit::Navigate(Navigate::Trash) => status.trash.next(),
+            Edit::Navigate(Navigate::Trash) => status.menu.trash.next(),
             Edit::Navigate(Navigate::Shortcut) => status.selected().shortcut.next(),
             Edit::Navigate(Navigate::Marks(_)) => status.marks.next(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.next(),
@@ -878,9 +878,9 @@ impl EventAction {
             Self::toggle_flag(status)?;
         }
 
-        status.trash.update()?;
+        status.menu.trash.update()?;
         for flagged in status.flagged.content.iter() {
-            status.trash.trash(flagged)?;
+            status.menu.trash.trash(flagged)?;
         }
         status.flagged.clear();
         status.selected().refresh_view()?;
@@ -889,7 +889,7 @@ impl EventAction {
     /// Ask the user if he wants to empty the trash.
     /// It requires a confimation before doing anything
     pub fn trash_empty(status: &mut Status) -> Result<()> {
-        status.trash.update()?;
+        status.menu.trash.update()?;
         status
             .selected()
             .set_edit_mode(Edit::NeedConfirmation(NeedConfirmation::EmptyTrash));
@@ -901,7 +901,7 @@ impl EventAction {
     /// Each item can be restored or deleted.
     /// Each opening refresh the trash content.
     pub fn trash_open(status: &mut Status) -> Result<()> {
-        status.trash.update()?;
+        status.menu.trash.update()?;
         status
             .selected()
             .set_edit_mode(Edit::Navigate(Navigate::Trash));
@@ -1139,7 +1139,7 @@ impl LeaveMode {
     /// Restore a file from the trash if possible.
     /// Parent folders are created if needed.
     pub fn trash(status: &mut Status) -> Result<()> {
-        status.trash.restore()?;
+        status.menu.trash.restore()?;
         status.selected().reset_edit_mode();
         status.selected().refresh_view()?;
         status.update_second_pane_for_preview()

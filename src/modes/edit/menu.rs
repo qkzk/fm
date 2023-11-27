@@ -10,6 +10,7 @@ use crate::modes::MountCommands;
 use crate::modes::PasswordHolder;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
+use crate::modes::Trash;
 use crate::modes::TuiApplications;
 
 pub struct Menu {
@@ -31,11 +32,13 @@ pub struct Menu {
     pub iso_device: Option<IsoDevice>,
     /// Encrypted devices opener
     pub encrypted_devices: CryptoDeviceOpener,
+    /// The trash
+    pub trash: Trash,
 }
 
-impl Default for Menu {
-    fn default() -> Self {
-        Self {
+impl Menu {
+    pub fn new() -> Result<Self> {
+        Ok(Self {
             sudo_command: None,
             compression: Compresser::default(),
             cli_applications: CliApplications::default(),
@@ -45,11 +48,9 @@ impl Default for Menu {
             bulk: None,
             iso_device: None,
             encrypted_devices: CryptoDeviceOpener::default(),
-        }
+            trash: Trash::new()?,
+        })
     }
-}
-
-impl Menu {
     pub fn mount_removable(&mut self) -> Result<()> {
         let Some(devices) = &mut self.removable_devices else {
             return Ok(());
@@ -110,5 +111,9 @@ impl Menu {
         if let Some(bulk) = &mut self.bulk {
             bulk.next();
         }
+    }
+
+    pub fn trash_delete_permanently(&mut self) -> Result<()> {
+        self.trash.delete_permanently()
     }
 }
