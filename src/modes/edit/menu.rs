@@ -1,6 +1,9 @@
 use anyhow::Result;
 
-use crate::modes::{CliApplications, Compresser};
+use crate::common::TUIS_PATH;
+use crate::modes::CliApplications;
+use crate::modes::Compresser;
+use crate::modes::TuiApplications;
 
 pub struct Menu {
     /// Last sudo command ran
@@ -9,6 +12,8 @@ pub struct Menu {
     pub compression: Compresser,
     /// CLI applications
     pub cli_applications: CliApplications,
+    /// TUI application
+    pub tui_applications: TuiApplications,
 }
 
 impl Default for Menu {
@@ -17,6 +22,7 @@ impl Default for Menu {
             sudo_command: None,
             compression: Compresser::default(),
             cli_applications: CliApplications::default(),
+            tui_applications: TuiApplications::new(TUIS_PATH),
         }
     }
 }

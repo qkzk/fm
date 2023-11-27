@@ -794,12 +794,13 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
+    // TODO: refactor both methods below with common trait selectable
     fn draw_shell_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
 
-        let content = &self.status.tui_applications.content;
+        let content = &self.status.menu.tui_applications.content;
         for (row, (command, _), attr) in enumerated_colored_iter!(content) {
-            let attr = self.status.tui_applications.attr(row, attr);
+            let attr = self.status.menu.tui_applications.attr(row, attr);
             Self::draw_content_line(canvas, row + 2, command, attr)?;
         }
         Ok(())

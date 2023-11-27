@@ -12,7 +12,7 @@ use tuikit::term::Term;
 use crate::app::Tab;
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
-use crate::common::{NVIM, SS, TUIS_PATH};
+use crate::common::{NVIM, SS};
 use crate::config::{Bindings, Settings};
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock};
@@ -33,7 +33,6 @@ use crate::modes::ShellCommandParser;
 use crate::modes::Skimer;
 use crate::modes::Trash;
 use crate::modes::Tree;
-use crate::modes::TuiApplications;
 use crate::modes::Users;
 use crate::modes::{copy_move, CopyMove};
 use crate::modes::{regex_matcher, Bulk};
@@ -90,8 +89,6 @@ pub struct Status {
     pub iso_device: Option<IsoDevice>,
     /// Bulk rename
     pub bulk: Option<Bulk>,
-    /// TUI application
-    pub tui_applications: TuiApplications,
     /// Hold password between their typing and usage
     pub password_holder: PasswordHolder,
     /// MTP devices
@@ -119,7 +116,6 @@ impl Status {
         let display_metadata = Self::parse_display_full(args.simple, settings.full);
         let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
-        let tui_applications = TuiApplications::new(TUIS_PATH);
         let encrypted_devices = CryptoDeviceOpener::default();
         let trash = Trash::new()?;
         let force_clear = false;
@@ -161,7 +157,6 @@ impl Status {
             nvim_server,
             force_clear,
             bulk,
-            tui_applications,
             iso_device,
             password_holder,
             removable_devices,

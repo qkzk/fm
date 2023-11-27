@@ -475,7 +475,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Marks(_)) => status.marks.prev(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.prev(),
             Edit::Navigate(Navigate::Bulk) => status.bulk_prev(),
-            Edit::Navigate(Navigate::TuiApplication) => status.tui_applications.prev(),
+            Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.prev(),
             Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.prev(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.prev(),
             Edit::InputCompleted(_) => tab.completion.prev(),
@@ -515,7 +515,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Marks(_)) => status.marks.next(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.next(),
             Edit::Navigate(Navigate::Bulk) => status.bulk_next(),
-            Edit::Navigate(Navigate::TuiApplication) => status.tui_applications.next(),
+            Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.next(),
             Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.next(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
             Edit::InputCompleted(_) => status.selected().completion.next(),
@@ -1198,7 +1198,7 @@ impl LeaveMode {
     }
 
     pub fn shellmenu(status: &mut Status) -> Result<()> {
-        status.tui_applications.execute(status)
+        status.menu.tui_applications.execute(status)
     }
 
     pub fn cli_info(status: &mut Status) -> Result<()> {
