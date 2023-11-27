@@ -476,7 +476,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Compress) => status.menu.compression.prev(),
             Edit::Navigate(Navigate::Bulk) => status.bulk_prev(),
             Edit::Navigate(Navigate::TuiApplication) => status.tui_applications.prev(),
-            Edit::Navigate(Navigate::CliApplication) => status.cli_applications.prev(),
+            Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.prev(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.prev(),
             Edit::InputCompleted(_) => tab.completion.prev(),
             _ => (),
@@ -516,7 +516,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Compress) => status.menu.compression.next(),
             Edit::Navigate(Navigate::Bulk) => status.bulk_next(),
             Edit::Navigate(Navigate::TuiApplication) => status.tui_applications.next(),
-            Edit::Navigate(Navigate::CliApplication) => status.cli_applications.next(),
+            Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.next(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
             Edit::InputCompleted(_) => status.selected().completion.next(),
             _ => (),
@@ -1202,7 +1202,7 @@ impl LeaveMode {
     }
 
     pub fn cli_info(status: &mut Status) -> Result<()> {
-        let output = status.cli_applications.execute()?;
+        let output = status.menu.cli_applications.execute()?;
         log_info!("output\n{output}");
         status.selected().set_display_mode(Display::Preview);
         let preview = Preview::cli_info(&output);

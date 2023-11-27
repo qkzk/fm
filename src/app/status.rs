@@ -25,6 +25,7 @@ use crate::modes::Flagged;
 use crate::modes::IsoDevice;
 use crate::modes::Marks;
 use crate::modes::Menu;
+use crate::modes::Permissions;
 use crate::modes::Preview;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
@@ -37,7 +38,6 @@ use crate::modes::Users;
 use crate::modes::{copy_move, CopyMove};
 use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
-use crate::modes::{CliApplications, Permissions};
 use crate::modes::{Display, Edit, InputSimple, NeedConfirmation};
 use crate::modes::{MountCommands, MountRepr};
 use crate::modes::{PasswordHolder, PasswordKind, PasswordUsage};
@@ -92,8 +92,6 @@ pub struct Status {
     pub bulk: Option<Bulk>,
     /// TUI application
     pub tui_applications: TuiApplications,
-    /// CLI applications
-    pub cli_applications: CliApplications,
     /// Hold password between their typing and usage
     pub password_holder: PasswordHolder,
     /// MTP devices
@@ -122,7 +120,6 @@ impl Status {
         let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let tui_applications = TuiApplications::new(TUIS_PATH);
-        let cli_applications = CliApplications::default();
         let encrypted_devices = CryptoDeviceOpener::default();
         let trash = Trash::new()?;
         let force_clear = false;
@@ -166,7 +163,6 @@ impl Status {
             bulk,
             tui_applications,
             iso_device,
-            cli_applications,
             password_holder,
             removable_devices,
             menu,

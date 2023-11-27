@@ -1,20 +1,22 @@
 use anyhow::Result;
 
-use super::Compresser;
+use crate::modes::{CliApplications, Compresser};
 
-#[derive(Debug)]
 pub struct Menu {
     /// Last sudo command ran
     pub sudo_command: Option<String>,
     /// Compression methods
     pub compression: Compresser,
+    /// CLI applications
+    pub cli_applications: CliApplications,
 }
 
 impl Default for Menu {
     fn default() -> Self {
         Self {
-            compression: Compresser::default(),
             sudo_command: None,
+            compression: Compresser::default(),
+            cli_applications: CliApplications::default(),
         }
     }
 }
