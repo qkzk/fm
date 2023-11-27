@@ -457,13 +457,18 @@ impl Tab {
     }
 
     pub fn set_display_mode(&mut self, new_display_mode: Display) {
+        self.reset_preview();
         self.display_mode = new_display_mode
+    }
+
+    fn reset_preview(&mut self) {
+        if matches!(self.display_mode, Display::Preview) {
+            self.preview = Preview::empty();
+        }
     }
 
     /// Reset the modes :
     /// - edit_mode is set to Nothing,
-    /// - display_mode is set to Normal.
-
     pub fn reset_edit_mode(&mut self) -> bool {
         if matches!(self.edit_mode, Edit::InputCompleted(_)) {
             self.completion.reset();
@@ -533,25 +538,22 @@ impl Tab {
     }
 
     /// Copy the selected filename to the clipboard. Only the filename.
-    pub fn filename_to_clipboard(&self) -> Result<()> {
-        set_clipboard(
-            self.selected()
-                .context("filename_to_clipboard: no selected file")?
-                .filename
-                .clone(),
-        )
+    pub fn filename_to_clipboard(&self) {
+        let Ok(file) = self.selected() else {
+            return;
+        };
+        set_clipboard(file.filename.clone())
     }
 
     /// Copy the selected filepath to the clipboard. The absolute path.
-    pub fn filepath_to_clipboard(&self) -> Result<()> {
-        set_clipboard(
-            self.selected()
-                .context("filepath_to_clipboard: no selected file")?
-                .path
-                .to_str()
-                .context("filepath_to_clipboard: no selected file")?
-                .to_owned(),
-        )
+    pub fn filepath_to_clipboard(&self) {
+        let Ok(file) = self.selected() else {
+            return;
+        };
+        let Some(path_str) = file.path.to_str() else {
+            return;
+        };
+        set_clipboard(path_str.to_owned())
     }
 
     /// Move to the bottom of current view.

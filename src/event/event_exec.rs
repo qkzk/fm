@@ -781,7 +781,7 @@ impl EventAction {
     /// Copy the filename of the selected file in normal mode.
     pub fn copy_filename(tab: &mut Tab) -> Result<()> {
         if let Display::Normal | Display::Tree = tab.display_mode {
-            return tab.filename_to_clipboard();
+            tab.filename_to_clipboard();
         }
         Ok(())
     }
@@ -789,7 +789,7 @@ impl EventAction {
     /// Copy the filepath of the selected file in normal mode.
     pub fn copy_filepath(tab: &mut Tab) -> Result<()> {
         if let Display::Normal | Display::Tree = tab.display_mode {
-            return tab.filepath_to_clipboard();
+            tab.filepath_to_clipboard();
         }
         Ok(())
     }

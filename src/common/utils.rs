@@ -119,17 +119,16 @@ pub fn extract_lines(content: String) -> Vec<String> {
     content.lines().map(|line| line.to_string()).collect()
 }
 
-pub fn set_clipboard(content: String) -> Result<()> {
+pub fn set_clipboard(content: String) {
     log_info!("copied to clipboard: {}", content);
     let Ok(mut ctx) = ClipboardContext::new() else {
-        return Ok(());
+        return;
     };
     let Ok(_) = ctx.set_contents(content) else {
-        return Ok(());
+        return;
     };
     // For some reason, it's not writen if you don't read it back...
     let _ = ctx.get_contents();
-    Ok(())
 }
 
 /// Convert a row into a `crate::fm::ContentWindow` index.
