@@ -786,9 +786,9 @@ impl<'a> WinSecondary<'a> {
     fn draw_marks(&self, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.print_with_attr(2, 4, "mark  path", Self::ATTR_YELLOW)?;
 
-        let content = self.status.marks.as_strings();
+        let content = self.status.menu.marks.as_strings();
         for (row, line, attr) in enumerated_colored_iter!(content) {
-            let attr = self.status.marks.attr(row, attr);
+            let attr = self.status.menu.marks.attr(row, attr);
             Self::draw_content_line(canvas, row, line, attr)?;
         }
         Ok(())

@@ -6,6 +6,7 @@ use crate::modes::CliApplications;
 use crate::modes::Compresser;
 use crate::modes::CryptoDeviceOpener;
 use crate::modes::IsoDevice;
+use crate::modes::Marks;
 use crate::modes::MountCommands;
 use crate::modes::PasswordHolder;
 use crate::modes::RemovableDevices;
@@ -34,6 +35,8 @@ pub struct Menu {
     pub encrypted_devices: CryptoDeviceOpener,
     /// The trash
     pub trash: Trash,
+    /// Marks allows you to jump to a save mark
+    pub marks: Marks,
 }
 
 impl Menu {
@@ -49,6 +52,7 @@ impl Menu {
             iso_device: None,
             encrypted_devices: CryptoDeviceOpener::default(),
             trash: Trash::new()?,
+            marks: Marks::read_from_config_file(),
         })
     }
     pub fn mount_removable(&mut self) -> Result<()> {

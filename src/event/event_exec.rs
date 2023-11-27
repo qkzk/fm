@@ -104,7 +104,7 @@ impl EventAction {
 
     /// Enter Marks jump mode, allowing to jump to a marked file.
     pub fn marks_jump(status: &mut Status) -> Result<()> {
-        if status.marks.is_empty() {
+        if status.menu.marks.is_empty() {
             return Ok(());
         }
         status
@@ -472,7 +472,7 @@ impl EventAction {
             Edit::Navigate(Navigate::History) => tab.history.prev(),
             Edit::Navigate(Navigate::Trash) => status.menu.trash.prev(),
             Edit::Navigate(Navigate::Shortcut) => tab.shortcut.prev(),
-            Edit::Navigate(Navigate::Marks(_)) => status.marks.prev(),
+            Edit::Navigate(Navigate::Marks(_)) => status.menu.marks.prev(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.prev(),
             Edit::Navigate(Navigate::Bulk) => status.menu.bulk_prev(),
             Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.prev(),
@@ -512,7 +512,7 @@ impl EventAction {
             Edit::Navigate(Navigate::History) => status.selected().history.next(),
             Edit::Navigate(Navigate::Trash) => status.menu.trash.next(),
             Edit::Navigate(Navigate::Shortcut) => status.selected().shortcut.next(),
-            Edit::Navigate(Navigate::Marks(_)) => status.marks.next(),
+            Edit::Navigate(Navigate::Marks(_)) => status.menu.marks.next(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.next(),
             Edit::Navigate(Navigate::Bulk) => status.menu.bulk_next(),
             Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.next(),
@@ -1163,7 +1163,7 @@ impl LeaveMode {
 
     /// Jump to the current mark.
     pub fn marks_jump(status: &mut Status) -> Result<()> {
-        let marks = status.marks.clone();
+        let marks = status.menu.marks.clone();
         let tab = status.selected();
         if let Some((_, path)) = marks.selected() {
             tab.cd(path)?;
@@ -1177,12 +1177,12 @@ impl LeaveMode {
     /// Doesn't change its char.
     /// If it doesn't fail, a new pair will be set with (oldchar, new path).
     pub fn marks_update(status: &mut Status) -> Result<()> {
-        let marks = status.marks.clone();
+        let marks = status.menu.marks.clone();
         let len = status.selected_non_mut().path_content.content.len();
         if let Some((ch, _)) = marks.selected() {
             if let Some(path_str) = status.selected_non_mut().path_content_str() {
                 let p = path::PathBuf::from(path_str);
-                status.marks.new_mark(*ch, &p)?;
+                status.menu.marks.new_mark(*ch, &p)?;
                 log_line!("Saved mark {ch} -> {p}", p = p.display());
             }
             status.selected().window.reset(len);

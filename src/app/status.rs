@@ -25,7 +25,6 @@ use crate::modes::ContentWindow;
 use crate::modes::FileKind;
 use crate::modes::Flagged;
 use crate::modes::IsoDevice;
-use crate::modes::Marks;
 use crate::modes::Menu;
 use crate::modes::MountCommands;
 use crate::modes::MountRepr;
@@ -76,8 +75,6 @@ pub struct Status {
 
     /// The flagged files
     pub flagged: Flagged,
-    /// Marks allows you to jump to a save mark
-    pub marks: Marks,
     /// The opener used by the application.
     pub opener: Opener,
 
@@ -105,7 +102,6 @@ impl Status {
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let force_clear = false;
         let flagged = Flagged::default();
-        let marks = Marks::read_from_config_file();
         let skimer = None;
         let index = 0;
 
@@ -125,7 +121,6 @@ impl Status {
             tabs,
             index,
             flagged,
-            marks,
             skimer,
             term,
             dual_pane,
@@ -826,7 +821,7 @@ impl Status {
     /// Execute a new mark, saving it to a config file for futher use.
     pub fn marks_new(&mut self, c: char) -> Result<()> {
         let path = self.selected().path_content.path.clone();
-        self.marks.new_mark(c, &path)?;
+        self.menu.marks.new_mark(c, &path)?;
         {
             let tab: &mut Tab = self.selected();
             tab.refresh_view()
@@ -838,7 +833,7 @@ impl Status {
     /// Execute a jump to a mark, moving to a valid path.
     /// If the saved path is invalid, it does nothing but reset the view.
     pub fn marks_jump_char(&mut self, c: char) -> Result<()> {
-        if let Some(path) = self.marks.get(c) {
+        if let Some(path) = self.menu.marks.get(c) {
             self.selected().cd(&path)?;
         }
         self.selected().refresh_view()?;
