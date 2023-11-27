@@ -623,14 +623,14 @@ impl<'a> WinSecondary<'a> {
     fn draw_second_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
         if matches!(self.tab.edit_mode, Edit::InputSimple(InputSimple::Chmod)) {
             let mode_parsed = parse_input_mode(&self.tab.input.string());
-            let mut col = 4;
+            let mut col = 11;
             for (text, is_valid) in &mode_parsed {
                 let attr = if *is_valid {
                     Attr::from(Color::YELLOW)
                 } else {
                     Attr::from(Color::RED)
                 };
-                col += canvas.print_with_attr(1, col, text, attr)?;
+                col += 1 + canvas.print_with_attr(1, col, text, attr)?;
             }
         }
         Ok(())

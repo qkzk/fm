@@ -72,16 +72,7 @@ impl EventAction {
 
     /// Toggle a single flag and move down one row.
     pub fn toggle_flag(status: &mut Status) -> Result<()> {
-        let tab = status.selected_non_mut();
-
-        if matches!(tab.edit_mode, Edit::Nothing) && !matches!(tab.display_mode, Display::Preview) {
-            let Ok(file) = tab.selected() else {
-                return Ok(());
-            };
-            let path = file.path.clone();
-            status.toggle_flag_on_path(&path);
-            status.selected().normal_down_one_row();
-        };
+        status.toggle_flag_for_selected();
         Ok(())
     }
 

@@ -263,14 +263,22 @@ impl Status {
     /// Reset the view of every tab.
     pub fn reset_tabs_view(&mut self) -> Result<()> {
         for tab in self.tabs.iter_mut() {
-            tab.refresh_view()?
+            tab.refresh_and_reselect_file()?
         }
         Ok(())
     }
 
-    /// Toggle the flagged attribute of a path.
-    pub fn toggle_flag_on_path(&mut self, path: &Path) {
-        self.flagged.toggle(path)
+    /// Flag the selected file if any
+    pub fn toggle_flag_for_selected(&mut self) {
+        let tab = self.selected_non_mut();
+
+        if matches!(tab.edit_mode, Edit::Nothing) && !matches!(tab.display_mode, Display::Preview) {
+            let Ok(file) = tab.selected() else {
+                return;
+            };
+            self.flagged.toggle(&file.path);
+            self.selected().normal_down_one_row();
+        };
     }
 
     fn skim_init(&mut self) {
@@ -1104,7 +1112,6 @@ impl Status {
         }
         let input_permission = &self.selected().input.string();
         Permissions::set_permissions_of_flagged(input_permission, &mut self.flagged)?;
-        self.selected().refresh_view()?;
         self.reset_tabs_view()
     }
 
@@ -1115,8 +1122,7 @@ impl Status {
         self.selected()
             .set_edit_mode(Edit::InputSimple(InputSimple::Chmod));
         if self.flagged.is_empty() {
-            self.flagged
-                .push(self.tabs[self.index].selected().unwrap().path.clone());
+            self.toggle_flag_for_selected();
         };
         Ok(())
     }
