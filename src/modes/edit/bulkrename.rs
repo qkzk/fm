@@ -11,6 +11,21 @@ use crate::io::Opener;
 use crate::log_line;
 use crate::{impl_selectable_content, log_info};
 
+pub struct BulkRenamer<'a> {
+    original_filepath: Option<Vec<&'a Path>>,
+    temp_file: PathBuf,
+}
+
+pub struct BulkCreator<'a> {
+    parent_dir: Option<&'a str>,
+    temp_file: PathBuf,
+}
+
+pub enum BulkAction<'a> {
+    Renamer(BulkRenamer<'a>),
+    Creator(BulkCreator<'a>),
+}
+
 /// Struct holding informations about files about to be renamed.
 /// We only need to know which are the original filenames and which
 /// temporary file is used to modify them.
