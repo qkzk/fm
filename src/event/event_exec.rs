@@ -473,7 +473,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Trash) => status.trash.prev(),
             Edit::Navigate(Navigate::Shortcut) => tab.shortcut.prev(),
             Edit::Navigate(Navigate::Marks(_)) => status.marks.prev(),
-            Edit::Navigate(Navigate::Compress) => status.compression.prev(),
+            Edit::Navigate(Navigate::Compress) => status.menu.compression.prev(),
             Edit::Navigate(Navigate::Bulk) => status.bulk_prev(),
             Edit::Navigate(Navigate::TuiApplication) => status.tui_applications.prev(),
             Edit::Navigate(Navigate::CliApplication) => status.cli_applications.prev(),
@@ -513,7 +513,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Trash) => status.trash.next(),
             Edit::Navigate(Navigate::Shortcut) => status.selected().shortcut.next(),
             Edit::Navigate(Navigate::Marks(_)) => status.marks.next(),
-            Edit::Navigate(Navigate::Compress) => status.compression.next(),
+            Edit::Navigate(Navigate::Compress) => status.menu.compression.next(),
             Edit::Navigate(Navigate::Bulk) => status.bulk_next(),
             Edit::Navigate(Navigate::TuiApplication) => status.tui_applications.next(),
             Edit::Navigate(Navigate::CliApplication) => status.cli_applications.next(),
@@ -1437,7 +1437,10 @@ impl LeaveMode {
         if files_with_relative_paths.is_empty() {
             return Ok(());
         }
-        status.compression.compress(files_with_relative_paths, here)
+        status
+            .menu
+            .compression
+            .compress(files_with_relative_paths, here)
     }
 
     /// Execute the selected command.

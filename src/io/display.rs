@@ -767,7 +767,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let selectable = &self.status.compression;
+        let selectable = &self.status.menu.compression;
         canvas.print_with_attr(
             2,
             2,

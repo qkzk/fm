@@ -19,6 +19,7 @@ use crate::io::{drop_sudo_privileges, execute_sudo_command_with_password, reset_
 use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
 use crate::io::{Args, Kind};
 use crate::io::{Internal, Opener};
+use crate::modes::ContentWindow;
 use crate::modes::FileKind;
 use crate::modes::Flagged;
 use crate::modes::IsoDevice;
@@ -37,7 +38,6 @@ use crate::modes::{copy_move, CopyMove};
 use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::modes::{CliApplications, Permissions};
-use crate::modes::{Compresser, ContentWindow};
 use crate::modes::{Display, Edit, InputSimple, NeedConfirmation};
 use crate::modes::{MountCommands, MountRepr};
 use crate::modes::{PasswordHolder, PasswordKind, PasswordUsage};
@@ -88,8 +88,6 @@ pub struct Status {
     pub encrypted_devices: CryptoDeviceOpener,
     /// Iso mounter. Set to None by default, dropped ASAP
     pub iso_device: Option<IsoDevice>,
-    /// Compression methods
-    pub compression: Compresser,
     /// Bulk rename
     pub bulk: Option<Bulk>,
     /// TUI application
@@ -127,7 +125,6 @@ impl Status {
         let cli_applications = CliApplications::default();
         let encrypted_devices = CryptoDeviceOpener::default();
         let trash = Trash::new()?;
-        let compression = Compresser::default();
         let force_clear = false;
         let bulk = None;
         let iso_device = None;
@@ -164,7 +161,6 @@ impl Status {
             opener,
             trash,
             encrypted_devices,
-            compression,
             nvim_server,
             force_clear,
             bulk,
