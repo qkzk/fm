@@ -125,7 +125,7 @@ struct WinMain<'a> {
 impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         canvas.clear()?;
-        if self.status.dual_pane && self.is_right() && self.status.preview_second {
+        if self.status.settings.dual && self.is_right() && self.status.settings.preview {
             self.draw_preview_as_second_pane(canvas)?;
             return Ok(());
         }
@@ -180,7 +180,7 @@ impl<'a> WinMain<'a> {
         let len = self.tab.path_content.content.len();
         let group_size: usize;
         let owner_size: usize;
-        if self.status.display_metadata {
+        if self.status.settings.metadata {
             group_size = self.tab.path_content.group_column_width();
             owner_size = self.tab.path_content.owner_column_width();
         } else {
@@ -222,7 +222,7 @@ impl<'a> WinMain<'a> {
         owner_size: usize,
         group_size: usize,
     ) -> Result<String> {
-        if self.status.display_metadata {
+        if self.status.settings.metadata {
             file.format(owner_size, group_size)
         } else {
             file.format_simple()
@@ -250,7 +250,7 @@ impl<'a> WinMain<'a> {
     }
 
     fn draw_tree_content(&self, canvas: &mut dyn Canvas) -> Result<usize> {
-        let left_margin = if self.status.display_metadata { 1 } else { 3 };
+        let left_margin = if self.status.settings.metadata { 1 } else { 3 };
         let (_, height) = canvas.size()?;
         let (selected_index, content) = self.tab.tree.into_navigable_content(&self.tab.users);
         let (top, bottom) = calculate_top_bottom(selected_index, height);
@@ -282,7 +282,7 @@ impl<'a> WinMain<'a> {
         let mut attr = colored_filename.color_effect.attr();
         self.print_as_flagged(canvas, row, &colored_filename.path, &mut attr)?;
 
-        let col_metadata = if self.status.display_metadata {
+        let col_metadata = if self.status.settings.metadata {
             canvas.print_with_attr(row, left_margin, s_metadata, attr)?
         } else {
             0
@@ -496,7 +496,7 @@ impl PreviewFirstLine {
     }
 
     fn _pick_previewed_fileinfo(status: &Status) -> Result<FileInfo> {
-        if status.dual_pane && status.preview_second {
+        if status.settings.dual && status.settings.preview {
             status.tabs[0].selected()
         } else {
             status.selected_non_mut().selected()
@@ -540,7 +540,7 @@ impl WinMainSecondLine {
     fn new(status: &Status, tab: &Tab) -> Self {
         let (content, attr) = match tab.display_mode {
             DisplayMode::Normal | DisplayMode::Tree => {
-                if !status.display_metadata {
+                if !status.settings.metadata {
                     if let Ok(file) = tab.selected() {
                         Self::second_line_detailed(&file)
                     } else {
@@ -988,7 +988,7 @@ impl Display {
         self.term.clear()?;
 
         let (width, _) = self.term.term_size()?;
-        if status.dual_pane && width > MIN_WIDTH_FOR_DUAL_PANE {
+        if status.settings.dual && width > MIN_WIDTH_FOR_DUAL_PANE {
             self._draw_dual_pane(status)?
         } else {
             self._draw_single_pane(status)?

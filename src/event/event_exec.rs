@@ -855,14 +855,14 @@ impl EventAction {
     /// Toggle between a full display (aka ls -lah) or a simple mode (only the
     /// filenames).
     pub fn toggle_display_full(status: &mut Status) -> Result<()> {
-        status.display_metadata = !status.display_metadata;
+        status.settings.metadata = !status.settings.metadata;
         Ok(())
     }
 
     /// Toggle between dualpane and single pane. Does nothing if the width
     /// is too low to display both panes.
     pub fn toggle_dualpane(status: &mut Status) -> Result<()> {
-        status.dual_pane = !status.dual_pane;
+        status.settings.dual = !status.settings.dual;
         status.select_tab(0)?;
         Ok(())
     }
@@ -995,8 +995,8 @@ impl EventAction {
 
     /// Toggle the second pane between preview & normal mode (files).
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
-        status.preview_second = !status.preview_second;
-        if status.preview_second {
+        status.settings.preview = !status.settings.preview;
+        if status.settings.preview {
             status.set_second_pane_for_preview()?;
         } else {
             status.tabs[1].reset_edit_mode();

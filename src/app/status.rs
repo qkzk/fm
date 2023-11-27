@@ -9,6 +9,7 @@ use sysinfo::{Disk, DiskExt, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
+use crate::app::DisplaySettings;
 use crate::app::Tab;
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
@@ -55,12 +56,6 @@ pub struct Status {
     pub tabs: [Tab; 2],
     /// Index of the current selected tab
     pub index: usize,
-    /// do we display one or two tabs ?
-    pub dual_pane: bool,
-    /// do we display all info or only the filenames ?
-    pub display_metadata: bool,
-    /// use the second pane to preview auto
-    pub preview_second: bool,
 
     /// Do we have to clear the screen ?
     pub force_clear: bool,
@@ -68,7 +63,7 @@ pub struct Status {
     pub term: Arc<Term>,
     /// Info about the running machine. Only used to detect disks
     /// and their mount points.
-    pub system_info: System,
+    pub sys: System,
 
     /// NVIM RPC server address
     pub nvim_server: String,
@@ -79,6 +74,8 @@ pub struct Status {
 
     /// Navigable menu
     pub menu: Menu,
+    /// Display settings
+    pub settings: DisplaySettings,
 }
 
 impl Status {
@@ -92,18 +89,13 @@ impl Status {
         settings: &Settings,
     ) -> Result<Self> {
         let args = Args::parse();
-        let preview_second = args.preview;
         let nvim_server = args.server.clone();
-        let display_metadata = Self::parse_display_full(args.simple, settings.full);
-        let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let force_clear = false;
         let skimer = None;
         let index = 0;
 
-        // unsafe because of UsersCache::with_all_users
         let users = Users::new();
-        // unsafe because of UsersCache::with_all_users
         let users2 = users.clone();
 
         let mount_points = Self::disks_mounts(sys.disks());
@@ -112,20 +104,19 @@ impl Status {
             Tab::new(&args, height, users, settings, &mount_points)?,
             Tab::new(&args, height, users2, settings, &mount_points)?,
         ];
+        let settings = DisplaySettings::new(args, settings, &term)?;
         let menu = Menu::new()?;
         Ok(Self {
             tabs,
             index,
             skimer,
             term,
-            dual_pane,
-            preview_second,
-            system_info: sys,
-            display_metadata,
+            sys,
             opener,
             nvim_server,
             force_clear,
             menu,
+            settings,
         })
     }
 
@@ -136,33 +127,9 @@ impl Status {
         Ok(())
     }
 
-    fn display_wide_enough(term: &Arc<Term>) -> Result<bool> {
-        Ok(term.term_size()?.0 >= MIN_WIDTH_FOR_DUAL_PANE)
-    }
-
-    fn parse_display_full(simple_args: Option<bool>, full_config: bool) -> bool {
-        if let Some(simple_args) = simple_args {
-            return !simple_args;
-        }
-        full_config
-    }
-
-    fn parse_dual_pane(
-        args_dual: Option<bool>,
-        dual_config: bool,
-        term: &Arc<Term>,
-    ) -> Result<bool> {
-        if !Self::display_wide_enough(term)? {
-            return Ok(false);
-        }
-        if let Some(args_dual) = args_dual {
-            return Ok(args_dual);
-        }
-        Ok(dual_config)
-    }
     /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn next(&mut self) {
-        if !self.dual_pane {
+        if !self.settings.dual {
             return;
         }
         self.index = 1 - self.index
@@ -445,8 +412,8 @@ impl Status {
         // self.system_info.refresh_disks();
 
         // the slow variant, which check if the disks have changed.
-        self.system_info.refresh_disks_list();
-        let disks = self.system_info.disks();
+        self.sys.refresh_disks_list();
+        let disks = self.sys.disks();
         let mounts = Self::disks_mounts(disks);
         self.tabs[0].refresh_shortcuts(&mounts);
         self.tabs[1].refresh_shortcuts(&mounts);
@@ -454,7 +421,7 @@ impl Status {
 
     /// Returns an array of Disks
     pub fn disks(&self) -> &[Disk] {
-        self.system_info.disks()
+        self.sys.disks()
     }
 
     /// Returns a the disk spaces for the selected tab..
@@ -535,7 +502,7 @@ impl Status {
             }?;
             self.selected().set_display_mode(Display::Normal)
         } else {
-            self.display_metadata = true;
+            self.settings.metadata = true;
             self.selected().make_tree(None)?;
             self.selected().set_display_mode(Display::Tree);
         }
@@ -544,7 +511,7 @@ impl Status {
 
     /// Check if the second pane should display a preview and force it.
     pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
-        if self.index == 0 && self.preview_second {
+        if self.index == 0 && self.settings.preview {
             self.set_second_pane_for_preview()?;
         };
         Ok(())
@@ -553,7 +520,7 @@ impl Status {
     /// Force preview the selected file of the first pane in the second pane.
     /// Doesn't check if it has do.
     pub fn set_second_pane_for_preview(&mut self) -> Result<()> {
-        if !Self::display_wide_enough(&self.term)? {
+        if !DisplaySettings::display_wide_enough(&self.term)? {
             self.tabs[1].preview = Preview::empty();
             return Ok(());
         }
@@ -577,9 +544,9 @@ impl Status {
     pub fn set_dual_pane_if_wide_enough(&mut self, width: usize) -> Result<()> {
         if width < MIN_WIDTH_FOR_DUAL_PANE {
             self.select_tab(0)?;
-            self.dual_pane = false;
+            self.settings.dual = false;
         } else {
-            self.dual_pane = true;
+            self.settings.dual = true;
         }
         Ok(())
     }
@@ -979,7 +946,7 @@ impl Status {
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_pane(&mut self, col: u16) -> Result<()> {
         let (width, _) = self.term_size()?;
-        if self.dual_pane {
+        if self.settings.dual {
             if (col as usize) < width / 2 {
                 self.select_tab(0)?;
             } else {
