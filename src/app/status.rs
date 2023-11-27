@@ -13,7 +13,7 @@ use crate::app::Tab;
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
 use crate::common::{NVIM, SS, TUIS_PATH};
-use crate::config::Settings;
+use crate::config::{Bindings, Settings};
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock};
 use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
@@ -82,8 +82,6 @@ pub struct Status {
     pub marks: Marks,
     /// The opener used by the application.
     pub opener: Opener,
-    /// The help string.
-    pub help: String,
     /// The trash
     pub trash: Trash,
     /// Encrypted devices opener
@@ -118,7 +116,6 @@ impl Status {
     pub fn new(
         height: usize,
         term: Arc<Term>,
-        help: String,
         opener: Opener,
         settings: &Settings,
     ) -> Result<Self> {
@@ -168,7 +165,6 @@ impl Status {
             system_info: sys,
             display_metadata,
             opener,
-            help,
             trash,
             encrypted_devices,
             compression,
@@ -335,19 +331,19 @@ impl Status {
     /// Run a command directly from help.
     /// Search a command in skim, if it's a keybinding, run it directly.
     /// If the result can't be parsed, nothing is done.
-    pub fn skim_find_keybinding_and_run(&mut self) -> Result<()> {
+    pub fn skim_find_keybinding_and_run(&mut self, help: String) -> Result<()> {
         self.skim_init();
-        if let Ok(key) = self._skim_find_keybinding() {
+        if let Ok(key) = self._skim_find_keybinding(help) {
             let _ = self.term.send_event(Event::Key(key));
         };
         self.drop_skim()
     }
 
-    fn _skim_find_keybinding(&mut self) -> Result<tuikit::prelude::Key> {
+    fn _skim_find_keybinding(&mut self, help: String) -> Result<tuikit::prelude::Key> {
         let Some(Ok(skimer)) = &mut self.skimer else {
             return Err(anyhow!("Skim isn't initialised"));
         };
-        let skim = skimer.search_in_text(&self.help);
+        let skim = skimer.search_in_text(&help);
         let Some(output) = skim.first() else {
             return Err(anyhow!("Skim hasn't sent anything"));
         };
@@ -1091,14 +1087,14 @@ impl Status {
         Ok(())
     }
 
-    pub fn first_line_action(&mut self, col: u16) -> Result<()> {
+    pub fn first_line_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
         if matches!(self.selected_non_mut().display_mode, Display::Preview) {
             return Ok(());
         }
         let is_right = self.index == 1;
         let first_line = FirstLine::new(self, self.selected_non_mut())?;
         let action = first_line.action(col as usize, is_right);
-        action.matcher(self)
+        action.matcher(self, binds)
     }
 
     /// Change permission of the flagged files.

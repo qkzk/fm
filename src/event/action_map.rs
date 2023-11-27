@@ -2,6 +2,7 @@ use anyhow::Result;
 use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::app::Status;
+use crate::config::Bindings;
 use crate::event::{EventAction, LeaveMode};
 
 /// Different kind of action which can be mapped to a key.
@@ -108,7 +109,7 @@ pub enum ActionMap {
 impl ActionMap {
     /// Makes the junction between `Actions` and `Events`.
     /// Every Action links to a different `EventExec` method.
-    pub fn matcher(&self, status: &mut Status) -> Result<()> {
+    pub fn matcher(&self, status: &mut Status, binds: &Bindings) -> Result<()> {
         let current_tab = status.selected();
         match self {
             ActionMap::Back => EventAction::back(current_tab),
@@ -131,17 +132,17 @@ impl ActionMap {
             ActionMap::Ncdu => EventAction::ncdu(status),
             ActionMap::EncryptedDrive => EventAction::encrypted_drive(status),
             ActionMap::End => EventAction::end(status),
-            ActionMap::Enter => EventAction::enter(status),
+            ActionMap::Enter => EventAction::enter(status, binds),
             ActionMap::Exec => EventAction::exec(current_tab),
             ActionMap::Filter => EventAction::filter(current_tab),
             ActionMap::FlagAll => EventAction::flag_all(status),
             ActionMap::FuzzyFind => EventAction::fuzzyfind(status),
-            ActionMap::FuzzyFindHelp => EventAction::fuzzyfind_help(status),
+            ActionMap::FuzzyFindHelp => EventAction::fuzzyfind_help(status, binds),
             ActionMap::FuzzyFindLine => EventAction::fuzzyfind_line(status),
             ActionMap::GoRoot => EventAction::go_root(status),
             ActionMap::GoStart => EventAction::go_start(status),
             ActionMap::Goto => EventAction::goto(current_tab),
-            ActionMap::Help => EventAction::help(status),
+            ActionMap::Help => EventAction::help(status, binds),
             ActionMap::History => EventAction::history(current_tab),
             ActionMap::Home => EventAction::home(status),
             ActionMap::Jump => EventAction::jump(status),

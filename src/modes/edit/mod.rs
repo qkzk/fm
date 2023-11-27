@@ -39,7 +39,7 @@ pub use decompress::{decompress_gz, decompress_xz, decompress_zip};
 pub use decompress::{list_files_tar, list_files_zip};
 pub use filter::FilterKind;
 pub use flagged::Flagged;
-pub use help::Help;
+pub use help::help_string;
 pub use history::History;
 pub use input::Input;
 pub use iso::IsoDevice;

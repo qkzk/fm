@@ -38,7 +38,7 @@ impl EventDispatcher {
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
                 EventAction::select_pane(status, col)?;
                 if row < ContentWindow::HEADER_ROWS as u16 {
-                    EventAction::click_first_line(col, status)?;
+                    EventAction::click_first_line(col, status, &self.binds)?;
                 } else {
                     let _ = EventAction::click_files(status, row, col);
                 }
@@ -66,7 +66,7 @@ impl EventDispatcher {
 
     fn key_matcher(&self, status: &mut Status, key: Key) -> Result<()> {
         match self.binds.get(&key) {
-            Some(action) => action.matcher(status),
+            Some(action) => action.matcher(status, &self.binds),
             None => Ok(()),
         }
     }

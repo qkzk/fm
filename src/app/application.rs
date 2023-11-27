@@ -15,10 +15,9 @@ use crate::io::set_loggers;
 use crate::io::Display;
 use crate::io::Opener;
 use crate::log_info;
-use crate::modes::Help;
 
 /// Holds everything about the application itself.
-/// Most attributes holds an `Arc<tuiki::Term::term>`.
+/// Most attributes holds an `Arc<tuikit::Term::term>`.
 /// Dropping the instance of FM allows to write again to stdout.
 pub struct FM {
     /// Poll the event sent to the terminal by the user or the OS
@@ -26,11 +25,11 @@ pub struct FM {
     /// Associate the event to a method, modifing the status.
     event_dispatcher: EventDispatcher,
     /// Current status of the application. Mostly the filetrees
-    pub status: Status,
+    status: Status,
     /// Responsible for the display on screen.
     display: Display,
     /// Refresher is used to force a refresh when a file has been modified externally.
-    /// It send `Event::Key(Key::AltPageUp)` every 10 seconds.
+    /// It sends an `Event::Key(Key::AltPageUp)` every 10 seconds.
     /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
     refresher: Refresher,
 }
@@ -44,25 +43,27 @@ impl FM {
     /// a `Refresher`.
     /// It reads and drops the configuration from the config file.
     /// If the config can't be parsed, it exits with error code 1.
+    ///
+    /// # Errors
+    ///
+    /// May fail if the [`tuikit::prelude::term`] can't be started or crashes
     pub fn start() -> Result<Self> {
         set_loggers()?;
         let Ok(config) = load_config(CONFIG_PATH) else {
             exit_wrong_config()
         };
         log_info!(
-            "startfolder : {startfolder}",
+            "start folder: {startfolder}",
             startfolder = &START_FOLDER.display()
         );
         let term = Arc::new(init_term()?);
         let event_reader = EventReader::new(Arc::clone(&term));
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = Opener::new(&config.terminal);
-        let help = Help::from_keybindings(&config.binds, &opener)?.help;
         let display = Display::new(Arc::clone(&term));
         let status = Status::new(
             display.height()?,
             Arc::clone(&term),
-            help,
             opener,
             &config.settings,
         )?;
@@ -78,11 +79,19 @@ impl FM {
     }
 
     /// Return the last event received by the terminal
+    ///
+    /// # Errors
+    ///
+    /// May fail if the terminal crashes
     pub fn poll_event(&self) -> Result<Event> {
         self.event_reader.poll_event()
     }
 
     /// Force clear the display if the status requires it, then reset it in status.
+    ///
+    /// # Errors
+    ///
+    /// May fail if the terminal crashes
     pub fn force_clear_if_needed(&mut self) -> Result<()> {
         if self.status.force_clear {
             self.display.force_clear()?;
@@ -99,6 +108,11 @@ impl FM {
     }
 
     /// Display itself using its `display` attribute.
+    ///
+    /// # Errors
+    ///
+    /// May fail if the terminal crashes
+    /// The display itself may fail if it encounters unreadable file in preview mode
     pub fn display(&mut self) -> Result<()> {
         self.force_clear_if_needed()?;
         self.display.display_all(&self.status)
@@ -112,6 +126,11 @@ impl FM {
     /// Display the cursor,
     /// drop itself, which allow us to print normally afterward
     /// print the final path
+    ///
+    /// # Errors
+    ///
+    /// May fail if the terminal crashes
+    /// May also fail if the thread running in [`crate::application::Refresher`] crashed
     pub fn quit(self) -> Result<()> {
         clear_tmp_file();
         self.display.show_cursor()?;

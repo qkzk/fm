@@ -3,12 +3,11 @@ use strfmt::strfmt;
 
 use crate::config::Bindings;
 use crate::io::Opener;
-use crate::log_info;
 
 /// Help message to be displayed when help key is pressed.
 /// Default help key is `'h'`.
 
-static HELP_TO_FORMAT: &str = "
+const HELP_TO_FORMAT: &'static str = "
 {Quit:<10}:      quit
 {Help:<10}:      help
 
@@ -122,7 +121,7 @@ Control MOC from your TUI
 {MocpClearPlaylist:<10}:      MOCP: Clear the playlist
 ";
 
-const CUSTOM_HELP: &str = "
+const CUSTOM_HELP: &'static str = "
 - CUSTOM ACTIONS -
 %s: the selected file,
 %f: the flagged files,
@@ -131,38 +130,28 @@ const CUSTOM_HELP: &str = "
 %p: the full path of the current directory.
 ";
 
-/// Holds the help string, formated with current keybindings.
-pub struct Help {
-    /// The help string, formated with current keybindings.
-    pub help: String,
+/// Creates the help `String` from keybindings.
+/// If multiple keybindings are bound to the same action, the last one
+/// is displayed.
+///
+/// # Errors
+///
+/// It may fail if the help string can't be formated properly.
+/// It should never fail since every Keybinding should be set.
+pub fn help_string(binds: &Bindings, opener: &Opener) -> Result<String> {
+    let mut keybind_reversed = binds.keybind_reversed();
+    keybind_reversed.extend(opener.association.as_map_of_strings());
+    let mut help = strfmt(HELP_TO_FORMAT, &keybind_reversed)?;
+    help = complete_with_custom_binds(&binds.custom, help);
+    Ok(help)
 }
 
-impl Help {
-    /// Creates an Help instance from keybindings.
-    /// If multiple keybindings are bound to the same action, the last one
-    /// is displayed.
-    ///
-    /// # Errors
-    ///
-    /// It may fail if the help string can't be formated properly.
-    /// It should never fail since every Keybinding should be set.
-    pub fn from_keybindings(binds: &Bindings, opener: &Opener) -> Result<Self> {
-        let mut strings = binds.keybind_reversed();
-        let openers = opener.association.as_map_of_strings();
-        log_info!("{openers:?}");
-        strings.extend(openers);
-        let mut help = strfmt(HELP_TO_FORMAT, &strings)?;
-        help = Self::complete_with_custom_binds(&binds.custom, help);
-        Ok(Self { help })
-    }
-
-    fn complete_with_custom_binds(custom_binds: &Option<Vec<String>>, mut help: String) -> String {
-        if let Some(customs) = &custom_binds {
-            help.push_str(CUSTOM_HELP);
-            for custom in customs {
-                help.push_str(custom);
-            }
+fn complete_with_custom_binds(custom_binds: &Option<Vec<String>>, mut help: String) -> String {
+    if let Some(customs) = &custom_binds {
+        help.push_str(CUSTOM_HELP);
+        for custom in customs {
+            help.push_str(custom);
         }
-        help
     }
+    help
 }

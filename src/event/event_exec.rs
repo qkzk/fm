@@ -14,6 +14,7 @@ use crate::common::{is_program_in_path, open_in_current_neovim, string_to_path};
 use crate::common::{
     CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN, SSHFS_EXECUTABLE,
 };
+use crate::config::Bindings;
 use crate::config::START_FOLDER;
 use crate::event::ActionMap;
 use crate::io::execute_and_capture_output_with_path;
@@ -24,6 +25,7 @@ use crate::io::{
 };
 use crate::log_info;
 use crate::log_line;
+use crate::modes::help_string;
 use crate::modes::lsblk_and_cryptsetup_installed;
 use crate::modes::Display;
 use crate::modes::FilterKind;
@@ -223,9 +225,10 @@ impl EventAction {
 
     /// Display the help which can be navigated and displays the configrable
     /// binds.
-    pub fn help(status: &mut Status) -> Result<()> {
+    pub fn help(status: &mut Status, binds: &Bindings) -> Result<()> {
+        let help = help_string(binds, &status.opener)?;
         status.selected().set_display_mode(Display::Preview);
-        status.selected().preview = Preview::help(&status.help);
+        status.selected().preview = Preview::help(&help);
         let len = status.selected_non_mut().preview.len();
         status.selected().window.reset(len);
         Ok(())
@@ -658,7 +661,7 @@ impl EventAction {
     /// related action.
     /// In normal mode, it will open the file.
     /// Reset to normal mode afterwards.
-    pub fn enter(status: &mut Status) -> Result<()> {
+    pub fn enter(status: &mut Status, binds: &Bindings) -> Result<()> {
         let mut must_refresh = true;
         let mut must_reset_mode = true;
         match status.selected_non_mut().edit_mode {
@@ -710,7 +713,7 @@ impl EventAction {
                 LeaveMode::search(status)?
             }
             Edit::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status)?,
-            Edit::InputCompleted(InputCompleted::Command) => LeaveMode::command(status)?,
+            Edit::InputCompleted(InputCompleted::Command) => LeaveMode::command(status, binds)?,
             Edit::NeedConfirmation(_)
             | Edit::InputCompleted(InputCompleted::Nothing)
             | Edit::InputSimple(InputSimple::Sort) => (),
@@ -770,8 +773,9 @@ impl EventAction {
     }
 
     /// Start a fuzzy find for a keybinding with skim.
-    pub fn fuzzyfind_help(status: &mut Status) -> Result<()> {
-        status.skim_find_keybinding_and_run()
+    pub fn fuzzyfind_help(status: &mut Status, binds: &Bindings) -> Result<()> {
+        let help = help_string(binds, &status.opener)?;
+        status.skim_find_keybinding_and_run(help)
     }
 
     /// Copy the filename of the selected file in normal mode.
@@ -1107,8 +1111,8 @@ impl EventAction {
         status.select_pane(col)
     }
 
-    pub fn click_first_line(col: u16, status: &mut Status) -> Result<()> {
-        status.first_line_action(col)
+    pub fn click_first_line(col: u16, status: &mut Status, binds: &Bindings) -> Result<()> {
+        status.first_line_action(col, binds)
     }
 
     pub fn lazygit(status: &mut Status) -> Result<()> {
@@ -1439,12 +1443,12 @@ impl LeaveMode {
     /// Execute the selected command.
     /// Some commands does nothing as they require to be executed from a specific
     /// context.
-    pub fn command(status: &mut Status) -> Result<()> {
+    pub fn command(status: &mut Status, binds: &Bindings) -> Result<()> {
         let command_str = status.selected_non_mut().completion.current_proposition();
         let Ok(command) = ActionMap::from_str(command_str) else {
             return Ok(());
         };
-        command.matcher(status)
+        command.matcher(status, binds)
     }
 
     /// A right click opens a file or a directory.
