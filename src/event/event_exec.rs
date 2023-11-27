@@ -477,7 +477,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Bulk) => status.menu.bulk_prev(),
             Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.prev(),
             Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.prev(),
-            Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.prev(),
+            Edit::Navigate(Navigate::EncryptedDrive) => status.menu.encrypted_devices.prev(),
             Edit::InputCompleted(_) => tab.completion.prev(),
             _ => (),
         };
@@ -517,7 +517,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Bulk) => status.menu.bulk_next(),
             Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.next(),
             Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.next(),
-            Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
+            Edit::Navigate(Navigate::EncryptedDrive) => status.menu.encrypted_devices.next(),
             Edit::InputCompleted(_) => status.selected().completion.next(),
             _ => (),
         };
@@ -796,7 +796,7 @@ impl EventAction {
 
     /// Refresh the current view, reloading the files. Move the selection to top.
     pub fn refreshview(status: &mut Status) -> Result<()> {
-        status.encrypted_devices.update()?;
+        status.menu.encrypted_devices.update()?;
         status.refresh_status()?;
         status.update_second_pane_for_preview()
     }
@@ -944,8 +944,8 @@ impl EventAction {
             log_line!("lsblk and cryptsetup must be installed.");
             return Ok(());
         }
-        if status.encrypted_devices.is_empty() {
-            status.encrypted_devices.update()?;
+        if status.menu.encrypted_devices.is_empty() {
+            status.menu.encrypted_devices.update()?;
         }
         status
             .selected()

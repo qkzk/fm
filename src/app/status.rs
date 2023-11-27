@@ -20,12 +20,15 @@ use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
 use crate::io::{Args, Kind};
 use crate::io::{Internal, Opener};
 use crate::modes::regex_matcher;
+use crate::modes::BlockDeviceAction;
 use crate::modes::ContentWindow;
 use crate::modes::FileKind;
 use crate::modes::Flagged;
 use crate::modes::IsoDevice;
 use crate::modes::Marks;
 use crate::modes::Menu;
+use crate::modes::MountCommands;
+use crate::modes::MountRepr;
 use crate::modes::Permissions;
 use crate::modes::Preview;
 use crate::modes::SelectableContent;
@@ -35,9 +38,7 @@ use crate::modes::Trash;
 use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, CopyMove};
-use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::modes::{Display, Edit, InputSimple, NeedConfirmation};
-use crate::modes::{MountCommands, MountRepr};
 use crate::modes::{PasswordKind, PasswordUsage};
 use crate::{log_info, log_line};
 
@@ -82,10 +83,6 @@ pub struct Status {
     pub opener: Opener,
     /// The trash
     pub trash: Trash,
-    /// Encrypted devices opener
-    pub encrypted_devices: CryptoDeviceOpener,
-    /// Iso mounter. Set to None by default, dropped ASAP
-    pub iso_device: Option<IsoDevice>,
 
     skimer: Option<Result<Skimer>>,
 
@@ -109,10 +106,8 @@ impl Status {
         let display_metadata = Self::parse_display_full(args.simple, settings.full);
         let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
-        let encrypted_devices = CryptoDeviceOpener::default();
         let trash = Trash::new()?;
         let force_clear = false;
-        let iso_device = None;
         let flagged = Flagged::default();
         let marks = Marks::read_from_config_file();
         let skimer = None;
@@ -143,10 +138,8 @@ impl Status {
             display_metadata,
             opener,
             trash,
-            encrypted_devices,
             nvim_server,
             force_clear,
-            iso_device,
             menu,
         })
     }
@@ -523,7 +516,7 @@ impl Status {
 
     /// Updates the encrypted devices
     pub fn read_encrypted_devices(&mut self) -> Result<()> {
-        self.encrypted_devices.update()?;
+        self.menu.encrypted_devices.update()?;
         Ok(())
     }
 
@@ -639,9 +632,9 @@ impl Status {
     }
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
-        if self.iso_device.is_none() {
+        if self.menu.iso_device.is_none() {
             let path = path_to_string(&self.selected_non_mut().selected()?.path);
-            self.iso_device = Some(IsoDevice::from_path(path));
+            self.menu.iso_device = Some(IsoDevice::from_path(path));
         }
         Ok(())
     }
@@ -654,7 +647,7 @@ impl Status {
             self.ask_password(Some(BlockDeviceAction::MOUNT), PasswordUsage::ISO)?;
         } else {
             self.ensure_iso_device_is_some()?;
-            let Some(ref mut iso_device) = self.iso_device else {
+            let Some(ref mut iso_device) = self.menu.iso_device else {
                 return Ok(());
             };
             if iso_device.mount(&current_username()?, &mut self.menu.password_holder)? {
@@ -663,7 +656,7 @@ impl Status {
                 let path = iso_device.mountpoints.clone().context("no mount point")?;
                 self.selected().cd(&path)?;
             };
-            self.iso_device = None;
+            self.menu.iso_device = None;
         };
 
         Ok(())
@@ -672,7 +665,7 @@ impl Status {
     /// Currently unused.
     /// Umount an iso device.
     pub fn umount_iso_drive(&mut self) -> Result<()> {
-        if let Some(ref mut iso_device) = self.iso_device {
+        if let Some(ref mut iso_device) = self.menu.iso_device {
             if !self.menu.password_holder.has_sudo() {
                 self.ask_password(Some(BlockDeviceAction::UMOUNT), PasswordUsage::ISO)?;
             } else {
@@ -686,7 +679,7 @@ impl Status {
     /// passphrase.
     /// Those passwords are always dropped immediatly after the commands are run.
     pub fn mount_encrypted_drive(&mut self) -> Result<()> {
-        let Some(device) = self.encrypted_devices.selected() else {
+        let Some(device) = self.menu.encrypted_devices.selected() else {
             return Ok(());
         };
         if device.is_mounted() {
@@ -703,14 +696,15 @@ impl Status {
                 PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP),
             )
         } else {
-            self.encrypted_devices
+            self.menu
+                .encrypted_devices
                 .mount_selected(&mut self.menu.password_holder)
         }
     }
 
     /// Move to the selected crypted device mount point.
     pub fn go_to_encrypted_drive(&mut self) -> Result<()> {
-        let Some(device) = self.encrypted_devices.selected() else {
+        let Some(device) = self.menu.encrypted_devices.selected() else {
             return Ok(());
         };
         if !device.is_mounted() {
@@ -728,7 +722,7 @@ impl Status {
     /// Unmount the selected device.
     /// Will ask first for a sudo password which is immediatly forgotten.
     pub fn umount_encrypted_drive(&mut self) -> Result<()> {
-        let Some(device) = self.encrypted_devices.selected() else {
+        let Some(device) = self.menu.encrypted_devices.selected() else {
             return Ok(());
         };
         if !device.is_mounted() {
@@ -740,7 +734,8 @@ impl Status {
                 PasswordUsage::CRYPTSETUP(PasswordKind::SUDO),
             )
         } else {
-            self.encrypted_devices
+            self.menu
+                .encrypted_devices
                 .umount_selected(&mut self.menu.password_holder)
         }
     }

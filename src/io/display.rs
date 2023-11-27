@@ -818,7 +818,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_encrypted_drive(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.draw_mountable_devices(&self.status.encrypted_devices, canvas)
+        self.draw_mountable_devices(&self.status.menu.encrypted_devices, canvas)
     }
 
     fn draw_removable(&self, canvas: &mut dyn Canvas) -> Result<()> {

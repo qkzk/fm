@@ -4,6 +4,8 @@ use crate::common::TUIS_PATH;
 use crate::modes::Bulk;
 use crate::modes::CliApplications;
 use crate::modes::Compresser;
+use crate::modes::CryptoDeviceOpener;
+use crate::modes::IsoDevice;
 use crate::modes::MountCommands;
 use crate::modes::PasswordHolder;
 use crate::modes::RemovableDevices;
@@ -25,6 +27,10 @@ pub struct Menu {
     pub tui_applications: TuiApplications,
     /// Bulk rename
     pub bulk: Option<Bulk>,
+    /// Iso mounter. Set to None by default, dropped ASAP
+    pub iso_device: Option<IsoDevice>,
+    /// Encrypted devices opener
+    pub encrypted_devices: CryptoDeviceOpener,
 }
 
 impl Default for Menu {
@@ -37,6 +43,8 @@ impl Default for Menu {
             removable_devices: None,
             password_holder: PasswordHolder::default(),
             bulk: None,
+            iso_device: None,
+            encrypted_devices: CryptoDeviceOpener::default(),
         }
     }
 }
