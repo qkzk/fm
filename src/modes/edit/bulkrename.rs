@@ -22,24 +22,28 @@ pub struct Bulkrename<'a> {
 }
 
 impl<'a> Bulkrename<'a> {
-    /// Creates a new Bulkrename instance.
-    pub fn renamer(original_filepath: Vec<&'a Path>) -> Result<Self> {
-        let temp_file = Self::generate_random_filepath()?;
-        Ok(Self {
+    /// Creates a new renamer
+    ///
+    /// # Errors
+    ///
+    /// It may fail if the can't generate a random filepath.
+    pub fn renamer(original_filepath: Vec<&'a Path>) -> Self {
+        let temp_file = Self::generate_random_filepath();
+        Self {
             original_filepath: Some(original_filepath),
             parent_dir: None,
             temp_file,
-        })
+        }
     }
 
-    pub fn creator(path_str: &'a str) -> Result<Self> {
-        let temp_file = Self::generate_random_filepath()?;
+    pub fn creator(path_str: &'a str) -> Self {
+        let temp_file = Self::generate_random_filepath();
         log_info!("created {temp_file:?}");
-        Ok(Self {
+        Self {
             original_filepath: None,
             parent_dir: Some(path_str),
             temp_file,
-        })
+        }
     }
 
     /// Rename the files.
@@ -89,10 +93,10 @@ impl<'a> Bulkrename<'a> {
         Ok(std::fs::metadata(filepath)?.modified()?)
     }
 
-    fn generate_random_filepath() -> Result<PathBuf> {
+    fn generate_random_filepath() -> PathBuf {
         let mut filepath = PathBuf::from(&TMP_FOLDER_PATH);
         filepath.push(random_name());
-        Ok(filepath)
+        filepath
     }
 
     fn create_random_file(&self) -> Result<()> {
@@ -232,10 +236,15 @@ impl Bulk {
     /// Execute the selected bulk method depending on the index.
     /// First method is a rename of selected files,
     /// Second is the creation of files or folders,
+    ///
+    /// # Errors
+    ///
+    /// renamer may fail if we can't rename a file (permissions...)
+    /// creator may fail if we can't write in current directory.
     pub fn execute_bulk(&self, status: &Status) -> Result<()> {
         match self.index {
-            0 => Bulkrename::renamer(status.filtered_flagged_files())?.rename(&status.opener),
-            1 => Bulkrename::creator(status.selected_path_str())?.create_files(&status.opener),
+            0 => Bulkrename::renamer(status.flagged_in_current_dir()).rename(&status.opener),
+            1 => Bulkrename::creator(status.selected_path_str()).create_files(&status.opener),
             _ => Ok(()),
         }
     }

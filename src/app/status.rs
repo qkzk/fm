@@ -404,9 +404,9 @@ impl Status {
     /// directory before calling Bulkrename.
     /// It may be confusing since the same filename can be used in
     /// different places.
-    pub fn filtered_flagged_files(&self) -> Vec<&Path> {
+    pub fn flagged_in_current_dir(&self) -> Vec<&Path> {
         self.flagged
-            .filtered(&self.selected_non_mut().path_content.path)
+            .in_current_dir(&self.selected_non_mut().path_content.path)
     }
 
     /// Execute a move or a copy of the flagged files to current directory.
