@@ -11,52 +11,17 @@ use crate::io::Opener;
 use crate::log_line;
 use crate::{impl_selectable_content, log_info};
 
-pub struct BulkRenamer<'a> {
-    original_filepath: Option<Vec<&'a Path>>,
+struct Renamer<'a> {
+    original_filepath: Vec<&'a Path>,
     temp_file: PathBuf,
 }
 
-pub struct BulkCreator<'a> {
-    parent_dir: Option<&'a str>,
-    temp_file: PathBuf,
-}
-
-pub enum BulkAction<'a> {
-    Renamer(BulkRenamer<'a>),
-    Creator(BulkCreator<'a>),
-}
-
-/// Struct holding informations about files about to be renamed.
-/// We only need to know which are the original filenames and which
-/// temporary file is used to modify them.
-/// This feature is a poor clone of ranger's one.
-pub struct Bulkrename<'a> {
-    original_filepath: Option<Vec<&'a Path>>,
-    parent_dir: Option<&'a str>,
-    temp_file: PathBuf,
-}
-
-impl<'a> Bulkrename<'a> {
+impl<'a> Renamer<'a> {
     /// Creates a new renamer
-    ///
-    /// # Errors
-    ///
-    /// It may fail if the can't generate a random filepath.
-    pub fn renamer(original_filepath: Vec<&'a Path>) -> Self {
-        let temp_file = Self::generate_random_filepath();
+    fn new(original_filepath: Vec<&'a Path>) -> Self {
+        let temp_file = generate_random_filepath();
         Self {
-            original_filepath: Some(original_filepath),
-            parent_dir: None,
-            temp_file,
-        }
-    }
-
-    pub fn creator(path_str: &'a str) -> Self {
-        let temp_file = Self::generate_random_filepath();
-        log_info!("created {temp_file:?}");
-        Self {
-            original_filepath: None,
-            parent_dir: Some(path_str),
+            original_filepath,
             temp_file,
         }
     }
@@ -67,117 +32,43 @@ impl<'a> Bulkrename<'a> {
     /// Filenames are sanitized before processing.
     fn rename(&mut self, opener: &Opener) -> Result<()> {
         self.write_original_names()?;
-        let original_modification = Self::get_modified_date(&self.temp_file)?;
-        self.open_temp_file_with_editor(opener)?;
+        let original_modification = get_modified_date(&self.temp_file)?;
+        open_temp_file_with_editor(&self.temp_file, opener)?;
 
-        Self::watch_modification_in_thread(&self.temp_file, original_modification)?;
+        watch_modification_in_thread(&self.temp_file, original_modification)?;
 
-        self.rename_all(self.get_new_filenames()?)?;
-        self.delete_temp_file()
-    }
+        let new_filenames = get_new_filenames(&self.temp_file)?;
 
-    fn create_files(&mut self, opener: &Opener) -> Result<()> {
-        self.create_random_file()?;
-        let original_modification = Self::get_modified_date(&self.temp_file)?;
-        self.open_temp_file_with_editor(opener)?;
-
-        Self::watch_modification_in_thread(&self.temp_file, original_modification)?;
-
-        self.create_all_files(&self.get_new_filenames()?)?;
-        self.delete_temp_file()
-    }
-
-    fn watch_modification_in_thread(
-        filepath: &Path,
-        original_modification: SystemTime,
-    ) -> Result<()> {
-        let filepath = filepath.to_owned();
-        let handle = thread::spawn(move || loop {
-            if Self::is_file_modified(&filepath, original_modification).unwrap_or(true) {
-                break;
-            }
-            thread::sleep(Duration::from_millis(100));
-        });
-        match handle.join() {
-            Ok(handle) => Ok(handle),
-            Err(e) => Err(anyhow!("watching thread failed {e:?}")),
+        if new_filenames.len() < self.original_filepath.len() {
+            std::fs::remove_file(&self.temp_file)?;
+            return Err(anyhow!("new filenames: not enough filenames"));
         }
-    }
 
-    fn get_modified_date(filepath: &Path) -> Result<SystemTime> {
-        Ok(std::fs::metadata(filepath)?.modified()?)
-    }
-
-    fn generate_random_filepath() -> PathBuf {
-        let mut filepath = PathBuf::from(&TMP_FOLDER_PATH);
-        filepath.push(random_name());
-        filepath
-    }
-
-    fn create_random_file(&self) -> Result<()> {
-        std::fs::File::create(&self.temp_file)?;
+        self.rename_all(new_filenames)?;
+        std::fs::remove_file(&self.temp_file)?;
         Ok(())
     }
 
     fn write_original_names(&self) -> Result<()> {
         let mut file = std::fs::File::create(&self.temp_file)?;
+        log_info!("created {temp_file}", temp_file = self.temp_file.display());
 
-        for path in self.original_filepath.clone().unwrap().iter() {
+        for path in &self.original_filepath {
             let Some(os_filename) = path.file_name() else {
                 return Ok(());
             };
             let Some(filename) = os_filename.to_str() else {
                 return Ok(());
             };
-            let b = filename.as_bytes();
-            file.write_all(b)?;
+            file.write_all(filename.as_bytes())?;
             file.write_all(&[b'\n'])?;
         }
         Ok(())
     }
 
-    fn open_temp_file_with_editor(&self, opener: &Opener) -> Result<()> {
-        log_info!("opening tempory file {:?}", self.temp_file);
-        opener.open_single(&self.temp_file)
-    }
-
-    fn is_file_modified(path: &Path, original_modification: std::time::SystemTime) -> Result<bool> {
-        let last_modification = Self::get_modified_date(path)?;
-        Ok(last_modification > original_modification)
-    }
-
-    fn get_new_filenames(&self) -> Result<Vec<String>> {
-        let file = std::fs::File::open(&self.temp_file)?;
-        let reader = std::io::BufReader::new(file);
-
-        let new_names: Vec<String> = reader
-            .lines()
-            .flatten()
-            .map(|line| line.trim().to_owned())
-            .filter(|line| !line.is_empty())
-            .collect();
-        if let Some(original_filepath) = self.original_filepath.clone() {
-            if new_names.len() < original_filepath.len() {
-                return Err(anyhow!("new filenames: not enough filenames"));
-            }
-        }
-        Ok(new_names)
-    }
-
-    pub fn delete_temp_file(&self) -> Result<()> {
-        std::fs::remove_file(&self.temp_file)?;
-        Ok(())
-    }
-
     fn rename_all(&self, new_filenames: Vec<String>) -> Result<()> {
         let mut counter = 0;
-        for (path, filename) in self
-            .original_filepath
-            .clone()
-            .unwrap()
-            .iter()
-            .zip(new_filenames.iter())
-        {
+        for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
             let new_name = sanitize_filename::sanitize(filename);
             self.rename_file(path, &new_name)?;
             counter += 1;
@@ -187,10 +78,45 @@ impl<'a> Bulkrename<'a> {
         Ok(())
     }
 
+    fn rename_file(&self, path: &Path, filename: &str) -> Result<()> {
+        let mut parent = PathBuf::from(path);
+        parent.pop();
+        std::fs::rename(path, parent.join(filename))?;
+        Ok(())
+    }
+}
+
+struct Creator<'a> {
+    parent_dir: &'a str,
+    temp_file: PathBuf,
+}
+
+impl<'a> Creator<'a> {
+    fn new(path_str: &'a str) -> Self {
+        let temp_file = generate_random_filepath();
+        Self {
+            parent_dir: path_str,
+            temp_file,
+        }
+    }
+
+    fn create_files(&mut self, opener: &Opener) -> Result<()> {
+        create_random_file(&self.temp_file)?;
+        log_info!("created {temp_file}", temp_file = self.temp_file.display());
+        let original_modification = get_modified_date(&self.temp_file)?;
+        open_temp_file_with_editor(&self.temp_file, opener)?;
+
+        watch_modification_in_thread(&self.temp_file, original_modification)?;
+
+        self.create_all_files(&get_new_filenames(&self.temp_file)?)?;
+        std::fs::remove_file(&self.temp_file)?;
+        Ok(())
+    }
+
     fn create_all_files(&self, new_filenames: &[String]) -> Result<()> {
         let mut counter = 0;
         for filename in new_filenames.iter() {
-            let mut new_path = std::path::PathBuf::from(self.parent_dir.unwrap());
+            let mut new_path = std::path::PathBuf::from(self.parent_dir);
             if !filename.ends_with('/') {
                 new_path.push(filename);
                 let Some(parent) = new_path.parent() else {
@@ -215,19 +141,57 @@ impl<'a> Bulkrename<'a> {
         log_line!("Bulk created {counter} files");
         Ok(())
     }
+}
 
-    fn rename_file(&self, path: &Path, filename: &str) -> Result<()> {
-        let mut parent = PathBuf::from(path);
-        parent.pop();
-        std::fs::rename(path, parent.join(filename))?;
-        Ok(())
+fn generate_random_filepath() -> PathBuf {
+    let mut filepath = PathBuf::from(&TMP_FOLDER_PATH);
+    filepath.push(random_name());
+    filepath
+}
+
+fn watch_modification_in_thread(filepath: &Path, original_modification: SystemTime) -> Result<()> {
+    let filepath = filepath.to_owned();
+    let handle = thread::spawn(move || loop {
+        if is_file_modified(&filepath, original_modification).unwrap_or(true) {
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    });
+    match handle.join() {
+        Ok(handle) => Ok(handle),
+        Err(e) => Err(anyhow!("watch thread failed {e:?}")),
     }
 }
 
-impl<'a> Drop for Bulkrename<'a> {
-    fn drop(&mut self) {
-        let _ = self.delete_temp_file();
-    }
+fn get_modified_date(filepath: &Path) -> Result<SystemTime> {
+    Ok(std::fs::metadata(filepath)?.modified()?)
+}
+
+fn create_random_file(temp_file: &Path) -> Result<()> {
+    std::fs::File::create(temp_file)?;
+    Ok(())
+}
+
+fn open_temp_file_with_editor(temp_file: &Path, opener: &Opener) -> Result<()> {
+    log_info!("opening tempory file {:?}", temp_file);
+    opener.open_single(temp_file)
+}
+
+fn is_file_modified(path: &Path, original_modification: std::time::SystemTime) -> Result<bool> {
+    Ok(get_modified_date(path)? > original_modification)
+}
+
+fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {
+    let file = std::fs::File::open(temp_file)?;
+    let reader = std::io::BufReader::new(file);
+
+    let new_names: Vec<String> = reader
+        .lines()
+        .flatten()
+        .map(|line| line.trim().to_owned())
+        .filter(|line| !line.is_empty())
+        .collect();
+    Ok(new_names)
 }
 
 pub struct Bulk {
@@ -239,8 +203,8 @@ impl Default for Bulk {
     fn default() -> Self {
         Self {
             content: vec![
-                "Rename files".to_owned(),
-                "New files or folders. End folder with a slash '/'".to_owned(),
+                "Rename files".to_string(),
+                "New files or folders. End folder with a slash '/'".to_string(),
             ],
             index: 0,
         }
@@ -256,12 +220,15 @@ impl Bulk {
     ///
     /// renamer may fail if we can't rename a file (permissions...)
     /// creator may fail if we can't write in current directory.
+    /// Both may fail if the current user can't write in /tmp, since
+    /// they create a temporary file.
     pub fn execute_bulk(&self, status: &Status) -> Result<()> {
         match self.index {
-            0 => Bulkrename::renamer(status.flagged_in_current_dir()).rename(&status.opener),
-            1 => Bulkrename::creator(status.selected_path_str()).create_files(&status.opener),
-            _ => Ok(()),
-        }
+            0 => Renamer::new(status.flagged_in_current_dir()).rename(&status.opener)?,
+            1 => Creator::new(status.selected_path_str()).create_files(&status.opener)?,
+            _ => (),
+        };
+        Ok(())
     }
 }
 
