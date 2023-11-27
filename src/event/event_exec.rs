@@ -46,7 +46,7 @@ pub struct EventAction {}
 impl EventAction {
     /// Remove every flag on files in this directory and others.
     pub fn clear_flags(status: &mut Status) -> Result<()> {
-        status.flagged.clear();
+        status.menu.flagged.clear();
         Ok(())
     }
 
@@ -57,7 +57,7 @@ impl EventAction {
             .content
             .iter()
             .for_each(|file| {
-                status.flagged.push(file.path.clone());
+                status.menu.flagged.push(file.path.clone());
             });
         Ok(())
     }
@@ -69,7 +69,7 @@ impl EventAction {
             .path_content
             .content
             .iter()
-            .for_each(|file| status.flagged.toggle(&file.path));
+            .for_each(|file| status.menu.flagged.toggle(&file.path));
         Ok(())
     }
 
@@ -87,8 +87,8 @@ impl EventAction {
     /// Enter JUMP mode, allowing to jump to any flagged file.
     /// Does nothing if no file is flagged.
     pub fn jump(status: &mut Status) -> Result<()> {
-        if !status.flagged.is_empty() {
-            status.flagged.index = 0;
+        if !status.menu.flagged.is_empty() {
+            status.menu.flagged.index = 0;
             status
                 .selected()
                 .set_edit_mode(Edit::Navigate(Navigate::Jump))
@@ -114,7 +114,7 @@ impl EventAction {
     }
     /// Creates a symlink of every flagged file to the current directory.
     pub fn symlink(status: &mut Status) -> Result<()> {
-        for original_file in status.flagged.content.iter() {
+        for original_file in status.menu.flagged.content.iter() {
             let filename = original_file
                 .as_path()
                 .file_name()
@@ -174,7 +174,7 @@ impl EventAction {
     }
 
     fn set_copy_paste(status: &mut Status, copy_or_move: NeedConfirmation) -> Result<()> {
-        if status.flagged.is_empty() {
+        if status.menu.flagged.is_empty() {
             return Ok(());
         }
         status
@@ -214,7 +214,7 @@ impl EventAction {
     /// A confirmation is then asked before deleting all the flagged files.
     /// If no file is flagged, flag the selected one before entering the mode.
     pub fn delete_file(status: &mut Status) -> Result<()> {
-        if status.flagged.is_empty() {
+        if status.menu.flagged.is_empty() {
             Self::toggle_flag(status)?;
         }
         status
@@ -295,7 +295,7 @@ impl EventAction {
     /// current tab multiple times. It may change in the future.
     /// Only files which use an external opener are supported.
     pub fn open_file(status: &mut Status) -> Result<()> {
-        if status.flagged.is_empty() {
+        if status.menu.flagged.is_empty() {
             status.open_selected_file()
         } else {
             status.open_flagged_files()
@@ -375,13 +375,13 @@ impl EventAction {
             return Ok(());
         };
         let nvim_server = status.nvim_server.clone();
-        if status.flagged.is_empty() {
+        if status.menu.flagged.is_empty() {
             let Ok(fileinfo) = status.selected_non_mut().selected() else {
                 return Ok(());
             };
             open_in_current_neovim(&fileinfo.path, &nvim_server);
         } else {
-            let flagged = status.flagged.content.clone();
+            let flagged = status.menu.flagged.content.clone();
             for file_path in flagged.iter() {
                 open_in_current_neovim(file_path, &nvim_server)
             }
@@ -468,7 +468,7 @@ impl EventAction {
         let tab = status.selected();
         match tab.edit_mode {
             Edit::Nothing => Self::move_display_up(status)?,
-            Edit::Navigate(Navigate::Jump) => status.flagged.prev(),
+            Edit::Navigate(Navigate::Jump) => status.menu.flagged.prev(),
             Edit::Navigate(Navigate::History) => tab.history.prev(),
             Edit::Navigate(Navigate::Trash) => status.menu.trash.prev(),
             Edit::Navigate(Navigate::Shortcut) => tab.shortcut.prev(),
@@ -508,7 +508,7 @@ impl EventAction {
     pub fn move_down(status: &mut Status) -> Result<()> {
         match status.selected().edit_mode {
             Edit::Nothing => Self::move_display_down(status)?,
-            Edit::Navigate(Navigate::Jump) => status.flagged.next(),
+            Edit::Navigate(Navigate::Jump) => status.menu.flagged.next(),
             Edit::Navigate(Navigate::History) => status.selected().history.next(),
             Edit::Navigate(Navigate::Trash) => status.menu.trash.next(),
             Edit::Navigate(Navigate::Shortcut) => status.selected().shortcut.next(),
@@ -834,14 +834,14 @@ impl EventAction {
             log_line!("{DIFF} isn't installed");
             return Ok(());
         }
-        if status.flagged.len() < 2 {
+        if status.menu.flagged.len() < 2 {
             return Ok(());
         };
         if let Display::Normal | Display::Tree = status.selected_non_mut().display_mode {
-            let first_path = &status.flagged.content[0]
+            let first_path = &status.menu.flagged.content[0]
                 .to_str()
                 .context("Couldn't parse filename")?;
-            let second_path = &status.flagged.content[1]
+            let second_path = &status.menu.flagged.content[1]
                 .to_str()
                 .context("Couldn't parse filename")?;
             status.selected().preview = Preview::diff(first_path, second_path)?;
@@ -874,15 +874,15 @@ impl EventAction {
     /// it is moved there.
     /// Else, nothing is done.
     pub fn trash_move_file(status: &mut Status) -> Result<()> {
-        if status.flagged.is_empty() {
+        if status.menu.flagged.is_empty() {
             Self::toggle_flag(status)?;
         }
 
         status.menu.trash.update()?;
-        for flagged in status.flagged.content.iter() {
+        for flagged in status.menu.flagged.content.iter() {
             status.menu.trash.trash(flagged)?;
         }
-        status.flagged.clear();
+        status.menu.flagged.clear();
         status.selected().refresh_view()?;
         Ok(())
     }
@@ -1230,7 +1230,7 @@ impl LeaveMode {
     /// If the user selected a directory, we jump inside it.
     /// Otherwise, we jump to the parent and select the file.
     pub fn jump(status: &mut Status) -> Result<()> {
-        let Some(jump_target) = status.flagged.selected() else {
+        let Some(jump_target) = status.menu.flagged.selected() else {
             return Ok(());
         };
         let jump_target = jump_target.to_owned();
@@ -1428,6 +1428,7 @@ impl LeaveMode {
         let here = &status.selected_non_mut().path_content.path;
         std::env::set_current_dir(here)?;
         let files_with_relative_paths: Vec<path::PathBuf> = status
+            .menu
             .flagged
             .content
             .iter()

@@ -236,7 +236,7 @@ impl<'a> WinMain<'a> {
         path: &std::path::Path,
         attr: &mut Attr,
     ) -> Result<()> {
-        if self.status.flagged.contains(path) {
+        if self.status.menu.flagged.contains(path) {
             attr.effect |= Effect::BOLD;
             canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
         }
@@ -690,7 +690,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::Compress => self.draw_compress(canvas),
             Navigate::EncryptedDrive => self.draw_encrypted_drive(canvas),
             Navigate::History => self.draw_history(canvas),
-            Navigate::Jump => self.draw_destination(canvas, &self.status.flagged),
+            Navigate::Jump => self.draw_destination(canvas, &self.status.menu.flagged),
             Navigate::Marks(_) => self.draw_marks(canvas),
             Navigate::RemovableDevices => self.draw_removable(canvas),
             Navigate::TuiApplication => self.draw_shell_menu(canvas),
@@ -882,7 +882,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_confirm_default(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let content = &self.status.flagged.content;
+        let content = &self.status.menu.flagged.content;
         for (row, path, attr) in enumerated_colored_iter!(content) {
             Self::draw_content_line(
                 canvas,

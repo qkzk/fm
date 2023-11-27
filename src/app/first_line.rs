@@ -149,7 +149,7 @@ impl FirstLine {
     }
 
     fn string_first_row_flags(status: &Status) -> String {
-        let nb_flagged = status.flagged.len();
+        let nb_flagged = status.menu.flagged.len();
         let flag_string = if nb_flagged > 1 { "flags" } else { "flag" };
         format!(" {nb_flagged} {flag_string} ",)
     }

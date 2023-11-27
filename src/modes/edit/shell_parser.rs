@@ -117,6 +117,7 @@ impl ShellCommandParser {
 
     fn flagged(status: &Status) -> Vec<String> {
         status
+            .menu
             .flagged
             .content
             .iter()

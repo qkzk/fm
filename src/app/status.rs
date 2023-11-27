@@ -23,7 +23,6 @@ use crate::modes::regex_matcher;
 use crate::modes::BlockDeviceAction;
 use crate::modes::ContentWindow;
 use crate::modes::FileKind;
-use crate::modes::Flagged;
 use crate::modes::IsoDevice;
 use crate::modes::Menu;
 use crate::modes::MountCommands;
@@ -73,8 +72,6 @@ pub struct Status {
     /// and their mount points.
     pub system_info: System,
 
-    /// The flagged files
-    pub flagged: Flagged,
     /// The opener used by the application.
     pub opener: Opener,
 
@@ -101,7 +98,6 @@ impl Status {
         let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let force_clear = false;
-        let flagged = Flagged::default();
         let skimer = None;
         let index = 0;
 
@@ -120,7 +116,6 @@ impl Status {
         Ok(Self {
             tabs,
             index,
-            flagged,
             skimer,
             term,
             dual_pane,
@@ -204,7 +199,7 @@ impl Status {
             let Ok(file) = tab.selected() else {
                 return;
             };
-            self.flagged.toggle(&file.path);
+            self.menu.flagged.toggle(&file.path);
             self.selected().normal_down_one_row();
         };
     }
@@ -333,7 +328,8 @@ impl Status {
     /// It may be confusing since the same filename can be used in
     /// different places.
     pub fn flagged_in_current_dir(&self) -> Vec<&Path> {
-        self.flagged
+        self.menu
+            .flagged
             .in_current_dir(&self.selected_non_mut().path_content.path)
     }
 
@@ -341,7 +337,7 @@ impl Status {
     /// A progress bar is displayed (invisible for small files) and a notification
     /// is sent every time, even for 0 bytes files...
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
-        let sources = self.flagged.content.clone();
+        let sources = self.menu.flagged.content.clone();
 
         let dest = &self.selected_non_mut().directory_of_selected()?;
 
@@ -351,24 +347,25 @@ impl Status {
 
     /// Empty the flagged files, reset the view of every tab.
     pub fn clear_flags_and_reset_view(&mut self) -> Result<()> {
-        self.flagged.clear();
+        self.menu.flagged.clear();
         self.reset_tabs_view()
     }
 
     /// Remove a flag file from Jump mode
     pub fn jump_remove_selected_flagged(&mut self) -> Result<()> {
-        self.flagged.remove_selected();
+        self.menu.flagged.remove_selected();
         Ok(())
     }
 
     /// Move the selected flagged file to the trash.
     pub fn trash_single_flagged(&mut self) -> Result<()> {
         let filepath = self
+            .menu
             .flagged
             .selected()
             .context("no flagged file")?
             .to_owned();
-        self.flagged.remove_selected();
+        self.menu.flagged.remove_selected();
         self.menu.trash.trash(&filepath)?;
         Ok(())
     }
@@ -376,11 +373,12 @@ impl Status {
     /// Delete the selected flagged file.
     pub fn delete_single_flagged(&mut self) -> Result<()> {
         let filepath = self
+            .menu
             .flagged
             .selected()
             .context("no flagged file")?
             .to_owned();
-        self.flagged.remove_selected();
+        self.menu.flagged.remove_selected();
         if filepath.is_dir() {
             std::fs::remove_dir_all(filepath)?;
         } else {
@@ -416,7 +414,7 @@ impl Status {
             Display::Tree => self.tabs[self.index].tree.paths(),
             Display::Preview => return Ok(()),
         };
-        regex_matcher(&input, &paths, &mut self.flagged)?;
+        regex_matcher(&input, &paths, &mut self.menu.flagged)?;
         Ok(())
     }
 
@@ -615,7 +613,7 @@ impl Status {
 
     /// Open every flagged file with their respective opener.
     pub fn open_flagged_files(&mut self) -> Result<()> {
-        self.opener.open_multiple(self.flagged.content())
+        self.opener.open_multiple(self.menu.flagged.content())
     }
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
@@ -862,8 +860,8 @@ impl Status {
 
     /// Recursively delete all flagged files.
     pub fn confirm_delete_files(&mut self) -> Result<()> {
-        let nb = self.flagged.len();
-        for pathbuf in self.flagged.content.iter() {
+        let nb = self.menu.flagged.len();
+        for pathbuf in self.menu.flagged.content.iter() {
             if pathbuf.is_dir() {
                 std::fs::remove_dir_all(pathbuf)?;
             } else {
@@ -1009,11 +1007,11 @@ impl Status {
     /// Nothing is done if the user typed nothing or an invalid permission like
     /// 955.
     pub fn chmod(&mut self) -> Result<()> {
-        if self.selected().input.is_empty() || self.flagged.is_empty() {
+        if self.selected().input.is_empty() || self.menu.flagged.is_empty() {
             return Ok(());
         }
         let input_permission = &self.selected().input.string();
-        Permissions::set_permissions_of_flagged(input_permission, &mut self.flagged)?;
+        Permissions::set_permissions_of_flagged(input_permission, &mut self.menu.flagged)?;
         self.reset_tabs_view()
     }
 
@@ -1023,7 +1021,7 @@ impl Status {
         }
         self.selected()
             .set_edit_mode(Edit::InputSimple(InputSimple::Chmod));
-        if self.flagged.is_empty() {
+        if self.menu.flagged.is_empty() {
             self.toggle_flag_for_selected();
         };
         Ok(())
