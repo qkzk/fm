@@ -38,7 +38,7 @@ use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::modes::{Display, Edit, InputSimple, NeedConfirmation};
 use crate::modes::{MountCommands, MountRepr};
-use crate::modes::{PasswordHolder, PasswordKind, PasswordUsage};
+use crate::modes::{PasswordKind, PasswordUsage};
 use crate::{log_info, log_line};
 
 use super::FirstLine;
@@ -88,8 +88,6 @@ pub struct Status {
     pub iso_device: Option<IsoDevice>,
     /// Bulk rename
     pub bulk: Option<Bulk>,
-    /// Hold password between their typing and usage
-    pub password_holder: PasswordHolder,
 
     skimer: Option<Result<Skimer>>,
 
@@ -118,7 +116,6 @@ impl Status {
         let force_clear = false;
         let bulk = None;
         let iso_device = None;
-        let password_holder = PasswordHolder::default();
         let flagged = Flagged::default();
         let marks = Marks::read_from_config_file();
         let skimer = None;
@@ -154,7 +151,6 @@ impl Status {
             force_clear,
             bulk,
             iso_device,
-            password_holder,
             menu,
         })
     }
@@ -679,14 +675,14 @@ impl Status {
     /// `/run/media/$CURRENT_USER/fm_iso`
     /// Ask a sudo password first if needed. It should always be the case.
     fn mount_iso_drive(&mut self) -> Result<()> {
-        if !self.password_holder.has_sudo() {
+        if !self.menu.password_holder.has_sudo() {
             self.ask_password(Some(BlockDeviceAction::MOUNT), PasswordUsage::ISO)?;
         } else {
             self.ensure_iso_device_is_some()?;
             let Some(ref mut iso_device) = self.iso_device else {
                 return Ok(());
             };
-            if iso_device.mount(&current_username()?, &mut self.password_holder)? {
+            if iso_device.mount(&current_username()?, &mut self.menu.password_holder)? {
                 log_info!("iso mounter mounted {iso_device:?}");
                 log_line!("iso : {}", iso_device.as_string()?);
                 let path = iso_device.mountpoints.clone().context("no mount point")?;
@@ -702,10 +698,10 @@ impl Status {
     /// Umount an iso device.
     pub fn umount_iso_drive(&mut self) -> Result<()> {
         if let Some(ref mut iso_device) = self.iso_device {
-            if !self.password_holder.has_sudo() {
+            if !self.menu.password_holder.has_sudo() {
                 self.ask_password(Some(BlockDeviceAction::UMOUNT), PasswordUsage::ISO)?;
             } else {
-                iso_device.umount(&current_username()?, &mut self.password_holder)?;
+                iso_device.umount(&current_username()?, &mut self.menu.password_holder)?;
             };
         }
         Ok(())
@@ -721,19 +717,19 @@ impl Status {
         if device.is_mounted() {
             return Ok(());
         }
-        if !self.password_holder.has_sudo() {
+        if !self.menu.password_holder.has_sudo() {
             self.ask_password(
                 Some(BlockDeviceAction::MOUNT),
                 PasswordUsage::CRYPTSETUP(PasswordKind::SUDO),
             )
-        } else if !self.password_holder.has_cryptsetup() {
+        } else if !self.menu.password_holder.has_cryptsetup() {
             self.ask_password(
                 Some(BlockDeviceAction::MOUNT),
                 PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP),
             )
         } else {
             self.encrypted_devices
-                .mount_selected(&mut self.password_holder)
+                .mount_selected(&mut self.menu.password_holder)
         }
     }
 
@@ -763,14 +759,14 @@ impl Status {
         if !device.is_mounted() {
             return Ok(());
         }
-        if !self.password_holder.has_sudo() {
+        if !self.menu.password_holder.has_sudo() {
             self.ask_password(
                 Some(BlockDeviceAction::UMOUNT),
                 PasswordUsage::CRYPTSETUP(PasswordKind::SUDO),
             )
         } else {
             self.encrypted_devices
-                .umount_selected(&mut self.password_holder)
+                .umount_selected(&mut self.menu.password_holder)
         }
     }
 
@@ -857,9 +853,9 @@ impl Status {
         self.selected().input.reset();
         match dest {
             PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP) => {
-                self.password_holder.set_cryptsetup(password)
+                self.menu.password_holder.set_cryptsetup(password)
             }
-            _ => self.password_holder.set_sudo(password),
+            _ => self.menu.password_holder.set_sudo(password),
         };
         self.selected().reset_edit_mode();
         self.dispatch_password(dest, action)
@@ -935,7 +931,7 @@ impl Status {
         self.selected().set_edit_mode(Edit::Nothing);
         reset_sudo_faillock()?;
         let Some(sudo_command) = &self.menu.sudo_command else {
-            self.password_holder.reset();
+            self.menu.password_holder.reset();
             drop_sudo_privileges()?;
             return Ok(());
         };
@@ -946,13 +942,14 @@ impl Status {
         }
         execute_sudo_command_with_password(
             &args[1..],
-            self.password_holder
+            self.menu
+                .password_holder
                 .sudo()
                 .as_ref()
                 .context("sudo password isn't set")?,
             self.selected_non_mut().directory_of_selected()?,
         )?;
-        self.password_holder.reset();
+        self.menu.password_holder.reset();
         drop_sudo_privileges()?;
         self.menu.sudo_command = None;
         self.refresh_status()

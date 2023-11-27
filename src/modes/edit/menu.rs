@@ -4,11 +4,14 @@ use crate::common::TUIS_PATH;
 use crate::modes::CliApplications;
 use crate::modes::Compresser;
 use crate::modes::MountCommands;
+use crate::modes::PasswordHolder;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
 use crate::modes::TuiApplications;
 
 pub struct Menu {
+    /// Hold password between their typing and usage
+    pub password_holder: PasswordHolder,
     /// Last sudo command ran
     pub sudo_command: Option<String>,
     /// Compression methods
@@ -29,6 +32,7 @@ impl Default for Menu {
             cli_applications: CliApplications::default(),
             tui_applications: TuiApplications::new(TUIS_PATH),
             removable_devices: None,
+            password_holder: PasswordHolder::default(),
         }
     }
 }
