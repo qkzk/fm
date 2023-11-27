@@ -100,8 +100,6 @@ pub struct Status {
     pub password_holder: PasswordHolder,
     /// MTP devices
     pub removable_devices: Option<RemovableDevices>,
-    /// Last sudo command ran
-    pub sudo_command: Option<String>,
 
     skimer: Option<Result<Skimer>>,
 
@@ -134,7 +132,6 @@ impl Status {
         let bulk = None;
         let iso_device = None;
         let password_holder = PasswordHolder::default();
-        let sudo_command = None;
         let flagged = Flagged::default();
         let marks = Marks::read_from_config_file();
         let skimer = None;
@@ -175,7 +172,6 @@ impl Status {
             iso_device,
             cli_applications,
             password_holder,
-            sudo_command,
             removable_devices,
             menu,
         })
@@ -849,7 +845,7 @@ impl Status {
         }
         let executable = args.remove(0);
         if is_sudo_command(&executable) {
-            self.sudo_command = Some(shell_command);
+            self.menu.sudo_command = Some(shell_command);
             self.ask_password(None, PasswordUsage::SUDOCOMMAND)?;
             Ok(false)
         } else {
@@ -983,13 +979,14 @@ impl Status {
     fn run_sudo_command(&mut self) -> Result<()> {
         self.selected().set_edit_mode(Edit::Nothing);
         reset_sudo_faillock()?;
-        let Some(sudo_command) = &self.sudo_command else {
+        let Some(sudo_command) = &self.menu.sudo_command else {
             self.password_holder.reset();
             drop_sudo_privileges()?;
             return Ok(());
         };
         let args = ShellCommandParser::new(sudo_command).compute(self)?;
         if args.is_empty() {
+            self.menu.sudo_command = None;
             return Ok(());
         }
         execute_sudo_command_with_password(
@@ -1002,7 +999,7 @@ impl Status {
         )?;
         self.password_holder.reset();
         drop_sudo_privileges()?;
-        self.sudo_command = None;
+        self.menu.sudo_command = None;
         self.refresh_status()
     }
 
