@@ -822,7 +822,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_removable(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        if let Some(removables) = &self.status.removable_devices {
+        if let Some(removables) = &self.status.menu.removable_devices {
             self.draw_mountable_devices(removables, canvas)?;
         }
         Ok(())

@@ -958,7 +958,7 @@ impl EventAction {
             log_line!("gio must be installed.");
             return Ok(());
         }
-        status.removable_devices = RemovableDevices::from_gio();
+        status.menu.removable_devices = RemovableDevices::from_gio();
         status
             .selected()
             .set_edit_mode(Edit::Navigate(Navigate::RemovableDevices));

@@ -27,7 +27,6 @@ use crate::modes::Marks;
 use crate::modes::Menu;
 use crate::modes::Permissions;
 use crate::modes::Preview;
-use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
 use crate::modes::ShellCommandParser;
 use crate::modes::Skimer;
@@ -91,8 +90,6 @@ pub struct Status {
     pub bulk: Option<Bulk>,
     /// Hold password between their typing and usage
     pub password_holder: PasswordHolder,
-    /// MTP devices
-    pub removable_devices: Option<RemovableDevices>,
 
     skimer: Option<Result<Skimer>>,
 
@@ -138,7 +135,6 @@ impl Status {
             Tab::new(&args, height, users, settings, &mount_points)?,
             Tab::new(&args, height, users2, settings, &mount_points)?,
         ];
-        let removable_devices = None;
         let menu = Menu::default();
         Ok(Self {
             tabs,
@@ -159,7 +155,6 @@ impl Status {
             bulk,
             iso_device,
             password_holder,
-            removable_devices,
             menu,
         })
     }
@@ -780,44 +775,17 @@ impl Status {
     }
 
     pub fn mount_removable(&mut self) -> Result<()> {
-        let Some(devices) = &mut self.removable_devices else {
-            return Ok(());
-        };
-        let Some(device) = devices.selected_mut() else {
-            return Ok(());
-        };
-        if device.is_mounted() {
-            return Ok(());
-        }
-        device.mount_simple()?;
-        Ok(())
+        self.menu.mount_removable()
     }
 
     pub fn umount_removable(&mut self) -> Result<()> {
-        let Some(devices) = &mut self.removable_devices else {
-            return Ok(());
-        };
-        let Some(device) = devices.selected_mut() else {
-            return Ok(());
-        };
-        if !device.is_mounted() {
-            return Ok(());
-        }
-        device.umount_simple()?;
-        Ok(())
+        self.menu.umount_removable()
     }
 
     pub fn go_to_removable(&mut self) -> Result<()> {
-        let Some(devices) = &self.removable_devices else {
+        let Some(path) = self.menu.find_removable_mount_point() else {
             return Ok(());
         };
-        let Some(device) = devices.selected() else {
-            return Ok(());
-        };
-        if !device.is_mounted() {
-            return Ok(());
-        }
-        let path = std::path::PathBuf::from(&device.path);
         self.selected().cd(&path)?;
         self.selected().refresh_view()
     }
