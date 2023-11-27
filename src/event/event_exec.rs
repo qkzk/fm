@@ -851,7 +851,7 @@ impl EventAction {
     /// Toggle between a full display (aka ls -lah) or a simple mode (only the
     /// filenames).
     pub fn toggle_display_full(status: &mut Status) -> Result<()> {
-        status.display_full = !status.display_full;
+        status.display_metadata = !status.display_metadata;
         Ok(())
     }
 

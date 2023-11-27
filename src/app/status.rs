@@ -59,22 +59,27 @@ pub struct Status {
     pub tabs: [Tab; 2],
     /// Index of the current selected tab
     pub index: usize,
+    /// do we display one or two tabs ?
+    pub dual_pane: bool,
+    /// do we display all info or only the filenames ?
+    pub display_metadata: bool,
+    /// use the second pane to preview auto
+    pub preview_second: bool,
+    /// NVIM RPC server address
+    pub nvim_server: String,
+
+    /// Do we have to clear the screen ?
+    pub force_clear: bool,
+    /// terminal
+    pub term: Arc<Term>,
+    /// Info about the running machine. Only used to detect disks
+    /// and their mount points.
+    pub system_info: System,
+
     /// The flagged files
     pub flagged: Flagged,
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
-    /// terminal
-    pub term: Arc<Term>,
-    skimer: Option<Result<Skimer>>,
-    /// do we display one or two tabs ?
-    pub dual_pane: bool,
-    /// Info about the running machine. Only used to detect disks
-    /// and their mount points.
-    pub system_info: System,
-    /// do we display all info or only the filenames ?
-    pub display_full: bool,
-    /// use the second pane to preview auto
-    pub preview_second: bool,
     /// The opener used by the application.
     pub opener: Opener,
     /// The help string.
@@ -87,10 +92,6 @@ pub struct Status {
     pub iso_device: Option<IsoDevice>,
     /// Compression methods
     pub compression: Compresser,
-    /// NVIM RPC server address
-    pub nvim_server: String,
-    /// Do we have to clear the screen ?
-    pub force_clear: bool,
     /// Bulk rename
     pub bulk: Option<Bulk>,
     /// TUI application
@@ -99,10 +100,13 @@ pub struct Status {
     pub cli_applications: CliApplications,
     /// Hold password between their typing and usage
     pub password_holder: PasswordHolder,
-    /// Last sudo command ran
-    pub sudo_command: Option<String>,
     /// MTP devices
     pub removable_devices: Option<RemovableDevices>,
+    /// Last sudo command ran
+    pub sudo_command: Option<String>,
+
+    skimer: Option<Result<Skimer>>,
+
     /// Navigable menu
     pub menu: Menu,
 }
@@ -121,11 +125,11 @@ impl Status {
         let args = Args::parse();
         let preview_second = args.preview;
         let nvim_server = args.server.clone();
-        let display_full = Self::parse_display_full(args.simple, settings.full);
+        let display_metadata = Self::parse_display_full(args.simple, settings.full);
         let dual_pane = Self::parse_dual_pane(args.dual, settings.dual, &term)?;
+        let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let tui_applications = TuiApplications::new(TUIS_PATH);
         let cli_applications = CliApplications::default();
-        let sys = System::new_with_specifics(RefreshKind::new().with_disks());
         let encrypted_devices = CryptoDeviceOpener::default();
         let trash = Trash::new()?;
         let compression = Compresser::default();
@@ -162,7 +166,7 @@ impl Status {
             dual_pane,
             preview_second,
             system_info: sys,
-            display_full,
+            display_metadata,
             opener,
             help,
             trash,
@@ -608,7 +612,7 @@ impl Status {
             }?;
             self.selected().set_display_mode(Display::Normal)
         } else {
-            self.display_full = true;
+            self.display_metadata = true;
             self.selected().make_tree(None)?;
             self.selected().set_display_mode(Display::Tree);
         }
