@@ -670,6 +670,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: resizing deselects the current file.
 - [x] FIX: first line use selected tab even when not selected
 - [x] refactor bulk. Made it a bit simpler
+- [ ] status refactoring. Moved every "menu" to a separate file.
+  - [x] moved attributes
+  - [ ] moved all methods relative to menus
 - [ ] refactor file opening. It's a mess - WIP
 - [ ] Only store one Selectable thing in status
 
