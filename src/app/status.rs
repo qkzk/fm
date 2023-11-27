@@ -61,8 +61,6 @@ pub struct Status {
     pub display_metadata: bool,
     /// use the second pane to preview auto
     pub preview_second: bool,
-    /// NVIM RPC server address
-    pub nvim_server: String,
 
     /// Do we have to clear the screen ?
     pub force_clear: bool,
@@ -72,6 +70,8 @@ pub struct Status {
     /// and their mount points.
     pub system_info: System,
 
+    /// NVIM RPC server address
+    pub nvim_server: String,
     /// The opener used by the application.
     pub opener: Opener,
 
