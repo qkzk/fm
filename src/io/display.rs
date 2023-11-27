@@ -736,7 +736,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_bulk(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        if let Some(selectable) = &self.status.bulk {
+        if let Some(selectable) = &self.status.menu.bulk {
             canvas.print(0, 0, "Action...")?;
             let content = selectable.content();
             for (row, text, attr) in enumerated_colored_iter!(content) {

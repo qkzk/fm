@@ -19,6 +19,7 @@ use crate::io::{drop_sudo_privileges, execute_sudo_command_with_password, reset_
 use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
 use crate::io::{Args, Kind};
 use crate::io::{Internal, Opener};
+use crate::modes::regex_matcher;
 use crate::modes::ContentWindow;
 use crate::modes::FileKind;
 use crate::modes::Flagged;
@@ -34,7 +35,6 @@ use crate::modes::Trash;
 use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, CopyMove};
-use crate::modes::{regex_matcher, Bulk};
 use crate::modes::{BlockDeviceAction, CryptoDeviceOpener};
 use crate::modes::{Display, Edit, InputSimple, NeedConfirmation};
 use crate::modes::{MountCommands, MountRepr};
@@ -86,8 +86,6 @@ pub struct Status {
     pub encrypted_devices: CryptoDeviceOpener,
     /// Iso mounter. Set to None by default, dropped ASAP
     pub iso_device: Option<IsoDevice>,
-    /// Bulk rename
-    pub bulk: Option<Bulk>,
 
     skimer: Option<Result<Skimer>>,
 
@@ -114,7 +112,6 @@ impl Status {
         let encrypted_devices = CryptoDeviceOpener::default();
         let trash = Trash::new()?;
         let force_clear = false;
-        let bulk = None;
         let iso_device = None;
         let flagged = Flagged::default();
         let marks = Marks::read_from_config_file();
@@ -149,35 +146,13 @@ impl Status {
             encrypted_devices,
             nvim_server,
             force_clear,
-            bulk,
             iso_device,
             menu,
         })
     }
 
-    /// Creats a new bulk instance if needed
-    pub fn init_bulk(&mut self) {
-        if self.bulk.is_none() {
-            self.bulk = Some(Bulk::default());
-        }
-    }
-
-    pub fn bulk_prev(&mut self) {
-        self.init_bulk();
-        if let Some(bulk) = &mut self.bulk {
-            bulk.prev();
-        }
-    }
-
-    pub fn bulk_next(&mut self) {
-        self.init_bulk();
-        if let Some(bulk) = &mut self.bulk {
-            bulk.next();
-        }
-    }
-
     pub fn execute_bulk(&self) -> Result<()> {
-        if let Some(bulk) = &self.bulk {
+        if let Some(bulk) = &self.menu.bulk {
             bulk.execute_bulk(self)?;
         }
         Ok(())

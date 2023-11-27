@@ -1,6 +1,7 @@
 use anyhow::Result;
 
 use crate::common::TUIS_PATH;
+use crate::modes::Bulk;
 use crate::modes::CliApplications;
 use crate::modes::Compresser;
 use crate::modes::MountCommands;
@@ -22,6 +23,8 @@ pub struct Menu {
     pub cli_applications: CliApplications,
     /// TUI application
     pub tui_applications: TuiApplications,
+    /// Bulk rename
+    pub bulk: Option<Bulk>,
 }
 
 impl Default for Menu {
@@ -33,6 +36,7 @@ impl Default for Menu {
             tui_applications: TuiApplications::new(TUIS_PATH),
             removable_devices: None,
             password_holder: PasswordHolder::default(),
+            bulk: None,
         }
     }
 }
@@ -77,5 +81,26 @@ impl Menu {
             return None;
         }
         Some(std::path::PathBuf::from(&device.path))
+    }
+
+    /// Creats a new bulk instance if needed
+    pub fn init_bulk(&mut self) {
+        if self.bulk.is_none() {
+            self.bulk = Some(Bulk::default());
+        }
+    }
+
+    pub fn bulk_prev(&mut self) {
+        self.init_bulk();
+        if let Some(bulk) = &mut self.bulk {
+            bulk.prev();
+        }
+    }
+
+    pub fn bulk_next(&mut self) {
+        self.init_bulk();
+        if let Some(bulk) = &mut self.bulk {
+            bulk.next();
+        }
     }
 }

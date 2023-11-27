@@ -137,7 +137,7 @@ impl EventAction {
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.
     pub fn bulk(status: &mut Status) -> Result<()> {
-        status.init_bulk();
+        status.menu.init_bulk();
         status
             .selected()
             .set_edit_mode(Edit::Navigate(Navigate::Bulk));
@@ -474,7 +474,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Shortcut) => tab.shortcut.prev(),
             Edit::Navigate(Navigate::Marks(_)) => status.marks.prev(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.prev(),
-            Edit::Navigate(Navigate::Bulk) => status.bulk_prev(),
+            Edit::Navigate(Navigate::Bulk) => status.menu.bulk_prev(),
             Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.prev(),
             Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.prev(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.prev(),
@@ -514,7 +514,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Shortcut) => status.selected().shortcut.next(),
             Edit::Navigate(Navigate::Marks(_)) => status.marks.next(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.next(),
-            Edit::Navigate(Navigate::Bulk) => status.bulk_next(),
+            Edit::Navigate(Navigate::Bulk) => status.menu.bulk_next(),
             Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.next(),
             Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.next(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.encrypted_devices.next(),
@@ -1193,7 +1193,7 @@ impl LeaveMode {
 
     pub fn bulk(status: &mut Status) -> Result<()> {
         status.execute_bulk()?;
-        status.bulk = None;
+        status.menu.bulk = None;
         status.update_second_pane_for_preview()
     }
 
