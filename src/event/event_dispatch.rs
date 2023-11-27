@@ -83,13 +83,15 @@ impl EventDispatcher {
             Edit::Navigate(Navigate::EncryptedDrive) if c == 'm' => status.mount_encrypted_drive(),
             Edit::Navigate(Navigate::EncryptedDrive) if c == 'g' => status.go_to_encrypted_drive(),
             Edit::Navigate(Navigate::EncryptedDrive) if c == 'u' => status.umount_encrypted_drive(),
-            Edit::Navigate(Navigate::RemovableDevices) if c == 'm' => status.mount_removable(),
+            Edit::Navigate(Navigate::RemovableDevices) if c == 'm' => status.menu.mount_removable(),
             Edit::Navigate(Navigate::RemovableDevices) if c == 'g' => status.go_to_removable(),
-            Edit::Navigate(Navigate::RemovableDevices) if c == 'u' => status.umount_removable(),
-            Edit::Navigate(Navigate::Jump) if c == ' ' => status.jump_remove_selected_flagged(),
+            Edit::Navigate(Navigate::RemovableDevices) if c == 'u' => {
+                status.menu.umount_removable()
+            }
+            Edit::Navigate(Navigate::Jump) if c == ' ' => status.menu.remove_selected_flagged(),
             Edit::Navigate(Navigate::Jump) if c == 'u' => status.clear_flags_and_reset_view(),
-            Edit::Navigate(Navigate::Jump) if c == 'x' => status.delete_single_flagged(),
-            Edit::Navigate(Navigate::Jump) if c == 'X' => status.trash_single_flagged(),
+            Edit::Navigate(Navigate::Jump) if c == 'x' => status.menu.delete_single_flagged(),
+            Edit::Navigate(Navigate::Jump) if c == 'X' => status.menu.trash_single_flagged(),
             Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => status.marks_jump_char(c),
             Edit::Navigate(Navigate::Marks(MarkAction::New)) => status.marks_new(c),
             Edit::Navigate(_) => tab.reset_mode_and_view(),

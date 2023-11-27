@@ -1,6 +1,9 @@
+use anyhow::Context;
 use anyhow::Result;
 
 use crate::common::TUIS_PATH;
+use crate::io::drop_sudo_privileges;
+use crate::log_line;
 use crate::modes::Bulk;
 use crate::modes::CliApplications;
 use crate::modes::Compresser;
@@ -59,6 +62,20 @@ impl Menu {
             flagged: Flagged::default(),
         })
     }
+
+    pub fn find_encrypted_drive_mount_point(&self) -> Option<std::path::PathBuf> {
+        let Some(device) = self.encrypted_devices.selected() else {
+            return None;
+        };
+        if !device.is_mounted() {
+            return None;
+        }
+        let Some(mount_point) = device.mount_point() else {
+            return None;
+        };
+        Some(std::path::PathBuf::from(mount_point))
+    }
+
     pub fn mount_removable(&mut self) -> Result<()> {
         let Some(devices) = &mut self.removable_devices else {
             return Ok(());
@@ -123,5 +140,59 @@ impl Menu {
 
     pub fn trash_delete_permanently(&mut self) -> Result<()> {
         self.trash.delete_permanently()
+    }
+
+    /// Remove a flag file from Jump mode
+    pub fn remove_selected_flagged(&mut self) -> Result<()> {
+        self.flagged.remove_selected();
+        Ok(())
+    }
+
+    /// Move the selected flagged file to the trash.
+    pub fn trash_single_flagged(&mut self) -> Result<()> {
+        let filepath = self
+            .flagged
+            .selected()
+            .context("no flagged file")?
+            .to_owned();
+        self.flagged.remove_selected();
+        self.trash.trash(&filepath)?;
+        Ok(())
+    }
+
+    /// Delete the selected flagged file.
+    pub fn delete_single_flagged(&mut self) -> Result<()> {
+        let filepath = self
+            .flagged
+            .selected()
+            .context("no flagged file")?
+            .to_owned();
+        self.flagged.remove_selected();
+        if filepath.is_dir() {
+            std::fs::remove_dir_all(filepath)?;
+        } else {
+            std::fs::remove_file(filepath)?;
+        }
+        Ok(())
+    }
+
+    pub fn delete_flagged_files(&mut self) -> Result<()> {
+        let nb = self.flagged.len();
+        for pathbuf in self.flagged.content.iter() {
+            if pathbuf.is_dir() {
+                std::fs::remove_dir_all(pathbuf)?;
+            } else {
+                std::fs::remove_file(pathbuf)?;
+            }
+        }
+        log_line!("Deleted {nb} flagged files");
+        Ok(())
+    }
+
+    pub fn clear_sudo_attributes(&mut self) -> Result<()> {
+        self.password_holder.reset();
+        drop_sudo_privileges()?;
+        self.sudo_command = None;
+        Ok(())
     }
 }

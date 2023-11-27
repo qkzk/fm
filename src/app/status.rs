@@ -16,8 +16,8 @@ use crate::common::{current_username, disk_space, filename_from_path, is_program
 use crate::common::{NVIM, SS};
 use crate::config::{Bindings, Settings};
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
-use crate::io::{drop_sudo_privileges, execute_sudo_command_with_password, reset_sudo_faillock};
 use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
+use crate::io::{execute_sudo_command_with_password, reset_sudo_faillock};
 use crate::io::{Args, Kind};
 use crate::io::{Internal, Opener};
 use crate::modes::regex_matcher;
@@ -318,42 +318,6 @@ impl Status {
         self.reset_tabs_view()
     }
 
-    /// Remove a flag file from Jump mode
-    pub fn jump_remove_selected_flagged(&mut self) -> Result<()> {
-        self.menu.flagged.remove_selected();
-        Ok(())
-    }
-
-    /// Move the selected flagged file to the trash.
-    pub fn trash_single_flagged(&mut self) -> Result<()> {
-        let filepath = self
-            .menu
-            .flagged
-            .selected()
-            .context("no flagged file")?
-            .to_owned();
-        self.menu.flagged.remove_selected();
-        self.menu.trash.trash(&filepath)?;
-        Ok(())
-    }
-
-    /// Delete the selected flagged file.
-    pub fn delete_single_flagged(&mut self) -> Result<()> {
-        let filepath = self
-            .menu
-            .flagged
-            .selected()
-            .context("no flagged file")?
-            .to_owned();
-        self.menu.flagged.remove_selected();
-        if filepath.is_dir() {
-            std::fs::remove_dir_all(filepath)?;
-        } else {
-            std::fs::remove_file(filepath)?;
-        }
-        Ok(())
-    }
-
     pub fn click(&mut self, row: u16, col: u16) -> Result<()> {
         self.select_pane(col)?;
         if row < ContentWindow::HEADER_ROWS as u16 {
@@ -463,12 +427,6 @@ impl Status {
     /// Drop the current tree, replace it with an empty one.
     pub fn remove_tree(&mut self) -> Result<()> {
         self.selected().tree = Tree::default();
-        Ok(())
-    }
-
-    /// Updates the encrypted devices
-    pub fn read_encrypted_devices(&mut self) -> Result<()> {
-        self.menu.encrypted_devices.update()?;
         Ok(())
     }
 
@@ -656,17 +614,10 @@ impl Status {
 
     /// Move to the selected crypted device mount point.
     pub fn go_to_encrypted_drive(&mut self) -> Result<()> {
-        let Some(device) = self.menu.encrypted_devices.selected() else {
-            return Ok(());
-        };
-        if !device.is_mounted() {
-            return Ok(());
-        }
-        let Some(mount_point) = device.mount_point() else {
+        let Some(path) = self.menu.find_encrypted_drive_mount_point() else {
             return Ok(());
         };
         let tab = self.selected();
-        let path = std::path::PathBuf::from(mount_point);
         tab.cd(&path)?;
         tab.refresh_view()
     }
@@ -690,14 +641,6 @@ impl Status {
                 .encrypted_devices
                 .umount_selected(&mut self.menu.password_holder)
         }
-    }
-
-    pub fn mount_removable(&mut self) -> Result<()> {
-        self.menu.mount_removable()
-    }
-
-    pub fn umount_removable(&mut self) -> Result<()> {
-        self.menu.umount_removable()
     }
 
     pub fn go_to_removable(&mut self) -> Result<()> {
@@ -827,15 +770,7 @@ impl Status {
 
     /// Recursively delete all flagged files.
     pub fn confirm_delete_files(&mut self) -> Result<()> {
-        let nb = self.menu.flagged.len();
-        for pathbuf in self.menu.flagged.content.iter() {
-            if pathbuf.is_dir() {
-                std::fs::remove_dir_all(pathbuf)?;
-            } else {
-                std::fs::remove_file(pathbuf)?;
-            }
-        }
-        log_line!("Deleted {nb} flagged files");
+        self.menu.delete_flagged_files()?;
         self.selected().reset_edit_mode();
         self.clear_flags_and_reset_view()?;
         self.refresh_status()
@@ -853,14 +788,11 @@ impl Status {
         self.selected().set_edit_mode(Edit::Nothing);
         reset_sudo_faillock()?;
         let Some(sudo_command) = &self.menu.sudo_command else {
-            self.menu.password_holder.reset();
-            drop_sudo_privileges()?;
-            return Ok(());
+            return self.menu.clear_sudo_attributes();
         };
         let args = ShellCommandParser::new(sudo_command).compute(self)?;
         if args.is_empty() {
-            self.menu.sudo_command = None;
-            return Ok(());
+            return self.menu.clear_sudo_attributes();
         }
         execute_sudo_command_with_password(
             &args[1..],
@@ -871,9 +803,7 @@ impl Status {
                 .context("sudo password isn't set")?,
             self.selected_non_mut().directory_of_selected()?,
         )?;
-        self.menu.password_holder.reset();
-        drop_sudo_privileges()?;
-        self.menu.sudo_command = None;
+        self.menu.clear_sudo_attributes()?;
         self.refresh_status()
     }
 
