@@ -15,7 +15,7 @@ use crate::log_line;
 #[derive(Debug)]
 pub enum CompressionMethod {
     Zip,
-    Deflate,
+    Defl,
     Gz,
     Zlib,
     Lzma,
@@ -25,7 +25,7 @@ impl Display for CompressionMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Zip => write!(f, "ZIP:     archive.zip"),
-            Self::Deflate => write!(f, "DEFLATE: archive.tar.gz"),
+            Self::Defl => write!(f, "DEFLATE: archive.tar.gz"),
             Self::Lzma => write!(f, "LZMA:    archive.tar.xz"),
             Self::Gz => write!(f, "GZ:      archive.tar.gz"),
             Self::Zlib => write!(f, "ZLIB:    archive.tar.xz"),
@@ -47,7 +47,7 @@ impl Default for Compresser {
                 CompressionMethod::Lzma,
                 CompressionMethod::Zlib,
                 CompressionMethod::Gz,
-                CompressionMethod::Deflate,
+                CompressionMethod::Defl,
             ],
             index: 0,
         }
@@ -63,13 +63,12 @@ impl Compresser {
             return Ok(());
         };
         match selected {
-            CompressionMethod::Deflate => {
-                Self::defl(Self::archive(here, "archive.tar.gz")?, files)?
-            }
-            CompressionMethod::Gz => Self::gzip(Self::archive(here, "archive.tar.gz")?, files)?,
-            CompressionMethod::Zlib => Self::zlib(Self::archive(here, "archive.tar.xz")?, files)?,
-            CompressionMethod::Zip => Self::zip(Self::archive(here, "archive.zip")?, files)?,
+            #[rustfmt::skip]
+            CompressionMethod::Zip  => Self::zip (Self::archive(here, "archive.zip")?, files)?,
             CompressionMethod::Lzma => Self::lzma(Self::archive(here, "archive.tar.xz")?, files)?,
+            CompressionMethod::Zlib => Self::zlib(Self::archive(here, "archive.tar.xz")?, files)?,
+            CompressionMethod::Gz => Self::gzip(Self::archive(here, "archive.tar.gz")?, files)?,
+            CompressionMethod::Defl => Self::defl(Self::archive(here, "archive.tar.gz")?, files)?,
         }
         log_line!("Compressed with {selected}");
         Ok(())
