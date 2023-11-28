@@ -47,6 +47,7 @@ impl TabSettings {
 pub struct Tab {
     /// Kind of display: `Preview, Normal, Tree`
     pub display_mode: Display,
+
     /// Files in current path
     pub path_content: PathContent,
     /// Tree representation of the same path
@@ -64,6 +65,10 @@ pub struct Tab {
     /// Height of the terminal window
     pub height: usize,
 
+    /// Internal & display settings:
+    /// show hidden files ?
+    /// sort method
+    /// filter kind
     pub settings: TabSettings,
 
     /// Last searched string
@@ -80,6 +85,20 @@ pub struct Tab {
 
 impl Tab {
     /// Creates a new tab from args and height.
+    ///
+    /// # Errors
+    ///
+    /// It reads a path from args, which is defaulted to the starting path.
+    /// It explores the path and creates a content.
+    /// The path is then selected. If no path was provide from args, the current folder `.` is selected.
+    /// Every other attribute has its default value.
+    ///
+    /// # Errors
+    ///
+    /// it may fail if the path:
+    /// - doesn't exist
+    /// - can't be explored
+    /// - has no parent and isn't a directory (which can't happen)
     pub fn new(args: &Args, height: usize, users: Users, settings: &Settings) -> Result<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
         let start_dir = if path.is_dir() {
@@ -99,6 +118,7 @@ impl Tab {
         let searched = None;
         let index = path_content.select_file(&path);
         let tree = Tree::default();
+
         window.scroll_to(index);
         Ok(Self {
             display_mode,
