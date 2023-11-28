@@ -697,7 +697,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::Marks(_) => self.draw_marks(canvas),
             Navigate::RemovableDevices => self.draw_removable(canvas),
             Navigate::TuiApplication => self.draw_shell_menu(canvas),
-            Navigate::Shortcut => self.draw_destination(canvas, &self.tab.shortcut),
+            Navigate::Shortcut => self.draw_destination(canvas, &self.status.menu.shortcut),
             Navigate::Trash => self.draw_trash(canvas),
         }
     }

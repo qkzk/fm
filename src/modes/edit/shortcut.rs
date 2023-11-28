@@ -85,11 +85,17 @@ impl Shortcut {
         self.content[self.non_mount_size - 1] = Self::git_root_or_cwd();
     }
 
+    pub fn with_mount_points(mut self, mount_points: &[&Path]) -> Self {
+        self.extend_with_mount_points(mount_points);
+        self
+    }
+
     /// Update the shortcuts with the mount points.
-    pub fn extend_with_mount_points(&mut self, mount_points: &[&Path]) {
+    fn extend_with_mount_points(&mut self, mount_points: &[&Path]) {
         self.content
             .extend(mount_points.iter().map(|p| p.to_path_buf()));
         self.extend_with_mtp();
+        self.clear_doublons();
     }
 
     /// Update the shortcuts with MTP mount points
@@ -124,7 +130,6 @@ impl Shortcut {
     pub fn refresh(&mut self, mount_points: &[&Path]) {
         self.content.truncate(self.non_mount_size);
         self.extend_with_mount_points(mount_points);
-        self.clear_doublons();
     }
 }
 

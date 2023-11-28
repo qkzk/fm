@@ -17,6 +17,7 @@ use crate::modes::MountCommands;
 use crate::modes::PasswordHolder;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
+use crate::modes::Shortcut;
 use crate::modes::Trash;
 use crate::modes::TuiApplications;
 
@@ -43,6 +44,8 @@ pub struct Menu {
     pub password_holder: PasswordHolder,
     /// MTP devices
     pub removable_devices: Option<RemovableDevices>,
+    /// Predefined shortcuts
+    pub shortcut: Shortcut,
     /// TUI application
     pub tui_applications: TuiApplications,
     /// The trash
@@ -52,7 +55,7 @@ pub struct Menu {
 }
 
 impl Menu {
-    pub fn new() -> Result<Self> {
+    pub fn new(start_dir: &std::path::Path, mount_points: &[&std::path::Path]) -> Result<Self> {
         Ok(Self {
             sudo_command: None,
             compression: Compresser::default(),
@@ -68,6 +71,7 @@ impl Menu {
             flagged: Flagged::default(),
             input: Input::default(),
             completion: Completion::default(),
+            shortcut: Shortcut::new(&start_dir).with_mount_points(mount_points),
         })
     }
 
@@ -208,5 +212,11 @@ impl Menu {
     pub fn input_insert(&mut self, char: char) -> Result<()> {
         self.input.insert(char);
         Ok(())
+    }
+
+    /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
+    /// extend the vector with the mount points.
+    pub fn refresh_shortcuts(&mut self, mount_points: &[&std::path::Path]) {
+        self.shortcut.refresh(mount_points)
     }
 }

@@ -372,10 +372,12 @@ impl EventAction {
     /// Enter the shortcut mode, allowing to visit predefined shortcuts.
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
-    pub fn shortcut(tab: &mut Tab) -> Result<()> {
-        std::env::set_current_dir(tab.directory_of_selected()?)?;
-        tab.shortcut.update_git_root();
-        tab.set_edit_mode(Edit::Navigate(Navigate::Shortcut));
+    pub fn shortcut(status: &mut Status) -> Result<()> {
+        std::env::set_current_dir(status.current_tab_non_mut().directory_of_selected()?)?;
+        status.menu.shortcut.update_git_root();
+        status
+            .current_tab()
+            .set_edit_mode(Edit::Navigate(Navigate::Shortcut));
         Ok(())
     }
     /// Send a signal to parent NVIM process, picking files.
@@ -486,7 +488,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Jump) => status.menu.flagged.prev(),
             Edit::Navigate(Navigate::History) => tab.history.prev(),
             Edit::Navigate(Navigate::Trash) => status.menu.trash.prev(),
-            Edit::Navigate(Navigate::Shortcut) => tab.shortcut.prev(),
+            Edit::Navigate(Navigate::Shortcut) => status.menu.shortcut.prev(),
             Edit::Navigate(Navigate::Marks(_)) => status.menu.marks.prev(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.prev(),
             Edit::Navigate(Navigate::Bulk) => status.menu.bulk_prev(),
@@ -526,7 +528,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Jump) => status.menu.flagged.next(),
             Edit::Navigate(Navigate::History) => status.current_tab().history.next(),
             Edit::Navigate(Navigate::Trash) => status.menu.trash.next(),
-            Edit::Navigate(Navigate::Shortcut) => status.current_tab().shortcut.next(),
+            Edit::Navigate(Navigate::Shortcut) => status.menu.shortcut.next(),
             Edit::Navigate(Navigate::Marks(_)) => status.menu.marks.next(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.next(),
             Edit::Navigate(Navigate::Bulk) => status.menu.bulk_next(),
@@ -1391,7 +1393,7 @@ impl LeaveMode {
     pub fn shortcut(status: &mut Status) -> Result<()> {
         status.menu.input.reset();
         let path = status
-            .current_tab_non_mut()
+            .menu
             .shortcut
             .selected()
             .context("exec shortcut: empty shortcuts")?

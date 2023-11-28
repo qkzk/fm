@@ -185,7 +185,7 @@ impl ActionMap {
             ActionMap::SetWallpaper => EventAction::set_wallpaper(current_tab),
             ActionMap::Shell => EventAction::shell(status),
             ActionMap::ShellCommand => EventAction::shell_command(current_tab),
-            ActionMap::Shortcut => EventAction::shortcut(current_tab),
+            ActionMap::Shortcut => EventAction::shortcut(status),
             ActionMap::Sort => EventAction::sort(current_tab),
             ActionMap::Symlink => EventAction::symlink(status),
             ActionMap::Tab => EventAction::tab(status),

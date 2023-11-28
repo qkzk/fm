@@ -99,13 +99,19 @@ impl Status {
         let users2 = users.clone();
 
         let mount_points = Self::disks_mounts(sys.disks());
+        let path = std::fs::canonicalize(Path::new(&args.path))?;
+        let start_dir = if path.is_dir() {
+            &path
+        } else {
+            path.parent().context("")?
+        };
+        let menu = Menu::new(start_dir, &mount_points)?;
 
         let tabs = [
-            Tab::new(&args, height, users, settings, &mount_points)?,
-            Tab::new(&args, height, users2, settings, &mount_points)?,
+            Tab::new(&args, height, users, settings)?,
+            Tab::new(&args, height, users2, settings)?,
         ];
         let settings = DisplaySettings::new(args, settings, &term)?;
-        let menu = Menu::new()?;
         Ok(Self {
             tabs,
             index,
@@ -379,8 +385,7 @@ impl Status {
         self.sys.refresh_disks_list();
         let disks = self.sys.disks();
         let mounts = Self::disks_mounts(disks);
-        self.tabs[0].refresh_shortcuts(&mounts);
-        self.tabs[1].refresh_shortcuts(&mounts);
+        self.menu.refresh_shortcuts(&mounts);
     }
 
     /// Returns an array of Disks

@@ -15,7 +15,6 @@ use crate::modes::History;
 use crate::modes::PathContent;
 use crate::modes::Preview;
 use crate::modes::SelectableContent;
-use crate::modes::Shortcut;
 use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{calculate_top_bottom, Go, To, Tree};
@@ -50,9 +49,6 @@ pub struct Tab {
     /// The kind of sort used to display the files.
     pub sort_kind: SortKind,
 
-    /// Predefined shortcuts
-    pub shortcut: Shortcut,
-
     /// Last searched string
     pub searched: Option<String>,
     /// Visited directories
@@ -67,13 +63,7 @@ pub struct Tab {
 
 impl Tab {
     /// Creates a new tab from args and height.
-    pub fn new(
-        args: &Args,
-        height: usize,
-        users: Users,
-        settings: &Settings,
-        mount_points: &[&path::Path],
-    ) -> Result<Self> {
+    pub fn new(args: &Args, height: usize, users: Users, settings: &Settings) -> Result<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
         let start_dir = if path.is_dir() {
             &path
@@ -89,8 +79,6 @@ impl Tab {
         let must_quit = false;
         let preview = Preview::Empty;
         let history = History::default();
-        let mut shortcut = Shortcut::new(&path);
-        shortcut.extend_with_mount_points(mount_points);
         let searched = None;
         let index = path_content.select_file(&path);
         let tree = Tree::default();
@@ -104,7 +92,6 @@ impl Tab {
             height,
             must_quit,
             preview,
-            shortcut,
             searched,
             filter,
             show_hidden,
@@ -252,12 +239,6 @@ impl Tab {
     /// Set the line index to `index` and scroll there.
     pub fn scroll_to(&mut self, index: usize) {
         self.window.scroll_to(index);
-    }
-
-    /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
-    /// extend the vector with the mount points.
-    pub fn refresh_shortcuts(&mut self, mount_points: &[&path::Path]) {
-        self.shortcut.refresh(mount_points)
     }
 
     /// Select the file at index and move the window to this file.
