@@ -26,37 +26,43 @@ use crate::modes::{Display, Edit};
 pub struct Tab {
     /// Kind of display: `Preview, Normal, Tree`
     pub display_mode: Display,
-    /// The edit mode the application is currenty in.
-    /// Most of the time is spent in `EditMode::Nothing`
-    pub edit_mode: Edit,
-    /// The indexes of displayed file
-    pub window: ContentWindow,
     /// Files in current path
     pub path_content: PathContent,
-    /// Height of the terminal window
-    pub height: usize,
-    /// read from command line
-    pub show_hidden: bool,
-    /// True if the user issued a quit event (`Key::Char('q')` by default).
-    /// It's used to exit the main loop before reseting the cursor.
-    pub must_quit: bool,
+    /// Tree representation of the same path
+    pub tree: Tree,
     /// Lines of the previewed files.
     /// Empty if not in preview mode.
     pub preview: Preview,
-    /// Predefined shortcuts
-    pub shortcut: Shortcut,
-    /// Last searched string
-    pub searched: Option<String>,
+
+    /// The edit mode the application is currenty in.
+    /// Most of the time is spent in `EditMode::Nothing`
+    pub edit_mode: Edit,
+
+    /// The indexes of displayed file
+    pub window: ContentWindow,
+    /// Height of the terminal window
+    pub height: usize,
+
+    /// read from command line
+    pub show_hidden: bool,
     /// The filter use before displaying files
     pub filter: FilterKind,
+    /// The kind of sort used to display the files.
+    pub sort_kind: SortKind,
+
+    /// Predefined shortcuts
+    pub shortcut: Shortcut,
+
+    /// Last searched string
+    pub searched: Option<String>,
     /// Visited directories
     pub history: History,
     /// Users & groups
     pub users: Users,
-    /// Tree representation of the same path
-    pub tree: Tree,
-    /// The kind of sort used to display the files.
-    pub sort_kind: SortKind,
+
+    /// True if the user issued a quit event (`Key::Char('q')` by default).
+    /// It's used to exit the main loop before reseting the cursor.
+    pub must_quit: bool,
 }
 
 impl Tab {
