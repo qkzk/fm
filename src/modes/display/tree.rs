@@ -626,6 +626,18 @@ impl Tree {
         self.nodes.keys().filter_map(to_filename).filter_map(to_str)
     }
 
+    #[inline]
+    pub fn filenames_vec(&self) -> Vec<String> {
+        let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
+        let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
+        self.nodes
+            .keys()
+            .filter_map(to_filename)
+            .filter_map(to_str)
+            .map(|s| s.to_string())
+            .collect()
+    }
+
     /// Vector of `Path` of nodes.
     pub fn paths(&self) -> Vec<&Path> {
         self.nodes.keys().map(|p| p.as_path()).collect()

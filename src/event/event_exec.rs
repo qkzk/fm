@@ -306,14 +306,30 @@ impl EventAction {
     /// Keep a track of the current mode to ensure we rename the correct file.
     /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
     /// not the selected file in the pathcontent.
-    pub fn rename(tab: &mut Tab) -> Result<()> {
-        tab.rename()
+    pub fn rename(status: &mut Status) -> Result<()> {
+        let selected = status.selected_non_mut().selected()?;
+        if selected.path == status.selected_non_mut().path_content.path {
+            return Ok(());
+        }
+        if let Some(parent) = status.selected_non_mut().path_content.path.parent() {
+            if selected.path == parent {
+                return Ok(());
+            }
+        }
+        let old_name = &selected.filename;
+        status.menu.input.replace(old_name);
+        status
+            .selected()
+            .set_edit_mode(Edit::InputSimple(InputSimple::Rename));
+        Ok(())
     }
 
     /// Enter the goto mode where an user can type a path to jump to.
-    pub fn goto(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputCompleted(InputCompleted::Goto));
-        tab.completion.reset();
+    pub fn goto(status: &mut Status) -> Result<()> {
+        status
+            .selected()
+            .set_edit_mode(Edit::InputCompleted(InputCompleted::Goto));
+        status.menu.completion.reset();
         Ok(())
     }
 
@@ -478,7 +494,7 @@ impl EventAction {
             Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.prev(),
             Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.prev(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.menu.encrypted_devices.prev(),
-            Edit::InputCompleted(_) => tab.completion.prev(),
+            Edit::InputCompleted(_) => status.menu.completion.prev(),
             _ => (),
         };
         status.update_second_pane_for_preview()
@@ -518,7 +534,7 @@ impl EventAction {
             Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.next(),
             Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.next(),
             Edit::Navigate(Navigate::EncryptedDrive) => status.menu.encrypted_devices.next(),
-            Edit::InputCompleted(_) => status.selected().completion.next(),
+            Edit::InputCompleted(_) => status.menu.completion.next(),
             _ => (),
         };
         status.update_second_pane_for_preview()
@@ -530,7 +546,7 @@ impl EventAction {
         let tab = status.selected();
         match tab.edit_mode {
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
-                tab.input.cursor_left();
+                status.menu.input.cursor_left();
             }
             Edit::Nothing => match tab.display_mode {
                 Display::Normal => tab.move_to_parent()?,
@@ -549,7 +565,7 @@ impl EventAction {
         let tab: &mut Tab = status.selected();
         match tab.edit_mode {
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
-                tab.input.cursor_right();
+                status.menu.input.cursor_right();
                 Ok(())
             }
             Edit::Nothing => match tab.display_mode {
@@ -569,10 +585,10 @@ impl EventAction {
     }
 
     /// Delete a char to the left in modes allowing edition.
-    pub fn backspace(tab: &mut Tab) -> Result<()> {
-        match tab.edit_mode {
+    pub fn backspace(status: &mut Status) -> Result<()> {
+        match status.selected_non_mut().edit_mode {
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
-                tab.input.delete_char_left();
+                status.menu.input.delete_char_left();
                 Ok(())
             }
             _ => Ok(()),
@@ -583,7 +599,7 @@ impl EventAction {
     pub fn delete(status: &mut Status) -> Result<()> {
         match status.selected().edit_mode {
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
-                status.selected().input.delete_chars_right();
+                status.menu.input.delete_chars_right();
                 Ok(())
             }
             _ => Ok(()),
@@ -601,7 +617,7 @@ impl EventAction {
                     Display::Tree => tab.tree_go_to_root()?,
                 };
             }
-            _ => tab.input.cursor_start(),
+            _ => status.menu.input.cursor_start(),
         }
         status.update_second_pane_for_preview()
     }
@@ -617,7 +633,7 @@ impl EventAction {
                     Display::Tree => tab.tree_go_to_bottom_leaf()?,
                 };
             }
-            _ => tab.input.cursor_end(),
+            _ => status.menu.input.cursor_end(),
         }
         status.update_second_pane_for_preview()
     }
@@ -665,9 +681,9 @@ impl EventAction {
         let mut must_refresh = true;
         let mut must_reset_mode = true;
         match status.selected_non_mut().edit_mode {
-            Edit::InputSimple(InputSimple::Rename) => LeaveMode::rename(status.selected())?,
-            Edit::InputSimple(InputSimple::Newfile) => LeaveMode::new_file(status.selected())?,
-            Edit::InputSimple(InputSimple::Newdir) => LeaveMode::new_dir(status.selected())?,
+            Edit::InputSimple(InputSimple::Rename) => LeaveMode::rename(status)?,
+            Edit::InputSimple(InputSimple::Newfile) => LeaveMode::new_file(status)?,
+            Edit::InputSimple(InputSimple::Newdir) => LeaveMode::new_dir(status)?,
             Edit::InputSimple(InputSimple::Chmod) => LeaveMode::chmod(status)?,
             Edit::InputSimple(InputSimple::RegexMatch) => LeaveMode::regex(status)?,
             Edit::InputSimple(InputSimple::SetNvimAddr) => LeaveMode::set_nvim_addr(status)?,
@@ -677,14 +693,14 @@ impl EventAction {
             }
             Edit::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
-                LeaveMode::filter(status.selected())?
+                LeaveMode::filter(status)?
             }
             Edit::InputSimple(InputSimple::Password(_, _)) => {
                 must_refresh = false;
                 must_reset_mode = false;
                 LeaveMode::password(status)?
             }
-            Edit::InputSimple(InputSimple::Remote) => LeaveMode::remote(status.selected())?,
+            Edit::InputSimple(InputSimple::Remote) => LeaveMode::remote(status)?,
             Edit::Navigate(Navigate::Jump) => {
                 must_refresh = false;
                 LeaveMode::jump(status)?
@@ -707,7 +723,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMode::marks_jump(status)?,
             Edit::Navigate(Navigate::Compress) => LeaveMode::compress(status)?,
             Edit::Navigate(Navigate::RemovableDevices) => (),
-            Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status.selected())?,
+            Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status)?,
             Edit::InputCompleted(InputCompleted::Search) => {
                 must_refresh = false;
                 LeaveMode::search(status)?
@@ -728,7 +744,7 @@ impl EventAction {
             },
         };
 
-        status.selected().input.reset();
+        status.menu.input.reset();
         if must_reset_mode {
             status.selected().reset_edit_mode();
         }
@@ -742,10 +758,10 @@ impl EventAction {
     /// insert a completion in modes allowing completion.
     pub fn tab(status: &mut Status) -> Result<()> {
         match status.selected().edit_mode {
-            Edit::InputCompleted(_) => {
-                let tab = status.selected();
-                tab.input.replace(tab.completion.current_proposition())
-            }
+            Edit::InputCompleted(_) => status
+                .menu
+                .input
+                .replace(status.menu.completion.current_proposition()),
             Edit::Nothing => status.next(),
             _ => (),
         };
@@ -987,9 +1003,11 @@ impl EventAction {
     /// Enter command mode in which you can type any valid command.
     /// Some commands does nothing as they require to be executed from a specific
     /// context.
-    pub fn command(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputCompleted(InputCompleted::Command));
-        tab.completion.reset();
+    pub fn command(status: &mut Status) -> Result<()> {
+        status
+            .selected()
+            .set_edit_mode(Edit::InputCompleted(InputCompleted::Command));
+        status.menu.completion.reset();
         Ok(())
     }
 
@@ -1168,7 +1186,7 @@ impl LeaveMode {
         if let Some((_, path)) = marks.selected() {
             tab.cd(path)?;
             tab.window.reset(tab.path_content.content.len());
-            tab.input.reset();
+            status.menu.input.reset();
         }
         status.update_second_pane_for_preview()
     }
@@ -1186,7 +1204,7 @@ impl LeaveMode {
                 log_line!("Saved mark {ch} -> {p}", p = p.display());
             }
             status.selected().window.reset(len);
-            status.selected().input.reset();
+            status.menu.input.reset();
         }
         Ok(())
     }
@@ -1221,7 +1239,7 @@ impl LeaveMode {
     }
 
     pub fn set_nvim_addr(status: &mut Status) -> Result<()> {
-        status.nvim_server = status.selected_non_mut().input.string();
+        status.nvim_server = status.menu.input.string();
         status.selected().reset_edit_mode();
         Ok(())
     }
@@ -1241,7 +1259,7 @@ impl LeaveMode {
     /// Select the first file matching the typed regex in current dir.
     pub fn regex(status: &mut Status) -> Result<()> {
         status.select_from_regex()?;
-        status.selected().input.reset();
+        status.menu.input.reset();
         Ok(())
     }
 
@@ -1259,18 +1277,20 @@ impl LeaveMode {
     /// It uses the `fs::rename` function and has the same limitations.
     /// We only try to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
-    pub fn rename(tab: &mut Tab) -> Result<()> {
-        let original_path = if let Display::Tree = tab.display_mode {
-            tab.tree.selected_path()
+    pub fn rename(status: &mut Status) -> Result<()> {
+        let original_path = if let Display::Tree = status.selected_non_mut().display_mode {
+            status.selected_non_mut().tree.selected_path()
         } else {
-            tab.path_content
+            status
+                .selected_non_mut()
+                .path_content
                 .selected()
                 .context("rename: couldn't parse selected file")?
                 .path
                 .as_path()
         };
         if let Some(parent) = original_path.parent() {
-            let new_path = parent.join(sanitize_filename::sanitize(tab.input.string()));
+            let new_path = parent.join(sanitize_filename::sanitize(status.menu.input.string()));
             log_info!(
                 "renaming: original: {} - new: {}",
                 original_path.display(),
@@ -1285,15 +1305,15 @@ impl LeaveMode {
             fs::rename(original_path, new_path)?;
         }
 
-        tab.refresh_view()
+        status.selected().refresh_view()
     }
 
     /// Creates a new file with input string as name.
     /// Nothing is done if the file already exists.
     /// Filename is sanitized before processing.
-    pub fn new_file(tab: &mut Tab) -> Result<()> {
-        NodeCreation::Newfile.create(tab)?;
-        tab.refresh_view()
+    pub fn new_file(status: &mut Status) -> Result<()> {
+        NodeCreation::Newfile.create(status)?;
+        status.refresh_tabs()
     }
 
     /// Creates a new directory with input string as name.
@@ -1301,24 +1321,24 @@ impl LeaveMode {
     /// We use `fs::create_dir` internally so it will fail if the input string
     /// ie. the user can create `newdir` or `newdir/newfolder`.
     /// Directory name is sanitized before processing.
-    pub fn new_dir(tab: &mut Tab) -> Result<()> {
-        NodeCreation::Newdir.create(tab)?;
-        tab.refresh_view()
+    pub fn new_dir(status: &mut Status) -> Result<()> {
+        NodeCreation::Newdir.create(status)?;
+        status.refresh_tabs()
     }
 
     /// Tries to execute the selected file with an executable which is read
     /// from the input string. It will fail silently if the executable can't
     /// be found.
     /// Optional parameters can be passed normally. ie. `"ls -lah"`
-    pub fn exec(tab: &mut Tab) -> Result<()> {
-        if tab.path_content.content.is_empty() {
+    pub fn exec(status: &mut Status) -> Result<()> {
+        if status.selected_non_mut().path_content.content.is_empty() {
             return Err(anyhow!("exec: empty directory"));
         }
-        let exec_command = tab.input.string();
-        if let Ok(success) = tab.execute_custom(exec_command) {
+        let exec_command = status.menu.input.string();
+        if let Ok(success) = status.selected_non_mut().execute_custom(exec_command) {
             if success {
-                tab.completion.reset();
-                tab.input.reset();
+                status.menu.completion.reset();
+                status.menu.input.reset();
             }
         }
         Ok(())
@@ -1330,22 +1350,21 @@ impl LeaveMode {
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
     pub fn search(status: &mut Status) -> Result<()> {
-        let tab = status.selected();
-        let searched = &tab.input.string();
-        tab.input.reset();
+        let searched = &status.menu.input.string();
+        status.menu.input.reset();
         if searched.is_empty() {
-            tab.searched = None;
+            status.selected().searched = None;
             return Ok(());
         }
-        tab.searched = Some(searched.clone());
-        match tab.display_mode {
+        status.selected().searched = Some(searched.clone());
+        match status.selected_non_mut().display_mode {
             Display::Tree => {
                 log_info!("searching in tree");
-                tab.tree.search_first_match(searched);
+                status.selected().tree.search_first_match(searched);
             }
             _ => {
-                let next_index = tab.path_content.index;
-                tab.search_from(searched, next_index);
+                let next_index = status.selected_non_mut().path_content.index;
+                status.selected().search_from(searched, next_index);
             }
         };
         status.update_second_pane_for_preview()
@@ -1356,30 +1375,30 @@ impl LeaveMode {
     /// If no result were found, no cd is done and we go back to normal mode
     /// silently.
     pub fn goto(status: &mut Status) -> Result<()> {
-        let tab = status.selected();
-        if tab.completion.is_empty() {
+        if status.menu.completion.is_empty() {
             return Ok(());
         }
-        let completed = tab.completion.current_proposition();
+        let completed = status.menu.completion.current_proposition();
         let path = string_to_path(completed)?;
-        tab.input.reset();
-        tab.cd(&path)?;
-        tab.window.reset(tab.path_content.content.len());
+        status.menu.input.reset();
+        status.selected().cd(&path)?;
+        let len = status.selected_non_mut().path_content.content.len();
+        status.selected().window.reset(len);
         status.update_second_pane_for_preview()
     }
 
     /// Move to the selected shortcut.
     /// It may fail if the user has no permission to visit the path.
     pub fn shortcut(status: &mut Status) -> Result<()> {
-        let tab = status.selected();
-        tab.input.reset();
-        let path = tab
+        status.menu.input.reset();
+        let path = status
+            .selected_non_mut()
             .shortcut
             .selected()
             .context("exec shortcut: empty shortcuts")?
             .clone();
-        tab.cd(&path)?;
-        tab.refresh_view()?;
+        status.selected().cd(&path)?;
+        status.selected().refresh_view()?;
         status.update_second_pane_for_preview()
     }
 
@@ -1448,7 +1467,7 @@ impl LeaveMode {
     /// Some commands does nothing as they require to be executed from a specific
     /// context.
     pub fn command(status: &mut Status, binds: &Bindings) -> Result<()> {
-        let command_str = status.selected_non_mut().completion.current_proposition();
+        let command_str = status.menu.completion.current_proposition();
         let Ok(command) = ActionMap::from_str(command_str) else {
             return Ok(());
         };
@@ -1466,16 +1485,22 @@ impl LeaveMode {
 
     /// Apply a filter to the displayed files.
     /// See `crate::filter` for more details.
-    pub fn filter(tab: &mut Tab) -> Result<()> {
-        let filter = FilterKind::from_input(&tab.input.string());
-        tab.set_filter(filter);
-        tab.input.reset();
-        tab.path_content
-            .reset_files(&tab.filter, tab.show_hidden, &tab.users)?;
-        if let Display::Tree = tab.display_mode {
-            tab.make_tree(None)?;
+    pub fn filter(status: &mut Status) -> Result<()> {
+        let filter = FilterKind::from_input(&status.menu.input.string());
+        status.selected().set_filter(filter);
+        status.menu.input.reset();
+        let filter = status.selected_non_mut().filter.clone();
+        let show_hidden = status.selected_non_mut().show_hidden;
+        let users = status.selected_non_mut().users.clone();
+        status
+            .selected()
+            .path_content
+            .reset_files(&filter, show_hidden, &users)?;
+        if let Display::Tree = status.selected_non_mut().display_mode {
+            status.selected().make_tree(None)?;
         }
-        tab.window.reset(tab.path_content.content.len());
+        let len = status.selected_non_mut().path_content.content.len();
+        status.selected().window.reset(len);
         Ok(())
     }
 
@@ -1483,10 +1508,10 @@ impl LeaveMode {
     /// sshfs should be reachable in path.
     /// The user must type 3 arguments like this : `username hostname remote_path`.
     /// If the user doesn't provide 3 arguments,
-    pub fn remote(tab: &mut Tab) -> Result<()> {
-        let user_hostname_remotepath_string = tab.input.string();
+    pub fn remote(status: &mut Status) -> Result<()> {
+        let user_hostname_remotepath_string = status.menu.input.string();
         let strings: Vec<&str> = user_hostname_remotepath_string.split(' ').collect();
-        tab.input.reset();
+        status.menu.input.reset();
 
         if !is_program_in_path(SSHFS_EXECUTABLE) {
             log_info!("{SSHFS_EXECUTABLE} isn't in path");
@@ -1502,7 +1527,8 @@ impl LeaveMode {
         };
 
         let (username, hostname, remote_path) = (strings[0], strings[1], strings[2]);
-        let current_path: &str = &path_to_string(&tab.directory_of_selected()?);
+        let current_path: &str =
+            &path_to_string(&status.selected_non_mut().directory_of_selected()?);
         let first_arg = &format!("{username}@{hostname}:{remote_path}");
         let command_output = execute_and_capture_output_with_path(
             SSHFS_EXECUTABLE,

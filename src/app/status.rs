@@ -20,7 +20,6 @@ use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
 use crate::io::{execute_sudo_command_with_password, reset_sudo_faillock};
 use crate::io::{Args, Kind};
 use crate::io::{Internal, Opener};
-use crate::modes::regex_matcher;
 use crate::modes::BlockDeviceAction;
 use crate::modes::ContentWindow;
 use crate::modes::FileKind;
@@ -36,6 +35,7 @@ use crate::modes::Skimer;
 use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, CopyMove};
+use crate::modes::{regex_matcher, InputCompleted};
 use crate::modes::{Display, Edit, InputSimple, NeedConfirmation};
 use crate::modes::{PasswordKind, PasswordUsage};
 use crate::{log_info, log_line};
@@ -329,14 +329,14 @@ impl Status {
     }
 
     pub fn input_regex(&mut self, char: char) -> Result<()> {
-        self.selected().input.insert(char);
+        self.menu.input.insert(char);
         self.select_from_regex()?;
         Ok(())
     }
 
     /// Flag every file matching a typed regex.
     pub fn select_from_regex(&mut self) -> Result<()> {
-        let input = self.selected_non_mut().input.string();
+        let input = self.menu.input.string();
         if input.is_empty() {
             return Ok(());
         }
@@ -420,6 +420,8 @@ impl Status {
     }
 
     pub fn refresh_tabs(&mut self) -> Result<()> {
+        self.menu.input.reset();
+        self.menu.completion.reset();
         self.tabs[0].refresh_and_reselect_file()?;
         self.tabs[1].refresh_and_reselect_file()
     }
@@ -652,7 +654,7 @@ impl Status {
     }
 
     pub fn parse_shell_command(&mut self) -> Result<bool> {
-        let shell_command = self.selected_non_mut().input.string();
+        let shell_command = self.menu.input.string();
         let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
         log_info!("command {shell_command} args: {args:?}");
         if args_is_empty(&args) {
@@ -709,20 +711,25 @@ impl Status {
         Ok(())
     }
 
+    fn reset_edit_mode(&mut self) {
+        self.menu.completion.reset();
+        self.selected().reset_edit_mode();
+    }
+
     fn _execute_password_command(
         &mut self,
         action: Option<BlockDeviceAction>,
         dest: PasswordUsage,
     ) -> Result<()> {
-        let password = self.selected_non_mut().input.string();
-        self.selected().input.reset();
+        let password = self.menu.input.string();
+        self.menu.input.reset();
         match dest {
             PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP) => {
                 self.menu.password_holder.set_cryptsetup(password)
             }
             _ => self.menu.password_holder.set_sudo(password),
         };
-        self.selected().reset_edit_mode();
+        self.reset_edit_mode();
         self.dispatch_password(dest, action)
     }
 
@@ -734,7 +741,7 @@ impl Status {
             let tab: &mut Tab = self.selected();
             tab.refresh_view()
         }?;
-        self.selected().reset_edit_mode();
+        self.reset_edit_mode();
         self.refresh_status()
     }
 
@@ -745,7 +752,7 @@ impl Status {
             self.selected().cd(&path)?;
         }
         self.selected().refresh_view()?;
-        self.selected().reset_edit_mode();
+        self.reset_edit_mode();
         self.refresh_status()
     }
 
@@ -771,7 +778,7 @@ impl Status {
     /// Recursively delete all flagged files.
     pub fn confirm_delete_files(&mut self) -> Result<()> {
         self.menu.delete_flagged_files()?;
-        self.selected().reset_edit_mode();
+        self.reset_edit_mode();
         self.clear_flags_and_reset_view()?;
         self.refresh_status()
     }
@@ -779,7 +786,7 @@ impl Status {
     /// Empty the trash folder permanently.
     pub fn confirm_trash_empty(&mut self) -> Result<()> {
         self.menu.trash.empty_trash()?;
-        self.selected().reset_edit_mode();
+        self.reset_edit_mode();
         self.clear_flags_and_reset_view()?;
         Ok(())
     }
@@ -858,7 +865,7 @@ impl Status {
         if c == 'y' {
             let _ = self.match_confirmed_mode(confirmed_action);
         }
-        self.selected().reset_edit_mode();
+        self.reset_edit_mode();
         self.selected().refresh_view()?;
 
         Ok(())
@@ -904,10 +911,10 @@ impl Status {
     /// Nothing is done if the user typed nothing or an invalid permission like
     /// 955.
     pub fn chmod(&mut self) -> Result<()> {
-        if self.selected().input.is_empty() || self.menu.flagged.is_empty() {
+        if self.menu.input.is_empty() || self.menu.flagged.is_empty() {
             return Ok(());
         }
-        let input_permission = &self.selected().input.string();
+        let input_permission = &self.menu.input.string();
         Permissions::set_permissions_of_flagged(input_permission, &mut self.menu.flagged)?;
         self.reset_tabs_view()
     }
@@ -922,6 +929,79 @@ impl Status {
             self.toggle_flag_for_selected();
         };
         Ok(())
+    }
+
+    /// Enter rename mode.
+    /// Get the name of the selected file (from path_content or tree) and
+    /// use it to replace the input string.
+    /// If the selected file is the root path (.) or its parent (..),
+    /// it exits immediatly, doing nothing.
+    pub fn rename(&mut self) -> Result<()> {
+        let selected = self.selected_non_mut().selected()?;
+        if selected.path == self.selected_non_mut().path_content.path {
+            return Ok(());
+        }
+        if let Some(parent) = self.selected_non_mut().path_content.path.parent() {
+            if selected.path == parent {
+                return Ok(());
+            }
+        }
+        let old_name = &selected.filename;
+        self.menu.input.replace(old_name);
+        self.selected()
+            .set_edit_mode(Edit::InputSimple(InputSimple::Rename));
+        Ok(())
+    }
+
+    /// Add a char to input string, look for a possible completion.
+    pub fn text_insert_and_complete(&mut self, c: char) -> Result<()> {
+        self.menu.input.insert(c);
+        self.fill_completion()
+    }
+
+    /// Fill the input string with the currently selected completion.
+    pub fn fill_completion(&mut self) -> Result<()> {
+        match self.selected_non_mut().edit_mode {
+            Edit::InputCompleted(InputCompleted::Goto) => {
+                let current_path = self
+                    .selected_non_mut()
+                    .path_content_str()
+                    .unwrap_or_default()
+                    .to_owned();
+                self.menu
+                    .completion
+                    .goto(&self.menu.input.string(), &current_path)
+            }
+            Edit::InputCompleted(InputCompleted::Exec) => {
+                self.menu.completion.exec(&self.menu.input.string())
+            }
+            Edit::InputCompleted(InputCompleted::Search)
+                if matches!(self.selected_non_mut().display_mode, Display::Normal) =>
+            {
+                let input_string = self.menu.input.string();
+                self.menu.completion.search_from_normal(
+                    &self.menu.input.string(),
+                    &self
+                        .selected_non_mut()
+                        .path_content
+                        .filenames_containing(&input_string),
+                )
+            }
+            Edit::InputCompleted(InputCompleted::Search)
+                if matches!(self.selected_non_mut().display_mode, Display::Tree) =>
+            {
+                let input_string = self.menu.input.string();
+                // let filenames = self.selected_non_mut().tree.filenames();
+                let filenames = self.selected_non_mut().tree.filenames_vec();
+                self.menu
+                    .completion
+                    .search_from_tree_with_vecs(&input_string, &filenames)
+            }
+            Edit::InputCompleted(InputCompleted::Command) => {
+                self.menu.completion.command(&self.menu.input.string())
+            }
+            _ => Ok(()),
+        }
     }
 }
 

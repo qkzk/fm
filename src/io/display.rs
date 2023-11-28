@@ -603,7 +603,7 @@ impl<'a> Draw for WinSecondary<'a> {
         self.draw_cursor(canvas)?;
         self.draw_second_line(canvas)?;
 
-        WinSecondaryFirstLine::new(self.tab).draw(canvas)
+        WinSecondaryFirstLine::new(self.status).draw(canvas)
     }
 }
 
@@ -622,7 +622,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_second_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
         if matches!(self.tab.edit_mode, Edit::InputSimple(InputSimple::Chmod)) {
-            let mode_parsed = parse_input_mode(&self.tab.input.string());
+            let mode_parsed = parse_input_mode(&self.status.menu.input.string());
             let mut col = 11;
             for (text, is_valid) in &mode_parsed {
                 let attr = if *is_valid {
@@ -639,9 +639,9 @@ impl<'a> WinSecondary<'a> {
     /// Display the possible completion items. The currently selected one is
     /// reversed.
     fn draw_completion(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let content = &self.tab.completion.proposals;
+        let content = &self.status.menu.completion.proposals;
         for (row, candidate, attr) in enumerated_colored_iter!(content) {
-            let attr = self.tab.completion.attr(row, attr);
+            let attr = self.status.menu.completion.attr(row, attr);
             Self::draw_content_line(canvas, row, candidate, attr)?;
         }
         Ok(())
@@ -668,12 +668,15 @@ impl<'a> WinSecondary<'a> {
                 canvas.show_cursor(true)?;
                 canvas.set_cursor(
                     0,
-                    Self::PASSWORD_CURSOR_OFFSET + self.tab.input.cursor_index,
+                    Self::PASSWORD_CURSOR_OFFSET + self.status.menu.input.cursor_index,
                 )?;
             }
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
                 canvas.show_cursor(true)?;
-                canvas.set_cursor(0, Self::EDIT_BOX_OFFSET + self.tab.input.cursor_index)?;
+                canvas.set_cursor(
+                    0,
+                    Self::EDIT_BOX_OFFSET + self.status.menu.input.cursor_index,
+                )?;
             }
             Edit::NeedConfirmation(confirmed_action) => {
                 canvas.show_cursor(true)?;
@@ -942,9 +945,9 @@ impl Draw for WinSecondaryFirstLine {
 }
 
 impl WinSecondaryFirstLine {
-    fn new(tab: &Tab) -> Self {
+    fn new(status: &Status) -> Self {
         Self {
-            content: tab.edit_mode.line_display(tab),
+            content: status.selected_non_mut().edit_mode.line_display(status),
         }
     }
 }

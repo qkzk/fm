@@ -3,6 +3,7 @@ use std::fs;
 
 use anyhow::{Context, Result};
 
+use crate::app::Status;
 use crate::app::Tab;
 use crate::log_line;
 use crate::modes::Display as DisplayMode;
@@ -29,9 +30,10 @@ impl NodeCreation {
     /// # Errors
     ///
     /// It may fail if the node creation fail. See [`std::fs::create_dir_all`] and [`std::fs::File::create`]
-    pub fn create(&self, tab: &mut Tab) -> Result<()> {
+    pub fn create(&self, status: &mut Status) -> Result<()> {
+        let tab = status.selected();
         let root_path = Self::root_path(tab)?;
-        let path = root_path.join(sanitize_filename::sanitize(tab.input.string()));
+        let path = root_path.join(sanitize_filename::sanitize(status.menu.input.string()));
 
         if path.exists() {
             log_line!("{self} {path} already exists", path = path.display());

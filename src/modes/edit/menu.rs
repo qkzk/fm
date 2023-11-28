@@ -6,9 +6,11 @@ use crate::io::drop_sudo_privileges;
 use crate::log_line;
 use crate::modes::Bulk;
 use crate::modes::CliApplications;
+use crate::modes::Completion;
 use crate::modes::Compresser;
 use crate::modes::CryptoDeviceOpener;
 use crate::modes::Flagged;
+use crate::modes::Input;
 use crate::modes::IsoDevice;
 use crate::modes::Marks;
 use crate::modes::MountCommands;
@@ -43,6 +45,10 @@ pub struct Menu {
     pub marks: Marks,
     /// The flagged files
     pub flagged: Flagged,
+    /// The typed input by the user
+    pub input: Input,
+    /// Completion list and index in it.
+    pub completion: Completion,
 }
 
 impl Menu {
@@ -60,6 +66,8 @@ impl Menu {
             trash: Trash::new()?,
             marks: Marks::read_from_config_file(),
             flagged: Flagged::default(),
+            input: Input::default(),
+            completion: Completion::default(),
         })
     }
 
@@ -193,6 +201,12 @@ impl Menu {
         self.password_holder.reset();
         drop_sudo_privileges()?;
         self.sudo_command = None;
+        Ok(())
+    }
+
+    /// Insert a char in the input string.
+    pub fn input_insert(&mut self, char: char) -> Result<()> {
+        self.input.insert(char);
         Ok(())
     }
 }

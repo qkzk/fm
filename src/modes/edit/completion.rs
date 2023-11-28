@@ -195,19 +195,8 @@ impl Completion {
     }
 
     /// Looks for file within current folder completing what the user typed.
-    pub fn search_from_normal(
-        &mut self,
-        input_string: &str,
-        path_content: &PathContent,
-    ) -> Result<()> {
-        self.update(
-            path_content
-                .content
-                .iter()
-                .filter(|f| f.filename.contains(input_string))
-                .map(|f| f.filename.clone())
-                .collect(),
-        );
+    pub fn search_from_normal(&mut self, input_string: &str, files: &[String]) -> Result<()> {
+        self.update(files.into());
         Ok(())
     }
 
@@ -215,6 +204,22 @@ impl Completion {
     pub fn search_from_tree(&mut self, input_string: &str, content: Filenames) -> Result<()> {
         self.update(
             content
+                .filter(|&p| p.contains(input_string))
+                .map(|p| p.replace("▸ ", "").replace("▾ ", ""))
+                .collect(),
+        );
+
+        Ok(())
+    }
+    /// Looks for file within tree completing what the user typed.
+    pub fn search_from_tree_with_vecs(
+        &mut self,
+        input_string: &str,
+        content: &[String],
+    ) -> Result<()> {
+        self.update(
+            content
+                .iter()
                 .filter(|&p| p.contains(input_string))
                 .map(|p| p.replace("▸ ", "").replace("▾ ", ""))
                 .collect(),

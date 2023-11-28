@@ -12,7 +12,6 @@ use crate::modes::ContentWindow;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
 use crate::modes::History;
-use crate::modes::Input;
 use crate::modes::PathContent;
 use crate::modes::Preview;
 use crate::modes::SelectableContent;
@@ -20,8 +19,7 @@ use crate::modes::Shortcut;
 use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{calculate_top_bottom, Go, To, Tree};
-use crate::modes::{Completion, InputCompleted};
-use crate::modes::{Display, Edit, InputSimple};
+use crate::modes::{Display, Edit};
 
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
@@ -33,16 +31,12 @@ pub struct Tab {
     pub edit_mode: Edit,
     /// The indexes of displayed file
     pub window: ContentWindow,
-    /// The typed input by the user
-    pub input: Input,
     /// Files in current path
     pub path_content: PathContent,
     /// Height of the terminal window
     pub height: usize,
     /// read from command line
     pub show_hidden: bool,
-    /// Completion list and index in it.
-    pub completion: Completion,
     /// True if the user issued a quit event (`Key::Char('q')` by default).
     /// It's used to exit the main loop before reseting the cursor.
     pub must_quit: bool,
@@ -86,8 +80,6 @@ impl Tab {
         let display_mode = Display::default();
         let edit_mode = Edit::Nothing;
         let mut window = ContentWindow::new(path_content.content.len(), height);
-        let input = Input::default();
-        let completion = Completion::default();
         let must_quit = false;
         let preview = Preview::Empty;
         let history = History::default();
@@ -102,10 +94,8 @@ impl Tab {
             display_mode,
             edit_mode,
             window,
-            input,
             path_content,
             height,
-            completion,
             must_quit,
             preview,
             shortcut,
@@ -119,41 +109,10 @@ impl Tab {
         })
     }
 
-    /// Fill the input string with the currently selected completion.
-    pub fn fill_completion(&mut self) -> Result<()> {
-        match self.edit_mode {
-            Edit::InputCompleted(InputCompleted::Goto) => {
-                let current_path = self.path_content_str().unwrap_or_default().to_owned();
-                self.completion.goto(&self.input.string(), &current_path)
-            }
-            Edit::InputCompleted(InputCompleted::Exec) => {
-                self.completion.exec(&self.input.string())
-            }
-            Edit::InputCompleted(InputCompleted::Search)
-                if matches!(self.display_mode, Display::Normal) =>
-            {
-                self.completion
-                    .search_from_normal(&self.input.string(), &self.path_content)
-            }
-            Edit::InputCompleted(InputCompleted::Search)
-                if matches!(self.display_mode, Display::Tree) =>
-            {
-                self.completion
-                    .search_from_tree(&self.input.string(), self.tree.filenames())
-            }
-            Edit::InputCompleted(InputCompleted::Command) => {
-                self.completion.command(&self.input.string())
-            }
-            _ => Ok(()),
-        }
-    }
-
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) -> Result<()> {
         self.filter = FilterKind::All;
-        self.input.reset();
         self.preview = Preview::empty();
-        self.completion.reset();
         self.set_edit_mode(Edit::Nothing);
         if matches!(self.display_mode, Display::Tree) {
             self.make_tree(None)?;
@@ -227,7 +186,6 @@ impl Tab {
         log_info!("selected : {childpath:?}");
         self.cd(childpath)?;
         self.window.reset(self.path_content.content.len());
-        self.input.cursor_start();
         Ok(())
     }
 
@@ -470,9 +428,6 @@ impl Tab {
     /// Reset the modes :
     /// - edit_mode is set to Nothing,
     pub fn reset_edit_mode(&mut self) -> bool {
-        if matches!(self.edit_mode, Edit::InputCompleted(_)) {
-            self.completion.reset();
-        }
         let must_refresh = matches!(self.display_mode, Display::Preview);
         self.edit_mode = Edit::Nothing;
         must_refresh
@@ -516,18 +471,6 @@ impl Tab {
 
     pub fn preview_go_top(&mut self) {
         self.window.scroll_to(0)
-    }
-
-    /// Insert a char in the input string.
-    pub fn input_insert(&mut self, char: char) -> Result<()> {
-        self.input.insert(char);
-        Ok(())
-    }
-
-    /// Add a char to input string, look for a possible completion.
-    pub fn text_insert_and_complete(&mut self, c: char) -> Result<()> {
-        self.input.insert(c);
-        self.fill_completion()
     }
 
     /// Fold every child node in the tree.
@@ -677,7 +620,7 @@ impl Tab {
         Ok(())
     }
 
-    pub fn execute_custom(&mut self, exec_command: String) -> Result<bool> {
+    pub fn execute_custom(&self, exec_command: String) -> Result<bool> {
         let mut args: Vec<&str> = exec_command.split(' ').collect();
         let command = args.remove(0);
         if !std::path::Path::new(command).exists() {
@@ -690,27 +633,6 @@ impl Tab {
         args.push(path);
         execute_in_child(command, &args)?;
         Ok(true)
-    }
-
-    /// Enter rename mode.
-    /// Get the name of the selected file (from path_content or tree) and
-    /// use it to replace the input string.
-    /// If the selected file is the root path (.) or its parent (..),
-    /// it exits immediatly, doing nothing.
-    pub fn rename(&mut self) -> Result<()> {
-        let selected = self.selected()?;
-        if selected.path == self.path_content.path {
-            return Ok(());
-        }
-        if let Some(parent) = self.path_content.path.parent() {
-            if selected.path == parent {
-                return Ok(());
-            }
-        }
-        let old_name = &selected.filename;
-        self.input.replace(old_name);
-        self.set_edit_mode(Edit::InputSimple(InputSimple::Rename));
-        Ok(())
     }
 
     /// Jump to the jump target.

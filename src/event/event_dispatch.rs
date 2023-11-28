@@ -76,8 +76,8 @@ impl EventDispatcher {
         match tab.edit_mode {
             Edit::InputSimple(InputSimple::Sort) => tab.sort(c),
             Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
-            Edit::InputSimple(_) => tab.input_insert(c),
-            Edit::InputCompleted(_) => tab.text_insert_and_complete(c),
+            Edit::InputSimple(_) => status.menu.input_insert(c),
+            Edit::InputCompleted(_) => status.text_insert_and_complete(c),
             Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
             Edit::Navigate(Navigate::Trash) if c == 'x' => status.menu.trash_delete_permanently(),
             Edit::Navigate(Navigate::EncryptedDrive) if c == 'm' => status.mount_encrypted_drive(),

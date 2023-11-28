@@ -252,6 +252,14 @@ impl PathContent {
             .map(|fileinfo| fileinfo.path.as_path())
             .collect()
     }
+
+    pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
+        self.content
+            .iter()
+            .filter(|f| f.filename.contains(input_string))
+            .map(|f| f.filename.clone())
+            .collect()
+    }
 }
 
 impl_selectable_content!(FileInfo, PathContent);
