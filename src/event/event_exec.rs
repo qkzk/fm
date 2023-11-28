@@ -18,6 +18,7 @@ use crate::config::Bindings;
 use crate::config::START_FOLDER;
 use crate::event::ActionMap;
 use crate::io::execute_and_capture_output_with_path;
+use crate::io::execute_custom;
 use crate::io::read_log;
 use crate::io::{
     execute, execute_and_capture_output_without_check, execute_without_output_with_path,
@@ -205,8 +206,8 @@ impl EventAction {
     /// Every file can be previewed. See the `crate::enum::Preview` for
     /// more details on previewinga file.
     /// Does nothing if the directory is empty.
-    pub fn preview(status: &mut Status) -> Result<()> {
-        status.make_preview()
+    pub fn preview(tab: &mut Tab) -> Result<()> {
+        tab.make_preview()
     }
 
     /// Enter the delete mode.
@@ -917,9 +918,9 @@ impl EventAction {
     }
 
     /// Creates a tree in every mode but "Tree".
-    /// It tree mode it will exit this view.
-    pub fn tree(status: &mut Status) -> Result<()> {
-        status.tree()
+    /// In display_mode tree it will exit this view.
+    pub fn tree(tab: &mut Tab) -> Result<()> {
+        tab.toggle_tree_mode()
     }
 
     /// Fold the current node of the tree.
@@ -1328,7 +1329,12 @@ impl LeaveMode {
             return Err(anyhow!("exec: empty directory"));
         }
         let exec_command = status.menu.input.string();
-        if let Ok(success) = status.current_tab_non_mut().execute_custom(exec_command) {
+        let selected_file = &status
+            .current_tab_non_mut()
+            .path_content
+            .selected_path_string()
+            .context("execute custom: no selected file")?;
+        if let Ok(success) = execute_custom(exec_command, selected_file) {
             if success {
                 status.menu.completion.reset();
                 status.menu.input.reset();
@@ -1480,7 +1486,7 @@ impl LeaveMode {
     /// See `crate::filter` for more details.
     pub fn filter(status: &mut Status) -> Result<()> {
         let filter = FilterKind::from_input(&status.menu.input.string());
-        status.current_tab().set_filter(filter);
+        status.current_tab().settings.set_filter(filter);
         status.menu.input.reset();
         // ugly hack to please borrow checker :(
         status.tabs[status.index].path_content.reset_files(

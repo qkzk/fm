@@ -187,6 +187,17 @@ pub fn execute_with_ansi_colors(args: &[&str]) -> Result<std::process::Output> {
         .output()?)
 }
 
+pub fn execute_custom(exec_command: String, selected_file: &str) -> Result<bool> {
+    let mut args: Vec<&str> = exec_command.split(' ').collect();
+    let command = args.remove(0);
+    if !std::path::Path::new(command).exists() {
+        return Ok(false);
+    }
+    args.push(selected_file);
+    execute(command, &args)?;
+    Ok(true)
+}
+
 /// Spawn a sudo command with stdin, stdout and stderr piped.
 /// sudo is run with -S argument to read the passworo from stdin
 /// Args are sent.

@@ -5,9 +5,7 @@ use anyhow::{Context, Result};
 
 use crate::common::{has_last_modification_happened_less_than, row_to_window_index, set_clipboard};
 use crate::config::Settings;
-use crate::io::execute;
 use crate::io::Args;
-use crate::modes::ContentWindow;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
 use crate::modes::History;
@@ -17,6 +15,7 @@ use crate::modes::SelectableContent;
 use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{calculate_top_bottom, Go, To, Tree};
+use crate::modes::{ContentWindow, FileKind};
 use crate::modes::{Display, Edit};
 
 pub struct TabSettings {
@@ -38,6 +37,20 @@ impl TabSettings {
             filter,
             sort_kind,
         }
+    }
+
+    fn toggle_hidden(&mut self) {
+        self.show_hidden = !self.show_hidden;
+    }
+
+    /// Apply the filter.
+    pub fn set_filter(&mut self, filter: FilterKind) {
+        self.filter = filter
+    }
+
+    /// Update the kind of sort from a char typed by the user.
+    fn update_sort_from_char(&mut self, c: char) {
+        self.sort_kind.update_from_char(c)
     }
 }
 
@@ -161,6 +174,30 @@ impl Tab {
         !matches!(self.edit_mode, Edit::Nothing)
     }
 
+    /// Returns a string of the current directory path.
+    pub fn path_content_str(&self) -> Option<&str> {
+        self.path_content.path.to_str()
+    }
+
+    /// Copy the selected filename to the clipboard. Only the filename.
+    pub fn filename_to_clipboard(&self) {
+        let Ok(file) = self.current_file() else {
+            return;
+        };
+        set_clipboard(file.filename.clone())
+    }
+
+    /// Copy the selected filepath to the clipboard. The absolute path.
+    pub fn filepath_to_clipboard(&self) {
+        let Ok(file) = self.current_file() else {
+            return;
+        };
+        let Some(path_str) = file.path.to_str() else {
+            return;
+        };
+        set_clipboard(path_str.to_owned())
+    }
+
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) -> Result<()> {
         self.settings.filter = FilterKind::All;
@@ -202,36 +239,70 @@ impl Tab {
         }
     }
 
-    /// Set a new mode and save the last one
-    pub fn set_edit_mode(&mut self, new_mode: Edit) {
-        self.edit_mode = new_mode;
-    }
-
     pub fn set_display_mode(&mut self, new_display_mode: Display) {
         self.reset_preview();
         self.display_mode = new_display_mode
+    }
+
+    /// Makes a new tree of the current path.
+    pub fn make_tree(&mut self, sort_kind: Option<SortKind>) -> Result<()> {
+        let sort_kind = match sort_kind {
+            Some(sort_kind) => sort_kind,
+            None => SortKind::tree_default(),
+        };
+        self.settings.sort_kind = sort_kind.to_owned();
+        let path = self.path_content.path.clone();
+        let users = &self.users;
+        self.tree = Tree::new(
+            path,
+            5,
+            sort_kind,
+            users,
+            self.settings.show_hidden,
+            &self.settings.filter,
+        );
+        Ok(())
+    }
+
+    pub fn toggle_tree_mode(&mut self) -> Result<()> {
+        if let Display::Tree = self.display_mode {
+            {
+                self.tree = Tree::default();
+                self.refresh_view()
+            }?;
+            self.set_display_mode(Display::Normal)
+        } else {
+            self.make_tree(None)?;
+            self.set_display_mode(Display::Tree);
+        }
+        Ok(())
+    }
+
+    pub fn make_preview(&mut self) -> Result<()> {
+        if self.path_content.is_empty() {
+            return Ok(());
+        }
+        let Ok(file_info) = self.current_file() else {
+            return Ok(());
+        };
+        match file_info.file_kind {
+            FileKind::NormalFile => {
+                let preview = Preview::file(&file_info).unwrap_or_default();
+                self.set_display_mode(Display::Preview);
+                self.window.reset(preview.len());
+                self.preview = preview;
+            }
+            FileKind::Directory => self.toggle_tree_mode()?,
+            _ => (),
+        }
+
+        Ok(())
     }
 
     fn reset_preview(&mut self) {
         if matches!(self.display_mode, Display::Preview) {
             self.preview = Preview::empty();
         }
-    }
-
-    /// Reset the modes :
-    /// - edit_mode is set to Nothing,
-    pub fn reset_edit_mode(&mut self) -> bool {
-        let must_refresh = matches!(self.display_mode, Display::Preview);
-        self.edit_mode = Edit::Nothing;
-        must_refresh
-    }
-
-    pub fn reset_mode_and_view(&mut self) -> Result<()> {
-        if matches!(self.display_mode, Display::Preview) {
-            self.set_display_mode(Display::Normal);
-        }
-        self.reset_edit_mode();
-        self.refresh_view()
     }
 
     /// Refresh the folder, reselect the last selected file, move the window to it.
@@ -253,9 +324,25 @@ impl Tab {
         Ok(())
     }
 
-    /// Update the kind of sort from a char typed by the user.
-    pub fn update_sort_from_char(&mut self, c: char) {
-        self.settings.sort_kind.update_from_char(c)
+    /// Set a new mode and save the last one
+    pub fn set_edit_mode(&mut self, new_mode: Edit) {
+        self.edit_mode = new_mode;
+    }
+
+    /// Reset the modes :
+    /// - edit_mode is set to Nothing,
+    pub fn reset_edit_mode(&mut self) -> bool {
+        let must_refresh = matches!(self.display_mode, Display::Preview);
+        self.edit_mode = Edit::Nothing;
+        must_refresh
+    }
+
+    pub fn reset_mode_and_view(&mut self) -> Result<()> {
+        if matches!(self.display_mode, Display::Preview) {
+            self.set_display_mode(Display::Normal);
+        }
+        self.reset_edit_mode();
+        self.refresh_view()
     }
 
     /// Set the height of the window and itself.
@@ -264,11 +351,59 @@ impl Tab {
         self.height = height;
     }
 
-    /// Returns a string of the current directory path.
-    pub fn path_content_str(&self) -> Option<&str> {
-        self.path_content.path.to_str()
+    pub fn toggle_hidden(&mut self) -> Result<()> {
+        self.settings.toggle_hidden();
+        self.path_content.reset_files(&self.settings, &self.users)?;
+        self.window.reset(self.path_content.content.len());
+        if let Display::Tree = self.display_mode {
+            self.make_tree(None)?
+        }
+        Ok(())
     }
 
+    /// Set the window. Doesn't require the lenght to be known.
+    pub fn set_window(&mut self) {
+        let len = self.path_content.content.len();
+        self.window.reset(len);
+    }
+
+    /// Set the line index to `index` and scroll there.
+    pub fn scroll_to(&mut self, index: usize) {
+        self.window.scroll_to(index);
+    }
+
+    /// Sort the file with given criteria
+    /// Valid kind of sorts are :
+    /// by kind : directory first, files next, in alphanumeric order
+    /// by filename,
+    /// by date of modification,
+    /// by size,
+    /// by extension.
+    /// The first letter is used to identify the method.
+    /// If the user types an uppercase char, the sort is reverse.
+    pub fn sort(&mut self, c: char) -> Result<()> {
+        if self.path_content.content.is_empty() {
+            return Ok(());
+        }
+        self.reset_edit_mode();
+        match self.display_mode {
+            Display::Normal => {
+                self.path_content.unselect_current();
+                self.settings.update_sort_from_char(c);
+                self.path_content.sort(&self.settings.sort_kind);
+                self.normal_go_top();
+                self.path_content.select_index(0);
+            }
+            Display::Tree => {
+                self.settings.update_sort_from_char(c);
+                let selected_path = self.tree.selected_path().to_owned();
+                self.make_tree(Some(self.settings.sort_kind))?;
+                self.tree.go(To::Path(&selected_path));
+            }
+            _ => (),
+        }
+        Ok(())
+    }
     /// Set the pathcontent to a new path.
     /// Reset the window.
     /// Add the last path to the history of visited paths.
@@ -287,29 +422,35 @@ impl Tab {
         Ok(())
     }
 
-    pub fn toggle_hidden(&mut self) -> Result<()> {
-        self.settings.show_hidden = !self.settings.show_hidden;
-        self.path_content.reset_files(&self.settings, &self.users)?;
-        self.window.reset(self.path_content.content.len());
+    pub fn back(&mut self) -> Result<()> {
+        if self.history.content.is_empty() {
+            return Ok(());
+        }
+        let Some((path, file)) = self.history.content.pop() else {
+            return Ok(());
+        };
+        self.cd(&path)?;
+        let index = self.path_content.select_file(&file);
+        self.scroll_to(index);
+        self.history.content.pop();
         if let Display::Tree = self.display_mode {
             self.make_tree(None)?
         }
+
         Ok(())
     }
 
-    /// Set the window. Doesn't require the lenght to be known.
-    pub fn set_window(&mut self) {
-        let len = self.path_content.content.len();
-        self.window.reset(len);
-    }
-    /// Apply the filter.
-    pub fn set_filter(&mut self, filter: FilterKind) {
-        self.settings.filter = filter
-    }
-
-    /// Set the line index to `index` and scroll there.
-    pub fn scroll_to(&mut self, index: usize) {
-        self.window.scroll_to(index);
+    /// Move to the parent of current path
+    pub fn move_to_parent(&mut self) -> Result<()> {
+        let path = self.path_content.path.clone();
+        let Some(parent) = path.parent() else {
+            return Ok(());
+        };
+        if self.history.is_this_the_last(parent) {
+            self.back()?;
+            return Ok(());
+        }
+        self.cd(parent)
     }
 
     /// Select the file at index and move the window to this file.
@@ -330,35 +471,54 @@ impl Tab {
             .clone())?;
         Ok(())
     }
-    /// Move to the parent of current path
-    pub fn move_to_parent(&mut self) -> Result<()> {
-        let path = self.path_content.path.clone();
-        let Some(parent) = path.parent() else {
-            return Ok(());
-        };
-        if self.history.is_this_the_last(parent) {
-            self.back()?;
-            return Ok(());
-        }
-        self.cd(parent)
+
+    /// Move down one row if possible.
+    pub fn normal_down_one_row(&mut self) {
+        self.path_content.unselect_current();
+        self.path_content.next();
+        self.path_content.select_current();
+        self.window.scroll_down_one(self.path_content.index)
     }
 
-    pub fn back(&mut self) -> Result<()> {
-        if self.history.content.is_empty() {
-            return Ok(());
-        }
-        let Some((path, file)) = self.history.content.pop() else {
-            return Ok(());
-        };
-        self.cd(&path)?;
-        let index = self.path_content.select_file(&file);
-        self.scroll_to(index);
-        self.history.content.pop();
-        if let Display::Tree = self.display_mode {
-            self.make_tree(None)?
-        }
+    /// Move up one row if possible.
+    pub fn normal_up_one_row(&mut self) {
+        self.path_content.unselect_current();
+        self.path_content.prev();
+        self.path_content.select_current();
+        self.window.scroll_up_one(self.path_content.index)
+    }
 
-        Ok(())
+    /// Move to the top of the current directory.
+    pub fn normal_go_top(&mut self) {
+        self.path_content.select_index(0);
+        self.window.scroll_to(0)
+    }
+
+    /// Move to the bottom of current view.
+    pub fn normal_go_bottom(&mut self) {
+        let last_index = self.path_content.content.len() - 1;
+        self.path_content.select_index(last_index);
+        self.window.scroll_to(last_index)
+    }
+    /// Move 10 files up
+    pub fn normal_page_up(&mut self) {
+        let up_index = if self.path_content.index > 10 {
+            self.path_content.index - 10
+        } else {
+            0
+        };
+        self.path_content.select_index(up_index);
+        self.window.scroll_to(up_index)
+    }
+
+    /// Move down 10 rows
+    pub fn normal_page_down(&mut self) {
+        let down_index = min(
+            self.path_content.content.len() - 1,
+            self.path_content.index + 10,
+        );
+        self.path_content.select_index(down_index);
+        self.window.scroll_to(down_index);
     }
 
     /// Fold every child node in the tree.
@@ -412,24 +572,40 @@ impl Tab {
         Ok(())
     }
 
-    /// Makes a new tree of the current path.
-    pub fn make_tree(&mut self, sort_kind: Option<SortKind>) -> Result<()> {
-        let sort_kind = match sort_kind {
-            Some(sort_kind) => sort_kind,
-            None => SortKind::tree_default(),
-        };
-        self.settings.sort_kind = sort_kind.to_owned();
-        let path = self.path_content.path.clone();
-        let users = &self.users;
-        self.tree = Tree::new(
-            path,
-            5,
-            sort_kind,
-            users,
-            self.settings.show_hidden,
-            &self.settings.filter,
-        );
-        Ok(())
+    pub fn preview_go_top(&mut self) {
+        self.window.scroll_to(0)
+    }
+
+    pub fn preview_go_bottom(&mut self) {
+        self.window.scroll_to(self.preview.len() - 1)
+    }
+
+    /// Move 30 lines up or an image in Ueberzug.
+    pub fn preview_page_up(&mut self) {
+        match &mut self.preview {
+            Preview::Ueberzug(ref mut image) => image.up_one_row(),
+            _ => {
+                if self.window.top > 0 {
+                    let skip = min(self.window.top, 30);
+                    self.window.bottom -= skip;
+                    self.window.top -= skip;
+                }
+            }
+        }
+    }
+
+    /// Move down 30 rows except for Ueberzug where it moves 1 image down
+    pub fn preview_page_down(&mut self) {
+        match &mut self.preview {
+            Preview::Ueberzug(ref mut image) => image.down_one_row(),
+            _ => {
+                if self.window.bottom < self.preview.len() {
+                    let skip = min(self.preview.len() - self.window.bottom, 30);
+                    self.window.bottom += skip;
+                    self.window.top += skip;
+                }
+            }
+        }
     }
 
     /// Search in current directory for an file whose name contains `searched_name`,
@@ -469,110 +645,6 @@ impl Tab {
         let next_index = (self.path_content.index + 1) % self.path_content.content.len();
         self.search_from(searched, next_index);
     }
-    /// Move down one row if possible.
-    pub fn normal_down_one_row(&mut self) {
-        self.path_content.unselect_current();
-        self.path_content.next();
-        self.path_content.select_current();
-        self.window.scroll_down_one(self.path_content.index)
-    }
-
-    /// Move up one row if possible.
-    pub fn normal_up_one_row(&mut self) {
-        self.path_content.unselect_current();
-        self.path_content.prev();
-        self.path_content.select_current();
-        self.window.scroll_up_one(self.path_content.index)
-    }
-
-    /// Move to the top of the current directory.
-    pub fn normal_go_top(&mut self) {
-        self.path_content.select_index(0);
-        self.window.scroll_to(0)
-    }
-
-    pub fn preview_go_top(&mut self) {
-        self.window.scroll_to(0)
-    }
-
-    /// Copy the selected filename to the clipboard. Only the filename.
-    pub fn filename_to_clipboard(&self) {
-        let Ok(file) = self.current_file() else {
-            return;
-        };
-        set_clipboard(file.filename.clone())
-    }
-
-    /// Copy the selected filepath to the clipboard. The absolute path.
-    pub fn filepath_to_clipboard(&self) {
-        let Ok(file) = self.current_file() else {
-            return;
-        };
-        let Some(path_str) = file.path.to_str() else {
-            return;
-        };
-        set_clipboard(path_str.to_owned())
-    }
-
-    /// Move to the bottom of current view.
-    pub fn normal_go_bottom(&mut self) {
-        let last_index = self.path_content.content.len() - 1;
-        self.path_content.select_index(last_index);
-        self.window.scroll_to(last_index)
-    }
-
-    pub fn preview_go_bottom(&mut self) {
-        self.window.scroll_to(self.preview.len() - 1)
-    }
-
-    /// Move 10 files up
-    pub fn normal_page_up(&mut self) {
-        let up_index = if self.path_content.index > 10 {
-            self.path_content.index - 10
-        } else {
-            0
-        };
-        self.path_content.select_index(up_index);
-        self.window.scroll_to(up_index)
-    }
-
-    /// Move 30 lines up or an image in Ueberzug.
-    pub fn preview_page_up(&mut self) {
-        match &mut self.preview {
-            Preview::Ueberzug(ref mut image) => image.up_one_row(),
-            _ => {
-                if self.window.top > 0 {
-                    let skip = min(self.window.top, 30);
-                    self.window.bottom -= skip;
-                    self.window.top -= skip;
-                }
-            }
-        }
-    }
-
-    /// Move down 10 rows
-    pub fn normal_page_down(&mut self) {
-        let down_index = min(
-            self.path_content.content.len() - 1,
-            self.path_content.index + 10,
-        );
-        self.path_content.select_index(down_index);
-        self.window.scroll_to(down_index);
-    }
-
-    /// Move down 30 rows except for Ueberzug where it moves 1 image down
-    pub fn preview_page_down(&mut self) {
-        match &mut self.preview {
-            Preview::Ueberzug(ref mut image) => image.down_one_row(),
-            _ => {
-                if self.window.bottom < self.preview.len() {
-                    let skip = min(self.preview.len() - self.window.bottom, 30);
-                    self.window.bottom += skip;
-                    self.window.top += skip;
-                }
-            }
-        }
-    }
 
     /// Select a given row, if there's something in it.
     /// Returns an error if the clicked row is above the headers margin.
@@ -600,54 +672,6 @@ impl Tab {
         let (_, _, colored_path) = content.get(index).context("no selected file")?;
         self.tree.go(To::Path(&colored_path.path));
         Ok(())
-    }
-
-    /// Sort the file with given criteria
-    /// Valid kind of sorts are :
-    /// by kind : directory first, files next, in alphanumeric order
-    /// by filename,
-    /// by date of modification,
-    /// by size,
-    /// by extension.
-    /// The first letter is used to identify the method.
-    /// If the user types an uppercase char, the sort is reverse.
-    pub fn sort(&mut self, c: char) -> Result<()> {
-        if self.path_content.content.is_empty() {
-            return Ok(());
-        }
-        self.reset_edit_mode();
-        match self.display_mode {
-            Display::Normal => {
-                self.path_content.unselect_current();
-                self.update_sort_from_char(c);
-                self.path_content.sort(&self.settings.sort_kind);
-                self.normal_go_top();
-                self.path_content.select_index(0);
-            }
-            Display::Tree => {
-                self.update_sort_from_char(c);
-                let selected_path = self.tree.selected_path().to_owned();
-                self.make_tree(Some(self.settings.sort_kind))?;
-                self.tree.go(To::Path(&selected_path));
-            }
-            _ => (),
-        }
-        Ok(())
-    }
-
-    pub fn execute_custom(&self, exec_command: String) -> Result<bool> {
-        let mut args: Vec<&str> = exec_command.split(' ').collect();
-        let command = args.remove(0);
-        if !std::path::Path::new(command).exists() {
-            return Ok(false);
-        }
-        let path = &self
-            .path_content
-            .selected_path_string()
-            .context("execute custom: no selected file")?;
-        args.push(path);
-        execute(command, &args)?;
-        Ok(true)
     }
 
     /// Jump to the jump target.

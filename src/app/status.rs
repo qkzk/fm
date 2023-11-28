@@ -434,43 +434,6 @@ impl Status {
         Ok(())
     }
 
-    pub fn make_preview(&mut self) -> Result<()> {
-        if self.current_tab_non_mut().path_content.is_empty() {
-            return Ok(());
-        }
-        let Ok(file_info) = self.current_tab_non_mut().current_file() else {
-            return Ok(());
-        };
-        match file_info.file_kind {
-            FileKind::NormalFile => {
-                let preview = Preview::file(&file_info).unwrap_or_default();
-                self.current_tab().set_display_mode(Display::Preview);
-                self.current_tab().window.reset(preview.len());
-                self.current_tab().preview = preview;
-            }
-            FileKind::Directory => self.tree()?,
-            _ => (),
-        }
-
-        Ok(())
-    }
-
-    pub fn tree(&mut self) -> Result<()> {
-        if let Display::Tree = self.current_tab_non_mut().display_mode {
-            {
-                let tab = self.current_tab();
-                tab.tree = Tree::default();
-                tab.refresh_view()
-            }?;
-            self.current_tab().set_display_mode(Display::Normal)
-        } else {
-            self.settings.metadata = true;
-            self.current_tab().make_tree(None)?;
-            self.current_tab().set_display_mode(Display::Tree);
-        }
-        Ok(())
-    }
-
     /// Check if the second pane should display a preview and force it.
     pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
         if self.index == 0 && self.settings.preview {
