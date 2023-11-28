@@ -3,9 +3,7 @@ use anyhow::Result;
 use crate::app::Status;
 use crate::app::Tab;
 use crate::common::OPENER_AUDIO;
-use crate::io::{
-    execute_and_capture_output, execute_and_capture_output_without_check, execute_in_child,
-};
+use crate::io::{execute, execute_and_capture_output, execute_and_capture_output_without_check};
 use crate::log_info;
 
 pub const MOCP: &str = OPENER_AUDIO.0;
@@ -83,7 +81,7 @@ impl Mocp {
                 status.force_clear();
                 log_info!("mocp -i error:\n{e:?}");
                 // server is stopped, start it.
-                let c = execute_in_child(MOCP, &["-S"]);
+                let c = execute(MOCP, &["-S"]);
                 let Ok(mut c) = c else {
                     // it shouldn't fail, something is wrong. It's better not to do anything.
                     return Ok(());

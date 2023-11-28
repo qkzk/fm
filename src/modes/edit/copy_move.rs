@@ -11,7 +11,7 @@ use tuikit::prelude::{Attr, Color, Effect, Term};
 use crate::common::NOTIFY_EXECUTABLE;
 use crate::common::{is_program_in_path, random_name};
 use crate::config::REFRESH_EVENT;
-use crate::io::execute_in_child;
+use crate::io::execute;
 use crate::modes::human_size;
 use crate::{log_info, log_line};
 
@@ -312,7 +312,7 @@ impl Drop for ConflictHandler {
 /// Does nothing if "notify-send" isn't installed.
 fn notify(text: &str) -> Result<()> {
     if is_program_in_path(NOTIFY_EXECUTABLE) {
-        execute_in_child(NOTIFY_EXECUTABLE, &[text])?;
+        execute(NOTIFY_EXECUTABLE, &[text])?;
     }
     Ok(())
 }

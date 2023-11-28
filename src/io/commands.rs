@@ -5,25 +5,35 @@ use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::common::current_username;
+use crate::common::{current_username, is_program_in_path, NOHUP};
 use crate::modes::PasswordHolder;
 use crate::{log_info, log_line};
 
-/// Execute a command with options in a fork.
+/// Execute a command with options in a fork with nohup.
+/// If the `NOHUP` application isn't there, call the program directly.
+/// but the program may be closed if the parent (fm) is stopped.
 /// Returns an handle to the child process.
-pub fn execute_in_child<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
+///
+/// # Errors
+///
+/// May fail if the command can't be spawned.
+pub fn execute<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     exe: S,
     args: &[&str],
 ) -> Result<std::process::Child> {
     log_info!("execute_in_child. executable: {exe:?}, arguments: {args:?}");
     log_line!("Execute: {exe:?}, arguments: {args:?}");
-    Ok(Command::new(exe).args(args).spawn()?)
+    if is_program_in_path(NOHUP) {
+        Ok(Command::new(NOHUP).arg(exe).args(args).spawn()?)
+    } else {
+        Ok(Command::new(exe).args(args).spawn()?)
+    }
 }
 
 /// Execute a command with options in a fork.
 /// Returns an handle to the child process.
 /// Branch stdin, stderr and stdout to /dev/null
-pub fn execute_in_child_without_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
+pub fn execute_without_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     exe: S,
     args: &[&str],
 ) -> Result<std::process::Child> {
@@ -36,7 +46,7 @@ pub fn execute_in_child_without_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
         .spawn()?)
 }
 
-pub fn execute_in_child_without_output_with_path<S, P>(
+pub fn execute_without_output_with_path<S, P>(
     exe: S,
     path: P,
     args: Option<&[&str]>,
@@ -49,13 +59,24 @@ where
         "execute_in_child_without_output_with_path. executable: {exe:?}, arguments: {args:?}"
     );
     let params = args.unwrap_or(&[]);
-    Ok(Command::new(exe)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .current_dir(path)
-        .args(params)
-        .spawn()?)
+    if is_program_in_path(NOHUP) {
+        Ok(Command::new(NOHUP)
+            .arg(exe)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .current_dir(path)
+            .args(params)
+            .spawn()?)
+    } else {
+        Ok(Command::new(exe)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .current_dir(path)
+            .args(params)
+            .spawn()?)
+    }
 }
 /// Execute a command with options in a fork.
 /// Wait for termination and return either :

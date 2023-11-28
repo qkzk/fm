@@ -16,7 +16,7 @@ use crate::common::{current_username, disk_space, filename_from_path, is_program
 use crate::common::{NVIM, SS};
 use crate::config::{Bindings, Settings};
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
-use crate::io::{execute_and_output, execute_in_child_without_output_with_path};
+use crate::io::{execute_and_output, execute_without_output_with_path};
 use crate::io::{execute_sudo_command_with_password, reset_sudo_faillock};
 use crate::io::{Args, Kind};
 use crate::io::{Internal, Opener};
@@ -672,11 +672,7 @@ impl Status {
             }
             let current_directory = self.selected_non_mut().directory_of_selected()?.to_owned();
             let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-            execute_in_child_without_output_with_path(
-                executable,
-                current_directory,
-                Some(&params),
-            )?;
+            execute_without_output_with_path(executable, current_directory, Some(&params))?;
             self.selected().set_edit_mode(Edit::Nothing);
             Ok(true)
         }

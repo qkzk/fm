@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 
 use crate::app::Status;
 use crate::common::is_program_in_path;
-use crate::io::{execute_in_child_without_output, execute_in_child_without_output_with_path};
+use crate::io::{execute_without_output, execute_without_output_with_path};
 use crate::log_line;
 use crate::{impl_selectable_content, log_info};
 
@@ -91,19 +91,19 @@ impl TuiApplications {
             .directory_of_selected()?
             .to_str()
             .context("event_shell: couldn't parse the directory")?;
-        execute_in_child_without_output(&status.opener.terminal, &["-d", path, "-e", command])?;
+        execute_without_output(&status.opener.terminal, &["-d", path, "-e", command])?;
         Ok(())
     }
 
     fn simple(status: &Status, command: &str) -> Result<()> {
-        execute_in_child_without_output(&status.opener.terminal, &["-e", command])?;
+        execute_without_output(&status.opener.terminal, &["-e", command])?;
         Ok(())
     }
 
     fn require_cwd(status: &Status) -> Result<()> {
         let tab = status.selected_non_mut();
         let path = tab.directory_of_selected()?;
-        execute_in_child_without_output_with_path(&status.opener.terminal, path, None)?;
+        execute_without_output_with_path(&status.opener.terminal, path, None)?;
         Ok(())
     }
 }

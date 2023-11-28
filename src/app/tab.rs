@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 
 use crate::common::{has_last_modification_happened_less_than, row_to_window_index, set_clipboard};
 use crate::config::Settings;
-use crate::io::execute_in_child;
+use crate::io::execute;
 use crate::io::Args;
 use crate::log_info;
 use crate::modes::ContentWindow;
@@ -630,7 +630,7 @@ impl Tab {
             .selected_path_string()
             .context("execute custom: no selected file")?;
         args.push(path);
-        execute_in_child(command, &args)?;
+        execute(command, &args)?;
         Ok(true)
     }
 

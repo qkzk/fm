@@ -20,8 +20,7 @@ use crate::event::ActionMap;
 use crate::io::execute_and_capture_output_with_path;
 use crate::io::read_log;
 use crate::io::{
-    execute_and_capture_output_without_check, execute_in_child,
-    execute_in_child_without_output_with_path,
+    execute, execute_and_capture_output_without_check, execute_without_output_with_path,
 };
 use crate::log_info;
 use crate::log_line;
@@ -339,7 +338,7 @@ impl EventAction {
     pub fn shell(status: &mut Status) -> Result<()> {
         let tab = status.selected_non_mut();
         let path = tab.directory_of_selected()?;
-        execute_in_child_without_output_with_path(&status.opener.terminal, path, None)?;
+        execute_without_output_with_path(&status.opener.terminal, path, None)?;
         Ok(())
     }
 
@@ -458,7 +457,7 @@ impl EventAction {
             .to_str()
             .context("event drag n drop: couldn't read path")?;
 
-        execute_in_child(DEFAULT_DRAGNDROP, &[path_str])?;
+        execute(DEFAULT_DRAGNDROP, &[path_str])?;
         Ok(())
     }
 
@@ -1042,7 +1041,7 @@ impl EventAction {
         let Some(path_str) = tab.path_content.selected_path_string() else {
             return Ok(());
         };
-        let _ = execute_in_child(NITROGEN, &["--set-zoom-fill", "--save", &path_str]);
+        let _ = execute(NITROGEN, &["--set-zoom-fill", "--save", &path_str]);
         Ok(())
     }
 

@@ -12,7 +12,7 @@ use crate::common::{
     OPENER_AUDIO, OPENER_DEFAULT, OPENER_IMAGE, OPENER_OFFICE, OPENER_PATH, OPENER_READABLE,
     OPENER_TEXT, OPENER_VECT, OPENER_VIDEO,
 };
-use crate::io::execute_in_child;
+use crate::io::execute;
 use crate::log_info;
 use crate::modes::extract_extension;
 use crate::modes::{decompress_gz, decompress_xz, decompress_zip};
@@ -240,13 +240,13 @@ impl External {
             return Err(anyhow!("args shouldn't be empty"));
         }
         let executable = args.remove(0);
-        execute_in_child(executable, &args)
+        execute(executable, &args)
     }
 
     // TODO: use terminal specific parameters instead of -e for all terminals
     fn with_term(mut args: Vec<&str>, term: &str) -> Result<std::process::Child> {
         args.insert(0, "-e");
-        execute_in_child(term, &args)
+        execute(term, &args)
     }
 }
 
