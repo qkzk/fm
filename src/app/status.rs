@@ -141,12 +141,12 @@ impl Status {
     }
 
     /// Returns a mutable reference to the selected tab.
-    pub fn selected(&mut self) -> &mut Tab {
+    pub fn current_tab(&mut self) -> &mut Tab {
         &mut self.tabs[self.index]
     }
 
     /// Returns a non mutable reference to the selected tab.
-    pub fn selected_non_mut(&self) -> &Tab {
+    pub fn current_tab_non_mut(&self) -> &Tab {
         &self.tabs[self.index]
     }
 
@@ -160,14 +160,14 @@ impl Status {
 
     /// Flag the selected file if any
     pub fn toggle_flag_for_selected(&mut self) {
-        let tab = self.selected_non_mut();
+        let tab = self.current_tab_non_mut();
 
         if matches!(tab.edit_mode, Edit::Nothing) && !matches!(tab.display_mode, Display::Preview) {
             let Ok(file) = tab.selected() else {
                 return;
             };
             self.menu.flagged.toggle(&file.path);
-            self.selected().normal_down_one_row();
+            self.current_tab().normal_down_one_row();
         };
     }
 
@@ -188,7 +188,7 @@ impl Status {
             return Ok(());
         };
         let skim = skimer.search_filename(
-            self.selected_non_mut()
+            self.current_tab_non_mut()
                 .path_content_str()
                 .context("Couldn't parse current directory")?,
         );
@@ -212,7 +212,7 @@ impl Status {
             return Ok(());
         };
         let skim = skimer.search_line_in_file(
-            self.selected_non_mut()
+            self.current_tab_non_mut()
                 .path_content_str()
                 .context("Couldn't parse current directory")?,
         );
@@ -269,7 +269,7 @@ impl Status {
     }
 
     fn _replace_path_by_skim_output(&mut self, path: std::path::PathBuf) -> Result<()> {
-        let tab = self.selected();
+        let tab = self.current_tab();
         if path.is_file() {
             let Some(parent) = path.parent() else {
                 return Ok(());
@@ -297,7 +297,7 @@ impl Status {
     pub fn flagged_in_current_dir(&self) -> Vec<&Path> {
         self.menu
             .flagged
-            .in_current_dir(&self.selected_non_mut().path_content.path)
+            .in_current_dir(&self.current_tab_non_mut().path_content.path)
     }
 
     /// Execute a move or a copy of the flagged files to current directory.
@@ -306,7 +306,7 @@ impl Status {
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
         let sources = self.menu.flagged.content.clone();
 
-        let dest = &self.selected_non_mut().directory_of_selected()?;
+        let dest = &self.current_tab_non_mut().directory_of_selected()?;
 
         copy_move(cut_or_copy, sources, dest, Arc::clone(&self.term))?;
         self.clear_flags_and_reset_view()
@@ -324,7 +324,7 @@ impl Status {
             return Err(anyhow::anyhow!("Clicked below headers"));
         }
         let (_, current_height) = self.term_size()?;
-        self.selected().select_row(row, current_height)?;
+        self.current_tab().select_row(row, current_height)?;
         Ok(())
     }
 
@@ -340,7 +340,7 @@ impl Status {
         if input.is_empty() {
             return Ok(());
         }
-        let paths = match self.selected_non_mut().display_mode {
+        let paths = match self.current_tab_non_mut().display_mode {
             Display::Normal => self.tabs[self.index].path_content.paths(),
             Display::Tree => self.tabs[self.index].tree.paths(),
             Display::Preview => return Ok(()),
@@ -406,7 +406,7 @@ impl Status {
 
     /// Returns a string representing the current path in the selected tab.
     pub fn selected_path_str(&self) -> &str {
-        self.selected_non_mut()
+        self.current_tab_non_mut()
             .path_content_str()
             .unwrap_or_default()
     }
@@ -428,23 +428,23 @@ impl Status {
 
     /// Drop the current tree, replace it with an empty one.
     pub fn remove_tree(&mut self) -> Result<()> {
-        self.selected().tree = Tree::default();
+        self.current_tab().tree = Tree::default();
         Ok(())
     }
 
     pub fn make_preview(&mut self) -> Result<()> {
-        if self.selected_non_mut().path_content.is_empty() {
+        if self.current_tab_non_mut().path_content.is_empty() {
             return Ok(());
         }
-        let Ok(file_info) = self.selected_non_mut().selected() else {
+        let Ok(file_info) = self.current_tab_non_mut().selected() else {
             return Ok(());
         };
         match file_info.file_kind {
             FileKind::NormalFile => {
                 let preview = Preview::file(&file_info).unwrap_or_default();
-                self.selected().set_display_mode(Display::Preview);
-                self.selected().window.reset(preview.len());
-                self.selected().preview = preview;
+                self.current_tab().set_display_mode(Display::Preview);
+                self.current_tab().window.reset(preview.len());
+                self.current_tab().preview = preview;
             }
             FileKind::Directory => self.tree()?,
             _ => (),
@@ -454,17 +454,17 @@ impl Status {
     }
 
     pub fn tree(&mut self) -> Result<()> {
-        if let Display::Tree = self.selected_non_mut().display_mode {
+        if let Display::Tree = self.current_tab_non_mut().display_mode {
             {
-                let tab = self.selected();
+                let tab = self.current_tab();
                 tab.tree = Tree::default();
                 tab.refresh_view()
             }?;
-            self.selected().set_display_mode(Display::Normal)
+            self.current_tab().set_display_mode(Display::Normal)
         } else {
             self.settings.metadata = true;
-            self.selected().make_tree(None)?;
-            self.selected().set_display_mode(Display::Tree);
+            self.current_tab().make_tree(None)?;
+            self.current_tab().set_display_mode(Display::Tree);
         }
         Ok(())
     }
@@ -513,7 +513,7 @@ impl Status {
 
     /// True if a quit event was registered in the selected tab.
     pub fn must_quit(&self) -> bool {
-        self.selected_non_mut().must_quit()
+        self.current_tab_non_mut().must_quit()
     }
 
     /// Set a "force clear" flag to true, which will reset the display.
@@ -525,7 +525,7 @@ impl Status {
 
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
-        let path = self.selected_non_mut().selected()?.path;
+        let path = self.current_tab_non_mut().selected()?.path;
         match self.opener.kind(&path) {
             Some(Kind::Internal(Internal::NotSupported)) => {
                 let _ = self.mount_iso_drive();
@@ -545,7 +545,7 @@ impl Status {
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
         if self.menu.iso_device.is_none() {
-            let path = path_to_string(&self.selected_non_mut().selected()?.path);
+            let path = path_to_string(&self.current_tab_non_mut().selected()?.path);
             self.menu.iso_device = Some(IsoDevice::from_path(path));
         }
         Ok(())
@@ -566,7 +566,7 @@ impl Status {
                 log_info!("iso mounter mounted {iso_device:?}");
                 log_line!("iso : {}", iso_device.as_string()?);
                 let path = iso_device.mountpoints.clone().context("no mount point")?;
-                self.selected().cd(&path)?;
+                self.current_tab().cd(&path)?;
             };
             self.menu.iso_device = None;
         };
@@ -619,7 +619,7 @@ impl Status {
         let Some(path) = self.menu.find_encrypted_drive_mount_point() else {
             return Ok(());
         };
-        let tab = self.selected();
+        let tab = self.current_tab();
         tab.cd(&path)?;
         tab.refresh_view()
     }
@@ -649,8 +649,8 @@ impl Status {
         let Some(path) = self.menu.find_removable_mount_point() else {
             return Ok(());
         };
-        self.selected().cd(&path)?;
-        self.selected().refresh_view()
+        self.current_tab().cd(&path)?;
+        self.current_tab().refresh_view()
     }
 
     pub fn parse_shell_command(&mut self) -> Result<bool> {
@@ -658,7 +658,7 @@ impl Status {
         let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
         log_info!("command {shell_command} args: {args:?}");
         if args_is_empty(&args) {
-            self.selected().set_edit_mode(Edit::Nothing);
+            self.current_tab().set_edit_mode(Edit::Nothing);
             return Ok(true);
         }
         let executable = args.remove(0);
@@ -670,10 +670,13 @@ impl Status {
             if !is_program_in_path(&executable) {
                 return Ok(true);
             }
-            let current_directory = self.selected_non_mut().directory_of_selected()?.to_owned();
+            let current_directory = self
+                .current_tab_non_mut()
+                .directory_of_selected()?
+                .to_owned();
             let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
             execute_without_output_with_path(executable, current_directory, Some(&params))?;
-            self.selected().set_edit_mode(Edit::Nothing);
+            self.current_tab().set_edit_mode(Edit::Nothing);
             Ok(true)
         }
     }
@@ -685,7 +688,7 @@ impl Status {
         password_dest: PasswordUsage,
     ) -> Result<()> {
         log_info!("event ask password");
-        self.selected()
+        self.current_tab()
             .set_edit_mode(Edit::InputSimple(InputSimple::Password(
                 encrypted_action,
                 password_dest,
@@ -694,7 +697,7 @@ impl Status {
     }
 
     pub fn execute_password_command(&mut self) -> Result<()> {
-        match self.selected_non_mut().edit_mode {
+        match self.current_tab_non_mut().edit_mode {
             Edit::InputSimple(InputSimple::Password(action, dest)) => {
                 self._execute_password_command(action, dest)?;
             }
@@ -709,7 +712,7 @@ impl Status {
 
     fn reset_edit_mode(&mut self) {
         self.menu.completion.reset();
-        self.selected().reset_edit_mode();
+        self.current_tab().reset_edit_mode();
     }
 
     fn _execute_password_command(
@@ -731,10 +734,10 @@ impl Status {
 
     /// Execute a new mark, saving it to a config file for futher use.
     pub fn marks_new(&mut self, c: char) -> Result<()> {
-        let path = self.selected().path_content.path.clone();
+        let path = self.current_tab().path_content.path.clone();
         self.menu.marks.new_mark(c, &path)?;
         {
-            let tab: &mut Tab = self.selected();
+            let tab: &mut Tab = self.current_tab();
             tab.refresh_view()
         }?;
         self.reset_edit_mode();
@@ -745,9 +748,9 @@ impl Status {
     /// If the saved path is invalid, it does nothing but reset the view.
     pub fn marks_jump_char(&mut self, c: char) -> Result<()> {
         if let Some(path) = self.menu.marks.get(c) {
-            self.selected().cd(&path)?;
+            self.current_tab().cd(&path)?;
         }
-        self.selected().refresh_view()?;
+        self.current_tab().refresh_view()?;
         self.reset_edit_mode();
         self.refresh_status()
     }
@@ -788,7 +791,7 @@ impl Status {
     }
 
     fn run_sudo_command(&mut self) -> Result<()> {
-        self.selected().set_edit_mode(Edit::Nothing);
+        self.current_tab().set_edit_mode(Edit::Nothing);
         reset_sudo_faillock()?;
         let Some(sudo_command) = &self.menu.sudo_command else {
             return self.menu.clear_sudo_attributes();
@@ -804,7 +807,7 @@ impl Status {
                 .sudo()
                 .as_ref()
                 .context("sudo password isn't set")?,
-            self.selected_non_mut().directory_of_selected()?,
+            self.current_tab_non_mut().directory_of_selected()?,
         )?;
         self.menu.clear_sudo_attributes()?;
         self.refresh_status()
@@ -862,7 +865,7 @@ impl Status {
             let _ = self.match_confirmed_mode(confirmed_action);
         }
         self.reset_edit_mode();
-        self.selected().refresh_view()?;
+        self.current_tab().refresh_view()?;
 
         Ok(())
     }
@@ -892,11 +895,11 @@ impl Status {
     }
 
     pub fn first_line_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
-        if matches!(self.selected_non_mut().display_mode, Display::Preview) {
+        if matches!(self.current_tab_non_mut().display_mode, Display::Preview) {
             return Ok(());
         }
         let is_right = self.index == 1;
-        let first_line = FirstLine::new(self, self.selected_non_mut())?;
+        let first_line = FirstLine::new(self, self.current_tab_non_mut())?;
         let action = first_line.action(col as usize, is_right);
         action.matcher(self, binds)
     }
@@ -916,10 +919,10 @@ impl Status {
     }
 
     pub fn set_mode_chmod(&mut self) -> Result<()> {
-        if self.selected().path_content.is_empty() {
+        if self.current_tab().path_content.is_empty() {
             return Ok(());
         }
-        self.selected()
+        self.current_tab()
             .set_edit_mode(Edit::InputSimple(InputSimple::Chmod));
         if self.menu.flagged.is_empty() {
             self.toggle_flag_for_selected();
@@ -933,18 +936,18 @@ impl Status {
     /// If the selected file is the root path (.) or its parent (..),
     /// it exits immediatly, doing nothing.
     pub fn rename(&mut self) -> Result<()> {
-        let selected = self.selected_non_mut().selected()?;
-        if selected.path == self.selected_non_mut().path_content.path {
+        let selected = self.current_tab_non_mut().selected()?;
+        if selected.path == self.current_tab_non_mut().path_content.path {
             return Ok(());
         }
-        if let Some(parent) = self.selected_non_mut().path_content.path.parent() {
+        if let Some(parent) = self.current_tab_non_mut().path_content.path.parent() {
             if selected.path == parent {
                 return Ok(());
             }
         }
         let old_name = &selected.filename;
         self.menu.input.replace(old_name);
-        self.selected()
+        self.current_tab()
             .set_edit_mode(Edit::InputSimple(InputSimple::Rename));
         Ok(())
     }
@@ -957,10 +960,10 @@ impl Status {
 
     /// Fill the input string with the currently selected completion.
     pub fn fill_completion(&mut self) -> Result<()> {
-        match self.selected_non_mut().edit_mode {
+        match self.current_tab_non_mut().edit_mode {
             Edit::InputCompleted(InputCompleted::Goto) => {
                 let current_path = self
-                    .selected_non_mut()
+                    .current_tab_non_mut()
                     .path_content_str()
                     .unwrap_or_default()
                     .to_owned();
@@ -972,22 +975,22 @@ impl Status {
                 self.menu.completion.exec(&self.menu.input.string())
             }
             Edit::InputCompleted(InputCompleted::Search)
-                if matches!(self.selected_non_mut().display_mode, Display::Normal) =>
+                if matches!(self.current_tab_non_mut().display_mode, Display::Normal) =>
             {
                 let input_string = self.menu.input.string();
                 self.menu.completion.search_from_normal(
                     &self
-                        .selected_non_mut()
+                        .current_tab_non_mut()
                         .path_content
                         .filenames_containing(&input_string),
                 )
             }
             Edit::InputCompleted(InputCompleted::Search)
-                if matches!(self.selected_non_mut().display_mode, Display::Tree) =>
+                if matches!(self.current_tab_non_mut().display_mode, Display::Tree) =>
             {
                 let input_string = self.menu.input.string();
                 // let filenames = self.selected_non_mut().tree.filenames();
-                let filenames = self.selected_non_mut().tree.filenames_vec();
+                let filenames = self.current_tab_non_mut().tree.filenames_vec();
                 self.menu
                     .completion
                     .search_from_tree_with_vecs(&input_string, &filenames)

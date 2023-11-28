@@ -499,7 +499,7 @@ impl PreviewFirstLine {
         if status.settings.dual && status.settings.preview {
             status.tabs[0].selected()
         } else {
-            status.selected_non_mut().selected()
+            status.current_tab_non_mut().selected()
         }
     }
 
@@ -569,7 +569,7 @@ impl WinMainSecondLine {
 
     fn second_line_simple(status: &Status) -> (Option<String>, Option<Attr>) {
         (
-            Some(status.selected_non_mut().filter.to_string()),
+            Some(status.current_tab_non_mut().filter.to_string()),
             Some(ATTR_YELLOW_BOLD),
         )
     }
@@ -947,7 +947,7 @@ impl Draw for WinSecondaryFirstLine {
 impl WinSecondaryFirstLine {
     fn new(status: &Status) -> Self {
         Self {
-            content: status.selected_non_mut().edit_mode.line_display(status),
+            content: status.current_tab_non_mut().edit_mode.line_display(status),
         }
     }
 }

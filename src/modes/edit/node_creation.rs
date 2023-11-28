@@ -31,7 +31,7 @@ impl NodeCreation {
     ///
     /// It may fail if the node creation fail. See [`std::fs::create_dir_all`] and [`std::fs::File::create`]
     pub fn create(&self, status: &mut Status) -> Result<()> {
-        let tab = status.selected();
+        let tab = status.current_tab();
         let root_path = Self::root_path(tab)?;
         let path = root_path.join(sanitize_filename::sanitize(status.menu.input.string()));
 
