@@ -76,6 +76,10 @@ pub struct Status {
     pub menu: Menu,
     /// Display settings
     pub settings: DisplaySettings,
+
+    /// True if the user issued a quit event (`Key::Char('q')` by default).
+    /// It's used to exit the main loop before reseting the cursor.
+    pub must_quit: bool,
 }
 
 impl Status {
@@ -112,6 +116,7 @@ impl Status {
             Tab::new(&args, height, users2, settings)?,
         ];
         let settings = DisplaySettings::new(args, settings, &term)?;
+        let must_quit = false;
         Ok(Self {
             tabs,
             index,
@@ -123,6 +128,7 @@ impl Status {
             force_clear,
             menu,
             settings,
+            must_quit,
         })
     }
 
@@ -509,7 +515,7 @@ impl Status {
 
     /// True if a quit event was registered in the selected tab.
     pub fn must_quit(&self) -> bool {
-        self.current_tab_non_mut().must_quit()
+        self.must_quit
     }
 
     /// Set a "force clear" flag to true, which will reset the display.

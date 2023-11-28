@@ -171,7 +171,7 @@ impl ActionMap {
             ActionMap::PageDown => EventAction::page_down(status),
             ActionMap::PageUp => EventAction::page_up(status),
             ActionMap::Preview => EventAction::preview(status),
-            ActionMap::Quit => EventAction::quit(current_tab),
+            ActionMap::Quit => EventAction::quit(status),
             ActionMap::RefreshIfNeeded => EventAction::refresh_if_needed(current_tab),
             ActionMap::RefreshView => EventAction::refreshview(status),
             ActionMap::RegexMatch => EventAction::regex_match(current_tab),

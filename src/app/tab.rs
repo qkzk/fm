@@ -7,7 +7,6 @@ use crate::common::{has_last_modification_happened_less_than, row_to_window_inde
 use crate::config::Settings;
 use crate::io::execute;
 use crate::io::Args;
-use crate::log_info;
 use crate::modes::ContentWindow;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
@@ -77,10 +76,6 @@ pub struct Tab {
     pub history: History,
     /// Users & groups
     pub users: Users,
-
-    /// True if the user issued a quit event (`Key::Char('q')` by default).
-    /// It's used to exit the main loop before reseting the cursor.
-    pub must_quit: bool,
 }
 
 impl Tab {
@@ -112,7 +107,6 @@ impl Tab {
         let display_mode = Display::default();
         let edit_mode = Edit::Nothing;
         let mut window = ContentWindow::new(path_content.content.len(), height);
-        let must_quit = false;
         let preview = Preview::Empty;
         let history = History::default();
         let searched = None;
@@ -126,7 +120,6 @@ impl Tab {
             window,
             path_content,
             height,
-            must_quit,
             preview,
             searched,
             history,
@@ -134,6 +127,38 @@ impl Tab {
             tree,
             settings,
         })
+    }
+
+    /// Returns the directory owning the selected file.
+    /// In Tree mode, it's the current directory if the selected node is a directory,
+    /// its parent otherwise.
+    /// In normal mode it's the current working directory.
+    pub fn directory_of_selected(&self) -> Result<&path::Path> {
+        match self.display_mode {
+            Display::Tree => self.tree.directory_of_selected().context("No parent"),
+            _ => Ok(&self.path_content.path),
+        }
+    }
+
+    /// Fileinfo of the selected element.
+    pub fn current_file(&self) -> Result<FileInfo> {
+        match self.display_mode {
+            Display::Tree => {
+                let node = self.tree.selected_node().context("no selected node")?;
+                node.fileinfo(&self.users)
+            }
+            _ => Ok(self
+                .path_content
+                .selected()
+                .context("no selected file")?
+                .to_owned()),
+        }
+    }
+
+    /// Returns true if the current mode requires 2 windows.
+    /// Only Tree, Normal & Preview doesn't require 2 windows.
+    pub fn need_second_window(&self) -> bool {
+        !matches!(self.edit_mode, Edit::Nothing)
     }
 
     /// Refresh everything but the view
@@ -159,11 +184,6 @@ impl Tab {
         Ok(())
     }
 
-    /// Update the kind of sort from a char typed by the user.
-    pub fn update_sort_from_char(&mut self, c: char) {
-        self.settings.sort_kind.update_from_char(c)
-    }
-
     /// Refresh the view if files were modified in current directory.
     /// If a refresh occurs, tries to select the same file as before.
     /// If it can't, the first file (`.`) is selected.
@@ -180,6 +200,38 @@ impl Tab {
         } else {
             Ok(())
         }
+    }
+
+    /// Set a new mode and save the last one
+    pub fn set_edit_mode(&mut self, new_mode: Edit) {
+        self.edit_mode = new_mode;
+    }
+
+    pub fn set_display_mode(&mut self, new_display_mode: Display) {
+        self.reset_preview();
+        self.display_mode = new_display_mode
+    }
+
+    fn reset_preview(&mut self) {
+        if matches!(self.display_mode, Display::Preview) {
+            self.preview = Preview::empty();
+        }
+    }
+
+    /// Reset the modes :
+    /// - edit_mode is set to Nothing,
+    pub fn reset_edit_mode(&mut self) -> bool {
+        let must_refresh = matches!(self.display_mode, Display::Preview);
+        self.edit_mode = Edit::Nothing;
+        must_refresh
+    }
+
+    pub fn reset_mode_and_view(&mut self) -> Result<()> {
+        if matches!(self.display_mode, Display::Preview) {
+            self.set_display_mode(Display::Normal);
+        }
+        self.reset_edit_mode();
+        self.refresh_view()
     }
 
     /// Refresh the folder, reselect the last selected file, move the window to it.
@@ -201,34 +253,15 @@ impl Tab {
         Ok(())
     }
 
-    /// Move to the currently selected directory.
-    /// Fail silently if the current directory is empty or if the selected
-    /// file isn't a directory.
-    pub fn go_to_selected_dir(&mut self) -> Result<()> {
-        log_info!("go to selected");
-        let childpath = &self
-            .path_content
-            .selected()
-            .context("Empty directory")?
-            .path
-            .clone();
-        log_info!("selected : {childpath:?}");
-        self.cd(childpath)?;
-        self.window.reset(self.path_content.content.len());
-        Ok(())
+    /// Update the kind of sort from a char typed by the user.
+    pub fn update_sort_from_char(&mut self, c: char) {
+        self.settings.sort_kind.update_from_char(c)
     }
 
     /// Set the height of the window and itself.
     pub fn set_height(&mut self, height: usize) {
         self.window.set_height(height);
         self.height = height;
-    }
-
-    /// Returns `true` iff the application has to quit.
-    /// This methods allows use to reset the cursors and other
-    /// terminal parameters gracefully.
-    pub fn must_quit(&self) -> bool {
-        self.must_quit
     }
 
     /// Returns a string of the current directory path.
@@ -285,44 +318,18 @@ impl Tab {
         self.window.scroll_to(index);
     }
 
-    /// Search in current directory for an file whose name contains `searched_name`,
-    /// from a starting position `next_index`.
-    /// We search forward from that position and start again from top if nothing is found.
-    /// We move the selection to the first matching file.
-    pub fn search_from(&mut self, searched_name: &str, current_index: usize) {
-        let mut found = false;
-        let mut next_index = current_index;
-        // search after current position
-        for (index, file) in self.path_content.enumerate().skip(current_index) {
-            if file.filename.contains(searched_name) {
-                next_index = index;
-                found = true;
-                break;
-            };
-        }
-        if found {
-            self.go_to_index(next_index);
-            return;
-        }
-
-        // search from top
-        for (index, file) in self.path_content.enumerate().take(current_index) {
-            if file.filename.contains(searched_name) {
-                next_index = index;
-                found = true;
-                break;
-            };
-        }
-        if found {
-            self.go_to_index(next_index)
-        }
+    /// Move to the currently selected directory.
+    /// Fail silently if the current directory is empty or if the selected
+    /// file isn't a directory.
+    pub fn go_to_selected_dir(&mut self) -> Result<()> {
+        self.cd(&self
+            .path_content
+            .selected()
+            .context("Empty directory")?
+            .path
+            .clone())?;
+        Ok(())
     }
-
-    pub fn normal_search_next(&mut self, searched: &str) {
-        let next_index = (self.path_content.index + 1) % self.path_content.content.len();
-        self.search_from(searched, next_index);
-    }
-
     /// Move to the parent of current path
     pub fn move_to_parent(&mut self) -> Result<()> {
         let path = self.path_content.path.clone();
@@ -351,6 +358,13 @@ impl Tab {
             self.make_tree(None)?
         }
 
+        Ok(())
+    }
+
+    /// Fold every child node in the tree.
+    /// Recursively explore the tree and fold every node. Reset the display.
+    pub fn tree_go_to_root(&mut self) -> Result<()> {
+        self.tree.go(To::Root);
         Ok(())
     }
 
@@ -398,32 +412,6 @@ impl Tab {
         Ok(())
     }
 
-    /// Returns the directory owning the selected file.
-    /// In Tree mode, it's the current directory if the selected node is a directory,
-    /// its parent otherwise.
-    /// In normal mode it's the current working directory.
-    pub fn directory_of_selected(&self) -> Result<&path::Path> {
-        match self.display_mode {
-            Display::Tree => self.tree.directory_of_selected().context("No parent"),
-            _ => Ok(&self.path_content.path),
-        }
-    }
-
-    /// Fileinfo of the selected element.
-    pub fn current_file(&self) -> Result<FileInfo> {
-        match self.display_mode {
-            Display::Tree => {
-                let node = self.tree.selected_node().context("no selected node")?;
-                node.fileinfo(&self.users)
-            }
-            _ => Ok(self
-                .path_content
-                .selected()
-                .context("no selected file")?
-                .to_owned()),
-        }
-    }
-
     /// Makes a new tree of the current path.
     pub fn make_tree(&mut self, sort_kind: Option<SortKind>) -> Result<()> {
         let sort_kind = match sort_kind {
@@ -444,44 +432,43 @@ impl Tab {
         Ok(())
     }
 
-    /// Set a new mode and save the last one
-    pub fn set_edit_mode(&mut self, new_mode: Edit) {
-        self.edit_mode = new_mode;
-    }
+    /// Search in current directory for an file whose name contains `searched_name`,
+    /// from a starting position `next_index`.
+    /// We search forward from that position and start again from top if nothing is found.
+    /// We move the selection to the first matching file.
+    pub fn search_from(&mut self, searched_name: &str, current_index: usize) {
+        let mut found = false;
+        let mut next_index = current_index;
+        // search after current position
+        for (index, file) in self.path_content.enumerate().skip(current_index) {
+            if file.filename.contains(searched_name) {
+                next_index = index;
+                found = true;
+                break;
+            };
+        }
+        if found {
+            self.go_to_index(next_index);
+            return;
+        }
 
-    pub fn set_display_mode(&mut self, new_display_mode: Display) {
-        self.reset_preview();
-        self.display_mode = new_display_mode
-    }
-
-    fn reset_preview(&mut self) {
-        if matches!(self.display_mode, Display::Preview) {
-            self.preview = Preview::empty();
+        // search from top
+        for (index, file) in self.path_content.enumerate().take(current_index) {
+            if file.filename.contains(searched_name) {
+                next_index = index;
+                found = true;
+                break;
+            };
+        }
+        if found {
+            self.go_to_index(next_index)
         }
     }
 
-    /// Reset the modes :
-    /// - edit_mode is set to Nothing,
-    pub fn reset_edit_mode(&mut self) -> bool {
-        let must_refresh = matches!(self.display_mode, Display::Preview);
-        self.edit_mode = Edit::Nothing;
-        must_refresh
+    pub fn normal_search_next(&mut self, searched: &str) {
+        let next_index = (self.path_content.index + 1) % self.path_content.content.len();
+        self.search_from(searched, next_index);
     }
-
-    pub fn reset_mode_and_view(&mut self) -> Result<()> {
-        if matches!(self.display_mode, Display::Preview) {
-            self.set_display_mode(Display::Normal);
-        }
-        self.reset_edit_mode();
-        self.refresh_view()
-    }
-
-    /// Returns true if the current mode requires 2 windows.
-    /// Only Tree, Normal & Preview doesn't require 2 windows.
-    pub fn need_second_window(&self) -> bool {
-        !matches!(self.edit_mode, Edit::Nothing)
-    }
-
     /// Move down one row if possible.
     pub fn normal_down_one_row(&mut self) {
         self.path_content.unselect_current();
@@ -506,13 +493,6 @@ impl Tab {
 
     pub fn preview_go_top(&mut self) {
         self.window.scroll_to(0)
-    }
-
-    /// Fold every child node in the tree.
-    /// Recursively explore the tree and fold every node. Reset the display.
-    pub fn tree_go_to_root(&mut self) -> Result<()> {
-        self.tree.go(To::Root);
-        Ok(())
     }
 
     /// Copy the selected filename to the clipboard. Only the filename.

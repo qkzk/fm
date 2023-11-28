@@ -269,8 +269,8 @@ impl EventAction {
 
     /// Once a quit event is received, we change a flag and break the main loop.
     /// It's usefull to reset the cursor before leaving the application.
-    pub fn quit(tab: &mut Tab) -> Result<()> {
-        tab.must_quit = true;
+    pub fn quit(status: &mut Status) -> Result<()> {
+        status.must_quit = true;
         Ok(())
     }
     /// Toggle the display of hidden files.
