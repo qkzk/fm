@@ -4,6 +4,7 @@ use std::path;
 
 use anyhow::{Context, Result};
 
+use crate::app::TabSettings;
 use crate::common::{filename_from_path, path_to_string};
 use crate::io::git;
 use crate::modes::FilterKind;
@@ -56,13 +57,11 @@ impl PathContent {
     pub fn change_directory(
         &mut self,
         path: &path::Path,
-        filter: &FilterKind,
-        show_hidden: bool,
+        settings: &TabSettings,
         users: &Users,
-        sort_kind: &SortKind,
     ) -> Result<()> {
-        self.content = Self::files(path, show_hidden, filter, users)?;
-        sort_kind.sort(&mut self.content);
+        self.content = Self::files(path, settings.show_hidden, &settings.filter, users)?;
+        settings.sort_kind.sort(&mut self.content);
         self.index = 0;
         if !self.content.is_empty() {
             self.content[0].select()
@@ -137,13 +136,8 @@ impl PathContent {
     /// Reset the current file content.
     /// Reads and sort the content with current key.
     /// Select the first file if any.
-    pub fn reset_files(
-        &mut self,
-        filter: &FilterKind,
-        show_hidden: bool,
-        users: &Users,
-    ) -> Result<()> {
-        self.content = Self::files(&self.path, show_hidden, filter, users)?;
+    pub fn reset_files(&mut self, settings: &TabSettings, users: &Users) -> Result<()> {
+        self.content = Self::files(&self.path, settings.show_hidden, &settings.filter, users)?;
         let sort_kind = SortKind::default();
         self.sort(&sort_kind);
         self.index = 0;

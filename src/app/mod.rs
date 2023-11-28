@@ -11,3 +11,4 @@ pub use first_line::FirstLine;
 pub use refresher::Refresher;
 pub use status::Status;
 pub use tab::Tab;
+pub use tab::TabSettings;

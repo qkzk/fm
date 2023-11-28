@@ -274,16 +274,8 @@ impl EventAction {
         Ok(())
     }
     /// Toggle the display of hidden files.
-    pub fn toggle_hidden(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
-        tab.show_hidden = !tab.show_hidden;
-        tab.path_content
-            .reset_files(&tab.filter, tab.show_hidden, &tab.users)?;
-        tab.window.reset(tab.path_content.content.len());
-        if let Display::Tree = tab.display_mode {
-            tab.make_tree(None)?
-        }
-        Ok(())
+    pub fn toggle_hidden(tab: &mut Tab) -> Result<()> {
+        tab.toggle_hidden()
     }
 
     /// Open files with custom opener.
@@ -879,7 +871,7 @@ impl EventAction {
     /// is too low to display both panes.
     pub fn toggle_dualpane(status: &mut Status) -> Result<()> {
         status.settings.dual = !status.settings.dual;
-        status.select_tab(0)?;
+        status.select_left();
         Ok(())
     }
 
@@ -1490,13 +1482,11 @@ impl LeaveMode {
         let filter = FilterKind::from_input(&status.menu.input.string());
         status.current_tab().set_filter(filter);
         status.menu.input.reset();
-        let filter = status.current_tab_non_mut().filter.clone();
-        let show_hidden = status.current_tab_non_mut().show_hidden;
-        let users = status.current_tab_non_mut().users.clone();
-        status
-            .current_tab()
-            .path_content
-            .reset_files(&filter, show_hidden, &users)?;
+        // ugly hack to please borrow checker :(
+        status.tabs[status.index].path_content.reset_files(
+            &status.tabs[status.index].settings,
+            &status.tabs[status.index].users,
+        )?;
         if let Display::Tree = status.current_tab_non_mut().display_mode {
             status.current_tab().make_tree(None)?;
         }

@@ -192,7 +192,7 @@ impl ActionMap {
             ActionMap::ToggleDisplayFull => EventAction::toggle_display_full(status),
             ActionMap::ToggleDualPane => EventAction::toggle_dualpane(status),
             ActionMap::ToggleFlag => EventAction::toggle_flag(status),
-            ActionMap::ToggleHidden => EventAction::toggle_hidden(status),
+            ActionMap::ToggleHidden => EventAction::toggle_hidden(current_tab),
             ActionMap::TogglePreviewSecond => EventAction::toggle_preview_second(status),
             ActionMap::TrashEmpty => EventAction::trash_empty(status),
             ActionMap::TrashMoveFile => EventAction::trash_move_file(status),

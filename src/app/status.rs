@@ -355,21 +355,12 @@ impl Status {
         Ok(())
     }
 
-    /// Select a tab according to its index.
-    /// It's deprecated and is left mostly because I'm not sure I want
-    /// tabs & panes... and I haven't fully decided yet.
-    /// Since I'm lazy and don't want to write it twice, it's left here.
-    pub fn select_tab(&mut self, index: usize) -> Result<()> {
-        if index >= self.tabs.len() {
-            Err(anyhow!(
-                "Only {} tabs. Can't select tab {}",
-                self.tabs.len(),
-                index
-            ))
-        } else {
-            self.index = index;
-            Ok(())
-        }
+    pub fn select_left(&mut self) {
+        self.index = 0;
+    }
+
+    pub fn select_right(&mut self) {
+        self.index = 1;
     }
 
     /// Refresh every disk information.
@@ -508,7 +499,7 @@ impl Status {
     /// Set dual pane if the term is big enough
     pub fn set_dual_pane_if_wide_enough(&mut self, width: usize) -> Result<()> {
         if width < MIN_WIDTH_FOR_DUAL_PANE {
-            self.select_tab(0)?;
+            self.select_left();
             self.settings.dual = false;
         } else {
             self.settings.dual = true;
@@ -889,12 +880,12 @@ impl Status {
         let (width, _) = self.term_size()?;
         if self.settings.dual {
             if (col as usize) < width / 2 {
-                self.select_tab(0)?;
+                self.select_left();
             } else {
-                self.select_tab(1)?;
+                self.select_right();
             };
         } else {
-            self.select_tab(0)?;
+            self.select_left();
         }
         Ok(())
     }

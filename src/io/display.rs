@@ -569,7 +569,7 @@ impl WinMainSecondLine {
 
     fn second_line_simple(status: &Status) -> (Option<String>, Option<Attr>) {
         (
-            Some(status.current_tab_non_mut().filter.to_string()),
+            Some(status.current_tab_non_mut().settings.filter.to_string()),
             Some(ATTR_YELLOW_BOLD),
         )
     }

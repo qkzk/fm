@@ -145,7 +145,7 @@ impl FirstLine {
     }
 
     fn string_sort_kind(tab: &Tab) -> String {
-        format!(" {} ", &tab.sort_kind)
+        format!(" {} ", &tab.settings.sort_kind)
     }
 
     fn string_first_row_flags(status: &Status) -> String {

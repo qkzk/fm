@@ -20,6 +20,28 @@ use crate::modes::Users;
 use crate::modes::{calculate_top_bottom, Go, To, Tree};
 use crate::modes::{Display, Edit};
 
+pub struct TabSettings {
+    /// read from command line
+    pub show_hidden: bool,
+    /// The filter use before displaying files
+    pub filter: FilterKind,
+    /// The kind of sort used to display the files.
+    pub sort_kind: SortKind,
+}
+
+impl TabSettings {
+    fn new(args: &Args, settings: &Settings) -> Self {
+        let filter = FilterKind::All;
+        let show_hidden = args.all || settings.all;
+        let sort_kind = SortKind::default();
+        Self {
+            show_hidden,
+            filter,
+            sort_kind,
+        }
+    }
+}
+
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
 pub struct Tab {
@@ -42,12 +64,7 @@ pub struct Tab {
     /// Height of the terminal window
     pub height: usize,
 
-    /// read from command line
-    pub show_hidden: bool,
-    /// The filter use before displaying files
-    pub filter: FilterKind,
-    /// The kind of sort used to display the files.
-    pub sort_kind: SortKind,
+    pub settings: TabSettings,
 
     /// Last searched string
     pub searched: Option<String>,
@@ -70,9 +87,9 @@ impl Tab {
         } else {
             path.parent().context("")?
         };
-        let filter = FilterKind::All;
-        let show_hidden = args.all || settings.all;
-        let mut path_content = PathContent::new(start_dir, &users, &filter, show_hidden)?;
+        let settings = TabSettings::new(args, settings);
+        let mut path_content =
+            PathContent::new(start_dir, &users, &settings.filter, settings.show_hidden)?;
         let display_mode = Display::default();
         let edit_mode = Edit::Nothing;
         let mut window = ContentWindow::new(path_content.content.len(), height);
@@ -82,7 +99,6 @@ impl Tab {
         let searched = None;
         let index = path_content.select_file(&path);
         let tree = Tree::default();
-        let sort_kind = SortKind::default();
         window.scroll_to(index);
         Ok(Self {
             display_mode,
@@ -93,18 +109,16 @@ impl Tab {
             must_quit,
             preview,
             searched,
-            filter,
-            show_hidden,
             history,
             users,
             tree,
-            sort_kind,
+            settings,
         })
     }
 
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) -> Result<()> {
-        self.filter = FilterKind::All;
+        self.settings.filter = FilterKind::All;
         self.preview = Preview::empty();
         self.set_edit_mode(Edit::Nothing);
         if matches!(self.display_mode, Display::Tree) {
@@ -119,8 +133,7 @@ impl Tab {
     /// displayed files is reset.
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> Result<()> {
-        self.path_content
-            .reset_files(&self.filter, self.show_hidden, &self.users)?;
+        self.path_content.reset_files(&self.settings, &self.users)?;
         self.window.reset(self.path_content.content.len());
         self.refresh_params()?;
         Ok(())
@@ -128,7 +141,7 @@ impl Tab {
 
     /// Update the kind of sort from a char typed by the user.
     pub fn update_sort_from_char(&mut self, c: char) {
-        self.sort_kind.update_from_char(c)
+        self.settings.sort_kind.update_from_char(c)
     }
 
     /// Refresh the view if files were modified in current directory.
@@ -211,18 +224,23 @@ impl Tab {
             &self.path_content.path,
             &self.path_content.selected().context("")?.path,
         );
-        self.path_content.change_directory(
-            path,
-            &self.filter,
-            self.show_hidden,
-            &self.users,
-            &self.sort_kind,
-        )?;
+        self.path_content
+            .change_directory(path, &self.settings, &self.users)?;
         if matches!(self.display_mode, Display::Tree) {
-            self.make_tree(Some(self.sort_kind))?;
+            self.make_tree(Some(self.settings.sort_kind))?;
         }
         self.window.reset(self.path_content.content.len());
         std::env::set_current_dir(path)?;
+        Ok(())
+    }
+
+    pub fn toggle_hidden(&mut self) -> Result<()> {
+        self.settings.show_hidden = !self.settings.show_hidden;
+        self.path_content.reset_files(&self.settings, &self.users)?;
+        self.window.reset(self.path_content.content.len());
+        if let Display::Tree = self.display_mode {
+            self.make_tree(None)?
+        }
         Ok(())
     }
 
@@ -233,7 +251,7 @@ impl Tab {
     }
     /// Apply the filter.
     pub fn set_filter(&mut self, filter: FilterKind) {
-        self.filter = filter
+        self.settings.filter = filter
     }
 
     /// Set the line index to `index` and scroll there.
@@ -324,7 +342,7 @@ impl Tab {
                 return Ok(());
             };
             self.cd(parent.to_owned().as_ref())?;
-            self.make_tree(Some(self.sort_kind))
+            self.make_tree(Some(self.settings.sort_kind))
         } else {
             self.tree.go(To::Parent);
             Ok(())
@@ -392,10 +410,17 @@ impl Tab {
             Some(sort_kind) => sort_kind,
             None => SortKind::tree_default(),
         };
-        self.sort_kind = sort_kind.to_owned();
+        self.settings.sort_kind = sort_kind.to_owned();
         let path = self.path_content.path.clone();
         let users = &self.users;
-        self.tree = Tree::new(path, 5, sort_kind, users, self.show_hidden, &self.filter);
+        self.tree = Tree::new(
+            path,
+            5,
+            sort_kind,
+            users,
+            self.settings.show_hidden,
+            &self.settings.filter,
+        );
         Ok(())
     }
 
@@ -595,14 +620,14 @@ impl Tab {
             Display::Normal => {
                 self.path_content.unselect_current();
                 self.update_sort_from_char(c);
-                self.path_content.sort(&self.sort_kind);
+                self.path_content.sort(&self.settings.sort_kind);
                 self.normal_go_top();
                 self.path_content.select_index(0);
             }
             Display::Tree => {
                 self.update_sort_from_char(c);
                 let selected_path = self.tree.selected_path().to_owned();
-                self.make_tree(Some(self.sort_kind))?;
+                self.make_tree(Some(self.settings.sort_kind))?;
                 self.tree.go(To::Path(&selected_path));
             }
             _ => (),
