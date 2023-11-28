@@ -102,7 +102,7 @@ impl ShellCommandParser {
     fn filename(status: &Status) -> Result<String> {
         Ok(status
             .current_tab_non_mut()
-            .selected()
+            .current_file()
             .context("Empty directory")?
             .filename)
     }
@@ -110,7 +110,7 @@ impl ShellCommandParser {
     fn extension(status: &Status) -> Result<String> {
         Ok(status
             .current_tab_non_mut()
-            .selected()
+            .current_file()
             .context("Empty directory")?
             .extension)
     }

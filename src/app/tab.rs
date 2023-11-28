@@ -158,7 +158,11 @@ impl Tab {
 
     /// Refresh the folder, reselect the last selected file, move the window to it.
     pub fn refresh_and_reselect_file(&mut self) -> Result<()> {
-        let selected_path = self.selected().context("no selected file")?.path.clone();
+        let selected_path = self
+            .current_file()
+            .context("no selected file")?
+            .path
+            .clone();
         self.refresh_view()?;
         match self.display_mode {
             Display::Preview => (),
@@ -381,7 +385,7 @@ impl Tab {
     }
 
     /// Fileinfo of the selected element.
-    pub fn selected(&self) -> Result<FileInfo> {
+    pub fn current_file(&self) -> Result<FileInfo> {
         match self.display_mode {
             Display::Tree => {
                 let node = self.tree.selected_node().context("no selected node")?;
@@ -481,7 +485,7 @@ impl Tab {
 
     /// Copy the selected filename to the clipboard. Only the filename.
     pub fn filename_to_clipboard(&self) {
-        let Ok(file) = self.selected() else {
+        let Ok(file) = self.current_file() else {
             return;
         };
         set_clipboard(file.filename.clone())
@@ -489,7 +493,7 @@ impl Tab {
 
     /// Copy the selected filepath to the clipboard. The absolute path.
     pub fn filepath_to_clipboard(&self) {
-        let Ok(file) = self.selected() else {
+        let Ok(file) = self.current_file() else {
             return;
         };
         let Some(path_str) = file.path.to_str() else {

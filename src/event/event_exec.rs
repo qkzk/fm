@@ -306,7 +306,7 @@ impl EventAction {
     /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
     /// not the selected file in the pathcontent.
     pub fn rename(status: &mut Status) -> Result<()> {
-        let selected = status.current_tab_non_mut().selected()?;
+        let selected = status.current_tab_non_mut().current_file()?;
         if selected.path == status.current_tab_non_mut().path_content.path {
             return Ok(());
         }
@@ -391,7 +391,7 @@ impl EventAction {
         };
         let nvim_server = status.nvim_server.clone();
         if status.menu.flagged.is_empty() {
-            let Ok(fileinfo) = status.current_tab_non_mut().selected() else {
+            let Ok(fileinfo) = status.current_tab_non_mut().current_file() else {
                 return Ok(());
             };
             open_in_current_neovim(&fileinfo.path, &nvim_server);
@@ -449,7 +449,7 @@ impl EventAction {
             log_line!("{DEFAULT_DRAGNDROP} must be installed.");
             return Ok(());
         }
-        let Ok(file) = status.current_tab_non_mut().selected() else {
+        let Ok(file) = status.current_tab_non_mut().current_file() else {
             return Ok(());
         };
         let path_str = file
@@ -832,7 +832,7 @@ impl EventAction {
             return Ok(());
         }
         if let Display::Normal | Display::Tree = tab.display_mode {
-            let Ok(file_info) = tab.selected() else {
+            let Ok(file_info) = tab.current_file() else {
                 return Ok(());
             };
             log_info!("selected {:?}", file_info);
@@ -1420,7 +1420,7 @@ impl LeaveMode {
 
     /// Execute the selected node if it's a file else enter the directory.
     pub fn tree(status: &mut Status) -> Result<()> {
-        let path = status.current_tab_non_mut().selected()?.path;
+        let path = status.current_tab_non_mut().current_file()?.path;
         let is_dir = path.is_dir();
         if is_dir {
             status.current_tab().cd(&path)?;

@@ -497,9 +497,9 @@ impl PreviewFirstLine {
 
     fn _pick_previewed_fileinfo(status: &Status) -> Result<FileInfo> {
         if status.settings.dual && status.settings.preview {
-            status.tabs[0].selected()
+            status.tabs[0].current_file()
         } else {
-            status.current_tab_non_mut().selected()
+            status.current_tab_non_mut().current_file()
         }
     }
 
@@ -541,7 +541,7 @@ impl WinMainSecondLine {
         let (content, attr) = match tab.display_mode {
             DisplayMode::Normal | DisplayMode::Tree => {
                 if !status.settings.metadata {
-                    if let Ok(file) = tab.selected() {
+                    if let Ok(file) = tab.current_file() {
                         Self::second_line_detailed(&file)
                     } else {
                         (None, None)

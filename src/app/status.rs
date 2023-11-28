@@ -163,7 +163,7 @@ impl Status {
         let tab = self.current_tab_non_mut();
 
         if matches!(tab.edit_mode, Edit::Nothing) && !matches!(tab.display_mode, Display::Preview) {
-            let Ok(file) = tab.selected() else {
+            let Ok(file) = tab.current_file() else {
                 return;
             };
             self.menu.flagged.toggle(&file.path);
@@ -436,7 +436,7 @@ impl Status {
         if self.current_tab_non_mut().path_content.is_empty() {
             return Ok(());
         }
-        let Ok(file_info) = self.current_tab_non_mut().selected() else {
+        let Ok(file_info) = self.current_tab_non_mut().current_file() else {
             return Ok(());
         };
         match file_info.file_kind {
@@ -488,7 +488,7 @@ impl Status {
         self.tabs[1].set_display_mode(Display::Preview);
         self.tabs[1].set_edit_mode(Edit::Nothing);
         let fileinfo = self.tabs[0]
-            .selected()
+            .current_file()
             .context("force preview: No file to select")?;
         let preview = match fileinfo.file_kind {
             FileKind::Directory => Preview::directory(&fileinfo, &self.tabs[0].users),
@@ -525,7 +525,7 @@ impl Status {
 
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
-        let path = self.current_tab_non_mut().selected()?.path;
+        let path = self.current_tab_non_mut().current_file()?.path;
         match self.opener.kind(&path) {
             Some(Kind::Internal(Internal::NotSupported)) => {
                 let _ = self.mount_iso_drive();
@@ -545,7 +545,7 @@ impl Status {
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
         if self.menu.iso_device.is_none() {
-            let path = path_to_string(&self.current_tab_non_mut().selected()?.path);
+            let path = path_to_string(&self.current_tab_non_mut().current_file()?.path);
             self.menu.iso_device = Some(IsoDevice::from_path(path));
         }
         Ok(())
@@ -936,7 +936,7 @@ impl Status {
     /// If the selected file is the root path (.) or its parent (..),
     /// it exits immediatly, doing nothing.
     pub fn rename(&mut self) -> Result<()> {
-        let selected = self.current_tab_non_mut().selected()?;
+        let selected = self.current_tab_non_mut().current_file()?;
         if selected.path == self.current_tab_non_mut().path_content.path {
             return Ok(());
         }
