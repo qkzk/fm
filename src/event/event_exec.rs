@@ -348,14 +348,14 @@ impl EventAction {
     }
 
     /// Enter the shell menu mode. You can pick a TUI application to be run
-    pub fn shell_menu(tab: &mut Tab) -> Result<()> {
+    pub fn tui_menu(tab: &mut Tab) -> Result<()> {
         tab.set_edit_mode(Edit::Navigate(Navigate::TuiApplication));
         Ok(())
     }
 
     /// Enter the cli info mode. You can pick a Text application to be
     /// displayed/
-    pub fn cli_info(status: &mut Status) -> Result<()> {
+    pub fn cli_menu(status: &mut Status) -> Result<()> {
         status
             .current_tab()
             .set_edit_mode(Edit::Navigate(Navigate::CliApplication));
@@ -714,7 +714,6 @@ impl EventAction {
             Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status)?,
             Edit::Navigate(Navigate::CliApplication) => {
                 must_refresh = false;
-                must_reset_mode = false;
                 LeaveMode::cli_info(status)?;
             }
             Edit::Navigate(Navigate::EncryptedDrive) => (),
@@ -1221,6 +1220,7 @@ impl LeaveMode {
     pub fn cli_info(status: &mut Status) -> Result<()> {
         let output = status.menu.cli_applications.execute()?;
         log_info!("output\n{output}");
+        status.current_tab().reset_edit_mode();
         status.current_tab().set_display_mode(Display::Preview);
         let preview = Preview::cli_info(&output);
         status.current_tab().window.reset(preview.len());

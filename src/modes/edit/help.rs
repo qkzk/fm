@@ -104,7 +104,8 @@ Navigate as usual. Most actions works as in 'normal' view.
 {Search:<10}:      SEARCH
 {Command:<10}:      COMMAND
 {Bulk:<10}:      BULK
-{ShellMenu:<10}:      SHELL MENU
+{TuiMenu:<10}:      TUI APPS
+{CliMenu:<10}:      CLI APPS
 {RemoteMount:<10}:      MOUNT REMOTE PATH
 {Filter:<10}:      FILTER 
     (by name \"n name\", by ext \"e ext\", only directories d or all for reset)

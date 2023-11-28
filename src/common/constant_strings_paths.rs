@@ -168,7 +168,8 @@ pub const RENAME_LINES: [&str; 3] = [
 ];
 pub const TRASH_CONFIRM_LINE: &str = "Enter: restore the selected file  --  x: delete permanently";
 /// Executable commands whose output is a text to be displayed in terminal
-pub const CLI_INFO_COMMANDS: [&str; 4] = ["duf", "inxi -v 2 --color", "neofetch", "lsusb"];
+pub const CLI_INFO_COMMANDS: [&str; 4] =
+    ["duf", "inxi -S -I -D -i -J -M --color", "neofetch", "lsusb"];
 /// Wallpaper executable
 pub const NITROGEN: &str = "nitrogen";
 /// Mediainfo (used to preview media files) executable
