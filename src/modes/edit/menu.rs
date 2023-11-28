@@ -21,34 +21,34 @@ use crate::modes::Trash;
 use crate::modes::TuiApplications;
 
 pub struct Menu {
-    /// Hold password between their typing and usage
-    pub password_holder: PasswordHolder,
-    /// Last sudo command ran
-    pub sudo_command: Option<String>,
-    /// Compression methods
-    pub compression: Compresser,
-    /// MTP devices
-    pub removable_devices: Option<RemovableDevices>,
-    /// CLI applications
-    pub cli_applications: CliApplications,
-    /// TUI application
-    pub tui_applications: TuiApplications,
     /// Bulk rename
     pub bulk: Option<Bulk>,
-    /// Iso mounter. Set to None by default, dropped ASAP
-    pub iso_device: Option<IsoDevice>,
+    /// CLI applications
+    pub cli_applications: CliApplications,
+    /// Completion list and index in it.
+    pub completion: Completion,
+    /// Compression methods
+    pub compression: Compresser,
     /// Encrypted devices opener
     pub encrypted_devices: CryptoDeviceOpener,
-    /// The trash
-    pub trash: Trash,
-    /// Marks allows you to jump to a save mark
-    pub marks: Marks,
     /// The flagged files
     pub flagged: Flagged,
     /// The typed input by the user
     pub input: Input,
-    /// Completion list and index in it.
-    pub completion: Completion,
+    /// Iso mounter. Set to None by default, dropped ASAP
+    pub iso_device: Option<IsoDevice>,
+    /// Marks allows you to jump to a save mark
+    pub marks: Marks,
+    /// Hold password between their typing and usage
+    pub password_holder: PasswordHolder,
+    /// MTP devices
+    pub removable_devices: Option<RemovableDevices>,
+    /// TUI application
+    pub tui_applications: TuiApplications,
+    /// The trash
+    pub trash: Trash,
+    /// Last sudo command ran
+    pub sudo_command: Option<String>,
 }
 
 impl Menu {
@@ -71,6 +71,27 @@ impl Menu {
         })
     }
 
+    /// Creats a new bulk instance if needed
+    pub fn init_bulk(&mut self) {
+        if self.bulk.is_none() {
+            self.bulk = Some(Bulk::default());
+        }
+    }
+
+    pub fn bulk_prev(&mut self) {
+        self.init_bulk();
+        if let Some(bulk) = &mut self.bulk {
+            bulk.prev();
+        }
+    }
+
+    pub fn bulk_next(&mut self) {
+        self.init_bulk();
+        if let Some(bulk) = &mut self.bulk {
+            bulk.next();
+        }
+    }
+
     pub fn find_encrypted_drive_mount_point(&self) -> Option<std::path::PathBuf> {
         let Some(device) = self.encrypted_devices.selected() else {
             return None;
@@ -82,6 +103,19 @@ impl Menu {
             return None;
         };
         Some(std::path::PathBuf::from(mount_point))
+    }
+
+    pub fn find_removable_mount_point(&mut self) -> Option<std::path::PathBuf> {
+        let Some(devices) = &self.removable_devices else {
+            return None;
+        };
+        let Some(device) = devices.selected() else {
+            return None;
+        };
+        if !device.is_mounted() {
+            return None;
+        }
+        Some(std::path::PathBuf::from(&device.path))
     }
 
     pub fn mount_removable(&mut self) -> Result<()> {
@@ -112,48 +146,14 @@ impl Menu {
         Ok(())
     }
 
-    pub fn find_removable_mount_point(&mut self) -> Option<std::path::PathBuf> {
-        let Some(devices) = &self.removable_devices else {
-            return None;
-        };
-        let Some(device) = devices.selected() else {
-            return None;
-        };
-        if !device.is_mounted() {
-            return None;
-        }
-        Some(std::path::PathBuf::from(&device.path))
-    }
-
-    /// Creats a new bulk instance if needed
-    pub fn init_bulk(&mut self) {
-        if self.bulk.is_none() {
-            self.bulk = Some(Bulk::default());
-        }
-    }
-
-    pub fn bulk_prev(&mut self) {
-        self.init_bulk();
-        if let Some(bulk) = &mut self.bulk {
-            bulk.prev();
-        }
-    }
-
-    pub fn bulk_next(&mut self) {
-        self.init_bulk();
-        if let Some(bulk) = &mut self.bulk {
-            bulk.next();
-        }
-    }
-
-    pub fn trash_delete_permanently(&mut self) -> Result<()> {
-        self.trash.delete_permanently()
-    }
-
     /// Remove a flag file from Jump mode
     pub fn remove_selected_flagged(&mut self) -> Result<()> {
         self.flagged.remove_selected();
         Ok(())
+    }
+
+    pub fn trash_delete_permanently(&mut self) -> Result<()> {
+        self.trash.delete_permanently()
     }
 
     /// Move the selected flagged file to the trash.

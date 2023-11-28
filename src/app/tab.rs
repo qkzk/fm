@@ -123,7 +123,6 @@ impl Tab {
     }
 
     /// Refresh the current view.
-    /// Input string is emptied, the files are read again, the window of
     /// displayed files is reset.
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> Result<()> {

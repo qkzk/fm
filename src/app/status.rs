@@ -980,7 +980,6 @@ impl Status {
             {
                 let input_string = self.menu.input.string();
                 self.menu.completion.search_from_normal(
-                    &self.menu.input.string(),
                     &self
                         .selected_non_mut()
                         .path_content

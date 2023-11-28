@@ -3,7 +3,7 @@ use std::fs::{self, ReadDir};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 
-use crate::{event::ActionMap, modes::Filenames, modes::PathContent};
+use crate::{event::ActionMap, modes::Filenames};
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
@@ -195,7 +195,7 @@ impl Completion {
     }
 
     /// Looks for file within current folder completing what the user typed.
-    pub fn search_from_normal(&mut self, input_string: &str, files: &[String]) -> Result<()> {
+    pub fn search_from_normal(&mut self, files: &[String]) -> Result<()> {
         self.update(files.into());
         Ok(())
     }
