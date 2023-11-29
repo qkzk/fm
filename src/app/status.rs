@@ -177,6 +177,7 @@ impl Status {
         Ok(())
     }
 
+    /// Flag all files in the current directory.
     pub fn flag_all(&mut self) {
         self.tabs[self.index]
             .path_content
@@ -185,6 +186,16 @@ impl Status {
             .for_each(|file| {
                 self.menu.flagged.push(file.path.clone());
             });
+    }
+
+    /// Reverse every flag in _current_ directory. Flagged files in other
+    /// directory aren't affected.
+    pub fn reverse_flags(&mut self) {
+        self.tabs[self.index]
+            .path_content
+            .content
+            .iter()
+            .for_each(|file| self.menu.flagged.toggle(&file.path));
     }
 
     /// Flag the selected file if any

@@ -45,6 +45,13 @@ use crate::modes::{ExtensionKind, Preview};
 pub struct EventAction {}
 
 impl EventAction {
+    /// Once a quit event is received, we change a flag and break the main loop.
+    /// It's usefull to reset the cursor before leaving the application.
+    pub fn quit(status: &mut Status) -> Result<()> {
+        status.must_quit = true;
+        Ok(())
+    }
+
     /// Refresh the current view, reloading the files. Move the selection to top.
     pub fn refresh_view(status: &mut Status) -> Result<()> {
         status.refresh_view()
@@ -109,6 +116,11 @@ impl EventAction {
         tab.make_preview()
     }
 
+    /// Toggle the display of hidden files.
+    pub fn toggle_hidden(tab: &mut Tab) -> Result<()> {
+        tab.toggle_hidden()
+    }
+
     /// Remove every flag on files in this directory and others.
     pub fn clear_flags(status: &mut Status) -> Result<()> {
         status.menu.flagged.clear();
@@ -124,11 +136,7 @@ impl EventAction {
     /// Reverse every flag in _current_ directory. Flagged files in other
     /// directory aren't affected.
     pub fn reverse_flags(status: &mut Status) -> Result<()> {
-        status.tabs[status.index]
-            .path_content
-            .content
-            .iter()
-            .for_each(|file| status.menu.flagged.toggle(&file.path));
+        status.reverse_flags();
         Ok(())
     }
 
@@ -138,65 +146,25 @@ impl EventAction {
         Ok(())
     }
 
-    /// Change to CHMOD mode allowing to edit permissions of a file.
-    pub fn chmod(status: &mut Status) -> Result<()> {
-        status.set_mode_chmod()
-    }
-
-    /// Enter JUMP mode, allowing to jump to any flagged file.
-    /// Does nothing if no file is flagged.
-    pub fn jump(status: &mut Status) -> Result<()> {
-        if !status.menu.flagged.is_empty() {
-            status.menu.flagged.index = 0;
-            status
-                .current_tab_mut()
-                .set_edit_mode(Edit::Navigate(Navigate::Jump))
-        }
-        Ok(())
-    }
-
-    /// Enter Marks new mode, allowing to bind a char to a path.
-    pub fn marks_new(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::Navigate(Navigate::Marks(MarkAction::New)));
-        Ok(())
-    }
-
-    /// Enter Marks jump mode, allowing to jump to a marked file.
-    pub fn marks_jump(status: &mut Status) -> Result<()> {
-        if status.menu.marks.is_empty() {
+    /// Enter the rename mode.
+    /// Keep a track of the current mode to ensure we rename the correct file.
+    /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
+    /// not the selected file in the pathcontent.
+    pub fn rename(status: &mut Status) -> Result<()> {
+        let selected = status.current_tab().current_file()?;
+        if selected.path == status.current_tab().path_content.path {
             return Ok(());
         }
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::Navigate(Navigate::Marks(MarkAction::Jump)));
-        Ok(())
-    }
-    /// Creates a symlink of every flagged file to the current directory.
-    pub fn symlink(status: &mut Status) -> Result<()> {
-        for original_file in status.menu.flagged.content.iter() {
-            let filename = original_file
-                .as_path()
-                .file_name()
-                .context("event symlink: File not found")?;
-            let link = status.current_tab().directory_of_selected()?.join(filename);
-            std::os::unix::fs::symlink(original_file, &link)?;
-            log_line!(
-                "Symlink {link} links to {original_file}",
-                original_file = original_file.display(),
-                link = link.display()
-            );
+        if let Some(parent) = status.current_tab().path_content.path.parent() {
+            if selected.path == parent {
+                return Ok(());
+            }
         }
-        status.clear_flags_and_reset_view()
-    }
-
-    /// Enter bulkrename mode, opening a random temp file where the user
-    /// can edit the selected filenames.
-    /// Once the temp file is saved, those file names are changed.
-    pub fn bulk(status: &mut Status) -> Result<()> {
-        status.menu.init_bulk();
+        let old_name = &selected.filename;
+        status.menu.input.replace(old_name);
         status
             .current_tab_mut()
-            .set_edit_mode(Edit::Navigate(Navigate::Bulk));
+            .set_edit_mode(Edit::InputSimple(InputSimple::Rename));
         Ok(())
     }
 
@@ -224,6 +192,29 @@ impl EventAction {
             .current_tab_mut()
             .set_edit_mode(Edit::NeedConfirmation(copy_or_move));
         Ok(())
+    }
+
+    /// Creates a symlink of every flagged file to the current directory.
+    pub fn symlink(status: &mut Status) -> Result<()> {
+        for original_file in status.menu.flagged.content.iter() {
+            let filename = original_file
+                .as_path()
+                .file_name()
+                .context("event symlink: File not found")?;
+            let link = status.current_tab().directory_of_selected()?.join(filename);
+            std::os::unix::fs::symlink(original_file, &link)?;
+            log_line!(
+                "Symlink {link} links to {original_file}",
+                original_file = original_file.display(),
+                link = link.display()
+            );
+        }
+        status.clear_flags_and_reset_view()
+    }
+
+    /// Change to CHMOD mode allowing to edit permissions of a file.
+    pub fn chmod(status: &mut Status) -> Result<()> {
+        status.set_mode_chmod()
     }
 
     /// Enter the new dir mode.
@@ -258,24 +249,39 @@ impl EventAction {
         Ok(())
     }
 
-    /// Display the help which can be navigated and displays the configrable
-    /// binds.
-    pub fn help(status: &mut Status, binds: &Bindings) -> Result<()> {
-        let help = help_string(binds, &status.opener)?;
-        status.current_tab_mut().set_display_mode(Display::Preview);
-        status.current_tab_mut().preview = Preview::help(&help);
-        let len = status.current_tab().preview.len();
-        status.current_tab_mut().window.reset(len);
+    /// Enter the sort mode, allowing the user to select a sort method.
+    pub fn sort(tab: &mut Tab) -> Result<()> {
+        tab.set_edit_mode(Edit::InputSimple(InputSimple::Sort));
         Ok(())
     }
 
-    /// Display the last actions impacting the file tree
-    pub fn log(tab: &mut Tab) -> Result<()> {
-        let log = read_log()?;
-        tab.set_display_mode(Display::Preview);
-        tab.preview = Preview::log(log);
-        tab.window.reset(tab.preview.len());
-        tab.preview_go_bottom();
+    /// Enter the filter mode, where you can filter.
+    /// See `crate::modes::Filter` for more details.
+    pub fn filter(tab: &mut Tab) -> Result<()> {
+        tab.set_edit_mode(Edit::InputSimple(InputSimple::Filter));
+        Ok(())
+    }
+
+    /// Enter JUMP mode, allowing to jump to any flagged file.
+    /// Does nothing if no file is flagged.
+    pub fn jump(status: &mut Status) -> Result<()> {
+        if !status.menu.flagged.is_empty() {
+            status.menu.flagged.index = 0;
+            status
+                .current_tab_mut()
+                .set_edit_mode(Edit::Navigate(Navigate::Jump))
+        }
+        Ok(())
+    }
+
+    /// Enter bulkrename mode, opening a random temp file where the user
+    /// can edit the selected filenames.
+    /// Once the temp file is saved, those file names are changed.
+    pub fn bulk(status: &mut Status) -> Result<()> {
+        status.menu.init_bulk();
+        status
+            .current_tab_mut()
+            .set_edit_mode(Edit::Navigate(Navigate::Bulk));
         Ok(())
     }
 
@@ -297,21 +303,25 @@ impl EventAction {
         Ok(())
     }
 
-    /// Enter the sort mode, allowing the user to select a sort method.
-    pub fn sort(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputSimple(InputSimple::Sort));
+    /// Display the help which can be navigated and displays the configrable
+    /// binds.
+    pub fn help(status: &mut Status, binds: &Bindings) -> Result<()> {
+        let help = help_string(binds, &status.opener)?;
+        status.current_tab_mut().set_display_mode(Display::Preview);
+        status.current_tab_mut().preview = Preview::help(&help);
+        let len = status.current_tab().preview.len();
+        status.current_tab_mut().window.reset(len);
         Ok(())
     }
 
-    /// Once a quit event is received, we change a flag and break the main loop.
-    /// It's usefull to reset the cursor before leaving the application.
-    pub fn quit(status: &mut Status) -> Result<()> {
-        status.must_quit = true;
+    /// Display the last actions impacting the file tree
+    pub fn log(tab: &mut Tab) -> Result<()> {
+        let log = read_log()?;
+        tab.set_display_mode(Display::Preview);
+        tab.preview = Preview::log(log);
+        tab.window.reset(tab.preview.len());
+        tab.preview_go_bottom();
         Ok(())
-    }
-    /// Toggle the display of hidden files.
-    pub fn toggle_hidden(tab: &mut Tab) -> Result<()> {
-        tab.toggle_hidden()
     }
 
     /// Open files with custom opener.
@@ -327,28 +337,6 @@ impl EventAction {
         } else {
             status.open_flagged_files()
         }
-    }
-
-    /// Enter the rename mode.
-    /// Keep a track of the current mode to ensure we rename the correct file.
-    /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
-    /// not the selected file in the pathcontent.
-    pub fn rename(status: &mut Status) -> Result<()> {
-        let selected = status.current_tab().current_file()?;
-        if selected.path == status.current_tab().path_content.path {
-            return Ok(());
-        }
-        if let Some(parent) = status.current_tab().path_content.path.parent() {
-            if selected.path == parent {
-                return Ok(());
-            }
-        }
-        let old_name = &selected.filename;
-        status.menu.input.replace(old_name);
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::InputSimple(InputSimple::Rename));
-        Ok(())
     }
 
     /// Enter the goto mode where an user can type a path to jump to.
@@ -397,6 +385,23 @@ impl EventAction {
         Ok(())
     }
 
+    /// Enter Marks new mode, allowing to bind a char to a path.
+    pub fn marks_new(tab: &mut Tab) -> Result<()> {
+        tab.set_edit_mode(Edit::Navigate(Navigate::Marks(MarkAction::New)));
+        Ok(())
+    }
+
+    /// Enter Marks jump mode, allowing to jump to a marked file.
+    pub fn marks_jump(status: &mut Status) -> Result<()> {
+        if status.menu.marks.is_empty() {
+            return Ok(());
+        }
+        status
+            .current_tab_mut()
+            .set_edit_mode(Edit::Navigate(Navigate::Marks(MarkAction::Jump)));
+        Ok(())
+    }
+
     /// Enter the shortcut mode, allowing to visit predefined shortcuts.
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
@@ -437,13 +442,6 @@ impl EventAction {
 
     pub fn set_nvim_server(tab: &mut Tab) -> Result<()> {
         tab.set_edit_mode(Edit::InputSimple(InputSimple::SetNvimAddr));
-        Ok(())
-    }
-
-    /// Enter the filter mode, where you can filter.
-    /// See `crate::modes::Filter` for more details.
-    pub fn filter(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputSimple(InputSimple::Filter));
         Ok(())
     }
 
