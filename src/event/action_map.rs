@@ -110,7 +110,7 @@ impl ActionMap {
     /// Makes the junction between `Actions` and `Events`.
     /// Every Action links to a different `EventExec` method.
     pub fn matcher(&self, status: &mut Status, binds: &Bindings) -> Result<()> {
-        let current_tab = status.current_tab();
+        let current_tab = status.current_tab_mut();
         match self {
             ActionMap::Back => EventAction::back(current_tab),
             ActionMap::BackTab => EventAction::backtab(status),

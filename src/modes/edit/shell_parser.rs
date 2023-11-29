@@ -85,7 +85,7 @@ impl ShellCommandParser {
 
     fn selected(status: &Status) -> Result<String> {
         status
-            .current_tab_non_mut()
+            .current_tab()
             .path_content
             .selected_path_string()
             .context("Empty directory")
@@ -93,7 +93,7 @@ impl ShellCommandParser {
 
     fn path(status: &Status) -> Result<String> {
         Ok(status
-            .current_tab_non_mut()
+            .current_tab()
             .path_content_str()
             .context("Couldn't read path")?
             .to_owned())
@@ -101,7 +101,7 @@ impl ShellCommandParser {
 
     fn filename(status: &Status) -> Result<String> {
         Ok(status
-            .current_tab_non_mut()
+            .current_tab()
             .current_file()
             .context("Empty directory")?
             .filename)
@@ -109,7 +109,7 @@ impl ShellCommandParser {
 
     fn extension(status: &Status) -> Result<String> {
         Ok(status
-            .current_tab_non_mut()
+            .current_tab()
             .current_file()
             .context("Empty directory")?
             .extension)

@@ -86,7 +86,7 @@ impl TuiApplications {
     /// May fail if the current directory has no parent aka /
     /// May fail if the command itself fails.
     pub fn require_cwd_and_command(status: &Status, command: &str) -> Result<()> {
-        let tab = status.current_tab_non_mut();
+        let tab = status.current_tab();
         let path = tab
             .directory_of_selected()?
             .to_str()
@@ -101,7 +101,7 @@ impl TuiApplications {
     }
 
     fn require_cwd(status: &Status) -> Result<()> {
-        let tab = status.current_tab_non_mut();
+        let tab = status.current_tab();
         let path = tab.directory_of_selected()?;
         execute_without_output_with_path(&status.opener.terminal, path, None)?;
         Ok(())

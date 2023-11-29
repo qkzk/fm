@@ -149,7 +149,7 @@ impl EventAction {
         if !status.menu.flagged.is_empty() {
             status.menu.flagged.index = 0;
             status
-                .current_tab()
+                .current_tab_mut()
                 .set_edit_mode(Edit::Navigate(Navigate::Jump))
         }
         Ok(())
@@ -167,7 +167,7 @@ impl EventAction {
             return Ok(());
         }
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::Navigate(Navigate::Marks(MarkAction::Jump)));
         Ok(())
     }
@@ -178,10 +178,7 @@ impl EventAction {
                 .as_path()
                 .file_name()
                 .context("event symlink: File not found")?;
-            let link = status
-                .current_tab_non_mut()
-                .directory_of_selected()?
-                .join(filename);
+            let link = status.current_tab().directory_of_selected()?.join(filename);
             std::os::unix::fs::symlink(original_file, &link)?;
             log_line!(
                 "Symlink {link} links to {original_file}",
@@ -198,7 +195,7 @@ impl EventAction {
     pub fn bulk(status: &mut Status) -> Result<()> {
         status.menu.init_bulk();
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::Navigate(Navigate::Bulk));
         Ok(())
     }
@@ -224,7 +221,7 @@ impl EventAction {
             return Ok(());
         }
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::NeedConfirmation(copy_or_move));
         Ok(())
     }
@@ -256,7 +253,7 @@ impl EventAction {
             Self::toggle_flag(status)?;
         }
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::NeedConfirmation(NeedConfirmation::Delete));
         Ok(())
     }
@@ -265,10 +262,10 @@ impl EventAction {
     /// binds.
     pub fn help(status: &mut Status, binds: &Bindings) -> Result<()> {
         let help = help_string(binds, &status.opener)?;
-        status.current_tab().set_display_mode(Display::Preview);
-        status.current_tab().preview = Preview::help(&help);
-        let len = status.current_tab_non_mut().preview.len();
-        status.current_tab().window.reset(len);
+        status.current_tab_mut().set_display_mode(Display::Preview);
+        status.current_tab_mut().preview = Preview::help(&help);
+        let len = status.current_tab().preview.len();
+        status.current_tab_mut().window.reset(len);
         Ok(())
     }
 
@@ -337,11 +334,11 @@ impl EventAction {
     /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
     /// not the selected file in the pathcontent.
     pub fn rename(status: &mut Status) -> Result<()> {
-        let selected = status.current_tab_non_mut().current_file()?;
-        if selected.path == status.current_tab_non_mut().path_content.path {
+        let selected = status.current_tab().current_file()?;
+        if selected.path == status.current_tab().path_content.path {
             return Ok(());
         }
-        if let Some(parent) = status.current_tab_non_mut().path_content.path.parent() {
+        if let Some(parent) = status.current_tab().path_content.path.parent() {
             if selected.path == parent {
                 return Ok(());
             }
@@ -349,7 +346,7 @@ impl EventAction {
         let old_name = &selected.filename;
         status.menu.input.replace(old_name);
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::InputSimple(InputSimple::Rename));
         Ok(())
     }
@@ -357,7 +354,7 @@ impl EventAction {
     /// Enter the goto mode where an user can type a path to jump to.
     pub fn goto(status: &mut Status) -> Result<()> {
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::InputCompleted(InputCompleted::Goto));
         status.menu.completion.reset();
         Ok(())
@@ -367,7 +364,7 @@ impl EventAction {
     /// The shell is a fork of current process and will exit if the application
     /// is terminated first.
     pub fn shell(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab_non_mut();
+        let tab = status.current_tab();
         let path = tab.directory_of_selected()?;
         execute_without_output_with_path(&status.opener.terminal, path, None)?;
         Ok(())
@@ -388,7 +385,7 @@ impl EventAction {
     /// displayed/
     pub fn cli_menu(status: &mut Status) -> Result<()> {
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::Navigate(Navigate::CliApplication));
         Ok(())
     }
@@ -404,10 +401,10 @@ impl EventAction {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn shortcut(status: &mut Status) -> Result<()> {
-        std::env::set_current_dir(status.current_tab_non_mut().directory_of_selected()?)?;
+        std::env::set_current_dir(status.current_tab().directory_of_selected()?)?;
         status.menu.shortcut.update_git_root();
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::Navigate(Navigate::Shortcut));
         Ok(())
     }
@@ -424,7 +421,7 @@ impl EventAction {
         };
         let nvim_server = status.nvim_server.clone();
         if status.menu.flagged.is_empty() {
-            let Ok(fileinfo) = status.current_tab_non_mut().current_file() else {
+            let Ok(fileinfo) = status.current_tab().current_file() else {
                 return Ok(());
             };
             open_in_current_neovim(&fileinfo.path, &nvim_server);
@@ -460,18 +457,18 @@ impl EventAction {
         let home_cow = shellexpand::tilde("~");
         let home: &str = home_cow.borrow();
         let path = std::fs::canonicalize(home)?;
-        status.current_tab().cd(&path)?;
+        status.current_tab_mut().cd(&path)?;
         status.update_second_pane_for_preview()
     }
 
     pub fn go_root(status: &mut Status) -> Result<()> {
         let root_path = std::path::PathBuf::from("/");
-        status.current_tab().cd(&root_path)?;
+        status.current_tab_mut().cd(&root_path)?;
         status.update_second_pane_for_preview()
     }
 
     pub fn go_start(status: &mut Status) -> Result<()> {
-        status.current_tab().cd(&START_FOLDER)?;
+        status.current_tab_mut().cd(&START_FOLDER)?;
         status.update_second_pane_for_preview()
     }
 
@@ -482,7 +479,7 @@ impl EventAction {
             log_line!("{DEFAULT_DRAGNDROP} must be installed.");
             return Ok(());
         }
-        let Ok(file) = status.current_tab_non_mut().current_file() else {
+        let Ok(file) = status.current_tab().current_file() else {
             return Ok(());
         };
         let path_str = file
@@ -495,7 +492,7 @@ impl EventAction {
     }
 
     pub fn search_next(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         let Some(searched) = tab.searched.clone() else {
             return Ok(());
         };
@@ -513,7 +510,7 @@ impl EventAction {
     /// Move up one row in modes allowing movement.
     /// Does nothing if the selected item is already the first in list.
     pub fn move_up(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         match tab.edit_mode {
             Edit::Nothing => Self::move_display_up(status)?,
             Edit::Navigate(Navigate::Jump) => status.menu.flagged.prev(),
@@ -533,7 +530,7 @@ impl EventAction {
     }
 
     fn move_display_up(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Normal => tab.normal_up_one_row(),
             Display::Preview => tab.preview_page_up(),
@@ -543,7 +540,7 @@ impl EventAction {
     }
 
     fn move_display_down(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Normal => tab.normal_down_one_row(),
             Display::Preview => tab.preview_page_down(),
@@ -554,10 +551,10 @@ impl EventAction {
     /// Move down one row in modes allowing movements.
     /// Does nothing if the user is already at the bottom.
     pub fn move_down(status: &mut Status) -> Result<()> {
-        match status.current_tab().edit_mode {
+        match status.current_tab_mut().edit_mode {
             Edit::Nothing => Self::move_display_down(status)?,
             Edit::Navigate(Navigate::Jump) => status.menu.flagged.next(),
-            Edit::Navigate(Navigate::History) => status.current_tab().history.next(),
+            Edit::Navigate(Navigate::History) => status.current_tab_mut().history.next(),
             Edit::Navigate(Navigate::Trash) => status.menu.trash.next(),
             Edit::Navigate(Navigate::Shortcut) => status.menu.shortcut.next(),
             Edit::Navigate(Navigate::Marks(_)) => status.menu.marks.next(),
@@ -575,7 +572,7 @@ impl EventAction {
     /// Move to parent in normal mode,
     /// move left one char in mode requiring text input.
     pub fn move_left(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         match tab.edit_mode {
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
                 status.menu.input.cursor_left();
@@ -594,7 +591,7 @@ impl EventAction {
     /// Move to child if any or open a regular file in normal mode.
     /// Move the cursor one char to right in mode requiring text input.
     pub fn move_right(status: &mut Status) -> Result<()> {
-        let tab: &mut Tab = status.current_tab();
+        let tab: &mut Tab = status.current_tab_mut();
         match tab.edit_mode {
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
                 status.menu.input.cursor_right();
@@ -618,7 +615,7 @@ impl EventAction {
 
     /// Delete a char to the left in modes allowing edition.
     pub fn backspace(status: &mut Status) -> Result<()> {
-        match status.current_tab_non_mut().edit_mode {
+        match status.current_tab().edit_mode {
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
                 status.menu.input.delete_char_left();
                 Ok(())
@@ -629,7 +626,7 @@ impl EventAction {
 
     /// Delete all chars to the right in mode allowing edition.
     pub fn delete(status: &mut Status) -> Result<()> {
-        match status.current_tab().edit_mode {
+        match status.current_tab_mut().edit_mode {
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
                 status.menu.input.delete_chars_right();
                 Ok(())
@@ -640,7 +637,7 @@ impl EventAction {
 
     /// Move to leftmost char in mode allowing edition.
     pub fn key_home(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         match tab.edit_mode {
             Edit::Nothing => {
                 match tab.display_mode {
@@ -656,7 +653,7 @@ impl EventAction {
 
     /// Move to the bottom in any mode.
     pub fn end(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         match tab.edit_mode {
             Edit::Nothing => {
                 match tab.display_mode {
@@ -672,7 +669,7 @@ impl EventAction {
 
     /// Move up 10 lines in normal mode and preview.
     pub fn page_up(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Normal => {
                 tab.normal_page_up();
@@ -689,7 +686,7 @@ impl EventAction {
 
     /// Move down 10 lines in normal & preview mode.
     pub fn page_down(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Normal => {
                 tab.normal_page_down();
@@ -712,7 +709,7 @@ impl EventAction {
     pub fn enter(status: &mut Status, binds: &Bindings) -> Result<()> {
         let mut must_refresh = true;
         let mut must_reset_mode = true;
-        match status.current_tab_non_mut().edit_mode {
+        match status.current_tab().edit_mode {
             Edit::InputSimple(InputSimple::Rename) => LeaveMode::rename(status)?,
             Edit::InputSimple(InputSimple::Newfile) => LeaveMode::new_file(status)?,
             Edit::InputSimple(InputSimple::Newdir) => LeaveMode::new_dir(status)?,
@@ -764,7 +761,7 @@ impl EventAction {
             Edit::NeedConfirmation(_)
             | Edit::InputCompleted(InputCompleted::Nothing)
             | Edit::InputSimple(InputSimple::Sort) => (),
-            Edit::Nothing => match status.current_tab_non_mut().display_mode {
+            Edit::Nothing => match status.current_tab().display_mode {
                 Display::Normal => {
                     must_refresh = false;
                     must_reset_mode = false;
@@ -777,7 +774,7 @@ impl EventAction {
 
         status.menu.input.reset();
         if must_reset_mode {
-            status.current_tab().reset_edit_mode();
+            status.current_tab_mut().reset_edit_mode();
         }
         if must_refresh {
             status.refresh_status()?;
@@ -788,7 +785,7 @@ impl EventAction {
     /// Change tab in normal mode with dual pane displayed,
     /// insert a completion in modes allowing completion.
     pub fn tab(status: &mut Status) -> Result<()> {
-        match status.current_tab().edit_mode {
+        match status.current_tab_mut().edit_mode {
             Edit::InputCompleted(_) => status
                 .menu
                 .input
@@ -801,7 +798,7 @@ impl EventAction {
 
     /// Change tab in normal mode.
     pub fn backtab(status: &mut Status) -> Result<()> {
-        if matches!(status.current_tab_non_mut().edit_mode, Edit::Nothing) {
+        if matches!(status.current_tab().edit_mode, Edit::Nothing) {
             status.prev()
         };
         Ok(())
@@ -868,15 +865,15 @@ impl EventAction {
         if status.menu.flagged.len() < 2 {
             return Ok(());
         };
-        if let Display::Normal | Display::Tree = status.current_tab_non_mut().display_mode {
+        if let Display::Normal | Display::Tree = status.current_tab().display_mode {
             let first_path = &status.menu.flagged.content[0]
                 .to_str()
                 .context("Couldn't parse filename")?;
             let second_path = &status.menu.flagged.content[1]
                 .to_str()
                 .context("Couldn't parse filename")?;
-            status.current_tab().preview = Preview::diff(first_path, second_path)?;
-            let tab = status.current_tab();
+            status.current_tab_mut().preview = Preview::diff(first_path, second_path)?;
+            let tab = status.current_tab_mut();
             tab.window.reset(tab.preview.len());
             tab.set_display_mode(Display::Preview);
         }
@@ -914,7 +911,7 @@ impl EventAction {
             status.menu.trash.trash(flagged)?;
         }
         status.menu.flagged.clear();
-        status.current_tab().refresh_view()?;
+        status.current_tab_mut().refresh_view()?;
         Ok(())
     }
     /// Ask the user if he wants to empty the trash.
@@ -922,7 +919,7 @@ impl EventAction {
     pub fn trash_empty(status: &mut Status) -> Result<()> {
         status.menu.trash.update()?;
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::NeedConfirmation(NeedConfirmation::EmptyTrash));
         Ok(())
     }
@@ -934,7 +931,7 @@ impl EventAction {
     pub fn trash_open(status: &mut Status) -> Result<()> {
         status.menu.trash.update()?;
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::Navigate(Navigate::Trash));
         Ok(())
     }
@@ -950,7 +947,7 @@ impl EventAction {
             status.menu.encrypted_devices.update()?;
         }
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::Navigate(Navigate::EncryptedDrive));
         Ok(())
     }
@@ -962,7 +959,7 @@ impl EventAction {
         }
         status.menu.removable_devices = RemovableDevices::from_gio();
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::Navigate(Navigate::RemovableDevices));
         Ok(())
     }
@@ -981,7 +978,7 @@ impl EventAction {
     /// Enter compression mode
     pub fn compress(status: &mut Status) -> Result<()> {
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::Navigate(Navigate::Compress));
         Ok(())
     }
@@ -991,7 +988,7 @@ impl EventAction {
     /// context.
     pub fn command(status: &mut Status) -> Result<()> {
         status
-            .current_tab()
+            .current_tab_mut()
             .set_edit_mode(Edit::InputCompleted(InputCompleted::Command));
         status.menu.completion.reset();
         Ok(())
@@ -1096,7 +1093,7 @@ impl EventAction {
 
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn mocp_go_to_song(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         if !is_program_in_path(MOCP) {
             log_line!("mocp isn't installed");
             return Ok(());
@@ -1144,14 +1141,14 @@ impl LeaveMode {
     /// Parent folders are created if needed.
     pub fn trash(status: &mut Status) -> Result<()> {
         status.menu.trash.restore()?;
-        status.current_tab().reset_edit_mode();
-        status.current_tab().refresh_view()?;
+        status.current_tab_mut().reset_edit_mode();
+        status.current_tab_mut().refresh_view()?;
         status.update_second_pane_for_preview()
     }
 
     /// Open the file with configured opener or enter the directory.
     pub fn open_file(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         if matches!(tab.display_mode, Display::Tree) {
             return EventAction::open_file(status);
         };
@@ -1168,7 +1165,7 @@ impl LeaveMode {
     /// Jump to the current mark.
     pub fn marks_jump(status: &mut Status) -> Result<()> {
         let marks = status.menu.marks.clone();
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         if let Some((_, path)) = marks.selected() {
             tab.cd(path)?;
             tab.window.reset(tab.path_content.content.len());
@@ -1182,14 +1179,14 @@ impl LeaveMode {
     /// If it doesn't fail, a new pair will be set with (oldchar, new path).
     pub fn marks_update(status: &mut Status) -> Result<()> {
         let marks = status.menu.marks.clone();
-        let len = status.current_tab_non_mut().path_content.content.len();
+        let len = status.current_tab().path_content.content.len();
         if let Some((ch, _)) = marks.selected() {
-            if let Some(path_str) = status.current_tab_non_mut().path_content_str() {
+            if let Some(path_str) = status.current_tab().path_content_str() {
                 let p = path::PathBuf::from(path_str);
                 status.menu.marks.new_mark(*ch, &p)?;
                 log_line!("Saved mark {ch} -> {p}", p = p.display());
             }
-            status.current_tab().window.reset(len);
+            status.current_tab_mut().window.reset(len);
             status.menu.input.reset();
         }
         Ok(())
@@ -1208,11 +1205,11 @@ impl LeaveMode {
     pub fn cli_info(status: &mut Status) -> Result<()> {
         let output = status.menu.cli_applications.execute()?;
         log_info!("output\n{output}");
-        status.current_tab().reset_edit_mode();
-        status.current_tab().set_display_mode(Display::Preview);
+        status.current_tab_mut().reset_edit_mode();
+        status.current_tab_mut().set_display_mode(Display::Preview);
         let preview = Preview::cli_info(&output);
-        status.current_tab().window.reset(preview.len());
-        status.current_tab().preview = preview;
+        status.current_tab_mut().window.reset(preview.len());
+        status.current_tab_mut().preview = preview;
         Ok(())
     }
 
@@ -1227,7 +1224,7 @@ impl LeaveMode {
 
     pub fn set_nvim_addr(status: &mut Status) -> Result<()> {
         status.nvim_server = status.menu.input.string();
-        status.current_tab().reset_edit_mode();
+        status.current_tab_mut().reset_edit_mode();
         Ok(())
     }
 
@@ -1239,7 +1236,7 @@ impl LeaveMode {
             return Ok(());
         };
         let jump_target = jump_target.to_owned();
-        status.current_tab().jump(jump_target)?;
+        status.current_tab_mut().jump(jump_target)?;
         status.update_second_pane_for_preview()
     }
 
@@ -1265,11 +1262,11 @@ impl LeaveMode {
     /// We only try to rename in the same directory, so it shouldn't be a problem.
     /// Filename is sanitized before processing.
     pub fn rename(status: &mut Status) -> Result<()> {
-        let original_path = if let Display::Tree = status.current_tab_non_mut().display_mode {
-            status.current_tab_non_mut().tree.selected_path()
+        let original_path = if let Display::Tree = status.current_tab().display_mode {
+            status.current_tab().tree.selected_path()
         } else {
             status
-                .current_tab_non_mut()
+                .current_tab()
                 .path_content
                 .selected()
                 .context("rename: couldn't parse selected file")?
@@ -1292,7 +1289,7 @@ impl LeaveMode {
             fs::rename(original_path, new_path)?;
         }
 
-        status.current_tab().refresh_view()
+        status.current_tab_mut().refresh_view()
     }
 
     /// Creates a new file with input string as name.
@@ -1318,12 +1315,12 @@ impl LeaveMode {
     /// be found.
     /// Optional parameters can be passed normally. ie. `"ls -lah"`
     pub fn exec(status: &mut Status) -> Result<()> {
-        if status.current_tab_non_mut().path_content.content.is_empty() {
+        if status.current_tab().path_content.content.is_empty() {
             return Err(anyhow!("exec: empty directory"));
         }
         let exec_command = status.menu.input.string();
         let selected_file = &status
-            .current_tab_non_mut()
+            .current_tab()
             .path_content
             .selected_path_string()
             .context("execute custom: no selected file")?;
@@ -1345,18 +1342,18 @@ impl LeaveMode {
         let searched = &status.menu.input.string();
         status.menu.input.reset();
         if searched.is_empty() {
-            status.current_tab().searched = None;
+            status.current_tab_mut().searched = None;
             return Ok(());
         }
-        status.current_tab().searched = Some(searched.clone());
-        match status.current_tab_non_mut().display_mode {
+        status.current_tab_mut().searched = Some(searched.clone());
+        match status.current_tab().display_mode {
             Display::Tree => {
                 log_info!("searching in tree");
-                status.current_tab().tree.search_first_match(searched);
+                status.current_tab_mut().tree.search_first_match(searched);
             }
             _ => {
-                let next_index = status.current_tab_non_mut().path_content.index;
-                status.current_tab().search_from(searched, next_index);
+                let next_index = status.current_tab().path_content.index;
+                status.current_tab_mut().search_from(searched, next_index);
             }
         };
         status.update_second_pane_for_preview()
@@ -1373,9 +1370,9 @@ impl LeaveMode {
         let completed = status.menu.completion.current_proposition();
         let path = string_to_path(completed)?;
         status.menu.input.reset();
-        status.current_tab().cd(&path)?;
-        let len = status.current_tab_non_mut().path_content.content.len();
-        status.current_tab().window.reset(len);
+        status.current_tab_mut().cd(&path)?;
+        let len = status.current_tab().path_content.content.len();
+        status.current_tab_mut().window.reset(len);
         status.update_second_pane_for_preview()
     }
 
@@ -1389,15 +1386,15 @@ impl LeaveMode {
             .selected()
             .context("exec shortcut: empty shortcuts")?
             .clone();
-        status.current_tab().cd(&path)?;
-        status.current_tab().refresh_view()?;
+        status.current_tab_mut().cd(&path)?;
+        status.current_tab_mut().refresh_view()?;
         status.update_second_pane_for_preview()
     }
 
     /// Move back to a previously visited path.
     /// It may fail if the user has no permission to visit the path
     pub fn history(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         let (path, file) = tab
             .history
             .selected()
@@ -1413,12 +1410,12 @@ impl LeaveMode {
 
     /// Execute the selected node if it's a file else enter the directory.
     pub fn tree(status: &mut Status) -> Result<()> {
-        let path = status.current_tab_non_mut().current_file()?.path;
+        let path = status.current_tab().current_file()?.path;
         let is_dir = path.is_dir();
         if is_dir {
-            status.current_tab().cd(&path)?;
-            status.current_tab().make_tree(None)?;
-            status.current_tab().set_display_mode(Display::Tree);
+            status.current_tab_mut().cd(&path)?;
+            status.current_tab_mut().make_tree(None)?;
+            status.current_tab_mut().set_display_mode(Display::Tree);
             Ok(())
         } else {
             EventAction::open_file(status)
@@ -1436,7 +1433,7 @@ impl LeaveMode {
     /// Files which are above the CWD are filtered out since they can't be added to an archive.
     /// Archive creation depends on CWD so we ensure it's set to the selected tab.
     fn compress(status: &mut Status) -> Result<()> {
-        let here = &status.current_tab_non_mut().path_content.path;
+        let here = &status.current_tab().path_content.path;
         std::env::set_current_dir(here)?;
         let files_with_relative_paths: Vec<path::PathBuf> = status
             .menu
@@ -1468,7 +1465,7 @@ impl LeaveMode {
 
     /// A right click opens a file or a directory.
     pub fn right_click(status: &mut Status) -> Result<()> {
-        match status.current_tab().display_mode {
+        match status.current_tab_mut().display_mode {
             Display::Normal => LeaveMode::open_file(status),
             Display::Tree => LeaveMode::tree(status),
             _ => Ok(()),
@@ -1479,18 +1476,18 @@ impl LeaveMode {
     /// See `crate::filter` for more details.
     pub fn filter(status: &mut Status) -> Result<()> {
         let filter = FilterKind::from_input(&status.menu.input.string());
-        status.current_tab().settings.set_filter(filter);
+        status.current_tab_mut().settings.set_filter(filter);
         status.menu.input.reset();
         // ugly hack to please borrow checker :(
         status.tabs[status.index].path_content.reset_files(
             &status.tabs[status.index].settings,
             &status.tabs[status.index].users,
         )?;
-        if let Display::Tree = status.current_tab_non_mut().display_mode {
-            status.current_tab().make_tree(None)?;
+        if let Display::Tree = status.current_tab().display_mode {
+            status.current_tab_mut().make_tree(None)?;
         }
-        let len = status.current_tab_non_mut().path_content.content.len();
-        status.current_tab().window.reset(len);
+        let len = status.current_tab().path_content.content.len();
+        status.current_tab_mut().window.reset(len);
         Ok(())
     }
 
@@ -1517,8 +1514,7 @@ impl LeaveMode {
         };
 
         let (username, hostname, remote_path) = (strings[0], strings[1], strings[2]);
-        let current_path: &str =
-            &path_to_string(&status.current_tab_non_mut().directory_of_selected()?);
+        let current_path: &str = &path_to_string(&status.current_tab().directory_of_selected()?);
         let first_arg = &format!("{username}@{hostname}:{remote_path}");
         let command_output = execute_and_capture_output_with_path(
             SSHFS_EXECUTABLE,

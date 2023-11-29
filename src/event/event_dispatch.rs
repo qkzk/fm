@@ -54,7 +54,7 @@ impl EventDispatcher {
             // reserved keybind which can't be bound to anything.
             // using `Key::User(())` conflicts with skim internal which
             // interpret this event as a signal(1)
-            REFRESH_EVENT => EventAction::refresh_if_needed(status.current_tab())?,
+            REFRESH_EVENT => EventAction::refresh_if_needed(status.current_tab_mut())?,
 
             Event::Resize { width, height } => EventAction::resize(status, width, height)?,
             Event::Key(Key::Char(c)) => self.char(status, c)?,
@@ -72,7 +72,7 @@ impl EventDispatcher {
     }
 
     fn char(&self, status: &mut Status, c: char) -> Result<()> {
-        let tab = status.current_tab();
+        let tab = status.current_tab_mut();
         match tab.edit_mode {
             Edit::InputSimple(InputSimple::Sort) => tab.sort(c),
             Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),

@@ -45,7 +45,7 @@ impl LineDisplay for Navigate {
 
 impl LineDisplay for InputCompleted {
     fn line_display(&self, status: &Status) -> Vec<String> {
-        let tab = status.current_tab_non_mut();
+        let tab = status.current_tab();
         let mut completion_strings = vec![tab.edit_mode.to_string(), status.menu.input.string()];
         if let Some(completion) = status
             .menu

@@ -499,7 +499,7 @@ impl PreviewFirstLine {
         if status.settings.dual && status.settings.preview {
             status.tabs[0].current_file()
         } else {
-            status.current_tab_non_mut().current_file()
+            status.current_tab().current_file()
         }
     }
 
@@ -569,7 +569,7 @@ impl WinMainSecondLine {
 
     fn second_line_simple(status: &Status) -> (Option<String>, Option<Attr>) {
         (
-            Some(status.current_tab_non_mut().settings.filter.to_string()),
+            Some(status.current_tab().settings.filter.to_string()),
             Some(ATTR_YELLOW_BOLD),
         )
     }
@@ -947,7 +947,7 @@ impl Draw for WinSecondaryFirstLine {
 impl WinSecondaryFirstLine {
     fn new(status: &Status) -> Self {
         Self {
-            content: status.current_tab_non_mut().edit_mode.line_display(status),
+            content: status.current_tab().edit_mode.line_display(status),
         }
     }
 }
