@@ -35,6 +35,7 @@ use crate::modes::NodeCreation;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
 use crate::modes::ShellCommandParser;
+use crate::modes::TuiApplications;
 use crate::modes::MOCP;
 use crate::modes::{Edit, InputSimple, MarkAction, Navigate, NeedConfirmation};
 use crate::modes::{ExtensionKind, Preview};
@@ -44,6 +45,70 @@ use crate::modes::{ExtensionKind, Preview};
 pub struct EventAction {}
 
 impl EventAction {
+    /// Refresh the current view, reloading the files. Move the selection to top.
+    pub fn refresh_view(status: &mut Status) -> Result<()> {
+        status.refresh_view()
+    }
+
+    /// Refresh the view if files were modified in current directory.
+    pub fn refresh_if_needed(tab: &mut Tab) -> Result<()> {
+        tab.refresh_if_needed()
+    }
+
+    pub fn resize(status: &mut Status, width: usize, height: usize) -> Result<()> {
+        status.resize(width, height)
+    }
+
+    /// Leave current mode to normal mode.
+    /// Reset the inputs and completion, reset the window, exit the preview.
+    pub fn reset_mode(tab: &mut Tab) -> Result<()> {
+        if matches!(tab.display_mode, Display::Preview) {
+            tab.set_display_mode(Display::Normal);
+        }
+        if tab.reset_edit_mode() {
+            tab.refresh_view()
+        } else {
+            tab.refresh_params()
+        }
+    }
+
+    /// Creates a tree in every mode but "Tree".
+    /// In display_mode tree it will exit this view.
+    pub fn tree(tab: &mut Tab) -> Result<()> {
+        tab.toggle_tree_mode()
+    }
+
+    /// Fold the current node of the tree.
+    /// Has no effect on "file" nodes.
+    pub fn tree_fold(tab: &mut Tab) -> Result<()> {
+        tab.tree.toggle_fold();
+        Ok(())
+    }
+
+    /// Unfold every child node in the tree.
+    /// Recursively explore the tree and unfold every node.
+    /// Reset the display.
+    pub fn tree_unfold_all(tab: &mut Tab) -> Result<()> {
+        tab.tree.unfold_all();
+        Ok(())
+    }
+
+    /// Fold every child node in the tree.
+    /// Recursively explore the tree and fold every node.
+    /// Reset the display.
+    pub fn tree_fold_all(tab: &mut Tab) -> Result<()> {
+        tab.tree.fold_all();
+        Ok(())
+    }
+
+    /// Preview the selected file.
+    /// Every file can be previewed. See the `crate::enum::Preview` for
+    /// more details on previewinga file.
+    /// Does nothing if the directory is empty.
+    pub fn preview(tab: &mut Tab) -> Result<()> {
+        tab.make_preview()
+    }
+
     /// Remove every flag on files in this directory and others.
     pub fn clear_flags(status: &mut Status) -> Result<()> {
         status.menu.flagged.clear();
@@ -52,13 +117,7 @@ impl EventAction {
 
     /// Flag all files in the current directory.
     pub fn flag_all(status: &mut Status) -> Result<()> {
-        status.tabs[status.index]
-            .path_content
-            .content
-            .iter()
-            .for_each(|file| {
-                status.menu.flagged.push(file.path.clone());
-            });
+        status.flag_all();
         Ok(())
     }
 
@@ -144,19 +203,6 @@ impl EventAction {
         Ok(())
     }
 
-    /// Leave current mode to normal mode.
-    /// Reset the inputs and completion, reset the window, exit the preview.
-    pub fn reset_mode(tab: &mut Tab) -> Result<()> {
-        if matches!(tab.display_mode, Display::Preview) {
-            tab.set_display_mode(Display::Normal);
-        }
-        if tab.reset_edit_mode() {
-            tab.refresh_view()
-        } else {
-            tab.refresh_params()
-        }
-    }
-
     /// Enter a copy paste mode.
     /// A confirmation is asked before copying all flagged files to
     /// the current directory.
@@ -200,14 +246,6 @@ impl EventAction {
     pub fn exec(tab: &mut Tab) -> Result<()> {
         tab.set_edit_mode(Edit::InputCompleted(InputCompleted::Exec));
         Ok(())
-    }
-
-    /// Preview the selected file.
-    /// Every file can be previewed. See the `crate::enum::Preview` for
-    /// more details on previewinga file.
-    /// Does nothing if the directory is empty.
-    pub fn preview(tab: &mut Tab) -> Result<()> {
-        tab.make_preview()
     }
 
     /// Enter the delete mode.
@@ -803,22 +841,6 @@ impl EventAction {
         Ok(())
     }
 
-    /// Refresh the current view, reloading the files. Move the selection to top.
-    pub fn refreshview(status: &mut Status) -> Result<()> {
-        status.menu.encrypted_devices.update()?;
-        status.refresh_status()?;
-        status.update_second_pane_for_preview()
-    }
-
-    /// Refresh the view if files were modified in current directory.
-    pub fn refresh_if_needed(tab: &mut Tab) -> Result<()> {
-        tab.refresh_if_needed()
-    }
-
-    pub fn resize(status: &mut Status, width: usize, height: usize) -> Result<()> {
-        status.resize(width, height)
-    }
-
     /// Display mediainfo details of an image
     pub fn mediainfo(tab: &mut Tab) -> Result<()> {
         if !is_program_in_path(MEDIAINFO) {
@@ -917,35 +939,6 @@ impl EventAction {
         Ok(())
     }
 
-    /// Creates a tree in every mode but "Tree".
-    /// In display_mode tree it will exit this view.
-    pub fn tree(tab: &mut Tab) -> Result<()> {
-        tab.toggle_tree_mode()
-    }
-
-    /// Fold the current node of the tree.
-    /// Has no effect on "file" nodes.
-    pub fn tree_fold(tab: &mut Tab) -> Result<()> {
-        tab.tree.toggle_fold();
-        Ok(())
-    }
-
-    /// Unfold every child node in the tree.
-    /// Recursively explore the tree and unfold every node.
-    /// Reset the display.
-    pub fn tree_unfold_all(tab: &mut Tab) -> Result<()> {
-        tab.tree.unfold_all();
-        Ok(())
-    }
-
-    /// Fold every child node in the tree.
-    /// Recursively explore the tree and fold every node.
-    /// Reset the display.
-    pub fn tree_fold_all(tab: &mut Tab) -> Result<()> {
-        tab.tree.fold_all();
-        Ok(())
-    }
-
     /// Enter the encrypted device menu, allowing the user to mount/umount
     /// a luks encrypted device.
     pub fn encrypted_drive(status: &mut Status) -> Result<()> {
@@ -1039,6 +1032,51 @@ impl EventAction {
         Ok(())
     }
 
+    /// Execute a custom event on the selected file
+    pub fn custom(status: &mut Status, string: &String) -> Result<()> {
+        log_info!("custom {string}");
+        let parser = ShellCommandParser::new(string);
+        let mut args = parser.compute(status)?;
+        let command = args.remove(0);
+        let args: Vec<&str> = args.iter().map(|s| &**s).collect();
+        let output = execute_and_capture_output_without_check(command, &args)?;
+        log_info!("output {output}");
+        Ok(())
+    }
+
+    pub fn remote_mount(tab: &mut Tab) -> Result<()> {
+        tab.set_edit_mode(Edit::InputSimple(InputSimple::Remote));
+        Ok(())
+    }
+
+    pub fn click_files(status: &mut Status, row: u16, col: u16) -> Result<()> {
+        status.click(row, col)
+    }
+
+    pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
+        status.select_pane(col)
+    }
+
+    pub fn click_first_line(col: u16, status: &mut Status, binds: &Bindings) -> Result<()> {
+        status.first_line_action(col, binds)
+    }
+
+    pub fn lazygit(status: &mut Status) -> Result<()> {
+        Self::open_program(status, LAZYGIT)
+    }
+
+    pub fn ncdu(status: &mut Status) -> Result<()> {
+        Self::open_program(status, NCDU)
+    }
+
+    pub fn open_program(status: &mut Status, program: &str) -> Result<()> {
+        if is_program_in_path(program) {
+            TuiApplications::require_cwd_and_command(status, program)
+        } else {
+            Ok(())
+        }
+    }
+
     /// Add a song or a folder to MOC playlist. Start it first...
     pub fn mocp_add_to_playlist(tab: &Tab) -> Result<()> {
         if !is_program_in_path(MOCP) {
@@ -1095,51 +1133,6 @@ impl EventAction {
             return Ok(());
         }
         Mocp::previous()
-    }
-
-    /// Execute a custom event on the selected file
-    pub fn custom(status: &mut Status, string: &String) -> Result<()> {
-        log_info!("custom {string}");
-        let parser = ShellCommandParser::new(string);
-        let mut args = parser.compute(status)?;
-        let command = args.remove(0);
-        let args: Vec<&str> = args.iter().map(|s| &**s).collect();
-        let output = execute_and_capture_output_without_check(command, &args)?;
-        log_info!("output {output}");
-        Ok(())
-    }
-
-    pub fn remote_mount(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputSimple(InputSimple::Remote));
-        Ok(())
-    }
-
-    pub fn click_files(status: &mut Status, row: u16, col: u16) -> Result<()> {
-        status.click(row, col)
-    }
-
-    pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
-        status.select_pane(col)
-    }
-
-    pub fn click_first_line(col: u16, status: &mut Status, binds: &Bindings) -> Result<()> {
-        status.first_line_action(col, binds)
-    }
-
-    pub fn lazygit(status: &mut Status) -> Result<()> {
-        Self::open_program(status, LAZYGIT)
-    }
-
-    pub fn ncdu(status: &mut Status) -> Result<()> {
-        Self::open_program(status, NCDU)
-    }
-
-    pub fn open_program(status: &mut Status, program: &str) -> Result<()> {
-        if is_program_in_path(program) {
-            crate::modes::TuiApplications::require_cwd_and_command(status, program)
-        } else {
-            Ok(())
-        }
     }
 }
 

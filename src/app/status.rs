@@ -162,12 +162,29 @@ impl Status {
         &self.tabs[self.index]
     }
 
+    /// Refresh the current view, reloading the files. Move the selection to top.
+    pub fn refresh_view(&mut self) -> Result<()> {
+        self.menu.encrypted_devices.update()?;
+        self.refresh_status()?;
+        self.update_second_pane_for_preview()
+    }
+
     /// Reset the view of every tab.
     pub fn reset_tabs_view(&mut self) -> Result<()> {
         for tab in self.tabs.iter_mut() {
             tab.refresh_and_reselect_file()?
         }
         Ok(())
+    }
+
+    pub fn flag_all(&mut self) {
+        self.tabs[self.index]
+            .path_content
+            .content
+            .iter()
+            .for_each(|file| {
+                self.menu.flagged.push(file.path.clone());
+            });
     }
 
     /// Flag the selected file if any

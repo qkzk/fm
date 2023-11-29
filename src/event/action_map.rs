@@ -173,7 +173,7 @@ impl ActionMap {
             ActionMap::Preview => EventAction::preview(current_tab),
             ActionMap::Quit => EventAction::quit(status),
             ActionMap::RefreshIfNeeded => EventAction::refresh_if_needed(current_tab),
-            ActionMap::RefreshView => EventAction::refreshview(status),
+            ActionMap::RefreshView => EventAction::refresh_view(status),
             ActionMap::RegexMatch => EventAction::regex_match(current_tab),
             ActionMap::RemoteMount => EventAction::remote_mount(current_tab),
             ActionMap::RemovableDevices => EventAction::removable_devices(status),
