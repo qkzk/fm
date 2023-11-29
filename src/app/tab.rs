@@ -440,6 +440,34 @@ impl Tab {
         Ok(())
     }
 
+    /// Jump to the jump target.
+    /// Change the pathcontent and the tree if the jump target isn't in the
+    /// currently displayed files.
+    pub fn jump(&mut self, jump_target: path::PathBuf) -> Result<()> {
+        let target_dir = match jump_target.parent() {
+            Some(parent) => parent,
+            None => &jump_target,
+        };
+        match self.display_mode {
+            Display::Preview => return Ok(()),
+            Display::Normal => {
+                if !self.path_content.paths().contains(&target_dir) {
+                    self.cd(target_dir)?
+                }
+                let index = self.path_content.select_file(&jump_target);
+                self.scroll_to(index)
+            }
+            Display::Tree => {
+                if !self.tree.paths().contains(&target_dir) {
+                    self.cd(target_dir)?;
+                    self.make_tree(None)?
+                }
+                self.tree.go(To::Path(&jump_target))
+            }
+        }
+        Ok(())
+    }
+
     /// Move to the parent of current path
     pub fn move_to_parent(&mut self) -> Result<()> {
         let path = self.path_content.path.clone();
@@ -607,6 +635,33 @@ impl Tab {
             }
         }
     }
+    /// Select a given row, if there's something in it.
+    /// Returns an error if the clicked row is above the headers margin.
+    pub fn select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
+        match self.display_mode {
+            Display::Normal => self.normal_select_row(row),
+            Display::Tree => self.tree_select_row(row, term_height)?,
+            _ => (),
+        }
+        Ok(())
+    }
+
+    fn normal_select_row(&mut self, row: u16) {
+        let screen_index = row_to_window_index(row);
+        let index = screen_index + self.window.top;
+        self.path_content.select_index(index);
+        self.window.scroll_to(index);
+    }
+
+    fn tree_select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
+        let screen_index = row_to_window_index(row);
+        let (selected_index, content) = self.tree.into_navigable_content(&self.users);
+        let (top, _) = calculate_top_bottom(selected_index, term_height - 2);
+        let index = screen_index + top;
+        let (_, _, colored_path) = content.get(index).context("no selected file")?;
+        self.tree.go(To::Path(&colored_path.path));
+        Ok(())
+    }
 
     /// Search in current directory for an file whose name contains `searched_name`,
     /// from a starting position `next_index`.
@@ -644,61 +699,5 @@ impl Tab {
     pub fn normal_search_next(&mut self, searched: &str) {
         let next_index = (self.path_content.index + 1) % self.path_content.content.len();
         self.search_from(searched, next_index);
-    }
-
-    /// Select a given row, if there's something in it.
-    /// Returns an error if the clicked row is above the headers margin.
-    pub fn select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
-        match self.display_mode {
-            Display::Normal => self.normal_select_row(row),
-            Display::Tree => self.tree_select_row(row, term_height)?,
-            _ => (),
-        }
-        Ok(())
-    }
-
-    fn normal_select_row(&mut self, row: u16) {
-        let screen_index = row_to_window_index(row);
-        let index = screen_index + self.window.top;
-        self.path_content.select_index(index);
-        self.window.scroll_to(index);
-    }
-
-    fn tree_select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
-        let screen_index = row_to_window_index(row);
-        let (selected_index, content) = self.tree.into_navigable_content(&self.users);
-        let (top, _) = calculate_top_bottom(selected_index, term_height - 2);
-        let index = screen_index + top;
-        let (_, _, colored_path) = content.get(index).context("no selected file")?;
-        self.tree.go(To::Path(&colored_path.path));
-        Ok(())
-    }
-
-    /// Jump to the jump target.
-    /// Change the pathcontent and the tree if the jump target isn't in the
-    /// currently displayed files.
-    pub fn jump(&mut self, jump_target: path::PathBuf) -> Result<()> {
-        let target_dir = match jump_target.parent() {
-            Some(parent) => parent,
-            None => &jump_target,
-        };
-        match self.display_mode {
-            Display::Preview => return Ok(()),
-            Display::Normal => {
-                if !self.path_content.paths().contains(&target_dir) {
-                    self.cd(target_dir)?
-                }
-                let index = self.path_content.select_file(&jump_target);
-                self.scroll_to(index)
-            }
-            Display::Tree => {
-                if !self.tree.paths().contains(&target_dir) {
-                    self.cd(target_dir)?;
-                    self.make_tree(None)?
-                }
-                self.tree.go(To::Path(&jump_target))
-            }
-        }
-        Ok(())
     }
 }
