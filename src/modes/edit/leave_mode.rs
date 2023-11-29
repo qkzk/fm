@@ -10,21 +10,94 @@ use crate::common::string_to_path;
 use crate::common::SSHFS_EXECUTABLE;
 use crate::config::Bindings;
 use crate::event::ActionMap;
-use crate::event::EventAction;
 use crate::io::execute_and_capture_output_with_path;
 use crate::io::execute_custom;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::Display;
+use crate::modes::Edit;
 use crate::modes::FilterKind;
+use crate::modes::InputSimple;
+use crate::modes::MarkAction;
+use crate::modes::Navigate;
 use crate::modes::NodeCreation;
 use crate::modes::Preview;
 use crate::modes::SelectableContent;
+
+use super::InputCompleted;
 
 /// Methods called when executing something with Enter key.
 pub struct LeaveMode;
 
 impl LeaveMode {
+    pub fn leave_edit_mode(status: &mut Status, binds: &Bindings) -> Result<()> {
+        let mut must_refresh = true;
+        let mut must_reset_mode = true;
+        match status.current_tab().edit_mode {
+            Edit::Nothing => (),
+            Edit::InputSimple(InputSimple::Rename) => LeaveMode::rename(status)?,
+            Edit::InputSimple(InputSimple::Newfile) => LeaveMode::new_file(status)?,
+            Edit::InputSimple(InputSimple::Newdir) => LeaveMode::new_dir(status)?,
+            Edit::InputSimple(InputSimple::Chmod) => LeaveMode::chmod(status)?,
+            Edit::InputSimple(InputSimple::RegexMatch) => LeaveMode::regex(status)?,
+            Edit::InputSimple(InputSimple::SetNvimAddr) => LeaveMode::set_nvim_addr(status)?,
+            Edit::InputSimple(InputSimple::Shell) => {
+                must_reset_mode = false;
+                must_refresh = LeaveMode::shell(status)?;
+            }
+            Edit::InputSimple(InputSimple::Filter) => {
+                must_refresh = false;
+                LeaveMode::filter(status)?
+            }
+            Edit::InputSimple(InputSimple::Password(_, _)) => {
+                must_refresh = false;
+                must_reset_mode = false;
+                LeaveMode::password(status)?
+            }
+            Edit::InputSimple(InputSimple::Remote) => LeaveMode::remote(status)?,
+            Edit::Navigate(Navigate::Jump) => {
+                must_refresh = false;
+                LeaveMode::jump(status)?
+            }
+            Edit::Navigate(Navigate::History) => {
+                must_refresh = false;
+                LeaveMode::history(status)?
+            }
+            Edit::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status)?,
+            Edit::Navigate(Navigate::Trash) => LeaveMode::trash(status)?,
+            Edit::Navigate(Navigate::Bulk) => LeaveMode::bulk(status)?,
+            Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status)?,
+            Edit::Navigate(Navigate::CliApplication) => {
+                must_refresh = false;
+                LeaveMode::cli_info(status)?;
+            }
+            Edit::Navigate(Navigate::EncryptedDrive) => (),
+            Edit::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMode::marks_update(status)?,
+            Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMode::marks_jump(status)?,
+            Edit::Navigate(Navigate::Compress) => LeaveMode::compress(status)?,
+            Edit::Navigate(Navigate::RemovableDevices) => (),
+            Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status)?,
+            Edit::InputCompleted(InputCompleted::Search) => {
+                must_refresh = false;
+                LeaveMode::search(status)?
+            }
+            Edit::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status)?,
+            Edit::InputCompleted(InputCompleted::Command) => LeaveMode::command(status, binds)?,
+            Edit::NeedConfirmation(_)
+            | Edit::InputCompleted(InputCompleted::Nothing)
+            | Edit::InputSimple(InputSimple::Sort) => (),
+        }
+
+        status.menu.input.reset();
+        if must_reset_mode {
+            status.current_tab_mut().reset_edit_mode();
+        }
+        if must_refresh {
+            status.refresh_status()?;
+        }
+        Ok(())
+    }
+
     /// Restore a file from the trash if possible.
     /// Parent folders are created if needed.
     pub fn trash(status: &mut Status) -> Result<()> {
@@ -32,22 +105,6 @@ impl LeaveMode {
         status.current_tab_mut().reset_edit_mode();
         status.current_tab_mut().refresh_view()?;
         status.update_second_pane_for_preview()
-    }
-
-    /// Open the file with configured opener or enter the directory.
-    pub fn open_file(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab_mut();
-        if matches!(tab.display_mode, Display::Tree) {
-            return EventAction::open_file(status);
-        };
-        if tab.path_content.is_empty() {
-            return Ok(());
-        }
-        if tab.path_content.is_selected_dir()? {
-            tab.go_to_selected_dir()
-        } else {
-            EventAction::open_file(status)
-        }
     }
 
     /// Jump to the current mark.
@@ -292,20 +349,6 @@ impl LeaveMode {
         status.update_second_pane_for_preview()
     }
 
-    /// Execute the selected node if it's a file else enter the directory.
-    pub fn tree_open_file(status: &mut Status) -> Result<()> {
-        let path = status.current_tab().current_file()?.path;
-        let is_dir = path.is_dir();
-        if is_dir {
-            status.current_tab_mut().cd(&path)?;
-            status.current_tab_mut().make_tree(None)?;
-            status.current_tab_mut().set_display_mode(Display::Tree);
-            Ok(())
-        } else {
-            EventAction::open_file(status)
-        }
-    }
-
     /// Execute a password command (sudo or device passphrase).
     pub fn password(status: &mut Status) -> Result<()> {
         status.execute_password_command()
@@ -345,15 +388,6 @@ impl LeaveMode {
             return Ok(());
         };
         command.matcher(status, binds)
-    }
-
-    /// A right click opens a file or a directory.
-    pub fn right_click(status: &mut Status) -> Result<()> {
-        match status.current_tab_mut().display_mode {
-            Display::Normal => LeaveMode::open_file(status),
-            Display::Tree => LeaveMode::tree_open_file(status),
-            _ => Ok(()),
-        }
     }
 
     /// Apply a filter to the displayed files.

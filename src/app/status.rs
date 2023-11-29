@@ -941,7 +941,7 @@ impl Status {
     }
 
     /// Add a char to input string, look for a possible completion.
-    pub fn text_insert_and_complete(&mut self, c: char) -> Result<()> {
+    pub fn input_complete(&mut self, c: char) -> Result<()> {
         self.menu.input.insert(c);
         self.fill_completion()
     }

@@ -4,7 +4,6 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::app::Status;
 use crate::config::{Bindings, REFRESH_EVENT};
 use crate::event::event_exec::EventAction;
-use crate::modes::LeaveMode;
 use crate::modes::{ContentWindow, Display, Edit, InputSimple, MarkAction, Navigate};
 
 /// Struct which mutates `tabs.selected()..
@@ -38,7 +37,7 @@ impl EventDispatcher {
             }
             Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
                 EventAction::select_pane(status, col)?;
-                if row < ContentWindow::HEADER_ROWS as u16 {
+                if ContentWindow::is_row_in_header(row) {
                     EventAction::click_first_line(col, status, &self.binds)?;
                 } else {
                     let _ = EventAction::click_file(status, row, col);
@@ -49,7 +48,7 @@ impl EventDispatcher {
                 | Key::DoubleClick(MouseButton::Left, row, col),
             ) => {
                 if let Ok(()) = EventAction::click_file(status, row, col) {
-                    LeaveMode::right_click(status)?;
+                    EventAction::right_click(status)?;
                 }
             }
             // reserved keybind which can't be bound to anything.
@@ -78,7 +77,7 @@ impl EventDispatcher {
             Edit::InputSimple(InputSimple::Sort) => tab.sort(c),
             Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
             Edit::InputSimple(_) => status.menu.input_insert(c),
-            Edit::InputCompleted(_) => status.text_insert_and_complete(c),
+            Edit::InputCompleted(_) => status.input_complete(c),
             Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
             Edit::Navigate(Navigate::Trash) if c == 'x' => status.menu.trash_delete_permanently(),
             Edit::Navigate(Navigate::EncryptedDrive) if c == 'm' => status.mount_encrypted_drive(),

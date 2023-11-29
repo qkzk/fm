@@ -112,4 +112,8 @@ impl ContentWindow {
     fn is_index_outside_window(&self, index: usize) -> bool {
         index < self.top || index >= self.bottom
     }
+
+    pub fn is_row_in_header(row: u16) -> bool {
+        row < Self::HEADER_ROWS as u16
+    }
 }
