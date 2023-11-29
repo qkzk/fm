@@ -106,6 +106,15 @@ impl TuiApplications {
         execute_without_output_with_path(&status.opener.terminal, path, None)?;
         Ok(())
     }
+
+    /// Directly open a a TUI application
+    pub fn open_program(status: &mut Status, program: &str) -> Result<()> {
+        if is_program_in_path(program) {
+            TuiApplications::require_cwd_and_command(status, program)
+        } else {
+            Ok(())
+        }
+    }
 }
 
 type SBool = (String, bool);

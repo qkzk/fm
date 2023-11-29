@@ -27,7 +27,7 @@ impl Mocp {
     /// It should never fail.
     pub fn add_to_playlist(tab: &Tab) -> Result<()> {
         let _ = execute_and_capture_output_without_check(MOCP, &["-S"]);
-        let Some(path_str) = tab.path_content.selected_path_string() else {
+        let Ok(path_str) = tab.current_file_string() else {
             return Ok(());
         };
         log_info!("mocp add to playlist {path_str:?}");

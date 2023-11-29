@@ -41,14 +41,14 @@ impl EventDispatcher {
                 if row < ContentWindow::HEADER_ROWS as u16 {
                     EventAction::click_first_line(col, status, &self.binds)?;
                 } else {
-                    let _ = EventAction::click_files(status, row, col);
+                    let _ = EventAction::click_file(status, row, col);
                 }
             }
             Event::Key(
                 Key::SingleClick(MouseButton::Right, row, col)
                 | Key::DoubleClick(MouseButton::Left, row, col),
             ) => {
-                if let Ok(()) = EventAction::click_files(status, row, col) {
+                if let Ok(()) = EventAction::click_file(status, row, col) {
                     LeaveMode::right_click(status)?;
                 }
             }

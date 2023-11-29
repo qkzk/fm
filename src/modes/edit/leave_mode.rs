@@ -207,11 +207,7 @@ impl LeaveMode {
             return Err(anyhow!("exec: empty directory"));
         }
         let exec_command = status.menu.input.string();
-        let selected_file = &status
-            .current_tab()
-            .path_content
-            .selected_path_string()
-            .context("execute custom: no selected file")?;
+        let selected_file = &status.current_tab().current_file_string()?;
         if let Ok(success) = execute_custom(exec_command, selected_file) {
             if success {
                 status.menu.completion.reset();
@@ -297,7 +293,7 @@ impl LeaveMode {
     }
 
     /// Execute the selected node if it's a file else enter the directory.
-    pub fn tree(status: &mut Status) -> Result<()> {
+    pub fn tree_open_file(status: &mut Status) -> Result<()> {
         let path = status.current_tab().current_file()?.path;
         let is_dir = path.is_dir();
         if is_dir {
@@ -355,7 +351,7 @@ impl LeaveMode {
     pub fn right_click(status: &mut Status) -> Result<()> {
         match status.current_tab_mut().display_mode {
             Display::Normal => LeaveMode::open_file(status),
-            Display::Tree => LeaveMode::tree(status),
+            Display::Tree => LeaveMode::tree_open_file(status),
             _ => Ok(()),
         }
     }

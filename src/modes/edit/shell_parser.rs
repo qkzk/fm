@@ -84,11 +84,7 @@ impl ShellCommandParser {
     }
 
     fn selected(status: &Status) -> Result<String> {
-        status
-            .current_tab()
-            .path_content
-            .selected_path_string()
-            .context("Empty directory")
+        status.current_tab().current_file_string()
     }
 
     fn path(status: &Status) -> Result<String> {

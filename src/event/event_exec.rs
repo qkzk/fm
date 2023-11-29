@@ -8,13 +8,12 @@ use crate::app::Tab;
 use crate::common::LAZYGIT;
 use crate::common::NCDU;
 use crate::common::{is_program_in_path, open_in_current_neovim};
-use crate::common::{CONFIG_PATH, DEFAULT_DRAGNDROP, DIFF, GIO, MEDIAINFO, NITROGEN};
+use crate::common::{CONFIG_PATH, GIO};
 use crate::config::Bindings;
 use crate::config::START_FOLDER;
+use crate::io::execute_without_output_with_path;
 use crate::io::read_log;
-use crate::io::{
-    execute, execute_and_capture_output_without_check, execute_without_output_with_path,
-};
+use crate::io::SpecificCommand;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::help_string;
@@ -23,13 +22,12 @@ use crate::modes::Display;
 use crate::modes::InputCompleted;
 use crate::modes::LeaveMode;
 use crate::modes::Mocp;
+use crate::modes::Preview;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
-use crate::modes::ShellCommandParser;
 use crate::modes::TuiApplications;
 use crate::modes::MOCP;
 use crate::modes::{Edit, InputSimple, MarkAction, Navigate, NeedConfirmation};
-use crate::modes::{ExtensionKind, Preview};
 
 /// Links events from tuikit to custom actions.
 /// It mutates `Status` or its children `Tab`.
@@ -68,6 +66,33 @@ impl EventAction {
         } else {
             tab.refresh_params()
         }
+    }
+
+    /// Toggle between a full display (aka ls -lah) or a simple mode (only the
+    /// filenames).
+    pub fn toggle_display_full(status: &mut Status) -> Result<()> {
+        status.settings.metadata = !status.settings.metadata;
+        Ok(())
+    }
+
+    /// Toggle between dualpane and single pane. Does nothing if the width
+    /// is too low to display both panes.
+    pub fn toggle_dualpane(status: &mut Status) -> Result<()> {
+        status.settings.dual = !status.settings.dual;
+        status.select_left();
+        Ok(())
+    }
+
+    /// Toggle the second pane between preview & normal mode (files).
+    pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
+        status.settings.preview = !status.settings.preview;
+        if status.settings.preview {
+            status.set_second_pane_for_preview()?;
+        } else {
+            status.tabs[1].reset_edit_mode();
+            status.tabs[1].refresh_view()?;
+        }
+        Ok(())
     }
 
     /// Creates a tree in every mode but "Tree".
@@ -203,6 +228,19 @@ impl EventAction {
         status.clear_flags_and_reset_view()
     }
 
+    /// Enter the delete mode.
+    /// A confirmation is then asked before deleting all the flagged files.
+    /// If no file is flagged, flag the selected one before entering the mode.
+    pub fn delete_file(status: &mut Status) -> Result<()> {
+        if status.menu.flagged.is_empty() {
+            Self::toggle_flag(status)?;
+        }
+        status
+            .current_tab_mut()
+            .set_edit_mode(Edit::NeedConfirmation(NeedConfirmation::Delete));
+        Ok(())
+    }
+
     /// Change to CHMOD mode allowing to edit permissions of a file.
     pub fn chmod(status: &mut Status) -> Result<()> {
         status.set_mode_chmod()
@@ -220,23 +258,25 @@ impl EventAction {
         Ok(())
     }
 
+    /// Open files with custom opener.
+    /// If there's no flagged file, the selected is chosen.
+    /// Otherwise, it will open the flagged files (not the flagged directories) with
+    /// their respective opener.
+    /// Directories aren't opened since it will lead nowhere, it would only replace the
+    /// current tab multiple times. It may change in the future.
+    /// Only files which use an external opener are supported.
+    pub fn open_file(status: &mut Status) -> Result<()> {
+        if status.menu.flagged.is_empty() {
+            status.open_selected_file()
+        } else {
+            status.open_flagged_files()
+        }
+    }
+
     /// Enter the execute mode. Most commands must be executed to allow for
     /// a confirmation.
     pub fn exec(tab: &mut Tab) -> Result<()> {
         tab.set_edit_mode(Edit::InputCompleted(InputCompleted::Exec));
-        Ok(())
-    }
-
-    /// Enter the delete mode.
-    /// A confirmation is then asked before deleting all the flagged files.
-    /// If no file is flagged, flag the selected one before entering the mode.
-    pub fn delete_file(status: &mut Status) -> Result<()> {
-        if status.menu.flagged.is_empty() {
-            Self::toggle_flag(status)?;
-        }
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::NeedConfirmation(NeedConfirmation::Delete));
         Ok(())
     }
 
@@ -313,21 +353,6 @@ impl EventAction {
         tab.window.reset(tab.preview.len());
         tab.preview_go_bottom();
         Ok(())
-    }
-
-    /// Open files with custom opener.
-    /// If there's no flagged file, the selected is chosen.
-    /// Otherwise, it will open the flagged files (not the flagged directories) with
-    /// their respective opener.
-    /// Directories aren't opened since it will lead nowhere, it would only replace the
-    /// current tab multiple times. It may change in the future.
-    /// Only files which use an external opener are supported.
-    pub fn open_file(status: &mut Status) -> Result<()> {
-        if status.menu.flagged.is_empty() {
-            status.open_selected_file()
-        } else {
-            status.open_flagged_files()
-        }
     }
 
     /// Enter the goto mode where an user can type a path to jump to.
@@ -464,19 +489,7 @@ impl EventAction {
     /// Executes a `dragon-drop` command on the selected file.
     /// It obviously requires the `dragon-drop` command to be installed.
     pub fn drag_n_drop(status: &mut Status) -> Result<()> {
-        if !is_program_in_path(DEFAULT_DRAGNDROP) {
-            log_line!("{DEFAULT_DRAGNDROP} must be installed.");
-            return Ok(());
-        }
-        let Ok(file) = status.current_tab().current_file() else {
-            return Ok(());
-        };
-        let path_str = file
-            .path
-            .to_str()
-            .context("event drag n drop: couldn't read path")?;
-
-        execute(DEFAULT_DRAGNDROP, &[path_str])?;
+        SpecificCommand::drag_n_drop(status);
         Ok(())
     }
 
@@ -756,7 +769,7 @@ impl EventAction {
                     must_reset_mode = false;
                     LeaveMode::open_file(status)?;
                 }
-                Display::Tree => LeaveMode::tree(status)?,
+                Display::Tree => LeaveMode::tree_open_file(status)?,
                 _ => (),
             },
         };
@@ -829,58 +842,13 @@ impl EventAction {
 
     /// Display mediainfo details of an image
     pub fn mediainfo(tab: &mut Tab) -> Result<()> {
-        if !is_program_in_path(MEDIAINFO) {
-            log_line!("{} isn't installed", MEDIAINFO);
-            return Ok(());
-        }
-        if let Display::Normal | Display::Tree = tab.display_mode {
-            let Ok(file_info) = tab.current_file() else {
-                return Ok(());
-            };
-            log_info!("selected {:?}", file_info);
-            tab.preview = Preview::mediainfo(&file_info.path)?;
-            tab.window.reset(tab.preview.len());
-            tab.set_display_mode(Display::Preview);
-        }
+        SpecificCommand::mediainfo(tab);
         Ok(())
     }
 
     /// Display a diff between the first 2 flagged files or dir.
     pub fn diff(status: &mut Status) -> Result<()> {
-        if !is_program_in_path(DIFF) {
-            log_line!("{DIFF} isn't installed");
-            return Ok(());
-        }
-        if status.menu.flagged.len() < 2 {
-            return Ok(());
-        };
-        if let Display::Normal | Display::Tree = status.current_tab().display_mode {
-            let first_path = &status.menu.flagged.content[0]
-                .to_str()
-                .context("Couldn't parse filename")?;
-            let second_path = &status.menu.flagged.content[1]
-                .to_str()
-                .context("Couldn't parse filename")?;
-            status.current_tab_mut().preview = Preview::diff(first_path, second_path)?;
-            let tab = status.current_tab_mut();
-            tab.window.reset(tab.preview.len());
-            tab.set_display_mode(Display::Preview);
-        }
-        Ok(())
-    }
-
-    /// Toggle between a full display (aka ls -lah) or a simple mode (only the
-    /// filenames).
-    pub fn toggle_display_full(status: &mut Status) -> Result<()> {
-        status.settings.metadata = !status.settings.metadata;
-        Ok(())
-    }
-
-    /// Toggle between dualpane and single pane. Does nothing if the width
-    /// is too low to display both panes.
-    pub fn toggle_dualpane(status: &mut Status) -> Result<()> {
-        status.settings.dual = !status.settings.dual;
-        status.select_left();
+        SpecificCommand::diff(status);
         Ok(())
     }
 
@@ -903,6 +871,7 @@ impl EventAction {
         status.current_tab_mut().refresh_view()?;
         Ok(())
     }
+
     /// Ask the user if he wants to empty the trash.
     /// It requires a confimation before doing anything
     pub fn trash_empty(status: &mut Status) -> Result<()> {
@@ -983,51 +952,16 @@ impl EventAction {
         Ok(())
     }
 
-    /// Toggle the second pane between preview & normal mode (files).
-    pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
-        status.settings.preview = !status.settings.preview;
-        if status.settings.preview {
-            status.set_second_pane_for_preview()?;
-        } else {
-            status.tabs[1].reset_edit_mode();
-            status.tabs[1].refresh_view()?;
-        }
-        Ok(())
-    }
-
     /// Set the current selected file as wallpaper with `nitrogen`.
     /// Requires `nitrogen` to be installed.
     pub fn set_wallpaper(tab: &Tab) -> Result<()> {
-        if !is_program_in_path(NITROGEN) {
-            log_line!("nitrogen must be installed");
-            return Ok(());
-        }
-        let Some(fileinfo) = tab.path_content.selected() else {
-            return Ok(());
-        };
-        if !matches!(
-            ExtensionKind::matcher(&fileinfo.extension),
-            ExtensionKind::Image,
-        ) {
-            return Ok(());
-        }
-        let Some(path_str) = tab.path_content.selected_path_string() else {
-            return Ok(());
-        };
-        let _ = execute(NITROGEN, &["--set-zoom-fill", "--save", &path_str]);
+        SpecificCommand::set_wallpaper(tab);
         Ok(())
     }
 
     /// Execute a custom event on the selected file
-    pub fn custom(status: &mut Status, string: &String) -> Result<()> {
-        log_info!("custom {string}");
-        let parser = ShellCommandParser::new(string);
-        let mut args = parser.compute(status)?;
-        let command = args.remove(0);
-        let args: Vec<&str> = args.iter().map(|s| &**s).collect();
-        let output = execute_and_capture_output_without_check(command, &args)?;
-        log_info!("output {output}");
-        Ok(())
+    pub fn custom(status: &mut Status, input_string: &String) -> Result<()> {
+        status.run_custom_command(input_string)
     }
 
     pub fn remote_mount(tab: &mut Tab) -> Result<()> {
@@ -1035,7 +969,7 @@ impl EventAction {
         Ok(())
     }
 
-    pub fn click_files(status: &mut Status, row: u16, col: u16) -> Result<()> {
+    pub fn click_file(status: &mut Status, row: u16, col: u16) -> Result<()> {
         status.click(row, col)
     }
 
@@ -1048,19 +982,11 @@ impl EventAction {
     }
 
     pub fn lazygit(status: &mut Status) -> Result<()> {
-        Self::open_program(status, LAZYGIT)
+        TuiApplications::open_program(status, LAZYGIT)
     }
 
     pub fn ncdu(status: &mut Status) -> Result<()> {
-        Self::open_program(status, NCDU)
-    }
-
-    pub fn open_program(status: &mut Status, program: &str) -> Result<()> {
-        if is_program_in_path(program) {
-            TuiApplications::require_cwd_and_command(status, program)
-        } else {
-            Ok(())
-        }
+        TuiApplications::open_program(status, NCDU)
     }
 
     /// Add a song or a folder to MOC playlist. Start it first...

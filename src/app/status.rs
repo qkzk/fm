@@ -15,7 +15,7 @@ use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
 use crate::common::{NVIM, SS};
 use crate::config::{Bindings, Settings};
-use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
+use crate::io::{execute_and_capture_output_without_check, MIN_WIDTH_FOR_DUAL_PANE};
 use crate::io::{execute_and_output, execute_without_output_with_path};
 use crate::io::{execute_sudo_command_with_password, reset_sudo_faillock};
 use crate::io::{Args, Kind};
@@ -988,6 +988,18 @@ impl Status {
             }
             _ => Ok(()),
         }
+    }
+
+    /// Execute a custom event on the selected file
+    pub fn run_custom_command(&mut self, string: &str) -> Result<()> {
+        log_info!("custom {string}");
+        let parser = ShellCommandParser::new(string);
+        let mut args = parser.compute(self)?;
+        let command = args.remove(0);
+        let args: Vec<&str> = args.iter().map(|s| &**s).collect();
+        let output = execute_and_capture_output_without_check(command, &args)?;
+        log_info!("output {output}");
+        Ok(())
     }
 }
 

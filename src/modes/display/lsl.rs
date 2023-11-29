@@ -147,11 +147,6 @@ impl PathContent {
         Ok(())
     }
 
-    /// Path of the currently selected file.
-    pub fn selected_path_string(&self) -> Option<String> {
-        Some(path_to_string(&self.selected()?.path))
-    }
-
     /// True if the path starts with a subpath.
     pub fn contains(&self, path: &path::Path) -> bool {
         path.starts_with(&self.path)

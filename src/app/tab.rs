@@ -3,7 +3,9 @@ use std::path;
 
 use anyhow::{Context, Result};
 
-use crate::common::{has_last_modification_happened_less_than, row_to_window_index, set_clipboard};
+use crate::common::{
+    has_last_modification_happened_less_than, path_to_string, row_to_window_index, set_clipboard,
+};
 use crate::config::Settings;
 use crate::io::Args;
 use crate::modes::FileInfo;
@@ -166,6 +168,11 @@ impl Tab {
                 .context("no selected file")?
                 .to_owned()),
         }
+    }
+
+    /// Path of the currently selected file.
+    pub fn current_file_string(&self) -> Result<String> {
+        Ok(path_to_string(&self.current_file()?.path))
     }
 
     /// Returns true if the current mode requires 2 windows.

@@ -32,7 +32,7 @@ use crate::modes::{list_files_tar, list_files_zip};
 
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.
-#[derive(Default)]
+#[derive(Default, Eq, PartialEq)]
 pub enum ExtensionKind {
     Archive,
     Image,
@@ -70,6 +70,10 @@ impl ExtensionKind {
             "epub" => Self::Epub,
             _ => Self::Unknown,
         }
+    }
+
+    pub fn is(self, kind: Self) -> bool {
+        self == kind
     }
 }
 
