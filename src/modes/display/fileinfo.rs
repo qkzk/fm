@@ -62,25 +62,25 @@ impl FileKind<Valid> {
     /// b for block, l for links.
     fn dir_symbol(&self) -> char {
         match self {
-            FileKind::Fifo => 'p',
-            FileKind::Socket => 's',
-            FileKind::Directory => 'd',
-            FileKind::NormalFile => '.',
-            FileKind::CharDevice => 'c',
-            FileKind::BlockDevice => 'b',
-            FileKind::SymbolicLink(_) => 'l',
+            Self::Fifo => 'p',
+            Self::Socket => 's',
+            Self::Directory => 'd',
+            Self::NormalFile => '.',
+            Self::CharDevice => 'c',
+            Self::BlockDevice => 'b',
+            Self::SymbolicLink(_) => 'l',
         }
     }
 
     fn sortable_char(&self) -> char {
         match self {
-            FileKind::Directory => 'a',
-            FileKind::NormalFile => 'b',
-            FileKind::SymbolicLink(_) => 'c',
-            FileKind::BlockDevice => 'd',
-            FileKind::CharDevice => 'e',
-            FileKind::Socket => 'f',
-            FileKind::Fifo => 'g',
+            Self::Directory => 'a',
+            Self::NormalFile => 'b',
+            Self::SymbolicLink(_) => 'c',
+            Self::BlockDevice => 'd',
+            Self::CharDevice => 'e',
+            Self::Socket => 'f',
+            Self::Fifo => 'g',
         }
     }
 }
