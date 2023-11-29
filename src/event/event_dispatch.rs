@@ -3,7 +3,8 @@ use tuikit::prelude::{Event, Key, MouseButton};
 
 use crate::app::Status;
 use crate::config::{Bindings, REFRESH_EVENT};
-use crate::event::event_exec::{EventAction, LeaveMode};
+use crate::event::event_exec::EventAction;
+use crate::modes::LeaveMode;
 use crate::modes::{ContentWindow, Display, Edit, InputSimple, MarkAction, Navigate};
 
 /// Struct which mutates `tabs.selected()..

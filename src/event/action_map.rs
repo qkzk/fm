@@ -3,7 +3,8 @@ use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::app::Status;
 use crate::config::Bindings;
-use crate::event::{EventAction, LeaveMode};
+use crate::event::EventAction;
+use crate::modes::LeaveMode;
 
 /// Different kind of action which can be mapped to a key.
 /// All those actions are mapped to a key and this enum
