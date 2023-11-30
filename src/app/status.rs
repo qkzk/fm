@@ -32,7 +32,6 @@ use crate::modes::CopyMove;
 use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::FileKind;
-use crate::modes::InputCompleted;
 use crate::modes::InputSimple;
 use crate::modes::IsoDevice;
 use crate::modes::Menu;
@@ -903,52 +902,7 @@ impl Status {
 
     /// Add a char to input string, look for a possible completion.
     pub fn input_complete(&mut self, c: char) -> Result<()> {
-        self.menu.input.insert(c);
-        self.fill_completion()
-    }
-
-    /// Fill the input string with the currently selected completion.
-    pub fn fill_completion(&mut self) -> Result<()> {
-        match self.current_tab().edit_mode {
-            Edit::InputCompleted(InputCompleted::Goto) => {
-                let current_path = self
-                    .current_tab()
-                    .path_content_str()
-                    .unwrap_or_default()
-                    .to_owned();
-                self.menu
-                    .completion
-                    .goto(&self.menu.input.string(), &current_path)
-            }
-            Edit::InputCompleted(InputCompleted::Exec) => {
-                self.menu.completion.exec(&self.menu.input.string())
-            }
-            Edit::InputCompleted(InputCompleted::Search)
-                if matches!(self.current_tab().display_mode, Display::Normal) =>
-            {
-                let input_string = self.menu.input.string();
-                self.menu.completion.search_from_normal(
-                    &self
-                        .current_tab()
-                        .path_content
-                        .filenames_containing(&input_string),
-                )
-            }
-            Edit::InputCompleted(InputCompleted::Search)
-                if matches!(self.current_tab().display_mode, Display::Tree) =>
-            {
-                let input_string = self.menu.input.string();
-                // let filenames = self.selected_non_mut().tree.filenames();
-                let filenames = self.current_tab().tree.filenames_vec();
-                self.menu
-                    .completion
-                    .search_from_tree_with_vecs(&input_string, &filenames)
-            }
-            Edit::InputCompleted(InputCompleted::Command) => {
-                self.menu.completion.command(&self.menu.input.string())
-            }
-            _ => Ok(()),
-        }
+        self.menu.input_complete(c, &self.tabs[self.index])
     }
 
     /// Execute a custom event on the selected file

@@ -1,6 +1,7 @@
 use anyhow::Context;
 use anyhow::Result;
 
+use crate::app::Tab;
 use crate::common::TUIS_PATH;
 use crate::io::drop_sudo_privileges;
 use crate::log_line;
@@ -9,8 +10,11 @@ use crate::modes::CliApplications;
 use crate::modes::Completion;
 use crate::modes::Compresser;
 use crate::modes::CryptoDeviceOpener;
+use crate::modes::Display;
+use crate::modes::Edit;
 use crate::modes::Flagged;
 use crate::modes::Input;
+use crate::modes::InputCompleted;
 use crate::modes::IsoDevice;
 use crate::modes::Marks;
 use crate::modes::MountCommands;
@@ -93,6 +97,44 @@ impl Menu {
         self.init_bulk();
         if let Some(bulk) = &mut self.bulk {
             bulk.next();
+        }
+    }
+
+    /// Fill the input string with the currently selected completion.
+    pub fn input_complete(&mut self, c: char, tab: &Tab) -> Result<()> {
+        self.input.insert(c);
+        self.fill_completion(tab)
+    }
+
+    fn fill_completion(&mut self, tab: &Tab) -> Result<()> {
+        match tab.edit_mode {
+            Edit::InputCompleted(InputCompleted::Goto) => {
+                let current_path = tab.path_content_str().unwrap_or_default().to_owned();
+                self.completion.goto(&self.input.string(), &current_path)
+            }
+            Edit::InputCompleted(InputCompleted::Exec) => {
+                self.completion.exec(&self.input.string())
+            }
+            Edit::InputCompleted(InputCompleted::Search)
+                if matches!(tab.display_mode, Display::Normal) =>
+            {
+                let input_string = self.input.string();
+                self.completion
+                    .search_from_normal(&tab.path_content.filenames_containing(&input_string))
+            }
+            Edit::InputCompleted(InputCompleted::Search)
+                if matches!(tab.display_mode, Display::Tree) =>
+            {
+                let input_string = self.input.string();
+                // let filenames = self.selected_non_mut().tree.filenames();
+                let filenames = tab.tree.filenames_vec();
+                self.completion
+                    .search_from_tree_with_vecs(&input_string, &filenames)
+            }
+            Edit::InputCompleted(InputCompleted::Command) => {
+                self.completion.command(&self.input.string())
+            }
+            _ => Ok(()),
         }
     }
 
