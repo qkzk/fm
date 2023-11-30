@@ -3,7 +3,7 @@ use std::fs::{self, ReadDir};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 
-use crate::{event::ActionMap, modes::Filenames};
+use crate::event::ActionMap;
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
@@ -195,37 +195,8 @@ impl Completion {
     }
 
     /// Looks for file within current folder completing what the user typed.
-    pub fn search_from_normal(&mut self, files: &[String]) -> Result<()> {
-        self.update(files.into());
-        Ok(())
-    }
-
-    /// Looks for file within tree completing what the user typed.
-    pub fn search_from_tree(&mut self, input_string: &str, content: Filenames) -> Result<()> {
-        self.update(
-            content
-                .filter(|&p| p.contains(input_string))
-                .map(|p| p.replace("▸ ", "").replace("▾ ", ""))
-                .collect(),
-        );
-
-        Ok(())
-    }
-    /// Looks for file within tree completing what the user typed.
-    pub fn search_from_tree_with_vecs(
-        &mut self,
-        input_string: &str,
-        content: &[String],
-    ) -> Result<()> {
-        self.update(
-            content
-                .iter()
-                .filter(|&p| p.contains(input_string))
-                .map(|p| p.replace("▸ ", "").replace("▾ ", ""))
-                .collect(),
-        );
-
-        Ok(())
+    pub fn search(&mut self, files: Vec<String>) {
+        self.update(files);
     }
 
     /// Complete the input string with current_proposition if possible.

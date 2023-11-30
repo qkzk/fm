@@ -1,7 +1,5 @@
-use std::collections::hash_map;
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::iter::FilterMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
@@ -616,25 +614,16 @@ impl Tree {
         (selected_index, content)
     }
 
-    /// An iterator over filenames.
-    /// It allows us to iter explicitely over filenames
-    /// while avoiding another allocation by collecting into a `Vec`
     #[inline]
-    pub fn filenames(&self) -> Filenames<'_> {
-        let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
-        let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
-        self.nodes.keys().filter_map(to_filename).filter_map(to_str)
-    }
-
-    #[inline]
-    pub fn filenames_vec(&self) -> Vec<String> {
+    pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
         let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
         let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
         self.nodes
             .keys()
             .filter_map(to_filename)
             .filter_map(to_str)
-            .map(|s| s.to_string())
+            .filter(|&p| p.contains(input_string))
+            .map(|p| p.replace("▸ ", "").replace("▾ ", ""))
             .collect()
     }
 
@@ -734,8 +723,3 @@ fn path_filename_contains(path: &Path, pattern: &str) -> bool {
         .to_string_lossy()
         .contains(pattern)
 }
-
-type FnPbOsstr = fn(&PathBuf) -> Option<&OsStr>;
-type FilterHashMap<'a> = FilterMap<hash_map::Keys<'a, PathBuf, Node>, FnPbOsstr>;
-/// An iterator over filenames of a HashMap<PathBuf, Node>
-pub type Filenames<'a> = FilterMap<FilterHashMap<'a>, fn(&OsStr) -> Option<&str>>;

@@ -190,6 +190,16 @@ impl Tab {
         self.path_content.path.to_str()
     }
 
+    /// Returns a vector of filenames as strings, which contains the input string.
+    /// Empty vector while in `Display::Preview`.
+    pub fn filenames(&self, input_string: &str) -> Vec<String> {
+        match self.display_mode {
+            Display::Normal => self.path_content.filenames_containing(input_string),
+            Display::Tree => self.tree.filenames_containing(input_string),
+            Display::Preview => vec![],
+        }
+    }
+
     /// Copy the selected filename to the clipboard. Only the filename.
     pub fn filename_to_clipboard(&self) {
         let Ok(file) = self.current_file() else {

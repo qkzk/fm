@@ -10,7 +10,6 @@ use crate::modes::CliApplications;
 use crate::modes::Completion;
 use crate::modes::Compresser;
 use crate::modes::CryptoDeviceOpener;
-use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::Flagged;
 use crate::modes::Input;
@@ -115,21 +114,9 @@ impl Menu {
             Edit::InputCompleted(InputCompleted::Exec) => {
                 self.completion.exec(&self.input.string())
             }
-            Edit::InputCompleted(InputCompleted::Search)
-                if matches!(tab.display_mode, Display::Normal) =>
-            {
-                let input_string = self.input.string();
-                self.completion
-                    .search_from_normal(&tab.path_content.filenames_containing(&input_string))
-            }
-            Edit::InputCompleted(InputCompleted::Search)
-                if matches!(tab.display_mode, Display::Tree) =>
-            {
-                let input_string = self.input.string();
-                // let filenames = self.selected_non_mut().tree.filenames();
-                let filenames = tab.tree.filenames_vec();
-                self.completion
-                    .search_from_tree_with_vecs(&input_string, &filenames)
+            Edit::InputCompleted(InputCompleted::Search) => {
+                self.completion.search(tab.filenames(&self.input.string()));
+                Ok(())
             }
             Edit::InputCompleted(InputCompleted::Command) => {
                 self.completion.command(&self.input.string())
