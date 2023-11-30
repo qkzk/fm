@@ -689,32 +689,29 @@ impl Tab {
     /// We search forward from that position and start again from top if nothing is found.
     /// We move the selection to the first matching file.
     pub fn search_from(&mut self, searched_name: &str, current_index: usize) {
-        let mut found = false;
-        let mut next_index = current_index;
-        // search after current position
+        if let Some(found_index) = self.search_from_index(searched_name, current_index) {
+            self.go_to_index(found_index);
+        } else if let Some(found_index) = self.search_from_top(searched_name, current_index) {
+            self.go_to_index(found_index);
+        }
+    }
+
+    fn search_from_index(&self, searched_name: &str, current_index: usize) -> Option<usize> {
         for (index, file) in self.path_content.enumerate().skip(current_index) {
             if file.filename.contains(searched_name) {
-                next_index = index;
-                found = true;
-                break;
+                return Some(index);
             };
         }
-        if found {
-            self.go_to_index(next_index);
-            return;
-        }
+        None
+    }
 
-        // search from top
+    fn search_from_top(&self, searched_name: &str, current_index: usize) -> Option<usize> {
         for (index, file) in self.path_content.enumerate().take(current_index) {
             if file.filename.contains(searched_name) {
-                next_index = index;
-                found = true;
-                break;
+                return Some(index);
             };
         }
-        if found {
-            self.go_to_index(next_index)
-        }
+        None
     }
 
     pub fn normal_search_next(&mut self, searched: &str) {
