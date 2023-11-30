@@ -37,7 +37,7 @@ impl EventAction {
     /// Once a quit event is received, we change a flag and break the main loop.
     /// It's usefull to reset the cursor before leaving the application.
     pub fn quit(status: &mut Status) -> Result<()> {
-        status.must_quit = true;
+        status.internal_settings.must_quit = true;
         Ok(())
     }
 
@@ -71,22 +71,22 @@ impl EventAction {
     /// Toggle between a full display (aka ls -lah) or a simple mode (only the
     /// filenames).
     pub fn toggle_display_full(status: &mut Status) -> Result<()> {
-        status.settings.metadata = !status.settings.metadata;
+        status.display_settings.metadata = !status.display_settings.metadata;
         Ok(())
     }
 
     /// Toggle between dualpane and single pane. Does nothing if the width
     /// is too low to display both panes.
     pub fn toggle_dualpane(status: &mut Status) -> Result<()> {
-        status.settings.dual = !status.settings.dual;
+        status.display_settings.dual = !status.display_settings.dual;
         status.select_left();
         Ok(())
     }
 
     /// Toggle the second pane between preview & normal mode (files).
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
-        status.settings.preview = !status.settings.preview;
-        if status.settings.preview {
+        status.display_settings.preview = !status.display_settings.preview;
+        if status.display_settings.preview {
             status.set_second_pane_for_preview()?;
         } else {
             status.tabs[1].reset_edit_mode();
@@ -367,7 +367,7 @@ impl EventAction {
     /// Display the help which can be navigated and displays the configrable
     /// binds.
     pub fn help(status: &mut Status, binds: &Bindings) -> Result<()> {
-        let help = help_string(binds, &status.opener)?;
+        let help = help_string(binds, &status.internal_settings.opener)?;
         status.current_tab_mut().set_display_mode(Display::Preview);
         status.current_tab_mut().preview = Preview::help(&help);
         let len = status.current_tab().preview.len();
@@ -400,7 +400,7 @@ impl EventAction {
     pub fn shell(status: &mut Status) -> Result<()> {
         let tab = status.current_tab();
         let path = tab.directory_of_selected()?;
-        execute_without_output_with_path(&status.opener.terminal, path, None)?;
+        execute_without_output_with_path(&status.internal_settings.opener.terminal, path, None)?;
         Ok(())
     }
 
@@ -467,10 +467,10 @@ impl EventAction {
     /// It requires the "nvim-send" application to be in $PATH.
     pub fn nvim_filepicker(status: &mut Status) -> Result<()> {
         status.update_nvim_listen_address();
-        if status.nvim_server.is_empty() {
+        if status.internal_settings.nvim_server.is_empty() {
             return Ok(());
         };
-        let nvim_server = status.nvim_server.clone();
+        let nvim_server = status.internal_settings.nvim_server.clone();
         if status.menu.flagged.is_empty() {
             let Ok(fileinfo) = status.current_tab().current_file() else {
                 return Ok(());
@@ -514,13 +514,6 @@ impl EventAction {
     pub fn go_start(status: &mut Status) -> Result<()> {
         status.current_tab_mut().cd(&START_FOLDER)?;
         status.update_second_pane_for_preview()
-    }
-
-    /// Executes a `dragon-drop` command on the selected file.
-    /// It obviously requires the `dragon-drop` command to be installed.
-    pub fn drag_n_drop(status: &mut Status) -> Result<()> {
-        SpecificCommand::drag_n_drop(status);
-        Ok(())
     }
 
     pub fn search_next(status: &mut Status) -> Result<()> {
@@ -798,7 +791,7 @@ impl EventAction {
 
     /// Start a fuzzy find for a keybinding with skim.
     pub fn fuzzyfind_help(status: &mut Status, binds: &Bindings) -> Result<()> {
-        let help = help_string(binds, &status.opener)?;
+        let help = help_string(binds, &status.internal_settings.opener)?;
         status.skim_find_keybinding_and_run(help)
     }
 
@@ -815,6 +808,20 @@ impl EventAction {
         if let Display::Normal | Display::Tree = tab.display_mode {
             tab.filepath_to_clipboard();
         }
+        Ok(())
+    }
+
+    /// Executes a `dragon-drop` command on the selected file.
+    /// It obviously requires the `dragon-drop` command to be installed.
+    pub fn drag_n_drop(status: &mut Status) -> Result<()> {
+        SpecificCommand::drag_n_drop(status);
+        Ok(())
+    }
+
+    /// Set the current selected file as wallpaper with `nitrogen`.
+    /// Requires `nitrogen` to be installed.
+    pub fn set_wallpaper(tab: &Tab) -> Result<()> {
+        SpecificCommand::set_wallpaper(tab);
         Ok(())
     }
 
@@ -902,9 +909,12 @@ impl EventAction {
 
     /// Open the config file.
     pub fn open_config(status: &mut Status) -> Result<()> {
-        match status.opener.open_single(&path::PathBuf::from(
-            shellexpand::tilde(CONFIG_PATH).to_string(),
-        )) {
+        match status
+            .internal_settings
+            .opener
+            .open_single(&path::PathBuf::from(
+                shellexpand::tilde(CONFIG_PATH).to_string(),
+            )) {
             Ok(_) => (),
             Err(e) => log_info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
         }
@@ -930,13 +940,6 @@ impl EventAction {
         Ok(())
     }
 
-    /// Set the current selected file as wallpaper with `nitrogen`.
-    /// Requires `nitrogen` to be installed.
-    pub fn set_wallpaper(tab: &Tab) -> Result<()> {
-        SpecificCommand::set_wallpaper(tab);
-        Ok(())
-    }
-
     /// Execute a custom event on the selected file
     pub fn custom(status: &mut Status, input_string: &String) -> Result<()> {
         status.run_custom_command(input_string)
@@ -952,7 +955,7 @@ impl EventAction {
     }
 
     pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
-        status.select_pane(col)
+        status.select_tab_from_col(col)
     }
 
     pub fn click_first_line(col: u16, status: &mut Status, binds: &Bindings) -> Result<()> {

@@ -5,28 +5,42 @@ use std::sync::Arc;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use skim::SkimItem;
-use sysinfo::{Disk, DiskExt, RefreshKind, System, SystemExt};
+use sysinfo::{Disk, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
 use crate::app::DisplaySettings;
+use crate::app::FirstLine;
+use crate::app::InternalSettings;
 use crate::app::Tab;
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
-use crate::common::{NVIM, SS};
-use crate::config::{Bindings, Settings};
-use crate::io::{execute_and_capture_output_without_check, MIN_WIDTH_FOR_DUAL_PANE};
-use crate::io::{execute_and_output, execute_without_output_with_path};
-use crate::io::{execute_sudo_command_with_password, reset_sudo_faillock};
-use crate::io::{Args, Kind};
-use crate::io::{Internal, Opener};
+use crate::config::Bindings;
+use crate::config::Settings;
+use crate::io::Args;
+use crate::io::Internal;
+use crate::io::Kind;
+use crate::io::Opener;
+use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
+use crate::io::{
+    execute_and_capture_output_without_check, execute_sudo_command_with_password,
+    execute_without_output_with_path, reset_sudo_faillock,
+};
 use crate::modes::BlockDeviceAction;
 use crate::modes::ContentWindow;
+use crate::modes::CopyMove;
+use crate::modes::Display;
+use crate::modes::Edit;
 use crate::modes::FileKind;
+use crate::modes::InputCompleted;
+use crate::modes::InputSimple;
 use crate::modes::IsoDevice;
 use crate::modes::Menu;
 use crate::modes::MountCommands;
 use crate::modes::MountRepr;
+use crate::modes::NeedConfirmation;
+use crate::modes::PasswordKind;
+use crate::modes::PasswordUsage;
 use crate::modes::Permissions;
 use crate::modes::Preview;
 use crate::modes::SelectableContent;
@@ -34,13 +48,8 @@ use crate::modes::ShellCommandParser;
 use crate::modes::Skimer;
 use crate::modes::Tree;
 use crate::modes::Users;
-use crate::modes::{copy_move, CopyMove};
-use crate::modes::{regex_matcher, InputCompleted};
-use crate::modes::{Display, Edit, InputSimple, NeedConfirmation};
-use crate::modes::{PasswordKind, PasswordUsage};
+use crate::modes::{copy_move, regex_matcher};
 use crate::{log_info, log_line};
-
-use super::FirstLine;
 
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.
@@ -57,29 +66,14 @@ pub struct Status {
     /// Index of the current selected tab
     pub index: usize,
 
-    /// Do we have to clear the screen ?
-    pub force_clear: bool,
-    /// terminal
-    pub term: Arc<Term>,
-    /// Info about the running machine. Only used to detect disks
-    /// and their mount points.
-    pub sys: System,
-
-    /// NVIM RPC server address
-    pub nvim_server: String,
-    /// The opener used by the application.
-    pub opener: Opener,
-
     skimer: Option<Result<Skimer>>,
 
     /// Navigable menu
     pub menu: Menu,
     /// Display settings
-    pub settings: DisplaySettings,
-
-    /// True if the user issued a quit event (`Key::Char('q')` by default).
-    /// It's used to exit the main loop before reseting the cursor.
-    pub must_quit: bool,
+    pub display_settings: DisplaySettings,
+    /// Interna settings
+    pub internal_settings: InternalSettings,
 }
 
 impl Status {
@@ -92,64 +86,37 @@ impl Status {
         opener: Opener,
         settings: &Settings,
     ) -> Result<Self> {
-        let args = Args::parse();
-        let nvim_server = args.server.clone();
-        let sys = System::new_with_specifics(RefreshKind::new().with_disks());
-        let force_clear = false;
         let skimer = None;
         let index = 0;
 
-        let users = Users::new();
-        let users2 = users.clone();
-
-        let mount_points = Self::disks_mounts(sys.disks());
+        let args = Args::parse();
         let path = std::fs::canonicalize(Path::new(&args.path))?;
         let start_dir = if path.is_dir() {
             &path
         } else {
             path.parent().context("")?
         };
+        let sys = System::new_with_specifics(RefreshKind::new().with_disks());
+        let display_settings = DisplaySettings::new(&args, settings, term.term_size()?.0);
+        let mut internal_settings = InternalSettings::new(opener, term, sys);
+        let mount_points = internal_settings.mount_points();
         let menu = Menu::new(start_dir, &mount_points)?;
 
+        let users_left = Users::new();
+        let users_right = users_left.clone();
+
         let tabs = [
-            Tab::new(&args, height, users, settings)?,
-            Tab::new(&args, height, users2, settings)?,
+            Tab::new(&args, height, users_left, settings)?,
+            Tab::new(&args, height, users_right, settings)?,
         ];
-        let settings = DisplaySettings::new(args, settings, &term)?;
-        let must_quit = false;
         Ok(Self {
             tabs,
             index,
             skimer,
-            term,
-            sys,
-            opener,
-            nvim_server,
-            force_clear,
             menu,
-            settings,
-            must_quit,
+            display_settings,
+            internal_settings,
         })
-    }
-
-    pub fn execute_bulk(&self) -> Result<()> {
-        if let Some(bulk) = &self.menu.bulk {
-            bulk.execute_bulk(self)?;
-        }
-        Ok(())
-    }
-
-    /// Select the other tab if two are displayed. Does nother otherwise.
-    pub fn next(&mut self) {
-        if !self.settings.dual {
-            return;
-        }
-        self.index = 1 - self.index
-    }
-
-    /// Select the other tab if two are displayed. Does nother otherwise.
-    pub fn prev(&mut self) {
-        self.next()
     }
 
     /// Returns a non mutable reference to the selected tab.
@@ -160,6 +127,87 @@ impl Status {
     /// Returns a mutable reference to the selected tab.
     pub fn current_tab_mut(&mut self) -> &mut Tab {
         &mut self.tabs[self.index]
+    }
+
+    /// Returns a string representing the current path in the selected tab.
+    pub fn current_tab_path_str(&self) -> &str {
+        self.current_tab().path_content_str().unwrap_or_default()
+    }
+
+    /// True if a quit event was registered in the selected tab.
+    pub fn must_quit(&self) -> bool {
+        self.internal_settings.must_quit
+    }
+
+    /// Select the other tab if two are displayed. Does nother otherwise.
+    pub fn next(&mut self) {
+        if !self.display_settings.dual {
+            return;
+        }
+        self.index = 1 - self.index
+    }
+
+    /// Select the other tab if two are displayed. Does nother otherwise.
+    pub fn prev(&mut self) {
+        self.next()
+    }
+
+    /// Select the left or right tab depending on where the user clicked.
+    pub fn select_tab_from_col(&mut self, col: u16) -> Result<()> {
+        let (width, _) = self.term_size()?;
+        if self.display_settings.dual {
+            if (col as usize) < width / 2 {
+                self.select_left();
+            } else {
+                self.select_right();
+            };
+        } else {
+            self.select_left();
+        }
+        Ok(())
+    }
+
+    pub fn click(&mut self, row: u16, col: u16) -> Result<()> {
+        self.select_tab_from_col(col)?;
+        if row < ContentWindow::HEADER_ROWS as u16 {
+            return Err(anyhow::anyhow!("Clicked below headers"));
+        }
+        let (_, current_height) = self.term_size()?;
+        self.current_tab_mut().select_row(row, current_height)?;
+        Ok(())
+    }
+
+    pub fn select_left(&mut self) {
+        self.index = 0;
+    }
+
+    pub fn select_right(&mut self) {
+        self.index = 1;
+    }
+
+    /// Refresh every disk information.
+    /// It also refreshes the disk list, which is usefull to detect removable medias.
+    /// It may be very slow...
+    /// There's surelly a better way, like doing it only once in a while or on
+    /// demand.
+    pub fn refresh_shortcuts(&mut self) {
+        self.menu
+            .refresh_shortcuts(&self.internal_settings.mount_points());
+    }
+
+    /// Returns an array of Disks
+    pub fn disks(&self) -> &[Disk] {
+        self.internal_settings.sys.disks()
+    }
+
+    /// Returns a the disk spaces for the selected tab..
+    pub fn disk_spaces_of_selected(&self) -> String {
+        disk_space(self.disks(), &self.current_tab().current_path())
+    }
+
+    /// Returns the sice of the terminal (width, height)
+    pub fn term_size(&self) -> Result<(usize, usize)> {
+        self.internal_settings.term_size()
     }
 
     /// Refresh the current view, reloading the files. Move the selection to top.
@@ -175,6 +223,118 @@ impl Status {
             tab.refresh_and_reselect_file()?
         }
         Ok(())
+    }
+
+    fn reset_edit_mode(&mut self) {
+        self.menu.completion.reset();
+        self.current_tab_mut().reset_edit_mode();
+    }
+    /// Refresh the existing users.
+
+    /// Reset the selected tab view to the default.
+    pub fn refresh_status(&mut self) -> Result<()> {
+        self.force_clear();
+        self.refresh_users()?;
+        self.refresh_tabs()?;
+        Ok(())
+    }
+
+    /// Set a "force clear" flag to true, which will reset the display.
+    /// It's used when some command or whatever may pollute the terminal.
+    /// We ensure to clear it before displaying again.
+    pub fn force_clear(&mut self) {
+        self.internal_settings.force_clear();
+    }
+
+    pub fn refresh_users(&mut self) -> Result<()> {
+        let users = Users::new();
+        self.tabs[0].users = users.clone();
+        self.tabs[1].users = users;
+        Ok(())
+    }
+
+    pub fn refresh_tabs(&mut self) -> Result<()> {
+        self.menu.input.reset();
+        self.menu.completion.reset();
+        self.tabs[0].refresh_and_reselect_file()?;
+        self.tabs[1].refresh_and_reselect_file()
+    }
+
+    /// When a rezise event occurs, we may hide the second panel if the width
+    /// isn't sufficiant to display enough information.
+    /// We also need to know the new height of the terminal to start scrolling
+    /// up or down.
+    pub fn resize(&mut self, width: usize, height: usize) -> Result<()> {
+        self.set_dual_pane_if_wide_enough(width)?;
+        self.tabs[0].set_height(height);
+        self.tabs[1].set_height(height);
+        self.refresh_status()
+    }
+
+    /// Drop the current tree, replace it with an empty one.
+    pub fn remove_tree(&mut self) -> Result<()> {
+        self.current_tab_mut().tree = Tree::default();
+        Ok(())
+    }
+
+    /// Check if the second pane should display a preview and force it.
+    pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
+        if self.index == 0 && self.display_settings.preview {
+            self.set_second_pane_for_preview()?;
+        };
+        Ok(())
+    }
+
+    /// Force preview the selected file of the first pane in the second pane.
+    /// Doesn't check if it has do.
+    pub fn set_second_pane_for_preview(&mut self) -> Result<()> {
+        if !DisplaySettings::display_wide_enough(self.term_size()?.0) {
+            self.tabs[1].preview = Preview::empty();
+            return Ok(());
+        }
+
+        self.tabs[1].set_display_mode(Display::Preview);
+        self.tabs[1].set_edit_mode(Edit::Nothing);
+        let fileinfo = self.tabs[0]
+            .current_file()
+            .context("force preview: No file to select")?;
+        let preview = match fileinfo.file_kind {
+            FileKind::Directory => Preview::directory(&fileinfo, &self.tabs[0].users),
+            _ => Preview::file(&fileinfo),
+        };
+        self.tabs[1].preview = preview.unwrap_or_default();
+
+        self.tabs[1].window.reset(self.tabs[1].preview.len());
+        Ok(())
+    }
+
+    /// Set dual pane if the term is big enough
+    pub fn set_dual_pane_if_wide_enough(&mut self, width: usize) -> Result<()> {
+        if width < MIN_WIDTH_FOR_DUAL_PANE {
+            self.select_left();
+            self.display_settings.dual = false;
+        } else {
+            self.display_settings.dual = true;
+        }
+        Ok(())
+    }
+
+    /// Empty the flagged files, reset the view of every tab.
+    pub fn clear_flags_and_reset_view(&mut self) -> Result<()> {
+        self.menu.flagged.clear();
+        self.reset_tabs_view()
+    }
+
+    /// Returns a vector of path of files which are both flagged and in current
+    /// directory.
+    /// It's necessary since the user may have flagged files OUTSIDE of current
+    /// directory before calling Bulkrename.
+    /// It may be confusing since the same filename can be used in
+    /// different places.
+    pub fn flagged_in_current_dir(&self) -> Vec<&Path> {
+        self.menu
+            .flagged
+            .in_current_dir(&self.current_tab().path_content.path)
     }
 
     /// Flag all files in the current directory.
@@ -211,8 +371,25 @@ impl Status {
         };
     }
 
+    /// Execute a move or a copy of the flagged files to current directory.
+    /// A progress bar is displayed (invisible for small files) and a notification
+    /// is sent every time, even for 0 bytes files...
+    pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
+        let sources = self.menu.flagged.content.clone();
+
+        let dest = &self.current_tab().directory_of_selected()?;
+
+        copy_move(
+            cut_or_copy,
+            sources,
+            dest,
+            Arc::clone(&self.internal_settings.term),
+        )?;
+        self.clear_flags_and_reset_view()
+    }
+
     fn skim_init(&mut self) {
-        self.skimer = Some(Skimer::new(Arc::clone(&self.term)));
+        self.skimer = Some(Skimer::new(Arc::clone(&self.internal_settings.term)));
     }
 
     /// Replace the tab content with the first result of skim.
@@ -268,7 +445,7 @@ impl Status {
     pub fn skim_find_keybinding_and_run(&mut self, help: String) -> Result<()> {
         self.skim_init();
         if let Ok(key) = self._skim_find_keybinding(help) {
-            let _ = self.term.send_event(Event::Key(key));
+            let _ = self.internal_settings.term.send_event(Event::Key(key));
         };
         self.drop_skim()
     }
@@ -328,43 +505,10 @@ impl Status {
         Ok(())
     }
 
-    /// Returns a vector of path of files which are both flagged and in current
-    /// directory.
-    /// It's necessary since the user may have flagged files OUTSIDE of current
-    /// directory before calling Bulkrename.
-    /// It may be confusing since the same filename can be used in
-    /// different places.
-    pub fn flagged_in_current_dir(&self) -> Vec<&Path> {
-        self.menu
-            .flagged
-            .in_current_dir(&self.current_tab().path_content.path)
-    }
-
-    /// Execute a move or a copy of the flagged files to current directory.
-    /// A progress bar is displayed (invisible for small files) and a notification
-    /// is sent every time, even for 0 bytes files...
-    pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
-        let sources = self.menu.flagged.content.clone();
-
-        let dest = &self.current_tab().directory_of_selected()?;
-
-        copy_move(cut_or_copy, sources, dest, Arc::clone(&self.term))?;
-        self.clear_flags_and_reset_view()
-    }
-
-    /// Empty the flagged files, reset the view of every tab.
-    pub fn clear_flags_and_reset_view(&mut self) -> Result<()> {
-        self.menu.flagged.clear();
-        self.reset_tabs_view()
-    }
-
-    pub fn click(&mut self, row: u16, col: u16) -> Result<()> {
-        self.select_pane(col)?;
-        if row < ContentWindow::HEADER_ROWS as u16 {
-            return Err(anyhow::anyhow!("Clicked below headers"));
+    pub fn execute_bulk(&self) -> Result<()> {
+        if let Some(bulk) = &self.menu.bulk {
+            bulk.execute_bulk(self)?;
         }
-        let (_, current_height) = self.term_size()?;
-        self.current_tab_mut().select_row(row, current_height)?;
         Ok(())
     }
 
@@ -389,140 +533,15 @@ impl Status {
         Ok(())
     }
 
-    pub fn select_left(&mut self) {
-        self.index = 0;
-    }
-
-    pub fn select_right(&mut self) {
-        self.index = 1;
-    }
-
-    /// Refresh every disk information.
-    /// It also refreshes the disk list, which is usefull to detect removable medias.
-    /// It may be very slow...
-    /// There's surelly a better way, like doing it only once in a while or on
-    /// demand.
-    pub fn refresh_disks(&mut self) {
-        // the fast variant, which doesn't check if the disks have changed.
-        // self.system_info.refresh_disks();
-
-        // the slow variant, which check if the disks have changed.
-        self.sys.refresh_disks_list();
-        let disks = self.sys.disks();
-        let mounts = Self::disks_mounts(disks);
-        self.menu.refresh_shortcuts(&mounts);
-    }
-
-    /// Returns an array of Disks
-    pub fn disks(&self) -> &[Disk] {
-        self.sys.disks()
-    }
-
-    /// Returns a the disk spaces for the selected tab..
-    pub fn disk_spaces_of_selected(&self) -> String {
-        let disks = self.disks();
-        disk_space(disks, &self.tabs[self.index].path_content.path)
-    }
-
-    /// Returns the mount points of every disk.
-    pub fn disks_mounts(disks: &[Disk]) -> Vec<&Path> {
-        disks.iter().map(|d| d.mount_point()).collect()
-    }
-
-    /// Returns the sice of the terminal (width, height)
-    pub fn term_size(&self) -> Result<(usize, usize)> {
-        Ok(self.term.term_size()?)
-    }
-
-    /// Returns a string representing the current path in the selected tab.
-    pub fn selected_path_str(&self) -> &str {
-        self.current_tab().path_content_str().unwrap_or_default()
-    }
-
-    /// Refresh the existing users.
-    pub fn refresh_users(&mut self) -> Result<()> {
-        let users = Users::new();
-        self.tabs[0].users = users.clone();
-        self.tabs[1].users = users;
-        Ok(())
-    }
-
-    pub fn refresh_tabs(&mut self) -> Result<()> {
-        self.menu.input.reset();
-        self.menu.completion.reset();
-        self.tabs[0].refresh_and_reselect_file()?;
-        self.tabs[1].refresh_and_reselect_file()
-    }
-
-    /// Drop the current tree, replace it with an empty one.
-    pub fn remove_tree(&mut self) -> Result<()> {
-        self.current_tab_mut().tree = Tree::default();
-        Ok(())
-    }
-
-    /// Check if the second pane should display a preview and force it.
-    pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
-        if self.index == 0 && self.settings.preview {
-            self.set_second_pane_for_preview()?;
-        };
-        Ok(())
-    }
-
-    /// Force preview the selected file of the first pane in the second pane.
-    /// Doesn't check if it has do.
-    pub fn set_second_pane_for_preview(&mut self) -> Result<()> {
-        if !DisplaySettings::display_wide_enough(&self.term)? {
-            self.tabs[1].preview = Preview::empty();
-            return Ok(());
-        }
-
-        self.tabs[1].set_display_mode(Display::Preview);
-        self.tabs[1].set_edit_mode(Edit::Nothing);
-        let fileinfo = self.tabs[0]
-            .current_file()
-            .context("force preview: No file to select")?;
-        let preview = match fileinfo.file_kind {
-            FileKind::Directory => Preview::directory(&fileinfo, &self.tabs[0].users),
-            _ => Preview::file(&fileinfo),
-        };
-        self.tabs[1].preview = preview.unwrap_or_default();
-
-        self.tabs[1].window.reset(self.tabs[1].preview.len());
-        Ok(())
-    }
-
-    /// Set dual pane if the term is big enough
-    pub fn set_dual_pane_if_wide_enough(&mut self, width: usize) -> Result<()> {
-        if width < MIN_WIDTH_FOR_DUAL_PANE {
-            self.select_left();
-            self.settings.dual = false;
-        } else {
-            self.settings.dual = true;
-        }
-        Ok(())
-    }
-
-    /// True if a quit event was registered in the selected tab.
-    pub fn must_quit(&self) -> bool {
-        self.must_quit
-    }
-
-    /// Set a "force clear" flag to true, which will reset the display.
-    /// It's used when some command or whatever may pollute the terminal.
-    /// We ensure to clear it before displaying again.
-    pub fn force_clear(&mut self) {
-        self.force_clear = true;
-    }
-
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
         let path = self.current_tab().current_file()?.path;
-        match self.opener.kind(&path) {
+        match self.internal_settings.opener.kind(&path) {
             Some(Kind::Internal(Internal::NotSupported)) => {
                 let _ = self.mount_iso_drive();
             }
             Some(_) => {
-                let _ = self.opener.open_single(&path);
+                let _ = self.internal_settings.opener.open_single(&path);
             }
             None => (),
         }
@@ -531,7 +550,9 @@ impl Status {
 
     /// Open every flagged file with their respective opener.
     pub fn open_flagged_files(&mut self) -> Result<()> {
-        self.opener.open_multiple(self.menu.flagged.content())
+        self.internal_settings
+            .opener
+            .open_multiple(self.menu.flagged.content())
     }
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
@@ -698,11 +719,6 @@ impl Status {
         Ok(())
     }
 
-    fn reset_edit_mode(&mut self) {
-        self.menu.completion.reset();
-        self.current_tab_mut().reset_edit_mode();
-    }
-
     fn _execute_password_command(
         &mut self,
         action: Option<BlockDeviceAction>,
@@ -740,25 +756,6 @@ impl Status {
         }
         self.current_tab_mut().refresh_view()?;
         self.reset_edit_mode();
-        self.refresh_status()
-    }
-
-    /// Reset the selected tab view to the default.
-    pub fn refresh_status(&mut self) -> Result<()> {
-        self.force_clear();
-        self.refresh_users()?;
-        self.refresh_tabs()?;
-        Ok(())
-    }
-
-    /// When a rezise event occurs, we may hide the second panel if the width
-    /// isn't sufficiant to display enough information.
-    /// We also need to know the new height of the terminal to start scrolling
-    /// up or down.
-    pub fn resize(&mut self, width: usize, height: usize) -> Result<()> {
-        self.set_dual_pane_if_wide_enough(width)?;
-        self.tabs[0].set_height(height);
-        self.tabs[1].set_height(height);
         self.refresh_status()
     }
 
@@ -822,28 +819,7 @@ impl Status {
     }
 
     pub fn update_nvim_listen_address(&mut self) {
-        if let Ok(nvim_listen_address) = std::env::var("NVIM_LISTEN_ADDRESS") {
-            self.nvim_server = nvim_listen_address;
-        } else if let Ok(nvim_listen_address) = Self::parse_nvim_address_from_ss_output() {
-            self.nvim_server = nvim_listen_address;
-        }
-    }
-
-    fn parse_nvim_address_from_ss_output() -> Result<String> {
-        if !is_program_in_path(SS) {
-            return Err(anyhow!("{SS} isn't installed"));
-        }
-        if let Ok(output) = execute_and_output(SS, ["-l"]) {
-            let output = String::from_utf8(output.stdout).unwrap_or_default();
-            let content: String = output
-                .split(&['\n', '\t', ' '])
-                .filter(|w| w.contains(NVIM))
-                .collect();
-            if !content.is_empty() {
-                return Ok(content);
-            }
-        }
-        Err(anyhow!("Couldn't get nvim listen address from `ss` output"))
+        self.internal_settings.update_nvim_listen_address()
     }
 
     /// Execute a command requiring a confirmation (Delete, Move or Copy).
@@ -865,21 +841,6 @@ impl Status {
             NeedConfirmation::Copy => self.cut_or_copy_flagged_files(CopyMove::Copy),
             NeedConfirmation::EmptyTrash => self.confirm_trash_empty(),
         }
-    }
-
-    /// Select the left or right tab depending on where the user clicked.
-    pub fn select_pane(&mut self, col: u16) -> Result<()> {
-        let (width, _) = self.term_size()?;
-        if self.settings.dual {
-            if (col as usize) < width / 2 {
-                self.select_left();
-            } else {
-                self.select_right();
-            };
-        } else {
-            self.select_left();
-        }
-        Ok(())
     }
 
     pub fn first_line_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {

@@ -1,8 +1,3 @@
-use anyhow::Result;
-use std::sync::Arc;
-
-use tuikit::term::Term;
-
 use crate::config::Settings;
 use crate::io::Args;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
@@ -21,26 +16,22 @@ pub struct DisplaySettings {
 }
 
 impl DisplaySettings {
-    pub fn new(args: Args, settings: &Settings, term: &Arc<Term>) -> Result<Self> {
-        Ok(Self {
+    pub fn new(args: &Args, settings: &Settings, width: usize) -> Self {
+        Self {
             metadata: Self::parse_display_full(args.simple, settings.full),
-            dual: Self::parse_dual_pane(args.dual, settings.dual, &term)?,
+            dual: Self::parse_dual_pane(args.dual, settings.dual, width),
             preview: args.preview,
-        })
+        }
     }
 
-    fn parse_dual_pane(
-        args_dual: Option<bool>,
-        dual_config: bool,
-        term: &Arc<Term>,
-    ) -> Result<bool> {
-        if !Self::display_wide_enough(term)? {
-            return Ok(false);
+    fn parse_dual_pane(args_dual: Option<bool>, dual_config: bool, width: usize) -> bool {
+        if !Self::display_wide_enough(width) {
+            return false;
         }
         if let Some(args_dual) = args_dual {
-            return Ok(args_dual);
+            return args_dual;
         }
-        Ok(dual_config)
+        dual_config
     }
 
     fn parse_display_full(simple_args: Option<bool>, full_config: bool) -> bool {
@@ -55,7 +46,7 @@ impl DisplaySettings {
     /// # Errors
     ///
     /// Fail if the terminal has crashed
-    pub fn display_wide_enough(term: &Arc<Term>) -> Result<bool> {
-        Ok(term.term_size()?.0 >= MIN_WIDTH_FOR_DUAL_PANE)
+    pub fn display_wide_enough(width: usize) -> bool {
+        width >= MIN_WIDTH_FOR_DUAL_PANE
     }
 }

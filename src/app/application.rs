@@ -93,9 +93,9 @@ impl FM {
     ///
     /// May fail if the terminal crashes
     pub fn force_clear_if_needed(&mut self) -> Result<()> {
-        if self.status.force_clear {
+        if self.status.internal_settings.force_clear {
             self.display.force_clear()?;
-            self.status.force_clear = false;
+            self.status.internal_settings.force_clear = false;
         }
         Ok(())
     }
@@ -103,7 +103,7 @@ impl FM {
     /// Update itself, changing its status.
     pub fn update(&mut self, event: Event) -> Result<()> {
         self.event_dispatcher.dispatch(&mut self.status, event)?;
-        self.status.refresh_disks();
+        self.status.refresh_shortcuts();
         Ok(())
     }
 
@@ -134,7 +134,7 @@ impl FM {
     pub fn quit(self) -> Result<()> {
         clear_tmp_file();
         self.display.show_cursor()?;
-        let final_path = self.status.selected_path_str().to_owned();
+        let final_path = self.status.current_tab_path_str().to_owned();
         self.refresher.quit()?;
         drop(self.event_reader);
         drop(self.event_dispatcher);

@@ -31,7 +31,7 @@ pub struct FirstLine {
 impl FirstLine {
     /// Create the strings associated with the selected tab directory
     pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-        let (width, _) = status.term.term_size()?;
+        let (width, _) = status.internal_settings.term.term_size()?;
         let disk_space = status.disk_spaces_of_selected();
         let strings = Self::make_strings(status, tab, disk_space)?;
         let sizes = Self::make_sizes(&strings);

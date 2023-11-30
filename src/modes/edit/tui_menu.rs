@@ -91,19 +91,22 @@ impl TuiApplications {
             .directory_of_selected()?
             .to_str()
             .context("event_shell: couldn't parse the directory")?;
-        execute_without_output(&status.opener.terminal, &["-d", path, "-e", command])?;
+        execute_without_output(
+            &status.internal_settings.opener.terminal,
+            &["-d", path, "-e", command],
+        )?;
         Ok(())
     }
 
     fn simple(status: &Status, command: &str) -> Result<()> {
-        execute_without_output(&status.opener.terminal, &["-e", command])?;
+        execute_without_output(&status.internal_settings.opener.terminal, &["-e", command])?;
         Ok(())
     }
 
     fn require_cwd(status: &Status) -> Result<()> {
         let tab = status.current_tab();
         let path = tab.directory_of_selected()?;
-        execute_without_output_with_path(&status.opener.terminal, path, None)?;
+        execute_without_output_with_path(&status.internal_settings.opener.terminal, path, None)?;
         Ok(())
     }
 

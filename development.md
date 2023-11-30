@@ -678,6 +678,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
+- [ ] use `Rc<str>` instead of string to avoid copying
 - [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself

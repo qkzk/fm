@@ -224,8 +224,10 @@ impl Bulk {
     /// they create a temporary file.
     pub fn execute_bulk(&self, status: &Status) -> Result<()> {
         match self.index {
-            0 => Renamer::new(status.flagged_in_current_dir()).rename(&status.opener)?,
-            1 => Creator::new(status.selected_path_str()).create_files(&status.opener)?,
+            0 => Renamer::new(status.flagged_in_current_dir())
+                .rename(&status.internal_settings.opener)?,
+            1 => Creator::new(status.current_tab_path_str())
+                .create_files(&status.internal_settings.opener)?,
             _ => (),
         };
         Ok(())

@@ -155,6 +155,10 @@ impl Tab {
         }
     }
 
+    pub fn current_path(&self) -> &path::Path {
+        self.path_content.path.as_path()
+    }
+
     /// Fileinfo of the selected element.
     pub fn current_file(&self) -> Result<FileInfo> {
         match self.display_mode {

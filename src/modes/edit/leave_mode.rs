@@ -168,7 +168,7 @@ impl LeaveMode {
     }
 
     pub fn set_nvim_addr(status: &mut Status) -> Result<()> {
-        status.nvim_server = status.menu.input.string();
+        status.internal_settings.nvim_server = status.menu.input.string();
         status.current_tab_mut().reset_edit_mode();
         Ok(())
     }
