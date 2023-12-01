@@ -18,6 +18,7 @@ use crate::log_info;
 use crate::log_line;
 use crate::modes::help_string;
 use crate::modes::lsblk_and_cryptsetup_installed;
+use crate::modes::ContentWindow;
 use crate::modes::Display;
 use crate::modes::InputCompleted;
 use crate::modes::LeaveMode;
@@ -261,8 +262,16 @@ impl EventAction {
         Ok(())
     }
 
+    fn enter_file(status: &mut Status) -> Result<()> {
+        match status.current_tab_mut().display_mode {
+            Display::Directory => Self::normal_enter_file(status),
+            Display::Tree => Self::tree_enter_file(status),
+            _ => Ok(()),
+        }
+    }
+
     /// Open the file with configured opener or enter the directory.
-    pub fn normal_enter_file(status: &mut Status) -> Result<()> {
+    fn normal_enter_file(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         if matches!(tab.display_mode, Display::Tree) {
             return EventAction::open_file(status);
@@ -278,7 +287,7 @@ impl EventAction {
     }
 
     /// Execute the selected node if it's a file else enter the directory.
-    pub fn tree_enter_file(status: &mut Status) -> Result<()> {
+    fn tree_enter_file(status: &mut Status) -> Result<()> {
         let path = status.current_tab().current_file()?.path;
         let is_dir = path.is_dir();
         if is_dir {
@@ -625,29 +634,43 @@ impl EventAction {
                 status.menu.input.cursor_right();
                 Ok(())
             }
-            Edit::Nothing => match tab.display_mode {
-                Display::Directory => Self::normal_enter_file(status),
-                Display::Tree => {
-                    if tab.tree.selected_path().is_file() {
-                        tab.tree_select_next()?;
-                    } else {
-                        Self::tree_enter_file(status)?;
-                    };
-                    status.update_second_pane_for_preview()
-                }
-                _ => Ok(()),
-            },
+            Edit::Nothing => Self::enter_file(status),
             _ => Ok(()),
         }
     }
 
-    /// A right click opens a file or a directory.
-    pub fn right_click(status: &mut Status) -> Result<()> {
-        match status.current_tab_mut().display_mode {
-            Display::Directory => Self::normal_enter_file(status),
-            Display::Tree => Self::tree_enter_file(status),
-            _ => Ok(()),
+    pub fn left_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
+        EventAction::select_pane(status, col)?;
+        if ContentWindow::is_row_in_header(row) {
+            EventAction::click_first_line(col, status, binds)?;
+        } else {
+            let _ = EventAction::click_file(status, row, col);
         }
+        Ok(())
+    }
+
+    pub fn wheel_up(status: &mut Status, col: u16, nb_of_scrolls: u16) -> Result<()> {
+        Self::select_pane(status, col)?;
+        for _ in 0..nb_of_scrolls {
+            Self::move_up(status)?
+        }
+        Ok(())
+    }
+
+    pub fn wheel_down(status: &mut Status, col: u16, nb_of_scrolls: u16) -> Result<()> {
+        Self::select_pane(status, col)?;
+        for _ in 0..nb_of_scrolls {
+            Self::move_down(status)?
+        }
+        Ok(())
+    }
+
+    /// A right click opens a file or a directory.
+    pub fn right_click(status: &mut Status, row: u16, col: u16) -> Result<()> {
+        if let Ok(()) = EventAction::click_file(status, row, col) {
+            EventAction::enter_file(status)?;
+        };
+        Ok(())
     }
 
     /// Delete a char to the left in modes allowing edition.
@@ -745,17 +768,10 @@ impl EventAction {
     /// Reset to normal mode afterwards.
     pub fn enter(status: &mut Status, binds: &Bindings) -> Result<()> {
         if matches!(status.current_tab().edit_mode, Edit::Nothing) {
-            match status.current_tab().display_mode {
-                Display::Directory => {
-                    Self::normal_enter_file(status)?;
-                }
-                Display::Tree => Self::tree_enter_file(status)?,
-                _ => (),
-            }
+            Self::enter_file(status)
         } else {
-            LeaveMode::leave_edit_mode(status, binds)?
-        };
-        Ok(())
+            LeaveMode::leave_edit_mode(status, binds)
+        }
     }
 
     /// Change tab in normal mode with dual pane displayed,

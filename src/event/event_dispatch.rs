@@ -2,9 +2,9 @@ use anyhow::Result;
 use tuikit::prelude::{Event, Key, MouseButton};
 
 use crate::app::Status;
-use crate::config::{Bindings, REFRESH_EVENT};
+use crate::config::{Bindings, REFRESH_KEY};
 use crate::event::event_exec::EventAction;
-use crate::modes::{ContentWindow, Display, Edit, InputSimple, MarkAction, Navigate};
+use crate::modes::{Display, Edit, InputSimple, MarkAction, Navigate};
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -27,39 +27,34 @@ impl EventDispatcher {
     /// which needs to know those keybindings.
     pub fn dispatch(&self, status: &mut Status, ev: Event) -> Result<()> {
         match ev {
-            Event::Key(Key::WheelUp(_, col, _)) => {
-                EventAction::select_pane(status, col)?;
-                EventAction::move_up(status)?;
+            Event::Key(key) => self.match_key_event(status, key),
+            Event::Resize { width, height } => EventAction::resize(status, width, height),
+            _ => Ok(()),
+        }
+    }
+
+    fn match_key_event(&self, status: &mut Status, key: Key) -> Result<()> {
+        match key {
+            Key::WheelUp(_, col, nb_of_scrolls) => {
+                EventAction::wheel_up(status, col, nb_of_scrolls)?
             }
-            Event::Key(Key::WheelDown(_, col, _)) => {
-                EventAction::select_pane(status, col)?;
-                EventAction::move_down(status)?;
+            Key::WheelDown(_, col, nb_of_scrolls) => {
+                EventAction::wheel_down(status, col, nb_of_scrolls)?
             }
-            Event::Key(Key::SingleClick(MouseButton::Left, row, col)) => {
-                EventAction::select_pane(status, col)?;
-                if ContentWindow::is_row_in_header(row) {
-                    EventAction::click_first_line(col, status, &self.binds)?;
-                } else {
-                    let _ = EventAction::click_file(status, row, col);
-                }
+            Key::SingleClick(MouseButton::Left, row, col) => {
+                EventAction::left_click(status, &self.binds, row, col)?
             }
-            Event::Key(
-                Key::SingleClick(MouseButton::Right, row, col)
-                | Key::DoubleClick(MouseButton::Left, row, col),
-            ) => {
-                if let Ok(()) = EventAction::click_file(status, row, col) {
-                    EventAction::right_click(status)?;
-                }
+            Key::SingleClick(MouseButton::Right, row, col)
+            | Key::DoubleClick(MouseButton::Left, row, col) => {
+                EventAction::right_click(status, row, col)?
             }
             // reserved keybind which can't be bound to anything.
             // using `Key::User(())` conflicts with skim internal which
             // interpret this event as a signal(1)
-            REFRESH_EVENT => EventAction::refresh_if_needed(status.current_tab_mut())?,
+            REFRESH_KEY => EventAction::refresh_if_needed(status.current_tab_mut())?,
 
-            Event::Resize { width, height } => EventAction::resize(status, width, height)?,
-            Event::Key(Key::Char(c)) => self.char(status, c)?,
-            Event::Key(key) => self.key_matcher(status, key)?,
-            _ => (),
+            Key::Char(c) => self.char(status, c)?,
+            key => self.key_matcher(status, key)?,
         };
         Ok(())
     }

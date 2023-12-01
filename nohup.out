@@ -36,3 +36,5 @@ Emitted 'error' event on ReadStream instance at:
 }
 
 Node.js v18.15.0
+erresc: unknown csi ESC[>4;2m
+erresc: unknown csi ESC[22;0t

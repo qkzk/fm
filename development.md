@@ -675,11 +675,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] use rc instead of owned types in fileinfo
 - [x] renamed path_content to Directory
 - [x] renamed Display::Normal to Display::Directory
+- [ ] WIP: event_dispatch refactor
 - [ ] refactor file opening. It's a mess - WIP
-- [ ] Only store one Selectable thing in status
+- [ ] opening a text file should try to open in current neovim (???)
 
 ## TODO
 
+- [ ] Only store one Selectable thing in status
 - [ ] use `Rc<str>` instead of string to avoid copying
 - [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
