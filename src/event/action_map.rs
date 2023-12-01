@@ -179,7 +179,7 @@ impl ActionMap {
             ActionMap::RemoteMount => EventAction::remote_mount(current_tab),
             ActionMap::RemovableDevices => EventAction::removable_devices(status),
             ActionMap::Rename => EventAction::rename(status),
-            ActionMap::ResetMode => EventAction::reset_mode(current_tab),
+            ActionMap::ResetMode => EventAction::reset_mode(status),
             ActionMap::ReverseFlags => EventAction::reverse_flags(status),
             ActionMap::Search => EventAction::search(current_tab),
             ActionMap::SearchNext => EventAction::search_next(status),

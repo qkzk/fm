@@ -57,11 +57,13 @@ impl EventAction {
 
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
-    pub fn reset_mode(tab: &mut Tab) -> Result<()> {
+    pub fn reset_mode(status: &mut Status) -> Result<()> {
+        let tab = &mut status.tabs[status.index];
         if matches!(tab.display_mode, Display::Preview) {
             tab.set_display_mode(Display::Normal);
         }
         if tab.reset_edit_mode() {
+            status.menu.completion.reset();
             tab.refresh_view()
         } else {
             tab.refresh_params()
