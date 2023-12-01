@@ -83,9 +83,7 @@ impl LeaveMode {
             }
             Edit::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status)?,
             Edit::InputCompleted(InputCompleted::Command) => LeaveMode::command(status, binds)?,
-            Edit::NeedConfirmation(_)
-            | Edit::InputCompleted(InputCompleted::Nothing)
-            | Edit::InputSimple(InputSimple::Sort) => (),
+            Edit::NeedConfirmation(_) | Edit::InputSimple(InputSimple::Sort) => (),
         }
 
         status.menu.input.reset();

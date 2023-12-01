@@ -101,6 +101,29 @@ pub enum InputSimple {
     Remote,
 }
 
+impl fmt::Display for InputSimple {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
+        match *self {
+            Self::Rename => write!(f, "Rename:  "),
+            Self::Chmod => write!(f, "Chmod:   "),
+            Self::Newfile => write!(f, "Newfile: "),
+            Self::Newdir => write!(f, "Newdir:  "),
+            Self::RegexMatch => write!(f, "Regex:   "),
+            Self::SetNvimAddr => write!(f, "Neovim:  "),
+            Self::Shell => write!(f, "Shell:   "),
+            Self::Sort => {
+                write!(f, "Sort: Kind Name Modif Size Ext Rev :")
+            }
+            Self::Filter => write!(f, "Filter:  "),
+            Self::Password(_, PasswordUsage::CRYPTSETUP(password_kind)) => {
+                write!(f, "{password_kind}")
+            }
+            Self::Password(_, _) => write!(f, " sudo: "),
+            Self::Remote => write!(f, "Remote:  "),
+        }
+    }
+}
+
 impl InputSimple {
     /// Returns a vector of static &str describing what
     /// the mode does.
@@ -157,6 +180,35 @@ pub enum Navigate {
     CliApplication,
 }
 
+impl fmt::Display for Navigate {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Self::Marks(_) => write!(f, "Marks jump:"),
+            Self::Jump => write!(
+                f,
+                "Flagged files: <Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash"
+            ),
+            Self::History => write!(f, "History :"),
+            Self::Shortcut => write!(f, "Shortcut :"),
+            Self::Trash => write!(f, "Trash :"),
+            Self::TuiApplication => {
+                write!(f, "Start a new shell running a command:")
+            }
+            Self::Bulk => {
+                write!(f, "Bulk: rename flagged files or create new files")
+            }
+            Self::Compress => write!(f, "Compress :"),
+            Self::EncryptedDrive => {
+                write!(f, "Encrypted devices :")
+            }
+            Self::RemovableDevices => {
+                write!(f, "Removable devices :")
+            }
+            Self::CliApplication => write!(f, "Display infos :"),
+        }
+    }
+}
+
 /// Different mode in which the application can be.
 /// It dictates the reaction to event and what to display.
 #[derive(Clone, Copy)]
@@ -176,51 +228,10 @@ pub enum Edit {
 impl fmt::Display for Edit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Self::InputSimple(InputSimple::Rename) => write!(f, "Rename:  "),
-            Self::InputSimple(InputSimple::Chmod) => write!(f, "Chmod:   "),
-            Self::InputSimple(InputSimple::Newfile) => write!(f, "Newfile: "),
-            Self::InputSimple(InputSimple::Newdir) => write!(f, "Newdir:  "),
-            Self::InputSimple(InputSimple::RegexMatch) => write!(f, "Regex:   "),
-            Self::InputSimple(InputSimple::SetNvimAddr) => write!(f, "Neovim:  "),
-            Self::InputSimple(InputSimple::Shell) => write!(f, "Shell:   "),
-            Self::InputSimple(InputSimple::Sort) => {
-                write!(f, "Sort: Kind Name Modif Size Ext Rev :")
-            }
-            Self::InputSimple(InputSimple::Filter) => write!(f, "Filter:  "),
-            Self::InputSimple(InputSimple::Password(_,PasswordUsage::CRYPTSETUP(password_kind))) => {
-                write!(f, "{password_kind}")
-            }
-            Self::InputSimple(InputSimple::Password(_,_)) => write!(f, " sudo: "),
-            Self::InputSimple(InputSimple::Remote) => write!(f, "Remote:  "),
-
-            Self::InputCompleted(InputCompleted::Exec) => write!(f, "Exec:    "),
-            Self::InputCompleted(InputCompleted::Goto) => write!(f, "Goto  :  "),
-            Self::InputCompleted(InputCompleted::Search) => write!(f, "Search:  "),
-            Self::InputCompleted(InputCompleted::Nothing) => write!(f, "Nothing:  "),
-            Self::InputCompleted(InputCompleted::Command) => write!(f, "Command:  "),
-            Self::Navigate(Navigate::Marks(_)) => write!(f, "Marks jump:"),
-            Self::Navigate(Navigate::Jump) => write!(
-                f,
-                "Flagged files: <Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash"
-            ),
-            Self::Navigate(Navigate::History) => write!(f, "History :"),
-            Self::Navigate(Navigate::Shortcut) => write!(f, "Shortcut :"),
-            Self::Navigate(Navigate::Trash) => write!(f, "Trash :"),
-            Self::Navigate(Navigate::TuiApplication) => {
-                write!(f, "Start a new shell running a command:")
-            }
-            Self::Navigate(Navigate::Bulk) => {
-                write!(f, "Bulk: rename flagged files or create new files")
-            }
-            Self::Navigate(Navigate::Compress) => write!(f, "Compress :"),
-            Self::Navigate(Navigate::EncryptedDrive) => {
-                write!(f, "Encrypted devices :")
-            }
-            Self::Navigate(Navigate::RemovableDevices) => {
-                write!(f, "Removable devices :")
-            }
-            Self::Navigate(Navigate::CliApplication) => write!(f, "Display infos :"),
-            Self::NeedConfirmation(_) => write!(f, "Y/N   :"),
+            Self::InputSimple(input_simple) => input_simple.fmt(f),
+            Self::InputCompleted(input_completed) => input_completed.fmt(f),
+            Self::Navigate(navigate) => navigate.fmt(f),
+            Self::NeedConfirmation(need_confirmation) => need_confirmation.fmt(f),
             Self::Nothing => write!(f, ""),
         }
     }

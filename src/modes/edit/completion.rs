@@ -1,3 +1,4 @@
+use std::fmt;
 use std::fs::{self, ReadDir};
 
 use anyhow::Result;
@@ -8,9 +9,7 @@ use crate::event::ActionMap;
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
 pub enum InputCompleted {
-    /// No completion needed
     #[default]
-    Nothing,
     /// Complete a directory path in filesystem
     Goto,
     /// Complete a filename from current directory
@@ -19,6 +18,17 @@ pub enum InputCompleted {
     Exec,
     /// Command
     Command,
+}
+
+impl fmt::Display for InputCompleted {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Self::Exec => write!(f, "Exec:    "),
+            Self::Goto => write!(f, "Goto  :  "),
+            Self::Search => write!(f, "Search:  "),
+            Self::Command => write!(f, "Command:  "),
+        }
+    }
 }
 
 /// Holds a `Vec<String>` of possible completions and an `usize` index
