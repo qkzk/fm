@@ -130,7 +130,7 @@ impl Status {
 
     /// Returns a string representing the current path in the selected tab.
     pub fn current_tab_path_str(&self) -> String {
-        self.current_tab().path_content_str()
+        self.current_tab().directory_str()
     }
 
     /// True if a quit event was registered in the selected tab.
@@ -201,7 +201,7 @@ impl Status {
 
     /// Returns a the disk spaces for the selected tab..
     pub fn disk_spaces_of_selected(&self) -> String {
-        disk_space(self.disks(), &self.current_tab().current_path())
+        disk_space(self.disks(), self.current_tab().current_path())
     }
 
     /// Returns the sice of the terminal (width, height)
@@ -333,13 +333,13 @@ impl Status {
     pub fn flagged_in_current_dir(&self) -> Vec<&Path> {
         self.menu
             .flagged
-            .in_current_dir(&self.current_tab().path_content.path)
+            .in_current_dir(&self.current_tab().directory.path)
     }
 
     /// Flag all files in the current directory.
     pub fn flag_all(&mut self) {
         self.tabs[self.index]
-            .path_content
+            .directory
             .content
             .iter()
             .for_each(|file| {
@@ -351,7 +351,7 @@ impl Status {
     /// directory aren't affected.
     pub fn reverse_flags(&mut self) {
         self.tabs[self.index]
-            .path_content
+            .directory
             .content
             .iter()
             .for_each(|file| self.menu.flagged.toggle(&file.path));
@@ -403,7 +403,7 @@ impl Status {
         let Some(Ok(skimer)) = &self.skimer else {
             return Ok(());
         };
-        let skim = skimer.search_filename(&self.current_tab().path_content_str());
+        let skim = skimer.search_filename(&self.current_tab().directory_str());
         let Some(output) = skim.first() else {
             return Ok(());
         };
@@ -423,7 +423,7 @@ impl Status {
         let Some(Ok(skimer)) = &self.skimer else {
             return Ok(());
         };
-        let skim = skimer.search_line_in_file(&self.current_tab().path_content_str());
+        let skim = skimer.search_line_in_file(&self.current_tab().directory_str());
         let Some(output) = skim.first() else {
             return Ok(());
         };
@@ -516,7 +516,7 @@ impl Status {
             return Ok(());
         }
         let paths = match self.current_tab().display_mode {
-            Display::Normal => self.tabs[self.index].path_content.paths(),
+            Display::Directory => self.tabs[self.index].directory.paths(),
             Display::Tree => self.tabs[self.index].tree.paths(),
             Display::Preview => return Ok(()),
         };
@@ -729,7 +729,7 @@ impl Status {
 
     /// Execute a new mark, saving it to a config file for futher use.
     pub fn marks_new(&mut self, c: char) -> Result<()> {
-        let path = self.current_tab_mut().path_content.path.clone();
+        let path = self.current_tab_mut().directory.path.clone();
         self.menu.marks.new_mark(c, &path)?;
         {
             let tab: &mut Tab = self.current_tab_mut();
@@ -859,7 +859,7 @@ impl Status {
     }
 
     pub fn set_mode_chmod(&mut self) -> Result<()> {
-        if self.current_tab_mut().path_content.is_empty() {
+        if self.current_tab_mut().directory.is_empty() {
             return Ok(());
         }
         self.current_tab_mut()

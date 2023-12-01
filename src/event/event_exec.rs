@@ -60,7 +60,7 @@ impl EventAction {
     pub fn reset_mode(status: &mut Status) -> Result<()> {
         let tab = &mut status.tabs[status.index];
         if matches!(tab.display_mode, Display::Preview) {
-            tab.set_display_mode(Display::Normal);
+            tab.set_display_mode(Display::Directory);
         }
         if tab.reset_edit_mode() {
             status.menu.completion.reset();
@@ -171,10 +171,10 @@ impl EventAction {
     pub fn rename(status: &mut Status) -> Result<()> {
         let selected = status.current_tab().current_file()?;
         let sel_path: &path::Path = selected.path.borrow();
-        if sel_path == status.current_tab().path_content.path {
+        if sel_path == status.current_tab().directory.path {
             return Ok(());
         }
-        if let Some(parent) = status.current_tab().path_content.path.parent() {
+        if let Some(parent) = status.current_tab().directory.path.parent() {
             if sel_path == parent {
                 return Ok(());
             }
@@ -267,10 +267,10 @@ impl EventAction {
         if matches!(tab.display_mode, Display::Tree) {
             return EventAction::open_file(status);
         };
-        if tab.path_content.is_empty() {
+        if tab.directory.is_empty() {
             return Ok(());
         }
-        if tab.path_content.is_selected_dir()? {
+        if tab.directory.is_selected_dir()? {
             tab.go_to_selected_dir()
         } else {
             EventAction::open_file(status)
@@ -526,7 +526,7 @@ impl EventAction {
         };
         match tab.display_mode {
             Display::Tree => tab.tree.search_first_match(&searched),
-            Display::Normal => tab.normal_search_next(&searched),
+            Display::Directory => tab.normal_search_next(&searched),
             Display::Preview => {
                 return Ok(());
             }
@@ -560,7 +560,7 @@ impl EventAction {
     fn move_display_up(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
-            Display::Normal => tab.normal_up_one_row(),
+            Display::Directory => tab.normal_up_one_row(),
             Display::Preview => tab.preview_page_up(),
             Display::Tree => tab.tree_select_prev()?,
         }
@@ -570,7 +570,7 @@ impl EventAction {
     fn move_display_down(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
-            Display::Normal => tab.normal_down_one_row(),
+            Display::Directory => tab.normal_down_one_row(),
             Display::Preview => tab.preview_page_down(),
             Display::Tree => tab.tree_select_next()?,
         }
@@ -606,7 +606,7 @@ impl EventAction {
                 status.menu.input.cursor_left();
             }
             Edit::Nothing => match tab.display_mode {
-                Display::Normal => tab.move_to_parent()?,
+                Display::Directory => tab.move_to_parent()?,
                 Display::Tree => tab.tree_select_parent()?,
                 _ => (),
             },
@@ -626,7 +626,7 @@ impl EventAction {
                 Ok(())
             }
             Edit::Nothing => match tab.display_mode {
-                Display::Normal => Self::normal_enter_file(status),
+                Display::Directory => Self::normal_enter_file(status),
                 Display::Tree => {
                     if tab.tree.selected_path().is_file() {
                         tab.tree_select_next()?;
@@ -644,7 +644,7 @@ impl EventAction {
     /// A right click opens a file or a directory.
     pub fn right_click(status: &mut Status) -> Result<()> {
         match status.current_tab_mut().display_mode {
-            Display::Normal => Self::normal_enter_file(status),
+            Display::Directory => Self::normal_enter_file(status),
             Display::Tree => Self::tree_enter_file(status),
             _ => Ok(()),
         }
@@ -678,7 +678,7 @@ impl EventAction {
         match tab.edit_mode {
             Edit::Nothing => {
                 match tab.display_mode {
-                    Display::Normal => tab.normal_go_top(),
+                    Display::Directory => tab.normal_go_top(),
                     Display::Preview => tab.preview_go_top(),
                     Display::Tree => tab.tree_go_to_root()?,
                 };
@@ -694,7 +694,7 @@ impl EventAction {
         match tab.edit_mode {
             Edit::Nothing => {
                 match tab.display_mode {
-                    Display::Normal => tab.normal_go_bottom(),
+                    Display::Directory => tab.normal_go_bottom(),
                     Display::Preview => tab.preview_go_bottom(),
                     Display::Tree => tab.tree_go_to_bottom_leaf()?,
                 };
@@ -708,7 +708,7 @@ impl EventAction {
     pub fn page_up(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
-            Display::Normal => {
+            Display::Directory => {
                 tab.normal_page_up();
                 status.update_second_pane_for_preview()?;
             }
@@ -725,7 +725,7 @@ impl EventAction {
     pub fn page_down(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
-            Display::Normal => {
+            Display::Directory => {
                 tab.normal_page_down();
                 status.update_second_pane_for_preview()?;
             }
@@ -746,7 +746,7 @@ impl EventAction {
     pub fn enter(status: &mut Status, binds: &Bindings) -> Result<()> {
         if matches!(status.current_tab().edit_mode, Edit::Nothing) {
             match status.current_tab().display_mode {
-                Display::Normal => {
+                Display::Directory => {
                     Self::normal_enter_file(status)?;
                 }
                 Display::Tree => Self::tree_enter_file(status)?,
@@ -800,7 +800,7 @@ impl EventAction {
 
     /// Copy the filename of the selected file in normal mode.
     pub fn copy_filename(tab: &mut Tab) -> Result<()> {
-        if let Display::Normal | Display::Tree = tab.display_mode {
+        if let Display::Directory | Display::Tree = tab.display_mode {
             tab.filename_to_clipboard();
         }
         Ok(())
@@ -808,7 +808,7 @@ impl EventAction {
 
     /// Copy the filepath of the selected file in normal mode.
     pub fn copy_filepath(tab: &mut Tab) -> Result<()> {
-        if let Display::Normal | Display::Tree = tab.display_mode {
+        if let Display::Directory | Display::Tree = tab.display_mode {
             tab.filepath_to_clipboard();
         }
         Ok(())
@@ -944,7 +944,7 @@ impl EventAction {
     }
 
     /// Execute a custom event on the selected file
-    pub fn custom(status: &mut Status, input_string: &String) -> Result<()> {
+    pub fn custom(status: &mut Status, input_string: &str) -> Result<()> {
         status.run_custom_command(input_string)
     }
 

@@ -88,7 +88,7 @@ impl ShellCommandParser {
     }
 
     fn path(status: &Status) -> String {
-        status.current_tab().path_content_str()
+        status.current_tab().directory_str()
     }
 
     fn filename(status: &Status) -> Result<String> {

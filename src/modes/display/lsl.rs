@@ -17,7 +17,7 @@ use crate::{impl_selectable_content, log_info};
 /// Holds the information about file in the current directory.
 /// We know about the current path, the files themselves, the selected index,
 /// the "display all files including hidden" flag and the key to sort files.
-pub struct PathContent {
+pub struct Directory {
     /// The current path
     pub path: path::PathBuf,
     /// A vector of FileInfo with every file in current path
@@ -27,7 +27,7 @@ pub struct PathContent {
     used_space: u64,
 }
 
-impl PathContent {
+impl Directory {
     /// Reads the paths and creates a new `PathContent`.
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
@@ -252,7 +252,7 @@ impl PathContent {
     }
 }
 
-impl_selectable_content!(FileInfo, PathContent);
+impl_selectable_content!(FileInfo, Directory);
 
 const MAX_PATH_ELEM_SIZE: usize = 50;
 

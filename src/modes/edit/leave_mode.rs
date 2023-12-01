@@ -112,7 +112,7 @@ impl LeaveMode {
         let tab = status.current_tab_mut();
         if let Some((_, path)) = marks.selected() {
             tab.cd(path)?;
-            tab.window.reset(tab.path_content.content.len());
+            tab.window.reset(tab.directory.content.len());
             status.menu.input.reset();
         }
         status.update_second_pane_for_preview()
@@ -124,9 +124,9 @@ impl LeaveMode {
     pub fn marks_update(status: &mut Status) -> Result<()> {
         let marks = status.menu.marks.clone();
         if let Some((ch, _)) = marks.selected() {
-            let len = status.current_tab().path_content.content.len();
-            let p = status.current_tab().path_content.path;
-            status.menu.marks.new_mark(*ch, &p)?;
+            let len = status.current_tab().directory.content.len();
+            let p = status.tabs[status.index].directory.path.as_path();
+            status.menu.marks.new_mark(*ch, p)?;
             log_line!("Saved mark {ch} -> {p}", p = p.display());
             status.current_tab_mut().window.reset(len);
             status.menu.input.reset();
@@ -209,7 +209,7 @@ impl LeaveMode {
         } else {
             status
                 .current_tab()
-                .path_content
+                .directory
                 .selected()
                 .context("rename: couldn't parse selected file")?
                 .path
@@ -257,7 +257,7 @@ impl LeaveMode {
     /// be found.
     /// Optional parameters can be passed normally. ie. `"ls -lah"`
     pub fn exec(status: &mut Status) -> Result<()> {
-        if status.current_tab().path_content.content.is_empty() {
+        if status.current_tab().directory.content.is_empty() {
             return Err(anyhow!("exec: empty directory"));
         }
         let exec_command = status.menu.input.string();
@@ -290,7 +290,7 @@ impl LeaveMode {
                 status.current_tab_mut().tree.search_first_match(searched);
             }
             _ => {
-                let next_index = status.current_tab().path_content.index;
+                let next_index = status.current_tab().directory.index;
                 status.current_tab_mut().search_from(searched, next_index);
             }
         };
@@ -309,7 +309,7 @@ impl LeaveMode {
         let path = string_to_path(completed)?;
         status.menu.input.reset();
         status.current_tab_mut().cd(&path)?;
-        let len = status.current_tab().path_content.content.len();
+        let len = status.current_tab().directory.content.len();
         status.current_tab_mut().window.reset(len);
         status.update_second_pane_for_preview()
     }
@@ -340,7 +340,7 @@ impl LeaveMode {
             .clone();
         tab.cd(&path)?;
         tab.history.drop_queue();
-        let index = tab.path_content.select_file(&file);
+        let index = tab.directory.select_file(&file);
         tab.scroll_to(index);
         log_info!("leave history {path:?} {file:?} {index}");
         status.update_second_pane_for_preview()
@@ -357,7 +357,7 @@ impl LeaveMode {
     /// Files which are above the CWD are filtered out since they can't be added to an archive.
     /// Archive creation depends on CWD so we ensure it's set to the selected tab.
     pub fn compress(status: &mut Status) -> Result<()> {
-        let here = &status.current_tab().path_content.path;
+        let here = &status.current_tab().directory.path;
         std::env::set_current_dir(here)?;
         let files_with_relative_paths: Vec<std::path::PathBuf> = status
             .menu
@@ -394,14 +394,14 @@ impl LeaveMode {
         status.current_tab_mut().settings.set_filter(filter);
         status.menu.input.reset();
         // ugly hack to please borrow checker :(
-        status.tabs[status.index].path_content.reset_files(
+        status.tabs[status.index].directory.reset_files(
             &status.tabs[status.index].settings,
             &status.tabs[status.index].users,
         )?;
         if let Display::Tree = status.current_tab().display_mode {
             status.current_tab_mut().make_tree(None)?;
         }
-        let len = status.current_tab().path_content.content.len();
+        let len = status.current_tab().directory.content.len();
         status.current_tab_mut().window.reset(len);
         Ok(())
     }

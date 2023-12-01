@@ -157,7 +157,7 @@ impl<'a> WinMain<'a> {
 
     fn draw_content(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
         match &self.tab.display_mode {
-            DisplayMode::Normal => self.draw_files(canvas),
+            DisplayMode::Directory => self.draw_files(canvas),
             DisplayMode::Tree => self.draw_tree(canvas),
             DisplayMode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas),
         }
@@ -180,12 +180,12 @@ impl<'a> WinMain<'a> {
     }
 
     fn draw_files_content(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let len = self.tab.path_content.content.len();
+        let len = self.tab.directory.content.len();
         let group_size: usize;
         let owner_size: usize;
         if self.status.display_settings.metadata {
-            group_size = self.tab.path_content.group_column_width();
-            owner_size = self.tab.path_content.owner_column_width();
+            group_size = self.tab.directory.group_column_width();
+            owner_size = self.tab.directory.owner_column_width();
         } else {
             group_size = 0;
             owner_size = 0;
@@ -193,7 +193,7 @@ impl<'a> WinMain<'a> {
 
         for (i, file) in self
             .tab
-            .path_content
+            .directory
             .enumerate()
             .take(min(len, self.tab.window.bottom))
             .skip(self.tab.window.top)
@@ -546,7 +546,7 @@ impl Draw for WinMainSecondLine {
 impl WinMainSecondLine {
     fn new(status: &Status, tab: &Tab) -> Self {
         let (content, attr) = match tab.display_mode {
-            DisplayMode::Normal | DisplayMode::Tree => {
+            DisplayMode::Directory | DisplayMode::Tree => {
                 if !status.display_settings.metadata {
                     if let Ok(file) = tab.current_file() {
                         Self::second_line_detailed(&file)

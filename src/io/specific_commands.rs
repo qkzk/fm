@@ -29,7 +29,7 @@ pub struct SpecificCommand {}
 impl SpecificCommand {
     /// Display mediainfo details of an image
     pub fn mediainfo(tab: &mut Tab) {
-        if !matches!(tab.display_mode, Display::Tree | Display::Normal) {
+        if !matches!(tab.display_mode, Display::Tree | Display::Directory) {
             return;
         }
         if !is_program_in_path(MEDIAINFO) {
@@ -52,7 +52,7 @@ impl SpecificCommand {
     pub fn diff(status: &mut Status) {
         if !matches!(
             status.current_tab().display_mode,
-            Display::Tree | Display::Normal
+            Display::Tree | Display::Directory
         ) {
             return;
         }

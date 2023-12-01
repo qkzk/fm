@@ -673,6 +673,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] status refactoring. Moved every "menu" to a separate file.
 - [x] FIX: leaving edit mode doesn't refresh completion
 - [x] use rc instead of owned types in fileinfo
+- [x] renamed path_content to Directory
+- [x] renamed Display::Normal to Display::Directory
 - [ ] refactor file opening. It's a mess - WIP
 - [ ] Only store one Selectable thing in status
 

@@ -241,7 +241,7 @@ impl fmt::Display for Edit {
 pub enum Display {
     #[default]
     /// Display the files like `ls -lh` does
-    Normal,
+    Directory,
     /// Display files like `tree` does
     Tree,
     /// Preview a file or directory

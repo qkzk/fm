@@ -7,7 +7,7 @@ use crate::io::Opener;
 /// Help message to be displayed when help key is pressed.
 /// Default help key is `'h'`.
 
-const HELP_TO_FORMAT: &'static str = "
+const HELP_TO_FORMAT: &str = "
 {Quit:<10}:      quit
 {Help:<10}:      help
 
@@ -122,7 +122,7 @@ Control MOC from your TUI
 {MocpClearPlaylist:<10}:      MOCP: Clear the playlist
 ";
 
-const CUSTOM_HELP: &'static str = "
+const CUSTOM_HELP: &str = "
 - CUSTOM ACTIONS -
 %s: the selected file,
 %f: the flagged files,

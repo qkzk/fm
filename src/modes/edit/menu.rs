@@ -74,7 +74,7 @@ impl Menu {
             flagged: Flagged::default(),
             input: Input::default(),
             completion: Completion::default(),
-            shortcut: Shortcut::new(&start_dir).with_mount_points(mount_points),
+            shortcut: Shortcut::new(start_dir).with_mount_points(mount_points),
         })
     }
 
@@ -109,7 +109,7 @@ impl Menu {
         match tab.edit_mode {
             Edit::InputCompleted(InputCompleted::Goto) => self.completion.goto(
                 &self.input.string(),
-                &tab.path_content.path.as_os_str().to_string_lossy(),
+                &tab.directory.path.as_os_str().to_string_lossy(),
             ),
             Edit::InputCompleted(InputCompleted::Exec) => {
                 self.completion.exec(&self.input.string())

@@ -100,7 +100,7 @@ impl FirstLine {
     }
 
     fn string_shorten_path(tab: &Tab) -> Result<String> {
-        Ok(format!(" {}", shorten_path(&tab.path_content.path, None)?))
+        Ok(format!(" {}", shorten_path(&tab.directory.path, None)?))
     }
 
     fn string_first_row_selected_file(tab: &Tab) -> Result<String> {
@@ -110,7 +110,7 @@ impl FirstLine {
                 rel = shorten_path(tab.tree.selected_path_relative_to_root()?, Some(18))?
             )),
             _ => {
-                if let Some(fileinfo) = tab.path_content.selected() {
+                if let Some(fileinfo) = tab.directory.selected() {
                     Ok(fileinfo.filename_without_dot_dotdot())
                 } else {
                     Ok("".to_owned())
@@ -126,14 +126,14 @@ impl FirstLine {
             index = tab.tree.selected_node().context("no node")?.index() + 1;
             len = tab.tree.len();
         } else {
-            index = tab.path_content.index + 1;
-            len = tab.path_content.len();
+            index = tab.directory.index + 1;
+            len = tab.directory.len();
         }
         Ok(format!(" {index} / {len} "))
     }
 
     fn string_used_space(tab: &Tab) -> String {
-        format!(" {} ", tab.path_content.used_space())
+        format!(" {} ", tab.directory.used_space())
     }
 
     fn string_disk_space(disk_space: &str) -> String {
@@ -141,7 +141,7 @@ impl FirstLine {
     }
 
     fn string_git_string(tab: &Tab) -> Result<String> {
-        Ok(format!(" {} ", tab.path_content.git_string()?))
+        Ok(format!(" {} ", tab.directory.git_string()?))
     }
 
     fn string_sort_kind(tab: &Tab) -> String {
