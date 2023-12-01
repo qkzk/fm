@@ -121,10 +121,7 @@ impl Preview {
     /// It explores recursivelly the directory and creates a tree.
     /// The recursive exploration is limited to depth 2.
     pub fn directory(file_info: &FileInfo, users: &Users) -> Result<Self> {
-        Ok(Self::Directory(Directory::new(
-            file_info.path.to_owned(),
-            users,
-        )))
+        Ok(Self::Directory(Directory::new(&file_info.path, users)))
     }
 
     /// Creates a new preview instance based on the filekind and the extension of
@@ -355,7 +352,7 @@ impl Socket {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
             content = s
                 .lines()
-                .filter(|l| l.contains(&fileinfo.filename))
+                .filter(|l| l.contains(&fileinfo.filename.to_string()))
                 .map(|s| s.to_owned())
                 .collect();
         } else {
@@ -627,7 +624,7 @@ impl BinaryContent {
         }
 
         Ok(Self {
-            path: file_info.path.clone(),
+            path: file_info.path.to_path_buf(),
             length: file_info.true_size / Self::LINE_WIDTH as u64,
             content,
         })
@@ -1047,9 +1044,9 @@ pub struct Directory {
 }
 
 impl Directory {
-    pub fn new(path: PathBuf, users: &Users) -> Self {
+    pub fn new(path: &std::rc::Rc<Path>, users: &Users) -> Self {
         let tree = Tree::new(
-            path,
+            path.to_path_buf(),
             4,
             SortKind::tree_default(),
             users,

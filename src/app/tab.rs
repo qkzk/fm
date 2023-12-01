@@ -186,8 +186,8 @@ impl Tab {
     }
 
     /// Returns a string of the current directory path.
-    pub fn path_content_str(&self) -> Option<&str> {
-        self.path_content.path.to_str()
+    pub fn path_content_str(&self) -> String {
+        path_to_string(&self.path_content.path)
     }
 
     /// Returns a vector of filenames as strings, which contains the input string.
@@ -205,7 +205,7 @@ impl Tab {
         let Ok(file) = self.current_file() else {
             return;
         };
-        set_clipboard(file.filename.clone())
+        set_clipboard(file.filename.to_string())
     }
 
     /// Copy the selected filepath to the clipboard. The absolute path.

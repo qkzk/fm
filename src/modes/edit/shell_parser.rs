@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 
-use crate::app::Status;
+use crate::{app::Status, common::path_to_string};
 
 /// Expanded tokens from a configured command.
 /// %s is converted into a `Selected`
@@ -69,7 +69,7 @@ impl ShellCommandParser {
                     computed.push(Self::selected(status)?);
                 }
                 Token::Path => {
-                    computed.push(Self::path(status)?);
+                    computed.push(Self::path(status));
                 }
                 Token::Filename => {
                     computed.push(Self::filename(status)?);
@@ -87,28 +87,16 @@ impl ShellCommandParser {
         status.current_tab().current_file_string()
     }
 
-    fn path(status: &Status) -> Result<String> {
-        Ok(status
-            .current_tab()
-            .path_content_str()
-            .context("Couldn't read path")?
-            .to_owned())
+    fn path(status: &Status) -> String {
+        status.current_tab().path_content_str()
     }
 
     fn filename(status: &Status) -> Result<String> {
-        Ok(status
-            .current_tab()
-            .current_file()
-            .context("Empty directory")?
-            .filename)
+        Ok(status.current_tab().current_file()?.filename.to_string())
     }
 
     fn extension(status: &Status) -> Result<String> {
-        Ok(status
-            .current_tab()
-            .current_file()
-            .context("Empty directory")?
-            .extension)
+        Ok(status.current_tab().current_file()?.extension.to_string())
     }
 
     fn flagged(status: &Status) -> Vec<String> {
@@ -117,9 +105,7 @@ impl ShellCommandParser {
             .flagged
             .content
             .iter()
-            .map(|path| path.to_str())
-            .filter(std::option::Option::is_some)
-            .map(|s| s.unwrap().to_owned())
+            .map(path_to_string)
             .collect()
     }
 }

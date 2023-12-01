@@ -672,6 +672,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] refactor bulk. Made it a bit simpler
 - [x] status refactoring. Moved every "menu" to a separate file.
 - [x] FIX: leaving edit mode doesn't refresh completion
+- [x] use rc instead of owned types in fileinfo
 - [ ] refactor file opening. It's a mess - WIP
 - [ ] Only store one Selectable thing in status
 

@@ -129,8 +129,8 @@ impl Status {
     }
 
     /// Returns a string representing the current path in the selected tab.
-    pub fn current_tab_path_str(&self) -> &str {
-        self.current_tab().path_content_str().unwrap_or_default()
+    pub fn current_tab_path_str(&self) -> String {
+        self.current_tab().path_content_str()
     }
 
     /// True if a quit event was registered in the selected tab.
@@ -343,7 +343,7 @@ impl Status {
             .content
             .iter()
             .for_each(|file| {
-                self.menu.flagged.push(file.path.clone());
+                self.menu.flagged.push(file.path.to_path_buf());
             });
     }
 
@@ -403,11 +403,7 @@ impl Status {
         let Some(Ok(skimer)) = &self.skimer else {
             return Ok(());
         };
-        let skim = skimer.search_filename(
-            self.current_tab()
-                .path_content_str()
-                .context("Couldn't parse current directory")?,
-        );
+        let skim = skimer.search_filename(&self.current_tab().path_content_str());
         let Some(output) = skim.first() else {
             return Ok(());
         };
@@ -427,11 +423,7 @@ impl Status {
         let Some(Ok(skimer)) = &self.skimer else {
             return Ok(());
         };
-        let skim = skimer.search_line_in_file(
-            self.current_tab()
-                .path_content_str()
-                .context("Couldn't parse current directory")?,
-        );
+        let skim = skimer.search_line_in_file(&self.current_tab().path_content_str());
         let Some(output) = skim.first() else {
             return Ok(());
         };
@@ -875,28 +867,6 @@ impl Status {
         if self.menu.flagged.is_empty() {
             self.toggle_flag_for_selected();
         };
-        Ok(())
-    }
-
-    /// Enter rename mode.
-    /// Get the name of the selected file (from path_content or tree) and
-    /// use it to replace the input string.
-    /// If the selected file is the root path (.) or its parent (..),
-    /// it exits immediatly, doing nothing.
-    pub fn rename(&mut self) -> Result<()> {
-        let selected = self.current_tab().current_file()?;
-        if selected.path == self.current_tab().path_content.path {
-            return Ok(());
-        }
-        if let Some(parent) = self.current_tab().path_content.path.parent() {
-            if selected.path == parent {
-                return Ok(());
-            }
-        }
-        let old_name = &selected.filename;
-        self.menu.input.replace(old_name);
-        self.current_tab_mut()
-            .set_edit_mode(Edit::InputSimple(InputSimple::Rename));
         Ok(())
     }
 

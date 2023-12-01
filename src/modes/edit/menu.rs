@@ -107,10 +107,10 @@ impl Menu {
 
     fn fill_completion(&mut self, tab: &Tab) -> Result<()> {
         match tab.edit_mode {
-            Edit::InputCompleted(InputCompleted::Goto) => {
-                let current_path = tab.path_content_str().unwrap_or_default().to_owned();
-                self.completion.goto(&self.input.string(), &current_path)
-            }
+            Edit::InputCompleted(InputCompleted::Goto) => self.completion.goto(
+                &self.input.string(),
+                &tab.path_content.path.as_os_str().to_string_lossy(),
+            ),
             Edit::InputCompleted(InputCompleted::Exec) => {
                 self.completion.exec(&self.input.string())
             }

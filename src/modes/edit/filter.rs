@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{borrow::Borrow, fmt::Display};
 
 use regex::Regex;
 
@@ -42,7 +42,8 @@ impl FilterKind {
     }
 
     fn filter_by_extension(fileinfo: &FileInfo, ext: &str, keep_dirs: bool) -> bool {
-        fileinfo.extension == ext || keep_dirs && fileinfo.is_dir()
+        let file_ext: &str = fileinfo.extension.borrow();
+        file_ext == ext || keep_dirs && fileinfo.is_dir()
     }
 
     fn filter_by_name(fileinfo: &FileInfo, filename: &str, keep_dirs: bool) -> bool {

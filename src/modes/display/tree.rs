@@ -174,7 +174,7 @@ impl Tree {
         filter_kind: &FilterKind,
     ) -> Self {
         let nodes = Self::make_nodes(
-            &root_path,
+            &root_path.to_path_buf(),
             depth,
             sort_kind,
             users,
@@ -183,7 +183,7 @@ impl Tree {
         );
 
         Self {
-            selected: root_path.clone(),
+            selected: root_path.to_path_buf(),
             root_path,
             nodes,
             required_height: Self::DEFAULT_REQUIRED_HEIGHT,
@@ -286,7 +286,7 @@ impl Tree {
     fn make_children_and_stack_them(stack: &mut Vec<PathBuf>, files: &[FileInfo]) -> Vec<PathBuf> {
         files
             .iter()
-            .map(|fileinfo| fileinfo.path.to_owned())
+            .map(|fileinfo| fileinfo.path.to_path_buf())
             .map(|path| {
                 stack.push(path.to_owned());
                 path

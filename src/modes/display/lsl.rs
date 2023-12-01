@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fs::read_dir;
 use std::iter::Enumerate;
 use std::path;
@@ -222,9 +223,9 @@ impl PathContent {
 
     /// Returns the correct index jump target to a flagged files.
     fn find_jump_index(&self, jump_target: &path::Path) -> Option<usize> {
-        self.content
-            .iter()
-            .position(|file| file.path == jump_target)
+        self.content.iter().position(|file| {
+            <std::rc::Rc<path::Path> as Borrow<path::Path>>::borrow(&file.path) == jump_target
+        })
     }
 
     /// Select the file from its path. Returns its index in content.
@@ -238,7 +239,7 @@ impl PathContent {
     pub fn paths(&self) -> Vec<&path::Path> {
         self.content
             .iter()
-            .map(|fileinfo| fileinfo.path.as_path())
+            .map(|fileinfo| fileinfo.path.borrow())
             .collect()
     }
 
@@ -246,7 +247,7 @@ impl PathContent {
         self.content
             .iter()
             .filter(|f| f.filename.contains(input_string))
-            .map(|f| f.filename.clone())
+            .map(|f| f.filename.to_string())
             .collect()
     }
 }

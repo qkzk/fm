@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fs;
 use std::str::FromStr;
 
@@ -122,13 +123,11 @@ impl LeaveMode {
     /// If it doesn't fail, a new pair will be set with (oldchar, new path).
     pub fn marks_update(status: &mut Status) -> Result<()> {
         let marks = status.menu.marks.clone();
-        let len = status.current_tab().path_content.content.len();
         if let Some((ch, _)) = marks.selected() {
-            if let Some(path_str) = status.current_tab().path_content_str() {
-                let p = std::path::PathBuf::from(path_str);
-                status.menu.marks.new_mark(*ch, &p)?;
-                log_line!("Saved mark {ch} -> {p}", p = p.display());
-            }
+            let len = status.current_tab().path_content.content.len();
+            let p = status.current_tab().path_content.path;
+            status.menu.marks.new_mark(*ch, &p)?;
+            log_line!("Saved mark {ch} -> {p}", p = p.display());
             status.current_tab_mut().window.reset(len);
             status.menu.input.reset();
         }
@@ -214,7 +213,7 @@ impl LeaveMode {
                 .selected()
                 .context("rename: couldn't parse selected file")?
                 .path
-                .as_path()
+                .borrow()
         };
         if let Some(parent) = original_path.parent() {
             let new_path = parent.join(sanitize_filename::sanitize(status.menu.input.string()));

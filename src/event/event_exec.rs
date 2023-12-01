@@ -170,11 +170,12 @@ impl EventAction {
     /// not the selected file in the pathcontent.
     pub fn rename(status: &mut Status) -> Result<()> {
         let selected = status.current_tab().current_file()?;
-        if selected.path == status.current_tab().path_content.path {
+        let sel_path: &path::Path = selected.path.borrow();
+        if sel_path == status.current_tab().path_content.path {
             return Ok(());
         }
         if let Some(parent) = status.current_tab().path_content.path.parent() {
-            if selected.path == parent {
+            if sel_path == parent {
                 return Ok(());
             }
         }

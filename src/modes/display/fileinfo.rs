@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fs::{symlink_metadata, DirEntry, Metadata};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path;
@@ -126,39 +127,39 @@ impl SizeColumn {
 #[derive(Clone, Debug)]
 pub struct FileInfo {
     /// Full path of the file
-    pub path: path::PathBuf,
+    pub path: std::rc::Rc<path::Path>,
     /// Filename
-    pub filename: String,
+    pub filename: std::rc::Rc<str>,
     /// File size as a `String`, already human formated.
     /// For char devices and block devices we display major & minor like ls.
     pub size_column: SizeColumn,
     /// True size of a file, not formated
     pub true_size: u64,
     /// Owner name of the file.
-    pub owner: String,
+    pub owner: std::rc::Rc<str>,
     /// Group name of the file.
-    pub group: String,
+    pub group: std::rc::Rc<str>,
     /// System time of last modification
-    pub system_time: String,
+    pub system_time: std::rc::Rc<str>,
     /// Is this file currently selected ?
     pub is_selected: bool,
     /// What kind of file is this ?
     pub file_kind: FileKind<Valid>,
     /// Extension of the file. `""` for a directory.
-    pub extension: String,
+    pub extension: std::rc::Rc<str>,
     /// A formated filename where the "kind" of file
     /// (directory, char device, block devive, fifo, socket, normal)
     /// is prepend to the name, allowing a "sort by kind" method.
-    pub kind_format: String,
+    pub kind_format: std::rc::Rc<str>,
 }
 
 impl FileInfo {
     pub fn new(path: &path::Path, users: &Users) -> Result<Self> {
         let filename = extract_filename(path)?;
         let metadata = symlink_metadata(path)?;
-        let path = path.to_owned();
-        let owner = extract_owner(&metadata, users)?;
-        let group = extract_group(&metadata, users)?;
+        let path = std::rc::Rc::from(path);
+        let owner = extract_owner(&metadata, users);
+        let group = extract_group(&metadata, users);
         let system_time = extract_datetime(&metadata)?;
         let is_selected = false;
         let true_size = extract_file_size(&metadata);
@@ -192,7 +193,7 @@ impl FileInfo {
     /// The filename is used when we create the fileinfo for "." and ".." in every folder.
     pub fn from_path_with_name(path: &path::Path, filename: &str, users: &Users) -> Result<Self> {
         let mut file_info = Self::new(path, users)?;
-        file_info.filename = filename.to_owned();
+        file_info.filename = std::rc::Rc::from(filename);
         file_info.kind_format = filekind_and_filename(filename, &file_info.file_kind);
         Ok(file_info)
     }
@@ -202,7 +203,7 @@ impl FileInfo {
     }
 
     /// String representation of file permissions
-    pub fn permissions(&self) -> Result<String> {
+    pub fn permissions(&self) -> Result<std::rc::Rc<str>> {
         Ok(extract_permissions_string(&self.metadata()?))
     }
 
@@ -246,7 +247,8 @@ impl FileInfo {
     }
 
     pub fn format_simple(&self) -> Result<String> {
-        Ok(self.filename.to_owned())
+        let s: &str = self.filename.borrow();
+        Ok(s.to_string())
     }
 
     /// Select the file.
@@ -273,10 +275,14 @@ impl FileInfo {
     pub fn filename_without_dot_dotdot(&self) -> String {
         match self.filename.as_ref() {
             "." => "/ ".to_owned(),
-            ".." => format!(
-                "/{name} ",
-                name = extract_filename(&self.path).unwrap_or_default()
-            ),
+            ".." => {
+                let name = if let Ok(name) = extract_filename(&self.path) {
+                    name
+                } else {
+                    std::rc::Rc::from("")
+                };
+                format!("/{name} ")
+            }
             _ => format!("/{name} ", name = self.filename),
         }
     }
@@ -356,28 +362,30 @@ pub fn is_not_hidden(entry: &DirEntry) -> Result<bool> {
     Ok(is_hidden)
 }
 
-fn extract_filename(path: &path::Path) -> Result<String> {
-    Ok(path
+fn extract_filename(path: &path::Path) -> Result<std::rc::Rc<str>> {
+    let s = path
         .file_name()
         .unwrap_or_default()
         .to_str()
-        .context(format!("Couldn't read filename of {p}", p = path.display()))?
-        .to_owned())
+        .context(format!("Couldn't read filename of {p}", p = path.display()))?;
+    Ok(std::rc::Rc::from(s))
 }
 
 /// Returns the modified time.
-fn extract_datetime(metadata: &Metadata) -> Result<String> {
+fn extract_datetime(metadata: &Metadata) -> Result<std::rc::Rc<str>> {
     let datetime: DateTime<Local> = metadata.modified()?.into();
-    Ok(format!("{}", datetime.format("%Y/%m/%d %T")))
+    Ok(std::rc::Rc::from(
+        format!("{}", datetime.format("%Y/%m/%d %T")).as_str(),
+    ))
 }
 
 /// Reads the permission and converts them into a string.
-fn extract_permissions_string(metadata: &Metadata) -> String {
+fn extract_permissions_string(metadata: &Metadata) -> std::rc::Rc<str> {
     let mode = (metadata.mode() & MAX_MODE) as usize;
     let s_o = convert_octal_mode(mode >> 6);
     let s_g = convert_octal_mode((mode >> 3) & 7);
     let s_a = convert_octal_mode(mode & 7);
-    format!("{s_o}{s_a}{s_g}")
+    std::rc::Rc::from(format!("{s_o}{s_a}{s_g}").as_str())
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`
@@ -388,20 +396,20 @@ pub fn convert_octal_mode(mode: usize) -> &'static str {
 /// Reads the owner name and returns it as a string.
 /// If it's not possible to get the owner name (happens if the owner exists on a remote machine but not on host),
 /// it returns the uid as a  `Result<String>`.
-fn extract_owner(metadata: &Metadata, users: &Users) -> Result<String> {
+fn extract_owner(metadata: &Metadata, users: &Users) -> std::rc::Rc<str> {
     match users.get_user_by_uid(metadata.uid()) {
-        Some(name) => Ok(name.to_string()),
-        None => Ok(format!("{}", metadata.uid())),
+        Some(name) => std::rc::Rc::from(name.as_str()),
+        None => std::rc::Rc::from(format!("{}", metadata.uid()).as_str()),
     }
 }
 
 /// Reads the group name and returns it as a string.
 /// If it's not possible to get the group name (happens if the group exists on a remote machine but not on host),
 /// it returns the gid as a  `Result<String>`.
-fn extract_group(metadata: &Metadata, users: &Users) -> Result<String> {
+fn extract_group(metadata: &Metadata, users: &Users) -> std::rc::Rc<str> {
     match users.get_group_by_gid(metadata.gid()) {
-        Some(name) => Ok(name.to_string()),
-        None => Ok(format!("{}", metadata.gid())),
+        Some(name) => std::rc::Rc::from(name.as_str()),
+        None => std::rc::Rc::from(format!("{}", metadata.gid()).as_str()),
     }
 }
 
@@ -427,8 +435,8 @@ pub fn extract_extension(path: &path::Path) -> &str {
         .unwrap_or_default()
 }
 
-fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> String {
-    format!("{c}{filename}", c = file_kind.sortable_char())
+fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> std::rc::Rc<str> {
+    std::rc::Rc::from(format!("{c}{filename}", c = file_kind.sortable_char()).as_str())
 }
 
 /// true iff the path is a valid symlink (pointing to an existing file).

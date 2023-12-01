@@ -226,7 +226,7 @@ impl Bulk {
         match self.index {
             0 => Renamer::new(status.flagged_in_current_dir())
                 .rename(&status.internal_settings.opener)?,
-            1 => Creator::new(status.current_tab_path_str())
+            1 => Creator::new(&status.current_tab_path_str())
                 .create_files(&status.internal_settings.opener)?,
             _ => (),
         };
