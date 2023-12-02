@@ -74,26 +74,30 @@ impl EventDispatcher {
             Edit::InputSimple(_) => status.menu.input_insert(c),
             Edit::InputCompleted(_) => status.input_complete(c),
             Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
-            Edit::Navigate(Navigate::Trash) if c == 'x' => status.menu.trash_delete_permanently(),
-            Edit::Navigate(Navigate::EncryptedDrive) if c == 'm' => status.mount_encrypted_drive(),
-            Edit::Navigate(Navigate::EncryptedDrive) if c == 'g' => status.go_to_encrypted_drive(),
-            Edit::Navigate(Navigate::EncryptedDrive) if c == 'u' => status.umount_encrypted_drive(),
-            Edit::Navigate(Navigate::RemovableDevices) if c == 'm' => status.menu.mount_removable(),
-            Edit::Navigate(Navigate::RemovableDevices) if c == 'g' => status.go_to_removable(),
-            Edit::Navigate(Navigate::RemovableDevices) if c == 'u' => {
-                status.menu.umount_removable()
-            }
-            Edit::Navigate(Navigate::Jump) if c == ' ' => status.menu.remove_selected_flagged(),
-            Edit::Navigate(Navigate::Jump) if c == 'u' => status.clear_flags_and_reset_view(),
-            Edit::Navigate(Navigate::Jump) if c == 'x' => status.menu.delete_single_flagged(),
-            Edit::Navigate(Navigate::Jump) if c == 'X' => status.menu.trash_single_flagged(),
-            Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => status.marks_jump_char(c),
-            Edit::Navigate(Navigate::Marks(MarkAction::New)) => status.marks_new(c),
-            Edit::Navigate(_) => tab.reset_mode_and_view(),
+            Edit::Navigate(navigate) => Self::navigate_char(navigate, status, c),
             Edit::Nothing if matches!(tab.display_mode, Display::Preview) => {
                 tab.reset_mode_and_view()
             }
             Edit::Nothing => self.key_matcher(status, Key::Char(c)),
+        }
+    }
+
+    fn navigate_char(navigate: Navigate, status: &mut Status, c: char) -> Result<()> {
+        match navigate {
+            Navigate::Trash if c == 'x' => status.menu.trash_delete_permanently(),
+            Navigate::EncryptedDrive if c == 'm' => status.mount_encrypted_drive(),
+            Navigate::EncryptedDrive if c == 'g' => status.go_to_encrypted_drive(),
+            Navigate::EncryptedDrive if c == 'u' => status.umount_encrypted_drive(),
+            Navigate::RemovableDevices if c == 'm' => status.menu.mount_removable(),
+            Navigate::RemovableDevices if c == 'g' => status.go_to_removable(),
+            Navigate::RemovableDevices if c == 'u' => status.menu.umount_removable(),
+            Navigate::Jump if c == ' ' => status.menu.remove_selected_flagged(),
+            Navigate::Jump if c == 'u' => status.clear_flags_and_reset_view(),
+            Navigate::Jump if c == 'x' => status.menu.delete_single_flagged(),
+            Navigate::Jump if c == 'X' => status.menu.trash_single_flagged(),
+            Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
+            Navigate::Marks(MarkAction::New) => status.marks_new(c),
+            _ => status.current_tab_mut().reset_mode_and_view(),
         }
     }
 }

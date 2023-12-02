@@ -914,6 +914,18 @@ impl EventAction {
         Ok(())
     }
 
+    pub fn encrypted_mount(status: &mut Status) -> Result<()> {
+        status.mount_encrypted_drive()
+    }
+
+    pub fn encrypted_umount(status: &mut Status) -> Result<()> {
+        status.umount_encrypted_drive()
+    }
+
+    pub fn encrypted_go(status: &mut Status) -> Result<()> {
+        status.go_to_encrypted_drive()
+    }
+
     pub fn removable_devices(status: &mut Status) -> Result<()> {
         if !is_program_in_path(GIO) {
             log_line!("gio must be installed.");
@@ -924,6 +936,17 @@ impl EventAction {
             .current_tab_mut()
             .set_edit_mode(Edit::Navigate(Navigate::RemovableDevices));
         Ok(())
+    }
+
+    pub fn removable_mount(status: &mut Status) -> Result<()> {
+        status.menu.mount_removable()
+    }
+
+    pub fn removable_umount(status: &mut Status) -> Result<()> {
+        status.menu.umount_removable()
+    }
+    pub fn removable_go(status: &mut Status) -> Result<()> {
+        status.go_to_removable()
     }
 
     /// Open the config file.
