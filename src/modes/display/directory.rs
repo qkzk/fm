@@ -1,7 +1,8 @@
 use std::borrow::Borrow;
 use std::fs::read_dir;
 use std::iter::Enumerate;
-use std::path;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use anyhow::{Context, Result};
 
@@ -19,7 +20,7 @@ use crate::{impl_selectable_content, log_info};
 /// the "display all files including hidden" flag and the key to sort files.
 pub struct Directory {
     /// The current path
-    pub path: path::PathBuf,
+    pub path: PathBuf,
     /// A vector of FileInfo with every file in current path
     pub content: Vec<FileInfo>,
     /// The index of the selected file.
@@ -31,12 +32,7 @@ impl Directory {
     /// Reads the paths and creates a new `PathContent`.
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
-    pub fn new(
-        path: &path::Path,
-        users: &Users,
-        filter: &FilterKind,
-        show_hidden: bool,
-    ) -> Result<Self> {
+    pub fn new(path: &Path, users: &Users, filter: &FilterKind, show_hidden: bool) -> Result<Self> {
         let path = path.to_owned();
         let mut content = Self::files(&path, show_hidden, filter, users)?;
         let sort_kind = SortKind::default();
@@ -57,7 +53,7 @@ impl Directory {
 
     pub fn change_directory(
         &mut self,
-        path: &path::Path,
+        path: &Path,
         settings: &TabSettings,
         users: &Users,
     ) -> Result<()> {
@@ -73,7 +69,7 @@ impl Directory {
     }
 
     fn files(
-        path: &path::Path,
+        path: &Path,
         show_hidden: bool,
         filter_kind: &FilterKind,
         users: &Users,
@@ -89,7 +85,7 @@ impl Directory {
         Ok(files)
     }
 
-    fn create_dot_dotdot(path: &path::Path, users: &Users) -> Result<Vec<FileInfo>> {
+    fn create_dot_dotdot(path: &Path, users: &Users) -> Result<Vec<FileInfo>> {
         let current = FileInfo::from_path_with_name(path, ".", users)?;
         match path.parent() {
             Some(parent) => {
@@ -149,7 +145,7 @@ impl Directory {
     }
 
     /// True if the path starts with a subpath.
-    pub fn contains(&self, path: &path::Path) -> bool {
+    pub fn contains(&self, path: &Path) -> bool {
         path.starts_with(&self.path)
     }
 
@@ -170,7 +166,7 @@ impl Directory {
                         .path,
                 )
                 .unwrap_or_default();
-                Ok(path::PathBuf::from(dest).is_dir())
+                Ok(PathBuf::from(dest).is_dir())
             }
             FileKind::SymbolicLink(false) => Ok(false),
             _ => Ok(false),
@@ -222,21 +218,21 @@ impl Directory {
     }
 
     /// Returns the correct index jump target to a flagged files.
-    fn find_jump_index(&self, jump_target: &path::Path) -> Option<usize> {
-        self.content.iter().position(|file| {
-            <std::rc::Rc<path::Path> as Borrow<path::Path>>::borrow(&file.path) == jump_target
-        })
+    fn find_jump_index(&self, jump_target: &Path) -> Option<usize> {
+        self.content
+            .iter()
+            .position(|file| <Rc<Path> as Borrow<Path>>::borrow(&file.path) == jump_target)
     }
 
     /// Select the file from its path. Returns its index in content.
-    pub fn select_file(&mut self, jump_target: &path::Path) -> usize {
+    pub fn select_file(&mut self, jump_target: &Path) -> usize {
         let index = self.find_jump_index(jump_target).unwrap_or_default();
         self.select_index(index);
         index
     }
 
     /// Returns a vector of paths from content
-    pub fn paths(&self) -> Vec<&path::Path> {
+    pub fn paths(&self) -> Vec<&Path> {
         self.content
             .iter()
             .map(|fileinfo| fileinfo.path.borrow())
@@ -258,8 +254,8 @@ const MAX_PATH_ELEM_SIZE: usize = 50;
 
 /// Shorten a path to be displayed in [`MAX_PATH_ELEM_SIZE`] chars or less.
 /// Each element of the path is shortened if needed.
-pub fn shorten_path(path: &path::Path, size: Option<usize>) -> Result<String> {
-    if path == path::Path::new("/") {
+pub fn shorten_path(path: &Path, size: Option<usize>) -> Result<String> {
+    if path == Path::new("/") {
         return Ok("".to_owned());
     }
     let size = match size {
@@ -294,7 +290,7 @@ pub fn shorten_path(path: &path::Path, size: Option<usize>) -> Result<String> {
 /// the destination of a symlink,
 /// Returns `None` if the link is broken, if the path doesn't exists or if the path
 /// isn't a symlink.
-pub fn read_symlink_dest(path: &path::Path) -> Option<String> {
+pub fn read_symlink_dest(path: &Path) -> Option<String> {
     match std::fs::read_link(path) {
         Ok(dest) if dest.exists() => Some(dest.to_str()?.to_owned()),
         _ => None,
@@ -309,7 +305,7 @@ fn get_used_space(files: &[FileInfo]) -> u64 {
 /// Files are filtered by filterkind and the display hidden flag.
 /// Returns None if there's no file.
 pub fn files_collection(
-    path: &path::Path,
+    path: &Path,
     users: &Users,
     show_hidden: bool,
     filter_kind: &FilterKind,
