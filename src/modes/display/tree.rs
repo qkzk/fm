@@ -1,6 +1,8 @@
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::rc::{Rc, Weak};
 
 use anyhow::Result;
 
@@ -22,12 +24,12 @@ pub struct ColoredString {
     /// A tuikit::attr::Attr (fg, bg, effect) to enhance the text.
     pub color_effect: ColorEffect,
     /// The complete path of this string.
-    pub path: std::path::PathBuf,
+    pub path: Rc<Path>,
 }
 
 impl ColoredString {
     /// Creates a new colored string.
-    pub fn new(text: String, color_effect: ColorEffect, path: std::path::PathBuf) -> Self {
+    pub fn new(text: String, color_effect: ColorEffect, path: Rc<Path>) -> Self {
         Self {
             text,
             color_effect,
@@ -41,28 +43,29 @@ impl ColoredString {
 /// A Node knows if it's folded or selected.
 #[derive(Debug, Clone)]
 pub struct Node {
-    path: PathBuf,
-    children: Option<Vec<PathBuf>>,
+    path: Rc<Path>,
+    children: Option<Vec<Rc<Path>>>,
     folded: bool,
     selected: bool,
     reachable: bool,
-    prev: PathBuf,
-    next: PathBuf,
+    prev: Weak<Path>,
+    next: Weak<Path>,
     index: usize,
 }
 
 impl Node {
     /// Creates a new Node from a path and its children.
     /// By default it's not selected nor folded.
-    fn new(path: &Path, children: Option<Vec<PathBuf>>, prev: &Path, index: usize) -> Self {
+    fn new(path: &Path, children: Option<Vec<Rc<Path>>>, index: usize) -> Self {
+        let path: Rc<Path> = Rc::from(path);
         Self {
-            path: path.to_owned(),
+            path: path.clone(),
             children,
             folded: false,
             selected: false,
             reachable: true,
-            next: PathBuf::default(),
-            prev: prev.to_owned(),
+            next: Rc::downgrade(&path),
+            prev: Rc::downgrade(&path),
             index,
         }
     }
@@ -141,7 +144,7 @@ trait Depth {
     fn depth(&self) -> usize;
 }
 
-impl Depth for PathBuf {
+impl Depth for Rc<Path> {
     /// Measure the number of components of a `PathBuf`.
     /// For absolute paths, it's the number of folders plus one for / and one for the file itself.
     #[inline]
@@ -153,20 +156,29 @@ impl Depth for PathBuf {
 /// A FileSystem tree of nodes.
 /// Internally it's a wrapper around an `std::collections::HashMap<PathBuf, Node>`
 /// It also holds informations about the required height of the tree.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Tree {
-    root_path: PathBuf,
-    selected: PathBuf,
-    nodes: HashMap<PathBuf, Node>,
+    root_path: Rc<Path>,
+    selected: Rc<Path>,
+    nodes: HashMap<Rc<Path>, Node>,
     required_height: usize,
 }
 
 impl Tree {
     pub const DEFAULT_REQUIRED_HEIGHT: usize = 80;
 
+    pub fn default() -> Self {
+        Self {
+            root_path: Rc::from(Path::new("")),
+            selected: Rc::from(Path::new("")),
+            nodes: HashMap::new(),
+            required_height: 0,
+        }
+    }
+
     /// Creates a new tree, exploring every node until depth is reached.
     pub fn new(
-        root_path: PathBuf,
+        root_path: Rc<Path>,
         depth: usize,
         sort_kind: SortKind,
         users: &Users,
@@ -174,7 +186,7 @@ impl Tree {
         filter_kind: &FilterKind,
     ) -> Self {
         let nodes = Self::make_nodes(
-            &root_path.to_path_buf(),
+            root_path.clone(),
             depth,
             sort_kind,
             users,
@@ -183,7 +195,7 @@ impl Tree {
         );
 
         Self {
-            selected: root_path.to_path_buf(),
+            selected: root_path.clone(),
             root_path,
             nodes,
             required_height: Self::DEFAULT_REQUIRED_HEIGHT,
@@ -193,17 +205,17 @@ impl Tree {
     // TODO: refactor into small functions
     #[inline]
     fn make_nodes(
-        root_path: &PathBuf,
+        root_path: Rc<Path>,
         depth: usize,
         sort_kind: SortKind,
         users: &Users,
         show_hidden: bool,
         filter_kind: &FilterKind,
-    ) -> HashMap<PathBuf, Node> {
+    ) -> HashMap<Rc<Path>, Node> {
         // keep track of the depth
         let root_depth = root_path.depth();
         let mut stack = vec![root_path.to_owned()];
-        let mut nodes: HashMap<PathBuf, Node> = HashMap::new();
+        let mut nodes: HashMap<Rc<Path>, Node> = HashMap::new();
         let mut last_path = root_path.to_owned();
         let mut index = 0;
 
@@ -226,50 +238,42 @@ impl Tree {
                 } else {
                     None
                 };
-            let current_node = Node::new(&current_path, children, &last_path, index);
+            let current_node = Node::new(&current_path, children, index);
             Self::set_next_for_last(&mut nodes, &current_path, &last_path);
             last_path = current_path.to_owned();
             nodes.insert(current_path, current_node);
             index += 1;
         }
-        Self::set_prev_for_root(&mut nodes, root_path, &last_path);
-        Self::set_next_for_last(&mut nodes, root_path, &last_path);
+        Self::set_prev_for_root(&mut nodes, &root_path, &last_path);
+        Self::set_next_for_last(&mut nodes, &root_path, &last_path);
         nodes
     }
 
     #[inline]
-    fn set_prev_for_root(
-        nodes: &mut HashMap<PathBuf, Node>,
-        root_path: &PathBuf,
-        last_path: &PathBuf,
-    ) {
+    fn set_prev_for_root(nodes: &mut HashMap<Rc<Path>, Node>, root_path: &Path, last_path: &Path) {
         let Some(root_node) = nodes.get_mut(root_path) else {
             unreachable!("root_path should be in nodes");
         };
-        root_node.prev = last_path.to_owned();
+        root_node.prev = Rc::downgrade(&Rc::from(last_path));
         root_node.select();
     }
 
     #[inline]
-    fn set_next_for_last(
-        nodes: &mut HashMap<PathBuf, Node>,
-        root_path: &PathBuf,
-        last_path: &PathBuf,
-    ) {
+    fn set_next_for_last(nodes: &mut HashMap<Rc<Path>, Node>, root_path: &Path, last_path: &Path) {
         if let Some(last_node) = nodes.get_mut(last_path) {
-            last_node.next = root_path.to_owned();
+            last_node.next = Rc::downgrade(&Rc::from(root_path));
         };
     }
 
     #[inline]
     fn create_children(
-        stack: &mut Vec<PathBuf>,
+        stack: &mut Vec<Rc<Path>>,
         current_path: &Path,
         users: &Users,
         show_hidden: bool,
         filter_kind: &FilterKind,
         sort_kind: SortKind,
-    ) -> Option<Vec<PathBuf>> {
+    ) -> Option<Vec<Rc<Path>>> {
         if let Some(mut files) =
             files_collection(current_path, users, show_hidden, filter_kind, true)
         {
@@ -283,12 +287,15 @@ impl Tree {
     }
 
     #[inline]
-    fn make_children_and_stack_them(stack: &mut Vec<PathBuf>, files: &[FileInfo]) -> Vec<PathBuf> {
+    fn make_children_and_stack_them(
+        stack: &mut Vec<Rc<Path>>,
+        files: &[FileInfo],
+    ) -> Vec<Rc<Path>> {
         files
             .iter()
-            .map(|fileinfo| fileinfo.path.to_path_buf())
+            .map(|fileinfo| fileinfo.path.clone())
             .map(|path| {
-                stack.push(path.to_owned());
+                stack.push(path.clone());
                 path
             })
             .collect()
@@ -296,12 +303,12 @@ impl Tree {
 
     /// Root path of the tree.
     pub fn root_path(&self) -> &Path {
-        self.root_path.as_path()
+        self.root_path.borrow()
     }
 
     /// Selected path
     pub fn selected_path(&self) -> &Path {
-        self.selected.as_path()
+        self.selected.borrow()
     }
 
     /// Selected node
@@ -313,7 +320,7 @@ impl Tree {
     /// Itself if selected is a directory.
     pub fn directory_of_selected(&self) -> Option<&Path> {
         if self.selected.is_dir() && !self.selected.is_symlink() {
-            Some(self.selected.as_path())
+            Some(self.selected.borrow())
         } else {
             self.selected.parent()
         }
@@ -351,18 +358,20 @@ impl Tree {
         self.increment_required_height()
     }
 
-    fn find_next_path(&self) -> PathBuf {
-        let mut current_path = self.selected.to_owned();
+    fn find_next_path(&self) -> Rc<Path> {
+        let mut current_path: Rc<Path> = self.selected.clone();
         loop {
             if let Some(current_node) = self.nodes.get(&current_path) {
-                let next_path = &current_node.next;
+                let Some(next_path) = &current_node.next.upgrade() else {
+                    unreachable!("shouldn't be dropped");
+                };
                 let Some(next_node) = self.nodes.get(next_path) else {
                     unreachable!("");
                 };
                 if next_node.reachable {
                     return next_path.to_owned();
                 } else {
-                    current_path = next_path.to_owned();
+                    current_path = next_path.clone();
                 }
             }
         }
@@ -380,12 +389,14 @@ impl Tree {
         }
     }
 
-    fn find_prev_path(&self) -> PathBuf {
+    fn find_prev_path(&self) -> Rc<Path> {
         let mut current_path = self.selected.to_owned();
         loop {
             if let Some(current_node) = self.nodes.get(&current_path) {
-                let prev_path = &current_node.prev;
-                let Some(prev_node) = self.nodes.get(prev_path) else {
+                let Some(prev_path) = current_node.prev.upgrade() else {
+                    unreachable!("shouldn't be dropped");
+                };
+                let Some(prev_node) = self.nodes.get(&prev_path) else {
                     unreachable!("");
                 };
                 if prev_node.reachable {
@@ -434,7 +445,7 @@ impl Tree {
     }
 
     fn select_path(&mut self, dest_path: &Path, set_height: bool) {
-        if dest_path == self.selected {
+        if Rc::from(dest_path) == self.selected {
             return;
         }
         let Some(dest_node) = self.nodes.get_mut(dest_path) else {
@@ -445,7 +456,7 @@ impl Tree {
             unreachable!("current_node should be in nodes");
         };
         selected_node.unselect();
-        self.selected = dest_path.to_owned();
+        self.selected = Rc::from(dest_path);
         if set_height {
             self.set_required_height_to_max()
         }
@@ -484,7 +495,7 @@ impl Tree {
         }
     }
 
-    fn children_of_selected(&self) -> Vec<PathBuf> {
+    fn children_of_selected(&self) -> Vec<Rc<Path>> {
         self.nodes
             .keys()
             .filter(|p| p.starts_with(&self.selected) && p != &&self.selected)
@@ -530,18 +541,18 @@ impl Tree {
         let Some(found_path) = self.deep_first_search(pattern) else {
             return;
         };
-        self.select_path(found_path.to_owned().as_path(), true);
+        self.select_path(&found_path, true);
     }
 
-    fn deep_first_search(&self, pattern: &str) -> Option<PathBuf> {
-        let mut stack = vec![self.root_path.as_path()];
+    fn deep_first_search(&self, pattern: &str) -> Option<Rc<Path>> {
+        let mut stack = vec![self.root_path.clone()];
         let mut found = vec![];
 
         while let Some(path) = stack.pop() {
-            if path_filename_contains(path, pattern) {
-                found.push(path.to_path_buf());
+            if path_filename_contains(&path, pattern) {
+                found.push(path.clone());
             }
-            let Some(current_node) = self.nodes.get(path) else {
+            let Some(current_node) = self.nodes.get(&path) else {
                 continue;
             };
 
@@ -550,14 +561,14 @@ impl Tree {
                     continue;
                 };
                 for leaf in children.iter() {
-                    stack.push(leaf);
+                    stack.push(leaf.to_owned());
                 }
             }
         }
         self.pick_best_match(&found)
     }
 
-    fn pick_best_match(&self, found: &[PathBuf]) -> Option<PathBuf> {
+    fn pick_best_match(&self, found: &[Rc<Path>]) -> Option<Rc<Path>> {
         if found.is_empty() {
             return None;
         }
@@ -578,7 +589,7 @@ impl Tree {
 
     /// Returns a navigable vector of `ColoredTriplet` and the index of selected file
     pub fn into_navigable_content(&self, users: &Users) -> (usize, Vec<ColoredTriplet>) {
-        let mut stack = vec![("".to_owned(), self.root_path.as_path())];
+        let mut stack = vec![("".to_owned(), self.root_path.borrow())];
         let mut content = vec![];
         let mut selected_index = 0;
 
@@ -616,7 +627,7 @@ impl Tree {
 
     #[inline]
     pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
-        let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
+        let to_filename: fn(&Rc<Path>) -> Option<&OsStr> = |path| path.file_name();
         let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
         self.nodes
             .keys()
@@ -629,7 +640,7 @@ impl Tree {
 
     /// Vector of `Path` of nodes.
     pub fn paths(&self) -> Vec<&Path> {
-        self.nodes.keys().map(|p| p.as_path()).collect()
+        self.nodes.keys().map(|p| p.borrow()).collect()
     }
 
     /// True if any directory (not symlink to a directory)

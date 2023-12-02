@@ -121,7 +121,10 @@ impl Preview {
     /// It explores recursivelly the directory and creates a tree.
     /// The recursive exploration is limited to depth 2.
     pub fn directory(file_info: &FileInfo, users: &Users) -> Result<Self> {
-        Ok(Self::Directory(Directory::new(&file_info.path, users)))
+        Ok(Self::Directory(Directory::new(
+            file_info.path.clone(),
+            users,
+        )))
     }
 
     /// Creates a new preview instance based on the filekind and the extension of
@@ -1044,9 +1047,9 @@ pub struct Directory {
 }
 
 impl Directory {
-    pub fn new(path: &std::rc::Rc<Path>, users: &Users) -> Self {
+    pub fn new(path: std::rc::Rc<Path>, users: &Users) -> Self {
         let tree = Tree::new(
-            path.to_path_buf(),
+            path,
             4,
             SortKind::tree_default(),
             users,
@@ -1180,7 +1183,7 @@ impl MakeTriplet for ColoredTriplet {
         (
             fileinfo.format_no_filename().unwrap_or_default(),
             prefix.to_owned(),
-            ColoredString::new(filename_text, color_effect, current_path.to_owned()),
+            ColoredString::new(filename_text, color_effect, std::rc::Rc::from(current_path)),
         )
     }
 }

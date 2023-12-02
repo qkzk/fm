@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::fs::read_dir;
 use std::iter::Enumerate;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::rc::Rc;
 
 use anyhow::{Context, Result};
@@ -20,7 +20,7 @@ use crate::{impl_selectable_content, log_info};
 /// the "display all files including hidden" flag and the key to sort files.
 pub struct Directory {
     /// The current path
-    pub path: PathBuf,
+    pub path: Rc<Path>,
     /// A vector of FileInfo with every file in current path
     pub content: Vec<FileInfo>,
     /// The index of the selected file.
@@ -33,7 +33,7 @@ impl Directory {
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
     pub fn new(path: &Path, users: &Users, filter: &FilterKind, show_hidden: bool) -> Result<Self> {
-        let path = path.to_owned();
+        let path = Rc::from(path);
         let mut content = Self::files(&path, show_hidden, filter, users)?;
         let sort_kind = SortKind::default();
         sort_kind.sort(&mut content);
@@ -64,7 +64,7 @@ impl Directory {
             self.content[0].select()
         }
         self.used_space = get_used_space(&self.content);
-        self.path = path.to_path_buf();
+        self.path = Rc::from(path);
         Ok(())
     }
 
@@ -166,7 +166,7 @@ impl Directory {
                         .path,
                 )
                 .unwrap_or_default();
-                Ok(PathBuf::from(dest).is_dir())
+                Ok(Path::new(&dest).is_dir())
             }
             FileKind::SymbolicLink(false) => Ok(false),
             _ => Ok(false),

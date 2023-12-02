@@ -171,12 +171,12 @@ impl EventAction {
     /// not the selected file in the pathcontent.
     pub fn rename(status: &mut Status) -> Result<()> {
         let selected = status.current_tab().current_file()?;
-        let sel_path: &path::Path = selected.path.borrow();
+        let sel_path = selected.path;
         if sel_path == status.current_tab().directory.path {
             return Ok(());
         }
         if let Some(parent) = status.current_tab().directory.path.parent() {
-            if sel_path == parent {
+            if sel_path == std::rc::Rc::from(parent) {
                 return Ok(());
             }
         }

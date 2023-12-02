@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::cmp::min;
 use std::path;
 
@@ -156,7 +157,7 @@ impl Tab {
     }
 
     pub fn current_path(&self) -> &path::Path {
-        self.directory.path.as_path()
+        self.directory.path.borrow()
     }
 
     /// Fileinfo of the selected element.
@@ -275,7 +276,7 @@ impl Tab {
         let path = self.directory.path.clone();
         let users = &self.users;
         self.tree = Tree::new(
-            path,
+            path.clone(),
             5,
             sort_kind,
             users,

@@ -125,7 +125,7 @@ impl LeaveMode {
         let marks = status.menu.marks.clone();
         if let Some((ch, _)) = marks.selected() {
             let len = status.current_tab().directory.content.len();
-            let p = status.tabs[status.index].directory.path.as_path();
+            let p = status.tabs[status.index].directory.path.borrow();
             status.menu.marks.new_mark(*ch, p)?;
             log_line!("Saved mark {ch} -> {p}", p = p.display());
             status.current_tab_mut().window.reset(len);

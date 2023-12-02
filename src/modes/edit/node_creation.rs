@@ -59,7 +59,7 @@ impl NodeCreation {
                 .directory_of_selected()
                 .context("no parent")?
                 .to_owned(),
-            _ => tab.directory.path.clone(),
+            _ => tab.directory.path.to_path_buf(),
         };
         Ok(root_path)
     }
