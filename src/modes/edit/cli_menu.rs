@@ -35,7 +35,7 @@ impl CliCommand {
         let desc = desc_command.0;
         let parsable_command = desc_command.1;
         let args = parsable_command.split(' ').collect::<Vec<_>>();
-        let Some(executable) = args.get(0) else {
+        let Some(executable) = args.first() else {
             return None;
         };
         if is_program_in_path(*executable) {
