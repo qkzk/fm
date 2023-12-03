@@ -200,6 +200,7 @@ impl<'a> WinMain<'a> {
             owner_size = 0;
         }
 
+        let height = canvas.size()?.1;
         for (index, file) in self
             .tab
             .directory
@@ -207,7 +208,7 @@ impl<'a> WinMain<'a> {
             .take(min(len, self.tab.window.bottom))
             .skip(self.tab.window.top)
         {
-            self.draw_files_line(canvas, group_size, owner_size, index, file)?;
+            self.draw_files_line(canvas, group_size, owner_size, index, file, height)?;
         }
         Ok(())
     }
@@ -219,9 +220,10 @@ impl<'a> WinMain<'a> {
         owner_size: usize,
         index: usize,
         file: &FileInfo,
+        height: usize,
     ) -> Result<()> {
         let row = index + ContentWindow::WINDOW_MARGIN_TOP - self.tab.window.top;
-        if row > canvas.size()?.1 {
+        if row > height {
             return Ok(());
         }
         let mut attr = fileinfo_attr(file);
@@ -275,13 +277,14 @@ impl<'a> WinMain<'a> {
         let (top, bottom) = calculate_top_bottom(selected_index, height);
         let length = content.len();
 
+        let height = canvas.size()?.1;
         for (index, triplet) in content
             .iter()
             .enumerate()
             .skip(top)
             .take(min(length, bottom + 1))
         {
-            self.draw_tree_line(canvas, left_margin, top, index, triplet)?;
+            self.draw_tree_line(canvas, left_margin, top, index, triplet, height)?;
         }
         Ok(selected_index)
     }
@@ -293,9 +296,10 @@ impl<'a> WinMain<'a> {
         top: usize,
         index: usize,
         colored_triplet: &ColoredTriplet,
+        height: usize,
     ) -> Result<()> {
         let row = index + ContentWindow::WINDOW_MARGIN_TOP - top;
-        if row > canvas.size()?.1 {
+        if row > height {
             return Ok(());
         }
 
@@ -418,11 +422,14 @@ impl<'a> WinMain<'a> {
         canvas: &mut dyn Canvas,
         window: &ContentWindow,
     ) -> Result<()> {
+        let height = canvas.size()?.1;
         let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
         for (i, line) in (*bin).window(window.top, window.bottom, length) {
             let row = calc_line_row(i, window);
-
+            if row > height {
+                break;
+            }
             canvas.print_with_attr(
                 row,
                 0,
@@ -455,10 +462,14 @@ impl<'a> WinMain<'a> {
         line_number_width: usize,
         window: &ContentWindow,
     ) -> Result<()> {
+        let height = canvas.size()?.1;
         for (i, (_, prefix, colored_string)) in
             (tree_preview).window(window.top, window.bottom, length)
         {
             let row = calc_line_row(i, window);
+            if row > height {
+                break;
+            }
             let col = canvas.print(row, line_number_width, prefix)?;
 
             canvas.print_with_attr(
@@ -478,8 +489,12 @@ impl<'a> WinMain<'a> {
         canvas: &mut dyn Canvas,
         window: &ContentWindow,
     ) -> Result<()> {
+        let height = canvas.size()?.1;
         for (i, line) in colored_text.window(window.top, window.bottom, length) {
             let row = calc_line_row(i, window);
+            if row > height {
+                break;
+            }
             let mut col = 3;
             for (chr, attr) in skim::AnsiString::parse(line).iter() {
                 col += canvas.print_with_attr(row, col, &chr.to_string(), attr)?;
