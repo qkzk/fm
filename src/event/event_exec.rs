@@ -62,8 +62,9 @@ impl EventAction {
         if matches!(tab.display_mode, Display::Preview) {
             tab.set_display_mode(Display::Directory);
         }
+        status.menu.input.reset();
+        status.menu.completion.reset();
         if tab.reset_edit_mode() {
-            status.menu.completion.reset();
             tab.refresh_view()
         } else {
             tab.refresh_params()

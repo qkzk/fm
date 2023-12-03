@@ -676,6 +676,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] renamed Display::Normal to Display::Directory
 - [x] event_dispatch refactor
 - [x] refactor file opening. Far from satisfying
+- [x] FIX: wrong position of cursor in edit modes. Use a cursor offset for all modes.
 - [ ] merge specific commands & cli_info
   - [x] merge
   - [x] remove specific commands

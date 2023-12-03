@@ -7,7 +7,7 @@ pub struct Input {
     /// The input typed by the user
     chars: Vec<String>,
     /// The index of the cursor in that string
-    pub cursor_index: usize,
+    cursor_index: usize,
 }
 
 impl Input {
@@ -15,6 +15,12 @@ impl Input {
     pub fn reset(&mut self) {
         self.chars.clear();
         self.cursor_index = 0;
+    }
+
+    /// Current index of the cursor
+    #[must_use]
+    pub fn index(&self) -> usize {
+        self.cursor_index
     }
 
     #[must_use]
@@ -95,6 +101,7 @@ impl Input {
     /// ```rust
     /// unicode_segmentation::UnicodeSegmentation::graphemes(content, true)
     /// ```
+    /// See [`UnicodeSegmentation`] for more information.
     pub fn replace(&mut self, content: &str) {
         self.chars = UnicodeSegmentation::graphemes(content, true)
             .collect::<Vec<&str>>()

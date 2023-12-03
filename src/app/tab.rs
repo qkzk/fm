@@ -352,7 +352,10 @@ impl Tab {
     }
 
     /// Reset the modes :
-    /// - edit_mode is set to Nothing,
+    /// edit_mode is set to Nothing,
+    /// returns false If the current "Display" is Preview, don't refresh the display,
+    /// true otherwise.
+    /// It's used to know if we have to reset the view.
     pub fn reset_edit_mode(&mut self) -> bool {
         let must_refresh = matches!(self.display_mode, Display::Preview);
         self.edit_mode = Edit::Nothing;

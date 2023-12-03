@@ -705,9 +705,6 @@ impl<'a> Draw for WinSecondary<'a> {
 
 impl<'a> WinSecondary<'a> {
     const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
-    const EDIT_BOX_OFFSET: usize = 11;
-    const SORT_CURSOR_OFFSET: usize = 39;
-    const PASSWORD_CURSOR_OFFSET: usize = 9;
 
     fn new(status: &'a Status, index: usize) -> Self {
         Self {
@@ -750,35 +747,17 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    /// Display a cursor in the top row, at a correct column.
+    /// Hide the cursor if the current mode doesn't require one.
+    /// Otherwise, display a cursor in the top row, at a correct column.
+    ///
+    /// # Errors
+    ///
+    /// may fail if we can't display on the terminal.
     fn draw_cursor(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        match self.tab.edit_mode {
-            Edit::Navigate(_) | Edit::Nothing => {
-                canvas.show_cursor(false)?;
-            }
-            Edit::InputSimple(InputSimple::Sort) => {
-                canvas.show_cursor(true)?;
-                canvas.set_cursor(0, Self::SORT_CURSOR_OFFSET)?;
-            }
-            Edit::InputSimple(InputSimple::Password(_, _)) => {
-                canvas.show_cursor(true)?;
-                canvas.set_cursor(
-                    0,
-                    Self::PASSWORD_CURSOR_OFFSET + self.status.menu.input.cursor_index,
-                )?;
-            }
-            Edit::InputSimple(_) | Edit::InputCompleted(_) => {
-                canvas.show_cursor(true)?;
-                canvas.set_cursor(
-                    0,
-                    Self::EDIT_BOX_OFFSET + self.status.menu.input.cursor_index,
-                )?;
-            }
-            Edit::NeedConfirmation(confirmed_action) => {
-                canvas.show_cursor(true)?;
-                canvas.set_cursor(0, confirmed_action.cursor_offset())?;
-            }
-        }
+        let offset = self.tab.edit_mode.cursor_offset();
+        let index = self.status.menu.input.index();
+        canvas.set_cursor(0, offset + index)?;
+        canvas.show_cursor(self.tab.edit_mode.show_cursor())?;
         Ok(())
     }
 
@@ -804,7 +783,6 @@ impl<'a> WinSecondary<'a> {
         canvas: &mut dyn Canvas,
         selectable: &impl SelectableContent<PathBuf>,
     ) -> Result<()> {
-        canvas.print(0, 0, "Go to...")?;
         let content = selectable.content();
         for (row, path, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);

@@ -23,11 +23,21 @@ pub enum InputCompleted {
 impl fmt::Display for InputCompleted {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Self::Exec => write!(f, "Exec:    "),
-            Self::Goto => write!(f, "Goto  :  "),
-            Self::Search => write!(f, "Search:  "),
-            Self::Command => write!(f, "Command:  "),
+            #[rustfmt::skip]
+            Self::Exec      => write!(f, "Exec:    "),
+            #[rustfmt::skip]
+            Self::Goto      => write!(f, "Goto:    "),
+            #[rustfmt::skip]
+            Self::Search    => write!(f, "Search:  "),
+            #[rustfmt::skip]
+            Self::Command   => write!(f, "Command: "),
         }
+    }
+}
+
+impl InputCompleted {
+    pub fn cursor_offset(&self) -> usize {
+        self.to_string().len() + 2
     }
 }
 

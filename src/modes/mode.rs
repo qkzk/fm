@@ -125,6 +125,10 @@ impl fmt::Display for InputSimple {
 }
 
 impl InputSimple {
+    const EDIT_BOX_OFFSET: usize = 11;
+    const SORT_CURSOR_OFFSET: usize = 39;
+    const PASSWORD_CURSOR_OFFSET: usize = 9;
+
     /// Returns a vector of static &str describing what
     /// the mode does.
     #[must_use]
@@ -147,6 +151,14 @@ impl InputSimple {
             Self::Shell => &SHELL_LINES,
             Self::Sort => &SORT_LINES,
             Self::Remote => &REMOTE_LINES,
+        }
+    }
+
+    fn cursor_offset(&self) -> usize {
+        match *self {
+            Self::Sort => Self::SORT_CURSOR_OFFSET,
+            Self::Password(_, _) => Self::PASSWORD_CURSOR_OFFSET,
+            _ => Self::EDIT_BOX_OFFSET,
         }
     }
 }
@@ -209,18 +221,27 @@ impl fmt::Display for Navigate {
     }
 }
 
-/// Different mode in which the application can be.
-/// It dictates the reaction to event and what to display.
+/// Different "edit" mode in which the application can be.
+/// It dictates the reaction to event and what to display in the bottom window.
 #[derive(Clone, Copy)]
 pub enum Edit {
+    /// Do something that may be completed
+    /// Completion may come from :
+    /// - executable in $PATH,
+    /// - current directory or tree,
+    /// - directory in your file system,
+    /// - known actions. See [`crate::event::EventAction`],
     InputCompleted(InputCompleted),
-    /// Select a target and navigate to it
+    /// Do something that need typing :
+    /// - renaming a file or directory,
+    /// - creating a file or directory,
+    /// - typing a password (won't be displayed, will be dropped ASAP)
+    InputSimple(InputSimple),
+    /// Select something in a list and act on it
     Navigate(Navigate),
     /// Confirmation is required before modification is made to existing files :
     /// delete, move, copy
     NeedConfirmation(NeedConfirmation),
-    /// Preview a file content
-    InputSimple(InputSimple),
     /// No action is currently performed
     Nothing,
 }
@@ -234,6 +255,25 @@ impl fmt::Display for Edit {
             Self::NeedConfirmation(need_confirmation) => need_confirmation.fmt(f),
             Self::Nothing => write!(f, ""),
         }
+    }
+}
+
+impl Edit {
+    /// Constant offset for the cursor.
+    /// In any mode, we display the mode used and then the cursor if needed.
+    pub fn cursor_offset(&self) -> usize {
+        match self {
+            Self::InputCompleted(input_completed) => input_completed.cursor_offset(),
+            Self::InputSimple(input_simple) => input_simple.cursor_offset(),
+            Self::Navigate(_) => 0,
+            Self::NeedConfirmation(confirmed_action) => confirmed_action.cursor_offset(),
+            Self::Nothing => 0,
+        }
+    }
+
+    /// Does this mode requires a cursor ?
+    pub fn show_cursor(&self) -> bool {
+        self.cursor_offset() != 0
     }
 }
 
