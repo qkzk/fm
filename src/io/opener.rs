@@ -51,9 +51,9 @@ impl Extension {
 
             "build" | "c" | "cmake" | "conf" | "cpp" | "css" | "csv" | "cu" | "ebuild" | "eex"
             | "env" | "ex" | "exs" | "go" | "h" | "hpp" | "hs" | "html" | "ini" | "java" | "js"
-            | "json" | "kt" | "lua" | "log" | "md" | "micro" | "ninja" | "py" | "rkt" | "rs"
-            | "scss" | "sh" | "srt" | "svelte" | "tex" | "toml" | "tsx" | "txt" | "vim" | "xml"
-            | "yaml" | "yml" => Self::Text,
+            | "json" | "kt" | "lua" | "lock" | "log" | "md" | "micro" | "ninja" | "py" | "rkt"
+            | "rs" | "scss" | "sh" | "srt" | "svelte" | "tex" | "toml" | "tsx" | "txt" | "vim"
+            | "xml" | "yaml" | "yml" => Self::Text,
 
             "odt" | "odf" | "ods" | "odp" | "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" => {
                 Self::Office
