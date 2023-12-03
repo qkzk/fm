@@ -76,7 +76,6 @@ keys:
   'v': ReverseFlags
   'w': RegexMatch
   'x': DeleteFile
-  'alt-d': DragNDrop
   'alt-e': ToggleDisplayFull
   'alt-f': ToggleDualPane
   'alt-g': Goto
@@ -96,7 +95,6 @@ keys:
   'shift-m': MarksNew
   'shift-o': Sort
   'shift-p': Preview
-  'shift-t': MediaInfo
 
 # display settings
 # All this settings are bound to keys an can be toggled in the application itself.
@@ -112,7 +110,7 @@ settings:
   preview: false
 
 # Custom command :
-# * Use an unused keybind
+# * Use a free keybind
 # * Don't use pipe or redirection, it won't be parsed correctly
 # * Use full path for the command : `/usr/bin/ls` not `ls`
 # * You can use expansions :
@@ -127,3 +125,4 @@ settings:
 custom:
   # open the selected file with chrome
   'alt-u': "/usr/bin/google-chrome-stable %s"
+  'alt-d': "/usr/bin/dragon-drop %d"  

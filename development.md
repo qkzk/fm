@@ -680,7 +680,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] opening a text file should try to open in current neovim (???)
 - [ ] merge specific commands & cli_info
   - [x] merge
-  - [ ] remove specific commands
+  - [x] remove specific commands
   - [ ] ensure diff only use first 2 files (???)
 
 ## TODO

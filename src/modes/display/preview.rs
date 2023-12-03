@@ -15,7 +15,7 @@ use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
 
 use crate::common::{
-    CALC_PDF_PATH, DIFF, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
+    CALC_PDF_PATH, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
     PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
 };
 use crate::log_info;
@@ -99,7 +99,6 @@ pub enum Preview {
     Media(MediaContent),
     Tree(TreePreview),
     Iso(Iso),
-    Diff(Diff),
     ColoredText(ColoredText),
     Socket(Socket),
     BlockDevice(BlockDevice),
@@ -271,15 +270,6 @@ impl Preview {
             && inspect(buffer) == ContentType::BINARY
     }
 
-    /// Returns mediainfo of a media file.
-    pub fn mediainfo(path: &Path) -> Result<Self> {
-        Ok(Self::Media(MediaContent::new(path)?))
-    }
-
-    pub fn diff(first_path: &str, second_path: &str) -> Result<Self> {
-        Ok(Self::Diff(Diff::new(first_path, second_path)?))
-    }
-
     /// Creates the help preview as if it was a text file.
     pub fn help(help: &str) -> Self {
         Self::Text(TextContent::help(help))
@@ -311,7 +301,6 @@ impl Preview {
             Self::Ueberzug(ueberzug) => ueberzug.len(),
             Self::Media(media) => media.len(),
             Self::Tree(directory) => directory.len(),
-            Self::Diff(diff) => diff.len(),
             Self::Iso(iso) => iso.len(),
             Self::ColoredText(text) => text.len(),
             Self::Socket(socket) => socket.len(),
@@ -1072,31 +1061,6 @@ impl TreePreview {
     }
 }
 
-pub struct Diff {
-    pub content: Vec<String>,
-    length: usize,
-}
-
-impl Diff {
-    pub fn new(first_path: &str, second_path: &str) -> Result<Self> {
-        let content: Vec<String> =
-            execute_and_capture_output_without_check(DIFF, &[first_path, second_path])?
-                .lines()
-                .map(|s| s.to_owned())
-                .collect();
-        log_info!("{DIFF}:\n{content:?}");
-
-        Ok(Self {
-            length: content.len(),
-            content,
-        })
-    }
-
-    fn len(&self) -> usize {
-        self.length
-    }
-}
-
 pub struct Iso {
     pub content: Vec<String>,
     length: usize,
@@ -1193,7 +1157,6 @@ impl_window!(BinaryContent, Line);
 impl_window!(ArchiveContent, String);
 impl_window!(MediaContent, String);
 impl_window!(TreePreview, ColoredTriplet);
-impl_window!(Diff, String);
 impl_window!(Iso, String);
 impl_window!(ColoredText, String);
 impl_window!(Socket, String);

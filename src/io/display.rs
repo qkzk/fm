@@ -390,9 +390,6 @@ impl<'a> WinMain<'a> {
             Preview::Text(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
-            Preview::Diff(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
             Preview::Iso(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }

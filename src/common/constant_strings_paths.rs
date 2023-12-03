@@ -16,8 +16,6 @@ pub const TRASH_FOLDER_FILES: &str = "~/.local/share/Trash/files";
 pub const TRASH_FOLDER_INFO: &str = "~/.local/share/Trash/info";
 /// Trash info files extension. Watchout it includes the final '.'
 pub const TRASH_INFO_EXTENSION: &str = ".trashinfo";
-/// Log file path. Rotating file logs are created in the same directeroy
-pub const LOG_PATH: &str = "~/.config/fm/fm{}";
 /// File where marks are stored.
 pub const MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 /// Temporary folder used when bulkrenaming files
@@ -42,8 +40,6 @@ pub const OPENER_DEFAULT: (&str, bool) = ("xdg-open", false);
 pub const OPENER_VECT: (&str, bool) = ("inkscape", false);
 /// Program used to open videos. Does it require a terminal ?
 pub const OPENER_VIDEO: (&str, bool) = ("mpv", false);
-/// Default program used to drag and drop files
-pub const DEFAULT_DRAGNDROP: &str = "dragon-drop";
 /// Array of text representation of a file permissions.
 /// The index of each string gives a correct representation.
 pub const PERMISSIONS_STR: [&str; 8] = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
@@ -179,8 +175,6 @@ pub const CLI_INFO: [(&str, &str); 9] = [
     ("media tags   ", "mediainfo %s"),
     ("diff 2 files ", "diff %f"),
 ];
-/// Wallpaper executable
-pub const NITROGEN: &str = "nitrogen";
 /// Mediainfo (used to preview media files) executable
 pub const MEDIAINFO: &str = "mediainfo";
 /// ueberzug (used to preview images, videos & fonts)

@@ -13,7 +13,6 @@ use crate::config::Bindings;
 use crate::config::START_FOLDER;
 use crate::io::execute_without_output_with_path;
 use crate::io::read_log;
-use crate::io::SpecificCommand;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::help_string;
@@ -827,32 +826,6 @@ impl EventAction {
         if let Display::Directory | Display::Tree = tab.display_mode {
             tab.filepath_to_clipboard();
         }
-        Ok(())
-    }
-
-    /// Executes a `dragon-drop` command on the selected file.
-    /// It obviously requires the `dragon-drop` command to be installed.
-    pub fn drag_n_drop(status: &mut Status) -> Result<()> {
-        SpecificCommand::drag_n_drop(status);
-        Ok(())
-    }
-
-    /// Set the current selected file as wallpaper with `nitrogen`.
-    /// Requires `nitrogen` to be installed.
-    pub fn set_wallpaper(tab: &Tab) -> Result<()> {
-        SpecificCommand::set_wallpaper(tab);
-        Ok(())
-    }
-
-    /// Display mediainfo details of an image
-    pub fn mediainfo(tab: &mut Tab) -> Result<()> {
-        SpecificCommand::mediainfo(tab);
-        Ok(())
-    }
-
-    /// Display a diff between the first 2 flagged files or dir.
-    pub fn diff(status: &mut Status) -> Result<()> {
-        SpecificCommand::diff(status);
         Ok(())
     }
 
