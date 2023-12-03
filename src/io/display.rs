@@ -125,6 +125,14 @@ impl WinMainAttributes {
     }
 }
 
+trait Height: Canvas {
+    fn height(&self) -> Result<usize> {
+        Ok(self.size()?.1)
+    }
+}
+
+impl Height for dyn Canvas + '_ {}
+
 struct WinMain<'a> {
     status: &'a Status,
     tab: &'a Tab,
@@ -200,7 +208,7 @@ impl<'a> WinMain<'a> {
             owner_size = 0;
         }
 
-        let height = canvas.size()?.1;
+        let height = canvas.height()?;
         for (index, file) in self
             .tab
             .directory
@@ -272,12 +280,11 @@ impl<'a> WinMain<'a> {
         } else {
             3
         };
-        let (_, height) = canvas.size()?;
+        let height = canvas.height()?;
         let (selected_index, content) = self.tab.tree.into_navigable_content(&self.tab.users);
         let (top, bottom) = calculate_top_bottom(selected_index, height);
         let length = content.len();
 
-        let height = canvas.size()?.1;
         for (index, triplet) in content
             .iter()
             .enumerate()
@@ -354,7 +361,7 @@ impl<'a> WinMain<'a> {
     ) -> Result<Option<usize>> {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
-        let height = canvas.size()?.1;
+        let height = canvas.height()?;
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
                 self.draw_syntaxed(syntaxed, length, canvas, line_number_width, window)?
@@ -422,7 +429,7 @@ impl<'a> WinMain<'a> {
         canvas: &mut dyn Canvas,
         window: &ContentWindow,
     ) -> Result<()> {
-        let height = canvas.size()?.1;
+        let height = canvas.height()?;
         let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
         for (i, line) in (*bin).window(window.top, window.bottom, length) {
@@ -462,7 +469,7 @@ impl<'a> WinMain<'a> {
         line_number_width: usize,
         window: &ContentWindow,
     ) -> Result<()> {
-        let height = canvas.size()?.1;
+        let height = canvas.height()?;
         for (i, (_, prefix, colored_string)) in
             (tree_preview).window(window.top, window.bottom, length)
         {
@@ -489,7 +496,7 @@ impl<'a> WinMain<'a> {
         canvas: &mut dyn Canvas,
         window: &ContentWindow,
     ) -> Result<()> {
-        let height = canvas.size()?.1;
+        let height = canvas.height()?;
         for (i, line) in colored_text.window(window.top, window.bottom, length) {
             let row = calc_line_row(i, window);
             if row > height {
@@ -664,7 +671,7 @@ struct LogLine;
 
 impl Draw for LogLine {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        let (_, height) = canvas.size()?;
+        let height = canvas.height()?;
         canvas.print_with_attr(height - 1, 4, &read_last_log_line(), ATTR_YELLOW_BOLD)?;
         Ok(())
     }
