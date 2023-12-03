@@ -168,8 +168,17 @@ pub const RENAME_LINES: [&str; 3] = [
 ];
 pub const TRASH_CONFIRM_LINE: &str = "Enter: restore the selected file  --  x: delete permanently";
 /// Executable commands whose output is a text to be displayed in terminal
-pub const CLI_INFO_COMMANDS: [&str; 4] =
-    ["duf", "inxi -S -I -D -i -J -M --color", "neofetch", "lsusb"];
+pub const CLI_INFO: [(&str, &str); 9] = [
+    ("drag and drop", "dragon-drop %s"),
+    ("set wallpaper", "nitrogen --set-zoom-fill --save %s"),
+    ("man page     ", "man %s"),
+    ("space used   ", "duf"),
+    ("system info  ", "inxi -S -I -D -i -J -M --color"),
+    ("system info  ", "neofetch"),
+    ("list usb     ", "lsusb"),
+    ("media tags   ", "mediainfo %s"),
+    ("diff 2 files ", "diff %f"),
+];
 /// Wallpaper executable
 pub const NITROGEN: &str = "nitrogen";
 /// Mediainfo (used to preview media files) executable

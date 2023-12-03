@@ -912,9 +912,20 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
 
         let content = &self.status.menu.cli_applications.content;
-        for (row, command, attr) in enumerated_colored_iter!(content) {
+        for (row, cli_command, attr) in enumerated_colored_iter!(content) {
             let attr = self.status.menu.cli_applications.attr(row, attr);
-            Self::draw_content_line(canvas, row + 2, command, attr)?;
+            let col = canvas.print_with_attr(
+                row + 2 + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                cli_command.desc,
+                attr,
+            )?;
+            canvas.print_with_attr(
+                row + 2 + ContentWindow::WINDOW_MARGIN_TOP,
+                8 + col,
+                cli_command.executable,
+                attr,
+            )?;
         }
         Ok(())
     }

@@ -675,9 +675,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] use rc instead of owned types in fileinfo
 - [x] renamed path_content to Directory
 - [x] renamed Display::Normal to Display::Directory
-- [ ] WIP: event_dispatch refactor
+- [x] event_dispatch refactor
 - [ ] refactor file opening. It's a mess - WIP
 - [ ] opening a text file should try to open in current neovim (???)
+- [ ] merge specific commands & cli_info
+  - [x] merge
+  - [ ] remove specific commands
+  - [ ] ensure diff only use first 2 files (???)
 
 ## TODO
 
