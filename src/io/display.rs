@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use tuikit::attr::*;
+use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
@@ -18,21 +18,28 @@ use crate::common::{
 use crate::io::read_last_log_line;
 use crate::log_info;
 use crate::modes::calculate_top_bottom;
+use crate::modes::fileinfo_attr;
 use crate::modes::parse_input_mode;
 use crate::modes::BinaryContent;
 use crate::modes::ColoredText;
 use crate::modes::ColoredTriplet;
 use crate::modes::ContentWindow;
+use crate::modes::Display as DisplayMode;
+use crate::modes::Edit;
+use crate::modes::FileInfo;
 use crate::modes::HLContent;
+use crate::modes::InputSimple;
 use crate::modes::LineDisplay;
 use crate::modes::MountRepr;
+use crate::modes::Navigate;
+use crate::modes::NeedConfirmation;
+use crate::modes::Preview;
 use crate::modes::SelectableContent;
+use crate::modes::TextKind;
 use crate::modes::Trash;
 use crate::modes::TreePreview;
 use crate::modes::Ueberzug;
-use crate::modes::{fileinfo_attr, FileInfo};
-use crate::modes::{Display as DisplayMode, Edit, InputSimple, Navigate, NeedConfirmation};
-use crate::modes::{Preview, TextKind, Window};
+use crate::modes::Window;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
