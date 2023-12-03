@@ -639,7 +639,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
       We need to do next on node until we reach a displayed node. It's not good.
 
-- [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
 - [x] separate display_modes completely. Normal -> lsl (?), Tree, Preview.
       PathContent is only used in Normal and should be associated with it.
       Reseting display should switch back to user setted display.
@@ -676,8 +675,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] renamed path_content to Directory
 - [x] renamed Display::Normal to Display::Directory
 - [x] event_dispatch refactor
-- [ ] refactor file opening. It's a mess - WIP
-- [ ] opening a text file should try to open in current neovim (???)
+- [x] refactor file opening. Far from satisfying
 - [ ] merge specific commands & cli_info
   - [x] merge
   - [x] remove specific commands
@@ -685,6 +683,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
+- [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
 - [ ] Only store one Selectable thing in status
 - [ ] use `Rc<str>` instead of string to avoid copying
 - [ ] mount usb key - should be merged with mtp
