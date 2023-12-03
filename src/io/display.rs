@@ -1079,14 +1079,14 @@ impl Display {
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
     pub fn display_all(&mut self, status: &Status) -> Result<()> {
-        self._hide_cursor()?;
+        self.hide_cursor()?;
         self.term.clear()?;
 
         let (width, _) = self.term.term_size()?;
         if status.display_settings.dual && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self._draw_dual_pane(status)?
+            self.draw_dual_pane(status)?
         } else {
-            self._draw_single_pane(status)?
+            self.draw_single_pane(status)?
         }
 
         Ok(self.term.present()?)
@@ -1094,7 +1094,7 @@ impl Display {
 
     /// Hide the curose, clear the terminal and present.
     pub fn force_clear(&mut self) -> Result<()> {
-        self._hide_cursor()?;
+        self.hide_cursor()?;
         self.term.clear()?;
         self.term.present()?;
         Ok(())
@@ -1107,7 +1107,7 @@ impl Display {
         Ok(self.term.show_cursor(true)?)
     }
 
-    fn _hide_cursor(&self) -> Result<()> {
+    fn hide_cursor(&self) -> Result<()> {
         self.term.set_cursor(0, 0)?;
         Ok(self.term.show_cursor(false)?)
     }
@@ -1118,7 +1118,7 @@ impl Display {
         Ok(height)
     }
 
-    fn _size_for_second_window(&self, tab: &Tab) -> Result<usize> {
+    fn size_for_second_window(&self, tab: &Tab) -> Result<usize> {
         if tab.need_second_window() {
             Ok(self.height()? / 2)
         } else {
@@ -1126,7 +1126,7 @@ impl Display {
         }
     }
 
-    fn _vertical_split<'a>(
+    fn vertical_split<'a>(
         &self,
         win_main: &'a WinMain,
         win_secondary: &'a WinSecondary,
@@ -1150,7 +1150,7 @@ impl Display {
             ))
     }
 
-    fn _borders(&self, status: &Status) -> (Attr, Attr) {
+    fn borders(&self, status: &Status) -> (Attr, Attr) {
         if status.index == 0 {
             (Self::SELECTED_BORDER, Self::INERT_BORDER)
         } else {
@@ -1158,7 +1158,7 @@ impl Display {
         }
     }
 
-    fn _draw_dual_pane(&mut self, status: &Status) -> Result<()> {
+    fn draw_dual_pane(&mut self, status: &Status) -> Result<()> {
         let (width, _) = self.term.term_size()?;
         let (first_selected, second_selected) = (status.index == 0, status.index == 1);
         let attributes_left = WinMainAttributes::new(
@@ -1177,17 +1177,17 @@ impl Display {
         let win_main_right = WinMain::new(status, 1, attributes_right);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
-        let (border_left, border_right) = self._borders(status);
-        let percent_left = self._size_for_second_window(&status.tabs[0])?;
-        let percent_right = self._size_for_second_window(&status.tabs[1])?;
+        let (border_left, border_right) = self.borders(status);
+        let percent_left = self.size_for_second_window(&status.tabs[0])?;
+        let percent_right = self.size_for_second_window(&status.tabs[1])?;
         let hsplit = HSplit::default()
-            .split(self._vertical_split(
+            .split(self.vertical_split(
                 &win_main_left,
                 &win_second_left,
                 border_left,
                 percent_left,
             )?)
-            .split(self._vertical_split(
+            .split(self.vertical_split(
                 &win_main_right,
                 &win_second_right,
                 border_right,
@@ -1196,7 +1196,7 @@ impl Display {
         Ok(self.term.draw(&hsplit)?)
     }
 
-    fn _draw_single_pane(&mut self, status: &Status) -> Result<()> {
+    fn draw_single_pane(&mut self, status: &Status) -> Result<()> {
         let attributes_left = WinMainAttributes::new(
             0,
             TabPosition::Left,
@@ -1205,8 +1205,8 @@ impl Display {
         );
         let win_main_left = WinMain::new(status, 0, attributes_left);
         let win_second_left = WinSecondary::new(status, 0);
-        let percent_left = self._size_for_second_window(&status.tabs[0])?;
-        let win = self._vertical_split(
+        let percent_left = self.size_for_second_window(&status.tabs[0])?;
+        let win = self.vertical_split(
             &win_main_left,
             &win_second_left,
             Self::SELECTED_BORDER,
