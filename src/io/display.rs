@@ -19,12 +19,17 @@ use crate::io::read_last_log_line;
 use crate::log_info;
 use crate::modes::calculate_top_bottom;
 use crate::modes::parse_input_mode;
+use crate::modes::BinaryContent;
+use crate::modes::ColoredText;
 use crate::modes::ColoredTriplet;
 use crate::modes::ContentWindow;
+use crate::modes::HLContent;
 use crate::modes::LineDisplay;
 use crate::modes::MountRepr;
 use crate::modes::SelectableContent;
 use crate::modes::Trash;
+use crate::modes::TreePreview;
+use crate::modes::Ueberzug;
 use crate::modes::{fileinfo_attr, FileInfo};
 use crate::modes::{Display as DisplayMode, Edit, InputSimple, Navigate, NeedConfirmation};
 use crate::modes::{Preview, TextKind, Window};
@@ -34,6 +39,19 @@ macro_rules! enumerated_colored_iter {
     ($t:ident) => {
         std::iter::zip($t.iter().enumerate(), MENU_COLORS.iter().cycle())
             .map(|((index, line), attr)| (index, line, attr))
+    };
+}
+
+/// Draw every line of the preview
+macro_rules! impl_preview {
+    ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident, $window:ident, $height:ident) => {
+        for (i, line) in (*$text).window($window.top, $window.bottom, $length) {
+            let row = calc_line_row(i, $window);
+            if row > $height {
+                break;
+            }
+            $canvas.print(row, $line_number_width + 3, line)?;
+        }
     };
 }
 
@@ -68,15 +86,6 @@ const ATTR_YELLOW_BOLD: Attr = Attr {
     bg: Color::Default,
     effect: Effect::BOLD,
 };
-
-macro_rules! impl_preview {
-    ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident, $window:ident) => {
-        for (i, line) in (*$text).window($window.top, $window.bottom, $length) {
-            let row = calc_line_row(i, $window);
-            $canvas.print(row, $line_number_width + 3, line)?;
-        }
-    };
-}
 
 enum TabPosition {
     Left,
@@ -191,14 +200,14 @@ impl<'a> WinMain<'a> {
             owner_size = 0;
         }
 
-        for (i, file) in self
+        for (index, file) in self
             .tab
             .directory
             .enumerate()
             .take(min(len, self.tab.window.bottom))
             .skip(self.tab.window.top)
         {
-            self.draw_files_line(canvas, group_size, owner_size, i, file)?;
+            self.draw_files_line(canvas, group_size, owner_size, index, file)?;
         }
         Ok(())
     }
@@ -208,10 +217,13 @@ impl<'a> WinMain<'a> {
         canvas: &mut dyn Canvas,
         group_size: usize,
         owner_size: usize,
-        i: usize,
+        index: usize,
         file: &FileInfo,
     ) -> Result<()> {
-        let row = i + ContentWindow::WINDOW_MARGIN_TOP - self.tab.window.top;
+        let row = index + ContentWindow::WINDOW_MARGIN_TOP - self.tab.window.top;
+        if row > canvas.size()?.1 {
+            return Ok(());
+        }
         let mut attr = fileinfo_attr(file);
         let content = self.format_file_content(file, owner_size, group_size)?;
         self.print_as_flagged(canvas, row, &file.path, &mut attr)?;
@@ -263,13 +275,13 @@ impl<'a> WinMain<'a> {
         let (top, bottom) = calculate_top_bottom(selected_index, height);
         let length = content.len();
 
-        for (i, triplet) in content
+        for (index, triplet) in content
             .iter()
             .enumerate()
             .skip(top)
             .take(min(length, bottom + 1))
         {
-            self.draw_tree_line(canvas, left_margin, top, i, triplet)?;
+            self.draw_tree_line(canvas, left_margin, top, index, triplet)?;
         }
         Ok(selected_index)
     }
@@ -279,10 +291,13 @@ impl<'a> WinMain<'a> {
         canvas: &mut dyn Canvas,
         left_margin: usize,
         top: usize,
-        i: usize,
+        index: usize,
         colored_triplet: &ColoredTriplet,
     ) -> Result<()> {
-        let row = i + ContentWindow::WINDOW_MARGIN_TOP - top;
+        let row = index + ContentWindow::WINDOW_MARGIN_TOP - top;
+        if row > canvas.size()?.1 {
+            return Ok(());
+        }
 
         let (s_metadata, s_prefix, colored_filename) = colored_triplet;
 
@@ -295,7 +310,7 @@ impl<'a> WinMain<'a> {
             0
         };
 
-        let offset = if i == 0 { 1 } else { 0 };
+        let offset = if index == 0 { 1 } else { 0 };
         let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, s_prefix)?;
 
         canvas.print_with_attr(
@@ -335,94 +350,142 @@ impl<'a> WinMain<'a> {
     ) -> Result<Option<usize>> {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
+        let height = canvas.size()?.1;
         match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
-                for (i, vec_line) in (*syntaxed).window(window.top, window.bottom, length) {
-                    let row_position = calc_line_row(i, window);
-                    Self::draw_line_number(row_position, i + 1, canvas)?;
-                    for token in vec_line.iter() {
-                        token.print(canvas, row_position, line_number_width)?;
-                    }
-                }
+                self.draw_syntaxed(syntaxed, length, canvas, line_number_width, window)?
             }
-            Preview::Binary(bin) => {
-                let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
-
-                for (i, line) in (*bin).window(window.top, window.bottom, length) {
-                    let row = calc_line_row(i, window);
-
-                    canvas.print_with_attr(
-                        row,
-                        0,
-                        &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
-                        Self::ATTR_LINE_NR,
-                    )?;
-                    line.print_bytes(canvas, row, line_number_width_hex + 1);
-                    line.print_ascii(canvas, row, line_number_width_hex + 43);
-                }
-            }
-            Preview::Ueberzug(image) => {
-                let (width, height) = canvas.size()?;
-                image.match_index()?;
-                image.ueberzug(
-                    self.attributes.x_position as u16 + 2,
-                    3,
-                    width as u16 - 2,
-                    height as u16 - 2,
-                );
-            }
-            Preview::Directory(directory) => {
-                for (i, (_, prefix, colored_string)) in
-                    (directory).window(window.top, window.bottom, length)
-                {
-                    let row = calc_line_row(i, window);
-                    let col = canvas.print(row, line_number_width, prefix)?;
-
-                    canvas.print_with_attr(
-                        row,
-                        line_number_width + col + 1,
-                        &colored_string.text,
-                        colored_string.color_effect.attr(),
-                    )?;
-                }
+            Preview::Binary(bin) => self.draw_binary(bin, length, canvas, window)?,
+            Preview::Ueberzug(image) => self.draw_ueberzug(image, canvas)?,
+            Preview::Tree(tree_preview) => {
+                self.draw_tree_preview(tree_preview, length, canvas, line_number_width, window)?
             }
             Preview::ColoredText(colored_text) => {
-                for (i, line) in colored_text.window(window.top, window.bottom, length) {
-                    let row = calc_line_row(i, window);
-                    let mut col = 3;
-                    for (chr, attr) in skim::AnsiString::parse(line).iter() {
-                        col += canvas.print_with_attr(row, col, &chr.to_string(), attr)?;
-                    }
-                }
+                self.draw_colored_text(colored_text, length, canvas, window)?
             }
             Preview::Archive(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window)
+                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
             Preview::Media(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window)
+                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
             Preview::Text(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window)
+                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
             Preview::Diff(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window)
+                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
             Preview::Iso(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window)
+                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
             Preview::Socket(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window)
+                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
             Preview::BlockDevice(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window)
+                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
             Preview::FifoCharDevice(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window)
+                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
 
             Preview::Empty => (),
         }
         Ok(None)
+    }
+
+    fn draw_syntaxed(
+        &self,
+        syntaxed: &HLContent,
+        length: usize,
+        canvas: &mut dyn Canvas,
+        line_number_width: usize,
+        window: &ContentWindow,
+    ) -> Result<()> {
+        for (i, vec_line) in (*syntaxed).window(window.top, window.bottom, length) {
+            let row_position = calc_line_row(i, window);
+            Self::draw_line_number(row_position, i + 1, canvas)?;
+            for token in vec_line.iter() {
+                token.print(canvas, row_position, line_number_width)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn draw_binary(
+        &self,
+        bin: &BinaryContent,
+        length: usize,
+        canvas: &mut dyn Canvas,
+        window: &ContentWindow,
+    ) -> Result<()> {
+        let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
+
+        for (i, line) in (*bin).window(window.top, window.bottom, length) {
+            let row = calc_line_row(i, window);
+
+            canvas.print_with_attr(
+                row,
+                0,
+                &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
+                Self::ATTR_LINE_NR,
+            )?;
+            line.print_bytes(canvas, row, line_number_width_hex + 1);
+            line.print_ascii(canvas, row, line_number_width_hex + 43);
+        }
+        Ok(())
+    }
+
+    fn draw_ueberzug(&self, image: &Ueberzug, canvas: &mut dyn Canvas) -> Result<()> {
+        let (width, height) = canvas.size()?;
+        image.match_index()?;
+        image.ueberzug(
+            self.attributes.x_position as u16 + 2,
+            3,
+            width as u16 - 2,
+            height as u16 - 2,
+        );
+        Ok(())
+    }
+
+    fn draw_tree_preview(
+        &self,
+        tree_preview: &TreePreview,
+        length: usize,
+        canvas: &mut dyn Canvas,
+        line_number_width: usize,
+        window: &ContentWindow,
+    ) -> Result<()> {
+        for (i, (_, prefix, colored_string)) in
+            (tree_preview).window(window.top, window.bottom, length)
+        {
+            let row = calc_line_row(i, window);
+            let col = canvas.print(row, line_number_width, prefix)?;
+
+            canvas.print_with_attr(
+                row,
+                line_number_width + col + 1,
+                &colored_string.text,
+                colored_string.color_effect.attr(),
+            )?;
+        }
+        Ok(())
+    }
+
+    fn draw_colored_text(
+        &self,
+        colored_text: &ColoredText,
+        length: usize,
+        canvas: &mut dyn Canvas,
+        window: &ContentWindow,
+    ) -> Result<()> {
+        for (i, line) in colored_text.window(window.top, window.bottom, length) {
+            let row = calc_line_row(i, window);
+            let mut col = 3;
+            for (chr, attr) in skim::AnsiString::parse(line).iter() {
+                col += canvas.print_with_attr(row, col, &chr.to_string(), attr)?;
+            }
+        }
+        Ok(())
     }
 
     fn draw_preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> Result<()> {

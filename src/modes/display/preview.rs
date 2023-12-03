@@ -97,7 +97,7 @@ pub enum Preview {
     Archive(ArchiveContent),
     Ueberzug(Ueberzug),
     Media(MediaContent),
-    Directory(Directory),
+    Tree(TreePreview),
     Iso(Iso),
     Diff(Diff),
     ColoredText(ColoredText),
@@ -121,10 +121,7 @@ impl Preview {
     /// It explores recursivelly the directory and creates a tree.
     /// The recursive exploration is limited to depth 2.
     pub fn directory(file_info: &FileInfo, users: &Users) -> Result<Self> {
-        Ok(Self::Directory(Directory::new(
-            file_info.path.clone(),
-            users,
-        )))
+        Ok(Self::Tree(TreePreview::new(file_info.path.clone(), users)))
     }
 
     /// Creates a new preview instance based on the filekind and the extension of
@@ -313,7 +310,7 @@ impl Preview {
             Self::Archive(zip) => zip.len(),
             Self::Ueberzug(ueberzug) => ueberzug.len(),
             Self::Media(media) => media.len(),
-            Self::Directory(directory) => directory.len(),
+            Self::Tree(directory) => directory.len(),
             Self::Diff(diff) => diff.len(),
             Self::Iso(iso) => iso.len(),
             Self::ColoredText(text) => text.len(),
@@ -1038,15 +1035,15 @@ impl ColoredText {
     }
 }
 
-/// Display a tree view of a directory.
+/// Display a preview of a filetree
 /// The "tree view" is calculated recursively. It may take some time
 /// if the directory has a lot of children.
 #[derive(Clone, Debug)]
-pub struct Directory {
+pub struct TreePreview {
     pub content: Vec<ColoredTriplet>,
 }
 
-impl Directory {
+impl TreePreview {
     pub fn new(path: std::rc::Rc<Path>, users: &Users) -> Self {
         let tree = Tree::new(
             path,
@@ -1195,7 +1192,7 @@ impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
 impl_window!(ArchiveContent, String);
 impl_window!(MediaContent, String);
-impl_window!(Directory, ColoredTriplet);
+impl_window!(TreePreview, ColoredTriplet);
 impl_window!(Diff, String);
 impl_window!(Iso, String);
 impl_window!(ColoredText, String);
