@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::Path;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 use anyhow::Result;
 
@@ -44,29 +44,28 @@ impl ColoredString {
 #[derive(Debug, Clone)]
 pub struct Node {
     path: Rc<Path>,
+    prev: Rc<Path>,
+    next: Rc<Path>,
+    index: usize,
     children: Option<Vec<Rc<Path>>>,
     folded: bool,
     selected: bool,
     reachable: bool,
-    prev: Weak<Path>,
-    next: Weak<Path>,
-    index: usize,
 }
 
 impl Node {
     /// Creates a new Node from a path and its children.
     /// By default it's not selected nor folded.
-    fn new(path: &Path, children: Option<Vec<Rc<Path>>>, index: usize) -> Self {
-        let path: Rc<Path> = Rc::from(path);
+    fn new(path: &Path, children: Option<Vec<Rc<Path>>>, prev: &Path, index: usize) -> Self {
         Self {
-            path: path.clone(),
+            path: Rc::from(path),
+            prev: Rc::from(prev),
+            next: Rc::from(Path::new("")),
+            index,
             children,
             folded: false,
             selected: false,
             reachable: true,
-            next: Rc::downgrade(&path),
-            prev: Rc::downgrade(&path),
-            index,
         }
     }
 
@@ -164,10 +163,8 @@ pub struct Tree {
     required_height: usize,
 }
 
-impl Tree {
-    pub const DEFAULT_REQUIRED_HEIGHT: usize = 80;
-
-    pub fn default() -> Self {
+impl Default for Tree {
+    fn default() -> Self {
         Self {
             root_path: Rc::from(Path::new("")),
             selected: Rc::from(Path::new("")),
@@ -175,6 +172,10 @@ impl Tree {
             required_height: 0,
         }
     }
+}
+
+impl Tree {
+    pub const DEFAULT_REQUIRED_HEIGHT: usize = 80;
 
     /// Creates a new tree, exploring every node until depth is reached.
     pub fn new(
@@ -202,7 +203,6 @@ impl Tree {
         }
     }
 
-    // TODO: refactor into small functions
     #[inline]
     fn make_nodes(
         root_path: Rc<Path>,
@@ -238,14 +238,14 @@ impl Tree {
                 } else {
                     None
                 };
-            let current_node = Node::new(&current_path, children, index);
+            let current_node = Node::new(&current_path, children, &last_path, index);
             Self::set_next_for_last(&mut nodes, &current_path, &last_path);
-            last_path = current_path.to_owned();
+            last_path = current_path.clone();
             nodes.insert(current_path, current_node);
             index += 1;
         }
         Self::set_prev_for_root(&mut nodes, &root_path, &last_path);
-        Self::set_next_for_last(&mut nodes, &root_path, &last_path);
+        // Self::set_next_for_last(&mut nodes, &root_path, &last_path);
         nodes
     }
 
@@ -254,14 +254,14 @@ impl Tree {
         let Some(root_node) = nodes.get_mut(root_path) else {
             unreachable!("root_path should be in nodes");
         };
-        root_node.prev = Rc::downgrade(&Rc::from(last_path));
+        root_node.prev = Rc::from(last_path);
         root_node.select();
     }
 
     #[inline]
     fn set_next_for_last(nodes: &mut HashMap<Rc<Path>, Node>, root_path: &Path, last_path: &Path) {
         if let Some(last_node) = nodes.get_mut(last_path) {
-            last_node.next = Rc::downgrade(&Rc::from(root_path));
+            last_node.next = Rc::from(root_path);
         };
     }
 
@@ -355,6 +355,7 @@ impl Tree {
     fn select_next(&mut self) {
         let next_path = self.find_next_path();
         self.select_path(&next_path, false);
+        drop(next_path);
         self.increment_required_height()
     }
 
@@ -362,11 +363,9 @@ impl Tree {
         let mut current_path: Rc<Path> = self.selected.clone();
         loop {
             if let Some(current_node) = self.nodes.get(&current_path) {
-                let Some(next_path) = &current_node.next.upgrade() else {
-                    unreachable!("shouldn't be dropped");
-                };
+                let next_path = &current_node.next;
                 let Some(next_node) = self.nodes.get(next_path) else {
-                    unreachable!("");
+                    return self.root_path.clone();
                 };
                 if next_node.reachable {
                     return next_path.to_owned();
@@ -382,6 +381,7 @@ impl Tree {
         let must_increase = self.is_on_root();
         let previous_path = self.find_prev_path();
         self.select_path(&previous_path, false);
+        drop(previous_path);
         if must_increase {
             self.set_required_height_to_max()
         } else {
@@ -393,10 +393,8 @@ impl Tree {
         let mut current_path = self.selected.to_owned();
         loop {
             if let Some(current_node) = self.nodes.get(&current_path) {
-                let Some(prev_path) = current_node.prev.upgrade() else {
-                    unreachable!("shouldn't be dropped");
-                };
-                let Some(prev_node) = self.nodes.get(&prev_path) else {
+                let prev_path = &current_node.prev;
+                let Some(prev_node) = self.nodes.get(prev_path) else {
                     unreachable!("");
                 };
                 if prev_node.reachable {

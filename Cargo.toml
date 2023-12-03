@@ -12,7 +12,7 @@ categories = ["command-line-utilities", "filesystem", "os::unix-apis"]
 documentation = "https://docs.rs/fm-tui/latest/"
 
 [profile.release]
-strip = true  # Automatically strip symbols from the binary.
+# strip = true  # Automatically strip symbols from the binary.
 lto = true # instructs the linker to optimize at the link stage.
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
