@@ -21,7 +21,7 @@ use crate::modes::{ColoredTriplet, MakeTriplet};
 pub struct ColoredString {
     /// A text to be printed. In most case, it should be a filename.
     pub text: String,
-    /// A tuikit::attr::Attr (fg, bg, effect) to enhance the text.
+    /// A pair of [`tuikit::attr::Color`] and [`tuikit::attr::Effect`] used to enhance the text.
     pub color_effect: ColorEffect,
     /// The complete path of this string.
     pub path: Rc<Path>,
