@@ -17,7 +17,6 @@ use crate::common::{
 };
 use crate::io::read_last_log_line;
 use crate::log_info;
-use crate::modes::calculate_top_bottom;
 use crate::modes::fileinfo_attr;
 use crate::modes::parse_input_mode;
 use crate::modes::BinaryContent;
@@ -40,6 +39,7 @@ use crate::modes::Trash;
 use crate::modes::TreePreview;
 use crate::modes::Ueberzug;
 use crate::modes::Window;
+use crate::modes::{calculate_top_bottom, TreeLineMaker};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -288,19 +288,61 @@ impl<'a> WinMain<'a> {
             3
         };
         let height = canvas.height()?;
-        let (selected_index, content) = self.tab.tree.into_navigable_content(&self.tab.users);
+        let (selected_index, content) = self.tab.tree.content(&self.tab.users);
+        // let (selected_index, content) = self.tab.tree.into_navigable_content(&self.tab.users);
         let (top, bottom) = calculate_top_bottom(selected_index, height);
         let length = content.len();
 
-        for (index, triplet) in content
+        // for (index, triplet) in content
+        for (index, wonder) in content
             .iter()
             .enumerate()
             .skip(top)
             .take(min(length, bottom + 1))
         {
-            self.draw_tree_line(canvas, left_margin, top, index, triplet, height)?;
+            // self.draw_tree_line(canvas, left_margin, top, index, triplet, height)?;
+            self.draw_tree_maker(canvas, left_margin, top, index, wonder, height)?;
         }
         Ok(selected_index)
+    }
+
+    fn draw_tree_maker(
+        &self,
+        canvas: &mut dyn Canvas,
+        left_margin: usize,
+        top: usize,
+        index: usize,
+        wonder: &TreeLineMaker,
+        height: usize,
+    ) -> Result<()> {
+        let row = index + ContentWindow::WINDOW_MARGIN_TOP - top;
+        if row > height {
+            return Ok(());
+        }
+
+        let s_metadata = wonder.metadata();
+        let s_prefix = wonder.prefix();
+        let mut attr = wonder.attr();
+        let path = wonder.path();
+
+        self.print_as_flagged(canvas, row, &path, &mut attr)?;
+
+        let col_metadata = if self.status.display_settings.metadata {
+            canvas.print_with_attr(row, left_margin, &s_metadata, attr)?
+        } else {
+            0
+        };
+
+        let offset = if index == 0 { 1 } else { 0 };
+        let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, s_prefix)?;
+
+        canvas.print_with_attr(
+            row,
+            left_margin + col_metadata + col_tree_prefix + offset,
+            &wonder.format_fileline(),
+            attr,
+        )?;
+        Ok(())
     }
 
     fn draw_tree_line(

@@ -20,6 +20,7 @@ use crate::common::{
 };
 use crate::log_info;
 use crate::modes::ContentWindow;
+use crate::modes::Node;
 use crate::modes::Users;
 use crate::modes::{ColorEffect, FileInfo, FileKind};
 use crate::modes::{ColoredString, Tree};

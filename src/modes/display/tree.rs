@@ -673,6 +673,46 @@ impl Tree {
             stack.push((other_prefix.clone(), leaf));
         }
     }
+
+    pub fn content(&self, users: &Users) -> (usize, Vec<TreeLineMaker>) {
+        let mut stack = vec![("".to_owned(), self.root_path.borrow())];
+        let mut content = vec![];
+        let mut selected_index = 0;
+
+        while let Some((prefix, path)) = stack.pop() {
+            let Some(node) = self.nodes.get(path) else {
+                continue;
+            };
+
+            if node.selected {
+                selected_index = content.len();
+            }
+
+            let Ok(fileinfo) = FileInfo::new(path, users) else {
+                continue;
+            };
+
+            content.push(
+                TreeLineMaker::new(&fileinfo, &prefix, node, path),
+                // <ColoredTriplet as MakeTriplet>::make(
+                // &fileinfo,
+                // &prefix,
+                // filename_format(path, node),
+                // ColorEffect::node(&fileinfo, node.selected()),
+                // path,
+                // )
+            );
+
+            if node.have_children() {
+                Self::stack_children(&mut stack, prefix, node);
+            }
+
+            if content.len() > self.required_height {
+                break;
+            }
+        }
+        (selected_index, content)
+    }
 }
 
 #[inline]
@@ -731,4 +771,51 @@ fn path_filename_contains(path: &Path, pattern: &str) -> bool {
         .unwrap_or_default()
         .to_string_lossy()
         .contains(pattern)
+}
+
+pub struct TreeLineMaker<'a> {
+    node: &'a Node,
+    prefix: std::rc::Rc<str>,
+    path: std::rc::Rc<Path>,
+    color_effect: ColorEffect,
+    metadata: String,
+}
+
+impl<'a> TreeLineMaker<'a> {
+    fn new(fileinfo: &FileInfo, prefix: &str, node: &'a Node, path: &Path) -> Self {
+        let color_effect = ColorEffect::node(fileinfo, node.selected());
+        let prefix = Rc::from(prefix);
+        let path = Rc::from(path);
+        let metadata = fileinfo
+            .format_no_filename()
+            .unwrap_or_else(|_| "?".repeat(19));
+
+        Self {
+            node,
+            prefix,
+            path,
+            color_effect,
+            metadata,
+        }
+    }
+
+    pub fn format_fileline(&self) -> String {
+        filename_format(&self.path, &self.node)
+    }
+
+    pub fn attr(&self) -> tuikit::attr::Attr {
+        self.color_effect.attr()
+    }
+
+    pub fn prefix(&self) -> &str {
+        self.prefix.borrow()
+    }
+
+    pub fn path(&self) -> &Path {
+        self.path.borrow()
+    }
+
+    pub fn metadata(&self) -> &str {
+        self.metadata.as_str()
+    }
 }
