@@ -608,7 +608,7 @@ impl Tree {
                 &fileinfo,
                 &prefix,
                 filename_format(path, node),
-                ColorEffect::node(&fileinfo, node),
+                ColorEffect::node(&fileinfo, node.selected()),
                 path,
             ));
 

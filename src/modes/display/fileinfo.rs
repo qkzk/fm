@@ -12,8 +12,8 @@ use crate::common::PERMISSIONS_STR;
 use crate::config::extension_color;
 use crate::config::COLORS;
 use crate::modes::Users;
+use crate::modes::MAX_MODE;
 use crate::modes::{human_size, read_symlink_dest};
-use crate::modes::{Node, MAX_MODE};
 
 type Valid = bool;
 
@@ -313,8 +313,9 @@ pub struct ColorEffect {
 
 impl ColorEffect {
     /// Calculates a color and an effect from `fm::file_info::FileInfo`.
+    /// Used in `Display::Directory` mode where selection is stored in fileinfo itself.
     #[inline]
-    pub fn new(fileinfo: &FileInfo) -> ColorEffect {
+    pub fn directory(fileinfo: &FileInfo) -> ColorEffect {
         let color = fileinfo_color(fileinfo);
 
         let effect = if fileinfo.is_selected {
@@ -326,13 +327,18 @@ impl ColorEffect {
         Self { color, effect }
     }
 
+    /// Calculates a color and an effect from `crate::app::file_info` and a flag.
+    /// The "selected file" is stored in the node itself, we only need that boolean attribute.
     #[inline]
-    pub fn node(fileinfo: &FileInfo, current_node: &Node) -> Self {
-        let mut color_effect = Self::new(fileinfo);
-        if current_node.selected() {
-            color_effect.effect |= Effect::REVERSE;
-        }
-        color_effect
+    pub fn node(fileinfo: &FileInfo, is_selected: bool) -> Self {
+        let color = fileinfo_color(fileinfo);
+        let effect = if is_selected {
+            Effect::REVERSE
+        } else {
+            Effect::empty()
+        };
+
+        Self { color, effect }
     }
 
     /// Makes a new `tuikit::attr::Attr` where `bg` is default.
@@ -349,7 +355,7 @@ impl ColorEffect {
 /// effect.
 /// Selected file is reversed.
 pub fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
-    ColorEffect::new(fileinfo).attr()
+    ColorEffect::directory(fileinfo).attr()
 }
 
 /// True if the file isn't hidden.
