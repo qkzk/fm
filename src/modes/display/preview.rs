@@ -1118,9 +1118,9 @@ macro_rules! impl_window {
     };
 }
 
-/// A tuple with `(ColoredString, String, ColoredString)`.
+/// A tuple with `(String, std::rc::Rc<str>, ColoredString)`.
 /// Used to iter and impl window trait in tree mode.
-pub type ColoredTriplet = (String, String, ColoredString);
+pub type ColoredTriplet = (String, std::rc::Rc<str>, ColoredString);
 
 pub trait MakeTriplet {
     fn make(
@@ -1140,10 +1140,10 @@ impl MakeTriplet for ColoredTriplet {
         filename_text: String,
         color_effect: ColorEffect,
         current_path: &std::path::Path,
-    ) -> ColoredTriplet {
+    ) -> Self {
         (
             fileinfo.format_no_filename().unwrap_or_default(),
-            prefix.to_owned(),
+            std::rc::Rc::from(prefix),
             ColoredString::new(filename_text, color_effect, std::rc::Rc::from(current_path)),
         )
     }
