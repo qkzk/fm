@@ -9,7 +9,7 @@ use crate::log_info;
 use crate::log_line;
 use crate::modes::ShellCommandParser;
 
-/// A command line command.
+/// A command line application launcher.
 /// It's constructed from a line in [`crate::common::CLI_INFO`].
 /// Each command has a short description, a name (first word of second element)
 /// and a list of parsable parameters.
