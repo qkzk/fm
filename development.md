@@ -681,9 +681,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] merge
   - [x] remove specific commands
   - [ ] ensure diff only use first 2 files (???)
+- [x] don't store as much info while parsing tree content. Be as lazy as possible.
 
 ## TODO
 
+- [ ] right click context menu (rename, toggle flag, delete, trash, chmod, fold ?)
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
 - [ ] Only store one Selectable thing in status
 - [ ] use `Rc<str>` instead of string to avoid copying
