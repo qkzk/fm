@@ -2,7 +2,7 @@ use std::cmp::min;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
@@ -287,19 +287,19 @@ impl<'a> WinMain<'a> {
             2
         };
         let height = canvas.height()?;
-        let (selected_index, content) = self.tab.tree.content(&self.tab.users);
-        // let (selected_index, content) = self.tab.tree.into_navigable_content(&self.tab.users);
+        let (selected_index, content) = self
+            .tab
+            .tree
+            .content(&self.tab.users, self.status.display_settings.metadata);
         let (top, bottom) = calculate_top_bottom(selected_index, height);
         let length = content.len();
 
-        // for (index, triplet) in content
         for (index, wonder) in content
             .iter()
             .enumerate()
             .skip(top)
             .take(min(length, bottom + 0))
         {
-            // self.draw_tree_line(canvas, left_margin, top, index, triplet, height)?;
             self.draw_tree_maker(
                 canvas,
                 left_margin,
@@ -328,7 +328,6 @@ impl<'a> WinMain<'a> {
             return Ok(());
         }
 
-        let s_metadata = tree_line_maker.metadata();
         let s_prefix = tree_line_maker.prefix();
         let mut attr = tree_line_maker.attr();
         let path = tree_line_maker.path();
@@ -336,6 +335,9 @@ impl<'a> WinMain<'a> {
         self.print_as_flagged(canvas, row, &path, &mut attr)?;
 
         let col_metadata = if display_medatadata {
+            let Some(s_metadata) = tree_line_maker.metadata() else {
+                return Err(anyhow!("Metadata should be set."));
+            };
             canvas.print_with_attr(row, left_margin, &s_metadata, attr)?
         } else {
             0
@@ -347,7 +349,7 @@ impl<'a> WinMain<'a> {
         canvas.print_with_attr(
             row,
             left_margin + col_metadata + col_tree_prefix + offset,
-            &tree_line_maker.format_fileline(),
+            &tree_line_maker.filename(),
             attr,
         )?;
         Ok(())
@@ -478,7 +480,7 @@ impl<'a> WinMain<'a> {
 
     fn draw_tree_preview(&self, tree_preview: &TreePreview, canvas: &mut dyn Canvas) -> Result<()> {
         let height = canvas.height()?;
-        let (selected_index, content) = tree_preview.tree.content(&self.tab.users);
+        let (selected_index, content) = tree_preview.tree.content(&self.tab.users, false);
         let (top, bottom) = calculate_top_bottom(selected_index, height);
         let length = content.len();
 

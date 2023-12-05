@@ -598,7 +598,7 @@ impl Tree {
     ///     an access to the user list.
     ///     The prefix (straight lines displaying targets) must also be calcuated immediatly.
     ///     Name format is calculated on the fly.
-    pub fn content(&self, users: &Users) -> (usize, Vec<TreeLineMaker>) {
+    pub fn content(&self, users: &Users, display_metadata: bool) -> (usize, Vec<TreeLineMaker>) {
         let mut stack = vec![("".to_owned(), self.root_path.borrow())];
         let mut content = vec![];
         let mut selected_index = 0;
@@ -616,7 +616,13 @@ impl Tree {
                 continue;
             };
 
-            content.push(TreeLineMaker::new(&fileinfo, &prefix, node, path));
+            content.push(TreeLineMaker::new(
+                &fileinfo,
+                &prefix,
+                node,
+                path,
+                display_metadata,
+            ));
 
             if node.have_children() {
                 Self::stack_children(&mut stack, prefix, node);
@@ -739,22 +745,37 @@ fn path_filename_contains(path: &Path, pattern: &str) -> bool {
         .contains(pattern)
 }
 
+/// Holds a few references used to display a tree line
+/// Only the metadata info is hold.
 pub struct TreeLineMaker<'a> {
     node: &'a Node,
     prefix: std::rc::Rc<str>,
     path: std::rc::Rc<Path>,
     color_effect: ColorEffect,
-    metadata: String,
+    metadata: Option<String>,
 }
 
 impl<'a> TreeLineMaker<'a> {
-    fn new(fileinfo: &FileInfo, prefix: &str, node: &'a Node, path: &Path) -> Self {
+    /// Uses references to fileinfo, prefix, node & path to create a `TreeLineMaker`.
+    fn new(
+        fileinfo: &FileInfo,
+        prefix: &str,
+        node: &'a Node,
+        path: &Path,
+        display_metadata: bool,
+    ) -> Self {
         let color_effect = ColorEffect::node(fileinfo, node.selected());
         let prefix = Rc::from(prefix);
         let path = Rc::from(path);
-        let metadata = fileinfo
-            .format_no_filename()
-            .unwrap_or_else(|_| "?".repeat(19));
+        let metadata = if display_metadata {
+            Some(
+                fileinfo
+                    .format_no_filename()
+                    .unwrap_or_else(|_| "?".repeat(19)),
+            )
+        } else {
+            None
+        };
 
         Self {
             node,
@@ -765,7 +786,7 @@ impl<'a> TreeLineMaker<'a> {
         }
     }
 
-    pub fn format_fileline(&self) -> String {
+    pub fn filename(&self) -> String {
         filename_format(&self.path, &self.node)
     }
 
@@ -781,7 +802,7 @@ impl<'a> TreeLineMaker<'a> {
         self.path.borrow()
     }
 
-    pub fn metadata(&self) -> &str {
-        self.metadata.as_str()
+    pub fn metadata(&self) -> &Option<String> {
+        &self.metadata
     }
 }
