@@ -9,6 +9,7 @@ use crate::modes::Bulk;
 use crate::modes::CliApplications;
 use crate::modes::Completion;
 use crate::modes::Compresser;
+use crate::modes::ContextMenu;
 use crate::modes::CryptoDeviceOpener;
 use crate::modes::Edit;
 use crate::modes::Flagged;
@@ -34,7 +35,7 @@ pub struct Menu {
     /// Compression methods
     pub compression: Compresser,
     /// Cotext menu
-    pub context: Context;
+    pub context: ContextMenu,
     /// Encrypted devices opener
     pub encrypted_devices: CryptoDeviceOpener,
     /// The flagged files
@@ -64,7 +65,7 @@ impl Menu {
         Ok(Self {
             sudo_command: None,
             compression: Compresser::default(),
-            contet: Context::default(),
+            context: ContextMenu::default(),
             cli_applications: CliApplications::default(),
             tui_applications: TuiApplications::new(TUIS_PATH),
             removable_devices: None,

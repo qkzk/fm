@@ -44,10 +44,14 @@ impl EventDispatcher {
             Key::SingleClick(MouseButton::Left, row, col) => {
                 EventAction::left_click(status, &self.binds, row, col)?
             }
-            Key::SingleClick(MouseButton::Right, row, col)
-            | Key::DoubleClick(MouseButton::Left, row, col) => {
-                EventAction::right_click(status, row, col)?
+            Key::DoubleClick(MouseButton::Left, row, col) => {
+                EventAction::double_click(status, row, col)?
             }
+            Key::SingleClick(MouseButton::Right, row, col) => {
+                EventAction::left_click(status, &self.binds, row, col)?;
+                EventAction::context(status)?
+            }
+
             // reserved keybind which can't be bound to anything.
             // using `Key::User(())` conflicts with skim internal which
             // interpret this event as a signal(1)

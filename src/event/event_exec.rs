@@ -556,6 +556,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Shortcut) => status.menu.shortcut.prev(),
             Edit::Navigate(Navigate::Marks(_)) => status.menu.marks.prev(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.prev(),
+            Edit::Navigate(Navigate::Context) => status.menu.context.prev(),
             Edit::Navigate(Navigate::Bulk) => status.menu.bulk_prev(),
             Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.prev(),
             Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.prev(),
@@ -596,6 +597,7 @@ impl EventAction {
             Edit::Navigate(Navigate::Shortcut) => status.menu.shortcut.next(),
             Edit::Navigate(Navigate::Marks(_)) => status.menu.marks.next(),
             Edit::Navigate(Navigate::Compress) => status.menu.compression.next(),
+            Edit::Navigate(Navigate::Context) => status.menu.context.next(),
             Edit::Navigate(Navigate::Bulk) => status.menu.bulk_next(),
             Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.next(),
             Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.next(),
@@ -666,7 +668,7 @@ impl EventAction {
     }
 
     /// A right click opens a file or a directory.
-    pub fn right_click(status: &mut Status, row: u16, col: u16) -> Result<()> {
+    pub fn double_click(status: &mut Status, row: u16, col: u16) -> Result<()> {
         if let Ok(()) = EventAction::click_file(status, row, col) {
             EventAction::enter_file(status)?;
         };
@@ -919,6 +921,14 @@ impl EventAction {
         status
             .current_tab_mut()
             .set_edit_mode(Edit::Navigate(Navigate::Compress));
+        Ok(())
+    }
+
+    pub fn context(status: &mut Status) -> Result<()> {
+        status.menu.context.reset();
+        status
+            .current_tab_mut()
+            .set_edit_mode(Edit::Navigate(Navigate::Context));
         Ok(())
     }
 

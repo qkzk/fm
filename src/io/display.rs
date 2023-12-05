@@ -768,6 +768,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::Bulk => self.draw_bulk(canvas),
             Navigate::CliApplication => self.draw_cli_info(canvas),
             Navigate::Compress => self.draw_compress(canvas),
+            Navigate::Context => self.draw_context(canvas),
             Navigate::EncryptedDrive => self.draw_encrypted_drive(canvas),
             Navigate::History => self.draw_history(canvas),
             Navigate::Jump => self.draw_destination(canvas, &self.status.menu.flagged),
@@ -858,6 +859,17 @@ impl<'a> WinSecondary<'a> {
         for (row, compression_method, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);
             Self::draw_content_line(canvas, row + 3, &compression_method.to_string(), attr)?;
+        }
+        Ok(())
+    }
+
+    fn draw_context(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let selectable = &self.status.menu.context;
+        canvas.print_with_attr(2, 2, "Pick an action.", Self::ATTR_YELLOW)?;
+        let content = selectable.content();
+        for (row, desc, attr) in enumerated_colored_iter!(content) {
+            let attr = selectable.attr(row, attr);
+            Self::draw_content_line(canvas, row + 3, &desc.to_string(), attr)?;
         }
         Ok(())
     }

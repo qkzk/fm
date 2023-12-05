@@ -682,6 +682,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] remove specific commands
   - [ ] ensure diff only use first 2 files (???)
 - [x] don't store as much info while parsing tree content. Be as lazy as possible.
+- [x] Context menu (right click, alt+t) with most common actions
 
 ## TODO
 

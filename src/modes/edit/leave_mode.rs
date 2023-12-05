@@ -11,6 +11,7 @@ use crate::common::string_to_path;
 use crate::common::SSHFS_EXECUTABLE;
 use crate::config::Bindings;
 use crate::event::ActionMap;
+use crate::event::EventAction;
 use crate::io::execute_and_capture_output_with_path;
 use crate::io::execute_custom;
 use crate::log_info;
@@ -76,6 +77,11 @@ impl LeaveMode {
             Edit::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMode::marks_update(status)?,
             Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMode::marks_jump(status)?,
             Edit::Navigate(Navigate::Compress) => LeaveMode::compress(status)?,
+            Edit::Navigate(Navigate::Context) => {
+                must_reset_mode = false;
+                must_refresh = false;
+                LeaveMode::context(status, binds)?
+            }
             Edit::Navigate(Navigate::RemovableDevices) => (),
             Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status)?,
             Edit::InputCompleted(InputCompleted::Search) => {
@@ -374,6 +380,13 @@ impl LeaveMode {
             .menu
             .compression
             .compress(files_with_relative_paths, here)
+    }
+
+    /// Open a menu with most common actions
+    pub fn context(status: &mut Status, binds: &Bindings) -> Result<()> {
+        let command = status.menu.context.matcher().to_owned();
+        EventAction::reset_mode(status)?;
+        command.matcher(status, binds)
     }
 
     /// Execute the selected command.
