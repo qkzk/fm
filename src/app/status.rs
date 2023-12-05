@@ -138,6 +138,25 @@ impl Status {
         self.internal_settings.must_quit
     }
 
+    fn which_quadrant_clicked(&self, col: usize, row: usize) -> Result<(usize, usize)> {
+        let (width, height) = self.term_size()?;
+        Ok((col / (width / 2), row / (height / 2)))
+    }
+
+    /// Returns the coordinates of the window containing `(col, row)`.
+    /// The first number is the tab index (0 or 1).
+    /// The second number is either 0 for main window or 1 for second window.
+    pub fn which_window_clicked(&self, col: usize, row: usize) -> Result<(usize, usize)> {
+        let (mut tab_index, mut win_pos) = self.which_quadrant_clicked(col, row)?;
+        if !self.display_settings.dual {
+            tab_index = 0;
+        }
+        if !self.tabs[tab_index].need_second_window() {
+            win_pos = 0;
+        }
+        Ok((tab_index, win_pos))
+    }
+
     /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn next(&mut self) {
         if !self.display_settings.dual {
