@@ -21,7 +21,6 @@ use crate::modes::fileinfo_attr;
 use crate::modes::parse_input_mode;
 use crate::modes::BinaryContent;
 use crate::modes::ColoredText;
-use crate::modes::ColoredTriplet;
 use crate::modes::ContentWindow;
 use crate::modes::Display as DisplayMode;
 use crate::modes::Edit;
@@ -283,9 +282,9 @@ impl<'a> WinMain<'a> {
 
     fn draw_tree_content(&self, canvas: &mut dyn Canvas) -> Result<usize> {
         let left_margin = if self.status.display_settings.metadata {
-            1
+            0
         } else {
-            3
+            2
         };
         let height = canvas.height()?;
         let (selected_index, content) = self.tab.tree.content(&self.tab.users);
@@ -298,10 +297,18 @@ impl<'a> WinMain<'a> {
             .iter()
             .enumerate()
             .skip(top)
-            .take(min(length, bottom + 1))
+            .take(min(length, bottom + 0))
         {
             // self.draw_tree_line(canvas, left_margin, top, index, triplet, height)?;
-            self.draw_tree_maker(canvas, left_margin, top, index, wonder, height)?;
+            self.draw_tree_maker(
+                canvas,
+                left_margin,
+                top,
+                index,
+                wonder,
+                height,
+                self.status.display_settings.metadata,
+            )?;
         }
         Ok(selected_index)
     }
@@ -312,22 +319,23 @@ impl<'a> WinMain<'a> {
         left_margin: usize,
         top: usize,
         index: usize,
-        wonder: &TreeLineMaker,
+        tree_line_maker: &TreeLineMaker,
         height: usize,
+        display_medatadata: bool,
     ) -> Result<()> {
         let row = index + ContentWindow::WINDOW_MARGIN_TOP - top;
         if row > height {
             return Ok(());
         }
 
-        let s_metadata = wonder.metadata();
-        let s_prefix = wonder.prefix();
-        let mut attr = wonder.attr();
-        let path = wonder.path();
+        let s_metadata = tree_line_maker.metadata();
+        let s_prefix = tree_line_maker.prefix();
+        let mut attr = tree_line_maker.attr();
+        let path = tree_line_maker.path();
 
         self.print_as_flagged(canvas, row, &path, &mut attr)?;
 
-        let col_metadata = if self.status.display_settings.metadata {
+        let col_metadata = if display_medatadata {
             canvas.print_with_attr(row, left_margin, &s_metadata, attr)?
         } else {
             0
@@ -339,44 +347,7 @@ impl<'a> WinMain<'a> {
         canvas.print_with_attr(
             row,
             left_margin + col_metadata + col_tree_prefix + offset,
-            &wonder.format_fileline(),
-            attr,
-        )?;
-        Ok(())
-    }
-
-    fn draw_tree_line(
-        &self,
-        canvas: &mut dyn Canvas,
-        left_margin: usize,
-        top: usize,
-        index: usize,
-        colored_triplet: &ColoredTriplet,
-        height: usize,
-    ) -> Result<()> {
-        let row = index + ContentWindow::WINDOW_MARGIN_TOP - top;
-        if row > height {
-            return Ok(());
-        }
-
-        let (s_metadata, s_prefix, colored_filename) = colored_triplet;
-
-        let mut attr = colored_filename.color_effect.attr();
-        self.print_as_flagged(canvas, row, &colored_filename.path, &mut attr)?;
-
-        let col_metadata = if self.status.display_settings.metadata {
-            canvas.print_with_attr(row, left_margin, s_metadata, attr)?
-        } else {
-            0
-        };
-
-        let offset = if index == 0 { 1 } else { 0 };
-        let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, s_prefix)?;
-
-        canvas.print_with_attr(
-            row,
-            left_margin + col_metadata + col_tree_prefix + offset,
-            &colored_filename.text,
+            &tree_line_maker.format_fileline(),
             attr,
         )?;
         Ok(())
@@ -417,9 +388,7 @@ impl<'a> WinMain<'a> {
             }
             Preview::Binary(bin) => self.draw_binary(bin, length, canvas, window)?,
             Preview::Ueberzug(image) => self.draw_ueberzug(image, canvas)?,
-            Preview::Tree(tree_preview) => {
-                self.draw_tree_preview(tree_preview, length, canvas, line_number_width, window)?
-            }
+            Preview::Tree(tree_preview) => self.draw_tree_preview(tree_preview, canvas)?,
             Preview::ColoredText(colored_text) => {
                 self.draw_colored_text(colored_text, length, canvas, window)?
             }
@@ -507,30 +476,19 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn draw_tree_preview(
-        &self,
-        tree_preview: &TreePreview,
-        length: usize,
-        canvas: &mut dyn Canvas,
-        line_number_width: usize,
-        window: &ContentWindow,
-    ) -> Result<()> {
+    fn draw_tree_preview(&self, tree_preview: &TreePreview, canvas: &mut dyn Canvas) -> Result<()> {
         let height = canvas.height()?;
-        for (i, (_, prefix, colored_string)) in
-            (tree_preview).window(window.top, window.bottom, length)
-        {
-            let row = calc_line_row(i, window);
-            if row > height {
-                break;
-            }
-            let col = canvas.print(row, line_number_width, prefix)?;
+        let (selected_index, content) = tree_preview.tree.content(&self.tab.users);
+        let (top, bottom) = calculate_top_bottom(selected_index, height);
+        let length = content.len();
 
-            canvas.print_with_attr(
-                row,
-                line_number_width + col + 1,
-                &colored_string.text,
-                colored_string.color_effect.attr(),
-            )?;
+        for (index, wonder) in content
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(length, bottom + 0))
+        {
+            self.draw_tree_maker(canvas, 0, top, index, wonder, height, false)?;
         }
         Ok(())
     }

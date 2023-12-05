@@ -20,10 +20,10 @@ use crate::common::{
 };
 use crate::log_info;
 use crate::modes::ContentWindow;
-use crate::modes::Node;
+use crate::modes::FileInfo;
+use crate::modes::FileKind;
+use crate::modes::Tree;
 use crate::modes::Users;
-use crate::modes::{ColorEffect, FileInfo, FileKind};
-use crate::modes::{ColoredString, Tree};
 
 use crate::common::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
 use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_log};
@@ -301,7 +301,7 @@ impl Preview {
             Self::Archive(zip) => zip.len(),
             Self::Ueberzug(ueberzug) => ueberzug.len(),
             Self::Media(media) => media.len(),
-            Self::Tree(directory) => directory.len(),
+            Self::Tree(tree) => tree.len(),
             Self::Iso(iso) => iso.len(),
             Self::ColoredText(text) => text.len(),
             Self::Socket(socket) => socket.len(),
@@ -1025,12 +1025,9 @@ impl ColoredText {
     }
 }
 
-/// Display a preview of a filetree
-/// The "tree view" is calculated recursively. It may take some time
-/// if the directory has a lot of children.
 #[derive(Clone, Debug)]
 pub struct TreePreview {
-    pub content: Vec<ColoredTriplet>,
+    pub tree: Tree,
 }
 
 impl TreePreview {
@@ -1043,22 +1040,15 @@ impl TreePreview {
             false,
             &FilterKind::All,
         );
-
-        let (_selected_index, content) = tree.into_navigable_content(users);
-
-        Self { content }
-    }
-
-    pub fn empty() -> Self {
-        Self { content: vec![] }
+        Self { tree }
     }
 
     pub fn len(&self) -> usize {
-        self.content.len()
+        self.tree.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.content.is_empty()
+        self.tree.is_empty()
     }
 }
 
@@ -1119,36 +1109,6 @@ macro_rules! impl_window {
     };
 }
 
-/// A tuple with `(String, std::rc::Rc<str>, ColoredString)`.
-/// Used to iter and impl window trait in tree mode.
-pub type ColoredTriplet = (String, std::rc::Rc<str>, ColoredString);
-
-pub trait MakeTriplet {
-    fn make(
-        fileinfo: &FileInfo,
-        prefix: &str,
-        filename_text: String,
-        color_effect: ColorEffect,
-        current_path: &std::path::Path,
-    ) -> ColoredTriplet;
-}
-
-impl MakeTriplet for ColoredTriplet {
-    #[inline]
-    fn make(
-        fileinfo: &FileInfo,
-        prefix: &str,
-        filename_text: String,
-        color_effect: ColorEffect,
-        current_path: &std::path::Path,
-    ) -> Self {
-        (
-            fileinfo.format_no_filename().unwrap_or_default(),
-            std::rc::Rc::from(prefix),
-            ColoredString::new(filename_text, color_effect, std::rc::Rc::from(current_path)),
-        )
-    }
-}
 /// A vector of highlighted strings
 pub type VecSyntaxedString = Vec<SyntaxedString>;
 
@@ -1157,7 +1117,6 @@ impl_window!(TextContent, String);
 impl_window!(BinaryContent, Line);
 impl_window!(ArchiveContent, String);
 impl_window!(MediaContent, String);
-impl_window!(TreePreview, ColoredTriplet);
 impl_window!(Iso, String);
 impl_window!(ColoredText, String);
 impl_window!(Socket, String);

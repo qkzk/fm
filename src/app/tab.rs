@@ -677,11 +677,15 @@ impl Tab {
 
     fn tree_select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
         let screen_index = row_to_window_index(row);
-        let (selected_index, content) = self.tree.into_navigable_content(&self.users);
+        let (selected_index, content) = self.tree.content(&self.users);
         let (top, _) = calculate_top_bottom(selected_index, term_height - 2);
         let index = screen_index + top;
-        let (_, _, colored_path) = content.get(index).context("no selected file")?;
-        self.tree.go(To::Path(&colored_path.path));
+        let path = content
+            .get(index)
+            .context("no selected file")?
+            .path()
+            .to_owned();
+        self.tree.go(To::Path(&path));
         Ok(())
     }
 

@@ -14,7 +14,6 @@ use crate::modes::FilterKind;
 use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{ColorEffect, FileInfo};
-use crate::modes::{ColoredTriplet, MakeTriplet};
 
 /// Holds a string, its display attributes and the associated pathbuf.
 #[derive(Clone, Debug)]
@@ -585,8 +584,21 @@ impl Tree {
         }
     }
 
-    /// Returns a navigable vector of `ColoredTriplet` and the index of selected file
-    pub fn into_navigable_content(&self, users: &Users) -> (usize, Vec<ColoredTriplet>) {
+    /// Create a displayable content from the tree.
+    /// Returns 2 informations :
+    /// - the index of the selected node into this content.
+    ///      It's usefull to know where the user clicked
+    /// - a vector of `TreeLineMaker` which holds every information
+    ///     needed to display the tree.
+    ///     We try to keep as much reference as possible and generate
+    ///     the information lazyly, avoiding as much useless calcuations
+    ///     as possible.
+    ///     The metadata information (permissions, modified time etc.) must be
+    ///     calculated immediatly, therefore for every node, since it requires
+    ///     an access to the user list.
+    ///     The prefix (straight lines displaying targets) must also be calcuated immediatly.
+    ///     Name format is calculated on the fly.
+    pub fn content(&self, users: &Users) -> (usize, Vec<TreeLineMaker>) {
         let mut stack = vec![("".to_owned(), self.root_path.borrow())];
         let mut content = vec![];
         let mut selected_index = 0;
@@ -604,13 +616,7 @@ impl Tree {
                 continue;
             };
 
-            content.push(<ColoredTriplet as MakeTriplet>::make(
-                &fileinfo,
-                &prefix,
-                filename_format(path, node),
-                ColorEffect::node(&fileinfo, node.selected()),
-                path,
-            ));
+            content.push(TreeLineMaker::new(&fileinfo, &prefix, node, path));
 
             if node.have_children() {
                 Self::stack_children(&mut stack, prefix, node);
@@ -672,46 +678,6 @@ impl Tree {
         for leaf in children {
             stack.push((other_prefix.clone(), leaf));
         }
-    }
-
-    pub fn content(&self, users: &Users) -> (usize, Vec<TreeLineMaker>) {
-        let mut stack = vec![("".to_owned(), self.root_path.borrow())];
-        let mut content = vec![];
-        let mut selected_index = 0;
-
-        while let Some((prefix, path)) = stack.pop() {
-            let Some(node) = self.nodes.get(path) else {
-                continue;
-            };
-
-            if node.selected {
-                selected_index = content.len();
-            }
-
-            let Ok(fileinfo) = FileInfo::new(path, users) else {
-                continue;
-            };
-
-            content.push(
-                TreeLineMaker::new(&fileinfo, &prefix, node, path),
-                // <ColoredTriplet as MakeTriplet>::make(
-                // &fileinfo,
-                // &prefix,
-                // filename_format(path, node),
-                // ColorEffect::node(&fileinfo, node.selected()),
-                // path,
-                // )
-            );
-
-            if node.have_children() {
-                Self::stack_children(&mut stack, prefix, node);
-            }
-
-            if content.len() > self.required_height {
-                break;
-            }
-        }
-        (selected_index, content)
     }
 }
 

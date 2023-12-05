@@ -13,8 +13,8 @@ pub use fileinfo::{
     FileKind,
 };
 pub use preview::{
-    BinaryContent, ColoredText, ColoredTriplet, ExtensionKind, HLContent, MakeTriplet, Preview,
-    TextKind, TreePreview, Ueberzug, Window,
+    BinaryContent, ColoredText, ExtensionKind, HLContent, Preview, TextKind, TreePreview, Ueberzug,
+    Window,
 };
 pub use skim::{print_ansi_str, Skimer};
 pub use tree::{calculate_top_bottom, ColoredString, Go, Node, To, Tree, TreeLineMaker};
