@@ -33,6 +33,8 @@ pub struct Menu {
     pub completion: Completion,
     /// Compression methods
     pub compression: Compresser,
+    /// Cotext menu
+    pub context: Context;
     /// Encrypted devices opener
     pub encrypted_devices: CryptoDeviceOpener,
     /// The flagged files
@@ -62,6 +64,7 @@ impl Menu {
         Ok(Self {
             sudo_command: None,
             compression: Compresser::default(),
+            contet: Context::default(),
             cli_applications: CliApplications::default(),
             tui_applications: TuiApplications::new(TUIS_PATH),
             removable_devices: None,

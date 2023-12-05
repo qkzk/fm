@@ -190,6 +190,8 @@ pub enum Navigate {
     TuiApplication,
     /// Cli info
     CliApplication,
+    /// Context menu
+    Context,
 }
 
 impl fmt::Display for Navigate {
@@ -217,6 +219,7 @@ impl fmt::Display for Navigate {
                 write!(f, "Removable devices :")
             }
             Self::CliApplication => write!(f, "Display infos :"),
+            Self::Context=> write!(f, "Context"),
         }
     }
 }
