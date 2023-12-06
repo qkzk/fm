@@ -42,7 +42,6 @@ const HELP_TO_FORMAT: &str = "
 {NvimFilepicker:<10}:      open in current nvim session
 {NvimSetAddress:<10}:      setup the nvim rpc address
 {Preview:<10}:      preview this file
-{MediaInfo:<10}:      display infos about a media file
 {Back:<10}:      move back to previous dir
 {Home:<10}:      move to $HOME
 {GoRoot:<10}:      move to root (/)
@@ -56,9 +55,7 @@ const HELP_TO_FORMAT: &str = "
 {RefreshView:<10}:      refresh view
 {CopyFilename:<10}:      copy filename to clipboard
 {CopyFilepath:<10}:      copy filepath to clipboard
-{DragNDrop:<10}:      dragon-drop selected file
 {OpenConfig:<10}:      open the config file
-{SetWallpaper:<10}:      set the selected file as wallpaper with nitrogen
 
 - Action on flagged files - 
 {ToggleFlag:<10}:      toggle flag on a file 
@@ -71,7 +68,6 @@ const HELP_TO_FORMAT: &str = "
 {DeleteFile:<10}:      delete files permanently
 {TrashMoveFile:<10}:      move to trash
 {Compress:<10}:      compress into an archive
-{Diff:<10}:      display the diff of the first 2 flagged files
 
 - Trash -
 {TrashOpen:<10}:      Open the trash (enter to restore, del clear)
