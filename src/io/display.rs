@@ -737,7 +737,7 @@ impl<'a> WinSecondary<'a> {
         let content = &self.status.menu.completion.proposals;
         for (row, candidate, attr) in enumerated_colored_iter!(content) {
             let attr = self.status.menu.completion.attr(row, attr);
-            Self::draw_content_line(canvas, row, candidate, attr)?;
+            Self::draw_content_line(canvas, row + 1, candidate, attr)?;
         }
         Ok(())
     }
@@ -791,7 +791,7 @@ impl<'a> WinSecondary<'a> {
             let attr = selectable.attr(row, attr);
             Self::draw_content_line(
                 canvas,
-                row,
+                row + 1,
                 path.to_str().context("Unreadable filename")?,
                 attr,
             )?;
@@ -801,13 +801,12 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_history(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.tab.history;
-        canvas.print(0, 0, "Go to...")?;
         let content = selectable.content();
         for (row, pair, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);
             Self::draw_content_line(
                 canvas,
-                row,
+                row + 1,
                 pair.0.to_str().context("Unreadable filename")?,
                 attr,
             )?;
@@ -817,11 +816,10 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_bulk(&self, canvas: &mut dyn Canvas) -> Result<()> {
         if let Some(selectable) = &self.status.menu.bulk {
-            canvas.print(0, 0, "Action...")?;
             let content = selectable.content();
             for (row, text, attr) in enumerated_colored_iter!(content) {
                 let attr = selectable.attr(row, attr);
-                Self::draw_content_line(canvas, row, text, attr)?;
+                Self::draw_content_line(canvas, row + 1, text, attr)?;
             }
         }
         Ok(())
@@ -842,34 +840,33 @@ impl<'a> WinSecondary<'a> {
         let content = trash.content();
         for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
             let attr = trash.attr(row, attr);
-            let _ = Self::draw_content_line(canvas, row + 2, &trashinfo.to_string(), attr);
+            let _ = Self::draw_content_line(canvas, row + 1, &trashinfo.to_string(), attr);
         }
     }
 
     fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.compression;
         canvas.print_with_attr(
+            1,
             2,
-            2,
-            "Archive and compress the flagged files.",
+            "Archive and compress the flagged files using selected algorithm.",
             Self::ATTR_YELLOW,
         )?;
-        canvas.print_with_attr(3, 2, "Pick a compression algorithm.", Self::ATTR_YELLOW)?;
         let content = selectable.content();
         for (row, compression_method, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);
-            Self::draw_content_line(canvas, row + 3, &compression_method.to_string(), attr)?;
+            Self::draw_content_line(canvas, row + 1, &compression_method.to_string(), attr)?;
         }
         Ok(())
     }
 
     fn draw_context(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.context;
-        canvas.print_with_attr(2, 2, "Pick an action.", Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(1, 2, "Pick an action.", Self::ATTR_YELLOW)?;
         let content = selectable.content();
         for (row, desc, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);
-            Self::draw_content_line(canvas, row + 3, &desc.to_string(), attr)?;
+            Self::draw_content_line(canvas, row + 1, &desc.to_string(), attr)?;
         }
         Ok(())
     }
@@ -880,37 +877,37 @@ impl<'a> WinSecondary<'a> {
         let content = self.status.menu.marks.as_strings();
         for (row, line, attr) in enumerated_colored_iter!(content) {
             let attr = self.status.menu.marks.attr(row, attr);
-            Self::draw_content_line(canvas, row, line, attr)?;
+            Self::draw_content_line(canvas, row + 1, line, attr)?;
         }
         Ok(())
     }
 
     // TODO: refactor both methods below with common trait selectable
     fn draw_shell_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(1, 2, "pick a command", Self::ATTR_YELLOW)?;
 
         let content = &self.status.menu.tui_applications.content;
         for (row, (command, _), attr) in enumerated_colored_iter!(content) {
             let attr = self.status.menu.tui_applications.attr(row, attr);
-            Self::draw_content_line(canvas, row + 2, command, attr)?;
+            Self::draw_content_line(canvas, row + 1, command, attr)?;
         }
         Ok(())
     }
 
     fn draw_cli_info(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(2, 1, "pick a command", Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(1, 2, "pick a command", Self::ATTR_YELLOW)?;
 
         let content = &self.status.menu.cli_applications.content;
         for (row, cli_command, attr) in enumerated_colored_iter!(content) {
             let attr = self.status.menu.cli_applications.attr(row, attr);
             let col = canvas.print_with_attr(
-                row + 2 + ContentWindow::WINDOW_MARGIN_TOP,
+                row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
                 cli_command.desc,
                 attr,
             )?;
             canvas.print_with_attr(
-                row + 2 + ContentWindow::WINDOW_MARGIN_TOP,
+                row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
                 8 + col,
                 cli_command.executable,
                 attr,
@@ -938,7 +935,7 @@ impl<'a> WinSecondary<'a> {
     where
         T: MountRepr,
     {
-        canvas.print_with_attr(2, 3, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(1, 2, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
         for (i, device) in selectable.content().iter().enumerate() {
             self.draw_mountable_device(selectable, i, device, canvas)?
         }
@@ -955,7 +952,7 @@ impl<'a> WinSecondary<'a> {
     where
         T: MountRepr,
     {
-        let row = calc_line_row(index, &self.tab.window) + 2;
+        let row = calc_line_row(index, &self.tab.window) + 1;
         let attr = selectable.attr(index, &device.attr());
         canvas.print_with_attr(row, 3, &device.device_name()?, attr)?;
         Ok(())

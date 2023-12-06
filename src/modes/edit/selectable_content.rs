@@ -18,6 +18,8 @@ pub trait SelectableContent<T> {
     fn index(&self) -> usize;
     /// Reference to the content as a vector.
     fn content(&self) -> &Vec<T>;
+    /// set the index to the value if possible
+    fn set_index(&mut self, index: usize);
     /// [`tuikit::attr:Attr`] used to display an element
     fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr;
 }
@@ -82,6 +84,13 @@ macro_rules! impl_selectable_content {
             /// A reference to the content.
             fn content(&self) -> &Vec<$content_type> {
                 &self.content
+            }
+
+            /// Set the index to a new value if the value is below the length.
+            fn set_index(&mut self, index: usize) {
+                if index < self.len() {
+                    self.index = index;
+                }
             }
 
             /// Reverse the received effect if the index match the selected index.

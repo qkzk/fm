@@ -18,6 +18,7 @@ use crate::modes::InputCompleted;
 use crate::modes::IsoDevice;
 use crate::modes::Marks;
 use crate::modes::MountCommands;
+use crate::modes::Navigate;
 use crate::modes::PasswordHolder;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
@@ -251,5 +252,21 @@ impl Menu {
     /// extend the vector with the mount points.
     pub fn refresh_shortcuts(&mut self, mount_points: &[&std::path::Path]) {
         self.shortcut.refresh(mount_points)
+    }
+
+    /// Set the index of removable devices, if those are set.
+    /// Does nothing if `self.removable_devices` is still None.
+    pub fn removable_set_index(&mut self, index: usize) {
+        if let Some(removable) = &mut self.removable_devices {
+            removable.set_index(index)
+        }
+    }
+
+    /// Set the index of bulk, if those are set.
+    /// Does nothing if `self.bulk` is still None.
+    pub fn bulk_set_index(&mut self, index: usize) {
+        if let Some(bulk) = &mut self.bulk {
+            bulk.set_index(index)
+        }
     }
 }

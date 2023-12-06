@@ -26,7 +26,6 @@ use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     execute_without_output_with_path, reset_sudo_faillock,
 };
-use crate::modes::BlockDeviceAction;
 use crate::modes::ContentWindow;
 use crate::modes::CopyMove;
 use crate::modes::Display;
@@ -48,6 +47,7 @@ use crate::modes::Skimer;
 use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, regex_matcher};
+use crate::modes::{BlockDeviceAction, Navigate};
 use crate::{log_info, log_line};
 
 /// Holds every mutable parameter of the application itself, except for
@@ -187,12 +187,44 @@ impl Status {
 
     pub fn click(&mut self, row: u16, col: u16) -> Result<()> {
         self.select_tab_from_col(col)?;
-        if row < ContentWindow::HEADER_ROWS as u16 {
-            return Err(anyhow::anyhow!("Clicked below headers"));
-        }
+        let (tab_index, win_index) = self.which_window_clicked(col.into(), row.into())?;
+        self.index = tab_index;
         let (_, current_height) = self.term_size()?;
-        self.current_tab_mut().select_row(row, current_height)?;
-        Ok(())
+        if row < ContentWindow::HEADER_ROWS as u16 {
+            // need bindings to process, can't handle here: error
+            Err(anyhow::anyhow!("Clicked below headers"))
+        } else if win_index == 0 {
+            self.current_tab_mut().select_row(row, current_height)
+        } else {
+            self.click_second_window(row, current_height);
+            Ok(())
+        }
+    }
+
+    fn click_second_window(&mut self, row: u16, height: usize) {
+        let second_window_height = height / 2;
+        let offset = row as usize - second_window_height;
+        if offset >= 4 {
+            let index = offset - 4;
+            match self.current_tab().edit_mode {
+                Edit::Navigate(navigate) => match navigate {
+                    Navigate::Bulk => self.menu.bulk_set_index(index),
+                    Navigate::CliApplication => self.menu.cli_applications.set_index(index),
+                    Navigate::Compress => self.menu.compression.set_index(index),
+                    Navigate::Context => self.menu.context.set_index(index),
+                    Navigate::EncryptedDrive => self.menu.encrypted_devices.set_index(index),
+                    Navigate::History => self.current_tab_mut().history.set_index(index),
+                    Navigate::Jump => self.menu.flagged.set_index(index),
+                    Navigate::Marks(_) => self.menu.marks.set_index(index),
+                    Navigate::RemovableDevices => self.menu.removable_set_index(index),
+                    Navigate::Shortcut => self.menu.shortcut.set_index(index),
+                    Navigate::Trash => self.menu.trash.set_index(index),
+                    Navigate::TuiApplication => self.menu.tui_applications.set_index(index),
+                },
+                Edit::InputCompleted(_) => self.menu.completion.set_index(index),
+                _ => (),
+            }
+        }
     }
 
     pub fn select_left(&mut self) {

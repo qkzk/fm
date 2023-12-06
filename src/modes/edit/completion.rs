@@ -79,6 +79,13 @@ impl Completion {
         }
     }
 
+    /// Set the index to a new value if the value is below the length.
+    pub fn set_index(&mut self, index: usize) {
+        if index < self.proposals.len() {
+            self.index = index;
+        }
+    }
+
     /// Returns the currently selected proposition.
     /// Returns an empty string if `proposals` is empty.
     pub fn current_proposition(&self) -> &str {
