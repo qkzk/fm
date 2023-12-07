@@ -64,7 +64,6 @@ keys:
   'j': MoveDown  
   'k': MoveUp
   'l': MoveRight
-  'm': Chmod
   'n': NewFile
   'o': OpenFile
   'p': CutPaste
@@ -74,21 +73,22 @@ keys:
   't': Tree
   'u': ClearFlags
   'v': ReverseFlags
-  'w': RegexMatch
   'x': DeleteFile
-  'alt-e': ToggleDisplayFull
-  'alt-f': ToggleDualPane
+  'w': RegexMatch
+  'alt-b': Bulk
+  'alt-d': ToggleDualPane
+  'alt-e': EncryptedDrive
+  'alt-f': Filter
   'alt-g': Goto
+  'alt-m': Chmod
   'alt-p': TogglePreviewSecond
   'ctrl-c': CopyFilename
-  'ctrl-e': EncryptedDrive
   'ctrl-f': FuzzyFind
   'ctrl-g': Shortcut
   'ctrl-p': CopyFilepath
   'ctrl-q': ResetMode
   'ctrl-r': RefreshView
-  'shift-b': Bulk
-  'shift-f': Filter
+  'shift-e': ToggleDisplayFull
   'shift-g': End
   'shift-h': Help
   'shift-L': Symlink
@@ -125,4 +125,6 @@ settings:
 custom:
   # open the selected file with chrome
   'alt-u': "/usr/bin/google-chrome-stable %s"
-  'alt-d': "/usr/bin/dragon-drop %d"  
+  'shift-d': "/usr/bin/dragon-drop %d"  
+
+

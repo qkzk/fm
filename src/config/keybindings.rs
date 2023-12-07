@@ -115,7 +115,7 @@ impl Bindings {
             (Key::Ctrl('d'), ActionMap::PageDown),
             (Key::Ctrl('f'), ActionMap::FuzzyFind),
             (Key::Ctrl('g'), ActionMap::Shortcut),
-            (Key::Ctrl('H'), ActionMap::Help),
+            (Key::Ctrl('h'), ActionMap::Help),
             (Key::Ctrl('k'), ActionMap::Delete),
             (Key::Ctrl('s'), ActionMap::FuzzyFindLine),
             (Key::Ctrl('u'), ActionMap::PageUp),
