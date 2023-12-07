@@ -125,6 +125,6 @@ settings:
 custom:
   # open the selected file with chrome
   'alt-u': "/usr/bin/google-chrome-stable %s"
-  'shift-d': "/usr/bin/dragon-drop %d"  
+  'shift-d': "/usr/bin/dragon-drop %s"  
 
 
