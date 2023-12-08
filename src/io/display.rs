@@ -131,7 +131,7 @@ impl WinMainAttributes {
     }
 }
 
-trait Height: Canvas {
+pub trait Height: Canvas {
     fn height(&self) -> Result<usize> {
         Ok(self.size()?.1)
     }

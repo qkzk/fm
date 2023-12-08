@@ -684,6 +684,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] don't store as much info while parsing tree content. Be as lazy as possible.
 - [x] Context menu (right click, alt+t) with most common actions
 - [x] unify keybindings: alt+char should be reserved to menus starting with same letter
+- [ ] Layout
+  - [ ] 1 row : address & file
+  - [ ] 50% or 100% : files
+  - [ ] 50% or 0% : menu
+  - [ ] last row : infos with fixed sizes
+- [ ] Session with display settings like [felix](https://github.com/kyoheiu/felix/blob/main/src/session.rs)
 
 ## TODO
 
