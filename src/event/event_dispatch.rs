@@ -45,7 +45,7 @@ impl EventDispatcher {
                 EventAction::left_click(status, &self.binds, row, col)?
             }
             Key::DoubleClick(MouseButton::Left, row, col) => {
-                EventAction::double_click(status, row, col)?
+                EventAction::double_click(status, row, col, &self.binds)?
             }
             Key::SingleClick(MouseButton::Right, row, col) => {
                 EventAction::left_click(status, &self.binds, row, col)?;

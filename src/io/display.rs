@@ -7,7 +7,8 @@ use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
-use crate::app::FirstLine;
+use crate::app::Footer;
+use crate::app::Header;
 use crate::app::Status;
 use crate::app::Tab;
 use crate::common::path_to_string;
@@ -16,6 +17,7 @@ use crate::common::{
     LOG_SECOND_SENTENCE, TRASH_CONFIRM_LINE,
 };
 use crate::io::read_last_log_line;
+use crate::io::Line;
 use crate::log_info;
 use crate::modes::fileinfo_attr;
 use crate::modes::parse_input_mode;
@@ -64,14 +66,9 @@ macro_rules! impl_preview {
 /// At least 120 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
 
-const FIRST_LINE_COLORS: [Attr; 7] = [
-    color_to_attr(Color::Rgb(231, 162, 156)),
-    color_to_attr(Color::Rgb(144, 172, 186)),
-    color_to_attr(Color::Rgb(214, 125, 83)),
-    color_to_attr(Color::Rgb(91, 152, 119)),
-    color_to_attr(Color::Rgb(152, 87, 137)),
+const FIRST_LINE_COLORS: [Attr; 2] = [
+    color_to_attr(Color::LIGHT_CYAN),
     color_to_attr(Color::Rgb(230, 189, 87)),
-    color_to_attr(Color::Rgb(251, 133, 0)),
 ];
 
 const MENU_COLORS: [Attr; 10] = [
@@ -90,8 +87,10 @@ const MENU_COLORS: [Attr; 10] = [
 const ATTR_YELLOW_BOLD: Attr = Attr {
     fg: Color::YELLOW,
     bg: Color::Default,
-    effect: Effect::BOLD,
+    effect: Effect::empty(),
 };
+
+const ATTR_COB_BOLD: Attr = color_to_attr(Color::LIGHT_CYAN);
 
 enum TabPosition {
     Left,
@@ -147,6 +146,7 @@ struct WinMain<'a> {
 
 impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+        let line = Line::default();
         canvas.clear()?;
         if self.status.display_settings.dual
             && self.is_right()
@@ -156,7 +156,9 @@ impl<'a> Draw for WinMain<'a> {
             return Ok(());
         }
         self.draw_content(canvas)?;
-        WinMainFirstLine::new(self.status, self.tab, self.attributes.is_selected)?.draw(canvas)?;
+        WinMainHeader::new(self.status, self.tab, self.attributes.is_selected)?.draw(canvas)?;
+        WinMainFooter::new(self.status, self.tab, self.attributes.is_selected)?.draw(canvas)?;
+        line.draw(canvas)?;
         Ok(())
     }
 }
@@ -522,7 +524,7 @@ impl<'a> WinMain<'a> {
         draw_colored_strings(
             0,
             0,
-            &PreviewFirstLine::make_default_preview(self.status, tab),
+            &PreviewHeader::make_default_preview(self.status, tab),
             canvas,
             false,
         )?;
@@ -530,13 +532,13 @@ impl<'a> WinMain<'a> {
     }
 }
 
-struct WinMainFirstLine<'a> {
+struct WinMainHeader<'a> {
     status: &'a Status,
     tab: &'a Tab,
     is_selected: bool,
 }
 
-impl<'a> Draw for WinMainFirstLine<'a> {
+impl<'a> Draw for WinMainHeader<'a> {
     /// Display the top line on terminal.
     /// Its content depends on the mode.
     /// In normal mode we display the path and number of files.
@@ -546,15 +548,15 @@ impl<'a> Draw for WinMainFirstLine<'a> {
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let content = match self.tab.display_mode {
-            DisplayMode::Preview => PreviewFirstLine::make_preview(self.status, self.tab),
-            _ => FirstLine::new(self.status, self.tab)?.strings().to_owned(),
+            DisplayMode::Preview => PreviewHeader::make_preview(self.status, self.tab),
+            _ => Header::new(self.status, self.tab)?.strings().to_owned(),
         };
         draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
         Ok(())
     }
 }
 
-impl<'a> WinMainFirstLine<'a> {
+impl<'a> WinMainHeader<'a> {
     fn new(status: &'a Status, tab: &'a Tab, is_selected: bool) -> Result<Self> {
         Ok(Self {
             status,
@@ -564,9 +566,9 @@ impl<'a> WinMainFirstLine<'a> {
     }
 }
 
-struct PreviewFirstLine;
+struct PreviewHeader;
 
-impl PreviewFirstLine {
+impl PreviewHeader {
     fn make_preview(status: &Status, tab: &Tab) -> Vec<String> {
         match &tab.preview {
             Preview::Text(text_content) => match text_content.kind {
@@ -678,8 +680,47 @@ struct LogLine;
 impl Draw for LogLine {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let height = canvas.height()?;
-        canvas.print_with_attr(height - 1, 4, &read_last_log_line(), ATTR_YELLOW_BOLD)?;
+        canvas.print_with_attr(height - 2, 4, &read_last_log_line(), ATTR_YELLOW_BOLD)?;
         Ok(())
+    }
+}
+
+struct WinMainFooter<'a> {
+    status: &'a Status,
+    tab: &'a Tab,
+    is_selected: bool,
+}
+
+impl<'a> Draw for WinMainFooter<'a> {
+    /// Display the top line on terminal.
+    /// Its content depends on the mode.
+    /// In normal mode we display the path and number of files.
+    /// When a confirmation is needed we ask the user to input `'y'` or
+    /// something else.
+    /// Returns the result of the number of printed chars.
+    /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
+    fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+        let height = canvas.height()?;
+        let content = match self.tab.display_mode {
+            DisplayMode::Preview => vec![],
+            _ => Footer::new(self.status, self.tab)?.strings().to_owned(),
+        };
+        let mut attr = ATTR_COB_BOLD;
+        if self.is_selected {
+            attr.effect |= Effect::REVERSE;
+        };
+        draw_justified_strings(height - 1, 0, &content, canvas, attr)?;
+        Ok(())
+    }
+}
+
+impl<'a> WinMainFooter<'a> {
+    fn new(status: &'a Status, tab: &'a Tab, is_selected: bool) -> Result<Self> {
+        Ok(Self {
+            status,
+            tab,
+            is_selected,
+        })
     }
 }
 
@@ -1057,7 +1098,7 @@ pub struct Display {
 }
 
 impl Display {
-    const SELECTED_BORDER: Attr = color_to_attr(Color::LIGHT_BLUE);
+    const SELECTED_BORDER: Attr = color_to_attr(Color::LIGHT_CYAN);
     const INERT_BORDER: Attr = color_to_attr(Color::Default);
 
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
@@ -1246,6 +1287,25 @@ fn draw_colored_strings(
             attr.effect |= Effect::REVERSE;
         }
         col += canvas.print_with_attr(row, offset + col, text, attr)?;
+    }
+    Ok(())
+}
+
+fn draw_justified_strings(
+    row: usize,
+    offset: usize,
+    strings: &[String],
+    canvas: &mut dyn Canvas,
+    attr: Attr,
+) -> Result<()> {
+    let width = canvas.size()?.0;
+    let used_space: usize = strings.iter().map(|text| text.len()).sum();
+    let remaining_space = width - used_space;
+    let margin = remaining_space / (strings.len() + 1);
+    let mut col = margin;
+    canvas.print_with_attr(row, 0, &" ".repeat(width), attr)?;
+    for text in strings {
+        col += canvas.print_with_attr(row, offset + col, text, attr)? + margin;
     }
     Ok(())
 }

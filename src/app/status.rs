@@ -10,7 +10,8 @@ use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
 use crate::app::DisplaySettings;
-use crate::app::FirstLine;
+use crate::app::Footer;
+use crate::app::Header;
 use crate::app::InternalSettings;
 use crate::app::Tab;
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
@@ -49,6 +50,13 @@ use crate::modes::Users;
 use crate::modes::{copy_move, regex_matcher};
 use crate::modes::{BlockDeviceAction, Navigate};
 use crate::{log_info, log_line};
+
+pub enum Window {
+    Header,
+    Files,
+    Menu,
+    Footer,
+}
 
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.
@@ -143,20 +151,6 @@ impl Status {
         Ok((col / (width / 2), row / (height / 2)))
     }
 
-    /// Returns the coordinates of the window containing `(col, row)`.
-    /// The first number is the tab index (0 or 1).
-    /// The second number is either 0 for main window or 1 for second window.
-    pub fn which_window_clicked(&self, col: usize, row: usize) -> Result<(usize, usize)> {
-        let (mut tab_index, mut win_pos) = self.which_quadrant_clicked(col, row)?;
-        if !self.display_settings.dual {
-            tab_index = 0;
-        }
-        if !self.tabs[tab_index].need_second_window() {
-            win_pos = 0;
-        }
-        Ok((tab_index, win_pos))
-    }
-
     /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn next(&mut self) {
         if !self.display_settings.dual {
@@ -185,24 +179,42 @@ impl Status {
         Ok(())
     }
 
-    pub fn click(&mut self, row: u16, col: u16) -> Result<()> {
-        self.select_tab_from_col(col)?;
-        let (tab_index, win_index) = self.which_window_clicked(col.into(), row.into())?;
-        self.index = tab_index;
-        let (_, current_height) = self.term_size()?;
-        if row < ContentWindow::HEADER_ROWS as u16 {
-            // need bindings to process, can't handle here: error
-            Err(anyhow::anyhow!("Clicked below headers"))
-        } else if win_index == 0 {
-            self.current_tab_mut().select_row(row, current_height)?;
-            self.update_second_pane_for_preview()
+    pub fn window_from_row(&self, row: u16, height: usize) -> Window {
+        let win_height = if matches!(self.current_tab().edit_mode, Edit::Nothing) {
+            height
         } else {
-            self.click_second_window(row, current_height);
-            Ok(())
+            height / 2
+        };
+        log_info!("clicked row {row}, height {height}, win_height {win_height}");
+        let w_index = row as usize / win_height;
+        if w_index == 1 {
+            Window::Menu
+        } else if row == 1 {
+            Window::Header
+        } else if row as usize == win_height - 2 {
+            Window::Footer
+        } else {
+            Window::Files
         }
     }
 
-    fn click_second_window(&mut self, row: u16, height: usize) {
+    pub fn click(&mut self, row: u16, col: u16, binds: &Bindings) -> Result<()> {
+        let window = self.window_from_row(row, self.term_size()?.1);
+        self.select_tab_from_col(col)?;
+        let (_, current_height) = self.term_size()?;
+        match window {
+            Window::Menu => self.menu_action(row, current_height),
+            Window::Header => self.header_action(col, binds)?,
+            Window::Footer => self.footer_action(col, binds)?,
+            Window::Files => {
+                self.current_tab_mut().select_row(row, current_height)?;
+                self.update_second_pane_for_preview()?;
+            }
+        };
+        Ok(())
+    }
+
+    fn menu_action(&mut self, row: u16, height: usize) {
         let second_window_height = height / 2;
         let offset = row as usize - second_window_height;
         if offset >= 4 {
@@ -886,13 +898,24 @@ impl Status {
         }
     }
 
-    pub fn first_line_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
+    pub fn header_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
         if matches!(self.current_tab().display_mode, Display::Preview) {
             return Ok(());
         }
         let is_right = self.index == 1;
-        let first_line = FirstLine::new(self, self.current_tab())?;
-        let action = first_line.action(col as usize, is_right);
+        let header = Header::new(self, self.current_tab())?;
+        let action = header.action(col as usize, is_right);
+        action.matcher(self, binds)
+    }
+
+    pub fn footer_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
+        log_info!("footer clicked col {col}");
+        if matches!(self.current_tab().display_mode, Display::Preview) {
+            return Ok(());
+        }
+        let is_right = self.index == 1;
+        let footer = Footer::new(self, self.current_tab())?;
+        let action = footer.action(col as usize, is_right);
         action.matcher(self, binds)
     }
 

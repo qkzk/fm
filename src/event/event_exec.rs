@@ -17,7 +17,6 @@ use crate::log_info;
 use crate::log_line;
 use crate::modes::help_string;
 use crate::modes::lsblk_and_cryptsetup_installed;
-use crate::modes::ContentWindow;
 use crate::modes::Display;
 use crate::modes::InputCompleted;
 use crate::modes::LeaveMode;
@@ -643,12 +642,7 @@ impl EventAction {
 
     pub fn left_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         EventAction::select_pane(status, col)?;
-        if ContentWindow::is_row_in_header(row) {
-            EventAction::click_first_line(col, status, binds)?;
-        } else {
-            let _ = EventAction::click_file(status, row, col);
-        }
-        Ok(())
+        EventAction::click_file(status, row, col, binds)
     }
 
     pub fn wheel_up(status: &mut Status, col: u16, nb_of_scrolls: u16) -> Result<()> {
@@ -668,8 +662,8 @@ impl EventAction {
     }
 
     /// A right click opens a file or a directory.
-    pub fn double_click(status: &mut Status, row: u16, col: u16) -> Result<()> {
-        if let Ok(()) = EventAction::click_file(status, row, col) {
+    pub fn double_click(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
+        if let Ok(()) = EventAction::click_file(status, row, col, binds) {
             EventAction::enter_file(status)?;
         };
         Ok(())
@@ -953,16 +947,12 @@ impl EventAction {
         Ok(())
     }
 
-    pub fn click_file(status: &mut Status, row: u16, col: u16) -> Result<()> {
-        status.click(row, col)
+    pub fn click_file(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
+        status.click(row, col, binds)
     }
 
     pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
         status.select_tab_from_col(col)
-    }
-
-    pub fn click_first_line(col: u16, status: &mut Status, binds: &Bindings) -> Result<()> {
-        status.first_line_action(col, binds)
     }
 
     pub fn lazygit(status: &mut Status) -> Result<()> {

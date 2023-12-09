@@ -5,6 +5,7 @@ use tuikit::prelude::*;
 
 use crate::io::Height;
 
+#[derive(Default)]
 pub struct Line {
     components: Vec<Component>,
     position: Position,
@@ -28,11 +29,14 @@ impl Draw for Line {
     }
 }
 
+#[derive(Default)]
 enum Position {
+    #[default]
     Top,
     Bottom,
 }
 
+#[derive(Default)]
 struct Component {
     text: String,
     attr: Attr,
@@ -60,9 +64,11 @@ impl Component {
     }
 }
 
+#[derive(Default)]
 enum Size {
-    Fixed(usize),
+    #[default]
     Free,
+    Fixed(usize),
 }
 
 trait StringUtils {
