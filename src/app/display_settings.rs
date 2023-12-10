@@ -49,4 +49,8 @@ impl DisplaySettings {
     pub fn display_wide_enough(width: usize) -> bool {
         width >= MIN_WIDTH_FOR_DUAL_PANE
     }
+
+    pub fn use_dual_tab(&self, width: usize) -> bool {
+        self.dual && Self::display_wide_enough(width)
+    }
 }

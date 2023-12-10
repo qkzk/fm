@@ -146,11 +146,6 @@ impl Status {
         self.internal_settings.must_quit
     }
 
-    fn which_quadrant_clicked(&self, col: usize, row: usize) -> Result<(usize, usize)> {
-        let (width, height) = self.term_size()?;
-        Ok((col / (width / 2), row / (height / 2)))
-    }
-
     /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn next(&mut self) {
         if !self.display_settings.dual {

@@ -124,8 +124,14 @@ impl Footer {
     /// Create the strings associated with the selected tab directory
     pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
         let (width, _) = status.internal_settings.term.term_size()?;
+        let used_width = if status.display_settings.use_dual_tab(width) {
+            width / 2
+        } else {
+            width
+        };
         let disk_space = status.disk_spaces_of_selected();
-        let strings = Self::make_strings(status, tab, disk_space)?;
+        let raw_strings = Self::make_raw_strings(status, tab, disk_space)?;
+        let strings = Self::make_padded_strings(&raw_strings, used_width);
         let sizes = Self::make_sizes(&strings);
 
         Ok(Self {
@@ -140,7 +146,7 @@ impl Footer {
     /// Watchout:
     /// 1. the length of the vector MUST BE the length of `ACTIONS` minus one.
     /// 2. the order must be respected.
-    fn make_strings(status: &Status, tab: &Tab, disk_space: String) -> Result<Vec<String>> {
+    fn make_raw_strings(status: &Status, tab: &Tab, disk_space: String) -> Result<Vec<String>> {
         Ok(vec![
             Self::string_first_row_position(tab)?,
             Self::string_used_space(tab),
@@ -160,6 +166,21 @@ impl Footer {
         strings
             .iter()
             .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
+            .collect()
+    }
+
+    /// Pad every string of `raw_strings` with enough space to fill a line.
+    fn make_padded_strings(raw_strings: &[String], total_width: usize) -> Vec<String> {
+        let used_width: usize = raw_strings
+            .iter()
+            .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
+            .sum();
+        let available_width = total_width.checked_sub(used_width).unwrap_or_default();
+        let margin_width = available_width / (2 * raw_strings.len());
+        let margin = " ".repeat(margin_width);
+        raw_strings
+            .iter()
+            .map(|content| format!("{margin}{content}{margin}"))
             .collect()
     }
 

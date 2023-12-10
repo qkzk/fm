@@ -709,7 +709,7 @@ impl<'a> Draw for WinMainFooter<'a> {
         if self.is_selected {
             attr.effect |= Effect::REVERSE;
         };
-        draw_justified_strings(height - 1, 0, &content, canvas, attr)?;
+        draw_strings_filling_line(height - 1, 0, &content, canvas, attr)?;
         Ok(())
     }
 }
@@ -1291,22 +1291,19 @@ fn draw_colored_strings(
     Ok(())
 }
 
-fn draw_justified_strings(
+fn draw_strings_filling_line(
     row: usize,
     offset: usize,
     strings: &[String],
     canvas: &mut dyn Canvas,
     attr: Attr,
 ) -> Result<()> {
-    let width = canvas.size()?.0;
-    let used_space: usize = strings.iter().map(|text| text.len()).sum();
-    let remaining_space = width - used_space;
-    let margin = remaining_space / (strings.len() + 1);
-    let mut col = margin;
-    canvas.print_with_attr(row, 0, &" ".repeat(width), attr)?;
+    let mut col = 0;
     for text in strings {
-        col += canvas.print_with_attr(row, offset + col, text, attr)? + margin;
+        col += canvas.print_with_attr(row, offset + col, text, attr)?;
     }
+    let gap = canvas.size()?.0.checked_sub(col).unwrap_or_default();
+    canvas.print_with_attr(row, col, &" ".repeat(gap), attr)?;
     Ok(())
 }
 
