@@ -787,7 +787,7 @@ impl<'a> TreeLineMaker<'a> {
     }
 
     pub fn filename(&self) -> String {
-        filename_format(&self.path, &self.node)
+        filename_format(&self.path, self.node)
     }
 
     pub fn attr(&self) -> tuikit::attr::Attr {

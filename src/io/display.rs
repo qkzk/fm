@@ -294,35 +294,35 @@ impl<'a> WinMain<'a> {
         let (top, bottom) = calculate_top_bottom(selected_index, height);
         let length = content.len();
 
-        for (index, wonder) in content
+        for (index, content_line) in content
             .iter()
             .enumerate()
             .skip(top)
-            .take(min(length, bottom + 0))
+            .take(min(length, bottom))
         {
-            self.draw_tree_maker(
+            self.draw_tree_line(
                 canvas,
-                left_margin,
-                top,
-                index,
-                wonder,
-                height,
+                content_line,
+                TreeLinePosition {
+                    left_margin,
+                    top,
+                    index,
+                    height,
+                },
                 self.status.display_settings.metadata,
             )?;
         }
         Ok(selected_index)
     }
 
-    fn draw_tree_maker(
+    fn draw_tree_line(
         &self,
         canvas: &mut dyn Canvas,
-        left_margin: usize,
-        top: usize,
-        index: usize,
         tree_line_maker: &TreeLineMaker,
-        height: usize,
+        position_param: TreeLinePosition,
         display_medatadata: bool,
     ) -> Result<()> {
+        let (left_margin, top, index, height) = position_param.export();
         let row = index + ContentWindow::WINDOW_MARGIN_TOP - top;
         if row > height {
             return Ok(());
@@ -332,13 +332,13 @@ impl<'a> WinMain<'a> {
         let mut attr = tree_line_maker.attr();
         let path = tree_line_maker.path();
 
-        self.print_as_flagged(canvas, row, &path, &mut attr)?;
+        self.print_as_flagged(canvas, row, path, &mut attr)?;
 
         let col_metadata = if display_medatadata {
             let Some(s_metadata) = tree_line_maker.metadata() else {
                 return Err(anyhow!("Metadata should be set."));
             };
-            canvas.print_with_attr(row, left_margin, &s_metadata, attr)?
+            canvas.print_with_attr(row, left_margin, s_metadata, attr)?
         } else {
             0
         };
@@ -484,13 +484,23 @@ impl<'a> WinMain<'a> {
         let (top, bottom) = calculate_top_bottom(selected_index, height);
         let length = content.len();
 
-        for (index, wonder) in content
+        for (index, content_line) in content
             .iter()
             .enumerate()
             .skip(top)
-            .take(min(length, bottom + 0))
+            .take(min(length, bottom))
         {
-            self.draw_tree_maker(canvas, 0, top, index, wonder, height, false)?;
+            self.draw_tree_line(
+                canvas,
+                content_line,
+                TreeLinePosition {
+                    left_margin: 0,
+                    top,
+                    index,
+                    height,
+                },
+                false,
+            )?;
         }
         Ok(())
     }
@@ -527,6 +537,20 @@ impl<'a> WinMain<'a> {
             false,
         )?;
         Ok(())
+    }
+}
+
+struct TreeLinePosition {
+    left_margin: usize,
+    top: usize,
+    index: usize,
+    height: usize,
+}
+
+impl TreeLinePosition {
+    /// left_margin, top, index, height
+    fn export(&self) -> (usize, usize, usize, usize) {
+        (self.left_margin, self.top, self.index, self.height)
     }
 }
 
@@ -905,7 +929,7 @@ impl<'a> WinSecondary<'a> {
         let content = selectable.content();
         for (row, desc, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);
-            Self::draw_content_line(canvas, row + 1, &desc.to_string(), attr)?;
+            Self::draw_content_line(canvas, row + 1, desc, attr)?;
         }
         Ok(())
     }

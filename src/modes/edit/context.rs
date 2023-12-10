@@ -19,15 +19,17 @@ pub struct ContextMenu {
     actions: Vec<&'static ActionMap>,
 }
 
-impl ContextMenu {
-    pub fn default() -> Self {
+impl Default for ContextMenu {
+    fn default() -> Self {
         Self {
             index: 0,
             content: CONTEXT.iter().map(|(s, _)| *s).collect(),
             actions: CONTEXT.iter().map(|(_, a)| a).collect(),
         }
     }
+}
 
+impl ContextMenu {
     pub fn matcher(&self) -> &ActionMap {
         self.actions[self.index]
     }

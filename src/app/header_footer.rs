@@ -1,4 +1,4 @@
-mod header_footer {
+mod inner {
     use anyhow::{Context, Result};
     use unicode_segmentation::UnicodeSegmentation;
 
@@ -260,4 +260,4 @@ mod header_footer {
     }
 }
 
-pub use header_footer::{ClickableLine, Footer, Header};
+pub use inner::{ClickableLine, Footer, Header};
