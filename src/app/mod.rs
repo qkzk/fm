@@ -8,7 +8,7 @@ mod tab;
 
 pub use application::FM;
 pub use display_settings::DisplaySettings;
-pub use header_footer::{Footer, Header};
+pub use header_footer::{ClickableLine, Footer, Header};
 pub use internal_settings::InternalSettings;
 pub use refresher::Refresher;
 pub use status::Status;

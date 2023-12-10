@@ -18,7 +18,6 @@ use crate::modes::InputCompleted;
 use crate::modes::IsoDevice;
 use crate::modes::Marks;
 use crate::modes::MountCommands;
-use crate::modes::Navigate;
 use crate::modes::PasswordHolder;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;

@@ -7,6 +7,7 @@ use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
+use crate::app::ClickableLine;
 use crate::app::Footer;
 use crate::app::Header;
 use crate::app::Status;
@@ -17,7 +18,6 @@ use crate::common::{
     LOG_SECOND_SENTENCE, TRASH_CONFIRM_LINE,
 };
 use crate::io::read_last_log_line;
-use crate::io::Line;
 use crate::log_info;
 use crate::modes::fileinfo_attr;
 use crate::modes::parse_input_mode;
@@ -146,7 +146,6 @@ struct WinMain<'a> {
 
 impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        let line = Line::default();
         canvas.clear()?;
         if self.status.display_settings.dual
             && self.is_right()
@@ -158,7 +157,6 @@ impl<'a> Draw for WinMain<'a> {
         self.draw_content(canvas)?;
         WinMainHeader::new(self.status, self.tab, self.attributes.is_selected)?.draw(canvas)?;
         WinMainFooter::new(self.status, self.tab, self.attributes.is_selected)?.draw(canvas)?;
-        line.draw(canvas)?;
         Ok(())
     }
 }

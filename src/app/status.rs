@@ -9,6 +9,7 @@ use sysinfo::{Disk, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
+use crate::app::ClickableLine;
 use crate::app::DisplaySettings;
 use crate::app::Footer;
 use crate::app::Header;
@@ -27,7 +28,6 @@ use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     execute_without_output_with_path, reset_sudo_faillock,
 };
-use crate::modes::ContentWindow;
 use crate::modes::CopyMove;
 use crate::modes::Display;
 use crate::modes::Edit;
