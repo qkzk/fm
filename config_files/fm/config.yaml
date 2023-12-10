@@ -96,19 +96,6 @@ keys:
   'shift-o': Sort
   'shift-p': Preview
 
-# display settings
-# All this settings are bound to keys an can be toggled in the application itself.
-# Only `true` or `false` are accepted here.
-settings:
-  # display hidden files ?
-  all: false
-  # use a second pane (if the terminal is wide enough) ?
-  dual: true
-  # display metadata ?
-  full: true
-  # use second pane for preview ?
-  preview: false
-
 # Custom command :
 # * Use a free keybind
 # * Don't use pipe or redirection, it won't be parsed correctly

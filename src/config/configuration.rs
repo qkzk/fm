@@ -10,36 +10,6 @@ use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 use crate::config::Bindings;
 use crate::config::Colorer;
 
-/// Starting settings.
-/// those values are updated from the yaml config file
-#[derive(Debug, Clone, Default)]
-pub struct Settings {
-    pub dual: bool,
-    pub full: bool,
-    pub all: bool,
-    pub preview: bool,
-}
-
-impl Settings {
-    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
-        match yaml["dual"] {
-            serde_yaml::Value::Bool(false) => self.dual = false,
-            _ => self.dual = true,
-        }
-        match yaml["full"] {
-            serde_yaml::Value::Bool(false) => self.full = false,
-            _ => self.full = true,
-        }
-        match yaml["all"] {
-            serde_yaml::Value::Bool(false) => self.all = false,
-            _ => self.all = true,
-        }
-        match yaml["preview"] {
-            serde_yaml::Value::Bool(true) => self.all = true,
-            _ => self.all = false,
-        }
-    }
-}
 /// Holds every configurable aspect of the application.
 /// All attributes are hardcoded then updated from optional values
 /// of the config file.
@@ -50,8 +20,6 @@ pub struct Config {
     pub terminal: String,
     /// Configurable keybindings.
     pub binds: Bindings,
-    /// Basic starting settings
-    pub settings: Settings,
 }
 
 impl Config {
@@ -60,7 +28,6 @@ impl Config {
         Ok(Self {
             terminal: DEFAULT_TERMINAL_APPLICATION.to_owned(),
             binds: Bindings::default(),
-            settings: Settings::default(),
         })
     }
     /// Updates the config from  a configuration content.
@@ -68,7 +35,6 @@ impl Config {
         self.binds.update_normal(&yaml["keys"]);
         self.binds.update_custom(&yaml["custom"]);
         self.update_terminal(&yaml["terminal"]);
-        self.settings.update_from_config(&yaml["settings"]);
         Ok(())
     }
 

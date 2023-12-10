@@ -61,12 +61,7 @@ impl FM {
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = Opener::new(&config.terminal);
         let display = Display::new(Arc::clone(&term));
-        let status = Status::new(
-            display.height()?,
-            Arc::clone(&term),
-            opener,
-            &config.settings,
-        )?;
+        let status = Status::new(display.height()?, Arc::clone(&term), opener)?;
         let refresher = Refresher::new(term);
         drop(config);
         Ok(Self {

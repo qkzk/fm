@@ -18,7 +18,6 @@ use crate::app::Tab;
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
 use crate::config::Bindings;
-use crate::config::Settings;
 use crate::io::Args;
 use crate::io::Internal;
 use crate::io::Kind;
@@ -87,12 +86,7 @@ impl Status {
     /// Creates a new status for the application.
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
-    pub fn new(
-        height: usize,
-        term: Arc<Term>,
-        opener: Opener,
-        settings: &Settings,
-    ) -> Result<Self> {
+    pub fn new(height: usize, term: Arc<Term>, opener: Opener) -> Result<Self> {
         let skimer = None;
         let index = 0;
 
@@ -104,7 +98,7 @@ impl Status {
             path.parent().context("")?
         };
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
-        let display_settings = DisplaySettings::new(&args, settings, term.term_size()?.0);
+        let display_settings = DisplaySettings::new(term.term_size()?.0);
         let mut internal_settings = InternalSettings::new(opener, term, sys);
         let mount_points = internal_settings.mount_points();
         let menu = Menu::new(start_dir, &mount_points)?;
@@ -113,8 +107,8 @@ impl Status {
         let users_right = users_left.clone();
 
         let tabs = [
-            Tab::new(&args, height, users_left, settings)?,
-            Tab::new(&args, height, users_right, settings)?,
+            Tab::new(&args, height, users_left)?,
+            Tab::new(&args, height, users_right)?,
         ];
         Ok(Self {
             tabs,
@@ -370,9 +364,9 @@ impl Status {
     pub fn set_dual_pane_if_wide_enough(&mut self, width: usize) -> Result<()> {
         if width < MIN_WIDTH_FOR_DUAL_PANE {
             self.select_left();
-            self.display_settings.dual = false;
+            self.display_settings.set_dual(false);
         } else {
-            self.display_settings.dual = true;
+            self.display_settings.set_dual(true);
         }
         Ok(())
     }

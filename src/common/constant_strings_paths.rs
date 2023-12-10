@@ -2,6 +2,8 @@
 pub const CONFIG_FOLDER: &str = "~/.config/fm";
 /// Configuration file path
 pub const CONFIG_PATH: &str = "~/.config/fm/config.yaml";
+/// Session file path
+pub const SESSION_PATH: &str = "~/.config/fm/session.yaml";
 /// Filepath of the opener config file
 pub const OPENER_PATH: &str = "~/.config/fm/opener.yaml";
 /// Filepath of the TUIS configuration file

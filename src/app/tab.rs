@@ -7,7 +7,6 @@ use anyhow::{Context, Result};
 use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index, set_clipboard,
 };
-use crate::config::Settings;
 use crate::io::Args;
 use crate::modes::Directory;
 use crate::modes::FileInfo;
@@ -31,9 +30,9 @@ pub struct TabSettings {
 }
 
 impl TabSettings {
-    fn new(args: &Args, settings: &Settings) -> Self {
+    fn new(args: &Args) -> Self {
         let filter = FilterKind::All;
-        let show_hidden = args.all || settings.all;
+        let show_hidden = args.all;
         let sort_kind = SortKind::default();
         Self {
             show_hidden,
@@ -110,14 +109,14 @@ impl Tab {
     /// - doesn't exist
     /// - can't be explored
     /// - has no parent and isn't a directory (which can't happen)
-    pub fn new(args: &Args, height: usize, users: Users, settings: &Settings) -> Result<Self> {
+    pub fn new(args: &Args, height: usize, users: Users) -> Result<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
         let start_dir = if path.is_dir() {
             &path
         } else {
             path.parent().context("")?
         };
-        let settings = TabSettings::new(args, settings);
+        let settings = TabSettings::new(args);
         let mut directory =
             Directory::new(start_dir, &users, &settings.filter, settings.show_hidden)?;
         let display_mode = Display::default();

@@ -684,16 +684,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] don't store as much info while parsing tree content. Be as lazy as possible.
 - [x] Context menu (right click, alt+t) with most common actions
 - [x] unify keybindings: alt+char should be reserved to menus starting with same letter
-- [ ] Layout
-  - [ ] 1 row : address & file
-  - [ ] 50% or 100% : files
-  - [ ] 50% or 0% : menu
-  - [ ] last row : infos with fixed sizes
-- [ ] Session with display settings like [felix](https://github.com/kyoheiu/felix/blob/main/src/session.rs)
+- [x] Clickable layout
+  - [x] 1 row : address & file
+  - [x] 50% or 100% : files
+  - [x] 50% or 0% : menu
+  - [x] last row : infos with fixed sizes
+- [x] Session with display settings like [felix](https://github.com/kyoheiu/felix/blob/main/src/session.rs)
+  - [x] display settings aren't read from args or config file except for "display all".
+  - [x] read (using serde_yaml) and write (using serde::Serialize) display settings from a [session file](~/.config/fm/session.yaml).
 
 ## TODO
 
-- [ ] allow bottom window to be clicked
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
 - [ ] Only store one Selectable thing in status
 - [ ] use `Rc<str>` instead of string to avoid copying

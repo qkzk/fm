@@ -819,6 +819,7 @@ dependencies = [
  "regex",
  "rust-lzma",
  "sanitize-filename",
+ "serde",
  "serde_yaml 0.9.27",
  "shellexpand",
  "skim-qkzk",
