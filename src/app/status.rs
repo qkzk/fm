@@ -10,10 +10,10 @@ use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
 use crate::app::ClickableLine;
-use crate::app::DisplaySettings;
 use crate::app::Footer;
 use crate::app::Header;
 use crate::app::InternalSettings;
+use crate::app::Session;
 use crate::app::Tab;
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
@@ -77,7 +77,7 @@ pub struct Status {
     /// Navigable menu
     pub menu: Menu,
     /// Display settings
-    pub display_settings: DisplaySettings,
+    pub display_settings: Session,
     /// Interna settings
     pub internal_settings: InternalSettings,
 }
@@ -98,7 +98,7 @@ impl Status {
             path.parent().context("")?
         };
         let sys = System::new_with_specifics(RefreshKind::new().with_disks());
-        let display_settings = DisplaySettings::new(term.term_size()?.0);
+        let display_settings = Session::new(term.term_size()?.0);
         let mut internal_settings = InternalSettings::new(opener, term, sys);
         let mount_points = internal_settings.mount_points();
         let menu = Menu::new(start_dir, &mount_points)?;
@@ -340,7 +340,7 @@ impl Status {
     /// Force preview the selected file of the first pane in the second pane.
     /// Doesn't check if it has do.
     pub fn set_second_pane_for_preview(&mut self) -> Result<()> {
-        if !DisplaySettings::display_wide_enough(self.term_size()?.0) {
+        if !Session::display_wide_enough(self.term_size()?.0) {
             self.tabs[1].preview = Preview::empty();
             return Ok(());
         }

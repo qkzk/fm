@@ -1,6 +1,5 @@
 use std::fs::File;
 
-use anyhow::Result;
 use serde::Serialize;
 use serde_yaml::{Error as YamlError, Value as YamlValue};
 
@@ -8,6 +7,11 @@ use crate::common::SESSION_PATH;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::log_info;
 
+/// Everything about the current session.
+/// We keep track of display settings (metadata, dual pane, second pane as preview).
+/// Display hidden files is read from args or set to false by default.
+/// Since it's specific to a tab, it's not stored here.
+///
 /// Reads its display values from a session file and updates them when modified.
 /// The file is stored at [`crate::common::SESSION_PATH`] which points to `~/.config/fm/session.yaml`.
 /// Unreachable or unreadable files are ignored.
@@ -17,7 +21,7 @@ use crate::log_info;
 /// - do we display files metadata ? Default to true.
 /// - do we use to second pane to preview files ? Default to false.
 #[derive(Debug, Serialize)]
-pub struct DisplaySettings {
+pub struct Session {
     /// do we display one or two tabs ?
     pub dual: bool,
     /// do we display all info or only the filenames ?
@@ -29,7 +33,7 @@ pub struct DisplaySettings {
     filepath: String,
 }
 
-impl Default for DisplaySettings {
+impl Default for Session {
     fn default() -> Self {
         Self {
             dual: true,
@@ -40,7 +44,10 @@ impl Default for DisplaySettings {
     }
 }
 
-impl DisplaySettings {
+impl Session {
+    /// Creates a new instance of `DisplaySettings`.
+    /// Tries to read them from the session file.
+    /// Use default value if the file can't be read.
     pub fn new(width: usize) -> Self {
         Self::default().update_from_config(width)
     }
@@ -69,7 +76,6 @@ impl DisplaySettings {
             YamlValue::Bool(value) => self.preview = value,
             _ => self.preview = false,
         }
-        log_info!("{self:?}");
         self
     }
 
@@ -81,54 +87,57 @@ impl DisplaySettings {
     }
 
     /// True iff the terminal is wide enough to display two panes
-    ///
-    /// # Errors
-    ///
-    /// Fail if the terminal has crashed
     pub fn display_wide_enough(width: usize) -> bool {
         width >= MIN_WIDTH_FOR_DUAL_PANE
     }
 
+    /// True if we display 2 tabs.
+    /// It requires two conditions:
+    /// 1. The display should be wide enough, bigger than [`crate::io::MIN_WIDTH_FOR_DUAL_PANE`].
+    /// 2. The `dual_tab` setting must be true.
     pub fn use_dual_tab(&self, width: usize) -> bool {
         self.dual && Self::display_wide_enough(width)
     }
 
     pub fn set_dual(&mut self, dual: bool) {
         self.dual = dual;
-        match self.update_yaml_file() {
-            Ok(()) => (),
-            Err(error) => log_info!("Error while updating session file {error:?}"),
-        };
+        self.update_yaml_file();
     }
 
     pub fn toggle_dual(&mut self) {
         self.dual = !self.dual;
-        match self.update_yaml_file() {
-            Ok(()) => (),
-            Err(error) => log_info!("Error while updating session file {error:?}"),
-        };
+        self.update_yaml_file();
     }
 
     pub fn toggle_metadata(&mut self) {
         self.metadata = !self.metadata;
-        match self.update_yaml_file() {
-            Ok(()) => (),
-            Err(error) => log_info!("Error while updating session file {error:?}"),
-        };
+        self.update_yaml_file();
     }
 
     pub fn toggle_preview(&mut self) {
         self.preview = !self.preview;
-        match self.update_yaml_file() {
-            Ok(()) => (),
-            Err(error) => log_info!("Error while updating session file {error:?}"),
-        };
+        self.update_yaml_file();
     }
 
-    fn update_yaml_file(&self) -> Result<()> {
-        let mut file = File::create(&self.filepath)?;
-        serde_yaml::to_writer(&mut file, &self)?;
-
-        Ok(())
+    /// Writes itself to the session file.
+    /// Does nothing if an error is encountered while creating or writing to the session file.
+    fn update_yaml_file(&self) {
+        let mut file = match File::create(&self.filepath) {
+            Ok(file) => file,
+            Err(error) => {
+                log_info!(
+                    "Couldn't create session {file}. Error: {error:?}",
+                    file = self.filepath
+                );
+                return;
+            }
+        };
+        match serde_yaml::to_writer(&mut file, &self) {
+            Ok(()) => (),
+            Err(e) => log_info!(
+                "Couldn't write config to session {file}. Error: {e:?}",
+                file = self.filepath
+            ),
+        }
     }
 }
