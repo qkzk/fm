@@ -204,7 +204,7 @@ impl Status {
     }
 
     fn menu_action(&mut self, row: u16, height: usize) {
-        let second_window_height = height / 2;
+        let second_window_height = height / 2 + (height % 2);
         let offset = row as usize - second_window_height;
         if offset >= 4 {
             let index = offset - 4;
