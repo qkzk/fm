@@ -6,7 +6,7 @@ const CONTEXT: [(&str, ActionMap); 9] = [
     ("Open with", ActionMap::Exec),
     ("Flag", ActionMap::ToggleFlag),
     ("Rename", ActionMap::Rename),
-    ("Delete", ActionMap::Delete),
+    ("Delete", ActionMap::DeleteFile),
     ("Trash", ActionMap::TrashMoveFile),
     ("Chmod", ActionMap::Chmod),
     ("New File", ActionMap::NewFile),
