@@ -627,6 +627,19 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Version 0.1.24
 
+#### Summary
+
+- New Context Menu (right click, Alt+t) with basic file operations.
+- Header (path, filename), Footer (other informations).
+- Every window can be clicked. Header, Footer, Files, Menus. Selectable element from menu can be clicked.
+- Integrated a lot of commands into `TuiApplications` or `CliApplications`.
+- Session for display settings. Settings are saved after each modification.
+- Better (?) keybindings. Alt+char open a menu whose name starts with this char.
+- Refactoring `lib`. Moved file to a few folders, separated display from status.
+- Many bug fixes
+
+#### Changelog
+
 - [x] refactor term manager. Separate content construction from drawing.
 - [x] better messages when asking a password
 - [x] FIX: trash is buggy. Can't delete definitely. Display is wrong when empty.
@@ -696,8 +709,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)
-  - [ ] readme
-  - [ ] describe what was done succintly
+  - [x] readme
+  - [x] describe what was done succintly
+  - [ ] test every mode
   - [ ] merge into v0.1.24-dev branch
 
 ## TODO
