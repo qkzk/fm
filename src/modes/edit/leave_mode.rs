@@ -25,6 +25,7 @@ use crate::modes::Navigate;
 use crate::modes::NodeCreation;
 use crate::modes::Preview;
 use crate::modes::SelectableContent;
+use crate::modes::SortKind;
 
 use super::InputCompleted;
 
@@ -47,6 +48,7 @@ impl LeaveMode {
                 must_reset_mode = false;
                 must_refresh = LeaveMode::shell(status)?;
             }
+            Edit::InputSimple(InputSimple::Sort) => LeaveMode::sort(status)?,
             Edit::InputSimple(InputSimple::Filter) => {
                 must_refresh = false;
                 LeaveMode::filter(status)?
@@ -90,7 +92,7 @@ impl LeaveMode {
             }
             Edit::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status)?,
             Edit::InputCompleted(InputCompleted::Command) => LeaveMode::command(status, binds)?,
-            Edit::NeedConfirmation(_) | Edit::InputSimple(InputSimple::Sort) => (),
+            Edit::NeedConfirmation(_) => (),
         }
 
         status.menu.input.reset();
@@ -332,6 +334,14 @@ impl LeaveMode {
             .clone();
         status.current_tab_mut().cd(&path)?;
         status.current_tab_mut().refresh_view()?;
+        status.update_second_pane_for_preview()
+    }
+
+    fn sort(status: &mut Status) -> Result<()> {
+        status.current_tab_mut().settings.sort_kind = match status.current_tab().display_mode {
+            Display::Tree => SortKind::tree_default(),
+            _ => SortKind::default(),
+        };
         status.update_second_pane_for_preview()
     }
 
