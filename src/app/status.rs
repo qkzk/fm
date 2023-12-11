@@ -926,11 +926,11 @@ impl Status {
         if self.current_tab_mut().directory.is_empty() {
             return Ok(());
         }
-        self.current_tab_mut()
-            .set_edit_mode(Edit::InputSimple(InputSimple::Chmod));
         if self.menu.flagged.is_empty() {
             self.toggle_flag_for_selected();
-        };
+        }
+        self.current_tab_mut()
+            .set_edit_mode(Edit::InputSimple(InputSimple::Chmod));
         Ok(())
     }
 
