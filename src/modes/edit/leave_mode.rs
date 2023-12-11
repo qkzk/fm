@@ -91,7 +91,11 @@ impl LeaveMode {
                 LeaveMode::search(status)?
             }
             Edit::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status)?,
-            Edit::InputCompleted(InputCompleted::Command) => LeaveMode::command(status, binds)?,
+            Edit::InputCompleted(InputCompleted::Command) => {
+                must_reset_mode = false;
+                must_refresh = false;
+                LeaveMode::command(status, binds)?;
+            }
             Edit::NeedConfirmation(_) => (),
         }
 
@@ -407,6 +411,8 @@ impl LeaveMode {
         let Ok(command) = ActionMap::from_str(command_str) else {
             return Ok(());
         };
+        log_info!("Command {command}");
+
         command.matcher(status, binds)
     }
 
