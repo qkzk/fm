@@ -191,8 +191,6 @@ pub const RSVG_CONVERT: &str = "rsvg-convert";
 pub const JUPYTER: &str = "jupyter";
 /// pandoc. used to preview .doc & .odb documents
 pub const PANDOC: &str = "pandoc";
-/// diff. used to preview diff between files
-pub const DIFF: &str = "diff";
 /// isoinfo. used to preview iso file content
 pub const ISOINFO: &str = "isoinfo";
 /// socket file explorer

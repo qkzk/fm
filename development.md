@@ -680,7 +680,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] merge specific commands & cli_info
   - [x] merge
   - [x] remove specific commands
-  - [ ] ensure diff only use first 2 files (???)
+  - [ ] ensure diff only use first 2 files (???) won't output anything if called with 3+ files
 - [x] don't store as much info while parsing tree content. Be as lazy as possible.
 - [x] Context menu (right click, alt+t) with most common actions
 - [x] unify keybindings: alt+char should be reserved to menus starting with same letter
@@ -694,14 +694,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] read (using serde_yaml) and write (using serde::Serialize) display settings from a [session file](~/.config/fm/session.yaml).
   - [x] make every session element private, ensure we read the correct setting for dual.
 - [ ] Pre release
-  - [ ] Fix last missing items
-  - [ ] check installation (???)
+  - [x] Fix last missing items
+  - [x] check installation (remove config, cargo build)
   - [ ] readme
   - [ ] describe what was done succintly
   - [ ] merge into v0.1.24-dev branch
 
 ## TODO
 
+- [ ] !command should print to stdout and be visible when leaving fm
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
 - [ ] Only store one Selectable thing in status
 - [ ] use `Rc<str>` instead of string to avoid copying

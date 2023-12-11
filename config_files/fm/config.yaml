@@ -84,13 +84,13 @@ keys:
   'alt-p': TogglePreviewSecond
   'ctrl-c': CopyFilename
   'ctrl-f': FuzzyFind
+  'ctrl-h': Help
   'ctrl-g': Shortcut
   'ctrl-p': CopyFilepath
   'ctrl-q': ResetMode
   'ctrl-r': RefreshView
   'shift-e': ToggleDisplayFull
   'shift-g': End
-  'shift-h': Help
   'shift-L': Symlink
   'shift-m': MarksNew
   'shift-o': Sort
