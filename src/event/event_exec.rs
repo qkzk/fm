@@ -88,7 +88,7 @@ impl EventAction {
     /// Toggle the second pane between preview & normal mode (files).
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
         status.display_settings.toggle_preview();
-        if status.display_settings.preview {
+        if status.display_settings.preview() {
             status.set_second_pane_for_preview()?;
         } else {
             status.tabs[1].reset_edit_mode();

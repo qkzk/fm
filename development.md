@@ -692,7 +692,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Session with display settings like [felix](https://github.com/kyoheiu/felix/blob/main/src/session.rs)
   - [x] display settings aren't read from args or config file except for "display all".
   - [x] read (using serde_yaml) and write (using serde::Serialize) display settings from a [session file](~/.config/fm/session.yaml).
-  - [ ] make every session element private, ensure we read the correct setting for dual.
+  - [x] make every session element private, ensure we read the correct setting for dual.
 - [ ] Pre release
   - [ ] Fix last missing items
   - [ ] check installation (???)

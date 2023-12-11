@@ -23,11 +23,11 @@ use crate::log_info;
 #[derive(Debug, Serialize)]
 pub struct Session {
     /// do we display one or two tabs ?
-    pub dual: bool,
+    dual: bool,
     /// do we display all info or only the filenames ?
-    pub metadata: bool,
+    metadata: bool,
     /// use the second pane to preview
-    pub preview: bool,
+    preview: bool,
     /// session filepath
     #[serde(skip_serializing)]
     filepath: String,
@@ -84,6 +84,18 @@ impl Session {
             return false;
         }
         session_bool
+    }
+
+    pub fn dual(&self) -> bool {
+        self.dual
+    }
+
+    pub fn metadata(&self) -> bool {
+        self.metadata
+    }
+
+    pub fn preview(&self) -> bool {
+        self.preview
     }
 
     /// True iff the terminal is wide enough to display two panes

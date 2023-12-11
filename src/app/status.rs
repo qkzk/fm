@@ -142,7 +142,7 @@ impl Status {
 
     /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn next(&mut self) {
-        if !self.display_settings.dual {
+        if !self.display_settings.dual() {
             return;
         }
         self.index = 1 - self.index
@@ -156,7 +156,7 @@ impl Status {
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_tab_from_col(&mut self, col: u16) -> Result<()> {
         let (width, _) = self.term_size()?;
-        if self.display_settings.dual {
+        if self.display_settings.dual() {
             if (col as usize) < width / 2 {
                 self.select_left();
             } else {
@@ -331,7 +331,7 @@ impl Status {
 
     /// Check if the second pane should display a preview and force it.
     pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
-        if self.index == 0 && self.display_settings.preview {
+        if self.index == 0 && self.display_settings.preview() {
             self.set_second_pane_for_preview()?;
         };
         Ok(())
