@@ -623,8 +623,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] refactor
   - [x] document
 
-## Current dev
-
 ### Version 0.1.24
 
 #### Summary
@@ -713,6 +711,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] describe what was done succintly
   - [x] test every mode
   - [ ] merge into v0.1.24-dev branch
+
+## Current dev
+
+### Version 0.1.25
+
+#### Summary
+
+#### Changelog
 
 ## TODO
 
