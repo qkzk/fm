@@ -719,6 +719,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Changelog
 
+- [ ] scrolling should start 1 line earlier since we use 2 lines at the bottom
+- [ ] start scrolling once below 80%
+- [ ] leaving second pane as preview should set second pane to normal
+
 ## TODO
 
 - [ ] refactor & unify all shell commands. Better names : Action::Action instead of command, Action::Command instead of shellwhatever
