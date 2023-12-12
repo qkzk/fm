@@ -663,7 +663,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] refactor node creation (file or directory) in its own mod
 - [ ] refactor password.
   - [x] only one enum
-  - [ ] hold passwords somewhere else
 - [x] FIX: browsing a file where "modified" time is in future crashes the application.
       The error comes from refresher.rs and happens with poorly configured iso files.
 - [x] Fix the error itself,
@@ -693,7 +692,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] merge specific commands & cli_info
   - [x] merge
   - [x] remove specific commands
-  - [ ] ensure diff only use first 2 files (???) won't output anything if called with 3+ files
 - [x] don't store as much info while parsing tree content. Be as lazy as possible.
 - [x] Context menu (right click, alt+t) with most common actions
 - [x] unify keybindings: alt+char should be reserved to menus starting with same letter
@@ -706,7 +704,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display settings aren't read from args or config file except for "display all".
   - [x] read (using serde_yaml) and write (using serde::Serialize) display settings from a [session file](~/.config/fm/session.yaml).
   - [x] make every session element private, ensure we read the correct setting for dual.
-  - [x] FIX: opening help or fuzzyfindhelp crashes if a listed action has no keybind (aka. the user overwritten a keybind without creating one for old action).
+- [x] FIX: opening help or fuzzyfindhelp crashes if a listed action has no keybind (aka. the user overwritten a keybind without creating one for old action).
+- [ ] !command should print something
 - [ ] Pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)
@@ -717,7 +716,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
-- [ ] !command should print to stdout and be visible when leaving fm
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
 - [ ] Only store one Selectable thing in status
 - [ ] use `Rc<str>` instead of string to avoid copying
