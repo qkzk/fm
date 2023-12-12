@@ -280,8 +280,8 @@ impl Preview {
         Self::Text(TextContent::log(log))
     }
 
-    pub fn cli_info(output: &str) -> Self {
-        Self::ColoredText(ColoredText::new(output))
+    pub fn cli_info(output: &str, command: String) -> Self {
+        Self::ColoredText(ColoredText::new(output, command))
     }
 
     pub fn epub(path: &Path) -> Result<Self> {
@@ -998,6 +998,7 @@ impl Ueberzug {
 
 #[derive(Clone, Debug)]
 pub struct ColoredText {
+    title: String,
     pub content: Vec<String>,
     len: usize,
     pub selected_index: usize,
@@ -1012,12 +1013,17 @@ impl ColoredText {
         self.len == 0
     }
 
+    pub fn title(&self) -> &str {
+        self.title.as_str()
+    }
+
     /// Make a new previewed colored text.
-    pub fn new(output: &str) -> Self {
+    pub fn new(output: &str, title: String) -> Self {
         let content: Vec<String> = output.lines().map(|line| line.to_owned()).collect();
         let len = content.len();
         let selected_index = 0;
         Self {
+            title,
             content,
             len,
             selected_index,

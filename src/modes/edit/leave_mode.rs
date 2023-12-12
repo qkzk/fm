@@ -23,7 +23,6 @@ use crate::modes::InputSimple;
 use crate::modes::MarkAction;
 use crate::modes::Navigate;
 use crate::modes::NodeCreation;
-use crate::modes::Preview;
 use crate::modes::SelectableContent;
 use crate::modes::SortKind;
 
@@ -46,7 +45,8 @@ impl LeaveMode {
             Edit::InputSimple(InputSimple::SetNvimAddr) => LeaveMode::set_nvim_addr(status)?,
             Edit::InputSimple(InputSimple::Shell) => {
                 must_reset_mode = false;
-                must_refresh = LeaveMode::shell(status)?;
+                must_refresh = false;
+                LeaveMode::shell(status)?;
             }
             Edit::InputSimple(InputSimple::Sort) => LeaveMode::sort(status)?,
             Edit::InputSimple(InputSimple::Filter) => {
@@ -157,13 +157,9 @@ impl LeaveMode {
     }
 
     pub fn cli_info(status: &mut Status) -> Result<()> {
-        let output = status.menu.cli_applications.execute(status)?;
-        log_info!("output\n{output}");
-        status.current_tab_mut().reset_edit_mode();
-        status.current_tab_mut().set_display_mode(Display::Preview);
-        let preview = Preview::cli_info(&output);
-        status.current_tab_mut().window.reset(preview.len());
-        status.current_tab_mut().preview = preview;
+        let (output, command) = status.menu.cli_applications.execute(status)?;
+        log_info!("command {command}, output\n{output}");
+        status.preview_command_output(output, command);
         Ok(())
     }
 

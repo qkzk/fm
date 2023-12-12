@@ -598,6 +598,7 @@ impl PreviewHeader {
                 TextKind::LOG => Self::make_log(),
                 _ => Self::make_default_preview(status, tab),
             },
+            Preview::ColoredText(colored_text) => Self::make_colored_text(colored_text),
             _ => Self::make_default_preview(status, tab),
         }
     }
@@ -614,6 +615,13 @@ impl PreviewHeader {
         vec![
             LOG_FIRST_SENTENCE.to_owned(),
             LOG_SECOND_SENTENCE.to_owned(),
+        ]
+    }
+
+    fn make_colored_text(colored_text: &ColoredText) -> Vec<String> {
+        vec![
+            " Command: ".to_owned(),
+            format!(" {command} ", command = colored_text.title()),
         ]
     }
 

@@ -52,7 +52,7 @@ impl CliCommand {
     /// Run its parsable command and capture its output.
     /// Some environement variables are first set to ensure the colored output.
     /// Long running commands may freeze the display.
-    fn execute(&self, status: &Status) -> Result<String> {
+    fn execute(&self, status: &Status) -> Result<(String, String)> {
         let args = ShellCommandParser::new(self.parsable_command).compute(status)?;
         log_info!("execute. {args:?}");
         log_line!("Executed {args:?}");
@@ -67,7 +67,7 @@ impl CliCommand {
                 e = command_output.status
             );
         };
-        Ok(text_output)
+        Ok((text_output, self.parsable_command.to_owned()))
     }
 }
 
@@ -97,7 +97,7 @@ impl CliApplications {
     /// Run the selected command and capture its output.
     /// Some environement variables are first set to ensure the colored output.
     /// Long running commands may freeze the display.
-    pub fn execute(&self, status: &Status) -> Result<String> {
+    pub fn execute(&self, status: &Status) -> Result<(String, String)> {
         self.content[self.index].execute(status)
     }
 }

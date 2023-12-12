@@ -25,7 +25,7 @@ impl Token {
             "%e" => Self::Extension,
             "%n" => Self::Filename,
             "%f" => Self::Flagged,
-            "%p" => Self::Path,
+            "%d" => Self::Path,
             _ => Self::Arg(arg.to_owned()),
         }
     }

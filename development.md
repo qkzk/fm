@@ -705,7 +705,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] read (using serde_yaml) and write (using serde::Serialize) display settings from a [session file](~/.config/fm/session.yaml).
   - [x] make every session element private, ensure we read the correct setting for dual.
 - [x] FIX: opening help or fuzzyfindhelp crashes if a listed action has no keybind (aka. the user overwritten a keybind without creating one for old action).
-- [ ] !command should print something
+- [x] !command & cli_application print the command run and the output
 - [ ] Pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)
@@ -716,6 +716,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
+- [ ] refactor & unify all shell commands. Better names : Action::Action instead of command, Action::Command instead of shellwhatever
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
 - [ ] Only store one Selectable thing in status
 - [ ] use `Rc<str>` instead of string to avoid copying

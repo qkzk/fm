@@ -18,14 +18,14 @@ use crate::app::Tab;
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
 use crate::config::Bindings;
-use crate::io::Args;
 use crate::io::Internal;
 use crate::io::Kind;
 use crate::io::Opener;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
+use crate::io::{execute_and_capture_output_with_path, Args};
 use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
-    execute_without_output_with_path, reset_sudo_faillock,
+    reset_sudo_faillock,
 };
 use crate::modes::CopyMove;
 use crate::modes::Display;
@@ -728,8 +728,12 @@ impl Status {
             }
             let current_directory = self.current_tab().directory_of_selected()?.to_owned();
             let params: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-            execute_without_output_with_path(executable, current_directory, Some(&params))?;
-            self.current_tab_mut().set_edit_mode(Edit::Nothing);
+            if let Ok(output) =
+                execute_and_capture_output_with_path(executable, current_directory, &params)
+            {
+                self.preview_command_output(output, shell_command);
+            }
+            // self.current_tab_mut().set_edit_mode(Edit::Nothing);
             Ok(true)
         }
     }
@@ -822,14 +826,14 @@ impl Status {
     fn run_sudo_command(&mut self) -> Result<()> {
         self.current_tab_mut().set_edit_mode(Edit::Nothing);
         reset_sudo_faillock()?;
-        let Some(sudo_command) = &self.menu.sudo_command else {
+        let Some(sudo_command) = self.menu.sudo_command.to_owned() else {
             return self.menu.clear_sudo_attributes();
         };
-        let args = ShellCommandParser::new(sudo_command).compute(self)?;
+        let args = ShellCommandParser::new(&sudo_command).compute(self)?;
         if args.is_empty() {
             return self.menu.clear_sudo_attributes();
         }
-        execute_sudo_command_with_password(
+        let (_, output, _) = execute_sudo_command_with_password(
             &args[1..],
             self.menu
                 .password_holder
@@ -839,7 +843,9 @@ impl Status {
             self.current_tab().directory_of_selected()?,
         )?;
         self.menu.clear_sudo_attributes()?;
-        self.refresh_status()
+        self.preview_command_output(output, sudo_command.to_owned());
+        // self.refresh_status()
+        Ok(())
     }
 
     pub fn dispatch_password(
@@ -860,6 +866,15 @@ impl Status {
             },
             PasswordUsage::SUDOCOMMAND => self.run_sudo_command(),
         }
+    }
+
+    pub fn preview_command_output(&mut self, output: String, command: String) {
+        log_info!("output {output}");
+        self.current_tab_mut().reset_edit_mode();
+        self.current_tab_mut().set_display_mode(Display::Preview);
+        let preview = Preview::cli_info(&output, command);
+        self.current_tab_mut().window.reset(preview.len());
+        self.current_tab_mut().preview = preview;
     }
 
     pub fn update_nvim_listen_address(&mut self) {
