@@ -1,6 +1,6 @@
 [package]
 name = "fm-tui"
-version = "0.1.23"
+version = "0.1.24"
 authors = ["Quentin Konieczko <qu3nt1n@gmail.com>"]
 edition = "2021"
 license-file = "LICENSE.txt"
@@ -12,7 +12,7 @@ categories = ["command-line-utilities", "filesystem", "os::unix-apis"]
 documentation = "https://docs.rs/fm-tui/latest/"
 
 [profile.release]
-strip = true  # Automatically strip symbols from the binary.
+# strip = true  # Automatically strip symbols from the binary.
 lto = true # instructs the linker to optimize at the link stage.
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -49,6 +49,7 @@ rand = "0.8.5"
 regex = "1.6.0"
 rust-lzma = "0.5.1"
 sanitize-filename = "0.4.0"
+serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9.13"
 shellexpand = "2.1.2"
 skim-qkzk = "0.9.12"

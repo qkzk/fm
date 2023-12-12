@@ -1,4 +1,6 @@
-# FM : Dired like File Manager
+# Development
+
+I write every step in this file.
 
 ## DONE
 
@@ -623,8 +625,101 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## Current dev
 
+### Version 0.1.24
+
+#### Summary
+
+- New Context Menu (right click, Alt+t) with basic file operations.
+- Header (path, filename), Footer (other informations).
+- Every window can be clicked. Header, Footer, Files, Menus. Selectable element from menu can be clicked.
+- Integrated a lot of commands into `TuiApplications` or `CliApplications`.
+- Session for display settings. Settings are saved after each modification.
+- Better (?) keybindings. Alt+char open a menu whose name starts with this char.
+- Refactoring `lib`. Moved file to a few folders, separated display from status.
+- Many bug fixes
+
+#### Changelog
+
+- [x] refactor term manager. Separate content construction from drawing.
+- [x] better messages when asking a password
+- [x] FIX: trash is buggy. Can't delete definitely. Display is wrong when empty.
+- [x] FIX: cursor is off by one in password
+- [x] display mode / edit mode. Separate display (normal, tree, preview) from any other mode.
+- [x] FIX: NVIM listen address won't update if neovim is restarted while fm is still running
+- [x] FIX: next is wrong when folded.
+      Needs a lot of change. Can't fix everything. ATM if a childnode is folded, unfolding also unfolds every child.
+      IDK how to avoid that without rewriting everything.
+
+      We need to do next on node until we reach a displayed node. It's not good.
+
+- [x] separate display_modes completely. Normal -> lsl (?), Tree, Preview.
+      PathContent is only used in Normal and should be associated with it.
+      Reseting display should switch back to user setted display.
+      Preview isn't like Normal & Tree since it doesn't display files at all.
+  - [x] move every src to a related folder
+- [x] refactor regex. Allow regex match in tree
+- [x] FIX: can't jump to file from tree mode
+- [x] refactor chmod into its own mod
+- [x] refactor node creation (file or directory) in its own mod
+- [ ] refactor password.
+  - [x] only one enum
+- [x] FIX: browsing a file where "modified" time is in future crashes the application.
+      The error comes from refresher.rs and happens with poorly configured iso files.
+- [x] Fix the error itself,
+- [x] log a message when we encounter such a file, since there's not much we can do
+- [x] prevent logging the same file multiple times. Massive change which requires a new lazystatic element
+- [x] regroup commands in one place
+- [x] FIX: clicking outside above files crashes
+- [x] Clickable first line. Each first line element can be clicked, resulting in an action
+- [x] don't allow rename of parent or self folder (. & ..)
+- [x] FIX: print on quit requires to drop everything holding a terminal
+- [x] Improve refresh actions. Subfolders in tree mode are now watched.
+- [x] Trait LineDisplay for EditMode
+- [x] Split tree & lsl drawing into smaller methods
+- [x] cargo clippy -- -D clippy::pedantic -D clippy::nursery
+      1100 -> 891 errors
+- [x] FIX: resizing deselects the current file.
+- [x] FIX: first line use selected tab even when not selected
+- [x] refactor bulk. Made it a bit simpler
+- [x] status refactoring. Moved every "menu" to a separate file.
+- [x] FIX: leaving edit mode doesn't refresh completion
+- [x] use rc instead of owned types in fileinfo
+- [x] renamed path_content to Directory
+- [x] renamed Display::Normal to Display::Directory
+- [x] event_dispatch refactor
+- [x] refactor file opening. Far from satisfying
+- [x] FIX: wrong position of cursor in edit modes. Use a cursor offset for all modes.
+- [ ] merge specific commands & cli_info
+  - [x] merge
+  - [x] remove specific commands
+- [x] don't store as much info while parsing tree content. Be as lazy as possible.
+- [x] Context menu (right click, alt+t) with most common actions
+- [x] unify keybindings: alt+char should be reserved to menus starting with same letter
+- [x] Clickable layout
+  - [x] 1 row : address & file
+  - [x] 50% or 100% : files
+  - [x] 50% or 0% : menu
+  - [x] last row : infos with fixed sizes
+- [x] Session with display settings like [felix](https://github.com/kyoheiu/felix/blob/main/src/session.rs)
+  - [x] display settings aren't read from args or config file except for "display all".
+  - [x] read (using serde_yaml) and write (using serde::Serialize) display settings from a [session file](~/.config/fm/session.yaml).
+  - [x] make every session element private, ensure we read the correct setting for dual.
+- [x] FIX: opening help or fuzzyfindhelp crashes if a listed action has no keybind (aka. the user overwritten a keybind without creating one for old action).
+- [x] !command & cli_application print the command run and the output
+- [ ] Pre release
+  - [x] Fix last missing items
+  - [x] check installation (remove config, cargo build)
+  - [x] readme
+  - [x] describe what was done succintly
+  - [x] test every mode
+  - [ ] merge into v0.1.24-dev branch
+
 ## TODO
 
+- [ ] refactor & unify all shell commands. Better names : Action::Action instead of command, Action::Command instead of shellwhatever
+- [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
+- [ ] Only store one Selectable thing in status
+- [ ] use `Rc<str>` instead of string to avoid copying
 - [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
@@ -691,10 +786,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
   - which language ?
   - what for ?
-
-## BUGS
-
-- [ ] tree mode : index are offset by one
 
 ## Won't do
 

@@ -1,14 +1,12 @@
-# FM: a dired inspired TUI file manager
-
-Written in rust.
+# FM: a file manager inspired by dired and ranger, written in rust
 
 [![fm-tui on crates.io][cratesio-image]][cratesio]
-[![fm-tui on docs.rs](https://img.shields.io/docsrs/fm-tui/0.1.0)][docrs]
+[![fm-tui on docs.rs](https://img.shields.io/docsrs/fm-tui/0.1.24)][docrs]
 
 [cratesio-image]: https://img.shields.io/crates/v/fm-tui.svg
 [cratesio]: https://crates.io/crates/fm-tui
-[docsrs-badge]: https://img.shields.io/docsrs/fm-tui/0.1.0
-[docrs]: https://docs.rs/fm-tui/0.1.0
+[docsrs-badge]: https://img.shields.io/docsrs/fm-tui/0.1.24
+[docrs]: https://docs.rs/fm-tui/0.1.24
 
 ```
 A TUI file manager inspired by dired and ranger
@@ -18,9 +16,6 @@ Usage: fm [OPTIONS]
 Options:
   -p, --path <PATH>      Starting path. directory or file [default: .]
   -s, --server <SERVER>  Nvim server [default: ]
-  -D, --dual <DUAL>      Dual pane ? [possible values: true, false]
-  -S, --simple <SIMPLE>  Display files metadata ? [possible values: true, false]
-  -P, --preview          Use second pane as preview ? default to false
   -A, --all              Display all files (hidden)
   -h, --help             Print help
   -V, --version          Print version
@@ -28,14 +23,11 @@ Options:
 
 ## Platform
 
-Linux is the only supported platform.
-
-- Version 0.1.20 doesn't compile on MacOS (see [#77](https://github.com/qkzk/fm/issues/77)).
-- Version 0.1.21 fixes this bug but I can't test more since I don't own a mac :)
+Linux is the only supported platform. It may be usable on MacOS but I can't be sure.
 
 ## Video
 
-![fm](./fm.gif)
+![fm](https://github.com/qkzk/fm/blob/v0.1.23-dev/fm.gif?raw=true)
 
 ## Installation
 
@@ -64,6 +56,10 @@ If you added the [recommanded function](#cd-on-quit) to your bashrc/zshrc, simpl
 Some features depends on external programs to keep fm from being really bloated.
 I try to implement every feature I can think of.
 
+### Session
+
+Display settings (use two panes, display metadata, use second pane as preview) are saved and restored when restarting the application.
+
 ### Navigation
 
 - Navigate with the arrows or the mouse (left select, right open, wheel)
@@ -87,19 +83,20 @@ Many ways to jump somewhere :
 - Create files, directory, rename with n, d, r
 - Flag a bunch of file, change panel with TAB and move/copy them !
 - Open the trash with Alt+o. x to remove permanently, enter to restore. Wipe the trash with Alt+x.
-- Rename or create a bunch of file with B. Flag files, B, edit the names and save the file. The renaming is done.
+- Rename or create a bunch of file with alt-b. Flag files, alt-b, edit the names and save the file. The renaming is done.
   You can create nested files with `a/b/c` which will create every intermediate folder if needed.
 
 ### Shell
 
 - Open a new shell in this directory with s
-- Start a configured TUI application with S
+- Start a configured TUI application with alt-s (like htop, ncdu etc.)
+- Start a configured CLI application with alt-i (like diff, dragon-drop etc.)
 - Execute a shell command with '!'. Expansions (%e ext, %n filename, %s filepath, %f flagged files, %d current directory) are supported.
   pipes and redirections aren't supported.
 
 ### Display
 
-- Change display, removing details with Alt+e or display a single pane with Alt+d
+- Change display, removing details with E or display a single pane with Alt+d
 - Preview most of files (text, highlighted code, binary, pdf, exif details, image/video, audio details, archives, MS-office & OpenOffice documents) with P
 - Toggle the tree view with t. Fold selected folder with z. Unfold every folder with Z, fold every folder with Alt+z.
 - Enter preview mode with Alt+P. Every file is previewed in the second pane.
@@ -111,7 +108,7 @@ Many ways to jump somewhere :
 
 - Ctrl-f : search in filenames and move there,
 - Ctrl-s : search for a line in file content and move there,
-- Alt-h : search for a keybinding and execute the action.
+- H : display a searchable help, search for a keybinding and execute the action.
 
 We use a fork of [skim](https://github.com/lotabout/skim), an fzf clone written in rust.
 
@@ -119,7 +116,7 @@ We use a fork of [skim](https://github.com/lotabout/skim), an fzf clone written 
 
 When you open a file with i, it will send an event to Neovim and open it in a new buffer.
 
-It should always work, even outside of neovim.
+As long as Neovim is runnging, it should always work, even outside of neovim.
 
 The RPC server address is found by looking for neovim in /proc. If it fails, we can still look for an
 environment variable set by neovim itself.
@@ -177,12 +174,11 @@ Expansions :
 
 - Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p
 - Detect removable disks automatically and jump to them in a few keystrokes (Ctrl+g, up, enter)
-- Drag and drop files (requires dragon-drop installed) with Alt+d
+- Drag and drop files (requires dragon-drop installed) with D
 - Open and mount encrypted devices. Open the menu with Shift+e, mount with m, unmount with u.
-- diff the first two flagged files / folders with D.
 - Contol MOCP with Ctrl+arrows. Ctrl+Left, Ctrl+Right: previous or next song. Ctrl+Down: Toggle pause. Ctrl+Up: add current folder to playlist
 - Set the selected image as wallpaper with W.
-- _Experimental_ enter "command mode" with ':'. Type the name of a command and it will be executed.
+- Enter "command mode" with ':'. Type the name of a command and it will be executed.
 - Mount a remote filesystem using ssfhs with Alt-r.
 - Mount a MTP device with Alt-R.
 
@@ -190,105 +186,127 @@ Most of those features are inspired by ranger and alternatives (Midnight command
 
 ## Default keybindings
 
-Press `h` by default to display the help.
+Press ctrl-h to display the help.
 Your current keybindings are shown. Here are the default ones.
 
 ```
+Char('q') :      quit
+Ctrl('h') :      help
 
+- Navigation -
+Left      :      cd to parent directory
+Right     :      cd to child directory
+Up        :      one line up
+Down      :      one line down
+Home      :      go to first line
+Char('G') :      go to last line
+PageUp    :      10 lines up
+PageDown  :      10 lines down
+Tab       :      cycle tab
 
-     Char('q'):      quit
-     Char('h'):      help
+- Actions -
+Alt('d')  :      toggle dual pane - if the width is sufficiant
+Alt('p')  :      toggle a preview on the second pane
+Char('E') :      toggle metadata on files
+Char('a') :      toggle hidden
+Char('s') :      shell in current directory
+Char('o') :      open the selected file with :
+    - default       xdg-open
+    - audio         mocp
+    - images        viewnior
+    - office        libreoffice
+    - pdf, ebooks   zathura
+    - text          nvim
+    - video         mpv
+    - vectorials
+    - compressed files are decompressed
+    - iso images are mounted
+Char('i') :      open in current nvim session
+Char('I') :      setup the nvim rpc address
+Char('P') :      preview this file
+Char('-') :      move back to previous dir
+Char('~') :      move to $HOME
+Char('`') :      move to root (/)
+Char('@') :      move to starting point
+Char('M') :      mark current path
+Char('\''):      jump to a mark
+Char('f') :      search next matching element
+Ctrl('f') :      fuzzy finder for file
+Ctrl('s') :      fuzzy finder for line
+Char('H') :      fuzzy finder from help
+Ctrl('r') :      refresh view
+Ctrl('c') :      copy filename to clipboard
+Ctrl('p') :      copy filepath to clipboard
+Alt('c')  :      open the config file
 
-     - Navigation -
-     Left:           cd to parent directory
-     Right:          cd to child directory
-     Up:             one line up
-     Down:           one line down
-     Home:           go to first line
-     End:            go to last line
-     PageUp:         10 lines up
-     PageDown:       10 lines down
-     Tab:            cycle tab
+- Action on flagged files -
+Char(' ') :      toggle flag on a file
+Char('*') :      flag all
+Char('u') :      clear flags
+Char('v') :      reverse flags
+Char('L') :      symlink to current dir
+Char('c') :      copy to current dir
+Char('m') :      move to current dir
+Char('x') :      delete files permanently
+Char('X') :      move to trash
+Char('C') :      compress into an archive
 
-     - Actions -
-     Alt('f'):      toggle dual pane - if the width is sufficiant
-     Alt('p'):       toggle a preview on the second pane
-     Alt('e'):      toggle metadata on files
-     Char('a'):      toggle hidden
-     Char('s'):      shell in current directory
-     Char('o'):      open the selected file
-     Char('i'):      open in current nvim session
-     Char('I'):      setup the nvim rpc address
-     Char('P'):      preview this file
-     Char('T'):       display infos about a media file
-     Char('-'):      move back to previous dir
-     Char('~'):      move to $HOME
-     Char('M'):      mark current path
-     Char('\''):     jump to a mark
-     Char('f'):      search next matching element
-     Ctrl('f'):      fuzzy finder
-     Ctrl('s'):      fuzzy finder for line
-     Ctrl('r'):      refresh view
-     Ctrl('c'):      copy filename to clipboard
-     Ctrl('p'):      copy filepath to clipboard
-     Alt('d'):       dragon-drop selected file
-     Alt('c'):       open the config file
-     Char('W'):      set the selected file as wallpaper with nitrogen
+- Trash -
+Alt('o')  :      Open the trash (enter to restore, del clear)
+Alt('x')  :      Empty the trash
 
-     - Action on flagged files -
-     Char(' '):      toggle flag on a file
-     Char('*'):      flag all
-     Char('u'):      clear flags
-     Char('v'):      reverse flags
-     Char('l'):      symlink to current dir
-     Char('c'):      copy to current dir
-     Char('p'):      move to current dir
-     Char('x'):      delete files permanently
-     Char('X'):      move to trash
-     Char('C'):      compress into an archive
-     Char('D'):      display the diff of the first 2 flagged files
+- Tree -
+Navigate as usual. Most actions works as in 'normal' view.
+Char('t') :      Toggle tree mode
+Char('z') :      Fold a node
+Ctrl('z') :      Fold every node
+Char('Z') :      Unfold every node
 
-     - Trash -
-     Alt('o'):       Open the trash (enter to restore, del clear)
-     Alt('x'):       Empty the trash
+- MODES -
+Char('t') :      TREE
+Alt('m')  :      CHMOD
+Char('e') :      EXEC
+Char('d') :      NEWDIR
+Char('n') :      NEWFILE
+Char('r') :      RENAME
+Alt('g')  :      GOTO
+Char('w') :      REGEXMATCH
+Alt('j')  :      JUMP
+Char('O') :      SORT
+Alt('h')  :      HISTORY
+Ctrl('g') :      SHORTCUT
+Alt('e')  :      ENCRYPTED DRIVE
+    (m: open & mount,  u: unmount & close, g: go there)
+Alt('R')  :      REMOVABLE MTP DEVICES
+    (m: mount,  u: unmount, g: go there)
+Char('/') :      SEARCH
+Char(':') :      COMMAND
+Alt('b')  :      BULK
+Alt('s')  :      TUI APPS
+Alt('i')  :      CLI APPS
+Alt('r')  :      MOUNT REMOTE PATH
+Alt('f')  :      FILTER
+    (by name "n name", by ext "e ext", only directories d or all for reset)
+Enter     :      Execute mode then NORMAL
+Ctrl('q') :      NORMAL
 
-     - Tree -
-     Navigate as usual. Most actions works as in 'normal' view.
-     Char('t'):      Toggle tree mode
-     Char('z'):      Fold a node
-     Alt('z'):       Fold every node
-     Char('Z'):      Unfold every node
+- MOC -
+Control MOC from your TUI
+CtrlUp    :      MOCP: Add selected file or folder to the playlist
+CtrlLeft  :      MOCP: Previous song
+CtrlDown  :      MOCP: Toggle play/pause.
+CtrlRight :      MOCP: Next song
+AltEnter  :      MOCP: Go to currently playing song
+Ctrl('x') :      MOCP: Clear the playlist
 
-     - MODES -
-     Char('t'):      TREE
-     Char('m'):      CHMOD
-     Char('e'):      EXEC
-     Char('d'):      NEWDIR
-     Char('n'):      NEWFILE
-     Char('r'):      RENAME
-     Char('g'):      GOTO
-     Char('w'):      REGEXMATCH
-     Char('j'):      JUMP
-     Char('O'):      SORT
-     Char('H'):      HISTORY
-     Char('G'):      SHORTCUT
-     Char('E'):      ENCRYPTED DRIVE
-         (m: open & mount,  u: unmount & close)
-     Char('/'):      SEARCH
-     Char(':'):      COMMAND
-     Char('B'):      BULK
-     Char('S'):      SHELL MENU
-     Char('F'):      FILTER
-         (by name "n name", by ext "e ext", only directories d or all for reset)
-     Enter:  Execute mode then NORMAL
-     Ctrl('q'):    NORMAL
-
-     - MOC -
-     Control MOC from your TUI
-     CtrlUp:          Add a file or folder to the playlist
-     CtrlLeft         Previous song
-     CtrlDown:        Toggle play/pause. Start MOC if needed
-     CtrlRight        Next song
+- CUSTOM ACTIONS -
+%s: the selected file,
+%f: the flagged files,
+%e: the extension of the file,
+%n: the filename only,
+%p: the full path of the current directory.
+Alt('u'):        /usr/bin/google-chrome-stable %s
+Char('D'):        /usr/bin/dragon-drop %s
 ```
 
 ## Configuration
@@ -305,8 +323,6 @@ You can configure :
   - use an unset bind
   - %s is expanded to the selected path, %f is expanded to the flagged files (full paths).
   - See the [config](./config_files/fm/config.yaml) or an example.
-- **Settings**. Do you whish to start with dual pane ? Do you wish to use basic or
-  full display ?
 - **Openers**. fm tries to be smart and open some files with a standard program.
   You can change that and use whatever installed program you want. Specify if it
   requires a shell to be run (like neovim) or not (like subl).
