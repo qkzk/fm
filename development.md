@@ -704,13 +704,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] make every session element private, ensure we read the correct setting for dual.
 - [x] FIX: opening help or fuzzyfindhelp crashes if a listed action has no keybind (aka. the user overwritten a keybind without creating one for old action).
 - [x] !command & cli_application print the command run and the output
-- [ ] Pre release
+- [x] Pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)
   - [x] readme
   - [x] describe what was done succintly
   - [x] test every mode
-  - [ ] merge into v0.1.24-dev branch
 
 ## Current dev
 
