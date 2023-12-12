@@ -378,7 +378,7 @@ impl EventAction {
     /// Display the help which can be navigated and displays the configrable
     /// binds.
     pub fn help(status: &mut Status, binds: &Bindings) -> Result<()> {
-        let help = help_string(binds, &status.internal_settings.opener)?;
+        let help = help_string(binds, &status.internal_settings.opener);
         status.current_tab_mut().set_display_mode(Display::Preview);
         status.current_tab_mut().preview = Preview::help(&help);
         let len = status.current_tab().preview.len();
@@ -806,7 +806,7 @@ impl EventAction {
 
     /// Start a fuzzy find for a keybinding with skim.
     pub fn fuzzyfind_help(status: &mut Status, binds: &Bindings) -> Result<()> {
-        let help = help_string(binds, &status.internal_settings.opener)?;
+        let help = help_string(binds, &status.internal_settings.opener);
         status.skim_find_keybinding_and_run(help)
     }
 

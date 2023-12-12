@@ -31,7 +31,7 @@ pub const REFRESH_KEY: Key = Key::AltPageUp;
 pub const REFRESH_EVENT: Event = Event::Key(REFRESH_KEY);
 
 impl Bindings {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let binds = HashMap::from([
             (Key::ESC, ActionMap::ResetMode),
             (Key::Up, ActionMap::MoveUp),
@@ -144,7 +144,7 @@ impl Bindings {
     pub fn keybind_reversed(&self) -> HashMap<String, String> {
         self.binds
             .iter()
-            .map(|(k, v)| (v.to_string(), format!("{k:?}")))
+            .map(|(keybind, action)| (action.to_string(), format!("{keybind:?}")))
             .collect()
     }
 

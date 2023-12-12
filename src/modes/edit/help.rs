@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use strfmt::strfmt;
 
@@ -130,12 +132,27 @@ const CUSTOM_HELP: &str = "
 /// Creates the help `String` from keybindings.
 /// If multiple keybindings are bound to the same action, the last one
 /// is displayed.
-///
-/// # Errors
-///
-/// It may fail if the help string can't be formated properly.
-/// It should never fail since every Keybinding should be set.
-pub fn help_string(binds: &Bindings, opener: &Opener) -> Result<String> {
+/// If an action displayed in help isn't bound to a key, the formating won't
+/// be possible. We use the default keybindings instead.
+/// If it doesn't work, we return an empty string.
+pub fn help_string(binds: &Bindings, opener: &Opener) -> String {
+    match make_help_with_config(binds, opener) {
+        Ok(help) => help,
+        Err(error) => {
+            crate::log_info!("Error parsing help: {error}");
+            let mut help = format!(
+                "Couldn't parse your keybindings: {error}.
+Using default keybindings.
+
+"
+            );
+            help.push_str(&make_help_with_config(&Bindings::new(), opener).unwrap_or_default());
+            help
+        }
+    }
+}
+
+fn make_help_with_config(binds: &Bindings, opener: &Opener) -> Result<String> {
     let mut keybind_reversed = binds.keybind_reversed();
     keybind_reversed.extend(opener.association.as_map_of_strings());
     let mut help = strfmt(HELP_TO_FORMAT, &keybind_reversed)?;
