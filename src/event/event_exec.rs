@@ -92,6 +92,7 @@ impl EventAction {
             status.set_second_pane_for_preview()?;
         } else {
             status.tabs[1].reset_edit_mode();
+            status.tabs[1].display_mode = Display::Directory;
             status.tabs[1].refresh_view()?;
         }
         Ok(())
