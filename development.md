@@ -719,9 +719,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Changelog
 
-- [ ] scrolling should start 1 line earlier since we use 2 lines at the bottom
+- [x] scrolling in tree mode should start 1 line earlier since we use 1 line at the bottom
+- [x] leaving second pane as preview should set second pane to normal
 - [ ] start scrolling once below 80%
-- [ ] leaving second pane as preview should set second pane to normal
 
 ## TODO
 

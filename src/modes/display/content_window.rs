@@ -22,6 +22,8 @@ impl ContentWindow {
     const WINDOW_PADDING: usize = 4;
     /// The space of the top element
     pub const WINDOW_MARGIN_TOP: usize = 2;
+    /// The space for the bottom row
+    pub const WINDOW_MARGIN_BOTTOM: usize = 1;
     /// How many rows are reserved for the header ?
     pub const HEADER_ROWS: usize = 3;
     /// How many rows are reserved for the footer ?
