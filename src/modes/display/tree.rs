@@ -708,13 +708,13 @@ fn other_prefix(prefix: &str) -> String {
 }
 
 #[inline]
-fn filename_format(current_path: &Path, current_node: &Node) -> String {
+fn filename_format(current_path: &Path, folded: bool) -> String {
     let filename = filename_from_path(current_path)
         .unwrap_or_default()
         .to_owned();
 
     if current_path.is_dir() && !current_path.is_symlink() {
-        if current_node.folded {
+        if folded {
             format!("▸ {}", filename)
         } else {
             format!("▾ {}", filename)
@@ -748,20 +748,20 @@ fn path_filename_contains(path: &Path, pattern: &str) -> bool {
 
 /// Holds a few references used to display a tree line
 /// Only the metadata info is hold.
-pub struct TreeLineMaker<'a> {
-    node: &'a Node,
+pub struct TreeLineMaker {
+    folded: bool,
     prefix: std::rc::Rc<str>,
     path: std::rc::Rc<Path>,
     color_effect: ColorEffect,
     metadata: Option<String>,
 }
 
-impl<'a> TreeLineMaker<'a> {
+impl TreeLineMaker {
     /// Uses references to fileinfo, prefix, node & path to create a `TreeLineMaker`.
     fn new(
         fileinfo: &FileInfo,
         prefix: &str,
-        node: &'a Node,
+        node: &Node,
         path: &Path,
         display_metadata: bool,
     ) -> Self {
@@ -777,9 +777,10 @@ impl<'a> TreeLineMaker<'a> {
         } else {
             None
         };
+        let folded = node.folded;
 
         Self {
-            node,
+            folded,
             prefix,
             path,
             color_effect,
@@ -788,7 +789,7 @@ impl<'a> TreeLineMaker<'a> {
     }
 
     pub fn filename(&self) -> String {
-        filename_format(&self.path, self.node)
+        filename_format(&self.path, self.folded)
     }
 
     pub fn attr(&self) -> tuikit::attr::Attr {
