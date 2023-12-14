@@ -746,8 +746,21 @@ fn path_filename_contains(path: &Path, pattern: &str) -> bool {
         .contains(pattern)
 }
 
+#[derive(Clone, Debug)]
+pub struct TreeContent {
+    pub content: Vec<TreeLineMaker>,
+    pub index: usize,
+}
+
+impl TreeContent {
+    pub fn content(&self) -> &Vec<TreeLineMaker> {
+        &self.content
+    }
+}
+
 /// Holds a few references used to display a tree line
 /// Only the metadata info is hold.
+#[derive(Clone, Debug)]
 pub struct TreeLineMaker {
     folded: bool,
     prefix: std::rc::Rc<str>,
