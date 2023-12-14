@@ -2,7 +2,7 @@ use std::cmp::min;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
@@ -40,7 +40,7 @@ use crate::modes::Trash;
 use crate::modes::TreePreview;
 use crate::modes::Ueberzug;
 use crate::modes::Window;
-use crate::modes::{calculate_top_bottom, TreeLineMaker};
+use crate::modes::{calculate_top_bottom, TreeLineBuilder};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -287,14 +287,14 @@ impl<'a> WinMain<'a> {
             2
         };
         let height = canvas.height()?;
-        let (selected_index, content) = self
+        let (top, bottom) = calculate_top_bottom(self.tab.tree.displayable().index(), height);
+        let length = self.tab.tree.displayable().lines().len();
+
+        for (index, content_line) in self
             .tab
             .tree
-            .content(&self.tab.users, self.status.display_settings.metadata());
-        let (top, bottom) = calculate_top_bottom(selected_index, height);
-        let length = content.len();
-
-        for (index, content_line) in content
+            .displayable()
+            .lines()
             .iter()
             .enumerate()
             .skip(top)
@@ -312,13 +312,13 @@ impl<'a> WinMain<'a> {
                 self.status.display_settings.metadata(),
             )?;
         }
-        Ok(selected_index)
+        Ok(self.tab.tree.displayable().index())
     }
 
     fn draw_tree_line(
         &self,
         canvas: &mut dyn Canvas,
-        tree_line_maker: &TreeLineMaker,
+        tree_line_maker: &TreeLineBuilder,
         position_param: TreeLinePosition,
         display_medatadata: bool,
     ) -> Result<()> {
@@ -335,9 +335,7 @@ impl<'a> WinMain<'a> {
         self.print_as_flagged(canvas, row, path, &mut attr)?;
 
         let col_metadata = if display_medatadata {
-            let Some(s_metadata) = tree_line_maker.metadata() else {
-                return Err(anyhow!("Metadata should be set."));
-            };
+            let s_metadata = tree_line_maker.metadata();
             canvas.print_with_attr(row, left_margin, s_metadata, attr)?
         } else {
             0
@@ -480,7 +478,8 @@ impl<'a> WinMain<'a> {
 
     fn draw_tree_preview(&self, tree_preview: &TreePreview, canvas: &mut dyn Canvas) -> Result<()> {
         let height = canvas.height()?;
-        let (selected_index, content) = tree_preview.tree.content(&self.tab.users, false);
+        let tree_content = tree_preview.tree.displayable();
+        let (selected_index, content) = (tree_content.index(), tree_content.lines());
         let (top, bottom) = calculate_top_bottom(selected_index, height);
         let length = content.len();
 

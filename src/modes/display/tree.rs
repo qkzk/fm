@@ -132,7 +132,7 @@ impl Go for Tree {
             To::Root => self.select_root(),
             To::Last => self.select_last(),
             To::Parent => self.select_parent(),
-            To::Path(path) => self.select_path(path, true),
+            To::Path(path) => self.select_path(path),
         }
     }
 }
@@ -159,7 +159,7 @@ pub struct Tree {
     root_path: Rc<Path>,
     selected: Rc<Path>,
     nodes: HashMap<Rc<Path>, Node>,
-    required_height: usize,
+    displayable_lines: TreeLines,
 }
 
 impl Default for Tree {
@@ -168,14 +168,12 @@ impl Default for Tree {
             root_path: Rc::from(Path::new("")),
             selected: Rc::from(Path::new("")),
             nodes: HashMap::new(),
-            required_height: 0,
+            displayable_lines: TreeLines::default(),
         }
     }
 }
 
 impl Tree {
-    pub const DEFAULT_REQUIRED_HEIGHT: usize = 80;
-
     /// Creates a new tree, exploring every node until depth is reached.
     pub fn new(
         root_path: Rc<Path>,
@@ -194,11 +192,13 @@ impl Tree {
             filter_kind,
         );
 
+        let content = Self::make_displayable(users, &root_path, &nodes);
+
         Self {
             selected: root_path.clone(),
             root_path,
             nodes,
-            required_height: Self::DEFAULT_REQUIRED_HEIGHT,
+            displayable_lines: content,
         }
     }
 
@@ -353,9 +353,8 @@ impl Tree {
     /// Select next sibling or the next sibling of the parent
     fn select_next(&mut self) {
         let next_path = self.find_next_path();
-        self.select_path(&next_path, false);
+        self.select_path(&next_path);
         drop(next_path);
-        self.increment_required_height()
     }
 
     fn find_next_path(&self) -> Rc<Path> {
@@ -377,15 +376,9 @@ impl Tree {
 
     /// Select previous sibling or the parent
     fn select_prev(&mut self) {
-        let must_increase = self.is_on_root();
         let previous_path = self.find_prev_path();
-        self.select_path(&previous_path, false);
+        self.select_path(&previous_path);
         drop(previous_path);
-        if must_increase {
-            self.set_required_height_to_max()
-        } else {
-            self.decrement_required_height()
-        }
     }
 
     fn find_prev_path(&self) -> Rc<Path> {
@@ -425,8 +418,7 @@ impl Tree {
 
     fn select_root(&mut self) {
         let root_path = self.root_path.to_owned();
-        self.select_path(&root_path, false);
-        self.reset_required_height()
+        self.select_path(&root_path);
     }
 
     fn select_last(&mut self) {
@@ -436,12 +428,11 @@ impl Tree {
 
     fn select_parent(&mut self) {
         if let Some(parent_path) = self.selected.parent() {
-            self.select_path(parent_path.to_owned().as_path(), false);
-            self.decrement_required_height()
+            self.select_path(parent_path.to_owned().as_path());
         }
     }
 
-    fn select_path(&mut self, dest_path: &Path, set_height: bool) {
+    fn select_path(&mut self, dest_path: &Path) {
         if Rc::from(dest_path) == self.selected {
             return;
         }
@@ -454,33 +445,14 @@ impl Tree {
         };
         selected_node.unselect();
         self.selected = Rc::from(dest_path);
-        if set_height {
-            self.set_required_height_to_max()
+        self.displayable_lines.unselect();
+        if let Some(index) = self.displayable_lines.find_by_path(dest_path) {
+            self.displayable_lines.select(index);
         }
-    }
-
-    fn increment_required_height(&mut self) {
-        if self.required_height < usize::MAX {
-            self.required_height += 1
-        }
-    }
-
-    fn decrement_required_height(&mut self) {
-        if self.required_height > Self::DEFAULT_REQUIRED_HEIGHT {
-            self.required_height -= 1
-        }
-    }
-
-    fn set_required_height_to_max(&mut self) {
-        self.required_height = usize::MAX
-    }
-
-    fn reset_required_height(&mut self) {
-        self.required_height = Self::DEFAULT_REQUIRED_HEIGHT
     }
 
     /// Fold selected node
-    pub fn toggle_fold(&mut self) {
+    pub fn toggle_fold(&mut self, users: &Users) {
         if let Some(node) = self.nodes.get_mut(&self.selected) {
             if node.folded {
                 node.unfold();
@@ -490,6 +462,7 @@ impl Tree {
                 self.make_children_unreachable()
             }
         }
+        self.remake_displayable(users);
     }
 
     fn children_of_selected(&self) -> Vec<Rc<Path>> {
@@ -518,18 +491,20 @@ impl Tree {
     }
 
     /// Fold all node from root to end
-    pub fn fold_all(&mut self) {
+    pub fn fold_all(&mut self, users: &Users) {
         for (_, node) in self.nodes.iter_mut() {
             node.fold()
         }
-        self.select_root()
+        self.select_root();
+        self.remake_displayable(users);
     }
 
     /// Unfold all node from root to end
-    pub fn unfold_all(&mut self) {
+    pub fn unfold_all(&mut self, users: &Users) {
         for (_, node) in self.nodes.iter_mut() {
             node.unfold()
         }
+        self.remake_displayable(users);
     }
 
     /// Select the first node whose filename match a pattern.
@@ -538,7 +513,7 @@ impl Tree {
         let Some(found_path) = self.deep_first_search(pattern) else {
             return;
         };
-        self.select_path(&found_path, true);
+        self.select_path(&found_path);
     }
 
     fn deep_first_search(&self, pattern: &str) -> Option<Rc<Path>> {
@@ -598,41 +573,43 @@ impl Tree {
     ///     an access to the user list.
     ///     The prefix (straight lines displaying targets) must also be calcuated immediatly.
     ///     Name format is calculated on the fly.
-    pub fn content(&self, users: &Users, display_metadata: bool) -> (usize, Vec<TreeLineMaker>) {
-        let mut stack = vec![("".to_owned(), self.root_path.borrow())];
-        let mut content = vec![];
-        let mut selected_index = 0;
+    fn make_displayable(
+        users: &Users,
+        root_path: &Path,
+        nodes: &HashMap<Rc<Path>, Node>,
+    ) -> TreeLines {
+        let mut stack = vec![("".to_owned(), root_path.borrow())];
+        let mut lines = vec![];
+        let mut index = 0;
 
         while let Some((prefix, path)) = stack.pop() {
-            let Some(node) = self.nodes.get(path) else {
+            let Some(node) = nodes.get(path) else {
                 continue;
             };
 
             if node.selected {
-                selected_index = content.len();
+                index = lines.len();
             }
 
             let Ok(fileinfo) = FileInfo::new(path, users) else {
                 continue;
             };
 
-            content.push(TreeLineMaker::new(
-                &fileinfo,
-                &prefix,
-                node,
-                path,
-                display_metadata,
-            ));
+            lines.push(TreeLineBuilder::new(&fileinfo, &prefix, node, path));
 
             if node.have_children() {
                 Self::stack_children(&mut stack, prefix, node);
             }
-
-            if content.len() > self.required_height {
-                break;
-            }
         }
-        (selected_index, content)
+        TreeLines::new(lines, index)
+    }
+
+    fn remake_displayable(&mut self, users: &Users) {
+        self.displayable_lines = Self::make_displayable(users, &self.root_path, &self.nodes);
+    }
+
+    pub fn displayable(&self) -> &TreeLines {
+        &self.displayable_lines
     }
 
     #[inline]
@@ -746,50 +723,65 @@ fn path_filename_contains(path: &Path, pattern: &str) -> bool {
         .contains(pattern)
 }
 
-#[derive(Clone, Debug)]
-pub struct TreeContent {
-    pub content: Vec<TreeLineMaker>,
-    pub index: usize,
+#[derive(Clone, Debug, Default)]
+pub struct TreeLines {
+    lines: Vec<TreeLineBuilder>,
+    index: usize,
 }
 
-impl TreeContent {
-    pub fn content(&self) -> &Vec<TreeLineMaker> {
-        &self.content
+impl TreeLines {
+    fn new(lines: Vec<TreeLineBuilder>, index: usize) -> Self {
+        Self { lines, index }
+    }
+
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
+    pub fn lines(&self) -> &Vec<TreeLineBuilder> {
+        &self.lines
+    }
+
+    fn find_by_path(&self, path: &Path) -> Option<usize> {
+        self.lines
+            .iter()
+            .position(|tlm| <Rc<std::path::Path> as Borrow<Path>>::borrow(&tlm.path) == path)
+    }
+
+    fn unselect(&mut self) {
+        if !self.lines.is_empty() {
+            self.lines[self.index].unselect()
+        }
+    }
+
+    fn select(&mut self, index: usize) {
+        if !self.lines.is_empty() {
+            self.index = index;
+            self.lines[self.index].select()
+        }
     }
 }
 
 /// Holds a few references used to display a tree line
 /// Only the metadata info is hold.
 #[derive(Clone, Debug)]
-pub struct TreeLineMaker {
+pub struct TreeLineBuilder {
     folded: bool,
     prefix: std::rc::Rc<str>,
     path: std::rc::Rc<Path>,
     color_effect: ColorEffect,
-    metadata: Option<String>,
+    metadata: String,
 }
 
-impl TreeLineMaker {
+impl TreeLineBuilder {
     /// Uses references to fileinfo, prefix, node & path to create a `TreeLineMaker`.
-    fn new(
-        fileinfo: &FileInfo,
-        prefix: &str,
-        node: &Node,
-        path: &Path,
-        display_metadata: bool,
-    ) -> Self {
+    fn new(fileinfo: &FileInfo, prefix: &str, node: &Node, path: &Path) -> Self {
         let color_effect = ColorEffect::node(fileinfo, node.selected());
         let prefix = Rc::from(prefix);
         let path = Rc::from(path);
-        let metadata = if display_metadata {
-            Some(
-                fileinfo
-                    .format_no_filename()
-                    .unwrap_or_else(|_| "?".repeat(19)),
-            )
-        } else {
-            None
-        };
+        let metadata = fileinfo
+            .format_no_filename()
+            .unwrap_or_else(|_| "?".repeat(19));
         let folded = node.folded;
 
         Self {
@@ -817,7 +809,15 @@ impl TreeLineMaker {
         self.path.borrow()
     }
 
-    pub fn metadata(&self) -> &Option<String> {
+    pub fn metadata(&self) -> &str {
         &self.metadata
+    }
+
+    pub fn unselect(&mut self) {
+        self.color_effect.effect = tuikit::attr::Effect::empty();
+    }
+
+    pub fn select(&mut self) {
+        self.color_effect.effect = tuikit::attr::Effect::REVERSE;
     }
 }

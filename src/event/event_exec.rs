@@ -107,7 +107,7 @@ impl EventAction {
     /// Fold the current node of the tree.
     /// Has no effect on "file" nodes.
     pub fn tree_fold(tab: &mut Tab) -> Result<()> {
-        tab.tree.toggle_fold();
+        tab.tree.toggle_fold(&tab.users);
         Ok(())
     }
 
@@ -115,7 +115,7 @@ impl EventAction {
     /// Recursively explore the tree and unfold every node.
     /// Reset the display.
     pub fn tree_unfold_all(tab: &mut Tab) -> Result<()> {
-        tab.tree.unfold_all();
+        tab.tree.unfold_all(&tab.users);
         Ok(())
     }
 
@@ -123,7 +123,7 @@ impl EventAction {
     /// Recursively explore the tree and fold every node.
     /// Reset the display.
     pub fn tree_fold_all(tab: &mut Tab) -> Result<()> {
-        tab.tree.fold_all();
+        tab.tree.fold_all(&tab.users);
         Ok(())
     }
 

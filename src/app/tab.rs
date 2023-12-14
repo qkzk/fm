@@ -676,10 +676,11 @@ impl Tab {
 
     fn tree_select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
         let screen_index = row_to_window_index(row);
-        let (selected_index, content) = self.tree.content(&self.users, false);
-        let (top, _) = calculate_top_bottom(selected_index, term_height - 2);
+        let displayable = self.tree.displayable();
+        let (top, _) = calculate_top_bottom(displayable.index(), term_height - 2);
         let index = screen_index + top;
-        let path = content
+        let path = displayable
+            .lines()
             .get(index)
             .context("no selected file")?
             .path()
