@@ -9,7 +9,6 @@ use anyhow::Result;
 use crate::common::filename_from_path;
 use crate::common::has_last_modification_happened_less_than;
 use crate::modes::files_collection;
-use crate::modes::ContentWindow;
 use crate::modes::FilterKind;
 use crate::modes::SortKind;
 use crate::modes::Users;
@@ -701,21 +700,6 @@ fn filename_format(current_path: &Path, folded: bool) -> String {
     }
 }
 
-/// Emulate a `ContentWindow`, returning the top and bottom index of displayable files.
-#[inline]
-pub fn calculate_top_bottom(selected_index: usize, terminal_height: usize) -> (usize, usize) {
-    let window_height =
-        terminal_height - ContentWindow::WINDOW_MARGIN_TOP - ContentWindow::WINDOW_MARGIN_BOTTOM;
-    let top = if selected_index + 3 < window_height {
-        0
-    } else {
-        selected_index - 10.max(terminal_height / 2)
-    };
-    let bottom = top + window_height;
-
-    (top, bottom)
-}
-
 fn path_filename_contains(path: &Path, pattern: &str) -> bool {
     path.file_name()
         .unwrap_or_default()
@@ -725,13 +709,13 @@ fn path_filename_contains(path: &Path, pattern: &str) -> bool {
 
 #[derive(Clone, Debug, Default)]
 pub struct TreeLines {
-    lines: Vec<TreeLineBuilder>,
+    pub content: Vec<TreeLineBuilder>,
     index: usize,
 }
 
 impl TreeLines {
-    fn new(lines: Vec<TreeLineBuilder>, index: usize) -> Self {
-        Self { lines, index }
+    fn new(content: Vec<TreeLineBuilder>, index: usize) -> Self {
+        Self { content, index }
     }
 
     pub fn index(&self) -> usize {
@@ -739,25 +723,25 @@ impl TreeLines {
     }
 
     pub fn lines(&self) -> &Vec<TreeLineBuilder> {
-        &self.lines
+        &self.content
     }
 
     fn find_by_path(&self, path: &Path) -> Option<usize> {
-        self.lines
+        self.content
             .iter()
             .position(|tlm| <Rc<std::path::Path> as Borrow<Path>>::borrow(&tlm.path) == path)
     }
 
     fn unselect(&mut self) {
-        if !self.lines.is_empty() {
-            self.lines[self.index].unselect()
+        if !self.content.is_empty() {
+            self.content[self.index].unselect()
         }
     }
 
     fn select(&mut self, index: usize) {
-        if !self.lines.is_empty() {
+        if !self.content.is_empty() {
             self.index = index;
-            self.lines[self.index].select()
+            self.content[self.index].select()
         }
     }
 }

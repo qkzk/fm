@@ -16,9 +16,9 @@ use crate::modes::Preview;
 use crate::modes::SelectableContent;
 use crate::modes::SortKind;
 use crate::modes::Users;
-use crate::modes::{calculate_top_bottom, Go, To, Tree};
 use crate::modes::{ContentWindow, FileKind};
 use crate::modes::{Display, Edit};
+use crate::modes::{Go, To, Tree};
 
 pub struct TabSettings {
     /// read from command line
@@ -671,10 +671,10 @@ impl Tab {
     }
     /// Select a given row, if there's something in it.
     /// Returns an error if the clicked row is above the headers margin.
-    pub fn select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
+    pub fn select_row(&mut self, row: u16) -> Result<()> {
         match self.display_mode {
             Display::Directory => self.normal_select_row(row),
-            Display::Tree => self.tree_select_row(row, term_height)?,
+            Display::Tree => self.tree_select_row(row)?,
             _ => (),
         }
         Ok(())
@@ -687,11 +687,10 @@ impl Tab {
         self.window.scroll_to(index);
     }
 
-    fn tree_select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
+    fn tree_select_row(&mut self, row: u16) -> Result<()> {
         let screen_index = row_to_window_index(row);
         let displayable = self.tree.displayable();
-        let (top, _) = calculate_top_bottom(displayable.index(), term_height - 2);
-        let index = screen_index + top;
+        let index = screen_index + self.window.top;
         let path = displayable
             .lines()
             .get(index)

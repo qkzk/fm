@@ -37,10 +37,10 @@ use crate::modes::Preview;
 use crate::modes::SelectableContent;
 use crate::modes::TextKind;
 use crate::modes::Trash;
+use crate::modes::TreeLineBuilder;
 use crate::modes::TreePreview;
 use crate::modes::Ueberzug;
 use crate::modes::Window;
-use crate::modes::{calculate_top_bottom, TreeLineBuilder};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -387,7 +387,7 @@ impl<'a> WinMain<'a> {
             }
             Preview::Binary(bin) => self.draw_binary(bin, length, canvas, window)?,
             Preview::Ueberzug(image) => self.draw_ueberzug(image, canvas)?,
-            Preview::Tree(tree_preview) => self.draw_tree_preview(tree_preview, canvas)?,
+            Preview::Tree(tree_preview) => self.draw_tree_preview(tree_preview, window, canvas)?,
             Preview::ColoredText(colored_text) => {
                 self.draw_colored_text(colored_text, length, canvas, window)?
             }
@@ -475,25 +475,29 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn draw_tree_preview(&self, tree_preview: &TreePreview, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_tree_preview(
+        &self,
+        tree_preview: &TreePreview,
+        window: &ContentWindow,
+        canvas: &mut dyn Canvas,
+    ) -> Result<()> {
         let height = canvas.height()?;
         let tree_content = tree_preview.tree.displayable();
-        let (selected_index, content) = (tree_content.index(), tree_content.lines());
-        let (top, bottom) = calculate_top_bottom(selected_index, height);
+        let content = tree_content.lines();
         let length = content.len();
 
-        for (index, content_line) in content
-            .iter()
-            .enumerate()
-            .skip(top)
-            .take(min(length, bottom))
+        for (index, content_line) in
+            tree_preview
+                .tree
+                .displayable()
+                .window(window.top, window.bottom, length)
         {
             self.draw_tree_line(
                 canvas,
                 content_line,
                 TreeLinePosition {
                     left_margin: 0,
-                    top,
+                    top: window.top,
                     index,
                     height,
                 },

@@ -196,7 +196,7 @@ impl Status {
             Window::Header => self.header_action(col, binds)?,
             Window::Footer => self.footer_action(col, binds)?,
             Window::Files => {
-                self.current_tab_mut().select_row(row, current_height)?;
+                self.current_tab_mut().select_row(row)?;
                 self.update_second_pane_for_preview()?;
             }
         };

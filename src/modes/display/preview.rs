@@ -30,6 +30,7 @@ use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_
 use crate::modes::FilterKind;
 use crate::modes::SortKind;
 use crate::modes::{list_files_tar, list_files_zip};
+use crate::modes::{TreeLineBuilder, TreeLines};
 
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.
@@ -1050,7 +1051,7 @@ impl TreePreview {
     }
 
     pub fn len(&self) -> usize {
-        self.tree.len()
+        self.tree.displayable().lines().len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -1128,3 +1129,4 @@ impl_window!(ColoredText, String);
 impl_window!(Socket, String);
 impl_window!(BlockDevice, String);
 impl_window!(FifoCharDevice, String);
+impl_window!(TreeLines, TreeLineBuilder);
