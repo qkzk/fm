@@ -720,18 +720,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 #### Changelog
 
 - [ ] unify scrolling.
-  - attach a window to every navigable struct ?
-  - impl move up, move down, select row, page up, page down in macro and impl_navigate
-  - find a way to avoid [this](./src/event/event_exec.rs:591)
+- [ ] move navigate movement to menu file.
 - [ ] Tree scrolling
   - [x] attach full content to tree
   - [x] update content when tree necessary (???)
   - [x] attach window to content
   - [x] FIX: smoothscrolling. Last tree line isn't displayed
+  - [x] jump to next sibling
   - [ ] compare memory usage
 - [x] scrolling in tree mode should start 1 line earlier since we use 1 line at the bottom
 - [x] leaving second pane as preview should set second pane to normal
-- [ ] start scrolling once below 80%
+- [x] FIX: in tree mode, refresh also refresh the window. Incorrect number of file displayed
 
 ## TODO
 

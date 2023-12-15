@@ -174,6 +174,14 @@ impl Tab {
         }
     }
 
+    fn display_len(&self) -> usize {
+        match self.display_mode {
+            Display::Tree => self.tree.display_len(),
+            Display::Preview => self.preview.len(),
+            Display::Directory => self.directory.len(),
+        }
+    }
+
     /// Path of the currently selected file.
     pub fn current_file_string(&self) -> Result<String> {
         Ok(path_to_string(&self.current_file()?.path))
@@ -237,7 +245,7 @@ impl Tab {
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> Result<()> {
         self.directory.reset_files(&self.settings, &self.users)?;
-        self.window.reset(self.directory.content.len());
+        self.window.reset(self.display_len());
         self.refresh_params()?;
         Ok(())
     }
@@ -632,6 +640,18 @@ impl Tab {
         let index = self.tree.displayable().index();
         self.window.scroll_to(index);
         Ok(())
+    }
+
+    pub fn tree_next_sibling(&mut self) {
+        self.tree.go(To::NextSibling);
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
+    }
+
+    pub fn tree_prev_sibling(&mut self) {
+        self.tree.go(To::PreviousSibling);
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
     }
 
     pub fn preview_go_top(&mut self) {

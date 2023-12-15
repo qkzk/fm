@@ -116,6 +116,8 @@ pub enum To<'a> {
     Root,
     Last,
     Parent,
+    NextSibling,
+    PreviousSibling,
     Path(&'a Path),
 }
 
@@ -131,6 +133,8 @@ impl Go for Tree {
             To::Root => self.select_root(),
             To::Last => self.select_last(),
             To::Parent => self.select_parent(),
+            To::NextSibling => self.select_next_sibling(),
+            To::PreviousSibling => self.select_previous_sibling(),
             To::Path(path) => self.select_path(path),
         }
     }
@@ -334,6 +338,10 @@ impl Tree {
         self.nodes.len()
     }
 
+    pub fn display_len(&self) -> usize {
+        self.displayable().lines().len()
+    }
+
     /// True if there's no node.
     pub fn is_empty(&self) -> bool {
         self.nodes.is_empty()
@@ -429,6 +437,42 @@ impl Tree {
         if let Some(parent_path) = self.selected.parent() {
             self.select_path(parent_path.to_owned().as_path());
         }
+    }
+
+    fn find_siblings(&self) -> &Option<Vec<Rc<Path>>> {
+        let Some(parent_path) = self.selected.parent() else {
+            return &None;
+        };
+        let Some(parent_node) = self.nodes.get(parent_path) else {
+            return &None;
+        };
+        &parent_node.children
+    }
+
+    fn select_next_sibling(&mut self) {
+        let Some(children) = self.find_siblings() else {
+            self.select_next();
+            return;
+        };
+        let Some(curr_index) = children.iter().position(|p| p == &self.selected) else {
+            return;
+        };
+        let next_index = if curr_index > 0 { curr_index - 1 } else { 0 };
+        let sibling_path = children[next_index].clone();
+        self.select_path(&sibling_path);
+    }
+
+    fn select_previous_sibling(&mut self) {
+        let Some(children) = self.find_siblings() else {
+            self.select_prev();
+            return;
+        };
+        let Some(curr_index) = children.iter().position(|p| p == &self.selected) else {
+            return;
+        };
+        let next_index = (curr_index + 1) % children.len();
+        let sibling_path = children[next_index].clone();
+        self.select_path(&sibling_path);
     }
 
     fn select_path(&mut self, dest_path: &Path) {

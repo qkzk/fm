@@ -124,6 +124,8 @@ impl Bindings {
             (Key::Ctrl('r'), ActionMap::RefreshView),
             (Key::Ctrl('x'), ActionMap::MocpClearPlaylist),
             (Key::Ctrl('z'), ActionMap::TreeFoldAll),
+            (Key::ShiftDown, ActionMap::NextSibling),
+            (Key::ShiftUp, ActionMap::PreviousSibling),
             (Key::AltEnter, ActionMap::MocpGoToSong),
             (Key::CtrlUp, ActionMap::MocpAddToPlayList),
             (Key::CtrlDown, ActionMap::MocpTogglePause),

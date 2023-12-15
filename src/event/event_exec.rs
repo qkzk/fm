@@ -558,6 +558,20 @@ impl EventAction {
         status.update_second_pane_for_preview()
     }
 
+    pub fn next_sibling(tab: &mut Tab) -> Result<()> {
+        if matches!(tab.display_mode, Display::Tree) {
+            tab.tree_next_sibling();
+        }
+        Ok(())
+    }
+
+    pub fn previous_sibling(tab: &mut Tab) -> Result<()> {
+        if matches!(tab.display_mode, Display::Tree) {
+            tab.tree_prev_sibling();
+        }
+        Ok(())
+    }
+
     fn move_display_up(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
