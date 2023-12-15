@@ -294,6 +294,7 @@ impl Tab {
             self.set_display_mode(Display::Directory)
         } else {
             self.make_tree(None)?;
+            self.window.reset(self.tree.displayable().lines().len());
             self.set_display_mode(Display::Tree);
         }
         Ok(())
@@ -574,6 +575,7 @@ impl Tab {
     /// Recursively explore the tree and fold every node. Reset the display.
     pub fn tree_go_to_root(&mut self) -> Result<()> {
         self.tree.go(To::Root);
+        self.window.scroll_to(0);
         Ok(())
     }
 
@@ -585,39 +587,50 @@ impl Tab {
                 return Ok(());
             };
             self.cd(parent.to_owned().as_ref())?;
-            self.make_tree(Some(self.settings.sort_kind))
+            self.make_tree(Some(self.settings.sort_kind))?;
         } else {
             self.tree.go(To::Parent);
-            Ok(())
         }
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
+        Ok(())
     }
 
     /// Move down 10 times in the tree
-    pub fn tree_page_down(&mut self) -> Result<()> {
+    pub fn tree_page_down(&mut self) {
         self.tree.page_down();
-        Ok(())
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
     }
 
     /// Move up 10 times in the tree
     pub fn tree_page_up(&mut self) {
-        self.tree.page_up()
+        self.tree.page_up();
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
     }
 
     /// Select the next sibling.
     pub fn tree_select_next(&mut self) -> Result<()> {
         self.tree.go(To::Next);
+        let index = self.tree.displayable().index();
+        self.window.scroll_down_one(index);
         Ok(())
     }
 
     /// Select the previous siblging
     pub fn tree_select_prev(&mut self) -> Result<()> {
         self.tree.go(To::Prev);
+        let index = self.tree.displayable().index();
+        self.window.scroll_up_one(index);
         Ok(())
     }
 
     /// Go to the last leaf.
     pub fn tree_go_to_bottom_leaf(&mut self) -> Result<()> {
         self.tree.go(To::Last);
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
         Ok(())
     }
 

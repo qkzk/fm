@@ -751,7 +751,7 @@ impl EventAction {
             }
             Display::Preview => tab.preview_page_down(),
             Display::Tree => {
-                tab.tree_page_down()?;
+                tab.tree_page_down();
                 status.update_second_pane_for_preview()?;
             }
         };

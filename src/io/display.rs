@@ -219,8 +219,8 @@ impl<'a> WinMain<'a> {
             .tab
             .directory
             .enumerate()
-            .take(min(len, self.tab.window.bottom))
             .skip(self.tab.window.top)
+            .take(min(len, self.tab.window.bottom))
         {
             self.draw_files_line(canvas, group_size, owner_size, index, file, height)?;
         }
@@ -287,7 +287,6 @@ impl<'a> WinMain<'a> {
             2
         };
         let height = canvas.height()?;
-        let (top, bottom) = calculate_top_bottom(self.tab.tree.displayable().index(), height);
         let length = self.tab.tree.displayable().lines().len();
 
         for (index, content_line) in self
@@ -297,15 +296,15 @@ impl<'a> WinMain<'a> {
             .lines()
             .iter()
             .enumerate()
-            .skip(top)
-            .take(min(length, bottom))
+            .skip(self.tab.window.top)
+            .take(min(length, self.tab.window.bottom))
         {
             self.draw_tree_line(
                 canvas,
                 content_line,
                 TreeLinePosition {
                     left_margin,
-                    top,
+                    top: self.tab.window.top,
                     index,
                     height,
                 },
