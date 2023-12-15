@@ -18,6 +18,7 @@ use crate::modes::InputCompleted;
 use crate::modes::IsoDevice;
 use crate::modes::Marks;
 use crate::modes::MountCommands;
+use crate::modes::Navigate;
 use crate::modes::PasswordHolder;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
@@ -266,6 +267,50 @@ impl Menu {
     pub fn bulk_set_index(&mut self, index: usize) {
         if let Some(bulk) = &mut self.bulk {
             bulk.set_index(index)
+        }
+    }
+
+    /// Select the next element of the menu
+    pub fn next(&mut self, navigate: Navigate) {
+        match navigate {
+            Navigate::Jump => self.flagged.next(),
+            Navigate::Trash => self.trash.next(),
+            Navigate::Shortcut => self.shortcut.next(),
+            Navigate::Marks(_) => self.marks.next(),
+            Navigate::Compress => self.compression.next(),
+            Navigate::Context => self.context.next(),
+            Navigate::Bulk => self.bulk_next(),
+            Navigate::TuiApplication => self.tui_applications.next(),
+            Navigate::CliApplication => self.cli_applications.next(),
+            Navigate::EncryptedDrive => self.encrypted_devices.next(),
+            Navigate::RemovableDevices => {
+                if let Some(removable) = &mut self.removable_devices {
+                    removable.next()
+                }
+            }
+            _ => (),
+        }
+    }
+
+    /// Select the previous element of the menu
+    pub fn prev(&mut self, navigate: Navigate) {
+        match navigate {
+            Navigate::Jump => self.flagged.prev(),
+            Navigate::Trash => self.trash.prev(),
+            Navigate::Shortcut => self.shortcut.prev(),
+            Navigate::Marks(_) => self.marks.prev(),
+            Navigate::Compress => self.compression.prev(),
+            Navigate::Context => self.context.prev(),
+            Navigate::Bulk => self.bulk_prev(),
+            Navigate::TuiApplication => self.tui_applications.prev(),
+            Navigate::CliApplication => self.cli_applications.prev(),
+            Navigate::EncryptedDrive => self.encrypted_devices.prev(),
+            Navigate::RemovableDevices => {
+                if let Some(removable) = &mut self.removable_devices {
+                    removable.prev()
+                }
+            }
+            _ => (),
         }
     }
 }

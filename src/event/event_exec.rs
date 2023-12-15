@@ -512,8 +512,8 @@ impl EventAction {
     pub fn home(status: &mut Status) -> Result<()> {
         let home_cow = shellexpand::tilde("~");
         let home: &str = home_cow.borrow();
-        let path = std::fs::canonicalize(home)?;
-        status.current_tab_mut().cd(&path)?;
+        let home_path = path::Path::new(home);
+        status.current_tab_mut().cd(home_path)?;
         status.update_second_pane_for_preview()
     }
 
@@ -550,17 +550,8 @@ impl EventAction {
         let tab = status.current_tab_mut();
         match tab.edit_mode {
             Edit::Nothing => Self::move_display_up(status)?,
-            Edit::Navigate(Navigate::Jump) => status.menu.flagged.prev(),
             Edit::Navigate(Navigate::History) => tab.history.prev(),
-            Edit::Navigate(Navigate::Trash) => status.menu.trash.prev(),
-            Edit::Navigate(Navigate::Shortcut) => status.menu.shortcut.prev(),
-            Edit::Navigate(Navigate::Marks(_)) => status.menu.marks.prev(),
-            Edit::Navigate(Navigate::Compress) => status.menu.compression.prev(),
-            Edit::Navigate(Navigate::Context) => status.menu.context.prev(),
-            Edit::Navigate(Navigate::Bulk) => status.menu.bulk_prev(),
-            Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.prev(),
-            Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.prev(),
-            Edit::Navigate(Navigate::EncryptedDrive) => status.menu.encrypted_devices.prev(),
+            Edit::Navigate(navigate) => status.menu.prev(navigate),
             Edit::InputCompleted(_) => status.menu.completion.prev(),
             _ => (),
         };
@@ -591,17 +582,8 @@ impl EventAction {
     pub fn move_down(status: &mut Status) -> Result<()> {
         match status.current_tab_mut().edit_mode {
             Edit::Nothing => Self::move_display_down(status)?,
-            Edit::Navigate(Navigate::Jump) => status.menu.flagged.next(),
             Edit::Navigate(Navigate::History) => status.current_tab_mut().history.next(),
-            Edit::Navigate(Navigate::Trash) => status.menu.trash.next(),
-            Edit::Navigate(Navigate::Shortcut) => status.menu.shortcut.next(),
-            Edit::Navigate(Navigate::Marks(_)) => status.menu.marks.next(),
-            Edit::Navigate(Navigate::Compress) => status.menu.compression.next(),
-            Edit::Navigate(Navigate::Context) => status.menu.context.next(),
-            Edit::Navigate(Navigate::Bulk) => status.menu.bulk_next(),
-            Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.next(),
-            Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.next(),
-            Edit::Navigate(Navigate::EncryptedDrive) => status.menu.encrypted_devices.next(),
+            Edit::Navigate(navigate) => status.menu.next(navigate),
             Edit::InputCompleted(_) => status.menu.completion.next(),
             _ => (),
         };
