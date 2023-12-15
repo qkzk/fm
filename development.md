@@ -724,10 +724,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - impl move up, move down, select row, page up, page down in macro and impl_navigate
   - find a way to avoid [this](./src/event/event_exec.rs:591)
 - [ ] Tree scrolling
-  - [ ] attach full content to tree
-  - [ ] update content when tree necessary (???)
-  - [ ] attach window to content
-  - [ ] smoothscrolling
+  - [x] attach full content to tree
+  - [x] update content when tree necessary (???)
+  - [x] attach window to content
+  - [ ] FIX: smoothscrolling. Last tree line isn't displayed
   - [ ] compare memory usage
 - [x] scrolling in tree mode should start 1 line earlier since we use 1 line at the bottom
 - [x] leaving second pane as preview should set second pane to normal

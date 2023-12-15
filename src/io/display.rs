@@ -297,7 +297,7 @@ impl<'a> WinMain<'a> {
             .iter()
             .enumerate()
             .skip(self.tab.window.top)
-            .take(min(length, self.tab.window.bottom))
+            .take(min(length, self.tab.window.bottom + 1))
         {
             self.draw_tree_line(
                 canvas,
