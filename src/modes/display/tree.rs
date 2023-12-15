@@ -707,6 +707,8 @@ fn path_filename_contains(path: &Path, pattern: &str) -> bool {
         .contains(pattern)
 }
 
+/// A vector of displayable lines used to draw a tree content.
+/// We use the index to follow the user movements in the tree.
 #[derive(Clone, Debug, Default)]
 pub struct TreeLines {
     pub content: Vec<TreeLineBuilder>,
@@ -718,10 +720,12 @@ impl TreeLines {
         Self { content, index }
     }
 
+    /// Index of the currently selected file.
     pub fn index(&self) -> usize {
         self.index
     }
 
+    /// A reference to the displayable lines.
     pub fn lines(&self) -> &Vec<TreeLineBuilder> {
         &self.content
     }
@@ -758,7 +762,7 @@ pub struct TreeLineBuilder {
 }
 
 impl TreeLineBuilder {
-    /// Uses references to fileinfo, prefix, node & path to create a `TreeLineMaker`.
+    /// Uses references to fileinfo, prefix, node & path to create an instance.
     fn new(fileinfo: &FileInfo, prefix: &str, node: &Node, path: &Path) -> Self {
         let color_effect = ColorEffect::node(fileinfo, node.selected());
         let prefix = Rc::from(prefix);
@@ -777,30 +781,41 @@ impl TreeLineBuilder {
         }
     }
 
+    /// Formated filename
     pub fn filename(&self) -> String {
         filename_format(&self.path, self.folded)
     }
 
+    /// `tuikit::attr::Attr` of the line
     pub fn attr(&self) -> tuikit::attr::Attr {
         self.color_effect.attr()
     }
 
+    /// Vertical bar displayed before the filename to show
+    /// the adress of the file
     pub fn prefix(&self) -> &str {
         self.prefix.borrow()
     }
 
+    /// Path of the file
     pub fn path(&self) -> &Path {
         self.path.borrow()
     }
 
+    /// Metadata string representation
+    /// permission, size, owner, groupe, modification date
     pub fn metadata(&self) -> &str {
         &self.metadata
     }
 
+    /// Change the current effect to Empty, displaying
+    /// the file as not selected
     pub fn unselect(&mut self) {
         self.color_effect.effect = tuikit::attr::Effect::empty();
     }
 
+    /// Change the current effect to `REVERSE`, displaying
+    /// the file as selected.
     pub fn select(&mut self) {
         self.color_effect.effect = tuikit::attr::Effect::REVERSE;
     }
