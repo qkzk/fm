@@ -101,7 +101,7 @@ impl LeaveMode {
 
         status.menu.input.reset();
         if must_reset_mode {
-            status.current_tab_mut().reset_edit_mode();
+            status.reset_edit_mode()?;
         }
         if must_refresh {
             status.refresh_status()?;
@@ -113,7 +113,7 @@ impl LeaveMode {
     /// Parent folders are created if needed.
     pub fn trash(status: &mut Status) -> Result<()> {
         status.menu.trash.restore()?;
-        status.current_tab_mut().reset_edit_mode();
+        status.reset_edit_mode()?;
         status.current_tab_mut().refresh_view()?;
         status.update_second_pane_for_preview()
     }
@@ -174,7 +174,7 @@ impl LeaveMode {
 
     pub fn set_nvim_addr(status: &mut Status) -> Result<()> {
         status.internal_settings.nvim_server = status.menu.input.string();
-        status.current_tab_mut().reset_edit_mode();
+        status.reset_edit_mode()?;
         Ok(())
     }
 

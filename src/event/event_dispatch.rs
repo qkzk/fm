@@ -80,7 +80,7 @@ impl EventDispatcher {
             Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
             Edit::Navigate(navigate) => Self::navigate_char(navigate, status, c),
             Edit::Nothing if matches!(tab.display_mode, Display::Preview) => {
-                tab.reset_mode_and_view()
+                tab.reset_display_mode_and_view()
             }
             Edit::Nothing => self.key_matcher(status, Key::Char(c)),
         }
@@ -101,7 +101,7 @@ impl EventDispatcher {
             Navigate::Jump if c == 'X' => status.menu.trash_single_flagged(),
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
-            _ => status.current_tab_mut().reset_mode_and_view(),
+            _ => status.current_tab_mut().reset_display_mode_and_view(),
         }
     }
 }

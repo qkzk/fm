@@ -168,7 +168,7 @@ impl Status {
         Ok(())
     }
 
-    pub fn window_from_row(&self, row: u16, height: usize) -> Window {
+    fn window_from_row(&self, row: u16, height: usize) -> Window {
         let win_height = if matches!(self.current_tab().edit_mode, Edit::Nothing) {
             height
         } else {
@@ -187,6 +187,7 @@ impl Status {
         }
     }
 
+    /// Execute a click at `row`, `col`. Action depends on which window was clicked.
     pub fn click(&mut self, row: u16, col: u16, binds: &Bindings) -> Result<()> {
         let window = self.window_from_row(row, self.term_size()?.1);
         self.select_tab_from_col(col)?;
@@ -203,6 +204,7 @@ impl Status {
         Ok(())
     }
 
+    /// Execute a click on a menu item. Action depends on which menu was opened.
     fn menu_action(&mut self, row: u16, height: usize) {
         let second_window_height = height / 2 + (height % 2);
         let offset = row as usize - second_window_height;
@@ -229,10 +231,12 @@ impl Status {
         }
     }
 
+    /// Select the left tab
     pub fn select_left(&mut self) {
         self.index = 0;
     }
 
+    /// Select the right tab
     pub fn select_right(&mut self) {
         self.index = 1;
     }
@@ -277,11 +281,14 @@ impl Status {
         Ok(())
     }
 
-    fn reset_edit_mode(&mut self) {
+    /// Reset the edit mode to "Nothing" (closing any menu) and returns
+    /// true if the display should be refreshed.
+    pub fn reset_edit_mode(&mut self) -> Result<bool> {
         self.menu.completion.reset();
-        self.current_tab_mut().reset_edit_mode();
+        let must_refresh = matches!(self.current_tab().display_mode, Display::Preview);
+        self.set_edit_mode(self.index, Edit::Nothing)?;
+        Ok(must_refresh)
     }
-    /// Refresh the existing users.
 
     /// Reset the selected tab view to the default.
     pub fn refresh_status(&mut self) -> Result<()> {
@@ -298,6 +305,7 @@ impl Status {
         self.internal_settings.force_clear();
     }
 
+    /// Refresh the users for every tab
     pub fn refresh_users(&mut self) -> Result<()> {
         let users = Users::new();
         self.tabs[0].users = users.clone();
@@ -305,6 +313,7 @@ impl Status {
         Ok(())
     }
 
+    /// Refresh the input, completion and every tab.
     pub fn refresh_tabs(&mut self) -> Result<()> {
         self.menu.input.reset();
         self.menu.completion.reset();
@@ -346,7 +355,7 @@ impl Status {
         }
 
         self.tabs[1].set_display_mode(Display::Preview);
-        self.tabs[1].set_edit_mode(Edit::Nothing);
+        self.set_edit_mode(1, Edit::Nothing)?;
         let fileinfo = self.tabs[0]
             .current_file()
             .context("force preview: No file to select")?;
@@ -357,6 +366,30 @@ impl Status {
         self.tabs[1].preview = preview.unwrap_or_default();
 
         self.tabs[1].window.reset(self.tabs[1].preview.len());
+        Ok(())
+    }
+
+    /// Set an edit mode for the tab at `index`. Refresh the view.
+    pub fn set_edit_mode(&mut self, index: usize, edit_mode: Edit) -> Result<()> {
+        if index > 1 {
+            return Ok(());
+        }
+        self.set_height_for_edit_mode(index, edit_mode)?;
+        self.tabs[index].edit_mode = edit_mode;
+        self.refresh_view()
+    }
+
+    fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Edit) -> Result<()> {
+        let height = self.internal_settings.term.term_size()?.1;
+        let prim_window_height = if matches!(edit_mode, Edit::Nothing) {
+            height
+        } else {
+            height / 2
+        };
+        self.tabs[index].window.set_height(prim_window_height);
+        self.tabs[index]
+            .window
+            .scroll_to(self.tabs[index].window.top);
         Ok(())
     }
 
@@ -549,6 +582,7 @@ impl Status {
         Ok(())
     }
 
+    /// Execute the selected bulk action if any.
     pub fn execute_bulk(&self) -> Result<()> {
         if let Some(bulk) = &self.menu.bulk {
             bulk.execute_bulk(self)?;
@@ -556,6 +590,7 @@ impl Status {
         Ok(())
     }
 
+    /// Update the flagged files depending of the input regex.
     pub fn input_regex(&mut self, char: char) -> Result<()> {
         self.menu.input.insert(char);
         self.select_from_regex()?;
@@ -701,6 +736,7 @@ impl Status {
         }
     }
 
+    /// Move to the selected removable device.
     pub fn go_to_removable(&mut self) -> Result<()> {
         let Some(path) = self.menu.find_removable_mount_point() else {
             return Ok(());
@@ -709,12 +745,14 @@ impl Status {
         self.current_tab_mut().refresh_view()
     }
 
+    /// Reads and parse a shell command. Some arguments may be expanded.
+    /// See [`crate::modes::edit::ShellCommandParser`] for more information.
     pub fn parse_shell_command(&mut self) -> Result<bool> {
         let shell_command = self.menu.input.string();
         let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
         log_info!("command {shell_command} args: {args:?}");
         if args_is_empty(&args) {
-            self.current_tab_mut().set_edit_mode(Edit::Nothing);
+            self.set_edit_mode(self.index, Edit::Nothing)?;
             return Ok(true);
         }
         let executable = args.remove(0);
@@ -745,14 +783,13 @@ impl Status {
         password_dest: PasswordUsage,
     ) -> Result<()> {
         log_info!("event ask password");
-        self.current_tab_mut()
-            .set_edit_mode(Edit::InputSimple(InputSimple::Password(
-                encrypted_action,
-                password_dest,
-            )));
-        Ok(())
+        self.set_edit_mode(
+            self.index,
+            Edit::InputSimple(InputSimple::Password(encrypted_action, password_dest)),
+        )
     }
 
+    /// Execute a command requiring a password.
     pub fn execute_password_command(&mut self) -> Result<()> {
         match self.current_tab().edit_mode {
             Edit::InputSimple(InputSimple::Password(action, dest)) => {
@@ -780,7 +817,7 @@ impl Status {
             }
             _ => self.menu.password_holder.set_sudo(password),
         };
-        self.reset_edit_mode();
+        self.reset_edit_mode()?;
         self.dispatch_password(dest, action)
     }
 
@@ -792,7 +829,7 @@ impl Status {
             let tab: &mut Tab = self.current_tab_mut();
             tab.refresh_view()
         }?;
-        self.reset_edit_mode();
+        self.reset_edit_mode()?;
         self.refresh_status()
     }
 
@@ -803,14 +840,14 @@ impl Status {
             self.current_tab_mut().cd(&path)?;
         }
         self.current_tab_mut().refresh_view()?;
-        self.reset_edit_mode();
+        self.reset_edit_mode()?;
         self.refresh_status()
     }
 
     /// Recursively delete all flagged files.
     pub fn confirm_delete_files(&mut self) -> Result<()> {
         self.menu.delete_flagged_files()?;
-        self.reset_edit_mode();
+        self.reset_edit_mode()?;
         self.clear_flags_and_reset_view()?;
         self.refresh_status()
     }
@@ -818,13 +855,13 @@ impl Status {
     /// Empty the trash folder permanently.
     pub fn confirm_trash_empty(&mut self) -> Result<()> {
         self.menu.trash.empty_trash()?;
-        self.reset_edit_mode();
+        self.reset_edit_mode()?;
         self.clear_flags_and_reset_view()?;
         Ok(())
     }
 
     fn run_sudo_command(&mut self) -> Result<()> {
-        self.current_tab_mut().set_edit_mode(Edit::Nothing);
+        self.set_edit_mode(self.index, Edit::Nothing)?;
         reset_sudo_faillock()?;
         let Some(sudo_command) = self.menu.sudo_command.to_owned() else {
             return self.menu.clear_sudo_attributes();
@@ -848,6 +885,8 @@ impl Status {
         Ok(())
     }
 
+    /// Dispatch the known password depending of which component set
+    /// the `PasswordUsage`.
     pub fn dispatch_password(
         &mut self,
         dest: PasswordUsage,
@@ -868,15 +907,17 @@ impl Status {
         }
     }
 
+    /// Set the display to preview a command output
     pub fn preview_command_output(&mut self, output: String, command: String) {
         log_info!("output {output}");
-        self.current_tab_mut().reset_edit_mode();
+        let _ = self.reset_edit_mode();
         self.current_tab_mut().set_display_mode(Display::Preview);
         let preview = Preview::cli_info(&output, command);
         self.current_tab_mut().window.reset(preview.len());
         self.current_tab_mut().preview = preview;
     }
 
+    /// Set the nvim listen address from what the user typed.
     pub fn update_nvim_listen_address(&mut self) {
         self.internal_settings.update_nvim_listen_address()
     }
@@ -887,12 +928,13 @@ impl Status {
         if c == 'y' {
             let _ = self.match_confirmed_mode(confirmed_action);
         }
-        self.reset_edit_mode();
+        self.reset_edit_mode()?;
         self.current_tab_mut().refresh_view()?;
 
         Ok(())
     }
 
+    /// Execute a `NeedConfirmation` action (delete, move, copy, empty trash)
     fn match_confirmed_mode(&mut self, confirmed_action: NeedConfirmation) -> Result<()> {
         match confirmed_action {
             NeedConfirmation::Delete => self.confirm_delete_files(),
@@ -902,6 +944,7 @@ impl Status {
         }
     }
 
+    /// Execute an action when the header line was clicked.
     pub fn header_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
         if matches!(self.current_tab().display_mode, Display::Preview) {
             return Ok(());
@@ -912,6 +955,7 @@ impl Status {
         action.matcher(self, binds)
     }
 
+    /// Execute an action when the footer line was clicked.
     pub fn footer_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
         log_info!("footer clicked col {col}");
         if matches!(self.current_tab().display_mode, Display::Preview) {
@@ -937,6 +981,7 @@ impl Status {
         self.reset_tabs_view()
     }
 
+    /// Enter the chmod mode where user can chmod a file.
     pub fn set_mode_chmod(&mut self) -> Result<()> {
         if self.current_tab_mut().directory.is_empty() {
             return Ok(());
@@ -944,9 +989,7 @@ impl Status {
         if self.menu.flagged.is_empty() {
             self.toggle_flag_for_selected();
         }
-        self.current_tab_mut()
-            .set_edit_mode(Edit::InputSimple(InputSimple::Chmod));
-        Ok(())
+        self.set_edit_mode(self.index, Edit::InputSimple(InputSimple::Chmod))
     }
 
     /// Add a char to input string, look for a possible completion.

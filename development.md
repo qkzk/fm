@@ -731,6 +731,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] scrolling in tree mode should start 1 line earlier since we use 1 line at the bottom
 - [x] leaving second pane as preview should set second pane to normal
 - [x] FIX: in tree mode, refresh also refresh the window. Incorrect number of file displayed
+- [x] FIX: while second window is opened, if the selection is below half screen, it's not shown anymore.
 
 ## TODO
 
@@ -743,8 +744,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] avoid multiple refreshs if we edit files ourself
 - [ ] FIX: tab.selected() should return Option<&FileInfo>
 - [ ] use widget for every drawable element. First line should be a collection of widget which are drawned
-- [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
-      Scroll to second element if needed
 - [ ] remote control
 
   - [ ] listen to stdin (rcv etc.)
