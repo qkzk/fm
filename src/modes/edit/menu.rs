@@ -193,7 +193,8 @@ impl Menu {
     /// The user must type 3 arguments like this : `username hostname remote_path`.
     /// If the user doesn't provide 3 arguments,
     pub fn mount_remote(&mut self, current_path: &str) {
-        let user_hostname_remotepath: Vec<&str> = self.input.string().split(' ').collect();
+        let input = self.input.string();
+        let user_hostname_remotepath: Vec<&str> = input.split(' ').collect();
         self.input.reset();
 
         if !is_program_in_path(SSHFS_EXECUTABLE) {
