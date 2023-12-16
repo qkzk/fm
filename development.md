@@ -720,7 +720,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 #### Changelog
 
 - [ ] unify scrolling.
-- [ ] move navigate movement to menu file.
+- [x] move navigate movement to menu file.
 - [ ] Tree scrolling
   - [x] attach full content to tree
   - [x] update content when tree necessary (???)
