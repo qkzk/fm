@@ -5,14 +5,11 @@ use std::str::FromStr;
 use anyhow::{anyhow, Context, Result};
 
 use crate::app::Status;
-use crate::common::is_program_in_path;
 use crate::common::path_to_string;
 use crate::common::string_to_path;
-use crate::common::SSHFS_EXECUTABLE;
 use crate::config::Bindings;
 use crate::event::ActionMap;
 use crate::event::EventAction;
-use crate::io::execute_and_capture_output_with_path;
 use crate::io::execute_custom;
 use crate::log_info;
 use crate::log_line;
@@ -420,33 +417,8 @@ impl LeaveMode {
     /// The user must type 3 arguments like this : `username hostname remote_path`.
     /// If the user doesn't provide 3 arguments,
     pub fn remote(status: &mut Status) -> Result<()> {
-        let user_hostname_remotepath_string = status.menu.input.string();
-        let strings: Vec<&str> = user_hostname_remotepath_string.split(' ').collect();
-        status.menu.input.reset();
-
-        if !is_program_in_path(SSHFS_EXECUTABLE) {
-            log_info!("{SSHFS_EXECUTABLE} isn't in path");
-            return Ok(());
-        }
-
-        if strings.len() != 3 {
-            log_info!(
-                "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3, got {nb}",
-                nb = strings.len()
-            );
-            return Ok(());
-        };
-
-        let (username, hostname, remote_path) = (strings[0], strings[1], strings[2]);
-        let current_path: &str = &path_to_string(&status.current_tab().directory_of_selected()?);
-        let first_arg = &format!("{username}@{hostname}:{remote_path}");
-        let command_output = execute_and_capture_output_with_path(
-            SSHFS_EXECUTABLE,
-            current_path,
-            &[first_arg, current_path],
-        );
-        log_info!("{SSHFS_EXECUTABLE} {strings:?} output {command_output:?}");
-        log_line!("{SSHFS_EXECUTABLE} {strings:?} output {command_output:?}");
+        let current_path = &path_to_string(&status.current_tab().directory_of_selected()?);
+        status.menu.mount_remote(current_path);
         Ok(())
     }
 }

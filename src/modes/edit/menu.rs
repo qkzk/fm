@@ -2,8 +2,12 @@ use anyhow::Context;
 use anyhow::Result;
 
 use crate::app::Tab;
+use crate::common::is_program_in_path;
+use crate::common::SSHFS_EXECUTABLE;
 use crate::common::TUIS_PATH;
 use crate::io::drop_sudo_privileges;
+use crate::io::execute_and_capture_output_with_path;
+use crate::log_info;
 use crate::log_line;
 use crate::modes::Bulk;
 use crate::modes::CliApplications;
@@ -182,6 +186,41 @@ impl Menu {
         }
         device.umount_simple()?;
         Ok(())
+    }
+
+    /// Run sshfs with typed parameters to mount a remote directory in current directory.
+    /// sshfs should be reachable in path.
+    /// The user must type 3 arguments like this : `username hostname remote_path`.
+    /// If the user doesn't provide 3 arguments,
+    pub fn mount_remote(&mut self, current_path: &str) {
+        let user_hostname_remotepath: Vec<&str> = self.input.string().split(' ').collect();
+        self.input.reset();
+
+        if !is_program_in_path(SSHFS_EXECUTABLE) {
+            log_info!("{SSHFS_EXECUTABLE} isn't in path");
+            return;
+        }
+        if user_hostname_remotepath.len() != 3 {
+            log_info!(
+                "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3, got {nb}",
+                nb = user_hostname_remotepath.len()
+            );
+            return;
+        };
+
+        let (username, hostname, remote_path) = (
+            user_hostname_remotepath[0],
+            user_hostname_remotepath[1],
+            user_hostname_remotepath[2],
+        );
+        let first_arg = &format!("{username}@{hostname}:{remote_path}");
+        let output = execute_and_capture_output_with_path(
+            SSHFS_EXECUTABLE,
+            current_path,
+            &[first_arg, current_path],
+        );
+        log_info!("{SSHFS_EXECUTABLE} {first_arg} output {output:?}");
+        log_line!("{SSHFS_EXECUTABLE} {first_arg} output {output:?}");
     }
 
     /// Remove a flag file from Jump mode
