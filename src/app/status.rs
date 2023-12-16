@@ -789,36 +789,22 @@ impl Status {
         )
     }
 
-    /// Execute a command requiring a password.
-    pub fn execute_password_command(&mut self) -> Result<()> {
-        match self.current_tab().edit_mode {
-            Edit::InputSimple(InputSimple::Password(action, dest)) => {
-                self._execute_password_command(action, dest)?;
-            }
-            _ => {
-                return Err(anyhow!(
-                    "execute_password_command: edit_mode should be `InputSimple::Password`"
-                ))
-            }
-        }
-        Ok(())
-    }
-
-    fn _execute_password_command(
+    /// Attach the typed password to the correct receiver and
+    /// execute the command requiring a password.
+    pub fn execute_password_command(
         &mut self,
         action: Option<BlockDeviceAction>,
         dest: PasswordUsage,
     ) -> Result<()> {
         let password = self.menu.input.string();
         self.menu.input.reset();
-        match dest {
-            PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP) => {
-                self.menu.password_holder.set_cryptsetup(password)
-            }
-            _ => self.menu.password_holder.set_sudo(password),
+        if matches!(dest, PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP)) {
+            self.menu.password_holder.set_cryptsetup(password)
+        } else {
+            self.menu.password_holder.set_sudo(password)
         };
         self.reset_edit_mode()?;
-        self.dispatch_password(dest, action)
+        self.dispatch_password(action, dest)
     }
 
     /// Execute a new mark, saving it to a config file for futher use.
@@ -889,8 +875,8 @@ impl Status {
     /// the `PasswordUsage`.
     pub fn dispatch_password(
         &mut self,
-        dest: PasswordUsage,
         action: Option<BlockDeviceAction>,
+        dest: PasswordUsage,
     ) -> Result<()> {
         match dest {
             PasswordUsage::ISO => match action {

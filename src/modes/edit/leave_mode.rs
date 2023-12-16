@@ -16,6 +16,7 @@ use crate::io::execute_and_capture_output_with_path;
 use crate::io::execute_custom;
 use crate::log_info;
 use crate::log_line;
+use crate::modes::BlockDeviceAction;
 use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::FilterKind;
@@ -23,6 +24,7 @@ use crate::modes::InputSimple;
 use crate::modes::MarkAction;
 use crate::modes::Navigate;
 use crate::modes::NodeCreation;
+use crate::modes::PasswordUsage;
 use crate::modes::SelectableContent;
 use crate::modes::SortKind;
 
@@ -33,71 +35,44 @@ pub struct LeaveMode;
 
 impl LeaveMode {
     pub fn leave_edit_mode(status: &mut Status, binds: &Bindings) -> Result<()> {
-        let mut must_refresh = true;
-        let mut must_reset_mode = true;
+        let must_refresh = status.current_tab().edit_mode.must_refresh();
+        let must_reset_mode = status.current_tab().edit_mode.must_reset_mode();
+
         match status.current_tab().edit_mode {
-            Edit::Nothing => (),
-            Edit::InputSimple(InputSimple::Rename) => LeaveMode::rename(status)?,
-            Edit::InputSimple(InputSimple::Newfile) => LeaveMode::new_file(status)?,
-            Edit::InputSimple(InputSimple::Newdir) => LeaveMode::new_dir(status)?,
-            Edit::InputSimple(InputSimple::Chmod) => LeaveMode::chmod(status)?,
-            Edit::InputSimple(InputSimple::RegexMatch) => LeaveMode::regex(status)?,
-            Edit::InputSimple(InputSimple::SetNvimAddr) => LeaveMode::set_nvim_addr(status)?,
-            Edit::InputSimple(InputSimple::Shell) => {
-                must_reset_mode = false;
-                must_refresh = false;
-                LeaveMode::shell(status)?;
+            Edit::Nothing => Ok(()),
+            Edit::InputSimple(InputSimple::Rename) => LeaveMode::rename(status),
+            Edit::InputSimple(InputSimple::Newfile) => LeaveMode::new_file(status),
+            Edit::InputSimple(InputSimple::Newdir) => LeaveMode::new_dir(status),
+            Edit::InputSimple(InputSimple::Chmod) => LeaveMode::chmod(status),
+            Edit::InputSimple(InputSimple::RegexMatch) => LeaveMode::regex(status),
+            Edit::InputSimple(InputSimple::SetNvimAddr) => LeaveMode::set_nvim_addr(status),
+            Edit::InputSimple(InputSimple::Shell) => LeaveMode::shell(status),
+            Edit::InputSimple(InputSimple::Sort) => LeaveMode::sort(status),
+            Edit::InputSimple(InputSimple::Filter) => LeaveMode::filter(status),
+            Edit::InputSimple(InputSimple::Password(action, usage)) => {
+                LeaveMode::password(status, action, usage)
             }
-            Edit::InputSimple(InputSimple::Sort) => LeaveMode::sort(status)?,
-            Edit::InputSimple(InputSimple::Filter) => {
-                must_refresh = false;
-                LeaveMode::filter(status)?
-            }
-            Edit::InputSimple(InputSimple::Password(_, _)) => {
-                must_refresh = false;
-                must_reset_mode = false;
-                LeaveMode::password(status)?
-            }
-            Edit::InputSimple(InputSimple::Remote) => LeaveMode::remote(status)?,
-            Edit::Navigate(Navigate::Jump) => {
-                must_refresh = false;
-                LeaveMode::jump(status)?
-            }
-            Edit::Navigate(Navigate::History) => {
-                must_refresh = false;
-                LeaveMode::history(status)?
-            }
-            Edit::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status)?,
-            Edit::Navigate(Navigate::Trash) => LeaveMode::trash(status)?,
-            Edit::Navigate(Navigate::Bulk) => LeaveMode::bulk(status)?,
-            Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status)?,
-            Edit::Navigate(Navigate::CliApplication) => {
-                must_refresh = false;
-                LeaveMode::cli_info(status)?;
-            }
-            Edit::Navigate(Navigate::EncryptedDrive) => (),
-            Edit::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMode::marks_update(status)?,
-            Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMode::marks_jump(status)?,
-            Edit::Navigate(Navigate::Compress) => LeaveMode::compress(status)?,
-            Edit::Navigate(Navigate::Context) => {
-                must_reset_mode = false;
-                must_refresh = false;
-                LeaveMode::context(status, binds)?
-            }
-            Edit::Navigate(Navigate::RemovableDevices) => (),
-            Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status)?,
-            Edit::InputCompleted(InputCompleted::Search) => {
-                must_refresh = false;
-                LeaveMode::search(status)?
-            }
-            Edit::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status)?,
-            Edit::InputCompleted(InputCompleted::Command) => {
-                must_reset_mode = false;
-                must_refresh = false;
-                LeaveMode::command(status, binds)?;
-            }
-            Edit::NeedConfirmation(_) => (),
-        }
+            Edit::InputSimple(InputSimple::Remote) => LeaveMode::remote(status),
+            Edit::Navigate(Navigate::Jump) => LeaveMode::jump(status),
+            Edit::Navigate(Navigate::History) => LeaveMode::history(status),
+            Edit::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status),
+            Edit::Navigate(Navigate::Trash) => LeaveMode::trash(status),
+            Edit::Navigate(Navigate::Bulk) => LeaveMode::bulk(status),
+            Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status),
+            Edit::Navigate(Navigate::CliApplication) => LeaveMode::cli_info(status),
+            Edit::Navigate(Navigate::EncryptedDrive) => Ok(()),
+            Edit::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMode::marks_update(status),
+            Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMode::marks_jump(status),
+            Edit::Navigate(Navigate::Compress) => LeaveMode::compress(status),
+            Edit::Navigate(Navigate::Context) => LeaveMode::context(status, binds),
+            Edit::Navigate(Navigate::RemovableDevices) => Ok(()),
+            Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
+            Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status),
+            Edit::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status),
+            Edit::InputCompleted(InputCompleted::Command) => LeaveMode::command(status, binds),
+            // To avoid mistakes, the default answer is No. We do nothing here.
+            Edit::NeedConfirmation(_) => Ok(()),
+        }?;
 
         status.menu.input.reset();
         if must_reset_mode {
@@ -146,12 +121,15 @@ impl LeaveMode {
         Ok(())
     }
 
+    /// Execute the picked bulk command and reset the menu bulk to None.
     pub fn bulk(status: &mut Status) -> Result<()> {
         status.execute_bulk()?;
         status.menu.bulk = None;
         status.update_second_pane_for_preview()
     }
 
+    /// Execute a shell command picked from the tui_applications menu.
+    /// It will be run an a spawned terminal
     pub fn shellmenu(status: &mut Status) -> Result<()> {
         status.menu.tui_applications.execute(status)
     }
@@ -203,8 +181,9 @@ impl LeaveMode {
     /// Returns `Ok(true)` if a refresh is required,
     /// `Ok(false)` if we should stay in the current mode (aka, a password is required)
     /// It won't return an `Err` if the command fail.
-    pub fn shell(status: &mut Status) -> Result<bool> {
-        status.parse_shell_command()
+    pub fn shell(status: &mut Status) -> Result<()> {
+        status.parse_shell_command()?;
+        Ok(())
     }
 
     /// Execute a rename of the selected file.
@@ -363,8 +342,12 @@ impl LeaveMode {
     }
 
     /// Execute a password command (sudo or device passphrase).
-    pub fn password(status: &mut Status) -> Result<()> {
-        status.execute_password_command()
+    pub fn password(
+        status: &mut Status,
+        action: Option<BlockDeviceAction>,
+        usage: PasswordUsage,
+    ) -> Result<()> {
+        status.execute_password_command(action, usage)
     }
 
     /// Compress the flagged files into an archive.

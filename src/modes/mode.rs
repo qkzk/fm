@@ -57,6 +57,14 @@ impl NeedConfirmation {
             }
         }
     }
+
+    fn must_refresh(&self) -> bool {
+        true
+    }
+
+    fn must_reset_mode(&self) -> bool {
+        true
+    }
 }
 
 impl std::fmt::Display for NeedConfirmation {
@@ -161,6 +169,14 @@ impl InputSimple {
             _ => Self::EDIT_BOX_OFFSET,
         }
     }
+
+    fn must_refresh(&self) -> bool {
+        !matches!(self, Self::Shell | Self::Filter | Self::Password(_, _))
+    }
+
+    fn must_reset_mode(&self) -> bool {
+        !matches!(self, Self::Shell | Self::Password(_, _))
+    }
 }
 
 /// Different modes in which we display a bunch of possible actions.
@@ -224,6 +240,16 @@ impl fmt::Display for Navigate {
     }
 }
 
+impl Navigate {
+    fn must_refresh(&self) -> bool {
+        !matches!(self, Self::CliApplication | Self::Context)
+    }
+
+    fn must_reset_mode(&self) -> bool {
+        !matches!(self, Self::Context)
+    }
+}
+
 /// Different "edit" mode in which the application can be.
 /// It dictates the reaction to event and what to display in the bottom window.
 #[derive(Clone, Copy)]
@@ -252,8 +278,8 @@ pub enum Edit {
 impl fmt::Display for Edit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Self::InputSimple(input_simple) => input_simple.fmt(f),
             Self::InputCompleted(input_completed) => input_completed.fmt(f),
+            Self::InputSimple(input_simple) => input_simple.fmt(f),
             Self::Navigate(navigate) => navigate.fmt(f),
             Self::NeedConfirmation(need_confirmation) => need_confirmation.fmt(f),
             Self::Nothing => write!(f, ""),
@@ -277,6 +303,26 @@ impl Edit {
     /// Does this mode requires a cursor ?
     pub fn show_cursor(&self) -> bool {
         self.cursor_offset() != 0
+    }
+
+    pub fn must_refresh(&self) -> bool {
+        match self {
+            Self::InputCompleted(input_completed) => input_completed.must_refresh(),
+            Self::InputSimple(input_simple) => input_simple.must_refresh(),
+            Self::Navigate(navigate) => navigate.must_refresh(),
+            Self::NeedConfirmation(need_confirmation) => need_confirmation.must_refresh(),
+            Self::Nothing => true,
+        }
+    }
+
+    pub fn must_reset_mode(&self) -> bool {
+        match self {
+            Self::InputCompleted(input_completed) => input_completed.must_reset_mode(),
+            Self::InputSimple(input_simple) => input_simple.must_reset_mode(),
+            Self::Navigate(navigate) => navigate.must_reset_mode(),
+            Self::NeedConfirmation(need_confirmation) => need_confirmation.must_reset_mode(),
+            Self::Nothing => true,
+        }
     }
 }
 

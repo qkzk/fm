@@ -39,6 +39,14 @@ impl InputCompleted {
     pub fn cursor_offset(&self) -> usize {
         self.to_string().len() + 2
     }
+
+    pub fn must_refresh(&self) -> bool {
+        true
+    }
+
+    pub fn must_reset_mode(&self) -> bool {
+        !matches!(self, Self::Command)
+    }
 }
 
 /// Holds a `Vec<String>` of possible completions and an `usize` index
