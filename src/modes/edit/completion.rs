@@ -5,7 +5,7 @@ use anyhow::Result;
 use strum::IntoEnumIterator;
 
 use crate::event::ActionMap;
-use crate::modes::LeaveMode;
+use crate::modes::Leave;
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
@@ -42,7 +42,7 @@ impl InputCompleted {
     }
 }
 
-impl LeaveMode for InputCompleted {
+impl Leave for InputCompleted {
     fn must_refresh(&self) -> bool {
         true
     }

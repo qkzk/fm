@@ -18,7 +18,7 @@ use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::FilterKind;
 use crate::modes::InputSimple;
-use crate::modes::LeaveMode as LM;
+use crate::modes::Leave;
 use crate::modes::MarkAction;
 use crate::modes::Navigate;
 use crate::modes::NodeCreation;

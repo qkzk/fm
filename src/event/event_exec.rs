@@ -18,15 +18,19 @@ use crate::log_line;
 use crate::modes::help_string;
 use crate::modes::lsblk_and_cryptsetup_installed;
 use crate::modes::Display;
+use crate::modes::Edit;
 use crate::modes::InputCompleted;
+use crate::modes::InputSimple;
 use crate::modes::LeaveMode;
+use crate::modes::MarkAction;
 use crate::modes::Mocp;
+use crate::modes::Navigate;
+use crate::modes::NeedConfirmation;
 use crate::modes::Preview;
 use crate::modes::RemovableDevices;
 use crate::modes::SelectableContent;
 use crate::modes::TuiApplications;
 use crate::modes::MOCP;
-use crate::modes::{Edit, InputSimple, MarkAction, Navigate, NeedConfirmation};
 
 /// Links events from tuikit to custom actions.
 /// It mutates `Status` or its children `Tab`.

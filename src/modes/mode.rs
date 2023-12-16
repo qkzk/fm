@@ -59,7 +59,7 @@ impl NeedConfirmation {
     }
 }
 
-impl LeaveMode for NeedConfirmation {
+impl Leave for NeedConfirmation {
     fn must_refresh(&self) -> bool {
         true
     }
@@ -173,7 +173,7 @@ impl InputSimple {
     }
 }
 
-impl LeaveMode for InputSimple {
+impl Leave for InputSimple {
     fn must_refresh(&self) -> bool {
         !matches!(self, Self::Shell | Self::Filter | Self::Password(_, _))
     }
@@ -244,7 +244,7 @@ impl fmt::Display for Navigate {
     }
 }
 
-impl LeaveMode for Navigate {
+impl Leave for Navigate {
     fn must_refresh(&self) -> bool {
         !matches!(self, Self::CliApplication | Self::Context)
     }
@@ -310,7 +310,7 @@ impl Edit {
     }
 }
 
-impl LeaveMode for Edit {
+impl Leave for Edit {
     fn must_refresh(&self) -> bool {
         match self {
             Self::InputCompleted(input_completed) => input_completed.must_refresh(),
@@ -335,7 +335,7 @@ impl LeaveMode for Edit {
 /// Trait which should be implemented for every edit mode.
 /// It says if leaving this mode should be followed with a reset of the display & file content,
 /// and if we have to reset the edit mode.
-pub trait LeaveMode {
+pub trait Leave {
     /// Should the file content & window be refreshed when leaving this mode?
     fn must_refresh(&self) -> bool;
     /// Should the edit mode be reset to Nothing when leaving this mode ?
