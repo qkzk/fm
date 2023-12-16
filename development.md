@@ -732,6 +732,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] leaving second pane as preview should set second pane to normal
 - [x] FIX: in tree mode, refresh also refresh the window. Incorrect number of file displayed
 - [x] FIX: while second window is opened, if the selection is below half screen, it's not shown anymore.
+- [x] exec multiple flagged files
 
 ## TODO
 
@@ -763,7 +764,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] pushbullet ?
 
 - [ ] update the animation
-- [ ] exec multiple flagged files
 - [ ] shell menu
 
   - [ ] allow non tui like wttr, diff, bat, tail -n etc.

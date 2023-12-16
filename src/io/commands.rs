@@ -17,10 +17,11 @@ use crate::{log_info, log_line};
 /// # Errors
 ///
 /// May fail if the command can't be spawned.
-pub fn execute<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
-    exe: S,
-    args: &[&str],
-) -> Result<std::process::Child> {
+pub fn execute<S, P>(exe: S, args: &[P]) -> Result<std::process::Child>
+where
+    S: AsRef<std::ffi::OsStr> + fmt::Debug,
+    P: AsRef<std::ffi::OsStr> + fmt::Debug,
+{
     log_info!("execute_in_child. executable: {exe:?}, arguments: {args:?}");
     log_line!("Execute: {exe:?}, arguments: {args:?}");
     if is_program_in_path(NOHUP) {
@@ -187,13 +188,15 @@ pub fn execute_with_ansi_colors(args: &[&str]) -> Result<std::process::Output> {
         .output()?)
 }
 
-pub fn execute_custom(exec_command: String, selected_file: &str) -> Result<bool> {
+pub fn execute_custom(exec_command: String, files: &[std::path::PathBuf]) -> Result<bool> {
     let mut args: Vec<&str> = exec_command.split(' ').collect();
     let command = args.remove(0);
     if !std::path::Path::new(command).exists() {
         return Ok(false);
     }
-    args.push(selected_file);
+    for file in files {
+        args.push(file.to_str().context("Couldn't parse filepath to str")?);
+    }
     execute(command, &args)?;
     Ok(true)
 }

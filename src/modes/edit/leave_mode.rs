@@ -246,8 +246,14 @@ impl LeaveMode {
             return Err(anyhow!("exec: empty directory"));
         }
         let exec_command = status.menu.input.string();
-        let selected_file = &status.current_tab().current_file_string()?;
-        if let Ok(success) = execute_custom(exec_command, selected_file) {
+        if status.menu.flagged.is_empty() {
+            status
+                .menu
+                .flagged
+                .toggle(&status.current_tab().current_file()?.path);
+        }
+        let paths = status.menu.flagged.content();
+        if let Ok(success) = execute_custom(exec_command, paths) {
             if success {
                 status.menu.completion.reset();
                 status.menu.input.reset();
