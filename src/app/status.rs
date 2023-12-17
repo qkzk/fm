@@ -838,24 +838,13 @@ impl Status {
         Ok(())
     }
 
-    /// Ask
-    pub fn confirm_bulk_action(&mut self) -> Result<()> {
-        log_info!("confirming bulk");
+    /// Ask the new filenames and set the confirmation mode.
+    pub fn bulk_ask_filenames(&mut self) -> Result<()> {
+        let flagged = self.flagged_in_current_dir();
+        let current_path = self.current_tab_path_str();
         if let Some(bulk) = &mut self.menu.bulk {
-            bulk.execute()?;
-        } else {
-            log_info!("bulk should be set");
-        }
-        self.reset_edit_mode()?;
-        self.clear_flags_and_reset_view()?;
-        Ok(())
-    }
-
-    pub fn bulk_ask(&mut self) -> Result<()> {
-        let fcd = self.flagged_in_current_dir();
-        let ctps = self.current_tab_path_str();
-        if let Some(bulk) = &mut self.menu.bulk {
-            let bulk_action = bulk.ask_filenames(fcd, &self.internal_settings.opener, &ctps)?;
+            let bulk_action =
+                bulk.ask_filenames(flagged, &current_path, &self.internal_settings.opener)?;
             self.set_edit_mode(
                 self.index,
                 Edit::NeedConfirmation(NeedConfirmation::BulkAction(bulk_action)),
@@ -863,6 +852,19 @@ impl Status {
         } else {
             self.reset_edit_mode()?;
         }
+        Ok(())
+    }
+
+    /// Execute the bulk action.
+    pub fn confirm_bulk_action(&mut self) -> Result<()> {
+        log_info!("confirming bulk");
+        if let Some(bulk) = &mut self.menu.bulk {
+            bulk.execute()?;
+        } else {
+            log_info!("bulk shouldn't be None");
+        }
+        self.reset_edit_mode()?;
+        self.clear_flags_and_reset_view()?;
         Ok(())
     }
 

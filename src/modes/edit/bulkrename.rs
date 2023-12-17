@@ -231,39 +231,15 @@ impl Default for Bulk {
 }
 
 impl Bulk {
-    /// Execute the selected bulk method depending on the index.
-    /// First method is a rename of selected files,
-    /// Second is the creation of files or folders,
+    /// Ask the new filenames
     ///
-    /// # Errors
-    ///
-    /// renamer may fail if we can't rename a file (permissions...)
-    /// creator may fail if we can't write in current directory.
     /// Both may fail if the current user can't write in /tmp, since
     /// they create a temporary file.
-    // pub fn ask_filenames(&mut self, status: &Status) -> Result<()> {
-    //     match self.index {
-    //         0 => {
-    //             self.renamer = Some(
-    //                 Renamer::new(status.flagged_in_current_dir())
-    //                     .rename(&status.internal_settings.opener)?,
-    //             )
-    //         }
-    //         1 => {
-    //             self.creator = Some(
-    //                 Creator::new(&status.current_tab_path_str())
-    //                     .create_files(&status.internal_settings.opener)?,
-    //             )
-    //         }
-    //         _ => (),
-    //     };
-    //     Ok(())
-    // }
     pub fn ask_filenames(
         &mut self,
         flagged_in_current_dir: Vec<PathBuf>,
-        opener: &Opener,
         current_tab_path_str: &str,
+        opener: &Opener,
     ) -> Result<BulkAction> {
         if self.index == 0 {
             self.bulk_mode = BulkAction::Rename;
@@ -275,6 +251,14 @@ impl Bulk {
         Ok(self.bulk_mode)
     }
 
+    /// Execute the selected bulk method depending on the index.
+    /// First method is a rename of selected files,
+    /// Second is the creation of files or folders,
+    ///
+    /// # Errors
+    ///
+    /// renamer may fail if we can't rename a file (permissions...)
+    /// creator may fail if we can't write in current directory.
     pub fn execute(&mut self) -> Result<()> {
         log_info!("bulk execute: {action:?}", action = self.bulk_mode);
         if self.index == 0 {
