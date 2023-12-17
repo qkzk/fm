@@ -888,13 +888,13 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_bulk_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        if let Some(selectable) = &self.status.menu.bulk {
-            let content = selectable.content();
-            for (row, text, attr) in enumerated_colored_iter!(content) {
-                let attr = selectable.attr(row, attr);
-                Self::draw_content_line(canvas, row + 1, text, attr)?;
-            }
+        let selectable = &self.status.menu.bulk;
+        let content = selectable.content();
+        for (row, text, attr) in enumerated_colored_iter!(content) {
+            let attr = selectable.attr(row, attr);
+            Self::draw_content_line(canvas, row + 1, text, attr)?;
         }
+
         Ok(())
     }
 
@@ -1068,10 +1068,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_confirm_bulk(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let Some(bulk) = &self.status.menu.bulk else {
-            return Ok(());
-        };
-        let content = bulk.format_confirmation();
+        let content = self.status.menu.bulk.format_confirmation();
         for (row, line, attr) in enumerated_colored_iter!(content) {
             Self::draw_content_line(canvas, row + 2, line, *attr)?;
         }

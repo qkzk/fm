@@ -842,27 +842,21 @@ impl Status {
     pub fn bulk_ask_filenames(&mut self) -> Result<()> {
         let flagged = self.flagged_in_current_dir();
         let current_path = self.current_tab_path_str();
-        if let Some(bulk) = &mut self.menu.bulk {
-            let bulk_action =
-                bulk.ask_filenames(flagged, &current_path, &self.internal_settings.opener)?;
-            self.set_edit_mode(
-                self.index,
-                Edit::NeedConfirmation(NeedConfirmation::BulkAction(bulk_action)),
-            )?;
-        } else {
-            self.reset_edit_mode()?;
-        }
+        let bulk_action =
+            self.menu
+                .bulk
+                .ask_filenames(flagged, &current_path, &self.internal_settings.opener)?;
+        self.set_edit_mode(
+            self.index,
+            Edit::NeedConfirmation(NeedConfirmation::BulkAction(bulk_action)),
+        )?;
         Ok(())
     }
 
     /// Execute the bulk action.
     pub fn confirm_bulk_action(&mut self) -> Result<()> {
         log_info!("confirming bulk");
-        if let Some(bulk) = &mut self.menu.bulk {
-            bulk.execute()?;
-        } else {
-            log_info!("bulk shouldn't be None");
-        }
+        self.menu.bulk.execute()?;
         self.reset_edit_mode()?;
         self.clear_flags_and_reset_view()?;
         Ok(())

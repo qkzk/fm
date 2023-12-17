@@ -345,7 +345,6 @@ impl EventAction {
         if status.menu.flagged.is_empty() {
             status.toggle_flag_for_selected()
         }
-        status.menu.init_bulk();
         status.set_edit_mode(status.index, Edit::Navigate(Navigate::BulkMenu))
     }
 

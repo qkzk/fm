@@ -32,7 +32,7 @@ use crate::modes::TuiApplications;
 
 pub struct Menu {
     /// Bulk rename
-    pub bulk: Option<Bulk>,
+    pub bulk: Bulk,
     /// CLI applications
     pub cli_applications: CliApplications,
     /// Completion list and index in it.
@@ -75,7 +75,7 @@ impl Menu {
             tui_applications: TuiApplications::new(TUIS_PATH),
             removable_devices: None,
             password_holder: PasswordHolder::default(),
-            bulk: None,
+            bulk: Bulk::default(),
             iso_device: None,
             encrypted_devices: CryptoDeviceOpener::default(),
             trash: Trash::new()?,
@@ -90,36 +90,12 @@ impl Menu {
     pub fn reset(&mut self) {
         self.input.reset();
         self.completion.reset();
-        self.bulk = None;
+        self.bulk.reset();
     }
 
-    /// Creats a new bulk instance if needed
-    pub fn init_bulk(&mut self) {
-        if self.bulk.is_none() {
-            self.bulk = Some(Bulk::default());
-        }
-    }
-
-    pub fn bulk_prev(&mut self) {
-        self.init_bulk();
-        if let Some(bulk) = &mut self.bulk {
-            bulk.prev();
-        }
-    }
-
-    pub fn bulk_next(&mut self) {
-        self.init_bulk();
-        if let Some(bulk) = &mut self.bulk {
-            bulk.next();
-        }
-    }
-
-    /// Set the index of bulk, if those are set.
-    /// Does nothing if `self.bulk` is still None.
+    /// Set the index of bulk
     pub fn bulk_set_index(&mut self, index: usize) {
-        if let Some(bulk) = &mut self.bulk {
-            bulk.set_index(index)
-        }
+        self.bulk.set_index(index)
     }
 
     /// Fill the input string with the currently selected completion.
@@ -325,7 +301,7 @@ impl Menu {
             Navigate::Marks(_) => self.marks.next(),
             Navigate::Compress => self.compression.next(),
             Navigate::Context => self.context.next(),
-            Navigate::BulkMenu => self.bulk_next(),
+            Navigate::BulkMenu => self.bulk.next(),
             Navigate::TuiApplication => self.tui_applications.next(),
             Navigate::CliApplication => self.cli_applications.next(),
             Navigate::EncryptedDrive => self.encrypted_devices.next(),
@@ -347,7 +323,7 @@ impl Menu {
             Navigate::Marks(_) => self.marks.prev(),
             Navigate::Compress => self.compression.prev(),
             Navigate::Context => self.context.prev(),
-            Navigate::BulkMenu => self.bulk_prev(),
+            Navigate::BulkMenu => self.bulk.prev(),
             Navigate::TuiApplication => self.tui_applications.prev(),
             Navigate::CliApplication => self.cli_applications.prev(),
             Navigate::EncryptedDrive => self.encrypted_devices.prev(),

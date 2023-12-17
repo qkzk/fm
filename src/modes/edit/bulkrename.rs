@@ -248,6 +248,14 @@ impl Default for Bulk {
 }
 
 impl Bulk {
+    /// Reset to default values.
+    pub fn reset(&mut self) {
+        self.renamer = None;
+        self.creator = None;
+        self.bulk_mode = BulkAction::Rename;
+        self.index = 0;
+    }
+
     /// Ask the new filenames
     ///
     /// Both may fail if the current user can't write in /tmp, since
