@@ -94,8 +94,6 @@ impl Renamer {
             match rename(path, filename) {
                 Ok(()) => {
                     counter += 1;
-                    log_line!("Bulk renamed {path} to {filename}", path = path.display());
-                    log_info!("Bulk renamed {path} to {filename}", path = path.display());
                 }
                 Err(error) => log_info!(
                     "Error renaming {path} to {filename}. Error: {error:?}",
