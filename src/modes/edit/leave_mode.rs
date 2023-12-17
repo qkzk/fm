@@ -121,7 +121,7 @@ impl LeaveMode {
 
     /// Execute the picked bulk command and reset the menu bulk to None.
     pub fn bulk_ask(status: &mut Status) -> Result<()> {
-        status.bulk_ask()?;
+        status.bulk_ask_filenames()?;
         status.update_second_pane_for_preview()
     }
 
