@@ -57,10 +57,10 @@ impl Flagged {
     /// Returns a vector of path which are present in the current directory.
     #[inline]
     #[must_use]
-    pub fn in_current_dir(&self, current_path: &Path) -> Vec<PathBuf> {
+    pub fn in_dir(&self, dir: &Path) -> Vec<PathBuf> {
         self.content
             .iter()
-            .filter(|p| p.starts_with(current_path))
+            .filter(|p| p.starts_with(dir))
             .map(|p| p.to_owned())
             .collect()
     }

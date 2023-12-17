@@ -717,6 +717,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Summary
 
+- better scrolling in tree mode.
+- bulk: create intermediates folders when renaming. selection is flagged if needed
+
 #### Changelog
 
 - [ ] unify scrolling.
@@ -734,7 +737,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: while second window is opened, if the selection is below half screen, it's not shown anymore.
 - [x] exec multiple flagged files
 - [x] confirm before bulkaction
-- [ ] allow bulk rename to move files
+- [x] allow bulk rename to move files + bulk refactoring
 
 ## TODO
 

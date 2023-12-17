@@ -417,9 +417,7 @@ impl Status {
     /// It may be confusing since the same filename can be used in
     /// different places.
     pub fn flagged_in_current_dir(&self) -> Vec<std::path::PathBuf> {
-        self.menu
-            .flagged
-            .in_current_dir(&self.current_tab().directory.path)
+        self.menu.flagged.in_dir(&self.current_tab().directory.path)
     }
 
     /// Flag all files in the current directory.
@@ -840,6 +838,7 @@ impl Status {
 
     /// Ask the new filenames and set the confirmation mode.
     pub fn bulk_ask_filenames(&mut self) -> Result<()> {
+        self.bulk_flag_selection_for_rename()?;
         let flagged = self.flagged_in_current_dir();
         let current_path = self.current_tab_path_str();
         let bulk_action =
@@ -850,6 +849,15 @@ impl Status {
             self.index,
             Edit::NeedConfirmation(NeedConfirmation::BulkAction(bulk_action)),
         )?;
+        Ok(())
+    }
+
+    fn bulk_flag_selection_for_rename(&mut self) -> Result<()> {
+        if self.menu.flagged.is_empty() && self.menu.bulk.is_rename() {
+            self.menu
+                .flagged
+                .push(self.current_tab().current_file()?.path.to_path_buf());
+        }
         Ok(())
     }
 

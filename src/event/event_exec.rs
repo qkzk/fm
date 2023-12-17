@@ -342,9 +342,6 @@ impl EventAction {
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.
     pub fn bulk(status: &mut Status) -> Result<()> {
-        if status.menu.flagged.is_empty() {
-            status.toggle_flag_for_selected()
-        }
         status.set_edit_mode(status.index, Edit::Navigate(Navigate::BulkMenu))
     }
 

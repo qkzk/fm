@@ -4,18 +4,39 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
-// use crate::app::Status;
 use crate::common::random_name;
 use crate::common::TMP_FOLDER_PATH;
+use crate::impl_selectable_content;
 use crate::io::Opener;
+use crate::log_info;
 use crate::log_line;
 use crate::modes::mode::BulkAction;
-use crate::{impl_selectable_content, log_info};
+
+trait DelTemp {
+    fn del_temporary_file(&self, temp_file: &Path) -> Result<()> {
+        std::fs::remove_file(temp_file)?;
+        Ok(())
+    }
+}
+
+trait BulkExecute {
+    fn execute(&self) -> Result<()>;
+}
 
 struct Renamer {
     original_filepath: Vec<PathBuf>,
     temp_file: PathBuf,
     new_filenames: Vec<String>,
+}
+
+impl DelTemp for Renamer {}
+
+impl BulkExecute for Renamer {
+    fn execute(&self) -> Result<()> {
+        self.rename_all(&self.new_filenames)?;
+        self.del_temporary_file(&self.temp_file)?;
+        Ok(())
+    }
 }
 
 impl Renamer {
@@ -48,12 +69,6 @@ impl Renamer {
         }
         self.new_filenames = new_filenames;
         Ok(self)
-    }
-
-    fn execute(&mut self) -> Result<()> {
-        self.rename_all(&self.new_filenames)?;
-        std::fs::remove_file(&self.temp_file)?;
-        Ok(())
     }
 
     fn write_original_names(&self) -> Result<()> {
@@ -111,6 +126,16 @@ struct Creator {
     new_filenames: Vec<String>,
 }
 
+impl DelTemp for Creator {}
+
+impl BulkExecute for Creator {
+    fn execute(&self) -> Result<()> {
+        self.create_all_files(&self.new_filenames)?;
+        self.del_temporary_file(&self.temp_file)?;
+        Ok(())
+    }
+}
+
 impl Creator {
     fn new(path_str: &str) -> Self {
         let temp_file = generate_random_filepath();
@@ -130,12 +155,6 @@ impl Creator {
         watch_modification_in_thread(&self.temp_file, original_modification)?;
         self.new_filenames = get_new_filenames(&self.temp_file)?;
         Ok(self)
-    }
-
-    pub fn execute(&mut self) -> Result<()> {
-        self.create_all_files(&self.new_filenames)?;
-        std::fs::remove_file(&self.temp_file)?;
-        Ok(())
     }
 
     fn create_all_files(&self, new_filenames: &[String]) -> Result<()> {
@@ -227,7 +246,6 @@ fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {
 pub struct Bulk {
     pub content: Vec<String>,
     index: usize,
-    bulk_mode: BulkAction,
     renamer: Option<Renamer>,
     creator: Option<Creator>,
 }
@@ -240,7 +258,6 @@ impl Default for Bulk {
                 "New files or folders. End folder with a slash '/'".to_string(),
             ],
             index: 0,
-            bulk_mode: BulkAction::Rename,
             renamer: None,
             creator: None,
         }
@@ -248,11 +265,24 @@ impl Default for Bulk {
 }
 
 impl Bulk {
+    /// True if Bulk is set to rename files.
+    /// False if Bulk is set to create files.
+    pub fn is_rename(&self) -> bool {
+        self.index == 0
+    }
+
+    pub fn bulk_mode(&self) -> BulkAction {
+        if self.is_rename() {
+            BulkAction::Rename
+        } else {
+            BulkAction::Create
+        }
+    }
+
     /// Reset to default values.
     pub fn reset(&mut self) {
         self.renamer = None;
         self.creator = None;
-        self.bulk_mode = BulkAction::Rename;
         self.index = 0;
     }
 
@@ -266,14 +296,12 @@ impl Bulk {
         current_tab_path_str: &str,
         opener: &Opener,
     ) -> Result<BulkAction> {
-        if self.index == 0 {
-            self.bulk_mode = BulkAction::Rename;
+        if self.is_rename() {
             self.renamer = Some(Renamer::new(flagged_in_current_dir).ask_filenames(opener)?);
         } else {
-            self.bulk_mode = BulkAction::Create;
             self.creator = Some(Creator::new(current_tab_path_str).ask_filenames(opener)?);
         }
-        Ok(self.bulk_mode)
+        Ok(self.bulk_mode())
     }
 
     /// Execute the selected bulk method depending on the index.
@@ -285,8 +313,8 @@ impl Bulk {
     /// renamer may fail if we can't rename a file (permissions...)
     /// creator may fail if we can't write in current directory.
     pub fn execute(&mut self) -> Result<()> {
-        log_info!("bulk execute: {action:?}", action = self.bulk_mode);
-        if self.index == 0 {
+        log_info!("bulk execute: {action:?}", action = self.bulk_mode());
+        if self.is_rename() {
             let Some(renamer) = &mut self.renamer else {
                 return Ok(());
             };
@@ -297,8 +325,7 @@ impl Bulk {
             };
             creator.execute()?;
         }
-        self.creator = None;
-        self.renamer = None;
+        self.reset();
         Ok(())
     }
 
