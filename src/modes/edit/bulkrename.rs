@@ -76,19 +76,31 @@ impl Renamer {
     fn rename_all(&self, new_filenames: &[String]) -> Result<()> {
         let mut counter = 0;
         for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
-            let new_name = sanitize_filename::sanitize(filename);
-            self.rename_file(path, &new_name)?;
-            counter += 1;
-            log_line!("Bulk renamed {path} to {new_name}", path = path.display());
+            match self.rename_file(path, filename) {
+                Ok(()) => {
+                    counter += 1;
+                    log_line!("Bulk renamed {path} to {filename}", path = path.display());
+                    log_info!("Bulk renamed {path} to {filename}", path = path.display());
+                }
+                Err(error) => log_info!(
+                    "Error renaming {path} to {filename}. Error: {error:?}",
+                    path = path.display()
+                ),
+            }
         }
         log_line!("Bulk renamed {counter} files");
         Ok(())
     }
 
-    fn rename_file(&self, path: &Path, filename: &str) -> Result<()> {
-        let mut parent = PathBuf::from(path);
-        parent.pop();
-        std::fs::rename(path, parent.join(filename))?;
+    fn rename_file(&self, old_path: &Path, filename: &str) -> Result<()> {
+        let mut old_parent = PathBuf::from(old_path);
+        old_parent.pop();
+        let new_path = old_parent.join(filename);
+        let Some(new_parent) = new_path.parent() else {
+            return Ok(());
+        };
+        std::fs::create_dir_all(new_parent)?;
+        std::fs::rename(old_path, new_path)?;
         Ok(())
     }
 }
@@ -129,30 +141,35 @@ impl Creator {
     fn create_all_files(&self, new_filenames: &[String]) -> Result<()> {
         let mut counter = 0;
         for filename in new_filenames.iter() {
-            let mut new_path = std::path::PathBuf::from(&self.parent_dir);
-            if !filename.ends_with('/') {
-                new_path.push(filename);
-                let Some(parent) = new_path.parent() else {
-                    return Ok(());
-                };
-                log_info!("Bulk new files. Creating parent: {}", parent.display());
-                if std::fs::create_dir_all(parent).is_err() {
-                    continue;
-                };
-                log_info!("creating: {new_path:?}");
-                std::fs::File::create(&new_path)?;
-                log_line!("Bulk created {new_path}", new_path = new_path.display());
-                counter += 1;
-            } else {
-                new_path.push(filename);
-                log_info!("Bulk creating dir: {}", new_path.display());
-                std::fs::create_dir_all(&new_path)?;
-                log_line!("Bulk created {new_path}", new_path = new_path.display());
-                counter += 1;
-            }
+            counter = self.create_file(filename, counter)?
         }
         log_line!("Bulk created {counter} files");
         Ok(())
+    }
+
+    fn create_file(&self, filename: &str, mut counter: usize) -> Result<usize> {
+        let mut new_path = std::path::PathBuf::from(&self.parent_dir);
+        if !filename.ends_with('/') {
+            new_path.push(filename);
+            let Some(parent) = new_path.parent() else {
+                return Ok(counter);
+            };
+            log_info!("Bulk new files. Creating parent: {}", parent.display());
+            if std::fs::create_dir_all(parent).is_err() {
+                return Ok(counter);
+            };
+            log_info!("creating: {new_path:?}");
+            std::fs::File::create(&new_path)?;
+            log_line!("Bulk created {new_path}", new_path = new_path.display());
+            counter += 1;
+        } else {
+            new_path.push(filename);
+            log_info!("Bulk creating dir: {}", new_path.display());
+            std::fs::create_dir_all(&new_path)?;
+            log_line!("Bulk created {new_path}", new_path = new_path.display());
+            counter += 1;
+        }
+        Ok(counter)
     }
 }
 
