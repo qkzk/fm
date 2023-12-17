@@ -55,7 +55,7 @@ impl LeaveMode {
             Edit::Navigate(Navigate::History) => LeaveMode::history(status),
             Edit::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status),
             Edit::Navigate(Navigate::Trash) => LeaveMode::trash(status),
-            Edit::Navigate(Navigate::Bulk) => LeaveMode::bulk(status),
+            Edit::Navigate(Navigate::BulkMenu) => LeaveMode::bulk_ask(status),
             Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status),
             Edit::Navigate(Navigate::CliApplication) => LeaveMode::cli_info(status),
             Edit::Navigate(Navigate::EncryptedDrive) => Ok(()),
@@ -120,9 +120,8 @@ impl LeaveMode {
     }
 
     /// Execute the picked bulk command and reset the menu bulk to None.
-    pub fn bulk(status: &mut Status) -> Result<()> {
-        status.execute_bulk()?;
-        status.menu.bulk = None;
+    pub fn bulk_ask(status: &mut Status) -> Result<()> {
+        status.bulk_ask()?;
         status.update_second_pane_for_preview()
     }
 

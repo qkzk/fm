@@ -733,6 +733,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: in tree mode, refresh also refresh the window. Incorrect number of file displayed
 - [x] FIX: while second window is opened, if the selection is below half screen, it's not shown anymore.
 - [x] exec multiple flagged files
+- [x] confirm before bulkaction
 
 ## TODO
 
@@ -764,10 +765,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] pushbullet ?
 
 - [ ] update the animation
-- [ ] shell menu
-
-  - [ ] allow non tui like wttr, diff, bat, tail -n etc.
-  - [ ] more options like "use flagged files" for diff
 
 - [ ] build option to force reset of config file, warn the user at first start
 - [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.

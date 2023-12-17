@@ -817,7 +817,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {
         for (row, line, attr) in enumerated_colored_iter!(lines) {
-            Self::draw_content_line(canvas, row, line, *attr)?
+            Self::draw_content_line(canvas, row, line, *attr)?;
         }
         Ok(())
     }
@@ -838,7 +838,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_navigate(&self, navigable_mode: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
         match navigable_mode {
-            Navigate::Bulk => self.draw_bulk(canvas),
+            Navigate::BulkMenu => self.draw_bulk_menu(canvas),
             Navigate::CliApplication => self.draw_cli_info(canvas),
             Navigate::Compress => self.draw_compress(canvas),
             Navigate::Context => self.draw_context(canvas),
@@ -887,7 +887,7 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn draw_bulk(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_bulk_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
         if let Some(selectable) = &self.status.menu.bulk {
             let content = selectable.content();
             for (row, text, attr) in enumerated_colored_iter!(content) {
@@ -1048,6 +1048,7 @@ impl<'a> WinSecondary<'a> {
         )?;
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => self.draw_confirm_empty_trash(canvas)?,
+            NeedConfirmation::BulkAction(_) => self.draw_confirm_bulk(canvas)?,
             _ => self.draw_confirm_default(canvas)?,
         }
         Ok(())
@@ -1062,6 +1063,17 @@ impl<'a> WinSecondary<'a> {
                 path.to_str().context("Unreadable filename")?,
                 *attr,
             )?;
+        }
+        Ok(())
+    }
+
+    fn draw_confirm_bulk(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let Some(bulk) = &self.status.menu.bulk else {
+            return Ok(());
+        };
+        let content = bulk.format_confirmation();
+        for (row, line, attr) in enumerated_colored_iter!(content) {
+            Self::draw_content_line(canvas, row + 2, line, *attr)?;
         }
         Ok(())
     }
@@ -1084,7 +1096,7 @@ impl<'a> WinSecondary<'a> {
         let content = self.status.menu.trash.content();
         for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
             let attr = self.status.menu.trash.attr(row, attr);
-            Self::draw_content_line(canvas, row + 4, &trashinfo.to_string(), attr)?
+            Self::draw_content_line(canvas, row + 4, &trashinfo.to_string(), attr)?;
         }
         Ok(())
     }
@@ -1094,9 +1106,8 @@ impl<'a> WinSecondary<'a> {
         row: usize,
         text: &str,
         attr: tuikit::attr::Attr,
-    ) -> Result<()> {
-        canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr)?;
-        Ok(())
+    ) -> Result<usize> {
+        Ok(canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr)?)
     }
 }
 

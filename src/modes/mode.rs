@@ -20,6 +20,12 @@ pub enum MarkAction {
     New,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum BulkAction {
+    Rename,
+    Create,
+}
+
 /// Different kind of last edition command received requiring a confirmation.
 /// Copy, move and delete require a confirmation to prevent big mistakes.
 #[derive(Clone, Copy, Debug)]
@@ -32,6 +38,8 @@ pub enum NeedConfirmation {
     Move,
     /// Empty Trash
     EmptyTrash,
+    /// Bulk
+    BulkAction(BulkAction),
 }
 
 impl NeedConfirmation {
@@ -55,6 +63,8 @@ impl NeedConfirmation {
             Self::Move => {
                 format!("Files will be moved to {destination}")
             }
+            Self::BulkAction(BulkAction::Rename) => "Those files will be renamed :".to_owned(),
+            Self::BulkAction(BulkAction::Create) => "Those files will be created :".to_owned(),
         }
     }
 }
@@ -76,6 +86,8 @@ impl std::fmt::Display for NeedConfirmation {
             Self::Move => write!(f, "Move files here :"),
             Self::Copy => write!(f, "Copy files here :"),
             Self::EmptyTrash => write!(f, "Empty the trash ?"),
+            Self::BulkAction(BulkAction::Rename) => write!(f, "Bulk rename :"),
+            Self::BulkAction(BulkAction::Create) => write!(f, "Bulk create :"),
         }
     }
 }
@@ -205,7 +217,7 @@ pub enum Navigate {
     /// Pick a compression method
     Compress,
     /// Bulk rename, new files, new directories
-    Bulk,
+    BulkMenu,
     /// Shell menu applications. Start a new shell with this application.
     TuiApplication,
     /// Cli info
@@ -228,7 +240,7 @@ impl fmt::Display for Navigate {
             Self::TuiApplication => {
                 write!(f, "Start a new shell running a command:")
             }
-            Self::Bulk => {
+            Self::BulkMenu => {
                 write!(f, "Bulk: rename flagged files or create new files")
             }
             Self::Compress => write!(f, "Compress :"),
@@ -250,7 +262,7 @@ impl Leave for Navigate {
     }
 
     fn must_reset_mode(&self) -> bool {
-        !matches!(self, Self::Context)
+        !matches!(self, Self::Context | Self::BulkMenu)
     }
 }
 

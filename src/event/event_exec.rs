@@ -343,7 +343,7 @@ impl EventAction {
     /// Once the temp file is saved, those file names are changed.
     pub fn bulk(status: &mut Status) -> Result<()> {
         status.menu.init_bulk();
-        status.set_edit_mode(status.index, Edit::Navigate(Navigate::Bulk))
+        status.set_edit_mode(status.index, Edit::Navigate(Navigate::BulkMenu))
     }
 
     /// Enter the search mode.

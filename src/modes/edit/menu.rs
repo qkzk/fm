@@ -87,6 +87,12 @@ impl Menu {
         })
     }
 
+    pub fn reset(&mut self) {
+        self.input.reset();
+        self.completion.reset();
+        self.bulk = None;
+    }
+
     /// Creats a new bulk instance if needed
     pub fn init_bulk(&mut self) {
         if self.bulk.is_none() {
@@ -105,6 +111,14 @@ impl Menu {
         self.init_bulk();
         if let Some(bulk) = &mut self.bulk {
             bulk.next();
+        }
+    }
+
+    /// Set the index of bulk, if those are set.
+    /// Does nothing if `self.bulk` is still None.
+    pub fn bulk_set_index(&mut self, index: usize) {
+        if let Some(bulk) = &mut self.bulk {
+            bulk.set_index(index)
         }
     }
 
@@ -302,14 +316,6 @@ impl Menu {
         }
     }
 
-    /// Set the index of bulk, if those are set.
-    /// Does nothing if `self.bulk` is still None.
-    pub fn bulk_set_index(&mut self, index: usize) {
-        if let Some(bulk) = &mut self.bulk {
-            bulk.set_index(index)
-        }
-    }
-
     /// Select the next element of the menu
     pub fn next(&mut self, navigate: Navigate) {
         match navigate {
@@ -319,7 +325,7 @@ impl Menu {
             Navigate::Marks(_) => self.marks.next(),
             Navigate::Compress => self.compression.next(),
             Navigate::Context => self.context.next(),
-            Navigate::Bulk => self.bulk_next(),
+            Navigate::BulkMenu => self.bulk_next(),
             Navigate::TuiApplication => self.tui_applications.next(),
             Navigate::CliApplication => self.cli_applications.next(),
             Navigate::EncryptedDrive => self.encrypted_devices.next(),
@@ -341,7 +347,7 @@ impl Menu {
             Navigate::Marks(_) => self.marks.prev(),
             Navigate::Compress => self.compression.prev(),
             Navigate::Context => self.context.prev(),
-            Navigate::Bulk => self.bulk_prev(),
+            Navigate::BulkMenu => self.bulk_prev(),
             Navigate::TuiApplication => self.tui_applications.prev(),
             Navigate::CliApplication => self.cli_applications.prev(),
             Navigate::EncryptedDrive => self.encrypted_devices.prev(),

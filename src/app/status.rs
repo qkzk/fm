@@ -212,7 +212,7 @@ impl Status {
             let index = offset - 4;
             match self.current_tab().edit_mode {
                 Edit::Navigate(navigate) => match navigate {
-                    Navigate::Bulk => self.menu.bulk_set_index(index),
+                    Navigate::BulkMenu => self.menu.bulk_set_index(index),
                     Navigate::CliApplication => self.menu.cli_applications.set_index(index),
                     Navigate::Compress => self.menu.compression.set_index(index),
                     Navigate::Context => self.menu.context.set_index(index),
@@ -284,7 +284,7 @@ impl Status {
     /// Reset the edit mode to "Nothing" (closing any menu) and returns
     /// true if the display should be refreshed.
     pub fn reset_edit_mode(&mut self) -> Result<bool> {
-        self.menu.completion.reset();
+        self.menu.reset();
         let must_refresh = matches!(self.current_tab().display_mode, Display::Preview);
         self.set_edit_mode(self.index, Edit::Nothing)?;
         Ok(must_refresh)
@@ -416,7 +416,7 @@ impl Status {
     /// directory before calling Bulkrename.
     /// It may be confusing since the same filename can be used in
     /// different places.
-    pub fn flagged_in_current_dir(&self) -> Vec<&Path> {
+    pub fn flagged_in_current_dir(&self) -> Vec<std::path::PathBuf> {
         self.menu
             .flagged
             .in_current_dir(&self.current_tab().directory.path)
@@ -579,14 +579,6 @@ impl Status {
 
     fn drop_skim(&mut self) -> Result<()> {
         self.skimer = None;
-        Ok(())
-    }
-
-    /// Execute the selected bulk action if any.
-    pub fn execute_bulk(&self) -> Result<()> {
-        if let Some(bulk) = &self.menu.bulk {
-            bulk.execute_bulk(self)?;
-        }
         Ok(())
     }
 
@@ -846,6 +838,34 @@ impl Status {
         Ok(())
     }
 
+    /// Ask
+    pub fn confirm_bulk_action(&mut self) -> Result<()> {
+        log_info!("confirming bulk");
+        if let Some(bulk) = &mut self.menu.bulk {
+            bulk.execute()?;
+        } else {
+            log_info!("bulk should be set");
+        }
+        self.reset_edit_mode()?;
+        self.clear_flags_and_reset_view()?;
+        Ok(())
+    }
+
+    pub fn bulk_ask(&mut self) -> Result<()> {
+        let fcd = self.flagged_in_current_dir();
+        let ctps = self.current_tab_path_str();
+        if let Some(bulk) = &mut self.menu.bulk {
+            let bulk_action = bulk.ask_filenames(fcd, &self.internal_settings.opener, &ctps)?;
+            self.set_edit_mode(
+                self.index,
+                Edit::NeedConfirmation(NeedConfirmation::BulkAction(bulk_action)),
+            )?;
+        } else {
+            self.reset_edit_mode()?;
+        }
+        Ok(())
+    }
+
     fn run_sudo_command(&mut self) -> Result<()> {
         self.set_edit_mode(self.index, Edit::Nothing)?;
         reset_sudo_faillock()?;
@@ -927,6 +947,7 @@ impl Status {
             NeedConfirmation::Move => self.cut_or_copy_flagged_files(CopyMove::Move),
             NeedConfirmation::Copy => self.cut_or_copy_flagged_files(CopyMove::Copy),
             NeedConfirmation::EmptyTrash => self.confirm_trash_empty(),
+            NeedConfirmation::BulkAction(_) => self.confirm_bulk_action(),
         }
     }
 
