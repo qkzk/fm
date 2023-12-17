@@ -185,8 +185,9 @@ impl EventAction {
             }
         }
         let old_name = &selected.filename;
+        status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Rename))?;
         status.menu.input.replace(old_name);
-        status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Rename))
+        Ok(())
     }
 
     /// Enter a copy paste mode.

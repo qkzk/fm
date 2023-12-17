@@ -227,3 +227,41 @@ where
         Ok(false)
     }
 }
+
+/// Rename a file giving it a new file name.
+/// It uses `std::fs::rename` and `std::fs:create_dir_all` and has same limitations.
+/// If the new name contains intermediate slash (`'/'`) like: `"a/b/d"`,
+/// all intermediate folders will be created in the parent folder of `old_path` if needed.
+///
+/// # Errors
+///
+/// It may fail for the same reasons as [`std::fs::rename`] and [`std::fs::create_dir_all`].
+/// See those for more details.
+pub fn rename<P, Q>(old_path: P, new_name: Q) -> Result<()>
+where
+    P: AsRef<std::path::Path>,
+    Q: AsRef<std::path::Path>,
+{
+    let Some(old_parent) = old_path.as_ref().parent() else {
+        return Ok(());
+    };
+    let new_path = old_parent.join(new_name);
+    let Some(new_parent) = new_path.parent() else {
+        return Ok(());
+    };
+
+    log_info!(
+        "renaming: {} -> {}",
+        old_path.as_ref().display(),
+        new_path.display()
+    );
+    log_line!(
+        "renaming: {} -> {}",
+        old_path.as_ref().display(),
+        new_path.display()
+    );
+
+    std::fs::create_dir_all(new_parent)?;
+    std::fs::rename(old_path, new_path)?;
+    Ok(())
+}

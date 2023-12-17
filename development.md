@@ -738,6 +738,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] exec multiple flagged files
 - [x] confirm before bulkaction
 - [x] allow bulk rename to move files + bulk refactoring
+- [ ] rename should edit old name
 
 ## TODO
 

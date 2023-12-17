@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
-use crate::common::random_name;
 use crate::common::TMP_FOLDER_PATH;
+use crate::common::{random_name, rename};
 use crate::impl_selectable_content;
 use crate::io::Opener;
 use crate::log_info;
@@ -91,7 +91,7 @@ impl Renamer {
     fn rename_all(&self, new_filenames: &[String]) -> Result<()> {
         let mut counter = 0;
         for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
-            match self.rename_file(path, filename) {
+            match rename(path, filename) {
                 Ok(()) => {
                     counter += 1;
                     log_line!("Bulk renamed {path} to {filename}", path = path.display());
@@ -104,18 +104,6 @@ impl Renamer {
             }
         }
         log_line!("Bulk renamed {counter} files");
-        Ok(())
-    }
-
-    fn rename_file(&self, old_path: &Path, filename: &str) -> Result<()> {
-        let mut old_parent = PathBuf::from(old_path);
-        old_parent.pop();
-        let new_path = old_parent.join(filename);
-        let Some(new_parent) = new_path.parent() else {
-            return Ok(());
-        };
-        std::fs::create_dir_all(new_parent)?;
-        std::fs::rename(old_path, new_path)?;
         Ok(())
     }
 }

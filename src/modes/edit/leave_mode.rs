@@ -6,6 +6,7 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::app::Status;
 use crate::common::path_to_string;
+use crate::common::rename;
 use crate::common::string_to_path;
 use crate::config::Bindings;
 use crate::event::ActionMap;
@@ -185,36 +186,13 @@ impl LeaveMode {
 
     /// Execute a rename of the selected file.
     /// It uses the `fs::rename` function and has the same limitations.
-    /// We only try to rename in the same directory, so it shouldn't be a problem.
-    /// Filename is sanitized before processing.
+    /// Intermediates directory are created if needed.
+    /// It acts like a move (without any confirmation...)
+
     pub fn rename(status: &mut Status) -> Result<()> {
-        let original_path = if let Display::Tree = status.current_tab().display_mode {
-            status.current_tab().tree.selected_path()
-        } else {
-            status
-                .current_tab()
-                .directory
-                .selected()
-                .context("rename: couldn't parse selected file")?
-                .path
-                .borrow()
-        };
-        if let Some(parent) = original_path.parent() {
-            let new_path = parent.join(sanitize_filename::sanitize(status.menu.input.string()));
-            log_info!(
-                "renaming: original: {} - new: {}",
-                original_path.display(),
-                new_path.display()
-            );
-            log_line!(
-                "renaming: original: {} - new: {}",
-                original_path.display(),
-                new_path.display()
-            );
-
-            fs::rename(original_path, new_path)?;
-        }
-
+        let old_path = status.current_tab().current_file()?.path;
+        let new_name = status.menu.input.string();
+        rename(old_path, new_name)?;
         status.current_tab_mut().refresh_view()
     }
 
