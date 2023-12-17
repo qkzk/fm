@@ -734,6 +734,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: while second window is opened, if the selection is below half screen, it's not shown anymore.
 - [x] exec multiple flagged files
 - [x] confirm before bulkaction
+- [ ] allow bulk rename to move files
 
 ## TODO
 
