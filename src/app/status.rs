@@ -27,7 +27,6 @@ use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     reset_sudo_faillock,
 };
-use crate::modes::CopyMove;
 use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::FileKind;
@@ -48,6 +47,7 @@ use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, regex_matcher};
 use crate::modes::{BlockDeviceAction, Navigate};
+use crate::modes::{ContentWindow, CopyMove};
 use crate::{log_info, log_line};
 
 pub enum Window {
@@ -191,28 +191,31 @@ impl Status {
     pub fn click(&mut self, row: u16, col: u16, binds: &Bindings) -> Result<()> {
         let window = self.window_from_row(row, self.term_size()?.1);
         self.select_tab_from_col(col)?;
-        let (_, current_height) = self.term_size()?;
         match window {
-            Window::Menu => self.menu_action(row, current_height),
-            Window::Header => self.header_action(col, binds)?,
-            Window::Footer => self.footer_action(col, binds)?,
+            Window::Menu => self.menu_action(row),
+            Window::Header => self.header_action(col, binds),
+            Window::Footer => self.footer_action(col, binds),
             Window::Files => {
                 self.current_tab_mut().select_row(row)?;
-                self.update_second_pane_for_preview()?;
+                self.update_second_pane_for_preview()
             }
-        };
-        Ok(())
+        }
+    }
+
+    pub fn second_window_height(&self) -> Result<usize> {
+        let (_, height) = self.term_size()?;
+        Ok(height / 2 + (height % 2))
     }
 
     /// Execute a click on a menu item. Action depends on which menu was opened.
-    fn menu_action(&mut self, row: u16, height: usize) {
-        let second_window_height = height / 2 + (height % 2);
+    fn menu_action(&mut self, row: u16) -> Result<()> {
+        let second_window_height = self.second_window_height()?;
         let offset = row as usize - second_window_height;
         if offset >= 4 {
-            let index = offset - 4;
+            let index = offset - 4 + self.menu.window.top;
             match self.current_tab().edit_mode {
                 Edit::Navigate(navigate) => match navigate {
-                    Navigate::BulkMenu => self.menu.bulk_set_index(index),
+                    Navigate::BulkMenu => self.menu.bulk.set_index(index),
                     Navigate::CliApplication => self.menu.cli_applications.set_index(index),
                     Navigate::Compress => self.menu.compression.set_index(index),
                     Navigate::Context => self.menu.context.set_index(index),
@@ -228,7 +231,9 @@ impl Status {
                 Edit::InputCompleted(_) => self.menu.completion.set_index(index),
                 _ => (),
             }
+            self.menu.window.scroll_to(index);
         }
+        Ok(())
     }
 
     /// Select the left tab
@@ -375,6 +380,9 @@ impl Status {
         }
         self.set_height_for_edit_mode(index, edit_mode)?;
         self.tabs[index].edit_mode = edit_mode;
+        let len = self.menu.len(edit_mode);
+        let height = self.second_window_height()?;
+        self.menu.window = ContentWindow::new(len, height);
         self.refresh_view()
     }
 

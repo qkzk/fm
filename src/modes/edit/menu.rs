@@ -14,6 +14,7 @@ use crate::modes::Bulk;
 use crate::modes::CliApplications;
 use crate::modes::Completion;
 use crate::modes::Compresser;
+use crate::modes::ContentWindow;
 use crate::modes::ContextMenu;
 use crate::modes::CryptoDeviceOpener;
 use crate::modes::Edit;
@@ -32,6 +33,8 @@ use crate::modes::Trash;
 use crate::modes::TuiApplications;
 
 pub struct Menu {
+    /// Window for scrollable menus
+    pub window: ContentWindow,
     /// Bulk rename
     pub bulk: Bulk,
     /// CLI applications
@@ -68,7 +71,9 @@ pub struct Menu {
 
 impl Menu {
     pub fn new(start_dir: &std::path::Path, mount_points: &[&std::path::Path]) -> Result<Self> {
+        let window = ContentWindow::new(0, 80);
         Ok(Self {
+            window,
             sudo_command: None,
             compression: Compresser::default(),
             context: ContextMenu::default(),
@@ -92,11 +97,6 @@ impl Menu {
         self.input.reset();
         self.completion.reset();
         self.bulk.reset();
-    }
-
-    /// Set the index of bulk
-    pub fn bulk_set_index(&mut self, index: usize) {
-        self.bulk.set_index(index)
     }
 
     /// Fill the input string with the currently selected completion.
@@ -293,6 +293,54 @@ impl Menu {
         }
     }
 
+    pub fn len(&self, edit_mode: Edit) -> usize {
+        match edit_mode {
+            Edit::Navigate(navigate) => match navigate {
+                Navigate::Jump => self.flagged.len(),
+                Navigate::Trash => self.trash.len(),
+                Navigate::Shortcut => self.shortcut.len(),
+                Navigate::Marks(_) => self.marks.len(),
+                Navigate::Compress => self.compression.len(),
+                Navigate::Context => self.context.len(),
+                Navigate::BulkMenu => self.bulk.len(),
+                Navigate::TuiApplication => self.tui_applications.len(),
+                Navigate::CliApplication => self.cli_applications.len(),
+                Navigate::EncryptedDrive => self.encrypted_devices.len(),
+                Navigate::RemovableDevices => {
+                    if let Some(removable) = &self.removable_devices {
+                        removable.len()
+                    } else {
+                        0
+                    }
+                }
+                _ => 0,
+            },
+            _ => 0,
+        }
+    }
+
+    pub fn index(&self, navigate: Navigate) -> usize {
+        match navigate {
+            Navigate::Jump => self.flagged.index(),
+            Navigate::Trash => self.trash.index(),
+            Navigate::Shortcut => self.shortcut.index(),
+            Navigate::Marks(_) => self.marks.index(),
+            Navigate::Compress => self.compression.index(),
+            Navigate::Context => self.context.index(),
+            Navigate::BulkMenu => self.bulk.index(),
+            Navigate::TuiApplication => self.tui_applications.index(),
+            Navigate::CliApplication => self.cli_applications.index(),
+            Navigate::EncryptedDrive => self.encrypted_devices.index(),
+            Navigate::RemovableDevices => {
+                if let Some(removable) = &self.removable_devices {
+                    removable.index()
+                } else {
+                    0
+                }
+            }
+            _ => 0,
+        }
+    }
     /// Select the next element of the menu
     pub fn next(&mut self, navigate: Navigate) {
         match navigate {
@@ -313,6 +361,7 @@ impl Menu {
             }
             _ => (),
         }
+        self.window.scroll_to(self.index(navigate));
     }
 
     /// Select the previous element of the menu
@@ -334,6 +383,19 @@ impl Menu {
                 }
             }
             _ => (),
+        }
+        self.window.scroll_to(self.index(navigate));
+    }
+
+    pub fn page_down(&mut self, navigate: Navigate) {
+        for _ in 0..10 {
+            self.next(navigate)
+        }
+    }
+
+    pub fn page_up(&mut self, navigate: Navigate) {
+        for _ in 0..10 {
+            self.prev(navigate)
         }
     }
 }

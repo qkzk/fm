@@ -860,11 +860,16 @@ impl<'a> WinSecondary<'a> {
         selectable: &impl SelectableContent<PathBuf>,
     ) -> Result<()> {
         let content = selectable.content();
-        for (row, path, attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, path, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = selectable.attr(row, attr);
             Self::draw_content_line(
                 canvas,
-                row + 1,
+                row + 1 - top,
                 path.to_str().context("Unreadable filename")?,
                 attr,
             )?;
@@ -890,9 +895,14 @@ impl<'a> WinSecondary<'a> {
     fn draw_bulk_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.bulk;
         let content = selectable.content();
-        for (row, text, attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, text, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = selectable.attr(row, attr);
-            Self::draw_content_line(canvas, row + 1, text, attr)?;
+            Self::draw_content_line(canvas, row + 1 - top, text, attr)?;
         }
 
         Ok(())
@@ -911,9 +921,14 @@ impl<'a> WinSecondary<'a> {
     fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
         let _ = canvas.print(1, 2, TRASH_CONFIRM_LINE);
         let content = trash.content();
-        for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, trashinfo, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = trash.attr(row, attr);
-            let _ = Self::draw_content_line(canvas, row + 1, &trashinfo.to_string(), attr);
+            let _ = Self::draw_content_line(canvas, row + 1 - top, &trashinfo.to_string(), attr);
         }
     }
 
@@ -948,9 +963,14 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(2, 4, "mark  path", Self::ATTR_YELLOW)?;
 
         let content = self.status.menu.marks.as_strings();
-        for (row, line, attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, line, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = self.status.menu.marks.attr(row, attr);
-            Self::draw_content_line(canvas, row + 1, line, attr)?;
+            Self::draw_content_line(canvas, row + 1 - top, line, attr)?;
         }
         Ok(())
     }
@@ -960,9 +980,14 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(1, 2, "pick a command", Self::ATTR_YELLOW)?;
 
         let content = &self.status.menu.tui_applications.content;
-        for (row, (command, _), attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, (command, _), attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = self.status.menu.tui_applications.attr(row, attr);
-            Self::draw_content_line(canvas, row + 1, command, attr)?;
+            Self::draw_content_line(canvas, row + 1 - top, command, attr)?;
         }
         Ok(())
     }
@@ -972,16 +997,21 @@ impl<'a> WinSecondary<'a> {
 
         let content = &self.status.menu.cli_applications.content;
         let desc_size = self.status.menu.cli_applications.desc_size;
-        for (row, cli_command, attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, cli_command, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = self.status.menu.cli_applications.attr(row, attr);
             canvas.print_with_attr(
-                row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
+                row + 1 + ContentWindow::WINDOW_MARGIN_TOP - top,
                 4,
                 &cli_command.desc,
                 attr,
             )?;
             canvas.print_with_attr(
-                row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
+                row + 1 + ContentWindow::WINDOW_MARGIN_TOP - top,
                 8 + desc_size,
                 &cli_command.executable,
                 attr,
@@ -1010,8 +1040,16 @@ impl<'a> WinSecondary<'a> {
         T: MountRepr,
     {
         canvas.print_with_attr(1, 2, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
-        for (i, device) in selectable.content().iter().enumerate() {
-            self.draw_mountable_device(selectable, i, device, canvas)?
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = selectable.len();
+        for (i, device) in selectable
+            .content()
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(bottom, len))
+        {
+            self.draw_mountable_device(selectable, i - top, device, canvas)?
         }
         Ok(())
     }

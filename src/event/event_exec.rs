@@ -703,6 +703,16 @@ impl EventAction {
     /// Move up 10 lines in normal mode and preview.
     pub fn page_up(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
+        match tab.edit_mode {
+            Edit::Nothing => Self::file_page_up(status)?,
+            Edit::Navigate(navigate) => status.menu.page_up(navigate),
+            _ => (),
+        };
+        Ok(())
+    }
+
+    fn file_page_up(status: &mut Status) -> Result<()> {
+        let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Directory => {
                 tab.normal_page_up();
@@ -719,6 +729,16 @@ impl EventAction {
 
     /// Move down 10 lines in normal & preview mode.
     pub fn page_down(status: &mut Status) -> Result<()> {
+        let tab = status.current_tab_mut();
+        match tab.edit_mode {
+            Edit::Nothing => Self::file_page_down(status)?,
+            Edit::Navigate(navigate) => status.menu.page_down(navigate),
+            _ => (),
+        };
+        Ok(())
+    }
+
+    fn file_page_down(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Directory => {
