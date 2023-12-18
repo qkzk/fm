@@ -734,7 +734,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: smoothscrolling. Last tree line isn't displayed
   - [x] jump to next sibling
   - [ ] compare memory usage
-- [x] scrolling in tree mode should start 1 line earlier since we use 1 line at the bottom
+  - [x] scrolling in tree mode should start 1 line earlier since we use 1 line at the bottom
+  - [x] FIX: Tree mode: search forward doesn't scroll
+- [ ] make navigable content scrollable
 - [x] leaving second pane as preview should set second pane to normal
 - [x] FIX: in tree mode, refresh also refresh the window. Incorrect number of file displayed
 - [x] FIX: while second window is opened, if the selection is below half screen, it's not shown anymore.
@@ -743,7 +745,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow bulk rename and normal rename to move files + bulk refactoring
 - [ ] nohup, nix, setsid ???
   - [x] replace nohup by setsid
-- [x] FIX: Tree mode: search forward doesn't scroll
 - [x] cli info is configurable
 
 ## TODO
@@ -769,7 +770,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] display / event separation. use async and message passing between coroutines
 
 - [ ] zoxide support
-- [ ] make navigable content scrollable
 - [ ] temporary marks
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
