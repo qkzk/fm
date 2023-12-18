@@ -721,6 +721,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Bulk & normal rename: create intermediate folders when renaming.
 - Bulk now asks a confirmation before execution.
 - Scroll to selection when opening a menu. Selected file should alway be displayed.
+- Scroll completion & navigation menus.
 - Configurable cli applications. See `~/fm/cli.yaml`
 
 #### Changelog
