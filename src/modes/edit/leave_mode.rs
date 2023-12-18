@@ -67,7 +67,7 @@ impl LeaveMode {
             Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
             Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status),
             Edit::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status),
-            Edit::InputCompleted(InputCompleted::Command) => LeaveMode::command(status, binds),
+            Edit::InputCompleted(InputCompleted::Action) => LeaveMode::action(status, binds),
             // To avoid mistakes, the default answer is No. We do nothing here.
             Edit::NeedConfirmation(_) => Ok(()),
         }?;
@@ -360,7 +360,7 @@ impl LeaveMode {
     /// Execute the selected command.
     /// Some commands does nothing as they require to be executed from a specific
     /// context.
-    pub fn command(status: &mut Status, binds: &Bindings) -> Result<()> {
+    pub fn action(status: &mut Status, binds: &Bindings) -> Result<()> {
         let command_str = status.menu.completion.current_proposition();
         let Ok(command) = ActionMap::from_str(command_str) else {
             return Ok(());

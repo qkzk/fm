@@ -56,7 +56,7 @@ impl Bindings {
             (Key::Char('`'), ActionMap::GoRoot),
             (Key::Char('!'), ActionMap::ShellCommand),
             (Key::Char('@'), ActionMap::GoStart),
-            (Key::Char(':'), ActionMap::Command),
+            (Key::Char(':'), ActionMap::Action),
             (Key::Char('C'), ActionMap::Compress),
             (Key::Char('E'), ActionMap::ToggleDisplayFull),
             (Key::Char('G'), ActionMap::End),

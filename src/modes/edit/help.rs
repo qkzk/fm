@@ -83,7 +83,7 @@ Navigate as usual. Most actions works as in 'normal' view.
 - MODES - 
 {Tree:<10}:      TREE
 {Chmod:<10}:      CHMOD 
-{Exec:<10}:      EXEC 
+{Exec:<10}:      OPEN WITH 
 {NewDir:<10}:      NEWDIR 
 {NewFile:<10}:      NEWFILE
 {Rename:<10}:      RENAME
@@ -98,7 +98,7 @@ Navigate as usual. Most actions works as in 'normal' view.
 {RemovableDevices:<10}:      REMOVABLE MTP DEVICES
     (m: mount,  u: unmount, g: go there)
 {Search:<10}:      SEARCH
-{Command:<10}:      COMMAND
+{Action:<10}:      ACTION
 {Bulk:<10}:      BULK
 {TuiMenu:<10}:      TUI APPS
 {CliMenu:<10}:      CLI APPS

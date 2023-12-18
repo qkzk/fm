@@ -120,7 +120,7 @@ impl Menu {
                 self.completion.search(tab.filenames(&self.input.string()));
                 Ok(())
             }
-            Edit::InputCompleted(InputCompleted::Command) => {
+            Edit::InputCompleted(InputCompleted::Action) => {
                 self.completion.command(&self.input.string())
             }
             _ => Ok(()),

@@ -17,8 +17,8 @@ pub enum InputCompleted {
     Search,
     /// Complete an executable name from $PATH
     Exec,
-    /// Command
-    Command,
+    /// Complete with an existing action
+    Action,
 }
 
 impl fmt::Display for InputCompleted {
@@ -31,7 +31,7 @@ impl fmt::Display for InputCompleted {
             #[rustfmt::skip]
             Self::Search    => write!(f, "Search:    "),
             #[rustfmt::skip]
-            Self::Command   => write!(f, "Command:   "),
+            Self::Action    => write!(f, "Action:    "),
         }
     }
 }
@@ -48,7 +48,7 @@ impl Leave for InputCompleted {
     }
 
     fn must_reset_mode(&self) -> bool {
-        !matches!(self, Self::Command)
+        !matches!(self, Self::Action)
     }
 }
 

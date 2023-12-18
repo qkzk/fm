@@ -12,6 +12,7 @@ use crate::modes::LeaveMode;
 /// actions in the application.
 #[derive(Clone, Debug, Display, EnumString, EnumIter)]
 pub enum ActionMap {
+    Action,
     Back,
     BackTab,
     Backspace,
@@ -19,7 +20,6 @@ pub enum ActionMap {
     Chmod,
     ClearFlags,
     CliMenu,
-    Command,
     Compress,
     Context,
     CopyFilename,
@@ -112,6 +112,7 @@ impl ActionMap {
     pub fn matcher(&self, status: &mut Status, binds: &Bindings) -> Result<()> {
         let current_tab = status.current_tab_mut();
         match self {
+            Self::Action => EventAction::action(status),
             Self::Back => EventAction::back(current_tab),
             Self::BackTab => EventAction::backtab(status),
             Self::Backspace => EventAction::backspace(status),
@@ -119,7 +120,6 @@ impl ActionMap {
             Self::Chmod => EventAction::chmod(status),
             Self::ClearFlags => EventAction::clear_flags(status),
             Self::CliMenu => EventAction::cli_menu(status),
-            Self::Command => EventAction::command(status),
             Self::Compress => EventAction::compress(status),
             Self::Context => EventAction::context(status),
             Self::CopyFilename => EventAction::copy_filename(current_tab),

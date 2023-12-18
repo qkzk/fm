@@ -625,7 +625,7 @@ impl EventAction {
 
     pub fn left_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         EventAction::select_pane(status, col)?;
-        EventAction::click_file(status, row, col, binds)
+        EventAction::click(status, row, col, binds)
     }
 
     pub fn wheel_up(status: &mut Status, col: u16, nb_of_scrolls: u16) -> Result<()> {
@@ -646,7 +646,7 @@ impl EventAction {
 
     /// A right click opens a file or a directory.
     pub fn double_click(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
-        if let Ok(()) = EventAction::click_file(status, row, col, binds) {
+        if let Ok(()) = EventAction::click(status, row, col, binds) {
             EventAction::enter_file(status)?;
         };
         Ok(())
@@ -923,11 +923,10 @@ impl EventAction {
         status.set_edit_mode(status.index, Edit::Navigate(Navigate::Context))
     }
 
-    /// Enter command mode in which you can type any valid command.
-    /// Some commands does nothing as they require to be executed from a specific
-    /// context.
-    pub fn command(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Command))?;
+    /// Enter action mode in which you can type any valid action.
+    /// Some action does nothing as they require to be executed from a specific context.
+    pub fn action(status: &mut Status) -> Result<()> {
+        status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Action))?;
         status.menu.completion.reset();
         Ok(())
     }
@@ -944,7 +943,7 @@ impl EventAction {
     }
 
     /// Click a file at `row`, `col`.
-    pub fn click_file(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
+    pub fn click(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
         status.click(row, col, binds)
     }
 
