@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::app::Status;
 use crate::common::is_program_in_path;
-use crate::common::CLI_INFO;
+use crate::common::CLI_APPLICATIONS;
 use crate::impl_selectable_content;
 use crate::io::execute_with_ansi_colors;
 use crate::log_info;
@@ -84,7 +84,7 @@ pub struct CliApplications {
 impl Default for CliApplications {
     fn default() -> Self {
         let index = 0;
-        let content = CLI_INFO
+        let content = CLI_APPLICATIONS
             .iter()
             .map(|line| CliCommand::new(*line))
             .map(|opt_command| opt_command.unwrap())
