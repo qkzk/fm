@@ -102,7 +102,9 @@ impl Menu {
     /// Fill the input string with the currently selected completion.
     pub fn input_complete(&mut self, c: char, tab: &Tab) -> Result<()> {
         self.input.insert(c);
-        self.fill_completion(tab)
+        self.fill_completion(tab)?;
+        self.window.reset(self.completion.len());
+        Ok(())
     }
 
     fn fill_completion(&mut self, tab: &Tab) -> Result<()> {
@@ -293,6 +295,10 @@ impl Menu {
         }
     }
 
+    pub fn completion_tab(&mut self) {
+        self.input.replace(self.completion.current_proposition())
+    }
+
     pub fn len(&self, edit_mode: Edit) -> usize {
         match edit_mode {
             Edit::Navigate(navigate) => match navigate {
@@ -315,32 +321,38 @@ impl Menu {
                 }
                 _ => 0,
             },
+            Edit::InputCompleted(_) => self.completion.len(),
             _ => 0,
         }
     }
 
-    pub fn index(&self, navigate: Navigate) -> usize {
-        match navigate {
-            Navigate::Jump => self.flagged.index(),
-            Navigate::Trash => self.trash.index(),
-            Navigate::Shortcut => self.shortcut.index(),
-            Navigate::Marks(_) => self.marks.index(),
-            Navigate::Compress => self.compression.index(),
-            Navigate::Context => self.context.index(),
-            Navigate::BulkMenu => self.bulk.index(),
-            Navigate::TuiApplication => self.tui_applications.index(),
-            Navigate::CliApplication => self.cli_applications.index(),
-            Navigate::EncryptedDrive => self.encrypted_devices.index(),
-            Navigate::RemovableDevices => {
-                if let Some(removable) = &self.removable_devices {
-                    removable.index()
-                } else {
-                    0
+    pub fn index(&self, edit_mode: Edit) -> usize {
+        match edit_mode {
+            Edit::Navigate(navigate) => match navigate {
+                Navigate::Jump => self.flagged.index(),
+                Navigate::Trash => self.trash.index(),
+                Navigate::Shortcut => self.shortcut.index(),
+                Navigate::Marks(_) => self.marks.index(),
+                Navigate::Compress => self.compression.index(),
+                Navigate::Context => self.context.index(),
+                Navigate::BulkMenu => self.bulk.index(),
+                Navigate::TuiApplication => self.tui_applications.index(),
+                Navigate::CliApplication => self.cli_applications.index(),
+                Navigate::EncryptedDrive => self.encrypted_devices.index(),
+                Navigate::RemovableDevices => {
+                    if let Some(removable) = &self.removable_devices {
+                        removable.index()
+                    } else {
+                        0
+                    }
                 }
-            }
+                _ => 0,
+            },
+            Edit::InputCompleted(_) => self.completion.index,
             _ => 0,
         }
     }
+
     /// Select the next element of the menu
     pub fn next(&mut self, navigate: Navigate) {
         match navigate {
@@ -361,7 +373,7 @@ impl Menu {
             }
             _ => (),
         }
-        self.window.scroll_to(self.index(navigate));
+        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
     }
 
     /// Select the previous element of the menu
@@ -384,7 +396,7 @@ impl Menu {
             }
             _ => (),
         }
-        self.window.scroll_to(self.index(navigate));
+        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
     }
 
     pub fn page_down(&mut self, navigate: Navigate) {
@@ -397,5 +409,17 @@ impl Menu {
         for _ in 0..10 {
             self.prev(navigate)
         }
+    }
+
+    pub fn completion_prev(&mut self, input_completed: InputCompleted) {
+        self.completion.prev();
+        self.window
+            .scroll_to(self.index(Edit::InputCompleted(input_completed)));
+    }
+
+    pub fn completion_next(&mut self, input_completed: InputCompleted) {
+        self.completion.next();
+        self.window
+            .scroll_to(self.index(Edit::InputCompleted(input_completed)));
     }
 }

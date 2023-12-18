@@ -191,7 +191,8 @@ pub fn execute_with_ansi_colors(args: &[&str]) -> Result<std::process::Output> {
 pub fn execute_custom(exec_command: String, files: &[std::path::PathBuf]) -> Result<bool> {
     let mut args: Vec<&str> = exec_command.split(' ').collect();
     let command = args.remove(0);
-    if !std::path::Path::new(command).exists() {
+    if !std::path::Path::new(command).exists() && !is_program_in_path(command) {
+        log_info!("{command} can't be found - args {exec_command:?}");
         return Ok(false);
     }
     for file in files {

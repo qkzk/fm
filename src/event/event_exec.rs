@@ -315,6 +315,12 @@ impl EventAction {
     /// Enter the execute mode. Most commands must be executed to allow for
     /// a confirmation.
     pub fn exec(status: &mut Status) -> Result<()> {
+        if status.menu.flagged.is_empty() {
+            status
+                .menu
+                .flagged
+                .push(status.current_tab().current_file()?.path.to_path_buf());
+        }
         status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Exec))
     }
 
@@ -532,7 +538,7 @@ impl EventAction {
             Edit::Nothing => Self::move_display_up(status)?,
             Edit::Navigate(Navigate::History) => tab.history.prev(),
             Edit::Navigate(navigate) => status.menu.prev(navigate),
-            Edit::InputCompleted(_) => status.menu.completion.prev(),
+            Edit::InputCompleted(input_completed) => status.menu.completion_prev(input_completed),
             _ => (),
         };
         status.update_second_pane_for_preview()
@@ -578,7 +584,7 @@ impl EventAction {
             Edit::Nothing => Self::move_display_down(status)?,
             Edit::Navigate(Navigate::History) => status.current_tab_mut().history.next(),
             Edit::Navigate(navigate) => status.menu.next(navigate),
-            Edit::InputCompleted(_) => status.menu.completion.next(),
+            Edit::InputCompleted(input_completed) => status.menu.completion_next(input_completed),
             _ => (),
         };
         status.update_second_pane_for_preview()
@@ -706,6 +712,11 @@ impl EventAction {
         match tab.edit_mode {
             Edit::Nothing => Self::file_page_up(status)?,
             Edit::Navigate(navigate) => status.menu.page_up(navigate),
+            Edit::InputCompleted(input_completed) => {
+                for _ in 0..10 {
+                    status.menu.completion_prev(input_completed)
+                }
+            }
             _ => (),
         };
         Ok(())
@@ -733,6 +744,11 @@ impl EventAction {
         match tab.edit_mode {
             Edit::Nothing => Self::file_page_down(status)?,
             Edit::Navigate(navigate) => status.menu.page_down(navigate),
+            Edit::InputCompleted(input_completed) => {
+                for _ in 0..10 {
+                    status.menu.completion_next(input_completed)
+                }
+            }
             _ => (),
         };
         Ok(())
@@ -771,10 +787,7 @@ impl EventAction {
     /// insert a completion in modes allowing completion.
     pub fn tab(status: &mut Status) -> Result<()> {
         match status.current_tab_mut().edit_mode {
-            Edit::InputCompleted(_) => status
-                .menu
-                .input
-                .replace(status.menu.completion.current_proposition()),
+            Edit::InputCompleted(_) => status.menu.completion_tab(),
             Edit::Nothing => status.next(),
             _ => (),
         };

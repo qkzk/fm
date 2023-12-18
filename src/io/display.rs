@@ -808,9 +808,14 @@ impl<'a> WinSecondary<'a> {
     /// reversed.
     fn draw_completion(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let content = &self.status.menu.completion.proposals;
-        for (row, candidate, attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, candidate, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = self.status.menu.completion.attr(row, attr);
-            Self::draw_content_line(canvas, row + 1, candidate, attr)?;
+            Self::draw_content_line(canvas, row + 1 - top, candidate, attr)?;
         }
         Ok(())
     }

@@ -174,7 +174,6 @@ impl Status {
         } else {
             height / 2
         };
-        log_info!("clicked row {row}, height {height}, win_height {win_height}");
         let w_index = row as usize / win_height;
         if w_index == 1 {
             Window::Menu

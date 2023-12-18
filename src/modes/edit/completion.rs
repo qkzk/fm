@@ -25,13 +25,13 @@ impl fmt::Display for InputCompleted {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             #[rustfmt::skip]
-            Self::Exec      => write!(f, "Exec:    "),
+            Self::Exec      => write!(f, "Open with: "),
             #[rustfmt::skip]
-            Self::Goto      => write!(f, "Goto:    "),
+            Self::Goto      => write!(f, "Go to:     "),
             #[rustfmt::skip]
-            Self::Search    => write!(f, "Search:  "),
+            Self::Search    => write!(f, "Search:    "),
             #[rustfmt::skip]
-            Self::Command   => write!(f, "Command: "),
+            Self::Command   => write!(f, "Command:   "),
         }
     }
 }
@@ -63,6 +63,10 @@ pub struct Completion {
 }
 
 impl Completion {
+    pub fn len(&self) -> usize {
+        self.proposals.len()
+    }
+
     /// Is there any completion option ?
     pub fn is_empty(&self) -> bool {
         self.proposals.is_empty()
