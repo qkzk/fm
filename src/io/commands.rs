@@ -5,12 +5,12 @@ use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::common::{current_username, is_program_in_path, NOHUP};
+use crate::common::{current_username, is_program_in_path, SETSID};
 use crate::modes::PasswordHolder;
 use crate::{log_info, log_line};
 
 /// Execute a command with options in a fork with nohup.
-/// If the `NOHUP` application isn't there, call the program directly.
+/// If the `SETSID` application isn't there, call the program directly.
 /// but the program may be closed if the parent (fm) is stopped.
 /// Returns an handle to the child process.
 ///
@@ -22,10 +22,10 @@ where
     S: AsRef<std::ffi::OsStr> + fmt::Debug,
     P: AsRef<std::ffi::OsStr> + fmt::Debug,
 {
-    log_info!("execute_in_child. executable: {exe:?}, arguments: {args:?}");
+    log_info!("execute. executable: {exe:?}, arguments: {args:?}");
     log_line!("Execute: {exe:?}, arguments: {args:?}");
-    if is_program_in_path(NOHUP) {
-        Ok(Command::new(NOHUP).arg(exe).args(args).spawn()?)
+    if is_program_in_path(SETSID) {
+        Ok(Command::new(SETSID).arg(exe).args(args).spawn()?)
     } else {
         Ok(Command::new(exe).args(args).spawn()?)
     }
@@ -60,8 +60,8 @@ where
         "execute_in_child_without_output_with_path. executable: {exe:?}, arguments: {args:?}"
     );
     let params = args.unwrap_or(&[]);
-    if is_program_in_path(NOHUP) {
-        Ok(Command::new(NOHUP)
+    if is_program_in_path(SETSID) {
+        Ok(Command::new(SETSID)
             .arg(exe)
             .stdin(Stdio::null())
             .stdout(Stdio::null())

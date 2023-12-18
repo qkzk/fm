@@ -22,8 +22,8 @@ pub const TRASH_INFO_EXTENSION: &str = ".trashinfo";
 pub const MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 /// Temporary folder used when bulkrenaming files
 pub const TMP_FOLDER_PATH: &str = "/tmp";
-/// nohup
-pub const NOHUP: &str = "nohup";
+/// setsid. Installed in most distros
+pub const SETSID: &str = "setsid";
 /// Default terminal application used when openening a program in shell or starting a new shell
 pub const DEFAULT_TERMINAL_APPLICATION: &str = "st";
 /// Opener used to play audio files. Does it require a terminal ?
