@@ -133,7 +133,7 @@ impl LeaveMode {
 
     pub fn cli_info(status: &mut Status) -> Result<()> {
         let (output, command) = status.menu.cli_applications.execute(status)?;
-        log_info!("command {command}, output\n{output}");
+        log_info!("cli info: command {command}, output\n{output}");
         status.preview_command_output(output, command);
         Ok(())
     }

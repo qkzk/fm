@@ -8,6 +8,8 @@ pub const SESSION_PATH: &str = "~/.config/fm/session.yaml";
 pub const OPENER_PATH: &str = "~/.config/fm/opener.yaml";
 /// Filepath of the TUIS configuration file
 pub const TUIS_PATH: &str = "~/.config/fm/tuis.yaml";
+/// Filepath of the CLI configuration file
+pub const CLI_PATH: &str = "~/.config/fm/cli.yaml";
 /// Filepath of the LOG configuration file
 pub const LOG_CONFIG_PATH: &str = "~/.config/fm/logging_config.yaml";
 /// Path to the action log file

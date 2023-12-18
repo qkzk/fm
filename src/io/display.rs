@@ -839,7 +839,7 @@ impl<'a> WinSecondary<'a> {
     fn draw_navigate(&self, navigable_mode: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
         match navigable_mode {
             Navigate::BulkMenu => self.draw_bulk_menu(canvas),
-            Navigate::CliApplication => self.draw_cli_info(canvas),
+            Navigate::CliApplication => self.draw_cli_applications(canvas),
             Navigate::Compress => self.draw_compress(canvas),
             Navigate::Context => self.draw_context(canvas),
             Navigate::EncryptedDrive => self.draw_encrypted_drive(canvas),
@@ -967,22 +967,23 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn draw_cli_info(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_cli_applications(&self, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.print_with_attr(1, 2, "pick a command", Self::ATTR_YELLOW)?;
 
         let content = &self.status.menu.cli_applications.content;
+        let desc_size = self.status.menu.cli_applications.desc_size;
         for (row, cli_command, attr) in enumerated_colored_iter!(content) {
             let attr = self.status.menu.cli_applications.attr(row, attr);
-            let col = canvas.print_with_attr(
+            canvas.print_with_attr(
                 row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
                 4,
-                cli_command.desc,
+                &cli_command.desc,
                 attr,
             )?;
             canvas.print_with_attr(
                 row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
-                8 + col,
-                cli_command.executable,
+                8 + desc_size,
+                &cli_command.executable,
                 attr,
             )?;
         }

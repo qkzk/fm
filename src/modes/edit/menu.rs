@@ -3,6 +3,7 @@ use anyhow::Result;
 
 use crate::app::Tab;
 use crate::common::is_program_in_path;
+use crate::common::CLI_PATH;
 use crate::common::SSHFS_EXECUTABLE;
 use crate::common::TUIS_PATH;
 use crate::io::drop_sudo_privileges;
@@ -71,7 +72,7 @@ impl Menu {
             sudo_command: None,
             compression: Compresser::default(),
             context: ContextMenu::default(),
-            cli_applications: CliApplications::default(),
+            cli_applications: CliApplications::new(CLI_PATH),
             tui_applications: TuiApplications::new(TUIS_PATH),
             removable_devices: None,
             password_holder: PasswordHolder::default(),

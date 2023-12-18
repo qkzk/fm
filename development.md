@@ -721,6 +721,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Bulk & normal rename: create intermediate folders when renaming.
 - Bulk now asks a confirmation before execution.
 - Scroll to selection when opening a menu. Selected file should alway be displayed.
+- Configurable cli applications. See `~/fm/cli.yaml`
 
 #### Changelog
 
@@ -740,6 +741,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] exec multiple flagged files
 - [x] confirm before bulkaction
 - [x] allow bulk rename and normal rename to move files + bulk refactoring
+- [ ] nohup, nix, setsid ???
+  - [x] replace nohup by setsid
+- [ ] Tree mode: search forward doesn't scroll
+- [x] cli info is configurable
 
 ## TODO
 

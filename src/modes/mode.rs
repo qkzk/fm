@@ -262,7 +262,7 @@ impl Leave for Navigate {
     }
 
     fn must_reset_mode(&self) -> bool {
-        !matches!(self, Self::Context | Self::BulkMenu)
+        !matches!(self, Self::CliApplication | Self::Context | Self::BulkMenu)
     }
 }
 

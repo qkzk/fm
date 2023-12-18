@@ -761,7 +761,6 @@ impl Status {
             {
                 self.preview_command_output(output, shell_command);
             }
-            // self.current_tab_mut().set_edit_mode(Edit::Nothing);
             Ok(true)
         }
     }
