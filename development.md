@@ -743,7 +743,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow bulk rename and normal rename to move files + bulk refactoring
 - [ ] nohup, nix, setsid ???
   - [x] replace nohup by setsid
-- [ ] Tree mode: search forward doesn't scroll
+- [x] FIX: Tree mode: search forward doesn't scroll
 - [x] cli info is configurable
 
 ## TODO

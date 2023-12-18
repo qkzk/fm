@@ -519,6 +519,7 @@ impl EventAction {
                 return Ok(());
             }
         }
+        status.refresh_status()?;
         status.set_second_pane_for_preview()?;
         Ok(())
     }
