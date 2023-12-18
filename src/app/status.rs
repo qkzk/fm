@@ -268,7 +268,6 @@ impl Status {
 
     /// Refresh the current view, reloading the files. Move the selection to top.
     pub fn refresh_view(&mut self) -> Result<()> {
-        self.menu.encrypted_devices.update()?;
         self.refresh_status()?;
         self.update_second_pane_for_preview()
     }
