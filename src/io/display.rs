@@ -23,6 +23,7 @@ use crate::modes::fileinfo_attr;
 use crate::modes::parse_input_mode;
 use crate::modes::BinaryContent;
 use crate::modes::ColoredText;
+use crate::modes::Content;
 use crate::modes::ContentWindow;
 use crate::modes::Display as DisplayMode;
 use crate::modes::Edit;
@@ -34,7 +35,7 @@ use crate::modes::MountRepr;
 use crate::modes::Navigate;
 use crate::modes::NeedConfirmation;
 use crate::modes::Preview;
-use crate::modes::SelectableContent;
+use crate::modes::Selectable;
 use crate::modes::TextKind;
 use crate::modes::Trash;
 use crate::modes::TreeLineBuilder;
@@ -862,7 +863,7 @@ impl<'a> WinSecondary<'a> {
     fn draw_destination(
         &self,
         canvas: &mut dyn Canvas,
-        selectable: &impl SelectableContent<PathBuf>,
+        selectable: &impl Content<PathBuf>,
     ) -> Result<()> {
         let content = selectable.content();
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
@@ -1038,7 +1039,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_mountable_devices<T>(
         &self,
-        selectable: &impl SelectableContent<T>,
+        selectable: &impl Content<T>,
         canvas: &mut dyn Canvas,
     ) -> Result<()>
     where
@@ -1061,7 +1062,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_mountable_device<T>(
         &self,
-        selectable: &impl SelectableContent<T>,
+        selectable: &impl Content<T>,
         index: usize,
         device: &T,
         canvas: &mut dyn Canvas,

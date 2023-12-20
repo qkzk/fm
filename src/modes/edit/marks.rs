@@ -6,8 +6,10 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::common::read_lines;
 use crate::common::MARKS_FILEPATH;
+use crate::impl_content;
+use crate::impl_selectable;
+use crate::log_info;
 use crate::log_line;
-use crate::{impl_selectable_content, log_info};
 
 /// Holds the marks created by the user.
 /// It's an ordered map between any char (except :) and a `PathBuf`.
@@ -168,4 +170,6 @@ impl Marks {
 }
 
 type Pair = (char, PathBuf);
-impl_selectable_content!(Pair, Marks);
+// impl_selectable_content!(Pair, Marks);
+impl_selectable!(Marks);
+impl_content!(Pair, Marks);

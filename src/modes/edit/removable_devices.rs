@@ -1,15 +1,14 @@
 use anyhow::{anyhow, Result};
 
+use crate::common::GIO;
+use crate::common::{current_uid, is_dir_empty, is_program_in_path};
+use crate::impl_content;
+use crate::impl_selectable;
 use crate::io::execute_and_output;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::PasswordHolder;
 use crate::modes::{MountCommands, MountRepr};
-use crate::{
-    common::GIO,
-    common::{current_uid, is_dir_empty, is_program_in_path},
-    impl_selectable_content,
-};
 
 /// Holds info about removable devices.
 /// We can navigate this struct.
@@ -169,4 +168,6 @@ impl MountRepr for Removable {
     }
 }
 
-impl_selectable_content!(Removable, RemovableDevices);
+// impl_selectable_content!(Removable, RemovableDevices);
+impl_selectable!(RemovableDevices);
+impl_content!(Removable, RemovableDevices);

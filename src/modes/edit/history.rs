@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use crate::impl_selectable_content;
+use crate::impl_content;
+use crate::impl_selectable;
 
 type DoublePB = (PathBuf, PathBuf);
 
@@ -52,4 +53,6 @@ impl History {
     }
 }
 
-impl_selectable_content!(DoublePB, History);
+impl_selectable!(History);
+impl_content!(DoublePB, History);
+// impl_selectable_content!(DoublePB, History);

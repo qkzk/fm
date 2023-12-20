@@ -9,7 +9,8 @@ use rand::{thread_rng, Rng};
 
 use crate::common::read_lines;
 use crate::common::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO, TRASH_INFO_EXTENSION};
-use crate::impl_selectable_content;
+use crate::impl_content;
+use crate::impl_selectable;
 use crate::log_info;
 use crate::log_line;
 
@@ -461,7 +462,8 @@ impl Trash {
     }
 }
 
-impl_selectable_content!(Info, Trash);
+impl_selectable!(Trash);
+impl_content!(Info, Trash);
 
 fn parsed_date_from_path_info(ds: &str) -> Result<()> {
     NaiveDateTime::parse_from_str(ds, TRASHINFO_DATETIME_FORMAT)?;

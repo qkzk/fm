@@ -13,7 +13,7 @@ use crate::modes::FilterKind;
 use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{is_not_hidden, FileInfo, FileKind};
-use crate::{impl_selectable_content, log_info};
+use crate::{impl_content, impl_selectable, log_info};
 
 /// Holds the information about file in the current directory.
 /// We know about the current path, the files themselves, the selected index,
@@ -248,7 +248,9 @@ impl Directory {
     }
 }
 
-impl_selectable_content!(FileInfo, Directory);
+// impl_selectable_content!(FileInfo, Directory);
+impl_selectable!(Directory);
+impl_content!(FileInfo, Directory);
 
 const MAX_PATH_ELEM_SIZE: usize = 50;
 

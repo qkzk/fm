@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use crate::impl_selectable_content;
+use crate::impl_content;
+use crate::impl_selectable;
 
 #[derive(Clone, Debug, Default)]
 pub struct Flagged {
@@ -72,4 +73,6 @@ impl Flagged {
     }
 }
 
-impl_selectable_content!(PathBuf, Flagged);
+// impl_selectable_content!(PathBuf, Flagged);
+impl_selectable!(Flagged);
+impl_content!(PathBuf, Flagged);

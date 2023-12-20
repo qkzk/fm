@@ -28,7 +28,7 @@ use crate::modes::Navigate;
 use crate::modes::NeedConfirmation;
 use crate::modes::Preview;
 use crate::modes::RemovableDevices;
-use crate::modes::SelectableContent;
+use crate::modes::Selectable;
 use crate::modes::TuiApplications;
 use crate::modes::MOCP;
 

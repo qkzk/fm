@@ -4,7 +4,8 @@ use std::str::FromStr;
 
 use crate::common::current_uid;
 use crate::common::{CONFIG_FOLDER, HARDCODED_SHORTCUTS};
-use crate::impl_selectable_content;
+use crate::impl_content;
+use crate::impl_selectable;
 use crate::io::git_root;
 use crate::log_info;
 
@@ -154,4 +155,6 @@ where
     elems
 }
 
-impl_selectable_content!(PathBuf, Shortcut);
+// impl_selectable_content!(PathBuf, Shortcut);
+impl_selectable!(Shortcut);
+impl_content!(PathBuf, Shortcut);

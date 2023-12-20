@@ -2,7 +2,8 @@ use anyhow::Result;
 
 use crate::app::Status;
 use crate::common::is_program_in_path;
-use crate::impl_selectable_content;
+use crate::impl_content;
+use crate::impl_selectable;
 use crate::io::execute_with_ansi_colors;
 use crate::log_info;
 use crate::log_line;
@@ -132,4 +133,6 @@ impl CliApplications {
     }
 }
 
-impl_selectable_content!(CliCommand, CliApplications);
+// impl_selectable_content!(CliCommand, CliApplications);
+impl_selectable!(CliApplications);
+impl_content!(CliCommand, CliApplications);

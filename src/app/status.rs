@@ -27,6 +27,7 @@ use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     reset_sudo_faillock,
 };
+use crate::modes::Content;
 use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::FileKind;
@@ -40,7 +41,7 @@ use crate::modes::PasswordKind;
 use crate::modes::PasswordUsage;
 use crate::modes::Permissions;
 use crate::modes::Preview;
-use crate::modes::SelectableContent;
+use crate::modes::Selectable;
 use crate::modes::ShellCommandParser;
 use crate::modes::Skimer;
 use crate::modes::Tree;

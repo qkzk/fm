@@ -8,12 +8,13 @@ use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index, set_clipboard,
 };
 use crate::io::Args;
+use crate::modes::Content;
 use crate::modes::Directory;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
 use crate::modes::History;
 use crate::modes::Preview;
-use crate::modes::SelectableContent;
+use crate::modes::Selectable;
 use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{ContentWindow, FileKind};

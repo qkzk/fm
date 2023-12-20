@@ -4,7 +4,9 @@ mod inner {
 
     use crate::app::{Status, Tab};
     use crate::event::ActionMap;
-    use crate::modes::{shorten_path, Display, SelectableContent};
+    use crate::modes::Content;
+    use crate::modes::Selectable;
+    use crate::modes::{shorten_path, Display};
 
     /// Action for every element of the first line.
     /// It should match the order of the `FirstLine::make_string` static method.

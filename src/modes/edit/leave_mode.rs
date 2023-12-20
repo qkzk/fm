@@ -14,6 +14,7 @@ use crate::io::execute_custom;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::BlockDeviceAction;
+use crate::modes::Content;
 use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::FilterKind;
@@ -23,7 +24,6 @@ use crate::modes::MarkAction;
 use crate::modes::Navigate;
 use crate::modes::NodeCreation;
 use crate::modes::PasswordUsage;
-use crate::modes::SelectableContent;
 use crate::modes::SortKind;
 
 use super::InputCompleted;

@@ -6,11 +6,11 @@ use std::time::{Duration, SystemTime};
 
 use crate::common::TMP_FOLDER_PATH;
 use crate::common::{random_name, rename};
-use crate::impl_selectable_content;
 use crate::io::Opener;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::mode::BulkAction;
+use crate::{impl_content, impl_selectable};
 
 trait DelTemp {
     fn del_temporary_file(&self, temp_file: &Path) -> Result<()> {
@@ -333,4 +333,6 @@ impl Bulk {
     }
 }
 
-impl_selectable_content!(String, Bulk);
+// impl_selectable_content!(String, Bulk);
+impl_selectable!(Bulk);
+impl_content!(String, Bulk);

@@ -2,9 +2,11 @@ use anyhow::{Context, Result};
 
 use crate::app::Status;
 use crate::common::is_program_in_path;
+use crate::impl_content;
+use crate::impl_selectable;
 use crate::io::{execute_without_output, execute_without_output_with_path};
+use crate::log_info;
 use crate::log_line;
-use crate::{impl_selectable_content, log_info};
 
 #[derive(Clone)]
 pub struct TuiApplications {
@@ -122,4 +124,6 @@ impl TuiApplications {
 
 type SBool = (String, bool);
 
-impl_selectable_content!(SBool, TuiApplications);
+// impl_selectable_content!(SBool, TuiApplications);
+impl_selectable!(TuiApplications);
+impl_content!(SBool, TuiApplications);

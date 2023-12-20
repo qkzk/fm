@@ -59,7 +59,7 @@ pub use password::{PasswordHolder, PasswordKind, PasswordUsage};
 pub use permissions::{parse_input_mode, Permissions, MAX_MODE};
 pub use regex::regex_matcher;
 pub use removable_devices::RemovableDevices;
-pub use selectable_content::SelectableContent;
+pub use selectable_content::{Content, Selectable};
 pub use shell_parser::ShellCommandParser;
 pub use shortcut::Shortcut;
 pub use sort::SortKind;
