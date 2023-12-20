@@ -59,7 +59,7 @@ pub struct Menu {
     /// Hold password between their typing and usage
     pub password_holder: PasswordHolder,
     /// MTP devices
-    pub removable_devices: Option<RemovableDevices>,
+    pub removable_devices: RemovableDevices,
     /// Predefined shortcuts
     pub shortcut: Shortcut,
     /// TUI application
@@ -80,7 +80,7 @@ impl Menu {
             context: ContextMenu::default(),
             cli_applications: CliApplications::new(CLI_PATH),
             tui_applications: TuiApplications::new(TUIS_PATH),
-            removable_devices: None,
+            removable_devices: RemovableDevices::default(),
             password_holder: PasswordHolder::default(),
             bulk: Bulk::default(),
             iso_device: None,
@@ -142,10 +142,7 @@ impl Menu {
     }
 
     pub fn find_removable_mount_point(&mut self) -> Option<std::path::PathBuf> {
-        let Some(devices) = &self.removable_devices else {
-            return None;
-        };
-        let Some(device) = devices.selected() else {
+        let Some(device) = &self.removable_devices.selected() else {
             return None;
         };
         if !device.is_mounted() {
@@ -155,10 +152,7 @@ impl Menu {
     }
 
     pub fn mount_removable(&mut self) -> Result<()> {
-        let Some(devices) = &mut self.removable_devices else {
-            return Ok(());
-        };
-        let Some(device) = devices.selected_mut() else {
+        let Some(device) = &self.removable_devices.selected_mut() else {
             return Ok(());
         };
         if device.is_mounted() {
@@ -169,10 +163,7 @@ impl Menu {
     }
 
     pub fn umount_removable(&mut self) -> Result<()> {
-        let Some(devices) = &mut self.removable_devices else {
-            return Ok(());
-        };
-        let Some(device) = devices.selected_mut() else {
+        let Some(device) = &self.removable_devices.selected_mut() else {
             return Ok(());
         };
         if !device.is_mounted() {
@@ -288,40 +279,13 @@ impl Menu {
         self.shortcut.refresh(mount_points)
     }
 
-    /// Set the index of removable devices, if those are set.
-    /// Does nothing if `self.removable_devices` is still None.
-    pub fn removable_set_index(&mut self, index: usize) {
-        if let Some(removable) = &mut self.removable_devices {
-            removable.set_index(index)
-        }
-    }
-
     pub fn completion_tab(&mut self) {
         self.input.replace(self.completion.current_proposition())
     }
 
     pub fn len(&self, edit_mode: Edit) -> usize {
         match edit_mode {
-            Edit::Navigate(navigate) => match navigate {
-                Navigate::Jump => self.flagged.len(),
-                Navigate::Trash => self.trash.len(),
-                Navigate::Shortcut => self.shortcut.len(),
-                Navigate::Marks(_) => self.marks.len(),
-                Navigate::Compress => self.compression.len(),
-                Navigate::Context => self.context.len(),
-                Navigate::BulkMenu => self.bulk.len(),
-                Navigate::TuiApplication => self.tui_applications.len(),
-                Navigate::CliApplication => self.cli_applications.len(),
-                Navigate::EncryptedDrive => self.encrypted_devices.len(),
-                Navigate::RemovableDevices => {
-                    if let Some(removable) = &self.removable_devices {
-                        removable.len()
-                    } else {
-                        0
-                    }
-                }
-                _ => 0,
-            },
+            Edit::Navigate(navigate) => self.apply_method(navigate, |variant| variant.len()),
             Edit::InputCompleted(_) => self.completion.len(),
             _ => 0,
         }
@@ -359,6 +323,16 @@ impl Menu {
             .scroll_to(self.index(Edit::InputCompleted(input_completed)));
     }
 
+    pub fn next(&mut self, navigate: Navigate) {
+        self.apply_method_mut(navigate, |variant| variant.next());
+        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
+    }
+
+    pub fn prev(&mut self, navigate: Navigate) {
+        self.apply_method_mut(navigate, |variant| variant.prev());
+        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
+    }
+
     fn apply_method_mut<F, T>(&mut self, navigate: Navigate, func: F) -> T
     where
         F: FnOnce(&mut dyn Selectable) -> T,
@@ -375,13 +349,7 @@ impl Menu {
             Navigate::CliApplication => func(&mut self.cli_applications),
             Navigate::EncryptedDrive => func(&mut self.encrypted_devices),
             Navigate::History => func(&mut self.flagged),
-            Navigate::RemovableDevices => {
-                if let Some(removable) = &mut self.removable_devices {
-                    func(removable)
-                } else {
-                    func(&mut self.flagged)
-                }
-            }
+            Navigate::RemovableDevices => func(&mut self.removable_devices),
         }
     }
 
@@ -401,23 +369,7 @@ impl Menu {
             Navigate::CliApplication => func(&self.cli_applications),
             Navigate::EncryptedDrive => func(&self.encrypted_devices),
             Navigate::History => func(&self.flagged),
-            Navigate::RemovableDevices => {
-                if let Some(removable) = &self.removable_devices {
-                    func(removable)
-                } else {
-                    func(&self.flagged)
-                }
-            }
+            Navigate::RemovableDevices => func(&self.removable_devices),
         }
-    }
-
-    pub fn next(&mut self, navigate: Navigate) {
-        self.apply_method_mut(navigate, |variant| variant.next());
-        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
-    }
-
-    pub fn prev(&mut self, navigate: Navigate) {
-        self.apply_method_mut(navigate, |variant| variant.prev());
-        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
     }
 }
