@@ -14,6 +14,7 @@ use crate::modes::Bulk;
 use crate::modes::CliApplications;
 use crate::modes::Completion;
 use crate::modes::Compresser;
+use crate::modes::Content;
 use crate::modes::ContentWindow;
 use crate::modes::ContextMenu;
 use crate::modes::CryptoDeviceOpener;
@@ -27,8 +28,6 @@ use crate::modes::MountCommands;
 use crate::modes::Navigate;
 use crate::modes::PasswordHolder;
 use crate::modes::RemovableDevices;
-// use crate::modes::SelectableContent;
-use crate::modes::Content;
 use crate::modes::Selectable;
 use crate::modes::Shortcut;
 use crate::modes::Trash;
@@ -330,75 +329,10 @@ impl Menu {
 
     pub fn index(&self, edit_mode: Edit) -> usize {
         match edit_mode {
-            Edit::Navigate(navigate) => match navigate {
-                Navigate::Jump => self.flagged.index(),
-                Navigate::Trash => self.trash.index(),
-                Navigate::Shortcut => self.shortcut.index(),
-                Navigate::Marks(_) => self.marks.index(),
-                Navigate::Compress => self.compression.index(),
-                Navigate::Context => self.context.index(),
-                Navigate::BulkMenu => self.bulk.index(),
-                Navigate::TuiApplication => self.tui_applications.index(),
-                Navigate::CliApplication => self.cli_applications.index(),
-                Navigate::EncryptedDrive => self.encrypted_devices.index(),
-                Navigate::RemovableDevices => {
-                    if let Some(removable) = &self.removable_devices {
-                        removable.index()
-                    } else {
-                        0
-                    }
-                }
-                _ => 0,
-            },
+            Edit::Navigate(navigate) => self.apply_method(navigate, |variant| variant.index()),
             Edit::InputCompleted(_) => self.completion.index,
             _ => 0,
         }
-    }
-
-    /// Select the next element of the menu
-    pub fn next(&mut self, navigate: Navigate) {
-        match navigate {
-            Navigate::Jump => self.flagged.next(),
-            Navigate::Trash => self.trash.next(),
-            Navigate::Shortcut => self.shortcut.next(),
-            Navigate::Marks(_) => self.marks.next(),
-            Navigate::Compress => self.compression.next(),
-            Navigate::Context => self.context.next(),
-            Navigate::BulkMenu => self.bulk.next(),
-            Navigate::TuiApplication => self.tui_applications.next(),
-            Navigate::CliApplication => self.cli_applications.next(),
-            Navigate::EncryptedDrive => self.encrypted_devices.next(),
-            Navigate::RemovableDevices => {
-                if let Some(removable) = &mut self.removable_devices {
-                    removable.next()
-                }
-            }
-            _ => (),
-        }
-        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
-    }
-
-    /// Select the previous element of the menu
-    pub fn prev(&mut self, navigate: Navigate) {
-        match navigate {
-            Navigate::Jump => self.flagged.prev(),
-            Navigate::Trash => self.trash.prev(),
-            Navigate::Shortcut => self.shortcut.prev(),
-            Navigate::Marks(_) => self.marks.prev(),
-            Navigate::Compress => self.compression.prev(),
-            Navigate::Context => self.context.prev(),
-            Navigate::BulkMenu => self.bulk.prev(),
-            Navigate::TuiApplication => self.tui_applications.prev(),
-            Navigate::CliApplication => self.cli_applications.prev(),
-            Navigate::EncryptedDrive => self.encrypted_devices.prev(),
-            Navigate::RemovableDevices => {
-                if let Some(removable) = &mut self.removable_devices {
-                    removable.prev()
-                }
-            }
-            _ => (),
-        }
-        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
     }
 
     pub fn page_down(&mut self, navigate: Navigate) {
@@ -423,5 +357,67 @@ impl Menu {
         self.completion.next();
         self.window
             .scroll_to(self.index(Edit::InputCompleted(input_completed)));
+    }
+
+    fn apply_method_mut<F, T>(&mut self, navigate: Navigate, func: F) -> T
+    where
+        F: FnOnce(&mut dyn Selectable) -> T,
+    {
+        match navigate {
+            Navigate::Jump => func(&mut self.flagged),
+            Navigate::Trash => func(&mut self.trash),
+            Navigate::Shortcut => func(&mut self.shortcut),
+            Navigate::Marks(_) => func(&mut self.marks),
+            Navigate::Compress => func(&mut self.compression),
+            Navigate::Context => func(&mut self.context),
+            Navigate::BulkMenu => func(&mut self.bulk),
+            Navigate::TuiApplication => func(&mut self.tui_applications),
+            Navigate::CliApplication => func(&mut self.cli_applications),
+            Navigate::EncryptedDrive => func(&mut self.encrypted_devices),
+            Navigate::History => func(&mut self.flagged),
+            Navigate::RemovableDevices => {
+                if let Some(removable) = &mut self.removable_devices {
+                    func(removable)
+                } else {
+                    func(&mut self.flagged)
+                }
+            }
+        }
+    }
+
+    fn apply_method<F, T>(&self, navigate: Navigate, func: F) -> T
+    where
+        F: FnOnce(&dyn Selectable) -> T,
+    {
+        match navigate {
+            Navigate::Jump => func(&self.flagged),
+            Navigate::Trash => func(&self.trash),
+            Navigate::Shortcut => func(&self.shortcut),
+            Navigate::Marks(_) => func(&self.marks),
+            Navigate::Compress => func(&self.compression),
+            Navigate::Context => func(&self.context),
+            Navigate::BulkMenu => func(&self.bulk),
+            Navigate::TuiApplication => func(&self.tui_applications),
+            Navigate::CliApplication => func(&self.cli_applications),
+            Navigate::EncryptedDrive => func(&self.encrypted_devices),
+            Navigate::History => func(&self.flagged),
+            Navigate::RemovableDevices => {
+                if let Some(removable) = &self.removable_devices {
+                    func(removable)
+                } else {
+                    func(&self.flagged)
+                }
+            }
+        }
+    }
+
+    pub fn next(&mut self, navigate: Navigate) {
+        self.apply_method_mut(navigate, |variant| variant.next());
+        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
+    }
+
+    pub fn prev(&mut self, navigate: Navigate) {
+        self.apply_method_mut(navigate, |variant| variant.prev());
+        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
     }
 }
