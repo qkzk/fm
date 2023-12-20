@@ -69,7 +69,7 @@ pub struct Menu {
     pub trash: Trash,
     /// Last sudo command ran
     pub sudo_command: Option<String>,
-    /// History
+    /// History - here for compatibility reasons only
     pub history: History,
 }
 
