@@ -20,6 +20,7 @@ use crate::modes::ContextMenu;
 use crate::modes::CryptoDeviceOpener;
 use crate::modes::Edit;
 use crate::modes::Flagged;
+use crate::modes::History;
 use crate::modes::Input;
 use crate::modes::InputCompleted;
 use crate::modes::IsoDevice;
@@ -68,6 +69,8 @@ pub struct Menu {
     pub trash: Trash,
     /// Last sudo command ran
     pub sudo_command: Option<String>,
+    /// History
+    pub history: History,
 }
 
 impl Menu {
@@ -91,6 +94,7 @@ impl Menu {
             input: Input::default(),
             completion: Completion::default(),
             shortcut: Shortcut::new(start_dir).with_mount_points(mount_points),
+            history: History::default(),
         })
     }
 
@@ -340,18 +344,18 @@ impl Menu {
         F: FnOnce(&mut dyn Selectable) -> T,
     {
         match navigate {
-            Navigate::Jump => func(&mut self.flagged),
-            Navigate::Trash => func(&mut self.trash),
-            Navigate::Shortcut => func(&mut self.shortcut),
-            Navigate::Marks(_) => func(&mut self.marks),
+            Navigate::BulkMenu => func(&mut self.bulk),
+            Navigate::CliApplication => func(&mut self.cli_applications),
             Navigate::Compress => func(&mut self.compression),
             Navigate::Context => func(&mut self.context),
-            Navigate::BulkMenu => func(&mut self.bulk),
-            Navigate::TuiApplication => func(&mut self.tui_applications),
-            Navigate::CliApplication => func(&mut self.cli_applications),
             Navigate::EncryptedDrive => func(&mut self.encrypted_devices),
-            Navigate::History => func(&mut self.flagged),
+            Navigate::History => func(&mut self.history),
+            Navigate::Jump => func(&mut self.flagged),
+            Navigate::Marks(_) => func(&mut self.marks),
             Navigate::RemovableDevices => func(&mut self.removable_devices),
+            Navigate::Shortcut => func(&mut self.shortcut),
+            Navigate::Trash => func(&mut self.trash),
+            Navigate::TuiApplication => func(&mut self.tui_applications),
         }
     }
 
@@ -360,18 +364,18 @@ impl Menu {
         F: FnOnce(&dyn Selectable) -> T,
     {
         match navigate {
-            Navigate::Jump => func(&self.flagged),
-            Navigate::Trash => func(&self.trash),
-            Navigate::Shortcut => func(&self.shortcut),
-            Navigate::Marks(_) => func(&self.marks),
+            Navigate::BulkMenu => func(&self.bulk),
+            Navigate::CliApplication => func(&self.cli_applications),
             Navigate::Compress => func(&self.compression),
             Navigate::Context => func(&self.context),
-            Navigate::BulkMenu => func(&self.bulk),
-            Navigate::TuiApplication => func(&self.tui_applications),
-            Navigate::CliApplication => func(&self.cli_applications),
             Navigate::EncryptedDrive => func(&self.encrypted_devices),
-            Navigate::History => func(&self.flagged),
+            Navigate::History => func(&self.history),
+            Navigate::Jump => func(&self.flagged),
+            Navigate::Marks(_) => func(&self.marks),
             Navigate::RemovableDevices => func(&self.removable_devices),
+            Navigate::Shortcut => func(&self.shortcut),
+            Navigate::Trash => func(&self.trash),
+            Navigate::TuiApplication => func(&self.tui_applications),
         }
     }
 }
