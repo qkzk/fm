@@ -747,6 +747,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] nohup, nix, setsid ???
   - [x] replace nohup by setsid
 - [x] cli info is configurable
+- [ ] refactor menus.
+  - use a single index holded in menu doesn't work: too much change in internal structs
+  - use a closure doesn't work: impl selectable content requires a generic type which is different per menu
+  - refactor each navigate associate struct will require a ton of change (and why ?)
+  - is the actual solution the simplest ? yes. But A LOT of duplication
 
 ## TODO
 
