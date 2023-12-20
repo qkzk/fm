@@ -14,6 +14,7 @@ use crate::io::execute_custom;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::BlockDeviceAction;
+use crate::modes::CLApplications;
 use crate::modes::Content;
 use crate::modes::Display;
 use crate::modes::Edit;

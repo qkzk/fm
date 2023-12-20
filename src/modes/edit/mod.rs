@@ -32,7 +32,9 @@ mod trash;
 mod tui_menu;
 
 pub use bulkrename::Bulk;
+pub use cli_menu::CLApplications;
 pub use cli_menu::CliApplications;
+pub use cli_menu::Execute;
 pub use completion::{Completion, InputCompleted};
 pub use compress::Compresser;
 pub use context::ContextMenu;
@@ -64,4 +66,5 @@ pub use shell_parser::ShellCommandParser;
 pub use shortcut::Shortcut;
 pub use sort::SortKind;
 pub use trash::Trash;
+pub use tui_menu::open_tui_program;
 pub use tui_menu::TuiApplications;

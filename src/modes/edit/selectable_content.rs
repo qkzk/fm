@@ -19,6 +19,8 @@ pub trait Content<T>: Selectable {
     fn selected(&self) -> Option<&T>;
     /// Reference to the content as a vector.
     fn content(&self) -> &Vec<T>;
+    /// add an element to the content
+    fn push(&mut self, t: T);
     /// [`tuikit::attr:Attr`] used to display an element
     fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr;
 }
@@ -115,6 +117,10 @@ macro_rules! impl_content {
                     attr.effect |= tuikit::attr::Effect::REVERSE;
                 }
                 attr
+            }
+
+            fn push(&mut self, element: $content_type) {
+                self.content.push(element)
             }
         }
     };

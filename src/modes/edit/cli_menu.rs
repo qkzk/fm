@@ -1,3 +1,4 @@
+use anyhow::Context;
 use anyhow::Result;
 
 use crate::app::Status;
@@ -9,8 +10,12 @@ use crate::log_info;
 use crate::log_line;
 use crate::modes::ShellCommandParser;
 
+pub trait Execute<T> {
+    fn execute(&self, status: &Status) -> Result<T>;
+}
+
 /// A command line application launcher.
-/// It's constructed from a line in [`crate::common::CLI_INFO`].
+/// It's constructed from a line in a config file.
 /// Each command has a short description, a name (first word of second element)
 /// and a list of parsable parameters.
 /// See [`crate::modes::ShellCommandParser`] for a description of accetable tokens.
@@ -45,7 +50,9 @@ impl CliCommand {
             desc,
         })
     }
+}
 
+impl Execute<(String, String)> for CliCommand {
     /// Run its parsable command and capture its output.
     /// Some environement variables are first set to ensure the colored output.
     /// Long running commands may freeze the display.
@@ -68,19 +75,8 @@ impl CliCommand {
     }
 }
 
-/// Holds the command line commands we can run and display
-/// without leaving FM.
-/// Those are non interactive commands displaying some info about the current
-/// file tree or setup.
-#[derive(Clone, Default)]
-pub struct CliApplications {
-    pub content: Vec<CliCommand>,
-    index: usize,
-    pub desc_size: usize,
-}
-
-impl CliApplications {
-    pub fn new(config_file: &str) -> Self {
+pub trait CLApplications<T: Execute<U>, U>: Sized + Default + Content<T> {
+    fn new(config_file: &str) -> Self {
         Self::default().update_from_config(config_file)
     }
 
@@ -99,6 +95,32 @@ impl CliApplications {
                 log_info!("error parsing yaml file {config_file}. Error: {error:?}");
             }
         }
+        self
+    }
+
+    fn parse_yaml(&mut self, yaml: &serde_yaml::mapping::Mapping);
+
+    /// Run the selected command and capture its output.
+    /// Some environement variables are first set to ensure the colored output.
+    /// Long running commands may freeze the display.
+    fn execute(&self, status: &Status) -> Result<U> {
+        self.selected().context("")?.execute(status)
+    }
+}
+
+/// Holds the command line commands we can run and display
+/// without leaving FM.
+/// Those are non interactive commands displaying some info about the current
+/// file tree or setup.
+#[derive(Clone, Default)]
+pub struct CliApplications {
+    pub content: Vec<CliCommand>,
+    index: usize,
+    pub desc_size: usize,
+}
+
+impl CliApplications {
+    pub fn update_desc_size(mut self) -> Self {
         let desc_size = self
             .content
             .iter()
@@ -107,7 +129,9 @@ impl CliApplications {
         self.desc_size = desc_size;
         self
     }
+}
 
+impl CLApplications<CliCommand, (String, String)> for CliApplications {
     fn parse_yaml(&mut self, yaml: &serde_yaml::mapping::Mapping) {
         for (key, mapping) in yaml {
             let Some(name) = key.as_str() else {
@@ -125,14 +149,7 @@ impl CliApplications {
             self.content.push(cli_command)
         }
     }
-    /// Run the selected command and capture its output.
-    /// Some environement variables are first set to ensure the colored output.
-    /// Long running commands may freeze the display.
-    pub fn execute(&self, status: &Status) -> Result<(String, String)> {
-        self.content[self.index].execute(status)
-    }
 }
 
-// impl_selectable_content!(CliCommand, CliApplications);
 impl_selectable!(CliApplications);
 impl_content!(CliCommand, CliApplications);

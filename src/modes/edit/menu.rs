@@ -11,6 +11,7 @@ use crate::io::execute_and_capture_output_with_path;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::Bulk;
+use crate::modes::CLApplications;
 use crate::modes::CliApplications;
 use crate::modes::Completion;
 use crate::modes::Compresser;
@@ -81,7 +82,7 @@ impl Menu {
             sudo_command: None,
             compression: Compresser::default(),
             context: ContextMenu::default(),
-            cli_applications: CliApplications::new(CLI_PATH),
+            cli_applications: CliApplications::new(CLI_PATH).update_desc_size(),
             tui_applications: TuiApplications::new(TUIS_PATH),
             removable_devices: RemovableDevices::default(),
             password_holder: PasswordHolder::default(),

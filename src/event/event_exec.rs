@@ -17,6 +17,7 @@ use crate::log_info;
 use crate::log_line;
 use crate::modes::help_string;
 use crate::modes::lsblk_and_cryptsetup_installed;
+use crate::modes::open_tui_program;
 use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::InputCompleted;
@@ -29,7 +30,6 @@ use crate::modes::NeedConfirmation;
 use crate::modes::Preview;
 use crate::modes::RemovableDevices;
 use crate::modes::Selectable;
-use crate::modes::TuiApplications;
 use crate::modes::MOCP;
 
 /// Links events from tuikit to custom actions.
@@ -954,12 +954,12 @@ impl EventAction {
 
     /// Execute Lazygit in a spawned terminal
     pub fn lazygit(status: &mut Status) -> Result<()> {
-        TuiApplications::open_program(status, LAZYGIT)
+        open_tui_program(status, LAZYGIT)
     }
 
     /// Execute NCDU in a spawned terminal
     pub fn ncdu(status: &mut Status) -> Result<()> {
-        TuiApplications::open_program(status, NCDU)
+        open_tui_program(status, NCDU)
     }
 
     /// Add a song or a folder to MOC playlist. Start it first...

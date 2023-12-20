@@ -988,12 +988,12 @@ impl<'a> WinSecondary<'a> {
         let content = &self.status.menu.tui_applications.content;
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
         let len = content.len();
-        for (row, (command, _), attr) in enumerated_colored_iter!(content)
+        for (row, command, attr) in enumerated_colored_iter!(content)
             .skip(top)
             .take(min(bottom, len))
         {
             let attr = self.status.menu.tui_applications.attr(row, attr);
-            Self::draw_content_line(canvas, row + 1 - top, command, attr)?;
+            Self::draw_content_line(canvas, row + 1 - top, &command, attr)?;
         }
         Ok(())
     }
