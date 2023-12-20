@@ -51,16 +51,6 @@ impl RemovableDevices {
             Some(Self { content, index: 0 })
         }
     }
-
-    /// Mutable reference to the selected element.
-    /// None if the content is empty (aka no removable device detected)
-    pub fn selected_mut(&mut self) -> Option<&mut Removable> {
-        if self.content.is_empty() {
-            None
-        } else {
-            Some(&mut self.content[self.index])
-        }
-    }
 }
 
 /// Holds a MTP device name, a path and a flag set to true

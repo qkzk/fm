@@ -152,9 +152,10 @@ impl Menu {
     }
 
     pub fn mount_removable(&mut self) -> Result<()> {
-        let Some(device) = &self.removable_devices.selected_mut() else {
+        if self.removable_devices.is_empty() {
             return Ok(());
         };
+        let device = &mut self.removable_devices.content[self.removable_devices.index];
         if device.is_mounted() {
             return Ok(());
         }
@@ -163,9 +164,10 @@ impl Menu {
     }
 
     pub fn umount_removable(&mut self) -> Result<()> {
-        let Some(device) = &self.removable_devices.selected_mut() else {
+        if self.removable_devices.is_empty() {
             return Ok(());
         };
+        let device = &mut self.removable_devices.content[self.removable_devices.index];
         if !device.is_mounted() {
             return Ok(());
         }

@@ -223,7 +223,7 @@ impl Status {
                     Navigate::History => self.current_tab_mut().history.set_index(index),
                     Navigate::Jump => self.menu.flagged.set_index(index),
                     Navigate::Marks(_) => self.menu.marks.set_index(index),
-                    Navigate::RemovableDevices => self.menu.removable_set_index(index),
+                    Navigate::RemovableDevices => self.menu.removable_devices.set_index(index),
                     Navigate::Shortcut => self.menu.shortcut.set_index(index),
                     Navigate::Trash => self.menu.trash.set_index(index),
                     Navigate::TuiApplication => self.menu.tui_applications.set_index(index),
