@@ -723,6 +723,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Scroll to selection when opening a menu. Selected file should alway be displayed.
 - Scroll completion & navigation menus.
 - Configurable cli applications. See `~/fm/cli.yaml`
+- Simplify tui config files.
 
 #### Changelog
 
@@ -747,12 +748,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] nohup, nix, setsid ???
   - [x] replace nohup by setsid
 - [x] cli info is configurable
-- [ ] refactor menus.
-  - [x] split selectable content trait into 2 traits
-  - use a single index holded in menu doesn't work: too much change in internal structs
-  - use a closure doesn't work: impl selectable content requires a generic type which is different per menu
-  - refactor each navigate associate struct will require a ton of change (and why ?)
-  - is the actual solution the simplest ? yes. But A LOT of duplication
+- [x] refactor menus. split selectable content trait into 2 traits. Use closure to impl methods
+- [x] refactor cli & tui applications using common traits. Simplify tui config file
 
 ## TODO
 
