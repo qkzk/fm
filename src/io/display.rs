@@ -993,7 +993,7 @@ impl<'a> WinSecondary<'a> {
             .take(min(bottom, len))
         {
             let attr = self.status.menu.tui_applications.attr(row, attr);
-            Self::draw_content_line(canvas, row + 1 - top, &command, attr)?;
+            Self::draw_content_line(canvas, row + 1 - top, command, attr)?;
         }
         Ok(())
     }

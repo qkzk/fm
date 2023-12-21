@@ -49,7 +49,7 @@ impl Execute<()> for String {
         if self.as_str() == "shell" {
             execute_shell(status)?;
         } else {
-            require_cwd_and_command(status, &self)?;
+            require_cwd_and_command(status, self)?;
         };
         log_line!("Executed {name}", name = self);
         Ok(())
