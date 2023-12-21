@@ -750,6 +750,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] cli info is configurable
 - [x] refactor menus. split selectable content trait into 2 traits. Use closure to impl methods
 - [x] refactor cli & tui applications using common traits. Simplify tui config file
+- [ ] rename Action::Command to Action::Action since it's what it does
 
 ## TODO
 
@@ -782,15 +783,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] update the animation
 
 - [ ] build option to force reset of config file, warn the user at first start
-- [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
 - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
 - [ ] allow pipe in execution
-- [ ] refactor cryptdevice and iso_file
-
-  - [ ] mode to handle those mounts. ATM it's all over the place...
-  - [ ] allow mounting some other devices
-  - [ ] list non mounted devices, list all mount points
-  - [ ] act on them
 
 - [ ] Version 0.1.50 : safety & memory usage
 
