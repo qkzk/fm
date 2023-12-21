@@ -167,18 +167,6 @@ pub const RENAME_LINES: [&str; 3] = [
     "Nothing is done if the file already exists",
 ];
 pub const TRASH_CONFIRM_LINE: &str = "Enter: restore the selected file  --  x: delete permanently";
-/// Executable commands whose output is a text to be displayed in terminal
-pub const CLI_APPLICATIONS: [(&str, &str); 9] = [
-    ("drag and drop", "dragon-drop %s"),
-    ("set wallpaper", "nitrogen --set-zoom-fill --save %s"),
-    ("man page     ", "man %s"),
-    ("space used   ", "duf"),
-    ("system info  ", "inxi -S -I -D -i -J -M --color"),
-    ("system info  ", "neofetch"),
-    ("list usb     ", "lsusb"),
-    ("media tags   ", "mediainfo %s"),
-    ("diff 2 files ", "diff %f"),
-];
 /// Mediainfo (used to preview media files) executable
 pub const MEDIAINFO: &str = "mediainfo";
 /// ueberzug (used to preview images, videos & fonts)
