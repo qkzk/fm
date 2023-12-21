@@ -95,7 +95,7 @@ pub enum SizeColumn {
     /// Used for normal files. It's the size in bytes.
     Size(u64),
     /// Used for directories, nothing is displayed
-    None,
+    EntryCount(u64),
     /// Use for CharDevice and BlockDevice.
     /// It's the major & minor driver versions.
     MajorMinor((u8, u8)),
@@ -105,7 +105,7 @@ impl std::fmt::Display for SizeColumn {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Size(bytes) => write!(f, "   {hs}", hs = human_size(*bytes)),
-            Self::None => write!(f, "     - "),
+            Self::EntryCount(count) => write!(f, "   {hs}", hs = human_size(*count)),
             Self::MajorMinor((major, minor)) => write!(f, "{major:>3},{minor:<3}"),
         }
     }
@@ -114,7 +114,7 @@ impl std::fmt::Display for SizeColumn {
 impl SizeColumn {
     fn new(size: u64, metadata: &Metadata, file_kind: &FileKind<Valid>) -> Self {
         match file_kind {
-            FileKind::Directory => Self::None,
+            FileKind::Directory => Self::EntryCount(size),
             FileKind::CharDevice | FileKind::BlockDevice => Self::MajorMinor(major_minor(metadata)),
             _ => Self::Size(size),
         }
@@ -157,12 +157,12 @@ impl FileInfo {
     pub fn new(path: &path::Path, users: &Users) -> Result<Self> {
         let filename = extract_filename(path)?;
         let metadata = symlink_metadata(path)?;
+        let true_size = true_size(path, &metadata);
         let path = std::rc::Rc::from(path);
         let owner = extract_owner(&metadata, users);
         let group = extract_group(&metadata, users);
         let system_time = extract_datetime(&metadata)?;
         let is_selected = false;
-        let true_size = extract_file_size(&metadata);
         let file_kind = FileKind::new(&metadata, &path);
         let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
@@ -419,9 +419,28 @@ fn extract_group(metadata: &Metadata, users: &Users) -> std::rc::Rc<str> {
     }
 }
 
+/// Size of a file, number of entries of a directory
+fn true_size(path: &path::Path, metadata: &Metadata) -> u64 {
+    if path.is_dir() {
+        count_entries(&path).unwrap_or_default()
+    } else {
+        extract_file_size(metadata)
+    }
+}
+
 /// Returns the file size.
 fn extract_file_size(metadata: &Metadata) -> u64 {
     metadata.len()
+}
+
+/// Number of elements of a directory.
+///
+/// # Errors
+///
+/// Will fail if the provided path isn't a directory
+/// or doesn't exist.
+fn count_entries(path: &path::Path) -> Result<u64> {
+    Ok(std::fs::read_dir(path)?.count() as u64)
 }
 
 /// Extract the major & minor driver version of a special file.

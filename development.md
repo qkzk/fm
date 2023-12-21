@@ -751,18 +751,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] refactor menus. split selectable content trait into 2 traits. Use closure to impl methods
 - [x] refactor cli & tui applications using common traits. Simplify tui config file
 - [x] rename Action::Command to Action::Action since it's what it does
+- [x] use number of files for dir size
+- [ ] optionable logging
 
 ## TODO
 
 - [ ] refactor & unify all shell commands
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
-- [ ] Only store one Selectable thing in status
-- [ ] use `Rc<str>` instead of string to avoid copying
 - [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
-- [ ] FIX: tab.selected() should return Option<&FileInfo>
-- [ ] use widget for every drawable element. First line should be a collection of widget which are drawned
 - [ ] remote control
 
   - [ ] listen to stdin (rcv etc.)
