@@ -723,7 +723,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Scroll to selection when opening a menu. Selected file should alway be displayed.
 - Scroll completion & navigation menus.
 - Configurable cli applications. See `~/fm/cli.yaml`
-- Simplify tui config files.
+- Simplify tui config files. Remove `cwd` boolean parameter. Doesn't break old config files.
 
 #### Changelog
 
