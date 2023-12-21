@@ -76,9 +76,8 @@ pub struct Menu {
 
 impl Menu {
     pub fn new(start_dir: &std::path::Path, mount_points: &[&std::path::Path]) -> Result<Self> {
-        let window = ContentWindow::new(0, 80);
         Ok(Self {
-            window,
+            window: ContentWindow::new(0, 80),
             sudo_command: None,
             compression: Compresser::default(),
             context: ContextMenu::default(),
