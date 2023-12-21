@@ -724,6 +724,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Scroll completion & navigation menus.
 - Configurable cli applications. See `~/fm/cli.yaml`
 - Simplify tui config files. Remove `cwd` boolean parameter. Doesn't break old config files.
+- Display the number of entries as the size of a directory instead of '-'. Might affect performance for very large directories.
 
 #### Changelog
 
