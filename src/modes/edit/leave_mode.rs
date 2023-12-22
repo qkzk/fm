@@ -67,7 +67,7 @@ impl LeaveMode {
             Edit::Navigate(Navigate::RemovableDevices) => Ok(()),
             Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
             Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status),
-            Edit::InputCompleted(InputCompleted::Goto) => LeaveMode::goto(status),
+            Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
             Edit::InputCompleted(InputCompleted::Action) => LeaveMode::action(status, binds),
             // To avoid mistakes, the default answer is No. We do nothing here.
             Edit::NeedConfirmation(_) => Ok(()),
@@ -264,7 +264,7 @@ impl LeaveMode {
     /// The first completion proposition is used, `~` expansion is done.
     /// If no result were found, no cd is done and we go back to normal mode
     /// silently.
-    pub fn goto(status: &mut Status) -> Result<()> {
+    pub fn cd(status: &mut Status) -> Result<()> {
         if status.menu.completion.is_empty() {
             return Ok(());
         }

@@ -12,7 +12,7 @@ use crate::modes::Leave;
 pub enum InputCompleted {
     #[default]
     /// Complete a directory path in filesystem
-    Goto,
+    Cd,
     /// Complete a filename from current directory
     Search,
     /// Complete an executable name from $PATH
@@ -27,7 +27,7 @@ impl fmt::Display for InputCompleted {
             #[rustfmt::skip]
             Self::Exec      => write!(f, "Open with: "),
             #[rustfmt::skip]
-            Self::Goto      => write!(f, "Go to:     "),
+            Self::Cd        => write!(f, "Cd:        "),
             #[rustfmt::skip]
             Self::Search    => write!(f, "Search:    "),
             #[rustfmt::skip]
@@ -131,10 +131,10 @@ impl Completion {
         self.proposals.clear();
     }
 
-    /// Goto completion.
+    /// Cd completion.
     /// Looks for the valid path completing what the user typed.
-    pub fn goto(&mut self, input_string: &str, current_path: &str) -> Result<()> {
-        self.goto_update_from_input(input_string, current_path);
+    pub fn cd(&mut self, input_string: &str, current_path: &str) -> Result<()> {
+        self.cd_update_from_input(input_string, current_path);
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
             return Ok(());
@@ -144,7 +144,7 @@ impl Completion {
         Ok(())
     }
 
-    fn goto_update_from_input(&mut self, input_string: &str, current_path: &str) {
+    fn cd_update_from_input(&mut self, input_string: &str, current_path: &str) {
         self.proposals = vec![];
         if let Some(expanded_input) = self.expand_input(input_string) {
             self.proposals.push(expanded_input);

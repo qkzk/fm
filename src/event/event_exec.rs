@@ -387,9 +387,9 @@ impl EventAction {
         Ok(())
     }
 
-    /// Enter the goto mode where an user can type a path to jump to.
-    pub fn goto(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Goto))?;
+    /// Enter the cd mode where an user can type a path to jump to.
+    pub fn cd(status: &mut Status) -> Result<()> {
+        status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Cd))?;
         status.menu.completion.reset();
         Ok(())
     }

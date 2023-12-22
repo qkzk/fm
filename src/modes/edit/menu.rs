@@ -114,7 +114,7 @@ impl Menu {
 
     fn fill_completion(&mut self, tab: &Tab) -> Result<()> {
         match tab.edit_mode {
-            Edit::InputCompleted(InputCompleted::Goto) => self.completion.goto(
+            Edit::InputCompleted(InputCompleted::Cd) => self.completion.cd(
                 &self.input.string(),
                 &tab.directory.path.as_os_str().to_string_lossy(),
             ),

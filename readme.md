@@ -269,7 +269,7 @@ Char('e') :      EXEC
 Char('d') :      NEWDIR
 Char('n') :      NEWFILE
 Char('r') :      RENAME
-Alt('g')  :      GOTO
+Alt('g')  :      CD
 Char('w') :      REGEXMATCH
 Alt('j')  :      JUMP
 Char('O') :      SORT

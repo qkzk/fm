@@ -139,7 +139,7 @@ impl ActionMap {
             Self::FuzzyFindLine => EventAction::fuzzyfind_line(status),
             Self::GoRoot => EventAction::go_root(status),
             Self::GoStart => EventAction::go_start(status),
-            Self::Cd => EventAction::goto(status),
+            Self::Cd => EventAction::cd(status),
             Self::Help => EventAction::help(status, binds),
             Self::History => EventAction::history(status),
             Self::Home => EventAction::home(status),
