@@ -10,7 +10,7 @@ mod inner {
 
     /// Action for every element of the first line.
     /// It should match the order of the `FirstLine::make_string` static method.
-    const HEADER_ACTIONS: [ActionMap; 2] = [ActionMap::Goto, ActionMap::Rename];
+    const HEADER_ACTIONS: [ActionMap; 2] = [ActionMap::Cd, ActionMap::Rename];
 
     const FOOTER_ACTIONS: [ActionMap; 7] = [
         ActionMap::Nothing, // position

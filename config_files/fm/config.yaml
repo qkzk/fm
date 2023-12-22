@@ -79,7 +79,7 @@ keys:
   'alt-d': ToggleDualPane
   'alt-e': EncryptedDrive
   'alt-f': Filter
-  'alt-g': Goto
+  'alt-g': Cd
   'alt-m': Chmod
   'alt-p': TogglePreviewSecond
   'ctrl-c': CopyFilename

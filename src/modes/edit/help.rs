@@ -87,7 +87,7 @@ Navigate as usual. Most actions works as in 'normal' view.
 {NewDir:<10}:      NEWDIR 
 {NewFile:<10}:      NEWFILE
 {Rename:<10}:      RENAME
-{Goto:<10}:      GOTO
+{Cd:<10}:      CD
 {RegexMatch:<10}:      REGEXMATCH
 {Jump:<10}:      JUMP
 {Sort:<10}:      SORT

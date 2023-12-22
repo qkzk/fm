@@ -147,7 +147,7 @@ struct WinMain<'a> {
 
 impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        canvas.clear()?;
+        // canvas.clear()?;
         if self.status.display_settings.dual()
             && self.is_right()
             && self.status.display_settings.preview()
@@ -764,7 +764,7 @@ struct WinSecondary<'a> {
 
 impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        canvas.clear()?;
+        // canvas.clear()?;
         match self.tab.edit_mode {
             Edit::Navigate(mode) => self.draw_navigate(mode, canvas),
             Edit::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),

@@ -98,7 +98,7 @@ impl Bindings {
             (Key::Alt('d'), ActionMap::ToggleDualPane),
             (Key::Alt('e'), ActionMap::EncryptedDrive),
             (Key::Alt('f'), ActionMap::Filter),
-            (Key::Alt('g'), ActionMap::Goto),
+            (Key::Alt('g'), ActionMap::Cd),
             (Key::Alt('h'), ActionMap::History),
             (Key::Alt('i'), ActionMap::CliMenu),
             (Key::Alt('j'), ActionMap::Jump),
