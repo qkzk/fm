@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 
 use crate::common::read_lines;
-use crate::common::MARKS_FILEPATH;
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::log_info;
@@ -39,8 +38,8 @@ impl Marks {
     /// If an invalid marks is read, only the valid ones are kept
     /// and the file is saved again.
     #[must_use]
-    pub fn read_from_config_file() -> Self {
-        let path = PathBuf::from(shellexpand::tilde(&MARKS_FILEPATH).to_string());
+    pub fn new(config_path: &str) -> Self {
+        let path = PathBuf::from(shellexpand::tilde(config_path).to_string());
         Self::read_from_file(path)
     }
 

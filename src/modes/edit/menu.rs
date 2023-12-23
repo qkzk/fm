@@ -4,6 +4,7 @@ use anyhow::Result;
 use crate::app::Tab;
 use crate::common::is_program_in_path;
 use crate::common::CLI_PATH;
+use crate::common::MARKS_FILEPATH;
 use crate::common::SSHFS_EXECUTABLE;
 use crate::common::TUIS_PATH;
 use crate::io::drop_sudo_privileges;
@@ -77,24 +78,24 @@ pub struct Menu {
 impl Menu {
     pub fn new(start_dir: &std::path::Path, mount_points: &[&std::path::Path]) -> Result<Self> {
         Ok(Self {
-            window: ContentWindow::new(0, 80),
-            sudo_command: None,
+            bulk: Bulk::default(),
+            cli_applications: CliApplications::new(CLI_PATH).update_desc_size(),
+            completion: Completion::default(),
             compression: Compresser::default(),
             context: ContextMenu::default(),
-            cli_applications: CliApplications::new(CLI_PATH).update_desc_size(),
-            tui_applications: TuiApplications::new(TUIS_PATH),
-            removable_devices: RemovableDevices::default(),
-            password_holder: PasswordHolder::default(),
-            bulk: Bulk::default(),
-            iso_device: None,
             encrypted_devices: CryptoDeviceOpener::default(),
-            trash: Trash::new()?,
-            marks: Marks::read_from_config_file(),
             flagged: Flagged::default(),
-            input: Input::default(),
-            completion: Completion::default(),
-            shortcut: Shortcut::new(start_dir).with_mount_points(mount_points),
             history: History::default(),
+            input: Input::default(),
+            iso_device: None,
+            marks: Marks::new(MARKS_FILEPATH),
+            password_holder: PasswordHolder::default(),
+            removable_devices: RemovableDevices::default(),
+            shortcut: Shortcut::new(start_dir).with_mount_points(mount_points),
+            sudo_command: None,
+            trash: Trash::new()?,
+            tui_applications: TuiApplications::new(TUIS_PATH),
+            window: ContentWindow::new(0, 80),
         })
     }
 
