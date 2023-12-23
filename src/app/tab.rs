@@ -232,9 +232,7 @@ impl Tab {
 
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) -> Result<()> {
-        self.settings.filter = FilterKind::All;
         self.preview = Preview::empty();
-        // self.edit_mode = Edit::Nothing;
         if matches!(self.display_mode, Display::Tree) {
             self.make_tree(None)?;
         } else {
