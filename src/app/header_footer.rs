@@ -4,9 +4,9 @@ mod inner {
 
     use crate::app::{Status, Tab};
     use crate::event::ActionMap;
-    use crate::modes::Content;
     use crate::modes::Selectable;
     use crate::modes::{shorten_path, Display};
+    use crate::modes::{Content, FilterKind};
 
     /// Action for every element of the first line.
     /// It should match the order of the `FirstLine::make_string` static method.
@@ -114,10 +114,25 @@ mod inner {
         /// 1. the length of the vector MUST BE the length of `ACTIONS` minus one.
         /// 2. the order must be respected.
         fn make_strings(tab: &Tab, width: usize) -> Result<Vec<String>> {
-            Ok(vec![
+            let mut strings = vec![
                 Self::string_shorten_path(tab)?,
                 Self::string_first_row_selected_file(tab, width)?,
-            ])
+            ];
+            if let Some(searched) = &tab.searched {
+                strings.push(Self::string_searched(searched))
+            }
+            if !matches!(tab.settings.filter, FilterKind::All) {
+                strings.push(Self::string_filter(tab))
+            }
+            Ok(strings)
+        }
+
+        fn string_filter(tab: &Tab) -> String {
+            format!(" {filter} ", filter = tab.settings.filter.to_string())
+        }
+
+        fn string_searched(searched: &str) -> String {
+            format!(" Searched: {searched} ")
         }
 
         fn string_shorten_path(tab: &Tab) -> Result<String> {

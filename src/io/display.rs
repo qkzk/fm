@@ -67,9 +67,11 @@ macro_rules! impl_preview {
 /// At least 120 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
 
-const FIRST_LINE_COLORS: [Attr; 2] = [
+const FIRST_LINE_COLORS: [Attr; 4] = [
     color_to_attr(Color::LIGHT_CYAN),
     color_to_attr(Color::Rgb(230, 189, 87)),
+    color_to_attr(Color::Rgb(230, 167, 255)),
+    color_to_attr(Color::Rgb(59, 204, 255)),
 ];
 
 const MENU_COLORS: [Attr; 10] = [
@@ -654,6 +656,7 @@ impl PreviewHeader {
     }
 }
 
+#[derive(Default)]
 struct WinMainSecondLine {
     content: Option<String>,
     attr: Option<Attr>,
@@ -671,40 +674,26 @@ impl Draw for WinMainSecondLine {
 
 impl WinMainSecondLine {
     fn new(status: &Status, tab: &Tab) -> Self {
-        let (content, attr) = match tab.display_mode {
-            DisplayMode::Directory | DisplayMode::Tree => {
-                if !status.display_settings.metadata() {
-                    if let Ok(file) = tab.current_file() {
-                        Self::second_line_detailed(&file)
-                    } else {
-                        (None, None)
-                    }
-                } else {
-                    Self::second_line_simple(status)
-                }
-            }
-            _ => (None, None),
+        if matches!(tab.display_mode, DisplayMode::Preview) || status.display_settings.metadata() {
+            return Self::default();
         };
-        Self { content, attr }
+        if let Ok(file) = tab.current_file() {
+            Self::second_line_detailed(&file)
+        } else {
+            Self::default()
+        }
     }
 
-    fn second_line_detailed(file: &FileInfo) -> (Option<String>, Option<Attr>) {
+    fn second_line_detailed(file: &FileInfo) -> Self {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
         let mut attr = fileinfo_attr(file);
         attr.effect ^= Effect::REVERSE;
 
-        (
-            Some(file.format(owner_size, group_size).unwrap_or_default()),
-            Some(attr),
-        )
-    }
-
-    fn second_line_simple(status: &Status) -> (Option<String>, Option<Attr>) {
-        (
-            Some(status.current_tab().settings.filter.to_string()),
-            Some(ATTR_YELLOW_BOLD),
-        )
+        Self {
+            content: Some(file.format(owner_size, group_size).unwrap_or_default()),
+            attr: Some(attr),
+        }
     }
 }
 
