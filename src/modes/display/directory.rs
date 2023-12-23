@@ -37,16 +37,16 @@ impl Directory {
         let mut content = Self::files(&path, show_hidden, filter, users)?;
         let sort_kind = SortKind::default();
         sort_kind.sort(&mut content);
-        let selected_index: usize = 0;
+        let index: usize = 0;
         if !content.is_empty() {
-            content[selected_index].select();
+            content[index].select();
         }
         let used_space = get_used_space(&content);
 
         Ok(Self {
             path,
             content,
-            index: selected_index,
+            index,
             used_space,
         })
     }
