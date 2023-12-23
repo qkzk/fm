@@ -422,7 +422,7 @@ fn extract_group(metadata: &Metadata, users: &Users) -> std::rc::Rc<str> {
 /// Size of a file, number of entries of a directory
 fn true_size(path: &path::Path, metadata: &Metadata) -> u64 {
     if path.is_dir() {
-        count_entries(&path).unwrap_or_default()
+        count_entries(path).unwrap_or_default()
     } else {
         extract_file_size(metadata)
     }
