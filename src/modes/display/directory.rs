@@ -300,7 +300,11 @@ pub fn read_symlink_dest(path: &Path) -> Option<String> {
 }
 
 fn get_used_space(files: &[FileInfo]) -> u64 {
-    files.iter().map(|f| f.true_size).sum()
+    files
+        .iter()
+        .filter(|f| !f.is_dir())
+        .map(|f| f.true_size)
+        .sum()
 }
 
 /// Creates an optional vector of fileinfo contained in a file.
