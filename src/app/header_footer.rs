@@ -10,7 +10,12 @@ mod inner {
 
     /// Action for every element of the first line.
     /// It should match the order of the `FirstLine::make_string` static method.
-    const HEADER_ACTIONS: [ActionMap; 2] = [ActionMap::Cd, ActionMap::Rename];
+    const HEADER_ACTIONS: [ActionMap; 4] = [
+        ActionMap::Cd,
+        ActionMap::Rename,
+        ActionMap::Search,
+        ActionMap::Filter,
+    ];
 
     const FOOTER_ACTIONS: [ActionMap; 7] = [
         ActionMap::Nothing, // position
@@ -70,6 +75,7 @@ mod inner {
         strings: Vec<String>,
         sizes: Vec<usize>,
         width: usize,
+        actions: Vec<ActionMap>,
     }
 
     impl ClickableLine for Header {
@@ -85,7 +91,7 @@ mod inner {
         }
 
         fn action_index(&self, index: usize) -> &ActionMap {
-            &HEADER_ACTIONS[index]
+            &self.actions(index)
         }
 
         fn width(&self) -> usize {
@@ -98,14 +104,19 @@ mod inner {
         /// Create the strings associated with the selected tab directory
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
             let (width, _) = status.internal_settings.term.term_size()?;
-            let strings = Self::make_strings(tab, width)?;
+            let (strings, actions) = Self::make_strings_actions(tab, width)?;
             let sizes = Self::make_sizes(&strings);
 
             Ok(Self {
                 strings,
                 sizes,
                 width,
+                actions,
             })
+        }
+
+        fn actions(&self, index: usize) -> &ActionMap {
+            &self.actions[index]
         }
 
         // TODO! refactor using a `struct thing { string, start, end, action }`
@@ -113,18 +124,21 @@ mod inner {
         /// Watchout:
         /// 1. the length of the vector MUST BE the length of `ACTIONS` minus one.
         /// 2. the order must be respected.
-        fn make_strings(tab: &Tab, width: usize) -> Result<Vec<String>> {
+        fn make_strings_actions(tab: &Tab, width: usize) -> Result<(Vec<String>, Vec<ActionMap>)> {
             let mut strings = vec![
                 Self::string_shorten_path(tab)?,
                 Self::string_first_row_selected_file(tab, width)?,
             ];
+            let mut actions: Vec<ActionMap> = HEADER_ACTIONS[0..2].into();
             if let Some(searched) = &tab.searched {
-                strings.push(Self::string_searched(searched))
+                strings.push(Self::string_searched(searched));
+                actions.push(HEADER_ACTIONS[2].clone());
             }
             if !matches!(tab.settings.filter, FilterKind::All) {
-                strings.push(Self::string_filter(tab))
+                strings.push(Self::string_filter(tab));
+                actions.push(HEADER_ACTIONS[3].clone());
             }
-            Ok(strings)
+            Ok((strings, actions))
         }
 
         fn string_filter(tab: &Tab) -> String {
