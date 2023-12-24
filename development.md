@@ -747,8 +747,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] exec multiple flagged files
 - [x] confirm before bulkaction
 - [x] allow bulk rename and normal rename to move files + bulk refactoring
-- [ ] nohup, nix, setsid ???
+- [x] nohup, nix, setsid ???
   - [x] replace nohup by setsid
+  - [x] check for setsid in path and use normal child if it's not.
 - [x] cli info is configurable
 - [x] refactor menus. split selectable content trait into 2 traits. Use closure to impl methods
 - [x] refactor cli & tui applications using common traits. Simplify tui config file
