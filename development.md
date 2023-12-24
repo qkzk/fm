@@ -759,6 +759,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] optionable logging
 - [ ] display number of matches while searching
 - [x] FIX: Filter isn't shown and does nothing in tree mode
+- [ ] FIX: unfold shouldn't unfold every child
 
 ## TODO
 
