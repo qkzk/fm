@@ -658,7 +658,8 @@ impl Tab {
 
     /// Move the preview to the bottom
     pub fn preview_go_bottom(&mut self) {
-        self.window.scroll_to(self.preview.len() - 1)
+        self.window
+            .scroll_to(self.preview.len().checked_sub(1).unwrap_or_default())
     }
 
     /// Move 30 lines up or an image in Ueberzug.

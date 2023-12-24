@@ -379,7 +379,9 @@ impl EventAction {
 
     /// Display the last actions impacting the file tree
     pub fn log(tab: &mut Tab) -> Result<()> {
-        let log = read_log()?;
+        let Ok(log) = read_log() else {
+            return Ok(());
+        };
         tab.set_display_mode(Display::Preview);
         tab.preview = Preview::log(log);
         tab.window.reset(tab.preview.len());

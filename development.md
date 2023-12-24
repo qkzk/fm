@@ -725,6 +725,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Configurable cli applications. See `~/fm/cli.yaml`
 - Simplify tui config files. Remove `cwd` boolean parameter. Doesn't break old config files.
 - Display the number of entries as the size of a directory instead of '-'. Might affect performance for very large directories.
+- Enable logging with `-l` or `--log`. Nothing is logged anywhere without this flag.
 
 #### Changelog
 
@@ -754,7 +755,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] rename Action::Command to Action::Action since it's what it does
 - [x] use number of files for dir size
 - [x] rename Goto Mode to cd to allow `:` then `cd`
-- [ ] optionable logging
+- [x] optionable logging
 - [ ] display number of matches while searching
 - [x] FIX: Filter isn't shown and does nothing in tree mode
 

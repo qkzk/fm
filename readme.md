@@ -9,7 +9,7 @@
 [docrs]: https://docs.rs/fm-tui/0.1.24
 
 ```
-A TUI file manager inspired by dired and ranger
+ A TUI file manager inspired by dired and ranger
 
 Usage: fm [OPTIONS]
 
@@ -17,6 +17,7 @@ Options:
   -p, --path <PATH>      Starting path. directory or file [default: .]
   -s, --server <SERVER>  Nvim server [default: ]
   -A, --all              Display all files (hidden)
+  -l, --log              Enable logging
   -h, --help             Print help
   -V, --version          Print version
 ```
@@ -169,6 +170,15 @@ Expansions :
 - %f : flagged files (full path)
 - %n : selected filename
 - %d : current directory
+
+### Logging
+
+With `-l` or `--log`, logs are enabled. They are disabled by default.
+
+Critical actions will be logged to `~/.config/fm/log/fm.log` and actions affecting the file tree will be logged to `~/.config/fm/log/action_logger.log`.
+
+The last action is displayed at the bottom of the screen and can be read with `Alt+l` like a preview.
+Those logs can be seen even if logging is disabled, it just won't be up to date.
 
 ### More
 
