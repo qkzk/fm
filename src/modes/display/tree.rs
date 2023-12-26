@@ -357,6 +357,27 @@ impl Tree {
         self.find_next_path() == self.root_path
     }
 
+    /// True if the node has a parent which is in `self.nodes` and is folded.
+    /// This hacky and inefficient solution is necessary to know if we can select
+    /// this node in `select_prev` `select_next`.
+    /// It will construct all parent path from `/` to `node.path` except for the last one.
+    fn node_has_parent_folded(&self, node: &Node) -> bool {
+        let path = &node.path;
+        let mut current_path = std::path::PathBuf::from("/");
+        for part in path.components() {
+            current_path = current_path.join(part.as_os_str());
+            if current_path == <Rc<std::path::Path> as Borrow<Path>>::borrow(&(*path)) {
+                continue;
+            }
+            if let Some(current_node) = self.nodes.get(current_path.as_path()) {
+                if current_node.folded {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     /// Select next sibling or the next sibling of the parent
     fn select_next(&mut self) {
         let next_path = self.find_next_path();
@@ -372,7 +393,7 @@ impl Tree {
                 let Some(next_node) = self.nodes.get(next_path) else {
                     return self.root_path.clone();
                 };
-                if next_node.reachable {
+                if next_node.reachable && !self.node_has_parent_folded(next_node) {
                     return next_path.to_owned();
                 } else {
                     current_path = next_path.clone();
@@ -396,7 +417,7 @@ impl Tree {
                 let Some(prev_node) = self.nodes.get(prev_path) else {
                     unreachable!("");
                 };
-                if prev_node.reachable {
+                if prev_node.reachable && !self.node_has_parent_folded(prev_node) {
                     return prev_path.to_owned();
                 } else {
                     current_path = prev_path.to_owned();
@@ -520,7 +541,6 @@ impl Tree {
         for path in self.children_of_selected().iter() {
             if let Some(child_node) = self.nodes.get_mut(path) {
                 child_node.reachable = true;
-                child_node.unfold();
             };
         }
     }

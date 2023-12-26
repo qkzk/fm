@@ -726,6 +726,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Simplify tui config files. Remove `cwd` boolean parameter. Doesn't break old config files.
 - Display the number of entries as the size of a directory instead of '-'. Might affect performance for very large directories.
 - Enable logging with `-l` or `--log`. Nothing is logged anywhere without this flag.
+- FIX: Tree mode. Unfolding a directory unfold its children
 
 #### Changelog
 
@@ -759,7 +760,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] optionable logging
 - [ ] display number of matches while searching
 - [x] FIX: Filter isn't shown and does nothing in tree mode
-- [ ] FIX: unfold shouldn't unfold every child
+- [x] FIX: unfold shouldn't unfold every child
 
 ## TODO
 
