@@ -91,7 +91,7 @@ pub enum TextKind {
 /// Different kind of preview used to display some informaitons
 /// About the file.
 /// We check if it's an archive first, then a pdf file, an image, a media file
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub enum Preview {
     Syntaxed(HLContent),
     Text(TextContent),
@@ -756,6 +756,7 @@ impl MediaContent {
     }
 }
 
+#[derive(Clone)]
 pub enum UeberzugKind {
     Font,
     Image,
@@ -770,6 +771,7 @@ pub enum UeberzugKind {
 /// When the preview is reset, the instance is dropped and the image is erased.
 /// Positonning the image is tricky since tuikit doesn't know where it's drawed in the terminal:
 /// the preview can't be placed correctly in embeded terminals.
+#[derive(Clone)]
 pub struct Ueberzug {
     original: PathBuf,
     pub path: String,
@@ -1036,6 +1038,7 @@ impl TreePreview {
     }
 }
 
+#[derive(Clone)]
 pub struct Iso {
     pub content: Vec<String>,
     length: usize,
