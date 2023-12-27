@@ -765,6 +765,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: unfold shouldn't unfold every child
 - [x] don't use -e for every terminal. See [rifle.conf](https://github.com/ranger/ranger/blob/136416c7e2ecc27315fe2354ecadfe09202df7dd/ranger/config/rifle.conf#L244)
 - [ ] any kind of cd should reset searched
+- [ ] leaving display::preview shouldn't reset position in dir
 - [ ] cache previews
   - [ ] refactor ueberzug usage, associate it to tab and use a ref
   - [ ] previews can't be clone since I create an ueberzug::Ueberzug instance every time and it can't be cloned.
