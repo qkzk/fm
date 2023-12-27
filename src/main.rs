@@ -9,6 +9,7 @@ fn main() -> anyhow::Result<()> {
     while let Ok(event) = fm.poll_event() {
         fm.update(event)?;
         fm.display()?;
+        fm.cache_previews();
         if fm.must_quit() {
             break;
         }

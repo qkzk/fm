@@ -15,6 +15,7 @@ use crate::io::set_loggers;
 use crate::io::Display;
 use crate::io::Opener;
 use crate::log_info;
+use crate::modes::Display as DisplayMode;
 
 /// Holds everything about the application itself.
 /// Most attributes holds an `Arc<tuikit::Term::term>`.
@@ -111,6 +112,15 @@ impl FM {
     pub fn display(&mut self) -> Result<()> {
         self.force_clear_if_needed()?;
         self.display.display_all(&self.status)
+    }
+
+    pub fn cache_previews(&mut self) {
+        if matches!(self.status.tabs[0].display_mode, DisplayMode::Directory) {
+            self.status.tabs[0].update_next_prev();
+        }
+        if matches!(self.status.tabs[1].display_mode, DisplayMode::Directory) {
+            self.status.tabs[1].update_next_prev();
+        }
     }
 
     /// True iff the application must quit.
