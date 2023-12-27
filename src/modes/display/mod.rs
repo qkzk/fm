@@ -1,3 +1,4 @@
+mod cache_previews;
 mod content_window;
 mod directory;
 mod fileinfo;
