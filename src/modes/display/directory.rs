@@ -248,7 +248,6 @@ impl Directory {
     }
 }
 
-// impl_selectable_content!(FileInfo, Directory);
 impl_selectable!(Directory);
 impl_content!(FileInfo, Directory);
 

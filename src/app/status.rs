@@ -368,10 +368,10 @@ impl Status {
         let preview = match fileinfo.file_kind {
             FileKind::Directory => Preview::directory(&fileinfo, &self.tabs[0].users),
             _ => {
-                if !self.tabs[1].cache_previews.contains(&fileinfo.path) {
-                    self.tabs[1].cache_previews.update(&fileinfo)?;
+                if !self.tabs[0].cache_previews.contains(&fileinfo.path) {
+                    self.tabs[0].cache_previews.update(&fileinfo)?;
                 }
-                Ok(self.tabs[1]
+                Ok(self.tabs[0]
                     .cache_previews
                     .read(&fileinfo.path)
                     .context("nothing in cache...")?

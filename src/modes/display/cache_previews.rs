@@ -6,25 +6,20 @@ use anyhow::Result;
 use crate::modes::FileInfo;
 use crate::modes::Preview;
 
+#[derive(Default)]
 pub struct CachePreviews {
     previews: HashMap<PathBuf, Preview>,
     paths: Vec<PathBuf>,
-}
-
-impl Default for CachePreviews {
-    fn default() -> Self {
-        Self {
-            previews: HashMap::new(),
-            paths: vec![],
-        }
-    }
 }
 
 impl CachePreviews {
     const PREVIEWS_CAPACITY: usize = 5;
 
     pub fn contains(&self, path: &Path) -> bool {
-        self.previews.contains_key(path)
+        let res = self.previews.contains_key(path);
+        let log_string = if res { "hit" } else { "miss" };
+        crate::log_info!("cache_preview: {log_string} {path}", path = path.display());
+        res
     }
 
     pub fn read(&self, path: &Path) -> Option<&Preview> {

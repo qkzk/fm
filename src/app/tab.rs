@@ -549,7 +549,10 @@ impl Tab {
         self.directory.unselect_current();
         self.directory.next();
         self.directory.select_current();
-        self.window.scroll_down_one(self.directory.index)
+        self.window.scroll_down_one(self.directory.index);
+        let next_index = (self.directory.index + 1) % self.directory.len();
+        let file_info = &self.directory.content()[next_index];
+        let _ = self.cache_previews.update(file_info);
     }
 
     /// Move up one row if possible.
@@ -557,7 +560,10 @@ impl Tab {
         self.directory.unselect_current();
         self.directory.prev();
         self.directory.select_current();
-        self.window.scroll_up_one(self.directory.index)
+        self.window.scroll_up_one(self.directory.index);
+        let prev_index = self.directory.index.checked_sub(1).unwrap_or_default();
+        let file_info = &self.directory.content()[prev_index];
+        let _ = self.cache_previews.update(file_info);
     }
 
     /// Move to the top of the current directory.
