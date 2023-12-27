@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::Result;
@@ -22,8 +23,12 @@ impl Default for CachePreviews {
 impl CachePreviews {
     const PREVIEWS_CAPACITY: usize = 5;
 
-    pub fn read(&self, path: PathBuf) -> Option<&Preview> {
-        self.previews.get(&path)
+    pub fn contains(&self, path: &Path) -> bool {
+        self.previews.contains_key(path)
+    }
+
+    pub fn read(&self, path: &Path) -> Option<&Preview> {
+        self.previews.get(path)
     }
 
     /// Insert a new preview in the cache.

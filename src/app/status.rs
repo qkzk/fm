@@ -367,7 +367,16 @@ impl Status {
             .context("force preview: No file to select")?;
         let preview = match fileinfo.file_kind {
             FileKind::Directory => Preview::directory(&fileinfo, &self.tabs[0].users),
-            _ => Preview::file(&fileinfo),
+            _ => {
+                if !self.tabs[1].cache_previews.contains(&fileinfo.path) {
+                    self.tabs[1].cache_previews.update(&fileinfo)?;
+                }
+                Ok(self.tabs[1]
+                    .cache_previews
+                    .read(&fileinfo.path)
+                    .context("nothing in cache...")?
+                    .to_owned())
+            }
         };
         self.tabs[1].preview = preview.unwrap_or_default();
 

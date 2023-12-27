@@ -10,7 +10,6 @@ use crate::common::{
     UEBERZUG_IDENTIFIER,
 };
 use crate::io::Args;
-use crate::modes::Content;
 use crate::modes::Directory;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
@@ -19,6 +18,7 @@ use crate::modes::Preview;
 use crate::modes::Selectable;
 use crate::modes::SortKind;
 use crate::modes::Users;
+use crate::modes::{CachePreviews, Content};
 use crate::modes::{ContentWindow, FileKind};
 use crate::modes::{Display, Edit};
 use crate::modes::{Go, To, Tree};
@@ -96,6 +96,8 @@ pub struct Tab {
     pub users: Users,
     /// Ueberzug instance used to draw images in previews
     ueber: Ueberzug,
+    /// Cache preview
+    pub cache_previews: CachePreviews,
 }
 
 impl Tab {
@@ -133,6 +135,7 @@ impl Tab {
         let index = directory.select_file(&path);
         let tree = Tree::default();
         let ueber = Ueberzug::new();
+        let cache_previews = CachePreviews::default();
 
         window.scroll_to(index);
         Ok(Self {
@@ -148,6 +151,7 @@ impl Tab {
             tree,
             settings,
             ueber,
+            cache_previews,
         })
     }
 
@@ -327,7 +331,13 @@ impl Tab {
         };
         match file_info.file_kind {
             FileKind::NormalFile => {
-                let preview = Preview::file(&file_info).unwrap_or_default();
+                if !self.cache_previews.contains(&file_info.path) {
+                    self.cache_previews.update(&file_info)?;
+                }
+                let preview = match self.cache_previews.read(&file_info.path) {
+                    Some(preview) => preview.to_owned(),
+                    None => Preview::empty(),
+                };
                 self.set_display_mode(Display::Preview);
                 self.window.reset(preview.len());
                 self.preview = preview;
