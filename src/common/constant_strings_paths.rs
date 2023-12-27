@@ -28,6 +28,8 @@ pub const TMP_FOLDER_PATH: &str = "/tmp";
 pub const SETSID: &str = "setsid";
 /// Default terminal application used when openening a program in shell or starting a new shell
 pub const DEFAULT_TERMINAL_APPLICATION: &str = "st";
+/// Default terminal flag to run a command when ran
+pub const DEFAULT_TERMINAL_FLAG: &str = "-e";
 /// Opener used to play audio files. Does it require a terminal ?
 pub const OPENER_AUDIO: (&str, bool) = ("mocp", true);
 /// Program used to to display images. Does it require a terminal ?

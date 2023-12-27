@@ -5,7 +5,7 @@ use clap::Parser;
 use serde_yaml;
 use tuikit::attr::Color;
 
-use crate::common::is_program_in_path;
+use crate::common::{is_program_in_path, DEFAULT_TERMINAL_FLAG};
 use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 use crate::config::Bindings;
 use crate::config::Colorer;
@@ -18,6 +18,8 @@ use crate::config::Colorer;
 pub struct Config {
     /// The name of the terminal application. It should be installed properly.
     pub terminal: String,
+    /// terminal flag to run a command with the terminal emulator
+    pub terminal_flag: String,
     /// Configurable keybindings.
     pub binds: Bindings,
 }
@@ -28,6 +30,7 @@ impl Config {
         Ok(Self {
             terminal: DEFAULT_TERMINAL_APPLICATION.to_owned(),
             binds: Bindings::default(),
+            terminal_flag: DEFAULT_TERMINAL_FLAG.to_owned(),
         })
     }
     /// Updates the config from  a configuration content.
@@ -35,6 +38,7 @@ impl Config {
         self.binds.update_normal(&yaml["keys"]);
         self.binds.update_custom(&yaml["custom"]);
         self.update_terminal(&yaml["terminal"]);
+        self.update_terminal_flag(&yaml["terminal_emulator_flags"]);
         Ok(())
     }
 
@@ -47,6 +51,23 @@ impl Config {
             self.terminal = terminal_currently_used
         } else if let Some(configured_terminal) = yaml.as_str() {
             self.terminal = configured_terminal.to_owned()
+        }
+    }
+
+    fn update_terminal_flag(&mut self, terminal_flag: &serde_yaml::value::Value) {
+        let terminal = self.terminal();
+        if let Some(terminal_flag) = read_yaml_value(terminal_flag, terminal) {
+            self.terminal_flag = terminal_flag.as_str().to_owned();
+            crate::log_info!(
+                "updated terminal_flag for {terminal} using {tf}",
+                terminal = self.terminal,
+                tf = self.terminal_flag
+            );
+        } else {
+            crate::log_info!(
+                "Couldn't find {terminal} in config file. Using default",
+                terminal = self.terminal
+            )
         }
     }
 

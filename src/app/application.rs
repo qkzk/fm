@@ -59,7 +59,7 @@ impl FM {
         let term = Arc::new(init_term()?);
         let event_reader = EventReader::new(Arc::clone(&term));
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
-        let opener = Opener::new(&config.terminal);
+        let opener = Opener::new(&config.terminal, &config.terminal_flag);
         let display = Display::new(Arc::clone(&term));
         let status = Status::new(display.height()?, Arc::clone(&term), opener)?;
         let refresher = Refresher::new(term);

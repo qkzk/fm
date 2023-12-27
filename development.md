@@ -727,6 +727,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Display the number of entries as the size of a directory instead of '-'. Might affect performance for very large directories.
 - Enable logging with `-l` or `--log`. Nothing is logged anywhere without this flag.
 - FIX: Tree mode. Unfolding a directory unfold its children
+- BREAKING: Use specific argument to run a command at startup for most common terminal emulators from config file.
+  To make this work, it will require the user to update its config file by copying the last part: "terminal_emulator_flags:..."
 
 #### Changelog
 
@@ -761,6 +763,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] display number of matches while searching
 - [x] FIX: Filter isn't shown and does nothing in tree mode
 - [x] FIX: unfold shouldn't unfold every child
+- [x] don't use -e for every terminal. See [rifle.conf](https://github.com/ranger/ranger/blob/136416c7e2ecc27315fe2354ecadfe09202df7dd/ranger/config/rifle.conf#L244)
 
 ## TODO
 
