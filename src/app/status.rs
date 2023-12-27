@@ -344,6 +344,7 @@ impl Status {
 
     /// Check if the second pane should display a preview and force it.
     pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
+        log_info!("update_second_pane_for_preview");
         if self.index == 0 && self.display_settings.preview() {
             self.set_second_pane_for_preview()?;
         };
@@ -353,10 +354,12 @@ impl Status {
     /// Force preview the selected file of the first pane in the second pane.
     /// Doesn't check if it has do.
     pub fn set_second_pane_for_preview(&mut self) -> Result<()> {
+        log_info!("set_second_pane_for_preview enter");
         if !Session::display_wide_enough(self.term_size()?.0) {
             self.tabs[1].preview = Preview::empty();
             return Ok(());
         }
+        log_info!("set_second_pane_for_preview alive");
 
         self.tabs[1].set_display_mode(Display::Preview);
         self.set_edit_mode(1, Edit::Nothing)?;
@@ -370,6 +373,7 @@ impl Status {
         self.tabs[1].preview = preview.unwrap_or_default();
 
         self.tabs[1].window.reset(self.tabs[1].preview.len());
+        log_info!("set_second_pane_for_preview exit");
         Ok(())
     }
 
@@ -383,7 +387,7 @@ impl Status {
         let len = self.menu.len(edit_mode);
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
-        self.refresh_view()
+        self.refresh_status()
     }
 
     fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Edit) -> Result<()> {
