@@ -764,8 +764,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: Filter isn't shown and does nothing in tree mode
 - [x] FIX: unfold shouldn't unfold every child
 - [x] don't use -e for every terminal. See [rifle.conf](https://github.com/ranger/ranger/blob/136416c7e2ecc27315fe2354ecadfe09202df7dd/ranger/config/rifle.conf#L244)
+- [ ] any kind of cd should reset searched
 - [ ] cache previews
-  - [ ] where to store them ?
+  - [ ] refactor ueberzug usage, associate it to tab and use a ref
+  - [ ] previews can't be clone since I create an ueberzug::Ueberzug instance every time and it can't be cloned.
+  - [ ] read the preview from display through preview maps
+  - [ ] where to store them ? status
   - [ ] hashmap (pathbuf, preview)
   - [ ] only in second pane as preview
   - [ ] after a _movement_ update the cache
