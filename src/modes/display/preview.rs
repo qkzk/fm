@@ -25,7 +25,7 @@ use crate::modes::FileKind;
 use crate::modes::Tree;
 use crate::modes::Users;
 
-use crate::common::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
+use crate::common::{clear_tmp_file, is_program_in_path, path_to_string};
 use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_log};
 use crate::modes::FilterKind;
 use crate::modes::SortKind;
@@ -772,10 +772,8 @@ pub enum UeberzugKind {
 /// the preview can't be placed correctly in embeded terminals.
 pub struct Ueberzug {
     original: PathBuf,
-    path: String,
-    filename: String,
+    pub path: String,
     kind: UeberzugKind,
-    ueberzug: ueberzug::Ueberzug,
     length: usize,
     pub index: usize,
 }
@@ -785,9 +783,7 @@ impl Ueberzug {
         Self {
             original,
             path: THUMBNAIL_PATH.to_owned(),
-            filename: "thumbnail".to_owned(),
             kind,
-            ueberzug: ueberzug::Ueberzug::new(),
             length: 0,
             index: 0,
         }
@@ -805,7 +801,6 @@ impl Ueberzug {
     }
 
     fn image_thumbnail(img_path: &Path) -> Result<Self> {
-        let filename = filename_from_path(img_path)?.to_owned();
         let path = img_path
             .to_str()
             .context("ueberzug: couldn't parse the path into a string")?
@@ -813,9 +808,7 @@ impl Ueberzug {
         Ok(Self {
             original: img_path.to_owned(),
             path,
-            filename,
             kind: UeberzugKind::Image,
-            ueberzug: ueberzug::Ueberzug::new(),
             length: 0,
             index: 0,
         })
@@ -978,22 +971,6 @@ impl Ueberzug {
             Self::make_pdf_thumbnail(&self.original, self.index)?;
         }
         Ok(())
-    }
-
-    /// Draw the image with ueberzug in the current window.
-    /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
-    /// The whole struct instance is dropped when the preview is reset and the image is deleted.
-    pub fn ueberzug(&self, x: u16, y: u16, width: u16, height: u16) {
-        self.ueberzug.draw(&ueberzug::UeConf {
-            identifier: &self.filename,
-            path: &self.path,
-            x,
-            y,
-            width: Some(width),
-            height: Some(height),
-            scaler: Some(ueberzug::Scalers::FitContain),
-            ..Default::default()
-        });
     }
 }
 

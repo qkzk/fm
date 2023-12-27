@@ -61,6 +61,7 @@ impl EventAction {
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(status: &mut Status) -> Result<()> {
+        status.current_tab().ueber_clear();
         if matches!(status.current_tab().display_mode, Display::Preview) {
             status.tabs[status.index].set_display_mode(Display::Directory);
         }
@@ -136,6 +137,7 @@ impl EventAction {
     /// more details on previewinga file.
     /// Does nothing if the directory is empty.
     pub fn preview(tab: &mut Tab) -> Result<()> {
+        tab.ueber_clear();
         tab.make_preview()
     }
 

@@ -173,6 +173,8 @@ pub const TRASH_CONFIRM_LINE: &str = "Enter: restore the selected file  --  x: d
 pub const MEDIAINFO: &str = "mediainfo";
 /// ueberzug (used to preview images, videos & fonts)
 pub const UEBERZUG: &str = "ueberzug";
+/// ueberzug identifier used to draw & clear images
+pub const UEBERZUG_IDENTIFIER: &str = "thumbnail";
 /// fontimage (used to preview fonts)
 pub const FONTIMAGE: &str = "fontimage";
 /// ffmpeg (used to preview video thumbnail)

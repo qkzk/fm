@@ -469,7 +469,9 @@ impl<'a> WinMain<'a> {
     fn draw_ueberzug(&self, image: &Ueberzug, canvas: &mut dyn Canvas) -> Result<()> {
         let (width, height) = canvas.size()?;
         image.match_index()?;
-        image.ueberzug(
+        self.tab.ueber_clear();
+        self.tab.ueber_draw(
+            &image.path,
             self.attributes.x_position as u16 + 2,
             3,
             width as u16 - 2,

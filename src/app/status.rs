@@ -321,6 +321,8 @@ impl Status {
     pub fn refresh_tabs(&mut self) -> Result<()> {
         self.menu.input.reset();
         self.menu.completion.reset();
+        self.tabs[0].ueber_clear();
+        self.tabs[1].ueber_clear();
         self.tabs[0].refresh_and_reselect_file()?;
         self.tabs[1].refresh_and_reselect_file()
     }
@@ -378,12 +380,13 @@ impl Status {
         if index > 1 {
             return Ok(());
         }
+        self.tabs[index].ueber_clear();
         self.set_height_for_edit_mode(index, edit_mode)?;
         self.tabs[index].edit_mode = edit_mode;
         let len = self.menu.len(edit_mode);
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
-        self.refresh_view()
+        self.refresh_status()
     }
 
     fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Edit) -> Result<()> {

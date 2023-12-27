@@ -3,9 +3,11 @@ use std::cmp::min;
 use std::path;
 
 use anyhow::{Context, Result};
+use ueberzug::Ueberzug;
 
 use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index, set_clipboard,
+    UEBERZUG_IDENTIFIER,
 };
 use crate::io::Args;
 use crate::modes::Content;
@@ -92,6 +94,8 @@ pub struct Tab {
     pub history: History,
     /// Users & groups
     pub users: Users,
+    /// Ueberzug instance used to draw images in previews
+    ueber: Ueberzug,
 }
 
 impl Tab {
@@ -128,6 +132,7 @@ impl Tab {
         let searched = None;
         let index = directory.select_file(&path);
         let tree = Tree::default();
+        let ueber = Ueberzug::new();
 
         window.scroll_to(index);
         Ok(Self {
@@ -142,6 +147,7 @@ impl Tab {
             users,
             tree,
             settings,
+            ueber,
         })
     }
 
@@ -335,6 +341,7 @@ impl Tab {
 
     /// Reset the preview to empty. Used to save some memory.
     fn reset_preview(&mut self) {
+        self.ueber_clear();
         if matches!(self.display_mode, Display::Preview) {
             self.preview = Preview::empty();
         }
@@ -760,5 +767,26 @@ impl Tab {
     pub fn normal_search_next(&mut self, searched: &str) {
         let next_index = (self.directory.index + 1) % self.directory.content.len();
         self.search_from(searched, next_index);
+    }
+
+    /// Draw an image (surelly a file preview) with Ueberzug.
+    /// All images share the same identifier so it's not required.
+    pub fn ueber_draw(&self, path: &str, x: u16, y: u16, width: u16, height: u16) {
+        self.ueber.draw(&ueberzug::UeConf {
+            identifier: UEBERZUG_IDENTIFIER,
+            path,
+            x,
+            y,
+            width: Some(width),
+            height: Some(height),
+            scaler: Some(ueberzug::Scalers::FitContain),
+            ..Default::default()
+        });
+    }
+
+    /// Clear the Ueberzug image, if any.
+    /// All Ueberzug images share the same identifier so it's not required.
+    pub fn ueber_clear(&self) {
+        self.ueber.clear(UEBERZUG_IDENTIFIER);
     }
 }
