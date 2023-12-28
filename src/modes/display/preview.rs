@@ -203,7 +203,7 @@ impl Preview {
             FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
                 Ok(Self::fifo_chardevice(file_info))
             }
-            _ => Err(anyhow!("new preview: can't preview this filekind",)),
+            _ => Ok(Preview::default()),
         }
     }
 
