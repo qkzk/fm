@@ -131,7 +131,8 @@ impl Preview {
     /// it to the display method.
     /// Directories aren't handled there since we need more arguments to create
     /// their previews.
-    pub fn file(file_info: &FileInfo) -> Result<Self> {
+    pub fn file(path: &Path) -> Result<Self> {
+        let file_info = FileInfo::new(path, &Users::default())?;
         clear_tmp_file();
         match file_info.file_kind {
             FileKind::Directory => Err(anyhow!(
@@ -194,14 +195,14 @@ impl Preview {
                     }
                     _ => match Self::preview_syntaxed(extension, &file_info.path) {
                         Some(syntaxed_preview) => Ok(syntaxed_preview),
-                        None => Self::preview_text_or_binary(file_info),
+                        None => Self::preview_text_or_binary(&file_info),
                     },
                 }
             }
-            FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(file_info)),
-            FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(file_info)),
+            FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(&file_info)),
+            FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(&file_info)),
             FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
-                Ok(Self::fifo_chardevice(file_info))
+                Ok(Self::fifo_chardevice(&file_info))
             }
             _ => Err(anyhow!("new preview: can't preview this filekind",)),
         }

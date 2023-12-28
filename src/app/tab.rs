@@ -332,7 +332,7 @@ impl Tab {
         match file_info.file_kind {
             FileKind::NormalFile => {
                 if !self.cache_previews.contains(&file_info.path) {
-                    self.cache_previews.update(&file_info)?;
+                    self.cache_previews.update(&file_info.path)?;
                 }
                 let preview = match self.cache_previews.read(&file_info.path) {
                     Some(preview) => preview.to_owned(),
@@ -563,10 +563,10 @@ impl Tab {
     pub fn update_next_prev(&mut self) {
         let next_index = (self.directory.index + 1) % self.directory.len();
         let next_fileinfo = &self.directory.content()[next_index];
-        let _ = self.cache_previews.update(next_fileinfo);
+        let _ = self.cache_previews.update(&next_fileinfo.path);
         let prev_index = self.directory.index.checked_sub(1).unwrap_or_default();
         let prev_fileinfo = &self.directory.content()[prev_index];
-        let _ = self.cache_previews.update(prev_fileinfo);
+        let _ = self.cache_previews.update(&prev_fileinfo.path);
     }
 
     /// Move to the top of the current directory.

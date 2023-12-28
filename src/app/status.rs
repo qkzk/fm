@@ -369,7 +369,7 @@ impl Status {
             FileKind::Directory => Preview::directory(&fileinfo, &self.tabs[0].users),
             _ => {
                 if !self.tabs[0].cache_previews.contains(&fileinfo.path) {
-                    self.tabs[0].cache_previews.update(&fileinfo)?;
+                    self.tabs[0].cache_previews.update(&fileinfo.path)?;
                 }
                 Ok(self.tabs[0]
                     .cache_previews

@@ -3,7 +3,6 @@ use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::Result;
 
-use crate::modes::FileInfo;
 use crate::modes::Preview;
 
 #[derive(Default)]
@@ -33,8 +32,7 @@ impl CachePreviews {
     ///
     /// May fail if the preview can't be created.
     /// See [`crate::modes::Preview`] for more information.
-    pub fn update(&mut self, file: &FileInfo) -> Result<bool> {
-        let path = &file.path.to_path_buf();
+    pub fn update(&mut self, path: &Path) -> Result<bool> {
         if self.previews.get(path).is_some() {
             return Ok(false);
         }
@@ -42,7 +40,7 @@ impl CachePreviews {
             self.remove_last();
         }
         self.paths.insert(0, path.to_owned());
-        let preview = Preview::file(file)?;
+        let preview = Preview::file(path)?;
         self.previews.insert(path.to_owned(), preview);
 
         Ok(true)
