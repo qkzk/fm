@@ -1,8 +1,10 @@
 use std::borrow::Borrow;
 use std::cmp::min;
 use std::path;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use tokio::sync::{Mutex, MutexGuard};
 use ueberzug::Ueberzug;
 
 use crate::common::{
@@ -97,7 +99,7 @@ pub struct Tab {
     /// Ueberzug instance used to draw images in previews
     ueber: Ueberzug,
     /// Cache preview
-    pub cache_previews: CachePreviews,
+    pub cache_previews: Arc<Mutex<CachePreviews>>,
 }
 
 impl Tab {
@@ -135,7 +137,7 @@ impl Tab {
         let index = directory.select_file(&path);
         let tree = Tree::default();
         let ueber = Ueberzug::new();
-        let cache_previews = CachePreviews::default();
+        let cache_previews = Arc::new(Mutex::new(CachePreviews::default()));
 
         window.scroll_to(index);
         Ok(Self {
@@ -321,6 +323,10 @@ impl Tab {
         Ok(())
     }
 
+    pub async fn access_cache(&self) -> MutexGuard<CachePreviews> {
+        self.cache_previews.lock().await
+    }
+
     /// Creates a new preview for the selected file.
     pub fn make_preview(&mut self) -> Result<()> {
         if self.directory.is_empty() {
@@ -331,13 +337,18 @@ impl Tab {
         };
         match file_info.file_kind {
             FileKind::NormalFile => {
-                if !self.cache_previews.contains(&file_info.path) {
-                    self.cache_previews.update(&file_info.path)?;
+                let mut cache = tokio::runtime::Runtime::new()
+                    .unwrap()
+                    .block_on(self.cache_previews.lock());
+                if !cache.contains(&file_info.path) {
+                    cache.update(&file_info.path)?;
                 }
-                let preview = match self.cache_previews.read(&file_info.path) {
+                let opt_preview = cache.read(&file_info.path).to_owned();
+                let preview = match opt_preview {
                     Some(preview) => preview.to_owned(),
-                    None => Preview::empty(),
+                    None => Preview::default(),
                 };
+                drop(cache);
                 self.set_display_mode(Display::Preview);
                 self.window.reset(preview.len());
                 self.preview = preview;
@@ -561,12 +572,22 @@ impl Tab {
     }
 
     pub fn update_next_prev(&mut self) {
-        let next_index = (self.directory.index + 1) % self.directory.len();
-        let next_fileinfo = &self.directory.content()[next_index];
-        let _ = self.cache_previews.update(&next_fileinfo.path);
-        let prev_index = self.directory.index.checked_sub(1).unwrap_or_default();
-        let prev_fileinfo = &self.directory.content()[prev_index];
-        let _ = self.cache_previews.update(&prev_fileinfo.path);
+        let index = self.directory.index;
+        let mut next_index = index;
+        let mut prev_index = index;
+        let mut cache = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(self.access_cache());
+        for _ in 0..10 {
+            next_index = (next_index + 1) % self.directory.len();
+            let next_fileinfo = &self.directory.content()[next_index];
+            let _ = cache.update(&next_fileinfo.path);
+        }
+        for _ in 0..10 {
+            prev_index = prev_index.checked_sub(1).unwrap_or_default();
+            let prev_fileinfo = &self.directory.content()[prev_index];
+            let _ = cache.update(&prev_fileinfo.path);
+        }
     }
 
     /// Move to the top of the current directory.

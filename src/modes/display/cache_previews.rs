@@ -1,9 +1,22 @@
 use std::path::Path;
+use std::sync::Arc;
 use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::Result;
+use tokio::sync::{mpsc, Mutex};
 
 use crate::modes::Preview;
+
+pub async fn update_cache(
+    mut rx: mpsc::Receiver<PathBuf>,
+    cache_previews: Arc<Mutex<CachePreviews>>,
+) -> Result<()> {
+    while let Some(path) = rx.recv().await {
+        let mut cache = cache_previews.lock().await;
+        cache.update(&path)?;
+    }
+    Ok(())
+}
 
 #[derive(Default)]
 pub struct CachePreviews {
@@ -12,7 +25,7 @@ pub struct CachePreviews {
 }
 
 impl CachePreviews {
-    const PREVIEWS_CAPACITY: usize = 5;
+    const PREVIEWS_CAPACITY: usize = 100;
 
     pub fn contains(&self, path: &Path) -> bool {
         let res = self.previews.contains_key(path);

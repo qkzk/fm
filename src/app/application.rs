@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use tokio::sync::Mutex;
 use tuikit::prelude::Event;
 
 use crate::app::Refresher;
@@ -115,11 +116,10 @@ impl FM {
     }
 
     pub fn cache_previews(&mut self) {
-        if matches!(self.status.tabs[0].display_mode, DisplayMode::Directory) {
+        if self.status.display_settings.preview()
+            && matches!(self.status.tabs[0].display_mode, DisplayMode::Directory)
+        {
             self.status.tabs[0].update_next_prev();
-        }
-        if matches!(self.status.tabs[1].display_mode, DisplayMode::Directory) {
-            self.status.tabs[1].update_next_prev();
         }
     }
 

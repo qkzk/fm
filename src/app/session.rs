@@ -86,14 +86,17 @@ impl Session {
         session_bool
     }
 
+    /// use two panes ?
     pub fn dual(&self) -> bool {
         self.dual
     }
 
+    /// do we display all info or only the filenames ?
     pub fn metadata(&self) -> bool {
         self.metadata
     }
 
+    /// use the second pane to preview
     pub fn preview(&self) -> bool {
         self.preview
     }

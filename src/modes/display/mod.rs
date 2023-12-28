@@ -7,7 +7,7 @@ mod skim;
 mod tree;
 mod users;
 
-pub use cache_previews::CachePreviews;
+pub use cache_previews::{update_cache, CachePreviews};
 pub use content_window::ContentWindow;
 pub use directory::{files_collection, human_size, read_symlink_dest, shorten_path, Directory};
 pub use fileinfo::{

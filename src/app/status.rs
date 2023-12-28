@@ -368,11 +368,13 @@ impl Status {
         let preview = match fileinfo.file_kind {
             FileKind::Directory => Preview::directory(&fileinfo, &self.tabs[0].users),
             _ => {
-                if !self.tabs[0].cache_previews.contains(&fileinfo.path) {
-                    self.tabs[0].cache_previews.update(&fileinfo.path)?;
+                let mut cache0 = tokio::runtime::Runtime::new()
+                    .unwrap()
+                    .block_on(self.tabs[0].access_cache());
+                if !cache0.contains(&fileinfo.path) {
+                    cache0.update(&fileinfo.path)?;
                 }
-                Ok(self.tabs[0]
-                    .cache_previews
+                Ok(cache0
                     .read(&fileinfo.path)
                     .context("nothing in cache...")?
                     .to_owned())
