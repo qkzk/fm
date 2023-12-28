@@ -445,7 +445,8 @@ impl Tab {
             self.make_tree(Some(self.settings.sort_kind))?;
         }
         self.window.reset(self.directory.content.len());
-        std::env::set_current_dir(path)?;
+        crate::log_info!("done cd: {path}", path = path.display());
+        let _ = std::env::set_current_dir(path);
         Ok(())
     }
 

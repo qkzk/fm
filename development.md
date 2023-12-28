@@ -765,6 +765,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: unfold shouldn't unfold every child
 - [x] don't use -e for every terminal. See [rifle.conf](https://github.com/ranger/ranger/blob/136416c7e2ecc27315fe2354ecadfe09202df7dd/ranger/config/rifle.conf#L244)
 - [x] FIX: preview a symlink crashes the app
+- [ ] FIX: opening an inaccessible dir crashes the app
+  - [ ] std set env crashes, don't ? it
+  - [ ] prevent entering like ranger does
+  - [ ] metadata le chemin avant. is_dir, metadata.permissions.readonly, metadata.permissions.writeonly
+  - [ ] fix toutes les écritures, check avant. Rename, Copy, Move, Delete, Trash, Untrash, Compress, Decompress
+- [ ] navigating in menus erase display - can't reproduce ?
 
 ## TODO
 
