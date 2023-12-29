@@ -435,6 +435,13 @@ impl Tab {
     /// Reset the window.
     /// Add the last path to the history of visited paths.
     pub fn cd(&mut self, path: &path::Path) -> Result<()> {
+        match std::env::set_current_dir(path) {
+            Ok(()) => (),
+            Err(error) => {
+                crate::log_info!("can't reach {path}. Error {error}", path = path.display());
+                return Ok(());
+            }
+        }
         self.history.push(
             &self.directory.path,
             &self.directory.selected().context("")?.path,
@@ -446,7 +453,6 @@ impl Tab {
         }
         self.window.reset(self.directory.content.len());
         crate::log_info!("done cd: {path}", path = path.display());
-        let _ = std::env::set_current_dir(path);
         Ok(())
     }
 
