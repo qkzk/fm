@@ -86,7 +86,7 @@ impl LeaveMode {
     /// Restore a file from the trash if possible.
     /// Parent folders are created if needed.
     pub fn trash(status: &mut Status) -> Result<()> {
-        status.menu.trash.restore()?;
+        let _ = status.menu.trash.restore();
         status.reset_edit_mode()?;
         status.current_tab_mut().refresh_view()?;
         status.update_second_pane_for_preview()
@@ -192,7 +192,13 @@ impl LeaveMode {
     pub fn rename(status: &mut Status) -> Result<()> {
         let old_path = status.current_tab().current_file()?.path;
         let new_name = status.menu.input.string();
-        rename(old_path, new_name)?;
+        match rename(&old_path, &new_name) {
+            Ok(()) => (),
+            Err(error) => log_info!(
+                "Error renaming {old_path} to {new_name}. Error: {error}",
+                old_path = old_path.display()
+            ),
+        }
         status.current_tab_mut().refresh_view()
     }
 
@@ -200,7 +206,10 @@ impl LeaveMode {
     /// Nothing is done if the file already exists.
     /// Filename is sanitized before processing.
     pub fn new_file(status: &mut Status) -> Result<()> {
-        NodeCreation::Newfile.create(status)?;
+        match NodeCreation::Newfile.create(status) {
+            Ok(()) => (),
+            Err(error) => log_info!("Error creating file. Error: {error}",),
+        }
         status.refresh_tabs()
     }
 
@@ -210,7 +219,10 @@ impl LeaveMode {
     /// ie. the user can create `newdir` or `newdir/newfolder`.
     /// Directory name is sanitized before processing.
     pub fn new_dir(status: &mut Status) -> Result<()> {
-        NodeCreation::Newdir.create(status)?;
+        match NodeCreation::Newdir.create(status) {
+            Ok(()) => (),
+            Err(error) => log_info!("Error creating directory. Error: {error}",),
+        }
         status.refresh_tabs()
     }
 
@@ -345,10 +357,15 @@ impl LeaveMode {
         if files_with_relative_paths.is_empty() {
             return Ok(());
         }
-        status
+        match status
             .menu
             .compression
             .compress(files_with_relative_paths, here)
+        {
+            Ok(()) => (),
+            Err(error) => log_info!("Error compressing files. Error: {error}"),
+        }
+        Ok(())
     }
 
     /// Open a menu with most common actions

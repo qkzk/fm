@@ -729,6 +729,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - FIX: Tree mode. Unfolding a directory unfold its children
 - BREAKING: Use specific argument to run a command at startup for most common terminal emulators from config file.
   To make this work, it will require the user to update its config file by copying the last part: "terminal_emulator_flags:..."
+- FIX: entering an inaccessible dir or writing in any way to a readonly dir shouldn't crash the app anymore...
 
 #### Changelog
 
@@ -765,11 +766,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: unfold shouldn't unfold every child
 - [x] don't use -e for every terminal. See [rifle.conf](https://github.com/ranger/ranger/blob/136416c7e2ecc27315fe2354ecadfe09202df7dd/ranger/config/rifle.conf#L244)
 - [x] FIX: preview a symlink crashes the app
-- [ ] FIX: opening an inaccessible dir crashes the app
-  - [ ] std set env crashes, don't ? it
-  - [ ] prevent entering like ranger does
-  - [ ] metadata le chemin avant. is_dir, metadata.permissions.readonly, metadata.permissions.writeonly
-  - [ ] fix toutes les écritures, check avant. Rename, Copy, Move, Delete, Trash, Untrash, Compress, Decompress
+- [x] FIX: opening an inaccessible dir crashes the app
+  - [x] check std set env crashes before
+  - [x] check all writes
+    - [x] Rename,
+    - [x] Copy, Move,
+    - [x] Delete,
+    - [x] Trash, Untrash,
+    - [x] Compress,
+    - [x] Decompress
 - [ ] navigating in menus erase display - can't reproduce ?
 
 ## TODO

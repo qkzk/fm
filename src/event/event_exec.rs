@@ -851,7 +851,7 @@ impl EventAction {
 
         status.menu.trash.update()?;
         for flagged in status.menu.flagged.content.iter() {
-            status.menu.trash.trash(flagged)?;
+            let _ = status.menu.trash.trash(flagged);
         }
         status.menu.flagged.clear();
         status.current_tab_mut().refresh_view()?;

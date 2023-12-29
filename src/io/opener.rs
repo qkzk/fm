@@ -362,11 +362,11 @@ impl Opener {
     /// Only files opened with an external opener are supported.
     pub fn open_multiple(&self, paths: &[PathBuf]) -> Result<()> {
         for (external, grouped_paths) in &self.regroup_per_opener(paths) {
-            external.open(
+            let _ = external.open(
                 &Self::collect_paths_as_str(grouped_paths),
                 &self.terminal,
                 &self.terminal_flag,
-            )?;
+            );
         }
         Ok(())
     }
