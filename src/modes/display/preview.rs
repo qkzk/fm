@@ -1038,7 +1038,7 @@ pub struct TreePreview {
 }
 
 impl TreePreview {
-    pub fn new(path: std::rc::Rc<Path>, users: &Users) -> Self {
+    pub fn new(path: std::sync::Arc<Path>, users: &Users) -> Self {
         let tree = Tree::new(
             path,
             4,

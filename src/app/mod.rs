@@ -1,4 +1,5 @@
 mod application;
+mod displayer;
 mod header_footer;
 mod internal_settings;
 mod refresher;
@@ -7,6 +8,7 @@ mod status;
 mod tab;
 
 pub use application::FM;
+pub use displayer::Displayer;
 pub use header_footer::{ClickableLine, Footer, Header};
 pub use internal_settings::InternalSettings;
 pub use refresher::Refresher;

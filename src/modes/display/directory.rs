@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::fs::read_dir;
 use std::iter::Enumerate;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 
@@ -20,7 +20,7 @@ use crate::{impl_content, impl_selectable, log_info};
 /// the "display all files including hidden" flag and the key to sort files.
 pub struct Directory {
     /// The current path
-    pub path: Rc<Path>,
+    pub path: Arc<Path>,
     /// A vector of FileInfo with every file in current path
     pub content: Vec<FileInfo>,
     /// The index of the selected file.
@@ -33,7 +33,7 @@ impl Directory {
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
     pub fn new(path: &Path, users: &Users, filter: &FilterKind, show_hidden: bool) -> Result<Self> {
-        let path = Rc::from(path);
+        let path = Arc::from(path);
         let mut content = Self::files(&path, show_hidden, filter, users)?;
         let sort_kind = SortKind::default();
         sort_kind.sort(&mut content);
@@ -70,7 +70,7 @@ impl Directory {
             self.content[0].select()
         }
         self.used_space = get_used_space(&self.content);
-        self.path = Rc::from(path);
+        self.path = Arc::from(path);
         Ok(())
     }
 
@@ -227,7 +227,7 @@ impl Directory {
     fn find_jump_index(&self, jump_target: &Path) -> Option<usize> {
         self.content
             .iter()
-            .position(|file| <Rc<Path> as Borrow<Path>>::borrow(&file.path) == jump_target)
+            .position(|file| <Arc<Path> as Borrow<Path>>::borrow(&file.path) == jump_target)
     }
 
     /// Select the file from its path. Returns its index in content.

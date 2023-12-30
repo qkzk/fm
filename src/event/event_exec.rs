@@ -180,7 +180,7 @@ impl EventAction {
             return Ok(());
         }
         if let Some(parent) = status.current_tab().directory.path.parent() {
-            if sel_path == std::rc::Rc::from(parent) {
+            if sel_path == std::sync::Arc::from(parent) {
                 return Ok(());
             }
         }

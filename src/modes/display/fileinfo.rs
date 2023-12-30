@@ -127,30 +127,30 @@ impl SizeColumn {
 #[derive(Clone, Debug)]
 pub struct FileInfo {
     /// Full path of the file
-    pub path: std::rc::Rc<path::Path>,
+    pub path: std::sync::Arc<path::Path>,
     /// Filename
-    pub filename: std::rc::Rc<str>,
+    pub filename: std::sync::Arc<str>,
     /// File size as a `String`, already human formated.
     /// For char devices and block devices we display major & minor like ls.
     pub size_column: SizeColumn,
     /// True size of a file, not formated
     pub true_size: u64,
     /// Owner name of the file.
-    pub owner: std::rc::Rc<str>,
+    pub owner: std::sync::Arc<str>,
     /// Group name of the file.
-    pub group: std::rc::Rc<str>,
+    pub group: std::sync::Arc<str>,
     /// System time of last modification
-    pub system_time: std::rc::Rc<str>,
+    pub system_time: std::sync::Arc<str>,
     /// Is this file currently selected ?
     pub is_selected: bool,
     /// What kind of file is this ?
     pub file_kind: FileKind<Valid>,
     /// Extension of the file. `""` for a directory.
-    pub extension: std::rc::Rc<str>,
+    pub extension: std::sync::Arc<str>,
     /// A formated filename where the "kind" of file
     /// (directory, char device, block devive, fifo, socket, normal)
     /// is prepend to the name, allowing a "sort by kind" method.
-    pub kind_format: std::rc::Rc<str>,
+    pub kind_format: std::sync::Arc<str>,
 }
 
 impl FileInfo {
@@ -158,7 +158,7 @@ impl FileInfo {
         let filename = extract_filename(path)?;
         let metadata = symlink_metadata(path)?;
         let true_size = true_size(path, &metadata);
-        let path = std::rc::Rc::from(path);
+        let path = std::sync::Arc::from(path);
         let owner = extract_owner(&metadata, users);
         let group = extract_group(&metadata, users);
         let system_time = extract_datetime(&metadata)?;
@@ -193,7 +193,7 @@ impl FileInfo {
     /// The filename is used when we create the fileinfo for "." and ".." in every folder.
     pub fn from_path_with_name(path: &path::Path, filename: &str, users: &Users) -> Result<Self> {
         let mut file_info = Self::new(path, users)?;
-        file_info.filename = std::rc::Rc::from(filename);
+        file_info.filename = std::sync::Arc::from(filename);
         file_info.kind_format = filekind_and_filename(filename, &file_info.file_kind);
         Ok(file_info)
     }
@@ -203,7 +203,7 @@ impl FileInfo {
     }
 
     /// String representation of file permissions
-    pub fn permissions(&self) -> Result<std::rc::Rc<str>> {
+    pub fn permissions(&self) -> Result<std::sync::Arc<str>> {
         Ok(extract_permissions_string(&self.metadata()?))
     }
 
@@ -279,7 +279,7 @@ impl FileInfo {
                 let name = if let Ok(name) = extract_filename(&self.path) {
                     name
                 } else {
-                    std::rc::Rc::from("")
+                    std::sync::Arc::from("")
                 };
                 format!("/{name} ")
             }
@@ -368,30 +368,30 @@ pub fn is_not_hidden(entry: &DirEntry) -> Result<bool> {
     Ok(is_hidden)
 }
 
-fn extract_filename(path: &path::Path) -> Result<std::rc::Rc<str>> {
+fn extract_filename(path: &path::Path) -> Result<std::sync::Arc<str>> {
     let s = path
         .file_name()
         .unwrap_or_default()
         .to_str()
         .context(format!("Couldn't read filename of {p}", p = path.display()))?;
-    Ok(std::rc::Rc::from(s))
+    Ok(std::sync::Arc::from(s))
 }
 
 /// Returns the modified time.
-fn extract_datetime(metadata: &Metadata) -> Result<std::rc::Rc<str>> {
+fn extract_datetime(metadata: &Metadata) -> Result<std::sync::Arc<str>> {
     let datetime: DateTime<Local> = metadata.modified()?.into();
-    Ok(std::rc::Rc::from(
+    Ok(std::sync::Arc::from(
         format!("{}", datetime.format("%Y/%m/%d %T")).as_str(),
     ))
 }
 
 /// Reads the permission and converts them into a string.
-fn extract_permissions_string(metadata: &Metadata) -> std::rc::Rc<str> {
+fn extract_permissions_string(metadata: &Metadata) -> std::sync::Arc<str> {
     let mode = (metadata.mode() & MAX_MODE) as usize;
     let s_o = convert_octal_mode(mode >> 6);
     let s_g = convert_octal_mode((mode >> 3) & 7);
     let s_a = convert_octal_mode(mode & 7);
-    std::rc::Rc::from(format!("{s_o}{s_a}{s_g}").as_str())
+    std::sync::Arc::from(format!("{s_o}{s_a}{s_g}").as_str())
 }
 
 /// Convert an integer like `Oo7` into its string representation like `"rwx"`
@@ -402,20 +402,20 @@ pub fn convert_octal_mode(mode: usize) -> &'static str {
 /// Reads the owner name and returns it as a string.
 /// If it's not possible to get the owner name (happens if the owner exists on a remote machine but not on host),
 /// it returns the uid as a  `Result<String>`.
-fn extract_owner(metadata: &Metadata, users: &Users) -> std::rc::Rc<str> {
+fn extract_owner(metadata: &Metadata, users: &Users) -> std::sync::Arc<str> {
     match users.get_user_by_uid(metadata.uid()) {
-        Some(name) => std::rc::Rc::from(name.as_str()),
-        None => std::rc::Rc::from(format!("{}", metadata.uid()).as_str()),
+        Some(name) => std::sync::Arc::from(name.as_str()),
+        None => std::sync::Arc::from(format!("{}", metadata.uid()).as_str()),
     }
 }
 
 /// Reads the group name and returns it as a string.
 /// If it's not possible to get the group name (happens if the group exists on a remote machine but not on host),
 /// it returns the gid as a  `Result<String>`.
-fn extract_group(metadata: &Metadata, users: &Users) -> std::rc::Rc<str> {
+fn extract_group(metadata: &Metadata, users: &Users) -> std::sync::Arc<str> {
     match users.get_group_by_gid(metadata.gid()) {
-        Some(name) => std::rc::Rc::from(name.as_str()),
-        None => std::rc::Rc::from(format!("{}", metadata.gid()).as_str()),
+        Some(name) => std::sync::Arc::from(name.as_str()),
+        None => std::sync::Arc::from(format!("{}", metadata.gid()).as_str()),
     }
 }
 
@@ -460,8 +460,8 @@ pub fn extract_extension(path: &path::Path) -> &str {
         .unwrap_or_default()
 }
 
-fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> std::rc::Rc<str> {
-    std::rc::Rc::from(format!("{c}{filename}", c = file_kind.sortable_char()).as_str())
+fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> std::sync::Arc<str> {
+    std::sync::Arc::from(format!("{c}{filename}", c = file_kind.sortable_char()).as_str())
 }
 
 /// true iff the path is a valid symlink (pointing to an existing file).

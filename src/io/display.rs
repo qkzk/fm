@@ -1,6 +1,6 @@
 use std::cmp::min;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, MutexGuard};
 
 use anyhow::{Context, Result};
 use tuikit::attr::{Attr, Color};
@@ -1175,6 +1175,7 @@ impl Display {
 
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>) -> Self {
+        log_info!("starting display...");
         Self { term }
     }
 
@@ -1195,15 +1196,15 @@ impl Display {
     /// The preview in preview mode.
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
-    pub fn display_all(&mut self, status: &Status) -> Result<()> {
+    pub fn display_all(&mut self, status: &MutexGuard<Status>) -> Result<()> {
         self.hide_cursor()?;
         self.term.clear()?;
 
         let (width, _) = self.term.term_size()?;
         if status.display_settings.dual() && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self.draw_dual_pane(status)?
+            self.draw_dual_pane(&status)?
         } else {
-            self.draw_single_pane(status)?
+            self.draw_single_pane(&status)?
         }
 
         Ok(self.term.present()?)
@@ -1284,17 +1285,17 @@ impl Display {
             first_selected,
             status.tabs[0].need_second_window(),
         );
-        let win_main_left = WinMain::new(status, 0, attributes_left);
+        let win_main_left = WinMain::new(&status, 0, attributes_left);
         let attributes_right = WinMainAttributes::new(
             width / 2,
             TabPosition::Right,
             second_selected,
             status.tabs[1].need_second_window(),
         );
-        let win_main_right = WinMain::new(status, 1, attributes_right);
-        let win_second_left = WinSecondary::new(status, 0);
-        let win_second_right = WinSecondary::new(status, 1);
-        let (border_left, border_right) = self.borders(status);
+        let win_main_right = WinMain::new(&status, 1, attributes_right);
+        let win_second_left = WinSecondary::new(&status, 0);
+        let win_second_right = WinSecondary::new(&status, 1);
+        let (border_left, border_right) = self.borders(&status);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let percent_right = self.size_for_second_window(&status.tabs[1])?;
         let hsplit = HSplit::default()

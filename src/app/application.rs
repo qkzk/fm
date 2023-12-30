@@ -1,19 +1,20 @@
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use anyhow::Result;
 use tuikit::error::TuikitError;
 use tuikit::prelude::Event;
 
+use crate::app::Displayer;
 use crate::app::Refresher;
 use crate::app::Status;
 use crate::common::CONFIG_PATH;
-use crate::common::{clear_tmp_file, init_term, print_on_quit};
+use crate::common::{clear_tmp_file, init_term};
 use crate::config::load_config;
 use crate::config::START_FOLDER;
 use crate::event::EventDispatcher;
 use crate::event::EventReader;
 use crate::io::set_loggers;
-use crate::io::Display;
 use crate::io::Opener;
 use crate::log_info;
 
@@ -26,13 +27,12 @@ pub struct FM {
     /// Associate the event to a method, modifing the status.
     event_dispatcher: EventDispatcher,
     /// Current status of the application. Mostly the filetrees
-    status: Status,
-    /// Responsible for the display on screen.
-    display: Display,
+    status: Arc<Mutex<Status>>,
     /// Refresher is used to force a refresh when a file has been modified externally.
     /// It sends an `Event::Key(Key::AltPageUp)` every 10 seconds.
     /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
     refresher: Refresher,
+    displayer: Displayer,
 }
 
 impl FM {
@@ -61,16 +61,17 @@ impl FM {
         let event_reader = EventReader::new(Arc::clone(&term));
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = Opener::new(&config.terminal, &config.terminal_flag);
-        let display = Display::new(Arc::clone(&term));
-        let status = Status::new(display.height()?, Arc::clone(&term), opener)?;
+        let status = Status::new(term.term_size()?.1, Arc::clone(&term), opener)?;
         let refresher = Refresher::new(term);
         drop(config);
+        let status = Arc::new(Mutex::new(status));
+        let displayer = Displayer::new(event_reader.term.clone(), Arc::clone(&status));
         Ok(Self {
             event_reader,
             event_dispatcher,
             status,
-            display,
             refresher,
+            displayer,
         })
     }
 
@@ -79,44 +80,45 @@ impl FM {
     /// # Errors
     ///
     /// May fail if the terminal crashes
-    pub fn peek_event(&self) -> Result<Event, TuikitError> {
+    fn peek_event(&self) -> Result<Event, TuikitError> {
         self.event_reader.peek_event()
     }
 
-    /// Force clear the display if the status requires it, then reset it in status.
-    ///
-    /// # Errors
-    ///
-    /// May fail if the terminal crashes
-    pub fn force_clear_if_needed(&mut self) -> Result<()> {
-        if self.status.internal_settings.force_clear {
-            self.display.force_clear()?;
-            self.status.internal_settings.force_clear = false;
+    /// Update itself, changing its status.
+    fn update(&mut self, event: Event) -> Result<()> {
+        let mut status = self.status.lock().unwrap();
+        self.event_dispatcher.dispatch(&mut status, event)?;
+        status.refresh_shortcuts();
+        drop(status);
+        Ok(())
+    }
+
+    /// True iff the application must quit.
+    fn must_quit(&self) -> bool {
+        self.status.lock().unwrap().must_quit()
+    }
+
+    fn updater_loop(&mut self) -> Result<()> {
+        loop {
+            match self.peek_event() {
+                Ok(event) => {
+                    self.update(event)?;
+                    if self.must_quit() {
+                        break;
+                    }
+                }
+                Err(TuikitError::Timeout(_)) => continue,
+                Err(error) => {
+                    self::log_info!("Error in main loop: {error}");
+                    break;
+                }
+            }
         }
         Ok(())
     }
 
-    /// Update itself, changing its status.
-    pub fn update(&mut self, event: Event) -> Result<()> {
-        self.event_dispatcher.dispatch(&mut self.status, event)?;
-        self.status.refresh_shortcuts();
-        Ok(())
-    }
-
-    /// Display itself using its `display` attribute.
-    ///
-    /// # Errors
-    ///
-    /// May fail if the terminal crashes
-    /// The display itself may fail if it encounters unreadable file in preview mode
-    pub fn display(&mut self) -> Result<()> {
-        self.force_clear_if_needed()?;
-        self.display.display_all(&self.status)
-    }
-
-    /// True iff the application must quit.
-    pub fn must_quit(&self) -> bool {
-        self.status.must_quit()
+    pub fn run(&mut self) -> Result<()> {
+        self.updater_loop()
     }
 
     /// Display the cursor,
@@ -127,18 +129,17 @@ impl FM {
     ///
     /// May fail if the terminal crashes
     /// May also fail if the thread running in [`crate::application::Refresher`] crashed
-    pub fn quit(self) -> Result<()> {
+    pub fn quit(self) -> Result<String> {
+        let status = self.status.lock().unwrap();
         clear_tmp_file();
-        self.display.show_cursor()?;
-        let final_path = self.status.current_tab_path_str().to_owned();
+        let final_path = status.current_tab_path_str().to_owned();
+        self.displayer.quit()?;
         self.refresher.quit()?;
         drop(self.event_reader);
         drop(self.event_dispatcher);
-        drop(self.display);
-        drop(self.status);
-        print_on_quit(&final_path);
-        log_info!("fm is shutting down");
-        Ok(())
+        drop(status);
+
+        Ok(final_path)
     }
 }
 
@@ -149,3 +150,28 @@ fn exit_wrong_config() -> ! {
     log_info!("Couldn't read the config file {CONFIG_PATH}");
     std::process::exit(1)
 }
+
+// /// Force clear the display if the status requires it, then reset it in status.
+// ///
+// /// # Errors
+// ///
+// /// May fail if the terminal crashes
+// fn force_clear_if_needed(a_status: bool) -> Result<()> {
+//     let mut status = a_status.lock().unwrap();
+//     if status.internal_settings.force_clear {
+//         self.display.force_clear()?;
+//         status.internal_settings.force_clear = false;
+//     }
+//     Ok(())
+// }
+
+// /// Display itself using its `display` attribute.
+// ///
+// /// # Errors
+// ///
+// /// May fail if the terminal crashes
+// /// The display itself may fail if it encounters unreadable file in preview mode
+// fn display(&mut self, status: MutexGuard<Status>) -> Result<()> {
+// self.force_clear_if_needed()?;
+// self.display.display_all(status)
+// }

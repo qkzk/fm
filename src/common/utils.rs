@@ -58,7 +58,8 @@ pub fn disk_space(disks: &[Disk], path: &Path) -> String {
 }
 
 /// Print the path on the stdout.
-pub fn print_on_quit(path_string: &str) {
+pub fn print_on_quit<S: std::fmt::Display>(path_string: S) {
+    log_info!("print on quit {path_string}");
     println!("{path_string}")
 }
 

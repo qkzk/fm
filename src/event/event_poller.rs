@@ -8,7 +8,7 @@ use tuikit::term::Term;
 
 /// Simple struct to read the events.
 pub struct EventReader {
-    term: Arc<Term>,
+    pub term: Arc<Term>,
 }
 
 impl EventReader {
