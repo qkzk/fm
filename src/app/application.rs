@@ -58,14 +58,18 @@ impl FM {
             startfolder = &START_FOLDER.display()
         );
         let term = Arc::new(init_term()?);
-        let event_reader = EventReader::new(Arc::clone(&term));
+        let event_reader = EventReader::new(term.clone());
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = Opener::new(&config.terminal, &config.terminal_flag);
-        let status = Status::new(term.term_size()?.1, Arc::clone(&term), opener)?;
-        let refresher = Refresher::new(term);
         drop(config);
-        let status = Arc::new(Mutex::new(status));
-        let displayer = Displayer::new(event_reader.term.clone(), Arc::clone(&status));
+
+        let status = Arc::new(Mutex::new(Status::new(
+            term.term_size()?.1,
+            term.clone(),
+            opener,
+        )?));
+        let refresher = Refresher::new(term.clone());
+        let displayer = Displayer::new(term, status.clone());
         Ok(Self {
             event_reader,
             event_dispatcher,
@@ -98,7 +102,8 @@ impl FM {
         self.status.lock().unwrap().must_quit()
     }
 
-    fn updater_loop(&mut self) -> Result<()> {
+    /// Run the status loop.
+    pub fn run(&mut self) -> Result<()> {
         loop {
             match self.peek_event() {
                 Ok(event) => {
@@ -115,10 +120,6 @@ impl FM {
             }
         }
         Ok(())
-    }
-
-    pub fn run(&mut self) -> Result<()> {
-        self.updater_loop()
     }
 
     /// Display the cursor,
