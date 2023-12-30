@@ -776,6 +776,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] Compress,
     - [x] Decompress
 - [ ] navigating in menus erase display - can't reproduce ?
+- [ ] separate display from update
+  - [x] make status sync
+  - [x] update status every event
+  - [x] display 60 fps
 
 ## TODO
 

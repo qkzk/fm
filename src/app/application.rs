@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use tuikit::error::TuikitError;
 use tuikit::prelude::Event;
 
 use crate::app::Refresher;
@@ -78,8 +79,8 @@ impl FM {
     /// # Errors
     ///
     /// May fail if the terminal crashes
-    pub fn poll_event(&self) -> Result<Event> {
-        self.event_reader.poll_event()
+    pub fn peek_event(&self) -> Result<Event, TuikitError> {
+        self.event_reader.peek_event()
     }
 
     /// Force clear the display if the status requires it, then reset it in status.
