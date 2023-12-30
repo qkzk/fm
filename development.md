@@ -730,18 +730,19 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - BREAKING: Use specific argument to run a command at startup for most common terminal emulators from config file.
   To make this work, it will require the user to update its config file by copying the last part: "terminal_emulator_flags:..."
 - FIX: entering an inaccessible dir or writing in any way to a readonly dir shouldn't crash the app anymore...
+- Display & Update separation. Use a thread for display, allowing 30 fps. It uses more CPU :(
 
 #### Changelog
 
 - [ ] unify scrolling.
 - [x] move navigate movement to menu file.
-- [ ] Tree scrolling
+- [x] Tree scrolling
   - [x] attach full content to tree
   - [x] update content when tree necessary (???)
   - [x] attach window to content
   - [x] FIX: smoothscrolling. Last tree line isn't displayed
   - [x] jump to next sibling
-  - [ ] compare memory usage
+  - [x] compare memory usage
   - [x] scrolling in tree mode should start 1 line earlier since we use 1 line at the bottom
   - [x] FIX: Tree mode: search forward doesn't scroll
 - [x] make navigable content scrollable
@@ -777,9 +778,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] Decompress
 - [ ] navigating in menus erase display - can't reproduce ?
 - [ ] separate display from update
-  - [x] make status sync
+  - [x] make status sync: replace Rc by Arc
   - [x] update status every event
-  - [x] display 60 fps
+  - [x] display 30 fps
+  - [x] move display into a thread
+  - [ ] test everything
 
 ## TODO
 
