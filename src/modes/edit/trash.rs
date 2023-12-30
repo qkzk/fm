@@ -109,7 +109,8 @@ DeletionDate={date}
 
     fn get_dest_name(trash_info_file: &Path) -> Result<String> {
         if let Some(dest_name) = trash_info_file.file_name() {
-            let dest_name = Self::remove_extension(dest_name.to_str().unwrap().to_owned())?;
+            let dest_name =
+                Self::remove_extension(dest_name.to_string_lossy().as_ref().to_owned())?;
             Ok(dest_name)
         } else {
             Err(anyhow!("Couldn't parse the trash info filename"))

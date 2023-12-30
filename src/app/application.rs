@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use anyhow::anyhow;
 use anyhow::Result;
 use tuikit::error::TuikitError;
 use tuikit::prelude::Event;
@@ -84,39 +85,37 @@ impl FM {
     /// # Errors
     ///
     /// May fail if the terminal crashes
-    fn peek_event(&self) -> Result<Event, TuikitError> {
-        self.event_reader.peek_event()
+    fn poll_event(&self) -> Result<Event, TuikitError> {
+        self.event_reader.poll_event()
     }
 
     /// Update itself, changing its status.
     fn update(&mut self, event: Event) -> Result<()> {
-        let mut status = self.status.lock().unwrap();
-        self.event_dispatcher.dispatch(&mut status, event)?;
-        status.refresh_shortcuts();
-        drop(status);
-        Ok(())
+        match self.status.lock() {
+            Ok(mut status) => {
+                self.event_dispatcher.dispatch(&mut status, event)?;
+                status.refresh_shortcuts();
+                drop(status);
+                Ok(())
+            }
+            Err(error) => Err(anyhow!("Error locking status: {error}")),
+        }
     }
 
     /// True iff the application must quit.
-    fn must_quit(&self) -> bool {
-        self.status.lock().unwrap().must_quit()
+    fn must_quit(&self) -> Result<bool> {
+        match self.status.lock() {
+            Ok(status) => Ok(status.must_quit()),
+            Err(error) => Err(anyhow!("Error locking status: {error}")),
+        }
     }
 
     /// Run the status loop.
     pub fn run(&mut self) -> Result<()> {
-        loop {
-            match self.peek_event() {
-                Ok(event) => {
-                    self.update(event)?;
-                    if self.must_quit() {
-                        break;
-                    }
-                }
-                Err(TuikitError::Timeout(_)) => continue,
-                Err(error) => {
-                    self::log_info!("Error in main loop: {error}");
-                    break;
-                }
+        while let Ok(event) = self.poll_event() {
+            self.update(event)?;
+            if self.must_quit()? {
+                break;
             }
         }
         Ok(())
@@ -131,16 +130,20 @@ impl FM {
     /// May fail if the terminal crashes
     /// May also fail if the thread running in [`crate::application::Refresher`] crashed
     pub fn quit(self) -> Result<String> {
-        let status = self.status.lock().unwrap();
         clear_tmp_file();
-        let final_path = status.current_tab_path_str().to_owned();
-        self.displayer.quit()?;
-        self.refresher.quit()?;
         drop(self.event_reader);
         drop(self.event_dispatcher);
-        drop(status);
+        self.displayer.quit()?;
+        self.refresher.quit()?;
 
-        Ok(final_path)
+        match self.status.lock() {
+            Ok(status) => {
+                let final_path = status.current_tab_path_str().to_owned();
+                drop(status);
+                Ok(final_path)
+            }
+            Err(error) => Err(anyhow!("Error locking status {error}")),
+        }
     }
 }
 

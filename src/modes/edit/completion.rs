@@ -164,7 +164,7 @@ impl Completion {
     }
 
     fn canonicalize_input(&mut self, input_string: &str, current_path: &str) -> Option<String> {
-        let mut path = fs::canonicalize(current_path).unwrap();
+        let mut path = fs::canonicalize(current_path).unwrap_or_default();
         path.push(input_string);
         let path = fs::canonicalize(path).unwrap_or_default();
         if path.exists() {
@@ -193,6 +193,7 @@ impl Completion {
     fn entries_matching_filename(entries: ReadDir, last_name: &str) -> Vec<String> {
         entries
             .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_ok())
             .filter(|e| e.file_type().unwrap().is_dir() && filename_startswith(e, last_name))
             .map(|e| e.path().to_string_lossy().into_owned())
             .collect()

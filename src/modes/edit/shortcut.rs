@@ -43,7 +43,7 @@ impl Shortcut {
     fn hardcoded_shortcuts() -> Vec<PathBuf> {
         HARDCODED_SHORTCUTS
             .iter()
-            .map(|s| PathBuf::from_str(s).unwrap())
+            .map(|s| PathBuf::from(s))
             .collect()
     }
 
@@ -69,7 +69,10 @@ impl Shortcut {
     }
 
     fn git_root_or_cwd() -> PathBuf {
-        git_root().map_or_else(|_| std::env::current_dir().unwrap(), PathBuf::from)
+        git_root().map_or_else(
+            |_| std::env::current_dir().unwrap_or_default(),
+            PathBuf::from,
+        )
     }
 
     fn with_git_root(mut shortcuts: Vec<PathBuf>) -> Vec<PathBuf> {

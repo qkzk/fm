@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use crate::app::Status;
 
@@ -14,6 +14,8 @@ pub struct Displayer {
 }
 
 impl Displayer {
+    const THIRTY_PER_SECONDS_IN_MILLIS: u64 = 33;
+
     pub fn new(term: Arc<tuikit::term::Term>, status: Arc<Mutex<Status>>) -> Self {
         let (tx, rx) = mpsc::channel();
         let mut display = Display::new(term);
@@ -29,11 +31,14 @@ impl Displayer {
                     }
                     Err(TryRecvError::Empty) => {}
                 }
-                let status = status.lock().unwrap();
-                display.display_all(&status)?;
-                drop(status);
-
-                std::thread::sleep(Duration::from_millis(17));
+                match status.lock() {
+                    Ok(status) => {
+                        display.display_all(&status)?;
+                        drop(status);
+                    }
+                    Err(error) => return Err(anyhow!("Error locking status: {error}")),
+                }
+                std::thread::sleep(Duration::from_millis(Self::THIRTY_PER_SECONDS_IN_MILLIS));
             }
             Ok(())
         });
