@@ -800,8 +800,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 
-- [ ] display / event separation. use async and message passing between coroutines
-
 - [ ] zoxide support
 - [ ] temporary marks
 - [ ] context switch
@@ -814,26 +812,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
 - [ ] allow pipe in execution
 
-- [ ] Version 0.1.50 : safety & memory usage
-
-  - [ ] there's a memory leak somewhere
-  - [ ] preview of big files (or whatever file) should only read chunk of the file,
-        not the whole thing. Previewing a 5gB iso file uses up to 15gB of ram, which will crash any system.
-        or should it ?
-        Simple solutions:
-
-        - only reads a buffer
-        - limit to xxx filesize
-
-- [ ] Version 0.2.0 : tests
-
-  - [ ] tests
-  - [ ] remove references to local thing
-  - [ ] translations i18n
-
-- [ ] Version 0.3.0 : dark/light theme, transparency etc.
-
-- [ ] Version 0.4.0 : plugins
+- [ ] tests
+- [ ] remove references to local thing
+- [ ] translations i18n
+- [ ] dark/light theme, transparency etc.
+- [ ] plugins
 
   - which language ?
   - what for ?

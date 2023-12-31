@@ -33,6 +33,9 @@ pub struct FM {
     /// It sends an `Event::Key(Key::AltPageUp)` every 10 seconds.
     /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
     refresher: Refresher,
+    /// Used to handle every display on the screen, except from skim (fuzzy finds).
+    /// It runs a single thread with an mpsc receiver to handle quit events.
+    /// Drawing is done 30 times per second.
     displayer: Displayer,
 }
 
