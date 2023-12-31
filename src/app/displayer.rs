@@ -1,4 +1,3 @@
-use crate::io::Display;
 use std::sync::mpsc::{self, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -7,6 +6,7 @@ use std::time::Duration;
 use anyhow::{anyhow, Result};
 
 use crate::app::Status;
+use crate::io::Display;
 
 pub struct Displayer {
     tx: mpsc::Sender<()>,
