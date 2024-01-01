@@ -50,25 +50,46 @@ pub struct PreviewCache {
 impl PreviewCache {
     const SIZE_LIMIT: usize = 100;
 
+    /// Returns an optional reference to the preview.
     pub fn read(&self, path: PathBuf) -> Option<&Preview> {
         self.cache.get(&path)
     }
 
+    /// True iff the cache aleady contains a preview of path.
+    ///
+    /// # Errors
+    ///
+    /// May fail if:
+    /// - FileInfo fail,
+    /// - Preview fail.
     pub fn update(&mut self, path: &Path) -> Result<bool> {
         if self.cache.contains_key(path) {
             return Ok(false);
         };
-        let preview = Preview::file(&FileInfo::from_path_with_name(
+        self.add_preview(path)?;
+        self.limit_size();
+        Ok(true)
+    }
+
+    fn add_preview(&mut self, path: &Path) -> Result<()> {
+        self.cache
+            .insert(path.to_path_buf(), Self::make_preview(path)?);
+        self.paths.push(path.to_path_buf());
+        Ok(())
+    }
+
+    fn make_preview(path: &Path) -> Result<Preview> {
+        Preview::file(&FileInfo::from_path_with_name(
             path,
             &path.file_name().context("")?.to_string_lossy(),
             &Users::default(),
-        )?)?;
-        self.cache.insert(path.to_path_buf(), preview);
-        self.paths.push(path.to_path_buf());
+        )?)
+    }
+
+    fn limit_size(&mut self) {
         if self.cache.len() > Self::SIZE_LIMIT {
             let path = self.paths.remove(0);
             self.cache.remove(&path);
         }
-        Ok(true)
     }
 }
