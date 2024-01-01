@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
@@ -13,6 +14,8 @@ use crate::app::ClickableLine;
 use crate::app::Footer;
 use crate::app::Header;
 use crate::app::InternalSettings;
+use crate::app::PreviewCache;
+use crate::app::Previewer;
 use crate::app::Session;
 use crate::app::Tab;
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
@@ -81,6 +84,8 @@ pub struct Status {
     pub display_settings: Session,
     /// Interna settings
     pub internal_settings: InternalSettings,
+    pub preview_cache: Arc<Mutex<PreviewCache>>,
+    pub previewer: Previewer,
 }
 
 impl Status {
@@ -111,6 +116,8 @@ impl Status {
             Tab::new(&args, height, users_left)?,
             Tab::new(&args, height, users_right)?,
         ];
+        let preview_cache = Arc::new(Mutex::new(PreviewCache::default()));
+        let previewer = Previewer::new(preview_cache.clone());
         Ok(Self {
             tabs,
             index,
@@ -118,6 +125,8 @@ impl Status {
             menu,
             display_settings,
             internal_settings,
+            preview_cache,
+            previewer,
         })
     }
 

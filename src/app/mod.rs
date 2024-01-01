@@ -12,6 +12,7 @@ pub use application::FM;
 pub use displayer::Displayer;
 pub use header_footer::{ClickableLine, Footer, Header};
 pub use internal_settings::InternalSettings;
+pub use previewer::PreviewCache;
 pub use previewer::Previewer;
 pub use refresher::Refresher;
 pub use session::Session;

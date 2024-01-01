@@ -51,8 +51,8 @@ impl PreviewCache {
     const SIZE_LIMIT: usize = 100;
 
     /// Returns an optional reference to the preview.
-    pub fn read(&self, path: PathBuf) -> Option<&Preview> {
-        self.cache.get(&path)
+    pub fn read(&self, path: &Path) -> Option<&Preview> {
+        self.cache.get(path)
     }
 
     /// True iff the cache aleady contains a preview of path.

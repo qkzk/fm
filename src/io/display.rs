@@ -2,7 +2,7 @@ use std::cmp::min;
 use std::path::PathBuf;
 use std::sync::{Arc, MutexGuard};
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
@@ -149,7 +149,6 @@ struct WinMain<'a> {
 
 impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        // canvas.clear()?;
         if self.status.display_settings.dual()
             && self.is_right()
             && self.status.display_settings.preview()
@@ -384,39 +383,105 @@ impl<'a> WinMain<'a> {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
         let height = canvas.height()?;
-        match &tab.preview {
-            Preview::Syntaxed(syntaxed) => {
-                self.draw_syntaxed(syntaxed, length, canvas, line_number_width, window)?
-            }
-            Preview::Binary(bin) => self.draw_binary(bin, length, canvas, window)?,
-            Preview::Ueberzug(image) => self.draw_ueberzug(image, canvas)?,
-            Preview::Tree(tree_preview) => self.draw_tree_preview(tree_preview, window, canvas)?,
-            Preview::ColoredText(colored_text) => {
-                self.draw_colored_text(colored_text, length, canvas, window)?
-            }
-            Preview::Archive(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Media(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Text(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Iso(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Socket(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::BlockDevice(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::FifoCharDevice(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
+        match self.status.preview_cache.lock() {
+            Err(error) => return Err(anyhow!("Error locking preview cache: {error}")),
+            Ok(preview_cache) => {
+                match preview_cache.read(self.status.tabs[self.status.index].current_path()) {
+                    None => (),
+                    Some(preview) => match preview {
+                        Preview::Syntaxed(syntaxed) => {
+                            self.draw_syntaxed(syntaxed, length, canvas, line_number_width, window)?
+                        }
+                        Preview::Binary(bin) => self.draw_binary(bin, length, canvas, window)?,
+                        Preview::Ueberzug(image) => self.draw_ueberzug(image, canvas)?,
+                        Preview::Tree(tree_preview) => {
+                            self.draw_tree_preview(tree_preview, window, canvas)?
+                        }
+                        Preview::ColoredText(colored_text) => {
+                            self.draw_colored_text(colored_text, length, canvas, window)?
+                        }
+                        Preview::Archive(text) => {
+                            impl_preview!(
+                                text,
+                                tab,
+                                length,
+                                canvas,
+                                line_number_width,
+                                window,
+                                height
+                            )
+                        }
+                        Preview::Media(text) => {
+                            impl_preview!(
+                                text,
+                                tab,
+                                length,
+                                canvas,
+                                line_number_width,
+                                window,
+                                height
+                            )
+                        }
+                        Preview::Text(text) => {
+                            impl_preview!(
+                                text,
+                                tab,
+                                length,
+                                canvas,
+                                line_number_width,
+                                window,
+                                height
+                            )
+                        }
+                        Preview::Iso(text) => {
+                            impl_preview!(
+                                text,
+                                tab,
+                                length,
+                                canvas,
+                                line_number_width,
+                                window,
+                                height
+                            )
+                        }
+                        Preview::Socket(text) => {
+                            impl_preview!(
+                                text,
+                                tab,
+                                length,
+                                canvas,
+                                line_number_width,
+                                window,
+                                height
+                            )
+                        }
+                        Preview::BlockDevice(text) => {
+                            impl_preview!(
+                                text,
+                                tab,
+                                length,
+                                canvas,
+                                line_number_width,
+                                window,
+                                height
+                            )
+                        }
+                        Preview::FifoCharDevice(text) => {
+                            impl_preview!(
+                                text,
+                                tab,
+                                length,
+                                canvas,
+                                line_number_width,
+                                window,
+                                height
+                            )
+                        }
 
-            Preview::Empty => (),
+                        Preview::Empty => (),
+                    },
+                }
+            }
         }
         Ok(None)
     }
