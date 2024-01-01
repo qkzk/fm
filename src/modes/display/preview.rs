@@ -131,15 +131,20 @@ impl Preview {
     /// it to the display method.
     /// Directories aren't handled there since we need more arguments to create
     /// their previews.
-    pub fn file(file_info: &FileInfo) -> Result<Self> {
+    pub fn new(file_info: &FileInfo) -> Result<Self> {
         clear_tmp_file();
         match file_info.file_kind {
-            FileKind::Directory => Err(anyhow!(
-                "{path} is a directory",
-                path = file_info.path.display()
-            )),
+            FileKind::Directory => Self::directory(file_info, &Users::default()),
+            // FileKind::Directory => Err(anyhow!(
+            //     "{path} is a directory",
+            //     path = file_info.path.display()
+            // )),
             FileKind::NormalFile => {
                 let extension = &file_info.extension.to_lowercase();
+                log_info!(
+                    "building preview for {filename}",
+                    filename = file_info.filename
+                );
                 match ExtensionKind::matcher(extension) {
                     ExtensionKind::Archive => Ok(Self::Archive(ArchiveContent::new(
                         &file_info.path,
@@ -355,7 +360,7 @@ impl Socket {
         }
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.length
     }
 }
@@ -391,7 +396,7 @@ impl BlockDevice {
         }
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.length
     }
 }
@@ -422,7 +427,7 @@ impl FifoCharDevice {
         }
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.length
     }
 }
@@ -480,7 +485,7 @@ impl TextContent {
         })
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.length
     }
 }
@@ -518,7 +523,7 @@ impl HLContent {
         })
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.length
     }
 
@@ -722,7 +727,7 @@ impl ArchiveContent {
         })
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.length
     }
 }
@@ -751,7 +756,7 @@ impl MediaContent {
         })
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.length
     }
 }
@@ -1080,7 +1085,7 @@ impl Iso {
         })
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.length
     }
 }

@@ -53,15 +53,17 @@ macro_rules! enumerated_colored_iter {
 
 /// Draw every line of the preview
 macro_rules! impl_preview {
-    ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident, $window:ident, $height:ident) => {
+    ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident, $window:ident, $height:ident) => {{
+        let mut window = $window.to_owned();
+        window.reset($length);
         for (i, line) in (*$text).window($window.top, $window.bottom, $length) {
-            let row = calc_line_row(i, $window);
+            let row = calc_line_row(i, &window);
             if row > $height {
                 break;
             }
             $canvas.print(row, $line_number_width + 3, line)?;
         }
-    };
+    }};
 }
 
 /// At least 120 chars width to display 2 tabs.
@@ -380,15 +382,29 @@ impl<'a> WinMain<'a> {
         window: &ContentWindow,
         canvas: &mut dyn Canvas,
     ) -> Result<Option<usize>> {
-        let length = tab.preview.len();
-        let line_number_width = length.to_string().len();
+        log_info!("draw_preview enter");
         let height = canvas.height()?;
+        let Some(path) = &tab.option_preview else {
+            return Ok(None);
+        };
         match self.status.preview_cache.lock() {
             Err(error) => return Err(anyhow!("Error locking preview cache: {error}")),
-            Ok(preview_cache) => {
-                match preview_cache.read(self.status.tabs[self.status.index].current_path()) {
-                    None => (),
-                    Some(preview) => match preview {
+            Ok(preview_cache) => match preview_cache.read(path) {
+                None => {
+                    log_info!(
+                        "no preview found for {path} in cache",
+                        path = tab.current_path().display()
+                    );
+                }
+                Some(preview) => {
+                    log_info!(
+                        "displaying preview for {path}",
+                        path = tab.current_file()?.path.display()
+                    );
+                    let length = preview.len();
+                    log_info!("preview has {length} lines");
+                    let line_number_width = length.to_string().len();
+                    match preview {
                         Preview::Syntaxed(syntaxed) => {
                             self.draw_syntaxed(syntaxed, length, canvas, line_number_width, window)?
                         }
@@ -479,9 +495,9 @@ impl<'a> WinMain<'a> {
                         }
 
                         Preview::Empty => (),
-                    },
+                    }
                 }
-            }
+            },
         }
         Ok(None)
     }
@@ -494,8 +510,10 @@ impl<'a> WinMain<'a> {
         line_number_width: usize,
         window: &ContentWindow,
     ) -> Result<()> {
+        let mut window = window.to_owned();
+        window.reset(syntaxed.len());
         for (i, vec_line) in (*syntaxed).window(window.top, window.bottom, length) {
-            let row_position = calc_line_row(i, window);
+            let row_position = calc_line_row(i, &window);
             Self::draw_line_number(row_position, i + 1, canvas)?;
             for token in vec_line.iter() {
                 token.print(canvas, row_position, line_number_width)?;
@@ -511,11 +529,13 @@ impl<'a> WinMain<'a> {
         canvas: &mut dyn Canvas,
         window: &ContentWindow,
     ) -> Result<()> {
+        let mut window = window.to_owned();
+        window.reset(bin.len());
         let height = canvas.height()?;
         let line_number_width_hex = format!("{:x}", bin.len() * 16).len();
 
         for (i, line) in (*bin).window(window.top, window.bottom, length) {
-            let row = calc_line_row(i, window);
+            let row = calc_line_row(i, &window);
             if row > height {
                 break;
             }
@@ -549,6 +569,8 @@ impl<'a> WinMain<'a> {
         window: &ContentWindow,
         canvas: &mut dyn Canvas,
     ) -> Result<()> {
+        let mut window = window.to_owned();
+        window.reset(tree_preview.len());
         let height = canvas.height()?;
         let tree_content = tree_preview.tree.displayable();
         let content = tree_content.lines();
@@ -582,9 +604,11 @@ impl<'a> WinMain<'a> {
         canvas: &mut dyn Canvas,
         window: &ContentWindow,
     ) -> Result<()> {
+        let mut window = window.to_owned();
+        window.reset(colored_text.len());
         let height = canvas.height()?;
         for (i, line) in colored_text.window(window.top, window.bottom, length) {
-            let row = calc_line_row(i, window);
+            let row = calc_line_row(i, &window);
             if row > height {
                 break;
             }
@@ -597,12 +621,13 @@ impl<'a> WinMain<'a> {
     }
 
     fn draw_preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let tab = &self.status.tabs[1];
-        self.draw_preview(tab, &tab.window, canvas)?;
+        let left = &self.status.tabs[0];
+        let right = &self.status.tabs[1];
+        self.draw_preview(left, &right.window, canvas)?;
         draw_colored_strings(
             0,
             0,
-            &PreviewHeader::make_default_preview(self.status, tab),
+            &PreviewHeader::make_default_preview(self.status, right, &Preview::empty()),
             canvas,
             false,
         )?;
@@ -662,15 +687,29 @@ struct PreviewHeader;
 
 impl PreviewHeader {
     fn make_preview(status: &Status, tab: &Tab) -> Vec<String> {
-        match &tab.preview {
-            Preview::Text(text_content) => match text_content.kind {
-                TextKind::HELP => Self::make_help(),
-                TextKind::LOG => Self::make_log(),
-                _ => Self::make_default_preview(status, tab),
-            },
-            Preview::ColoredText(colored_text) => Self::make_colored_text(colored_text),
-            _ => Self::make_default_preview(status, tab),
+        match status.preview_cache.lock() {
+            Err(_) => (),
+            Ok(preview_cache) => {
+                if let Some(path) = &tab.option_preview {
+                    if let Some(preview) = preview_cache.read(path) {
+                        match &preview {
+                            Preview::Text(text_content) => {
+                                return match text_content.kind {
+                                    TextKind::HELP => Self::make_help(),
+                                    TextKind::LOG => Self::make_log(),
+                                    _ => Self::make_default_preview(status, tab, preview),
+                                }
+                            }
+                            Preview::ColoredText(colored_text) => {
+                                return Self::make_colored_text(colored_text)
+                            }
+                            _ => return Self::make_default_preview(status, tab, preview),
+                        }
+                    }
+                }
+            }
         }
+        vec![]
     }
 
     fn make_help() -> Vec<String> {
@@ -695,25 +734,25 @@ impl PreviewHeader {
         ]
     }
 
-    fn _pick_previewed_fileinfo(status: &Status) -> Result<FileInfo> {
+    fn _pick_previewed_fileinfo(status: &Status) -> &Option<PathBuf> {
         if status.display_settings.dual() && status.display_settings.preview() {
-            status.tabs[0].current_file()
+            &status.tabs[0].option_preview
         } else {
-            status.current_tab().current_file()
+            &status.current_tab().option_preview
         }
     }
 
-    fn make_default_preview(status: &Status, tab: &Tab) -> Vec<String> {
-        if let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) {
+    fn make_default_preview(status: &Status, tab: &Tab, preview: &Preview) -> Vec<String> {
+        if let Some(path) = Self::_pick_previewed_fileinfo(status) {
             let mut strings = vec![" Preview ".to_owned()];
-            if !tab.preview.is_empty() {
-                let index = match &tab.preview {
+            if !preview.is_empty() {
+                let index = match preview {
                     Preview::Ueberzug(image) => image.index + 1,
                     _ => tab.window.bottom,
                 };
-                strings.push(format!(" {index} / {len} ", len = tab.preview.len()));
+                strings.push(format!(" {index} / {len} ", len = preview.len()));
             };
-            strings.push(format!(" {} ", fileinfo.path.display()));
+            strings.push(format!(" {path} ", path = path.display()));
             strings
         } else {
             vec!["".to_owned()]

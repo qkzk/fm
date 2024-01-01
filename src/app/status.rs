@@ -33,7 +33,6 @@ use crate::io::{
 use crate::modes::Content;
 use crate::modes::Display;
 use crate::modes::Edit;
-use crate::modes::FileKind;
 use crate::modes::InputSimple;
 use crate::modes::IsoDevice;
 use crate::modes::Menu;
@@ -365,23 +364,19 @@ impl Status {
     pub fn set_second_pane_for_preview(&mut self) -> Result<()> {
         log_info!("set_second_pane_for_preview enter");
         if !Session::display_wide_enough(self.term_size()?.0) {
-            self.tabs[1].preview = Preview::empty();
+            self.tabs[0].option_preview = None;
             return Ok(());
         }
         log_info!("set_second_pane_for_preview alive");
 
-        self.tabs[1].set_display_mode(Display::Preview);
         self.set_edit_mode(1, Edit::Nothing)?;
-        let fileinfo = self.tabs[0]
-            .current_file()
-            .context("force preview: No file to select")?;
-        let preview = match fileinfo.file_kind {
-            FileKind::Directory => Preview::directory(&fileinfo, &self.tabs[0].users),
-            _ => Preview::file(&fileinfo),
+        self.tabs[1].set_display_mode(Display::Preview);
+        let path = self.tabs[0].current_file()?.path.to_path_buf();
+        match self.preview_cache.lock() {
+            Err(error) => return Err(anyhow!("error locking preview_cache: {error}")),
+            Ok(mut preview_cache) => preview_cache.update(&path)?,
         };
-        self.tabs[1].preview = preview.unwrap_or_default();
-
-        self.tabs[1].window.reset(self.tabs[1].preview.len());
+        self.tabs[0].option_preview = Some(path);
         log_info!("set_second_pane_for_preview exit");
         Ok(())
     }
@@ -779,7 +774,7 @@ impl Status {
             if let Ok(output) =
                 execute_and_capture_output_with_path(executable, current_directory, &params)
             {
-                self.preview_command_output(output, shell_command);
+                self.preview_command_output(output, shell_command)?;
             }
             Ok(true)
         }
@@ -909,9 +904,8 @@ impl Status {
             self.current_tab().directory_of_selected()?,
         )?;
         self.menu.clear_sudo_attributes()?;
-        self.preview_command_output(output, sudo_command.to_owned());
-        // self.refresh_status()
-        Ok(())
+        self.preview_command_output(output, sudo_command.to_owned())?;
+        self.refresh_status()
     }
 
     /// Dispatch the known password depending of which component set
@@ -937,13 +931,21 @@ impl Status {
     }
 
     /// Set the display to preview a command output
-    pub fn preview_command_output(&mut self, output: String, command: String) {
+    pub fn preview_command_output(&mut self, output: String, command: String) -> Result<()> {
         log_info!("output {output}");
         let _ = self.reset_edit_mode();
         self.current_tab_mut().set_display_mode(Display::Preview);
         let preview = Preview::cli_info(&output, command);
         self.current_tab_mut().window.reset(preview.len());
-        self.current_tab_mut().preview = preview;
+        match self.preview_cache.lock() {
+            Err(error) => return Err(anyhow!("Error locking preview_cache: {error}")),
+            Ok(mut preview_cache) => {
+                let path = std::path::PathBuf::from("command");
+                self.tabs[self.index].set_preview(&path);
+                preview_cache.add_made_preview(&path, preview);
+            }
+        }
+        Ok(())
     }
 
     /// Set the nvim listen address from what the user typed.

@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 use std::path;
 
+use anyhow::anyhow;
 use anyhow::{Context, Result};
 
 use crate::app::Status;
@@ -15,7 +16,6 @@ use crate::io::execute_without_output_with_path;
 use crate::io::read_log;
 use crate::log_info;
 use crate::log_line;
-use crate::modes::help_string;
 use crate::modes::lsblk_and_cryptsetup_installed;
 use crate::modes::open_tui_program;
 use crate::modes::Display;
@@ -31,6 +31,7 @@ use crate::modes::Preview;
 use crate::modes::RemovableDevices;
 use crate::modes::Selectable;
 use crate::modes::MOCP;
+use crate::modes::{help_string, Content};
 
 /// Links events from tuikit to custom actions.
 /// It mutates `Status` or its children `Tab`.
@@ -135,8 +136,19 @@ impl EventAction {
     /// Every file can be previewed. See the `crate::enum::Preview` for
     /// more details on previewinga file.
     /// Does nothing if the directory is empty.
-    pub fn preview(tab: &mut Tab) -> Result<()> {
-        tab.make_preview()
+    pub fn preview(status: &mut Status) -> Result<()> {
+        match status.preview_cache.lock() {
+            Err(error) => return Err(anyhow!("error lokcing preview cache: {error}")),
+            Ok(mut preview_cache) => {
+                let path = std::path::PathBuf::from(&status.current_tab().current_file_string()?);
+                status.tabs[status.index].set_display_mode(Display::Preview);
+                preview_cache.update(&path)?;
+                status.tabs[status.index].option_preview = Some(path.to_path_buf());
+            }
+        };
+        Ok(())
+
+        // tab.make_preview()
     }
 
     /// Toggle the display of hidden files.
@@ -371,21 +383,36 @@ impl EventAction {
     pub fn help(status: &mut Status, binds: &Bindings) -> Result<()> {
         let help = help_string(binds, &status.internal_settings.opener);
         status.current_tab_mut().set_display_mode(Display::Preview);
-        status.current_tab_mut().preview = Preview::help(&help);
-        let len = status.current_tab().preview.len();
-        status.current_tab_mut().window.reset(len);
+        let preview = Preview::help(&help);
+        status.current_tab_mut().window.reset(preview.len());
+        match status.preview_cache.lock() {
+            Err(error) => return Err(anyhow!("Error locking preview_cache: {error}")),
+            Ok(mut preview_cache) => {
+                let path = std::path::PathBuf::from("help");
+                status.tabs[status.index].set_preview(&path);
+                preview_cache.add_made_preview(&path, preview);
+            }
+        }
         Ok(())
     }
 
     /// Display the last actions impacting the file tree
-    pub fn log(tab: &mut Tab) -> Result<()> {
+    pub fn log(status: &mut Status) -> Result<()> {
         let Ok(log) = read_log() else {
             return Ok(());
         };
-        tab.set_display_mode(Display::Preview);
-        tab.preview = Preview::log(log);
-        tab.window.reset(tab.preview.len());
-        tab.preview_go_bottom();
+        status.current_tab_mut().set_display_mode(Display::Preview);
+
+        let preview = Preview::log(log);
+        status.current_tab_mut().window.reset(preview.len());
+        match status.preview_cache.lock() {
+            Err(error) => return Err(anyhow!("Error locking preview_cache: {error}")),
+            Ok(mut preview_cache) => {
+                let path = std::path::PathBuf::from("log");
+                status.tabs[status.index].set_preview(&path);
+                preview_cache.add_made_preview(&path, preview);
+            }
+        }
         Ok(())
     }
 
@@ -571,6 +598,12 @@ impl EventAction {
     }
 
     fn move_display_down(status: &mut Status) -> Result<()> {
+        for i in 0..100 {
+            let index =
+                (status.current_tab().directory.index + i) % status.current_tab().directory.len();
+            let path = &status.current_tab().directory.content()[index].path;
+            status.previewer.tx.send(Some(path.to_path_buf()))?;
+        }
         let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Directory => tab.normal_down_one_row(),
