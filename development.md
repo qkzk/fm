@@ -762,7 +762,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] use number of files for dir size
 - [x] rename Goto Mode to cd to allow `:` then `cd`
 - [x] optionable logging
-- [ ] display number of matches while searching
 - [x] FIX: Filter isn't shown and does nothing in tree mode
 - [x] FIX: unfold shouldn't unfold every child
 - [x] don't use -e for every terminal. See [rifle.conf](https://github.com/ranger/ranger/blob/136416c7e2ecc27315fe2354ecadfe09202df7dd/ranger/config/rifle.conf#L244)
@@ -783,6 +782,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display 30 fps
   - [x] move display into a thread
   - [ ] test everything
+- [ ] display number of matches while searching
+- [ ] search result
+  - [ ] another display mode
+  - [ ] use skim or other
+  - [ ] action on all files
 
 ## TODO
 
