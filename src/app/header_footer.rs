@@ -289,6 +289,68 @@ mod inner {
             format!(" {nb_flagged} {flag_string} ",)
         }
     }
+
+    pub struct FuzzyHeader {
+        strings: Vec<String>,
+        actions: Vec<ActionMap>,
+        sizes: Vec<usize>,
+        width: usize,
+    }
+
+    impl FuzzyHeader {
+        pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
+            let strings = Self::make_strings(tab);
+            let sizes = Self::make_sizes(&strings);
+            let (width, _) = status.internal_settings.term.term_size()?;
+            let actions = vec![ActionMap::ResetMode, ActionMap::OpenFile];
+
+            Ok(Self {
+                strings,
+                sizes,
+                width,
+                actions,
+            })
+        }
+
+        fn make_strings(tab: &Tab) -> Vec<String> {
+            vec![
+                "Fuzzy files".to_owned(),
+                tab.fuzzy
+                    .selected()
+                    .unwrap_or(&std::path::PathBuf::new())
+                    .to_string_lossy()
+                    .to_string(),
+            ]
+        }
+
+        fn make_sizes(strings: &[String]) -> Vec<usize> {
+            strings.iter().map(|s| s.len()).collect()
+        }
+
+        fn actions(&self, index: usize) -> &ActionMap {
+            &self.actions[index]
+        }
+    }
+    impl ClickableLine for FuzzyHeader {
+        /// Vector of displayed strings.
+        fn strings(&self) -> &Vec<String> {
+            self.strings.as_ref()
+        }
+    }
+
+    impl ClickableLineInner for FuzzyHeader {
+        fn sizes(&self) -> &Vec<usize> {
+            self.sizes.as_ref()
+        }
+
+        fn action_index(&self, index: usize) -> &ActionMap {
+            &self.actions(index)
+        }
+
+        fn width(&self) -> usize {
+            self.width
+        }
+    }
 }
 
-pub use inner::{ClickableLine, Footer, Header};
+pub use inner::{ClickableLine, Footer, FuzzyHeader, Header};

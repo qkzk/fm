@@ -7,11 +7,11 @@ use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
-use crate::app::ClickableLine;
 use crate::app::Footer;
 use crate::app::Header;
 use crate::app::Status;
 use crate::app::Tab;
+use crate::app::{ClickableLine, FuzzyHeader};
 use crate::common::path_to_string;
 use crate::common::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
@@ -598,6 +598,9 @@ impl<'a> Draw for WinMainHeader<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let content = match self.tab.display_mode {
             DisplayMode::Preview => PreviewHeader::make_preview(self.status, self.tab),
+            DisplayMode::Fuzzy => FuzzyHeader::new(self.status, self.tab)?
+                .strings()
+                .to_owned(),
             _ => Header::new(self.status, self.tab)?.strings().to_owned(),
         };
         draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
