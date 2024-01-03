@@ -11,6 +11,7 @@ use tuikit::term::Term;
 
 use crate::app::ClickableLine;
 use crate::app::Footer;
+use crate::app::FuzzyHeader;
 use crate::app::Header;
 use crate::app::InternalSettings;
 use crate::app::Session;
@@ -982,13 +983,16 @@ impl Status {
 
     /// Execute an action when the header line was clicked.
     pub fn header_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
-        if matches!(self.current_tab().display_mode, Display::Preview) {
-            return Ok(());
-        }
         let is_right = self.index == 1;
-        let header = Header::new(self, self.current_tab())?;
-        let action = header.action(col as usize, is_right);
-        action.matcher(self, binds)
+        match self.current_tab().display_mode {
+            Display::Preview => return Ok(()),
+            Display::Fuzzy => FuzzyHeader::new(self, self.current_tab())?
+                .action(col as usize, is_right)
+                .matcher(self, binds),
+            _ => Header::new(self, self.current_tab())?
+                .action(col as usize, is_right)
+                .matcher(self, binds),
+        }
     }
 
     /// Execute an action when the footer line was clicked.

@@ -331,6 +331,7 @@ mod inner {
             &self.actions[index]
         }
     }
+
     impl ClickableLine for FuzzyHeader {
         /// Vector of displayed strings.
         fn strings(&self) -> &Vec<String> {
