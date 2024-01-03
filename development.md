@@ -801,6 +801,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] display searched and filter ????
   - [ ] enter: from skim files or lines, from flagged, from search, from folder, from tree (flatten)
   - [ ] action on all files
+    - [x] preview & dual pane preview
     - [x] renaming crashes (requires a lot..)
     - [x] open (all flagged)
     - [x] disable copy, move
