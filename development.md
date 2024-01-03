@@ -783,9 +783,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] move display into a thread
   - [ ] test everything
 - [ ] display number of matches while searching
-- [ ] search result
+- [ ] fuzzy content
+  - [ ] simplest possible holding struct
   - [ ] another display mode
-  - [ ] use skim or other
+  - [ ] enter: from skim files or lines, from flagged, from search, from folder, from tree (flatten)
   - [ ] action on all files
 
 ## TODO
