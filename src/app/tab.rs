@@ -172,6 +172,10 @@ impl Tab {
                 let node = self.tree.selected_node().context("no selected node")?;
                 node.fileinfo(&self.users)
             }
+            Display::Fuzzy => FileInfo::new(
+                self.fuzzy.selected().context("no selected fuzzy file")?,
+                &self.users,
+            ),
             _ => Ok(self
                 .directory
                 .selected()
