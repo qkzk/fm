@@ -788,6 +788,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] simplest possible holding struct
   - [x] another display mode, displayable
   - [x] display flagged like in dir
+  - [x] clickable header & footer
   - [ ] enter: from skim files or lines, from flagged, from search, from folder, from tree (flatten)
   - [ ] action on all files
     - [x] renaming crashes (requires a lot..)
@@ -796,6 +797,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] jump with enter
     - [x] space toggle flag like elsewhere
     - [x] ctrl+o open all fuzzy files
+    - [ ] flag / unflag all (u, v)
     - [ ] FIX: bulkrename. Either leave or capture all new names & update flagged
 
 ## TODO

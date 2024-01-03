@@ -11,7 +11,7 @@ use crate::app::Footer;
 use crate::app::Header;
 use crate::app::Status;
 use crate::app::Tab;
-use crate::app::{ClickableLine, FuzzyHeader};
+use crate::app::{ClickableLine, FuzzyFooter, FuzzyHeader};
 use crate::common::path_to_string;
 use crate::common::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
@@ -750,6 +750,9 @@ impl<'a> Draw for WinMainFooter<'a> {
         let height = canvas.height()?;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => vec![],
+            DisplayMode::Fuzzy => FuzzyFooter::new(self.status, self.tab)?
+                .strings()
+                .to_owned(),
             _ => Footer::new(self.status, self.tab)?.strings().to_owned(),
         };
         let mut attr = ATTR_COB_BOLD;

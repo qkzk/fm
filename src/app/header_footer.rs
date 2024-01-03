@@ -292,23 +292,22 @@ mod inner {
 
     pub struct FuzzyHeader {
         strings: Vec<String>,
-        actions: Vec<ActionMap>,
         sizes: Vec<usize>,
         width: usize,
     }
 
     impl FuzzyHeader {
+        const ACTIONS: [ActionMap; 2] = [ActionMap::ResetMode, ActionMap::OpenFile];
+
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
             let strings = Self::make_strings(tab);
             let sizes = Self::make_sizes(&strings);
             let (width, _) = status.internal_settings.term.term_size()?;
-            let actions = vec![ActionMap::ResetMode, ActionMap::OpenFile];
 
             Ok(Self {
                 strings,
                 sizes,
                 width,
-                actions,
             })
         }
 
@@ -324,11 +323,14 @@ mod inner {
         }
 
         fn make_sizes(strings: &[String]) -> Vec<usize> {
-            strings.iter().map(|s| s.len()).collect()
+            strings
+                .iter()
+                .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
+                .collect()
         }
 
         fn actions(&self, index: usize) -> &ActionMap {
-            &self.actions[index]
+            &Self::ACTIONS[index]
         }
     }
 
@@ -352,6 +354,72 @@ mod inner {
             self.width
         }
     }
+    pub struct FuzzyFooter {
+        strings: Vec<String>,
+        sizes: Vec<usize>,
+        width: usize,
+    }
+
+    impl ClickableLine for FuzzyFooter {
+        /// Vector of displayed strings.
+        fn strings(&self) -> &Vec<String> {
+            self.strings.as_ref()
+        }
+    }
+
+    impl ClickableLineInner for FuzzyFooter {
+        fn sizes(&self) -> &Vec<usize> {
+            self.sizes.as_ref()
+        }
+
+        fn action_index(&self, index: usize) -> &ActionMap {
+            &Self::ACTIONS[index]
+        }
+
+        fn width(&self) -> usize {
+            self.width
+        }
+    }
+
+    impl FuzzyFooter {
+        const ACTIONS: [ActionMap; 2] = [ActionMap::Nothing, ActionMap::Jump];
+
+        pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
+            let (width, _) = status.internal_settings.term.term_size()?;
+            let used_width = if status.display_settings.use_dual_tab(width) {
+                width / 2
+            } else {
+                width
+            };
+            let raw_strings = Self::make_strings(status, tab);
+            let sizes = Self::make_sizes(&raw_strings);
+            let strings = Footer::make_padded_strings(&raw_strings, used_width);
+
+            Ok(Self {
+                strings,
+                sizes,
+                width,
+            })
+        }
+
+        fn make_strings(status: &Status, tab: &Tab) -> Vec<String> {
+            vec![
+                format!(
+                    " {index} / {len}",
+                    index = tab.fuzzy.index + 1,
+                    len = tab.fuzzy.len()
+                ),
+                format!(" {nb} flags", nb = status.menu.flagged.len()),
+            ]
+        }
+
+        fn make_sizes(strings: &[String]) -> Vec<usize> {
+            strings
+                .iter()
+                .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
+                .collect()
+        }
+    }
 }
 
-pub use inner::{ClickableLine, Footer, FuzzyHeader, Header};
+pub use inner::{ClickableLine, Footer, FuzzyFooter, FuzzyHeader, Header};
