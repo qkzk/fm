@@ -92,7 +92,7 @@ impl Renamer {
         let mut counter = 0;
         for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
             match rename(path, filename) {
-                Ok(()) => {
+                Ok(_) => {
                     counter += 1;
                 }
                 Err(error) => log_info!(

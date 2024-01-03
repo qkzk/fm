@@ -192,12 +192,21 @@ impl LeaveMode {
     pub fn rename(status: &mut Status) -> Result<()> {
         let old_path = status.current_tab().current_file()?.path;
         let new_name = status.menu.input.string();
-        match rename(&old_path, &new_name) {
-            Ok(()) => (),
-            Err(error) => log_info!(
-                "Error renaming {old_path} to {new_name}. Error: {error}",
-                old_path = old_path.display()
-            ),
+        let new_path = match rename(&old_path, &new_name) {
+            Ok(new_path) => new_path,
+            Err(error) => {
+                log_info!(
+                    "Error renaming {old_path} to {new_name}. Error: {error}",
+                    old_path = old_path.display()
+                );
+                return Err(error);
+            }
+        };
+        if matches!(status.current_tab().display_mode, Display::Fuzzy) {
+            if status.menu.flagged.contains(&old_path) {
+                status.menu.flagged.replace(&old_path, &new_path);
+            }
+            status.current_tab_mut().fuzzy.replace_selected(new_path)
         }
         status.current_tab_mut().refresh_view()
     }

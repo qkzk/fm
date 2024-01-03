@@ -784,10 +784,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] test everything
 - [ ] display number of matches while searching
 - [ ] fuzzy content
+  - [ ] what usage ?
   - [x] simplest possible holding struct
   - [x] another display mode, displayable
-  - [ ] enter: from skim files or lines, from flagged, from search, from folder, from tree (flatten)
+  - [ ] display flagged
   - [ ] action on all files
+  - [ ] enter: from skim files or lines, from flagged, from search, from folder, from tree (flatten)
+    - [x] renaming crashes (requires a lot..)
+    - [x] open (all flagged)
+    - [x] disable copy, move
 
 ## TODO
 

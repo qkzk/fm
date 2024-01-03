@@ -55,6 +55,13 @@ impl Flagged {
         self.content.binary_search(&path.to_path_buf()).is_ok()
     }
 
+    pub fn replace(&mut self, old_path: &Path, new_path: &Path) {
+        let Ok(index) = self.content.binary_search(&old_path.to_path_buf()) else {
+            return;
+        };
+        self.content[index] = new_path.to_owned();
+    }
+
     /// Returns a vector of path which are present in the current directory.
     #[inline]
     #[must_use]

@@ -238,17 +238,23 @@ where
 ///
 /// It may fail for the same reasons as [`std::fs::rename`] and [`std::fs::create_dir_all`].
 /// See those for more details.
-pub fn rename<P, Q>(old_path: P, new_name: Q) -> Result<()>
+pub fn rename<P, Q>(old_path: P, new_name: Q) -> Result<std::path::PathBuf>
 where
     P: AsRef<std::path::Path>,
     Q: AsRef<std::path::Path>,
 {
     let Some(old_parent) = old_path.as_ref().parent() else {
-        return Ok(());
+        return Err(anyhow::anyhow!(
+            "no parent for {old_path}",
+            old_path = old_path.as_ref().display()
+        ));
     };
     let new_path = old_parent.join(new_name);
     let Some(new_parent) = new_path.parent() else {
-        return Ok(());
+        return Err(anyhow::anyhow!(
+            "no parent for {new_path}",
+            new_path = new_path.display()
+        ));
     };
 
     log_info!(
@@ -263,6 +269,6 @@ where
     );
 
     std::fs::create_dir_all(new_parent)?;
-    std::fs::rename(old_path, new_path)?;
-    Ok(())
+    std::fs::rename(old_path, &new_path)?;
+    Ok(new_path)
 }

@@ -97,6 +97,13 @@ impl Fuzzy {
         self.reset_window();
     }
 
+    pub fn replace_selected(&mut self, new_path: PathBuf) {
+        if self.content.is_empty() {
+            return;
+        }
+        self.content[self.index] = new_path;
+    }
+
     pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
         let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
         let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();

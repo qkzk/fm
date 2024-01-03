@@ -212,6 +212,9 @@ impl EventAction {
     }
 
     fn set_copy_paste(status: &mut Status, copy_or_move: NeedConfirmation) -> Result<()> {
+        if matches!(status.current_tab().display_mode, Display::Fuzzy) {
+            return Ok(());
+        };
         if status.menu.flagged.is_empty() {
             return Ok(());
         }
