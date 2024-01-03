@@ -1,10 +1,9 @@
+use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::modes::ContentWindow;
-use crate::modes::FileInfo;
-use crate::modes::Users;
 
 #[derive(Debug)]
 pub struct Fuzzy {
@@ -22,15 +21,38 @@ impl Fuzzy {
         }
     }
 
+    pub fn select_next(&mut self) {
+        self.next();
+        self.window.scroll_down_one(self.index);
+    }
+
+    pub fn select_prev(&mut self) {
+        self.prev();
+        self.window.scroll_up_one(self.index);
+    }
+
+    pub fn select_first(&mut self) {
+        self.index = 0;
+    }
+
+    pub fn select_last(&mut self) {
+        self.index = self.content.len().checked_sub(1).unwrap_or_default();
+    }
+
+    /// Set the index to the minimum of given index and the maximum possible index (len - 1)
+    pub fn select_index(&mut self, index: usize) {
+        self.index = index.min(self.content.len().checked_sub(1).unwrap_or_default())
+    }
+
     pub fn page_down(&mut self) {
         for _ in 0..10 {
-            self.next()
+            self.select_next()
         }
     }
 
     pub fn page_up(&mut self) {
         for _ in 0..10 {
-            self.prev()
+            self.select_prev()
         }
     }
 
@@ -61,10 +83,15 @@ impl Fuzzy {
         self.reset_window();
     }
 
-    pub fn into_fileinfos(&self, users: &Users) -> Vec<FileInfo> {
+    pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
+        let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
+        let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
         self.content
             .iter()
-            .filter_map(|p| FileInfo::new(&p, users).ok())
+            .filter_map(to_filename)
+            .filter_map(to_str)
+            .filter(|&p| p.contains(input_string))
+            .map(|p| p.to_owned())
             .collect()
     }
 }

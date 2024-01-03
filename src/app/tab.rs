@@ -8,7 +8,6 @@ use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index, set_clipboard,
 };
 use crate::io::Args;
-use crate::modes::Content;
 use crate::modes::Directory;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
@@ -17,6 +16,7 @@ use crate::modes::Preview;
 use crate::modes::Selectable;
 use crate::modes::SortKind;
 use crate::modes::Users;
+use crate::modes::{Content, Fuzzy};
 use crate::modes::{ContentWindow, FileKind};
 use crate::modes::{Display, Edit};
 use crate::modes::{Go, To, Tree};
@@ -70,6 +70,8 @@ pub struct Tab {
     /// Lines of the previewed files.
     /// Empty if not in preview mode.
     pub preview: Preview,
+    /// Fuzzy
+    pub fuzzy: Fuzzy,
 
     /// The edit mode the application is currenty in.
     /// Most of the time is spent in `EditMode::Nothing`
@@ -128,6 +130,7 @@ impl Tab {
         let searched = None;
         let index = directory.select_file(&path);
         let tree = Tree::default();
+        let fuzzy = Fuzzy::new(vec![], height);
 
         window.scroll_to(index);
         Ok(Self {
@@ -142,6 +145,7 @@ impl Tab {
             users,
             tree,
             settings,
+            fuzzy,
         })
     }
 
@@ -182,6 +186,7 @@ impl Tab {
             Display::Tree => self.tree.display_len(),
             Display::Preview => self.preview.len(),
             Display::Directory => self.directory.len(),
+            Display::Fuzzy => self.fuzzy.len(),
         }
     }
 
@@ -208,6 +213,7 @@ impl Tab {
             Display::Directory => self.directory.filenames_containing(input_string),
             Display::Tree => self.tree.filenames_containing(input_string),
             Display::Preview => vec![],
+            Display::Fuzzy => self.fuzzy.filenames_containing(input_string),
         }
     }
 
@@ -262,6 +268,7 @@ impl Tab {
                 has_last_modification_happened_less_than(&self.directory.path, 10)?
             }
             Display::Tree => self.tree.has_modified_dirs(),
+            Display::Fuzzy => false, // TODO! what to do ????,
         } {
             self.refresh_and_reselect_file()
         } else {
@@ -358,6 +365,15 @@ impl Tab {
                 self.tree.go(To::Path(&selected_path));
                 let index = self.tree.displayable().index();
                 self.scroll_to(index);
+            }
+            Display::Fuzzy => {
+                let index = self
+                    .fuzzy
+                    .content
+                    .iter()
+                    .position(|p| p == &selected_path.to_path_buf())
+                    .unwrap_or_default();
+                self.fuzzy.select_index(index);
             }
         }
         Ok(())
@@ -497,6 +513,10 @@ impl Tab {
                     self.make_tree(None)?
                 }
                 self.tree.go(To::Path(&jump_target))
+            }
+            Display::Fuzzy => {
+                self.set_display_mode(Display::Directory);
+                self.jump(jump_target)?;
             }
         }
         Ok(())

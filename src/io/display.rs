@@ -186,6 +186,7 @@ impl<'a> WinMain<'a> {
             DisplayMode::Directory => self.draw_files(canvas),
             DisplayMode::Tree => self.draw_tree(canvas),
             DisplayMode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas),
+            DisplayMode::Fuzzy => self.draw_fuzzy(canvas),
         }
     }
 
@@ -542,6 +543,16 @@ impl<'a> WinMain<'a> {
             false,
         )?;
         Ok(())
+    }
+
+    fn draw_fuzzy(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
+        let attr = Attr::default();
+        for (row, path) in self.tab.fuzzy.content().iter().enumerate() {
+            let file_info = FileInfo::new(path, &self.tab.users)?;
+            let attr = self.tab.fuzzy.attr(row, &attr);
+            canvas.print_with_attr(row, 4, &file_info.filename_without_dot_dotdot(), attr)?;
+        }
+        Ok(None)
     }
 }
 

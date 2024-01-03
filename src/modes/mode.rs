@@ -363,4 +363,6 @@ pub enum Display {
     Tree,
     /// Preview a file or directory
     Preview,
+    /// Fuzzy
+    Fuzzy,
 }

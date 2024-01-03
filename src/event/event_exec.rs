@@ -526,6 +526,7 @@ impl EventAction {
             Display::Preview => {
                 return Ok(());
             }
+            Display::Fuzzy => todo!("search next"),
         }
         status.refresh_status()?;
         status.set_second_pane_for_preview()?;
@@ -566,6 +567,7 @@ impl EventAction {
             Display::Directory => tab.normal_up_one_row(),
             Display::Preview => tab.preview_page_up(),
             Display::Tree => tab.tree_select_prev()?,
+            Display::Fuzzy => tab.fuzzy.select_prev(),
         }
         Ok(())
     }
@@ -576,6 +578,7 @@ impl EventAction {
             Display::Directory => tab.normal_down_one_row(),
             Display::Preview => tab.preview_page_down(),
             Display::Tree => tab.tree_select_next()?,
+            Display::Fuzzy => tab.fuzzy.select_next(),
         }
         Ok(())
     }
@@ -685,6 +688,7 @@ impl EventAction {
                     Display::Directory => tab.normal_go_top(),
                     Display::Preview => tab.preview_go_top(),
                     Display::Tree => tab.tree_go_to_root()?,
+                    Display::Fuzzy => tab.fuzzy.select_first(),
                 };
             }
             _ => status.menu.input.cursor_start(),
@@ -701,6 +705,7 @@ impl EventAction {
                     Display::Directory => tab.normal_go_bottom(),
                     Display::Preview => tab.preview_go_bottom(),
                     Display::Tree => tab.tree_go_to_bottom_leaf()?,
+                    Display::Fuzzy => tab.fuzzy.select_last(),
                 };
             }
             _ => status.menu.input.cursor_end(),
@@ -736,6 +741,7 @@ impl EventAction {
                 tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
             }
+            Display::Fuzzy => tab.fuzzy.page_up(),
         };
         Ok(())
     }
@@ -768,6 +774,7 @@ impl EventAction {
                 tab.tree_page_down();
                 status.update_second_pane_for_preview()?;
             }
+            Display::Fuzzy => tab.fuzzy.page_down(),
         };
         Ok(())
     }

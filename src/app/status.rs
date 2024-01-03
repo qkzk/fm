@@ -608,6 +608,12 @@ impl Status {
             Display::Directory => self.tabs[self.index].directory.paths(),
             Display::Tree => self.tabs[self.index].tree.paths(),
             Display::Preview => return Ok(()),
+            Display::Fuzzy => self.tabs[self.index]
+                .fuzzy
+                .content
+                .iter()
+                .map(|p| p.as_path())
+                .collect(),
         };
         regex_matcher(&input, &paths, &mut self.menu.flagged)?;
         Ok(())
