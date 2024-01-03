@@ -547,10 +547,10 @@ impl<'a> WinMain<'a> {
 
     fn draw_fuzzy(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
         let attr = Attr::default();
-        for (row, path) in self.tab.fuzzy.content().iter().enumerate() {
+        for (index, path) in self.tab.fuzzy.content().iter().enumerate() {
             let file_info = FileInfo::new(path, &self.tab.users)?;
-            let attr = self.tab.fuzzy.attr(row, &attr);
-            canvas.print_with_attr(row, 4, &file_info.filename_without_dot_dotdot(), attr)?;
+            let attr = self.tab.fuzzy.attr(index, &attr);
+            canvas.print_with_attr(index + 2, 4, &file_info.path.to_string_lossy(), attr)?;
         }
         Ok(None)
     }

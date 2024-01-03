@@ -232,7 +232,7 @@ impl fmt::Display for Navigate {
             Self::Marks(_) => write!(f, "Marks jump:"),
             Self::Jump => write!(
                 f,
-                "Flagged files: <Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash"
+                "<Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash -- <f> fuzzy"
             ),
             Self::History => write!(f, "History :"),
             Self::Shortcut => write!(f, "Shortcut :"),

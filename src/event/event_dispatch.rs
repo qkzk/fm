@@ -99,6 +99,7 @@ impl EventDispatcher {
             Navigate::Jump if c == 'u' => status.clear_flags_and_reset_view(),
             Navigate::Jump if c == 'x' => status.menu.delete_single_flagged(),
             Navigate::Jump if c == 'X' => status.menu.trash_single_flagged(),
+            Navigate::Jump if c == 'f' => status.fuzzy_flags(),
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
             _ => status.current_tab_mut().reset_display_mode_and_view(),

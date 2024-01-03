@@ -1035,6 +1035,14 @@ impl Status {
         log_info!("output {output}");
         Ok(())
     }
+
+    pub fn fuzzy_flags(&mut self) -> Result<()> {
+        self.tabs[self.index]
+            .fuzzy
+            .update(self.menu.flagged.content.clone());
+        self.current_tab_mut().set_display_mode(Display::Fuzzy);
+        Ok(())
+    }
 }
 
 fn parse_keyname(keyname: &str) -> Option<String> {
