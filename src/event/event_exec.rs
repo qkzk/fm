@@ -72,6 +72,7 @@ impl EventAction {
             Display::Preview | Display::Fuzzy
         ) {
             status.tabs[status.index].set_display_mode(Display::Directory);
+            status.tabs[status.index].refresh_view()?;
         }
         status.menu.input.reset();
         status.menu.completion.reset();
