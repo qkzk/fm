@@ -33,26 +33,40 @@ impl Fuzzy {
 
     pub fn select_first(&mut self) {
         self.index = 0;
+        self.window.scroll_to(0);
     }
 
     pub fn select_last(&mut self) {
         self.index = self.content.len().checked_sub(1).unwrap_or_default();
+        self.window.scroll_to(self.index);
     }
 
     /// Set the index to the minimum of given index and the maximum possible index (len - 1)
     pub fn select_index(&mut self, index: usize) {
-        self.index = index.min(self.content.len().checked_sub(1).unwrap_or_default())
+        self.index = index.min(self.content.len().checked_sub(1).unwrap_or_default());
+        self.window.scroll_to(self.index);
+    }
+
+    pub fn select_row(&mut self, row: u16) {
+        let index = row.checked_sub(3).unwrap_or_default() as usize + self.window.top;
+        self.select_index(index);
     }
 
     pub fn page_down(&mut self) {
         for _ in 0..10 {
-            self.select_next()
+            if self.index + 1 == self.content.len() {
+                break;
+            }
+            self.select_next();
         }
     }
 
     pub fn page_up(&mut self) {
         for _ in 0..10 {
-            self.select_prev()
+            if self.index == 0 {
+                break;
+            }
+            self.select_prev();
         }
     }
 

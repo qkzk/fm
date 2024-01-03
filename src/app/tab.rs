@@ -723,6 +723,7 @@ impl Tab {
         match self.display_mode {
             Display::Directory => self.normal_select_row(row),
             Display::Tree => self.tree_select_row(row)?,
+            Display::Fuzzy => self.fuzzy.select_row(row),
             _ => (),
         }
         Ok(())
