@@ -793,6 +793,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] only one window ? which ???
 
   - [ ] what usage ?
+  - [ ] display metadata of selected file
   - [x] simplest possible holding struct
   - [x] another display mode, displayable
   - [x] display flagged like in dir
