@@ -784,11 +784,20 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] test everything
 - [ ] display number of matches while searching
 - [ ] fuzzy content
+
+  - Should it be merged with flagged ?
+
+    - [ ] search flags all files in current dir
+    - [ ] fuzzy find flags all
+    - [ ] open fuzzy and jump are similar ?
+    - [ ] only one window ? which ???
+
   - [ ] what usage ?
   - [x] simplest possible holding struct
   - [x] another display mode, displayable
   - [x] display flagged like in dir
-  - [x] clickable header & footer
+  - [x] clickable header & Footer
+    - [ ] display searched and filter ????
   - [ ] enter: from skim files or lines, from flagged, from search, from folder, from tree (flatten)
   - [ ] action on all files
     - [x] renaming crashes (requires a lot..)

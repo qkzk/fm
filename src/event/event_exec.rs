@@ -138,6 +138,17 @@ impl EventAction {
         Ok(())
     }
 
+    pub fn display_fuzzy(status: &mut Status) -> Result<()> {
+        if matches!(status.current_tab().display_mode, Display::Fuzzy) {
+            status
+                .current_tab_mut()
+                .set_display_mode(Display::Directory);
+        } else {
+            status.current_tab_mut().set_display_mode(Display::Fuzzy);
+        }
+        Ok(())
+    }
+
     /// Preview the selected file.
     /// Every file can be previewed. See the `crate::enum::Preview` for
     /// more details on previewinga file.
