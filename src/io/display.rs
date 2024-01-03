@@ -558,13 +558,10 @@ impl<'a> WinMain<'a> {
             .take(min(canvas.height()?, window.bottom + 1))
         {
             let file_info = FileInfo::new(path, &self.tab.users)?;
-            let attr = self.tab.fuzzy.attr(index, &attr);
-            canvas.print_with_attr(
-                index + 2 - window.top,
-                4,
-                &file_info.path.to_string_lossy(),
-                attr,
-            )?;
+            let mut attr = self.tab.fuzzy.attr(index, &attr);
+            let row = index + 2 - window.top;
+            self.print_as_flagged(canvas, row, path, &mut attr)?;
+            canvas.print_with_attr(row, 4, &file_info.path.to_string_lossy(), attr)?;
         }
         Ok(None)
     }

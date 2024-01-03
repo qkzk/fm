@@ -119,6 +119,7 @@ impl Bindings {
             (Key::Ctrl('k'), ActionMap::Delete),
             (Key::Ctrl('s'), ActionMap::FuzzyFindLine),
             (Key::Ctrl('u'), ActionMap::PageUp),
+            (Key::Ctrl('o'), ActionMap::OpenAll),
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
             (Key::Ctrl('q'), ActionMap::ResetMode),
             (Key::Ctrl('r'), ActionMap::RefreshView),

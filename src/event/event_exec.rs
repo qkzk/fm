@@ -18,6 +18,7 @@ use crate::log_line;
 use crate::modes::help_string;
 use crate::modes::lsblk_and_cryptsetup_installed;
 use crate::modes::open_tui_program;
+use crate::modes::Content;
 use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::InputCompleted;
@@ -272,6 +273,7 @@ impl EventAction {
         match status.current_tab_mut().display_mode {
             Display::Directory => Self::normal_enter_file(status),
             Display::Tree => Self::tree_enter_file(status),
+            Display::Fuzzy => Self::jump_fuzzy(status),
             _ => Ok(()),
         }
     }
@@ -319,6 +321,10 @@ impl EventAction {
         } else {
             status.open_flagged_files()
         }
+    }
+
+    pub fn open_all(status: &mut Status) -> Result<()> {
+        status.open_all_fuzzy()
     }
 
     /// Enter the execute mode. Most commands must be executed to allow for
@@ -522,6 +528,18 @@ impl EventAction {
     pub fn go_start(status: &mut Status) -> Result<()> {
         status.current_tab_mut().cd(&START_FOLDER)?;
         status.update_second_pane_for_preview()
+    }
+
+    pub fn jump_fuzzy(status: &mut Status) -> Result<()> {
+        let Some(path) = status.current_tab().fuzzy.selected() else {
+            return Ok(());
+        };
+        let path = path.to_owned();
+        let tab = status.current_tab_mut();
+        tab.set_display_mode(Display::Directory);
+        tab.refresh_view()?;
+        tab.jump(path)?;
+        status.set_second_pane_for_preview()
     }
 
     pub fn search_next(status: &mut Status) -> Result<()> {

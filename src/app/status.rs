@@ -641,6 +641,15 @@ impl Status {
             .open_multiple(self.menu.flagged.content())
     }
 
+    pub fn open_all_fuzzy(&mut self) -> Result<()> {
+        if !matches!(self.current_tab().display_mode, Display::Fuzzy) {
+            return Ok(());
+        };
+        self.internal_settings
+            .opener
+            .open_multiple(self.tabs[self.index].fuzzy.content())
+    }
+
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
         if self.menu.iso_device.is_none() {
             let path = path_to_string(&self.current_tab().current_file()?.path);
