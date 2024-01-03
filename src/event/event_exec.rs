@@ -61,16 +61,21 @@ impl EventAction {
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(status: &mut Status) -> Result<()> {
-        if matches!(status.current_tab().display_mode, Display::Preview) {
+        if !matches!(status.current_tab().edit_mode, Edit::Nothing) {
+            if status.reset_edit_mode()? {
+                status.tabs[status.index].refresh_view()?;
+            } else {
+                status.tabs[status.index].refresh_params()?;
+            }
+        } else if matches!(
+            status.current_tab().display_mode,
+            Display::Preview | Display::Fuzzy
+        ) {
             status.tabs[status.index].set_display_mode(Display::Directory);
         }
         status.menu.input.reset();
         status.menu.completion.reset();
-        if status.reset_edit_mode()? {
-            status.tabs[status.index].refresh_view()
-        } else {
-            status.tabs[status.index].refresh_params()
-        }
+        Ok(())
     }
 
     /// Toggle between a full display (aka ls -lah) or a simple mode (only the
