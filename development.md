@@ -797,7 +797,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] jump with enter
     - [x] space toggle flag like elsewhere
     - [x] ctrl+o open all fuzzy files
-    - [ ] flag / unflag all (u, v)
+    - [x] flag / unflag all (u, v)
     - [ ] FIX: bulkrename. Either leave or capture all new names & update flagged
 
 ## TODO

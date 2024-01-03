@@ -446,11 +446,22 @@ impl Status {
     /// Reverse every flag in _current_ directory. Flagged files in other
     /// directory aren't affected.
     pub fn reverse_flags(&mut self) {
-        self.tabs[self.index]
-            .directory
-            .content
-            .iter()
-            .for_each(|file| self.menu.flagged.toggle(&file.path));
+        match self.current_tab().display_mode {
+            Display::Preview => (),
+            Display::Tree => (),
+            Display::Directory => {
+                self.tabs[self.index]
+                    .directory
+                    .content
+                    .iter()
+                    .for_each(|file| self.menu.flagged.toggle(&file.path));
+            }
+            Display::Fuzzy => self.tabs[self.index]
+                .fuzzy
+                .content
+                .iter()
+                .for_each(|p| self.menu.flagged.toggle(p)),
+        }
     }
 
     /// Flag the selected file if any
