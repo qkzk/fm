@@ -28,7 +28,6 @@ use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     reset_sudo_faillock,
 };
-use crate::modes::Content;
 use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::FileKind;
@@ -49,6 +48,7 @@ use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, regex_matcher};
 use crate::modes::{BlockDeviceAction, Navigate};
+use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
 use crate::{log_info, log_line};
 
@@ -364,9 +364,17 @@ impl Status {
 
         self.tabs[1].set_display_mode(Display::Preview);
         self.set_edit_mode(1, Edit::Nothing)?;
-        let fileinfo = self.tabs[0]
-            .current_file()
-            .context("force preview: No file to select")?;
+        let fileinfo = match self.tabs[0].display_mode {
+            Display::Flagged => {
+                let Some(path) = self.menu.flagged.selected() else {
+                    return Ok(());
+                };
+                FileInfo::new(path, &self.tabs[0].users)?
+            }
+            _ => self.tabs[0]
+                .current_file()
+                .context("force preview: No file to select")?,
+        };
         let preview = match fileinfo.file_kind {
             FileKind::Directory => Preview::directory(&fileinfo, &self.tabs[0].users),
             _ => Preview::file(&fileinfo),
@@ -449,6 +457,7 @@ impl Status {
         match self.current_tab().display_mode {
             Display::Preview => (),
             Display::Tree => (),
+            Display::Flagged => (),
             Display::Directory => {
                 self.tabs[self.index]
                     .directory
@@ -456,11 +465,6 @@ impl Status {
                     .iter()
                     .for_each(|file| self.menu.flagged.toggle(&file.path));
             }
-            Display::Fuzzy => self.tabs[self.index]
-                .fuzzy
-                .content
-                .iter()
-                .for_each(|p| self.menu.flagged.toggle(p)),
         }
     }
 
@@ -468,7 +472,9 @@ impl Status {
     pub fn toggle_flag_for_selected(&mut self) {
         let tab = self.current_tab();
 
-        if matches!(tab.edit_mode, Edit::Nothing) && !matches!(tab.display_mode, Display::Preview) {
+        if matches!(tab.edit_mode, Edit::Nothing)
+            && !matches!(tab.display_mode, Display::Preview | Display::Flagged)
+        {
             let Ok(file) = tab.current_file() else {
                 return;
             };
@@ -511,6 +517,11 @@ impl Status {
             return Ok(());
         };
         let skim = skimer.search_filename(&self.current_tab().directory_str());
+        let paths: Vec<std::path::PathBuf> = skim
+            .iter()
+            .map(|s| std::path::PathBuf::from(s.output().to_string()))
+            .collect();
+        self.menu.flagged.update(paths);
         let Some(output) = skim.first() else {
             return Ok(());
         };
@@ -531,6 +542,11 @@ impl Status {
             return Ok(());
         };
         let skim = skimer.search_line_in_file(&self.current_tab().directory_str());
+        let paths: Vec<std::path::PathBuf> = skim
+            .iter()
+            .map(|s| std::path::PathBuf::from(s.output().to_string()))
+            .collect();
+        self.menu.flagged.update(paths);
         let Some(output) = skim.first() else {
             return Ok(());
         };
@@ -619,13 +635,7 @@ impl Status {
         let paths = match self.current_tab().display_mode {
             Display::Directory => self.tabs[self.index].directory.paths(),
             Display::Tree => self.tabs[self.index].tree.paths(),
-            Display::Preview => return Ok(()),
-            Display::Fuzzy => self.tabs[self.index]
-                .fuzzy
-                .content
-                .iter()
-                .map(|p| p.as_path())
-                .collect(),
+            _ => return Ok(()),
         };
         regex_matcher(&input, &paths, &mut self.menu.flagged)?;
         Ok(())
@@ -651,15 +661,6 @@ impl Status {
         self.internal_settings
             .opener
             .open_multiple(self.menu.flagged.content())
-    }
-
-    pub fn open_all_fuzzy(&mut self) -> Result<()> {
-        if !matches!(self.current_tab().display_mode, Display::Fuzzy) {
-            return Ok(());
-        };
-        self.internal_settings
-            .opener
-            .open_multiple(self.tabs[self.index].fuzzy.content())
     }
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
@@ -997,7 +998,7 @@ impl Status {
         let is_right = self.index == 1;
         match self.current_tab().display_mode {
             Display::Preview => return Ok(()),
-            Display::Fuzzy => FuzzyHeader::new(self, self.current_tab())?
+            Display::Flagged => FuzzyHeader::new(self)?
                 .action(col as usize, is_right)
                 .matcher(self, binds),
             _ => Header::new(self, self.current_tab())?
@@ -1061,10 +1062,7 @@ impl Status {
     }
 
     pub fn fuzzy_flags(&mut self) -> Result<()> {
-        self.tabs[self.index]
-            .fuzzy
-            .update(self.menu.flagged.content.clone());
-        self.current_tab_mut().set_display_mode(Display::Fuzzy);
+        self.current_tab_mut().set_display_mode(Display::Flagged);
         Ok(())
     }
 }

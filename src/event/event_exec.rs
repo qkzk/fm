@@ -70,7 +70,7 @@ impl EventAction {
             }
         } else if matches!(
             status.current_tab().display_mode,
-            Display::Preview | Display::Fuzzy
+            Display::Preview | Display::Flagged
         ) {
             status.tabs[status.index].set_display_mode(Display::Directory);
             status.tabs[status.index].refresh_view()?;
@@ -138,13 +138,13 @@ impl EventAction {
         Ok(())
     }
 
-    pub fn display_fuzzy(status: &mut Status) -> Result<()> {
-        if matches!(status.current_tab().display_mode, Display::Fuzzy) {
+    pub fn display_flagged(status: &mut Status) -> Result<()> {
+        if matches!(status.current_tab().display_mode, Display::Flagged) {
             status
                 .current_tab_mut()
                 .set_display_mode(Display::Directory);
         } else {
-            status.current_tab_mut().set_display_mode(Display::Fuzzy);
+            status.current_tab_mut().set_display_mode(Display::Flagged);
         }
         Ok(())
     }
@@ -225,7 +225,7 @@ impl EventAction {
     }
 
     fn set_copy_paste(status: &mut Status, copy_or_move: NeedConfirmation) -> Result<()> {
-        if matches!(status.current_tab().display_mode, Display::Fuzzy) {
+        if matches!(status.current_tab().display_mode, Display::Flagged) {
             return Ok(());
         };
         if status.menu.flagged.is_empty() {
@@ -284,7 +284,7 @@ impl EventAction {
         match status.current_tab_mut().display_mode {
             Display::Directory => Self::normal_enter_file(status),
             Display::Tree => Self::tree_enter_file(status),
-            Display::Fuzzy => Self::jump_fuzzy(status),
+            Display::Flagged => Self::jump_fuzzy(status),
             _ => Ok(()),
         }
     }
@@ -335,7 +335,7 @@ impl EventAction {
     }
 
     pub fn open_all(status: &mut Status) -> Result<()> {
-        status.open_all_fuzzy()
+        status.open_flagged_files()
     }
 
     /// Enter the execute mode. Most commands must be executed to allow for
@@ -542,7 +542,7 @@ impl EventAction {
     }
 
     pub fn jump_fuzzy(status: &mut Status) -> Result<()> {
-        let Some(path) = status.current_tab().fuzzy.selected() else {
+        let Some(path) = status.menu.flagged.selected() else {
             return Ok(());
         };
         let path = path.to_owned();
@@ -564,7 +564,7 @@ impl EventAction {
             Display::Preview => {
                 return Ok(());
             }
-            Display::Fuzzy => todo!("search next"),
+            Display::Flagged => todo!("search next"),
         }
         status.refresh_status()?;
         status.set_second_pane_for_preview()?;
@@ -605,7 +605,7 @@ impl EventAction {
             Display::Directory => tab.normal_up_one_row(),
             Display::Preview => tab.preview_page_up(),
             Display::Tree => tab.tree_select_prev()?,
-            Display::Fuzzy => tab.fuzzy.select_prev(),
+            Display::Flagged => status.menu.flagged.select_prev(),
         }
         Ok(())
     }
@@ -616,7 +616,7 @@ impl EventAction {
             Display::Directory => tab.normal_down_one_row(),
             Display::Preview => tab.preview_page_down(),
             Display::Tree => tab.tree_select_next()?,
-            Display::Fuzzy => tab.fuzzy.select_next(),
+            Display::Flagged => status.menu.flagged.select_next(),
         }
         Ok(())
     }
@@ -726,7 +726,7 @@ impl EventAction {
                     Display::Directory => tab.normal_go_top(),
                     Display::Preview => tab.preview_go_top(),
                     Display::Tree => tab.tree_go_to_root()?,
-                    Display::Fuzzy => tab.fuzzy.select_first(),
+                    Display::Flagged => status.menu.flagged.select_first(),
                 };
             }
             _ => status.menu.input.cursor_start(),
@@ -743,7 +743,7 @@ impl EventAction {
                     Display::Directory => tab.normal_go_bottom(),
                     Display::Preview => tab.preview_go_bottom(),
                     Display::Tree => tab.tree_go_to_bottom_leaf()?,
-                    Display::Fuzzy => tab.fuzzy.select_last(),
+                    Display::Flagged => status.menu.flagged.select_last(),
                 };
             }
             _ => status.menu.input.cursor_end(),
@@ -779,7 +779,7 @@ impl EventAction {
                 tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
             }
-            Display::Fuzzy => tab.fuzzy.page_up(),
+            Display::Flagged => status.menu.flagged.page_up(),
         };
         Ok(())
     }
@@ -812,7 +812,7 @@ impl EventAction {
                 tab.tree_page_down();
                 status.update_second_pane_for_preview()?;
             }
-            Display::Fuzzy => tab.fuzzy.page_down(),
+            Display::Flagged => status.menu.flagged.page_down(),
         };
         Ok(())
     }

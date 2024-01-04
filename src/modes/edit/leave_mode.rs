@@ -202,11 +202,10 @@ impl LeaveMode {
                 return Err(error);
             }
         };
-        if matches!(status.current_tab().display_mode, Display::Fuzzy) {
+        if matches!(status.current_tab().display_mode, Display::Flagged) {
             if status.menu.flagged.contains(&old_path) {
                 status.menu.flagged.replace(&old_path, &new_path);
             }
-            status.current_tab_mut().fuzzy.replace_selected(new_path)
         }
         status.current_tab_mut().refresh_view()
     }

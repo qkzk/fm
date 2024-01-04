@@ -299,8 +299,8 @@ mod inner {
     impl FuzzyHeader {
         const ACTIONS: [ActionMap; 2] = [ActionMap::ResetMode, ActionMap::OpenFile];
 
-        pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-            let strings = Self::make_strings(tab);
+        pub fn new(status: &Status) -> Result<Self> {
+            let strings = Self::make_strings(status);
             let sizes = Self::make_sizes(&strings);
             let (width, _) = status.internal_settings.term.term_size()?;
 
@@ -311,10 +311,12 @@ mod inner {
             })
         }
 
-        fn make_strings(tab: &Tab) -> Vec<String> {
+        fn make_strings(status: &Status) -> Vec<String> {
             vec![
                 "Fuzzy files".to_owned(),
-                tab.fuzzy
+                status
+                    .menu
+                    .flagged
                     .selected()
                     .unwrap_or(&std::path::PathBuf::new())
                     .to_string_lossy()
@@ -384,14 +386,14 @@ mod inner {
     impl FuzzyFooter {
         const ACTIONS: [ActionMap; 2] = [ActionMap::Nothing, ActionMap::Jump];
 
-        pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
+        pub fn new(status: &Status) -> Result<Self> {
             let (width, _) = status.internal_settings.term.term_size()?;
             let used_width = if status.display_settings.use_dual_tab(width) {
                 width / 2
             } else {
                 width
             };
-            let raw_strings = Self::make_strings(status, tab);
+            let raw_strings = Self::make_strings(status);
             let sizes = Self::make_sizes(&raw_strings);
             let strings = Footer::make_padded_strings(&raw_strings, used_width);
 
@@ -402,12 +404,12 @@ mod inner {
             })
         }
 
-        fn make_strings(status: &Status, tab: &Tab) -> Vec<String> {
+        fn make_strings(status: &Status) -> Vec<String> {
             vec![
                 format!(
                     " {index} / {len}",
-                    index = tab.fuzzy.index + 1,
-                    len = tab.fuzzy.len()
+                    index = status.menu.flagged.index + 1,
+                    len = status.menu.flagged.len()
                 ),
                 format!(" {nb} flags", nb = status.menu.flagged.len()),
             ]

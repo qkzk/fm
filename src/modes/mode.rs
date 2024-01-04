@@ -364,5 +364,5 @@ pub enum Display {
     /// Preview a file or directory
     Preview,
     /// Fuzzy
-    Fuzzy,
+    Flagged,
 }

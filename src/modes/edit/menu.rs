@@ -84,7 +84,7 @@ impl Menu {
             compression: Compresser::default(),
             context: ContextMenu::default(),
             encrypted_devices: CryptoDeviceOpener::default(),
-            flagged: Flagged::default(),
+            flagged: Flagged::new(vec![], 80),
             history: History::default(),
             input: Input::default(),
             iso_device: None,

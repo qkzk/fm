@@ -802,13 +802,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] enter: from skim files or lines, from flagged, from search, from folder, from tree (flatten)
   - [ ] action on all files
     - [x] preview & dual pane preview
-    - [x] renaming crashes (requires a lot..)
-    - [x] open (all flagged)
+    - [x] renaming
+    - [x] open single or all flagged
     - [x] disable copy, move
     - [x] jump with enter
-    - [x] space toggle flag like elsewhere
     - [x] ctrl+o open all fuzzy files
-    - [x] flag / unflag all (u, v)
+    - [x] unflag all (v)
     - [ ] FIX: bulkrename. Either leave or capture all new names & update flagged
 
 ## TODO

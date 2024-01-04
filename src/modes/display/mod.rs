@@ -1,7 +1,6 @@
 mod content_window;
 mod directory;
 mod fileinfo;
-mod fuzzy;
 mod preview;
 mod skim;
 mod tree;
@@ -13,7 +12,6 @@ pub use fileinfo::{
     convert_octal_mode, extract_extension, fileinfo_attr, is_not_hidden, ColorEffect, FileInfo,
     FileKind,
 };
-pub use fuzzy::Fuzzy;
 pub use preview::{
     BinaryContent, ColoredText, ExtensionKind, HLContent, Preview, TextKind, TreePreview, Ueberzug,
     Window,

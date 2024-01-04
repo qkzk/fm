@@ -60,7 +60,7 @@ impl Bindings {
             (Key::Char('C'), ActionMap::Compress),
             (Key::Char('E'), ActionMap::ToggleDisplayFull),
             (Key::Char('G'), ActionMap::End),
-            (Key::Char('F'), ActionMap::DisplayFuzzy),
+            (Key::Char('F'), ActionMap::DisplayFlagged),
             (Key::Char('H'), ActionMap::FuzzyFindHelp),
             (Key::Char('J'), ActionMap::PageDown),
             (Key::Char('K'), ActionMap::PageUp),

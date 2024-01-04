@@ -186,7 +186,7 @@ impl<'a> WinMain<'a> {
             DisplayMode::Directory => self.draw_files(canvas),
             DisplayMode::Tree => self.draw_tree(canvas),
             DisplayMode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas),
-            DisplayMode::Fuzzy => self.draw_fuzzy(canvas),
+            DisplayMode::Flagged => self.draw_fagged(canvas),
         }
     }
 
@@ -545,24 +545,27 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn draw_fuzzy(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
-        let attr = Attr::default();
-        let window = &self.tab.fuzzy.window;
+    fn draw_fagged(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
+        let window = &self.status.menu.flagged.window;
         for (index, path) in self
-            .tab
-            .fuzzy
+            .status
+            .menu
+            .flagged
             .content
             .iter()
             .enumerate()
             .skip(window.top)
             .take(min(canvas.height()?, window.bottom + 1))
         {
-            let file_info = FileInfo::new(path, &self.tab.users)?;
-            let mut attr = self.tab.fuzzy.attr(index, &attr);
-            let row = index + 2 - window.top;
-            self.print_as_flagged(canvas, row, path, &mut attr)?;
-            canvas.print_with_attr(row, 4, &file_info.path.to_string_lossy(), attr)?;
+            let fileinfo = FileInfo::new(path, &self.tab.users)?;
+            let attr = fileinfo_attr(&fileinfo);
+            let row = index + 3 - window.top;
+            canvas.print_with_attr(row, 4, &fileinfo.path.to_string_lossy(), attr)?;
         }
+        if let Some(selected) = self.status.menu.flagged.selected() {
+            let fileinfo = FileInfo::new(selected, &self.tab.users)?;
+            canvas.print_with_attr(1, 4, &fileinfo.format(6, 6)?, fileinfo_attr(&fileinfo))?;
+        };
         Ok(None)
     }
 }
@@ -597,10 +600,8 @@ impl<'a> Draw for WinMainHeader<'a> {
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let content = match self.tab.display_mode {
-            DisplayMode::Preview => PreviewHeader::make_preview(self.status, self.tab),
-            DisplayMode::Fuzzy => FuzzyHeader::new(self.status, self.tab)?
-                .strings()
-                .to_owned(),
+            DisplayMode::Preview => PreviewHeader::strings(self.status, self.tab),
+            DisplayMode::Flagged => FuzzyHeader::new(self.status)?.strings().to_owned(),
             _ => Header::new(self.status, self.tab)?.strings().to_owned(),
         };
         draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
@@ -621,7 +622,7 @@ impl<'a> WinMainHeader<'a> {
 struct PreviewHeader;
 
 impl PreviewHeader {
-    fn make_preview(status: &Status, tab: &Tab) -> Vec<String> {
+    fn strings(status: &Status, tab: &Tab) -> Vec<String> {
         match &tab.preview {
             Preview::Text(text_content) => match text_content.kind {
                 TextKind::HELP => Self::make_help(),
@@ -750,9 +751,7 @@ impl<'a> Draw for WinMainFooter<'a> {
         let height = canvas.height()?;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => vec![],
-            DisplayMode::Fuzzy => FuzzyFooter::new(self.status, self.tab)?
-                .strings()
-                .to_owned(),
+            DisplayMode::Flagged => FuzzyFooter::new(self.status)?.strings().to_owned(),
             _ => Footer::new(self.status, self.tab)?.strings().to_owned(),
         };
         let mut attr = ATTR_COB_BOLD;
