@@ -558,13 +558,16 @@ impl<'a> WinMain<'a> {
             .take(min(canvas.height()?, window.bottom + 1))
         {
             let fileinfo = FileInfo::new(path, &self.tab.users)?;
-            let attr = fileinfo_attr(&fileinfo);
+            let mut attr = fileinfo_attr(&fileinfo);
+            if index == self.status.menu.flagged.index {
+                attr.effect |= Effect::REVERSE;
+            }
             let row = index + 3 - window.top;
-            canvas.print_with_attr(row, 4, &fileinfo.path.to_string_lossy(), attr)?;
+            canvas.print_with_attr(row, 1, &fileinfo.path.to_string_lossy(), attr)?;
         }
         if let Some(selected) = self.status.menu.flagged.selected() {
             let fileinfo = FileInfo::new(selected, &self.tab.users)?;
-            canvas.print_with_attr(1, 4, &fileinfo.format(6, 6)?, fileinfo_attr(&fileinfo))?;
+            canvas.print_with_attr(1, 1, &fileinfo.format(6, 6)?, fileinfo_attr(&fileinfo))?;
         };
         Ok(None)
     }

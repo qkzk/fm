@@ -55,7 +55,7 @@ impl Flagged {
     }
 
     pub fn select_row(&mut self, row: u16) {
-        let index = row.checked_sub(3).unwrap_or_default() as usize + self.window.top;
+        let index = row.checked_sub(4).unwrap_or_default() as usize + self.window.top;
         self.select_index(index);
     }
 

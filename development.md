@@ -783,17 +783,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] move display into a thread
   - [ ] test everything
 - [ ] display number of matches while searching
-- [ ] fuzzy content
+- [ ] flagged as content
 
-  - Should it be merged with flagged ?
-
-    - [ ] search flags all files in current dir
-    - [ ] fuzzy find flags all
-    - [ ] open fuzzy and jump are similar ?
-    - [ ] only one window ? which ???
-
-  - [ ] what usage ?
-  - [ ] display metadata of selected file
+  - [ ] search flags all files in current dir, merge with regex
+  - [ ] remove jump completely ???
+  - [x] fuzzy find flags all
+  - [x] display metadata of selected file
   - [x] simplest possible holding struct
   - [x] another display mode, displayable
   - [x] display flagged like in dir
@@ -801,6 +796,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] display searched and filter ????
   - [ ] enter: from skim files or lines, from flagged, from search, from folder, from tree (flatten)
   - [ ] action on all files
+    - [ ] custom search
+    - [ ] filter ?
     - [x] preview & dual pane preview
     - [x] renaming
     - [x] open single or all flagged
@@ -810,8 +807,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] unflag all (v)
     - [ ] FIX: bulkrename. Either leave or capture all new names & update flagged
 
+- [ ] add left tab current dir to right shortcut and vice versa
+- [ ] refactor status.set_second_pane_preview
+- [ ] FIX: leave sort does nothing
+
 ## TODO
 
+- [ ] open a shell while hiding fm, restore after leaving
 - [ ] refactor & unify all shell commands
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
 - [ ] mount usb key - should be merged with mtp

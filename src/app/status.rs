@@ -197,7 +197,11 @@ impl Status {
             Window::Header => self.header_action(col, binds),
             Window::Footer => self.footer_action(col, binds),
             Window::Files => {
-                self.current_tab_mut().select_row(row)?;
+                if matches!(self.current_tab().display_mode, Display::Flagged) {
+                    self.menu.flagged.select_row(row)
+                } else {
+                    self.current_tab_mut().select_row(row)?
+                }
                 self.update_second_pane_for_preview()
             }
         }
