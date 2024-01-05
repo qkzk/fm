@@ -73,7 +73,7 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, c: char) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.edit_mode {
-            Edit::InputSimple(InputSimple::Sort) => tab.sort(c),
+            Edit::InputSimple(InputSimple::Sort) => status.sort(c),
             Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
             Edit::InputSimple(_) => status.menu.input_insert(c),
             Edit::InputCompleted(_) => status.input_complete(c),

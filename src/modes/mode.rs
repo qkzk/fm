@@ -187,7 +187,10 @@ impl InputSimple {
 
 impl Leave for InputSimple {
     fn must_refresh(&self) -> bool {
-        !matches!(self, Self::Shell | Self::Filter | Self::Password(_, _))
+        !matches!(
+            self,
+            Self::Shell | Self::Filter | Self::Password(_, _) | Self::Sort
+        )
     }
 
     fn must_reset_mode(&self) -> bool {

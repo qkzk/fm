@@ -812,7 +812,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] trashmode should display which shortcut erase all trash.
 - [x] add left tab current dir to right shortcut and vice versa
 - [ ] refactor status.set_second_pane_preview
-- [ ] FIX: leave sort does nothing
+- [x] FIX: leave sort does nothing
 - [x] FIX: incomplete regex crashes
 - [ ] allow to change focus, only color the focused window border. Change focus with ctrl+hjkl or ctrl+arrow
       When a menu is opened, it should still be possible to navigate in files and preview or whatever

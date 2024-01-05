@@ -19,6 +19,7 @@ use crate::modes::help_string;
 use crate::modes::lsblk_and_cryptsetup_installed;
 use crate::modes::open_tui_program;
 use crate::modes::Content;
+use crate::modes::ContentWindow;
 use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::InputCompleted;
@@ -352,7 +353,13 @@ impl EventAction {
 
     /// Enter the sort mode, allowing the user to select a sort method.
     pub fn sort(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Sort))
+        status.set_height_for_edit_mode(status.index, Edit::Nothing)?;
+        status.tabs[status.index].edit_mode = Edit::Nothing;
+        let len = status.menu.len(Edit::Nothing);
+        let height = status.second_window_height()?;
+        status.menu.window = ContentWindow::new(len, height);
+        status.tabs[status.index].edit_mode = Edit::InputSimple(InputSimple::Sort);
+        Ok(())
     }
 
     /// Enter the filter mode, where you can filter.

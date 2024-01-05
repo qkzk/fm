@@ -406,7 +406,7 @@ impl Status {
         self.refresh_status()
     }
 
-    fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Edit) -> Result<()> {
+    pub fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Edit) -> Result<()> {
         let height = self.internal_settings.term.term_size()?.1;
         let prim_window_height = if matches!(edit_mode, Edit::Nothing) {
             height
@@ -1077,6 +1077,17 @@ impl Status {
 
     pub fn fuzzy_flags(&mut self) -> Result<()> {
         self.current_tab_mut().set_display_mode(Display::Flagged);
+        Ok(())
+    }
+
+    pub fn sort(&mut self, c: char) -> Result<()> {
+        self.current_tab_mut().sort(c)?;
+        self.menu.reset();
+        self.set_height_for_edit_mode(self.index, Edit::Nothing)?;
+        self.tabs[self.index].edit_mode = Edit::Nothing;
+        let len = self.menu.len(Edit::Nothing);
+        let height = self.second_window_height()?;
+        self.menu.window = ContentWindow::new(len, height);
         Ok(())
     }
 }

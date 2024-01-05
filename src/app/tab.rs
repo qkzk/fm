@@ -419,11 +419,13 @@ impl Tab {
         // self.reset_edit_mode();
         match self.display_mode {
             Display::Directory => {
+                let path = self.current_file()?.path;
                 self.directory.unselect_current();
                 self.settings.update_sort_from_char(c);
+                crate::log_info!("sort kind: {sortkind}", sortkind = self.settings.sort_kind);
                 self.directory.sort(&self.settings.sort_kind);
                 self.normal_go_top();
-                self.directory.select_index(0);
+                self.directory.select_file(&path);
             }
             Display::Tree => {
                 self.settings.update_sort_from_char(c);
