@@ -799,17 +799,26 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] custom search
     - [ ] filter ?
     - [x] preview & dual pane preview
-    - [x] renaming
     - [x] open single or all flagged
+    - [x] renaming
     - [x] disable copy, move
+    - [x] delete, trash
     - [x] jump with enter
     - [x] ctrl+o open all fuzzy files
     - [x] unflag all (v)
+    - [ ] <spc> remove file from flagged
     - [ ] FIX: bulkrename. Either leave or capture all new names & update flagged
 
+- [ ] trashmode should display which shortcut erase all trash. Disable trashclean outside of trash itself
 - [ ] add left tab current dir to right shortcut and vice versa
 - [ ] refactor status.set_second_pane_preview
 - [ ] FIX: leave sort does nothing
+- [ ] FIX: regex [ crashes
+- [ ] allow to change focus, only color the focused window border. Change focus with ctrl+hjkl or ctrl+arrow
+      When a menu is opened, it should still be possible to navigate in files and preview or whatever
+      Clicking an unfocused window should only give the focus, not execute anything
+- [ ] remove MOCP control from fm ???
+- [ ] key which enter a mode should allow to leave it also.
 
 ## TODO
 
