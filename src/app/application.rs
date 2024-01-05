@@ -65,13 +65,14 @@ impl FM {
         let event_reader = EventReader::new(term.clone());
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = Opener::new(&config.terminal, &config.terminal_flag);
-        drop(config);
-
         let status = Arc::new(Mutex::new(Status::new(
             term.term_size()?.1,
             term.clone(),
             opener,
+            &config.binds,
         )?));
+        drop(config);
+
         let refresher = Refresher::new(term.clone());
         let displayer = Displayer::new(term, status.clone());
         Ok(Self {

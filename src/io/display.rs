@@ -15,7 +15,7 @@ use crate::app::{ClickableLine, FuzzyFooter, FuzzyHeader};
 use crate::common::path_to_string;
 use crate::common::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
-    LOG_SECOND_SENTENCE, TRASH_CONFIRM_LINE,
+    LOG_SECOND_SENTENCE,
 };
 use crate::io::read_last_log_line;
 use crate::log_info;
@@ -944,7 +944,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
-        let _ = canvas.print(1, 2, TRASH_CONFIRM_LINE);
+        let _ = canvas.print(1, 2, &self.status.menu.trash.trash_help);
         let content = trash.content();
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
         let len = content.len();

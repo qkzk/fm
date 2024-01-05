@@ -168,7 +168,8 @@ pub const RENAME_LINES: [&str; 3] = [
     "",
     "Nothing is done if the file already exists",
 ];
-pub const TRASH_CONFIRM_LINE: &str = "Enter: restore the selected file  --  x: delete permanently";
+pub const TRASH_CONFIRM_LINE: &str =
+    "Enter: restore the selected file  --  x: delete permanently -- ";
 /// Mediainfo (used to preview media files) executable
 pub const MEDIAINFO: &str = "mediainfo";
 /// ueberzug (used to preview images, videos & fonts)

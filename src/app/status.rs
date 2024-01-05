@@ -88,7 +88,7 @@ impl Status {
     /// Creates a new status for the application.
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
-    pub fn new(height: usize, term: Arc<Term>, opener: Opener) -> Result<Self> {
+    pub fn new(height: usize, term: Arc<Term>, opener: Opener, binds: &Bindings) -> Result<Self> {
         let skimer = None;
         let index = 0;
 
@@ -103,7 +103,7 @@ impl Status {
         let display_settings = Session::new(term.term_size()?.0);
         let mut internal_settings = InternalSettings::new(opener, term, sys);
         let mount_points = internal_settings.mount_points();
-        let menu = Menu::new(start_dir, &mount_points)?;
+        let menu = Menu::new(start_dir, &mount_points, binds)?;
 
         let users_left = Users::new();
         let users_right = users_left.clone();

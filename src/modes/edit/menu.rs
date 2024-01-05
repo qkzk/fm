@@ -7,6 +7,7 @@ use crate::common::CLI_PATH;
 use crate::common::MARKS_FILEPATH;
 use crate::common::SSHFS_EXECUTABLE;
 use crate::common::TUIS_PATH;
+use crate::config::Bindings;
 use crate::io::drop_sudo_privileges;
 use crate::io::execute_and_capture_output_with_path;
 use crate::log_info;
@@ -76,7 +77,11 @@ pub struct Menu {
 }
 
 impl Menu {
-    pub fn new(start_dir: &std::path::Path, mount_points: &[&std::path::Path]) -> Result<Self> {
+    pub fn new(
+        start_dir: &std::path::Path,
+        mount_points: &[&std::path::Path],
+        binds: &Bindings,
+    ) -> Result<Self> {
         Ok(Self {
             bulk: Bulk::default(),
             cli_applications: CliApplications::new(CLI_PATH).update_desc_size(),
@@ -93,7 +98,7 @@ impl Menu {
             removable_devices: RemovableDevices::default(),
             shortcut: Shortcut::new(start_dir).with_mount_points(mount_points),
             sudo_command: None,
-            trash: Trash::new()?,
+            trash: Trash::new(binds)?,
             tui_applications: TuiApplications::new(TUIS_PATH),
             window: ContentWindow::new(0, 80),
         })
