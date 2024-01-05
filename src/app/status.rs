@@ -476,15 +476,22 @@ impl Status {
     pub fn toggle_flag_for_selected(&mut self) {
         let tab = self.current_tab();
 
-        if matches!(tab.edit_mode, Edit::Nothing)
-            && !matches!(tab.display_mode, Display::Preview | Display::Flagged)
-        {
+        if matches!(tab.edit_mode, Edit::Nothing) {
             let Ok(file) = tab.current_file() else {
                 return;
             };
-            self.menu.flagged.toggle(&file.path);
-            self.current_tab_mut().normal_down_one_row();
-        };
+            match tab.display_mode {
+                Display::Flagged => {
+                    self.menu.flagged.remove_selected();
+                }
+                Display::Directory | Display::Tree => {
+                    self.menu.flagged.toggle(&file.path);
+                    self.current_tab_mut().normal_down_one_row();
+                }
+                Display::Preview => (),
+            }
+            {};
+        }
     }
 
     /// Execute a move or a copy of the flagged files to current directory.

@@ -806,7 +806,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] jump with enter
     - [x] ctrl+o open all fuzzy files
     - [x] unflag all (v)
-    - [ ] <spc> remove file from flagged
+    - [x] <spc> remove file from flagged
     - [ ] FIX: bulkrename. Either leave or capture all new names & update flagged
 
 - [ ] trashmode should display which shortcut erase all trash. Disable trashclean outside of trash itself
@@ -819,6 +819,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       Clicking an unfocused window should only give the focus, not execute anything
 - [ ] remove MOCP control from fm ???
 - [ ] key which enter a mode should allow to leave it also.
+- [ ] display all specific binds for every mode with a key ?
 
 ## TODO
 

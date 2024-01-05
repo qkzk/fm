@@ -95,7 +95,9 @@ impl Flagged {
 
     pub fn remove_selected(&mut self) {
         self.content.remove(self.index);
-        self.index.checked_sub(0).unwrap_or_default();
+        if self.index > 0 {
+            self.index -= 1;
+        }
         self.reset_window();
     }
 
