@@ -257,8 +257,11 @@ impl Status {
     /// There's surelly a better way, like doing it only once in a while or on
     /// demand.
     pub fn refresh_shortcuts(&mut self) {
-        self.menu
-            .refresh_shortcuts(&self.internal_settings.mount_points());
+        self.menu.refresh_shortcuts(
+            &self.internal_settings.mount_points(),
+            self.tabs[0].current_path(),
+            self.tabs[1].current_path(),
+        );
     }
 
     /// Returns an array of Disks

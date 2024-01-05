@@ -131,8 +131,15 @@ impl Shortcut {
 
     /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
     /// extend the vector with the mount points.
-    pub fn refresh(&mut self, mount_points: &[&Path]) {
+    pub fn refresh(
+        &mut self,
+        mount_points: &[&Path],
+        left_path: &std::path::Path,
+        right_path: &std::path::Path,
+    ) {
         self.content.truncate(self.non_mount_size);
+        self.content.push(left_path.to_owned());
+        self.content.push(right_path.to_owned());
         self.extend_with_mount_points(mount_points);
     }
 }

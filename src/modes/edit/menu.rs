@@ -282,8 +282,13 @@ impl Menu {
 
     /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
     /// extend the vector with the mount points.
-    pub fn refresh_shortcuts(&mut self, mount_points: &[&std::path::Path]) {
-        self.shortcut.refresh(mount_points)
+    pub fn refresh_shortcuts(
+        &mut self,
+        mount_points: &[&std::path::Path],
+        left_path: &std::path::Path,
+        right_path: &std::path::Path,
+    ) {
+        self.shortcut.refresh(mount_points, left_path, right_path)
     }
 
     pub fn completion_tab(&mut self) {

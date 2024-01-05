@@ -810,7 +810,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] FIX: bulkrename. Either leave or capture all new names & update flagged
 
 - [ ] trashmode should display which shortcut erase all trash. Disable trashclean outside of trash itself
-- [ ] add left tab current dir to right shortcut and vice versa
+- [x] add left tab current dir to right shortcut and vice versa
 - [ ] refactor status.set_second_pane_preview
 - [ ] FIX: leave sort does nothing
 - [x] FIX: incomplete regex crashes
