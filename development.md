@@ -813,6 +813,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] add left tab current dir to right shortcut and vice versa
 - [ ] refactor status.set_second_pane_preview
 - [x] FIX: leave sort does nothing
+- [ ] Sort refactoring
+  - [ ] entering
+  - [ ] setting
+  - [ ] leaving aka reseting
 - [x] FIX: incomplete regex crashes
 - [ ] allow to change focus, only color the focused window border. Change focus with ctrl+hjkl or ctrl+arrow
       When a menu is opened, it should still be possible to navigate in files and preview or whatever
