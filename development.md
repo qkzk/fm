@@ -795,7 +795,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] display searched and filter ????
   - [ ] enter: from skim files or lines, from flagged, from search, from folder, from tree (flatten)
   - [ ] action on all files
-    - [ ] custom search
     - [ ] filter ?
     - [x] preview & dual pane preview
     - [x] open single or all flagged
@@ -807,6 +806,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] unflag all (v)
     - [x] <spc> remove file from flagged
     - [x] bulk update flagged with new names
+    - [x] custom search with completion
 
 - [x] trashmode should display which shortcut erase all trash.
 - [x] add left tab current dir to right shortcut and vice versa

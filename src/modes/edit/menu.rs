@@ -21,6 +21,7 @@ use crate::modes::Content;
 use crate::modes::ContentWindow;
 use crate::modes::ContextMenu;
 use crate::modes::CryptoDeviceOpener;
+use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::Flagged;
 use crate::modes::History;
@@ -128,7 +129,15 @@ impl Menu {
                 self.completion.exec(&self.input.string())
             }
             Edit::InputCompleted(InputCompleted::Search) => {
-                self.completion.search(tab.filenames(&self.input.string()));
+                match tab.display_mode {
+                    Display::Tree | Display::Directory => {
+                        self.completion.search(tab.filenames(&self.input.string()));
+                    }
+                    Display::Flagged => self
+                        .completion
+                        .search(self.flagged.filenames_containing(&self.input.string())),
+                    _ => (),
+                }
                 Ok(())
             }
             Edit::InputCompleted(InputCompleted::Action) => {

@@ -272,10 +272,14 @@ impl LeaveMode {
                 log_info!("searching in tree");
                 status.current_tab_mut().tree.search_first_match(searched);
             }
-            _ => {
+            Display::Directory => {
                 let next_index = status.current_tab().directory.index;
                 status.current_tab_mut().search_from(searched, next_index);
             }
+            Display::Flagged => {
+                status.menu.flagged.search(searched);
+            }
+            _ => (),
         };
         status.update_second_pane_for_preview()
     }
