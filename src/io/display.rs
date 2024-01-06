@@ -285,11 +285,7 @@ impl<'a> WinMain<'a> {
     }
 
     fn draw_tree_content(&self, canvas: &mut dyn Canvas) -> Result<usize> {
-        let left_margin = if self.status.display_settings.metadata() {
-            0
-        } else {
-            2
-        };
+        let left_margin = 1;
         let height = canvas.height()?;
         let length = self.tab.tree.displayable().lines().len();
 
@@ -344,7 +340,7 @@ impl<'a> WinMain<'a> {
             0
         };
 
-        let offset = if index == 0 { 1 } else { 0 };
+        let offset = if index == 0 { 2 } else { 1 };
         let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, s_prefix)?;
 
         canvas.print_with_attr(

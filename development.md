@@ -818,13 +818,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] refactor status.set_second_pane_preview
 - [x] FIX: leave sort does nothing
 - [x] FIX: incomplete regex crashes
-
 - [x] key which enter a mode should allow to leave it also.
 - [ ] display all specific binds for every mode with a key ?
   - [x] second line for every mod, use default color
 - [x] in marks new, backspace (since del is annoying...) should erase a mark.
 - [x] improve marks help.
 - [x] sort marks at read & update
+- [x] FIX: display flagged symbol in tree mode. Better alignment
 
 ## Version 0.1.26
 
