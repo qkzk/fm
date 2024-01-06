@@ -819,8 +819,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: leave sort does nothing
 - [x] FIX: incomplete regex crashes
 - [x] key which enter a mode should allow to leave it also.
-- [ ] display all specific binds for every mode with a key ?
-  - [x] second line for every mod, use default color
+- [x] second line for every mod, use default color
 - [x] in marks new, backspace (since del is annoying...) should erase a mark.
 - [x] improve marks help.
 - [x] sort marks at read & update
@@ -828,12 +827,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## Version 0.1.26
 
+- [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
+  - [ ] display number of matches while searching
   - [ ] Sort refactoring
     - [ ] entering
     - [ ] setting
     - [ ] leaving aka reseting
-- [ ] display number of matches while searching
 - [ ] remove MOCP control from fm ???
 - [ ] focusable windows
   - [ ] move display to status ? it would be easier to know where I clicked
