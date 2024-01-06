@@ -1099,7 +1099,6 @@ impl<'a> WinSecondary<'a> {
         confirmed_mode: NeedConfirmation,
         canvas: &mut dyn Canvas,
     ) -> Result<()> {
-        log_info!("confirmed action: {:?}", confirmed_mode);
         let dest = path_to_string(&self.tab.directory_of_selected()?);
 
         Self::draw_content_line(
@@ -1138,7 +1137,6 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_confirm_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        log_info!("draw_confirm_empty_trash");
         if self.status.menu.trash.is_empty() {
             self.draw_trash_is_empty(canvas)
         } else {
