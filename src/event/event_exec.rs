@@ -365,15 +365,30 @@ impl EventAction {
     /// Enter the filter mode, where you can filter.
     /// See `crate::modes::Filter` for more details.
     pub fn filter(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Filter))
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::Filter)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Filter))?;
+        }
+        Ok(())
     }
 
     /// Enter JUMP mode, allowing to jump to any flagged file.
     /// Does nothing if no file is flagged.
     pub fn jump(status: &mut Status) -> Result<()> {
-        if !status.menu.flagged.is_empty() {
-            status.menu.flagged.index = 0;
-            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Jump))?;
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Jump)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            if !status.menu.flagged.is_empty() {
+                status.menu.flagged.index = 0;
+                status.set_edit_mode(status.index, Edit::Navigate(Navigate::Jump))?;
+            }
         }
         Ok(())
     }
@@ -382,7 +397,15 @@ impl EventAction {
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.
     pub fn bulk(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::Navigate(Navigate::BulkMenu))
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::BulkMenu)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::BulkMenu))?;
+        }
+        Ok(())
     }
 
     /// Enter the search mode.
@@ -424,8 +447,15 @@ impl EventAction {
 
     /// Enter the cd mode where an user can type a path to jump to.
     pub fn cd(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Cd))?;
-        status.menu.completion.reset();
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputCompleted(InputCompleted::Cd)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Cd))?;
+            status.menu.completion.reset();
+        }
         Ok(())
     }
 
@@ -447,27 +477,59 @@ impl EventAction {
 
     /// Enter the shell menu mode. You can pick a TUI application to be run
     pub fn tui_menu(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::Navigate(Navigate::TuiApplication))
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::TuiApplication)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::TuiApplication))?;
+        }
+        Ok(())
     }
 
     /// Enter the cli info mode. You can pick a Text application to be
     /// displayed/
     pub fn cli_menu(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::Navigate(Navigate::CliApplication))
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::CliApplication)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::CliApplication))?;
+        }
+        Ok(())
     }
 
     /// Enter the history mode, allowing to navigate to previously visited
     /// directory.
     pub fn history(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::Navigate(Navigate::History))
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::History)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::History))?;
+        }
+        Ok(())
     }
 
     /// Enter Marks new mode, allowing to bind a char to a path.
     pub fn marks_new(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(
-            status.index,
-            Edit::Navigate(Navigate::Marks(MarkAction::New)),
-        )
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Marks(MarkAction::New))
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(
+                status.index,
+                Edit::Navigate(Navigate::Marks(MarkAction::New)),
+            )?;
+        }
+        Ok(())
     }
 
     /// Enter Marks jump mode, allowing to jump to a marked file.
@@ -475,19 +537,35 @@ impl EventAction {
         if status.menu.marks.is_empty() {
             return Ok(());
         }
-        status.set_edit_mode(
-            status.index,
-            Edit::Navigate(Navigate::Marks(MarkAction::Jump)),
-        )
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Marks(MarkAction::Jump))
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(
+                status.index,
+                Edit::Navigate(Navigate::Marks(MarkAction::Jump)),
+            )?;
+        }
+        Ok(())
     }
 
     /// Enter the shortcut mode, allowing to visit predefined shortcuts.
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn shortcut(status: &mut Status) -> Result<()> {
-        std::env::set_current_dir(status.current_tab().directory_of_selected()?)?;
-        status.menu.shortcut.update_git_root();
-        status.set_edit_mode(status.index, Edit::Navigate(Navigate::Shortcut))
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Shortcut)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            std::env::set_current_dir(status.current_tab().directory_of_selected()?)?;
+            status.menu.shortcut.update_git_root();
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Shortcut))?;
+        }
+        Ok(())
     }
 
     /// Send a signal to parent NVIM process, picking files.
@@ -913,11 +991,19 @@ impl EventAction {
     /// Ask the user if he wants to empty the trash.
     /// It requires a confimation before doing anything
     pub fn trash_empty(status: &mut Status) -> Result<()> {
-        status.menu.trash.update()?;
-        status.set_edit_mode(
-            status.index,
-            Edit::NeedConfirmation(NeedConfirmation::EmptyTrash),
-        )
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::NeedConfirmation(NeedConfirmation::EmptyTrash)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.menu.trash.update()?;
+            status.set_edit_mode(
+                status.index,
+                Edit::NeedConfirmation(NeedConfirmation::EmptyTrash),
+            )?;
+        }
+        Ok(())
     }
 
     /// Open the trash.
@@ -925,31 +1011,55 @@ impl EventAction {
     /// Each item can be restored or deleted.
     /// Each opening refresh the trash content.
     pub fn trash_open(status: &mut Status) -> Result<()> {
-        status.menu.trash.update()?;
-        status.set_edit_mode(status.index, Edit::Navigate(Navigate::Trash))
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Trash)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.menu.trash.update()?;
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Trash))?;
+        }
+        Ok(())
     }
 
     /// Enter the encrypted device menu, allowing the user to mount/umount
     /// a luks encrypted device.
     pub fn encrypted_drive(status: &mut Status) -> Result<()> {
-        if !lsblk_and_cryptsetup_installed() {
-            log_line!("lsblk and cryptsetup must be installed.");
-            return Ok(());
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::EncryptedDrive)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            if !lsblk_and_cryptsetup_installed() {
+                log_line!("lsblk and cryptsetup must be installed.");
+                return Ok(());
+            }
+            if status.menu.encrypted_devices.is_empty() {
+                status.menu.encrypted_devices.update()?;
+            }
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::EncryptedDrive))?;
         }
-        if status.menu.encrypted_devices.is_empty() {
-            status.menu.encrypted_devices.update()?;
-        }
-        status.set_edit_mode(status.index, Edit::Navigate(Navigate::EncryptedDrive))
+        Ok(())
     }
 
     /// Enter the Removable Devices mode where the user can mount an MTP device
     pub fn removable_devices(status: &mut Status) -> Result<()> {
-        if !is_program_in_path(GIO) {
-            log_line!("gio must be installed.");
-            return Ok(());
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::RemovableDevices)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            if !is_program_in_path(GIO) {
+                log_line!("gio must be installed.");
+                return Ok(());
+            }
+            status.menu.removable_devices = RemovableDevices::from_gio().unwrap_or_default();
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::RemovableDevices))?;
         }
-        status.menu.removable_devices = RemovableDevices::from_gio().unwrap_or_default();
-        status.set_edit_mode(status.index, Edit::Navigate(Navigate::RemovableDevices))
+        Ok(())
     }
 
     /// Open the config file.
@@ -968,13 +1078,29 @@ impl EventAction {
 
     /// Enter compression mode
     pub fn compress(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::Navigate(Navigate::Compress))
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Compress)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Compress))?;
+        }
+        Ok(())
     }
 
     /// Enter the context menu mode where the user can choose a basic file action.
     pub fn context(status: &mut Status) -> Result<()> {
-        status.menu.context.reset();
-        status.set_edit_mode(status.index, Edit::Navigate(Navigate::Context))
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Context)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.menu.context.reset();
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Context))?;
+        }
+        Ok(())
     }
 
     /// Enter action mode in which you can type any valid action.
