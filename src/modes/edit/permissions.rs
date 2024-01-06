@@ -41,7 +41,6 @@ impl Permissions {
         for path in &flagged.content {
             Self::set_permissions(path, mode.octal())?;
         }
-        flagged.clear();
         log_line!("Changed permissions to {mode_str}");
         Ok(())
     }

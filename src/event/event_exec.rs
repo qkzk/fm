@@ -273,12 +273,26 @@ impl EventAction {
 
     /// Enter the new dir mode.
     pub fn new_dir(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Newdir))
+        if matches!(
+            status.current_tab().display_mode,
+            Display::Directory | Display::Tree
+        ) {
+            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Newdir))
+        } else {
+            Ok(())
+        }
     }
 
     /// Enter the new file mode.
     pub fn new_file(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Newfile))
+        if matches!(
+            status.current_tab().display_mode,
+            Display::Directory | Display::Tree
+        ) {
+            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Newfile))
+        } else {
+            Ok(())
+        }
     }
 
     fn enter_file(status: &mut Status) -> Result<()> {

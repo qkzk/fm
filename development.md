@@ -808,6 +808,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] bulk update flagged with new names
     - [x] custom search with completion
     - [x] disable regex match in flagged. Should it only keep the flagged files ? Would require to save the files before entering...
+    - [x] chmod
+    - [x] disable new nodes (file, dir)
 
 - [x] trashmode should display which shortcut erase all trash.
 - [x] add left tab current dir to right shortcut and vice versa
