@@ -138,6 +138,17 @@ impl Marks {
         }
     }
 
+    pub fn remove_selected(&mut self) -> Result<()> {
+        if self.is_empty() {
+            return Ok(());
+        }
+        let (ch, path) = self.selected().context("no marks saved")?;
+        log_line!("Removed marks {ch} -> {path}", path = path.display());
+        self.content.remove(self.index);
+        self.prev();
+        self.save_marks()
+    }
+
     fn save_marks(&self) -> Result<()> {
         let file = std::fs::File::create(&self.save_path)?;
         let mut buf = BufWriter::new(file);

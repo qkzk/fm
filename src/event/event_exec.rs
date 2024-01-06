@@ -783,6 +783,7 @@ impl EventAction {
     /// Delete a char to the left in modes allowing edition.
     pub fn backspace(status: &mut Status) -> Result<()> {
         match status.current_tab().edit_mode {
+            Edit::Navigate(Navigate::Marks(MarkAction::New)) => status.menu.marks.remove_selected(),
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
                 status.menu.input.delete_char_left();
                 Ok(())
