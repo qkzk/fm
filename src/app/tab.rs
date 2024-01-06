@@ -440,7 +440,11 @@ impl Tab {
     /// Set the pathcontent to a new path.
     /// Reset the window.
     /// Add the last path to the history of visited paths.
+    /// Does nothing in preview or flagged display mode.
     pub fn cd(&mut self, path: &path::Path) -> Result<()> {
+        if matches!(self.display_mode, Display::Preview | Display::Flagged) {
+            return Ok(());
+        }
         match std::env::set_current_dir(path) {
             Ok(()) => (),
             Err(error) => {
