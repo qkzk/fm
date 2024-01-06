@@ -5,6 +5,8 @@ use anyhow::{Context, Result};
 
 use crate::app::Status;
 use crate::app::Tab;
+use crate::common::filename_to_clipboard;
+use crate::common::filepath_to_clipboard;
 use crate::common::LAZYGIT;
 use crate::common::NCDU;
 use crate::common::{is_program_in_path, open_in_current_neovim};
@@ -975,17 +977,41 @@ impl EventAction {
     }
 
     /// Copy the filename of the selected file in normal mode.
-    pub fn copy_filename(tab: &mut Tab) -> Result<()> {
-        if let Display::Directory | Display::Tree = tab.display_mode {
-            tab.filename_to_clipboard();
+    pub fn copy_filename(status: &Status) -> Result<()> {
+        match status.current_tab().display_mode {
+            Display::Tree | Display::Directory => {
+                let Ok(file_info) = status.current_tab().current_file() else {
+                    return Ok(());
+                };
+                filename_to_clipboard(&file_info.path);
+            }
+            Display::Flagged => {
+                let Some(path) = status.menu.flagged.selected() else {
+                    return Ok(());
+                };
+                filename_to_clipboard(&path);
+            }
+            _ => return Ok(()),
         }
         Ok(())
     }
 
     /// Copy the filepath of the selected file in normal mode.
-    pub fn copy_filepath(tab: &mut Tab) -> Result<()> {
-        if let Display::Directory | Display::Tree = tab.display_mode {
-            tab.filepath_to_clipboard();
+    pub fn copy_filepath(status: &Status) -> Result<()> {
+        match status.current_tab().display_mode {
+            Display::Tree | Display::Directory => {
+                let Ok(file_info) = status.current_tab().current_file() else {
+                    return Ok(());
+                };
+                filepath_to_clipboard(&file_info.path);
+            }
+            Display::Flagged => {
+                let Some(path) = status.menu.flagged.selected() else {
+                    return Ok(());
+                };
+                filepath_to_clipboard(&path);
+            }
+            _ => return Ok(()),
         }
         Ok(())
     }

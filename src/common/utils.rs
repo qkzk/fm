@@ -132,6 +132,21 @@ pub fn set_clipboard(content: String) {
     let _ = ctx.get_contents();
 }
 
+/// Copy the filename to the clipboard. Only the filename.
+pub fn filename_to_clipboard(path: &std::path::Path) {
+    let Some(filename) = path.file_name() else {
+        return;
+    };
+    let filename = filename.to_string_lossy().to_string();
+    set_clipboard(filename)
+}
+
+/// Copy the filepath to the clipboard. The absolute path.
+pub fn filepath_to_clipboard(path: &std::path::Path) {
+    let path = path.to_string_lossy().to_string();
+    set_clipboard(path)
+}
+
 /// Convert a row into a `crate::fm::ContentWindow` index.
 /// Just remove the header rows.
 pub fn row_to_window_index(row: u16) -> usize {

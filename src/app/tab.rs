@@ -213,25 +213,6 @@ impl Tab {
         }
     }
 
-    /// Copy the selected filename to the clipboard. Only the filename.
-    pub fn filename_to_clipboard(&self) {
-        let Ok(file) = self.current_file() else {
-            return;
-        };
-        set_clipboard(file.filename.to_string())
-    }
-
-    /// Copy the selected filepath to the clipboard. The absolute path.
-    pub fn filepath_to_clipboard(&self) {
-        let Ok(file) = self.current_file() else {
-            return;
-        };
-        let Some(path_str) = file.path.to_str() else {
-            return;
-        };
-        set_clipboard(path_str.to_owned())
-    }
-
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) -> Result<()> {
         self.preview = Preview::empty();
