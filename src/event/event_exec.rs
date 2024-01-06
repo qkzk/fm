@@ -419,7 +419,14 @@ impl EventAction {
     /// Enter the regex mode.
     /// Every file matching the typed regex will be flagged.
     pub fn regex_match(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::RegexMatch))
+        if matches!(
+            status.current_tab().display_mode,
+            Display::Tree | Display::Directory
+        ) {
+            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::RegexMatch))
+        } else {
+            Ok(())
+        }
     }
 
     /// Display the help which can be navigated and displays the configrable
