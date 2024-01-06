@@ -59,7 +59,8 @@ impl Marks {
                 }
             }
         }
-        let marks = Self {
+        content.sort();
+        let mut marks = Self {
             save_path,
             content,
             index: 0,
@@ -149,9 +150,10 @@ impl Marks {
         self.save_marks()
     }
 
-    fn save_marks(&self) -> Result<()> {
+    fn save_marks(&mut self) -> Result<()> {
         let file = std::fs::File::create(&self.save_path)?;
         let mut buf = BufWriter::new(file);
+        self.content.sort();
         for (ch, path) in &self.content {
             writeln!(buf, "{}:{}", ch, Self::path_as_string(path)?)?;
         }

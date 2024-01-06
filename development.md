@@ -818,7 +818,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] display all specific binds for every mode with a key ?
   - [x] second line for every mod, use default color
 - [x] in marks new, backspace (since del is annoying...) should erase a mark.
-- [x] marks help should be better
+- [x] improve marks help.
+- [x] sort marks at read & update
 
 ## Version 0.1.26
 
