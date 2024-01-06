@@ -20,7 +20,7 @@ trait DelTemp {
 }
 
 trait BulkExecute {
-    fn execute(&self) -> Result<()>;
+    fn execute(&self) -> Result<Option<Vec<PathBuf>>>;
 }
 
 struct Renamer {
@@ -32,10 +32,10 @@ struct Renamer {
 impl DelTemp for Renamer {}
 
 impl BulkExecute for Renamer {
-    fn execute(&self) -> Result<()> {
-        self.rename_all(&self.new_filenames)?;
+    fn execute(&self) -> Result<Option<Vec<PathBuf>>> {
+        let paths = self.rename_all(&self.new_filenames);
         self.del_temporary_file(&self.temp_file)?;
-        Ok(())
+        paths
     }
 }
 
@@ -88,21 +88,19 @@ impl Renamer {
         Ok(())
     }
 
-    fn rename_all(&self, new_filenames: &[String]) -> Result<()> {
-        let mut counter = 0;
+    fn rename_all(&self, new_filenames: &[String]) -> Result<Option<Vec<PathBuf>>> {
+        let mut paths = vec![];
         for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
             match rename(path, filename) {
-                Ok(_) => {
-                    counter += 1;
-                }
+                Ok(path) => paths.push(path),
                 Err(error) => log_info!(
                     "Error renaming {path} to {filename}. Error: {error:?}",
                     path = path.display()
                 ),
             }
         }
-        log_line!("Bulk renamed {counter} files");
-        Ok(())
+        log_line!("Bulk renamed {len} files", len = paths.len());
+        Ok(Some(paths))
     }
 }
 
@@ -115,10 +113,10 @@ struct Creator {
 impl DelTemp for Creator {}
 
 impl BulkExecute for Creator {
-    fn execute(&self) -> Result<()> {
-        self.create_all_files(&self.new_filenames)?;
+    fn execute(&self) -> Result<Option<Vec<PathBuf>>> {
+        let paths = self.create_all_files(&self.new_filenames)?;
         self.del_temporary_file(&self.temp_file)?;
-        Ok(())
+        Ok(paths)
     }
 }
 
@@ -143,38 +141,39 @@ impl Creator {
         Ok(self)
     }
 
-    fn create_all_files(&self, new_filenames: &[String]) -> Result<()> {
-        let mut counter = 0;
+    fn create_all_files(&self, new_filenames: &[String]) -> Result<Option<Vec<PathBuf>>> {
+        let mut paths = vec![];
         for filename in new_filenames.iter() {
-            counter = self.create_file(filename, counter)?
+            let Some(path) = self.create_file(filename)? else {
+                continue;
+            };
+            paths.push(path)
         }
-        log_line!("Bulk created {counter} files");
-        Ok(())
+        log_line!("Bulk created {len} files", len = paths.len());
+        Ok(Some(paths))
     }
 
-    fn create_file(&self, filename: &str, mut counter: usize) -> Result<usize> {
+    fn create_file(&self, filename: &str) -> Result<Option<PathBuf>> {
         let mut new_path = std::path::PathBuf::from(&self.parent_dir);
         if !filename.ends_with('/') {
             new_path.push(filename);
             let Some(parent) = new_path.parent() else {
-                return Ok(counter);
+                return Ok(None);
             };
             log_info!("Bulk new files. Creating parent: {}", parent.display());
             if std::fs::create_dir_all(parent).is_err() {
-                return Ok(counter);
+                return Ok(None);
             };
             log_info!("creating: {new_path:?}");
             std::fs::File::create(&new_path)?;
             log_line!("Bulk created {new_path}", new_path = new_path.display());
-            counter += 1;
         } else {
             new_path.push(filename);
             log_info!("Bulk creating dir: {}", new_path.display());
             std::fs::create_dir_all(&new_path)?;
             log_line!("Bulk created {new_path}", new_path = new_path.display());
-            counter += 1;
         }
-        Ok(counter)
+        Ok(Some(new_path))
     }
 }
 
@@ -298,21 +297,21 @@ impl Bulk {
     ///
     /// renamer may fail if we can't rename a file (permissions...)
     /// creator may fail if we can't write in current directory.
-    pub fn execute(&mut self) -> Result<()> {
+    pub fn execute(&mut self) -> Result<Option<Vec<PathBuf>>> {
         log_info!("bulk execute: {action:?}", action = self.bulk_mode());
-        if self.is_rename() {
+        let paths = if self.is_rename() {
             let Some(renamer) = &mut self.renamer else {
-                return Ok(());
+                return Ok(None);
             };
-            renamer.execute()?;
+            renamer.execute()?
         } else {
             let Some(creator) = &mut self.creator else {
-                return Ok(());
+                return Ok(None);
             };
-            creator.execute()?;
-        }
+            creator.execute()?
+        };
         self.reset();
-        Ok(())
+        Ok(paths)
     }
 
     pub fn format_confirmation(&self) -> Vec<String> {

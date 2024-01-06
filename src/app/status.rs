@@ -915,10 +915,13 @@ impl Status {
 
     /// Execute the bulk action.
     pub fn confirm_bulk_action(&mut self) -> Result<()> {
-        log_info!("confirming bulk");
-        self.menu.bulk.execute()?;
+        if let Some(paths) = self.menu.bulk.execute()? {
+            self.menu.flagged.update(paths);
+        } else {
+            self.menu.flagged.clear();
+        };
         self.reset_edit_mode()?;
-        self.clear_flags_and_reset_view()?;
+        self.reset_tabs_view()?;
         Ok(())
     }
 

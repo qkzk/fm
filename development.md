@@ -806,7 +806,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] ctrl+o open all fuzzy files
     - [x] unflag all (v)
     - [x] <spc> remove file from flagged
-    - [ ] FIX: bulkrename. Either leave or capture all new names & update flagged
+    - [x] bulk update flagged with new names
 
 - [x] trashmode should display which shortcut erase all trash.
 - [x] add left tab current dir to right shortcut and vice versa
@@ -814,7 +814,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: leave sort does nothing
 - [x] FIX: incomplete regex crashes
 
-- [ ] remove MOCP control from fm ???
 - [x] key which enter a mode should allow to leave it also.
 - [ ] display all specific binds for every mode with a key ?
   - [x] second line for every mod, use default color
@@ -829,6 +828,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] setting
     - [ ] leaving aka reseting
 - [ ] display number of matches while searching
+- [ ] remove MOCP control from fm ???
 - [ ] focusable windows
   - [ ] move display to status ? it would be easier to know where I clicked
   - [ ] allow to change focus, only color the focused window border.
