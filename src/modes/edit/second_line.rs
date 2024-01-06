@@ -1,5 +1,5 @@
 use crate::modes::{
-    mode::BulkAction, Edit, InputCompleted, InputSimple, Navigate, NeedConfirmation,
+    mode::BulkAction, Edit, InputCompleted, InputSimple, MarkAction, Navigate, NeedConfirmation,
 };
 
 pub trait SecondLine {
@@ -23,7 +23,7 @@ impl SecondLine for Navigate {
     fn second_line(&self) -> &'static str {
         match self {
             Self::Jump => "Pick a destination",
-            Self::Trash => "Pick a destination",
+            Self::Trash => "",
             Self::History => "Pick a destination",
             Self::Shortcut => "Pick a destination",
             Self::Compress => "Archive and compress the flagged files using selected algorithm.",
@@ -34,6 +34,17 @@ impl SecondLine for Navigate {
             Self::TuiApplication => "Pick a command",
             Self::CliApplication => "Pick a command",
             Self::RemovableDevices => "",
+        }
+    }
+}
+
+impl SecondLine for MarkAction {
+    fn second_line(&self) -> &'static str {
+        match self {
+            Self::Jump => "Select a mark to go to or type its char",
+            Self::New => {
+                "Select a mark or type its char to update it. <Backspace> erase the selected mark"
+            }
         }
     }
 }
@@ -57,13 +68,6 @@ impl SecondLine for InputSimple {
 
 impl SecondLine for NeedConfirmation {
     fn second_line(&self) -> &'static str {
-        match self {
-            Self::Copy => "Copy those files ?",
-            Self::Delete => "Delete permently ?",
-            Self::Move => "Move those files ?",
-            Self::EmptyTrash => "Delete permently ?",
-            Self::BulkAction(BulkAction::Rename) => "Rename those files ?",
-            Self::BulkAction(BulkAction::Create) => "Create those files ?",
-        }
+        return "";
     }
 }

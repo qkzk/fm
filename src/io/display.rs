@@ -949,7 +949,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
-        let _ = canvas.print(1, 2, &self.status.menu.trash.trash_help);
+        let _ = canvas.print_with_attr(1, 2, &self.status.menu.trash.help, ATTR_YELLOW_BOLD);
         let content = trash.content();
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
         let len = content.len();

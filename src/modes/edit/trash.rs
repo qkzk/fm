@@ -198,7 +198,7 @@ pub struct Trash {
     /// The path to the trashed files
     pub trash_folder_files: String,
     trash_folder_info: String,
-    pub trash_help: String,
+    pub help: String,
 }
 
 impl Trash {
@@ -219,8 +219,7 @@ impl Trash {
             None => "alt-x".to_owned(),
         };
 
-        let trash_help =
-            TRASH_CONFIRM_LINE.to_owned() + &format!("{empty_trash_binds}: Empty the trash");
+        let help = TRASH_CONFIRM_LINE.to_owned() + &format!("{empty_trash_binds}: Empty the trash");
 
         let index = 0;
         let content = vec![];
@@ -230,7 +229,7 @@ impl Trash {
             index,
             trash_folder_files,
             trash_folder_info,
-            trash_help,
+            help,
         })
     }
 
