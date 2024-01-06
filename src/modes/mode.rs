@@ -20,6 +20,17 @@ pub enum MarkAction {
     New,
 }
 
+impl MarkAction {
+    pub fn second_line(&self) -> &'static str {
+        match self {
+            Self::Jump => "Select a mark to go to or type its char",
+            Self::New => {
+                "Select a mark or type its char to update it. <Backspace> erase the selected mark"
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum BulkAction {
     Rename,

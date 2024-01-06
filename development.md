@@ -825,7 +825,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] key which enter a mode should allow to leave it also.
 - [ ] display all specific binds for every mode with a key ?
 - [x] in marks new, backspace (since del is annoying...) should erase a mark.
-- [ ] marks help should be better
+- [x] marks help should be better
 
 ## TODO
 

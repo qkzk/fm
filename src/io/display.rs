@@ -19,7 +19,6 @@ use crate::common::{
 };
 use crate::io::read_last_log_line;
 use crate::log_info;
-use crate::modes::fileinfo_attr;
 use crate::modes::parse_input_mode;
 use crate::modes::BinaryContent;
 use crate::modes::ColoredText;
@@ -42,6 +41,7 @@ use crate::modes::TreeLineBuilder;
 use crate::modes::TreePreview;
 use crate::modes::Ueberzug;
 use crate::modes::Window;
+use crate::modes::{fileinfo_attr, MarkAction};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -870,7 +870,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::EncryptedDrive => self.draw_encrypted_drive(canvas),
             Navigate::History => self.draw_history(canvas),
             Navigate::Jump => self.draw_destination(canvas, &self.status.menu.flagged),
-            Navigate::Marks(_) => self.draw_marks(canvas),
+            Navigate::Marks(mark_action) => self.draw_marks(canvas, mark_action),
             Navigate::RemovableDevices => self.draw_removable(canvas),
             Navigate::TuiApplication => self.draw_shell_menu(canvas),
             Navigate::Shortcut => self.draw_destination(canvas, &self.status.menu.shortcut),
@@ -984,7 +984,8 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn draw_marks(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_marks(&self, canvas: &mut dyn Canvas, mark_action: MarkAction) -> Result<()> {
+        canvas.print(1, 2, mark_action.second_line())?;
         canvas.print_with_attr(2, 4, "mark  path", Self::ATTR_YELLOW)?;
 
         let content = self.status.menu.marks.as_strings();
