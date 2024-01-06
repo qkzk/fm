@@ -782,7 +782,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display 30 fps
   - [x] move display into a thread
   - [ ] test everything
-- [ ] display number of matches while searching
 - [ ] flagged as content
 
   - [ ] search flags all files in current dir, merge with regex
@@ -813,19 +812,29 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] add left tab current dir to right shortcut and vice versa
 - [ ] refactor status.set_second_pane_preview
 - [x] FIX: leave sort does nothing
-- [ ] Sort refactoring
-  - [ ] entering
-  - [ ] setting
-  - [ ] leaving aka reseting
 - [x] FIX: incomplete regex crashes
-- [ ] allow to change focus, only color the focused window border. Change focus with ctrl+hjkl or ctrl+arrow
-      When a menu is opened, it should still be possible to navigate in files and preview or whatever
-      Clicking an unfocused window should only give the focus, not execute anything
+
 - [ ] remove MOCP control from fm ???
 - [x] key which enter a mode should allow to leave it also.
 - [ ] display all specific binds for every mode with a key ?
+  - [x] second line for every mod, use default color
 - [x] in marks new, backspace (since del is annoying...) should erase a mark.
 - [x] marks help should be better
+
+## Version 0.1.26
+
+- [ ] merge sort & regex, display nb of matches, completion + flag on the fly
+  - [ ] Sort refactoring
+    - [ ] entering
+    - [ ] setting
+    - [ ] leaving aka reseting
+- [ ] display number of matches while searching
+- [ ] focusable windows
+  - [ ] move display to status ? it would be easier to know where I clicked
+  - [ ] allow to change focus, only color the focused window border.
+  - [ ] Change focus with ctrl+hjkl or ctrl+arrow
+  - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
+  - [ ] Clicking an unfocused window should only give the focus, not execute anything
 
 ## TODO
 

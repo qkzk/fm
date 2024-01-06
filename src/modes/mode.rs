@@ -145,7 +145,7 @@ impl fmt::Display for InputSimple {
             Self::SetNvimAddr => write!(f, "Neovim:  "),
             Self::Shell => write!(f, "Shell:   "),
             Self::Sort => {
-                write!(f, "Sort: Kind Name Modif Size Ext Rev :")
+                write!(f, "Sort: ")
             }
             Self::Filter => write!(f, "Filter:  "),
             Self::Password(_, PasswordUsage::CRYPTSETUP(password_kind)) => {
@@ -159,7 +159,7 @@ impl fmt::Display for InputSimple {
 
 impl InputSimple {
     const EDIT_BOX_OFFSET: usize = 11;
-    const SORT_CURSOR_OFFSET: usize = 39;
+    const SORT_CURSOR_OFFSET: usize = 8;
     const PASSWORD_CURSOR_OFFSET: usize = 9;
 
     /// Returns a vector of static &str describing what

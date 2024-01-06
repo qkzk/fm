@@ -19,7 +19,6 @@ use crate::common::{
 };
 use crate::io::read_last_log_line;
 use crate::log_info;
-use crate::modes::parse_input_mode;
 use crate::modes::BinaryContent;
 use crate::modes::ColoredText;
 use crate::modes::Content;
@@ -42,6 +41,7 @@ use crate::modes::TreePreview;
 use crate::modes::Ueberzug;
 use crate::modes::Window;
 use crate::modes::{fileinfo_attr, MarkAction};
+use crate::modes::{parse_input_mode, SecondLine};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -809,16 +809,21 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_second_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        if matches!(self.tab.edit_mode, Edit::InputSimple(InputSimple::Chmod)) {
-            let mode_parsed = parse_input_mode(&self.status.menu.input.string());
-            let mut col = 11;
-            for (text, is_valid) in &mode_parsed {
-                let attr = if *is_valid {
-                    Attr::from(Color::YELLOW)
-                } else {
-                    Attr::from(Color::RED)
-                };
-                col += 1 + canvas.print_with_attr(1, col, text, attr)?;
+        match self.tab.edit_mode {
+            Edit::InputSimple(InputSimple::Chmod) => {
+                let mode_parsed = parse_input_mode(&self.status.menu.input.string());
+                let mut col = 11;
+                for (text, is_valid) in &mode_parsed {
+                    let attr = if *is_valid {
+                        Attr::from(Color::YELLOW)
+                    } else {
+                        Attr::from(Color::RED)
+                    };
+                    col += 1 + canvas.print_with_attr(1, col, text, attr)?;
+                }
+            }
+            edit => {
+                canvas.print_with_attr(1, 2, edit.second_line(), ATTR_YELLOW_BOLD)?;
             }
         }
         Ok(())
@@ -959,12 +964,6 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.compression;
-        canvas.print_with_attr(
-            1,
-            2,
-            "Archive and compress the flagged files using selected algorithm.",
-            Self::ATTR_YELLOW,
-        )?;
         let content = selectable.content();
         for (row, compression_method, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);
@@ -1003,7 +1002,7 @@ impl<'a> WinSecondary<'a> {
 
     // TODO: refactor both methods below with common trait selectable
     fn draw_shell_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(1, 2, "pick a command", Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(1, 2, self.tab.edit_mode.second_line(), Self::ATTR_YELLOW)?;
 
         let content = &self.status.menu.tui_applications.content;
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);

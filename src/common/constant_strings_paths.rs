@@ -82,14 +82,16 @@ pub const NOTIFY_EXECUTABLE: &str = "notity-send";
 /// Encrypted devices bind description
 pub const ENCRYPTED_DEVICE_BINDS: &str = "m: mount   --   u: unmount   --   g: go to mount point";
 /// Sort presentation for the second window
-pub const SORT_LINES: [&str; 7] = [
-    "k:         by kind (default)",
-    "n:         by name",
-    "m:         by modification time",
-    "s:         by size",
-    "e:         by extension",
+pub const SORT_LINES: [&str; 9] = [
+    "Type the initial",
     "",
-    "r:         reverse current sort",
+    "k:  by kind (default)",
+    "n:  by name",
+    "m:  by modification time",
+    "s:  by size",
+    "e:  by extension",
+    "",
+    "r:  reverse current sort",
 ];
 pub const REMOTE_LINES: [&str; 4] = [
     "Mount a directory with sshfs",
