@@ -823,7 +823,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] improve marks help.
 - [x] sort marks at read & update
 - [x] FIX: display flagged symbol in tree mode. Better alignment
-- [ ] xdg-open pollutes the top border if opening a file fails
+- [x] FIX: xdg-open pollutes the top border if opening a file fails
 - [ ] update skim
 - [ ] pre release
 

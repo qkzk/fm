@@ -25,9 +25,20 @@ where
     log_info!("execute. executable: {exe:?}, arguments: {args:?}");
     log_line!("Execute: {exe:?}, arguments: {args:?}");
     if is_program_in_path(SETSID) {
-        Ok(Command::new(SETSID).arg(exe).args(args).spawn()?)
+        Ok(Command::new(SETSID)
+            .arg(exe)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()?)
     } else {
-        Ok(Command::new(exe).args(args).spawn()?)
+        Ok(Command::new(exe)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()?)
     }
 }
 
