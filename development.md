@@ -720,17 +720,19 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Improve scrolling in tree mode.
 - Bulk & normal rename: create intermediate folders when renaming.
 - Bulk now asks a confirmation before execution.
-- Scroll to selection when opening a menu. Selected file should alway be displayed.
+- Scroll to selection when opening a menu. Selected file should alway be displayed in top window.
 - Scroll completion & navigation menus.
 - Configurable cli applications. See `~/fm/cli.yaml`
 - Simplify tui config files. Remove `cwd` boolean parameter. Doesn't break old config files.
 - Display the number of entries as the size of a directory instead of '-'. Might affect performance for very large directories.
-- Enable logging with `-l` or `--log`. Nothing is logged anywhere without this flag.
+- Enable logging with `-l` or `--log`. **Nothing is logged anywhere without this flag.**
 - FIX: Tree mode. Unfolding a directory unfold its children
-- BREAKING: Use specific argument to run a command at startup for most common terminal emulators from config file.
+- BREAKING: Use specific argument read from config file to run a command at startup for most common terminal emulators.
+  It allows the user to setup a specific terminal unknown to me and use it with fm.
   To make this work, it will require the user to update its config file by copying the last part: "terminal_emulator_flags:..."
 - FIX: entering an inaccessible dir or writing in any way to a readonly dir shouldn't crash the app anymore...
 - Display & Update separation. Use a thread for display, allowing 30 fps. It uses more CPU :(
+  This feature is subject to change in future versions.
 - Flagged display mode. Enter with <F> and show all your flagged files. You can rename, open, trash, delete, bulk rename, open, open with etc.
   Custom and simple search (filename containing input).
   Jump to the file with <return>
@@ -831,9 +833,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: xdg-open pollutes the top border if opening a file fails
 - [x] update skim to 0.9.14
 - [ ] pre release
-  - [ ] Fix last missing items
-  - [ ] check installation (remove config, cargo build)
-  - [ ] readme
+  - [x] Fix last missing items
+  - [x] check installation (remove config, cargo build)
+  - [x] readme
   - [ ] describe what was done succintly
   - [ ] test every mode
 
