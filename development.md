@@ -731,10 +731,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   To make this work, it will require the user to update its config file by copying the last part: "terminal_emulator_flags:..."
 - FIX: entering an inaccessible dir or writing in any way to a readonly dir shouldn't crash the app anymore...
 - Display & Update separation. Use a thread for display, allowing 30 fps. It uses more CPU :(
+- Flagged display mode. Enter with <F> and show all your flagged files. You can rename, open, trash, delete, bulk rename, open, open with etc.
+  Custom and simple search (filename containing input).
+  Jump to the file with <return>
+  ATM both "edit::jump" and "display::flagged" show the same content. The former may be removed soon.
 
 #### Changelog
 
-- [ ] unify scrolling.
 - [x] move navigate movement to menu file.
 - [x] Tree scrolling
   - [x] attach full content to tree
@@ -775,16 +778,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] Trash, Untrash,
     - [x] Compress,
     - [x] Decompress
-- [ ] navigating in menus erase display - can't reproduce ?
-- [ ] separate display from update
+- [x] separate display from update
+      May be removed in future version.
+      It uses a lot of cpu to just display and doesn't do much else
   - [x] make status sync: replace Rc by Arc
   - [x] update status every event
   - [x] display 30 fps
   - [x] move display into a thread
-  - [ ] test everything
+  - [x] test everything
 - [ ] flagged as content
 
-  - [ ] remove jump completely ???
+  - [x] remove jump completely ??? not yet
   - [x] fuzzy find flags all
   - [x] display metadata of selected file
   - [x] simplest possible holding struct
@@ -794,7 +798,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] enter: from skim files or lines, from jump, from folder, from tree (flatten)
   - [x] flag everything in tree mode
   - [x] FIX: window is off for big content
-  - [ ] action on all files
+  - [x] action on all files
     - [x] disable filter. Filtering is easy, navigating in filtered files isn't. Require to keep a "filtered" files somewhere and use it everywhere.
     - [x] preview & dual pane preview
     - [x] open single or all flagged
