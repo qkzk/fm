@@ -30,7 +30,6 @@ use crate::io::{
 };
 use crate::modes::Display;
 use crate::modes::Edit;
-use crate::modes::FileKind;
 use crate::modes::InputSimple;
 use crate::modes::IsoDevice;
 use crate::modes::Menu;
@@ -354,42 +353,33 @@ impl Status {
     pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
         log_info!("update_second_pane_for_preview");
         if self.index == 0 && self.display_settings.preview() {
-            self.set_second_pane_for_preview()?;
+            if Session::display_wide_enough(self.term_size()?.0) {
+                self.set_second_pane_for_preview()?;
+            } else {
+                self.tabs[1].preview = Preview::empty();
+            }
         };
         Ok(())
     }
 
     /// Force preview the selected file of the first pane in the second pane.
     /// Doesn't check if it has do.
-    pub fn set_second_pane_for_preview(&mut self) -> Result<()> {
-        log_info!("set_second_pane_for_preview enter");
-        if !Session::display_wide_enough(self.term_size()?.0) {
-            self.tabs[1].preview = Preview::empty();
-            return Ok(());
-        }
-        log_info!("set_second_pane_for_preview alive");
-
+    fn set_second_pane_for_preview(&mut self) -> Result<()> {
         self.tabs[1].set_display_mode(Display::Preview);
         self.set_edit_mode(1, Edit::Nothing)?;
+        let users = &self.tabs[0].users;
         let fileinfo = match self.tabs[0].display_mode {
             Display::Flagged => {
                 let Some(path) = self.menu.flagged.selected() else {
+                    self.tabs[1].preview = Preview::empty();
                     return Ok(());
                 };
-                FileInfo::new(path, &self.tabs[0].users)?
+                FileInfo::new(path, users)?
             }
-            _ => self.tabs[0]
-                .current_file()
-                .context("force preview: No file to select")?,
+            _ => self.tabs[0].current_file()?,
         };
-        let preview = match fileinfo.file_kind {
-            FileKind::Directory => Preview::directory(&fileinfo, &self.tabs[0].users),
-            _ => Preview::file(&fileinfo),
-        };
-        self.tabs[1].preview = preview.unwrap_or_default();
-
+        self.tabs[1].preview = Preview::new(&fileinfo, users).unwrap_or_default();
         self.tabs[1].window.reset(self.tabs[1].preview.len());
-        log_info!("set_second_pane_for_preview exit");
         Ok(())
     }
 

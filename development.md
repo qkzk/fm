@@ -815,7 +815,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] trashmode should display which shortcut erase all trash.
 - [x] add left tab current dir to right shortcut and vice versa
-- [ ] refactor status.set_second_pane_preview
+- [x] refactor status.set_second_pane_preview
 - [x] FIX: leave sort does nothing
 - [x] FIX: incomplete regex crashes
 - [x] key which enter a mode should allow to leave it also.

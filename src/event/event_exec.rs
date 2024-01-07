@@ -102,7 +102,7 @@ impl EventAction {
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
         status.display_settings.toggle_preview();
         if status.display_settings.preview() {
-            status.set_second_pane_for_preview()?;
+            status.update_second_pane_for_preview()?;
         } else {
             status.set_edit_mode(1, Edit::Nothing)?;
             status.tabs[1].display_mode = Display::Directory;
@@ -658,7 +658,7 @@ impl EventAction {
         tab.set_display_mode(Display::Directory);
         tab.refresh_view()?;
         tab.jump(path)?;
-        status.set_second_pane_for_preview()
+        status.update_second_pane_for_preview()
     }
 
     pub fn search_next(status: &mut Status) -> Result<()> {
@@ -675,7 +675,7 @@ impl EventAction {
             Display::Flagged => todo!("search next"),
         }
         status.refresh_status()?;
-        status.set_second_pane_for_preview()?;
+        status.update_second_pane_for_preview()?;
         Ok(())
     }
 

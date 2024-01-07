@@ -118,6 +118,13 @@ impl Preview {
         Self::Empty
     }
 
+    pub fn new(file_info: &FileInfo, users: &Users) -> Result<Self> {
+        match file_info.file_kind {
+            FileKind::Directory => Self::directory(file_info, users),
+            _ => Self::file(file_info),
+        }
+    }
+
     /// Creates a new `Directory` from the file_info
     /// It explores recursivelly the directory and creates a tree.
     /// The recursive exploration is limited to depth 2.
