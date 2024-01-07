@@ -351,7 +351,6 @@ impl Status {
 
     /// Check if the second pane should display a preview and force it.
     pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
-        log_info!("update_second_pane_for_preview");
         if self.index == 0 && self.display_settings.preview() {
             if Session::display_wide_enough(self.term_size()?.0) {
                 self.set_second_pane_for_preview()?;
