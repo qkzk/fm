@@ -79,9 +79,16 @@ Navigate as usual. Most actions works as in 'normal' view.
 {TreeFold:<10}:      Fold a node
 {TreeFoldAll:<10}:      Fold every node
 {TreeUnFoldAll:<10}:      Unfold every node
- 
-- MODES - 
-{Tree:<10}:      TREE
+
+    - DISPLAY MODES - 
+Different modes for the main window
+{ResetMode:<10}:      NORMAL
+{Tree:<10} :      TREE
+{DisplayFlagged} :      FLAGGED
+{Preview} :      PREVIEW  
+
+    - EDIT MODES -
+Different modes for the bottom window
 {Chmod:<10}:      CHMOD 
 {Exec:<10}:      OPEN WITH 
 {NewDir:<10}:      NEWDIR 
@@ -104,9 +111,8 @@ Navigate as usual. Most actions works as in 'normal' view.
 {CliMenu:<10}:      CLI APPS
 {RemoteMount:<10}:      MOUNT REMOTE PATH
 {Filter:<10}:      FILTER 
-    (by name \"n name\", by ext \"e ext\", only directories d or all for reset)
+    (by name \"n name\", by ext \"e ext\", \"d only directories\" or \"a all\" for reset)
 {Enter:<10}:      Execute mode then NORMAL
-{ResetMode:<10}:      NORMAL
 
 - MOC -
 Control MOC from your TUI
@@ -155,6 +161,7 @@ fn make_help_with_config(binds: &Bindings, opener: &Opener) -> Result<String> {
     keybind_reversed.extend(opener.association.as_map_of_strings());
     let mut help = strfmt(HELP_TO_FORMAT, &keybind_reversed)?;
     help = complete_with_custom_binds(&binds.custom, help);
+    // std::fs::write("help.txt", &help)?; // keep here to save a new version of the help content
     Ok(help)
 }
 
