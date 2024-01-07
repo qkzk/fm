@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use crate::app::Status;
 use crate::common::is_program_in_path;
@@ -16,14 +16,9 @@ use crate::modes::Execute;
 /// May fail if the current directory has no parent aka /
 /// May fail if the command itself fails.
 fn require_cwd_and_command(status: &Status, command: &str) -> Result<()> {
-    let tab = status.current_tab();
-    let path = tab
-        .directory_of_selected()?
-        .to_str()
-        .context("event_shell: couldn't parse the directory")?;
     execute_without_output(
         &status.internal_settings.opener.terminal,
-        &["-d", path, "-e", command],
+        &[&status.internal_settings.opener.terminal_flag, command],
     )?;
     Ok(())
 }

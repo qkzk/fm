@@ -834,6 +834,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] update skim to 0.9.14
 - [x] FIX: in tree, moving while in "second pane as preview" unfolds.
       "status.set_edit_mode..." does too much.
+- [x] FIX: running a command line application with "-d" doesn't work on alacritty
 - [ ] pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)
