@@ -791,7 +791,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] another display mode, displayable
   - [x] display flagged like in dir
   - [x] clickable header & Footer
-    - [ ] display searched and filter ????
   - [x] enter: from skim files or lines, from jump, from folder, from tree (flatten)
   - [x] flag everything in tree mode
   - [x] FIX: window is off for big content
