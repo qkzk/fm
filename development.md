@@ -788,7 +788,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display 30 fps
   - [x] move display into a thread
   - [x] test everything
-- [ ] flagged as content
+- [x] flagged as content
 
   - [x] remove jump completely ??? not yet
   - [x] fuzzy find flags all
@@ -836,7 +836,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)
   - [x] readme
-  - [ ] describe what was done succintly
+  - [x] describe what was done succintly
   - [ ] test every mode
 
 ## Version 0.1.26
