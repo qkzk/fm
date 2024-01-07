@@ -825,7 +825,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] sort marks at read & update
 - [x] FIX: display flagged symbol in tree mode. Better alignment
 - [x] FIX: xdg-open pollutes the top border if opening a file fails
-- [ ] update skim
+- [x] update skim to 0.9.14
 - [ ] pre release
 
 ## Version 0.1.26

@@ -2175,7 +2175,8 @@ dependencies = [
 [[package]]
 name = "skim-qkzk"
 version = "0.9.14"
-source = "git+https://github.com/qkzk/skim?branch=v0.9.14#d56739f12b7f1da9475ec605ba691eae47d0b156"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "960c890424e7df1058598aa89e0e8d3fb6ccc57421d315aa6b667bd287ff17c7"
 dependencies = [
  "atty",
  "beef",
