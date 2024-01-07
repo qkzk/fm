@@ -5,7 +5,7 @@ use std::path;
 use anyhow::{Context, Result};
 
 use crate::common::{
-    has_last_modification_happened_less_than, path_to_string, row_to_window_index, set_clipboard,
+    has_last_modification_happened_less_than, path_to_string, row_to_window_index,
 };
 use crate::io::Args;
 use crate::modes::Content;

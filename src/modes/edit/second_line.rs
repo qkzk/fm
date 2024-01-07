@@ -1,6 +1,4 @@
-use crate::modes::{
-    mode::BulkAction, Edit, InputCompleted, InputSimple, MarkAction, Navigate, NeedConfirmation,
-};
+use crate::modes::{Edit, InputCompleted, InputSimple, MarkAction, Navigate, NeedConfirmation};
 
 pub trait SecondLine {
     /// Line describing the mode and its custom keybinds
