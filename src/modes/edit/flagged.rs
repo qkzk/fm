@@ -81,6 +81,10 @@ impl Flagged {
         self.window.reset(self.content.len())
     }
 
+    pub fn set_height(&mut self, height: usize) {
+        self.window.set_height(height);
+    }
+
     pub fn update(&mut self, content: Vec<PathBuf>) {
         self.content = content;
         self.reset_window();

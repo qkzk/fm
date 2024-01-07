@@ -793,6 +793,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] clickable header & Footer
     - [ ] display searched and filter ????
   - [ ] enter: from skim files or lines, from flagged, from search, from folder, from tree (flatten)
+  - [x] FIX: window is off for big content
   - [ ] action on all files
     - [ ] filter ?
     - [x] preview & dual pane preview

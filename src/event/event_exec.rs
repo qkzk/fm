@@ -147,6 +147,10 @@ impl EventAction {
                 .current_tab_mut()
                 .set_display_mode(Display::Directory);
         } else {
+            status
+                .menu
+                .flagged
+                .set_height(status.internal_settings.term.term_size()?.1);
             status.current_tab_mut().set_display_mode(Display::Flagged);
         }
         Ok(())
