@@ -795,7 +795,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] flag everything in tree mode
   - [x] FIX: window is off for big content
   - [ ] action on all files
-    - [ ] filter ???
+    - [x] disable filter. Filtering is easy, navigating in filtered files isn't. Require to keep a "filtered" files somewhere and use it everywhere.
     - [x] preview & dual pane preview
     - [x] open single or all flagged
     - [x] renaming

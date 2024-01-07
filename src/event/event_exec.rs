@@ -391,7 +391,12 @@ impl EventAction {
         ) {
             status.reset_edit_mode()?;
         } else {
-            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Filter))?;
+            if matches!(
+                status.current_tab().display_mode,
+                Display::Tree | Display::Directory
+            ) {
+                status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Filter))?;
+            }
         }
         Ok(())
     }
