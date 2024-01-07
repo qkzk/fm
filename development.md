@@ -818,6 +818,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] disable new nodes (file, dir)
     - [x] disable all cd since we can't see the directory
     - [x] copy filename & filepath
+  - [x] FIX: jump does nothing
 
 - [x] trashmode should display which shortcut erase all trash.
 - [x] add left tab current dir to right shortcut and vice versa

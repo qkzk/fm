@@ -476,7 +476,7 @@ impl Tab {
         match self.display_mode {
             Display::Preview => return Ok(()),
             Display::Directory => {
-                if !self.directory.paths().contains(&target_dir) {
+                if !self.directory.paths().contains(&jump_target.as_path()) {
                     self.cd(target_dir)?
                 }
                 let index = self.directory.select_file(&jump_target);
