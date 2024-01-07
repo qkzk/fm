@@ -832,6 +832,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: display flagged symbol in tree mode. Better alignment
 - [x] FIX: xdg-open pollutes the top border if opening a file fails
 - [x] update skim to 0.9.14
+- [x] FIX: in tree, moving while in "second pane as preview" unfolds.
+      "status.set_edit_mode..." does too much.
 - [ ] pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)

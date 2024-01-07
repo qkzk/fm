@@ -365,7 +365,7 @@ impl Status {
     /// Doesn't check if it has do.
     fn set_second_pane_for_preview(&mut self) -> Result<()> {
         self.tabs[1].set_display_mode(Display::Preview);
-        self.set_edit_mode(1, Edit::Nothing)?;
+        self.tabs[1].edit_mode = Edit::Nothing;
         let users = &self.tabs[0].users;
         let fileinfo = match self.tabs[0].display_mode {
             Display::Flagged => {
