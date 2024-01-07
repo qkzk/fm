@@ -792,7 +792,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display flagged like in dir
   - [x] clickable header & Footer
     - [ ] display searched and filter ????
-  - [ ] enter: from skim files or lines, from flagged, from search, from folder, from tree (flatten)
+  - [x] enter: from skim files or lines, from jump, from folder, from tree (flatten)
+  - [x] flag everything in tree mode
   - [x] FIX: window is off for big content
   - [ ] action on all files
     - [ ] filter ?
@@ -812,7 +813,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] disable new nodes (file, dir)
     - [x] disable all cd since we can't see the directory
     - [x] copy filename & filepath
-    - [x] flag everything in tree mode
 
 - [x] trashmode should display which shortcut erase all trash.
 - [x] add left tab current dir to right shortcut and vice versa
