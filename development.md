@@ -795,7 +795,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] flag everything in tree mode
   - [x] FIX: window is off for big content
   - [ ] action on all files
-    - [ ] filter ?
+    - [ ] filter ???
     - [x] preview & dual pane preview
     - [x] open single or all flagged
     - [x] renaming
@@ -827,6 +827,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: xdg-open pollutes the top border if opening a file fails
 - [x] update skim to 0.9.14
 - [ ] pre release
+  - [ ] Fix last missing items
+  - [ ] check installation (remove config, cargo build)
+  - [ ] readme
+  - [ ] describe what was done succintly
+  - [ ] test every mode
 
 ## Version 0.1.26
 

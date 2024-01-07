@@ -89,10 +89,6 @@ impl Flagged {
         self.content = content;
         self.reset_window();
         self.index = 0;
-        crate::log_info!(
-            "flagged window after update: {window:?}",
-            window = self.window
-        );
     }
 
     pub fn clear(&mut self) {
