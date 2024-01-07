@@ -10,6 +10,7 @@ use crate::common::filename_from_path;
 use crate::common::has_last_modification_happened_less_than;
 use crate::modes::files_collection;
 use crate::modes::FilterKind;
+use crate::modes::Flagged;
 use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{ColorEffect, FileInfo};
@@ -691,6 +692,12 @@ impl Tree {
     /// Vector of `Path` of nodes.
     pub fn paths(&self) -> Vec<&Path> {
         self.nodes.keys().map(|p| p.borrow()).collect()
+    }
+
+    pub fn flag_all(&self, flagged: &mut Flagged) {
+        self.nodes
+            .keys()
+            .for_each(|p| flagged.push(p.to_path_buf()))
     }
 
     /// True if any directory (not symlink to a directory)

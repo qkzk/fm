@@ -437,15 +437,21 @@ impl Status {
         self.menu.flagged.in_dir(&self.current_tab().directory.path)
     }
 
-    /// Flag all files in the current directory.
+    /// Flag all files in the current directory or current tree.
     pub fn flag_all(&mut self) {
-        self.tabs[self.index]
-            .directory
-            .content
-            .iter()
-            .for_each(|file| {
-                self.menu.flagged.push(file.path.to_path_buf());
-            });
+        match self.current_tab().display_mode {
+            Display::Directory => {
+                self.tabs[self.index]
+                    .directory
+                    .content
+                    .iter()
+                    .for_each(|file| {
+                        self.menu.flagged.push(file.path.to_path_buf());
+                    });
+            }
+            Display::Tree => self.tabs[self.index].tree.flag_all(&mut self.menu.flagged),
+            _ => (),
+        }
     }
 
     /// Reverse every flag in _current_ directory. Flagged files in other
