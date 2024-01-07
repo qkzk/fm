@@ -784,7 +784,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] test everything
 - [ ] flagged as content
 
-  - [ ] search flags all files in current dir, merge with regex
   - [ ] remove jump completely ???
   - [x] fuzzy find flags all
   - [x] display metadata of selected file
@@ -824,6 +823,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] improve marks help.
 - [x] sort marks at read & update
 - [x] FIX: display flagged symbol in tree mode. Better alignment
+- [ ] xdg-open pollutes the top border if opening a file fails
+- [ ] update skim
+- [ ] pre release
 
 ## Version 0.1.26
 
