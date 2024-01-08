@@ -543,7 +543,12 @@ impl EventAction {
         ) {
             status.reset_edit_mode()?;
         } else {
-            status.set_edit_mode(status.index, Edit::Navigate(Navigate::History))?;
+            if matches!(
+                status.current_tab().display_mode,
+                Display::Directory | Display::Tree
+            ) {
+                status.set_edit_mode(status.index, Edit::Navigate(Navigate::History))?;
+            }
         }
         Ok(())
     }

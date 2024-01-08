@@ -448,6 +448,9 @@ impl Tab {
     }
 
     pub fn back(&mut self) -> Result<()> {
+        if matches!(self.display_mode, Display::Preview | Display::Flagged) {
+            return Ok(());
+        }
         if self.history.content.is_empty() {
             return Ok(());
         }
