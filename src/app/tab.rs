@@ -457,12 +457,14 @@ impl Tab {
         let Some((path, file)) = self.history.content.pop() else {
             return Ok(());
         };
-        self.cd(&path)?;
-        let index = self.directory.select_file(&file);
-        self.scroll_to(index);
         self.history.content.pop();
+        self.cd(&path)?;
         if let Display::Tree = self.display_mode {
-            self.make_tree(None)?
+            self.make_tree(None)?;
+            self.tree.go(To::Path(&file));
+        } else {
+            let index = self.directory.select_file(&file);
+            self.scroll_to(index);
         }
 
         Ok(())

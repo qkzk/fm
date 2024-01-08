@@ -838,6 +838,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: running a command line application with "-d" doesn't work on alacritty
 - [x] display flagged files 1 char right like default ranger
 - [x] toggle flag move down in tree mode
+- [ ] move back is buggy
 - [ ] pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)
