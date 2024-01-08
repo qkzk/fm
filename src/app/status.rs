@@ -482,9 +482,13 @@ impl Status {
                 Display::Flagged => {
                     self.menu.flagged.remove_selected();
                 }
-                Display::Directory | Display::Tree => {
+                Display::Directory => {
                     self.menu.flagged.toggle(&file.path);
                     self.current_tab_mut().normal_down_one_row();
+                }
+                Display::Tree => {
+                    self.menu.flagged.toggle(&file.path);
+                    let _ = self.current_tab_mut().tree_select_next();
                 }
                 Display::Preview => (),
             }

@@ -247,7 +247,12 @@ impl<'a> WinMain<'a> {
         let mut attr = fileinfo_attr(file);
         let content = self.format_file_content(file, owner_size, group_size)?;
         self.print_as_flagged(canvas, row, &file.path, &mut attr)?;
-        canvas.print_with_attr(row, 1, &content, attr)?;
+        let col = if self.status.menu.flagged.contains(&file.path) {
+            2
+        } else {
+            1
+        };
+        canvas.print_with_attr(row, col, &content, attr)?;
         Ok(())
     }
 
@@ -343,9 +348,14 @@ impl<'a> WinMain<'a> {
         let offset = if index == 0 { 2 } else { 1 };
         let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, s_prefix)?;
 
+        let flagged_offset = if self.status.menu.flagged.contains(path) {
+            1
+        } else {
+            0
+        };
         canvas.print_with_attr(
             row,
-            left_margin + col_metadata + col_tree_prefix + offset,
+            left_margin + col_metadata + col_tree_prefix + offset + flagged_offset,
             &tree_line_maker.filename(),
             attr,
         )?;
