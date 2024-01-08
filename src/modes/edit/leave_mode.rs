@@ -19,7 +19,7 @@ use crate::modes::Content;
 use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::FilterKind;
-use crate::modes::Go;
+use crate::modes::InputCompleted;
 use crate::modes::InputSimple;
 use crate::modes::Leave;
 use crate::modes::MarkAction;
@@ -27,9 +27,6 @@ use crate::modes::Navigate;
 use crate::modes::NodeCreation;
 use crate::modes::PasswordUsage;
 use crate::modes::SortKind;
-use crate::modes::To;
-
-use super::InputCompleted;
 
 /// Methods called when executing something with Enter key.
 pub struct LeaveMode;
@@ -329,25 +326,14 @@ impl LeaveMode {
     /// Move back to a previously visited path.
     /// It may fail if the user has no permission to visit the path
     pub fn history(status: &mut Status) -> Result<()> {
+        let Some((path, file)) = status.current_tab().history.selected() else {
+            return Ok(());
+        };
+        let (path, file) = (path.to_owned(), file.to_owned());
         let tab = status.current_tab_mut();
-        let (path, file) = tab
-            .history
-            .selected()
-            .context("exec history: path unreachable")?
-            .clone();
-        tab.cd(&path)?;
         tab.history.drop_queue();
-        log_info!(
-            "path {path} - file {file})",
-            path = path.display(),
-            file = file.display()
-        );
-        if matches!(tab.display_mode, Display::Tree) {
-            tab.tree.go(To::Path(&file));
-        } else {
-            let index = tab.directory.select_file(&file);
-            tab.scroll_to(index);
-        }
+        tab.cd(&path)?;
+        tab.go_to_file(file);
         status.update_second_pane_for_preview()
     }
 

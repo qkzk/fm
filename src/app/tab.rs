@@ -458,14 +458,18 @@ impl Tab {
         };
         self.history.content.pop();
         self.cd(&path)?;
+        self.go_to_file(file);
+        Ok(())
+    }
+
+    /// Select a file in current view, either directory or tree mode.
+    pub fn go_to_file(&mut self, file: path::PathBuf) {
         if let Display::Tree = self.display_mode {
             self.tree.go(To::Path(&file));
         } else {
             let index = self.directory.select_file(&file);
             self.scroll_to(index);
         }
-
-        Ok(())
     }
 
     /// Jump to the jump target.

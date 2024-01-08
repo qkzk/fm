@@ -639,8 +639,9 @@ impl EventAction {
     }
 
     /// Move back in history to the last visited directory.
-    pub fn back(tab: &mut Tab) -> Result<()> {
-        tab.back()
+    pub fn back(status: &mut Status) -> Result<()> {
+        status.current_tab_mut().back()?;
+        status.update_second_pane_for_preview()
     }
 
     /// Move to $HOME aka ~.

@@ -115,7 +115,7 @@ impl ActionMap {
         let current_tab = status.current_tab_mut();
         match self {
             Self::Action => EventAction::action(status),
-            Self::Back => EventAction::back(current_tab),
+            Self::Back => EventAction::back(status),
             Self::BackTab => EventAction::backtab(status),
             Self::Backspace => EventAction::backspace(status),
             Self::Bulk => EventAction::bulk(status),

@@ -839,7 +839,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] display flagged files 1 char right like default ranger
 - [x] toggle flag move down in tree mode
 - [x] FIX: move back is buggy.
-- [ ] Move back & leave_mode history should use the same status method
+- [x] Move back & leave_mode history should use the same status method
 - [ ] pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)
