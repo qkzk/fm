@@ -281,17 +281,19 @@ impl Tab {
 
     /// Enter or leave display tree mode.
     pub fn toggle_tree_mode(&mut self) -> Result<()> {
+        let current_file = self.current_file()?;
         if let Display::Tree = self.display_mode {
             {
                 self.tree = Tree::default();
                 self.refresh_view()
             }?;
-            self.set_display_mode(Display::Directory)
+            self.set_display_mode(Display::Directory);
         } else {
             self.make_tree(None)?;
             self.window.reset(self.tree.displayable().lines().len());
             self.set_display_mode(Display::Tree);
         }
+        self.go_to_file(current_file.path.to_path_buf());
         Ok(())
     }
 
