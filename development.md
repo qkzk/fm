@@ -841,6 +841,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: move back is buggy.
 - [x] Move back & leave_mode history should use the same status method
 - [x] toggling tree selects the current file if possible
+- [x] FIX: next_sibling doesn't wrap
 - [ ] pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)

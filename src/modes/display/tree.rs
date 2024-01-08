@@ -479,7 +479,11 @@ impl Tree {
         let Some(curr_index) = children.iter().position(|p| p == &self.selected) else {
             return;
         };
-        let next_index = if curr_index > 0 { curr_index - 1 } else { 0 };
+        let next_index = if curr_index > 0 {
+            curr_index - 1
+        } else {
+            children.len().checked_sub(1).unwrap_or_default()
+        };
         let sibling_path = children[next_index].clone();
         self.select_path(&sibling_path);
     }
