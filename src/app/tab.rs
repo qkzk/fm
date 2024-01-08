@@ -433,17 +433,16 @@ impl Tab {
                 return Ok(());
             }
         }
-        self.history.push(
-            &self.directory.path,
-            &self.directory.selected().context("")?.path,
-        );
+        self.history
+            .push(&self.directory.path, &self.current_file()?.path);
         self.directory
             .change_directory(path, &self.settings, &self.users)?;
         if matches!(self.display_mode, Display::Tree) {
             self.make_tree(Some(self.settings.sort_kind))?;
+            self.window.reset(self.tree.displayable().lines().len());
+        } else {
+            self.window.reset(self.directory.content.len());
         }
-        self.window.reset(self.directory.content.len());
-        crate::log_info!("done cd: {path}", path = path.display());
         Ok(())
     }
 
@@ -460,7 +459,6 @@ impl Tab {
         self.history.content.pop();
         self.cd(&path)?;
         if let Display::Tree = self.display_mode {
-            self.make_tree(None)?;
             self.tree.go(To::Path(&file));
         } else {
             let index = self.directory.select_file(&file);

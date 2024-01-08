@@ -19,6 +19,7 @@ use crate::modes::Content;
 use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::FilterKind;
+use crate::modes::Go;
 use crate::modes::InputSimple;
 use crate::modes::Leave;
 use crate::modes::MarkAction;
@@ -26,6 +27,7 @@ use crate::modes::Navigate;
 use crate::modes::NodeCreation;
 use crate::modes::PasswordUsage;
 use crate::modes::SortKind;
+use crate::modes::To;
 
 use super::InputCompleted;
 
@@ -335,9 +337,17 @@ impl LeaveMode {
             .clone();
         tab.cd(&path)?;
         tab.history.drop_queue();
-        let index = tab.directory.select_file(&file);
-        tab.scroll_to(index);
-        log_info!("leave history {path:?} {file:?} {index}");
+        log_info!(
+            "path {path} - file {file})",
+            path = path.display(),
+            file = file.display()
+        );
+        if matches!(tab.display_mode, Display::Tree) {
+            tab.tree.go(To::Path(&file));
+        } else {
+            let index = tab.directory.select_file(&file);
+            tab.scroll_to(index);
+        }
         status.update_second_pane_for_preview()
     }
 
