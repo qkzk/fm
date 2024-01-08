@@ -11,7 +11,7 @@ use crate::app::Footer;
 use crate::app::Header;
 use crate::app::Status;
 use crate::app::Tab;
-use crate::app::{ClickableLine, FuzzyFooter, FuzzyHeader};
+use crate::app::{ClickableLine, FlaggedFooter, FlaggedHeader};
 use crate::common::path_to_string;
 use crate::common::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
@@ -610,7 +610,7 @@ impl<'a> Draw for WinMainHeader<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let content = match self.tab.display_mode {
             DisplayMode::Preview => PreviewHeader::strings(self.status, self.tab),
-            DisplayMode::Flagged => FuzzyHeader::new(self.status)?.strings().to_owned(),
+            DisplayMode::Flagged => FlaggedHeader::new(self.status)?.strings().to_owned(),
             _ => Header::new(self.status, self.tab)?.strings().to_owned(),
         };
         draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
@@ -760,7 +760,7 @@ impl<'a> Draw for WinMainFooter<'a> {
         let height = canvas.height()?;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => vec![],
-            DisplayMode::Flagged => FuzzyFooter::new(self.status)?.strings().to_owned(),
+            DisplayMode::Flagged => FlaggedFooter::new(self.status)?.strings().to_owned(),
             _ => Footer::new(self.status, self.tab)?.strings().to_owned(),
         };
         let mut attr = ATTR_COB_BOLD;

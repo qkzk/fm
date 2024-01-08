@@ -10,8 +10,8 @@ use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
 use crate::app::ClickableLine;
+use crate::app::FlaggedHeader;
 use crate::app::Footer;
-use crate::app::FuzzyHeader;
 use crate::app::Header;
 use crate::app::InternalSettings;
 use crate::app::Session;
@@ -492,7 +492,6 @@ impl Status {
                 }
                 Display::Preview => (),
             }
-            {};
         }
     }
 
@@ -1014,7 +1013,7 @@ impl Status {
         let is_right = self.index == 1;
         match self.current_tab().display_mode {
             Display::Preview => return Ok(()),
-            Display::Flagged => FuzzyHeader::new(self)?
+            Display::Flagged => FlaggedHeader::new(self)?
                 .action(col as usize, is_right)
                 .matcher(self, binds),
             _ => Header::new(self, self.current_tab())?

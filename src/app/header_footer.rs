@@ -290,13 +290,13 @@ mod inner {
         }
     }
 
-    pub struct FuzzyHeader {
+    pub struct FlaggedHeader {
         strings: Vec<String>,
         sizes: Vec<usize>,
         width: usize,
     }
 
-    impl FuzzyHeader {
+    impl FlaggedHeader {
         const ACTIONS: [ActionMap; 2] = [ActionMap::ResetMode, ActionMap::OpenFile];
 
         pub fn new(status: &Status) -> Result<Self> {
@@ -336,14 +336,14 @@ mod inner {
         }
     }
 
-    impl ClickableLine for FuzzyHeader {
+    impl ClickableLine for FlaggedHeader {
         /// Vector of displayed strings.
         fn strings(&self) -> &Vec<String> {
             self.strings.as_ref()
         }
     }
 
-    impl ClickableLineInner for FuzzyHeader {
+    impl ClickableLineInner for FlaggedHeader {
         fn sizes(&self) -> &Vec<usize> {
             self.sizes.as_ref()
         }
@@ -356,20 +356,20 @@ mod inner {
             self.width
         }
     }
-    pub struct FuzzyFooter {
+    pub struct FlaggedFooter {
         strings: Vec<String>,
         sizes: Vec<usize>,
         width: usize,
     }
 
-    impl ClickableLine for FuzzyFooter {
+    impl ClickableLine for FlaggedFooter {
         /// Vector of displayed strings.
         fn strings(&self) -> &Vec<String> {
             self.strings.as_ref()
         }
     }
 
-    impl ClickableLineInner for FuzzyFooter {
+    impl ClickableLineInner for FlaggedFooter {
         fn sizes(&self) -> &Vec<usize> {
             self.sizes.as_ref()
         }
@@ -383,7 +383,7 @@ mod inner {
         }
     }
 
-    impl FuzzyFooter {
+    impl FlaggedFooter {
         const ACTIONS: [ActionMap; 2] = [ActionMap::Nothing, ActionMap::Jump];
 
         pub fn new(status: &Status) -> Result<Self> {
@@ -405,12 +405,13 @@ mod inner {
         }
 
         fn make_strings(status: &Status) -> Vec<String> {
+            let index = if status.menu.flagged.is_empty() {
+                0
+            } else {
+                status.menu.flagged.index + 1
+            };
             vec![
-                format!(
-                    " {index} / {len}",
-                    index = status.menu.flagged.index + 1,
-                    len = status.menu.flagged.len()
-                ),
+                format!(" {index} / {len}", len = status.menu.flagged.len()),
                 format!(" {nb} flags", nb = status.menu.flagged.len()),
             ]
         }
@@ -424,4 +425,4 @@ mod inner {
     }
 }
 
-pub use inner::{ClickableLine, Footer, FuzzyFooter, FuzzyHeader, Header};
+pub use inner::{ClickableLine, FlaggedFooter, FlaggedHeader, Footer, Header};
