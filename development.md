@@ -851,6 +851,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## Version 0.1.26
 
+- [ ] configurable menu colors
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
   - [ ] display number of matches while searching
