@@ -68,7 +68,7 @@ macro_rules! impl_preview {
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
 
 const FIRST_LINE_COLORS: [Attr; 4] = [
-    color_to_attr(Color::LIGHT_CYAN),
+    color_to_attr(Color::Rgb(45, 250, 209)),
     color_to_attr(Color::Rgb(230, 189, 87)),
     color_to_attr(Color::Rgb(230, 167, 255)),
     color_to_attr(Color::Rgb(59, 204, 255)),
@@ -87,9 +87,9 @@ const MENU_COLORS: [Attr; 10] = [
     color_to_attr(Color::Rgb(221, 242, 209)),
 ];
 
-const ATTR_FIRST: Attr = color_to_attr(Color::LIGHT_CYAN);
+const ATTR_FIRST: Attr = color_to_attr(Color::Rgb(45, 250, 209));
 const ATTR_SECOND: Attr = color_to_attr(Color::Rgb(230, 189, 87));
-const ATTR_INERT: Attr = color_to_attr(Color::WHITE);
+const ATTR_INERT: Attr = color_to_attr(Color::Rgb(248, 248, 248));
 
 enum TabPosition {
     Left,
