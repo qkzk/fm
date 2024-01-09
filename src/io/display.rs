@@ -88,7 +88,7 @@ const MENU_COLORS: [Attr; 10] = [
 ];
 
 const ATTR_FIRST: Attr = color_to_attr(Color::LIGHT_CYAN);
-const ATTR_SECOND: Attr = color_to_attr(Color::YELLOW);
+const ATTR_SECOND: Attr = color_to_attr(Color::Rgb(230, 189, 87));
 const ATTR_INERT: Attr = color_to_attr(Color::WHITE);
 
 enum TabPosition {
