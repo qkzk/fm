@@ -23,16 +23,18 @@ pub struct Config {
     /// Configurable keybindings.
     pub binds: Bindings,
 }
-
-impl Config {
+impl Default for Config {
     /// Returns a default config with hardcoded values.
-    fn new() -> Result<Self> {
-        Ok(Self {
+    fn default() -> Self {
+        Self {
             terminal: DEFAULT_TERMINAL_APPLICATION.to_owned(),
             binds: Bindings::default(),
             terminal_flag: DEFAULT_TERMINAL_FLAG.to_owned(),
-        })
+        }
     }
+}
+
+impl Config {
     /// Updates the config from  a configuration content.
     fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> Result<()> {
         self.binds.update_normal(&yaml["keys"]);
@@ -84,7 +86,7 @@ impl Config {
 /// 2. configured values from `~/.config/fm/config_file_name.yaml` if those files exists.
 /// If the config fle is poorly formated its simply ignored.
 pub fn load_config(path: &str) -> Result<Config> {
-    let mut config = Config::new()?;
+    let mut config = Config::default();
     let file = File::open(path::Path::new(&shellexpand::tilde(path).to_string()))?;
     let Ok(yaml) = serde_yaml::from_reader(file) else {
         return Ok(config);
