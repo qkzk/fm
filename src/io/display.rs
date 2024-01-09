@@ -87,13 +87,9 @@ const MENU_COLORS: [Attr; 10] = [
     color_to_attr(Color::Rgb(221, 242, 209)),
 ];
 
-const ATTR_YELLOW_BOLD: Attr = Attr {
-    fg: Color::YELLOW,
-    bg: Color::Default,
-    effect: Effect::BOLD,
-};
-
-const ATTR_CYAN: Attr = color_to_attr(Color::LIGHT_CYAN);
+const ATTR_FIRST: Attr = color_to_attr(Color::LIGHT_CYAN);
+const ATTR_SECOND: Attr = color_to_attr(Color::YELLOW);
+const ATTR_INERT: Attr = color_to_attr(Color::WHITE);
 
 enum TabPosition {
     Left,
@@ -167,8 +163,6 @@ impl<'a> Draw for WinMain<'a> {
 impl<'a> Widget for WinMain<'a> {}
 
 impl<'a> WinMain<'a> {
-    const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
-
     fn new(status: &'a Status, index: usize, attributes: WinMainAttributes) -> Self {
         Self {
             status,
@@ -278,7 +272,7 @@ impl<'a> WinMain<'a> {
     ) -> Result<()> {
         if self.status.menu.flagged.contains(path) {
             attr.effect |= Effect::BOLD;
-            canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
+            canvas.print_with_attr(row, 0, "█", ATTR_SECOND)?;
         }
         Ok(())
     }
@@ -371,7 +365,7 @@ impl<'a> WinMain<'a> {
             row_position_in_canvas,
             0,
             &line_number_to_print.to_string(),
-            Self::ATTR_LINE_NR,
+            ATTR_FIRST,
         )?)
     }
 
@@ -465,7 +459,7 @@ impl<'a> WinMain<'a> {
                 row,
                 0,
                 &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
-                Self::ATTR_LINE_NR,
+                ATTR_FIRST,
             )?;
             line.print_bytes(canvas, row, line_number_width_hex + 1);
             line.print_ascii(canvas, row, line_number_width_hex + 43);
@@ -737,7 +731,7 @@ struct LogLine;
 impl Draw for LogLine {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let height = canvas.height()?;
-        canvas.print_with_attr(height - 2, 4, &read_last_log_line(), ATTR_YELLOW_BOLD)?;
+        canvas.print_with_attr(height - 2, 4, &read_last_log_line(), ATTR_SECOND)?;
         Ok(())
     }
 }
@@ -763,7 +757,7 @@ impl<'a> Draw for WinMainFooter<'a> {
             DisplayMode::Flagged => FlaggedFooter::new(self.status)?.strings().to_owned(),
             _ => Footer::new(self.status, self.tab)?.strings().to_owned(),
         };
-        let mut attr = ATTR_CYAN;
+        let mut attr = ATTR_FIRST;
         if self.is_selected {
             attr.effect |= Effect::REVERSE;
         };
@@ -805,8 +799,6 @@ impl<'a> Draw for WinSecondary<'a> {
 }
 
 impl<'a> WinSecondary<'a> {
-    const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
-
     fn new(status: &'a Status, index: usize) -> Self {
         Self {
             status,
@@ -829,7 +821,7 @@ impl<'a> WinSecondary<'a> {
                 }
             }
             edit => {
-                canvas.print_with_attr(1, 2, edit.second_line(), ATTR_YELLOW_BOLD)?;
+                canvas.print_with_attr(1, 2, edit.second_line(), ATTR_SECOND)?;
             }
         }
         Ok(())
@@ -955,7 +947,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
-        let _ = canvas.print_with_attr(1, 2, &self.status.menu.trash.help, ATTR_YELLOW_BOLD);
+        let _ = canvas.print_with_attr(1, 2, &self.status.menu.trash.help, ATTR_SECOND);
         let content = trash.content();
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
         let len = content.len();
@@ -980,7 +972,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_context(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.context;
-        canvas.print_with_attr(1, 2, "Pick an action.", Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(1, 2, "Pick an action.", ATTR_SECOND)?;
         let content = selectable.content();
         for (row, desc, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);
@@ -991,7 +983,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_marks(&self, canvas: &mut dyn Canvas, mark_action: MarkAction) -> Result<()> {
         canvas.print(1, 2, mark_action.second_line())?;
-        canvas.print_with_attr(2, 4, "mark  path", Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(2, 4, "mark  path", ATTR_SECOND)?;
 
         let content = self.status.menu.marks.as_strings();
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
@@ -1008,7 +1000,7 @@ impl<'a> WinSecondary<'a> {
 
     // TODO: refactor both methods below with common trait selectable
     fn draw_shell_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(1, 2, self.tab.edit_mode.second_line(), Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(1, 2, self.tab.edit_mode.second_line(), ATTR_SECOND)?;
 
         let content = &self.status.menu.tui_applications.content;
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
@@ -1024,7 +1016,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_cli_applications(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(1, 2, "pick a command", Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(1, 2, "pick a command", ATTR_SECOND)?;
 
         let content = &self.status.menu.cli_applications.content;
         let desc_size = self.status.menu.cli_applications.desc_size;
@@ -1068,7 +1060,7 @@ impl<'a> WinSecondary<'a> {
     where
         T: MountRepr,
     {
-        canvas.print_with_attr(1, 2, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(1, 2, ENCRYPTED_DEVICE_BINDS, ATTR_SECOND)?;
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
         let len = selectable.len();
         for (i, device) in selectable
@@ -1111,7 +1103,7 @@ impl<'a> WinSecondary<'a> {
             canvas,
             0,
             &confirmed_mode.confirmation_string(&dest),
-            ATTR_YELLOW_BOLD,
+            ATTR_SECOND,
         )?;
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => self.draw_confirm_empty_trash(canvas)?,
@@ -1152,7 +1144,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_trash_is_empty(&self, canvas: &mut dyn Canvas) {
-        let _ = Self::draw_content_line(canvas, 0, "Trash is empty", ATTR_YELLOW_BOLD);
+        let _ = Self::draw_content_line(canvas, 0, "Trash is empty", ATTR_SECOND);
     }
 
     fn draw_confirm_non_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -1204,8 +1196,8 @@ pub struct Display {
 }
 
 impl Display {
-    const SELECTED_BORDER: Attr = color_to_attr(Color::LIGHT_CYAN);
-    const INERT_BORDER: Attr = color_to_attr(Color::Default);
+    const SELECTED_BORDER: Attr = ATTR_FIRST;
+    const INERT_BORDER: Attr = ATTR_INERT;
 
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>) -> Self {
