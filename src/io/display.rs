@@ -46,7 +46,7 @@ use crate::modes::{parse_input_mode, SecondLine};
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
     ($t:ident) => {
-        std::iter::zip($t.iter().enumerate(), MENU_COLORS.iter().cycle())
+        std::iter::zip($t.iter().enumerate(), ATTR_MENU_ELEMS.iter().cycle())
             .map(|((index, line), attr)| (index, line, attr))
     };
 }
@@ -67,14 +67,14 @@ macro_rules! impl_preview {
 /// At least 120 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
 
-const FIRST_LINE_COLORS: [Attr; 4] = [
+const ATTR_FIRST_LINE: [Attr; 4] = [
     color_to_attr(Color::Rgb(45, 250, 209)),
     color_to_attr(Color::Rgb(230, 189, 87)),
     color_to_attr(Color::Rgb(230, 167, 255)),
     color_to_attr(Color::Rgb(59, 204, 255)),
 ];
 
-const MENU_COLORS: [Attr; 10] = [
+const ATTR_MENU_ELEMS: [Attr; 10] = [
     color_to_attr(Color::Rgb(236, 250, 250)),
     color_to_attr(Color::Rgb(221, 242, 209)),
     color_to_attr(Color::Rgb(205, 235, 197)),
@@ -1380,7 +1380,7 @@ fn draw_colored_strings(
     effect_reverse: bool,
 ) -> Result<()> {
     let mut col = 1;
-    for (text, attr) in std::iter::zip(strings.iter(), FIRST_LINE_COLORS.iter().cycle()) {
+    for (text, attr) in std::iter::zip(strings.iter(), ATTR_FIRST_LINE.iter().cycle()) {
         let mut attr = *attr;
         if effect_reverse {
             attr.effect |= Effect::REVERSE;
