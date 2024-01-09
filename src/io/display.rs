@@ -90,10 +90,10 @@ const MENU_COLORS: [Attr; 10] = [
 const ATTR_YELLOW_BOLD: Attr = Attr {
     fg: Color::YELLOW,
     bg: Color::Default,
-    effect: Effect::empty(),
+    effect: Effect::BOLD,
 };
 
-const ATTR_COB_BOLD: Attr = color_to_attr(Color::LIGHT_CYAN);
+const ATTR_CYAN: Attr = color_to_attr(Color::LIGHT_CYAN);
 
 enum TabPosition {
     Left,
@@ -763,7 +763,7 @@ impl<'a> Draw for WinMainFooter<'a> {
             DisplayMode::Flagged => FlaggedFooter::new(self.status)?.strings().to_owned(),
             _ => Footer::new(self.status, self.tab)?.strings().to_owned(),
         };
-        let mut attr = ATTR_COB_BOLD;
+        let mut attr = ATTR_CYAN;
         if self.is_selected {
             attr.effect |= Effect::REVERSE;
         };
