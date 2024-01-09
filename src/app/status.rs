@@ -1012,7 +1012,7 @@ impl Status {
     pub fn header_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
         let is_right = self.index == 1;
         match self.current_tab().display_mode {
-            Display::Preview => return Ok(()),
+            Display::Preview => Ok(()),
             Display::Flagged => FlaggedHeader::new(self)?
                 .action(col as usize, is_right)
                 .matcher(self, binds),

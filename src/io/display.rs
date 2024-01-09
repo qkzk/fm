@@ -1232,9 +1232,9 @@ impl Display {
 
         let (width, _) = self.term.term_size()?;
         if status.display_settings.dual() && width > MIN_WIDTH_FOR_DUAL_PANE {
-            self.draw_dual_pane(&status)?
+            self.draw_dual_pane(status)?
         } else {
-            self.draw_single_pane(&status)?
+            self.draw_single_pane(status)?
         }
 
         Ok(self.term.present()?)
@@ -1321,17 +1321,17 @@ impl Display {
             first_selected,
             status.tabs[0].need_second_window(),
         );
-        let win_main_left = WinMain::new(&status, 0, attributes_left);
+        let win_main_left = WinMain::new(status, 0, attributes_left);
         let attributes_right = WinMainAttributes::new(
             width / 2,
             TabPosition::Right,
             second_selected,
             status.tabs[1].need_second_window(),
         );
-        let win_main_right = WinMain::new(&status, 1, attributes_right);
-        let win_second_left = WinSecondary::new(&status, 0);
-        let win_second_right = WinSecondary::new(&status, 1);
-        let (border_left, border_right) = self.borders(&status);
+        let win_main_right = WinMain::new(status, 1, attributes_right);
+        let win_second_left = WinSecondary::new(status, 0);
+        let win_second_right = WinSecondary::new(status, 1);
+        let (border_left, border_right) = self.borders(status);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let percent_right = self.size_for_second_window(&status.tabs[1])?;
         let hsplit = HSplit::default()

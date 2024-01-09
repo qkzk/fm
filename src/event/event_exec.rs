@@ -390,13 +390,11 @@ impl EventAction {
             Edit::InputSimple(InputSimple::Filter)
         ) {
             status.reset_edit_mode()?;
-        } else {
-            if matches!(
-                status.current_tab().display_mode,
-                Display::Tree | Display::Directory
-            ) {
-                status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Filter))?;
-            }
+        } else if matches!(
+            status.current_tab().display_mode,
+            Display::Tree | Display::Directory
+        ) {
+            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Filter))?;
         }
         Ok(())
     }
@@ -409,11 +407,9 @@ impl EventAction {
             Edit::Navigate(Navigate::Jump)
         ) {
             status.reset_edit_mode()?;
-        } else {
-            if !status.menu.flagged.is_empty() {
-                status.menu.flagged.index = 0;
-                status.set_edit_mode(status.index, Edit::Navigate(Navigate::Jump))?;
-            }
+        } else if !status.menu.flagged.is_empty() {
+            status.menu.flagged.index = 0;
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Jump))?;
         }
         Ok(())
     }
@@ -542,13 +538,11 @@ impl EventAction {
             Edit::Navigate(Navigate::History)
         ) {
             status.reset_edit_mode()?;
-        } else {
-            if matches!(
-                status.current_tab().display_mode,
-                Display::Directory | Display::Tree
-            ) {
-                status.set_edit_mode(status.index, Edit::Navigate(Navigate::History))?;
-            }
+        } else if matches!(
+            status.current_tab().display_mode,
+            Display::Directory | Display::Tree
+        ) {
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::History))?;
         }
         Ok(())
     }
@@ -1004,7 +998,7 @@ impl EventAction {
                 let Some(path) = status.menu.flagged.selected() else {
                     return Ok(());
                 };
-                filename_to_clipboard(&path);
+                filename_to_clipboard(path);
             }
             _ => return Ok(()),
         }
@@ -1024,7 +1018,7 @@ impl EventAction {
                 let Some(path) = status.menu.flagged.selected() else {
                     return Ok(());
                 };
-                filepath_to_clipboard(&path);
+                filepath_to_clipboard(path);
             }
             _ => return Ok(()),
         }

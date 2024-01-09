@@ -60,12 +60,12 @@ impl SecondLine for InputCompleted {
 
 impl SecondLine for InputSimple {
     fn second_line(&self) -> &'static str {
-        return "";
+        ""
     }
 }
 
 impl SecondLine for NeedConfirmation {
     fn second_line(&self) -> &'static str {
-        return "";
+        ""
     }
 }

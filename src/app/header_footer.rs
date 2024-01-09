@@ -91,7 +91,7 @@ mod inner {
         }
 
         fn action_index(&self, index: usize) -> &ActionMap {
-            &self.actions(index)
+            self.actions(index)
         }
 
         fn width(&self) -> usize {
@@ -142,7 +142,7 @@ mod inner {
         }
 
         fn string_filter(tab: &Tab) -> String {
-            format!(" {filter} ", filter = tab.settings.filter.to_string())
+            format!(" {filter} ", filter = tab.settings.filter)
         }
 
         fn string_searched(searched: &str) -> String {
@@ -349,7 +349,7 @@ mod inner {
         }
 
         fn action_index(&self, index: usize) -> &ActionMap {
-            &self.actions(index)
+            self.actions(index)
         }
 
         fn width(&self) -> usize {

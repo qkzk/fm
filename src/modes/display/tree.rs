@@ -367,7 +367,7 @@ impl Tree {
         let mut current_path = std::path::PathBuf::from("/");
         for part in path.components() {
             current_path = current_path.join(part.as_os_str());
-            if current_path == <Arc<std::path::Path> as Borrow<Path>>::borrow(&(*path)) {
+            if current_path == <Arc<std::path::Path> as Borrow<Path>>::borrow(path) {
                 continue;
             }
             if let Some(current_node) = self.nodes.get(current_path.as_path()) {

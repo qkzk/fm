@@ -43,7 +43,7 @@ impl Shortcut {
     fn hardcoded_shortcuts() -> Vec<PathBuf> {
         HARDCODED_SHORTCUTS
             .iter()
-            .map(|s| PathBuf::from(s))
+            .map(PathBuf::from)
             .collect()
     }
 
