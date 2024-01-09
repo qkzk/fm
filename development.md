@@ -737,6 +737,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   Custom and simple search (filename containing input).
   Jump to the file with <return>
   ATM both "edit::jump" and "display::flagged" show the same content. The former may be removed soon.
+- Configurable menu colors. Every color used on screen is now configurable like file colors.
 
 #### Changelog
 
@@ -842,6 +843,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Move back & leave_mode history should use the same status method
 - [x] toggling tree selects the current file if possible
 - [x] FIX: next_sibling doesn't wrap
+- [x] configurable menu colors
 - [ ] pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)
@@ -851,7 +853,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## Version 0.1.26
 
-- [ ] configurable menu colors
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
   - [ ] display number of matches while searching

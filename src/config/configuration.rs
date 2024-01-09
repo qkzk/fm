@@ -3,12 +3,13 @@ use std::{fs::File, path};
 use anyhow::Result;
 use clap::Parser;
 use serde_yaml;
-use tuikit::attr::Color;
+use tuikit::attr::{Attr, Color};
 
 use crate::common::{is_program_in_path, DEFAULT_TERMINAL_FLAG};
 use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 use crate::config::Bindings;
 use crate::config::Colorer;
+use crate::io::color_to_attr;
 
 /// Holds every configurable aspect of the application.
 /// All attributes are hardcoded then updated from optional values
@@ -252,4 +253,67 @@ lazy_static::lazy_static! {
     /// Starting folder of the application. Read from arguments `-P` or `.`.
     pub static ref START_FOLDER: std::path::PathBuf =
         std::fs::canonicalize(crate::io::Args::parse().path).unwrap_or_default();
+}
+
+pub struct MenuColors {
+    pub first: Color,
+    pub second: Color,
+    pub selected_border: Color,
+    pub inert_border: Color,
+    pub palette_1: Color,
+    pub palette_2: Color,
+    pub palette_3: Color,
+    pub palette_4: Color,
+}
+
+impl Default for MenuColors {
+    fn default() -> Self {
+        Self {
+            first: Color::Rgb(45, 250, 209),
+            second: Color::Rgb(230, 189, 87),
+            selected_border: Color::Rgb(45, 250, 209),
+            inert_border: Color::Rgb(248, 248, 248),
+            palette_1: Color::Rgb(45, 250, 209),
+            palette_2: Color::Rgb(230, 189, 87),
+            palette_3: Color::Rgb(230, 167, 255),
+            palette_4: Color::Rgb(59, 204, 255),
+        }
+    }
+}
+
+impl MenuColors {
+    pub fn update(mut self) -> Self {
+        if let Ok(file) = File::open(path::Path::new(
+            &shellexpand::tilde(CONFIG_PATH).to_string(),
+        )) {
+            if let Ok(yaml) =
+                serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file)
+            {
+                let menu_colors = &yaml["menu_colors"];
+                update_attribute!(self.first, menu_colors, "first");
+                update_attribute!(self.second, menu_colors, "second");
+                update_attribute!(self.selected_border, menu_colors, "selected_border");
+                update_attribute!(self.inert_border, menu_colors, "inert_border");
+                update_attribute!(self.palette_1, menu_colors, "palette_1");
+                update_attribute!(self.palette_2, menu_colors, "palette_2");
+                update_attribute!(self.palette_3, menu_colors, "palette_3");
+                update_attribute!(self.palette_4, menu_colors, "palette_4");
+            }
+        }
+        self
+    }
+
+    #[inline]
+    pub const fn palette(&self) -> [Attr; 4] {
+        [
+            color_to_attr(self.palette_1),
+            color_to_attr(self.palette_2),
+            color_to_attr(self.palette_3),
+            color_to_attr(self.palette_4),
+        ]
+    }
+}
+
+lazy_static::lazy_static! {
+    pub static ref MENU_COLORS: MenuColors = MenuColors::default().update();
 }

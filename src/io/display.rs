@@ -17,6 +17,7 @@ use crate::common::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
     LOG_SECOND_SENTENCE,
 };
+use crate::config::MENU_COLORS;
 use crate::io::read_last_log_line;
 use crate::log_info;
 use crate::modes::BinaryContent;
@@ -46,7 +47,7 @@ use crate::modes::{parse_input_mode, SecondLine};
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
     ($t:ident) => {
-        std::iter::zip($t.iter().enumerate(), ATTR_MENU_ELEMS.iter().cycle())
+        std::iter::zip($t.iter().enumerate(), MENU_COLORS.palette().iter().cycle())
             .map(|((index, line), attr)| (index, line, attr))
     };
 }
@@ -66,30 +67,6 @@ macro_rules! impl_preview {
 
 /// At least 120 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
-
-const ATTR_FIRST_LINE: [Attr; 4] = [
-    color_to_attr(Color::Rgb(45, 250, 209)),
-    color_to_attr(Color::Rgb(230, 189, 87)),
-    color_to_attr(Color::Rgb(230, 167, 255)),
-    color_to_attr(Color::Rgb(59, 204, 255)),
-];
-
-const ATTR_MENU_ELEMS: [Attr; 10] = [
-    color_to_attr(Color::Rgb(236, 250, 250)),
-    color_to_attr(Color::Rgb(221, 242, 209)),
-    color_to_attr(Color::Rgb(205, 235, 197)),
-    color_to_attr(Color::Rgb(190, 227, 186)),
-    color_to_attr(Color::Rgb(174, 220, 174)),
-    color_to_attr(Color::Rgb(159, 212, 163)),
-    color_to_attr(Color::Rgb(174, 220, 174)),
-    color_to_attr(Color::Rgb(190, 227, 186)),
-    color_to_attr(Color::Rgb(205, 235, 197)),
-    color_to_attr(Color::Rgb(221, 242, 209)),
-];
-
-const ATTR_FIRST: Attr = color_to_attr(Color::Rgb(45, 250, 209));
-const ATTR_SECOND: Attr = color_to_attr(Color::Rgb(230, 189, 87));
-const ATTR_INERT: Attr = color_to_attr(Color::Rgb(248, 248, 248));
 
 enum TabPosition {
     Left,
@@ -272,7 +249,7 @@ impl<'a> WinMain<'a> {
     ) -> Result<()> {
         if self.status.menu.flagged.contains(path) {
             attr.effect |= Effect::BOLD;
-            canvas.print_with_attr(row, 0, "█", ATTR_SECOND)?;
+            canvas.print_with_attr(row, 0, "█", color_to_attr(MENU_COLORS.second))?;
         }
         Ok(())
     }
@@ -365,7 +342,7 @@ impl<'a> WinMain<'a> {
             row_position_in_canvas,
             0,
             &line_number_to_print.to_string(),
-            ATTR_FIRST,
+            color_to_attr(MENU_COLORS.first),
         )?)
     }
 
@@ -459,7 +436,7 @@ impl<'a> WinMain<'a> {
                 row,
                 0,
                 &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
-                ATTR_FIRST,
+                color_to_attr(MENU_COLORS.first),
             )?;
             line.print_bytes(canvas, row, line_number_width_hex + 1);
             line.print_ascii(canvas, row, line_number_width_hex + 43);
@@ -731,7 +708,12 @@ struct LogLine;
 impl Draw for LogLine {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let height = canvas.height()?;
-        canvas.print_with_attr(height - 2, 4, &read_last_log_line(), ATTR_SECOND)?;
+        canvas.print_with_attr(
+            height - 2,
+            4,
+            &read_last_log_line(),
+            color_to_attr(MENU_COLORS.second),
+        )?;
         Ok(())
     }
 }
@@ -757,7 +739,7 @@ impl<'a> Draw for WinMainFooter<'a> {
             DisplayMode::Flagged => FlaggedFooter::new(self.status)?.strings().to_owned(),
             _ => Footer::new(self.status, self.tab)?.strings().to_owned(),
         };
-        let mut attr = ATTR_FIRST;
+        let mut attr = color_to_attr(MENU_COLORS.first);
         if self.is_selected {
             attr.effect |= Effect::REVERSE;
         };
@@ -813,15 +795,20 @@ impl<'a> WinSecondary<'a> {
                 let mut col = 11;
                 for (text, is_valid) in &mode_parsed {
                     let attr = if *is_valid {
-                        Attr::from(Color::YELLOW)
+                        color_to_attr(MENU_COLORS.first)
                     } else {
-                        Attr::from(Color::RED)
+                        color_to_attr(MENU_COLORS.second)
                     };
                     col += 1 + canvas.print_with_attr(1, col, text, attr)?;
                 }
             }
             edit => {
-                canvas.print_with_attr(1, 2, edit.second_line(), ATTR_SECOND)?;
+                canvas.print_with_attr(
+                    1,
+                    2,
+                    edit.second_line(),
+                    color_to_attr(MENU_COLORS.second),
+                )?;
             }
         }
         Ok(())
@@ -947,7 +934,12 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
-        let _ = canvas.print_with_attr(1, 2, &self.status.menu.trash.help, ATTR_SECOND);
+        let _ = canvas.print_with_attr(
+            1,
+            2,
+            &self.status.menu.trash.help,
+            color_to_attr(MENU_COLORS.second),
+        );
         let content = trash.content();
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
         let len = content.len();
@@ -972,7 +964,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_context(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.context;
-        canvas.print_with_attr(1, 2, "Pick an action.", ATTR_SECOND)?;
+        canvas.print_with_attr(1, 2, "Pick an action.", color_to_attr(MENU_COLORS.second))?;
         let content = selectable.content();
         for (row, desc, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);
@@ -983,7 +975,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_marks(&self, canvas: &mut dyn Canvas, mark_action: MarkAction) -> Result<()> {
         canvas.print(1, 2, mark_action.second_line())?;
-        canvas.print_with_attr(2, 4, "mark  path", ATTR_SECOND)?;
+        canvas.print_with_attr(2, 4, "mark  path", color_to_attr(MENU_COLORS.second))?;
 
         let content = self.status.menu.marks.as_strings();
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
@@ -1000,7 +992,12 @@ impl<'a> WinSecondary<'a> {
 
     // TODO: refactor both methods below with common trait selectable
     fn draw_shell_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(1, 2, self.tab.edit_mode.second_line(), ATTR_SECOND)?;
+        canvas.print_with_attr(
+            1,
+            2,
+            self.tab.edit_mode.second_line(),
+            color_to_attr(MENU_COLORS.second),
+        )?;
 
         let content = &self.status.menu.tui_applications.content;
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
@@ -1016,7 +1013,7 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_cli_applications(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(1, 2, "pick a command", ATTR_SECOND)?;
+        canvas.print_with_attr(1, 2, "pick a command", color_to_attr(MENU_COLORS.second))?;
 
         let content = &self.status.menu.cli_applications.content;
         let desc_size = self.status.menu.cli_applications.desc_size;
@@ -1060,7 +1057,12 @@ impl<'a> WinSecondary<'a> {
     where
         T: MountRepr,
     {
-        canvas.print_with_attr(1, 2, ENCRYPTED_DEVICE_BINDS, ATTR_SECOND)?;
+        canvas.print_with_attr(
+            1,
+            2,
+            ENCRYPTED_DEVICE_BINDS,
+            color_to_attr(MENU_COLORS.second),
+        )?;
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
         let len = selectable.len();
         for (i, device) in selectable
@@ -1103,7 +1105,7 @@ impl<'a> WinSecondary<'a> {
             canvas,
             0,
             &confirmed_mode.confirmation_string(&dest),
-            ATTR_SECOND,
+            color_to_attr(MENU_COLORS.second),
         )?;
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => self.draw_confirm_empty_trash(canvas)?,
@@ -1144,7 +1146,12 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_trash_is_empty(&self, canvas: &mut dyn Canvas) {
-        let _ = Self::draw_content_line(canvas, 0, "Trash is empty", ATTR_SECOND);
+        let _ = Self::draw_content_line(
+            canvas,
+            0,
+            "Trash is empty",
+            color_to_attr(MENU_COLORS.second),
+        );
     }
 
     fn draw_confirm_non_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -1196,9 +1203,6 @@ pub struct Display {
 }
 
 impl Display {
-    const SELECTED_BORDER: Attr = ATTR_FIRST;
-    const INERT_BORDER: Attr = ATTR_INERT;
-
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>) -> Self {
         log_info!("starting display...");
@@ -1296,9 +1300,15 @@ impl Display {
 
     fn borders(&self, status: &Status) -> (Attr, Attr) {
         if status.index == 0 {
-            (Self::SELECTED_BORDER, Self::INERT_BORDER)
+            (
+                color_to_attr(MENU_COLORS.selected_border),
+                color_to_attr(MENU_COLORS.inert_border),
+            )
         } else {
-            (Self::INERT_BORDER, Self::SELECTED_BORDER)
+            (
+                color_to_attr(MENU_COLORS.inert_border),
+                color_to_attr(MENU_COLORS.selected_border),
+            )
         }
     }
 
@@ -1353,7 +1363,7 @@ impl Display {
         let win = self.vertical_split(
             &win_main_left,
             &win_second_left,
-            Self::SELECTED_BORDER,
+            color_to_attr(MENU_COLORS.selected_border),
             percent_left,
         )?;
         Ok(self.term.draw(&win)?)
@@ -1364,7 +1374,7 @@ fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
     format!("{line_nr:0width$x}")
 }
 
-const fn color_to_attr(color: Color) -> Attr {
+pub const fn color_to_attr(color: Color) -> Attr {
     Attr {
         fg: color,
         bg: Color::Default,
@@ -1380,7 +1390,7 @@ fn draw_colored_strings(
     effect_reverse: bool,
 ) -> Result<()> {
     let mut col = 1;
-    for (text, attr) in std::iter::zip(strings.iter(), ATTR_FIRST_LINE.iter().cycle()) {
+    for (text, attr) in std::iter::zip(strings.iter(), MENU_COLORS.palette().iter().cycle()) {
         let mut attr = *attr;
         if effect_reverse {
             attr.effect |= Effect::REVERSE;

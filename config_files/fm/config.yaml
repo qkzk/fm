@@ -28,6 +28,22 @@ colors:
   symlink: magenta
   broken: light_magenta
 
+# Colors for menus, headers, footers etc.
+menu_colors:
+  # first color
+  first: rgb(45, 250, 209)
+  # second color
+  second: rgb(230, 189, 87)
+  # selected tab border
+  selected_border: rgb(45, 250, 209)
+  # non selected tab border
+  inert_border: rgb(120, 120, 120)
+  # palette of 4 elements, used in menus (second window) and header
+  palette_1: rgb(45, 250, 209)
+  palette_2: rgb(230, 189, 87)
+  palette_3: rgb(230, 167, 255)
+  palette_4: rgb(59, 204, 255)
+
 # keybindings
 # 
 # You can bind any key to any action.
