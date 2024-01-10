@@ -10,8 +10,8 @@ use tuikit::prelude::{Attr, Color, Effect, Term};
 
 use crate::common::NOTIFY_EXECUTABLE;
 use crate::common::{is_program_in_path, random_name};
-use crate::config::REFRESH_EVENT;
-use crate::io::execute;
+use crate::config::{MENU_COLORS, REFRESH_EVENT};
+use crate::io::{color_to_attr, execute};
 use crate::modes::human_size;
 use crate::{log_info, log_line};
 
@@ -46,11 +46,7 @@ pub enum CopyMove {
 
 impl CopyMove {
     fn attr() -> Attr {
-        Attr {
-            fg: Color::CYAN,
-            bg: Color::Default,
-            effect: Effect::REVERSE | Effect::BOLD,
-        }
+        color_to_attr(MENU_COLORS.second)
     }
 
     fn verb(&self) -> &str {
