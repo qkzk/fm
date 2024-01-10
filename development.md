@@ -844,6 +844,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] toggling tree selects the current file if possible
 - [x] FIX: next_sibling doesn't wrap
 - [x] configurable menu colors
+- [x] allow more videos format to be previewed
 - [ ] pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)
@@ -853,6 +854,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## Version 0.1.26
 
+- [ ] FIX ueberzug in dual tab.
+      Use different name per ueberzug tab, allowing multiple previews
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
   - [ ] display number of matches while searching

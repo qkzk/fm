@@ -62,7 +62,9 @@ impl ExtensionKind {
             }
             "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac"
             | "mac" | "flac" => Self::Audio,
-            "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" => Self::Video,
+            "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" | "wmv" | "m4v" | "mov" => {
+                Self::Video
+            }
             "ttf" | "otf" => Self::Font,
             "svg" | "svgz" => Self::Svg,
             "pdf" => Self::Pdf,
@@ -845,7 +847,7 @@ impl Ueberzug {
 
     fn office_thumbnail(calc_path: &Path) -> Result<Self> {
         let calc_str = path_to_string(&calc_path);
-        let args = vec!["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
+        let args = ["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
         let output = execute_and_output_no_log(LIBREOFFICE, args)?;
         if !output.stderr.is_empty() {
             log_info!(
