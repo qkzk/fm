@@ -6,7 +6,7 @@ use std::thread;
 use anyhow::{Context, Result};
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
-use tuikit::prelude::{Attr, Color, Effect, Term};
+use tuikit::prelude::{Attr, Term};
 
 use crate::common::NOTIFY_EXECUTABLE;
 use crate::common::{is_program_in_path, random_name};
