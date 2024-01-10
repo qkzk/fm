@@ -7,11 +7,11 @@ use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
-use crate::app::Footer;
 use crate::app::Header;
 use crate::app::Status;
 use crate::app::Tab;
 use crate::app::{ClickableLine, FlaggedFooter, FlaggedHeader};
+use crate::app::{Focus, Footer};
 use crate::common::path_to_string;
 use crate::common::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
@@ -122,7 +122,6 @@ struct WinMain<'a> {
 
 impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        // canvas.clear()?;
         if self.status.display_settings.dual()
             && self.is_right()
             && self.status.display_settings.preview()
@@ -765,7 +764,6 @@ struct WinSecondary<'a> {
 
 impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        // canvas.clear()?;
         match self.tab.edit_mode {
             Edit::Navigate(mode) => self.draw_navigate(mode, canvas),
             Edit::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
@@ -1278,7 +1276,8 @@ impl Display {
         &self,
         win_main: &'a WinMain,
         win_secondary: &'a WinSecondary,
-        border: Attr,
+        file_border: Attr,
+        menu_border: Attr,
         size: usize,
     ) -> Result<VSplit<'a>> {
         Ok(VSplit::default()
@@ -1287,34 +1286,51 @@ impl Display {
                     .basis(self.height()? - size)
                     .shrink(4)
                     .border(true)
-                    .border_attr(border),
+                    .border_attr(file_border),
             )
             .split(
                 Win::new(win_secondary)
                     .basis(size)
                     .shrink(0)
                     .border(true)
-                    .border_attr(border),
+                    .border_attr(menu_border),
             ))
     }
 
-    fn borders(&self, status: &Status) -> (Attr, Attr) {
-        if status.index == 0 {
-            (
+    /// Left File, Left Menu, Right File, Right Menu
+    fn borders(&self, status: &Status) -> [Attr; 4] {
+        match status.focus {
+            Focus::LeftFile => [
                 color_to_attr(MENU_COLORS.selected_border),
                 color_to_attr(MENU_COLORS.inert_border),
-            )
-        } else {
-            (
+                color_to_attr(MENU_COLORS.inert_border),
+                color_to_attr(MENU_COLORS.inert_border),
+            ],
+            Focus::LeftMenu => [
                 color_to_attr(MENU_COLORS.inert_border),
                 color_to_attr(MENU_COLORS.selected_border),
-            )
+                color_to_attr(MENU_COLORS.inert_border),
+                color_to_attr(MENU_COLORS.inert_border),
+            ],
+            Focus::RightFile => [
+                color_to_attr(MENU_COLORS.inert_border),
+                color_to_attr(MENU_COLORS.inert_border),
+                color_to_attr(MENU_COLORS.selected_border),
+                color_to_attr(MENU_COLORS.inert_border),
+            ],
+            Focus::RightMenu => [
+                color_to_attr(MENU_COLORS.inert_border),
+                color_to_attr(MENU_COLORS.inert_border),
+                color_to_attr(MENU_COLORS.inert_border),
+                color_to_attr(MENU_COLORS.selected_border),
+            ],
         }
     }
 
     fn draw_dual_pane(&mut self, status: &Status) -> Result<()> {
         let (width, _) = self.term.term_size()?;
-        let (first_selected, second_selected) = (status.index == 0, status.index == 1);
+        let first_selected = status.focus.is_left();
+        let second_selected = !first_selected;
         let attributes_left = WinMainAttributes::new(
             0,
             TabPosition::Left,
@@ -1331,20 +1347,22 @@ impl Display {
         let win_main_right = WinMain::new(status, 1, attributes_right);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
-        let (border_left, border_right) = self.borders(status);
+        let borders = self.borders(status);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let percent_right = self.size_for_second_window(&status.tabs[1])?;
         let hsplit = HSplit::default()
             .split(self.vertical_split(
                 &win_main_left,
                 &win_second_left,
-                border_left,
+                borders[0],
+                borders[1],
                 percent_left,
             )?)
             .split(self.vertical_split(
                 &win_main_right,
                 &win_second_right,
-                border_right,
+                borders[2],
+                borders[3],
                 percent_right,
             )?);
         Ok(self.term.draw(&hsplit)?)
@@ -1363,6 +1381,7 @@ impl Display {
         let win = self.vertical_split(
             &win_main_left,
             &win_second_left,
+            color_to_attr(MENU_COLORS.selected_border),
             color_to_attr(MENU_COLORS.selected_border),
             percent_left,
         )?;

@@ -13,6 +13,7 @@ pub use header_footer::{ClickableLine, FlaggedFooter, FlaggedHeader, Footer, Hea
 pub use internal_settings::InternalSettings;
 pub use refresher::Refresher;
 pub use session::Session;
+pub use status::Focus;
 pub use status::Status;
 pub use status::Window;
 pub use tab::Tab;

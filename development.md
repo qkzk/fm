@@ -865,9 +865,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] leaving aka reseting
 - [ ] remove MOCP control from fm ???
 - [ ] focusable windows
-  - [ ] move display to status ? it would be easier to know where I clicked
-  - [ ] allow to change focus, only color the focused window border.
-  - [ ] Change focus with ctrl+hjkl or ctrl+arrow
+  - [x] simple focus enum, mostly following what's being done
+  - [x] allow to change focus, only color the focused window border.
+  - [ ] Change focus with ctrl+hjkl or ctrl+arrow or by clicking
   - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
   - [ ] Clicking an unfocused window should only give the focus, not execute anything
 

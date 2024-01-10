@@ -58,6 +58,34 @@ pub enum Window {
     Footer,
 }
 
+#[derive(Default)]
+pub enum Focus {
+    #[default]
+    LeftFile,
+    LeftMenu,
+    RightFile,
+    RightMenu,
+}
+
+impl Focus {
+    pub fn is_left(&self) -> bool {
+        matches!(self, Self::LeftMenu | Self::LeftFile)
+    }
+
+    pub fn is_file(&self) -> bool {
+        matches!(self, Self::LeftFile | Self::RightFile)
+    }
+
+    pub fn switch(&self) -> Self {
+        match self {
+            Self::LeftFile => Self::RightFile,
+            Self::LeftMenu => Self::RightFile,
+            Self::RightFile => Self::LeftFile,
+            Self::RightMenu => Self::LeftFile,
+        }
+    }
+}
+
 /// Holds every mutable parameter of the application itself, except for
 /// the "display" information.
 /// It holds 2 tabs (left & right), even if only one can be displayed sometimes.
@@ -81,6 +109,7 @@ pub struct Status {
     pub display_settings: Session,
     /// Interna settings
     pub internal_settings: InternalSettings,
+    pub focus: Focus,
 }
 
 impl Status {
@@ -111,6 +140,7 @@ impl Status {
             Tab::new(&args, height, users_left)?,
             Tab::new(&args, height, users_right)?,
         ];
+        let focus = Focus::default();
         Ok(Self {
             tabs,
             index,
@@ -118,6 +148,7 @@ impl Status {
             menu,
             display_settings,
             internal_settings,
+            focus,
         })
     }
 
@@ -141,17 +172,40 @@ impl Status {
         self.internal_settings.must_quit
     }
 
+    pub fn switch_focus(&mut self) {
+        if (self.index == 0 && !self.focus.is_left()) || (self.index == 1 && self.focus.is_left()) {
+            self.focus = self.focus.switch();
+        }
+    }
+
+    pub fn set_focus(&mut self) {
+        if self.index == 0 {
+            if matches!(self.tabs[self.index].edit_mode, Edit::Nothing) {
+                self.focus = Focus::LeftFile;
+            } else {
+                self.focus = Focus::LeftMenu;
+            }
+        } else {
+            if matches!(self.tabs[self.index].edit_mode, Edit::Nothing) {
+                self.focus = Focus::RightFile;
+            } else {
+                self.focus = Focus::RightMenu;
+            }
+        }
+    }
+
     /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn next(&mut self) {
         if !self.display_settings.dual() {
             return;
         }
-        self.index = 1 - self.index
+        self.index = 1 - self.index;
+        self.switch_focus();
     }
 
     /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn prev(&mut self) {
-        self.next()
+        self.next();
     }
 
     /// Select the left or right tab depending on where the user clicked.
@@ -243,11 +297,13 @@ impl Status {
     /// Select the left tab
     pub fn select_left(&mut self) {
         self.index = 0;
+        self.switch_focus();
     }
 
     /// Select the right tab
     pub fn select_right(&mut self) {
         self.index = 1;
+        self.switch_focus();
     }
 
     /// Refresh every disk information.
@@ -392,6 +448,7 @@ impl Status {
         let len = self.menu.len(edit_mode);
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
+        self.set_focus();
         self.refresh_status()
     }
 
@@ -1010,7 +1067,7 @@ impl Status {
 
     /// Execute an action when the header line was clicked.
     pub fn header_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
-        let is_right = self.index == 1;
+        let is_right = !self.focus.is_left();
         match self.current_tab().display_mode {
             Display::Preview => Ok(()),
             Display::Flagged => FlaggedHeader::new(self)?
