@@ -113,15 +113,6 @@ Different modes for the bottom window
 {Filter:<10}:      FILTER 
     (by name \"n name\", by ext \"e ext\", \"d only directories\" or \"a all\" for reset)
 {Enter:<10}:      Execute mode then NORMAL
-
-- MOC -
-Control MOC from your TUI
-{MocpAddToPlayList:<10}:      MOCP: Add selected file or folder to the playlist
-{MocpPrevious:<10}:      MOCP: Previous song
-{MocpTogglePause:<10}:      MOCP: Toggle play/pause.
-{MocpNext:<10}:      MOCP: Next song
-{MocpGoToSong:<10}:      MOCP: Go to currently playing song 
-{MocpClearPlaylist:<10}:      MOCP: Clear the playlist
 ";
 
 const CUSTOM_HELP: &str = "

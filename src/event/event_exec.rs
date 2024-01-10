@@ -3,6 +3,7 @@ use std::path;
 
 use anyhow::{Context, Result};
 
+use crate::app::Focus;
 use crate::app::Status;
 use crate::app::Tab;
 use crate::common::filename_to_clipboard;
@@ -28,13 +29,11 @@ use crate::modes::InputCompleted;
 use crate::modes::InputSimple;
 use crate::modes::LeaveMode;
 use crate::modes::MarkAction;
-use crate::modes::Mocp;
 use crate::modes::Navigate;
 use crate::modes::NeedConfirmation;
 use crate::modes::Preview;
 use crate::modes::RemovableDevices;
 use crate::modes::Selectable;
-use crate::modes::MOCP;
 
 /// Links events from tuikit to custom actions.
 /// It mutates `Status` or its children `Tab`.
@@ -1199,61 +1198,63 @@ impl EventAction {
         open_tui_program(status, NCDU)
     }
 
-    /// Add a song or a folder to MOC playlist. Start it first...
-    pub fn mocp_add_to_playlist(tab: &Tab) -> Result<()> {
-        if !is_program_in_path(MOCP) {
-            log_line!("mocp isn't installed");
-            return Ok(());
+    pub fn focus_go_left(status: &mut Status) -> Result<()> {
+        match status.focus {
+            Focus::LeftMenu | Focus::LeftFile => (),
+            Focus::RightFile => {
+                status.focus = Focus::LeftFile;
+            }
+            Focus::RightMenu => {
+                if matches!(status.tabs[0].edit_mode, Edit::Nothing) {
+                    status.focus = Focus::LeftFile;
+                } else {
+                    status.focus = Focus::LeftMenu;
+                }
+            }
         }
-        Mocp::add_to_playlist(tab)
+        Ok(())
     }
 
-    pub fn mocp_clear_playlist() -> Result<()> {
-        if !is_program_in_path(MOCP) {
-            log_line!("mocp isn't installed");
-            return Ok(());
+    pub fn focus_go_right(status: &mut Status) -> Result<()> {
+        match status.focus {
+            Focus::RightMenu | Focus::RightFile => (),
+            Focus::LeftFile => {
+                status.focus = Focus::RightFile;
+            }
+            Focus::LeftMenu => {
+                if matches!(status.tabs[1].edit_mode, Edit::Nothing) {
+                    status.focus = Focus::RightFile;
+                } else {
+                    status.focus = Focus::RightMenu;
+                }
+            }
         }
-        Mocp::clear()
+        Ok(())
     }
 
-    /// Add a song or a folder to MOC playlist. Start it first...
-    pub fn mocp_go_to_song(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab_mut();
-        if !is_program_in_path(MOCP) {
-            log_line!("mocp isn't installed");
-            return Ok(());
+    pub fn focus_go_down(status: &mut Status) -> Result<()> {
+        match status.focus {
+            Focus::RightMenu | Focus::LeftMenu => (),
+            Focus::LeftFile => {
+                if !matches!(status.tabs[0].edit_mode, Edit::Nothing) {
+                    status.focus = Focus::LeftMenu;
+                }
+            }
+            Focus::RightFile => {
+                if !matches!(status.tabs[1].edit_mode, Edit::Nothing) {
+                    status.focus = Focus::RightMenu;
+                }
+            }
         }
-        Mocp::go_to_song(tab)?;
-
-        status.update_second_pane_for_preview()
+        Ok(())
     }
 
-    /// Toggle play/pause on MOC.
-    /// Starts the server if needed, preventing the output to fill the screen.
-    /// Then toggle play/pause
-    pub fn mocp_toggle_pause(status: &mut Status) -> Result<()> {
-        if !is_program_in_path(MOCP) {
-            log_line!("mocp isn't installed");
-            return Ok(());
+    pub fn focus_go_up(status: &mut Status) -> Result<()> {
+        match status.focus {
+            Focus::LeftFile | Focus::RightFile => (),
+            Focus::LeftMenu => status.focus = Focus::LeftFile,
+            Focus::RightMenu => status.focus = Focus::RightFile,
         }
-        Mocp::toggle_pause(status)
-    }
-
-    /// Skip to the next song in MOC
-    pub fn mocp_next() -> Result<()> {
-        if !is_program_in_path(MOCP) {
-            log_line!("mocp isn't installed");
-            return Ok(());
-        }
-        Mocp::next()
-    }
-
-    /// Go to the previous song in MOC
-    pub fn mocp_previous() -> Result<()> {
-        if !is_program_in_path(MOCP) {
-            log_line!("mocp isn't installed");
-            return Ok(());
-        }
-        Mocp::previous()
+        Ok(())
     }
 }

@@ -856,6 +856,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## Version 0.1.26
 
+- [ ] focusable windows
+  - [x] simple focus enum, mostly following what's being done
+  - [x] allow to change focus, only color the focused window border.
+  - [x] Change focus with ctrl+hjkl
+  - [x] Change focus with ctrl+arrow
+  - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
+  - [ ] Clicking an unfocused window should only give the focus, not execute anything
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
   - [ ] display number of matches while searching
@@ -864,12 +871,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] setting
     - [ ] leaving aka reseting
 - [ ] remove MOCP control from fm ???
-- [ ] focusable windows
-  - [x] simple focus enum, mostly following what's being done
-  - [x] allow to change focus, only color the focused window border.
-  - [ ] Change focus with ctrl+hjkl or ctrl+arrow or by clicking
-  - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
-  - [ ] Clicking an unfocused window should only give the focus, not execute anything
 
 ## TODO
 
