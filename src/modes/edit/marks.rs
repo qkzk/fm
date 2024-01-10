@@ -182,6 +182,5 @@ impl Marks {
 }
 
 type Pair = (char, PathBuf);
-// impl_selectable_content!(Pair, Marks);
 impl_selectable!(Marks);
 impl_content!(Pair, Marks);
