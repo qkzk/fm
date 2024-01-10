@@ -791,10 +791,15 @@ pub struct Ueberzug {
 
 impl Ueberzug {
     fn thumbnail(original: PathBuf, kind: UeberzugKind) -> Self {
+        let filename = original
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
         Self {
             original,
             path: THUMBNAIL_PATH.to_owned(),
-            filename: "thumbnail".to_owned(),
+            filename,
             kind,
             ueberzug: ueberzug::Ueberzug::new(),
             length: 0,
