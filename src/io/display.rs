@@ -1378,11 +1378,12 @@ impl Display {
         let win_main_left = WinMain::new(status, 0, attributes_left);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
+        let borders = self.borders(status);
         let win = self.vertical_split(
             &win_main_left,
             &win_second_left,
-            color_to_attr(MENU_COLORS.selected_border),
-            color_to_attr(MENU_COLORS.selected_border),
+            borders[0],
+            borders[1],
             percent_left,
         )?;
         Ok(self.term.draw(&win)?)
