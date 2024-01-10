@@ -3,14 +3,16 @@ use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
 use crate::common::{current_username, is_program_in_path};
 use crate::common::{CRYPTSETUP, LSBLK};
+use crate::impl_content;
+use crate::impl_selectable;
 use crate::io::execute_and_output;
 use crate::io::{
     drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
     reset_sudo_faillock, set_sudo_session,
 };
+use crate::log_info;
 use crate::modes::{MountCommands, MountParameters, MountRepr};
 use crate::modes::{PasswordHolder, PasswordKind};
-use crate::{impl_selectable_content, log_info};
 
 /// Possible actions on encrypted drives
 #[derive(Debug, Clone, Copy)]
@@ -319,4 +321,6 @@ impl CryptoDeviceOpener {
     }
 }
 
-impl_selectable_content!(CryptoDevice, CryptoDeviceOpener);
+// impl_selectable_content!(CryptoDevice, CryptoDeviceOpener);
+impl_selectable!(CryptoDeviceOpener);
+impl_content!(CryptoDevice, CryptoDeviceOpener);

@@ -5,20 +5,21 @@ use std::path;
 use anyhow::{Context, Result};
 
 use crate::common::{
-    has_last_modification_happened_less_than, path_to_string, row_to_window_index, set_clipboard,
+    has_last_modification_happened_less_than, path_to_string, row_to_window_index,
 };
 use crate::io::Args;
+use crate::modes::Content;
 use crate::modes::Directory;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
 use crate::modes::History;
 use crate::modes::Preview;
-use crate::modes::SelectableContent;
+use crate::modes::Selectable;
 use crate::modes::SortKind;
 use crate::modes::Users;
-use crate::modes::{calculate_top_bottom, Go, To, Tree};
 use crate::modes::{ContentWindow, FileKind};
 use crate::modes::{Display, Edit};
+use crate::modes::{Go, To, Tree};
 
 pub struct TabSettings {
     /// read from command line
@@ -155,6 +156,7 @@ impl Tab {
         }
     }
 
+    /// Current path of this tab.
     pub fn current_path(&self) -> &path::Path {
         self.directory.path.borrow()
     }
@@ -171,6 +173,16 @@ impl Tab {
                 .selected()
                 .context("no selected file")?
                 .to_owned()),
+        }
+    }
+
+    /// Number of displayed element in this tab.
+    fn display_len(&self) -> usize {
+        match self.display_mode {
+            Display::Tree => self.tree.display_len(),
+            Display::Preview => self.preview.len(),
+            Display::Directory => self.directory.len(),
+            Display::Flagged => 0,
         }
     }
 
@@ -197,33 +209,13 @@ impl Tab {
             Display::Directory => self.directory.filenames_containing(input_string),
             Display::Tree => self.tree.filenames_containing(input_string),
             Display::Preview => vec![],
+            Display::Flagged => vec![],
         }
-    }
-
-    /// Copy the selected filename to the clipboard. Only the filename.
-    pub fn filename_to_clipboard(&self) {
-        let Ok(file) = self.current_file() else {
-            return;
-        };
-        set_clipboard(file.filename.to_string())
-    }
-
-    /// Copy the selected filepath to the clipboard. The absolute path.
-    pub fn filepath_to_clipboard(&self) {
-        let Ok(file) = self.current_file() else {
-            return;
-        };
-        let Some(path_str) = file.path.to_str() else {
-            return;
-        };
-        set_clipboard(path_str.to_owned())
     }
 
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) -> Result<()> {
-        self.settings.filter = FilterKind::All;
         self.preview = Preview::empty();
-        self.set_edit_mode(Edit::Nothing);
         if matches!(self.display_mode, Display::Tree) {
             self.make_tree(None)?;
         } else {
@@ -237,7 +229,7 @@ impl Tab {
     /// The first file is selected.
     pub fn refresh_view(&mut self) -> Result<()> {
         self.directory.reset_files(&self.settings, &self.users)?;
-        self.window.reset(self.directory.content.len());
+        self.window.reset(self.display_len());
         self.refresh_params()?;
         Ok(())
     }
@@ -253,6 +245,7 @@ impl Tab {
                 has_last_modification_happened_less_than(&self.directory.path, 10)?
             }
             Display::Tree => self.tree.has_modified_dirs(),
+            Display::Flagged => false, // TODO! what to do ????,
         } {
             self.refresh_and_reselect_file()
         } else {
@@ -260,6 +253,7 @@ impl Tab {
         }
     }
 
+    /// Change the display mode.
     pub fn set_display_mode(&mut self, new_display_mode: Display) {
         self.reset_preview();
         self.display_mode = new_display_mode
@@ -285,20 +279,25 @@ impl Tab {
         Ok(())
     }
 
+    /// Enter or leave display tree mode.
     pub fn toggle_tree_mode(&mut self) -> Result<()> {
+        let current_file = self.current_file()?;
         if let Display::Tree = self.display_mode {
             {
                 self.tree = Tree::default();
                 self.refresh_view()
             }?;
-            self.set_display_mode(Display::Directory)
+            self.set_display_mode(Display::Directory);
         } else {
             self.make_tree(None)?;
+            self.window.reset(self.tree.displayable().lines().len());
             self.set_display_mode(Display::Tree);
         }
+        self.go_to_file(current_file.path.to_path_buf());
         Ok(())
     }
 
+    /// Creates a new preview for the selected file.
     pub fn make_preview(&mut self) -> Result<()> {
         if self.directory.is_empty() {
             return Ok(());
@@ -320,6 +319,7 @@ impl Tab {
         Ok(())
     }
 
+    /// Reset the preview to empty. Used to save some memory.
     fn reset_preview(&mut self) {
         if matches!(self.display_mode, Display::Preview) {
             self.preview = Preview::empty();
@@ -340,32 +340,21 @@ impl Tab {
                 let index = self.directory.select_file(&selected_path);
                 self.scroll_to(index)
             }
-            Display::Tree => self.tree.go(To::Path(&selected_path)),
+            Display::Tree => {
+                self.tree.go(To::Path(&selected_path));
+                let index = self.tree.displayable().index();
+                self.scroll_to(index);
+            }
+            Display::Flagged => {}
         }
         Ok(())
     }
 
-    /// Set a new mode and save the last one
-    pub fn set_edit_mode(&mut self, new_mode: Edit) {
-        self.edit_mode = new_mode;
-    }
-
-    /// Reset the modes :
-    /// edit_mode is set to Nothing,
-    /// returns false If the current "Display" is Preview, don't refresh the display,
-    /// true otherwise.
-    /// It's used to know if we have to reset the view.
-    pub fn reset_edit_mode(&mut self) -> bool {
-        let must_refresh = matches!(self.display_mode, Display::Preview);
-        self.edit_mode = Edit::Nothing;
-        must_refresh
-    }
-
-    pub fn reset_mode_and_view(&mut self) -> Result<()> {
+    /// Reset the display mode and its view.
+    pub fn reset_display_mode_and_view(&mut self) -> Result<()> {
         if matches!(self.display_mode, Display::Preview) {
             self.set_display_mode(Display::Directory);
         }
-        self.reset_edit_mode();
         self.refresh_view()
     }
 
@@ -375,6 +364,7 @@ impl Tab {
         self.height = height;
     }
 
+    /// Display or hide hidden files (filename starting with .).
     pub fn toggle_hidden(&mut self) -> Result<()> {
         self.settings.toggle_hidden();
         self.directory.reset_files(&self.settings, &self.users)?;
@@ -409,14 +399,16 @@ impl Tab {
         if self.directory.content.is_empty() {
             return Ok(());
         }
-        self.reset_edit_mode();
+        // self.reset_edit_mode();
         match self.display_mode {
             Display::Directory => {
+                let path = self.current_file()?.path;
                 self.directory.unselect_current();
                 self.settings.update_sort_from_char(c);
+                crate::log_info!("sort kind: {sortkind}", sortkind = self.settings.sort_kind);
                 self.directory.sort(&self.settings.sort_kind);
                 self.normal_go_top();
-                self.directory.select_index(0);
+                self.directory.select_file(&path);
             }
             Display::Tree => {
                 self.settings.update_sort_from_char(c);
@@ -431,37 +423,55 @@ impl Tab {
     /// Set the pathcontent to a new path.
     /// Reset the window.
     /// Add the last path to the history of visited paths.
+    /// Does nothing in preview or flagged display mode.
     pub fn cd(&mut self, path: &path::Path) -> Result<()> {
-        self.history.push(
-            &self.directory.path,
-            &self.directory.selected().context("")?.path,
-        );
+        if matches!(self.display_mode, Display::Preview | Display::Flagged) {
+            return Ok(());
+        }
+        match std::env::set_current_dir(path) {
+            Ok(()) => (),
+            Err(error) => {
+                crate::log_info!("can't reach {path}. Error {error}", path = path.display());
+                return Ok(());
+            }
+        }
+        self.history
+            .push(&self.directory.path, &self.current_file()?.path);
         self.directory
             .change_directory(path, &self.settings, &self.users)?;
         if matches!(self.display_mode, Display::Tree) {
             self.make_tree(Some(self.settings.sort_kind))?;
+            self.window.reset(self.tree.displayable().lines().len());
+        } else {
+            self.window.reset(self.directory.content.len());
         }
-        self.window.reset(self.directory.content.len());
-        std::env::set_current_dir(path)?;
         Ok(())
     }
 
     pub fn back(&mut self) -> Result<()> {
+        if matches!(self.display_mode, Display::Preview | Display::Flagged) {
+            return Ok(());
+        }
         if self.history.content.is_empty() {
             return Ok(());
         }
         let Some((path, file)) = self.history.content.pop() else {
             return Ok(());
         };
-        self.cd(&path)?;
-        let index = self.directory.select_file(&file);
-        self.scroll_to(index);
         self.history.content.pop();
-        if let Display::Tree = self.display_mode {
-            self.make_tree(None)?
-        }
-
+        self.cd(&path)?;
+        self.go_to_file(file);
         Ok(())
+    }
+
+    /// Select a file in current view, either directory or tree mode.
+    pub fn go_to_file(&mut self, file: path::PathBuf) {
+        if let Display::Tree = self.display_mode {
+            self.tree.go(To::Path(&file));
+        } else {
+            let index = self.directory.select_file(&file);
+            self.scroll_to(index);
+        }
     }
 
     /// Jump to the jump target.
@@ -475,7 +485,7 @@ impl Tab {
         match self.display_mode {
             Display::Preview => return Ok(()),
             Display::Directory => {
-                if !self.directory.paths().contains(&target_dir) {
+                if !self.directory.paths().contains(&jump_target.as_path()) {
                     self.cd(target_dir)?
                 }
                 let index = self.directory.select_file(&jump_target);
@@ -487,6 +497,10 @@ impl Tab {
                     self.make_tree(None)?
                 }
                 self.tree.go(To::Path(&jump_target))
+            }
+            Display::Flagged => {
+                self.set_display_mode(Display::Directory);
+                self.jump(jump_target)?;
             }
         }
         Ok(())
@@ -552,6 +566,7 @@ impl Tab {
         self.directory.select_index(last_index);
         self.window.scroll_to(last_index)
     }
+
     /// Move 10 files up
     pub fn normal_page_up(&mut self) {
         let up_index = if self.directory.index > 10 {
@@ -574,6 +589,7 @@ impl Tab {
     /// Recursively explore the tree and fold every node. Reset the display.
     pub fn tree_go_to_root(&mut self) -> Result<()> {
         self.tree.go(To::Root);
+        self.window.scroll_to(0);
         Ok(())
     }
 
@@ -585,48 +601,76 @@ impl Tab {
                 return Ok(());
             };
             self.cd(parent.to_owned().as_ref())?;
-            self.make_tree(Some(self.settings.sort_kind))
+            self.make_tree(Some(self.settings.sort_kind))?;
         } else {
             self.tree.go(To::Parent);
-            Ok(())
         }
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
+        Ok(())
     }
 
     /// Move down 10 times in the tree
-    pub fn tree_page_down(&mut self) -> Result<()> {
+    pub fn tree_page_down(&mut self) {
         self.tree.page_down();
-        Ok(())
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
     }
 
     /// Move up 10 times in the tree
     pub fn tree_page_up(&mut self) {
-        self.tree.page_up()
+        self.tree.page_up();
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
     }
 
     /// Select the next sibling.
     pub fn tree_select_next(&mut self) -> Result<()> {
         self.tree.go(To::Next);
+        let index = self.tree.displayable().index();
+        self.window.scroll_down_one(index);
         Ok(())
     }
 
     /// Select the previous siblging
     pub fn tree_select_prev(&mut self) -> Result<()> {
         self.tree.go(To::Prev);
+        let index = self.tree.displayable().index();
+        self.window.scroll_up_one(index);
         Ok(())
     }
 
     /// Go to the last leaf.
     pub fn tree_go_to_bottom_leaf(&mut self) -> Result<()> {
         self.tree.go(To::Last);
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
         Ok(())
     }
 
+    /// Navigate to the next sibling of current file in tree mode.
+    pub fn tree_next_sibling(&mut self) {
+        self.tree.go(To::NextSibling);
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
+    }
+
+    /// Navigate to the previous sibling of current file in tree mode.
+    pub fn tree_prev_sibling(&mut self) {
+        self.tree.go(To::PreviousSibling);
+        let index = self.tree.displayable().index();
+        self.window.scroll_to(index);
+    }
+
+    /// Move the preview to the top
     pub fn preview_go_top(&mut self) {
         self.window.scroll_to(0)
     }
 
+    /// Move the preview to the bottom
     pub fn preview_go_bottom(&mut self) {
-        self.window.scroll_to(self.preview.len() - 1)
+        self.window
+            .scroll_to(self.preview.len().checked_sub(1).unwrap_or_default())
     }
 
     /// Move 30 lines up or an image in Ueberzug.
@@ -656,17 +700,19 @@ impl Tab {
             }
         }
     }
+
     /// Select a given row, if there's something in it.
     /// Returns an error if the clicked row is above the headers margin.
-    pub fn select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
+    pub fn select_row(&mut self, row: u16) -> Result<()> {
         match self.display_mode {
             Display::Directory => self.normal_select_row(row),
-            Display::Tree => self.tree_select_row(row, term_height)?,
+            Display::Tree => self.tree_select_row(row)?,
             _ => (),
         }
         Ok(())
     }
 
+    /// Select a clicked row in display directory
     fn normal_select_row(&mut self, row: u16) {
         let screen_index = row_to_window_index(row);
         let index = screen_index + self.window.top;
@@ -674,12 +720,13 @@ impl Tab {
         self.window.scroll_to(index);
     }
 
-    fn tree_select_row(&mut self, row: u16, term_height: usize) -> Result<()> {
+    /// Select a clicked row in display tree
+    fn tree_select_row(&mut self, row: u16) -> Result<()> {
         let screen_index = row_to_window_index(row);
-        let (selected_index, content) = self.tree.content(&self.users, false);
-        let (top, _) = calculate_top_bottom(selected_index, term_height - 2);
-        let index = screen_index + top;
-        let path = content
+        let displayable = self.tree.displayable();
+        let index = screen_index + self.window.top;
+        let path = displayable
+            .lines()
             .get(index)
             .context("no selected file")?
             .path()
@@ -700,6 +747,7 @@ impl Tab {
         }
     }
 
+    /// Search a file by filename from given index, moving down
     fn search_from_index(&self, searched_name: &str, current_index: usize) -> Option<usize> {
         for (index, file) in self.directory.enumerate().skip(current_index) {
             if file.filename.contains(searched_name) {
@@ -709,6 +757,7 @@ impl Tab {
         None
     }
 
+    /// Search a file by filename from first line, moving down
     fn search_from_top(&self, searched_name: &str, current_index: usize) -> Option<usize> {
         for (index, file) in self.directory.enumerate().take(current_index) {
             if file.filename.contains(searched_name) {
@@ -718,6 +767,7 @@ impl Tab {
         None
     }
 
+    /// Search the next matching file in display directory
     pub fn normal_search_next(&mut self, searched: &str) {
         let next_index = (self.directory.index + 1) % self.directory.content.len();
         self.search_from(searched, next_index);

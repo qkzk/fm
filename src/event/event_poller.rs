@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use tuikit::error::TuikitError;
 use tuikit::event::Event;
 use tuikit::term::Term;
 
 /// Simple struct to read the events.
 pub struct EventReader {
-    term: Arc<Term>,
+    pub term: Arc<Term>,
 }
 
 impl EventReader {
@@ -17,7 +18,7 @@ impl EventReader {
 
     /// Returns the events as they're received. Wait indefinitely for a new one.
     /// We should spend most of the application life here, doing nothing :)
-    pub fn poll_event(&self) -> Result<Event> {
-        Ok(self.term.poll_event()?)
+    pub fn poll_event(&self) -> Result<Event, TuikitError> {
+        self.term.poll_event()
     }
 }

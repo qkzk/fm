@@ -5,32 +5,33 @@ use anyhow::Result;
 use strum::IntoEnumIterator;
 
 use crate::event::ActionMap;
+use crate::modes::Leave;
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
 pub enum InputCompleted {
     #[default]
     /// Complete a directory path in filesystem
-    Goto,
+    Cd,
     /// Complete a filename from current directory
     Search,
     /// Complete an executable name from $PATH
     Exec,
-    /// Command
-    Command,
+    /// Complete with an existing action
+    Action,
 }
 
 impl fmt::Display for InputCompleted {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             #[rustfmt::skip]
-            Self::Exec      => write!(f, "Exec:    "),
+            Self::Exec      => write!(f, "Open with: "),
             #[rustfmt::skip]
-            Self::Goto      => write!(f, "Goto:    "),
+            Self::Cd        => write!(f, "Cd:        "),
             #[rustfmt::skip]
-            Self::Search    => write!(f, "Search:  "),
+            Self::Search    => write!(f, "Search:    "),
             #[rustfmt::skip]
-            Self::Command   => write!(f, "Command: "),
+            Self::Action    => write!(f, "Action:    "),
         }
     }
 }
@@ -38,6 +39,16 @@ impl fmt::Display for InputCompleted {
 impl InputCompleted {
     pub fn cursor_offset(&self) -> usize {
         self.to_string().len() + 2
+    }
+}
+
+impl Leave for InputCompleted {
+    fn must_refresh(&self) -> bool {
+        true
+    }
+
+    fn must_reset_mode(&self) -> bool {
+        !matches!(self, Self::Action)
     }
 }
 
@@ -52,6 +63,10 @@ pub struct Completion {
 }
 
 impl Completion {
+    pub fn len(&self) -> usize {
+        self.proposals.len()
+    }
+
     /// Is there any completion option ?
     pub fn is_empty(&self) -> bool {
         self.proposals.is_empty()
@@ -116,10 +131,10 @@ impl Completion {
         self.proposals.clear();
     }
 
-    /// Goto completion.
+    /// Cd completion.
     /// Looks for the valid path completing what the user typed.
-    pub fn goto(&mut self, input_string: &str, current_path: &str) -> Result<()> {
-        self.goto_update_from_input(input_string, current_path);
+    pub fn cd(&mut self, input_string: &str, current_path: &str) -> Result<()> {
+        self.cd_update_from_input(input_string, current_path);
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
             return Ok(());
@@ -129,7 +144,7 @@ impl Completion {
         Ok(())
     }
 
-    fn goto_update_from_input(&mut self, input_string: &str, current_path: &str) {
+    fn cd_update_from_input(&mut self, input_string: &str, current_path: &str) {
         self.proposals = vec![];
         if let Some(expanded_input) = self.expand_input(input_string) {
             self.proposals.push(expanded_input);
@@ -149,7 +164,7 @@ impl Completion {
     }
 
     fn canonicalize_input(&mut self, input_string: &str, current_path: &str) -> Option<String> {
-        let mut path = fs::canonicalize(current_path).unwrap();
+        let mut path = fs::canonicalize(current_path).unwrap_or_default();
         path.push(input_string);
         let path = fs::canonicalize(path).unwrap_or_default();
         if path.exists() {
@@ -178,6 +193,7 @@ impl Completion {
     fn entries_matching_filename(entries: ReadDir, last_name: &str) -> Vec<String> {
         entries
             .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_ok())
             .filter(|e| e.file_type().unwrap().is_dir() && filename_startswith(e, last_name))
             .map(|e| e.path().to_string_lossy().into_owned())
             .collect()

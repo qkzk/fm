@@ -30,6 +30,7 @@ use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_
 use crate::modes::FilterKind;
 use crate::modes::SortKind;
 use crate::modes::{list_files_tar, list_files_zip};
+use crate::modes::{TreeLineBuilder, TreeLines};
 
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.
@@ -61,7 +62,9 @@ impl ExtensionKind {
             }
             "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac"
             | "mac" | "flac" => Self::Audio,
-            "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" => Self::Video,
+            "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" | "wmv" | "m4v" | "mov" => {
+                Self::Video
+            }
             "ttf" | "otf" => Self::Font,
             "svg" | "svgz" => Self::Svg,
             "pdf" => Self::Pdf,
@@ -115,6 +118,13 @@ impl Preview {
     pub fn empty() -> Self {
         clear_tmp_file();
         Self::Empty
+    }
+
+    pub fn new(file_info: &FileInfo, users: &Users) -> Result<Self> {
+        match file_info.file_kind {
+            FileKind::Directory => Self::directory(file_info, users),
+            _ => Self::file(file_info),
+        }
     }
 
     /// Creates a new `Directory` from the file_info
@@ -202,7 +212,7 @@ impl Preview {
             FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
                 Ok(Self::fifo_chardevice(file_info))
             }
-            _ => Err(anyhow!("new preview: can't preview this filekind",)),
+            _ => Ok(Preview::default()),
         }
     }
 
@@ -781,10 +791,15 @@ pub struct Ueberzug {
 
 impl Ueberzug {
     fn thumbnail(original: PathBuf, kind: UeberzugKind) -> Self {
+        let filename = original
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
         Self {
             original,
             path: THUMBNAIL_PATH.to_owned(),
-            filename: "thumbnail".to_owned(),
+            filename,
             kind,
             ueberzug: ueberzug::Ueberzug::new(),
             length: 0,
@@ -837,7 +852,7 @@ impl Ueberzug {
 
     fn office_thumbnail(calc_path: &Path) -> Result<Self> {
         let calc_str = path_to_string(&calc_path);
-        let args = vec!["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
+        let args = ["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
         let output = execute_and_output_no_log(LIBREOFFICE, args)?;
         if !output.stderr.is_empty() {
             log_info!(
@@ -1037,7 +1052,7 @@ pub struct TreePreview {
 }
 
 impl TreePreview {
-    pub fn new(path: std::rc::Rc<Path>, users: &Users) -> Self {
+    pub fn new(path: std::sync::Arc<Path>, users: &Users) -> Self {
         let tree = Tree::new(
             path,
             4,
@@ -1050,7 +1065,7 @@ impl TreePreview {
     }
 
     pub fn len(&self) -> usize {
-        self.tree.len()
+        self.tree.displayable().lines().len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -1128,3 +1143,4 @@ impl_window!(ColoredText, String);
 impl_window!(Socket, String);
 impl_window!(BlockDevice, String);
 impl_window!(FifoCharDevice, String);
+impl_window!(TreeLines, TreeLineBuilder);

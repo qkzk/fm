@@ -797,7 +797,7 @@ dependencies = [
 
 [[package]]
 name = "fm-tui"
-version = "0.1.24"
+version = "0.1.25"
 dependencies = [
  "anyhow",
  "cairo-rs",
@@ -2174,9 +2174,9 @@ dependencies = [
 
 [[package]]
 name = "skim-qkzk"
-version = "0.9.12"
+version = "0.9.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca4c3bcd3a72b5925fa30dae1e8ac51f8cf02f94c3dcb63e7f6136023c403374"
+checksum = "960c890424e7df1058598aa89e0e8d3fb6ccc57421d315aa6b667bd287ff17c7"
 dependencies = [
  "atty",
  "beef",

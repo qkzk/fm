@@ -1,19 +1,9 @@
 # Here you can configure which Terminal User Interface application you want to 
 # be able to load from the application itself.
 # Each application should be reachable from your `$PATH`.
-# The `cwd` boolean, which is required must be set to true
-# if the application requires a working directory, like `lazygit`.
-# It can be set to false for applications that don't care about where
-# they're started from, like `htop`.
 lazygit:
-  cwd: true
 ncdu:
-  cwd: true
 htop:
-  cwd: false
 btop:
-  cwd: false
 glances:
-  cwd: false
 mocp:
-  cwd: true

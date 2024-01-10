@@ -20,6 +20,12 @@ pub enum MarkAction {
     New,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum BulkAction {
+    Rename,
+    Create,
+}
+
 /// Different kind of last edition command received requiring a confirmation.
 /// Copy, move and delete require a confirmation to prevent big mistakes.
 #[derive(Clone, Copy, Debug)]
@@ -32,6 +38,8 @@ pub enum NeedConfirmation {
     Move,
     /// Empty Trash
     EmptyTrash,
+    /// Bulk
+    BulkAction(BulkAction),
 }
 
 impl NeedConfirmation {
@@ -55,7 +63,19 @@ impl NeedConfirmation {
             Self::Move => {
                 format!("Files will be moved to {destination}")
             }
+            Self::BulkAction(BulkAction::Rename) => "Those files will be renamed :".to_owned(),
+            Self::BulkAction(BulkAction::Create) => "Those files will be created :".to_owned(),
         }
+    }
+}
+
+impl Leave for NeedConfirmation {
+    fn must_refresh(&self) -> bool {
+        true
+    }
+
+    fn must_reset_mode(&self) -> bool {
+        true
     }
 }
 
@@ -66,6 +86,8 @@ impl std::fmt::Display for NeedConfirmation {
             Self::Move => write!(f, "Move files here :"),
             Self::Copy => write!(f, "Copy files here :"),
             Self::EmptyTrash => write!(f, "Empty the trash ?"),
+            Self::BulkAction(BulkAction::Rename) => write!(f, "Bulk rename :"),
+            Self::BulkAction(BulkAction::Create) => write!(f, "Bulk create :"),
         }
     }
 }
@@ -112,7 +134,7 @@ impl fmt::Display for InputSimple {
             Self::SetNvimAddr => write!(f, "Neovim:  "),
             Self::Shell => write!(f, "Shell:   "),
             Self::Sort => {
-                write!(f, "Sort: Kind Name Modif Size Ext Rev :")
+                write!(f, "Sort: ")
             }
             Self::Filter => write!(f, "Filter:  "),
             Self::Password(_, PasswordUsage::CRYPTSETUP(password_kind)) => {
@@ -126,7 +148,7 @@ impl fmt::Display for InputSimple {
 
 impl InputSimple {
     const EDIT_BOX_OFFSET: usize = 11;
-    const SORT_CURSOR_OFFSET: usize = 39;
+    const SORT_CURSOR_OFFSET: usize = 8;
     const PASSWORD_CURSOR_OFFSET: usize = 9;
 
     /// Returns a vector of static &str describing what
@@ -163,6 +185,19 @@ impl InputSimple {
     }
 }
 
+impl Leave for InputSimple {
+    fn must_refresh(&self) -> bool {
+        !matches!(
+            self,
+            Self::Shell | Self::Filter | Self::Password(_, _) | Self::Sort
+        )
+    }
+
+    fn must_reset_mode(&self) -> bool {
+        !matches!(self, Self::Shell | Self::Password(_, _))
+    }
+}
+
 /// Different modes in which we display a bunch of possible actions.
 /// In all those mode we can select an action and execute it.
 /// For some of them, it's just moving there, for some it acts on some file.
@@ -185,7 +220,7 @@ pub enum Navigate {
     /// Pick a compression method
     Compress,
     /// Bulk rename, new files, new directories
-    Bulk,
+    BulkMenu,
     /// Shell menu applications. Start a new shell with this application.
     TuiApplication,
     /// Cli info
@@ -200,7 +235,7 @@ impl fmt::Display for Navigate {
             Self::Marks(_) => write!(f, "Marks jump:"),
             Self::Jump => write!(
                 f,
-                "Flagged files: <Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash"
+                "<Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash -- <f> fuzzy"
             ),
             Self::History => write!(f, "History :"),
             Self::Shortcut => write!(f, "Shortcut :"),
@@ -208,7 +243,7 @@ impl fmt::Display for Navigate {
             Self::TuiApplication => {
                 write!(f, "Start a new shell running a command:")
             }
-            Self::Bulk => {
+            Self::BulkMenu => {
                 write!(f, "Bulk: rename flagged files or create new files")
             }
             Self::Compress => write!(f, "Compress :"),
@@ -221,6 +256,16 @@ impl fmt::Display for Navigate {
             Self::CliApplication => write!(f, "Display infos :"),
             Self::Context=> write!(f, "Context"),
         }
+    }
+}
+
+impl Leave for Navigate {
+    fn must_refresh(&self) -> bool {
+        !matches!(self, Self::CliApplication | Self::Context)
+    }
+
+    fn must_reset_mode(&self) -> bool {
+        !matches!(self, Self::CliApplication | Self::Context | Self::BulkMenu)
     }
 }
 
@@ -252,8 +297,8 @@ pub enum Edit {
 impl fmt::Display for Edit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Self::InputSimple(input_simple) => input_simple.fmt(f),
             Self::InputCompleted(input_completed) => input_completed.fmt(f),
+            Self::InputSimple(input_simple) => input_simple.fmt(f),
             Self::Navigate(navigate) => navigate.fmt(f),
             Self::NeedConfirmation(need_confirmation) => need_confirmation.fmt(f),
             Self::Nothing => write!(f, ""),
@@ -280,6 +325,38 @@ impl Edit {
     }
 }
 
+impl Leave for Edit {
+    fn must_refresh(&self) -> bool {
+        match self {
+            Self::InputCompleted(input_completed) => input_completed.must_refresh(),
+            Self::InputSimple(input_simple) => input_simple.must_refresh(),
+            Self::Navigate(navigate) => navigate.must_refresh(),
+            Self::NeedConfirmation(need_confirmation) => need_confirmation.must_refresh(),
+            Self::Nothing => true,
+        }
+    }
+
+    fn must_reset_mode(&self) -> bool {
+        match self {
+            Self::InputCompleted(input_completed) => input_completed.must_reset_mode(),
+            Self::InputSimple(input_simple) => input_simple.must_reset_mode(),
+            Self::Navigate(navigate) => navigate.must_reset_mode(),
+            Self::NeedConfirmation(need_confirmation) => need_confirmation.must_reset_mode(),
+            Self::Nothing => true,
+        }
+    }
+}
+
+/// Trait which should be implemented for every edit mode.
+/// It says if leaving this mode should be followed with a reset of the display & file content,
+/// and if we have to reset the edit mode.
+pub trait Leave {
+    /// Should the file content & window be refreshed when leaving this mode?
+    fn must_refresh(&self) -> bool;
+    /// Should the edit mode be reset to Nothing when leaving this mode ?
+    fn must_reset_mode(&self) -> bool;
+}
+
 #[derive(Default)]
 pub enum Display {
     #[default]
@@ -289,4 +366,6 @@ pub enum Display {
     Tree,
     /// Preview a file or directory
     Preview,
+    /// Fuzzy
+    Flagged,
 }

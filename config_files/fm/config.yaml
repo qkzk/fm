@@ -28,6 +28,22 @@ colors:
   symlink: magenta
   broken: light_magenta
 
+# Colors for menus, headers, footers etc.
+menu_colors:
+  # first color
+  first: rgb(45, 250, 209)
+  # second color
+  second: rgb(230, 189, 87)
+  # selected tab border
+  selected_border: rgb(45, 250, 209)
+  # non selected tab border
+  inert_border: rgb(120, 120, 120)
+  # palette of 4 elements, used in menus (second window) and header
+  palette_1: rgb(45, 250, 209)
+  palette_2: rgb(230, 189, 87)
+  palette_3: rgb(230, 167, 255)
+  palette_4: rgb(59, 204, 255)
+
 # keybindings
 # 
 # You can bind any key to any action.
@@ -79,7 +95,7 @@ keys:
   'alt-d': ToggleDualPane
   'alt-e': EncryptedDrive
   'alt-f': Filter
-  'alt-g': Goto
+  'alt-g': Cd
   'alt-m': Chmod
   'alt-p': TogglePreviewSecond
   'ctrl-c': CopyFilename
@@ -114,4 +130,30 @@ custom:
   'alt-u': "/usr/bin/google-chrome-stable %s"
   'shift-d': "/usr/bin/dragon-drop %s"  
 
-
+# DO NOT EDIT UNLESS YOU WANT TO ADD AN UNKNOWN TERMINAL EMULATOR
+#
+# The flag is used to open a terminal application (TUI, CLI etc.) like bat or htop.
+# We need to execute the terminal itself and pass it a new command as an argument
+# It requires a flag which is often, but not always "-e".
+# See the documentation of your emulator and add the correct argument like below.
+terminal_emulator_flags:
+  alacritty: "-e"
+  st: "-e"
+  terminology: "-e"
+  kitty: "--"
+  sakura: "-e"
+  lilyterm: "-e"
+  coo: "-r"
+  termite: "-x"
+  yakuake: "-e"
+  guake: "-n"
+  tilda: "-c"
+  terminator: "-x"
+  urxvt: "-e"
+  pantheo: "-t"
+  lxterminal: "-e"
+  mat: "-t"
+  xfce: "-t"
+  konsole: "-e"
+  gnom: "-t"
+  xterm: "-e"

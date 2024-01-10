@@ -623,8 +623,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] refactor
   - [x] document
 
-## Current dev
-
 ### Version 0.1.24
 
 #### Summary
@@ -706,27 +704,181 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] make every session element private, ensure we read the correct setting for dual.
 - [x] FIX: opening help or fuzzyfindhelp crashes if a listed action has no keybind (aka. the user overwritten a keybind without creating one for old action).
 - [x] !command & cli_application print the command run and the output
-- [ ] Pre release
+- [x] Pre release
   - [x] Fix last missing items
   - [x] check installation (remove config, cargo build)
   - [x] readme
   - [x] describe what was done succintly
   - [x] test every mode
-  - [ ] merge into v0.1.24-dev branch
+
+## Current dev
+
+### Version 0.1.25
+
+#### Summary
+
+- Improve scrolling in tree mode.
+- Bulk & normal rename: create intermediate folders when renaming.
+- Bulk now asks a confirmation before execution.
+- Scroll to selection when opening a menu. Selected file should alway be displayed in top window.
+- Scroll completion & navigation menus.
+- Configurable cli applications. See `~/fm/cli.yaml`
+- Simplify tui config files. Remove `cwd` boolean parameter. Doesn't break old config files.
+- Display the number of entries as the size of a directory instead of '-'. Might affect performance for very large directories.
+- Enable logging with `-l` or `--log`. **Nothing is logged anywhere without this flag.**
+- FIX: Tree mode. Unfolding a directory unfold its children
+- BREAKING: Use specific argument read from config file to run a command at startup for most common terminal emulators.
+  It allows the user to setup a specific terminal unknown to me and use it with fm.
+  To make this work, it will require the user to update its config file by copying the last part: "terminal_emulator_flags:..."
+- FIX: entering an inaccessible dir or writing in any way to a readonly dir shouldn't crash the app anymore...
+- Display & Update separation. Use a thread for display, allowing 30 fps. It uses more CPU :(
+  This feature is subject to change in future versions.
+- Flagged display mode. Enter with <F> and show all your flagged files. You can rename, open, trash, delete, bulk rename, open, open with etc.
+  Custom and simple search (filename containing input).
+  Jump to the file with <return>
+  ATM both "edit::jump" and "display::flagged" show the same content. The former may be removed soon.
+- Configurable menu colors. Every color used on screen is now configurable like file colors.
+
+#### Changelog
+
+- [x] move navigate movement to menu file.
+- [x] Tree scrolling
+  - [x] attach full content to tree
+  - [x] update content when tree necessary (???)
+  - [x] attach window to content
+  - [x] FIX: smoothscrolling. Last tree line isn't displayed
+  - [x] jump to next sibling
+  - [x] compare memory usage
+  - [x] scrolling in tree mode should start 1 line earlier since we use 1 line at the bottom
+  - [x] FIX: Tree mode: search forward doesn't scroll
+- [x] make navigable content scrollable
+- [x] leaving second pane as preview should set second pane to normal
+- [x] FIX: in tree mode, refresh also refresh the window. Incorrect number of file displayed
+- [x] FIX: while second window is opened, if the selection is below half screen, it's not shown anymore.
+- [x] exec multiple flagged files
+- [x] confirm before bulkaction
+- [x] allow bulk rename and normal rename to move files + bulk refactoring
+- [x] nohup, nix, setsid ???
+  - [x] replace nohup by setsid
+  - [x] check for setsid in path and use normal child if it's not.
+- [x] cli info is configurable
+- [x] refactor menus. split selectable content trait into 2 traits. Use closure to impl methods
+- [x] refactor cli & tui applications using common traits. Simplify tui config file
+- [x] rename Action::Command to Action::Action since it's what it does
+- [x] use number of files for dir size
+- [x] rename Goto Mode to cd to allow `:` then `cd`
+- [x] optionable logging
+- [x] FIX: Filter isn't shown and does nothing in tree mode
+- [x] FIX: unfold shouldn't unfold every child
+- [x] don't use -e for every terminal. See [rifle.conf](https://github.com/ranger/ranger/blob/136416c7e2ecc27315fe2354ecadfe09202df7dd/ranger/config/rifle.conf#L244)
+- [x] FIX: preview a symlink crashes the app
+- [x] FIX: opening an inaccessible dir crashes the app
+  - [x] check std set env crashes before
+  - [x] check all writes
+    - [x] Rename,
+    - [x] Copy, Move,
+    - [x] Delete,
+    - [x] Trash, Untrash,
+    - [x] Compress,
+    - [x] Decompress
+- [x] separate display from update
+      May be removed in future version.
+      It uses a lot of cpu to just display and doesn't do much else
+  - [x] make status sync: replace Rc by Arc
+  - [x] update status every event
+  - [x] display 30 fps
+  - [x] move display into a thread
+  - [x] test everything
+- [x] flagged as content
+
+  - [x] remove jump completely ??? not yet
+  - [x] fuzzy find flags all
+  - [x] display metadata of selected file
+  - [x] simplest possible holding struct
+  - [x] another display mode, displayable
+  - [x] display flagged like in dir
+  - [x] clickable header & Footer
+  - [x] enter: from skim files or lines, from jump, from folder, from tree (flatten)
+  - [x] flag everything in tree mode
+  - [x] FIX: window is off for big content
+  - [x] action on all files
+    - [x] disable filter. Filtering is easy, navigating in filtered files isn't. Require to keep a "filtered" files somewhere and use it everywhere.
+    - [x] preview & dual pane preview
+    - [x] open single or all flagged
+    - [x] renaming
+    - [x] disable copy, move
+    - [x] delete, trash
+    - [x] jump with enter
+    - [x] ctrl+o open all fuzzy files
+    - [x] unflag all (v)
+    - [x] <spc> remove file from flagged
+    - [x] bulk update flagged with new names
+    - [x] custom search with completion
+    - [x] disable regex match in flagged. Should it only keep the flagged files ? Would require to save the files before entering...
+    - [x] chmod
+    - [x] disable new nodes (file, dir)
+    - [x] disable all cd since we can't see the directory
+    - [x] copy filename & filepath
+  - [x] FIX: jump does nothing
+
+- [x] trashmode should display which shortcut erase all trash.
+- [x] add left tab current dir to right shortcut and vice versa
+- [x] refactor status.set_second_pane_preview
+- [x] FIX: leave sort does nothing
+- [x] FIX: incomplete regex crashes
+- [x] key which enter a mode should allow to leave it also.
+- [x] second line for every mod, use default color
+- [x] in marks new, backspace (since del is annoying...) should erase a mark.
+- [x] improve marks help.
+- [x] sort marks at read & update
+- [x] FIX: display flagged symbol in tree mode. Better alignment
+- [x] FIX: xdg-open pollutes the top border if opening a file fails
+- [x] update skim to 0.9.14
+- [x] FIX: in tree, moving while in "second pane as preview" unfolds.
+      "status.set_edit_mode..." does too much.
+- [x] FIX: running a command line application with "-d" doesn't work on alacritty
+- [x] display flagged files 1 char right like default ranger
+- [x] toggle flag move down in tree mode
+- [x] FIX: move back is buggy.
+- [x] Move back & leave_mode history should use the same status method
+- [x] toggling tree selects the current file if possible
+- [x] FIX: next_sibling doesn't wrap
+- [x] configurable menu colors
+- [x] allow more videos format to be previewed
+- [x] FIX ueberzug in dual tab.
+      Use different name per ueberzug tab, allowing multiple previews
+- [ ] pre release
+  - [x] Fix last missing items
+  - [x] check installation (remove config, cargo build)
+  - [x] readme
+  - [x] describe what was done succintly
+  - [ ] test every mode
+
+## Version 0.1.26
+
+- [ ] display all specific binds for every mode with a key ?
+- [ ] merge sort & regex, display nb of matches, completion + flag on the fly
+  - [ ] display number of matches while searching
+  - [ ] Sort refactoring
+    - [ ] entering
+    - [ ] setting
+    - [ ] leaving aka reseting
+- [ ] remove MOCP control from fm ???
+- [ ] focusable windows
+  - [ ] move display to status ? it would be easier to know where I clicked
+  - [ ] allow to change focus, only color the focused window border.
+  - [ ] Change focus with ctrl+hjkl or ctrl+arrow
+  - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
+  - [ ] Clicking an unfocused window should only give the focus, not execute anything
 
 ## TODO
 
-- [ ] refactor & unify all shell commands. Better names : Action::Action instead of command, Action::Command instead of shellwhatever
+- [ ] open a shell while hiding fm, restore after leaving
+- [ ] refactor & unify all shell commands
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
-- [ ] Only store one Selectable thing in status
-- [ ] use `Rc<str>` instead of string to avoid copying
 - [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
-- [ ] FIX: tab.selected() should return Option<&FileInfo>
-- [ ] use widget for every drawable element. First line should be a collection of widget which are drawned
-- [ ] while second window is opened, if the selection is below half screen, it's not shown anymore.
-      Scroll to second element if needed
 - [ ] remote control
 
   - [ ] listen to stdin (rcv etc.)
@@ -736,53 +888,23 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 
-- [ ] display / event separation. use async and message passing between coroutines
-
 - [ ] zoxide support
-- [ ] make navigable content scrollable
 - [ ] temporary marks
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?
 - [ ] pushbullet ?
 
 - [ ] update the animation
-- [ ] exec multiple flagged files
-- [ ] shell menu
-
-  - [ ] allow non tui like wttr, diff, bat, tail -n etc.
-  - [ ] more options like "use flagged files" for diff
 
 - [ ] build option to force reset of config file, warn the user at first start
-- [ ] optionable "plugin" started from config file. Would require every option to be `Option<Plugin>` and may cause problems with the borrow checker.
 - [ ] edit folder like a buffer [oil like](https://github.com/stevearc/oil.nvim)
 - [ ] allow pipe in execution
-- [ ] refactor cryptdevice and iso_file
 
-  - [ ] mode to handle those mounts. ATM it's all over the place...
-  - [ ] allow mounting some other devices
-  - [ ] list non mounted devices, list all mount points
-  - [ ] act on them
-
-- [ ] Version 0.1.50 : safety & memory usage
-
-  - [ ] there's a memory leak somewhere
-  - [ ] preview of big files (or whatever file) should only read chunk of the file,
-        not the whole thing. Previewing a 5gB iso file uses up to 15gB of ram, which will crash any system.
-        or should it ?
-        Simple solutions:
-
-        - only reads a buffer
-        - limit to xxx filesize
-
-- [ ] Version 0.2.0 : tests
-
-  - [ ] tests
-  - [ ] remove references to local thing
-  - [ ] translations i18n
-
-- [ ] Version 0.3.0 : dark/light theme, transparency etc.
-
-- [ ] Version 0.4.0 : plugins
+- [ ] tests
+- [ ] remove references to local thing
+- [ ] translations i18n
+- [ ] dark/light theme, transparency etc.
+- [ ] plugins
 
   - which language ?
   - what for ?

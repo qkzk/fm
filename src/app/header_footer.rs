@@ -4,11 +4,18 @@ mod inner {
 
     use crate::app::{Status, Tab};
     use crate::event::ActionMap;
-    use crate::modes::{shorten_path, Display, SelectableContent};
+    use crate::modes::Selectable;
+    use crate::modes::{shorten_path, Display};
+    use crate::modes::{Content, FilterKind};
 
     /// Action for every element of the first line.
     /// It should match the order of the `FirstLine::make_string` static method.
-    const HEADER_ACTIONS: [ActionMap; 2] = [ActionMap::Goto, ActionMap::Rename];
+    const HEADER_ACTIONS: [ActionMap; 4] = [
+        ActionMap::Cd,
+        ActionMap::Rename,
+        ActionMap::Search,
+        ActionMap::Filter,
+    ];
 
     const FOOTER_ACTIONS: [ActionMap; 7] = [
         ActionMap::Nothing, // position
@@ -68,6 +75,7 @@ mod inner {
         strings: Vec<String>,
         sizes: Vec<usize>,
         width: usize,
+        actions: Vec<ActionMap>,
     }
 
     impl ClickableLine for Header {
@@ -83,7 +91,7 @@ mod inner {
         }
 
         fn action_index(&self, index: usize) -> &ActionMap {
-            &HEADER_ACTIONS[index]
+            self.actions(index)
         }
 
         fn width(&self) -> usize {
@@ -96,14 +104,19 @@ mod inner {
         /// Create the strings associated with the selected tab directory
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
             let (width, _) = status.internal_settings.term.term_size()?;
-            let strings = Self::make_strings(tab, width)?;
+            let (strings, actions) = Self::make_strings_actions(tab, width)?;
             let sizes = Self::make_sizes(&strings);
 
             Ok(Self {
                 strings,
                 sizes,
                 width,
+                actions,
             })
+        }
+
+        fn actions(&self, index: usize) -> &ActionMap {
+            &self.actions[index]
         }
 
         // TODO! refactor using a `struct thing { string, start, end, action }`
@@ -111,11 +124,29 @@ mod inner {
         /// Watchout:
         /// 1. the length of the vector MUST BE the length of `ACTIONS` minus one.
         /// 2. the order must be respected.
-        fn make_strings(tab: &Tab, width: usize) -> Result<Vec<String>> {
-            Ok(vec![
+        fn make_strings_actions(tab: &Tab, width: usize) -> Result<(Vec<String>, Vec<ActionMap>)> {
+            let mut strings = vec![
                 Self::string_shorten_path(tab)?,
                 Self::string_first_row_selected_file(tab, width)?,
-            ])
+            ];
+            let mut actions: Vec<ActionMap> = HEADER_ACTIONS[0..2].into();
+            if let Some(searched) = &tab.searched {
+                strings.push(Self::string_searched(searched));
+                actions.push(HEADER_ACTIONS[2].clone());
+            }
+            if !matches!(tab.settings.filter, FilterKind::All) {
+                strings.push(Self::string_filter(tab));
+                actions.push(HEADER_ACTIONS[3].clone());
+            }
+            Ok((strings, actions))
+        }
+
+        fn string_filter(tab: &Tab) -> String {
+            format!(" {filter} ", filter = tab.settings.filter)
+        }
+
+        fn string_searched(searched: &str) -> String {
+            format!(" Searched: {searched} ")
         }
 
         fn string_shorten_path(tab: &Tab) -> Result<String> {
@@ -258,6 +289,140 @@ mod inner {
             format!(" {nb_flagged} {flag_string} ",)
         }
     }
+
+    pub struct FlaggedHeader {
+        strings: Vec<String>,
+        sizes: Vec<usize>,
+        width: usize,
+    }
+
+    impl FlaggedHeader {
+        const ACTIONS: [ActionMap; 2] = [ActionMap::ResetMode, ActionMap::OpenFile];
+
+        pub fn new(status: &Status) -> Result<Self> {
+            let strings = Self::make_strings(status);
+            let sizes = Self::make_sizes(&strings);
+            let (width, _) = status.internal_settings.term.term_size()?;
+
+            Ok(Self {
+                strings,
+                sizes,
+                width,
+            })
+        }
+
+        fn make_strings(status: &Status) -> Vec<String> {
+            vec![
+                "Fuzzy files".to_owned(),
+                status
+                    .menu
+                    .flagged
+                    .selected()
+                    .unwrap_or(&std::path::PathBuf::new())
+                    .to_string_lossy()
+                    .to_string(),
+            ]
+        }
+
+        fn make_sizes(strings: &[String]) -> Vec<usize> {
+            strings
+                .iter()
+                .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
+                .collect()
+        }
+
+        fn actions(&self, index: usize) -> &ActionMap {
+            &Self::ACTIONS[index]
+        }
+    }
+
+    impl ClickableLine for FlaggedHeader {
+        /// Vector of displayed strings.
+        fn strings(&self) -> &Vec<String> {
+            self.strings.as_ref()
+        }
+    }
+
+    impl ClickableLineInner for FlaggedHeader {
+        fn sizes(&self) -> &Vec<usize> {
+            self.sizes.as_ref()
+        }
+
+        fn action_index(&self, index: usize) -> &ActionMap {
+            self.actions(index)
+        }
+
+        fn width(&self) -> usize {
+            self.width
+        }
+    }
+    pub struct FlaggedFooter {
+        strings: Vec<String>,
+        sizes: Vec<usize>,
+        width: usize,
+    }
+
+    impl ClickableLine for FlaggedFooter {
+        /// Vector of displayed strings.
+        fn strings(&self) -> &Vec<String> {
+            self.strings.as_ref()
+        }
+    }
+
+    impl ClickableLineInner for FlaggedFooter {
+        fn sizes(&self) -> &Vec<usize> {
+            self.sizes.as_ref()
+        }
+
+        fn action_index(&self, index: usize) -> &ActionMap {
+            &Self::ACTIONS[index]
+        }
+
+        fn width(&self) -> usize {
+            self.width
+        }
+    }
+
+    impl FlaggedFooter {
+        const ACTIONS: [ActionMap; 2] = [ActionMap::Nothing, ActionMap::Jump];
+
+        pub fn new(status: &Status) -> Result<Self> {
+            let (width, _) = status.internal_settings.term.term_size()?;
+            let used_width = if status.display_settings.use_dual_tab(width) {
+                width / 2
+            } else {
+                width
+            };
+            let raw_strings = Self::make_strings(status);
+            let sizes = Self::make_sizes(&raw_strings);
+            let strings = Footer::make_padded_strings(&raw_strings, used_width);
+
+            Ok(Self {
+                strings,
+                sizes,
+                width,
+            })
+        }
+
+        fn make_strings(status: &Status) -> Vec<String> {
+            let index = if status.menu.flagged.is_empty() {
+                0
+            } else {
+                status.menu.flagged.index + 1
+            };
+            vec![
+                format!(" {index} / {len}", len = status.menu.flagged.len()),
+                format!(" {nb} flags", nb = status.menu.flagged.len()),
+            ]
+        }
+
+        fn make_sizes(strings: &[String]) -> Vec<usize> {
+            strings
+                .iter()
+                .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
+                .collect()
+        }
+    }
 }
 
-pub use inner::{ClickableLine, Footer, Header};
+pub use inner::{ClickableLine, FlaggedFooter, FlaggedHeader, Footer, Header};

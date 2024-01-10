@@ -1,5 +1,6 @@
 use crate::event::ActionMap;
-use crate::impl_selectable_content;
+use crate::impl_content;
+use crate::impl_selectable;
 
 const CONTEXT: [(&str, ActionMap); 9] = [
     ("Open", ActionMap::OpenFile),
@@ -41,4 +42,6 @@ impl ContextMenu {
 
 type StaticStr = &'static str;
 
-impl_selectable_content!(StaticStr, ContextMenu);
+// impl_selectable_content!(StaticStr, ContextMenu);
+impl_selectable!(ContextMenu);
+impl_content!(StaticStr, ContextMenu);

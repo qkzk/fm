@@ -9,7 +9,7 @@
 [docrs]: https://docs.rs/fm-tui/0.1.24
 
 ```
-A TUI file manager inspired by dired and ranger
+ A TUI file manager inspired by dired and ranger
 
 Usage: fm [OPTIONS]
 
@@ -17,6 +17,7 @@ Options:
   -p, --path <PATH>      Starting path. directory or file [default: .]
   -s, --server <SERVER>  Nvim server [default: ]
   -A, --all              Display all files (hidden)
+  -l, --log              Enable logging
   -h, --help             Print help
   -V, --version          Print version
 ```
@@ -170,6 +171,15 @@ Expansions :
 - %n : selected filename
 - %d : current directory
 
+### Logging
+
+With `-l` or `--log`, logs are enabled. They are disabled by default.
+
+Critical actions will be logged to `~/.config/fm/log/fm.log` and actions affecting the file tree will be logged to `~/.config/fm/log/action_logger.log`.
+
+The last action is displayed at the bottom of the screen and can be read with `Alt+l` like a preview.
+Those logs can be seen even if logging is disabled, it just won't be up to date.
+
 ### More
 
 - Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p
@@ -195,13 +205,13 @@ Ctrl('h') :      help
 
 - Navigation -
 Left      :      cd to parent directory
-Right     :      cd to child directory
+Char('l') :      cd to child directory
 Up        :      one line up
-Down      :      one line down
+Char('j') :      one line down
 Home      :      go to first line
 Char('G') :      go to last line
 PageUp    :      10 lines up
-PageDown  :      10 lines down
+Char('J') :      10 lines down
 Tab       :      cycle tab
 
 - Actions -
@@ -262,14 +272,21 @@ Char('z') :      Fold a node
 Ctrl('z') :      Fold every node
 Char('Z') :      Unfold every node
 
-- MODES -
-Char('t') :      TREE
+    - DISPLAY MODES -
+Different modes for the main window
+Ctrl('q') :      NORMAL
+Char('t')  :      TREE
+Char('F') :      FLAGGED
+Char('P') :      PREVIEW
+
+    - EDIT MODES -
+Different modes for the bottom window
 Alt('m')  :      CHMOD
-Char('e') :      EXEC
+Char('e') :      OPEN WITH
 Char('d') :      NEWDIR
 Char('n') :      NEWFILE
 Char('r') :      RENAME
-Alt('g')  :      GOTO
+Alt('g')  :      CD
 Char('w') :      REGEXMATCH
 Alt('j')  :      JUMP
 Char('O') :      SORT
@@ -280,15 +297,14 @@ Alt('e')  :      ENCRYPTED DRIVE
 Alt('R')  :      REMOVABLE MTP DEVICES
     (m: mount,  u: unmount, g: go there)
 Char('/') :      SEARCH
-Char(':') :      COMMAND
+Char(':') :      ACTION
 Alt('b')  :      BULK
 Alt('s')  :      TUI APPS
 Alt('i')  :      CLI APPS
 Alt('r')  :      MOUNT REMOTE PATH
 Alt('f')  :      FILTER
-    (by name "n name", by ext "e ext", only directories d or all for reset)
+    (by name "n name", by ext "e ext", "d only directories" or "a all" for reset)
 Enter     :      Execute mode then NORMAL
-Ctrl('q') :      NORMAL
 
 - MOC -
 Control MOC from your TUI

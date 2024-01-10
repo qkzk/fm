@@ -17,5 +17,5 @@ pub use preview::{
     Window,
 };
 pub use skim::{print_ansi_str, Skimer};
-pub use tree::{calculate_top_bottom, ColoredString, Go, Node, To, Tree, TreeLineMaker};
+pub use tree::{ColoredString, Go, Node, To, Tree, TreeLineBuilder, TreeLines};
 pub use users::Users;

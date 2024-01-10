@@ -4,7 +4,8 @@ use std::str::FromStr;
 
 use crate::common::current_uid;
 use crate::common::{CONFIG_FOLDER, HARDCODED_SHORTCUTS};
-use crate::impl_selectable_content;
+use crate::impl_content;
+use crate::impl_selectable;
 use crate::io::git_root;
 use crate::log_info;
 
@@ -42,7 +43,7 @@ impl Shortcut {
     fn hardcoded_shortcuts() -> Vec<PathBuf> {
         HARDCODED_SHORTCUTS
             .iter()
-            .map(|s| PathBuf::from_str(s).unwrap())
+            .map(PathBuf::from)
             .collect()
     }
 
@@ -68,7 +69,10 @@ impl Shortcut {
     }
 
     fn git_root_or_cwd() -> PathBuf {
-        git_root().map_or_else(|_| std::env::current_dir().unwrap(), PathBuf::from)
+        git_root().map_or_else(
+            |_| std::env::current_dir().unwrap_or_default(),
+            PathBuf::from,
+        )
     }
 
     fn with_git_root(mut shortcuts: Vec<PathBuf>) -> Vec<PathBuf> {
@@ -127,8 +131,15 @@ impl Shortcut {
 
     /// Refresh the shortcuts. It drops non "hardcoded" shortcuts and
     /// extend the vector with the mount points.
-    pub fn refresh(&mut self, mount_points: &[&Path]) {
+    pub fn refresh(
+        &mut self,
+        mount_points: &[&Path],
+        left_path: &std::path::Path,
+        right_path: &std::path::Path,
+    ) {
         self.content.truncate(self.non_mount_size);
+        self.content.push(left_path.to_owned());
+        self.content.push(right_path.to_owned());
         self.extend_with_mount_points(mount_points);
     }
 }
@@ -154,4 +165,6 @@ where
     elems
 }
 
-impl_selectable_content!(PathBuf, Shortcut);
+// impl_selectable_content!(PathBuf, Shortcut);
+impl_selectable!(Shortcut);
+impl_content!(PathBuf, Shortcut);

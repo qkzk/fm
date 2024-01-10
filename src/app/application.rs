@@ -1,18 +1,21 @@
 use std::sync::Arc;
+use std::sync::Mutex;
 
+use anyhow::anyhow;
 use anyhow::Result;
+use tuikit::error::TuikitError;
 use tuikit::prelude::Event;
 
+use crate::app::Displayer;
 use crate::app::Refresher;
 use crate::app::Status;
 use crate::common::CONFIG_PATH;
-use crate::common::{clear_tmp_file, init_term, print_on_quit};
+use crate::common::{clear_tmp_file, init_term};
 use crate::config::load_config;
 use crate::config::START_FOLDER;
 use crate::event::EventDispatcher;
 use crate::event::EventReader;
 use crate::io::set_loggers;
-use crate::io::Display;
 use crate::io::Opener;
 use crate::log_info;
 
@@ -25,13 +28,15 @@ pub struct FM {
     /// Associate the event to a method, modifing the status.
     event_dispatcher: EventDispatcher,
     /// Current status of the application. Mostly the filetrees
-    status: Status,
-    /// Responsible for the display on screen.
-    display: Display,
+    status: Arc<Mutex<Status>>,
     /// Refresher is used to force a refresh when a file has been modified externally.
     /// It sends an `Event::Key(Key::AltPageUp)` every 10 seconds.
     /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
     refresher: Refresher,
+    /// Used to handle every display on the screen, except from skim (fuzzy finds).
+    /// It runs a single thread with an mpsc receiver to handle quit events.
+    /// Drawing is done 30 times per second.
+    displayer: Displayer,
 }
 
 impl FM {
@@ -57,19 +62,25 @@ impl FM {
             startfolder = &START_FOLDER.display()
         );
         let term = Arc::new(init_term()?);
-        let event_reader = EventReader::new(Arc::clone(&term));
+        let event_reader = EventReader::new(term.clone());
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
-        let opener = Opener::new(&config.terminal);
-        let display = Display::new(Arc::clone(&term));
-        let status = Status::new(display.height()?, Arc::clone(&term), opener)?;
-        let refresher = Refresher::new(term);
+        let opener = Opener::new(&config.terminal, &config.terminal_flag);
+        let status = Arc::new(Mutex::new(Status::new(
+            term.term_size()?.1,
+            term.clone(),
+            opener,
+            &config.binds,
+        )?));
         drop(config);
+
+        let refresher = Refresher::new(term.clone());
+        let displayer = Displayer::new(term, status.clone());
         Ok(Self {
             event_reader,
             event_dispatcher,
             status,
-            display,
             refresher,
+            displayer,
         })
     }
 
@@ -78,44 +89,40 @@ impl FM {
     /// # Errors
     ///
     /// May fail if the terminal crashes
-    pub fn poll_event(&self) -> Result<Event> {
+    fn poll_event(&self) -> Result<Event, TuikitError> {
         self.event_reader.poll_event()
     }
 
-    /// Force clear the display if the status requires it, then reset it in status.
-    ///
-    /// # Errors
-    ///
-    /// May fail if the terminal crashes
-    pub fn force_clear_if_needed(&mut self) -> Result<()> {
-        if self.status.internal_settings.force_clear {
-            self.display.force_clear()?;
-            self.status.internal_settings.force_clear = false;
-        }
-        Ok(())
-    }
-
     /// Update itself, changing its status.
-    pub fn update(&mut self, event: Event) -> Result<()> {
-        self.event_dispatcher.dispatch(&mut self.status, event)?;
-        self.status.refresh_shortcuts();
-        Ok(())
-    }
-
-    /// Display itself using its `display` attribute.
-    ///
-    /// # Errors
-    ///
-    /// May fail if the terminal crashes
-    /// The display itself may fail if it encounters unreadable file in preview mode
-    pub fn display(&mut self) -> Result<()> {
-        self.force_clear_if_needed()?;
-        self.display.display_all(&self.status)
+    fn update(&mut self, event: Event) -> Result<()> {
+        match self.status.lock() {
+            Ok(mut status) => {
+                self.event_dispatcher.dispatch(&mut status, event)?;
+                status.refresh_shortcuts();
+                drop(status);
+                Ok(())
+            }
+            Err(error) => Err(anyhow!("Error locking status: {error}")),
+        }
     }
 
     /// True iff the application must quit.
-    pub fn must_quit(&self) -> bool {
-        self.status.must_quit()
+    fn must_quit(&self) -> Result<bool> {
+        match self.status.lock() {
+            Ok(status) => Ok(status.must_quit()),
+            Err(error) => Err(anyhow!("Error locking status: {error}")),
+        }
+    }
+
+    /// Run the status loop.
+    pub fn run(&mut self) -> Result<()> {
+        while let Ok(event) = self.poll_event() {
+            self.update(event)?;
+            if self.must_quit()? {
+                break;
+            }
+        }
+        Ok(())
     }
 
     /// Display the cursor,
@@ -126,18 +133,21 @@ impl FM {
     ///
     /// May fail if the terminal crashes
     /// May also fail if the thread running in [`crate::application::Refresher`] crashed
-    pub fn quit(self) -> Result<()> {
+    pub fn quit(self) -> Result<String> {
         clear_tmp_file();
-        self.display.show_cursor()?;
-        let final_path = self.status.current_tab_path_str().to_owned();
-        self.refresher.quit()?;
         drop(self.event_reader);
         drop(self.event_dispatcher);
-        drop(self.display);
-        drop(self.status);
-        print_on_quit(&final_path);
-        log_info!("fm is shutting down");
-        Ok(())
+        self.displayer.quit()?;
+        self.refresher.quit()?;
+
+        match self.status.lock() {
+            Ok(status) => {
+                let final_path = status.current_tab_path_str().to_owned();
+                drop(status);
+                Ok(final_path)
+            }
+            Err(error) => Err(anyhow!("Error locking status {error}")),
+        }
     }
 }
 
@@ -148,3 +158,28 @@ fn exit_wrong_config() -> ! {
     log_info!("Couldn't read the config file {CONFIG_PATH}");
     std::process::exit(1)
 }
+
+// /// Force clear the display if the status requires it, then reset it in status.
+// ///
+// /// # Errors
+// ///
+// /// May fail if the terminal crashes
+// fn force_clear_if_needed(a_status: bool) -> Result<()> {
+//     let mut status = a_status.lock().unwrap();
+//     if status.internal_settings.force_clear {
+//         self.display.force_clear()?;
+//         status.internal_settings.force_clear = false;
+//     }
+//     Ok(())
+// }
+
+// /// Display itself using its `display` attribute.
+// ///
+// /// # Errors
+// ///
+// /// May fail if the terminal crashes
+// /// The display itself may fail if it encounters unreadable file in preview mode
+// fn display(&mut self, status: MutexGuard<Status>) -> Result<()> {
+// self.force_clear_if_needed()?;
+// self.display.display_all(status)
+// }

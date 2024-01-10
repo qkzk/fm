@@ -8,6 +8,8 @@ pub const SESSION_PATH: &str = "~/.config/fm/session.yaml";
 pub const OPENER_PATH: &str = "~/.config/fm/opener.yaml";
 /// Filepath of the TUIS configuration file
 pub const TUIS_PATH: &str = "~/.config/fm/tuis.yaml";
+/// Filepath of the CLI configuration file
+pub const CLI_PATH: &str = "~/.config/fm/cli.yaml";
 /// Filepath of the LOG configuration file
 pub const LOG_CONFIG_PATH: &str = "~/.config/fm/logging_config.yaml";
 /// Path to the action log file
@@ -22,10 +24,12 @@ pub const TRASH_INFO_EXTENSION: &str = ".trashinfo";
 pub const MARKS_FILEPATH: &str = "~/.config/fm/marks.cfg";
 /// Temporary folder used when bulkrenaming files
 pub const TMP_FOLDER_PATH: &str = "/tmp";
-/// nohup
-pub const NOHUP: &str = "nohup";
+/// setsid. Installed in most distros
+pub const SETSID: &str = "setsid";
 /// Default terminal application used when openening a program in shell or starting a new shell
 pub const DEFAULT_TERMINAL_APPLICATION: &str = "st";
+/// Default terminal flag to run a command when ran
+pub const DEFAULT_TERMINAL_FLAG: &str = "-e";
 /// Opener used to play audio files. Does it require a terminal ?
 pub const OPENER_AUDIO: (&str, bool) = ("mocp", true);
 /// Program used to to display images. Does it require a terminal ?
@@ -78,14 +82,16 @@ pub const NOTIFY_EXECUTABLE: &str = "notity-send";
 /// Encrypted devices bind description
 pub const ENCRYPTED_DEVICE_BINDS: &str = "m: mount   --   u: unmount   --   g: go to mount point";
 /// Sort presentation for the second window
-pub const SORT_LINES: [&str; 7] = [
-    "k:         by kind (default)",
-    "n:         by name",
-    "m:         by modification time",
-    "s:         by size",
-    "e:         by extension",
+pub const SORT_LINES: [&str; 9] = [
+    "Type the initial",
     "",
-    "r:         reverse current sort",
+    "k:  by kind (default)",
+    "n:  by name",
+    "m:  by modification time",
+    "s:  by size",
+    "e:  by extension",
+    "",
+    "r:  reverse current sort",
 ];
 pub const REMOTE_LINES: [&str; 4] = [
     "Mount a directory with sshfs",
@@ -164,19 +170,8 @@ pub const RENAME_LINES: [&str; 3] = [
     "",
     "Nothing is done if the file already exists",
 ];
-pub const TRASH_CONFIRM_LINE: &str = "Enter: restore the selected file  --  x: delete permanently";
-/// Executable commands whose output is a text to be displayed in terminal
-pub const CLI_INFO: [(&str, &str); 9] = [
-    ("drag and drop", "dragon-drop %s"),
-    ("set wallpaper", "nitrogen --set-zoom-fill --save %s"),
-    ("man page     ", "man %s"),
-    ("space used   ", "duf"),
-    ("system info  ", "inxi -S -I -D -i -J -M --color"),
-    ("system info  ", "neofetch"),
-    ("list usb     ", "lsusb"),
-    ("media tags   ", "mediainfo %s"),
-    ("diff 2 files ", "diff %f"),
-];
+pub const TRASH_CONFIRM_LINE: &str =
+    "Enter: restore the selected file  --  x: delete permanently -- ";
 /// Mediainfo (used to preview media files) executable
 pub const MEDIAINFO: &str = "mediainfo";
 /// ueberzug (used to preview images, videos & fonts)

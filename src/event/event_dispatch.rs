@@ -73,14 +73,14 @@ impl EventDispatcher {
     fn char(&self, status: &mut Status, c: char) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.edit_mode {
-            Edit::InputSimple(InputSimple::Sort) => tab.sort(c),
+            Edit::InputSimple(InputSimple::Sort) => status.sort(c),
             Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
             Edit::InputSimple(_) => status.menu.input_insert(c),
             Edit::InputCompleted(_) => status.input_complete(c),
             Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
             Edit::Navigate(navigate) => Self::navigate_char(navigate, status, c),
             Edit::Nothing if matches!(tab.display_mode, Display::Preview) => {
-                tab.reset_mode_and_view()
+                tab.reset_display_mode_and_view()
             }
             Edit::Nothing => self.key_matcher(status, Key::Char(c)),
         }
@@ -99,9 +99,10 @@ impl EventDispatcher {
             Navigate::Jump if c == 'u' => status.clear_flags_and_reset_view(),
             Navigate::Jump if c == 'x' => status.menu.delete_single_flagged(),
             Navigate::Jump if c == 'X' => status.menu.trash_single_flagged(),
+            Navigate::Jump if c == 'f' => status.fuzzy_flags(),
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
-            _ => status.current_tab_mut().reset_mode_and_view(),
+            _ => status.current_tab_mut().reset_display_mode_and_view(),
         }
     }
 }

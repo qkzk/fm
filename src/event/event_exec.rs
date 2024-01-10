@@ -5,6 +5,8 @@ use anyhow::{Context, Result};
 
 use crate::app::Status;
 use crate::app::Tab;
+use crate::common::filename_to_clipboard;
+use crate::common::filepath_to_clipboard;
 use crate::common::LAZYGIT;
 use crate::common::NCDU;
 use crate::common::{is_program_in_path, open_in_current_neovim};
@@ -17,16 +19,22 @@ use crate::log_info;
 use crate::log_line;
 use crate::modes::help_string;
 use crate::modes::lsblk_and_cryptsetup_installed;
+use crate::modes::open_tui_program;
+use crate::modes::Content;
+use crate::modes::ContentWindow;
 use crate::modes::Display;
+use crate::modes::Edit;
 use crate::modes::InputCompleted;
+use crate::modes::InputSimple;
 use crate::modes::LeaveMode;
+use crate::modes::MarkAction;
 use crate::modes::Mocp;
+use crate::modes::Navigate;
+use crate::modes::NeedConfirmation;
 use crate::modes::Preview;
 use crate::modes::RemovableDevices;
-use crate::modes::SelectableContent;
-use crate::modes::TuiApplications;
+use crate::modes::Selectable;
 use crate::modes::MOCP;
-use crate::modes::{Edit, InputSimple, MarkAction, Navigate, NeedConfirmation};
 
 /// Links events from tuikit to custom actions.
 /// It mutates `Status` or its children `Tab`.
@@ -57,17 +65,22 @@ impl EventAction {
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(status: &mut Status) -> Result<()> {
-        let tab = &mut status.tabs[status.index];
-        if matches!(tab.display_mode, Display::Preview) {
-            tab.set_display_mode(Display::Directory);
+        if !matches!(status.current_tab().edit_mode, Edit::Nothing) {
+            if status.reset_edit_mode()? {
+                status.tabs[status.index].refresh_view()?;
+            } else {
+                status.tabs[status.index].refresh_params()?;
+            }
+        } else if matches!(
+            status.current_tab().display_mode,
+            Display::Preview | Display::Flagged
+        ) {
+            status.tabs[status.index].set_display_mode(Display::Directory);
+            status.tabs[status.index].refresh_view()?;
         }
         status.menu.input.reset();
         status.menu.completion.reset();
-        if tab.reset_edit_mode() {
-            tab.refresh_view()
-        } else {
-            tab.refresh_params()
-        }
+        Ok(())
     }
 
     /// Toggle between a full display (aka ls -lah) or a simple mode (only the
@@ -89,9 +102,10 @@ impl EventAction {
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
         status.display_settings.toggle_preview();
         if status.display_settings.preview() {
-            status.set_second_pane_for_preview()?;
+            status.update_second_pane_for_preview()?;
         } else {
-            status.tabs[1].reset_edit_mode();
+            status.set_edit_mode(1, Edit::Nothing)?;
+            status.tabs[1].display_mode = Display::Directory;
             status.tabs[1].refresh_view()?;
         }
         Ok(())
@@ -99,14 +113,15 @@ impl EventAction {
 
     /// Creates a tree in every mode but "Tree".
     /// In display_mode tree it will exit this view.
-    pub fn tree(tab: &mut Tab) -> Result<()> {
-        tab.toggle_tree_mode()
+    pub fn tree(status: &mut Status) -> Result<()> {
+        status.current_tab_mut().toggle_tree_mode()?;
+        status.refresh_view()
     }
 
     /// Fold the current node of the tree.
     /// Has no effect on "file" nodes.
     pub fn tree_fold(tab: &mut Tab) -> Result<()> {
-        tab.tree.toggle_fold();
+        tab.tree.toggle_fold(&tab.users);
         Ok(())
     }
 
@@ -114,7 +129,7 @@ impl EventAction {
     /// Recursively explore the tree and unfold every node.
     /// Reset the display.
     pub fn tree_unfold_all(tab: &mut Tab) -> Result<()> {
-        tab.tree.unfold_all();
+        tab.tree.unfold_all(&tab.users);
         Ok(())
     }
 
@@ -122,7 +137,22 @@ impl EventAction {
     /// Recursively explore the tree and fold every node.
     /// Reset the display.
     pub fn tree_fold_all(tab: &mut Tab) -> Result<()> {
-        tab.tree.fold_all();
+        tab.tree.fold_all(&tab.users);
+        Ok(())
+    }
+
+    pub fn display_flagged(status: &mut Status) -> Result<()> {
+        if matches!(status.current_tab().display_mode, Display::Flagged) {
+            status
+                .current_tab_mut()
+                .set_display_mode(Display::Directory);
+        } else {
+            status
+                .menu
+                .flagged
+                .set_height(status.internal_settings.term.term_size()?.1);
+            status.current_tab_mut().set_display_mode(Display::Flagged);
+        }
         Ok(())
     }
 
@@ -175,15 +205,13 @@ impl EventAction {
             return Ok(());
         }
         if let Some(parent) = status.current_tab().directory.path.parent() {
-            if sel_path == std::rc::Rc::from(parent) {
+            if sel_path == std::sync::Arc::from(parent) {
                 return Ok(());
             }
         }
         let old_name = &selected.filename;
+        status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Rename))?;
         status.menu.input.replace(old_name);
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::InputSimple(InputSimple::Rename));
         Ok(())
     }
 
@@ -204,13 +232,13 @@ impl EventAction {
     }
 
     fn set_copy_paste(status: &mut Status, copy_or_move: NeedConfirmation) -> Result<()> {
+        if matches!(status.current_tab().display_mode, Display::Flagged) {
+            return Ok(());
+        };
         if status.menu.flagged.is_empty() {
             return Ok(());
         }
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::NeedConfirmation(copy_or_move));
-        Ok(())
+        status.set_edit_mode(status.index, Edit::NeedConfirmation(copy_or_move))
     }
 
     /// Creates a symlink of every flagged file to the current directory.
@@ -238,10 +266,10 @@ impl EventAction {
         if status.menu.flagged.is_empty() {
             Self::toggle_flag(status)?;
         }
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::NeedConfirmation(NeedConfirmation::Delete));
-        Ok(())
+        status.set_edit_mode(
+            status.index,
+            Edit::NeedConfirmation(NeedConfirmation::Delete),
+        )
     }
 
     /// Change to CHMOD mode allowing to edit permissions of a file.
@@ -250,21 +278,34 @@ impl EventAction {
     }
 
     /// Enter the new dir mode.
-    pub fn new_dir(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputSimple(InputSimple::Newdir));
-        Ok(())
+    pub fn new_dir(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().display_mode,
+            Display::Directory | Display::Tree
+        ) {
+            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Newdir))
+        } else {
+            Ok(())
+        }
     }
 
     /// Enter the new file mode.
-    pub fn new_file(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputSimple(InputSimple::Newfile));
-        Ok(())
+    pub fn new_file(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().display_mode,
+            Display::Directory | Display::Tree
+        ) {
+            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Newfile))
+        } else {
+            Ok(())
+        }
     }
 
     fn enter_file(status: &mut Status) -> Result<()> {
         match status.current_tab_mut().display_mode {
             Display::Directory => Self::normal_enter_file(status),
             Display::Tree => Self::tree_enter_file(status),
+            Display::Flagged => Self::jump_fuzzy(status),
             _ => Ok(()),
         }
     }
@@ -314,34 +355,61 @@ impl EventAction {
         }
     }
 
+    pub fn open_all(status: &mut Status) -> Result<()> {
+        status.open_flagged_files()
+    }
+
     /// Enter the execute mode. Most commands must be executed to allow for
     /// a confirmation.
-    pub fn exec(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputCompleted(InputCompleted::Exec));
-        Ok(())
+    pub fn exec(status: &mut Status) -> Result<()> {
+        if status.menu.flagged.is_empty() {
+            status
+                .menu
+                .flagged
+                .push(status.current_tab().current_file()?.path.to_path_buf());
+        }
+        status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Exec))
     }
 
     /// Enter the sort mode, allowing the user to select a sort method.
-    pub fn sort(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputSimple(InputSimple::Sort));
+    pub fn sort(status: &mut Status) -> Result<()> {
+        status.set_height_for_edit_mode(status.index, Edit::Nothing)?;
+        status.tabs[status.index].edit_mode = Edit::Nothing;
+        let len = status.menu.len(Edit::Nothing);
+        let height = status.second_window_height()?;
+        status.menu.window = ContentWindow::new(len, height);
+        status.tabs[status.index].edit_mode = Edit::InputSimple(InputSimple::Sort);
         Ok(())
     }
 
     /// Enter the filter mode, where you can filter.
     /// See `crate::modes::Filter` for more details.
-    pub fn filter(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputSimple(InputSimple::Filter));
+    pub fn filter(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::Filter)
+        ) {
+            status.reset_edit_mode()?;
+        } else if matches!(
+            status.current_tab().display_mode,
+            Display::Tree | Display::Directory
+        ) {
+            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Filter))?;
+        }
         Ok(())
     }
 
     /// Enter JUMP mode, allowing to jump to any flagged file.
     /// Does nothing if no file is flagged.
     pub fn jump(status: &mut Status) -> Result<()> {
-        if !status.menu.flagged.is_empty() {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Jump)
+        ) {
+            status.reset_edit_mode()?;
+        } else if !status.menu.flagged.is_empty() {
             status.menu.flagged.index = 0;
-            status
-                .current_tab_mut()
-                .set_edit_mode(Edit::Navigate(Navigate::Jump))
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Jump))?;
         }
         Ok(())
     }
@@ -350,29 +418,36 @@ impl EventAction {
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.
     pub fn bulk(status: &mut Status) -> Result<()> {
-        status.menu.init_bulk();
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::Navigate(Navigate::Bulk));
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::BulkMenu)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::BulkMenu))?;
+        }
         Ok(())
     }
 
     /// Enter the search mode.
     /// Matching items are displayed as you type them.
-    pub fn search(tab: &mut Tab) -> Result<()> {
+    pub fn search(status: &mut Status) -> Result<()> {
+        let tab = status.current_tab_mut();
         tab.searched = None;
-        tab.set_edit_mode(Edit::InputCompleted(InputCompleted::Search));
-        Ok(())
+        status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Search))
     }
 
     /// Enter the regex mode.
     /// Every file matching the typed regex will be flagged.
-    pub fn regex_match(tab: &mut Tab) -> Result<()> {
-        if !matches!(tab.edit_mode, Edit::Nothing) {
-            return Ok(());
+    pub fn regex_match(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().display_mode,
+            Display::Tree | Display::Directory
+        ) {
+            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::RegexMatch))
+        } else {
+            Ok(())
         }
-        tab.set_edit_mode(Edit::InputSimple(InputSimple::RegexMatch));
-        Ok(())
     }
 
     /// Display the help which can be navigated and displays the configrable
@@ -388,7 +463,9 @@ impl EventAction {
 
     /// Display the last actions impacting the file tree
     pub fn log(tab: &mut Tab) -> Result<()> {
-        let log = read_log()?;
+        let Ok(log) = read_log() else {
+            return Ok(());
+        };
         tab.set_display_mode(Display::Preview);
         tab.preview = Preview::log(log);
         tab.window.reset(tab.preview.len());
@@ -396,12 +473,17 @@ impl EventAction {
         Ok(())
     }
 
-    /// Enter the goto mode where an user can type a path to jump to.
-    pub fn goto(status: &mut Status) -> Result<()> {
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::InputCompleted(InputCompleted::Goto));
-        status.menu.completion.reset();
+    /// Enter the cd mode where an user can type a path to jump to.
+    pub fn cd(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputCompleted(InputCompleted::Cd)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Cd))?;
+            status.menu.completion.reset();
+        }
         Ok(())
     }
 
@@ -415,36 +497,69 @@ impl EventAction {
         Ok(())
     }
 
-    pub fn shell_command(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputSimple(InputSimple::Shell));
-        Ok(())
+    /// Enter the shell input command mode. The user can type a command which
+    /// will be parsed and run.
+    pub fn shell_command(status: &mut Status) -> Result<()> {
+        status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Shell))
     }
 
     /// Enter the shell menu mode. You can pick a TUI application to be run
-    pub fn tui_menu(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::Navigate(Navigate::TuiApplication));
+    pub fn tui_menu(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::TuiApplication)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::TuiApplication))?;
+        }
         Ok(())
     }
 
     /// Enter the cli info mode. You can pick a Text application to be
     /// displayed/
     pub fn cli_menu(status: &mut Status) -> Result<()> {
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::Navigate(Navigate::CliApplication));
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::CliApplication)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::CliApplication))?;
+        }
         Ok(())
     }
 
     /// Enter the history mode, allowing to navigate to previously visited
     /// directory.
-    pub fn history(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::Navigate(Navigate::History));
+    pub fn history(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::History)
+        ) {
+            status.reset_edit_mode()?;
+        } else if matches!(
+            status.current_tab().display_mode,
+            Display::Directory | Display::Tree
+        ) {
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::History))?;
+        }
         Ok(())
     }
 
     /// Enter Marks new mode, allowing to bind a char to a path.
-    pub fn marks_new(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::Navigate(Navigate::Marks(MarkAction::New)));
+    pub fn marks_new(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Marks(MarkAction::New))
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(
+                status.index,
+                Edit::Navigate(Navigate::Marks(MarkAction::New)),
+            )?;
+        }
         Ok(())
     }
 
@@ -453,9 +568,17 @@ impl EventAction {
         if status.menu.marks.is_empty() {
             return Ok(());
         }
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::Navigate(Navigate::Marks(MarkAction::Jump)));
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Marks(MarkAction::Jump))
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(
+                status.index,
+                Edit::Navigate(Navigate::Marks(MarkAction::Jump)),
+            )?;
+        }
         Ok(())
     }
 
@@ -463,13 +586,19 @@ impl EventAction {
     /// Basic folders (/, /dev... $HOME) and mount points (even impossible to
     /// visit ones) are proposed.
     pub fn shortcut(status: &mut Status) -> Result<()> {
-        std::env::set_current_dir(status.current_tab().directory_of_selected()?)?;
-        status.menu.shortcut.update_git_root();
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::Navigate(Navigate::Shortcut));
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Shortcut)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            std::env::set_current_dir(status.current_tab().directory_of_selected()?)?;
+            status.menu.shortcut.update_git_root();
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Shortcut))?;
+        }
         Ok(())
     }
+
     /// Send a signal to parent NVIM process, picking files.
     /// If there's no flagged file, it picks the selected one.
     /// otherwise, flagged files are picked.
@@ -497,22 +626,24 @@ impl EventAction {
         Ok(())
     }
 
-    pub fn set_nvim_server(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputSimple(InputSimple::SetNvimAddr));
-        Ok(())
+    /// Enter the set neovim RPC address mode where the user can type
+    /// the RPC address himself
+    pub fn set_nvim_server(status: &mut Status) -> Result<()> {
+        status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::SetNvimAddr))
     }
 
     /// Move back in history to the last visited directory.
-    pub fn back(tab: &mut Tab) -> Result<()> {
-        tab.back()
+    pub fn back(status: &mut Status) -> Result<()> {
+        status.current_tab_mut().back()?;
+        status.update_second_pane_for_preview()
     }
 
     /// Move to $HOME aka ~.
     pub fn home(status: &mut Status) -> Result<()> {
         let home_cow = shellexpand::tilde("~");
         let home: &str = home_cow.borrow();
-        let path = std::fs::canonicalize(home)?;
-        status.current_tab_mut().cd(&path)?;
+        let home_path = path::Path::new(home);
+        status.current_tab_mut().cd(home_path)?;
         status.update_second_pane_for_preview()
     }
 
@@ -527,6 +658,18 @@ impl EventAction {
         status.update_second_pane_for_preview()
     }
 
+    pub fn jump_fuzzy(status: &mut Status) -> Result<()> {
+        let Some(path) = status.menu.flagged.selected() else {
+            return Ok(());
+        };
+        let path = path.to_owned();
+        let tab = status.current_tab_mut();
+        tab.set_display_mode(Display::Directory);
+        tab.refresh_view()?;
+        tab.jump(path)?;
+        status.update_second_pane_for_preview()
+    }
+
     pub fn search_next(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         let Some(searched) = tab.searched.clone() else {
@@ -538,8 +681,10 @@ impl EventAction {
             Display::Preview => {
                 return Ok(());
             }
+            Display::Flagged => todo!("search next"),
         }
-        status.set_second_pane_for_preview()?;
+        status.refresh_status()?;
+        status.update_second_pane_for_preview()?;
         Ok(())
     }
 
@@ -549,21 +694,26 @@ impl EventAction {
         let tab = status.current_tab_mut();
         match tab.edit_mode {
             Edit::Nothing => Self::move_display_up(status)?,
-            Edit::Navigate(Navigate::Jump) => status.menu.flagged.prev(),
             Edit::Navigate(Navigate::History) => tab.history.prev(),
-            Edit::Navigate(Navigate::Trash) => status.menu.trash.prev(),
-            Edit::Navigate(Navigate::Shortcut) => status.menu.shortcut.prev(),
-            Edit::Navigate(Navigate::Marks(_)) => status.menu.marks.prev(),
-            Edit::Navigate(Navigate::Compress) => status.menu.compression.prev(),
-            Edit::Navigate(Navigate::Context) => status.menu.context.prev(),
-            Edit::Navigate(Navigate::Bulk) => status.menu.bulk_prev(),
-            Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.prev(),
-            Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.prev(),
-            Edit::Navigate(Navigate::EncryptedDrive) => status.menu.encrypted_devices.prev(),
-            Edit::InputCompleted(_) => status.menu.completion.prev(),
+            Edit::Navigate(navigate) => status.menu.prev(navigate),
+            Edit::InputCompleted(input_completed) => status.menu.completion_prev(input_completed),
             _ => (),
         };
         status.update_second_pane_for_preview()
+    }
+
+    pub fn next_sibling(tab: &mut Tab) -> Result<()> {
+        if matches!(tab.display_mode, Display::Tree) {
+            tab.tree_next_sibling();
+        }
+        Ok(())
+    }
+
+    pub fn previous_sibling(tab: &mut Tab) -> Result<()> {
+        if matches!(tab.display_mode, Display::Tree) {
+            tab.tree_prev_sibling();
+        }
+        Ok(())
     }
 
     fn move_display_up(status: &mut Status) -> Result<()> {
@@ -572,6 +722,7 @@ impl EventAction {
             Display::Directory => tab.normal_up_one_row(),
             Display::Preview => tab.preview_page_up(),
             Display::Tree => tab.tree_select_prev()?,
+            Display::Flagged => status.menu.flagged.select_prev(),
         }
         Ok(())
     }
@@ -582,6 +733,7 @@ impl EventAction {
             Display::Directory => tab.normal_down_one_row(),
             Display::Preview => tab.preview_page_down(),
             Display::Tree => tab.tree_select_next()?,
+            Display::Flagged => status.menu.flagged.select_next(),
         }
         Ok(())
     }
@@ -590,18 +742,9 @@ impl EventAction {
     pub fn move_down(status: &mut Status) -> Result<()> {
         match status.current_tab_mut().edit_mode {
             Edit::Nothing => Self::move_display_down(status)?,
-            Edit::Navigate(Navigate::Jump) => status.menu.flagged.next(),
             Edit::Navigate(Navigate::History) => status.current_tab_mut().history.next(),
-            Edit::Navigate(Navigate::Trash) => status.menu.trash.next(),
-            Edit::Navigate(Navigate::Shortcut) => status.menu.shortcut.next(),
-            Edit::Navigate(Navigate::Marks(_)) => status.menu.marks.next(),
-            Edit::Navigate(Navigate::Compress) => status.menu.compression.next(),
-            Edit::Navigate(Navigate::Context) => status.menu.context.next(),
-            Edit::Navigate(Navigate::Bulk) => status.menu.bulk_next(),
-            Edit::Navigate(Navigate::TuiApplication) => status.menu.tui_applications.next(),
-            Edit::Navigate(Navigate::CliApplication) => status.menu.cli_applications.next(),
-            Edit::Navigate(Navigate::EncryptedDrive) => status.menu.encrypted_devices.next(),
-            Edit::InputCompleted(_) => status.menu.completion.next(),
+            Edit::Navigate(navigate) => status.menu.next(navigate),
+            Edit::InputCompleted(input_completed) => status.menu.completion_next(input_completed),
             _ => (),
         };
         status.update_second_pane_for_preview()
@@ -642,7 +785,7 @@ impl EventAction {
 
     pub fn left_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         EventAction::select_pane(status, col)?;
-        EventAction::click_file(status, row, col, binds)
+        EventAction::click(status, row, col, binds)
     }
 
     pub fn wheel_up(status: &mut Status, col: u16, nb_of_scrolls: u16) -> Result<()> {
@@ -663,7 +806,7 @@ impl EventAction {
 
     /// A right click opens a file or a directory.
     pub fn double_click(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
-        if let Ok(()) = EventAction::click_file(status, row, col, binds) {
+        if let Ok(()) = EventAction::click(status, row, col, binds) {
             EventAction::enter_file(status)?;
         };
         Ok(())
@@ -672,6 +815,7 @@ impl EventAction {
     /// Delete a char to the left in modes allowing edition.
     pub fn backspace(status: &mut Status) -> Result<()> {
         match status.current_tab().edit_mode {
+            Edit::Navigate(Navigate::Marks(MarkAction::New)) => status.menu.marks.remove_selected(),
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
                 status.menu.input.delete_char_left();
                 Ok(())
@@ -700,6 +844,7 @@ impl EventAction {
                     Display::Directory => tab.normal_go_top(),
                     Display::Preview => tab.preview_go_top(),
                     Display::Tree => tab.tree_go_to_root()?,
+                    Display::Flagged => status.menu.flagged.select_first(),
                 };
             }
             _ => status.menu.input.cursor_start(),
@@ -716,6 +861,7 @@ impl EventAction {
                     Display::Directory => tab.normal_go_bottom(),
                     Display::Preview => tab.preview_go_bottom(),
                     Display::Tree => tab.tree_go_to_bottom_leaf()?,
+                    Display::Flagged => status.menu.flagged.select_last(),
                 };
             }
             _ => status.menu.input.cursor_end(),
@@ -725,6 +871,21 @@ impl EventAction {
 
     /// Move up 10 lines in normal mode and preview.
     pub fn page_up(status: &mut Status) -> Result<()> {
+        let tab = status.current_tab_mut();
+        match tab.edit_mode {
+            Edit::Nothing => Self::file_page_up(status)?,
+            Edit::Navigate(navigate) => status.menu.page_up(navigate),
+            Edit::InputCompleted(input_completed) => {
+                for _ in 0..10 {
+                    status.menu.completion_prev(input_completed)
+                }
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    fn file_page_up(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Directory => {
@@ -736,12 +897,28 @@ impl EventAction {
                 tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
             }
+            Display::Flagged => status.menu.flagged.page_up(),
         };
         Ok(())
     }
 
     /// Move down 10 lines in normal & preview mode.
     pub fn page_down(status: &mut Status) -> Result<()> {
+        let tab = status.current_tab_mut();
+        match tab.edit_mode {
+            Edit::Nothing => Self::file_page_down(status)?,
+            Edit::Navigate(navigate) => status.menu.page_down(navigate),
+            Edit::InputCompleted(input_completed) => {
+                for _ in 0..10 {
+                    status.menu.completion_next(input_completed)
+                }
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+
+    fn file_page_down(status: &mut Status) -> Result<()> {
         let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Directory => {
@@ -750,9 +927,10 @@ impl EventAction {
             }
             Display::Preview => tab.preview_page_down(),
             Display::Tree => {
-                tab.tree_page_down()?;
+                tab.tree_page_down();
                 status.update_second_pane_for_preview()?;
             }
+            Display::Flagged => status.menu.flagged.page_down(),
         };
         Ok(())
     }
@@ -774,10 +952,7 @@ impl EventAction {
     /// insert a completion in modes allowing completion.
     pub fn tab(status: &mut Status) -> Result<()> {
         match status.current_tab_mut().edit_mode {
-            Edit::InputCompleted(_) => status
-                .menu
-                .input
-                .replace(status.menu.completion.current_proposition()),
+            Edit::InputCompleted(_) => status.menu.completion_tab(),
             Edit::Nothing => status.next(),
             _ => (),
         };
@@ -811,17 +986,41 @@ impl EventAction {
     }
 
     /// Copy the filename of the selected file in normal mode.
-    pub fn copy_filename(tab: &mut Tab) -> Result<()> {
-        if let Display::Directory | Display::Tree = tab.display_mode {
-            tab.filename_to_clipboard();
+    pub fn copy_filename(status: &Status) -> Result<()> {
+        match status.current_tab().display_mode {
+            Display::Tree | Display::Directory => {
+                let Ok(file_info) = status.current_tab().current_file() else {
+                    return Ok(());
+                };
+                filename_to_clipboard(&file_info.path);
+            }
+            Display::Flagged => {
+                let Some(path) = status.menu.flagged.selected() else {
+                    return Ok(());
+                };
+                filename_to_clipboard(path);
+            }
+            _ => return Ok(()),
         }
         Ok(())
     }
 
     /// Copy the filepath of the selected file in normal mode.
-    pub fn copy_filepath(tab: &mut Tab) -> Result<()> {
-        if let Display::Directory | Display::Tree = tab.display_mode {
-            tab.filepath_to_clipboard();
+    pub fn copy_filepath(status: &Status) -> Result<()> {
+        match status.current_tab().display_mode {
+            Display::Tree | Display::Directory => {
+                let Ok(file_info) = status.current_tab().current_file() else {
+                    return Ok(());
+                };
+                filepath_to_clipboard(&file_info.path);
+            }
+            Display::Flagged => {
+                let Some(path) = status.menu.flagged.selected() else {
+                    return Ok(());
+                };
+                filepath_to_clipboard(path);
+            }
+            _ => return Ok(()),
         }
         Ok(())
     }
@@ -839,7 +1038,7 @@ impl EventAction {
 
         status.menu.trash.update()?;
         for flagged in status.menu.flagged.content.iter() {
-            status.menu.trash.trash(flagged)?;
+            let _ = status.menu.trash.trash(flagged);
         }
         status.menu.flagged.clear();
         status.current_tab_mut().refresh_view()?;
@@ -849,10 +1048,18 @@ impl EventAction {
     /// Ask the user if he wants to empty the trash.
     /// It requires a confimation before doing anything
     pub fn trash_empty(status: &mut Status) -> Result<()> {
-        status.menu.trash.update()?;
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::NeedConfirmation(NeedConfirmation::EmptyTrash));
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::NeedConfirmation(NeedConfirmation::EmptyTrash)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.menu.trash.update()?;
+            status.set_edit_mode(
+                status.index,
+                Edit::NeedConfirmation(NeedConfirmation::EmptyTrash),
+            )?;
+        }
         Ok(())
     }
 
@@ -861,38 +1068,54 @@ impl EventAction {
     /// Each item can be restored or deleted.
     /// Each opening refresh the trash content.
     pub fn trash_open(status: &mut Status) -> Result<()> {
-        status.menu.trash.update()?;
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::Navigate(Navigate::Trash));
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Trash)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.menu.trash.update()?;
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Trash))?;
+        }
         Ok(())
     }
 
     /// Enter the encrypted device menu, allowing the user to mount/umount
     /// a luks encrypted device.
     pub fn encrypted_drive(status: &mut Status) -> Result<()> {
-        if !lsblk_and_cryptsetup_installed() {
-            log_line!("lsblk and cryptsetup must be installed.");
-            return Ok(());
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::EncryptedDrive)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            if !lsblk_and_cryptsetup_installed() {
+                log_line!("lsblk and cryptsetup must be installed.");
+                return Ok(());
+            }
+            if status.menu.encrypted_devices.is_empty() {
+                status.menu.encrypted_devices.update()?;
+            }
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::EncryptedDrive))?;
         }
-        if status.menu.encrypted_devices.is_empty() {
-            status.menu.encrypted_devices.update()?;
-        }
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::Navigate(Navigate::EncryptedDrive));
         Ok(())
     }
 
+    /// Enter the Removable Devices mode where the user can mount an MTP device
     pub fn removable_devices(status: &mut Status) -> Result<()> {
-        if !is_program_in_path(GIO) {
-            log_line!("gio must be installed.");
-            return Ok(());
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::RemovableDevices)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            if !is_program_in_path(GIO) {
+                log_line!("gio must be installed.");
+                return Ok(());
+            }
+            status.menu.removable_devices = RemovableDevices::from_gio().unwrap_or_default();
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::RemovableDevices))?;
         }
-        status.menu.removable_devices = RemovableDevices::from_gio();
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::Navigate(Navigate::RemovableDevices));
         Ok(())
     }
 
@@ -912,27 +1135,35 @@ impl EventAction {
 
     /// Enter compression mode
     pub fn compress(status: &mut Status) -> Result<()> {
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::Navigate(Navigate::Compress));
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Compress)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Compress))?;
+        }
         Ok(())
     }
 
+    /// Enter the context menu mode where the user can choose a basic file action.
     pub fn context(status: &mut Status) -> Result<()> {
-        status.menu.context.reset();
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::Navigate(Navigate::Context));
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Context)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.menu.context.reset();
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Context))?;
+        }
         Ok(())
     }
 
-    /// Enter command mode in which you can type any valid command.
-    /// Some commands does nothing as they require to be executed from a specific
-    /// context.
-    pub fn command(status: &mut Status) -> Result<()> {
-        status
-            .current_tab_mut()
-            .set_edit_mode(Edit::InputCompleted(InputCompleted::Command));
+    /// Enter action mode in which you can type any valid action.
+    /// Some action does nothing as they require to be executed from a specific context.
+    pub fn action(status: &mut Status) -> Result<()> {
+        status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Action))?;
         status.menu.completion.reset();
         Ok(())
     }
@@ -942,25 +1173,30 @@ impl EventAction {
         status.run_custom_command(input_string)
     }
 
-    pub fn remote_mount(tab: &mut Tab) -> Result<()> {
-        tab.set_edit_mode(Edit::InputSimple(InputSimple::Remote));
-        Ok(())
+    /// Enter the remote mount mode where the user can provide an username, an adress and
+    /// a mount point to mount a remote device through SSHFS.
+    pub fn remote_mount(status: &mut Status) -> Result<()> {
+        status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Remote))
     }
 
-    pub fn click_file(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
+    /// Click a file at `row`, `col`.
+    pub fn click(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
         status.click(row, col, binds)
     }
 
+    /// Select the left or right tab depending on `col`
     pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
         status.select_tab_from_col(col)
     }
 
+    /// Execute Lazygit in a spawned terminal
     pub fn lazygit(status: &mut Status) -> Result<()> {
-        TuiApplications::open_program(status, LAZYGIT)
+        open_tui_program(status, LAZYGIT)
     }
 
+    /// Execute NCDU in a spawned terminal
     pub fn ncdu(status: &mut Status) -> Result<()> {
-        TuiApplications::open_program(status, NCDU)
+        open_tui_program(status, NCDU)
     }
 
     /// Add a song or a folder to MOC playlist. Start it first...

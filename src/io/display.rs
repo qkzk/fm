@@ -1,28 +1,28 @@
 use std::cmp::min;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, MutexGuard};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
-use crate::app::ClickableLine;
 use crate::app::Footer;
 use crate::app::Header;
 use crate::app::Status;
 use crate::app::Tab;
+use crate::app::{ClickableLine, FlaggedFooter, FlaggedHeader};
 use crate::common::path_to_string;
 use crate::common::{
     ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
-    LOG_SECOND_SENTENCE, TRASH_CONFIRM_LINE,
+    LOG_SECOND_SENTENCE,
 };
+use crate::config::MENU_COLORS;
 use crate::io::read_last_log_line;
 use crate::log_info;
-use crate::modes::fileinfo_attr;
-use crate::modes::parse_input_mode;
 use crate::modes::BinaryContent;
 use crate::modes::ColoredText;
+use crate::modes::Content;
 use crate::modes::ContentWindow;
 use crate::modes::Display as DisplayMode;
 use crate::modes::Edit;
@@ -34,18 +34,20 @@ use crate::modes::MountRepr;
 use crate::modes::Navigate;
 use crate::modes::NeedConfirmation;
 use crate::modes::Preview;
-use crate::modes::SelectableContent;
+use crate::modes::Selectable;
 use crate::modes::TextKind;
 use crate::modes::Trash;
+use crate::modes::TreeLineBuilder;
 use crate::modes::TreePreview;
 use crate::modes::Ueberzug;
 use crate::modes::Window;
-use crate::modes::{calculate_top_bottom, TreeLineMaker};
+use crate::modes::{fileinfo_attr, MarkAction};
+use crate::modes::{parse_input_mode, SecondLine};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
     ($t:ident) => {
-        std::iter::zip($t.iter().enumerate(), MENU_COLORS.iter().cycle())
+        std::iter::zip($t.iter().enumerate(), MENU_COLORS.palette().iter().cycle())
             .map(|((index, line), attr)| (index, line, attr))
     };
 }
@@ -65,32 +67,6 @@ macro_rules! impl_preview {
 
 /// At least 120 chars width to display 2 tabs.
 pub const MIN_WIDTH_FOR_DUAL_PANE: usize = 120;
-
-const FIRST_LINE_COLORS: [Attr; 2] = [
-    color_to_attr(Color::LIGHT_CYAN),
-    color_to_attr(Color::Rgb(230, 189, 87)),
-];
-
-const MENU_COLORS: [Attr; 10] = [
-    color_to_attr(Color::Rgb(236, 250, 250)),
-    color_to_attr(Color::Rgb(221, 242, 209)),
-    color_to_attr(Color::Rgb(205, 235, 197)),
-    color_to_attr(Color::Rgb(190, 227, 186)),
-    color_to_attr(Color::Rgb(174, 220, 174)),
-    color_to_attr(Color::Rgb(159, 212, 163)),
-    color_to_attr(Color::Rgb(174, 220, 174)),
-    color_to_attr(Color::Rgb(190, 227, 186)),
-    color_to_attr(Color::Rgb(205, 235, 197)),
-    color_to_attr(Color::Rgb(221, 242, 209)),
-];
-
-const ATTR_YELLOW_BOLD: Attr = Attr {
-    fg: Color::YELLOW,
-    bg: Color::Default,
-    effect: Effect::empty(),
-};
-
-const ATTR_COB_BOLD: Attr = color_to_attr(Color::LIGHT_CYAN);
 
 enum TabPosition {
     Left,
@@ -146,7 +122,7 @@ struct WinMain<'a> {
 
 impl<'a> Draw for WinMain<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        canvas.clear()?;
+        // canvas.clear()?;
         if self.status.display_settings.dual()
             && self.is_right()
             && self.status.display_settings.preview()
@@ -164,8 +140,6 @@ impl<'a> Draw for WinMain<'a> {
 impl<'a> Widget for WinMain<'a> {}
 
 impl<'a> WinMain<'a> {
-    const ATTR_LINE_NR: Attr = color_to_attr(Color::CYAN);
-
     fn new(status: &'a Status, index: usize, attributes: WinMainAttributes) -> Self {
         Self {
             status,
@@ -183,6 +157,7 @@ impl<'a> WinMain<'a> {
             DisplayMode::Directory => self.draw_files(canvas),
             DisplayMode::Tree => self.draw_tree(canvas),
             DisplayMode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas),
+            DisplayMode::Flagged => self.draw_fagged(canvas),
         }
     }
 
@@ -219,8 +194,8 @@ impl<'a> WinMain<'a> {
             .tab
             .directory
             .enumerate()
-            .take(min(len, self.tab.window.bottom))
             .skip(self.tab.window.top)
+            .take(min(len, self.tab.window.bottom))
         {
             self.draw_files_line(canvas, group_size, owner_size, index, file, height)?;
         }
@@ -243,7 +218,12 @@ impl<'a> WinMain<'a> {
         let mut attr = fileinfo_attr(file);
         let content = self.format_file_content(file, owner_size, group_size)?;
         self.print_as_flagged(canvas, row, &file.path, &mut attr)?;
-        canvas.print_with_attr(row, 1, &content, attr)?;
+        let col = if self.status.menu.flagged.contains(&file.path) {
+            2
+        } else {
+            1
+        };
+        canvas.print_with_attr(row, col, &content, attr)?;
         Ok(())
     }
 
@@ -269,7 +249,7 @@ impl<'a> WinMain<'a> {
     ) -> Result<()> {
         if self.status.menu.flagged.contains(path) {
             attr.effect |= Effect::BOLD;
-            canvas.print_with_attr(row, 0, "█", ATTR_YELLOW_BOLD)?;
+            canvas.print_with_attr(row, 0, "█", color_to_attr(MENU_COLORS.second))?;
         }
         Ok(())
     }
@@ -281,44 +261,39 @@ impl<'a> WinMain<'a> {
     }
 
     fn draw_tree_content(&self, canvas: &mut dyn Canvas) -> Result<usize> {
-        let left_margin = if self.status.display_settings.metadata() {
-            0
-        } else {
-            2
-        };
+        let left_margin = 1;
         let height = canvas.height()?;
-        let (selected_index, content) = self
+        let length = self.tab.tree.displayable().lines().len();
+
+        for (index, content_line) in self
             .tab
             .tree
-            .content(&self.tab.users, self.status.display_settings.metadata());
-        let (top, bottom) = calculate_top_bottom(selected_index, height);
-        let length = content.len();
-
-        for (index, content_line) in content
+            .displayable()
+            .lines()
             .iter()
             .enumerate()
-            .skip(top)
-            .take(min(length, bottom))
+            .skip(self.tab.window.top)
+            .take(min(length, self.tab.window.bottom + 1))
         {
             self.draw_tree_line(
                 canvas,
                 content_line,
                 TreeLinePosition {
                     left_margin,
-                    top,
+                    top: self.tab.window.top,
                     index,
                     height,
                 },
                 self.status.display_settings.metadata(),
             )?;
         }
-        Ok(selected_index)
+        Ok(self.tab.tree.displayable().index())
     }
 
     fn draw_tree_line(
         &self,
         canvas: &mut dyn Canvas,
-        tree_line_maker: &TreeLineMaker,
+        tree_line_maker: &TreeLineBuilder,
         position_param: TreeLinePosition,
         display_medatadata: bool,
     ) -> Result<()> {
@@ -335,20 +310,23 @@ impl<'a> WinMain<'a> {
         self.print_as_flagged(canvas, row, path, &mut attr)?;
 
         let col_metadata = if display_medatadata {
-            let Some(s_metadata) = tree_line_maker.metadata() else {
-                return Err(anyhow!("Metadata should be set."));
-            };
+            let s_metadata = tree_line_maker.metadata();
             canvas.print_with_attr(row, left_margin, s_metadata, attr)?
         } else {
             0
         };
 
-        let offset = if index == 0 { 1 } else { 0 };
+        let offset = if index == 0 { 2 } else { 1 };
         let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, s_prefix)?;
 
+        let flagged_offset = if self.status.menu.flagged.contains(path) {
+            1
+        } else {
+            0
+        };
         canvas.print_with_attr(
             row,
-            left_margin + col_metadata + col_tree_prefix + offset,
+            left_margin + col_metadata + col_tree_prefix + offset + flagged_offset,
             &tree_line_maker.filename(),
             attr,
         )?;
@@ -364,7 +342,7 @@ impl<'a> WinMain<'a> {
             row_position_in_canvas,
             0,
             &line_number_to_print.to_string(),
-            Self::ATTR_LINE_NR,
+            color_to_attr(MENU_COLORS.first),
         )?)
     }
 
@@ -390,7 +368,7 @@ impl<'a> WinMain<'a> {
             }
             Preview::Binary(bin) => self.draw_binary(bin, length, canvas, window)?,
             Preview::Ueberzug(image) => self.draw_ueberzug(image, canvas)?,
-            Preview::Tree(tree_preview) => self.draw_tree_preview(tree_preview, canvas)?,
+            Preview::Tree(tree_preview) => self.draw_tree_preview(tree_preview, window, canvas)?,
             Preview::ColoredText(colored_text) => {
                 self.draw_colored_text(colored_text, length, canvas, window)?
             }
@@ -458,7 +436,7 @@ impl<'a> WinMain<'a> {
                 row,
                 0,
                 &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
-                Self::ATTR_LINE_NR,
+                color_to_attr(MENU_COLORS.first),
             )?;
             line.print_bytes(canvas, row, line_number_width_hex + 1);
             line.print_ascii(canvas, row, line_number_width_hex + 43);
@@ -478,24 +456,29 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn draw_tree_preview(&self, tree_preview: &TreePreview, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_tree_preview(
+        &self,
+        tree_preview: &TreePreview,
+        window: &ContentWindow,
+        canvas: &mut dyn Canvas,
+    ) -> Result<()> {
         let height = canvas.height()?;
-        let (selected_index, content) = tree_preview.tree.content(&self.tab.users, false);
-        let (top, bottom) = calculate_top_bottom(selected_index, height);
+        let tree_content = tree_preview.tree.displayable();
+        let content = tree_content.lines();
         let length = content.len();
 
-        for (index, content_line) in content
-            .iter()
-            .enumerate()
-            .skip(top)
-            .take(min(length, bottom))
+        for (index, content_line) in
+            tree_preview
+                .tree
+                .displayable()
+                .window(window.top, window.bottom, length)
         {
             self.draw_tree_line(
                 canvas,
                 content_line,
                 TreeLinePosition {
                     left_margin: 0,
-                    top,
+                    top: window.top,
                     index,
                     height,
                 },
@@ -538,6 +521,33 @@ impl<'a> WinMain<'a> {
         )?;
         Ok(())
     }
+
+    fn draw_fagged(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
+        let window = &self.status.menu.flagged.window;
+        for (index, path) in self
+            .status
+            .menu
+            .flagged
+            .content
+            .iter()
+            .enumerate()
+            .skip(window.top)
+            .take(min(canvas.height()?, window.bottom + 1))
+        {
+            let fileinfo = FileInfo::new(path, &self.tab.users)?;
+            let mut attr = fileinfo_attr(&fileinfo);
+            if index == self.status.menu.flagged.index {
+                attr.effect |= Effect::REVERSE;
+            }
+            let row = index + 3 - window.top;
+            canvas.print_with_attr(row, 1, &fileinfo.path.to_string_lossy(), attr)?;
+        }
+        if let Some(selected) = self.status.menu.flagged.selected() {
+            let fileinfo = FileInfo::new(selected, &self.tab.users)?;
+            canvas.print_with_attr(1, 1, &fileinfo.format(6, 6)?, fileinfo_attr(&fileinfo))?;
+        };
+        Ok(None)
+    }
 }
 
 struct TreeLinePosition {
@@ -570,7 +580,8 @@ impl<'a> Draw for WinMainHeader<'a> {
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let content = match self.tab.display_mode {
-            DisplayMode::Preview => PreviewHeader::make_preview(self.status, self.tab),
+            DisplayMode::Preview => PreviewHeader::strings(self.status, self.tab),
+            DisplayMode::Flagged => FlaggedHeader::new(self.status)?.strings().to_owned(),
             _ => Header::new(self.status, self.tab)?.strings().to_owned(),
         };
         draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
@@ -591,7 +602,7 @@ impl<'a> WinMainHeader<'a> {
 struct PreviewHeader;
 
 impl PreviewHeader {
-    fn make_preview(status: &Status, tab: &Tab) -> Vec<String> {
+    fn strings(status: &Status, tab: &Tab) -> Vec<String> {
         match &tab.preview {
             Preview::Text(text_content) => match text_content.kind {
                 TextKind::HELP => Self::make_help(),
@@ -651,6 +662,7 @@ impl PreviewHeader {
     }
 }
 
+#[derive(Default)]
 struct WinMainSecondLine {
     content: Option<String>,
     attr: Option<Attr>,
@@ -668,40 +680,26 @@ impl Draw for WinMainSecondLine {
 
 impl WinMainSecondLine {
     fn new(status: &Status, tab: &Tab) -> Self {
-        let (content, attr) = match tab.display_mode {
-            DisplayMode::Directory | DisplayMode::Tree => {
-                if !status.display_settings.metadata() {
-                    if let Ok(file) = tab.current_file() {
-                        Self::second_line_detailed(&file)
-                    } else {
-                        (None, None)
-                    }
-                } else {
-                    Self::second_line_simple(status)
-                }
-            }
-            _ => (None, None),
+        if matches!(tab.display_mode, DisplayMode::Preview) || status.display_settings.metadata() {
+            return Self::default();
         };
-        Self { content, attr }
+        if let Ok(file) = tab.current_file() {
+            Self::second_line_detailed(&file)
+        } else {
+            Self::default()
+        }
     }
 
-    fn second_line_detailed(file: &FileInfo) -> (Option<String>, Option<Attr>) {
+    fn second_line_detailed(file: &FileInfo) -> Self {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
         let mut attr = fileinfo_attr(file);
         attr.effect ^= Effect::REVERSE;
 
-        (
-            Some(file.format(owner_size, group_size).unwrap_or_default()),
-            Some(attr),
-        )
-    }
-
-    fn second_line_simple(status: &Status) -> (Option<String>, Option<Attr>) {
-        (
-            Some(status.current_tab().settings.filter.to_string()),
-            Some(ATTR_YELLOW_BOLD),
-        )
+        Self {
+            content: Some(file.format(owner_size, group_size).unwrap_or_default()),
+            attr: Some(attr),
+        }
     }
 }
 
@@ -710,7 +708,12 @@ struct LogLine;
 impl Draw for LogLine {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let height = canvas.height()?;
-        canvas.print_with_attr(height - 2, 4, &read_last_log_line(), ATTR_YELLOW_BOLD)?;
+        canvas.print_with_attr(
+            height - 2,
+            4,
+            &read_last_log_line(),
+            color_to_attr(MENU_COLORS.second),
+        )?;
         Ok(())
     }
 }
@@ -733,9 +736,10 @@ impl<'a> Draw for WinMainFooter<'a> {
         let height = canvas.height()?;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => vec![],
+            DisplayMode::Flagged => FlaggedFooter::new(self.status)?.strings().to_owned(),
             _ => Footer::new(self.status, self.tab)?.strings().to_owned(),
         };
-        let mut attr = ATTR_COB_BOLD;
+        let mut attr = color_to_attr(MENU_COLORS.first);
         if self.is_selected {
             attr.effect |= Effect::REVERSE;
         };
@@ -761,7 +765,7 @@ struct WinSecondary<'a> {
 
 impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        canvas.clear()?;
+        // canvas.clear()?;
         match self.tab.edit_mode {
             Edit::Navigate(mode) => self.draw_navigate(mode, canvas),
             Edit::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
@@ -777,8 +781,6 @@ impl<'a> Draw for WinSecondary<'a> {
 }
 
 impl<'a> WinSecondary<'a> {
-    const ATTR_YELLOW: Attr = color_to_attr(Color::YELLOW);
-
     fn new(status: &'a Status, index: usize) -> Self {
         Self {
             status,
@@ -787,16 +789,26 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_second_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        if matches!(self.tab.edit_mode, Edit::InputSimple(InputSimple::Chmod)) {
-            let mode_parsed = parse_input_mode(&self.status.menu.input.string());
-            let mut col = 11;
-            for (text, is_valid) in &mode_parsed {
-                let attr = if *is_valid {
-                    Attr::from(Color::YELLOW)
-                } else {
-                    Attr::from(Color::RED)
-                };
-                col += 1 + canvas.print_with_attr(1, col, text, attr)?;
+        match self.tab.edit_mode {
+            Edit::InputSimple(InputSimple::Chmod) => {
+                let mode_parsed = parse_input_mode(&self.status.menu.input.string());
+                let mut col = 11;
+                for (text, is_valid) in &mode_parsed {
+                    let attr = if *is_valid {
+                        color_to_attr(MENU_COLORS.first)
+                    } else {
+                        color_to_attr(MENU_COLORS.second)
+                    };
+                    col += 1 + canvas.print_with_attr(1, col, text, attr)?;
+                }
+            }
+            edit => {
+                canvas.print_with_attr(
+                    1,
+                    2,
+                    edit.second_line(),
+                    color_to_attr(MENU_COLORS.second),
+                )?;
             }
         }
         Ok(())
@@ -806,16 +818,21 @@ impl<'a> WinSecondary<'a> {
     /// reversed.
     fn draw_completion(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let content = &self.status.menu.completion.proposals;
-        for (row, candidate, attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, candidate, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = self.status.menu.completion.attr(row, attr);
-            Self::draw_content_line(canvas, row + 1, candidate, attr)?;
+            Self::draw_content_line(canvas, row + 1 - top, candidate, attr)?;
         }
         Ok(())
     }
 
     fn draw_static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {
         for (row, line, attr) in enumerated_colored_iter!(lines) {
-            Self::draw_content_line(canvas, row, line, *attr)?
+            Self::draw_content_line(canvas, row, line, *attr)?;
         }
         Ok(())
     }
@@ -836,14 +853,14 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_navigate(&self, navigable_mode: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
         match navigable_mode {
-            Navigate::Bulk => self.draw_bulk(canvas),
-            Navigate::CliApplication => self.draw_cli_info(canvas),
+            Navigate::BulkMenu => self.draw_bulk_menu(canvas),
+            Navigate::CliApplication => self.draw_cli_applications(canvas),
             Navigate::Compress => self.draw_compress(canvas),
             Navigate::Context => self.draw_context(canvas),
             Navigate::EncryptedDrive => self.draw_encrypted_drive(canvas),
             Navigate::History => self.draw_history(canvas),
             Navigate::Jump => self.draw_destination(canvas, &self.status.menu.flagged),
-            Navigate::Marks(_) => self.draw_marks(canvas),
+            Navigate::Marks(mark_action) => self.draw_marks(canvas, mark_action),
             Navigate::RemovableDevices => self.draw_removable(canvas),
             Navigate::TuiApplication => self.draw_shell_menu(canvas),
             Navigate::Shortcut => self.draw_destination(canvas, &self.status.menu.shortcut),
@@ -855,14 +872,19 @@ impl<'a> WinSecondary<'a> {
     fn draw_destination(
         &self,
         canvas: &mut dyn Canvas,
-        selectable: &impl SelectableContent<PathBuf>,
+        selectable: &impl Content<PathBuf>,
     ) -> Result<()> {
         let content = selectable.content();
-        for (row, path, attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, path, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = selectable.attr(row, attr);
             Self::draw_content_line(
                 canvas,
-                row + 1,
+                row + 1 - top,
                 path.to_str().context("Unreadable filename")?,
                 attr,
             )?;
@@ -885,14 +907,19 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn draw_bulk(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        if let Some(selectable) = &self.status.menu.bulk {
-            let content = selectable.content();
-            for (row, text, attr) in enumerated_colored_iter!(content) {
-                let attr = selectable.attr(row, attr);
-                Self::draw_content_line(canvas, row + 1, text, attr)?;
-            }
+    fn draw_bulk_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let selectable = &self.status.menu.bulk;
+        let content = selectable.content();
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, text, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
+            let attr = selectable.attr(row, attr);
+            Self::draw_content_line(canvas, row + 1 - top, text, attr)?;
         }
+
         Ok(())
     }
 
@@ -907,22 +934,26 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
-        let _ = canvas.print(1, 2, TRASH_CONFIRM_LINE);
+        let _ = canvas.print_with_attr(
+            1,
+            2,
+            &self.status.menu.trash.help,
+            color_to_attr(MENU_COLORS.second),
+        );
         let content = trash.content();
-        for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, trashinfo, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = trash.attr(row, attr);
-            let _ = Self::draw_content_line(canvas, row + 1, &trashinfo.to_string(), attr);
+            let _ = Self::draw_content_line(canvas, row + 1 - top, &trashinfo.to_string(), attr);
         }
     }
 
     fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.compression;
-        canvas.print_with_attr(
-            1,
-            2,
-            "Archive and compress the flagged files using selected algorithm.",
-            Self::ATTR_YELLOW,
-        )?;
         let content = selectable.content();
         for (row, compression_method, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);
@@ -933,7 +964,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_context(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.context;
-        canvas.print_with_attr(1, 2, "Pick an action.", Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(1, 2, "Pick an action.", color_to_attr(MENU_COLORS.second))?;
         let content = selectable.content();
         for (row, desc, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, attr);
@@ -942,45 +973,67 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn draw_marks(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(2, 4, "mark  path", Self::ATTR_YELLOW)?;
+    fn draw_marks(&self, canvas: &mut dyn Canvas, mark_action: MarkAction) -> Result<()> {
+        canvas.print(1, 2, mark_action.second_line())?;
+        canvas.print_with_attr(2, 4, "mark  path", color_to_attr(MENU_COLORS.second))?;
 
         let content = self.status.menu.marks.as_strings();
-        for (row, line, attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, line, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = self.status.menu.marks.attr(row, attr);
-            Self::draw_content_line(canvas, row + 1, line, attr)?;
+            Self::draw_content_line(canvas, row + 1 - top, line, attr)?;
         }
         Ok(())
     }
 
     // TODO: refactor both methods below with common trait selectable
     fn draw_shell_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(1, 2, "pick a command", Self::ATTR_YELLOW)?;
+        canvas.print_with_attr(
+            1,
+            2,
+            self.tab.edit_mode.second_line(),
+            color_to_attr(MENU_COLORS.second),
+        )?;
 
         let content = &self.status.menu.tui_applications.content;
-        for (row, (command, _), attr) in enumerated_colored_iter!(content) {
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, command, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = self.status.menu.tui_applications.attr(row, attr);
-            Self::draw_content_line(canvas, row + 1, command, attr)?;
+            Self::draw_content_line(canvas, row + 1 - top, command, attr)?;
         }
         Ok(())
     }
 
-    fn draw_cli_info(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(1, 2, "pick a command", Self::ATTR_YELLOW)?;
+    fn draw_cli_applications(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        canvas.print_with_attr(1, 2, "pick a command", color_to_attr(MENU_COLORS.second))?;
 
         let content = &self.status.menu.cli_applications.content;
-        for (row, cli_command, attr) in enumerated_colored_iter!(content) {
+        let desc_size = self.status.menu.cli_applications.desc_size;
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, cli_command, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
             let attr = self.status.menu.cli_applications.attr(row, attr);
-            let col = canvas.print_with_attr(
-                row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
+            canvas.print_with_attr(
+                row + 1 + ContentWindow::WINDOW_MARGIN_TOP - top,
                 4,
-                cli_command.desc,
+                &cli_command.desc,
                 attr,
             )?;
             canvas.print_with_attr(
-                row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
-                8 + col,
-                cli_command.executable,
+                row + 1 + ContentWindow::WINDOW_MARGIN_TOP - top,
+                8 + desc_size,
+                &cli_command.executable,
                 attr,
             )?;
         }
@@ -992,30 +1045,41 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_removable(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        if let Some(removables) = &self.status.menu.removable_devices {
-            self.draw_mountable_devices(removables, canvas)?;
-        }
+        self.draw_mountable_devices(&self.status.menu.removable_devices, canvas)?;
         Ok(())
     }
 
     fn draw_mountable_devices<T>(
         &self,
-        selectable: &impl SelectableContent<T>,
+        selectable: &impl Content<T>,
         canvas: &mut dyn Canvas,
     ) -> Result<()>
     where
         T: MountRepr,
     {
-        canvas.print_with_attr(1, 2, ENCRYPTED_DEVICE_BINDS, Self::ATTR_YELLOW)?;
-        for (i, device) in selectable.content().iter().enumerate() {
-            self.draw_mountable_device(selectable, i, device, canvas)?
+        canvas.print_with_attr(
+            1,
+            2,
+            ENCRYPTED_DEVICE_BINDS,
+            color_to_attr(MENU_COLORS.second),
+        )?;
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = selectable.len();
+        for (i, device) in selectable
+            .content()
+            .iter()
+            .enumerate()
+            .skip(top)
+            .take(min(bottom, len))
+        {
+            self.draw_mountable_device(selectable, i - top, device, canvas)?
         }
         Ok(())
     }
 
     fn draw_mountable_device<T>(
         &self,
-        selectable: &impl SelectableContent<T>,
+        selectable: &impl Content<T>,
         index: usize,
         device: &T,
         canvas: &mut dyn Canvas,
@@ -1035,17 +1099,17 @@ impl<'a> WinSecondary<'a> {
         confirmed_mode: NeedConfirmation,
         canvas: &mut dyn Canvas,
     ) -> Result<()> {
-        log_info!("confirmed action: {:?}", confirmed_mode);
         let dest = path_to_string(&self.tab.directory_of_selected()?);
 
         Self::draw_content_line(
             canvas,
             0,
             &confirmed_mode.confirmation_string(&dest),
-            ATTR_YELLOW_BOLD,
+            color_to_attr(MENU_COLORS.second),
         )?;
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => self.draw_confirm_empty_trash(canvas)?,
+            NeedConfirmation::BulkAction(_) => self.draw_confirm_bulk(canvas)?,
             _ => self.draw_confirm_default(canvas)?,
         }
         Ok(())
@@ -1064,8 +1128,15 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
+    fn draw_confirm_bulk(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let content = self.status.menu.bulk.format_confirmation();
+        for (row, line, attr) in enumerated_colored_iter!(content) {
+            Self::draw_content_line(canvas, row + 2, line, *attr)?;
+        }
+        Ok(())
+    }
+
     fn draw_confirm_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        log_info!("draw_confirm_empty_trash");
         if self.status.menu.trash.is_empty() {
             self.draw_trash_is_empty(canvas)
         } else {
@@ -1075,14 +1146,19 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_trash_is_empty(&self, canvas: &mut dyn Canvas) {
-        let _ = Self::draw_content_line(canvas, 0, "Trash is empty", ATTR_YELLOW_BOLD);
+        let _ = Self::draw_content_line(
+            canvas,
+            0,
+            "Trash is empty",
+            color_to_attr(MENU_COLORS.second),
+        );
     }
 
     fn draw_confirm_non_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let content = self.status.menu.trash.content();
         for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
             let attr = self.status.menu.trash.attr(row, attr);
-            Self::draw_content_line(canvas, row + 4, &trashinfo.to_string(), attr)?
+            Self::draw_content_line(canvas, row + 4, &trashinfo.to_string(), attr)?;
         }
         Ok(())
     }
@@ -1092,9 +1168,8 @@ impl<'a> WinSecondary<'a> {
         row: usize,
         text: &str,
         attr: tuikit::attr::Attr,
-    ) -> Result<()> {
-        canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr)?;
-        Ok(())
+    ) -> Result<usize> {
+        Ok(canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr)?)
     }
 }
 
@@ -1128,11 +1203,9 @@ pub struct Display {
 }
 
 impl Display {
-    const SELECTED_BORDER: Attr = color_to_attr(Color::LIGHT_CYAN);
-    const INERT_BORDER: Attr = color_to_attr(Color::Default);
-
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
     pub fn new(term: Arc<Term>) -> Self {
+        log_info!("starting display...");
         Self { term }
     }
 
@@ -1153,7 +1226,7 @@ impl Display {
     /// The preview in preview mode.
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
-    pub fn display_all(&mut self, status: &Status) -> Result<()> {
+    pub fn display_all(&mut self, status: &MutexGuard<Status>) -> Result<()> {
         self.hide_cursor()?;
         self.term.clear()?;
 
@@ -1227,9 +1300,15 @@ impl Display {
 
     fn borders(&self, status: &Status) -> (Attr, Attr) {
         if status.index == 0 {
-            (Self::SELECTED_BORDER, Self::INERT_BORDER)
+            (
+                color_to_attr(MENU_COLORS.selected_border),
+                color_to_attr(MENU_COLORS.inert_border),
+            )
         } else {
-            (Self::INERT_BORDER, Self::SELECTED_BORDER)
+            (
+                color_to_attr(MENU_COLORS.inert_border),
+                color_to_attr(MENU_COLORS.selected_border),
+            )
         }
     }
 
@@ -1284,7 +1363,7 @@ impl Display {
         let win = self.vertical_split(
             &win_main_left,
             &win_second_left,
-            Self::SELECTED_BORDER,
+            color_to_attr(MENU_COLORS.selected_border),
             percent_left,
         )?;
         Ok(self.term.draw(&win)?)
@@ -1295,7 +1374,7 @@ fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
     format!("{line_nr:0width$x}")
 }
 
-const fn color_to_attr(color: Color) -> Attr {
+pub const fn color_to_attr(color: Color) -> Attr {
     Attr {
         fg: color,
         bg: Color::Default,
@@ -1311,7 +1390,7 @@ fn draw_colored_strings(
     effect_reverse: bool,
 ) -> Result<()> {
     let mut col = 1;
-    for (text, attr) in std::iter::zip(strings.iter(), FIRST_LINE_COLORS.iter().cycle()) {
+    for (text, attr) in std::iter::zip(strings.iter(), MENU_COLORS.palette().iter().cycle()) {
         let mut attr = *attr;
         if effect_reverse {
             attr.effect |= Effect::REVERSE;

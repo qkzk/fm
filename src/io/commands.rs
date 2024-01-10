@@ -5,28 +5,40 @@ use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::common::{current_username, is_program_in_path, NOHUP};
+use crate::common::{current_username, is_program_in_path, SETSID};
 use crate::modes::PasswordHolder;
 use crate::{log_info, log_line};
 
 /// Execute a command with options in a fork with nohup.
-/// If the `NOHUP` application isn't there, call the program directly.
+/// If the `SETSID` application isn't there, call the program directly.
 /// but the program may be closed if the parent (fm) is stopped.
 /// Returns an handle to the child process.
 ///
 /// # Errors
 ///
 /// May fail if the command can't be spawned.
-pub fn execute<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
-    exe: S,
-    args: &[&str],
-) -> Result<std::process::Child> {
-    log_info!("execute_in_child. executable: {exe:?}, arguments: {args:?}");
+pub fn execute<S, P>(exe: S, args: &[P]) -> Result<std::process::Child>
+where
+    S: AsRef<std::ffi::OsStr> + fmt::Debug,
+    P: AsRef<std::ffi::OsStr> + fmt::Debug,
+{
+    log_info!("execute. executable: {exe:?}, arguments: {args:?}");
     log_line!("Execute: {exe:?}, arguments: {args:?}");
-    if is_program_in_path(NOHUP) {
-        Ok(Command::new(NOHUP).arg(exe).args(args).spawn()?)
+    if is_program_in_path(SETSID) {
+        Ok(Command::new(SETSID)
+            .arg(exe)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()?)
     } else {
-        Ok(Command::new(exe).args(args).spawn()?)
+        Ok(Command::new(exe)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()?)
     }
 }
 
@@ -59,8 +71,8 @@ where
         "execute_in_child_without_output_with_path. executable: {exe:?}, arguments: {args:?}"
     );
     let params = args.unwrap_or(&[]);
-    if is_program_in_path(NOHUP) {
-        Ok(Command::new(NOHUP)
+    if is_program_in_path(SETSID) {
+        Ok(Command::new(SETSID)
             .arg(exe)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -187,13 +199,16 @@ pub fn execute_with_ansi_colors(args: &[&str]) -> Result<std::process::Output> {
         .output()?)
 }
 
-pub fn execute_custom(exec_command: String, selected_file: &str) -> Result<bool> {
+pub fn execute_custom(exec_command: String, files: &[std::path::PathBuf]) -> Result<bool> {
     let mut args: Vec<&str> = exec_command.split(' ').collect();
     let command = args.remove(0);
-    if !std::path::Path::new(command).exists() {
+    if !std::path::Path::new(command).exists() && !is_program_in_path(command) {
+        log_info!("{command} can't be found - args {exec_command:?}");
         return Ok(false);
     }
-    args.push(selected_file);
+    for file in files {
+        args.push(file.to_str().context("Couldn't parse filepath to str")?);
+    }
     execute(command, &args)?;
     Ok(true)
 }

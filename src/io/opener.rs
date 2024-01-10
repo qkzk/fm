@@ -224,11 +224,11 @@ impl External {
         self.1
     }
 
-    fn open(&self, paths: &[&str], term: &str) -> Result<()> {
+    fn open(&self, paths: &[&str], term: &str, term_flag: &str) -> Result<()> {
         let mut args: Vec<&str> = vec![self.program()];
         args.extend(paths);
         if self.use_term() {
-            Self::with_term(args, term)?;
+            Self::with_term(args, term, term_flag)?;
         } else {
             Self::without_term(args)?;
         }
@@ -243,9 +243,12 @@ impl External {
         execute(executable, &args)
     }
 
-    // TODO: use terminal specific parameters instead of -e for all terminals
-    fn with_term(mut args: Vec<&str>, term: &str) -> Result<std::process::Child> {
-        args.insert(0, "-e");
+    fn with_term<'a>(
+        mut args: Vec<&'a str>,
+        term: &'a str,
+        term_flag: &'a str,
+    ) -> Result<std::process::Child> {
+        args.insert(0, term_flag);
         execute(term, &args)
     }
 }
@@ -309,6 +312,9 @@ impl fmt::Display for Kind {
 pub struct Opener {
     /// The name of the configured terminal application
     pub terminal: String,
+    /// Terminal flag used to run a command at startup. Usually (but not always) -e.
+    /// See the default config file for more information.
+    pub terminal_flag: String,
     /// The association of openers for every kind of files
     pub association: Association,
 }
@@ -316,9 +322,10 @@ pub struct Opener {
 impl Opener {
     /// Creates a new opener instance.
     /// Use the configured values from [`crate::common::OPENER_PATH`] if it can be parsed.
-    pub fn new(terminal: &str) -> Self {
+    pub fn new(terminal: &str, terminal_flag: &str) -> Self {
         Self {
             terminal: terminal.to_owned(),
+            terminal_flag: terminal_flag.to_owned(),
             association: Association::default().with_config(OPENER_PATH),
         }
     }
@@ -340,9 +347,11 @@ impl Opener {
     /// This is quite a tricky method, there's many possible failures.
     pub fn open_single(&self, path: &Path) -> Result<()> {
         match self.kind(path) {
-            Some(Kind::External(external)) => {
-                external.open(&[path.to_str().context("couldn't")?], &self.terminal)
-            }
+            Some(Kind::External(external)) => external.open(
+                &[path.to_str().context("couldn't")?],
+                &self.terminal,
+                &self.terminal_flag,
+            ),
             Some(Kind::Internal(internal)) => internal.open(path),
             None => Err(anyhow!("{p} can't be opened", p = path.display())),
         }
@@ -353,7 +362,11 @@ impl Opener {
     /// Only files opened with an external opener are supported.
     pub fn open_multiple(&self, paths: &[PathBuf]) -> Result<()> {
         for (external, grouped_paths) in &self.regroup_per_opener(paths) {
-            external.open(&Self::collect_paths_as_str(grouped_paths), &self.terminal)?;
+            let _ = external.open(
+                &Self::collect_paths_as_str(grouped_paths),
+                &self.terminal,
+                &self.terminal_flag,
+            );
         }
         Ok(())
     }

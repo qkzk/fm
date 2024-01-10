@@ -7,9 +7,11 @@ use chrono::{Local, NaiveDateTime};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 
-use crate::common::read_lines;
+use crate::common::{read_lines, TRASH_CONFIRM_LINE};
 use crate::common::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO, TRASH_INFO_EXTENSION};
-use crate::impl_selectable_content;
+use crate::config::Bindings;
+use crate::impl_content;
+use crate::impl_selectable;
 use crate::log_info;
 use crate::log_line;
 
@@ -108,7 +110,8 @@ DeletionDate={date}
 
     fn get_dest_name(trash_info_file: &Path) -> Result<String> {
         if let Some(dest_name) = trash_info_file.file_name() {
-            let dest_name = Self::remove_extension(dest_name.to_str().unwrap().to_owned())?;
+            let dest_name =
+                Self::remove_extension(dest_name.to_string_lossy().as_ref().to_owned())?;
             Ok(dest_name)
         } else {
             Err(anyhow!("Couldn't parse the trash info filename"))
@@ -195,9 +198,41 @@ pub struct Trash {
     /// The path to the trashed files
     pub trash_folder_files: String,
     trash_folder_info: String,
+    pub help: String,
 }
 
 impl Trash {
+    /// Creates an empty view of the trash.
+    /// No file is read here, we wait for the user to open the trash first.
+    ///
+    /// # Errors
+    ///
+    /// This function uses [`std::fs::create_dir_all`] internally and may fail
+    /// for the same reasons.
+    pub fn new(binds: &Bindings) -> Result<Self> {
+        let trash_folder_files = shellexpand::tilde(TRASH_FOLDER_FILES).to_string();
+        let trash_folder_info = shellexpand::tilde(TRASH_FOLDER_INFO).to_string();
+        create_if_not_exists(&trash_folder_files)?;
+        create_if_not_exists(&trash_folder_info)?;
+        let empty_trash_binds = match binds.keybind_reversed().get("TrashEmpty") {
+            Some(s) => s.to_owned(),
+            None => "alt-x".to_owned(),
+        };
+
+        let help = TRASH_CONFIRM_LINE.to_owned() + &format!("{empty_trash_binds}: Empty the trash");
+
+        let index = 0;
+        let content = vec![];
+
+        Ok(Self {
+            content,
+            index,
+            trash_folder_files,
+            trash_folder_info,
+            help,
+        })
+    }
+
     fn pick_dest_name(&self, origin: &Path) -> Result<String> {
         if let Some(file_name) = origin.file_name() {
             let mut dest = file_name
@@ -214,30 +249,6 @@ impl Trash {
             return Ok(dest);
         }
         Err(anyhow!("pick_dest_name: Couldn't extract the filename",))
-    }
-
-    /// Creates an empty view of the trash.
-    /// No file is read here, we wait for the user to open the trash first.
-    ///
-    /// # Errors
-    ///
-    /// This function uses [`std::fs::create_dir_all`] internally and may fail
-    /// for the same reasons.
-    pub fn new() -> Result<Self> {
-        let trash_folder_files = shellexpand::tilde(TRASH_FOLDER_FILES).to_string();
-        let trash_folder_info = shellexpand::tilde(TRASH_FOLDER_INFO).to_string();
-        create_if_not_exists(&trash_folder_files)?;
-        create_if_not_exists(&trash_folder_info)?;
-
-        let index = 0;
-        let content = vec![];
-
-        Ok(Self {
-            content,
-            index,
-            trash_folder_files,
-            trash_folder_info,
-        })
     }
 
     fn parse_updated_content(trash_folder_info: &str) -> Result<Vec<Info>> {
@@ -461,7 +472,8 @@ impl Trash {
     }
 }
 
-impl_selectable_content!(Info, Trash);
+impl_selectable!(Trash);
+impl_content!(Info, Trash);
 
 fn parsed_date_from_path_info(ds: &str) -> Result<()> {
     NaiveDateTime::parse_from_str(ds, TRASHINFO_DATETIME_FORMAT)?;

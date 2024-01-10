@@ -5,9 +5,10 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 
 use crate::common::read_lines;
-use crate::common::MARKS_FILEPATH;
+use crate::impl_content;
+use crate::impl_selectable;
+use crate::log_info;
 use crate::log_line;
-use crate::{impl_selectable_content, log_info};
 
 /// Holds the marks created by the user.
 /// It's an ordered map between any char (except :) and a `PathBuf`.
@@ -37,8 +38,8 @@ impl Marks {
     /// If an invalid marks is read, only the valid ones are kept
     /// and the file is saved again.
     #[must_use]
-    pub fn read_from_config_file() -> Self {
-        let path = PathBuf::from(shellexpand::tilde(&MARKS_FILEPATH).to_string());
+    pub fn new(config_path: &str) -> Self {
+        let path = PathBuf::from(shellexpand::tilde(config_path).to_string());
         Self::read_from_file(path)
     }
 
@@ -58,7 +59,8 @@ impl Marks {
                 }
             }
         }
-        let marks = Self {
+        content.sort();
+        let mut marks = Self {
             save_path,
             content,
             index: 0,
@@ -137,9 +139,21 @@ impl Marks {
         }
     }
 
-    fn save_marks(&self) -> Result<()> {
+    pub fn remove_selected(&mut self) -> Result<()> {
+        if self.is_empty() {
+            return Ok(());
+        }
+        let (ch, path) = self.selected().context("no marks saved")?;
+        log_line!("Removed marks {ch} -> {path}", path = path.display());
+        self.content.remove(self.index);
+        self.prev();
+        self.save_marks()
+    }
+
+    fn save_marks(&mut self) -> Result<()> {
         let file = std::fs::File::create(&self.save_path)?;
         let mut buf = BufWriter::new(file);
+        self.content.sort();
         for (ch, path) in &self.content {
             writeln!(buf, "{}:{}", ch, Self::path_as_string(path)?)?;
         }
@@ -168,4 +182,5 @@ impl Marks {
 }
 
 type Pair = (char, PathBuf);
-impl_selectable_content!(Pair, Marks);
+impl_selectable!(Marks);
+impl_content!(Pair, Marks);

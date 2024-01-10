@@ -15,4 +15,8 @@ pub struct Args {
     /// Display all files (hidden)
     #[arg(short = 'A', long, default_value_t = false)]
     pub all: bool,
+
+    /// Enable logging
+    #[arg(short = 'l', long, default_value_t = false)]
+    pub log: bool,
 }

@@ -1,8 +1,4 @@
-/// Make a content selectable content for a struct.
-/// This trait allows to navigate through a vector of element `content_type`.
-/// It implements: `is_empty`, `len`, `next`, `prev`, `selected`.
-/// `selected` returns an optional reference to the value.
-pub trait SelectableContent<T> {
+pub trait Selectable {
     /// True iff the content is empty
     fn is_empty(&self) -> bool;
     /// Number of element in content
@@ -11,33 +7,37 @@ pub trait SelectableContent<T> {
     fn next(&mut self);
     /// Select previous element in content
     fn prev(&mut self);
-    /// Returns the selected element if content isn't empty
-    fn selected(&self) -> Option<&T>;
     /// Current index of selected element.
     /// 0 if the content is empty (I know, could be an option)
     fn index(&self) -> usize;
-    /// Reference to the content as a vector.
-    fn content(&self) -> &Vec<T>;
     /// set the index to the value if possible
     fn set_index(&mut self, index: usize);
+}
+
+pub trait Content<T>: Selectable {
+    /// Returns the selected element if content isn't empty
+    fn selected(&self) -> Option<&T>;
+    /// Reference to the content as a vector.
+    fn content(&self) -> &Vec<T>;
+    /// add an element to the content
+    fn push(&mut self, t: T);
     /// [`tuikit::attr:Attr`] used to display an element
     fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr;
 }
-
 /// Implement the `SelectableContent` for struct `$struc` with content type `$content_type`.
 /// This trait allows to navigate through a vector of element `content_type`.
 /// It implements: `is_empty`, `len`, `next`, `prev`, `selected`.
 /// `selected` returns an optional reference to the value.
 #[macro_export]
-macro_rules! impl_selectable_content {
-    ($content_type:ident, $struct:ident) => {
-        use $crate::modes::SelectableContent;
+macro_rules! impl_selectable {
+    ($struct:ident) => {
+        use $crate::modes::Selectable;
 
         /// Implement a selectable content for this struct.
         /// This trait allows to navigate through a vector of element `content_type`.
         /// It implements: `is_empty`, `len`, `next`, `prev`, `selected`.
         /// `selected` returns an optional reference to the value.
-        impl SelectableContent<$content_type> for $struct {
+        impl Selectable for $struct {
             /// True if the content is empty.
             fn is_empty(&self) -> bool {
                 self.content.is_empty()
@@ -68,6 +68,35 @@ macro_rules! impl_selectable_content {
                 }
             }
 
+            /// Returns the index of the selected item.
+            fn index(&self) -> usize {
+                self.index
+            }
+
+            /// Set the index to a new value if the value is below the length.
+            fn set_index(&mut self, index: usize) {
+                if index < self.len() {
+                    self.index = index;
+                }
+            }
+        }
+    };
+}
+
+/// Implement the `SelectableContent` for struct `$struc` with content type `$content_type`.
+/// This trait allows to navigate through a vector of element `content_type`.
+/// It implements: `is_empty`, `len`, `next`, `prev`, `selected`.
+/// `selected` returns an optional reference to the value.
+#[macro_export]
+macro_rules! impl_content {
+    ($content_type:ident, $struct:ident) => {
+        use $crate::modes::Content;
+
+        /// Implement a selectable content for this struct.
+        /// This trait allows to navigate through a vector of element `content_type`.
+        /// It implements: `is_empty`, `len`, `next`, `prev`, `selected`.
+        /// `selected` returns an optional reference to the value.
+        impl Content<$content_type> for $struct {
             /// Returns a reference to the selected content.
             fn selected(&self) -> Option<&$content_type> {
                 match self.is_empty() {
@@ -76,21 +105,9 @@ macro_rules! impl_selectable_content {
                 }
             }
 
-            /// Returns the index of the selected item.
-            fn index(&self) -> usize {
-                self.index
-            }
-
             /// A reference to the content.
             fn content(&self) -> &Vec<$content_type> {
                 &self.content
-            }
-
-            /// Set the index to a new value if the value is below the length.
-            fn set_index(&mut self, index: usize) {
-                if index < self.len() {
-                    self.index = index;
-                }
             }
 
             /// Reverse the received effect if the index match the selected index.
@@ -100,6 +117,10 @@ macro_rules! impl_selectable_content {
                     attr.effect |= tuikit::attr::Effect::REVERSE;
                 }
                 attr
+            }
+
+            fn push(&mut self, element: $content_type) {
+                self.content.push(element)
             }
         }
     };

@@ -1,27 +1,36 @@
 use std::sync::RwLock;
 
 use anyhow::Result;
+use clap::Parser;
 use lazy_static::lazy_static;
 use log4rs;
 
 use crate::common::extract_lines;
 use crate::common::{ACTION_LOG_PATH, LOG_CONFIG_PATH};
-
-// static ENV_HOME: &str = "$ENV{HOME}";
+use crate::io::Args;
 
 /// Set the logs.
+/// First we read the `-l` `--log` command line argument which default to false.
+///
+/// If it's false, nothing is done and we return.
+/// No logger is set, nothing is logged.
+///
+/// If it's true :
 /// The configuration is read from a config file defined in `LOG_CONFIG_PATH`
 /// It's a YAML file which defines 2 logs:
 /// - a normal one used directly with the macros like `log::info!(...)`, used for debugging
 /// - a special one used with `log::info!(target: "special", ...)` to be displayed in the application
 pub fn set_loggers() -> Result<()> {
-    log4rs::init_file(
-        shellexpand::tilde(LOG_CONFIG_PATH).as_ref(),
-        Default::default(),
-    )?;
-    // clear_useless_env_home()?;
+    let args = Args::parse();
+    if args.log {
+        log4rs::init_file(
+            shellexpand::tilde(LOG_CONFIG_PATH).as_ref(),
+            Default::default(),
+        )?;
+        // clear_useless_env_home()?;
 
-    log::info!("fm is starting");
+        log::info!("fm is starting with logs enabled");
+    }
     Ok(())
 }
 

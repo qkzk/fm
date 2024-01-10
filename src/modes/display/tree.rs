@@ -2,15 +2,15 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use anyhow::Result;
 
 use crate::common::filename_from_path;
 use crate::common::has_last_modification_happened_less_than;
 use crate::modes::files_collection;
-use crate::modes::ContentWindow;
 use crate::modes::FilterKind;
+use crate::modes::Flagged;
 use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{ColorEffect, FileInfo};
@@ -23,12 +23,12 @@ pub struct ColoredString {
     /// A pair of [`tuikit::attr::Color`] and [`tuikit::attr::Effect`] used to enhance the text.
     pub color_effect: ColorEffect,
     /// The complete path of this string.
-    pub path: Rc<Path>,
+    pub path: Arc<Path>,
 }
 
 impl ColoredString {
     /// Creates a new colored string.
-    pub fn new(text: String, color_effect: ColorEffect, path: Rc<Path>) -> Self {
+    pub fn new(text: String, color_effect: ColorEffect, path: Arc<Path>) -> Self {
         Self {
             text,
             color_effect,
@@ -42,11 +42,11 @@ impl ColoredString {
 /// A Node knows if it's folded or selected.
 #[derive(Debug, Clone)]
 pub struct Node {
-    path: Rc<Path>,
-    prev: Rc<Path>,
-    next: Rc<Path>,
+    path: Arc<Path>,
+    prev: Arc<Path>,
+    next: Arc<Path>,
     index: usize,
-    children: Option<Vec<Rc<Path>>>,
+    children: Option<Vec<Arc<Path>>>,
     folded: bool,
     selected: bool,
     reachable: bool,
@@ -55,11 +55,11 @@ pub struct Node {
 impl Node {
     /// Creates a new Node from a path and its children.
     /// By default it's not selected nor folded.
-    fn new(path: &Path, children: Option<Vec<Rc<Path>>>, prev: &Path, index: usize) -> Self {
+    fn new(path: &Path, children: Option<Vec<Arc<Path>>>, prev: &Path, index: usize) -> Self {
         Self {
-            path: Rc::from(path),
-            prev: Rc::from(prev),
-            next: Rc::from(Path::new("")),
+            path: Arc::from(path),
+            prev: Arc::from(prev),
+            next: Arc::from(Path::new("")),
             index,
             children,
             folded: false,
@@ -117,6 +117,8 @@ pub enum To<'a> {
     Root,
     Last,
     Parent,
+    NextSibling,
+    PreviousSibling,
     Path(&'a Path),
 }
 
@@ -132,7 +134,9 @@ impl Go for Tree {
             To::Root => self.select_root(),
             To::Last => self.select_last(),
             To::Parent => self.select_parent(),
-            To::Path(path) => self.select_path(path, true),
+            To::NextSibling => self.select_next_sibling(),
+            To::PreviousSibling => self.select_previous_sibling(),
+            To::Path(path) => self.select_path(path),
         }
     }
 }
@@ -142,7 +146,7 @@ trait Depth {
     fn depth(&self) -> usize;
 }
 
-impl Depth for Rc<Path> {
+impl Depth for Arc<Path> {
     /// Measure the number of components of a `PathBuf`.
     /// For absolute paths, it's the number of folders plus one for / and one for the file itself.
     #[inline]
@@ -156,29 +160,27 @@ impl Depth for Rc<Path> {
 /// It also holds informations about the required height of the tree.
 #[derive(Debug, Clone)]
 pub struct Tree {
-    root_path: Rc<Path>,
-    selected: Rc<Path>,
-    nodes: HashMap<Rc<Path>, Node>,
-    required_height: usize,
+    root_path: Arc<Path>,
+    selected: Arc<Path>,
+    nodes: HashMap<Arc<Path>, Node>,
+    displayable_lines: TreeLines,
 }
 
 impl Default for Tree {
     fn default() -> Self {
         Self {
-            root_path: Rc::from(Path::new("")),
-            selected: Rc::from(Path::new("")),
+            root_path: Arc::from(Path::new("")),
+            selected: Arc::from(Path::new("")),
             nodes: HashMap::new(),
-            required_height: 0,
+            displayable_lines: TreeLines::default(),
         }
     }
 }
 
 impl Tree {
-    pub const DEFAULT_REQUIRED_HEIGHT: usize = 80;
-
     /// Creates a new tree, exploring every node until depth is reached.
     pub fn new(
-        root_path: Rc<Path>,
+        root_path: Arc<Path>,
         depth: usize,
         sort_kind: SortKind,
         users: &Users,
@@ -194,27 +196,29 @@ impl Tree {
             filter_kind,
         );
 
+        let content = Self::make_displayable(users, &root_path, &nodes);
+
         Self {
             selected: root_path.clone(),
             root_path,
             nodes,
-            required_height: Self::DEFAULT_REQUIRED_HEIGHT,
+            displayable_lines: content,
         }
     }
 
     #[inline]
     fn make_nodes(
-        root_path: Rc<Path>,
+        root_path: Arc<Path>,
         depth: usize,
         sort_kind: SortKind,
         users: &Users,
         show_hidden: bool,
         filter_kind: &FilterKind,
-    ) -> HashMap<Rc<Path>, Node> {
+    ) -> HashMap<Arc<Path>, Node> {
         // keep track of the depth
         let root_depth = root_path.depth();
         let mut stack = vec![root_path.to_owned()];
-        let mut nodes: HashMap<Rc<Path>, Node> = HashMap::new();
+        let mut nodes: HashMap<Arc<Path>, Node> = HashMap::new();
         let mut last_path = root_path.to_owned();
         let mut index = 0;
 
@@ -249,30 +253,30 @@ impl Tree {
     }
 
     #[inline]
-    fn set_prev_for_root(nodes: &mut HashMap<Rc<Path>, Node>, root_path: &Path, last_path: &Path) {
+    fn set_prev_for_root(nodes: &mut HashMap<Arc<Path>, Node>, root_path: &Path, last_path: &Path) {
         let Some(root_node) = nodes.get_mut(root_path) else {
             unreachable!("root_path should be in nodes");
         };
-        root_node.prev = Rc::from(last_path);
+        root_node.prev = Arc::from(last_path);
         root_node.select();
     }
 
     #[inline]
-    fn set_next_for_last(nodes: &mut HashMap<Rc<Path>, Node>, root_path: &Path, last_path: &Path) {
+    fn set_next_for_last(nodes: &mut HashMap<Arc<Path>, Node>, root_path: &Path, last_path: &Path) {
         if let Some(last_node) = nodes.get_mut(last_path) {
-            last_node.next = Rc::from(root_path);
+            last_node.next = Arc::from(root_path);
         };
     }
 
     #[inline]
     fn create_children(
-        stack: &mut Vec<Rc<Path>>,
+        stack: &mut Vec<Arc<Path>>,
         current_path: &Path,
         users: &Users,
         show_hidden: bool,
         filter_kind: &FilterKind,
         sort_kind: SortKind,
-    ) -> Option<Vec<Rc<Path>>> {
+    ) -> Option<Vec<Arc<Path>>> {
         if let Some(mut files) =
             files_collection(current_path, users, show_hidden, filter_kind, true)
         {
@@ -287,9 +291,9 @@ impl Tree {
 
     #[inline]
     fn make_children_and_stack_them(
-        stack: &mut Vec<Rc<Path>>,
+        stack: &mut Vec<Arc<Path>>,
         files: &[FileInfo],
-    ) -> Vec<Rc<Path>> {
+    ) -> Vec<Arc<Path>> {
         files
             .iter()
             .map(|fileinfo| fileinfo.path.clone())
@@ -335,6 +339,10 @@ impl Tree {
         self.nodes.len()
     }
 
+    pub fn display_len(&self) -> usize {
+        self.displayable().lines().len()
+    }
+
     /// True if there's no node.
     pub fn is_empty(&self) -> bool {
         self.nodes.is_empty()
@@ -350,23 +358,43 @@ impl Tree {
         self.find_next_path() == self.root_path
     }
 
+    /// True if the node has a parent which is in `self.nodes` and is folded.
+    /// This hacky and inefficient solution is necessary to know if we can select
+    /// this node in `select_prev` `select_next`.
+    /// It will construct all parent path from `/` to `node.path` except for the last one.
+    fn node_has_parent_folded(&self, node: &Node) -> bool {
+        let path = &node.path;
+        let mut current_path = std::path::PathBuf::from("/");
+        for part in path.components() {
+            current_path = current_path.join(part.as_os_str());
+            if current_path == <Arc<std::path::Path> as Borrow<Path>>::borrow(path) {
+                continue;
+            }
+            if let Some(current_node) = self.nodes.get(current_path.as_path()) {
+                if current_node.folded {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     /// Select next sibling or the next sibling of the parent
     fn select_next(&mut self) {
         let next_path = self.find_next_path();
-        self.select_path(&next_path, false);
+        self.select_path(&next_path);
         drop(next_path);
-        self.increment_required_height()
     }
 
-    fn find_next_path(&self) -> Rc<Path> {
-        let mut current_path: Rc<Path> = self.selected.clone();
+    fn find_next_path(&self) -> Arc<Path> {
+        let mut current_path: Arc<Path> = self.selected.clone();
         loop {
             if let Some(current_node) = self.nodes.get(&current_path) {
                 let next_path = &current_node.next;
                 let Some(next_node) = self.nodes.get(next_path) else {
                     return self.root_path.clone();
                 };
-                if next_node.reachable {
+                if next_node.reachable && !self.node_has_parent_folded(next_node) {
                     return next_path.to_owned();
                 } else {
                     current_path = next_path.clone();
@@ -377,18 +405,12 @@ impl Tree {
 
     /// Select previous sibling or the parent
     fn select_prev(&mut self) {
-        let must_increase = self.is_on_root();
         let previous_path = self.find_prev_path();
-        self.select_path(&previous_path, false);
+        self.select_path(&previous_path);
         drop(previous_path);
-        if must_increase {
-            self.set_required_height_to_max()
-        } else {
-            self.decrement_required_height()
-        }
     }
 
-    fn find_prev_path(&self) -> Rc<Path> {
+    fn find_prev_path(&self) -> Arc<Path> {
         let mut current_path = self.selected.to_owned();
         loop {
             if let Some(current_node) = self.nodes.get(&current_path) {
@@ -396,7 +418,7 @@ impl Tree {
                 let Some(prev_node) = self.nodes.get(prev_path) else {
                     unreachable!("");
                 };
-                if prev_node.reachable {
+                if prev_node.reachable && !self.node_has_parent_folded(prev_node) {
                     return prev_path.to_owned();
                 } else {
                     current_path = prev_path.to_owned();
@@ -425,8 +447,7 @@ impl Tree {
 
     fn select_root(&mut self) {
         let root_path = self.root_path.to_owned();
-        self.select_path(&root_path, false);
-        self.reset_required_height()
+        self.select_path(&root_path);
     }
 
     fn select_last(&mut self) {
@@ -436,13 +457,52 @@ impl Tree {
 
     fn select_parent(&mut self) {
         if let Some(parent_path) = self.selected.parent() {
-            self.select_path(parent_path.to_owned().as_path(), false);
-            self.decrement_required_height()
+            self.select_path(parent_path.to_owned().as_path());
         }
     }
 
-    fn select_path(&mut self, dest_path: &Path, set_height: bool) {
-        if Rc::from(dest_path) == self.selected {
+    fn find_siblings(&self) -> &Option<Vec<Arc<Path>>> {
+        let Some(parent_path) = self.selected.parent() else {
+            return &None;
+        };
+        let Some(parent_node) = self.nodes.get(parent_path) else {
+            return &None;
+        };
+        &parent_node.children
+    }
+
+    fn select_next_sibling(&mut self) {
+        let Some(children) = self.find_siblings() else {
+            self.select_next();
+            return;
+        };
+        let Some(curr_index) = children.iter().position(|p| p == &self.selected) else {
+            return;
+        };
+        let next_index = if curr_index > 0 {
+            curr_index - 1
+        } else {
+            children.len().checked_sub(1).unwrap_or_default()
+        };
+        let sibling_path = children[next_index].clone();
+        self.select_path(&sibling_path);
+    }
+
+    fn select_previous_sibling(&mut self) {
+        let Some(children) = self.find_siblings() else {
+            self.select_prev();
+            return;
+        };
+        let Some(curr_index) = children.iter().position(|p| p == &self.selected) else {
+            return;
+        };
+        let next_index = (curr_index + 1) % children.len();
+        let sibling_path = children[next_index].clone();
+        self.select_path(&sibling_path);
+    }
+
+    fn select_path(&mut self, dest_path: &Path) {
+        if Arc::from(dest_path) == self.selected {
             return;
         }
         let Some(dest_node) = self.nodes.get_mut(dest_path) else {
@@ -453,34 +513,15 @@ impl Tree {
             unreachable!("current_node should be in nodes");
         };
         selected_node.unselect();
-        self.selected = Rc::from(dest_path);
-        if set_height {
-            self.set_required_height_to_max()
+        self.selected = Arc::from(dest_path);
+        self.displayable_lines.unselect();
+        if let Some(index) = self.displayable_lines.find_by_path(dest_path) {
+            self.displayable_lines.select(index);
         }
-    }
-
-    fn increment_required_height(&mut self) {
-        if self.required_height < usize::MAX {
-            self.required_height += 1
-        }
-    }
-
-    fn decrement_required_height(&mut self) {
-        if self.required_height > Self::DEFAULT_REQUIRED_HEIGHT {
-            self.required_height -= 1
-        }
-    }
-
-    fn set_required_height_to_max(&mut self) {
-        self.required_height = usize::MAX
-    }
-
-    fn reset_required_height(&mut self) {
-        self.required_height = Self::DEFAULT_REQUIRED_HEIGHT
     }
 
     /// Fold selected node
-    pub fn toggle_fold(&mut self) {
+    pub fn toggle_fold(&mut self, users: &Users) {
         if let Some(node) = self.nodes.get_mut(&self.selected) {
             if node.folded {
                 node.unfold();
@@ -490,9 +531,10 @@ impl Tree {
                 self.make_children_unreachable()
             }
         }
+        self.remake_displayable(users);
     }
 
-    fn children_of_selected(&self) -> Vec<Rc<Path>> {
+    fn children_of_selected(&self) -> Vec<Arc<Path>> {
         self.nodes
             .keys()
             .filter(|p| p.starts_with(&self.selected) && p != &&self.selected)
@@ -504,7 +546,6 @@ impl Tree {
         for path in self.children_of_selected().iter() {
             if let Some(child_node) = self.nodes.get_mut(path) {
                 child_node.reachable = true;
-                child_node.unfold();
             };
         }
     }
@@ -518,18 +559,20 @@ impl Tree {
     }
 
     /// Fold all node from root to end
-    pub fn fold_all(&mut self) {
+    pub fn fold_all(&mut self, users: &Users) {
         for (_, node) in self.nodes.iter_mut() {
             node.fold()
         }
-        self.select_root()
+        self.select_root();
+        self.remake_displayable(users);
     }
 
     /// Unfold all node from root to end
-    pub fn unfold_all(&mut self) {
+    pub fn unfold_all(&mut self, users: &Users) {
         for (_, node) in self.nodes.iter_mut() {
             node.unfold()
         }
+        self.remake_displayable(users);
     }
 
     /// Select the first node whose filename match a pattern.
@@ -538,10 +581,10 @@ impl Tree {
         let Some(found_path) = self.deep_first_search(pattern) else {
             return;
         };
-        self.select_path(&found_path, true);
+        self.select_path(&found_path);
     }
 
-    fn deep_first_search(&self, pattern: &str) -> Option<Rc<Path>> {
+    fn deep_first_search(&self, pattern: &str) -> Option<Arc<Path>> {
         let mut stack = vec![self.root_path.clone()];
         let mut found = vec![];
 
@@ -565,7 +608,7 @@ impl Tree {
         self.pick_best_match(&found)
     }
 
-    fn pick_best_match(&self, found: &[Rc<Path>]) -> Option<Rc<Path>> {
+    fn pick_best_match(&self, found: &[Arc<Path>]) -> Option<Arc<Path>> {
         if found.is_empty() {
             return None;
         }
@@ -598,46 +641,48 @@ impl Tree {
     ///     an access to the user list.
     ///     The prefix (straight lines displaying targets) must also be calcuated immediatly.
     ///     Name format is calculated on the fly.
-    pub fn content(&self, users: &Users, display_metadata: bool) -> (usize, Vec<TreeLineMaker>) {
-        let mut stack = vec![("".to_owned(), self.root_path.borrow())];
-        let mut content = vec![];
-        let mut selected_index = 0;
+    fn make_displayable(
+        users: &Users,
+        root_path: &Path,
+        nodes: &HashMap<Arc<Path>, Node>,
+    ) -> TreeLines {
+        let mut stack = vec![("".to_owned(), root_path.borrow())];
+        let mut lines = vec![];
+        let mut index = 0;
 
         while let Some((prefix, path)) = stack.pop() {
-            let Some(node) = self.nodes.get(path) else {
+            let Some(node) = nodes.get(path) else {
                 continue;
             };
 
             if node.selected {
-                selected_index = content.len();
+                index = lines.len();
             }
 
             let Ok(fileinfo) = FileInfo::new(path, users) else {
                 continue;
             };
 
-            content.push(TreeLineMaker::new(
-                &fileinfo,
-                &prefix,
-                node,
-                path,
-                display_metadata,
-            ));
+            lines.push(TreeLineBuilder::new(&fileinfo, &prefix, node, path));
 
             if node.have_children() {
                 Self::stack_children(&mut stack, prefix, node);
             }
-
-            if content.len() > self.required_height {
-                break;
-            }
         }
-        (selected_index, content)
+        TreeLines::new(lines, index)
+    }
+
+    fn remake_displayable(&mut self, users: &Users) {
+        self.displayable_lines = Self::make_displayable(users, &self.root_path, &self.nodes);
+    }
+
+    pub fn displayable(&self) -> &TreeLines {
+        &self.displayable_lines
     }
 
     #[inline]
     pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
-        let to_filename: fn(&Rc<Path>) -> Option<&OsStr> = |path| path.file_name();
+        let to_filename: fn(&Arc<Path>) -> Option<&OsStr> = |path| path.file_name();
         let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
         self.nodes
             .keys()
@@ -651,6 +696,12 @@ impl Tree {
     /// Vector of `Path` of nodes.
     pub fn paths(&self) -> Vec<&Path> {
         self.nodes.keys().map(|p| p.borrow()).collect()
+    }
+
+    pub fn flag_all(&self, flagged: &mut Flagged) {
+        self.nodes
+            .keys()
+            .for_each(|p| flagged.push(p.to_path_buf()))
     }
 
     /// True if any directory (not symlink to a directory)
@@ -708,13 +759,13 @@ fn other_prefix(prefix: &str) -> String {
 }
 
 #[inline]
-fn filename_format(current_path: &Path, current_node: &Node) -> String {
+fn filename_format(current_path: &Path, folded: bool) -> String {
     let filename = filename_from_path(current_path)
         .unwrap_or_default()
         .to_owned();
 
     if current_path.is_dir() && !current_path.is_symlink() {
-        if current_node.folded {
+        if folded {
             format!("▸ {}", filename)
         } else {
             format!("▾ {}", filename)
@@ -724,20 +775,6 @@ fn filename_format(current_path: &Path, current_node: &Node) -> String {
     }
 }
 
-/// Emulate a `ContentWindow`, returning the top and bottom index of displayable files.
-#[inline]
-pub fn calculate_top_bottom(selected_index: usize, terminal_height: usize) -> (usize, usize) {
-    let window_height = terminal_height - ContentWindow::WINDOW_MARGIN_TOP;
-    let top = if selected_index < window_height {
-        0
-    } else {
-        selected_index - 10.max(terminal_height / 2)
-    };
-    let bottom = top + window_height;
-
-    (top, bottom)
-}
-
 fn path_filename_contains(path: &Path, pattern: &str) -> bool {
     path.file_name()
         .unwrap_or_default()
@@ -745,40 +782,73 @@ fn path_filename_contains(path: &Path, pattern: &str) -> bool {
         .contains(pattern)
 }
 
-/// Holds a few references used to display a tree line
-/// Only the metadata info is hold.
-pub struct TreeLineMaker<'a> {
-    node: &'a Node,
-    prefix: std::rc::Rc<str>,
-    path: std::rc::Rc<Path>,
-    color_effect: ColorEffect,
-    metadata: Option<String>,
+/// A vector of displayable lines used to draw a tree content.
+/// We use the index to follow the user movements in the tree.
+#[derive(Clone, Debug, Default)]
+pub struct TreeLines {
+    pub content: Vec<TreeLineBuilder>,
+    index: usize,
 }
 
-impl<'a> TreeLineMaker<'a> {
-    /// Uses references to fileinfo, prefix, node & path to create a `TreeLineMaker`.
-    fn new(
-        fileinfo: &FileInfo,
-        prefix: &str,
-        node: &'a Node,
-        path: &Path,
-        display_metadata: bool,
-    ) -> Self {
+impl TreeLines {
+    fn new(content: Vec<TreeLineBuilder>, index: usize) -> Self {
+        Self { content, index }
+    }
+
+    /// Index of the currently selected file.
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
+    /// A reference to the displayable lines.
+    pub fn lines(&self) -> &Vec<TreeLineBuilder> {
+        &self.content
+    }
+
+    fn find_by_path(&self, path: &Path) -> Option<usize> {
+        self.content
+            .iter()
+            .position(|tlm| <Arc<std::path::Path> as Borrow<Path>>::borrow(&tlm.path) == path)
+    }
+
+    fn unselect(&mut self) {
+        if !self.content.is_empty() {
+            self.content[self.index].unselect()
+        }
+    }
+
+    fn select(&mut self, index: usize) {
+        if !self.content.is_empty() {
+            self.index = index;
+            self.content[self.index].select()
+        }
+    }
+}
+
+/// Holds a few references used to display a tree line
+/// Only the metadata info is hold.
+#[derive(Clone, Debug)]
+pub struct TreeLineBuilder {
+    folded: bool,
+    prefix: Arc<str>,
+    path: Arc<Path>,
+    color_effect: ColorEffect,
+    metadata: String,
+}
+
+impl TreeLineBuilder {
+    /// Uses references to fileinfo, prefix, node & path to create an instance.
+    fn new(fileinfo: &FileInfo, prefix: &str, node: &Node, path: &Path) -> Self {
         let color_effect = ColorEffect::node(fileinfo, node.selected());
-        let prefix = Rc::from(prefix);
-        let path = Rc::from(path);
-        let metadata = if display_metadata {
-            Some(
-                fileinfo
-                    .format_no_filename()
-                    .unwrap_or_else(|_| "?".repeat(19)),
-            )
-        } else {
-            None
-        };
+        let prefix = Arc::from(prefix);
+        let path = Arc::from(path);
+        let metadata = fileinfo
+            .format_no_filename()
+            .unwrap_or_else(|_| "?".repeat(19));
+        let folded = node.folded;
 
         Self {
-            node,
+            folded,
             prefix,
             path,
             color_effect,
@@ -786,23 +856,42 @@ impl<'a> TreeLineMaker<'a> {
         }
     }
 
+    /// Formated filename
     pub fn filename(&self) -> String {
-        filename_format(&self.path, self.node)
+        filename_format(&self.path, self.folded)
     }
 
+    /// `tuikit::attr::Attr` of the line
     pub fn attr(&self) -> tuikit::attr::Attr {
         self.color_effect.attr()
     }
 
+    /// Vertical bar displayed before the filename to show
+    /// the adress of the file
     pub fn prefix(&self) -> &str {
         self.prefix.borrow()
     }
 
+    /// Path of the file
     pub fn path(&self) -> &Path {
         self.path.borrow()
     }
 
-    pub fn metadata(&self) -> &Option<String> {
+    /// Metadata string representation
+    /// permission, size, owner, groupe, modification date
+    pub fn metadata(&self) -> &str {
         &self.metadata
+    }
+
+    /// Change the current effect to Empty, displaying
+    /// the file as not selected
+    pub fn unselect(&mut self) {
+        self.color_effect.effect = tuikit::attr::Effect::empty();
+    }
+
+    /// Change the current effect to `REVERSE`, displaying
+    /// the file as selected.
+    pub fn select(&mut self) {
+        self.color_effect.effect = tuikit::attr::Effect::REVERSE;
     }
 }

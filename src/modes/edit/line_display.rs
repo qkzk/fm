@@ -55,8 +55,8 @@ impl LineDisplay for InputCompleted {
             completion_strings.push(completion.to_owned());
         }
         if matches!(*self, Self::Exec) {
-            if let Ok(selected) = tab.current_file() {
-                completion_strings.push(format!(" {}", selected.path.display()));
+            for path in &status.menu.flagged.content {
+                completion_strings.push(format!(" {path}", path = path.display()));
             }
         }
         completion_strings

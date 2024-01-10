@@ -8,7 +8,8 @@ use flate2::Compression;
 use lzma::LzmaWriter;
 use zip::write::FileOptions;
 
-use crate::impl_selectable_content;
+use crate::impl_content;
+use crate::impl_selectable;
 use crate::log_line;
 
 /// Different kind of compression methods
@@ -149,7 +150,7 @@ impl Compresser {
         let mut zip = zip::ZipWriter::new(archive);
         for file in files.iter() {
             zip.start_file(
-                file.to_str().unwrap(),
+                file.to_string_lossy().as_ref(),
                 FileOptions::default().compression_method(zip::CompressionMethod::Bzip2),
             )?;
             let mut buffer = Vec::new();
@@ -164,4 +165,6 @@ impl Compresser {
     }
 }
 
-impl_selectable_content!(CompressionMethod, Compresser);
+// impl_selectable_content!(CompressionMethod, Compresser);
+impl_selectable!(Compresser);
+impl_content!(CompressionMethod, Compresser);

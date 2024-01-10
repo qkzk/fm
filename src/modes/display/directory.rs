@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::fs::read_dir;
 use std::iter::Enumerate;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 
@@ -13,14 +13,14 @@ use crate::modes::FilterKind;
 use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{is_not_hidden, FileInfo, FileKind};
-use crate::{impl_selectable_content, log_info};
+use crate::{impl_content, impl_selectable, log_info};
 
 /// Holds the information about file in the current directory.
 /// We know about the current path, the files themselves, the selected index,
 /// the "display all files including hidden" flag and the key to sort files.
 pub struct Directory {
     /// The current path
-    pub path: Rc<Path>,
+    pub path: Arc<Path>,
     /// A vector of FileInfo with every file in current path
     pub content: Vec<FileInfo>,
     /// The index of the selected file.
@@ -33,20 +33,20 @@ impl Directory {
     /// Files are sorted by filename by default.
     /// Selects the first file if any.
     pub fn new(path: &Path, users: &Users, filter: &FilterKind, show_hidden: bool) -> Result<Self> {
-        let path = Rc::from(path);
+        let path = Arc::from(path);
         let mut content = Self::files(&path, show_hidden, filter, users)?;
         let sort_kind = SortKind::default();
         sort_kind.sort(&mut content);
-        let selected_index: usize = 0;
+        let index: usize = 0;
         if !content.is_empty() {
-            content[selected_index].select();
+            content[index].select();
         }
         let used_space = get_used_space(&content);
 
         Ok(Self {
             path,
             content,
-            index: selected_index,
+            index,
             used_space,
         })
     }
@@ -57,14 +57,20 @@ impl Directory {
         settings: &TabSettings,
         users: &Users,
     ) -> Result<()> {
+        log_info!("entering {path}", path = path.display());
         self.content = Self::files(path, settings.show_hidden, &settings.filter, users)?;
+        log_info!(
+            "read {path}: {nb} files",
+            path = path.display(),
+            nb = self.content.len()
+        );
         settings.sort_kind.sort(&mut self.content);
         self.index = 0;
         if !self.content.is_empty() {
             self.content[0].select()
         }
         self.used_space = get_used_space(&self.content);
-        self.path = Rc::from(path);
+        self.path = Arc::from(path);
         Ok(())
     }
 
@@ -221,7 +227,7 @@ impl Directory {
     fn find_jump_index(&self, jump_target: &Path) -> Option<usize> {
         self.content
             .iter()
-            .position(|file| <Rc<Path> as Borrow<Path>>::borrow(&file.path) == jump_target)
+            .position(|file| <Arc<Path> as Borrow<Path>>::borrow(&file.path) == jump_target)
     }
 
     /// Select the file from its path. Returns its index in content.
@@ -248,7 +254,9 @@ impl Directory {
     }
 }
 
-impl_selectable_content!(FileInfo, Directory);
+// impl_selectable_content!(FileInfo, Directory);
+impl_selectable!(Directory);
+impl_content!(FileInfo, Directory);
 
 const MAX_PATH_ELEM_SIZE: usize = 50;
 
@@ -298,7 +306,11 @@ pub fn read_symlink_dest(path: &Path) -> Option<String> {
 }
 
 fn get_used_space(files: &[FileInfo]) -> u64 {
-    files.iter().map(|f| f.true_size).sum()
+    files
+        .iter()
+        .filter(|f| !f.is_dir())
+        .map(|f| f.true_size)
+        .sum()
 }
 
 /// Creates an optional vector of fileinfo contained in a file.
