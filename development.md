@@ -711,8 +711,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] describe what was done succintly
   - [x] test every mode
 
-## Current dev
-
 ### Version 0.1.25
 
 #### Summary
@@ -853,6 +851,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] readme
   - [x] describe what was done succintly
   - [ ] test every mode
+
+## Current dev
 
 ## Version 0.1.26
 
