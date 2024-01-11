@@ -861,6 +861,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ### Changelog
 
 - [ ] focusable windows
+
   - [x] simple focus enum, mostly following what's being done
   - [x] allow to change focus, only color the focused window border.
   - [x] Change focus with ctrl+hjkl
@@ -870,9 +871,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] Clicking an unfocused window should only give the focus, not execute anything
   - [ ] give focus with wheel ???
   - [ ] dispatch event according to focus
+
+        - send event to window
+            require to check the focus before picking the action, rewrite every mode logic since they don't apply
+        - rewrite every action
+
     - [x] movement (up, down, left, rith, pageup, pagedown)
     - [ ] if second -> menu (requiring moving history to menu ?), else status
     - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
+
 - [ ] FIX: leaving mount mode with enter when device is mounted should move to it
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
@@ -975,3 +982,99 @@ or other criteria, with the search results displayed in real-time.
 Cloud storage integration: TUI file managers can integrate with cloud storage
 services like Dropbox, Google Drive, or OneDrive, allowing users to manage
 their cloud files directly from the file manager interface.
+
+## 0.1.26 : impl focus < mode
+
+All those action must be checked to ensure the follow the "focus < mode" rule
+
+- [x] Action,
+- [ ] Back,
+- [ ] BackTab,
+- [ ] Backspace,
+- [ ] Bulk,
+- [ ] Cd,
+- [ ] Chmod,
+- [ ] ClearFlags,
+- [ ] CliMenu,
+- [ ] Compress,
+- [ ] Context,
+- [ ] CopyFilename,
+- [ ] CopyFilepath,
+- [ ] CopyPaste,
+- [ ] CutPaste,
+- [ ] Delete,
+- [ ] DeleteFile,
+- [ ] DisplayFlagged,
+- [ ] EncryptedDrive,
+- [ ] End,
+- [ ] Enter,
+- [ ] Exec,
+- [ ] Filter,
+- [ ] FlagAll,
+- [ ] FocusGoLeft,
+- [ ] FocusGoRight,
+- [ ] FocusGoDown,
+- [ ] FocusGoUp,
+- [ ] FuzzyFind,
+- [ ] FuzzyFindHelp,
+- [ ] FuzzyFindLine,
+- [ ] GoRoot,
+- [ ] GoStart,
+- [ ] Help,
+- [ ] History,
+- [ ] Home,
+- [ ] Jump,
+- [ ] KeyHome,
+- [ ] LazyGit,
+- [ ] Log,
+- [ ] MarksJump,
+- [ ] MarksNew,
+- [ ] MoveDown,
+- [ ] MoveLeft,
+- [ ] MoveRight,
+- [ ] MoveUp,
+- [ ] Ncdu,
+- [ ] NextSibling,
+- [ ] NewDir,
+- [ ] NewFile,
+- [ ] Nothing,
+- [ ] NvimFilepicker,
+- [ ] NvimSetAddress,
+- [ ] OpenConfig,
+- [ ] OpenFile,
+- [ ] OpenAll,
+- [ ] PageDown,
+- [ ] PageUp,
+- [ ] Preview,
+- [ ] PreviousSibling,
+- [ ] Quit,
+- [ ] RefreshIfNeeded,
+- [ ] RefreshView,
+- [ ] RegexMatch,
+- [ ] RemoteMount,
+- [ ] RemovableDevices,
+- [ ] Rename,
+- [ ] ResetMode,
+- [ ] ReverseFlags,
+- [ ] Search,
+- [ ] SearchNext,
+- [ ] Shell,
+- [ ] ShellCommand,
+- [ ] TuiMenu,
+- [ ] Shortcut,
+- [ ] Sort,
+- [ ] Symlink,
+- [ ] Tab,
+- [ ] ToggleDisplayFull,
+- [ ] ToggleDualPane,
+- [ ] ToggleFlag,
+- [ ] ToggleHidden,
+- [ ] TogglePreviewSecond,
+- [ ] TrashEmpty,
+- [ ] TrashMoveFile,
+- [ ] TrashOpen,
+- [ ] TrashRestoreFile,
+- [ ] Tree,
+- [ ] TreeFold,
+- [ ] TreeFoldAll,
+- [ ] TreeUnFoldAll,

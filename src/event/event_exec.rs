@@ -1193,8 +1193,15 @@ impl EventAction {
     /// Enter action mode in which you can type any valid action.
     /// Some action does nothing as they require to be executed from a specific context.
     pub fn action(status: &mut Status) -> Result<()> {
-        status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Action))?;
-        status.menu.completion.reset();
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputCompleted(InputCompleted::Action)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Action))?;
+            status.menu.completion.reset();
+        }
         Ok(())
     }
 
