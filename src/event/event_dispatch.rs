@@ -71,18 +71,22 @@ impl EventDispatcher {
     }
 
     fn char(&self, status: &mut Status, c: char) -> Result<()> {
-        let tab = status.current_tab_mut();
-        match tab.edit_mode {
-            Edit::InputSimple(InputSimple::Sort) => status.sort(c),
-            Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
-            Edit::InputSimple(_) => status.menu.input_insert(c),
-            Edit::InputCompleted(_) => status.input_complete(c),
-            Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
-            Edit::Navigate(navigate) => Self::navigate_char(navigate, status, c),
-            Edit::Nothing if matches!(tab.display_mode, Display::Preview) => {
-                tab.reset_display_mode_and_view()
+        if status.focus.is_file() {
+            self.key_matcher(status, Key::Char(c))
+        } else {
+            let tab = status.current_tab_mut();
+            match tab.edit_mode {
+                Edit::InputSimple(InputSimple::Sort) => status.sort(c),
+                Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
+                Edit::InputSimple(_) => status.menu.input_insert(c),
+                Edit::InputCompleted(_) => status.input_complete(c),
+                Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
+                Edit::Navigate(navigate) => Self::navigate_char(navigate, status, c),
+                Edit::Nothing if matches!(tab.display_mode, Display::Preview) => {
+                    tab.reset_display_mode_and_view()
+                }
+                Edit::Nothing => self.key_matcher(status, Key::Char(c)),
             }
-            Edit::Nothing => self.key_matcher(status, Key::Char(c)),
         }
     }
 

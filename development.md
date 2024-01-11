@@ -867,12 +867,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] Change focus with ctrl+arrow. Removed MOCP completely
   - [x] single pane borders
   - [x] give focus with click
+  - [ ] Clicking an unfocused window should only give the focus, not execute anything
   - [ ] give focus with wheel ???
   - [ ] dispatch event according to focus
-    - [ ] move all mode matching to event dispatch !!!!!
+    - [x] movement (up, down, left, rith, pageup, pagedown)
     - [ ] if second -> menu (requiring moving history to menu ?), else status
-  - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
-  - [ ] Clicking an unfocused window should only give the focus, not execute anything
+    - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
 - [ ] FIX: leaving mount mode with enter when device is mounted should move to it
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly

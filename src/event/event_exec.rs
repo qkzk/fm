@@ -690,14 +690,20 @@ impl EventAction {
     /// Move up one row in modes allowing movement.
     /// Does nothing if the selected item is already the first in list.
     pub fn move_up(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab_mut();
-        match tab.edit_mode {
-            Edit::Nothing => Self::move_display_up(status)?,
-            Edit::Navigate(Navigate::History) => tab.history.prev(),
-            Edit::Navigate(navigate) => status.menu.prev(navigate),
-            Edit::InputCompleted(input_completed) => status.menu.completion_prev(input_completed),
-            _ => (),
-        };
+        if status.focus.is_file() {
+            Self::move_display_up(status)?;
+        } else {
+            let tab = status.current_tab_mut();
+            match tab.edit_mode {
+                Edit::Nothing => Self::move_display_up(status)?,
+                Edit::Navigate(Navigate::History) => tab.history.prev(),
+                Edit::Navigate(navigate) => status.menu.prev(navigate),
+                Edit::InputCompleted(input_completed) => {
+                    status.menu.completion_prev(input_completed)
+                }
+                _ => (),
+            };
+        }
         status.update_second_pane_for_preview()
     }
 
@@ -739,46 +745,64 @@ impl EventAction {
     /// Move down one row in modes allowing movements.
     /// Does nothing if the user is already at the bottom.
     pub fn move_down(status: &mut Status) -> Result<()> {
-        match status.current_tab_mut().edit_mode {
-            Edit::Nothing => Self::move_display_down(status)?,
-            Edit::Navigate(Navigate::History) => status.current_tab_mut().history.next(),
-            Edit::Navigate(navigate) => status.menu.next(navigate),
-            Edit::InputCompleted(input_completed) => status.menu.completion_next(input_completed),
-            _ => (),
-        };
+        if status.focus.is_file() {
+            Self::move_display_down(status)?
+        } else {
+            match status.current_tab_mut().edit_mode {
+                Edit::Nothing => Self::move_display_down(status)?,
+                Edit::Navigate(Navigate::History) => status.current_tab_mut().history.next(),
+                Edit::Navigate(navigate) => status.menu.next(navigate),
+                Edit::InputCompleted(input_completed) => {
+                    status.menu.completion_next(input_completed)
+                }
+                _ => (),
+            };
+        }
         status.update_second_pane_for_preview()
     }
 
     /// Move to parent in normal mode,
     /// move left one char in mode requiring text input.
     pub fn move_left(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab_mut();
-        match tab.edit_mode {
-            Edit::InputSimple(_) | Edit::InputCompleted(_) => {
-                status.menu.input.cursor_left();
-            }
-            Edit::Nothing => match tab.display_mode {
-                Display::Directory => tab.move_to_parent()?,
-                Display::Tree => tab.tree_select_parent()?,
+        if status.focus.is_file() {
+            Self::file_move_left(status.current_tab_mut())?;
+        } else {
+            let tab = status.current_tab_mut();
+            match tab.edit_mode {
+                Edit::InputSimple(_) | Edit::InputCompleted(_) => {
+                    status.menu.input.cursor_left();
+                }
+                Edit::Nothing => Self::file_move_left(tab)?,
                 _ => (),
-            },
-
-            _ => (),
+            }
         }
         status.update_second_pane_for_preview()
+    }
+
+    fn file_move_left(tab: &mut Tab) -> Result<()> {
+        match tab.display_mode {
+            Display::Directory => tab.move_to_parent()?,
+            Display::Tree => tab.tree_select_parent()?,
+            _ => (),
+        };
+        Ok(())
     }
 
     /// Move to child if any or open a regular file in normal mode.
     /// Move the cursor one char to right in mode requiring text input.
     pub fn move_right(status: &mut Status) -> Result<()> {
-        let tab: &mut Tab = status.current_tab_mut();
-        match tab.edit_mode {
-            Edit::InputSimple(_) | Edit::InputCompleted(_) => {
-                status.menu.input.cursor_right();
-                Ok(())
+        if status.focus.is_file() {
+            Self::enter_file(status)
+        } else {
+            let tab: &mut Tab = status.current_tab_mut();
+            match tab.edit_mode {
+                Edit::InputSimple(_) | Edit::InputCompleted(_) => {
+                    status.menu.input.cursor_right();
+                    Ok(())
+                }
+                Edit::Nothing => Self::enter_file(status),
+                _ => Ok(()),
             }
-            Edit::Nothing => Self::enter_file(status),
-            _ => Ok(()),
         }
     }
 
@@ -869,17 +893,21 @@ impl EventAction {
 
     /// Move up 10 lines in normal mode and preview.
     pub fn page_up(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab_mut();
-        match tab.edit_mode {
-            Edit::Nothing => Self::file_page_up(status)?,
-            Edit::Navigate(navigate) => status.menu.page_up(navigate),
-            Edit::InputCompleted(input_completed) => {
-                for _ in 0..10 {
-                    status.menu.completion_prev(input_completed)
+        if status.focus.is_file() {
+            Self::file_page_up(status)?;
+        } else {
+            let tab = status.current_tab_mut();
+            match tab.edit_mode {
+                Edit::Nothing => Self::file_page_up(status)?,
+                Edit::Navigate(navigate) => status.menu.page_up(navigate),
+                Edit::InputCompleted(input_completed) => {
+                    for _ in 0..10 {
+                        status.menu.completion_prev(input_completed)
+                    }
                 }
-            }
-            _ => (),
-        };
+                _ => (),
+            };
+        }
         Ok(())
     }
 
@@ -902,17 +930,21 @@ impl EventAction {
 
     /// Move down 10 lines in normal & preview mode.
     pub fn page_down(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab_mut();
-        match tab.edit_mode {
-            Edit::Nothing => Self::file_page_down(status)?,
-            Edit::Navigate(navigate) => status.menu.page_down(navigate),
-            Edit::InputCompleted(input_completed) => {
-                for _ in 0..10 {
-                    status.menu.completion_next(input_completed)
+        if status.focus.is_file() {
+            Self::file_page_down(status)?;
+        } else {
+            let tab = status.current_tab_mut();
+            match tab.edit_mode {
+                Edit::Nothing => Self::file_page_down(status)?,
+                Edit::Navigate(navigate) => status.menu.page_down(navigate),
+                Edit::InputCompleted(input_completed) => {
+                    for _ in 0..10 {
+                        status.menu.completion_next(input_completed)
+                    }
                 }
-            }
-            _ => (),
-        };
+                _ => (),
+            };
+        }
         Ok(())
     }
 
