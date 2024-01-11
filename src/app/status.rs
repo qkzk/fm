@@ -178,7 +178,7 @@ impl Status {
         }
     }
 
-    pub fn set_focus(&mut self) {
+    pub fn set_focus_from_mode(&mut self) {
         if self.index == 0 {
             if matches!(self.tabs[self.index].edit_mode, Edit::Nothing) {
                 self.focus = Focus::LeftFile;
@@ -243,12 +243,22 @@ impl Status {
 
     /// Execute a click at `row`, `col`. Action depends on which window was clicked.
     pub fn click(&mut self, row: u16, col: u16, binds: &Bindings) -> Result<()> {
-        let window = self.window_from_row(row, self.term_size()?.1);
         self.select_tab_from_col(col)?;
+        let window = self.window_from_row(row, self.term_size()?.1);
+        self.set_focus_from_window_and_index(&window);
+        self.click_action_from_window(&window, row, col, binds)?;
+        Ok(())
+    }
+
+    fn click_action_from_window(
+        &mut self,
+        window: &Window,
+        row: u16,
+        col: u16,
+        binds: &Bindings,
+    ) -> Result<()> {
         match window {
-            Window::Menu => self.menu_action(row),
             Window::Header => self.header_action(col, binds),
-            Window::Footer => self.footer_action(col, binds),
             Window::Files => {
                 if matches!(self.current_tab().display_mode, Display::Flagged) {
                     self.menu.flagged.select_row(row)
@@ -257,7 +267,25 @@ impl Status {
                 }
                 self.update_second_pane_for_preview()
             }
+            Window::Footer => self.footer_action(col, binds),
+            Window::Menu => self.menu_action(row),
         }
+    }
+
+    fn set_focus_from_window_and_index(&mut self, window: &Window) {
+        self.focus = if self.index == 0 {
+            if matches!(window, Window::Menu) {
+                Focus::LeftMenu
+            } else {
+                Focus::LeftFile
+            }
+        } else {
+            if matches!(window, Window::Menu) {
+                Focus::RightMenu
+            } else {
+                Focus::RightFile
+            }
+        };
     }
 
     pub fn second_window_height(&self) -> Result<usize> {
@@ -448,7 +476,7 @@ impl Status {
         let len = self.menu.len(edit_mode);
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
-        self.set_focus();
+        self.set_focus_from_mode();
         self.refresh_status()
     }
 

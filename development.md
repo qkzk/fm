@@ -856,16 +856,21 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## Version 0.1.26
 
+### Summary
+
+### Changelog
+
 - [ ] focusable windows
   - [x] simple focus enum, mostly following what's being done
   - [x] allow to change focus, only color the focused window border.
   - [x] Change focus with ctrl+hjkl
   - [x] Change focus with ctrl+arrow. Removed MOCP completely
   - [x] single pane borders
+  - [x] give focus with click
+  - [ ] give focus with wheel ???
   - [ ] dispatch event according to focus
     - [ ] move all mode matching to event dispatch !!!!!
     - [ ] if second -> menu (requiring moving history to menu ?), else status
-  - [ ] give focus with click
   - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
   - [ ] Clicking an unfocused window should only give the focus, not execute anything
 - [ ] FIX: leaving mount mode with enter when device is mounted should move to it

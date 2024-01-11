@@ -783,7 +783,6 @@ impl EventAction {
     }
 
     pub fn left_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
-        EventAction::select_pane(status, col)?;
         EventAction::click(status, row, col, binds)
     }
 
