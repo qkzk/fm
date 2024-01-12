@@ -43,7 +43,11 @@ impl EventAction {
     /// Once a quit event is received, we change a flag and break the main loop.
     /// It's usefull to reset the cursor before leaving the application.
     pub fn quit(status: &mut Status) -> Result<()> {
-        status.internal_settings.must_quit = true;
+        if status.focus.is_file() {
+            status.internal_settings.must_quit = true;
+        } else {
+            status.reset_edit_mode()?;
+        }
         Ok(())
     }
 
@@ -141,6 +145,9 @@ impl EventAction {
     }
 
     pub fn display_flagged(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         if matches!(status.current_tab().display_mode, Display::Flagged) {
             status
                 .current_tab_mut()
@@ -170,26 +177,34 @@ impl EventAction {
 
     /// Remove every flag on files in this directory and others.
     pub fn clear_flags(status: &mut Status) -> Result<()> {
-        status.menu.flagged.clear();
+        if status.focus.is_file() {
+            status.menu.flagged.clear();
+        }
         Ok(())
     }
 
     /// Flag all files in the current directory.
     pub fn flag_all(status: &mut Status) -> Result<()> {
-        status.flag_all();
+        if status.focus.is_file() {
+            status.flag_all();
+        }
         Ok(())
     }
 
     /// Reverse every flag in _current_ directory. Flagged files in other
     /// directory aren't affected.
     pub fn reverse_flags(status: &mut Status) -> Result<()> {
-        status.reverse_flags();
+        if status.focus.is_file() {
+            status.reverse_flags();
+        }
         Ok(())
     }
 
     /// Toggle a single flag and move down one row.
     pub fn toggle_flag(status: &mut Status) -> Result<()> {
-        status.toggle_flag_for_selected();
+        if status.focus.is_file() {
+            status.toggle_flag_for_selected();
+        }
         Ok(())
     }
 
@@ -198,6 +213,13 @@ impl EventAction {
     /// When we enter rename from a "tree" mode, we'll need to rename the selected file in the tree,
     /// not the selected file in the pathcontent.
     pub fn rename(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::Rename)
+        ) {
+            status.reset_edit_mode()?;
+            return Ok(());
+        };
         let selected = status.current_tab().current_file()?;
         let sel_path = selected.path;
         if sel_path == status.current_tab().directory.path {
@@ -219,7 +241,15 @@ impl EventAction {
     /// the current directory.
     /// Does nothing if no file is flagged.
     pub fn copy_paste(status: &mut Status) -> Result<()> {
-        Self::set_copy_paste(status, NeedConfirmation::Copy)
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::NeedConfirmation(NeedConfirmation::Copy)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            Self::set_copy_paste(status, NeedConfirmation::Copy)?;
+        }
+        Ok(())
     }
 
     /// Enter the 'move' mode.
@@ -227,7 +257,15 @@ impl EventAction {
     /// the current directory.
     /// Does nothing if no file is flagged.
     pub fn cut_paste(status: &mut Status) -> Result<()> {
-        Self::set_copy_paste(status, NeedConfirmation::Move)
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::NeedConfirmation(NeedConfirmation::Move)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            Self::set_copy_paste(status, NeedConfirmation::Move)?;
+        }
+        Ok(())
     }
 
     fn set_copy_paste(status: &mut Status, copy_or_move: NeedConfirmation) -> Result<()> {
@@ -242,6 +280,9 @@ impl EventAction {
 
     /// Creates a symlink of every flagged file to the current directory.
     pub fn symlink(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         for original_file in status.menu.flagged.content.iter() {
             let filename = original_file
                 .as_path()
@@ -273,11 +314,26 @@ impl EventAction {
 
     /// Change to CHMOD mode allowing to edit permissions of a file.
     pub fn chmod(status: &mut Status) -> Result<()> {
-        status.set_mode_chmod()
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::Chmod)
+        ) {
+            status.reset_edit_mode()?;
+        } else {
+            status.set_mode_chmod()?;
+        }
+        Ok(())
     }
 
     /// Enter the new dir mode.
     pub fn new_dir(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::Newdir)
+        ) {
+            status.reset_edit_mode()?;
+            return Ok(());
+        }
         if matches!(
             status.current_tab().display_mode,
             Display::Directory | Display::Tree
@@ -290,6 +346,13 @@ impl EventAction {
 
     /// Enter the new file mode.
     pub fn new_file(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::Newfile)
+        ) {
+            status.reset_edit_mode()?;
+            return Ok(());
+        }
         if matches!(
             status.current_tab().display_mode,
             Display::Directory | Display::Tree
@@ -304,7 +367,7 @@ impl EventAction {
         match status.current_tab_mut().display_mode {
             Display::Directory => Self::normal_enter_file(status),
             Display::Tree => Self::tree_enter_file(status),
-            Display::Flagged => Self::jump_fuzzy(status),
+            Display::Flagged => Self::jump_flagged(status),
             _ => Ok(()),
         }
     }
@@ -347,6 +410,9 @@ impl EventAction {
     /// current tab multiple times. It may change in the future.
     /// Only files which use an external opener are supported.
     pub fn open_file(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         if status.menu.flagged.is_empty() {
             status.open_selected_file()
         } else {
@@ -361,6 +427,13 @@ impl EventAction {
     /// Enter the execute mode. Most commands must be executed to allow for
     /// a confirmation.
     pub fn exec(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputCompleted(InputCompleted::Exec)
+        ) {
+            status.reset_edit_mode()?;
+            return Ok(());
+        }
         if status.menu.flagged.is_empty() {
             status
                 .menu
@@ -452,6 +525,9 @@ impl EventAction {
     /// Display the help which can be navigated and displays the configrable
     /// binds.
     pub fn help(status: &mut Status, binds: &Bindings) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         let help = help_string(binds, &status.internal_settings.opener);
         status.current_tab_mut().set_display_mode(Display::Preview);
         status.current_tab_mut().preview = Preview::help(&help);
@@ -461,10 +537,14 @@ impl EventAction {
     }
 
     /// Display the last actions impacting the file tree
-    pub fn log(tab: &mut Tab) -> Result<()> {
+    pub fn log(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         let Ok(log) = read_log() else {
             return Ok(());
         };
+        let tab = status.current_tab_mut();
         tab.set_display_mode(Display::Preview);
         tab.preview = Preview::log(log);
         tab.window.reset(tab.preview.len());
@@ -564,15 +644,15 @@ impl EventAction {
 
     /// Enter Marks jump mode, allowing to jump to a marked file.
     pub fn marks_jump(status: &mut Status) -> Result<()> {
-        if status.menu.marks.is_empty() {
-            return Ok(());
-        }
         if matches!(
             status.current_tab().edit_mode,
             Edit::Navigate(Navigate::Marks(MarkAction::Jump))
         ) {
             status.reset_edit_mode()?;
         } else {
+            if status.menu.marks.is_empty() {
+                return Ok(());
+            }
             status.set_edit_mode(
                 status.index,
                 Edit::Navigate(Navigate::Marks(MarkAction::Jump)),
@@ -605,6 +685,9 @@ impl EventAction {
     /// reasons unknow to me - it does nothing.
     /// It requires the "nvim-send" application to be in $PATH.
     pub fn nvim_filepicker(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         status.update_nvim_listen_address();
         if status.internal_settings.nvim_server.is_empty() {
             return Ok(());
@@ -628,17 +711,30 @@ impl EventAction {
     /// Enter the set neovim RPC address mode where the user can type
     /// the RPC address himself
     pub fn set_nvim_server(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::SetNvimAddr)
+        ) {
+            status.reset_edit_mode()?;
+            return Ok(());
+        };
         status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::SetNvimAddr))
     }
 
     /// Move back in history to the last visited directory.
     pub fn back(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         status.current_tab_mut().back()?;
         status.update_second_pane_for_preview()
     }
 
     /// Move to $HOME aka ~.
     pub fn home(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         let home_cow = shellexpand::tilde("~");
         let home: &str = home_cow.borrow();
         let home_path = path::Path::new(home);
@@ -647,17 +743,23 @@ impl EventAction {
     }
 
     pub fn go_root(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         let root_path = std::path::PathBuf::from("/");
         status.current_tab_mut().cd(&root_path)?;
         status.update_second_pane_for_preview()
     }
 
     pub fn go_start(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         status.current_tab_mut().cd(&START_FOLDER)?;
         status.update_second_pane_for_preview()
     }
 
-    pub fn jump_fuzzy(status: &mut Status) -> Result<()> {
+    fn jump_flagged(status: &mut Status) -> Result<()> {
         let Some(path) = status.menu.flagged.selected() else {
             return Ok(());
         };
@@ -707,16 +809,18 @@ impl EventAction {
         status.update_second_pane_for_preview()
     }
 
-    pub fn next_sibling(tab: &mut Tab) -> Result<()> {
-        if matches!(tab.display_mode, Display::Tree) {
-            tab.tree_next_sibling();
+    pub fn next_sibling(status: &mut Status) -> Result<()> {
+        if matches!(status.tabs[status.index].display_mode, Display::Tree) && status.focus.is_file()
+        {
+            status.current_tab_mut().tree_next_sibling();
         }
         Ok(())
     }
 
-    pub fn previous_sibling(tab: &mut Tab) -> Result<()> {
-        if matches!(tab.display_mode, Display::Tree) {
-            tab.tree_prev_sibling();
+    pub fn previous_sibling(status: &mut Status) -> Result<()> {
+        if matches!(status.tabs[status.index].display_mode, Display::Tree) && status.focus.is_file()
+        {
+            status.current_tab_mut().tree_prev_sibling();
         }
         Ok(())
     }
@@ -836,14 +940,19 @@ impl EventAction {
 
     /// Delete a char to the left in modes allowing edition.
     pub fn backspace(status: &mut Status) -> Result<()> {
+        if status.focus.is_file() {
+            return Ok(());
+        }
         match status.current_tab().edit_mode {
-            Edit::Navigate(Navigate::Marks(MarkAction::New)) => status.menu.marks.remove_selected(),
+            Edit::Navigate(Navigate::Marks(MarkAction::New)) => {
+                status.menu.marks.remove_selected()?;
+            }
             Edit::InputSimple(_) | Edit::InputCompleted(_) => {
                 status.menu.input.delete_char_left();
-                Ok(())
             }
-            _ => Ok(()),
+            _ => (),
         }
+        Ok(())
     }
 
     /// Delete all chars to the right in mode allowing edition.
@@ -859,36 +968,36 @@ impl EventAction {
 
     /// Move to leftmost char in mode allowing edition.
     pub fn key_home(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab_mut();
-        match tab.edit_mode {
-            Edit::Nothing => {
-                match tab.display_mode {
-                    Display::Directory => tab.normal_go_top(),
-                    Display::Preview => tab.preview_go_top(),
-                    Display::Tree => tab.tree_go_to_root()?,
-                    Display::Flagged => status.menu.flagged.select_first(),
-                };
-            }
-            _ => status.menu.input.cursor_start(),
+        if status.focus.is_file() {
+            let tab = status.current_tab_mut();
+            match tab.display_mode {
+                Display::Directory => tab.normal_go_top(),
+                Display::Preview => tab.preview_go_top(),
+                Display::Tree => tab.tree_go_to_root()?,
+                Display::Flagged => status.menu.flagged.select_first(),
+            };
+            status.update_second_pane_for_preview()
+        } else {
+            status.menu.input.cursor_start();
+            Ok(())
         }
-        status.update_second_pane_for_preview()
     }
 
     /// Move to the bottom in any mode.
     pub fn end(status: &mut Status) -> Result<()> {
-        let tab = status.current_tab_mut();
-        match tab.edit_mode {
-            Edit::Nothing => {
-                match tab.display_mode {
-                    Display::Directory => tab.normal_go_bottom(),
-                    Display::Preview => tab.preview_go_bottom(),
-                    Display::Tree => tab.tree_go_to_bottom_leaf()?,
-                    Display::Flagged => status.menu.flagged.select_last(),
-                };
-            }
-            _ => status.menu.input.cursor_end(),
+        if status.focus.is_file() {
+            let tab = status.current_tab_mut();
+            match tab.display_mode {
+                Display::Directory => tab.normal_go_bottom(),
+                Display::Preview => tab.preview_go_bottom(),
+                Display::Tree => tab.tree_go_to_bottom_leaf()?,
+                Display::Flagged => status.menu.flagged.select_last(),
+            };
+            status.update_second_pane_for_preview()?;
+        } else {
+            status.menu.input.cursor_end();
         }
-        status.update_second_pane_for_preview()
+        Ok(())
     }
 
     /// Move up 10 lines in normal mode and preview.
@@ -971,7 +1080,7 @@ impl EventAction {
     /// In normal mode, it will open the file.
     /// Reset to normal mode afterwards.
     pub fn enter(status: &mut Status, binds: &Bindings) -> Result<()> {
-        if matches!(status.current_tab().edit_mode, Edit::Nothing) {
+        if status.focus.is_file() {
             Self::enter_file(status)
         } else {
             LeaveMode::leave_edit_mode(status, binds)
@@ -981,17 +1090,17 @@ impl EventAction {
     /// Change tab in normal mode with dual pane displayed,
     /// insert a completion in modes allowing completion.
     pub fn tab(status: &mut Status) -> Result<()> {
-        match status.current_tab_mut().edit_mode {
-            Edit::InputCompleted(_) => status.menu.completion_tab(),
-            Edit::Nothing => status.next(),
-            _ => (),
-        };
+        if status.focus.is_file() {
+            status.next()
+        } else if let Edit::InputCompleted(_) = status.current_tab_mut().edit_mode {
+            status.menu.completion_tab()
+        }
         Ok(())
     }
 
-    /// Change tab in normal mode.
+    /// Change tab
     pub fn backtab(status: &mut Status) -> Result<()> {
-        if matches!(status.current_tab().edit_mode, Edit::Nothing) {
+        if status.focus.is_file() {
             status.prev()
         };
         Ok(())
@@ -1017,6 +1126,9 @@ impl EventAction {
 
     /// Copy the filename of the selected file in normal mode.
     pub fn copy_filename(status: &Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         match status.current_tab().display_mode {
             Display::Tree | Display::Directory => {
                 let Ok(file_info) = status.current_tab().current_file() else {
@@ -1037,6 +1149,9 @@ impl EventAction {
 
     /// Copy the filepath of the selected file in normal mode.
     pub fn copy_filepath(status: &Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         match status.current_tab().display_mode {
             Display::Tree | Display::Directory => {
                 let Ok(file_info) = status.current_tab().current_file() else {
@@ -1151,6 +1266,9 @@ impl EventAction {
 
     /// Open the config file.
     pub fn open_config(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         match status
             .internal_settings
             .opener
