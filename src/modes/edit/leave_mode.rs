@@ -57,12 +57,12 @@ impl LeaveMode {
             Edit::Navigate(Navigate::BulkMenu) => LeaveMode::bulk_ask(status),
             Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status),
             Edit::Navigate(Navigate::CliApplication) => LeaveMode::cli_info(status),
-            Edit::Navigate(Navigate::EncryptedDrive) => Ok(()),
+            Edit::Navigate(Navigate::EncryptedDrive) => LeaveMode::go_to_mount(status),
             Edit::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMode::marks_update(status),
             Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMode::marks_jump(status),
             Edit::Navigate(Navigate::Compress) => LeaveMode::compress(status),
             Edit::Navigate(Navigate::Context) => LeaveMode::context(status, binds),
-            Edit::Navigate(Navigate::RemovableDevices) => Ok(()),
+            Edit::Navigate(Navigate::RemovableDevices) => LeaveMode::go_to_mount(status),
             Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
             Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status),
             Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
@@ -413,5 +413,14 @@ impl LeaveMode {
         let current_path = &path_to_string(&status.current_tab().directory_of_selected()?);
         status.menu.mount_remote(current_path);
         Ok(())
+    }
+
+    /// Go to the _mounted_ device. Does nothing if the device isn't mounted.
+    pub fn go_to_mount(status: &mut Status) -> Result<()> {
+        match status.current_tab().edit_mode {
+            Edit::Navigate(Navigate::EncryptedDrive) => status.go_to_encrypted_drive(),
+            Edit::Navigate(Navigate::RemovableDevices) => status.go_to_removable(),
+            _ => Ok(()),
+        }
     }
 }

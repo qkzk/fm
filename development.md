@@ -889,7 +889,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
 
 - [x] setting second pane as preview should enable dual pane at the same time
-- [ ] FIX: leaving mount mode with enter when device is mounted should move to it
+- [x] FIX: leaving mount mode with enter when device is mounted should move to it
 - [x] FIX: clicking footer row execute directory actions, even in flagged display mode
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
