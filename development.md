@@ -858,6 +858,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Summary
 
+- BREAKING: removed jump mode completeley. If you bound a key to this mode in your config, you have to remove it.
+  You can see your flagged files in the display::flagged mode, default bind: <F>.
+
 ### Changelog
 
 - [ ] focusable windows
@@ -887,6 +890,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] setting second pane as preview should enable dual pane at the same time
 - [ ] FIX: leaving mount mode with enter when device is mounted should move to it
+- [x] FIX: clicking footer row execute directory actions, even in flagged display mode
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
   - [ ] display number of matches while searching

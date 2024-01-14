@@ -22,8 +22,8 @@ mod inner {
         ActionMap::Ncdu,
         ActionMap::Sort,
         ActionMap::LazyGit,
+        ActionMap::DisplayFlagged,
         ActionMap::Sort,
-        ActionMap::Nothing, // for out of bounds
     ];
 
     pub trait ClickableLine: ClickableLineInner {
@@ -38,6 +38,7 @@ mod inner {
                     return self.action_index(index);
                 }
             }
+            crate::log_info!("no action found");
             &ActionMap::Nothing
         }
     }
@@ -393,8 +394,8 @@ mod inner {
                 width
             };
             let raw_strings = Self::make_strings(status);
-            let sizes = Self::make_sizes(&raw_strings);
             let strings = Footer::make_padded_strings(&raw_strings, used_width);
+            let sizes = Self::make_sizes(&strings);
 
             Ok(Self {
                 strings,

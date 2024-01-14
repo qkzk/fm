@@ -9,13 +9,13 @@ use sysinfo::{Disk, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
-use crate::app::ClickableLine;
 use crate::app::FlaggedHeader;
 use crate::app::Footer;
 use crate::app::Header;
 use crate::app::InternalSettings;
 use crate::app::Session;
 use crate::app::Tab;
+use crate::app::{ClickableLine, FlaggedFooter};
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
 use crate::config::Bindings;
@@ -1109,12 +1109,19 @@ impl Status {
     /// Execute an action when the footer line was clicked.
     pub fn footer_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
         log_info!("footer clicked col {col}");
-        if matches!(self.current_tab().display_mode, Display::Preview) {
-            return Ok(());
-        }
         let is_right = self.index == 1;
-        let footer = Footer::new(self, self.current_tab())?;
-        let action = footer.action(col as usize, is_right);
+        let action = match self.current_tab().display_mode {
+            Display::Preview => return Ok(()),
+            Display::Tree | Display::Directory => {
+                let footer = Footer::new(self, self.current_tab())?;
+                footer.action(col as usize, is_right).to_owned()
+            }
+            Display::Flagged => {
+                let footer = FlaggedFooter::new(self)?;
+                footer.action(col as usize, is_right).to_owned()
+            }
+        };
+        log_info!("action: {action}");
         action.matcher(self, binds)
     }
 
