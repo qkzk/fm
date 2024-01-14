@@ -498,21 +498,6 @@ impl EventAction {
         Ok(())
     }
 
-    /// Enter JUMP mode, allowing to jump to any flagged file.
-    /// Does nothing if no file is flagged.
-    pub fn jump(status: &mut Status) -> Result<()> {
-        if matches!(
-            status.current_tab().edit_mode,
-            Edit::Navigate(Navigate::Jump)
-        ) {
-            status.reset_edit_mode()?;
-        } else if !status.menu.flagged.is_empty() {
-            status.menu.flagged.index = 0;
-            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Jump))?;
-        }
-        Ok(())
-    }
-
     /// Enter bulkrename mode, opening a random temp file where the user
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.

@@ -103,7 +103,6 @@ impl Bindings {
             (Key::Alt('g'), ActionMap::Cd),
             (Key::Alt('h'), ActionMap::Help),
             (Key::Alt('i'), ActionMap::CliMenu),
-            (Key::Alt('j'), ActionMap::Jump),
             (Key::Alt('l'), ActionMap::Log),
             (Key::Alt('o'), ActionMap::TrashOpen),
             (Key::Alt('r'), ActionMap::RemoteMount),

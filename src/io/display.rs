@@ -857,7 +857,6 @@ impl<'a> WinSecondary<'a> {
             Navigate::Context => self.draw_context(canvas),
             Navigate::EncryptedDrive => self.draw_encrypted_drive(canvas),
             Navigate::History => self.draw_history(canvas),
-            Navigate::Jump => self.draw_destination(canvas, &self.status.menu.flagged),
             Navigate::Marks(mark_action) => self.draw_marks(canvas, mark_action),
             Navigate::RemovableDevices => self.draw_removable(canvas),
             Navigate::TuiApplication => self.draw_shell_menu(canvas),

@@ -307,7 +307,6 @@ impl Status {
                     Navigate::Context => self.menu.context.set_index(index),
                     Navigate::EncryptedDrive => self.menu.encrypted_devices.set_index(index),
                     Navigate::History => self.current_tab_mut().history.set_index(index),
-                    Navigate::Jump => self.menu.flagged.set_index(index),
                     Navigate::Marks(_) => self.menu.marks.set_index(index),
                     Navigate::RemovableDevices => self.menu.removable_devices.set_index(index),
                     Navigate::Shortcut => self.menu.shortcut.set_index(index),

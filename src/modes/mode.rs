@@ -203,8 +203,6 @@ impl Leave for InputSimple {
 /// For some of them, it's just moving there, for some it acts on some file.
 #[derive(Clone, Copy, Debug)]
 pub enum Navigate {
-    /// Navigate to a flagged file
-    Jump,
     /// Navigate back to a visited path
     History,
     /// Navigate to a predefined shortcut
@@ -233,10 +231,6 @@ impl fmt::Display for Navigate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Self::Marks(_) => write!(f, "Marks jump:"),
-            Self::Jump => write!(
-                f,
-                "<Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash -- <f> fuzzy"
-            ),
             Self::History => write!(f, "History :"),
             Self::Shortcut => write!(f, "Shortcut :"),
             Self::Trash => write!(f, "Trash :"),
@@ -254,7 +248,7 @@ impl fmt::Display for Navigate {
                 write!(f, "Removable devices :")
             }
             Self::CliApplication => write!(f, "Display infos :"),
-            Self::Context=> write!(f, "Context"),
+            Self::Context => write!(f, "Context"),
         }
     }
 }

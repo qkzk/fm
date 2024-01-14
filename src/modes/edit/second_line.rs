@@ -20,7 +20,6 @@ impl SecondLine for Edit {
 impl SecondLine for Navigate {
     fn second_line(&self) -> &'static str {
         match self {
-            Self::Jump => "Pick a destination",
             Self::Trash => "",
             Self::History => "Pick a destination",
             Self::Shortcut => "Pick a destination",

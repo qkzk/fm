@@ -17,12 +17,11 @@ mod inner {
         ActionMap::Filter,
     ];
 
-    const FOOTER_ACTIONS: [ActionMap; 7] = [
+    const FOOTER_ACTIONS: [ActionMap; 6] = [
         ActionMap::Nothing, // position
         ActionMap::Ncdu,
         ActionMap::Sort,
         ActionMap::LazyGit,
-        ActionMap::Jump,
         ActionMap::Sort,
         ActionMap::Nothing, // for out of bounds
     ];
@@ -384,7 +383,7 @@ mod inner {
     }
 
     impl FlaggedFooter {
-        const ACTIONS: [ActionMap; 2] = [ActionMap::Nothing, ActionMap::Jump];
+        const ACTIONS: [ActionMap; 2] = [ActionMap::Nothing, ActionMap::DisplayFlagged];
 
         pub fn new(status: &Status) -> Result<Self> {
             let (width, _) = status.internal_settings.term.term_size()?;

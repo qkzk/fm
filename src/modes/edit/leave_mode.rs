@@ -51,7 +51,6 @@ impl LeaveMode {
                 LeaveMode::password(status, action, usage)
             }
             Edit::InputSimple(InputSimple::Remote) => LeaveMode::remote(status),
-            Edit::Navigate(Navigate::Jump) => LeaveMode::jump(status),
             Edit::Navigate(Navigate::History) => LeaveMode::history(status),
             Edit::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status),
             Edit::Navigate(Navigate::Trash) => LeaveMode::trash(status),
@@ -154,18 +153,6 @@ impl LeaveMode {
         status.internal_settings.nvim_server = status.menu.input.string();
         status.reset_edit_mode()?;
         Ok(())
-    }
-
-    /// Execute a jump to the selected flagged file.
-    /// If the user selected a directory, we jump inside it.
-    /// Otherwise, we jump to the parent and select the file.
-    pub fn jump(status: &mut Status) -> Result<()> {
-        let Some(jump_target) = status.menu.flagged.selected() else {
-            return Ok(());
-        };
-        let jump_target = jump_target.to_owned();
-        status.current_tab_mut().jump(jump_target)?;
-        status.update_second_pane_for_preview()
     }
 
     /// Select the first file matching the typed regex in current dir.

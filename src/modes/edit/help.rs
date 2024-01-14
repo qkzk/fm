@@ -96,7 +96,6 @@ Different modes for the bottom window
 {Rename:<10}:      RENAME
 {Cd:<10}:      CD
 {RegexMatch:<10}:      REGEXMATCH
-{Jump:<10}:      JUMP
 {Sort:<10}:      SORT
 {History:<10}:      HISTORY
 {Shortcut:<10}:      SHORTCUT
