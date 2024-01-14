@@ -1006,14 +1006,19 @@ impl EventAction {
         Ok(())
     }
 
-    /// Delete all chars to the right in mode allowing edition.
+    /// When files are focused, try to delete the flagged files (or selected if no file is flagged)
+    /// When edit window is focused, delete all chars to the right in mode allowing edition.
     pub fn delete(status: &mut Status) -> Result<()> {
-        match status.current_tab_mut().edit_mode {
-            Edit::InputSimple(_) | Edit::InputCompleted(_) => {
-                status.menu.input.delete_chars_right();
-                Ok(())
+        if status.focus.is_file() {
+            Self::delete_file(status)
+        } else {
+            match status.current_tab_mut().edit_mode {
+                Edit::InputSimple(_) | Edit::InputCompleted(_) => {
+                    status.menu.input.delete_chars_right();
+                    Ok(())
+                }
+                _ => Ok(()),
             }
-            _ => Ok(()),
         }
     }
 

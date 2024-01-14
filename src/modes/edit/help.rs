@@ -65,7 +65,7 @@ const HELP_TO_FORMAT: &str = "
 {Symlink:<10}:      symlink to current dir
 {CopyPaste:<10}:      copy to current dir
 {CutPaste:<10}:      move to current dir
-{DeleteFile:<10}:      delete files permanently
+{Delete:<10}:      delete files permanently
 {TrashMoveFile:<10}:      move to trash
 {Compress:<10}:      compress into an archive
 

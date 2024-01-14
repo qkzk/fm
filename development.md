@@ -871,7 +871,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] Clicking an unfocused window should only give the focus, not execute anything
   - [ ] give focus with wheel ???
   - [ ] remove flagged mode completely
-  - [ ] merge Action::Delete & Action::DeleteFile
+  - [x] merge Action::Delete & Action::DeleteFile
   - [ ] test open file from menu (context ? header ?)
   - [ ] remove Action::OpenAll
   - [ ] refresh if needed ???

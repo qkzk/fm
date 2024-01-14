@@ -92,7 +92,7 @@ impl Bindings {
             (Key::Char('u'), ActionMap::ClearFlags),
             (Key::Char('v'), ActionMap::ReverseFlags),
             (Key::Char('w'), ActionMap::RegexMatch),
-            (Key::Char('x'), ActionMap::DeleteFile),
+            (Key::Char('x'), ActionMap::Delete),
             (Key::Char('z'), ActionMap::TreeFold),
             (Key::Char('Z'), ActionMap::TreeUnFoldAll),
             (Key::Alt('b'), ActionMap::Bulk),
