@@ -57,8 +57,8 @@ impl EventAction {
     }
 
     /// Refresh the view if files were modified in current directory.
-    pub fn refresh_if_needed(tab: &mut Tab) -> Result<()> {
-        tab.refresh_if_needed()
+    pub fn refresh_if_needed(status: &mut Status) -> Result<()> {
+        status.current_tab_mut().refresh_if_needed()
     }
 
     pub fn resize(status: &mut Status, width: usize, height: usize) -> Result<()> {
@@ -184,8 +184,11 @@ impl EventAction {
     /// Every file can be previewed. See the `crate::enum::Preview` for
     /// more details on previewinga file.
     /// Does nothing if the directory is empty.
-    pub fn preview(tab: &mut Tab) -> Result<()> {
-        tab.make_preview()
+    pub fn preview(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
+        status.current_tab_mut().make_preview()
     }
 
     /// Toggle the display of hidden files.
@@ -434,7 +437,14 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        if status.menu.flagged.is_empty() {
+        if matches!(status.current_tab().display_mode, Display::Flagged) {
+            let Some(path) = status.menu.flagged.selected() else {
+                return Ok(());
+            };
+            let path = path.to_owned();
+            status.open_single_file(&path);
+            Ok(())
+        } else if status.menu.flagged.is_empty() {
             status.open_selected_file()
         } else {
             status.open_flagged_files()
@@ -950,16 +960,16 @@ impl EventAction {
         EventAction::click(status, row, col, binds)
     }
 
-    pub fn wheel_up(status: &mut Status, col: u16, nb_of_scrolls: u16) -> Result<()> {
-        Self::select_pane(status, col)?;
+    pub fn wheel_up(status: &mut Status, row: u16, col: u16, nb_of_scrolls: u16) -> Result<()> {
+        status.set_focus(row, col)?;
         for _ in 0..nb_of_scrolls {
             Self::move_up(status)?
         }
         Ok(())
     }
 
-    pub fn wheel_down(status: &mut Status, col: u16, nb_of_scrolls: u16) -> Result<()> {
-        Self::select_pane(status, col)?;
+    pub fn wheel_down(status: &mut Status, row: u16, col: u16, nb_of_scrolls: u16) -> Result<()> {
+        status.set_focus(row, col)?;
         for _ in 0..nb_of_scrolls {
             Self::move_down(status)?
         }

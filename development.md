@@ -860,6 +860,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - BREAKING: removed jump mode completeley. If you bound a key to this mode in your config, you have to remove it.
   You can see your flagged files in the display::flagged mode, default bind: <F>.
+- BREAKING: removed all MOCP controls from fm. What was it doing there anyway ?.
+  You will have to remove all your custom binds to MOCP control from your config file to make it work.
 
 ### Changelog
 
@@ -871,26 +873,18 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] Change focus with ctrl+arrow. Removed MOCP completely
   - [x] single pane borders
   - [x] give focus with click
-  - [ ] Clicking an unfocused window should only give the focus, not execute anything
-  - [ ] give focus with wheel ???
+  - [x] give focus with wheel
   - [x] remove flagged mode completely
   - [x] merge Action::Delete & Action::DeleteFile
-  - [ ] test open file from menu (context ? header ?)
-  - [ ] remove Action::OpenAll
-  - [ ] refresh if needed ???
-  - [ ] dispatch event according to focus
-
-        - send event to window
-            require to check the focus before picking the action, rewrite every mode logic since they don't apply
-        - rewrite every action
-
-    - [x] movement (up, down, left, rith, pageup, pagedown)
-    - [ ] if second -> menu (requiring moving history to menu ?), else status
-    - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
+  - [x] test open file from menu (context ? header ?)
+  - [x] in Display::Flagged, open a single file with o, all files with ctrl+o
+  - [x] dispatch event according to focus
+  - [ ] test everything
 
 - [x] setting second pane as preview should enable dual pane at the same time
 - [x] FIX: leaving mount mode with enter when device is mounted should move to it
 - [x] FIX: clicking footer row execute directory actions, even in flagged display mode
+- [ ] FIX: leaving flagged file should reset the window correctly
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
   - [ ] display number of matches while searching
@@ -898,7 +892,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] entering
     - [ ] setting
     - [ ] leaving aka reseting
-- [ ] remove MOCP control from fm ???
+- [x] remove MOCP control from fm ???
 
 ## TODO
 
@@ -992,99 +986,3 @@ or other criteria, with the search results displayed in real-time.
 Cloud storage integration: TUI file managers can integrate with cloud storage
 services like Dropbox, Google Drive, or OneDrive, allowing users to manage
 their cloud files directly from the file manager interface.
-
-## 0.1.26 : impl focus < mode
-
-All those action must be checked to ensure the follow the "focus < mode" rule
-
-- [x] Action,
-- [x] Back,
-- [x] BackTab,
-- [x] Backspace,
-- [x] Bulk,
-- [x] Cd,
-- [x] Chmod,
-- [x] ClearFlags,
-- [x] CliMenu,
-- [x] Compress,
-- [x] Context,
-- [x] CopyFilename,
-- [x] CopyFilepath,
-- [x] CopyPaste,
-- [x] CutPaste,
-- [ ] Delete,
-- [ ] DeleteFile,
-- [x] DisplayFlagged,
-- [x] EncryptedDrive,
-- [x] End,
-- [x] Enter,
-- [x] Exec,
-- [x] Filter,
-- [x] FlagAll,
-- [x] FocusGoLeft,
-- [x] FocusGoRight,
-- [x] FocusGoDown,
-- [x] FocusGoUp,
-- [x] FuzzyFind,
-- [x] FuzzyFindHelp,
-- [x] FuzzyFindLine,
-- [x] GoRoot,
-- [x] GoStart,
-- [x] Help,
-- [x] History,
-- [x] Home,
-- [ ] Jump,
-- [x] KeyHome,
-- [x] LazyGit,
-- [x] Log,
-- [x] MarksJump,
-- [x] MarksNew,
-- [x] MoveDown,
-- [x] MoveLeft,
-- [x] MoveRight,
-- [x] MoveUp,
-- [x] Ncdu,
-- [x] NextSibling,
-- [x] NewDir,
-- [x] NewFile,
-- [x] Nothing,
-- [x] NvimFilepicker,
-- [x] NvimSetAddress,
-- [x] OpenConfig,
-- [x] OpenFile,
-- [ ] OpenAll,
-- [x] PageDown,
-- [x] PageUp,
-- [ ] Preview,
-- [x] PreviousSibling,
-- [x] Quit,
-- [ ] RefreshIfNeeded,
-- [x] RefreshView,
-- [x] RegexMatch,
-- [x] RemoteMount,
-- [x] RemovableDevices,
-- [x] Rename,
-- [x] ResetMode,
-- [x] ReverseFlags,
-- [x] Search,
-- [x] SearchNext,
-- [x] Shell,
-- [x] ShellCommand,
-- [x] Shortcut,
-- [x] Sort,
-- [x] Symlink,
-- [x] Tab,
-- [x] ToggleDisplayFull,
-- [x] ToggleDualPane,
-- [x] ToggleFlag,
-- [x] ToggleHidden,
-- [x] TogglePreviewSecond,
-- [x] TrashEmpty,
-- [x] TrashMoveFile,
-- [x] TrashOpen,
-- [x] TrashRestoreFile,
-- [x] Tree,
-- [x] TreeFold,
-- [x] TreeFoldAll,
-- [x] TreeUnFoldAll,
-- [x] TuiMenu,

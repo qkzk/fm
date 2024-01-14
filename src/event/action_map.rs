@@ -108,7 +108,6 @@ impl ActionMap {
     /// Makes the junction between `Actions` and `Events`.
     /// Every Action links to a different `EventExec` method.
     pub fn matcher(&self, status: &mut Status, binds: &Bindings) -> Result<()> {
-        let current_tab = status.current_tab_mut();
         match self {
             Self::Action => EventAction::action(status),
             Self::Back => EventAction::back(status),
@@ -165,10 +164,10 @@ impl ActionMap {
             Self::OpenAll => EventAction::open_all(status),
             Self::PageDown => EventAction::page_down(status),
             Self::PageUp => EventAction::page_up(status),
-            Self::Preview => EventAction::preview(current_tab),
+            Self::Preview => EventAction::preview(status),
             Self::PreviousSibling => EventAction::previous_sibling(status),
             Self::Quit => EventAction::quit(status),
-            Self::RefreshIfNeeded => EventAction::refresh_if_needed(current_tab),
+            Self::RefreshIfNeeded => EventAction::refresh_if_needed(status),
             Self::RefreshView => EventAction::refresh_view(status),
             Self::RegexMatch => EventAction::regex_match(status),
             Self::RemoteMount => EventAction::remote_mount(status),

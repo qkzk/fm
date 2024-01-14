@@ -241,11 +241,16 @@ impl Status {
         }
     }
 
-    /// Execute a click at `row`, `col`. Action depends on which window was clicked.
-    pub fn click(&mut self, row: u16, col: u16, binds: &Bindings) -> Result<()> {
+    pub fn set_focus(&mut self, row: u16, col: u16) -> Result<Window> {
         self.select_tab_from_col(col)?;
         let window = self.window_from_row(row, self.term_size()?.1);
         self.set_focus_from_window_and_index(&window);
+        Ok(window)
+    }
+
+    /// Execute a click at `row`, `col`. Action depends on which window was clicked.
+    pub fn click(&mut self, row: u16, col: u16, binds: &Bindings) -> Result<()> {
+        let window = self.set_focus(row, col)?;
         self.click_action_from_window(&window, row, col, binds)?;
         Ok(())
     }
@@ -740,16 +745,20 @@ impl Status {
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
         let path = self.current_tab().current_file()?.path;
-        match self.internal_settings.opener.kind(&path) {
+        self.open_single_file(&path);
+        Ok(())
+    }
+
+    pub fn open_single_file(&mut self, path: &std::path::Path) {
+        match self.internal_settings.opener.kind(path) {
             Some(Kind::Internal(Internal::NotSupported)) => {
                 let _ = self.mount_iso_drive();
             }
             Some(_) => {
-                let _ = self.internal_settings.opener.open_single(&path);
+                let _ = self.internal_settings.opener.open_single(path);
             }
             None => (),
         }
-        Ok(())
     }
 
     /// Open every flagged file with their respective opener.

@@ -35,11 +35,11 @@ impl EventDispatcher {
 
     fn match_key_event(&self, status: &mut Status, key: Key) -> Result<()> {
         match key {
-            Key::WheelUp(_, col, nb_of_scrolls) => {
-                EventAction::wheel_up(status, col, nb_of_scrolls)?
+            Key::WheelUp(row, col, nb_of_scrolls) => {
+                EventAction::wheel_up(status, row, col, nb_of_scrolls)?
             }
-            Key::WheelDown(_, col, nb_of_scrolls) => {
-                EventAction::wheel_down(status, col, nb_of_scrolls)?
+            Key::WheelDown(row, col, nb_of_scrolls) => {
+                EventAction::wheel_down(status, row, col, nb_of_scrolls)?
             }
             Key::SingleClick(MouseButton::Left, row, col) => {
                 EventAction::left_click(status, &self.binds, row, col)?
@@ -55,7 +55,7 @@ impl EventDispatcher {
             // reserved keybind which can't be bound to anything.
             // using `Key::User(())` conflicts with skim internal which
             // interpret this event as a signal(1)
-            REFRESH_KEY => EventAction::refresh_if_needed(status.current_tab_mut())?,
+            REFRESH_KEY => EventAction::refresh_if_needed(status)?,
 
             Key::Char(c) => self.char(status, c)?,
             key => self.key_matcher(status, key)?,
