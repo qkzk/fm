@@ -874,6 +874,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] merge Action::Delete & Action::DeleteFile
   - [ ] test open file from menu (context ? header ?)
   - [ ] remove Action::OpenAll
+  - [ ] refresh if needed ???
   - [ ] dispatch event according to focus
 
         - send event to window
@@ -884,6 +885,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] if second -> menu (requiring moving history to menu ?), else status
     - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
 
+- [x] setting second pane as preview should enable dual pane at the same time
 - [ ] FIX: leaving mount mode with enter when device is mounted should move to it
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
@@ -1053,32 +1055,32 @@ All those action must be checked to ensure the follow the "focus < mode" rule
 - [x] PreviousSibling,
 - [x] Quit,
 - [ ] RefreshIfNeeded,
-- [ ] RefreshView,
-- [ ] RegexMatch,
-- [ ] RemoteMount,
-- [ ] RemovableDevices,
+- [x] RefreshView,
+- [x] RegexMatch,
+- [x] RemoteMount,
+- [x] RemovableDevices,
 - [x] Rename,
-- [ ] ResetMode,
+- [x] ResetMode,
 - [x] ReverseFlags,
-- [ ] Search,
-- [ ] SearchNext,
-- [ ] Shell,
-- [ ] ShellCommand,
-- [ ] Shortcut,
-- [ ] Sort,
+- [x] Search,
+- [x] SearchNext,
+- [x] Shell,
+- [x] ShellCommand,
+- [x] Shortcut,
+- [x] Sort,
 - [x] Symlink,
 - [x] Tab,
-- [ ] ToggleDisplayFull,
-- [ ] ToggleDualPane,
+- [x] ToggleDisplayFull,
+- [x] ToggleDualPane,
 - [x] ToggleFlag,
-- [ ] ToggleHidden,
-- [ ] TogglePreviewSecond,
-- [ ] TrashEmpty,
-- [ ] TrashMoveFile,
-- [ ] TrashOpen,
-- [ ] TrashRestoreFile,
-- [ ] Tree,
-- [ ] TreeFold,
-- [ ] TreeFoldAll,
-- [ ] TreeUnFoldAll,
-- [ ] TuiMenu,
+- [x] ToggleHidden,
+- [x] TogglePreviewSecond,
+- [x] TrashEmpty,
+- [x] TrashMoveFile,
+- [x] TrashOpen,
+- [x] TrashRestoreFile,
+- [x] Tree,
+- [x] TreeFold,
+- [x] TreeFoldAll,
+- [x] TreeUnFoldAll,
+- [x] TuiMenu,

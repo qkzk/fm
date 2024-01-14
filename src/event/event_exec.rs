@@ -103,6 +103,9 @@ impl EventAction {
 
     /// Toggle the second pane between preview & normal mode (files).
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
+        if !status.display_settings.dual() {
+            Self::toggle_dualpane(status)?;
+        }
         status.display_settings.toggle_preview();
         if status.display_settings.preview() {
             status.update_second_pane_for_preview()?;
@@ -117,13 +120,20 @@ impl EventAction {
     /// Creates a tree in every mode but "Tree".
     /// In display_mode tree it will exit this view.
     pub fn tree(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         status.current_tab_mut().toggle_tree_mode()?;
         status.refresh_view()
     }
 
     /// Fold the current node of the tree.
     /// Has no effect on "file" nodes.
-    pub fn tree_fold(tab: &mut Tab) -> Result<()> {
+    pub fn tree_fold(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
+        let tab = status.current_tab_mut();
         tab.tree.toggle_fold(&tab.users);
         Ok(())
     }
@@ -131,7 +141,11 @@ impl EventAction {
     /// Unfold every child node in the tree.
     /// Recursively explore the tree and unfold every node.
     /// Reset the display.
-    pub fn tree_unfold_all(tab: &mut Tab) -> Result<()> {
+    pub fn tree_unfold_all(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
+        let tab = status.current_tab_mut();
         tab.tree.unfold_all(&tab.users);
         Ok(())
     }
@@ -139,7 +153,11 @@ impl EventAction {
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node.
     /// Reset the display.
-    pub fn tree_fold_all(tab: &mut Tab) -> Result<()> {
+    pub fn tree_fold_all(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
+        let tab = status.current_tab_mut();
         tab.tree.fold_all(&tab.users);
         Ok(())
     }
@@ -171,8 +189,11 @@ impl EventAction {
     }
 
     /// Toggle the display of hidden files.
-    pub fn toggle_hidden(tab: &mut Tab) -> Result<()> {
-        tab.toggle_hidden()
+    pub fn toggle_hidden(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
+        status.current_tab_mut().toggle_hidden()
     }
 
     /// Remove every flag on files in this directory and others.
@@ -445,6 +466,12 @@ impl EventAction {
 
     /// Enter the sort mode, allowing the user to select a sort method.
     pub fn sort(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::Sort)
+        ) {
+            status.reset_edit_mode()?;
+        }
         status.set_height_for_edit_mode(status.index, Edit::Nothing)?;
         status.tabs[status.index].edit_mode = Edit::Nothing;
         let len = status.menu.len(Edit::Nothing);
@@ -504,6 +531,12 @@ impl EventAction {
     /// Enter the search mode.
     /// Matching items are displayed as you type them.
     pub fn search(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputCompleted(InputCompleted::Search)
+        ) {
+            status.reset_edit_mode()?;
+        }
         let tab = status.current_tab_mut();
         tab.searched = None;
         status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Search))
@@ -512,6 +545,12 @@ impl EventAction {
     /// Enter the regex mode.
     /// Every file matching the typed regex will be flagged.
     pub fn regex_match(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::RegexMatch)
+        ) {
+            status.reset_edit_mode()?;
+        }
         if matches!(
             status.current_tab().display_mode,
             Display::Tree | Display::Directory
@@ -570,6 +609,9 @@ impl EventAction {
     /// The shell is a fork of current process and will exit if the application
     /// is terminated first.
     pub fn shell(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         let tab = status.current_tab();
         let path = tab.directory_of_selected()?;
         execute_without_output_with_path(&status.internal_settings.opener.terminal, path, None)?;
@@ -579,6 +621,12 @@ impl EventAction {
     /// Enter the shell input command mode. The user can type a command which
     /// will be parsed and run.
     pub fn shell_command(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::Shell)
+        ) {
+            status.reset_edit_mode()?;
+        }
         status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Shell))
     }
 
@@ -772,6 +820,9 @@ impl EventAction {
     }
 
     pub fn search_next(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         let tab = status.current_tab_mut();
         let Some(searched) = tab.searched.clone() else {
             return Ok(());
@@ -1177,6 +1228,9 @@ impl EventAction {
     /// it is moved there.
     /// Else, nothing is done.
     pub fn trash_move_file(status: &mut Status) -> Result<()> {
+        if !status.focus.is_file() {
+            return Ok(());
+        }
         if status.menu.flagged.is_empty() {
             Self::toggle_flag(status)?;
         }
@@ -1331,6 +1385,12 @@ impl EventAction {
     /// Enter the remote mount mode where the user can provide an username, an adress and
     /// a mount point to mount a remote device through SSHFS.
     pub fn remote_mount(status: &mut Status) -> Result<()> {
+        if matches!(
+            status.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::Remote)
+        ) {
+            status.reset_edit_mode()?;
+        }
         status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Remote))
     }
 

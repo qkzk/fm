@@ -85,6 +85,9 @@ impl LeaveMode {
     /// Restore a file from the trash if possible.
     /// Parent folders are created if needed.
     pub fn trash(status: &mut Status) -> Result<()> {
+        if status.focus.is_file() {
+            return Ok(());
+        }
         let _ = status.menu.trash.restore();
         status.reset_edit_mode()?;
         status.current_tab_mut().refresh_view()?;
@@ -201,7 +204,9 @@ impl LeaveMode {
                 return Err(error);
             }
         };
-        if matches!(status.current_tab().display_mode, Display::Flagged) && status.menu.flagged.contains(&old_path) {
+        if matches!(status.current_tab().display_mode, Display::Flagged)
+            && status.menu.flagged.contains(&old_path)
+        {
             status.menu.flagged.replace(&old_path, &new_path);
         }
         status.current_tab_mut().refresh_view()
