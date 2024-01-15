@@ -182,16 +182,27 @@ impl Flagged {
     /// Basic search in flagged mode.
     /// Select the first path whose last component (aka its filename) contains the searched pattern.
     pub fn search(&mut self, searched: &str) {
-        let Some(position) = self.content.iter().position(|path| {
-            path.components()
-                .last()
-                .unwrap()
-                .as_os_str()
-                .to_string_lossy()
-                .contains(searched)
-        }) else {
+        let Ok(re) = regex::Regex::new(searched) else {
             return;
         };
+        let position = if let Some(pos) = self
+            .content
+            .iter()
+            .skip(self.index + 1)
+            .position(|path| re.is_match(&path.file_name().unwrap().to_string_lossy()))
+        {
+            pos + self.index + 1
+        } else if let Some(pos) = self
+            .content
+            .iter()
+            .take(self.index + 1)
+            .position(|path| re.is_match(&path.file_name().unwrap().to_string_lossy()))
+        {
+            pos
+        } else {
+            return;
+        };
+
         self.select_index(position);
     }
 }

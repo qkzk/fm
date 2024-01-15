@@ -828,7 +828,7 @@ impl EventAction {
             Display::Preview => {
                 return Ok(());
             }
-            Display::Flagged => todo!("search next"),
+            Display::Flagged => status.menu.flagged.search(&searched),
         }
         status.refresh_status()?;
         status.update_second_pane_for_preview()?;
