@@ -186,12 +186,10 @@ impl Status {
             } else {
                 self.focus = Focus::LeftMenu;
             }
+        } else if matches!(self.tabs[self.index].edit_mode, Edit::Nothing) {
+            self.focus = Focus::RightFile;
         } else {
-            if matches!(self.tabs[self.index].edit_mode, Edit::Nothing) {
-                self.focus = Focus::RightFile;
-            } else {
-                self.focus = Focus::RightMenu;
-            }
+            self.focus = Focus::RightMenu;
         }
     }
 
@@ -285,12 +283,10 @@ impl Status {
             } else {
                 Focus::LeftFile
             }
+        } else if matches!(window, Window::Menu) {
+            Focus::RightMenu
         } else {
-            if matches!(window, Window::Menu) {
-                Focus::RightMenu
-            } else {
-                Focus::RightFile
-            }
+            Focus::RightFile
         };
     }
 
