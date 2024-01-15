@@ -245,10 +245,13 @@ impl Directory {
             .collect()
     }
 
-    pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
+    pub fn filenames_matching(&self, input_string: &str) -> Vec<String> {
+        let Ok(re) = regex::Regex::new(input_string) else {
+            return vec![];
+        };
         self.content
             .iter()
-            .filter(|f| f.filename.contains(input_string))
+            .filter(|f| re.is_match(&f.filename))
             .map(|f| f.filename.to_string())
             .collect()
     }

@@ -131,7 +131,8 @@ impl Menu {
             Edit::InputCompleted(InputCompleted::Search) => {
                 match tab.display_mode {
                     Display::Tree | Display::Directory => {
-                        self.completion.search(tab.filenames(&self.input.string()));
+                        self.completion
+                            .search(tab.filenames_matching(&self.input.string()));
                     }
                     Display::Flagged => self
                         .completion

@@ -204,10 +204,10 @@ impl Tab {
 
     /// Returns a vector of filenames as strings, which contains the input string.
     /// Empty vector while in `Display::Preview`.
-    pub fn filenames(&self, input_string: &str) -> Vec<String> {
+    pub fn filenames_matching(&self, input_string: &str) -> Vec<String> {
         match self.display_mode {
-            Display::Directory => self.directory.filenames_containing(input_string),
-            Display::Tree => self.tree.filenames_containing(input_string),
+            Display::Directory => self.directory.filenames_matching(input_string),
+            Display::Tree => self.tree.filenames_matching(input_string),
             Display::Preview => vec![],
             Display::Flagged => vec![],
         }
@@ -749,20 +749,26 @@ impl Tab {
 
     /// Search a file by filename from given index, moving down
     fn search_from_index(&self, searched_name: &str, current_index: usize) -> Option<usize> {
+        let Ok(re) = regex::Regex::new(searched_name) else {
+            return None;
+        };
         for (index, file) in self.directory.enumerate().skip(current_index) {
-            if file.filename.contains(searched_name) {
+            if re.is_match(&file.filename) {
                 return Some(index);
-            };
+            }
         }
         None
     }
 
     /// Search a file by filename from first line, moving down
     fn search_from_top(&self, searched_name: &str, current_index: usize) -> Option<usize> {
+        let Ok(re) = regex::Regex::new(searched_name) else {
+            return None;
+        };
         for (index, file) in self.directory.enumerate().take(current_index) {
-            if file.filename.contains(searched_name) {
+            if re.is_match(&file.filename) {
                 return Some(index);
-            };
+            }
         }
         None
     }

@@ -588,8 +588,15 @@ impl Tree {
         let mut stack = vec![self.root_path.clone()];
         let mut found = vec![];
 
+        let Ok(re) = regex::Regex::new(pattern) else {
+            return None;
+        };
+
         while let Some(path) = stack.pop() {
-            if path_filename_contains(&path, pattern) {
+            let Some(filename) = path.file_name() else {
+                continue;
+            };
+            if re.is_match(&filename.to_string_lossy()) {
                 found.push(path.clone());
             }
             let Some(current_node) = self.nodes.get(&path) else {
@@ -681,14 +688,17 @@ impl Tree {
     }
 
     #[inline]
-    pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
+    pub fn filenames_matching(&self, input_string: &str) -> Vec<String> {
         let to_filename: fn(&Arc<Path>) -> Option<&OsStr> = |path| path.file_name();
         let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
+        let Ok(re) = regex::Regex::new(input_string) else {
+            return vec![];
+        };
         self.nodes
             .keys()
             .filter_map(to_filename)
             .filter_map(to_str)
-            .filter(|&p| p.contains(input_string))
+            .filter(|&p| re.is_match(p))
             .map(|p| p.replace("▸ ", "").replace("▾ ", ""))
             .collect()
     }
@@ -773,13 +783,6 @@ fn filename_format(current_path: &Path, folded: bool) -> String {
     } else {
         filename
     }
-}
-
-fn path_filename_contains(path: &Path, pattern: &str) -> bool {
-    path.file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .contains(pattern)
 }
 
 /// A vector of displayable lines used to draw a tree content.

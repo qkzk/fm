@@ -887,6 +887,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] FIX: leaving flagged file should reset the window correctly
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
+  - [x] use regex in search
+  - [ ] save the regex ???
   - [ ] display number of matches while searching
   - [ ] Sort refactoring
     - [ ] entering
