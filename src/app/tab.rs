@@ -87,7 +87,7 @@ pub struct Tab {
     pub settings: TabSettings,
 
     /// Last searched string
-    pub searched: Option<String>,
+    pub searched: Option<regex::Regex>,
     /// Visited directories
     pub history: History,
     /// Users & groups
@@ -739,21 +739,22 @@ impl Tab {
     /// from a starting position `next_index`.
     /// We search forward from that position and start again from top if nothing is found.
     /// We move the selection to the first matching file.
-    pub fn search_from(&mut self, searched_name: &str, current_index: usize) {
-        if let Some(found_index) = self.search_from_index(searched_name, current_index) {
+    pub fn search_from(&mut self, searched_pattern: &regex::Regex, current_index: usize) {
+        if let Some(found_index) = self.search_from_index(searched_pattern, current_index) {
             self.go_to_index(found_index);
-        } else if let Some(found_index) = self.search_from_top(searched_name, current_index) {
+        } else if let Some(found_index) = self.search_from_top(searched_pattern, current_index) {
             self.go_to_index(found_index);
         }
     }
 
     /// Search a file by filename from given index, moving down
-    fn search_from_index(&self, searched_name: &str, current_index: usize) -> Option<usize> {
-        let Ok(re) = regex::Regex::new(searched_name) else {
-            return None;
-        };
+    fn search_from_index(
+        &self,
+        searched_pattern: &regex::Regex,
+        current_index: usize,
+    ) -> Option<usize> {
         for (index, file) in self.directory.enumerate().skip(current_index) {
-            if re.is_match(&file.filename) {
+            if searched_pattern.is_match(&file.filename) {
                 return Some(index);
             }
         }
@@ -761,12 +762,13 @@ impl Tab {
     }
 
     /// Search a file by filename from first line, moving down
-    fn search_from_top(&self, searched_name: &str, current_index: usize) -> Option<usize> {
-        let Ok(re) = regex::Regex::new(searched_name) else {
-            return None;
-        };
+    fn search_from_top(
+        &self,
+        searched_pattern: &regex::Regex,
+        current_index: usize,
+    ) -> Option<usize> {
         for (index, file) in self.directory.enumerate().take(current_index) {
-            if re.is_match(&file.filename) {
+            if searched_pattern.is_match(&file.filename) {
                 return Some(index);
             }
         }
@@ -774,8 +776,8 @@ impl Tab {
     }
 
     /// Search the next matching file in display directory
-    pub fn normal_search_next(&mut self, searched: &str) {
+    pub fn normal_search_next(&mut self, search_pattern: &regex::Regex) {
         let next_index = (self.directory.index + 1) % self.directory.content.len();
-        self.search_from(searched, next_index);
+        self.search_from(search_pattern, next_index);
     }
 }

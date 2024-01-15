@@ -854,16 +854,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## Current dev
 
-## Version 0.1.26
+### Version 0.1.26
 
-### Summary
+#### Summary
 
 - BREAKING: removed jump mode completeley. If you bound a key to this mode in your config, you have to remove it.
   You can see your flagged files in the display::flagged mode, default bind: <F>.
 - BREAKING: removed all MOCP controls from fm. What was it doing there anyway ?.
   You will have to remove all your custom binds to MOCP control from your config file to make it work.
 
-### Changelog
+#### Changelog
 
 - [ ] focusable windows
 
@@ -888,12 +888,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
   - [x] use regex in search
-  - [ ] save the regex ???
+  - [x] save the regex ???
+  - [x] simplify navigation to skim output
   - [ ] display number of matches while searching
   - [ ] Sort refactoring
     - [ ] entering
     - [ ] setting
     - [ ] leaving aka reseting
+- [ ] skim in tree mode. Does it work ?
 - [x] remove MOCP control from fm ???
 
 ## TODO

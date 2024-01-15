@@ -577,26 +577,21 @@ impl Tree {
 
     /// Select the first node whose filename match a pattern.
     /// If the selected file match, the next match will be selected.
-    pub fn search_first_match(&mut self, pattern: &str) {
+    pub fn search_first_match(&mut self, pattern: &regex::Regex) {
         let Some(found_path) = self.deep_first_search(pattern) else {
             return;
         };
         self.select_path(&found_path);
     }
 
-    fn deep_first_search(&self, pattern: &str) -> Option<Arc<Path>> {
+    fn deep_first_search(&self, pattern: &regex::Regex) -> Option<Arc<Path>> {
         let mut stack = vec![self.root_path.clone()];
         let mut found = vec![];
-
-        let Ok(re) = regex::Regex::new(pattern) else {
-            return None;
-        };
-
         while let Some(path) = stack.pop() {
             let Some(filename) = path.file_name() else {
                 continue;
             };
-            if re.is_match(&filename.to_string_lossy()) {
+            if pattern.is_match(&filename.to_string_lossy()) {
                 found.push(path.clone());
             }
             let Some(current_node) = self.nodes.get(&path) else {

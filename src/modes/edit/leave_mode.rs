@@ -255,21 +255,23 @@ impl LeaveMode {
             status.current_tab_mut().searched = None;
             return Ok(());
         }
-        status.current_tab_mut().searched = Some(searched.clone());
+        let Ok(re) = regex::Regex::new(searched) else {
+            return Ok(());
+        };
         match status.current_tab().display_mode {
             Display::Tree => {
-                log_info!("searching in tree");
-                status.current_tab_mut().tree.search_first_match(searched);
+                status.current_tab_mut().tree.search_first_match(&re);
             }
             Display::Directory => {
                 let next_index = status.current_tab().directory.index;
-                status.current_tab_mut().search_from(searched, next_index);
+                status.current_tab_mut().search_from(&re, next_index);
             }
             Display::Flagged => {
-                status.menu.flagged.search(searched);
+                status.menu.flagged.search(&re);
             }
             _ => (),
         };
+        status.current_tab_mut().searched = Some(re);
         status.update_second_pane_for_preview()
     }
 

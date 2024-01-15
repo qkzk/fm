@@ -17,7 +17,7 @@ use crate::app::Session;
 use crate::app::Tab;
 use crate::app::{ClickableLine, FlaggedFooter};
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
-use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
+use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::Bindings;
 use crate::io::Internal;
 use crate::io::Kind;
@@ -707,8 +707,8 @@ impl Status {
                 return Ok(());
             };
             tab.cd(parent)?;
-            let filename = filename_from_path(&path)?;
-            tab.search_from(filename, 0);
+            let index = tab.directory.select_file(&path);
+            tab.go_to_index(index);
         } else if path.is_dir() {
             tab.cd(&path)?;
         }
