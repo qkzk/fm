@@ -862,6 +862,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   You can see your flagged files in the display::flagged mode, default bind: <F>.
 - BREAKING: removed all MOCP controls from fm. What was it doing there anyway ?.
   You will have to remove all your custom binds to MOCP control from your config file to make it work.
+- search with regex. You can search (Char('/')) a regex pattern. Search next (Char('f')) will use that regex.
 
 #### Changelog
 
@@ -884,19 +885,20 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] setting second pane as preview should enable dual pane at the same time
 - [x] FIX: leaving mount mode with enter when device is mounted should move to it
 - [x] FIX: clicking footer row execute directory actions, even in flagged display mode
-- [ ] FIX: leaving flagged file should reset the window correctly
+- [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
 - [ ] display all specific binds for every mode with a key ?
 - [ ] merge sort & regex, display nb of matches, completion + flag on the fly
   - [x] use regex in search
   - [x] save the regex ???
   - [x] simplify navigation to skim output
-  - [ ] display number of matches while searching
+  - [ ] display number of matches while searching.
+        requires a lot of change
   - [ ] Sort refactoring
     - [ ] entering
     - [ ] setting
     - [ ] leaving aka reseting
 - [x] FIX: skim in tree doesn't select the match
-- [x] remove MOCP control from fm ???
+- [x] remove MOCP control from fm
 
 ## TODO
 
