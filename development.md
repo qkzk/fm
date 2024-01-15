@@ -895,7 +895,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] entering
     - [ ] setting
     - [ ] leaving aka reseting
-- [ ] skim in tree mode. Does it work ?
+- [x] FIX: skim in tree doesn't select the match
 - [x] remove MOCP control from fm ???
 
 ## TODO

@@ -28,7 +28,6 @@ use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     reset_sudo_faillock,
 };
-use crate::modes::Display;
 use crate::modes::Edit;
 use crate::modes::InputSimple;
 use crate::modes::IsoDevice;
@@ -43,12 +42,14 @@ use crate::modes::Preview;
 use crate::modes::Selectable;
 use crate::modes::ShellCommandParser;
 use crate::modes::Skimer;
+use crate::modes::To;
 use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, regex_matcher};
 use crate::modes::{BlockDeviceAction, Navigate};
 use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
+use crate::modes::{Display, Go};
 use crate::{log_info, log_line};
 
 pub enum Window {
@@ -707,8 +708,16 @@ impl Status {
                 return Ok(());
             };
             tab.cd(parent)?;
-            let index = tab.directory.select_file(&path);
-            tab.go_to_index(index);
+            match tab.display_mode {
+                Display::Tree => {
+                    tab.tree.go(To::Path(&path));
+                }
+                Display::Directory => {
+                    let index = tab.directory.select_file(&path);
+                    tab.go_to_index(index);
+                }
+                Display::Preview | Display::Flagged => (),
+            }
         } else if path.is_dir() {
             tab.cd(&path)?;
         }
