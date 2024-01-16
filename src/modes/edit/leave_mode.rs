@@ -26,6 +26,7 @@ use crate::modes::MarkAction;
 use crate::modes::Navigate;
 use crate::modes::NodeCreation;
 use crate::modes::PasswordUsage;
+use crate::modes::Search;
 use crate::modes::SortKind;
 
 /// Methods called when executing something with Enter key.
@@ -250,29 +251,18 @@ impl LeaveMode {
     /// The current order of files is used.
     pub fn search(status: &mut Status) -> Result<()> {
         let searched = &status.menu.input.string();
-        status.menu.input.reset();
         if searched.is_empty() {
-            status.current_tab_mut().searched = None;
+            status.current_tab_mut().search = Search::default();
             return Ok(());
         }
-        let Ok(re) = regex::Regex::new(searched) else {
+        let Ok(mut search) = Search::new(searched) else {
+            status.current_tab_mut().search = Search::default();
             return Ok(());
         };
-        match status.current_tab().display_mode {
-            Display::Tree => {
-                status.current_tab_mut().tree.search_first_match(&re);
-            }
-            Display::Directory => {
-                let next_index = status.current_tab().directory.index;
-                status.current_tab_mut().search_from(&re, next_index);
-            }
-            Display::Flagged => {
-                status.menu.flagged.search(&re);
-            }
-            _ => (),
-        };
-        status.current_tab_mut().searched = Some(re);
-        status.update_second_pane_for_preview()
+        status.menu.input.reset();
+        search.leave(status)?;
+        status.current_tab_mut().search = search;
+        Ok(())
     }
 
     /// Move to the folder typed by the user.

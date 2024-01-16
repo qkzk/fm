@@ -33,6 +33,7 @@ use crate::modes::Navigate;
 use crate::modes::NeedConfirmation;
 use crate::modes::Preview;
 use crate::modes::RemovableDevices;
+use crate::modes::Search;
 use crate::modes::Selectable;
 
 /// Links events from tuikit to custom actions.
@@ -533,7 +534,7 @@ impl EventAction {
             status.reset_edit_mode()?;
         }
         let tab = status.current_tab_mut();
-        tab.searched = None;
+        tab.search = Search::default();
         status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Search))
     }
 
@@ -818,17 +819,17 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        let tab = status.current_tab_mut();
-        let Some(searched) = tab.searched.clone() else {
+        let tab = &mut status.tabs[status.index];
+        let Some(re) = tab.search.regex.clone() else {
             return Ok(());
         };
         match tab.display_mode {
-            Display::Tree => tab.tree.search_first_match(&searched),
-            Display::Directory => tab.normal_search_next(&searched),
+            Display::Tree => tab.tree.search_first_match(&re),
+            Display::Directory => tab.normal_search_next(&re),
             Display::Preview => {
                 return Ok(());
             }
-            Display::Flagged => status.menu.flagged.search(&searched),
+            Display::Flagged => tab.search.flagged(&mut status.menu.flagged)?,
         }
         status.refresh_status()?;
         status.update_second_pane_for_preview()?;

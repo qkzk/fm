@@ -178,25 +178,6 @@ impl Flagged {
             .map(|p| p.to_owned())
             .collect()
     }
-
-    /// Basic search in flagged mode.
-    /// Select the first path whose last component (aka its filename) contains the searched pattern.
-    pub fn search(&mut self, search_pattern: &regex::Regex) {
-        let position =
-            if let Some(pos) = self.content.iter().skip(self.index + 1).position(|path| {
-                search_pattern.is_match(&path.file_name().unwrap().to_string_lossy())
-            }) {
-                pos + self.index + 1
-            } else if let Some(pos) = self.content.iter().take(self.index + 1).position(|path| {
-                search_pattern.is_match(&path.file_name().unwrap().to_string_lossy())
-            }) {
-                pos
-            } else {
-                return;
-            };
-
-        self.select_index(position);
-    }
 }
 
 // impl_selectable_content!(PathBuf, Flagged);

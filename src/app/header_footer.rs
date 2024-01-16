@@ -130,7 +130,7 @@ mod inner {
                 Self::string_first_row_selected_file(tab, width)?,
             ];
             let mut actions: Vec<ActionMap> = HEADER_ACTIONS[0..2].into();
-            if let Some(searched) = &tab.searched {
+            if let Some(searched) = &tab.search.regex {
                 strings.push(Self::string_searched(&searched.to_string()));
                 actions.push(HEADER_ACTIONS[2].clone());
             }

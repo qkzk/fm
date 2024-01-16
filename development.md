@@ -887,13 +887,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: clicking footer row execute directory actions, even in flagged display mode
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
 - [ ] display all specific binds for every mode with a key ?
-- [ ] merge sort & regex, display nb of matches, completion + flag on the fly
+- [ ] merge search & regex, display nb of matches, completion + flag on the fly
   - [x] use regex in search
   - [x] save the regex ???
   - [x] simplify navigation to skim output
   - [ ] display number of matches while searching.
         requires a lot of change
-  - [ ] Sort refactoring
+  - [ ] search refactoring
     - [ ] entering
     - [ ] setting
     - [ ] leaving aka reseting

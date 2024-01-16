@@ -8,7 +8,6 @@ use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index,
 };
 use crate::io::Args;
-use crate::modes::Content;
 use crate::modes::Directory;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
@@ -17,6 +16,7 @@ use crate::modes::Preview;
 use crate::modes::Selectable;
 use crate::modes::SortKind;
 use crate::modes::Users;
+use crate::modes::{Content, Search};
 use crate::modes::{ContentWindow, FileKind};
 use crate::modes::{Display, Edit};
 use crate::modes::{Go, To, Tree};
@@ -87,7 +87,8 @@ pub struct Tab {
     pub settings: TabSettings,
 
     /// Last searched string
-    pub searched: Option<regex::Regex>,
+    pub search: Search,
+    // pub searched: Search,
     /// Visited directories
     pub history: History,
     /// Users & groups
@@ -125,7 +126,8 @@ impl Tab {
         let mut window = ContentWindow::new(directory.content.len(), height);
         let preview = Preview::Empty;
         let history = History::default();
-        let searched = None;
+        // let searched = None;
+        let search = Search::default();
         let index = directory.select_file(&path);
         let tree = Tree::default();
 
@@ -137,7 +139,8 @@ impl Tab {
             directory,
             height,
             preview,
-            searched,
+            search,
+            // searched,
             history,
             users,
             tree,
