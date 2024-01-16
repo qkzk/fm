@@ -578,55 +578,38 @@ impl Tree {
     /// Select the first node whose filename match a pattern.
     /// If the selected file match, the next match will be selected.
     pub fn search_first_match(&mut self, pattern: &regex::Regex) {
-        let Some(found_path) = self.deep_first_search(pattern) else {
-            return;
-        };
-        self.select_path(&found_path);
+        let path = self.search(pattern).to_path_buf();
+        self.select_path(&path)
     }
 
-    fn deep_first_search(&self, pattern: &regex::Regex) -> Option<Arc<Path>> {
-        let mut stack = vec![self.root_path.clone()];
-        let mut found = vec![];
-        while let Some(path) = stack.pop() {
-            let Some(filename) = path.file_name() else {
+    fn search(&self, pattern: &regex::Regex) -> &Path {
+        for line in self
+            .displayable_lines
+            .lines()
+            .iter()
+            .skip(self.displayable_lines.index + 1)
+        {
+            let Some(filename) = line.path.file_name() else {
                 continue;
             };
             if pattern.is_match(&filename.to_string_lossy()) {
-                found.push(path.clone());
+                return &line.path;
             }
-            let Some(current_node) = self.nodes.get(&path) else {
+        }
+        for line in self
+            .displayable_lines
+            .lines()
+            .iter()
+            .take(self.displayable_lines.index)
+        {
+            let Some(filename) = line.path.file_name() else {
                 continue;
             };
-
-            if current_node.have_children() {
-                let Some(children) = &current_node.children else {
-                    continue;
-                };
-                for leaf in children.iter() {
-                    stack.push(leaf.to_owned());
-                }
+            if pattern.is_match(&filename.to_string_lossy()) {
+                return &line.path;
             }
         }
-        self.pick_best_match(&found)
-    }
-
-    fn pick_best_match(&self, found: &[Arc<Path>]) -> Option<Arc<Path>> {
-        if found.is_empty() {
-            return None;
-        }
-        if let Some(position) = found.iter().position(|path| path == &self.selected) {
-            // selected is in found
-            if position + 1 < found.len() {
-                // selected isn't last, use next elem
-                Some(found[position + 1].to_owned())
-            } else {
-                // selected is last
-                Some(found[0].to_owned())
-            }
-        } else {
-            // selected isn't in found, use first match
-            Some(found[0].to_owned())
-        }
+        &self.selected_path()
     }
 
     /// Create a displayable content from the tree.
