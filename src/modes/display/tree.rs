@@ -163,7 +163,7 @@ pub struct Tree {
     root_path: Arc<Path>,
     selected: Arc<Path>,
     nodes: HashMap<Arc<Path>, Node>,
-    pub displayable_lines: TreeLines,
+    displayable_lines: TreeLines,
 }
 
 impl Default for Tree {
@@ -731,7 +731,7 @@ fn filename_format(current_path: &Path, folded: bool) -> String {
 #[derive(Clone, Debug, Default)]
 pub struct TreeLines {
     pub content: Vec<TreeLineBuilder>,
-    pub index: usize,
+    index: usize,
 }
 
 impl TreeLines {

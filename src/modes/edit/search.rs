@@ -55,10 +55,10 @@ impl Search {
     fn tree_find_next_path<'a>(&mut self, tree: &'a mut Tree) -> &'a std::path::Path {
         if let Some(pattern) = &self.regex {
             for line in tree
-                .displayable_lines
+                .displayable()
                 .lines()
                 .iter()
-                .skip(tree.displayable_lines.index + 1)
+                .skip(tree.displayable().index() + 1)
             {
                 let Some(filename) = line.path.file_name() else {
                     continue;
@@ -68,10 +68,10 @@ impl Search {
                 }
             }
             for line in tree
-                .displayable_lines
+                .displayable()
                 .lines()
                 .iter()
-                .take(tree.displayable_lines.index)
+                .take(tree.displayable().index())
             {
                 let Some(filename) = line.path.file_name() else {
                     continue;
