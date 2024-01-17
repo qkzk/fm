@@ -48,9 +48,9 @@ impl Search {
             return;
         };
         let current_index = tab.directory.index;
-        let next_index = if let Some(index) = Self::search_from_index(tab, re, current_index) {
+        let next_index = if let Some(index) = Self::directory_from_index(tab, re, current_index) {
             index
-        } else if let Some(index) = Self::search_from_top(tab, re, current_index) {
+        } else if let Some(index) = Self::directory_from_top(tab, re, current_index) {
             index
         } else {
             return;
@@ -63,9 +63,9 @@ impl Search {
             return None;
         };
         let current_index = tab.directory.index;
-        if let Some(index) = Self::search_from_index(tab, re, current_index) {
+        if let Some(index) = Self::directory_from_index(tab, re, current_index) {
             Some(index)
-        } else if let Some(index) = Self::search_from_top(tab, re, current_index) {
+        } else if let Some(index) = Self::directory_from_top(tab, re, current_index) {
             Some(index)
         } else {
             None
@@ -73,7 +73,7 @@ impl Search {
     }
 
     /// Search a file by filename from given index, moving down
-    fn search_from_index(tab: &Tab, re: &regex::Regex, current_index: usize) -> Option<usize> {
+    fn directory_from_index(tab: &Tab, re: &regex::Regex, current_index: usize) -> Option<usize> {
         for (index, file) in tab.directory.enumerate().skip(current_index) {
             if re.is_match(&file.filename) {
                 return Some(index);
@@ -83,7 +83,7 @@ impl Search {
     }
 
     /// Search a file by filename from first line, moving down
-    fn search_from_top(tab: &Tab, re: &regex::Regex, current_index: usize) -> Option<usize> {
+    fn directory_from_top(tab: &Tab, re: &regex::Regex, current_index: usize) -> Option<usize> {
         for (index, file) in tab.directory.enumerate().take(current_index) {
             if re.is_match(&file.filename) {
                 return Some(index);
