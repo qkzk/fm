@@ -136,7 +136,7 @@ impl Menu {
                     }
                     Display::Flagged => self
                         .completion
-                        .search(self.flagged.filenames_containing(&self.input.string())),
+                        .search(self.flagged.filenames_matching(&self.input.string())),
                     _ => (),
                 }
                 Ok(())

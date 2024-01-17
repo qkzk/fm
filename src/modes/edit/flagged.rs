@@ -112,15 +112,18 @@ impl Flagged {
         self.content[self.index] = new_path;
     }
 
-    pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
+    pub fn filenames_matching(&self, input_string: &str) -> Vec<String> {
+        let Ok(re) = regex::Regex::new(input_string) else {
+            return vec![];
+        };
         let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
         let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
         self.content
             .iter()
             .filter_map(to_filename)
             .filter_map(to_str)
-            .filter(|&p| p.contains(input_string))
-            .map(|p| p.to_owned())
+            .filter(|f| re.is_match(f))
+            .map(|f| f.to_owned())
             .collect()
     }
 
