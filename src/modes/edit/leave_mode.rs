@@ -255,7 +255,7 @@ impl LeaveMode {
             status.current_tab_mut().search = Search::default();
             return Ok(());
         }
-        let Ok(mut search) = Search::new(searched) else {
+        let Ok(search) = Search::new(searched) else {
             status.current_tab_mut().search = Search::default();
             return Ok(());
         };

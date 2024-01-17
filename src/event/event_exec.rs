@@ -820,12 +820,16 @@ impl EventAction {
             return Ok(());
         }
         let tab = &mut status.tabs[status.index];
-        let Some(re) = tab.search.regex.clone() else {
-            return Ok(());
-        };
+        // let Some(re) = tab.search.regex.clone() else {
+        //     return Ok(());
+        // };
         match tab.display_mode {
             Display::Tree => tab.search.tree(&mut tab.tree),
-            Display::Directory => tab.normal_search_next(&re),
+            Display::Directory => {
+                if let Some(index) = tab.search.directory_search_next(tab) {
+                    tab.go_to_index(index)
+                }
+            }
             Display::Preview => {
                 return Ok(());
             }

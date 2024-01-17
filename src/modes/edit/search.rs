@@ -25,13 +25,13 @@ impl Search {
         Ok(())
     }
 
-    pub fn leave(&mut self, status: &mut Status) -> Result<()> {
+    pub fn leave(&self, status: &mut Status) -> Result<()> {
         match status.current_tab().display_mode {
             Display::Tree => {
                 self.tree(&mut status.current_tab_mut().tree);
             }
             Display::Directory => {
-                self.directory(status.current_tab_mut())?;
+                self.directory(status.current_tab_mut());
             }
             Display::Flagged => self.flagged(&mut status.menu.flagged),
             _ => (),
@@ -39,20 +39,65 @@ impl Search {
         status.update_second_pane_for_preview()
     }
 
-    pub fn directory(&mut self, tab: &mut Tab) -> Result<()> {
-        if let Some(re) = &self.regex {
-            let next_index = tab.directory.index;
-            tab.search_from(re, next_index);
-        }
-        Ok(())
+    /// Search in current directory for an file whose name contains `searched_name`,
+    /// from a starting position `next_index`.
+    /// We search forward from that position and start again from top if nothing is found.
+    /// We move the selection to the first matching file.
+    pub fn directory(&self, tab: &mut Tab) {
+        let Some(re) = &self.regex else {
+            return;
+        };
+        let current_index = tab.directory.index;
+        let next_index = if let Some(index) = Self::search_from_index(tab, re, current_index) {
+            index
+        } else if let Some(index) = Self::search_from_top(tab, re, current_index) {
+            index
+        } else {
+            return;
+        };
+        tab.go_to_index(next_index);
     }
 
-    pub fn tree(&mut self, tree: &mut Tree) {
+    pub fn directory_search_next(&self, tab: &Tab) -> Option<usize> {
+        let Some(re) = &self.regex else {
+            return None;
+        };
+        let current_index = tab.directory.index;
+        if let Some(index) = Self::search_from_index(tab, re, current_index) {
+            Some(index)
+        } else if let Some(index) = Self::search_from_top(tab, re, current_index) {
+            Some(index)
+        } else {
+            None
+        }
+    }
+
+    /// Search a file by filename from given index, moving down
+    fn search_from_index(tab: &Tab, re: &regex::Regex, current_index: usize) -> Option<usize> {
+        for (index, file) in tab.directory.enumerate().skip(current_index) {
+            if re.is_match(&file.filename) {
+                return Some(index);
+            }
+        }
+        None
+    }
+
+    /// Search a file by filename from first line, moving down
+    fn search_from_top(tab: &Tab, re: &regex::Regex, current_index: usize) -> Option<usize> {
+        for (index, file) in tab.directory.enumerate().take(current_index) {
+            if re.is_match(&file.filename) {
+                return Some(index);
+            }
+        }
+        None
+    }
+
+    pub fn tree(&self, tree: &mut Tree) {
         let path = self.tree_find_next_path(tree).to_owned();
         tree.go(To::Path(&path));
     }
 
-    fn tree_find_next_path<'a>(&mut self, tree: &'a mut Tree) -> &'a std::path::Path {
+    fn tree_find_next_path<'a>(&self, tree: &'a mut Tree) -> &'a std::path::Path {
         if let Some(pattern) = &self.regex {
             for line in tree
                 .displayable()
@@ -84,7 +129,7 @@ impl Search {
         tree.selected_path()
     }
 
-    pub fn flagged(&mut self, flagged: &mut Flagged) {
+    pub fn flagged(&self, flagged: &mut Flagged) {
         if let Some(re) = &self.regex {
             let position = if let Some(pos) = flagged
                 .content
