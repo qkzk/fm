@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::{
     app::{Status, Tab},
-    modes::{Display, Flagged, Tree},
+    modes::{Display, Flagged, Go, To, Tree},
 };
 
 #[derive(Clone, Debug, Default)]
@@ -28,12 +28,12 @@ impl Search {
     pub fn leave(&mut self, status: &mut Status) -> Result<()> {
         match status.current_tab().display_mode {
             Display::Tree => {
-                self.tree(&mut status.current_tab_mut().tree)?;
+                self.tree(&mut status.current_tab_mut().tree);
             }
             Display::Directory => {
                 self.directory(status.current_tab_mut())?;
             }
-            Display::Flagged => self.flagged(&mut status.menu.flagged)?,
+            Display::Flagged => self.flagged(&mut status.menu.flagged),
             _ => (),
         };
         status.update_second_pane_for_preview()
@@ -47,14 +47,44 @@ impl Search {
         Ok(())
     }
 
-    pub fn tree(&mut self, tree: &mut Tree) -> Result<()> {
-        if let Some(re) = &self.regex {
-            tree.search_first_match(re);
-        }
-        Ok(())
+    pub fn tree(&mut self, tree: &mut Tree) {
+        let path = self.tree_find_next_path(tree).to_owned();
+        tree.go(To::Path(&path));
     }
 
-    pub fn flagged(&mut self, flagged: &mut Flagged) -> Result<()> {
+    fn tree_find_next_path<'a>(&mut self, tree: &'a mut Tree) -> &'a std::path::Path {
+        if let Some(pattern) = &self.regex {
+            for line in tree
+                .displayable_lines
+                .lines()
+                .iter()
+                .skip(tree.displayable_lines.index + 1)
+            {
+                let Some(filename) = line.path.file_name() else {
+                    continue;
+                };
+                if pattern.is_match(&filename.to_string_lossy()) {
+                    return &line.path;
+                }
+            }
+            for line in tree
+                .displayable_lines
+                .lines()
+                .iter()
+                .take(tree.displayable_lines.index)
+            {
+                let Some(filename) = line.path.file_name() else {
+                    continue;
+                };
+                if pattern.is_match(&filename.to_string_lossy()) {
+                    return &line.path;
+                }
+            }
+        }
+        tree.selected_path()
+    }
+
+    pub fn flagged(&mut self, flagged: &mut Flagged) {
         if let Some(re) = &self.regex {
             let position = if let Some(pos) = flagged
                 .content
@@ -71,11 +101,10 @@ impl Search {
             {
                 pos
             } else {
-                return Ok(());
+                return;
             };
 
             flagged.select_index(position);
         }
-        Ok(())
     }
 }

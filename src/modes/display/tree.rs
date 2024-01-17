@@ -163,7 +163,7 @@ pub struct Tree {
     root_path: Arc<Path>,
     selected: Arc<Path>,
     nodes: HashMap<Arc<Path>, Node>,
-    displayable_lines: TreeLines,
+    pub displayable_lines: TreeLines,
 }
 
 impl Default for Tree {
@@ -575,43 +575,6 @@ impl Tree {
         self.remake_displayable(users);
     }
 
-    /// Select the first node whose filename match a pattern.
-    /// If the selected file match, the next match will be selected.
-    pub fn search_first_match(&mut self, pattern: &regex::Regex) {
-        let path = self.search(pattern).to_path_buf();
-        self.select_path(&path)
-    }
-
-    fn search(&self, pattern: &regex::Regex) -> &Path {
-        for line in self
-            .displayable_lines
-            .lines()
-            .iter()
-            .skip(self.displayable_lines.index + 1)
-        {
-            let Some(filename) = line.path.file_name() else {
-                continue;
-            };
-            if pattern.is_match(&filename.to_string_lossy()) {
-                return &line.path;
-            }
-        }
-        for line in self
-            .displayable_lines
-            .lines()
-            .iter()
-            .take(self.displayable_lines.index)
-        {
-            let Some(filename) = line.path.file_name() else {
-                continue;
-            };
-            if pattern.is_match(&filename.to_string_lossy()) {
-                return &line.path;
-            }
-        }
-        &self.selected_path()
-    }
-
     /// Create a displayable content from the tree.
     /// Returns 2 informations :
     /// - the index of the selected node into this content.
@@ -768,7 +731,7 @@ fn filename_format(current_path: &Path, folded: bool) -> String {
 #[derive(Clone, Debug, Default)]
 pub struct TreeLines {
     pub content: Vec<TreeLineBuilder>,
-    index: usize,
+    pub index: usize,
 }
 
 impl TreeLines {
@@ -812,7 +775,7 @@ impl TreeLines {
 pub struct TreeLineBuilder {
     folded: bool,
     prefix: Arc<str>,
-    path: Arc<Path>,
+    pub path: Arc<Path>,
     color_effect: ColorEffect,
     metadata: String,
 }

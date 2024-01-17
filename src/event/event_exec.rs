@@ -824,12 +824,12 @@ impl EventAction {
             return Ok(());
         };
         match tab.display_mode {
-            Display::Tree => tab.tree.search_first_match(&re),
+            Display::Tree => tab.search.tree(&mut tab.tree),
             Display::Directory => tab.normal_search_next(&re),
             Display::Preview => {
                 return Ok(());
             }
-            Display::Flagged => tab.search.flagged(&mut status.menu.flagged)?,
+            Display::Flagged => tab.search.flagged(&mut status.menu.flagged),
         }
         status.refresh_status()?;
         status.update_second_pane_for_preview()?;
