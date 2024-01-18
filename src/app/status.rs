@@ -1164,11 +1164,6 @@ impl Status {
         self.set_edit_mode(self.index, Edit::InputSimple(InputSimple::Chmod))
     }
 
-    /// Add a char to input string, look for a possible completion.
-    pub fn input_complete(&mut self, c: char) -> Result<()> {
-        self.menu.input_complete(c, &self.tabs[self.index])
-    }
-
     /// Execute a custom event on the selected file
     pub fn run_custom_command(&mut self, string: &str) -> Result<()> {
         log_info!("custom {string}");

@@ -2,30 +2,22 @@ use anyhow::Result;
 
 use crate::{
     app::{Status, Tab},
-    modes::{Display, Flagged, Go, To, Tree},
+    modes::{Content, Display, Flagged, Go, To, ToPath, Tree},
 };
 
 #[derive(Clone, Debug, Default)]
 pub struct Search {
     pub regex: Option<regex::Regex>,
-    index: Option<usize>,
-    nb_matches: Option<usize>,
 }
 
 impl Search {
     pub fn new(searched: &str) -> Result<Self> {
         Ok(Self {
             regex: regex::Regex::new(searched).ok(),
-            index: None,
-            nb_matches: None,
         })
     }
 
-    pub fn complete(&mut self) -> Result<()> {
-        Ok(())
-    }
-
-    pub fn leave(&self, status: &mut Status) -> Result<()> {
+    pub fn leave(&mut self, status: &mut Status) -> Result<()> {
         match status.current_tab().display_mode {
             Display::Tree => {
                 self.tree(&mut status.current_tab_mut().tree);
@@ -150,6 +142,45 @@ impl Search {
             };
 
             flagged.select_index(position);
+        }
+    }
+
+    pub fn complete_flagged(&self, flagged: &Flagged) -> Vec<String> {
+        self.filtered_paths(flagged.content())
+            .iter()
+            .filter_map(|p| p.file_name())
+            .map(|s| s.to_string_lossy().to_string())
+            .collect()
+    }
+
+    pub fn complete_tree(&self, tree: &Tree) -> Vec<String> {
+        self.filtered_paths(tree.displayable().lines())
+            .iter()
+            .filter_map(|p| p.file_name())
+            .map(|s| s.to_string_lossy().to_string())
+            .collect()
+    }
+
+    pub fn complete_directory(&self, tab: &Tab) -> Vec<String> {
+        self.filtered_paths(tab.directory.content())
+            .iter()
+            .filter_map(|p| p.file_name())
+            .map(|s| s.to_string_lossy().to_string())
+            .collect()
+    }
+
+    pub fn filtered_paths(&self, content: &Vec<impl ToPath>) -> Vec<std::path::PathBuf> {
+        if let Some(re) = &self.regex {
+            content
+                .iter()
+                .map(|elt| elt.to_path())
+                .filter(|p| {
+                    re.is_match(p.file_name().unwrap_or_default().to_string_lossy().as_ref())
+                })
+                .map(|p| p.to_owned())
+                .collect()
+        } else {
+            vec![]
         }
     }
 }

@@ -112,14 +112,14 @@ impl Menu {
     }
 
     /// Fill the input string with the currently selected completion.
-    pub fn input_complete(&mut self, c: char, tab: &Tab) -> Result<()> {
+    pub fn input_complete(&mut self, c: char, tab: &mut Tab) -> Result<()> {
         self.input.insert(c);
         self.fill_completion(tab)?;
         self.window.reset(self.completion.len());
         Ok(())
     }
 
-    fn fill_completion(&mut self, tab: &Tab) -> Result<()> {
+    fn fill_completion(&mut self, tab: &mut Tab) -> Result<()> {
         match tab.edit_mode {
             Edit::InputCompleted(InputCompleted::Cd) => self.completion.cd(
                 &self.input.string(),
@@ -129,16 +129,13 @@ impl Menu {
                 self.completion.exec(&self.input.string())
             }
             Edit::InputCompleted(InputCompleted::Search) => {
-                match tab.display_mode {
-                    Display::Tree | Display::Directory => {
-                        self.completion
-                            .search(tab.filenames_matching(&self.input.string()));
-                    }
-                    Display::Flagged => self
-                        .completion
-                        .search(self.flagged.filenames_matching(&self.input.string())),
-                    _ => (),
-                }
+                let files = match tab.display_mode {
+                    Display::Preview => vec![],
+                    Display::Tree => tab.search.complete_tree(&tab.tree),
+                    Display::Flagged => tab.search.complete_flagged(&self.flagged),
+                    Display::Directory => tab.search.complete_directory(tab),
+                };
+                self.completion.search(files);
                 Ok(())
             }
             Edit::InputCompleted(InputCompleted::Action) => {

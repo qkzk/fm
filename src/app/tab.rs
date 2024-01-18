@@ -205,17 +205,6 @@ impl Tab {
         path_to_string(&self.directory.path)
     }
 
-    /// Returns a vector of filenames as strings, which contains the input string.
-    /// Empty vector while in `Display::Preview`.
-    pub fn filenames_matching(&self, input_string: &str) -> Vec<String> {
-        match self.display_mode {
-            Display::Directory => self.directory.filenames_matching(input_string),
-            Display::Tree => self.tree.filenames_matching(input_string),
-            Display::Preview => vec![],
-            Display::Flagged => vec![],
-        }
-    }
-
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) -> Result<()> {
         self.preview = Preview::empty();

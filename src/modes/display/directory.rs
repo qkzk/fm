@@ -244,20 +244,8 @@ impl Directory {
             .map(|fileinfo| fileinfo.path.borrow())
             .collect()
     }
-
-    pub fn filenames_matching(&self, input_string: &str) -> Vec<String> {
-        let Ok(re) = regex::Regex::new(input_string) else {
-            return vec![];
-        };
-        self.content
-            .iter()
-            .filter(|f| re.is_match(&f.filename))
-            .map(|f| f.filename.to_string())
-            .collect()
-    }
 }
 
-// impl_selectable_content!(FileInfo, Directory);
 impl_selectable!(Directory);
 impl_content!(FileInfo, Directory);
 

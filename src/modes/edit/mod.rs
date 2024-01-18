@@ -62,7 +62,7 @@ pub use regex::regex_matcher;
 pub use removable_devices::RemovableDevices;
 pub use search::Search;
 pub use second_line::SecondLine;
-pub use selectable_content::{Content, Selectable};
+pub use selectable_content::{Content, Selectable, ToPath};
 pub use shell_parser::ShellCommandParser;
 pub use shortcut::Shortcut;
 pub use sort::SortKind;

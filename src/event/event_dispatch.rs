@@ -79,7 +79,9 @@ impl EventDispatcher {
                 Edit::InputSimple(InputSimple::Sort) => status.sort(c),
                 Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
                 Edit::InputSimple(_) => status.menu.input_insert(c),
-                Edit::InputCompleted(_) => status.input_complete(c),
+                Edit::InputCompleted(_) => status
+                    .menu
+                    .input_complete(c, &mut status.tabs[status.index]),
                 Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
                 Edit::Navigate(navigate) => Self::navigate_char(navigate, status, c),
                 Edit::Nothing if matches!(tab.display_mode, Display::Preview) => {

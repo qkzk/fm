@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -12,6 +11,7 @@ use crate::modes::files_collection;
 use crate::modes::FilterKind;
 use crate::modes::Flagged;
 use crate::modes::SortKind;
+use crate::modes::ToPath;
 use crate::modes::Users;
 use crate::modes::{ColorEffect, FileInfo};
 
@@ -628,22 +628,6 @@ impl Tree {
         &self.displayable_lines
     }
 
-    #[inline]
-    pub fn filenames_matching(&self, input_string: &str) -> Vec<String> {
-        let to_filename: fn(&Arc<Path>) -> Option<&OsStr> = |path| path.file_name();
-        let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
-        let Ok(re) = regex::Regex::new(input_string) else {
-            return vec![];
-        };
-        self.nodes
-            .keys()
-            .filter_map(to_filename)
-            .filter_map(to_str)
-            .filter(|&p| re.is_match(p))
-            .map(|p| p.replace("▸ ", "").replace("▾ ", ""))
-            .collect()
-    }
-
     /// Vector of `Path` of nodes.
     pub fn paths(&self) -> Vec<&Path> {
         self.nodes.keys().map(|p| p.borrow()).collect()
@@ -837,5 +821,11 @@ impl TreeLineBuilder {
     /// the file as selected.
     pub fn select(&mut self) {
         self.color_effect.effect = tuikit::attr::Effect::REVERSE;
+    }
+}
+
+impl ToPath for TreeLineBuilder {
+    fn to_path(&self) -> &Path {
+        &self.path
     }
 }

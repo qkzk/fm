@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::modes::ContentWindow;
+use crate::modes::ToPath;
 
 #[derive(Clone, Debug)]
 pub struct Flagged {
@@ -183,6 +184,10 @@ impl Flagged {
     }
 }
 
-// impl_selectable_content!(PathBuf, Flagged);
+impl ToPath for PathBuf {
+    fn to_path(&self) -> &Path {
+        self.as_ref()
+    }
+}
 impl_selectable!(Flagged);
 impl_content!(PathBuf, Flagged);
