@@ -899,6 +899,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] leaving aka reseting
 - [x] FIX: skim in tree doesn't select the match
 - [x] remove MOCP control from fm
+- [ ] memory leak: clearing a vector has no effect on its allocated capacity. Might this be the cause ?
+- [ ] ???
 
 ## TODO
 
