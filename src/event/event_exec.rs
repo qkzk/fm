@@ -820,9 +820,6 @@ impl EventAction {
             return Ok(());
         }
         let tab = &mut status.tabs[status.index];
-        // let Some(re) = tab.search.regex.clone() else {
-        //     return Ok(());
-        // };
         match tab.display_mode {
             Display::Tree => tab.search.tree(&mut tab.tree),
             Display::Directory => {
