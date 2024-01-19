@@ -5,7 +5,7 @@ use crate::{
     modes::{Content, Display, Flagged, Go, To, ToPath, Tree},
 };
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct Search {
     pub regex: Option<regex::Regex>,
 }
