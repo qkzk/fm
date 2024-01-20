@@ -892,23 +892,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] use regex in search
   - [x] save the regex ???
   - [x] simplify navigation to skim output
-  - [ ] display number of matches while searching.
-        requires a lot of change
-
-    - [ ] FIX select next doesn't seem to work properly
-    - [ ] FIX: prevent select next from moving if regex is empty
-
-  - [ ] search refactoring
-
-    - [ ] entering
-    - [ ] setting
-    - [ ] leaving aka reseting
-
+  - [x] display number of matches while searching.
+  - [x] search refactoring
   - [ ] search history when logging with ctrl+up, ctrl+down
 
 - [x] FIX: skim in tree doesn't select the match
 - [x] remove MOCP control from fm
 - [ ] memory leak: clearing a vector has no effect on its allocated capacity. Might this be the cause ?
+- [ ] header display should be right aligned
 - [ ] ???
 
 ## TODO
