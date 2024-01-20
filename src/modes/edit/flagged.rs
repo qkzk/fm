@@ -60,6 +60,12 @@ impl Flagged {
         self.select_index(index);
     }
 
+    pub fn select_path(&mut self, path: &std::path::Path) {
+        if let Some(position) = self.content.iter().position(|p| p == path) {
+            self.select_index(position)
+        }
+    }
+
     pub fn page_down(&mut self) {
         for _ in 0..10 {
             if self.index + 1 == self.content.len() {

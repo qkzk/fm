@@ -12,6 +12,13 @@ pub struct Search {
 }
 
 impl Search {
+    pub fn empty() -> Self {
+        Self {
+            regex: regex::Regex::new("").unwrap(),
+            paths: vec![],
+            index: 0,
+        }
+    }
     pub fn new(searched: &str) -> Result<Self> {
         Ok(Self {
             regex: regex::Regex::new(searched)?,
@@ -61,8 +68,8 @@ impl Search {
         let mut found = false;
         for (index, file) in tab.directory.enumerate().skip(current_index) {
             if self.regex.is_match(&file.filename) {
-                next_index = index;
                 if !found {
+                    next_index = index;
                     self.index = self.paths.len();
                     found = true;
                 }
@@ -71,8 +78,8 @@ impl Search {
         }
         for (index, file) in tab.directory.enumerate().take(current_index) {
             if self.regex.is_match(&file.filename) {
-                next_index = index;
                 if !found {
+                    next_index = index;
                     self.index = self.paths.len();
                     found = true;
                 }
@@ -83,44 +90,68 @@ impl Search {
         tab.go_to_index(next_index);
     }
 
-    pub fn directory_search_next(&mut self, tab: &Tab) -> Option<std::path::PathBuf> {
+    pub fn select_next(&mut self) -> Option<std::path::PathBuf> {
         if !self.paths.is_empty() {
-            let index = (self.index + 1) % self.paths.len();
-            return Some(self.paths[index].to_owned());
+            self.index = (self.index + 1) % self.paths.len();
+            return Some(self.paths[self.index].to_owned());
         }
+        None
+    }
+
+    pub fn directory_search_next(
+        &self,
+        tab: &Tab,
+    ) -> (
+        Vec<std::path::PathBuf>,
+        Option<usize>,
+        Option<std::path::PathBuf>,
+    ) {
         let current_index = tab.directory.index;
+        let mut paths = vec![];
         let mut found = false;
+        let mut index = None;
+        let mut found_path = None;
         for file in tab.directory.iter().skip(current_index) {
             if self.regex.is_match(&file.filename) {
                 if !found {
-                    self.index = self.paths.len();
+                    index = Some(self.paths.len());
                     found = true;
+                    found_path = Some(file.path.to_path_buf());
                 }
-                self.paths.push(file.path.to_path_buf());
+                paths.push(file.path.to_path_buf());
             }
         }
         for file in tab.directory.iter().take(current_index) {
             if self.regex.is_match(&file.filename) {
                 if !found {
-                    self.index = self.paths.len();
+                    index = Some(self.paths.len());
                     found = true;
+                    found_path = Some(file.path.to_path_buf());
                 }
-                self.paths.push(file.path.to_path_buf());
+                paths.push(file.path.to_path_buf());
             }
         }
-        if found {
-            Some(self.paths[self.index].to_owned())
-        } else {
-            None
+        (paths, index, found_path)
+    }
+
+    pub fn set_index_paths(&mut self, index: usize, paths: Vec<std::path::PathBuf>) {
+        self.paths = paths;
+        self.index = index;
+    }
+
+    pub fn tree(&mut self, tree: &mut Tree) {
+        if let Some(path) = self.tree_find_next_path(tree).to_owned() {
+            tree.go(To::Path(&path));
         }
     }
 
-    pub fn tree(&self, tree: &mut Tree) {
-        let path = self.tree_find_next_path(tree).to_owned();
-        tree.go(To::Path(&path));
-    }
-
-    fn tree_find_next_path<'a>(&self, tree: &'a mut Tree) -> &'a std::path::Path {
+    fn tree_find_next_path<'a>(&mut self, tree: &'a mut Tree) -> Option<std::path::PathBuf> {
+        if !self.paths.is_empty() {
+            self.index = (self.index + 1) % self.paths.len();
+            return Some(self.paths[self.index].to_owned());
+        }
+        let mut found_path = None;
+        let mut found = false;
         for line in tree
             .displayable()
             .lines()
@@ -131,7 +162,12 @@ impl Search {
                 continue;
             };
             if self.regex.is_match(&filename.to_string_lossy()) {
-                return &line.path;
+                self.paths.push(line.path.to_path_buf());
+                if !found {
+                    self.index = self.paths.len();
+                    found_path = Some(line.path.to_path_buf());
+                    found = true;
+                }
             }
         }
         for line in tree
@@ -144,39 +180,60 @@ impl Search {
                 continue;
             };
             if self.regex.is_match(&filename.to_string_lossy()) {
-                return &line.path;
+                if !found {
+                    self.paths.push(line.path.to_path_buf());
+                    self.index = self.paths.len();
+                    found_path = Some(line.path.to_path_buf());
+                    found = true;
+                }
             }
         }
 
-        tree.selected_path()
+        found_path
     }
 
-    pub fn flagged(&self, flagged: &mut Flagged) {
-        let position = if let Some(pos) =
-            flagged
-                .content
-                .iter()
-                .skip(flagged.index + 1)
-                .position(|path| {
-                    self.regex
-                        .is_match(&path.file_name().unwrap().to_string_lossy())
-                }) {
-            pos + flagged.index + 1
-        } else if let Some(pos) = flagged
-            .content
-            .iter()
-            .take(flagged.index + 1)
-            .position(|path| {
-                self.regex
-                    .is_match(&path.file_name().unwrap().to_string_lossy())
-            })
-        {
-            pos
-        } else {
-            return;
-        };
+    pub fn flagged(&mut self, flagged: &mut Flagged) {
+        if !self.paths.is_empty() {
+            self.index = (self.index + 1) % self.paths.len();
+            flagged.select_path(&self.paths[self.index]);
+        }
 
-        flagged.select_index(position);
+        if let Some(path) = self.find_in_flagged(flagged) {
+            flagged.select_path(&path);
+        }
+    }
+
+    fn find_in_flagged(&mut self, flagged: &Flagged) -> Option<std::path::PathBuf> {
+        let mut found = false;
+        let mut found_path = None;
+
+        for path in flagged.content.iter().skip(flagged.index + 1) {
+            if self
+                .regex
+                .is_match(&path.file_name().unwrap().to_string_lossy())
+            {
+                if !found {
+                    found = true;
+                    found_path = Some(path.to_path_buf());
+                    self.index = self.paths.len();
+                }
+                self.paths.push(path.to_path_buf());
+            }
+        }
+        for path in flagged.content.iter().take(flagged.index + 1) {
+            if self
+                .regex
+                .is_match(&path.file_name().unwrap().to_string_lossy())
+            {
+                if !found {
+                    found = true;
+                    found_path = Some(path.to_path_buf());
+                    self.index = self.paths.len();
+                }
+                self.paths.push(path.to_path_buf());
+            }
+        }
+        found_path
     }
 
     pub fn complete_flagged(&self, flagged: &Flagged) -> Vec<String> {

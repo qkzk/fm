@@ -252,11 +252,11 @@ impl LeaveMode {
     pub fn search(status: &mut Status) -> Result<()> {
         let searched = &status.menu.input.string();
         if searched.is_empty() {
-            status.current_tab_mut().search = Search::default();
+            status.current_tab_mut().search = Search::empty();
             return Ok(());
         }
         let Ok(mut search) = Search::new(searched) else {
-            status.current_tab_mut().search = Search::default();
+            status.current_tab_mut().search = Search::empty();
             return Ok(());
         };
         status.menu.input.reset();

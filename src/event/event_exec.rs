@@ -534,7 +534,7 @@ impl EventAction {
             status.reset_edit_mode()?;
         }
         let tab = status.current_tab_mut();
-        tab.search = Search::default();
+        tab.search = Search::empty();
         status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Search))
     }
 
@@ -819,18 +819,35 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        let tab = &mut status.tabs[status.index];
-        match tab.display_mode {
-            Display::Tree => tab.search.tree(&mut tab.tree),
+        match status.tabs[status.index].display_mode {
+            Display::Tree => status.tabs[status.index]
+                .search
+                .tree(&mut status.tabs[status.index].tree),
             Display::Directory => {
-                if let Some(index) = tab.search.directory_search_next(tab) {
-                    tab.go_to_index(index)
+                if let Some(path) = status.tabs[status.index].search.select_next() {
+                    status.tabs[status.index].go_to_file(path)
+                } else {
+                    let (paths, o_index, o_path) = status.tabs[status.index]
+                        .search
+                        .directory_search_next(&status.tabs[status.index]);
+                    match (o_index, o_path) {
+                        (Some(index), Some(path)) => {
+                            status.tabs[status.index]
+                                .search
+                                .set_index_paths(index, paths);
+                            status.tabs[status.index].go_to_file(path);
+                        }
+                        _ => {}
+                    }
                 }
+                // if let Some(path) = search.directory_search_next(tab) {
             }
             Display::Preview => {
                 return Ok(());
             }
-            Display::Flagged => tab.search.flagged(&mut status.menu.flagged),
+            Display::Flagged => status.tabs[status.index]
+                .search
+                .flagged(&mut status.menu.flagged),
         }
         status.refresh_status()?;
         status.update_second_pane_for_preview()?;
