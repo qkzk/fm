@@ -38,6 +38,8 @@ use crate::modes::Shortcut;
 use crate::modes::Trash;
 use crate::modes::TuiApplications;
 
+use super::ToPath;
+
 pub struct Menu {
     /// Window for scrollable menus
     pub window: ContentWindow,
@@ -130,9 +132,9 @@ impl Menu {
             Edit::InputCompleted(InputCompleted::Search) => {
                 let files = match tab.display_mode {
                     Display::Preview => vec![],
-                    Display::Tree => tab.search.complete_tree(&tab.tree),
-                    Display::Flagged => tab.search.complete_flagged(&self.flagged),
-                    Display::Directory => tab.search.complete_directory(tab),
+                    Display::Tree => tab.search.complete(tab.tree.displayable().content()),
+                    Display::Flagged => tab.search.complete(self.flagged.content()),
+                    Display::Directory => tab.search.complete(tab.directory.content()),
                 };
                 self.completion.search(files);
                 Ok(())

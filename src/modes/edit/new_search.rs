@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::{
     app::{Status, Tab},
-    modes::{Content, Display, Flagged, Go, To, ToPath, Tree},
+    modes::{Content, Directory, Display, Flagged, Go, To, ToPath, Tree, TreeLineBuilder},
 };
 
 pub struct Search {
@@ -243,31 +243,7 @@ impl Search {
         found_path
     }
 
-    pub fn complete_flagged(&self, flagged: &Flagged) -> Vec<String> {
-        self.filtered_paths(flagged.content())
-            .iter()
-            .filter_map(|p| p.file_name())
-            .map(|s| s.to_string_lossy().to_string())
-            .collect()
-    }
-
-    pub fn complete_tree(&self, tree: &Tree) -> Vec<String> {
-        self.filtered_paths(tree.displayable().lines())
-            .iter()
-            .filter_map(|p| p.file_name())
-            .map(|s| s.to_string_lossy().to_string())
-            .collect()
-    }
-
-    pub fn complete_directory(&self, tab: &Tab) -> Vec<String> {
-        self.filtered_paths(tab.directory.content())
-            .iter()
-            .filter_map(|p| p.file_name())
-            .map(|s| s.to_string_lossy().to_string())
-            .collect()
-    }
-
-    pub fn filtered_paths(&self, content: &Vec<impl ToPath>) -> Vec<std::path::PathBuf> {
+    pub fn complete(&self, content: &[impl ToPath]) -> Vec<String> {
         content
             .iter()
             .map(|elt| elt.to_path())
@@ -275,7 +251,8 @@ impl Search {
                 self.regex
                     .is_match(p.file_name().unwrap_or_default().to_string_lossy().as_ref())
             })
-            .map(|p| p.to_owned())
+            .filter_map(|p| p.file_name())
+            .map(|s| s.to_string_lossy().to_string())
             .collect()
     }
 }

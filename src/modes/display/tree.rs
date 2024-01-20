@@ -723,6 +723,10 @@ impl TreeLines {
         Self { content, index }
     }
 
+    pub fn content(&self) -> &Vec<TreeLineBuilder> {
+        &self.content
+    }
+
     /// Index of the currently selected file.
     pub fn index(&self) -> usize {
         self.index
