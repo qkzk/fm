@@ -11,6 +11,22 @@ pub struct Search {
     pub index: usize,
 }
 
+impl std::fmt::Display for Search {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.is_empty() {
+            write!(f, "")
+        } else {
+            write!(
+                f,
+                "Searched: {regex} - {pos} / {len}",
+                regex = self.regex,
+                pos = self.index + if self.paths.is_empty() { 0 } else { 1 },
+                len = self.paths.len()
+            )
+        }
+    }
+}
+
 impl Search {
     pub fn empty() -> Self {
         Self {
@@ -28,25 +44,13 @@ impl Search {
         })
     }
 
-    pub fn has_search(&self) -> bool {
-        !self.regex.to_string().is_empty()
+    fn is_empty(&self) -> bool {
+        self.regex.to_string().is_empty()
     }
 
     pub fn reset_paths(&mut self) {
         self.paths = vec![];
         self.index = 0;
-    }
-
-    pub fn position_str(&self) -> String {
-        if self.paths.is_empty() {
-            "0 / 0".to_owned()
-        } else {
-            format!(
-                "{ind} / {len}",
-                ind = self.index + 1,
-                len = self.paths.len()
-            )
-        }
     }
 
     pub fn select_next(&mut self) -> Option<std::path::PathBuf> {
@@ -75,7 +79,7 @@ impl Search {
     /// from a starting position `next_index`.
     /// We search forward from that position and start again from top if nothing is found.
     /// We move the selection to the first matching file.
-    pub fn directory(&mut self, tab: &mut Tab) {
+    fn directory(&mut self, tab: &mut Tab) {
         let current_index = tab.directory.index;
         let mut next_index = current_index;
         let mut found = false;
@@ -116,17 +120,12 @@ impl Search {
         let mut found = false;
         let mut index = None;
         let mut found_path = None;
-        for file in tab.directory.iter().skip(current_index) {
-            if self.regex.is_match(&file.filename) {
-                if !found {
-                    index = Some(self.paths.len());
-                    found = true;
-                    found_path = Some(file.path.to_path_buf());
-                }
-                paths.push(file.path.to_path_buf());
-            }
-        }
-        for file in tab.directory.iter().take(current_index) {
+        for file in tab
+            .directory
+            .iter()
+            .skip(current_index)
+            .chain(tab.directory.iter().take(current_index))
+        {
             if self.regex.is_match(&file.filename) {
                 if !found {
                     index = Some(self.paths.len());
@@ -163,6 +162,12 @@ impl Search {
             .lines()
             .iter()
             .skip(tree.displayable().index() + 1)
+            .chain(
+                tree.displayable()
+                    .lines()
+                    .iter()
+                    .take(tree.displayable().index()),
+            )
         {
             let Some(filename) = line.path.file_name() else {
                 continue;
@@ -176,25 +181,6 @@ impl Search {
                 }
             }
         }
-        for line in tree
-            .displayable()
-            .lines()
-            .iter()
-            .take(tree.displayable().index())
-        {
-            let Some(filename) = line.path.file_name() else {
-                continue;
-            };
-            if self.regex.is_match(&filename.to_string_lossy()) {
-                self.paths.push(line.path.to_path_buf());
-                if !found {
-                    self.index = self.paths.len();
-                    found_path = Some(line.path.to_path_buf());
-                    found = true;
-                }
-            }
-        }
-
         found_path
     }
 
@@ -214,20 +200,12 @@ impl Search {
         let mut found = false;
         let mut found_path = None;
 
-        for path in flagged.content.iter().skip(flagged.index + 1) {
-            if self
-                .regex
-                .is_match(&path.file_name().unwrap().to_string_lossy())
-            {
-                if !found {
-                    found = true;
-                    found_path = Some(path.to_path_buf());
-                    self.index = self.paths.len();
-                }
-                self.paths.push(path.to_path_buf());
-            }
-        }
-        for path in flagged.content.iter().take(flagged.index + 1) {
+        for path in flagged
+            .content
+            .iter()
+            .skip(flagged.index + 1)
+            .chain(flagged.content.iter().take(flagged.index + 1))
+        {
             if self
                 .regex
                 .is_match(&path.file_name().unwrap().to_string_lossy())
@@ -243,6 +221,7 @@ impl Search {
         found_path
     }
 
+    #[inline]
     pub fn complete(&self, content: &[impl ToPath]) -> Vec<String> {
         content
             .iter()

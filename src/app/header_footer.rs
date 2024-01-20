@@ -144,15 +144,7 @@ mod inner {
         }
 
         fn string_searched(search: &Search) -> String {
-            if search.has_search() {
-                format!(
-                    " Searched {searched} : {pos}",
-                    searched = search.regex.to_string(),
-                    pos = search.position_str(),
-                )
-            } else {
-                "".to_owned()
-            }
+            search.to_string()
         }
 
         fn string_shorten_path(tab: &Tab) -> Result<String> {
