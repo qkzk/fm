@@ -887,16 +887,25 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: clicking footer row execute directory actions, even in flagged display mode
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
 - [ ] display all specific binds for every mode with a key ?
-- [ ] merge search & regex, display nb of matches, completion + flag on the fly
+- [ ] search, display nb of matches, completion + flag on the fly
+
   - [x] use regex in search
   - [x] save the regex ???
   - [x] simplify navigation to skim output
   - [ ] display number of matches while searching.
         requires a lot of change
+
+    - [ ] FIX select next doesn't seem to work properly
+    - [ ] FIX: prevent select next from moving if regex is empty
+
   - [ ] search refactoring
+
     - [ ] entering
     - [ ] setting
     - [ ] leaving aka reseting
+
+  - [ ] search history when logging with ctrl+up, ctrl+down
+
 - [x] FIX: skim in tree doesn't select the match
 - [x] remove MOCP control from fm
 - [ ] memory leak: clearing a vector has no effect on its allocated capacity. Might this be the cause ?
