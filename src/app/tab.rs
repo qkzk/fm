@@ -246,6 +246,7 @@ impl Tab {
 
     /// Change the display mode.
     pub fn set_display_mode(&mut self, new_display_mode: Display) {
+        self.search.reset_paths();
         self.reset_preview();
         self.display_mode = new_display_mode
     }
@@ -419,6 +420,7 @@ impl Tab {
         if matches!(self.display_mode, Display::Preview | Display::Flagged) {
             return Ok(());
         }
+        self.search.reset_paths();
         match std::env::set_current_dir(path) {
             Ok(()) => (),
             Err(error) => {

@@ -19,12 +19,17 @@ impl Search {
             index: 0,
         }
     }
+
     pub fn new(searched: &str) -> Result<Self> {
         Ok(Self {
             regex: regex::Regex::new(searched)?,
             paths: vec![],
             index: 0,
         })
+    }
+
+    pub fn has_search(&self) -> bool {
+        !self.regex.to_string().is_empty()
     }
 
     pub fn reset_paths(&mut self) {

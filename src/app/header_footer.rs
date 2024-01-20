@@ -4,9 +4,9 @@ mod inner {
 
     use crate::app::{Status, Tab};
     use crate::event::ActionMap;
-    use crate::modes::Selectable;
     use crate::modes::{shorten_path, Display};
     use crate::modes::{Content, FilterKind};
+    use crate::modes::{Search, Selectable};
 
     /// Action for every element of the first line.
     /// It should match the order of the `FirstLine::make_string` static method.
@@ -130,7 +130,7 @@ mod inner {
                 Self::string_first_row_selected_file(tab, width)?,
             ];
             let mut actions: Vec<ActionMap> = HEADER_ACTIONS[0..2].into();
-            strings.push(Self::string_searched(&tab.search.regex.to_string()));
+            strings.push(Self::string_searched(&tab.search));
             actions.push(HEADER_ACTIONS[2].clone());
             if !matches!(tab.settings.filter, FilterKind::All) {
                 strings.push(Self::string_filter(tab));
@@ -143,8 +143,15 @@ mod inner {
             format!(" {filter} ", filter = tab.settings.filter)
         }
 
-        fn string_searched(searched: &str) -> String {
-            format!(" Searched: {searched} ")
+        fn string_searched(search: &Search) -> String {
+            if search.has_search() {
+                format!(
+                    " Searched: {searched} ",
+                    searched = search.regex.to_string()
+                )
+            } else {
+                "".to_owned()
+            }
         }
 
         fn string_shorten_path(tab: &Tab) -> Result<String> {
