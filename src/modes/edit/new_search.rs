@@ -96,7 +96,7 @@ impl Search {
     }
 
     pub fn select_next(&mut self) -> Option<std::path::PathBuf> {
-        if !self.paths.is_empty() {
+        if !self.paths.is_empty() && !self.regex.to_string().is_empty() {
             self.index = (self.index + 1) % self.paths.len();
             return Some(self.paths[self.index].to_owned());
         }
@@ -151,9 +151,11 @@ impl Search {
     }
 
     fn tree_find_next_path<'a>(&mut self, tree: &'a mut Tree) -> Option<std::path::PathBuf> {
-        if !self.paths.is_empty() {
+        if !self.paths.is_empty() && !self.regex.to_string().is_empty() {
             self.index = (self.index + 1) % self.paths.len();
             return Some(self.paths[self.index].to_owned());
+        } else {
+            self.reset_paths();
         }
         let mut found_path = None;
         let mut found = false;
@@ -198,9 +200,12 @@ impl Search {
     }
 
     pub fn flagged(&mut self, flagged: &mut Flagged) {
-        if !self.paths.is_empty() {
+        if !self.paths.is_empty() && !self.regex.to_string().is_empty() {
             self.index = (self.index + 1) % self.paths.len();
             flagged.select_path(&self.paths[self.index]);
+            return;
+        } else {
+            self.reset_paths();
         }
 
         if let Some(path) = self.find_in_flagged(flagged) {

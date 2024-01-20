@@ -112,8 +112,7 @@ impl Menu {
     }
 
     /// Fill the input string with the currently selected completion.
-    pub fn input_complete(&mut self, c: char, tab: &mut Tab) -> Result<()> {
-        self.input.insert(c);
+    pub fn input_complete(&mut self, tab: &mut Tab) -> Result<()> {
         self.fill_completion(tab)?;
         self.window.reset(self.completion.len());
         Ok(())

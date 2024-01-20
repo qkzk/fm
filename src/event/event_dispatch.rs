@@ -4,7 +4,7 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::app::Status;
 use crate::config::{Bindings, REFRESH_KEY};
 use crate::event::event_exec::EventAction;
-use crate::modes::{Display, Edit, InputSimple, MarkAction, Navigate};
+use crate::modes::{Display, Edit, InputSimple, MarkAction, Navigate, Search};
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -74,14 +74,22 @@ impl EventDispatcher {
         if status.focus.is_file() {
             self.key_matcher(status, Key::Char(c))
         } else {
+            let input_string = status.menu.input.string();
             let tab = status.current_tab_mut();
             match tab.edit_mode {
                 Edit::InputSimple(InputSimple::Sort) => status.sort(c),
                 Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
                 Edit::InputSimple(_) => status.menu.input_insert(c),
-                Edit::InputCompleted(_) => status
-                    .menu
-                    .input_complete(c, &mut status.tabs[status.index]),
+                Edit::InputCompleted(input_completed) => {
+                    status.menu.input.insert(c);
+                    if matches!(input_completed, crate::modes::InputCompleted::Search) {
+                        if let Ok(search) = Search::new(&input_string) {
+                            status.tabs[status.index].search = search;
+                            status.menu.input_complete(&mut status.tabs[status.index])?;
+                        };
+                    }
+                    Ok(())
+                }
                 Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
                 Edit::Navigate(navigate) => Self::navigate_char(navigate, status, c),
                 Edit::Nothing if matches!(tab.display_mode, Display::Preview) => {
