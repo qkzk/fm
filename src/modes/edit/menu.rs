@@ -38,8 +38,6 @@ use crate::modes::Shortcut;
 use crate::modes::Trash;
 use crate::modes::TuiApplications;
 
-use super::ToPath;
-
 pub struct Menu {
     /// Window for scrollable menus
     pub window: ContentWindow,
