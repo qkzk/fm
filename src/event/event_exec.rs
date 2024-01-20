@@ -826,21 +826,15 @@ impl EventAction {
             Display::Directory => {
                 if let Some(path) = status.tabs[status.index].search.select_next() {
                     status.tabs[status.index].go_to_file(path)
-                } else {
-                    let (paths, o_index, o_path) = status.tabs[status.index]
+                } else if let (paths, Some(index), Some(path)) = status.tabs[status.index]
+                    .search
+                    .directory_search_next(&status.tabs[status.index])
+                {
+                    status.tabs[status.index]
                         .search
-                        .directory_search_next(&status.tabs[status.index]);
-                    match (o_index, o_path) {
-                        (Some(index), Some(path)) => {
-                            status.tabs[status.index]
-                                .search
-                                .set_index_paths(index, paths);
-                            status.tabs[status.index].go_to_file(path);
-                        }
-                        _ => {}
-                    }
+                        .set_index_paths(index, paths);
+                    status.tabs[status.index].go_to_file(path);
                 }
-                // if let Some(path) = search.directory_search_next(tab) {
             }
             Display::Preview => {
                 return Ok(());
