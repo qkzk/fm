@@ -302,7 +302,8 @@ mod inner {
     }
 
     impl FlaggedHeader {
-        const ACTIONS: [ActionMap; 2] = [ActionMap::ResetMode, ActionMap::OpenFile];
+        const ACTIONS: [ActionMap; 3] =
+            [ActionMap::ResetMode, ActionMap::OpenFile, ActionMap::Search];
 
         pub fn new(status: &Status) -> Result<Self> {
             let strings = Self::make_strings(status);
@@ -326,6 +327,7 @@ mod inner {
                     .unwrap_or(&std::path::PathBuf::new())
                     .to_string_lossy()
                     .to_string(),
+                Header::string_searched(&status.current_tab().search),
             ]
         }
 
