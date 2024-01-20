@@ -4,7 +4,7 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::app::Status;
 use crate::config::{Bindings, REFRESH_KEY};
 use crate::event::event_exec::EventAction;
-use crate::modes::{Display, Edit, InputSimple, MarkAction, Navigate, Search};
+use crate::modes::{Display, Edit, InputCompleted, InputSimple, MarkAction, Navigate, Search};
 
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
@@ -74,7 +74,6 @@ impl EventDispatcher {
         if status.focus.is_file() {
             self.key_matcher(status, Key::Char(c))
         } else {
-            let input_string = status.menu.input.string();
             let tab = status.current_tab_mut();
             match tab.edit_mode {
                 Edit::InputSimple(InputSimple::Sort) => status.sort(c),
@@ -82,12 +81,10 @@ impl EventDispatcher {
                 Edit::InputSimple(_) => status.menu.input_insert(c),
                 Edit::InputCompleted(input_completed) => {
                     status.menu.input.insert(c);
-                    if matches!(input_completed, crate::modes::InputCompleted::Search) {
-                        if let Ok(search) = Search::new(&input_string) {
-                            status.tabs[status.index].search = search;
-                            status.menu.input_complete(&mut status.tabs[status.index])?;
-                        };
+                    if matches!(input_completed, InputCompleted::Search) {
+                        Self::update_search(status)?
                     }
+                    status.menu.input_complete(&mut status.tabs[status.index])?;
                     Ok(())
                 }
                 Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
@@ -98,6 +95,13 @@ impl EventDispatcher {
                 Edit::Nothing => self.key_matcher(status, Key::Char(c)),
             }
         }
+    }
+
+    fn update_search(status: &mut Status) -> Result<()> {
+        if let Ok(search) = Search::new(&status.menu.input.string()) {
+            status.current_tab_mut().search = search;
+        };
+        Ok(())
     }
 
     fn navigate_char(navigate: Navigate, status: &mut Status, c: char) -> Result<()> {
