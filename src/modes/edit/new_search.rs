@@ -187,8 +187,8 @@ impl Search {
                 continue;
             };
             if self.regex.is_match(&filename.to_string_lossy()) {
+                self.paths.push(line.path.to_path_buf());
                 if !found {
-                    self.paths.push(line.path.to_path_buf());
                     self.index = self.paths.len();
                     found_path = Some(line.path.to_path_buf());
                     found = true;
