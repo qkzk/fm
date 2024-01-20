@@ -146,8 +146,9 @@ mod inner {
         fn string_searched(search: &Search) -> String {
             if search.has_search() {
                 format!(
-                    " Searched: {searched} ",
-                    searched = search.regex.to_string()
+                    " Searched {searched} : {pos}",
+                    searched = search.regex.to_string(),
+                    pos = search.position_str(),
                 )
             } else {
                 "".to_owned()
