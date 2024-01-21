@@ -312,6 +312,11 @@ impl MenuColors {
             color_to_attr(self.palette_4),
         ]
     }
+
+    #[inline]
+    pub const fn palette_size(&self) -> usize {
+        self.palette().len()
+    }
 }
 
 lazy_static::lazy_static! {

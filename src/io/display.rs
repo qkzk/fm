@@ -674,7 +674,7 @@ impl<'a> Draw for WinMainFooter<'a> {
             _ => Footer::new(self.status, self.tab)?.elems().to_owned(),
         };
         let mut attr = color_to_attr(MENU_COLORS.first);
-        let last_index = (content.len() + 3) % 4;
+        let last_index = (content.len().saturating_sub(1)) % MENU_COLORS.palette_size();
         let mut background = MENU_COLORS.palette()[last_index];
         if self.is_selected {
             attr.effect |= Effect::REVERSE;
@@ -949,7 +949,12 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_cli_applications(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(1, 2, "pick a command", color_to_attr(MENU_COLORS.second))?;
+        canvas.print_with_attr(
+            1,
+            2,
+            self.tab.edit_mode.second_line(),
+            color_to_attr(MENU_COLORS.second),
+        )?;
 
         let content = &self.status.menu.cli_applications.content;
         let desc_size = self.status.menu.cli_applications.desc_size;
