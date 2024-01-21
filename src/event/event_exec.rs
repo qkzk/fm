@@ -1431,8 +1431,8 @@ impl EventAction {
         match status.focus {
             Focus::LeftMenu | Focus::LeftFile => (),
             Focus::RightFile => {
-                status.focus = Focus::LeftFile;
                 status.index = 0;
+                status.focus = Focus::LeftFile;
             }
             Focus::RightMenu => {
                 status.index = 0;
