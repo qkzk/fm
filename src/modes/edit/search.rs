@@ -149,7 +149,7 @@ impl Search {
         }
     }
 
-    fn tree_find_next_path<'a>(&mut self, tree: &'a mut Tree) -> Option<std::path::PathBuf> {
+    fn tree_find_next_path(&mut self, tree: &mut Tree) -> Option<std::path::PathBuf> {
         if let Some(path) = self.select_next() {
             return Some(path);
         } else {
