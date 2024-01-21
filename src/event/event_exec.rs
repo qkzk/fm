@@ -1432,8 +1432,10 @@ impl EventAction {
             Focus::LeftMenu | Focus::LeftFile => (),
             Focus::RightFile => {
                 status.focus = Focus::LeftFile;
+                status.index = 0;
             }
             Focus::RightMenu => {
+                status.index = 0;
                 if matches!(status.tabs[0].edit_mode, Edit::Nothing) {
                     status.focus = Focus::LeftFile;
                 } else {
@@ -1448,9 +1450,11 @@ impl EventAction {
         match status.focus {
             Focus::RightMenu | Focus::RightFile => (),
             Focus::LeftFile => {
+                status.index = 1;
                 status.focus = Focus::RightFile;
             }
             Focus::LeftMenu => {
+                status.index = 1;
                 if matches!(status.tabs[1].edit_mode, Edit::Nothing) {
                     status.focus = Focus::RightFile;
                 } else {

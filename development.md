@@ -863,6 +863,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - BREAKING: removed all MOCP controls from fm. What was it doing there anyway ?.
   You will have to remove all your custom binds to MOCP control from your config file to make it work.
 - search with regex. You can search (Char('/')) a regex pattern. Search next (Char('f')) will use that regex.
+- left or right aligned and clickable elements in header
 
 #### Changelog
 
@@ -880,6 +881,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] test open file from menu (context ? header ?)
   - [x] in Display::Flagged, open a single file with o, all files with ctrl+o
   - [x] dispatch event according to focus
+  - [x] FIX: changing focus left or right only affects the border. Moving does nothing
   - [ ] test everything
 
 - [x] setting second pane as preview should enable dual pane at the same time
