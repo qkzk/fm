@@ -4,6 +4,7 @@ mod inner {
 
     use crate::app::{Status, Tab};
     use crate::event::ActionMap;
+    use crate::io::HorizontalAlign;
     use crate::modes::{shorten_path, Display};
     use crate::modes::{Content, FilterKind};
     use crate::modes::{Search, Selectable};
@@ -27,7 +28,7 @@ mod inner {
     ];
 
     pub trait ClickableLine: ClickableLineInner {
-        fn strings(&self) -> &Vec<String>;
+        fn strings(&self) -> &Vec<(String, HorizontalAlign)>;
         /// Action for each associated file.
         fn action(&self, col: usize, is_right: bool) -> &ActionMap {
             let mut sum = 0;
@@ -61,10 +62,10 @@ mod inner {
         /// to measure used space.
         /// It's not the number of bytes used since those strings may contain
         /// any UTF-8 grapheme.
-        fn make_sizes(strings: &[String]) -> Vec<usize> {
+        fn make_sizes(strings: &[(String, HorizontalAlign)]) -> Vec<usize> {
             strings
                 .iter()
-                .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
+                .map(|(s, _)| s.graphemes(true).collect::<Vec<&str>>().iter().len())
                 .collect()
         }
     }
@@ -72,7 +73,7 @@ mod inner {
     /// A bunch of strings displaying the status of the current directory.
     /// It provides an `action` method to make the first line clickable.
     pub struct Header {
-        strings: Vec<String>,
+        strings: Vec<(String, HorizontalAlign)>,
         sizes: Vec<usize>,
         width: usize,
         actions: Vec<ActionMap>,
@@ -80,7 +81,7 @@ mod inner {
 
     impl ClickableLine for Header {
         /// Vector of displayed strings.
-        fn strings(&self) -> &Vec<String> {
+        fn strings(&self) -> &Vec<(String, HorizontalAlign)> {
             self.strings.as_ref()
         }
     }
@@ -124,7 +125,10 @@ mod inner {
         /// Watchout:
         /// 1. the length of the vector MUST BE the length of `ACTIONS` minus one.
         /// 2. the order must be respected.
-        fn make_strings_actions(tab: &Tab, width: usize) -> Result<(Vec<String>, Vec<ActionMap>)> {
+        fn make_strings_actions(
+            tab: &Tab,
+            width: usize,
+        ) -> Result<(Vec<(String, HorizontalAlign)>, Vec<ActionMap>)> {
             let mut strings = vec![
                 Self::string_shorten_path(tab)?,
                 Self::string_first_row_selected_file(tab, width)?,
@@ -139,30 +143,47 @@ mod inner {
             Ok((strings, actions))
         }
 
-        fn string_filter(tab: &Tab) -> String {
-            format!(" {filter} ", filter = tab.settings.filter)
+        fn string_filter(tab: &Tab) -> (String, HorizontalAlign) {
+            (
+                format!(" {filter} ", filter = tab.settings.filter),
+                HorizontalAlign::Right,
+            )
         }
 
-        fn string_searched(search: &Search) -> String {
-            search.to_string()
+        fn string_searched(search: &Search) -> (String, HorizontalAlign) {
+            (search.to_string(), HorizontalAlign::Right)
         }
 
-        fn string_shorten_path(tab: &Tab) -> Result<String> {
-            Ok(format!(" {}", shorten_path(&tab.directory.path, None)?))
+        fn string_shorten_path(tab: &Tab) -> Result<(String, HorizontalAlign)> {
+            Ok((
+                format!(" {}", shorten_path(&tab.directory.path, None)?),
+                HorizontalAlign::Left,
+            ))
         }
 
-        fn string_first_row_selected_file(tab: &Tab, width: usize) -> Result<String> {
+        fn string_first_row_selected_file(
+            tab: &Tab,
+            width: usize,
+        ) -> Result<(String, HorizontalAlign)> {
             match tab.display_mode {
-                Display::Tree => Ok(format!(
-                    "/{rel}",
-                    rel =
-                        shorten_path(tab.tree.selected_path_relative_to_root()?, Some(width / 2))?
+                Display::Tree => Ok((
+                    format!(
+                        "/{rel}",
+                        rel = shorten_path(
+                            tab.tree.selected_path_relative_to_root()?,
+                            Some(width / 2)
+                        )?
+                    ),
+                    HorizontalAlign::Left,
                 )),
                 _ => {
                     if let Some(fileinfo) = tab.directory.selected() {
-                        Ok(fileinfo.filename_without_dot_dotdot())
+                        Ok((
+                            fileinfo.filename_without_dot_dotdot(),
+                            HorizontalAlign::Left,
+                        ))
                     } else {
-                        Ok("".to_owned())
+                        Ok(("".to_owned(), HorizontalAlign::Left))
                     }
                 }
             }
@@ -174,14 +195,14 @@ mod inner {
     /// It allows the user to click on them.
     /// Those element are linked by their index to an action.
     pub struct Footer {
-        strings: Vec<String>,
+        strings: Vec<(String, HorizontalAlign)>,
         sizes: Vec<usize>,
         width: usize,
     }
 
     impl ClickableLine for Footer {
         /// Vector of displayed strings.
-        fn strings(&self) -> &Vec<String> {
+        fn strings(&self) -> &Vec<(String, HorizontalAlign)> {
             self.strings.as_ref()
         }
     }
@@ -238,7 +259,10 @@ mod inner {
         }
 
         /// Pad every string of `raw_strings` with enough space to fill a line.
-        fn make_padded_strings(raw_strings: &[String], total_width: usize) -> Vec<String> {
+        fn make_padded_strings(
+            raw_strings: &[String],
+            total_width: usize,
+        ) -> Vec<(String, HorizontalAlign)> {
             let used_width: usize = raw_strings
                 .iter()
                 .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
@@ -248,7 +272,7 @@ mod inner {
             let margin = " ".repeat(margin_width);
             raw_strings
                 .iter()
-                .map(|content| format!("{margin}{content}{margin}"))
+                .map(|content| (format!("{margin}{content}{margin}"), HorizontalAlign::Left))
                 .collect()
         }
 
@@ -289,7 +313,7 @@ mod inner {
     }
 
     pub struct FlaggedHeader {
-        strings: Vec<String>,
+        strings: Vec<(String, HorizontalAlign)>,
         sizes: Vec<usize>,
         width: usize,
     }
@@ -310,24 +334,27 @@ mod inner {
             })
         }
 
-        fn make_strings(status: &Status) -> Vec<String> {
+        fn make_strings(status: &Status) -> Vec<(String, HorizontalAlign)> {
             vec![
-                "Fuzzy files".to_owned(),
-                status
-                    .menu
-                    .flagged
-                    .selected()
-                    .unwrap_or(&std::path::PathBuf::new())
-                    .to_string_lossy()
-                    .to_string(),
+                ("Fuzzy files".to_owned(), HorizontalAlign::Left),
+                (
+                    status
+                        .menu
+                        .flagged
+                        .selected()
+                        .unwrap_or(&std::path::PathBuf::new())
+                        .to_string_lossy()
+                        .to_string(),
+                    HorizontalAlign::Left,
+                ),
                 Header::string_searched(&status.current_tab().search),
             ]
         }
 
-        fn make_sizes(strings: &[String]) -> Vec<usize> {
+        fn make_sizes(strings: &[(String, HorizontalAlign)]) -> Vec<usize> {
             strings
                 .iter()
-                .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
+                .map(|(s, _)| s.graphemes(true).collect::<Vec<&str>>().iter().len())
                 .collect()
         }
 
@@ -338,7 +365,7 @@ mod inner {
 
     impl ClickableLine for FlaggedHeader {
         /// Vector of displayed strings.
-        fn strings(&self) -> &Vec<String> {
+        fn strings(&self) -> &Vec<(String, HorizontalAlign)> {
             self.strings.as_ref()
         }
     }
@@ -357,14 +384,14 @@ mod inner {
         }
     }
     pub struct FlaggedFooter {
-        strings: Vec<String>,
+        strings: Vec<(String, HorizontalAlign)>,
         sizes: Vec<usize>,
         width: usize,
     }
 
     impl ClickableLine for FlaggedFooter {
         /// Vector of displayed strings.
-        fn strings(&self) -> &Vec<String> {
+        fn strings(&self) -> &Vec<(String, HorizontalAlign)> {
             self.strings.as_ref()
         }
     }
@@ -416,10 +443,10 @@ mod inner {
             ]
         }
 
-        fn make_sizes(strings: &[String]) -> Vec<usize> {
+        fn make_sizes(strings: &[(String, HorizontalAlign)]) -> Vec<usize> {
             strings
                 .iter()
-                .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
+                .map(|(s, _)| s.graphemes(true).collect::<Vec<&str>>().iter().len())
                 .collect()
         }
     }

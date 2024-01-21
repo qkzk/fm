@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::app::Header;
 use crate::app::Status;
@@ -511,7 +512,7 @@ impl<'a> WinMain<'a> {
     fn draw_preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let tab = &self.status.tabs[1];
         self.draw_preview(tab, &tab.window, canvas)?;
-        draw_colored_strings(
+        draw_aligned_strings(
             0,
             0,
             &PreviewHeader::make_default_preview(self.status, tab),
@@ -583,7 +584,14 @@ impl<'a> Draw for WinMainHeader<'a> {
             DisplayMode::Flagged => FlaggedHeader::new(self.status)?.strings().to_owned(),
             _ => Header::new(self.status, self.tab)?.strings().to_owned(),
         };
-        draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
+        // draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
+        // let content = vec![
+        //     ("left 1".to_string(), HorizontalAlign::Left),
+        //     ("right 1".to_string(), HorizontalAlign::Right),
+        //     ("left 2".to_string(), HorizontalAlign::Left),
+        //     ("right 2".to_string(), HorizontalAlign::Right),
+        // ];
+        draw_aligned_strings(0, 0, &content, canvas, self.is_selected)?;
         Ok(())
     }
 }
@@ -601,7 +609,7 @@ impl<'a> WinMainHeader<'a> {
 struct PreviewHeader;
 
 impl PreviewHeader {
-    fn strings(status: &Status, tab: &Tab) -> Vec<String> {
+    fn strings(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
         match &tab.preview {
             Preview::Text(text_content) => match text_content.kind {
                 TextKind::HELP => Self::make_help(),
@@ -613,25 +621,31 @@ impl PreviewHeader {
         }
     }
 
-    fn make_help() -> Vec<String> {
+    fn make_help() -> Vec<(String, HorizontalAlign)> {
         vec![
-            HELP_FIRST_SENTENCE.to_owned(),
-            format!(" Version: {v} ", v = std::env!("CARGO_PKG_VERSION")),
-            HELP_SECOND_SENTENCE.to_owned(),
+            (HELP_FIRST_SENTENCE.to_owned(), HorizontalAlign::Left),
+            (
+                format!(" Version: {v} ", v = std::env!("CARGO_PKG_VERSION")),
+                HorizontalAlign::Left,
+            ),
+            (HELP_SECOND_SENTENCE.to_owned(), HorizontalAlign::Right),
         ]
     }
 
-    fn make_log() -> Vec<String> {
+    fn make_log() -> Vec<(String, HorizontalAlign)> {
         vec![
-            LOG_FIRST_SENTENCE.to_owned(),
-            LOG_SECOND_SENTENCE.to_owned(),
+            (LOG_FIRST_SENTENCE.to_owned(), HorizontalAlign::Left),
+            (LOG_SECOND_SENTENCE.to_owned(), HorizontalAlign::Right),
         ]
     }
 
-    fn make_colored_text(colored_text: &ColoredText) -> Vec<String> {
+    fn make_colored_text(colored_text: &ColoredText) -> Vec<(String, HorizontalAlign)> {
         vec![
-            " Command: ".to_owned(),
-            format!(" {command} ", command = colored_text.title()),
+            (" Command: ".to_owned(), HorizontalAlign::Left),
+            (
+                format!(" {command} ", command = colored_text.title()),
+                HorizontalAlign::Right,
+            ),
         ]
     }
 
@@ -643,20 +657,26 @@ impl PreviewHeader {
         }
     }
 
-    fn make_default_preview(status: &Status, tab: &Tab) -> Vec<String> {
+    fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
         if let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) {
-            let mut strings = vec![" Preview ".to_owned()];
+            let mut strings = vec![(" Preview ".to_owned(), HorizontalAlign::Left)];
             if !tab.preview.is_empty() {
                 let index = match &tab.preview {
                     Preview::Ueberzug(image) => image.index + 1,
                     _ => tab.window.bottom,
                 };
-                strings.push(format!(" {index} / {len} ", len = tab.preview.len()));
+                strings.push((
+                    format!(" {index} / {len} ", len = tab.preview.len()),
+                    HorizontalAlign::Right,
+                ));
             };
-            strings.push(format!(" {} ", fileinfo.path.display()));
+            strings.push((
+                format!(" {} ", fileinfo.path.display()),
+                HorizontalAlign::Left,
+            ));
             strings
         } else {
-            vec!["".to_owned()]
+            vec![("".to_owned(), HorizontalAlign::Left)]
         }
     }
 }
@@ -1419,15 +1439,50 @@ fn draw_colored_strings(
     Ok(())
 }
 
+#[derive(Clone, Copy)]
+pub enum HorizontalAlign {
+    Left,
+    Right,
+}
+
+fn draw_aligned_strings(
+    row: usize,
+    offset: usize,
+    elems: &[(String, HorizontalAlign)],
+    canvas: &mut dyn Canvas,
+    effect_reverse: bool,
+) -> Result<()> {
+    let (width, _) = canvas.size()?;
+    let mut col_left = 1;
+    let mut col_right = width - 1;
+    for ((text, align), attr) in std::iter::zip(elems.iter(), MENU_COLORS.palette().iter().cycle())
+    {
+        let mut attr = *attr;
+        if effect_reverse {
+            attr.effect |= Effect::REVERSE;
+        }
+        match align {
+            HorizontalAlign::Left => {
+                col_left += canvas.print_with_attr(row, offset + col_left, text, attr)?
+            }
+            HorizontalAlign::Right => {
+                let text_width = text.graphemes(true).collect::<Vec<&str>>().len();
+                col_right -= canvas.print_with_attr(row, col_right - text_width, text, attr)?
+            }
+        }
+    }
+    Ok(())
+}
+
 fn draw_strings_filling_line(
     row: usize,
     offset: usize,
-    strings: &[String],
+    strings: &[(String, HorizontalAlign)],
     canvas: &mut dyn Canvas,
     attr: Attr,
 ) -> Result<()> {
     let mut col = 0;
-    for text in strings {
+    for (text, _) in strings {
         col += canvas.print_with_attr(row, offset + col, text, attr)?;
     }
     let gap = canvas.size()?.0.checked_sub(col).unwrap_or_default();
