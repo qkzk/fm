@@ -508,7 +508,7 @@ impl<'a> WinMain<'a> {
         let tab = &self.status.tabs[1];
         self.draw_preview(tab, &tab.window, canvas)?;
         let (width, _) = canvas.size()?;
-        draw_aligned_strings(
+        draw_clickable_strings(
             0,
             0,
             &PreviewHeader::pair_to_clickable(
@@ -584,7 +584,7 @@ impl<'a> Draw for WinMainHeader<'a> {
             DisplayMode::Flagged => FlaggedHeader::new(self.status)?.elems().to_vec(),
             _ => Header::new(self.status, self.tab)?.elems().to_owned(),
         };
-        draw_aligned_strings(0, 0, &content, canvas, self.is_selected)?;
+        draw_clickable_strings(0, 0, &content, canvas, self.is_selected)?;
         Ok(())
     }
 }
@@ -670,17 +670,21 @@ impl<'a> Draw for WinMainFooter<'a> {
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        let height = canvas.height()?;
+        let (width, height) = canvas.size()?;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => vec![],
             DisplayMode::Flagged => FlaggedFooter::new(self.status)?.elems().to_owned(),
             _ => Footer::new(self.status, self.tab)?.elems().to_owned(),
         };
         let mut attr = color_to_attr(MENU_COLORS.first);
+        let last_index = (content.len() + 3) % 4;
+        let mut background = MENU_COLORS.palette()[last_index];
         if self.is_selected {
             attr.effect |= Effect::REVERSE;
+            background.effect |= Effect::REVERSE;
         };
-        draw_aligned_strings(height - 1, 0, &content, canvas, self.is_selected)?;
+        canvas.print_with_attr(height - 1, 0, &" ".repeat(width), background)?;
+        draw_clickable_strings(height - 1, 0, &content, canvas, self.is_selected)?;
         Ok(())
     }
 }
@@ -1236,32 +1240,10 @@ impl Display {
 
     /// Left File, Left Menu, Right File, Right Menu
     fn borders(&self, status: &Status) -> [Attr; 4] {
-        match status.focus {
-            Focus::LeftFile => [
-                color_to_attr(MENU_COLORS.selected_border),
-                color_to_attr(MENU_COLORS.inert_border),
-                color_to_attr(MENU_COLORS.inert_border),
-                color_to_attr(MENU_COLORS.inert_border),
-            ],
-            Focus::LeftMenu => [
-                color_to_attr(MENU_COLORS.inert_border),
-                color_to_attr(MENU_COLORS.selected_border),
-                color_to_attr(MENU_COLORS.inert_border),
-                color_to_attr(MENU_COLORS.inert_border),
-            ],
-            Focus::RightFile => [
-                color_to_attr(MENU_COLORS.inert_border),
-                color_to_attr(MENU_COLORS.inert_border),
-                color_to_attr(MENU_COLORS.selected_border),
-                color_to_attr(MENU_COLORS.inert_border),
-            ],
-            Focus::RightMenu => [
-                color_to_attr(MENU_COLORS.inert_border),
-                color_to_attr(MENU_COLORS.inert_border),
-                color_to_attr(MENU_COLORS.inert_border),
-                color_to_attr(MENU_COLORS.selected_border),
-            ],
-        }
+        let mut borders = [color_to_attr(MENU_COLORS.inert_border); 4];
+        let selected_border = color_to_attr(MENU_COLORS.selected_border);
+        borders[status.focus.index()] = selected_border;
+        borders
     }
 
     fn draw_dual_pane(&mut self, status: &Status) -> Result<()> {
@@ -1357,7 +1339,7 @@ fn draw_colored_strings(
     Ok(())
 }
 
-fn draw_aligned_strings(
+fn draw_clickable_strings(
     row: usize,
     offset: usize,
     elems: &[ClickableString],

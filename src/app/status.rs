@@ -59,7 +59,7 @@ pub enum Window {
     Footer,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub enum Focus {
     #[default]
     LeftFile,
@@ -84,6 +84,10 @@ impl Focus {
             Self::RightFile => Self::LeftFile,
             Self::RightMenu => Self::LeftFile,
         }
+    }
+
+    pub fn index(&self) -> usize {
+        *self as usize
     }
 }
 

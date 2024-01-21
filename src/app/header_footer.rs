@@ -73,8 +73,9 @@ mod inner {
         /// Action for each associated file.
         fn action(&self, col: usize, is_right: bool) -> &ActionMap {
             let offset = self.offset(is_right);
+            let col = col - offset;
             for clickable in self.elems().iter() {
-                if clickable.left <= col + offset && col + offset < clickable.right {
+                if clickable.left <= col && col < clickable.right {
                     return &clickable.action;
                 }
             }
@@ -225,7 +226,12 @@ mod inner {
         fn make_elems(status: &Status, tab: &Tab, width: usize) -> Result<Vec<ClickableString>> {
             let disk_space = status.disk_spaces_of_selected();
             let raw_strings = Self::make_raw_strings(status, tab, disk_space)?;
-            let padded_strings = Self::make_padded_strings(&raw_strings, width);
+            let used_width = if status.display_settings.use_dual_tab(width) {
+                width / 2
+            } else {
+                width
+            };
+            let padded_strings = Self::make_padded_strings(&raw_strings, used_width);
             let mut left = 0;
             let mut elems = vec![];
             for (index, string) in padded_strings.iter().enumerate() {
@@ -256,11 +262,12 @@ mod inner {
         fn make_padded_strings(raw_strings: &[String], total_width: usize) -> Vec<String> {
             let used_width: usize = raw_strings
                 .iter()
-                .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
+                .map(|s| s.graphemes(true).collect::<Vec<&str>>().len())
                 .sum();
             let available_width = total_width.checked_sub(used_width).unwrap_or_default();
             let margin_width = available_width / (2 * raw_strings.len());
             let margin = " ".repeat(margin_width);
+            let rest = total_width - (used_width + margin_width * 2 * raw_strings.len());
             raw_strings
                 .iter()
                 .map(|content| format!("{margin}{content}{margin}"))
