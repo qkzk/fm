@@ -1,5 +1,4 @@
 mod inner {
-
     use anyhow::{Context, Result};
     use unicode_segmentation::UnicodeSegmentation;
 
@@ -8,10 +7,15 @@ mod inner {
         HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE,
     };
     use crate::event::ActionMap;
-    use crate::modes::{shorten_path, ColoredText, Display, FileInfo, Preview, TextKind};
-    use crate::modes::{Content, FilterKind};
-    use crate::modes::{Search, Selectable};
+    use crate::modes::{
+        shorten_path, ColoredText, Content, Display, FileInfo, FilterKind, Preview, Search,
+        Selectable, TextKind,
+    };
 
+    /// A footer or header element that can be clicked
+    ///
+    /// Holds a text and an action.
+    /// It knows where it's situated on the line
     #[derive(Clone)]
     pub struct ClickableString {
         text: String,
@@ -21,7 +25,7 @@ mod inner {
     }
 
     impl ClickableString {
-        pub fn new(text: String, align: HorizontalAlign, action: ActionMap, col: usize) -> Self {
+        fn new(text: String, align: HorizontalAlign, action: ActionMap, col: usize) -> Self {
             let size = Self::size(&text);
             let left: usize;
             let right: usize;
@@ -50,7 +54,7 @@ mod inner {
                 .len()
         }
 
-        pub fn width(&self) -> usize {
+        fn width(&self) -> usize {
             self.right - self.left
         }
 
@@ -63,6 +67,33 @@ mod inner {
         }
     }
 
+    /// A line of element that can be clicked on.
+    pub trait ClickableLine {
+        fn elems(&self) -> &Vec<ClickableString>;
+        /// Action for each associated file.
+        fn action(&self, col: usize, is_right: bool) -> &ActionMap {
+            let offset = self.offset(is_right);
+            for clickable in self.elems().iter() {
+                if clickable.left <= col + offset && col + offset < clickable.right {
+                    return &clickable.action;
+                }
+            }
+
+            crate::log_info!("no action found");
+            &ActionMap::Nothing
+        }
+        fn width(&self) -> usize;
+
+        fn offset(&self, is_right: bool) -> usize {
+            if is_right {
+                self.width() / 2 + 2
+            } else {
+                1
+            }
+        }
+    }
+
+    /// Header for tree & directory display mode.
     pub struct Header {
         elems: Vec<ClickableString>,
         width: usize,
@@ -188,7 +219,6 @@ mod inner {
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
             let (width, _) = status.internal_settings.term_size()?;
             let elems = Self::make_elems(status, tab, width)?;
-
             Ok(Self { elems, width })
         }
 
@@ -497,31 +527,6 @@ mod inner {
                 strings
             } else {
                 vec![("".to_owned(), HorizontalAlign::Left)]
-            }
-        }
-    }
-
-    pub trait ClickableLine {
-        fn elems(&self) -> &Vec<ClickableString>;
-        /// Action for each associated file.
-        fn action(&self, col: usize, is_right: bool) -> &ActionMap {
-            let offset = self.offset(is_right);
-            for clickable in self.elems().iter() {
-                if clickable.left <= col + offset && col + offset < clickable.right {
-                    return &clickable.action;
-                }
-            }
-
-            crate::log_info!("no action found");
-            &ActionMap::Nothing
-        }
-        fn width(&self) -> usize;
-
-        fn offset(&self, is_right: bool) -> usize {
-            if is_right {
-                self.width() / 2 + 2
-            } else {
-                1
             }
         }
     }
