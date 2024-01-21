@@ -896,7 +896,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] simplify navigation to skim output
   - [x] display number of matches while searching.
   - [x] search refactoring
-  - [ ] search history when logging with ctrl+up, ctrl+down
+
+- [ ] input history.
+
+  - [ ] require logging ?
+  - [ ] record every typed into as human as possible file
+  - [ ] navigate history with ctrl+up, ctrl+down, ctrl+left should erase input
 
 - [x] FIX: skim in tree doesn't select the match
 - [x] remove MOCP control from fm
