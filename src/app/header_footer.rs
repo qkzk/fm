@@ -12,6 +12,12 @@ mod inner {
         Selectable, TextKind,
     };
 
+    #[derive(Clone, Copy)]
+    pub enum HorizontalAlign {
+        Left,
+        Right,
+    }
+
     /// A footer or header element that can be clicked
     ///
     /// Holds a text and an action.
@@ -25,6 +31,10 @@ mod inner {
     }
 
     impl ClickableString {
+        /// Creates a new `ClickableString`.
+        /// It calculates its position with `col` and `align`.
+        /// If left aligned, the text size will be added to `col` and the text will span from col to col + width.
+        /// otherwise, the text will spawn from col - width to col.
         fn new(text: String, align: HorizontalAlign, action: ActionMap, col: usize) -> Self {
             let size = Self::size(&text);
             let left: usize;
@@ -58,10 +68,12 @@ mod inner {
             self.right - self.left
         }
 
+        /// Text content of the element.
         pub fn text(&self) -> &str {
             self.text.as_str()
         }
 
+        /// Starting col where the text should be drawn on the canvas.
         pub fn col(&self) -> usize {
             self.left
         }
@@ -69,6 +81,7 @@ mod inner {
 
     /// A line of element that can be clicked on.
     pub trait ClickableLine {
+        /// Reference to the elements
         fn elems(&self) -> &Vec<ClickableString>;
         /// Action for each associated file.
         fn action(&self, col: usize, is_right: bool) -> &ActionMap {
@@ -83,8 +96,11 @@ mod inner {
             crate::log_info!("no action found");
             &ActionMap::Nothing
         }
+        /// full width of the terminal
         fn width(&self) -> usize;
-
+        /// used offset.
+        /// 1 if the text is on left tab,
+        /// width / 2 + 2 otherwise.
         fn offset(&self, is_right: bool) -> usize {
             if is_right {
                 self.width() / 2 + 2
@@ -101,6 +117,7 @@ mod inner {
     }
 
     impl Header {
+        /// Creates a new header
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
             let (width, _) = status.internal_settings.term_size()?;
             let elems = Self::make_elems(tab, width)?;
@@ -193,6 +210,7 @@ mod inner {
         }
     }
 
+    /// Default footer for display directory & tree.
     pub struct Footer {
         elems: Vec<ClickableString>,
         width: usize,
@@ -217,6 +235,7 @@ mod inner {
             ActionMap::Sort,
         ];
 
+        /// Creates a new footer
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
             let (width, _) = status.internal_settings.term_size()?;
             let elems = Self::make_elems(status, tab, width)?;
@@ -267,7 +286,6 @@ mod inner {
             let available_width = total_width.checked_sub(used_width).unwrap_or_default();
             let margin_width = available_width / (2 * raw_strings.len());
             let margin = " ".repeat(margin_width);
-            let rest = total_width - (used_width + margin_width * 2 * raw_strings.len());
             raw_strings
                 .iter()
                 .map(|content| format!("{margin}{content}{margin}"))
@@ -310,6 +328,7 @@ mod inner {
         }
     }
 
+    /// Header for the display of flagged files
     pub struct FlaggedHeader {
         elems: Vec<ClickableString>,
         width: usize,
@@ -323,10 +342,12 @@ mod inner {
             self.width
         }
     }
+
     impl FlaggedHeader {
         const ACTIONS: [ActionMap; 3] =
             [ActionMap::ResetMode, ActionMap::OpenFile, ActionMap::Search];
 
+        /// Creates a new header.
         pub fn new(status: &Status) -> Result<Self> {
             let (width, _) = status.internal_settings.term.term_size()?;
             let elems = Self::make_elems(status, width);
@@ -360,6 +381,7 @@ mod inner {
         }
     }
 
+    /// Footer for the flagged files display
     pub struct FlaggedFooter {
         elems: Vec<ClickableString>,
         width: usize,
@@ -377,6 +399,7 @@ mod inner {
     impl FlaggedFooter {
         const ACTIONS: [ActionMap; 2] = [ActionMap::Nothing, ActionMap::DisplayFlagged];
 
+        /// Creates a new footer
         pub fn new(status: &Status) -> Result<Self> {
             let (width, _) = status.internal_settings.term.term_size()?;
             let used_width = if status.display_settings.use_dual_tab(width) {
@@ -420,12 +443,6 @@ mod inner {
         }
     }
 
-    #[derive(Clone, Copy)]
-    pub enum HorizontalAlign {
-        Left,
-        Right,
-    }
-
     pub struct PreviewHeader;
 
     impl PreviewHeader {
@@ -434,7 +451,7 @@ mod inner {
             Self::pair_to_clickable(&pairs, width)
         }
 
-        pub fn pair_to_clickable(
+        fn pair_to_clickable(
             pairs: &[(String, HorizontalAlign)],
             width: usize,
         ) -> Vec<ClickableString> {
@@ -514,7 +531,7 @@ mod inner {
             }
         }
 
-        pub fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
+        fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
             if let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) {
                 let mut strings = vec![(" Preview ".to_owned(), HorizontalAlign::Left)];
                 if !tab.preview.is_empty() {
@@ -535,6 +552,11 @@ mod inner {
             } else {
                 vec![("".to_owned(), HorizontalAlign::Left)]
             }
+        }
+
+        /// Make a default preview header
+        pub fn default_preview(status: &Status, tab: &Tab, width: usize) -> Vec<ClickableString> {
+            Self::pair_to_clickable(&Self::make_default_preview(status, tab), width)
         }
     }
 }

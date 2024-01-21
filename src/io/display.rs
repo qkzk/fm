@@ -7,10 +7,10 @@ use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
+use crate::app::Footer;
 use crate::app::Status;
 use crate::app::Tab;
 use crate::app::{ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader};
-use crate::app::{Focus, Footer};
 use crate::app::{Header, PreviewHeader};
 use crate::common::path_to_string;
 use crate::common::ENCRYPTED_DEVICE_BINDS;
@@ -511,10 +511,7 @@ impl<'a> WinMain<'a> {
         draw_clickable_strings(
             0,
             0,
-            &PreviewHeader::pair_to_clickable(
-                &PreviewHeader::make_default_preview(self.status, tab),
-                width,
-            ),
+            &PreviewHeader::default_preview(self.status, tab, width),
             canvas,
             false,
         )?;
