@@ -7,7 +7,7 @@ mod opener;
 
 pub use args::Args;
 pub use commands::*;
-pub use display::{color_to_attr, Display, Height, HorizontalAlign, MIN_WIDTH_FOR_DUAL_PANE};
+pub use display::{color_to_attr, Display, Height, MIN_WIDTH_FOR_DUAL_PANE};
 pub use git::{git, git_root};
 pub use log::{read_last_log_line, read_log, set_loggers, write_log_info_once, write_log_line};
 pub use opener::*;

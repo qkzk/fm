@@ -44,7 +44,7 @@ impl Search {
         })
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.regex.to_string().is_empty()
     }
 

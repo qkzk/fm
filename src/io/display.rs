@@ -6,18 +6,14 @@ use anyhow::{Context, Result};
 use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
-use unicode_segmentation::UnicodeSegmentation;
 
-use crate::app::Header;
 use crate::app::Status;
 use crate::app::Tab;
-use crate::app::{ClickableLine, FlaggedFooter, FlaggedHeader};
+use crate::app::{ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader};
 use crate::app::{Focus, Footer};
+use crate::app::{Header, PreviewHeader};
 use crate::common::path_to_string;
-use crate::common::{
-    ENCRYPTED_DEVICE_BINDS, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
-    LOG_SECOND_SENTENCE,
-};
+use crate::common::ENCRYPTED_DEVICE_BINDS;
 use crate::config::MENU_COLORS;
 use crate::io::read_last_log_line;
 use crate::log_info;
@@ -36,7 +32,6 @@ use crate::modes::Navigate;
 use crate::modes::NeedConfirmation;
 use crate::modes::Preview;
 use crate::modes::Selectable;
-use crate::modes::TextKind;
 use crate::modes::Trash;
 use crate::modes::TreeLineBuilder;
 use crate::modes::TreePreview;
@@ -512,10 +507,14 @@ impl<'a> WinMain<'a> {
     fn draw_preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let tab = &self.status.tabs[1];
         self.draw_preview(tab, &tab.window, canvas)?;
+        let (width, _) = canvas.size()?;
         draw_aligned_strings(
             0,
             0,
-            &PreviewHeader::make_default_preview(self.status, tab),
+            &PreviewHeader::pair_to_clickable(
+                &PreviewHeader::make_default_preview(self.status, tab),
+                width,
+            ),
             canvas,
             false,
         )?;
@@ -579,18 +578,12 @@ impl<'a> Draw for WinMainHeader<'a> {
     /// Returns the result of the number of printed chars.
     /// The colors are reversed when the tab is selected. It gives a visual indication of where he is.
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+        let (width, _) = canvas.size()?;
         let content = match self.tab.display_mode {
-            DisplayMode::Preview => PreviewHeader::strings(self.status, self.tab),
-            DisplayMode::Flagged => FlaggedHeader::new(self.status)?.strings().to_owned(),
-            _ => Header::new(self.status, self.tab)?.strings().to_owned(),
+            DisplayMode::Preview => PreviewHeader::elems(self.status, self.tab, width),
+            DisplayMode::Flagged => FlaggedHeader::new(self.status)?.elems().to_vec(),
+            _ => Header::new(self.status, self.tab)?.elems().to_owned(),
         };
-        // draw_colored_strings(0, 0, &content, canvas, self.is_selected)?;
-        // let content = vec![
-        //     ("left 1".to_string(), HorizontalAlign::Left),
-        //     ("right 1".to_string(), HorizontalAlign::Right),
-        //     ("left 2".to_string(), HorizontalAlign::Left),
-        //     ("right 2".to_string(), HorizontalAlign::Right),
-        // ];
         draw_aligned_strings(0, 0, &content, canvas, self.is_selected)?;
         Ok(())
     }
@@ -603,81 +596,6 @@ impl<'a> WinMainHeader<'a> {
             tab,
             is_selected,
         })
-    }
-}
-
-struct PreviewHeader;
-
-impl PreviewHeader {
-    fn strings(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
-        match &tab.preview {
-            Preview::Text(text_content) => match text_content.kind {
-                TextKind::HELP => Self::make_help(),
-                TextKind::LOG => Self::make_log(),
-                _ => Self::make_default_preview(status, tab),
-            },
-            Preview::ColoredText(colored_text) => Self::make_colored_text(colored_text),
-            _ => Self::make_default_preview(status, tab),
-        }
-    }
-
-    fn make_help() -> Vec<(String, HorizontalAlign)> {
-        vec![
-            (HELP_FIRST_SENTENCE.to_owned(), HorizontalAlign::Left),
-            (
-                format!(" Version: {v} ", v = std::env!("CARGO_PKG_VERSION")),
-                HorizontalAlign::Left,
-            ),
-            (HELP_SECOND_SENTENCE.to_owned(), HorizontalAlign::Right),
-        ]
-    }
-
-    fn make_log() -> Vec<(String, HorizontalAlign)> {
-        vec![
-            (LOG_FIRST_SENTENCE.to_owned(), HorizontalAlign::Left),
-            (LOG_SECOND_SENTENCE.to_owned(), HorizontalAlign::Right),
-        ]
-    }
-
-    fn make_colored_text(colored_text: &ColoredText) -> Vec<(String, HorizontalAlign)> {
-        vec![
-            (" Command: ".to_owned(), HorizontalAlign::Left),
-            (
-                format!(" {command} ", command = colored_text.title()),
-                HorizontalAlign::Right,
-            ),
-        ]
-    }
-
-    fn _pick_previewed_fileinfo(status: &Status) -> Result<FileInfo> {
-        if status.display_settings.dual() && status.display_settings.preview() {
-            status.tabs[0].current_file()
-        } else {
-            status.current_tab().current_file()
-        }
-    }
-
-    fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
-        if let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) {
-            let mut strings = vec![(" Preview ".to_owned(), HorizontalAlign::Left)];
-            if !tab.preview.is_empty() {
-                let index = match &tab.preview {
-                    Preview::Ueberzug(image) => image.index + 1,
-                    _ => tab.window.bottom,
-                };
-                strings.push((
-                    format!(" {index} / {len} ", len = tab.preview.len()),
-                    HorizontalAlign::Right,
-                ));
-            };
-            strings.push((
-                format!(" {} ", fileinfo.path.display()),
-                HorizontalAlign::Left,
-            ));
-            strings
-        } else {
-            vec![("".to_owned(), HorizontalAlign::Left)]
-        }
     }
 }
 
@@ -755,14 +673,14 @@ impl<'a> Draw for WinMainFooter<'a> {
         let height = canvas.height()?;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => vec![],
-            DisplayMode::Flagged => FlaggedFooter::new(self.status)?.strings().to_owned(),
-            _ => Footer::new(self.status, self.tab)?.strings().to_owned(),
+            DisplayMode::Flagged => FlaggedFooter::new(self.status)?.elems().to_owned(),
+            _ => Footer::new(self.status, self.tab)?.elems().to_owned(),
         };
         let mut attr = color_to_attr(MENU_COLORS.first);
         if self.is_selected {
             attr.effect |= Effect::REVERSE;
         };
-        draw_strings_filling_line(height - 1, 0, &content, canvas, attr)?;
+        draw_aligned_strings(height - 1, 0, &content, canvas, self.is_selected)?;
         Ok(())
     }
 }
@@ -1439,54 +1357,20 @@ fn draw_colored_strings(
     Ok(())
 }
 
-#[derive(Clone, Copy)]
-pub enum HorizontalAlign {
-    Left,
-    Right,
-}
-
 fn draw_aligned_strings(
     row: usize,
     offset: usize,
-    elems: &[(String, HorizontalAlign)],
+    elems: &[ClickableString],
     canvas: &mut dyn Canvas,
     effect_reverse: bool,
 ) -> Result<()> {
-    let (width, _) = canvas.size()?;
-    let mut col_left = 1;
-    let mut col_right = width - 1;
-    for ((text, align), attr) in std::iter::zip(elems.iter(), MENU_COLORS.palette().iter().cycle())
-    {
+    for (elem, attr) in std::iter::zip(elems.iter(), MENU_COLORS.palette().iter().cycle()) {
         let mut attr = *attr;
         if effect_reverse {
             attr.effect |= Effect::REVERSE;
         }
-        match align {
-            HorizontalAlign::Left => {
-                col_left += canvas.print_with_attr(row, offset + col_left, text, attr)?
-            }
-            HorizontalAlign::Right => {
-                let text_width = text.graphemes(true).collect::<Vec<&str>>().len();
-                col_right -= canvas.print_with_attr(row, col_right - text_width, text, attr)?
-            }
-        }
+        canvas.print_with_attr(row, offset + elem.col(), elem.text(), attr)?;
     }
-    Ok(())
-}
-
-fn draw_strings_filling_line(
-    row: usize,
-    offset: usize,
-    strings: &[(String, HorizontalAlign)],
-    canvas: &mut dyn Canvas,
-    attr: Attr,
-) -> Result<()> {
-    let mut col = 0;
-    for (text, _) in strings {
-        col += canvas.print_with_attr(row, offset + col, text, attr)?;
-    }
-    let gap = canvas.size()?.0.checked_sub(col).unwrap_or_default();
-    canvas.print_with_attr(row, col, &" ".repeat(gap), attr)?;
     Ok(())
 }
 

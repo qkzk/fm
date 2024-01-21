@@ -1,252 +1,216 @@
 mod inner {
+
     use anyhow::{Context, Result};
     use unicode_segmentation::UnicodeSegmentation;
 
     use crate::app::{Status, Tab};
+    use crate::common::{
+        HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE,
+    };
     use crate::event::ActionMap;
-    use crate::io::HorizontalAlign;
-    use crate::modes::{shorten_path, Display};
+    use crate::modes::{shorten_path, ColoredText, Display, FileInfo, Preview, TextKind};
     use crate::modes::{Content, FilterKind};
     use crate::modes::{Search, Selectable};
 
-    /// Action for every element of the first line.
-    /// It should match the order of the `FirstLine::make_string` static method.
-    const HEADER_ACTIONS: [ActionMap; 4] = [
-        ActionMap::Cd,
-        ActionMap::Rename,
-        ActionMap::Search,
-        ActionMap::Filter,
-    ];
+    #[derive(Clone)]
+    pub struct ClickableString {
+        text: String,
+        action: ActionMap,
+        left: usize,
+        right: usize,
+    }
 
-    const FOOTER_ACTIONS: [ActionMap; 6] = [
-        ActionMap::Nothing, // position
-        ActionMap::Ncdu,
-        ActionMap::Sort,
-        ActionMap::LazyGit,
-        ActionMap::DisplayFlagged,
-        ActionMap::Sort,
-    ];
-
-    pub trait ClickableLine: ClickableLineInner {
-        fn strings(&self) -> &Vec<(String, HorizontalAlign)>;
-        /// Action for each associated file.
-        fn action(&self, col: usize, is_right: bool) -> &ActionMap {
-            let mut sum = 0;
-            let offset = self.offset(is_right);
-            for (index, size) in self.sizes().iter().enumerate() {
-                sum += size;
-                if col <= sum + offset {
-                    return self.action_index(index);
+    impl ClickableString {
+        pub fn new(text: String, align: HorizontalAlign, action: ActionMap, col: usize) -> Self {
+            let size = Self::size(&text);
+            let left: usize;
+            let right: usize;
+            match align {
+                HorizontalAlign::Left => {
+                    left = col;
+                    right = col + size;
+                }
+                HorizontalAlign::Right => {
+                    right = col;
+                    left = col - size;
                 }
             }
-            crate::log_info!("no action found");
-            &ActionMap::Nothing
-        }
-    }
-
-    pub trait ClickableLineInner {
-        fn width(&self) -> usize;
-        fn sizes(&self) -> &Vec<usize>;
-        fn action_index(&self, index: usize) -> &ActionMap;
-
-        fn offset(&self, is_right: bool) -> usize {
-            if is_right {
-                self.width() / 2 + 2
-            } else {
-                1
+            Self {
+                text,
+                action,
+                left,
+                right,
             }
         }
 
-        /// Returns the lengths of every displayed string.
-        /// It uses `unicode_segmentation::UnicodeSegmentation::graphemes`
-        /// to measure used space.
-        /// It's not the number of bytes used since those strings may contain
-        /// any UTF-8 grapheme.
-        fn make_sizes(strings: &[(String, HorizontalAlign)]) -> Vec<usize> {
-            strings
-                .iter()
-                .map(|(s, _)| s.graphemes(true).collect::<Vec<&str>>().iter().len())
-                .collect()
+        fn size(text: &str) -> usize {
+            text.graphemes(true)
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>()
+                .len()
+        }
+
+        pub fn width(&self) -> usize {
+            self.right - self.left
+        }
+
+        pub fn text(&self) -> &str {
+            self.text.as_str()
+        }
+
+        pub fn col(&self) -> usize {
+            self.left
         }
     }
 
-    /// A bunch of strings displaying the status of the current directory.
-    /// It provides an `action` method to make the first line clickable.
     pub struct Header {
-        strings: Vec<(String, HorizontalAlign)>,
-        sizes: Vec<usize>,
+        elems: Vec<ClickableString>,
         width: usize,
-        actions: Vec<ActionMap>,
+    }
+
+    impl Header {
+        pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
+            let (width, _) = status.internal_settings.term_size()?;
+            let elems = Self::make_elems(tab, width)?;
+
+            Ok(Self { elems, width })
+        }
+
+        fn make_elems(tab: &Tab, width: usize) -> Result<Vec<ClickableString>> {
+            let mut left = 0;
+            let mut right = width;
+            let shorten_path = Self::elem_shorten_path(tab, left)?;
+            left += shorten_path.width();
+
+            let filename = Self::elem_filename(tab, width, left)?;
+
+            let mut elems = vec![shorten_path, filename];
+
+            if !tab.search.is_empty() {
+                let search = Self::elem_search(&tab.search, right);
+                right -= search.width();
+                elems.push(search);
+            }
+
+            let filter_kind = &tab.settings.filter;
+            if !matches!(filter_kind, FilterKind::All) {
+                let filter = Self::elem_filter(filter_kind, right);
+                elems.push(filter);
+            }
+
+            Ok(elems)
+        }
+
+        fn elem_shorten_path(tab: &Tab, left: usize) -> Result<ClickableString> {
+            Ok(ClickableString::new(
+                format!(" {}", shorten_path(&tab.directory.path, None)?),
+                HorizontalAlign::Left,
+                ActionMap::Cd,
+                left,
+            ))
+        }
+
+        fn elem_filename(tab: &Tab, width: usize, left: usize) -> Result<ClickableString> {
+            let text = match tab.display_mode {
+                Display::Tree => format!(
+                    "/{rel}",
+                    rel =
+                        shorten_path(tab.tree.selected_path_relative_to_root()?, Some(width / 2))?
+                ),
+                _ => {
+                    if let Some(fileinfo) = tab.directory.selected() {
+                        fileinfo.filename_without_dot_dotdot()
+                    } else {
+                        "".to_owned()
+                    }
+                }
+            };
+            Ok(ClickableString::new(
+                text,
+                HorizontalAlign::Left,
+                ActionMap::Rename,
+                left,
+            ))
+        }
+
+        fn elem_search(search: &Search, right: usize) -> ClickableString {
+            ClickableString::new(
+                search.to_string(),
+                HorizontalAlign::Right,
+                ActionMap::Search,
+                right,
+            )
+        }
+
+        fn elem_filter(filter: &FilterKind, right: usize) -> ClickableString {
+            ClickableString::new(
+                format!(" {filter}"),
+                HorizontalAlign::Right,
+                ActionMap::Filter,
+                right,
+            )
+        }
     }
 
     impl ClickableLine for Header {
-        /// Vector of displayed strings.
-        fn strings(&self) -> &Vec<(String, HorizontalAlign)> {
-            self.strings.as_ref()
+        fn elems(&self) -> &Vec<ClickableString> {
+            &self.elems
         }
-    }
-
-    impl ClickableLineInner for Header {
-        fn sizes(&self) -> &Vec<usize> {
-            self.sizes.as_ref()
-        }
-
-        fn action_index(&self, index: usize) -> &ActionMap {
-            self.actions(index)
-        }
-
         fn width(&self) -> usize {
             self.width
         }
     }
 
-    // should it be held somewhere ?
-    impl Header {
-        /// Create the strings associated with the selected tab directory
-        pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-            let (width, _) = status.internal_settings.term.term_size()?;
-            let (strings, actions) = Self::make_strings_actions(tab, width)?;
-            let sizes = Self::make_sizes(&strings);
-
-            Ok(Self {
-                strings,
-                sizes,
-                width,
-                actions,
-            })
-        }
-
-        fn actions(&self, index: usize) -> &ActionMap {
-            &self.actions[index]
-        }
-
-        // TODO! refactor using a `struct thing { string, start, end, action }`
-        /// Returns a bunch of displayable strings.
-        /// Watchout:
-        /// 1. the length of the vector MUST BE the length of `ACTIONS` minus one.
-        /// 2. the order must be respected.
-        fn make_strings_actions(
-            tab: &Tab,
-            width: usize,
-        ) -> Result<(Vec<(String, HorizontalAlign)>, Vec<ActionMap>)> {
-            let mut strings = vec![
-                Self::string_shorten_path(tab)?,
-                Self::string_first_row_selected_file(tab, width)?,
-            ];
-            let mut actions: Vec<ActionMap> = HEADER_ACTIONS[0..2].into();
-            strings.push(Self::string_searched(&tab.search));
-            actions.push(HEADER_ACTIONS[2].clone());
-            if !matches!(tab.settings.filter, FilterKind::All) {
-                strings.push(Self::string_filter(tab));
-                actions.push(HEADER_ACTIONS[3].clone());
-            }
-            Ok((strings, actions))
-        }
-
-        fn string_filter(tab: &Tab) -> (String, HorizontalAlign) {
-            (
-                format!(" {filter} ", filter = tab.settings.filter),
-                HorizontalAlign::Right,
-            )
-        }
-
-        fn string_searched(search: &Search) -> (String, HorizontalAlign) {
-            (search.to_string(), HorizontalAlign::Right)
-        }
-
-        fn string_shorten_path(tab: &Tab) -> Result<(String, HorizontalAlign)> {
-            Ok((
-                format!(" {}", shorten_path(&tab.directory.path, None)?),
-                HorizontalAlign::Left,
-            ))
-        }
-
-        fn string_first_row_selected_file(
-            tab: &Tab,
-            width: usize,
-        ) -> Result<(String, HorizontalAlign)> {
-            match tab.display_mode {
-                Display::Tree => Ok((
-                    format!(
-                        "/{rel}",
-                        rel = shorten_path(
-                            tab.tree.selected_path_relative_to_root()?,
-                            Some(width / 2)
-                        )?
-                    ),
-                    HorizontalAlign::Left,
-                )),
-                _ => {
-                    if let Some(fileinfo) = tab.directory.selected() {
-                        Ok((
-                            fileinfo.filename_without_dot_dotdot(),
-                            HorizontalAlign::Left,
-                        ))
-                    } else {
-                        Ok(("".to_owned(), HorizontalAlign::Left))
-                    }
-                }
-            }
-        }
-    }
-
-    /// A clickable footer.
-    /// Every displayed element knows were it starts and ends.
-    /// It allows the user to click on them.
-    /// Those element are linked by their index to an action.
     pub struct Footer {
-        strings: Vec<(String, HorizontalAlign)>,
-        sizes: Vec<usize>,
+        elems: Vec<ClickableString>,
         width: usize,
     }
 
     impl ClickableLine for Footer {
-        /// Vector of displayed strings.
-        fn strings(&self) -> &Vec<(String, HorizontalAlign)> {
-            self.strings.as_ref()
+        fn elems(&self) -> &Vec<ClickableString> {
+            &self.elems
         }
-    }
-
-    impl ClickableLineInner for Footer {
-        fn sizes(&self) -> &Vec<usize> {
-            self.sizes.as_ref()
-        }
-
-        fn action_index(&self, index: usize) -> &ActionMap {
-            &FOOTER_ACTIONS[index]
-        }
-
         fn width(&self) -> usize {
             self.width
         }
     }
 
     impl Footer {
-        /// Create the strings associated with the selected tab directory
-        pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-            let (width, _) = status.internal_settings.term.term_size()?;
-            let used_width = if status.display_settings.use_dual_tab(width) {
-                width / 2
-            } else {
-                width
-            };
-            let disk_space = status.disk_spaces_of_selected();
-            let raw_strings = Self::make_raw_strings(status, tab, disk_space)?;
-            let strings = Self::make_padded_strings(&raw_strings, used_width);
-            let sizes = Self::make_sizes(&strings);
+        const FOOTER_ACTIONS: [ActionMap; 6] = [
+            ActionMap::Nothing, // position
+            ActionMap::Ncdu,
+            ActionMap::Sort,
+            ActionMap::LazyGit,
+            ActionMap::DisplayFlagged,
+            ActionMap::Sort,
+        ];
 
-            Ok(Self {
-                strings,
-                sizes,
-                width,
-            })
+        pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
+            let (width, _) = status.internal_settings.term_size()?;
+            let elems = Self::make_elems(status, tab, width)?;
+
+            Ok(Self { elems, width })
         }
 
-        // TODO! refactor using a `struct thing { string, start, end, action }`
-        /// Returns a bunch of displayable strings.
-        /// Watchout:
-        /// 1. the length of the vector MUST BE the length of `ACTIONS` minus one.
-        /// 2. the order must be respected.
+        fn make_elems(status: &Status, tab: &Tab, width: usize) -> Result<Vec<ClickableString>> {
+            let disk_space = status.disk_spaces_of_selected();
+            let raw_strings = Self::make_raw_strings(status, tab, disk_space)?;
+            let padded_strings = Self::make_padded_strings(&raw_strings, width);
+            let mut left = 0;
+            let mut elems = vec![];
+            for (index, string) in padded_strings.iter().enumerate() {
+                let elem = ClickableString::new(
+                    string.to_owned(),
+                    HorizontalAlign::Left,
+                    Self::FOOTER_ACTIONS[index].to_owned(),
+                    left,
+                );
+                left += elem.width();
+                elems.push(elem)
+            }
+            Ok(elems)
+        }
+
         fn make_raw_strings(status: &Status, tab: &Tab, disk_space: String) -> Result<Vec<String>> {
             Ok(vec![
                 Self::string_first_row_position(tab)?,
@@ -259,10 +223,7 @@ mod inner {
         }
 
         /// Pad every string of `raw_strings` with enough space to fill a line.
-        fn make_padded_strings(
-            raw_strings: &[String],
-            total_width: usize,
-        ) -> Vec<(String, HorizontalAlign)> {
+        fn make_padded_strings(raw_strings: &[String], total_width: usize) -> Vec<String> {
             let used_width: usize = raw_strings
                 .iter()
                 .map(|s| s.graphemes(true).collect::<Vec<&str>>().iter().len())
@@ -272,7 +233,7 @@ mod inner {
             let margin = " ".repeat(margin_width);
             raw_strings
                 .iter()
-                .map(|content| (format!("{margin}{content}{margin}"), HorizontalAlign::Left))
+                .map(|content| format!("{margin}{content}{margin}"))
                 .collect()
         }
 
@@ -313,98 +274,64 @@ mod inner {
     }
 
     pub struct FlaggedHeader {
-        strings: Vec<(String, HorizontalAlign)>,
-        sizes: Vec<usize>,
+        elems: Vec<ClickableString>,
         width: usize,
     }
 
+    impl ClickableLine for FlaggedHeader {
+        fn elems(&self) -> &Vec<ClickableString> {
+            &self.elems
+        }
+        fn width(&self) -> usize {
+            self.width
+        }
+    }
     impl FlaggedHeader {
         const ACTIONS: [ActionMap; 3] =
             [ActionMap::ResetMode, ActionMap::OpenFile, ActionMap::Search];
 
         pub fn new(status: &Status) -> Result<Self> {
-            let strings = Self::make_strings(status);
-            let sizes = Self::make_sizes(&strings);
             let (width, _) = status.internal_settings.term.term_size()?;
+            let elems = Self::make_elems(status, width);
 
-            Ok(Self {
-                strings,
-                sizes,
-                width,
-            })
+            Ok(Self { elems, width })
         }
 
-        fn make_strings(status: &Status) -> Vec<(String, HorizontalAlign)> {
-            vec![
-                ("Fuzzy files".to_owned(), HorizontalAlign::Left),
-                (
-                    status
-                        .menu
-                        .flagged
-                        .selected()
-                        .unwrap_or(&std::path::PathBuf::new())
-                        .to_string_lossy()
-                        .to_string(),
-                    HorizontalAlign::Left,
-                ),
-                Header::string_searched(&status.current_tab().search),
-            ]
-        }
+        fn make_elems(status: &Status, width: usize) -> Vec<ClickableString> {
+            let title = ClickableString::new(
+                "Fuzzy files".to_owned(),
+                HorizontalAlign::Left,
+                Self::ACTIONS[0].to_owned(),
+                0,
+            );
+            let left = title.width();
 
-        fn make_sizes(strings: &[(String, HorizontalAlign)]) -> Vec<usize> {
-            strings
-                .iter()
-                .map(|(s, _)| s.graphemes(true).collect::<Vec<&str>>().iter().len())
-                .collect()
-        }
-
-        fn actions(&self, index: usize) -> &ActionMap {
-            &Self::ACTIONS[index]
+            let flagged = ClickableString::new(
+                status
+                    .menu
+                    .flagged
+                    .selected()
+                    .unwrap_or(&std::path::PathBuf::new())
+                    .to_string_lossy()
+                    .to_string(),
+                HorizontalAlign::Left,
+                Self::ACTIONS[1].to_owned(),
+                left,
+            );
+            let searched = Header::elem_search(&status.current_tab().search, width);
+            vec![title, flagged, searched]
         }
     }
 
-    impl ClickableLine for FlaggedHeader {
-        /// Vector of displayed strings.
-        fn strings(&self) -> &Vec<(String, HorizontalAlign)> {
-            self.strings.as_ref()
-        }
-    }
-
-    impl ClickableLineInner for FlaggedHeader {
-        fn sizes(&self) -> &Vec<usize> {
-            self.sizes.as_ref()
-        }
-
-        fn action_index(&self, index: usize) -> &ActionMap {
-            self.actions(index)
-        }
-
-        fn width(&self) -> usize {
-            self.width
-        }
-    }
     pub struct FlaggedFooter {
-        strings: Vec<(String, HorizontalAlign)>,
-        sizes: Vec<usize>,
+        elems: Vec<ClickableString>,
         width: usize,
     }
 
     impl ClickableLine for FlaggedFooter {
-        /// Vector of displayed strings.
-        fn strings(&self) -> &Vec<(String, HorizontalAlign)> {
-            self.strings.as_ref()
+        fn elems(&self) -> &Vec<ClickableString> {
+            &self.elems
         }
-    }
-
-    impl ClickableLineInner for FlaggedFooter {
-        fn sizes(&self) -> &Vec<usize> {
-            self.sizes.as_ref()
-        }
-
-        fn action_index(&self, index: usize) -> &ActionMap {
-            &Self::ACTIONS[index]
-        }
-
         fn width(&self) -> usize {
             self.width
         }
@@ -422,13 +349,25 @@ mod inner {
             };
             let raw_strings = Self::make_strings(status);
             let strings = Footer::make_padded_strings(&raw_strings, used_width);
-            let sizes = Self::make_sizes(&strings);
+            let elems = Self::make_elems(strings);
 
-            Ok(Self {
-                strings,
-                sizes,
-                width,
-            })
+            Ok(Self { elems, width })
+        }
+
+        fn make_elems(padded_strings: Vec<String>) -> Vec<ClickableString> {
+            let mut elems = vec![];
+            let mut left = 0;
+            for (index, string) in padded_strings.iter().enumerate() {
+                let elem = ClickableString::new(
+                    string.to_owned(),
+                    HorizontalAlign::Left,
+                    Self::ACTIONS[index].to_owned(),
+                    left,
+                );
+                left += elem.width();
+                elems.push(elem)
+            }
+            elems
         }
 
         fn make_strings(status: &Status) -> Vec<String> {
@@ -442,14 +381,152 @@ mod inner {
                 format!(" {nb} flags", nb = status.menu.flagged.len()),
             ]
         }
+    }
 
-        fn make_sizes(strings: &[(String, HorizontalAlign)]) -> Vec<usize> {
-            strings
-                .iter()
-                .map(|(s, _)| s.graphemes(true).collect::<Vec<&str>>().iter().len())
-                .collect()
+    #[derive(Clone, Copy)]
+    pub enum HorizontalAlign {
+        Left,
+        Right,
+    }
+
+    pub struct PreviewHeader;
+
+    impl PreviewHeader {
+        pub fn elems(status: &Status, tab: &Tab, width: usize) -> Vec<ClickableString> {
+            let pairs = Self::strings(status, tab);
+            Self::pair_to_clickable(&pairs, width)
+        }
+
+        pub fn pair_to_clickable(
+            pairs: &[(String, HorizontalAlign)],
+            width: usize,
+        ) -> Vec<ClickableString> {
+            let mut left = 0;
+            let mut right = width;
+            let mut elems = vec![];
+            for (text, align) in pairs.iter() {
+                let pos = if let HorizontalAlign::Left = align {
+                    left
+                } else {
+                    right
+                };
+                let elem = ClickableString::new(
+                    text.to_owned(),
+                    align.to_owned(),
+                    ActionMap::Nothing,
+                    pos,
+                );
+                match align {
+                    HorizontalAlign::Left => {
+                        left += elem.width();
+                    }
+                    HorizontalAlign::Right => {
+                        right -= elem.width();
+                    }
+                }
+                elems.push(elem)
+            }
+            elems
+        }
+
+        fn strings(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
+            match &tab.preview {
+                Preview::Text(text_content) => match text_content.kind {
+                    TextKind::HELP => Self::make_help(),
+                    TextKind::LOG => Self::make_log(),
+                    _ => Self::make_default_preview(status, tab),
+                },
+                Preview::ColoredText(colored_text) => Self::make_colored_text(colored_text),
+                _ => Self::make_default_preview(status, tab),
+            }
+        }
+
+        fn make_help() -> Vec<(String, HorizontalAlign)> {
+            vec![
+                (HELP_FIRST_SENTENCE.to_owned(), HorizontalAlign::Left),
+                (
+                    format!(" Version: {v} ", v = std::env!("CARGO_PKG_VERSION")),
+                    HorizontalAlign::Left,
+                ),
+                (HELP_SECOND_SENTENCE.to_owned(), HorizontalAlign::Right),
+            ]
+        }
+
+        fn make_log() -> Vec<(String, HorizontalAlign)> {
+            vec![
+                (LOG_FIRST_SENTENCE.to_owned(), HorizontalAlign::Left),
+                (LOG_SECOND_SENTENCE.to_owned(), HorizontalAlign::Right),
+            ]
+        }
+
+        fn make_colored_text(colored_text: &ColoredText) -> Vec<(String, HorizontalAlign)> {
+            vec![
+                (" Command: ".to_owned(), HorizontalAlign::Left),
+                (
+                    format!(" {command} ", command = colored_text.title()),
+                    HorizontalAlign::Right,
+                ),
+            ]
+        }
+
+        fn _pick_previewed_fileinfo(status: &Status) -> Result<FileInfo> {
+            if status.display_settings.dual() && status.display_settings.preview() {
+                status.tabs[0].current_file()
+            } else {
+                status.current_tab().current_file()
+            }
+        }
+
+        pub fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
+            if let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) {
+                let mut strings = vec![(" Preview ".to_owned(), HorizontalAlign::Left)];
+                if !tab.preview.is_empty() {
+                    let index = match &tab.preview {
+                        Preview::Ueberzug(image) => image.index + 1,
+                        _ => tab.window.bottom,
+                    };
+                    strings.push((
+                        format!(" {index} / {len} ", len = tab.preview.len()),
+                        HorizontalAlign::Right,
+                    ));
+                };
+                strings.push((
+                    format!(" {} ", fileinfo.path.display()),
+                    HorizontalAlign::Left,
+                ));
+                strings
+            } else {
+                vec![("".to_owned(), HorizontalAlign::Left)]
+            }
+        }
+    }
+
+    pub trait ClickableLine {
+        fn elems(&self) -> &Vec<ClickableString>;
+        /// Action for each associated file.
+        fn action(&self, col: usize, is_right: bool) -> &ActionMap {
+            let offset = self.offset(is_right);
+            for clickable in self.elems().iter() {
+                if clickable.left <= col + offset && col + offset < clickable.right {
+                    return &clickable.action;
+                }
+            }
+
+            crate::log_info!("no action found");
+            &ActionMap::Nothing
+        }
+        fn width(&self) -> usize;
+
+        fn offset(&self, is_right: bool) -> usize {
+            if is_right {
+                self.width() / 2 + 2
+            } else {
+                1
+            }
         }
     }
 }
 
-pub use inner::{ClickableLine, FlaggedFooter, FlaggedHeader, Footer, Header};
+pub use inner::{
+    ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader, Footer, Header, PreviewHeader,
+};
