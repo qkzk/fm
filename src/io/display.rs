@@ -790,7 +790,6 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_navigate(&self, navigable_mode: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
         match navigable_mode {
-            Navigate::BulkMenu => self.draw_bulk_menu(canvas),
             Navigate::CliApplication => self.draw_cli_applications(canvas),
             Navigate::Compress => self.draw_compress(canvas),
             Navigate::Context => self.draw_context(canvas),
@@ -840,22 +839,6 @@ impl<'a> WinSecondary<'a> {
                 attr,
             )?;
         }
-        Ok(())
-    }
-
-    fn draw_bulk_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let selectable = &self.status.menu.bulk;
-        let content = selectable.content();
-        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        let len = content.len();
-        for (row, text, attr) in enumerated_colored_iter!(content)
-            .skip(top)
-            .take(min(bottom, len))
-        {
-            let attr = selectable.attr(row, attr);
-            Self::draw_content_line(canvas, row + 1 - top, text, attr)?;
-        }
-
         Ok(())
     }
 
@@ -1050,7 +1033,7 @@ impl<'a> WinSecondary<'a> {
         )?;
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => self.draw_confirm_empty_trash(canvas)?,
-            NeedConfirmation::BulkAction(_) => self.draw_confirm_bulk(canvas)?,
+            NeedConfirmation::BulkAction => self.draw_confirm_bulk(canvas)?,
             _ => self.draw_confirm_default(canvas)?,
         }
         Ok(())

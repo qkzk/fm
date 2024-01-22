@@ -20,12 +20,6 @@ pub enum MarkAction {
     New,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum BulkAction {
-    Rename,
-    Create,
-}
-
 /// Different kind of last edition command received requiring a confirmation.
 /// Copy, move and delete require a confirmation to prevent big mistakes.
 #[derive(Clone, Copy, Debug)]
@@ -39,7 +33,7 @@ pub enum NeedConfirmation {
     /// Empty Trash
     EmptyTrash,
     /// Bulk
-    BulkAction(BulkAction),
+    BulkAction,
 }
 
 impl NeedConfirmation {
@@ -63,8 +57,7 @@ impl NeedConfirmation {
             Self::Move => {
                 format!("Files will be moved to {destination}")
             }
-            Self::BulkAction(BulkAction::Rename) => "Those files will be renamed :".to_owned(),
-            Self::BulkAction(BulkAction::Create) => "Those files will be created :".to_owned(),
+            Self::BulkAction => "Those files will be renamed or created :".to_owned(),
         }
     }
 }
@@ -86,8 +79,7 @@ impl std::fmt::Display for NeedConfirmation {
             Self::Move => write!(f, "Move files here :"),
             Self::Copy => write!(f, "Copy files here :"),
             Self::EmptyTrash => write!(f, "Empty the trash ?"),
-            Self::BulkAction(BulkAction::Rename) => write!(f, "Bulk rename :"),
-            Self::BulkAction(BulkAction::Create) => write!(f, "Bulk create :"),
+            Self::BulkAction => write!(f, "Bulk :"),
         }
     }
 }
@@ -217,8 +209,6 @@ pub enum Navigate {
     Marks(MarkAction),
     /// Pick a compression method
     Compress,
-    /// Bulk rename, new files, new directories
-    BulkMenu,
     /// Shell menu applications. Start a new shell with this application.
     TuiApplication,
     /// Cli info
@@ -236,9 +226,6 @@ impl fmt::Display for Navigate {
             Self::Trash => write!(f, "Trash :"),
             Self::TuiApplication => {
                 write!(f, "Start a new shell running a command:")
-            }
-            Self::BulkMenu => {
-                write!(f, "Bulk: rename flagged files or create new files")
             }
             Self::Compress => write!(f, "Compress :"),
             Self::EncryptedDrive => {
@@ -259,7 +246,7 @@ impl Leave for Navigate {
     }
 
     fn must_reset_mode(&self) -> bool {
-        !matches!(self, Self::CliApplication | Self::Context | Self::BulkMenu)
+        !matches!(self, Self::CliApplication | Self::Context)
     }
 }
 

@@ -307,7 +307,6 @@ impl Status {
             let index = offset - 4 + self.menu.window.top;
             match self.current_tab().edit_mode {
                 Edit::Navigate(navigate) => match navigate {
-                    Navigate::BulkMenu => self.menu.bulk.set_index(index),
                     Navigate::CliApplication => self.menu.cli_applications.set_index(index),
                     Navigate::Compress => self.menu.compression.set_index(index),
                     Navigate::Context => self.menu.context.set_index(index),
@@ -993,19 +992,18 @@ impl Status {
         self.bulk_flag_selection_for_rename()?;
         let flagged = self.flagged_in_current_dir();
         let current_path = self.current_tab_path_str();
-        let bulk_action =
-            self.menu
-                .bulk
-                .ask_filenames(flagged, &current_path, &self.internal_settings.opener)?;
+        self.menu
+            .bulk
+            .ask_filenames(flagged, &current_path, &self.internal_settings.opener)?;
         self.set_edit_mode(
             self.index,
-            Edit::NeedConfirmation(NeedConfirmation::BulkAction(bulk_action)),
+            Edit::NeedConfirmation(NeedConfirmation::BulkAction),
         )?;
         Ok(())
     }
 
     fn bulk_flag_selection_for_rename(&mut self) -> Result<()> {
-        if self.menu.flagged.is_empty() && self.menu.bulk.is_rename() {
+        if self.menu.flagged.is_empty() {
             self.menu
                 .flagged
                 .push(self.current_tab().current_file()?.path.to_path_buf());
@@ -1015,7 +1013,7 @@ impl Status {
 
     /// Execute the bulk action.
     pub fn confirm_bulk_action(&mut self) -> Result<()> {
-        if let Some(paths) = self.menu.bulk.execute()? {
+        if let (Some(paths), Some(create)) = self.menu.bulk.execute()? {
             self.menu.flagged.update(paths);
         } else {
             self.menu.flagged.clear();
@@ -1106,7 +1104,7 @@ impl Status {
             NeedConfirmation::Move => self.cut_or_copy_flagged_files(CopyMove::Move),
             NeedConfirmation::Copy => self.cut_or_copy_flagged_files(CopyMove::Copy),
             NeedConfirmation::EmptyTrash => self.confirm_trash_empty(),
-            NeedConfirmation::BulkAction(_) => self.confirm_bulk_action(),
+            NeedConfirmation::BulkAction => self.confirm_bulk_action(),
         }
     }
 

@@ -1,4 +1,3 @@
-mod bulkrename;
 mod cli_menu;
 mod completion;
 mod compress;
@@ -33,7 +32,6 @@ mod sort;
 mod trash;
 mod tui_menu;
 
-pub use bulkrename::Bulk;
 pub use cli_menu::CLApplications;
 pub use cli_menu::CliApplications;
 pub use cli_menu::Execute;

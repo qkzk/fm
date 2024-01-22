@@ -361,7 +361,6 @@ impl Menu {
         F: FnOnce(&mut dyn Selectable) -> T,
     {
         match navigate {
-            Navigate::BulkMenu => func(&mut self.bulk),
             Navigate::CliApplication => func(&mut self.cli_applications),
             Navigate::Compress => func(&mut self.compression),
             Navigate::Context => func(&mut self.context),
@@ -380,7 +379,6 @@ impl Menu {
         F: FnOnce(&dyn Selectable) -> T,
     {
         match navigate {
-            Navigate::BulkMenu => func(&self.bulk),
             Navigate::CliApplication => func(&self.cli_applications),
             Navigate::Compress => func(&self.compression),
             Navigate::Context => func(&self.context),

@@ -9,8 +9,6 @@ use crate::common::{random_name, rename};
 use crate::io::Opener;
 use crate::log_info;
 use crate::log_line;
-use crate::modes::mode::BulkAction;
-use crate::{impl_content, impl_selectable};
 
 struct BulkExecutor {
     original_filepath: Vec<PathBuf>,
@@ -34,12 +32,30 @@ impl BulkExecutor {
     fn ask_filenames(mut self, opener: &Opener) -> Result<Self> {
         create_random_file(&self.temp_file)?;
         log_info!("created {temp_file}", temp_file = self.temp_file.display());
+        self.write_original_names()?;
         let original_modification = get_modified_date(&self.temp_file)?;
         open_temp_file_with_editor(&self.temp_file, opener)?;
 
         watch_modification_in_thread(&self.temp_file, original_modification)?;
         self.new_filenames = get_new_filenames(&self.temp_file)?;
         Ok(self)
+    }
+
+    fn write_original_names(&self) -> Result<()> {
+        let mut file = std::fs::File::create(&self.temp_file)?;
+        log_info!("created {temp_file}", temp_file = self.temp_file.display());
+
+        for path in &self.original_filepath {
+            let Some(os_filename) = path.file_name() else {
+                return Ok(());
+            };
+            let Some(filename) = os_filename.to_str() else {
+                return Ok(());
+            };
+            file.write_all(filename.as_bytes())?;
+            file.write_all(&[b'\n'])?;
+        }
+        Ok(())
     }
 
     fn execute(&self) -> Result<(Option<Vec<PathBuf>>, Option<Vec<PathBuf>>)> {
@@ -49,9 +65,24 @@ impl BulkExecutor {
     }
 
     fn rename_create(&self) -> Result<(Option<Vec<PathBuf>>, Option<Vec<PathBuf>>)> {
-        let renamed_paths = todo!();
-        let created_paths = todo!();
+        let renamed_paths = self.rename_all(&self.new_filenames)?;
+        let created_paths = self.create_all_files(&self.new_filenames)?;
         Ok((renamed_paths, created_paths))
+    }
+
+    fn rename_all(&self, new_filenames: &[String]) -> Result<Option<Vec<PathBuf>>> {
+        let mut paths = vec![];
+        for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
+            match rename(path, filename) {
+                Ok(path) => paths.push(path),
+                Err(error) => log_info!(
+                    "Error renaming {path} to {filename}. Error: {error:?}",
+                    path = path.display()
+                ),
+            }
+        }
+        log_line!("Bulk renamed {len} files", len = paths.len());
+        Ok(Some(paths))
     }
 
     fn create_all_files(&self, new_filenames: &[String]) -> Result<Option<Vec<PathBuf>>> {
@@ -87,38 +118,6 @@ impl BulkExecutor {
             log_line!("Bulk created {new_path}", new_path = new_path.display());
         }
         Ok(Some(new_path))
-    }
-
-    fn write_original_names(&self) -> Result<()> {
-        let mut file = std::fs::File::create(&self.temp_file)?;
-        log_info!("created {temp_file}", temp_file = self.temp_file.display());
-
-        for path in &self.original_filepath {
-            let Some(os_filename) = path.file_name() else {
-                return Ok(());
-            };
-            let Some(filename) = os_filename.to_str() else {
-                return Ok(());
-            };
-            file.write_all(filename.as_bytes())?;
-            file.write_all(&[b'\n'])?;
-        }
-        Ok(())
-    }
-
-    fn rename_all(&self, new_filenames: &[String]) -> Result<Option<Vec<PathBuf>>> {
-        let mut paths = vec![];
-        for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
-            match rename(path, filename) {
-                Ok(path) => paths.push(path),
-                Err(error) => log_info!(
-                    "Error renaming {path} to {filename}. Error: {error:?}",
-                    path = path.display()
-                ),
-            }
-        }
-        log_line!("Bulk renamed {len} files", len = paths.len());
-        Ok(Some(paths))
     }
 
     fn del_temporary_file(&self) -> Result<()> {
@@ -208,5 +207,19 @@ impl Bulk {
         let ret = bulk.execute();
         self.reset();
         ret
+    }
+
+    pub fn format_confirmation(&self) -> Vec<String> {
+        if let Some(bulk) = &self.bulk {
+            bulk.original_filepath
+                .iter()
+                .zip(bulk.new_filenames.iter())
+                .map(|(original, new)| {
+                    format!("{original} -> {new}", original = original.display())
+                })
+                .collect()
+        } else {
+            vec![]
+        }
     }
 }

@@ -513,14 +513,18 @@ impl EventAction {
     /// can edit the selected filenames.
     /// Once the temp file is saved, those file names are changed.
     pub fn bulk(status: &mut Status) -> Result<()> {
-        if matches!(
-            status.current_tab().edit_mode,
-            Edit::Navigate(Navigate::BulkMenu)
-        ) {
-            status.reset_edit_mode()?;
-        } else {
-            status.set_edit_mode(status.index, Edit::Navigate(Navigate::BulkMenu))?;
+        if !status.focus.is_file() {
+            return Ok(());
         }
+        status.bulk_ask_filenames()?;
+        // if matches!(
+        //     status.current_tab().edit_mode,
+        //     Edit::Navigate(Navigate::BulkMenu)
+        // ) {
+        //     status.reset_edit_mode()?;
+        // } else {
+        //     status.set_edit_mode(status.index, Edit::Navigate(Navigate::BulkMenu))?;
+        // }
         Ok(())
     }
 

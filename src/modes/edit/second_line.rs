@@ -24,7 +24,6 @@ impl SecondLine for Navigate {
             Self::History => "Pick a destination",
             Self::Shortcut => "Pick a destination",
             Self::Compress => "Archive and compress the flagged files using selected algorithm.",
-            Self::BulkMenu => "Pick an action",
             Self::Marks(mark_action) => mark_action.second_line(),
             Self::Context => "Pick an action",
             Self::EncryptedDrive => "m: mount   --   u: unmount   --   g: go to mount point",

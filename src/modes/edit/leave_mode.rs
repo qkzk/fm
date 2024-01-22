@@ -55,7 +55,6 @@ impl LeaveMode {
             Edit::Navigate(Navigate::History) => LeaveMode::history(status),
             Edit::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status),
             Edit::Navigate(Navigate::Trash) => LeaveMode::trash(status),
-            Edit::Navigate(Navigate::BulkMenu) => LeaveMode::bulk_ask(status),
             Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status),
             Edit::Navigate(Navigate::CliApplication) => LeaveMode::cli_info(status),
             Edit::Navigate(Navigate::EncryptedDrive) => LeaveMode::go_to_mount(status),
