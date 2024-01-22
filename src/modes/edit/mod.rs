@@ -1,3 +1,4 @@
+mod bulkrename;
 mod cli_menu;
 mod completion;
 mod compress;
@@ -16,7 +17,6 @@ mod line_display;
 mod marks;
 mod menu;
 mod mount_help;
-mod new_bulkrename;
 mod node_creation;
 mod nvim;
 mod password;
@@ -32,6 +32,7 @@ mod sort;
 mod trash;
 mod tui_menu;
 
+pub use bulkrename::Bulk;
 pub use cli_menu::CLApplications;
 pub use cli_menu::CliApplications;
 pub use cli_menu::Execute;
@@ -53,7 +54,6 @@ pub use line_display::LineDisplay;
 pub use marks::Marks;
 pub use menu::Menu;
 pub use mount_help::{MountCommands, MountParameters, MountRepr};
-pub use new_bulkrename::*;
 pub use node_creation::NodeCreation;
 pub use nvim::nvim;
 pub use password::{PasswordHolder, PasswordKind, PasswordUsage};
