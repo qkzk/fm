@@ -332,6 +332,5 @@ impl Bulk {
     }
 }
 
-// impl_selectable_content!(String, Bulk);
 impl_selectable!(Bulk);
 impl_content!(String, Bulk);
