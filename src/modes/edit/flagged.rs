@@ -98,6 +98,13 @@ impl Flagged {
         self.index = 0;
     }
 
+    pub fn extend(&mut self, content: Vec<PathBuf>) {
+        let mut content = content;
+        self.content.append(&mut content);
+        self.reset_window();
+        self.index = 0;
+    }
+
     pub fn clear(&mut self) {
         self.content = vec![];
         self.reset_window();

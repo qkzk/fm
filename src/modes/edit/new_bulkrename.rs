@@ -18,7 +18,6 @@ struct BulkExecutor {
 }
 
 impl BulkExecutor {
-    /// Creates a new renamer
     fn new(original_filepath: Vec<PathBuf>, parent_dir: &str) -> Self {
         let temp_file = generate_random_filepath();
         Self {
@@ -182,11 +181,29 @@ pub struct Bulk {
     bulk: Option<BulkExecutor>,
 }
 
+/// Bulk holds a `BulkExecutor` only when bulk actionmap, `None` otherwise.
+///
+/// Once `ask_filenames` is executed, a new tmp file is created. It's filled with every filename
+/// of flagged files in current directory.
+/// Modifications of this file are watched in a separate thread.
+/// Once the file is written, its content is parsed and a confirmation is asked : `format_confirmation`
+/// Renaming or creating is execute in bulk with `execute`.
 impl Bulk {
+    /// Reset bulk content to None, droping all created or renomed filename from previous execution.
     pub fn reset(&mut self) {
         self.bulk = None;
     }
 
+    /// Ask user for filename.
+    ///
+    /// Creates a temp file with every flagged filename in current dir.
+    /// Modification of this file are then watched in a thread.
+    /// The mode will change to BulkAction once something is written in the file.
+    ///
+    /// # Errors
+    ///
+    /// May fail if the user can't create a file, read or write in /tmp
+    /// May also fail if the watching thread fail.
     pub fn ask_filenames(
         &mut self,
         flagged_in_current_dir: Vec<PathBuf>,
@@ -200,6 +217,32 @@ impl Bulk {
         Ok(())
     }
 
+    /// String representation of the filetree modifications.
+    pub fn format_confirmation(&self) -> Vec<String> {
+        if let Some(bulk) = &self.bulk {
+            let mut lines: Vec<String> = bulk
+                .original_filepath
+                .iter()
+                .zip(bulk.new_filenames.iter())
+                .map(|(original, new)| {
+                    format!("RENAME: {original} -> {new}", original = original.display())
+                })
+                .collect();
+            for new in bulk.new_filenames.iter().skip(bulk.original_filepath.len()) {
+                lines.push(format!("CREATE: {new}"));
+            }
+            lines
+        } else {
+            vec![]
+        }
+    }
+
+    /// Execute the action parsed from the file.
+    ///
+    /// # Errors
+    ///
+    /// May fail if bulk is still set to None. It should never happen.
+    /// May fail if the new file can't be created or the flagged file can't be renamed.
     pub fn execute(&mut self) -> Result<(Option<Vec<PathBuf>>, Option<Vec<PathBuf>>)> {
         let Some(bulk) = &mut self.bulk else {
             return Err(anyhow!("bulk shouldn't be None"));
@@ -207,19 +250,5 @@ impl Bulk {
         let ret = bulk.execute();
         self.reset();
         ret
-    }
-
-    pub fn format_confirmation(&self) -> Vec<String> {
-        if let Some(bulk) = &self.bulk {
-            bulk.original_filepath
-                .iter()
-                .zip(bulk.new_filenames.iter())
-                .map(|(original, new)| {
-                    format!("{original} -> {new}", original = original.display())
-                })
-                .collect()
-        } else {
-            vec![]
-        }
     }
 }

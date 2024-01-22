@@ -989,7 +989,6 @@ impl Status {
 
     /// Ask the new filenames and set the confirmation mode.
     pub fn bulk_ask_filenames(&mut self) -> Result<()> {
-        self.bulk_flag_selection_for_rename()?;
         let flagged = self.flagged_in_current_dir();
         let current_path = self.current_tab_path_str();
         self.menu
@@ -1002,19 +1001,11 @@ impl Status {
         Ok(())
     }
 
-    fn bulk_flag_selection_for_rename(&mut self) -> Result<()> {
-        if self.menu.flagged.is_empty() {
-            self.menu
-                .flagged
-                .push(self.current_tab().current_file()?.path.to_path_buf());
-        }
-        Ok(())
-    }
-
     /// Execute the bulk action.
     pub fn confirm_bulk_action(&mut self) -> Result<()> {
         if let (Some(paths), Some(create)) = self.menu.bulk.execute()? {
             self.menu.flagged.update(paths);
+            self.menu.flagged.extend(create);
         } else {
             self.menu.flagged.clear();
         };
