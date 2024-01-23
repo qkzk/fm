@@ -481,6 +481,7 @@ impl Status {
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
         self.set_focus_from_mode();
+        self.menu.input_history.filter_by_mode(edit_mode);
         self.refresh_status()
     }
 

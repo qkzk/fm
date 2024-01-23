@@ -876,6 +876,8 @@ impl EventAction {
         if matches!(status.tabs[status.index].display_mode, Display::Tree) && status.focus.is_file()
         {
             status.current_tab_mut().tree_next_sibling();
+        } else {
+            Self::input_history_prev(status)?;
         }
         Ok(())
     }
@@ -884,6 +886,8 @@ impl EventAction {
         if matches!(status.tabs[status.index].display_mode, Display::Tree) && status.focus.is_file()
         {
             status.current_tab_mut().tree_prev_sibling();
+        } else {
+            Self::input_history_next(status)?;
         }
         Ok(())
     }
@@ -1492,6 +1496,32 @@ impl EventAction {
             Focus::LeftMenu => status.focus = Focus::LeftFile,
             Focus::RightMenu => status.focus = Focus::RightFile,
         }
+        Ok(())
+    }
+
+    pub fn input_history_next(status: &mut Status) -> Result<()> {
+        if status.focus.is_file() {
+            return Ok(());
+        }
+        status.menu.input_history.next();
+        let Some(hist) = status.menu.input_history.current() else {
+            return Ok(());
+        };
+        status.menu.input.replace(hist);
+        status.menu.input_complete(&mut status.tabs[status.index])?;
+        Ok(())
+    }
+
+    pub fn input_history_prev(status: &mut Status) -> Result<()> {
+        if status.focus.is_file() {
+            return Ok(());
+        }
+        status.menu.input_history.prev();
+        let Some(hist) = status.menu.input_history.current() else {
+            return Ok(());
+        };
+        status.menu.input.replace(hist);
+        status.menu.input_complete(&mut status.tabs[status.index])?;
         Ok(())
     }
 }

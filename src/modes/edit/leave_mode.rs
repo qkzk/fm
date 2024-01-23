@@ -34,6 +34,10 @@ pub struct LeaveMode;
 
 impl LeaveMode {
     pub fn leave_edit_mode(status: &mut Status, binds: &Bindings) -> Result<()> {
+        status
+            .menu
+            .input_history
+            .update(status.current_tab().edit_mode, &status.menu.input.string())?;
         let must_refresh = status.current_tab().edit_mode.must_refresh();
         let must_reset_mode = status.current_tab().edit_mode.must_reset_mode();
 

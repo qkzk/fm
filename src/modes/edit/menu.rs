@@ -4,12 +4,14 @@ use anyhow::Result;
 use crate::app::Tab;
 use crate::common::is_program_in_path;
 use crate::common::CLI_PATH;
+use crate::common::INPUT_HISTORY_PATH;
 use crate::common::MARKS_FILEPATH;
 use crate::common::SSHFS_EXECUTABLE;
 use crate::common::TUIS_PATH;
 use crate::config::Bindings;
 use crate::io::drop_sudo_privileges;
 use crate::io::execute_and_capture_output_with_path;
+use crate::io::InputHistory;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::Bulk;
@@ -75,6 +77,8 @@ pub struct Menu {
     pub sudo_command: Option<String>,
     /// History - here for compatibility reasons only
     pub history: History,
+    ///
+    pub input_history: InputHistory,
 }
 
 impl Menu {
@@ -102,6 +106,7 @@ impl Menu {
             trash: Trash::new(binds)?,
             tui_applications: TuiApplications::new(TUIS_PATH),
             window: ContentWindow::new(0, 80),
+            input_history: InputHistory::load(INPUT_HISTORY_PATH)?,
         })
     }
 
