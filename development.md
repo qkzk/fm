@@ -906,8 +906,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: skim in tree doesn't select the match
 - [x] remove MOCP control from fm
 - [x] allow header & footer to be right aligned
-- [ ] memory leak: clearing a vector has no effect on its allocated capacity. Might this be the cause ?
-- [ ] merge both bulkthing modes. If more files, just create them. Like [oil](https://github.com/stevearc/oil.nvim)
+- [x] merge both bulkthing modes. If more files, just create them. Like [oil](https://github.com/stevearc/oil.nvim)
 - [ ] ???
 
 ## TODO
