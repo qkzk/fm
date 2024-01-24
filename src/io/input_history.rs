@@ -46,7 +46,7 @@ impl InputHistory {
         let mut hist_file = std::fs::OpenOptions::new()
             .append(true)
             .open(&self.file_path)?;
-        hist_file.write(elem.to_string().as_bytes())?;
+        hist_file.write_all(elem.to_string().as_bytes())?;
         Ok(())
     }
 
