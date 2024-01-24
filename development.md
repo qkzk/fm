@@ -864,6 +864,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   You will have to remove all your custom binds to MOCP control from your config file to make it work.
 - search with regex. You can search (Char('/')) a regex pattern. Search next (Char('f')) will use that regex.
 - left or right aligned and clickable elements in header
+- shift+up, shift+down while typing something cycle trough previous entries.
+  Those are filtered: while typing a path, suggestions are limited to previous pathes, not previous commands.
+- shift+left erases the whole input line
 
 #### Changelog
 
