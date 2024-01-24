@@ -900,9 +900,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display number of matches while searching.
   - [x] search refactoring
 
-- [ ] input history.
+- [x] input history.
 
-  - [ ] require logging ?
+  - [x] require logging to save on disk.
   - [x] record every typed into as human as possible file
   - [x] navigate history with shift+up, shift+down, ctrl+left should erase input
 
