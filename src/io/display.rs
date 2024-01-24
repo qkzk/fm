@@ -14,7 +14,7 @@ use crate::app::{ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader};
 use crate::app::{Header, PreviewHeader};
 use crate::common::path_to_string;
 use crate::common::ENCRYPTED_DEVICE_BINDS;
-use crate::config::MENU_COLORS;
+use crate::config::{ColorG, Gradient, MENU_COLORS};
 use crate::io::read_last_log_line;
 use crate::log_info;
 use crate::modes::BinaryContent;
@@ -43,11 +43,20 @@ use crate::modes::{parse_input_mode, SecondLine};
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
     ($t:ident) => {
-        std::iter::zip($t.iter().enumerate(), MENU_COLORS.palette().iter().cycle())
-            .map(|((index, line), attr)| (index, line, attr))
+        std::iter::zip(
+            $t.iter().enumerate(),
+            Gradient::new(
+                ColorG::from_tuikit(MENU_COLORS.first).unwrap_or_default(),
+                ColorG::from_tuikit(MENU_COLORS.palette_3).unwrap_or_default(),
+                $t.len(),
+            )
+            .gradient()
+            .iter()
+            .map(|color| color_to_attr(*color)),
+        )
+        .map(|((index, line), attr)| (index, line, attr))
     };
 }
-
 /// Draw every line of the preview
 macro_rules! impl_preview {
     ($text:ident, $tab:ident, $length:ident, $canvas:ident, $line_number_width:ident, $window:ident, $height:ident) => {
@@ -772,7 +781,7 @@ impl<'a> WinSecondary<'a> {
             .skip(top)
             .take(min(bottom, len))
         {
-            let attr = self.status.menu.completion.attr(row, attr);
+            let attr = self.status.menu.completion.attr(row, &attr);
             Self::draw_content_line(canvas, row + 1 - top, candidate, attr)?;
         }
         Ok(())
@@ -780,7 +789,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {
         for (row, line, attr) in enumerated_colored_iter!(lines) {
-            Self::draw_content_line(canvas, row, line, *attr)?;
+            Self::draw_content_line(canvas, row, line, attr)?;
         }
         Ok(())
     }
@@ -827,7 +836,7 @@ impl<'a> WinSecondary<'a> {
             .skip(top)
             .take(min(bottom, len))
         {
-            let attr = selectable.attr(row, attr);
+            let attr = selectable.attr(row, &attr);
             Self::draw_content_line(
                 canvas,
                 row + 1 - top,
@@ -842,7 +851,7 @@ impl<'a> WinSecondary<'a> {
         let selectable = &self.tab.history;
         let content = selectable.content();
         for (row, pair, attr) in enumerated_colored_iter!(content) {
-            let attr = selectable.attr(row, attr);
+            let attr = selectable.attr(row, &attr);
             Self::draw_content_line(
                 canvas,
                 row + 1,
@@ -877,7 +886,7 @@ impl<'a> WinSecondary<'a> {
             .skip(top)
             .take(min(bottom, len))
         {
-            let attr = trash.attr(row, attr);
+            let attr = trash.attr(row, &attr);
             let _ = Self::draw_content_line(canvas, row + 1 - top, &trashinfo.to_string(), attr);
         }
     }
@@ -886,7 +895,7 @@ impl<'a> WinSecondary<'a> {
         let selectable = &self.status.menu.compression;
         let content = selectable.content();
         for (row, compression_method, attr) in enumerated_colored_iter!(content) {
-            let attr = selectable.attr(row, attr);
+            let attr = selectable.attr(row, &attr);
             Self::draw_content_line(canvas, row + 1, &compression_method.to_string(), attr)?;
         }
         Ok(())
@@ -897,7 +906,7 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(1, 2, "Pick an action.", color_to_attr(MENU_COLORS.second))?;
         let content = selectable.content();
         for (row, desc, attr) in enumerated_colored_iter!(content) {
-            let attr = selectable.attr(row, attr);
+            let attr = selectable.attr(row, &attr);
             Self::draw_content_line(canvas, row + 1, desc, attr)?;
         }
         Ok(())
@@ -914,7 +923,7 @@ impl<'a> WinSecondary<'a> {
             .skip(top)
             .take(min(bottom, len))
         {
-            let attr = self.status.menu.marks.attr(row, attr);
+            let attr = self.status.menu.marks.attr(row, &attr);
             Self::draw_content_line(canvas, row + 1 - top, line, attr)?;
         }
         Ok(())
@@ -936,7 +945,7 @@ impl<'a> WinSecondary<'a> {
             .skip(top)
             .take(min(bottom, len))
         {
-            let attr = self.status.menu.tui_applications.attr(row, attr);
+            let attr = self.status.menu.tui_applications.attr(row, &attr);
             Self::draw_content_line(canvas, row + 1 - top, command, attr)?;
         }
         Ok(())
@@ -958,7 +967,7 @@ impl<'a> WinSecondary<'a> {
             .skip(top)
             .take(min(bottom, len))
         {
-            let attr = self.status.menu.cli_applications.attr(row, attr);
+            let attr = self.status.menu.cli_applications.attr(row, &attr);
             canvas.print_with_attr(
                 row + 1 + ContentWindow::WINDOW_MARGIN_TOP - top,
                 4,
@@ -1057,7 +1066,7 @@ impl<'a> WinSecondary<'a> {
                 canvas,
                 row + 2,
                 path.to_str().context("Unreadable filename")?,
-                *attr,
+                attr,
             )?;
         }
         Ok(())
@@ -1066,7 +1075,7 @@ impl<'a> WinSecondary<'a> {
     fn draw_confirm_bulk(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let content = self.status.menu.bulk.format_confirmation();
         for (row, line, attr) in enumerated_colored_iter!(content) {
-            Self::draw_content_line(canvas, row + 2, line, *attr)?;
+            Self::draw_content_line(canvas, row + 2, line, attr)?;
         }
         Ok(())
     }
@@ -1092,7 +1101,7 @@ impl<'a> WinSecondary<'a> {
     fn draw_confirm_non_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let content = self.status.menu.trash.content();
         for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
-            let attr = self.status.menu.trash.attr(row, attr);
+            let attr = self.status.menu.trash.attr(row, &attr);
             Self::draw_content_line(canvas, row + 4, &trashinfo.to_string(), attr)?;
         }
         Ok(())
