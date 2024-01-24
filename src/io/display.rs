@@ -712,6 +712,7 @@ impl<'a> Draw for WinSecondary<'a> {
         }?;
         self.draw_cursor(canvas)?;
         self.draw_second_line(canvas)?;
+        self.draw_binds_per_mode(canvas, self.tab.edit_mode)?;
 
         WinSecondaryFirstLine::new(self.status).draw(canvas)
     }
@@ -748,6 +749,16 @@ impl<'a> WinSecondary<'a> {
                 )?;
             }
         }
+        Ok(())
+    }
+
+    fn draw_binds_per_mode(&self, canvas: &mut dyn Canvas, mode: Edit) -> Result<()> {
+        canvas.print_with_attr(
+            canvas.height()? - 1,
+            2,
+            crate::modes::binds_per_mode(mode),
+            color_to_attr(MENU_COLORS.second),
+        )?;
         Ok(())
     }
 

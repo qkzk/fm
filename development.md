@@ -891,7 +891,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: leaving mount mode with enter when device is mounted should move to it
 - [x] FIX: clicking footer row execute directory actions, even in flagged display mode
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
-- [ ] display all specific binds for every mode with a key ?
+- [ ] display all specific binds for every mode.
+
+  - [ ] specific help with default binds
+  - [ ] custom binds
+  - [ ] disable in config
+
 - [ ] search, display nb of matches, completion + flag on the fly
 
   - [x] use regex in search
@@ -910,6 +915,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] remove MOCP control from fm
 - [x] allow header & footer to be right aligned
 - [x] merge both bulkthing modes. If more files, just create them. Like [oil](https://github.com/stevearc/oil.nvim)
+- [ ] allow different ports in remote
+- [ ] sort trash by reversed date
 - [ ] ???
 
 ## TODO
