@@ -1,12 +1,14 @@
 use std::fmt::Display;
 use std::io::Write;
 
+use clap::Parser;
 use strum_macros::Display;
 
 use anyhow::{anyhow, Context, Result};
 
 use crate::{
     common::read_lines,
+    io::Args,
     modes::{Edit, InputCompleted, InputSimple},
 };
 
@@ -15,6 +17,7 @@ pub struct InputHistory {
     content: Vec<HistoryElement>,
     filtered: Vec<HistoryElement>,
     index: usize,
+    log_are_enabled: bool,
 }
 
 impl InputHistory {
@@ -25,6 +28,7 @@ impl InputHistory {
             file_path,
             filtered: vec![],
             index: 0,
+            log_are_enabled: Args::parse().log,
         })
     }
 
@@ -77,11 +81,14 @@ impl InputHistory {
         Some(&elem.content)
     }
 
+    /// If logs are disabled, nothing is saved on disk, only during current session
     pub fn update(&mut self, mode: Edit, input_string: &str) -> Result<()> {
         let Some(elem) = HistoryElement::from_mode_input_string(mode, input_string) else {
             return Ok(());
         };
-        self.write_elem(&elem)?;
+        if self.log_are_enabled {
+            self.write_elem(&elem)?;
+        }
         self.content.push(elem);
         Ok(())
     }
