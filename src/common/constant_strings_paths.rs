@@ -97,9 +97,9 @@ pub const SORT_LINES: [&str; 9] = [
 ];
 pub const REMOTE_LINES: [&str; 4] = [
     "Mount a directory with sshfs",
-    "Type the arguments as below, separated by a space",
+    "Type the arguments as below, separated by a space. The port is optional",
     "",
-    "username hostname remote_path",
+    "username hostname remote_path port",
 ];
 /// Chmod presentation for the second window
 pub const CHMOD_LINES: [&str; 5] = [

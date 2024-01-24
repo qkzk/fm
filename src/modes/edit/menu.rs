@@ -209,9 +209,9 @@ impl Menu {
             log_info!("{SSHFS_EXECUTABLE} isn't in path");
             return;
         }
-        if user_hostname_remotepath.len() != 3 {
+        if user_hostname_remotepath.len() != 3 && user_hostname_remotepath.len() != 4 {
             log_info!(
-                "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3, got {nb}",
+                "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3 or 4, got {nb}",
                 nb = user_hostname_remotepath.len()
             );
             return;
@@ -222,11 +222,18 @@ impl Menu {
             user_hostname_remotepath[1],
             user_hostname_remotepath[2],
         );
-        let first_arg = &format!("{username}@{hostname}:{remote_path}");
+
+        let port = if user_hostname_remotepath.len() == 3 {
+            "22"
+        } else {
+            user_hostname_remotepath[3]
+        };
+
+        let first_arg = format!("{username}@{hostname}:{remote_path}");
         let output = execute_and_capture_output_with_path(
             SSHFS_EXECUTABLE,
             current_path,
-            &[first_arg, current_path],
+            &[&first_arg, current_path, "-p", port],
         );
         log_info!("{SSHFS_EXECUTABLE} {first_arg} output {output:?}");
         log_line!("{SSHFS_EXECUTABLE} {first_arg} output {output:?}");
