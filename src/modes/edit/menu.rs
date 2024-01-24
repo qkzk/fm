@@ -307,6 +307,10 @@ impl Menu {
         self.shortcut.refresh(mount_points, left_path, right_path)
     }
 
+    pub fn completion_reset(&mut self) {
+        self.completion.reset();
+    }
+
     pub fn completion_tab(&mut self) {
         self.input.replace(self.completion.current_proposition())
     }

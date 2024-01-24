@@ -900,8 +900,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] input history.
 
   - [ ] require logging ?
-  - [ ] record every typed into as human as possible file
-  - [ ] navigate history with ctrl+up, ctrl+down, ctrl+left should erase input
+  - [x] record every typed into as human as possible file
+  - [x] navigate history with shift+up, shift+down, ctrl+left should erase input
 
 - [x] FIX: skim in tree doesn't select the match
 - [x] remove MOCP control from fm

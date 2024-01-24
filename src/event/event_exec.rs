@@ -872,7 +872,7 @@ impl EventAction {
         status.update_second_pane_for_preview()
     }
 
-    pub fn next_sibling(status: &mut Status) -> Result<()> {
+    pub fn next_thing(status: &mut Status) -> Result<()> {
         if matches!(status.tabs[status.index].display_mode, Display::Tree) && status.focus.is_file()
         {
             status.current_tab_mut().tree_next_sibling();
@@ -882,7 +882,7 @@ impl EventAction {
         Ok(())
     }
 
-    pub fn previous_sibling(status: &mut Status) -> Result<()> {
+    pub fn previous_thing(status: &mut Status) -> Result<()> {
         if matches!(status.tabs[status.index].display_mode, Display::Tree) && status.focus.is_file()
         {
             status.current_tab_mut().tree_prev_sibling();
@@ -1036,6 +1036,23 @@ impl EventAction {
                 _ => Ok(()),
             }
         }
+    }
+
+    pub fn delete_line(status: &mut Status) -> Result<()> {
+        if status.focus.is_file() {
+            return Ok(());
+        }
+        match status.current_tab_mut().edit_mode {
+            Edit::InputSimple(_) => {
+                status.menu.input.delete_line();
+            }
+            Edit::InputCompleted(_) => {
+                status.menu.input.delete_line();
+                status.menu.completion_reset();
+            }
+            _ => (),
+        }
+        Ok(())
     }
 
     /// Move to leftmost char in mode allowing edition.
