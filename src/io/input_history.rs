@@ -34,10 +34,10 @@ impl InputHistory {
 
     fn load_content(path: &std::path::Path) -> Result<Vec<HistoryElement>> {
         if !std::path::Path::new(&path).exists() {
-            std::fs::File::create(&path)?;
+            std::fs::File::create(path)?;
         }
         Ok(read_lines(path)?
-            .map(|line| HistoryElement::from_str(line))
+            .map(HistoryElement::from_str)
             .filter_map(|line| line.ok())
             .collect())
     }
@@ -181,9 +181,9 @@ pub struct HistoryElement {
 
 impl Display for HistoryElement {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
+        writeln!(
             f,
-            "{kind} - {content}\n",
+            "{kind} - {content}",
             kind = self.kind,
             content = self.content
         )
