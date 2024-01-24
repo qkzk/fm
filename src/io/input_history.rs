@@ -71,7 +71,11 @@ impl InputHistory {
     }
 
     pub fn prev(&mut self) {
-        self.index = self.index.saturating_sub(1);
+        if self.index > 0 {
+            self.index -= 1
+        } else if !self.filtered.is_empty() {
+            self.index = self.filtered.len() - 1
+        }
     }
 
     pub fn current(&self) -> Option<&str> {
