@@ -916,7 +916,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow header & footer to be right aligned
 - [x] merge both bulkthing modes. If more files, just create them. Like [oil](https://github.com/stevearc/oil.nvim)
 - [ ] allow different ports in remote
-- [ ] sort trash by reversed date
+- [x] sort trash by reversed deletion date
 - [ ] ???
 
 ## TODO
