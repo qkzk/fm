@@ -918,6 +918,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow different ports in remote
 - [x] sort trash by reversed deletion date
 - [x] gradient over listing
+- [x] FIX win second use 1 more line
 - [ ] ???
 
 ## TODO

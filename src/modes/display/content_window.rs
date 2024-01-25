@@ -41,7 +41,7 @@ impl ContentWindow {
     /// Default value for the bottom index.
     /// minimum of terminal height minus reserved rows and the length of the content.
     fn default_bottom(len: usize, height: usize) -> usize {
-        min(height - Self::BOTTOM_ROWS, len)
+        min(height.saturating_sub(Self::BOTTOM_ROWS), len)
     }
 
     /// Returns a new `ContentWindow` instance with values depending of
