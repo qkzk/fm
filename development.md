@@ -919,6 +919,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] sort trash by reversed deletion date
 - [x] gradient over listing
 - [x] FIX win second use 1 more line
+- [x] FIX: entering sort doesn't set focus
 - [ ] ???
 
 ## TODO

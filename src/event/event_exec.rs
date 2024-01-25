@@ -489,6 +489,7 @@ impl EventAction {
         let height = status.second_window_height()?;
         status.menu.window = ContentWindow::new(len, height);
         status.tabs[status.index].edit_mode = Edit::InputSimple(InputSimple::Sort);
+        status.set_focus_from_mode();
         Ok(())
     }
 
