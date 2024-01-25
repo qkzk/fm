@@ -51,8 +51,7 @@ macro_rules! enumerated_colored_iter {
                 $t.len(),
             )
             .gradient()
-            .iter()
-            .map(|color| color_to_attr(*color)),
+            .map(|color| color_to_attr(color)),
         )
         .map(|((index, line), attr)| (index, line, attr))
     };

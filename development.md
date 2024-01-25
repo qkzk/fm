@@ -917,7 +917,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] merge both bulkthing modes. If more files, just create them. Like [oil](https://github.com/stevearc/oil.nvim)
 - [x] allow different ports in remote
 - [x] sort trash by reversed deletion date
-- [x] gradient over listing
+- [x] gradient over listing, using an iter instead of a vector
 - [x] FIX win second use 1 more line
 - [x] FIX: entering sort doesn't set focus
 - [ ] ???

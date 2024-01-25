@@ -109,9 +109,7 @@ impl Gradient {
         }
     }
 
-    pub fn gradient(&self) -> Vec<Color> {
-        (0..self.len)
-            .map(|step| self.gradient_step(step).to_tuikit())
-            .collect()
+    pub fn gradient(&self) -> impl Iterator<Item = Color> + '_ {
+        (0..self.len).map(move |step| self.gradient_step(step).to_tuikit())
     }
 }
