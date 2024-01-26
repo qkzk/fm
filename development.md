@@ -858,10 +858,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Summary
 
-- BREAKING: removed jump mode completeley. If you bound a key to this mode in your config, you have to remove it.
+- BREAKING: removed jump mode completeley.
   You can see your flagged files in the display::flagged mode, default bind: <F>.
 - BREAKING: removed all MOCP controls from fm. What was it doing there anyway ?.
-  You will have to remove all your custom binds to MOCP control from your config file to make it work.
+  Those change won't break your config file. While building the application, line with reference to removed binds will be erased.
 - search with regex. You can search (Char('/')) a regex pattern. Search next (Char('f')) will use that regex.
 - left or right aligned and clickable elements in header
 - shift+up, shift+down while typing something cycle trough previous entries.
@@ -920,6 +920,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] gradient over listing, using an iter instead of a vector
 - [x] FIX win second use 1 more line
 - [x] FIX: entering sort doesn't set focus
+- [x] update config from build file by removing references to removed binds.
 - [ ] ???
 
 ## TODO

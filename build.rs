@@ -20,4 +20,23 @@ fn main() {
         Ok(_) => (),
         Err(e) => eprintln!("{e:?}"),
     }
+
+    update_breaking_config()
+}
+
+/// Remove old binds from user config file.
+///
+/// Remove all binds to `Jump` and `Mocp...` variants since they were removed from fm.
+fn update_breaking_config() {
+    let config = shellexpand::tilde("~/.config/fm/config.yaml");
+    let config: &str = config.borrow();
+    let content = std::fs::read_to_string(config)
+        .expect("config file should be readable")
+        .lines()
+        .map(String::from)
+        .filter(|line| !line.contains("Jump"))
+        .filter(|line| !line.contains("Mocp"))
+        .collect::<Vec<String>>()
+        .join("\n");
+    std::fs::write(config, &content).expect("config should be writabe");
 }
