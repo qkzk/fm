@@ -202,31 +202,31 @@ impl Menu {
     /// If the user doesn't provide 3 arguments,
     pub fn mount_remote(&mut self, current_path: &str) {
         let input = self.input.string();
-        let user_hostname_remotepath: Vec<&str> = input.split(' ').collect();
+        let user_hostname_path_port: Vec<&str> = input.split(' ').collect();
         self.input.reset();
 
         if !is_program_in_path(SSHFS_EXECUTABLE) {
             log_info!("{SSHFS_EXECUTABLE} isn't in path");
             return;
         }
-        if user_hostname_remotepath.len() != 3 && user_hostname_remotepath.len() != 4 {
+        let number_of_args = user_hostname_path_port.len();
+        if number_of_args != 3 && number_of_args != 4 {
             log_info!(
-                "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3 or 4, got {nb}",
-                nb = user_hostname_remotepath.len()
+                "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3 or 4, got {number_of_args}",
             );
             return;
         };
 
         let (username, hostname, remote_path) = (
-            user_hostname_remotepath[0],
-            user_hostname_remotepath[1],
-            user_hostname_remotepath[2],
+            user_hostname_path_port[0],
+            user_hostname_path_port[1],
+            user_hostname_path_port[2],
         );
 
-        let port = if user_hostname_remotepath.len() == 3 {
+        let port = if number_of_args == 3 {
             "22"
         } else {
-            user_hostname_remotepath[3]
+            user_hostname_path_port[3]
         };
 
         let first_arg = format!("{username}@{hostname}:{remote_path}");
