@@ -891,11 +891,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: leaving mount mode with enter when device is mounted should move to it
 - [x] FIX: clicking footer row execute directory actions, even in flagged display mode
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
-- [ ] display all specific binds for every mode.
-
-  - [ ] specific help with default binds
-  - [ ] custom binds
-  - [ ] disable in config
+- [x] display all specific binds for every mode.
 
 - [ ] search, display nb of matches, completion + flag on the fly
 
