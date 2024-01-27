@@ -3,7 +3,6 @@ use strfmt::strfmt;
 
 use crate::config::Bindings;
 use crate::io::Opener;
-use crate::modes::{Edit, InputSimple, MarkAction, Navigate};
 
 /// Help message to be displayed when help key is pressed.
 /// Default help key is `'h'`.
@@ -165,18 +164,4 @@ fn complete_with_custom_binds(custom_binds: &Option<Vec<String>>, mut help: Stri
         }
     }
     help
-}
-
-pub fn binds_per_mode(edit_mode: Edit) -> &'static str {
-    match edit_mode {
-        Edit::InputCompleted(_) => "Tab to complete. shift+up, shift+down to cycle trough previous entries, shift+left to erase line. Enter to validate",
-        Edit::InputSimple(InputSimple::Filter) => "Enter reset the filters",
-        Edit::InputSimple(InputSimple::Sort ) => "Enter reset the sort",
-        Edit::InputSimple(_) => "shift+up, shift+down to cycle trough previous entries, shift+left to erase line. Enter to validate",
-        Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => "Type the mark letter to jump there. up, down to navigate, ENTER to select an element",
-        Edit::Navigate(Navigate::Marks(MarkAction::New)) => "Type the mark set a mark here. up, down to navigate, ENTER to select an element",
-        Edit::Navigate(_) => "up, down to navigate, ENTER to select an element",
-        Edit::NeedConfirmation(_) => "",
-        _ => "",
-    }
 }

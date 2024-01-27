@@ -766,7 +766,7 @@ impl<'a> WinSecondary<'a> {
         canvas.print_with_attr(
             height - 1,
             2,
-            crate::modes::binds_per_mode(mode),
+            mode.binds_per_mode(),
             color_to_attr(MENU_COLORS.second),
         )?;
         Ok(())

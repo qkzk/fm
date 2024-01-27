@@ -304,6 +304,20 @@ impl Edit {
     pub fn show_cursor(&self) -> bool {
         self.cursor_offset() != 0
     }
+
+    pub fn binds_per_mode(&self) -> &'static str {
+        match self {
+            Self::InputCompleted(_) => "Tab: completion. shift+⬆️, shift+⬇️: previous entries, shift+⬅️: erase line. Enter: validate",
+            Self::InputSimple(InputSimple::Filter) => "Enter reset the filters",
+            Self::InputSimple(InputSimple::Sort ) => "Enter reset the sort",
+            Self::InputSimple(_) => "shift+⬆️, shift+⬇️: previous entries, shift+⬅️: erase line. Enter: validate",
+            Self::Navigate(Navigate::Marks(MarkAction::Jump)) => "Type the mark letter to jump there. up, down to navigate, ENTER to select an element",
+            Self::Navigate(Navigate::Marks(MarkAction::New)) => "Type the mark set a mark here. up, down to navigate, ENTER to select an element",
+            Self::Navigate(_) => "up, down to navigate, ENTER to select an element",
+            Self::NeedConfirmation(_) => "",
+            _ => "",
+        }
+    }
 }
 
 impl Leave for Edit {
