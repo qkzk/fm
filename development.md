@@ -917,7 +917,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX win second use 1 more line
 - [x] FIX: entering sort doesn't set focus
 - [x] update config from build file by removing references to removed binds.
-- [ ] ???
+- [x] move to encrypted drive when mounting is successful
 
 ## TODO
 

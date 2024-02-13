@@ -842,9 +842,14 @@ impl Status {
                 PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP),
             )
         } else {
-            self.menu
+            if let Ok(true) = self
+                .menu
                 .encrypted_devices
                 .mount_selected(&mut self.menu.password_holder)
+            {
+                self.go_to_encrypted_drive()?;
+            }
+            Ok(())
         }
     }
 

@@ -297,7 +297,7 @@ impl CryptoDeviceOpener {
     }
 
     /// Open and mount the selected device.
-    pub fn mount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<()> {
+    pub fn mount_selected(&mut self, password_holder: &mut PasswordHolder) -> Result<bool> {
         let username = current_username()?;
         let success = self.content[self.index].open_mount(&username, password_holder)?;
         if !success {
@@ -305,7 +305,7 @@ impl CryptoDeviceOpener {
         }
         password_holder.reset();
         drop_sudo_privileges()?;
-        Ok(())
+        Ok(success)
     }
 
     /// Unmount and close the selected device.
@@ -321,6 +321,5 @@ impl CryptoDeviceOpener {
     }
 }
 
-// impl_selectable_content!(CryptoDevice, CryptoDeviceOpener);
 impl_selectable!(CryptoDeviceOpener);
 impl_content!(CryptoDevice, CryptoDeviceOpener);
