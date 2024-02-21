@@ -921,6 +921,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
+- [ ] bulk: do not freeze the application while waiting for the thread
+  - [ ] use a flag in main loop and 1. check for edition, 2. do & log the execution
+- [ ] when opened from neovim itself, use an existing instance, don't open new terminal
+  - [ ] detect (guess ?) when started from neovim
+    - [ ] $TERM = xterm-256color
+    - [ ] $TERM != $TERMINAL
 - [ ] open a shell while hiding fm, restore after leaving
 - [ ] refactor & unify all shell commands
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
