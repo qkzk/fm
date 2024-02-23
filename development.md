@@ -867,6 +867,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - shift+up, shift+down while typing something cycle trough previous entries.
   Those are filtered: while typing a path, suggestions are limited to previous pathes, not previous commands.
 - shift+left erases the whole input line
+- wrap tuikit::event into custom event. Use an mpsc to request refresh and bulk execution.
+  While editing filenames in bulk, the application isn't bloked anymore.
 
 #### Changelog
 
@@ -918,11 +920,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: entering sort doesn't set focus
 - [x] update config from build file by removing references to removed binds.
 - [x] move to encrypted drive when mounting is successful
-- [ ] wrap event into an MPSC to allow internal events
+- [x] wrap event into an MPSC to allow internal events
   - [x] wrap
   - [x] send/receive custom event
   - [x] bulk: do not freeze the application while waiting for the thread to complete
-  - [ ] refresher
+  - [x] refresher
+  - [x] copy move
 
 ## TODO
 
