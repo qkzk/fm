@@ -71,7 +71,7 @@ impl ColorG {
         }
     }
 
-    fn to_tuikit(&self) -> Color {
+    fn as_tuikit(&self) -> Color {
         Color::Rgb(self.r, self.g, self.b)
     }
 }
@@ -86,7 +86,7 @@ pub struct Gradient {
 
 impl Gradient {
     pub fn new(start: ColorG, end: ColorG, len: usize) -> Self {
-        let step_ratio = 1 as f32 / len as f32;
+        let step_ratio = 1_f32 / len as f32;
         Self {
             start,
             end,
@@ -110,6 +110,6 @@ impl Gradient {
     }
 
     pub fn gradient(&self) -> impl Iterator<Item = Color> + '_ {
-        (0..self.len).map(move |step| self.gradient_step(step).to_tuikit())
+        (0..self.len).map(move |step| self.gradient_step(step).as_tuikit())
     }
 }

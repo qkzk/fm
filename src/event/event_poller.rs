@@ -23,13 +23,11 @@ impl EventReader {
     /// We should spend most of the application life here, doing nothing :)
     pub fn poll_event(&self) -> Result<FmEvents> {
         loop {
-            match self.fm_receiver.try_recv() {
-                Ok(event) => return Ok(event),
-                Err(_) => (),
+            if let Ok(event) = self.fm_receiver.try_recv() {
+                return Ok(event);
             }
-            match self.term.peek_event(Duration::from_millis(100)) {
-                Ok(event) => return Ok(FmEvents::Event(event)),
-                Err(_) => (),
+            if let Ok(event) = self.term.peek_event(Duration::from_millis(100)) {
+                return Ok(FmEvents::Event(event));
             }
         }
     }

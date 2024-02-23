@@ -58,7 +58,7 @@ impl InputHistory {
         self.filtered = self
             .content
             .iter()
-            .filter(|elem| &elem.kind == &kind)
+            .filter(|elem| elem.kind == kind)
             .rev()
             .map(|elem| elem.to_owned())
             .collect()
@@ -191,7 +191,7 @@ impl Display for HistoryElement {
 }
 
 impl HistoryElement {
-    fn split_kind_content<'a>(line: Result<String, std::io::Error>) -> Result<(String, String)> {
+    fn split_kind_content(line: Result<String, std::io::Error>) -> Result<(String, String)> {
         let line = line?.to_owned();
         let (mut kind, mut content) = line
             .split_once('-')

@@ -38,5 +38,5 @@ fn update_breaking_config() {
         .filter(|line| !line.contains("Mocp"))
         .collect::<Vec<String>>()
         .join("\n");
-    std::fs::write(config, &content).expect("config should be writabe");
+    std::fs::write(config, content).expect("config should be writabe");
 }
