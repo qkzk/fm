@@ -2,7 +2,7 @@ use anyhow::Result;
 use tuikit::prelude::{Event, Key, MouseButton};
 
 use crate::app::Status;
-use crate::config::{Bindings, REFRESH_KEY};
+use crate::config::Bindings;
 use crate::event::event_exec::EventAction;
 use crate::modes::{Display, Edit, InputCompleted, InputSimple, MarkAction, Navigate, Search};
 
@@ -34,6 +34,7 @@ impl EventDispatcher {
                 EventAction::resize(status, width, height)
             }
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
+            FmEvents::Refresh => EventAction::refresh_if_needed(status),
             _ => Ok(()),
         }
     }
@@ -56,11 +57,6 @@ impl EventDispatcher {
                 EventAction::left_click(status, &self.binds, row, col)?;
                 EventAction::context(status)?
             }
-
-            // reserved keybind which can't be bound to anything.
-            // using `Key::User(())` conflicts with skim internal which
-            // interpret this event as a signal(1)
-            REFRESH_KEY => EventAction::refresh_if_needed(status)?,
 
             Key::Char(c) => self.char(status, c)?,
             key => self.key_matcher(status, key)?,

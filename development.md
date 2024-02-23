@@ -921,7 +921,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] wrap event into an MPSC to allow internal events
   - [x] wrap
   - [x] send/receive custom event
-  - [x] bulk: do not freeze the application while waiting for the thread
+  - [x] bulk: do not freeze the application while waiting for the thread to complete
   - [ ] refresher
 
 ## TODO

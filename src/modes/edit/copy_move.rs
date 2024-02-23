@@ -10,7 +10,7 @@ use tuikit::prelude::{Attr, Term};
 
 use crate::common::NOTIFY_EXECUTABLE;
 use crate::common::{is_program_in_path, random_name};
-use crate::config::{MENU_COLORS, REFRESH_EVENT};
+use crate::config::MENU_COLORS;
 use crate::io::{color_to_attr, execute};
 use crate::modes::human_size;
 use crate::{log_info, log_line};
@@ -163,7 +163,8 @@ where
             }
         };
 
-        let _ = c_term.send_event(REFRESH_EVENT);
+        // let _ = c_term.send_event(REFRESH_EVENT);
+        // TODO refresh event sent from here
 
         if let Err(e) = conflict_handler.solve_conflicts() {
             log_info!("Conflict Handler error: {e}");

@@ -4,4 +4,4 @@ mod keybindings;
 
 pub use colors::{extension_color, ColorG, Colorer, Gradient};
 pub use configuration::{load_config, Config, COLORER, COLORS, MENU_COLORS, START_FOLDER};
-pub use keybindings::{Bindings, REFRESH_EVENT, REFRESH_KEY};
+pub use keybindings::Bindings;

@@ -72,11 +72,12 @@ impl FM {
             term.clone(),
             opener,
             &config.binds,
-            fm_sender,
+            fm_sender.clone(),
         )?));
         drop(config);
 
-        let refresher = Refresher::new(term.clone());
+        // let refresher = Refresher::new(term.clone());
+        let refresher = Refresher::new(fm_sender);
         let displayer = Displayer::new(term, status.clone());
         Ok(Self {
             event_reader,

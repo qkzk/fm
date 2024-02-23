@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
 
-use tuikit::prelude::{from_keyname, Event, Key};
+use tuikit::prelude::{from_keyname, Key};
 
 use crate::common::CONFIG_PATH;
 use crate::event::ActionMap;
@@ -23,12 +23,6 @@ impl Default for Bindings {
         Self::new()
     }
 }
-
-/// Reserved key used to  send refresh event
-/// This key can't be bound to anything.
-pub const REFRESH_KEY: Key = Key::AltPageUp;
-/// Refresh event, using a reserved key.
-pub const REFRESH_EVENT: Event = Event::Key(REFRESH_KEY);
 
 impl Bindings {
     pub fn new() -> Self {
@@ -169,9 +163,6 @@ impl Bindings {
                 log_info!("{CONFIG_PATH}: Keybinding {key_string} is unknown");
                 continue;
             };
-            if self.keymap_is_reserved(&keymap) {
-                continue;
-            }
             let Some(action_str) = yaml[yaml_key].as_str() else {
                 continue;
             };
@@ -180,15 +171,6 @@ impl Bindings {
                 continue;
             };
             self.binds.insert(keymap, action);
-        }
-    }
-
-    /// List of keymap used internally which can't be bound to anything.
-    fn keymap_is_reserved(&self, keymap: &Key) -> bool {
-        match *keymap {
-            // used to send refresh requests.
-            REFRESH_KEY => true,
-            _ => false,
         }
     }
 
