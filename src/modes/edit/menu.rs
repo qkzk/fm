@@ -1,3 +1,6 @@
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
+
 use anyhow::Context;
 use anyhow::Result;
 
@@ -9,6 +12,7 @@ use crate::common::MARKS_FILEPATH;
 use crate::common::SSHFS_EXECUTABLE;
 use crate::common::TUIS_PATH;
 use crate::config::Bindings;
+use crate::event::FmEvents;
 use crate::io::drop_sudo_privileges;
 use crate::io::execute_and_capture_output_with_path;
 use crate::io::InputHistory;
@@ -86,9 +90,10 @@ impl Menu {
         start_dir: &std::path::Path,
         mount_points: &[&std::path::Path],
         binds: &Bindings,
+        fm_sender: Arc<Sender<FmEvents>>,
     ) -> Result<Self> {
         Ok(Self {
-            bulk: Bulk::default(),
+            bulk: Bulk::new(fm_sender),
             cli_applications: CliApplications::new(CLI_PATH).update_desc_size(),
             completion: Completion::default(),
             compression: Compresser::default(),

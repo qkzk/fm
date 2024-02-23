@@ -1,11 +1,14 @@
 use anyhow::{anyhow, Result};
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
 use crate::common::TMP_FOLDER_PATH;
 use crate::common::{random_name, rename};
+use crate::event::FmEvents;
 use crate::io::Opener;
 use crate::log_info;
 use crate::log_line;
@@ -15,16 +18,22 @@ struct BulkExecutor {
     temp_file: PathBuf,
     new_filenames: Vec<String>,
     parent_dir: String,
+    fm_sender: Arc<Sender<FmEvents>>,
 }
 
 impl BulkExecutor {
-    fn new(original_filepath: Vec<PathBuf>, parent_dir: &str) -> Self {
+    fn new(
+        original_filepath: Vec<PathBuf>,
+        parent_dir: &str,
+        fm_sender: Arc<Sender<FmEvents>>,
+    ) -> Self {
         let temp_file = generate_random_filepath();
         Self {
             original_filepath,
             temp_file,
             new_filenames: vec![],
             parent_dir: parent_dir.to_owned(),
+            fm_sender,
         }
     }
 
@@ -176,9 +185,9 @@ fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {
     Ok(new_names)
 }
 
-#[derive(Default)]
 pub struct Bulk {
     bulk: Option<BulkExecutor>,
+    fm_sender: Arc<Sender<FmEvents>>,
 }
 
 /// Bulk holds a `BulkExecutor` only when bulk actionmap, `None` otherwise.
@@ -189,6 +198,12 @@ pub struct Bulk {
 /// Once the file is written, its content is parsed and a confirmation is asked : `format_confirmation`
 /// Renaming or creating is execute in bulk with `execute`.
 impl Bulk {
+    pub fn new(fm_sender: Arc<Sender<FmEvents>>) -> Self {
+        Self {
+            bulk: None,
+            fm_sender,
+        }
+    }
     /// Reset bulk content to None, droping all created or renomed filename from previous execution.
     pub fn reset(&mut self) {
         self.bulk = None;
@@ -211,8 +226,12 @@ impl Bulk {
         opener: &Opener,
     ) -> Result<()> {
         self.bulk = Some(
-            BulkExecutor::new(flagged_in_current_dir, current_tab_path_str)
-                .ask_filenames(opener)?,
+            BulkExecutor::new(
+                flagged_in_current_dir,
+                current_tab_path_str,
+                self.fm_sender.clone(),
+            )
+            .ask_filenames(opener)?,
         );
         Ok(())
     }

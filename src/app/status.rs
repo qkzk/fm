@@ -145,7 +145,7 @@ impl Status {
         let display_settings = Session::new(term.term_size()?.0);
         let mut internal_settings = InternalSettings::new(opener, term, sys);
         let mount_points = internal_settings.mount_points();
-        let menu = Menu::new(start_dir, &mount_points, binds)?;
+        let menu = Menu::new(start_dir, &mount_points, binds, fm_sender.clone())?;
 
         let users_left = Users::new();
         let users_right = users_left.clone();
