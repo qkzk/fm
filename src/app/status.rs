@@ -1010,6 +1010,11 @@ impl Status {
         self.menu
             .bulk
             .ask_filenames(flagged, &current_path, &self.internal_settings.opener)?;
+        Ok(())
+    }
+
+    pub fn bulk_execute(&mut self) -> Result<()> {
+        self.menu.bulk.get_new_names()?;
         self.set_edit_mode(
             self.index,
             Edit::NeedConfirmation(NeedConfirmation::BulkAction),

@@ -18,35 +18,50 @@ struct BulkExecutor {
     temp_file: PathBuf,
     new_filenames: Vec<String>,
     parent_dir: String,
-    fm_sender: Arc<Sender<FmEvents>>,
 }
 
 impl BulkExecutor {
-    fn new(
-        original_filepath: Vec<PathBuf>,
-        parent_dir: &str,
-        fm_sender: Arc<Sender<FmEvents>>,
-    ) -> Self {
+    fn new(original_filepath: Vec<PathBuf>, parent_dir: &str) -> Self {
         let temp_file = generate_random_filepath();
         Self {
             original_filepath,
             temp_file,
             new_filenames: vec![],
             parent_dir: parent_dir.to_owned(),
-            fm_sender,
         }
     }
 
-    fn ask_filenames(mut self, opener: &Opener) -> Result<Self> {
+    fn ask_filenames(self, opener: &Opener, fm_sender: Arc<Sender<FmEvents>>) -> Result<Self> {
         create_random_file(&self.temp_file)?;
         log_info!("created {temp_file}", temp_file = self.temp_file.display());
         self.write_original_names()?;
         let original_modification = get_modified_date(&self.temp_file)?;
         open_temp_file_with_editor(&self.temp_file, opener)?;
 
-        watch_modification_in_thread(&self.temp_file, original_modification)?;
-        self.new_filenames = get_new_filenames(&self.temp_file)?;
+        self.watch_modification_in_thread(original_modification, fm_sender);
         Ok(self)
+    }
+
+    fn watch_modification_in_thread(
+        &self,
+        original_modification: SystemTime,
+        fm_sender: Arc<Sender<FmEvents>>,
+    ) {
+        let filepath = self.temp_file.to_owned();
+        thread::spawn(move || {
+            loop {
+                if is_file_modified(&filepath, original_modification).unwrap_or(true) {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(100));
+            }
+            fm_sender.send(FmEvents::BulkExecute).unwrap_or_default();
+        });
+    }
+
+    fn get_new_names(&mut self) -> Result<()> {
+        self.new_filenames = get_new_filenames(&self.temp_file)?;
+        Ok(())
     }
 
     fn write_original_names(&self) -> Result<()> {
@@ -144,20 +159,6 @@ fn generate_random_filepath() -> PathBuf {
     filepath
 }
 
-fn watch_modification_in_thread(filepath: &Path, original_modification: SystemTime) -> Result<()> {
-    let filepath = filepath.to_owned();
-    let handle = thread::spawn(move || loop {
-        if is_file_modified(&filepath, original_modification).unwrap_or(true) {
-            break;
-        }
-        thread::sleep(Duration::from_millis(100));
-    });
-    match handle.join() {
-        Ok(handle) => Ok(handle),
-        Err(e) => Err(anyhow!("watch thread failed {e:?}")),
-    }
-}
-
 fn create_random_file(temp_file: &Path) -> Result<()> {
     std::fs::File::create(temp_file)?;
     Ok(())
@@ -226,13 +227,16 @@ impl Bulk {
         opener: &Opener,
     ) -> Result<()> {
         self.bulk = Some(
-            BulkExecutor::new(
-                flagged_in_current_dir,
-                current_tab_path_str,
-                self.fm_sender.clone(),
-            )
-            .ask_filenames(opener)?,
+            BulkExecutor::new(flagged_in_current_dir, current_tab_path_str)
+                .ask_filenames(opener, self.fm_sender.clone())?,
         );
+        Ok(())
+    }
+
+    pub fn get_new_names(&mut self) -> Result<()> {
+        if let Some(bulk) = &mut self.bulk {
+            bulk.get_new_names()?;
+        }
         Ok(())
     }
 

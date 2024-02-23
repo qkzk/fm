@@ -33,6 +33,7 @@ impl EventDispatcher {
             FmEvents::Event(Event::Resize { width, height }) => {
                 EventAction::resize(status, width, height)
             }
+            FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             _ => Ok(()),
         }
     }

@@ -1542,4 +1542,8 @@ impl EventAction {
         status.menu.input_complete(&mut status.tabs[status.index])?;
         Ok(())
     }
+
+    pub fn bulk_confirm(status: &mut Status) -> Result<()> {
+        status.bulk_execute()
+    }
 }
