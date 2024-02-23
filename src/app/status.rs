@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::Path;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
@@ -19,6 +20,7 @@ use crate::app::{ClickableLine, FlaggedFooter};
 use crate::common::{args_is_empty, is_sudo_command, path_to_string};
 use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::Bindings;
+use crate::event::FmEvents;
 use crate::io::Internal;
 use crate::io::Kind;
 use crate::io::Opener;
@@ -115,13 +117,20 @@ pub struct Status {
     /// Interna settings
     pub internal_settings: InternalSettings,
     pub focus: Focus,
+    pub fm_sender: Arc<Sender<FmEvents>>,
 }
 
 impl Status {
     /// Creates a new status for the application.
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
-    pub fn new(height: usize, term: Arc<Term>, opener: Opener, binds: &Bindings) -> Result<Self> {
+    pub fn new(
+        height: usize,
+        term: Arc<Term>,
+        opener: Opener,
+        binds: &Bindings,
+        fm_sender: Arc<Sender<FmEvents>>,
+    ) -> Result<Self> {
         let skimer = None;
         let index = 0;
 
@@ -154,6 +163,7 @@ impl Status {
             display_settings,
             internal_settings,
             focus,
+            fm_sender,
         })
     }
 

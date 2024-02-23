@@ -3,8 +3,6 @@ use std::sync::Mutex;
 
 use anyhow::anyhow;
 use anyhow::Result;
-use tuikit::error::TuikitError;
-use tuikit::prelude::Event;
 
 use crate::app::Displayer;
 use crate::app::Refresher;
@@ -74,6 +72,7 @@ impl FM {
             term.clone(),
             opener,
             &config.binds,
+            fm_sender,
         )?));
         drop(config);
 

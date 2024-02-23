@@ -23,7 +23,7 @@ impl EventReader {
     /// We should spend most of the application life here, doing nothing :)
     pub fn poll_event(&self) -> Result<FmEvents> {
         loop {
-            match self.fm_receiver.recv() {
+            match self.fm_receiver.try_recv() {
                 Ok(event) => return Ok(event),
                 Err(_) => (),
             }
