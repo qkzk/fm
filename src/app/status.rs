@@ -608,6 +608,7 @@ impl Status {
             sources,
             dest,
             Arc::clone(&self.internal_settings.term),
+            Arc::clone(&self.fm_sender),
         )?;
         self.clear_flags_and_reset_view()
     }
