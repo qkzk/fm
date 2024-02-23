@@ -920,12 +920,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] move to encrypted drive when mounting is successful
 - [ ] wrap event into an MPSC to allow internal events
   - [x] wrap
-  - [ ] send/receive custom event
+  - [x] send/receive custom event
+  - [x] bulk: do not freeze the application while waiting for the thread
+  - [ ] refresher
 
 ## TODO
 
-- [ ] bulk: do not freeze the application while waiting for the thread
-  - [ ] use a flag in main loop and 1. check for edition, 2. do & log the execution
 - [ ] when opened from neovim itself, use an existing instance, don't open new terminal
   - [ ] detect (guess ?) when started from neovim
     - [ ] $TERM = xterm-256color
