@@ -918,6 +918,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: entering sort doesn't set focus
 - [x] update config from build file by removing references to removed binds.
 - [x] move to encrypted drive when mounting is successful
+- [ ] wrap event into an MPSC to allow internal events
+  - [x] wrap
+  - [ ] send/receive custom event
 
 ## TODO
 

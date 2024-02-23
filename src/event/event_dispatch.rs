@@ -6,6 +6,8 @@ use crate::config::{Bindings, REFRESH_KEY};
 use crate::event::event_exec::EventAction;
 use crate::modes::{Display, Edit, InputCompleted, InputSimple, MarkAction, Navigate, Search};
 
+use super::FmEvents;
+
 /// Struct which mutates `tabs.selected()..
 /// Holds a mapping which can't be static since it's read from a config file.
 /// All keys are mapped to relevent events on tabs.selected().
@@ -25,10 +27,12 @@ impl EventDispatcher {
     /// Only non keyboard events are dealt here directly.
     /// Keyboard events are configurable and are sent to specific functions
     /// which needs to know those keybindings.
-    pub fn dispatch(&self, status: &mut Status, ev: Event) -> Result<()> {
+    pub fn dispatch(&self, status: &mut Status, ev: FmEvents) -> Result<()> {
         match ev {
-            Event::Key(key) => self.match_key_event(status, key),
-            Event::Resize { width, height } => EventAction::resize(status, width, height),
+            FmEvents::Event(Event::Key(key)) => self.match_key_event(status, key),
+            FmEvents::Event(Event::Resize { width, height }) => {
+                EventAction::resize(status, width, height)
+            }
             _ => Ok(()),
         }
     }
