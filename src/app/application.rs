@@ -11,7 +11,6 @@ use crate::common::CONFIG_PATH;
 use crate::common::{clear_tmp_file, init_term};
 use crate::config::load_config;
 use crate::config::START_FOLDER;
-use crate::event::init_events;
 use crate::event::EventDispatcher;
 use crate::event::EventReader;
 use crate::event::FmEvents;
@@ -53,7 +52,7 @@ impl FM {
     ///
     /// May fail if the [`tuikit::prelude::term`] can't be started or crashes
     pub fn start() -> Result<Self> {
-        let (fm_sender, fm_receiver) = init_events();
+        let (fm_sender, fm_receiver) = std::sync::mpsc::channel::<FmEvents>();
         set_loggers()?;
         let Ok(config) = load_config(CONFIG_PATH) else {
             exit_wrong_config()
