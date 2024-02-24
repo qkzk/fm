@@ -19,7 +19,7 @@ use crate::modes::{decompress_gz, decompress_xz, decompress_zip};
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
-enum Extension {
+pub enum Extension {
     #[default]
     Audio,
     Bitmap,
@@ -37,7 +37,7 @@ enum Extension {
 
 // TODO: move those associations to a config file
 impl Extension {
-    fn matcher(ext: &str) -> Self {
+    pub fn matcher(ext: &str) -> Self {
         match ext {
             "avif" | "bmp" | "gif" | "png" | "jpg" | "jpeg" | "pgm" | "ppm" | "webp" | "tiff" => {
                 Self::Bitmap

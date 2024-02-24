@@ -17,12 +17,11 @@ use crate::app::InternalSettings;
 use crate::app::Session;
 use crate::app::Tab;
 use crate::app::{ClickableLine, FlaggedFooter};
-use crate::common::{args_is_empty, is_sudo_command, path_to_string};
+use crate::common::{args_is_empty, is_sudo_command, open_in_current_neovim, path_to_string};
 use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::Bindings;
 use crate::event::FmEvents;
 use crate::io::Internal;
-use crate::io::Kind;
 use crate::io::Opener;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{execute_and_capture_output_with_path, Args};
@@ -30,7 +29,7 @@ use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     reset_sudo_faillock,
 };
-use crate::modes::Edit;
+use crate::io::{Extension, Kind};
 use crate::modes::InputSimple;
 use crate::modes::IsoDevice;
 use crate::modes::Menu;
@@ -48,6 +47,7 @@ use crate::modes::To;
 use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, regex_matcher};
+use crate::modes::{extract_extension, Edit};
 use crate::modes::{BlockDeviceAction, Navigate};
 use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
@@ -775,10 +775,20 @@ impl Status {
                 let _ = self.mount_iso_drive();
             }
             Some(_) => {
-                let _ = self.internal_settings.opener.open_single(path);
+                if self.should_this_file_be_opened_in_neovim(path) {
+                    self.update_nvim_listen_address();
+                    open_in_current_neovim(path, &self.internal_settings.nvim_server);
+                } else {
+                    let _ = self.internal_settings.opener.open_single(path);
+                }
             }
             None => (),
         }
+    }
+
+    fn should_this_file_be_opened_in_neovim(&self, path: &std::path::Path) -> bool {
+        self.internal_settings.inside_neovim
+            && matches!(Extension::matcher(extract_extension(path)), Extension::Text)
     }
 
     /// Open every flagged file with their respective opener.
@@ -1008,9 +1018,11 @@ impl Status {
     pub fn bulk_ask_filenames(&mut self) -> Result<()> {
         let flagged = self.flagged_in_current_dir();
         let current_path = self.current_tab_path_str();
-        self.menu
-            .bulk
-            .ask_filenames(flagged, &current_path, &self.internal_settings.opener)?;
+        self.menu.bulk.ask_filenames(flagged, &current_path)?;
+        if let Some(temp_file) = self.menu.bulk.temp_file() {
+            self.open_single_file(&temp_file);
+            self.menu.bulk.watch_in_thread()?;
+        }
         Ok(())
     }
 

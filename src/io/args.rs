@@ -19,4 +19,8 @@ pub struct Args {
     /// Enable logging
     #[arg(short = 'l', long, default_value_t = false)]
     pub log: bool,
+
+    /// Started inside neovim terminal emulator
+    #[arg(long, default_value_t = false)]
+    pub neovim: bool,
 }

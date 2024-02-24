@@ -9,7 +9,6 @@ use std::time::{Duration, SystemTime};
 use crate::common::TMP_FOLDER_PATH;
 use crate::common::{random_name, rename};
 use crate::event::FmEvents;
-use crate::io::Opener;
 use crate::log_info;
 use crate::log_line;
 
@@ -31,22 +30,18 @@ impl BulkExecutor {
         }
     }
 
-    fn ask_filenames(self, opener: &Opener, fm_sender: Arc<Sender<FmEvents>>) -> Result<Self> {
+    fn ask_filenames(self) -> Result<Self> {
         create_random_file(&self.temp_file)?;
         log_info!("created {temp_file}", temp_file = self.temp_file.display());
         self.write_original_names()?;
-        let original_modification = get_modified_date(&self.temp_file)?;
-        open_temp_file_with_editor(&self.temp_file, opener)?;
+        // open_temp_file_with_editor(&self.temp_file, status)?;
 
-        self.watch_modification_in_thread(original_modification, fm_sender);
+        // self.watch_modification_in_thread(original_modification, fm_sender);
         Ok(self)
     }
 
-    fn watch_modification_in_thread(
-        &self,
-        original_modification: SystemTime,
-        fm_sender: Arc<Sender<FmEvents>>,
-    ) {
+    fn watch_modification_in_thread(&self, fm_sender: Arc<Sender<FmEvents>>) -> Result<()> {
+        let original_modification = get_modified_date(&self.temp_file)?;
         let filepath = self.temp_file.to_owned();
         thread::spawn(move || {
             loop {
@@ -57,6 +52,7 @@ impl BulkExecutor {
             }
             fm_sender.send(FmEvents::BulkExecute).unwrap_or_default();
         });
+        Ok(())
     }
 
     fn get_new_names(&mut self) -> Result<()> {
@@ -164,11 +160,6 @@ fn create_random_file(temp_file: &Path) -> Result<()> {
     Ok(())
 }
 
-fn open_temp_file_with_editor(temp_file: &Path, opener: &Opener) -> Result<()> {
-    log_info!("opening tempory file {:?}", temp_file);
-    opener.open_single(temp_file)
-}
-
 fn is_file_modified(path: &Path, original_modification: std::time::SystemTime) -> Result<bool> {
     Ok(get_modified_date(path)? > original_modification)
 }
@@ -224,12 +215,17 @@ impl Bulk {
         &mut self,
         flagged_in_current_dir: Vec<PathBuf>,
         current_tab_path_str: &str,
-        opener: &Opener,
     ) -> Result<()> {
-        self.bulk = Some(
-            BulkExecutor::new(flagged_in_current_dir, current_tab_path_str)
-                .ask_filenames(opener, self.fm_sender.clone())?,
-        );
+        self.bulk =
+            Some(BulkExecutor::new(flagged_in_current_dir, current_tab_path_str).ask_filenames()?);
+        Ok(())
+    }
+
+    pub fn watch_in_thread(&mut self) -> Result<()> {
+        match &self.bulk {
+            Some(bulk) => bulk.watch_modification_in_thread(self.fm_sender.clone())?,
+            None => (),
+        }
         Ok(())
     }
 
@@ -273,6 +269,12 @@ impl Bulk {
         let ret = bulk.execute();
         self.reset();
         ret
+    }
+
+    /// Optional temporary file where filenames are edited by the user
+    /// None if `self.bulk` is `None`.
+    pub fn temp_file(&self) -> Option<PathBuf> {
+        self.bulk.as_ref().map(|bulk| bulk.temp_file.to_owned())
     }
 }
 

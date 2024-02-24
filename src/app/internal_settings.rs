@@ -9,7 +9,6 @@ use crate::common::is_program_in_path;
 use crate::common::NVIM;
 use crate::common::SS;
 use crate::io::execute_and_output;
-
 use crate::io::Args;
 use crate::io::Opener;
 
@@ -28,6 +27,7 @@ pub struct InternalSettings {
     /// Info about the running machine. Only used to detect disks
     /// and their mount points.
     pub sys: System,
+    pub inside_neovim: bool,
 }
 
 impl InternalSettings {
@@ -36,6 +36,7 @@ impl InternalSettings {
         let force_clear = false;
         let must_quit = false;
         let nvim_server = args.server.clone();
+        let inside_neovim = args.neovim;
         Self {
             force_clear,
             must_quit,
@@ -43,6 +44,7 @@ impl InternalSettings {
             opener,
             sys,
             term,
+            inside_neovim,
         }
     }
 
