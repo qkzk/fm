@@ -869,6 +869,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - shift+left erases the whole input line
 - wrap tuikit::event into custom event. Use an mpsc to request refresh and bulk execution.
   While editing filenames in bulk, the application isn't bloked anymore.
+- improve neovim filepicking. While ran from a neovim terminal emulator, use the flag `--neovim`. Every _text_ file will be opened directly in current neovim session.
+  Watchout, if you try to open text & non text files at the same time, it will run a new terminal with your text editor instead. Don't mix file kinds.
 
 #### Changelog
 
@@ -926,10 +928,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] bulk: do not freeze the application while waiting for the thread to complete
   - [x] refresher
   - [x] copy move
-- [ ] when opened from neovim itself, use an existing instance, don't open new terminal
-  - [ ] detect (guess ?) when started from neovim
-    - [ ] $TERM = xterm-256color
-    - [ ] $TERM != $TERMINAL
+- [x] improve filepicking from neovim
+  - [x] flag to force neovim filepicking for text files
+  - [x] open single files
+  - [x] open temp file from bulk
+  - [x] open multiple files
 
 ## TODO
 

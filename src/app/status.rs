@@ -793,9 +793,23 @@ impl Status {
 
     /// Open every flagged file with their respective opener.
     pub fn open_flagged_files(&mut self) -> Result<()> {
-        self.internal_settings
-            .opener
-            .open_multiple(self.menu.flagged.content())
+        if self
+            .menu
+            .flagged
+            .content()
+            .iter()
+            .all(|path| self.should_this_file_be_opened_in_neovim(path))
+        {
+            self.update_nvim_listen_address();
+            for path in self.menu.flagged.content().iter() {
+                open_in_current_neovim(path, &self.internal_settings.nvim_server);
+            }
+            Ok(())
+        } else {
+            self.internal_settings
+                .opener
+                .open_multiple(self.menu.flagged.content())
+        }
     }
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
