@@ -936,6 +936,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
+- [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving
 - [ ] refactor & unify all shell commands
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
