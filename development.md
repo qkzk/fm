@@ -933,6 +933,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] open single files
   - [x] open temp file from bulk
   - [x] open multiple files
+- [ ] use the new mpsc event parser to read commands from stdin or RPC
 
 ## TODO
 
