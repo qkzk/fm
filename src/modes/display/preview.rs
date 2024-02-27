@@ -899,8 +899,11 @@ impl Ueberzug {
     /// It may fail (and surelly crash the app) if the pdf is password protected.
     /// We pass a generic password which is hardcoded.
     fn make_pdf_thumbnail(pdf_path: &Path, index: usize) -> Result<usize> {
+        let mut data: Vec<u8> = std::fs::read(pdf_path)?;
+        // let doc: poppler::PopplerDocument =
+        //     poppler::PopplerDocument::new_from_file(pdf_path, "upw")?;
         let doc: poppler::PopplerDocument =
-            poppler::PopplerDocument::new_from_file(pdf_path, "upw")?;
+            poppler::PopplerDocument::new_from_data(&mut data[..], "upw")?;
         let length = doc.get_n_pages();
         if index >= length {
             return Err(anyhow!(
@@ -917,8 +920,16 @@ impl Ueberzug {
         page.render(&ctx);
         ctx.restore()?;
         ctx.show_page()?;
-        let mut file = std::fs::File::create(THUMBNAIL_PATH)?;
+        let Ok(mut file) = std::fs::File::create(THUMBNAIL_PATH) else {
+            return Ok(0);
+        };
         surface.write_to_png(&mut file)?;
+        surface.finish();
+        // those drops should be useless
+        drop(doc);
+        drop(ctx);
+        drop(page);
+        drop(surface);
         Ok(length)
     }
 
