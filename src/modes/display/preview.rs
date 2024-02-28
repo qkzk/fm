@@ -1097,7 +1097,6 @@ impl Iso {
                 .lines()
                 .map(|s| s.to_owned())
                 .collect();
-        log_info!("{ISOINFO}:\n{content:?}");
 
         Ok(Self {
             length: content.len(),
