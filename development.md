@@ -933,12 +933,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] open single files
   - [x] open temp file from bulk
   - [x] open multiple files
-- [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [x] FIX: too many open files. pdf opened by Poppler...new_from_file aren't closed properly.
       Open manually and and use Poppler...new_from_data.
 
 ## TODO
 
+- [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving
 - [ ] refactor & unify all shell commands

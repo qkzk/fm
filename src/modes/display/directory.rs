@@ -57,13 +57,7 @@ impl Directory {
         settings: &TabSettings,
         users: &Users,
     ) -> Result<()> {
-        log_info!("entering {path}", path = path.display());
         self.content = Self::files(path, settings.show_hidden, &settings.filter, users)?;
-        log_info!(
-            "read {path}: {nb} files",
-            path = path.display(),
-            nb = self.content.len()
-        );
         settings.sort_kind.sort(&mut self.content);
         self.index = 0;
         if !self.content.is_empty() {
