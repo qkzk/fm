@@ -7,7 +7,6 @@ mod inner {
         LOG_SECOND_SENTENCE,
     };
     use crate::event::ActionMap;
-    use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
     use crate::modes::{
         shorten_path, ColoredText, Content, Display, FileInfo, FilterKind, Preview, Search,
         Selectable, TextKind,
@@ -83,14 +82,16 @@ mod inner {
             crate::log_info!("no action found");
             &ActionMap::Nothing
         }
-        /// full width of the terminal
-        fn width(&self) -> usize;
+        /// Full width of the terminal
+        fn full_width(&self) -> usize;
+        /// canvas width of the window
+        fn canvas_width(&self) -> usize;
         /// used offset.
         /// 1 if the text is on left tab,
         /// width / 2 + 2 otherwise.
         fn offset(&self, is_right: bool) -> usize {
             if is_right {
-                self.width() / 2 + 2
+                self.full_width() / 2 + 2
             } else {
                 1
             }
@@ -100,21 +101,22 @@ mod inner {
     /// Header for tree & directory display mode.
     pub struct Header {
         elems: Vec<ClickableString>,
-        width: usize,
+        canvas_width: usize,
+        full_width: usize,
     }
 
     impl Header {
         /// Creates a new header
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
             let full_width = status.internal_settings.term_size()?.0;
-            let width = if status.display_settings.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
-                full_width / 2
-            } else {
-                full_width
-            };
-            let elems = Self::make_elems(tab, width)?;
+            let canvas_width = status.canvas_width()?;
+            let elems = Self::make_elems(tab, canvas_width)?;
 
-            Ok(Self { elems, width })
+            Ok(Self {
+                elems,
+                canvas_width,
+                full_width,
+            })
         }
 
         fn make_elems(tab: &Tab, width: usize) -> Result<Vec<ClickableString>> {
@@ -197,23 +199,31 @@ mod inner {
         fn elems(&self) -> &Vec<ClickableString> {
             &self.elems
         }
-        fn width(&self) -> usize {
-            self.width
+        fn canvas_width(&self) -> usize {
+            self.canvas_width
+        }
+        fn full_width(&self) -> usize {
+            self.full_width
         }
     }
 
     /// Default footer for display directory & tree.
     pub struct Footer {
         elems: Vec<ClickableString>,
-        width: usize,
+        canvas_width: usize,
+        full_width: usize,
     }
 
     impl ClickableLine for Footer {
         fn elems(&self) -> &Vec<ClickableString> {
             &self.elems
         }
-        fn width(&self) -> usize {
-            self.width
+        fn canvas_width(&self) -> usize {
+            self.canvas_width
+        }
+
+        fn full_width(&self) -> usize {
+            self.full_width
         }
     }
 
@@ -229,20 +239,20 @@ mod inner {
 
         /// Creates a new footer
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-            let (width, _) = status.internal_settings.term_size()?;
-            let elems = Self::make_elems(status, tab, width)?;
-            Ok(Self { elems, width })
+            let full_width = status.internal_settings.term_size()?.0;
+            let canvas_width = status.canvas_width()?;
+            let elems = Self::make_elems(status, tab, canvas_width)?;
+            Ok(Self {
+                elems,
+                canvas_width,
+                full_width,
+            })
         }
 
         fn make_elems(status: &Status, tab: &Tab, width: usize) -> Result<Vec<ClickableString>> {
             let disk_space = status.disk_spaces_of_selected();
             let raw_strings = Self::make_raw_strings(status, tab, disk_space)?;
-            let used_width = if status.display_settings.use_dual_tab(width) {
-                width / 2
-            } else {
-                width
-            };
-            let padded_strings = Self::make_padded_strings(&raw_strings, used_width);
+            let padded_strings = Self::make_padded_strings(&raw_strings, width);
             let mut left = 0;
             let mut elems = vec![];
             for (index, string) in padded_strings.iter().enumerate() {
@@ -320,15 +330,19 @@ mod inner {
     /// Header for the display of flagged files
     pub struct FlaggedHeader {
         elems: Vec<ClickableString>,
-        width: usize,
+        canvas_width: usize,
+        full_width: usize,
     }
 
     impl ClickableLine for FlaggedHeader {
         fn elems(&self) -> &Vec<ClickableString> {
             &self.elems
         }
-        fn width(&self) -> usize {
-            self.width
+        fn canvas_width(&self) -> usize {
+            self.canvas_width
+        }
+        fn full_width(&self) -> usize {
+            self.full_width
         }
     }
 
@@ -338,10 +352,15 @@ mod inner {
 
         /// Creates a new header.
         pub fn new(status: &Status) -> Result<Self> {
-            let (width, _) = status.internal_settings.term.term_size()?;
-            let elems = Self::make_elems(status, width);
+            let full_width = status.internal_settings.term_size()?.0;
+            let canvas_width = status.canvas_width()?;
+            let elems = Self::make_elems(status, full_width);
 
-            Ok(Self { elems, width })
+            Ok(Self {
+                elems,
+                canvas_width,
+                full_width,
+            })
         }
 
         fn make_elems(status: &Status, width: usize) -> Vec<ClickableString> {
@@ -373,15 +392,19 @@ mod inner {
     /// Footer for the flagged files display
     pub struct FlaggedFooter {
         elems: Vec<ClickableString>,
-        width: usize,
+        canvas_width: usize,
+        full_width: usize,
     }
 
     impl ClickableLine for FlaggedFooter {
         fn elems(&self) -> &Vec<ClickableString> {
             &self.elems
         }
-        fn width(&self) -> usize {
-            self.width
+        fn canvas_width(&self) -> usize {
+            self.canvas_width
+        }
+        fn full_width(&self) -> usize {
+            self.full_width
         }
     }
 
@@ -390,17 +413,17 @@ mod inner {
 
         /// Creates a new footer
         pub fn new(status: &Status) -> Result<Self> {
-            let (width, _) = status.internal_settings.term.term_size()?;
-            let used_width = if status.display_settings.use_dual_tab(width) {
-                width / 2
-            } else {
-                width
-            };
+            let full_width = status.internal_settings.term.term_size()?.0;
+            let canvas_width = status.canvas_width()?;
             let raw_strings = Self::make_strings(status);
-            let strings = Footer::make_padded_strings(&raw_strings, used_width);
+            let strings = Footer::make_padded_strings(&raw_strings, full_width);
             let elems = Self::make_elems(strings);
 
-            Ok(Self { elems, width })
+            Ok(Self {
+                elems,
+                canvas_width,
+                full_width,
+            })
         }
 
         fn make_elems(padded_strings: Vec<String>) -> Vec<ClickableString> {

@@ -935,7 +935,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: too many open files. pdf opened by Poppler...new_from_file aren't closed properly.
       Open manually and and use Poppler...new_from_data.
 - [x] FIX: in dual pane mode, right aligned elements aren't displayed.
-- [ ] Right pane search & filter click don't match on correct position.
+- [x] FIX: Right pane search & filter click don't match on correct position.
 - [ ] FIX: while filter + search, matching and going forward is buggy
   - [ ] is it a problem ?
 

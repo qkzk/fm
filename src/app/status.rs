@@ -114,9 +114,11 @@ pub struct Status {
     pub menu: Menu,
     /// Display settings
     pub display_settings: Session,
-    /// Interna settings
+    /// Internal settings
     pub internal_settings: InternalSettings,
+    /// Window being focused currently
     pub focus: Focus,
+    /// Sender of events
     pub fm_sender: Arc<Sender<FmEvents>>,
 }
 
@@ -1231,6 +1233,16 @@ impl Status {
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
         Ok(())
+    }
+
+    /// The width of a displayed canvas.
+    pub fn canvas_width(&self) -> Result<usize> {
+        let full_width = self.internal_settings.term_size()?.0;
+        if self.display_settings.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
+            Ok(full_width / 2)
+        } else {
+            Ok(full_width)
+        }
     }
 }
 
