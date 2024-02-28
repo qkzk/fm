@@ -1,12 +1,13 @@
 mod inner {
     use anyhow::{Context, Result};
-    use unicode_segmentation::UnicodeSegmentation;
 
     use crate::app::{Status, Tab};
     use crate::common::{
-        HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE, LOG_SECOND_SENTENCE,
+        UtfWidth, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
+        LOG_SECOND_SENTENCE,
     };
     use crate::event::ActionMap;
+    use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
     use crate::modes::{
         shorten_path, ColoredText, Content, Display, FileInfo, FilterKind, Preview, Search,
         Selectable, TextKind,
@@ -26,6 +27,7 @@ mod inner {
     pub struct ClickableString {
         text: String,
         action: ActionMap,
+        width: usize,
         left: usize,
         right: usize,
     }
@@ -36,36 +38,18 @@ mod inner {
         /// If left aligned, the text size will be added to `col` and the text will span from col to col + width.
         /// otherwise, the text will spawn from col - width to col.
         fn new(text: String, align: HorizontalAlign, action: ActionMap, col: usize) -> Self {
-            let size = Self::size(&text);
-            let left: usize;
-            let right: usize;
-            match align {
-                HorizontalAlign::Left => {
-                    left = col;
-                    right = col + size;
-                }
-                HorizontalAlign::Right => {
-                    right = col;
-                    left = col - size;
-                }
-            }
+            let width = text.utf_width();
+            let (left, right) = match align {
+                HorizontalAlign::Left => (col, col + width),
+                HorizontalAlign::Right => (col - width - 3, col - 3),
+            };
             Self {
                 text,
                 action,
+                width,
                 left,
                 right,
             }
-        }
-
-        fn size(text: &str) -> usize {
-            text.graphemes(true)
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>()
-                .len()
-        }
-
-        fn width(&self) -> usize {
-            self.right - self.left
         }
 
         /// Text content of the element.
@@ -73,9 +57,12 @@ mod inner {
             self.text.as_str()
         }
 
-        /// Starting col where the text should be drawn on the canvas.
         pub fn col(&self) -> usize {
             self.left
+        }
+
+        pub fn width(&self) -> usize {
+            self.width
         }
     }
 
@@ -119,7 +106,12 @@ mod inner {
     impl Header {
         /// Creates a new header
         pub fn new(status: &Status, tab: &Tab) -> Result<Self> {
-            let (width, _) = status.internal_settings.term_size()?;
+            let full_width = status.internal_settings.term_size()?.0;
+            let width = if status.display_settings.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
+                full_width / 2
+            } else {
+                full_width
+            };
             let elems = Self::make_elems(tab, width)?;
 
             Ok(Self { elems, width })
@@ -279,10 +271,7 @@ mod inner {
 
         /// Pad every string of `raw_strings` with enough space to fill a line.
         fn make_padded_strings(raw_strings: &[String], total_width: usize) -> Vec<String> {
-            let used_width: usize = raw_strings
-                .iter()
-                .map(|s| s.graphemes(true).collect::<Vec<&str>>().len())
-                .sum();
+            let used_width: usize = raw_strings.iter().map(|s| s.utf_width()).sum();
             let available_width = total_width.checked_sub(used_width).unwrap_or_default();
             let margin_width = available_width / (2 * raw_strings.len());
             let margin = " ".repeat(margin_width);

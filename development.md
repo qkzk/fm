@@ -894,7 +894,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] setting second pane as preview should enable dual pane at the same time
 - [x] FIX: leaving mount mode with enter when device is mounted should move to it
 - [x] FIX: clicking footer row execute directory actions, even in flagged display mode
-- [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
 - [x] display all specific binds for every mode.
 
 - [ ] search, display nb of matches, completion + flag on the fly
@@ -935,9 +934,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] open multiple files
 - [x] FIX: too many open files. pdf opened by Poppler...new_from_file aren't closed properly.
       Open manually and and use Poppler...new_from_data.
+- [x] FIX: in dual pane mode, right aligned elements aren't displayed.
+- [ ] Right pane search & filter click don't match on correct position.
+- [ ] FIX: while filter + search, matching and going forward is buggy
+  - [ ] is it a problem ?
 
 ## TODO
 
+- [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving

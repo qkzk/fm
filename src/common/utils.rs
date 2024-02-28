@@ -9,6 +9,7 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 use rand::Rng;
 use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::{CALC_PDF_PATH, THUMBNAIL_PATH};
 use crate::log_info;
@@ -286,4 +287,35 @@ where
     std::fs::create_dir_all(new_parent)?;
     std::fs::rename(old_path, &new_path)?;
     Ok(new_path)
+}
+
+/// This trait `UtfWidth` is defined with a single
+/// method `utf_width()` that returns the width of
+/// a string in Unicode code points.
+/// The implementation for `String` and `&str`
+/// types are provided which calculate the
+/// width. of the original string in graphemes.
+/// This method allows for easy calculation of
+/// the horizontal space required for displaying
+/// a given text, which can be useful for layout purposes.
+pub trait UtfWidth {
+    fn utf_width(&self) -> usize;
+}
+
+impl UtfWidth for String {
+    fn utf_width(&self) -> usize {
+        self.graphemes(true)
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+            .len()
+    }
+}
+
+impl UtfWidth for &str {
+    fn utf_width(&self) -> usize {
+        self.graphemes(true)
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+            .len()
+    }
 }
