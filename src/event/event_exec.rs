@@ -70,6 +70,12 @@ impl EventAction {
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(status: &mut Status) -> Result<()> {
         if !matches!(status.current_tab().edit_mode, Edit::Nothing) {
+            if matches!(
+                status.current_tab().edit_mode,
+                Edit::InputSimple(InputSimple::Filter)
+            ) {
+                status.current_tab_mut().settings.reset_filter()
+            }
             if status.reset_edit_mode()? {
                 status.tabs[status.index].refresh_view()?;
             } else {

@@ -51,6 +51,10 @@ impl TabSettings {
         self.filter = filter
     }
 
+    pub fn reset_filter(&mut self) {
+        self.filter = FilterKind::All;
+    }
+
     /// Update the kind of sort from a char typed by the user.
     fn update_sort_from_char(&mut self, c: char) {
         self.sort_kind.update_from_char(c)

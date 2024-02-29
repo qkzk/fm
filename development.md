@@ -938,6 +938,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: in dual pane mode, right aligned elements aren't displayed.
 - [x] FIX: Right pane search & filter click don't match on correct position.
 - [x] dynamic filtering while typing
+- [x] FIX: leaving (with escape) should reset the filter, not leave
 - [x] setting a filter reset the "found" searched path & index
 
 ## TODO
