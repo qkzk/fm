@@ -30,7 +30,6 @@ use crate::io::{
     reset_sudo_faillock,
 };
 use crate::io::{Extension, Kind};
-use crate::modes::InputSimple;
 use crate::modes::IsoDevice;
 use crate::modes::Menu;
 use crate::modes::MountCommands;
@@ -52,6 +51,7 @@ use crate::modes::{BlockDeviceAction, Navigate};
 use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
 use crate::modes::{Display, Go};
+use crate::modes::{FilterKind, InputSimple};
 use crate::{log_info, log_line};
 
 pub enum Window {
@@ -1243,6 +1243,30 @@ impl Status {
         } else {
             Ok(full_width)
         }
+    }
+
+    /// Set a new filter.
+    /// Doesn't reset the input.
+    pub fn set_filter(&mut self) -> Result<()> {
+        let filter = FilterKind::from_input(&self.menu.input.string());
+        self.current_tab_mut().settings.set_filter(filter);
+        // ugly hack to please borrow checker :(
+        self.tabs[self.index].directory.reset_files(
+            &self.tabs[self.index].settings,
+            &self.tabs[self.index].users,
+        )?;
+        if let Display::Tree = self.current_tab().display_mode {
+            self.current_tab_mut().make_tree(None)?;
+        }
+        let len = self.current_tab().directory.content.len();
+        self.current_tab_mut().window.reset(len);
+        Ok(())
+    }
+
+    /// input the typed char and update the filterkind.
+    pub fn input_filter(&mut self, c: char) -> Result<()> {
+        self.menu.input_insert(c)?;
+        self.set_filter()
     }
 }
 

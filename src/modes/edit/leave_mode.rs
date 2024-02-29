@@ -18,7 +18,6 @@ use crate::modes::CLApplications;
 use crate::modes::Content;
 use crate::modes::Display;
 use crate::modes::Edit;
-use crate::modes::FilterKind;
 use crate::modes::InputCompleted;
 use crate::modes::InputSimple;
 use crate::modes::Leave;
@@ -384,19 +383,8 @@ impl LeaveMode {
     /// Apply a filter to the displayed files.
     /// See `crate::filter` for more details.
     pub fn filter(status: &mut Status) -> Result<()> {
-        let filter = FilterKind::from_input(&status.menu.input.string());
-        status.current_tab_mut().settings.set_filter(filter);
+        status.set_filter()?;
         status.menu.input.reset();
-        // ugly hack to please borrow checker :(
-        status.tabs[status.index].directory.reset_files(
-            &status.tabs[status.index].settings,
-            &status.tabs[status.index].users,
-        )?;
-        if let Display::Tree = status.current_tab().display_mode {
-            status.current_tab_mut().make_tree(None)?;
-        }
-        let len = status.current_tab().directory.content.len();
-        status.current_tab_mut().window.reset(len);
         Ok(())
     }
 

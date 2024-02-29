@@ -871,6 +871,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   While editing filenames in bulk, the application isn't bloked anymore.
 - improve neovim filepicking. While ran from a neovim terminal emulator, use the flag `--neovim`. Every _text_ file will be opened directly in current neovim session.
   Watchout, if you try to open text & non text files at the same time, it will run a new terminal with your text editor instead. Don't mix file kinds.
+- Dynamic filtering while typing a filter
 
 #### Changelog
 
@@ -938,6 +939,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: Right pane search & filter click don't match on correct position.
 - [ ] FIX: while filter + search, matching and going forward is buggy
   - [ ] is it a problem ?
+- [x] dynamic filtering while typing
+- [ ] simple command "research" to redo a search while keeping the same search pattern
 
 ## TODO
 

@@ -79,6 +79,7 @@ impl EventDispatcher {
             match tab.edit_mode {
                 Edit::InputSimple(InputSimple::Sort) => status.sort(c),
                 Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
+                Edit::InputSimple(InputSimple::Filter) => status.input_filter(c),
                 Edit::InputSimple(_) => status.menu.input_insert(c),
                 Edit::InputCompleted(input_completed) => {
                     status.menu.input.insert(c);
