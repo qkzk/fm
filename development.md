@@ -937,8 +937,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       Open manually and and use Poppler...new_from_data.
 - [x] FIX: in dual pane mode, right aligned elements aren't displayed.
 - [x] FIX: Right pane search & filter click don't match on correct position.
-- [ ] FIX: while filter + search, matching and going forward is buggy
-  - [ ] is it a problem ?
 - [x] dynamic filtering while typing
 - [x] setting a filter reset the "found" searched path & index
 
