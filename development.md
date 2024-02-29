@@ -940,7 +940,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] FIX: while filter + search, matching and going forward is buggy
   - [ ] is it a problem ?
 - [x] dynamic filtering while typing
-- [ ] simple command "research" to redo a search while keeping the same search pattern
+- [x] setting a filter reset the "found" searched path & index
 
 ## TODO
 

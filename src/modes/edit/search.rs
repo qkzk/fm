@@ -5,6 +5,7 @@ use crate::{
     modes::{Display, Flagged, Go, To, ToPath, Tree},
 };
 
+#[derive(Clone)]
 pub struct Search {
     pub regex: regex::Regex,
     pub paths: Vec<std::path::PathBuf>,

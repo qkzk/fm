@@ -385,6 +385,10 @@ impl LeaveMode {
     pub fn filter(status: &mut Status) -> Result<()> {
         status.set_filter()?;
         status.menu.input.reset();
+        let mut search = status.tabs[status.index].search.clone();
+        search.reset_paths();
+        search.leave(status)?;
+        status.tabs[status.index].search = search;
         Ok(())
     }
 
