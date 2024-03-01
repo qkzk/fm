@@ -940,9 +940,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] dynamic filtering while typing
 - [x] FIX: leaving (with escape) should reset the filter, not leave
 - [x] setting a filter reset the "found" searched path & index
+- [ ] _search as you type_ ...
+  - [ ] like for filter
+  - [ ] avoid jumping once the first match is found...
 
 ## TODO
 
+- [ ] rclone
+- [ ] temporary marks like normal but memory only
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
