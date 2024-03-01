@@ -872,6 +872,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - improve neovim filepicking. While ran from a neovim terminal emulator, use the flag `--neovim`. Every _text_ file will be opened directly in current neovim session.
   Watchout, if you try to open text & non text files at the same time, it will run a new terminal with your text editor instead. Don't mix file kinds.
 - Dynamic filtering while typing a filter
+- Search as you type: do / then type a pattern and you will jump to the match.
 
 #### Changelog
 
@@ -940,9 +941,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] dynamic filtering while typing
 - [x] FIX: leaving (with escape) should reset the filter, not leave
 - [x] setting a filter reset the "found" searched path & index
-- [ ] _search as you type_ ...
-  - [ ] like for filter
-  - [ ] avoid jumping once the first match is found...
+- [x] search as you type
 
 ## TODO
 

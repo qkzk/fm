@@ -67,7 +67,7 @@ impl LeaveMode {
             Edit::Navigate(Navigate::Context) => LeaveMode::context(status, binds),
             Edit::Navigate(Navigate::RemovableDevices) => LeaveMode::go_to_mount(status),
             Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
-            Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status),
+            Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status, true),
             Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
             Edit::InputCompleted(InputCompleted::Action) => LeaveMode::action(status, binds),
             // To avoid mistakes, the default answer is No. We do nothing here.
@@ -251,7 +251,7 @@ impl LeaveMode {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn search(status: &mut Status) -> Result<()> {
+    pub fn search(status: &mut Status, should_reset_input: bool) -> Result<()> {
         let searched = &status.menu.input.string();
         if searched.is_empty() {
             status.current_tab_mut().search = Search::empty();
@@ -261,8 +261,10 @@ impl LeaveMode {
             status.current_tab_mut().search = Search::empty();
             return Ok(());
         };
-        status.menu.input.reset();
-        search.leave(status)?;
+        if should_reset_input {
+            status.menu.input.reset();
+        }
+        search.execute_search(status)?;
         status.current_tab_mut().search = search;
         Ok(())
     }
@@ -387,7 +389,7 @@ impl LeaveMode {
         status.menu.input.reset();
         let mut search = status.tabs[status.index].search.clone();
         search.reset_paths();
-        search.leave(status)?;
+        search.execute_search(status)?;
         status.tabs[status.index].search = search;
         Ok(())
     }

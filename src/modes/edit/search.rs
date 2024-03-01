@@ -62,7 +62,7 @@ impl Search {
         None
     }
 
-    pub fn leave(&mut self, status: &mut Status) -> Result<()> {
+    pub fn execute_search(&mut self, status: &mut Status) -> Result<()> {
         match status.current_tab().display_mode {
             Display::Tree => {
                 self.tree(&mut status.current_tab_mut().tree);

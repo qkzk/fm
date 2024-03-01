@@ -4,7 +4,9 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::app::Status;
 use crate::config::Bindings;
 use crate::event::event_exec::EventAction;
-use crate::modes::{Display, Edit, InputCompleted, InputSimple, MarkAction, Navigate, Search};
+use crate::modes::{
+    Display, Edit, InputCompleted, InputSimple, LeaveMode, MarkAction, Navigate, Search,
+};
 
 use super::FmEvents;
 
@@ -84,7 +86,8 @@ impl EventDispatcher {
                 Edit::InputCompleted(input_completed) => {
                     status.menu.input.insert(c);
                     if matches!(input_completed, InputCompleted::Search) {
-                        Self::update_search(status)?
+                        Self::update_search(status)?;
+                        LeaveMode::search(status, false)?
                     }
                     status.menu.input_complete(&mut status.tabs[status.index])?;
                     Ok(())
