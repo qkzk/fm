@@ -899,7 +899,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: clicking footer row execute directory actions, even in flagged display mode
 - [x] display all specific binds for every mode.
 
-- [ ] search, display nb of matches, completion + flag on the fly
+- [x] search, display nb of matches, completion + flag on the fly
 
   - [x] use regex in search
   - [x] save the regex ???
@@ -944,12 +944,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] setting a filter reset the "found" searched path & index
 - [x] search as you type
 - [x] replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
-- [ ] torrent with transmission cli
+- [ ] torrent with [transmission show](https://github.com/ranger/ranger/blob/38bb8901004b75a407ffee4b9e176bc0a436cb15/ranger/data/scope.sh#L82C13-L82C48)
 
 ## TODO
 
 - [ ] rclone
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
+- [ ] move as you type in Alt+g
+- [ ] preview mark & shortcut content in second pane while navigating
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving
