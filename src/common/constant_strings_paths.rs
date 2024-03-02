@@ -202,8 +202,8 @@ pub const GIO: &str = "gio";
 pub const LSOF: &str = "lsof";
 /// neovim executable
 pub const NVIM: &str = "nvim";
-/// tar executable
-pub const TAR: &str = "tar";
+/// bsdtar executable, used to display archive content
+pub const BSDTAR: &str = "bsdtar";
 /// libreoffice executable
 pub const LIBREOFFICE: &str = "libreoffice";
 /// lazygit

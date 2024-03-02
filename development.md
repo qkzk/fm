@@ -873,6 +873,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   Watchout, if you try to open text & non text files at the same time, it will run a new terminal with your text editor instead. Don't mix file kinds.
 - Dynamic filtering while typing a filter
 - Search as you type: do / then type a pattern and you will jump to the match.
+- replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
 
 #### Changelog
 
@@ -942,11 +943,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: leaving (with escape) should reset the filter, not leave
 - [x] setting a filter reset the "found" searched path & index
 - [x] search as you type
+- [x] replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
 
 ## TODO
 
 - [ ] rclone
-- [ ] temporary marks like normal but memory only
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] [opener file kind](./src/io/opener.rs): move associations to a config file

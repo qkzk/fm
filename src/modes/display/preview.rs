@@ -56,7 +56,7 @@ impl ExtensionKind {
     pub fn matcher(ext: &str) -> Self {
         match ext {
             "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
-            | "gz" | "zst" => Self::Archive,
+            | "gz" | "zst" | "deb" | "rpm" => Self::Archive,
             "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "cr2" | "nef" | "orf" | "sr2" => {
                 Self::Image
             }
@@ -615,9 +615,8 @@ impl BinaryContent {
             if nb_bytes_read != Self::LINE_WIDTH {
                 content.push(Line::new((&buffer[0..nb_bytes_read]).into()));
                 break;
-            } else {
-                content.push(Line::new(buffer.into()));
             }
+            content.push(Line::new(buffer.into()));
             if content.len() >= Self::SIZE_LIMIT {
                 break;
             }
@@ -719,7 +718,7 @@ impl ArchiveContent {
     fn new(path: &Path, ext: &str) -> Result<Self> {
         let content = match ext {
             "zip" => list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]),
-            "zst" | "gz" | "bz" | "xz" | "gzip" | "bzip2" => {
+            "zst" | "gz" | "bz" | "xz" | "gzip" | "bzip2" | "deb" | "rpm" => {
                 list_files_tar(path).unwrap_or(vec!["Invalid Tar content".to_owned()])
             }
             _ => vec![format!("Unsupported format: {ext}")],
@@ -926,9 +925,7 @@ impl Ueberzug {
         surface.write_to_png(&mut file)?;
         surface.finish();
         // those drops should be useless
-        drop(doc);
         drop(ctx);
-        drop(page);
         drop(surface);
         Ok(length)
     }
