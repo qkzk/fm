@@ -874,6 +874,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Dynamic filtering while typing a filter
 - Search as you type: do / then type a pattern and you will jump to the match.
 - replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
+- preview torrent files with `transmission-show`
 
 #### Changelog
 
@@ -944,7 +945,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] setting a filter reset the "found" searched path & index
 - [x] search as you type
 - [x] replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
-- [ ] torrent with [transmission show](https://github.com/ranger/ranger/blob/38bb8901004b75a407ffee4b9e176bc0a436cb15/ranger/data/scope.sh#L82C13-L82C48)
+- [x] torrent with `transmission-show`
 
 ## TODO
 

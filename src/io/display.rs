@@ -396,6 +396,9 @@ impl<'a> WinMain<'a> {
             Preview::FifoCharDevice(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
+            Preview::Torrent(text) => {
+                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
+            }
 
             Preview::Empty => (),
         }
