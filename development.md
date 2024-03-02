@@ -944,6 +944,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] setting a filter reset the "found" searched path & index
 - [x] search as you type
 - [x] replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
+- [ ] torrent with transmission cli
 
 ## TODO
 
