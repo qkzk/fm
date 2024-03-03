@@ -875,6 +875,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Search as you type: do / then type a pattern and you will jump to the match.
 - replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
 - preview torrent files with `transmission-show`
+- preview mark, shortcut & history content in second pane while navigating
 
 #### Changelog
 
@@ -946,13 +947,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] search as you type
 - [x] replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
 - [x] torrent with `transmission-show`
+- [x] preview mark, shortcut & history content in second pane while navigating
+- [ ] FIX: `q` while second window should exit the menu
 
 ## TODO
 
 - [ ] rclone
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
 - [ ] move as you type in Alt+g
-- [ ] preview mark & shortcut content in second pane while navigating
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving

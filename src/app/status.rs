@@ -466,20 +466,43 @@ impl Status {
     fn set_second_pane_for_preview(&mut self) -> Result<()> {
         self.tabs[1].set_display_mode(Display::Preview);
         self.tabs[1].edit_mode = Edit::Nothing;
-        let users = &self.tabs[0].users;
-        let fileinfo = match self.tabs[0].display_mode {
-            Display::Flagged => {
-                let Some(path) = self.menu.flagged.selected() else {
-                    self.tabs[1].preview = Preview::empty();
-                    return Ok(());
-                };
-                FileInfo::new(path, users)?
-            }
-            _ => self.tabs[0].current_file()?,
+        let Ok(fileinfo) = self.get_correct_fileinfo_for_preview() else {
+            return Ok(());
         };
+        let left_tab = &self.tabs[0];
+        let users = &left_tab.users;
         self.tabs[1].preview = Preview::new(&fileinfo, users).unwrap_or_default();
         self.tabs[1].window.reset(self.tabs[1].preview.len());
         Ok(())
+    }
+
+    fn get_correct_fileinfo_for_preview(&mut self) -> Result<FileInfo> {
+        let left_tab = &self.tabs[0];
+        let users = &left_tab.users;
+        match self.focus {
+            Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::Marks(_))) => {
+                let (_, mark_path) = &self.menu.marks.content()[self.menu.marks.index()];
+                FileInfo::new(mark_path, users)
+            }
+            Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::Shortcut)) => {
+                let shortcut_path = &self.menu.shortcut.content()[self.menu.shortcut.index()];
+                FileInfo::new(shortcut_path, users)
+            }
+            Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::History)) => {
+                let (history_path, _) = &left_tab.history.content()[left_tab.history.index()];
+                FileInfo::new(history_path, users)
+            }
+            _ => match left_tab.display_mode {
+                Display::Flagged => {
+                    let Some(path) = self.menu.flagged.selected() else {
+                        self.tabs[1].preview = Preview::empty();
+                        return Err(anyhow!("No fileinfo to preview"));
+                    };
+                    FileInfo::new(path, users)
+                }
+                _ => left_tab.current_file(),
+            },
+        }
     }
 
     /// Set an edit mode for the tab at `index`. Refresh the view.
