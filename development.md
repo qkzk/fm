@@ -876,6 +876,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
 - preview torrent files with `transmission-show`
 - preview mark, shortcut & history content in second pane while navigating
+- zoxide integration. While typing a path in "Goto mode" (default keybind "alt+g"), the first proposition will come from your zoxide answers.
 
 #### Changelog
 
@@ -948,6 +949,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
 - [x] torrent with `transmission-show`
 - [x] preview mark, shortcut & history content in second pane while navigating
+- [x] zoxide support for "alt+g" aka goto mode.
 - [ ] FIX: `q` while second window should exit the menu
 
 ## TODO
@@ -972,7 +974,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 
-- [ ] zoxide support
 - [ ] temporary marks
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?

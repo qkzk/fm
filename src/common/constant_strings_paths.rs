@@ -212,3 +212,4 @@ pub const LAZYGIT: &str = "lazygit";
 pub const NCDU: &str = "ncdu";
 /// transmission-show
 pub const TRANSMISSION_SHOW: &str = "transmission-show";
+pub const ZOXIDE: &str = "zoxide";
