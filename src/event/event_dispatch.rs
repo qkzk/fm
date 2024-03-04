@@ -120,7 +120,10 @@ impl EventDispatcher {
             Navigate::RemovableDevices if c == 'u' => status.menu.umount_removable(),
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
-            _ => status.current_tab_mut().reset_display_mode_and_view(),
+            _ => {
+                status.reset_edit_mode()?;
+                status.current_tab_mut().reset_display_mode_and_view()
+            }
         }
     }
 }

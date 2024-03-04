@@ -950,7 +950,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] torrent with `transmission-show`
 - [x] preview mark, shortcut & history content in second pane while navigating
 - [x] zoxide support for "alt+g" aka goto mode.
-- [ ] FIX: `q` while second window should exit the menu
+- [x] FIX: `q` while second window should exit the menu
 
 ## TODO
 
