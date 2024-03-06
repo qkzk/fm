@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -12,6 +11,7 @@ use crate::modes::files_collection;
 use crate::modes::FilterKind;
 use crate::modes::Flagged;
 use crate::modes::SortKind;
+use crate::modes::ToPath;
 use crate::modes::Users;
 use crate::modes::{ColorEffect, FileInfo};
 
@@ -575,58 +575,6 @@ impl Tree {
         self.remake_displayable(users);
     }
 
-    /// Select the first node whose filename match a pattern.
-    /// If the selected file match, the next match will be selected.
-    pub fn search_first_match(&mut self, pattern: &str) {
-        let Some(found_path) = self.deep_first_search(pattern) else {
-            return;
-        };
-        self.select_path(&found_path);
-    }
-
-    fn deep_first_search(&self, pattern: &str) -> Option<Arc<Path>> {
-        let mut stack = vec![self.root_path.clone()];
-        let mut found = vec![];
-
-        while let Some(path) = stack.pop() {
-            if path_filename_contains(&path, pattern) {
-                found.push(path.clone());
-            }
-            let Some(current_node) = self.nodes.get(&path) else {
-                continue;
-            };
-
-            if current_node.have_children() {
-                let Some(children) = &current_node.children else {
-                    continue;
-                };
-                for leaf in children.iter() {
-                    stack.push(leaf.to_owned());
-                }
-            }
-        }
-        self.pick_best_match(&found)
-    }
-
-    fn pick_best_match(&self, found: &[Arc<Path>]) -> Option<Arc<Path>> {
-        if found.is_empty() {
-            return None;
-        }
-        if let Some(position) = found.iter().position(|path| path == &self.selected) {
-            // selected is in found
-            if position + 1 < found.len() {
-                // selected isn't last, use next elem
-                Some(found[position + 1].to_owned())
-            } else {
-                // selected is last
-                Some(found[0].to_owned())
-            }
-        } else {
-            // selected isn't in found, use first match
-            Some(found[0].to_owned())
-        }
-    }
-
     /// Create a displayable content from the tree.
     /// Returns 2 informations :
     /// - the index of the selected node into this content.
@@ -678,19 +626,6 @@ impl Tree {
 
     pub fn displayable(&self) -> &TreeLines {
         &self.displayable_lines
-    }
-
-    #[inline]
-    pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
-        let to_filename: fn(&Arc<Path>) -> Option<&OsStr> = |path| path.file_name();
-        let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
-        self.nodes
-            .keys()
-            .filter_map(to_filename)
-            .filter_map(to_str)
-            .filter(|&p| p.contains(input_string))
-            .map(|p| p.replace("▸ ", "").replace("▾ ", ""))
-            .collect()
     }
 
     /// Vector of `Path` of nodes.
@@ -775,13 +710,6 @@ fn filename_format(current_path: &Path, folded: bool) -> String {
     }
 }
 
-fn path_filename_contains(path: &Path, pattern: &str) -> bool {
-    path.file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .contains(pattern)
-}
-
 /// A vector of displayable lines used to draw a tree content.
 /// We use the index to follow the user movements in the tree.
 #[derive(Clone, Debug, Default)]
@@ -793,6 +721,10 @@ pub struct TreeLines {
 impl TreeLines {
     fn new(content: Vec<TreeLineBuilder>, index: usize) -> Self {
         Self { content, index }
+    }
+
+    pub fn content(&self) -> &Vec<TreeLineBuilder> {
+        &self.content
     }
 
     /// Index of the currently selected file.
@@ -831,7 +763,7 @@ impl TreeLines {
 pub struct TreeLineBuilder {
     folded: bool,
     prefix: Arc<str>,
-    path: Arc<Path>,
+    pub path: Arc<Path>,
     color_effect: ColorEffect,
     metadata: String,
 }
@@ -893,5 +825,11 @@ impl TreeLineBuilder {
     /// the file as selected.
     pub fn select(&mut self) {
         self.color_effect.effect = tuikit::attr::Effect::REVERSE;
+    }
+}
+
+impl ToPath for TreeLineBuilder {
+    fn to_path(&self) -> &Path {
+        &self.path
     }
 }

@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fs::{create_dir, read_dir, remove_dir_all};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -24,7 +25,7 @@ const TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 /// - where the file came from,
 /// - what name it was given when trashed,
 /// - when it was trashed
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Info {
     origin: PathBuf,
     dest_name: String,
@@ -174,6 +175,19 @@ DeletionDate={date}
     }
 }
 
+impl Ord for Info {
+    /// Reversed to ensure most recent trashed files are displayed at top
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.deletion_date.cmp(&other.deletion_date).reverse()
+    }
+}
+
+impl PartialOrd for Info {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl std::fmt::Display for Info {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -254,7 +268,7 @@ impl Trash {
     fn parse_updated_content(trash_folder_info: &str) -> Result<Vec<Info>> {
         match read_dir(trash_folder_info) {
             Ok(read_dir) => {
-                let content: Vec<Info> = read_dir
+                let mut content: Vec<Info> = read_dir
                     .filter_map(std::result::Result::ok)
                     .filter(|direntry| direntry.path().extension().is_some())
                     .filter(|direntry| {
@@ -264,6 +278,7 @@ impl Trash {
                     .filter_map(std::result::Result::ok)
                     .collect();
 
+                content.sort_unstable();
                 Ok(content)
             }
             Err(error) => {

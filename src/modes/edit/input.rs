@@ -93,6 +93,11 @@ impl Input {
             .collect();
     }
 
+    pub fn delete_line(&mut self) {
+        self.chars = vec![];
+        self.cursor_index = 0;
+    }
+
     /// Replace the content with the new content.
     /// Put the cursor at the end.
     ///

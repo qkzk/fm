@@ -49,7 +49,6 @@ menu_colors:
 # You can bind any key to any action.
 # List of valid actions is accessible from `help` (default key H) and from the readme.md file.
 # Invalid actions are skipped.
-# AltPageUp can't be bound, it is reserved for internal use.
 keys: 
   'esc': ResetMode
   'up': MoveUp

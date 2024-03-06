@@ -8,7 +8,6 @@ use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index,
 };
 use crate::io::Args;
-use crate::modes::Content;
 use crate::modes::Directory;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
@@ -17,6 +16,7 @@ use crate::modes::Preview;
 use crate::modes::Selectable;
 use crate::modes::SortKind;
 use crate::modes::Users;
+use crate::modes::{Content, Search};
 use crate::modes::{ContentWindow, FileKind};
 use crate::modes::{Display, Edit};
 use crate::modes::{Go, To, Tree};
@@ -49,6 +49,10 @@ impl TabSettings {
     /// Apply the filter.
     pub fn set_filter(&mut self, filter: FilterKind) {
         self.filter = filter
+    }
+
+    pub fn reset_filter(&mut self) {
+        self.filter = FilterKind::All;
     }
 
     /// Update the kind of sort from a char typed by the user.
@@ -87,7 +91,8 @@ pub struct Tab {
     pub settings: TabSettings,
 
     /// Last searched string
-    pub searched: Option<String>,
+    pub search: Search,
+    // pub searched: Search,
     /// Visited directories
     pub history: History,
     /// Users & groups
@@ -125,7 +130,7 @@ impl Tab {
         let mut window = ContentWindow::new(directory.content.len(), height);
         let preview = Preview::Empty;
         let history = History::default();
-        let searched = None;
+        let search = Search::empty();
         let index = directory.select_file(&path);
         let tree = Tree::default();
 
@@ -137,7 +142,8 @@ impl Tab {
             directory,
             height,
             preview,
-            searched,
+            search,
+            // searched,
             history,
             users,
             tree,
@@ -202,17 +208,6 @@ impl Tab {
         path_to_string(&self.directory.path)
     }
 
-    /// Returns a vector of filenames as strings, which contains the input string.
-    /// Empty vector while in `Display::Preview`.
-    pub fn filenames(&self, input_string: &str) -> Vec<String> {
-        match self.display_mode {
-            Display::Directory => self.directory.filenames_containing(input_string),
-            Display::Tree => self.tree.filenames_containing(input_string),
-            Display::Preview => vec![],
-            Display::Flagged => vec![],
-        }
-    }
-
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) -> Result<()> {
         self.preview = Preview::empty();
@@ -255,6 +250,7 @@ impl Tab {
 
     /// Change the display mode.
     pub fn set_display_mode(&mut self, new_display_mode: Display) {
+        self.search.reset_paths();
         self.reset_preview();
         self.display_mode = new_display_mode
     }
@@ -428,6 +424,7 @@ impl Tab {
         if matches!(self.display_mode, Display::Preview | Display::Flagged) {
             return Ok(());
         }
+        self.search.reset_paths();
         match std::env::set_current_dir(path) {
             Ok(()) => (),
             Err(error) => {
@@ -733,43 +730,5 @@ impl Tab {
             .to_owned();
         self.tree.go(To::Path(&path));
         Ok(())
-    }
-
-    /// Search in current directory for an file whose name contains `searched_name`,
-    /// from a starting position `next_index`.
-    /// We search forward from that position and start again from top if nothing is found.
-    /// We move the selection to the first matching file.
-    pub fn search_from(&mut self, searched_name: &str, current_index: usize) {
-        if let Some(found_index) = self.search_from_index(searched_name, current_index) {
-            self.go_to_index(found_index);
-        } else if let Some(found_index) = self.search_from_top(searched_name, current_index) {
-            self.go_to_index(found_index);
-        }
-    }
-
-    /// Search a file by filename from given index, moving down
-    fn search_from_index(&self, searched_name: &str, current_index: usize) -> Option<usize> {
-        for (index, file) in self.directory.enumerate().skip(current_index) {
-            if file.filename.contains(searched_name) {
-                return Some(index);
-            };
-        }
-        None
-    }
-
-    /// Search a file by filename from first line, moving down
-    fn search_from_top(&self, searched_name: &str, current_index: usize) -> Option<usize> {
-        for (index, file) in self.directory.enumerate().take(current_index) {
-            if file.filename.contains(searched_name) {
-                return Some(index);
-            };
-        }
-        None
-    }
-
-    /// Search the next matching file in display directory
-    pub fn normal_search_next(&mut self, searched: &str) {
-        let next_index = (self.directory.index + 1) % self.directory.content.len();
-        self.search_from(searched, next_index);
     }
 }

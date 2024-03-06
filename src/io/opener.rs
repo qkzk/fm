@@ -19,7 +19,7 @@ use crate::modes::{decompress_gz, decompress_xz, decompress_zip};
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]
-enum Extension {
+pub enum Extension {
     #[default]
     Audio,
     Bitmap,
@@ -35,9 +35,8 @@ enum Extension {
     Default,
 }
 
-// TODO: move those associations to a config file
 impl Extension {
-    fn matcher(ext: &str) -> Self {
+    pub fn matcher(ext: &str) -> Self {
         match ext {
             "avif" | "bmp" | "gif" | "png" | "jpg" | "jpeg" | "pgm" | "ppm" | "webp" | "tiff" => {
                 Self::Bitmap
@@ -306,8 +305,15 @@ impl fmt::Display for Kind {
     }
 }
 
+/// Basic file opener.
+///
 /// Holds the associations between different kind of files and opener method
 /// as well as the name of the terminal configured by the user.
+/// It's also responsible for "opening" most kind of files.
+/// There's two exceptions :
+/// - iso files, which are mounted. It requires a sudo password.
+/// - neovim filepicking. It uses a socket to send RPC command.
+/// It may open a single or multiple files, trying to regroup them by opener.
 #[derive(Clone)]
 pub struct Opener {
     /// The name of the configured terminal application

@@ -18,7 +18,6 @@ use crate::modes::CLApplications;
 use crate::modes::Content;
 use crate::modes::Display;
 use crate::modes::Edit;
-use crate::modes::FilterKind;
 use crate::modes::InputCompleted;
 use crate::modes::InputSimple;
 use crate::modes::Leave;
@@ -26,6 +25,7 @@ use crate::modes::MarkAction;
 use crate::modes::Navigate;
 use crate::modes::NodeCreation;
 use crate::modes::PasswordUsage;
+use crate::modes::Search;
 use crate::modes::SortKind;
 
 /// Methods called when executing something with Enter key.
@@ -33,6 +33,10 @@ pub struct LeaveMode;
 
 impl LeaveMode {
     pub fn leave_edit_mode(status: &mut Status, binds: &Bindings) -> Result<()> {
+        status
+            .menu
+            .input_history
+            .update(status.current_tab().edit_mode, &status.menu.input.string())?;
         let must_refresh = status.current_tab().edit_mode.must_refresh();
         let must_reset_mode = status.current_tab().edit_mode.must_reset_mode();
 
@@ -51,21 +55,19 @@ impl LeaveMode {
                 LeaveMode::password(status, action, usage)
             }
             Edit::InputSimple(InputSimple::Remote) => LeaveMode::remote(status),
-            Edit::Navigate(Navigate::Jump) => LeaveMode::jump(status),
             Edit::Navigate(Navigate::History) => LeaveMode::history(status),
             Edit::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status),
             Edit::Navigate(Navigate::Trash) => LeaveMode::trash(status),
-            Edit::Navigate(Navigate::BulkMenu) => LeaveMode::bulk_ask(status),
             Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status),
             Edit::Navigate(Navigate::CliApplication) => LeaveMode::cli_info(status),
-            Edit::Navigate(Navigate::EncryptedDrive) => Ok(()),
+            Edit::Navigate(Navigate::EncryptedDrive) => LeaveMode::go_to_mount(status),
             Edit::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMode::marks_update(status),
             Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMode::marks_jump(status),
             Edit::Navigate(Navigate::Compress) => LeaveMode::compress(status),
             Edit::Navigate(Navigate::Context) => LeaveMode::context(status, binds),
-            Edit::Navigate(Navigate::RemovableDevices) => Ok(()),
+            Edit::Navigate(Navigate::RemovableDevices) => LeaveMode::go_to_mount(status),
             Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
-            Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status),
+            Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status, true),
             Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
             Edit::InputCompleted(InputCompleted::Action) => LeaveMode::action(status, binds),
             // To avoid mistakes, the default answer is No. We do nothing here.
@@ -85,6 +87,9 @@ impl LeaveMode {
     /// Restore a file from the trash if possible.
     /// Parent folders are created if needed.
     pub fn trash(status: &mut Status) -> Result<()> {
+        if status.focus.is_file() {
+            return Ok(());
+        }
         let _ = status.menu.trash.restore();
         status.reset_edit_mode()?;
         status.current_tab_mut().refresh_view()?;
@@ -153,18 +158,6 @@ impl LeaveMode {
         Ok(())
     }
 
-    /// Execute a jump to the selected flagged file.
-    /// If the user selected a directory, we jump inside it.
-    /// Otherwise, we jump to the parent and select the file.
-    pub fn jump(status: &mut Status) -> Result<()> {
-        let Some(jump_target) = status.menu.flagged.selected() else {
-            return Ok(());
-        };
-        let jump_target = jump_target.to_owned();
-        status.current_tab_mut().jump(jump_target)?;
-        status.update_second_pane_for_preview()
-    }
-
     /// Select the first file matching the typed regex in current dir.
     pub fn regex(status: &mut Status) -> Result<()> {
         status.select_from_regex()?;
@@ -201,7 +194,9 @@ impl LeaveMode {
                 return Err(error);
             }
         };
-        if matches!(status.current_tab().display_mode, Display::Flagged) && status.menu.flagged.contains(&old_path) {
+        if matches!(status.current_tab().display_mode, Display::Flagged)
+            && status.menu.flagged.contains(&old_path)
+        {
             status.menu.flagged.replace(&old_path, &new_path);
         }
         status.current_tab_mut().refresh_view()
@@ -256,29 +251,22 @@ impl LeaveMode {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn search(status: &mut Status) -> Result<()> {
+    pub fn search(status: &mut Status, should_reset_input: bool) -> Result<()> {
         let searched = &status.menu.input.string();
-        status.menu.input.reset();
         if searched.is_empty() {
-            status.current_tab_mut().searched = None;
+            status.current_tab_mut().search = Search::empty();
             return Ok(());
         }
-        status.current_tab_mut().searched = Some(searched.clone());
-        match status.current_tab().display_mode {
-            Display::Tree => {
-                log_info!("searching in tree");
-                status.current_tab_mut().tree.search_first_match(searched);
-            }
-            Display::Directory => {
-                let next_index = status.current_tab().directory.index;
-                status.current_tab_mut().search_from(searched, next_index);
-            }
-            Display::Flagged => {
-                status.menu.flagged.search(searched);
-            }
-            _ => (),
+        let Ok(mut search) = Search::new(searched) else {
+            status.current_tab_mut().search = Search::empty();
+            return Ok(());
         };
-        status.update_second_pane_for_preview()
+        if should_reset_input {
+            status.menu.input.reset();
+        }
+        search.execute_search(status)?;
+        status.current_tab_mut().search = search;
+        Ok(())
     }
 
     /// Move to the folder typed by the user.
@@ -397,19 +385,12 @@ impl LeaveMode {
     /// Apply a filter to the displayed files.
     /// See `crate::filter` for more details.
     pub fn filter(status: &mut Status) -> Result<()> {
-        let filter = FilterKind::from_input(&status.menu.input.string());
-        status.current_tab_mut().settings.set_filter(filter);
+        status.set_filter()?;
         status.menu.input.reset();
-        // ugly hack to please borrow checker :(
-        status.tabs[status.index].directory.reset_files(
-            &status.tabs[status.index].settings,
-            &status.tabs[status.index].users,
-        )?;
-        if let Display::Tree = status.current_tab().display_mode {
-            status.current_tab_mut().make_tree(None)?;
-        }
-        let len = status.current_tab().directory.content.len();
-        status.current_tab_mut().window.reset(len);
+        let mut search = status.tabs[status.index].search.clone();
+        search.reset_paths();
+        search.execute_search(status)?;
+        status.tabs[status.index].search = search;
         Ok(())
     }
 
@@ -421,5 +402,14 @@ impl LeaveMode {
         let current_path = &path_to_string(&status.current_tab().directory_of_selected()?);
         status.menu.mount_remote(current_path);
         Ok(())
+    }
+
+    /// Go to the _mounted_ device. Does nothing if the device isn't mounted.
+    pub fn go_to_mount(status: &mut Status) -> Result<()> {
+        match status.current_tab().edit_mode {
+            Edit::Navigate(Navigate::EncryptedDrive) => status.go_to_encrypted_drive(),
+            Edit::Navigate(Navigate::RemovableDevices) => status.go_to_removable(),
+            _ => Ok(()),
+        }
     }
 }

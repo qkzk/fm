@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
 
-use tuikit::prelude::{from_keyname, Event, Key};
+use tuikit::prelude::{from_keyname, Key};
 
 use crate::common::CONFIG_PATH;
 use crate::event::ActionMap;
@@ -23,12 +23,6 @@ impl Default for Bindings {
         Self::new()
     }
 }
-
-/// Reserved key used to  send refresh event
-/// This key can't be bound to anything.
-pub const REFRESH_KEY: Key = Key::AltPageUp;
-/// Refresh event, using a reserved key.
-pub const REFRESH_EVENT: Event = Event::Key(REFRESH_KEY);
 
 impl Bindings {
     pub fn new() -> Self {
@@ -57,6 +51,7 @@ impl Bindings {
             (Key::Char('!'), ActionMap::ShellCommand),
             (Key::Char('@'), ActionMap::GoStart),
             (Key::Char(':'), ActionMap::Action),
+            (Key::Char('6'), ActionMap::History),
             (Key::Char('C'), ActionMap::Compress),
             (Key::Char('E'), ActionMap::ToggleDisplayFull),
             (Key::Char('G'), ActionMap::End),
@@ -91,7 +86,7 @@ impl Bindings {
             (Key::Char('u'), ActionMap::ClearFlags),
             (Key::Char('v'), ActionMap::ReverseFlags),
             (Key::Char('w'), ActionMap::RegexMatch),
-            (Key::Char('x'), ActionMap::DeleteFile),
+            (Key::Char('x'), ActionMap::Delete),
             (Key::Char('z'), ActionMap::TreeFold),
             (Key::Char('Z'), ActionMap::TreeUnFoldAll),
             (Key::Alt('b'), ActionMap::Bulk),
@@ -100,9 +95,8 @@ impl Bindings {
             (Key::Alt('e'), ActionMap::EncryptedDrive),
             (Key::Alt('f'), ActionMap::Filter),
             (Key::Alt('g'), ActionMap::Cd),
-            (Key::Alt('h'), ActionMap::History),
+            (Key::Alt('h'), ActionMap::Help),
             (Key::Alt('i'), ActionMap::CliMenu),
-            (Key::Alt('j'), ActionMap::Jump),
             (Key::Alt('l'), ActionMap::Log),
             (Key::Alt('o'), ActionMap::TrashOpen),
             (Key::Alt('r'), ActionMap::RemoteMount),
@@ -116,23 +110,24 @@ impl Bindings {
             (Key::Ctrl('d'), ActionMap::PageDown),
             (Key::Ctrl('f'), ActionMap::FuzzyFind),
             (Key::Ctrl('g'), ActionMap::Shortcut),
-            (Key::Ctrl('h'), ActionMap::Help),
-            (Key::Ctrl('k'), ActionMap::Delete),
             (Key::Ctrl('s'), ActionMap::FuzzyFindLine),
             (Key::Ctrl('u'), ActionMap::PageUp),
             (Key::Ctrl('o'), ActionMap::OpenAll),
             (Key::Ctrl('p'), ActionMap::CopyFilepath),
             (Key::Ctrl('q'), ActionMap::ResetMode),
             (Key::Ctrl('r'), ActionMap::RefreshView),
-            (Key::Ctrl('x'), ActionMap::MocpClearPlaylist),
             (Key::Ctrl('z'), ActionMap::TreeFoldAll),
-            (Key::ShiftDown, ActionMap::NextSibling),
-            (Key::ShiftUp, ActionMap::PreviousSibling),
-            (Key::AltEnter, ActionMap::MocpGoToSong),
-            (Key::CtrlUp, ActionMap::MocpAddToPlayList),
-            (Key::CtrlDown, ActionMap::MocpTogglePause),
-            (Key::CtrlRight, ActionMap::MocpNext),
-            (Key::CtrlLeft, ActionMap::MocpPrevious),
+            (Key::ShiftDown, ActionMap::NextThing),
+            (Key::ShiftLeft, ActionMap::DeleteLine),
+            (Key::ShiftUp, ActionMap::PreviousThing),
+            (Key::CtrlUp, ActionMap::FocusGoUp),
+            (Key::CtrlDown, ActionMap::FocusGoDown),
+            (Key::CtrlRight, ActionMap::FocusGoRight),
+            (Key::CtrlLeft, ActionMap::FocusGoLeft),
+            (Key::Ctrl('h'), ActionMap::FocusGoLeft),
+            (Key::Ctrl('j'), ActionMap::FocusGoDown),
+            (Key::Ctrl('k'), ActionMap::FocusGoUp),
+            (Key::Ctrl('l'), ActionMap::FocusGoRight),
         ]);
         let custom = None;
         Self { binds, custom }
@@ -168,9 +163,6 @@ impl Bindings {
                 log_info!("{CONFIG_PATH}: Keybinding {key_string} is unknown");
                 continue;
             };
-            if self.keymap_is_reserved(&keymap) {
-                continue;
-            }
             let Some(action_str) = yaml[yaml_key].as_str() else {
                 continue;
             };
@@ -179,15 +171,6 @@ impl Bindings {
                 continue;
             };
             self.binds.insert(keymap, action);
-        }
-    }
-
-    /// List of keymap used internally which can't be bound to anything.
-    fn keymap_is_reserved(&self, keymap: &Key) -> bool {
-        match *keymap {
-            // used to send refresh requests.
-            REFRESH_KEY => true,
-            _ => false,
         }
     }
 

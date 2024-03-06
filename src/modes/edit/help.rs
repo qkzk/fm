@@ -65,7 +65,7 @@ const HELP_TO_FORMAT: &str = "
 {Symlink:<10}:      symlink to current dir
 {CopyPaste:<10}:      copy to current dir
 {CutPaste:<10}:      move to current dir
-{DeleteFile:<10}:      delete files permanently
+{Delete:<10}:      delete files permanently
 {TrashMoveFile:<10}:      move to trash
 {Compress:<10}:      compress into an archive
 
@@ -96,7 +96,6 @@ Different modes for the bottom window
 {Rename:<10}:      RENAME
 {Cd:<10}:      CD
 {RegexMatch:<10}:      REGEXMATCH
-{Jump:<10}:      JUMP
 {Sort:<10}:      SORT
 {History:<10}:      HISTORY
 {Shortcut:<10}:      SHORTCUT
@@ -112,16 +111,8 @@ Different modes for the bottom window
 {RemoteMount:<10}:      MOUNT REMOTE PATH
 {Filter:<10}:      FILTER 
     (by name \"n name\", by ext \"e ext\", \"d only directories\" or \"a all\" for reset)
+{Context:<10}:      CONTEXT
 {Enter:<10}:      Execute mode then NORMAL
-
-- MOC -
-Control MOC from your TUI
-{MocpAddToPlayList:<10}:      MOCP: Add selected file or folder to the playlist
-{MocpPrevious:<10}:      MOCP: Previous song
-{MocpTogglePause:<10}:      MOCP: Toggle play/pause.
-{MocpNext:<10}:      MOCP: Next song
-{MocpGoToSong:<10}:      MOCP: Go to currently playing song 
-{MocpClearPlaylist:<10}:      MOCP: Clear the playlist
 ";
 
 const CUSTOM_HELP: &str = "

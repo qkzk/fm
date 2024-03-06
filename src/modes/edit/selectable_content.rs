@@ -24,6 +24,10 @@ pub trait Content<T>: Selectable {
     /// [`tuikit::attr:Attr`] used to display an element
     fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr;
 }
+
+pub trait ToPath {
+    fn to_path(&self) -> &std::path::Path;
+}
 /// Implement the `SelectableContent` for struct `$struc` with content type `$content_type`.
 /// This trait allows to navigate through a vector of element `content_type`.
 /// It implements: `is_empty`, `len`, `next`, `prev`, `selected`.

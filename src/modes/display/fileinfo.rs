@@ -11,9 +11,9 @@ use tuikit::prelude::{Attr, Color, Effect};
 use crate::common::PERMISSIONS_STR;
 use crate::config::extension_color;
 use crate::config::COLORS;
-use crate::modes::Users;
 use crate::modes::MAX_MODE;
 use crate::modes::{human_size, read_symlink_dest};
+use crate::modes::{ToPath, Users};
 
 type Valid = bool;
 
@@ -467,4 +467,10 @@ fn filekind_and_filename(filename: &str, file_kind: &FileKind<Valid>) -> std::sy
 /// true iff the path is a valid symlink (pointing to an existing file).
 fn is_valid_symlink(path: &path::Path) -> bool {
     matches!(std::fs::read_link(path), Ok(dest) if dest.exists())
+}
+
+impl ToPath for FileInfo {
+    fn to_path(&self) -> &path::Path {
+        self.path.as_ref()
+    }
 }

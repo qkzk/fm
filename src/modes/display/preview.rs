@@ -16,7 +16,7 @@ use tuikit::attr::{Attr, Color};
 
 use crate::common::{
     CALC_PDF_PATH, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
-    PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, UEBERZUG,
+    PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, TRANSMISSION_SHOW, UEBERZUG,
 };
 use crate::log_info;
 use crate::modes::ContentWindow;
@@ -47,6 +47,7 @@ pub enum ExtensionKind {
     Notebook,
     Office,
     Epub,
+    Torrent,
     #[default]
     Unknown,
 }
@@ -56,7 +57,7 @@ impl ExtensionKind {
     pub fn matcher(ext: &str) -> Self {
         match ext {
             "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
-            | "gz" | "zst" => Self::Archive,
+            | "gz" | "zst" | "deb" | "rpm" => Self::Archive,
             "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "cr2" | "nef" | "orf" | "sr2" => {
                 Self::Image
             }
@@ -72,6 +73,7 @@ impl ExtensionKind {
             "ipynb" => Self::Notebook,
             "doc" | "docx" | "odt" | "sxw" | "xlsx" | "xls" => Self::Office,
             "epub" => Self::Epub,
+            "torrent" => Self::Torrent,
             _ => Self::Unknown,
         }
     }
@@ -107,6 +109,7 @@ pub enum Preview {
     Socket(Socket),
     BlockDevice(BlockDevice),
     FifoCharDevice(FifoCharDevice),
+    Torrent(Torrent),
     #[default]
     Empty,
 }
@@ -200,6 +203,10 @@ impl Preview {
                     )),
                     ExtensionKind::Epub if is_program_in_path(PANDOC) => {
                         Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
+                    }
+                    ExtensionKind::Torrent if is_program_in_path(TRANSMISSION_SHOW) => {
+                        Ok(Self::torrent(&file_info.path)
+                            .context("Preview couldn't explore the torrent file")?)
                     }
                     _ => match Self::preview_syntaxed(extension, &file_info.path) {
                         Some(syntaxed_preview) => Ok(syntaxed_preview),
@@ -300,6 +307,10 @@ impl Preview {
         ))
     }
 
+    pub fn torrent(path: &Path) -> Result<Self> {
+        Ok(Self::Torrent(Torrent::new(path).context("")?))
+    }
+
     /// The size (most of the time the number of lines) of the preview.
     /// Some preview (thumbnail, empty) can't be scrolled and their size is always 0.
     pub fn len(&self) -> usize {
@@ -317,6 +328,7 @@ impl Preview {
             Self::Socket(socket) => socket.len(),
             Self::BlockDevice(blockdevice) => blockdevice.len(),
             Self::FifoCharDevice(fifo) => fifo.len(),
+            Self::Torrent(torrent) => torrent.len(),
         }
     }
 
@@ -615,9 +627,8 @@ impl BinaryContent {
             if nb_bytes_read != Self::LINE_WIDTH {
                 content.push(Line::new((&buffer[0..nb_bytes_read]).into()));
                 break;
-            } else {
-                content.push(Line::new(buffer.into()));
             }
+            content.push(Line::new(buffer.into()));
             if content.len() >= Self::SIZE_LIMIT {
                 break;
             }
@@ -719,7 +730,7 @@ impl ArchiveContent {
     fn new(path: &Path, ext: &str) -> Result<Self> {
         let content = match ext {
             "zip" => list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]),
-            "zst" | "gz" | "bz" | "xz" | "gzip" | "bzip2" => {
+            "zst" | "gz" | "bz" | "xz" | "gzip" | "bzip2" | "deb" | "rpm" => {
                 list_files_tar(path).unwrap_or(vec!["Invalid Tar content".to_owned()])
             }
             _ => vec![format!("Unsupported format: {ext}")],
@@ -899,8 +910,11 @@ impl Ueberzug {
     /// It may fail (and surelly crash the app) if the pdf is password protected.
     /// We pass a generic password which is hardcoded.
     fn make_pdf_thumbnail(pdf_path: &Path, index: usize) -> Result<usize> {
+        let mut data: Vec<u8> = std::fs::read(pdf_path)?;
+        // let doc: poppler::PopplerDocument =
+        //     poppler::PopplerDocument::new_from_file(pdf_path, "upw")?;
         let doc: poppler::PopplerDocument =
-            poppler::PopplerDocument::new_from_file(pdf_path, "upw")?;
+            poppler::PopplerDocument::new_from_data(&mut data[..], "upw")?;
         let length = doc.get_n_pages();
         if index >= length {
             return Err(anyhow!(
@@ -917,8 +931,14 @@ impl Ueberzug {
         page.render(&ctx);
         ctx.restore()?;
         ctx.show_page()?;
-        let mut file = std::fs::File::create(THUMBNAIL_PATH)?;
+        let Ok(mut file) = std::fs::File::create(THUMBNAIL_PATH) else {
+            return Ok(0);
+        };
         surface.write_to_png(&mut file)?;
+        surface.finish();
+        // those drops should be useless
+        drop(ctx);
+        drop(surface);
         Ok(length)
     }
 
@@ -1086,7 +1106,6 @@ impl Iso {
                 .lines()
                 .map(|s| s.to_owned())
                 .collect();
-        log_info!("{ISOINFO}:\n{content:?}");
 
         Ok(Self {
             length: content.len(),
@@ -1094,6 +1113,29 @@ impl Iso {
         })
     }
 
+    fn len(&self) -> usize {
+        self.length
+    }
+}
+
+pub struct Torrent {
+    pub content: Vec<String>,
+    length: usize,
+}
+
+impl Torrent {
+    fn new(path: &Path) -> Result<Self> {
+        let path = path.to_str().context("couldn't parse the path")?;
+        let content: Vec<String> =
+            execute_and_capture_output_without_check(TRANSMISSION_SHOW, &[path])?
+                .lines()
+                .map(|s| s.to_owned())
+                .collect();
+        Ok(Self {
+            length: content.len(),
+            content,
+        })
+    }
     fn len(&self) -> usize {
         self.length
     }
@@ -1144,3 +1186,4 @@ impl_window!(Socket, String);
 impl_window!(BlockDevice, String);
 impl_window!(FifoCharDevice, String);
 impl_window!(TreeLines, TreeLineBuilder);
+impl_window!(Torrent, String);

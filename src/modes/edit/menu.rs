@@ -1,15 +1,21 @@
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
+
 use anyhow::Context;
 use anyhow::Result;
 
 use crate::app::Tab;
 use crate::common::is_program_in_path;
 use crate::common::CLI_PATH;
+use crate::common::INPUT_HISTORY_PATH;
 use crate::common::MARKS_FILEPATH;
 use crate::common::SSHFS_EXECUTABLE;
 use crate::common::TUIS_PATH;
 use crate::config::Bindings;
+use crate::event::FmEvents;
 use crate::io::drop_sudo_privileges;
 use crate::io::execute_and_capture_output_with_path;
+use crate::io::InputHistory;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::Bulk;
@@ -75,6 +81,8 @@ pub struct Menu {
     pub sudo_command: Option<String>,
     /// History - here for compatibility reasons only
     pub history: History,
+    ///
+    pub input_history: InputHistory,
 }
 
 impl Menu {
@@ -82,9 +90,10 @@ impl Menu {
         start_dir: &std::path::Path,
         mount_points: &[&std::path::Path],
         binds: &Bindings,
+        fm_sender: Arc<Sender<FmEvents>>,
     ) -> Result<Self> {
         Ok(Self {
-            bulk: Bulk::default(),
+            bulk: Bulk::new(fm_sender),
             cli_applications: CliApplications::new(CLI_PATH).update_desc_size(),
             completion: Completion::default(),
             compression: Compresser::default(),
@@ -102,6 +111,7 @@ impl Menu {
             trash: Trash::new(binds)?,
             tui_applications: TuiApplications::new(TUIS_PATH),
             window: ContentWindow::new(0, 80),
+            input_history: InputHistory::load(INPUT_HISTORY_PATH)?,
         })
     }
 
@@ -112,14 +122,13 @@ impl Menu {
     }
 
     /// Fill the input string with the currently selected completion.
-    pub fn input_complete(&mut self, c: char, tab: &Tab) -> Result<()> {
-        self.input.insert(c);
+    pub fn input_complete(&mut self, tab: &mut Tab) -> Result<()> {
         self.fill_completion(tab)?;
         self.window.reset(self.completion.len());
         Ok(())
     }
 
-    fn fill_completion(&mut self, tab: &Tab) -> Result<()> {
+    fn fill_completion(&mut self, tab: &mut Tab) -> Result<()> {
         match tab.edit_mode {
             Edit::InputCompleted(InputCompleted::Cd) => self.completion.cd(
                 &self.input.string(),
@@ -129,15 +138,13 @@ impl Menu {
                 self.completion.exec(&self.input.string())
             }
             Edit::InputCompleted(InputCompleted::Search) => {
-                match tab.display_mode {
-                    Display::Tree | Display::Directory => {
-                        self.completion.search(tab.filenames(&self.input.string()));
-                    }
-                    Display::Flagged => self
-                        .completion
-                        .search(self.flagged.filenames_containing(&self.input.string())),
-                    _ => (),
-                }
+                let files = match tab.display_mode {
+                    Display::Preview => vec![],
+                    Display::Tree => tab.search.complete(tab.tree.displayable().content()),
+                    Display::Flagged => tab.search.complete(self.flagged.content()),
+                    Display::Directory => tab.search.complete(tab.directory.content()),
+                };
+                self.completion.search(files);
                 Ok(())
             }
             Edit::InputCompleted(InputCompleted::Action) => {
@@ -200,31 +207,38 @@ impl Menu {
     /// If the user doesn't provide 3 arguments,
     pub fn mount_remote(&mut self, current_path: &str) {
         let input = self.input.string();
-        let user_hostname_remotepath: Vec<&str> = input.split(' ').collect();
+        let user_hostname_path_port: Vec<&str> = input.split(' ').collect();
         self.input.reset();
 
         if !is_program_in_path(SSHFS_EXECUTABLE) {
             log_info!("{SSHFS_EXECUTABLE} isn't in path");
             return;
         }
-        if user_hostname_remotepath.len() != 3 {
+        let number_of_args = user_hostname_path_port.len();
+        if number_of_args != 3 && number_of_args != 4 {
             log_info!(
-                "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3, got {nb}",
-                nb = user_hostname_remotepath.len()
+                "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3 or 4, got {number_of_args}",
             );
             return;
         };
 
         let (username, hostname, remote_path) = (
-            user_hostname_remotepath[0],
-            user_hostname_remotepath[1],
-            user_hostname_remotepath[2],
+            user_hostname_path_port[0],
+            user_hostname_path_port[1],
+            user_hostname_path_port[2],
         );
-        let first_arg = &format!("{username}@{hostname}:{remote_path}");
+
+        let port = if number_of_args == 3 {
+            "22"
+        } else {
+            user_hostname_path_port[3]
+        };
+
+        let first_arg = format!("{username}@{hostname}:{remote_path}");
         let output = execute_and_capture_output_with_path(
             SSHFS_EXECUTABLE,
             current_path,
-            &[first_arg, current_path],
+            &[&first_arg, current_path, "-p", port],
         );
         log_info!("{SSHFS_EXECUTABLE} {first_arg} output {output:?}");
         log_line!("{SSHFS_EXECUTABLE} {first_arg} output {output:?}");
@@ -305,6 +319,10 @@ impl Menu {
         self.shortcut.refresh(mount_points, left_path, right_path)
     }
 
+    pub fn completion_reset(&mut self) {
+        self.completion.reset();
+    }
+
     pub fn completion_tab(&mut self) {
         self.input.replace(self.completion.current_proposition())
     }
@@ -364,13 +382,11 @@ impl Menu {
         F: FnOnce(&mut dyn Selectable) -> T,
     {
         match navigate {
-            Navigate::BulkMenu => func(&mut self.bulk),
             Navigate::CliApplication => func(&mut self.cli_applications),
             Navigate::Compress => func(&mut self.compression),
             Navigate::Context => func(&mut self.context),
             Navigate::EncryptedDrive => func(&mut self.encrypted_devices),
             Navigate::History => func(&mut self.history),
-            Navigate::Jump => func(&mut self.flagged),
             Navigate::Marks(_) => func(&mut self.marks),
             Navigate::RemovableDevices => func(&mut self.removable_devices),
             Navigate::Shortcut => func(&mut self.shortcut),
@@ -384,13 +400,11 @@ impl Menu {
         F: FnOnce(&dyn Selectable) -> T,
     {
         match navigate {
-            Navigate::BulkMenu => func(&self.bulk),
             Navigate::CliApplication => func(&self.cli_applications),
             Navigate::Compress => func(&self.compression),
             Navigate::Context => func(&self.context),
             Navigate::EncryptedDrive => func(&self.encrypted_devices),
             Navigate::History => func(&self.history),
-            Navigate::Jump => func(&self.flagged),
             Navigate::Marks(_) => func(&self.marks),
             Navigate::RemovableDevices => func(&self.removable_devices),
             Navigate::Shortcut => func(&self.shortcut),

@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::Path;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
@@ -9,18 +10,18 @@ use sysinfo::{Disk, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
-use crate::app::ClickableLine;
 use crate::app::FlaggedHeader;
 use crate::app::Footer;
 use crate::app::Header;
 use crate::app::InternalSettings;
 use crate::app::Session;
 use crate::app::Tab;
-use crate::common::{args_is_empty, is_sudo_command, path_to_string};
-use crate::common::{current_username, disk_space, filename_from_path, is_program_in_path};
+use crate::app::{ClickableLine, FlaggedFooter};
+use crate::common::{args_is_empty, is_sudo_command, open_in_current_neovim, path_to_string};
+use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::Bindings;
+use crate::event::FmEvents;
 use crate::io::Internal;
-use crate::io::Kind;
 use crate::io::Opener;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{execute_and_capture_output_with_path, Args};
@@ -28,9 +29,7 @@ use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     reset_sudo_faillock,
 };
-use crate::modes::Display;
-use crate::modes::Edit;
-use crate::modes::InputSimple;
+use crate::io::{Extension, Kind};
 use crate::modes::IsoDevice;
 use crate::modes::Menu;
 use crate::modes::MountCommands;
@@ -43,12 +42,16 @@ use crate::modes::Preview;
 use crate::modes::Selectable;
 use crate::modes::ShellCommandParser;
 use crate::modes::Skimer;
+use crate::modes::To;
 use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, regex_matcher};
+use crate::modes::{extract_extension, Edit};
 use crate::modes::{BlockDeviceAction, Navigate};
 use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
+use crate::modes::{Display, Go};
+use crate::modes::{FilterKind, InputSimple};
 use crate::{log_info, log_line};
 
 pub enum Window {
@@ -56,6 +59,38 @@ pub enum Window {
     Files,
     Menu,
     Footer,
+}
+
+#[derive(Default, Clone, Copy)]
+pub enum Focus {
+    #[default]
+    LeftFile,
+    LeftMenu,
+    RightFile,
+    RightMenu,
+}
+
+impl Focus {
+    pub fn is_left(&self) -> bool {
+        matches!(self, Self::LeftMenu | Self::LeftFile)
+    }
+
+    pub fn is_file(&self) -> bool {
+        matches!(self, Self::LeftFile | Self::RightFile)
+    }
+
+    pub fn switch(&self) -> Self {
+        match self {
+            Self::LeftFile => Self::RightFile,
+            Self::LeftMenu => Self::RightFile,
+            Self::RightFile => Self::LeftFile,
+            Self::RightMenu => Self::LeftFile,
+        }
+    }
+
+    pub fn index(&self) -> usize {
+        *self as usize
+    }
 }
 
 /// Holds every mutable parameter of the application itself, except for
@@ -79,15 +114,25 @@ pub struct Status {
     pub menu: Menu,
     /// Display settings
     pub display_settings: Session,
-    /// Interna settings
+    /// Internal settings
     pub internal_settings: InternalSettings,
+    /// Window being focused currently
+    pub focus: Focus,
+    /// Sender of events
+    pub fm_sender: Arc<Sender<FmEvents>>,
 }
 
 impl Status {
     /// Creates a new status for the application.
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
-    pub fn new(height: usize, term: Arc<Term>, opener: Opener, binds: &Bindings) -> Result<Self> {
+    pub fn new(
+        height: usize,
+        term: Arc<Term>,
+        opener: Opener,
+        binds: &Bindings,
+        fm_sender: Arc<Sender<FmEvents>>,
+    ) -> Result<Self> {
         let skimer = None;
         let index = 0;
 
@@ -102,7 +147,7 @@ impl Status {
         let display_settings = Session::new(term.term_size()?.0);
         let mut internal_settings = InternalSettings::new(opener, term, sys);
         let mount_points = internal_settings.mount_points();
-        let menu = Menu::new(start_dir, &mount_points, binds)?;
+        let menu = Menu::new(start_dir, &mount_points, binds, fm_sender.clone())?;
 
         let users_left = Users::new();
         let users_right = users_left.clone();
@@ -111,6 +156,7 @@ impl Status {
             Tab::new(&args, height, users_left)?,
             Tab::new(&args, height, users_right)?,
         ];
+        let focus = Focus::default();
         Ok(Self {
             tabs,
             index,
@@ -118,6 +164,8 @@ impl Status {
             menu,
             display_settings,
             internal_settings,
+            focus,
+            fm_sender,
         })
     }
 
@@ -141,17 +189,38 @@ impl Status {
         self.internal_settings.must_quit
     }
 
+    pub fn switch_focus(&mut self) {
+        if (self.index == 0 && !self.focus.is_left()) || (self.index == 1 && self.focus.is_left()) {
+            self.focus = self.focus.switch();
+        }
+    }
+
+    pub fn set_focus_from_mode(&mut self) {
+        if self.index == 0 {
+            if matches!(self.tabs[self.index].edit_mode, Edit::Nothing) {
+                self.focus = Focus::LeftFile;
+            } else {
+                self.focus = Focus::LeftMenu;
+            }
+        } else if matches!(self.tabs[self.index].edit_mode, Edit::Nothing) {
+            self.focus = Focus::RightFile;
+        } else {
+            self.focus = Focus::RightMenu;
+        }
+    }
+
     /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn next(&mut self) {
         if !self.display_settings.dual() {
             return;
         }
-        self.index = 1 - self.index
+        self.index = 1 - self.index;
+        self.switch_focus();
     }
 
     /// Select the other tab if two are displayed. Does nother otherwise.
     pub fn prev(&mut self) {
-        self.next()
+        self.next();
     }
 
     /// Select the left or right tab depending on where the user clicked.
@@ -187,14 +256,29 @@ impl Status {
         }
     }
 
+    pub fn set_focus(&mut self, row: u16, col: u16) -> Result<Window> {
+        self.select_tab_from_col(col)?;
+        let window = self.window_from_row(row, self.term_size()?.1);
+        self.set_focus_from_window_and_index(&window);
+        Ok(window)
+    }
+
     /// Execute a click at `row`, `col`. Action depends on which window was clicked.
     pub fn click(&mut self, row: u16, col: u16, binds: &Bindings) -> Result<()> {
-        let window = self.window_from_row(row, self.term_size()?.1);
-        self.select_tab_from_col(col)?;
+        let window = self.set_focus(row, col)?;
+        self.click_action_from_window(&window, row, col, binds)?;
+        Ok(())
+    }
+
+    fn click_action_from_window(
+        &mut self,
+        window: &Window,
+        row: u16,
+        col: u16,
+        binds: &Bindings,
+    ) -> Result<()> {
         match window {
-            Window::Menu => self.menu_action(row),
             Window::Header => self.header_action(col, binds),
-            Window::Footer => self.footer_action(col, binds),
             Window::Files => {
                 if matches!(self.current_tab().display_mode, Display::Flagged) {
                     self.menu.flagged.select_row(row)
@@ -203,7 +287,23 @@ impl Status {
                 }
                 self.update_second_pane_for_preview()
             }
+            Window::Footer => self.footer_action(col, binds),
+            Window::Menu => self.menu_action(row),
         }
+    }
+
+    fn set_focus_from_window_and_index(&mut self, window: &Window) {
+        self.focus = if self.index == 0 {
+            if matches!(window, Window::Menu) {
+                Focus::LeftMenu
+            } else {
+                Focus::LeftFile
+            }
+        } else if matches!(window, Window::Menu) {
+            Focus::RightMenu
+        } else {
+            Focus::RightFile
+        };
     }
 
     pub fn second_window_height(&self) -> Result<usize> {
@@ -219,13 +319,11 @@ impl Status {
             let index = offset - 4 + self.menu.window.top;
             match self.current_tab().edit_mode {
                 Edit::Navigate(navigate) => match navigate {
-                    Navigate::BulkMenu => self.menu.bulk.set_index(index),
                     Navigate::CliApplication => self.menu.cli_applications.set_index(index),
                     Navigate::Compress => self.menu.compression.set_index(index),
                     Navigate::Context => self.menu.context.set_index(index),
                     Navigate::EncryptedDrive => self.menu.encrypted_devices.set_index(index),
                     Navigate::History => self.current_tab_mut().history.set_index(index),
-                    Navigate::Jump => self.menu.flagged.set_index(index),
                     Navigate::Marks(_) => self.menu.marks.set_index(index),
                     Navigate::RemovableDevices => self.menu.removable_devices.set_index(index),
                     Navigate::Shortcut => self.menu.shortcut.set_index(index),
@@ -243,11 +341,13 @@ impl Status {
     /// Select the left tab
     pub fn select_left(&mut self) {
         self.index = 0;
+        self.switch_focus();
     }
 
     /// Select the right tab
     pub fn select_right(&mut self) {
         self.index = 1;
+        self.switch_focus();
     }
 
     /// Refresh every disk information.
@@ -366,20 +466,43 @@ impl Status {
     fn set_second_pane_for_preview(&mut self) -> Result<()> {
         self.tabs[1].set_display_mode(Display::Preview);
         self.tabs[1].edit_mode = Edit::Nothing;
-        let users = &self.tabs[0].users;
-        let fileinfo = match self.tabs[0].display_mode {
-            Display::Flagged => {
-                let Some(path) = self.menu.flagged.selected() else {
-                    self.tabs[1].preview = Preview::empty();
-                    return Ok(());
-                };
-                FileInfo::new(path, users)?
-            }
-            _ => self.tabs[0].current_file()?,
+        let Ok(fileinfo) = self.get_correct_fileinfo_for_preview() else {
+            return Ok(());
         };
+        let left_tab = &self.tabs[0];
+        let users = &left_tab.users;
         self.tabs[1].preview = Preview::new(&fileinfo, users).unwrap_or_default();
         self.tabs[1].window.reset(self.tabs[1].preview.len());
         Ok(())
+    }
+
+    fn get_correct_fileinfo_for_preview(&mut self) -> Result<FileInfo> {
+        let left_tab = &self.tabs[0];
+        let users = &left_tab.users;
+        match self.focus {
+            Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::Marks(_))) => {
+                let (_, mark_path) = &self.menu.marks.content()[self.menu.marks.index()];
+                FileInfo::new(mark_path, users)
+            }
+            Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::Shortcut)) => {
+                let shortcut_path = &self.menu.shortcut.content()[self.menu.shortcut.index()];
+                FileInfo::new(shortcut_path, users)
+            }
+            Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::History)) => {
+                let (history_path, _) = &left_tab.history.content()[left_tab.history.index()];
+                FileInfo::new(history_path, users)
+            }
+            _ => match left_tab.display_mode {
+                Display::Flagged => {
+                    let Some(path) = self.menu.flagged.selected() else {
+                        self.tabs[1].preview = Preview::empty();
+                        return Err(anyhow!("No fileinfo to preview"));
+                    };
+                    FileInfo::new(path, users)
+                }
+                _ => left_tab.current_file(),
+            },
+        }
     }
 
     /// Set an edit mode for the tab at `index`. Refresh the view.
@@ -392,6 +515,8 @@ impl Status {
         let len = self.menu.len(edit_mode);
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
+        self.set_focus_from_mode();
+        self.menu.input_history.filter_by_mode(edit_mode);
         self.refresh_status()
     }
 
@@ -508,6 +633,7 @@ impl Status {
             sources,
             dest,
             Arc::clone(&self.internal_settings.term),
+            Arc::clone(&self.fm_sender),
         )?;
         self.clear_flags_and_reset_view()
     }
@@ -618,8 +744,16 @@ impl Status {
                 return Ok(());
             };
             tab.cd(parent)?;
-            let filename = filename_from_path(&path)?;
-            tab.search_from(filename, 0);
+            match tab.display_mode {
+                Display::Tree => {
+                    tab.tree.go(To::Path(&path));
+                }
+                Display::Directory => {
+                    let index = tab.directory.select_file(&path);
+                    tab.go_to_index(index);
+                }
+                Display::Preview | Display::Flagged => (),
+            }
         } else if path.is_dir() {
             tab.cd(&path)?;
         }
@@ -656,23 +790,51 @@ impl Status {
     /// Open a the selected file with its opener
     pub fn open_selected_file(&mut self) -> Result<()> {
         let path = self.current_tab().current_file()?.path;
-        match self.internal_settings.opener.kind(&path) {
+        self.open_single_file(&path);
+        Ok(())
+    }
+
+    pub fn open_single_file(&mut self, path: &std::path::Path) {
+        match self.internal_settings.opener.kind(path) {
             Some(Kind::Internal(Internal::NotSupported)) => {
                 let _ = self.mount_iso_drive();
             }
             Some(_) => {
-                let _ = self.internal_settings.opener.open_single(&path);
+                if self.should_this_file_be_opened_in_neovim(path) {
+                    self.update_nvim_listen_address();
+                    open_in_current_neovim(path, &self.internal_settings.nvim_server);
+                } else {
+                    let _ = self.internal_settings.opener.open_single(path);
+                }
             }
             None => (),
         }
-        Ok(())
+    }
+
+    fn should_this_file_be_opened_in_neovim(&self, path: &std::path::Path) -> bool {
+        self.internal_settings.inside_neovim
+            && matches!(Extension::matcher(extract_extension(path)), Extension::Text)
     }
 
     /// Open every flagged file with their respective opener.
     pub fn open_flagged_files(&mut self) -> Result<()> {
-        self.internal_settings
-            .opener
-            .open_multiple(self.menu.flagged.content())
+        if self
+            .menu
+            .flagged
+            .content()
+            .iter()
+            .all(|path| self.should_this_file_be_opened_in_neovim(path))
+        {
+            self.update_nvim_listen_address();
+            for path in self.menu.flagged.content().iter() {
+                open_in_current_neovim(path, &self.internal_settings.nvim_server);
+            }
+            Ok(())
+        } else {
+            self.internal_settings
+                .opener
+                .open_multiple(self.menu.flagged.content())
+        }
     }
 
     fn ensure_iso_device_is_some(&mut self) -> Result<()> {
@@ -740,9 +902,14 @@ impl Status {
                 PasswordUsage::CRYPTSETUP(PasswordKind::CRYPTSETUP),
             )
         } else {
-            self.menu
+            if let Ok(true) = self
+                .menu
                 .encrypted_devices
                 .mount_selected(&mut self.menu.password_holder)
+            {
+                self.go_to_encrypted_drive()?;
+            }
+            Ok(())
         }
     }
 
@@ -888,33 +1055,30 @@ impl Status {
 
     /// Ask the new filenames and set the confirmation mode.
     pub fn bulk_ask_filenames(&mut self) -> Result<()> {
-        self.bulk_flag_selection_for_rename()?;
         let flagged = self.flagged_in_current_dir();
         let current_path = self.current_tab_path_str();
-        let bulk_action =
-            self.menu
-                .bulk
-                .ask_filenames(flagged, &current_path, &self.internal_settings.opener)?;
-        self.set_edit_mode(
-            self.index,
-            Edit::NeedConfirmation(NeedConfirmation::BulkAction(bulk_action)),
-        )?;
+        self.menu.bulk.ask_filenames(flagged, &current_path)?;
+        if let Some(temp_file) = self.menu.bulk.temp_file() {
+            self.open_single_file(&temp_file);
+            self.menu.bulk.watch_in_thread()?;
+        }
         Ok(())
     }
 
-    fn bulk_flag_selection_for_rename(&mut self) -> Result<()> {
-        if self.menu.flagged.is_empty() && self.menu.bulk.is_rename() {
-            self.menu
-                .flagged
-                .push(self.current_tab().current_file()?.path.to_path_buf());
-        }
+    pub fn bulk_execute(&mut self) -> Result<()> {
+        self.menu.bulk.get_new_names()?;
+        self.set_edit_mode(
+            self.index,
+            Edit::NeedConfirmation(NeedConfirmation::BulkAction),
+        )?;
         Ok(())
     }
 
     /// Execute the bulk action.
     pub fn confirm_bulk_action(&mut self) -> Result<()> {
-        if let Some(paths) = self.menu.bulk.execute()? {
+        if let (Some(paths), Some(create)) = self.menu.bulk.execute()? {
             self.menu.flagged.update(paths);
+            self.menu.flagged.extend(create);
         } else {
             self.menu.flagged.clear();
         };
@@ -1004,13 +1168,13 @@ impl Status {
             NeedConfirmation::Move => self.cut_or_copy_flagged_files(CopyMove::Move),
             NeedConfirmation::Copy => self.cut_or_copy_flagged_files(CopyMove::Copy),
             NeedConfirmation::EmptyTrash => self.confirm_trash_empty(),
-            NeedConfirmation::BulkAction(_) => self.confirm_bulk_action(),
+            NeedConfirmation::BulkAction => self.confirm_bulk_action(),
         }
     }
 
     /// Execute an action when the header line was clicked.
     pub fn header_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
-        let is_right = self.index == 1;
+        let is_right = !self.focus.is_left();
         match self.current_tab().display_mode {
             Display::Preview => Ok(()),
             Display::Flagged => FlaggedHeader::new(self)?
@@ -1025,12 +1189,19 @@ impl Status {
     /// Execute an action when the footer line was clicked.
     pub fn footer_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
         log_info!("footer clicked col {col}");
-        if matches!(self.current_tab().display_mode, Display::Preview) {
-            return Ok(());
-        }
         let is_right = self.index == 1;
-        let footer = Footer::new(self, self.current_tab())?;
-        let action = footer.action(col as usize, is_right);
+        let action = match self.current_tab().display_mode {
+            Display::Preview => return Ok(()),
+            Display::Tree | Display::Directory => {
+                let footer = Footer::new(self, self.current_tab())?;
+                footer.action(col as usize, is_right).to_owned()
+            }
+            Display::Flagged => {
+                let footer = FlaggedFooter::new(self)?;
+                footer.action(col as usize, is_right).to_owned()
+            }
+        };
+        log_info!("action: {action}");
         action.matcher(self, binds)
     }
 
@@ -1059,11 +1230,6 @@ impl Status {
         self.set_edit_mode(self.index, Edit::InputSimple(InputSimple::Chmod))
     }
 
-    /// Add a char to input string, look for a possible completion.
-    pub fn input_complete(&mut self, c: char) -> Result<()> {
-        self.menu.input_complete(c, &self.tabs[self.index])
-    }
-
     /// Execute a custom event on the selected file
     pub fn run_custom_command(&mut self, string: &str) -> Result<()> {
         log_info!("custom {string}");
@@ -1090,6 +1256,40 @@ impl Status {
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
         Ok(())
+    }
+
+    /// The width of a displayed canvas.
+    pub fn canvas_width(&self) -> Result<usize> {
+        let full_width = self.internal_settings.term_size()?.0;
+        if self.display_settings.dual() && full_width >= MIN_WIDTH_FOR_DUAL_PANE {
+            Ok(full_width / 2)
+        } else {
+            Ok(full_width)
+        }
+    }
+
+    /// Set a new filter.
+    /// Doesn't reset the input.
+    pub fn set_filter(&mut self) -> Result<()> {
+        let filter = FilterKind::from_input(&self.menu.input.string());
+        self.current_tab_mut().settings.set_filter(filter);
+        // ugly hack to please borrow checker :(
+        self.tabs[self.index].directory.reset_files(
+            &self.tabs[self.index].settings,
+            &self.tabs[self.index].users,
+        )?;
+        if let Display::Tree = self.current_tab().display_mode {
+            self.current_tab_mut().make_tree(None)?;
+        }
+        let len = self.current_tab().directory.content.len();
+        self.current_tab_mut().window.reset(len);
+        Ok(())
+    }
+
+    /// input the typed char and update the filterkind.
+    pub fn input_filter(&mut self, c: char) -> Result<()> {
+        self.menu.input_insert(c)?;
+        self.set_filter()
     }
 }
 

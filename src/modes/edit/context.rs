@@ -7,7 +7,7 @@ const CONTEXT: [(&str, ActionMap); 9] = [
     ("Open with", ActionMap::Exec),
     ("Flag", ActionMap::ToggleFlag),
     ("Rename", ActionMap::Rename),
-    ("Delete", ActionMap::DeleteFile),
+    ("Delete", ActionMap::Delete),
     ("Trash", ActionMap::TrashMoveFile),
     ("Chmod", ActionMap::Chmod),
     ("New File", ActionMap::NewFile),
@@ -42,6 +42,5 @@ impl ContextMenu {
 
 type StaticStr = &'static str;
 
-// impl_selectable_content!(StaticStr, ContextMenu);
 impl_selectable!(ContextMenu);
 impl_content!(StaticStr, ContextMenu);

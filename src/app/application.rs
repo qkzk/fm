@@ -3,8 +3,6 @@ use std::sync::Mutex;
 
 use anyhow::anyhow;
 use anyhow::Result;
-use tuikit::error::TuikitError;
-use tuikit::prelude::Event;
 
 use crate::app::Displayer;
 use crate::app::Refresher;
@@ -15,6 +13,7 @@ use crate::config::load_config;
 use crate::config::START_FOLDER;
 use crate::event::EventDispatcher;
 use crate::event::EventReader;
+use crate::event::FmEvents;
 use crate::io::set_loggers;
 use crate::io::Opener;
 use crate::log_info;
@@ -53,6 +52,7 @@ impl FM {
     ///
     /// May fail if the [`tuikit::prelude::term`] can't be started or crashes
     pub fn start() -> Result<Self> {
+        let (fm_sender, fm_receiver) = std::sync::mpsc::channel::<FmEvents>();
         set_loggers()?;
         let Ok(config) = load_config(CONFIG_PATH) else {
             exit_wrong_config()
@@ -62,7 +62,8 @@ impl FM {
             startfolder = &START_FOLDER.display()
         );
         let term = Arc::new(init_term()?);
-        let event_reader = EventReader::new(term.clone());
+        let fm_sender = Arc::new(fm_sender);
+        let event_reader = EventReader::new(term.clone(), fm_receiver);
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = Opener::new(&config.terminal, &config.terminal_flag);
         let status = Arc::new(Mutex::new(Status::new(
@@ -70,10 +71,12 @@ impl FM {
             term.clone(),
             opener,
             &config.binds,
+            fm_sender.clone(),
         )?));
         drop(config);
 
-        let refresher = Refresher::new(term.clone());
+        // let refresher = Refresher::new(term.clone());
+        let refresher = Refresher::new(fm_sender);
         let displayer = Displayer::new(term, status.clone());
         Ok(Self {
             event_reader,
@@ -89,12 +92,12 @@ impl FM {
     /// # Errors
     ///
     /// May fail if the terminal crashes
-    fn poll_event(&self) -> Result<Event, TuikitError> {
+    fn poll_event(&self) -> Result<FmEvents> {
         self.event_reader.poll_event()
     }
 
     /// Update itself, changing its status.
-    fn update(&mut self, event: Event) -> Result<()> {
+    fn update(&mut self, event: FmEvents) -> Result<()> {
         match self.status.lock() {
             Ok(mut status) => {
                 self.event_dispatcher.dispatch(&mut status, event)?;

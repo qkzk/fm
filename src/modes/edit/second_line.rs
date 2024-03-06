@@ -20,12 +20,10 @@ impl SecondLine for Edit {
 impl SecondLine for Navigate {
     fn second_line(&self) -> &'static str {
         match self {
-            Self::Jump => "Pick a destination",
             Self::Trash => "",
             Self::History => "Pick a destination",
             Self::Shortcut => "Pick a destination",
             Self::Compress => "Archive and compress the flagged files using selected algorithm.",
-            Self::BulkMenu => "Pick an action",
             Self::Marks(mark_action) => mark_action.second_line(),
             Self::Context => "Pick an action",
             Self::EncryptedDrive => "m: mount   --   u: unmount   --   g: go to mount point",

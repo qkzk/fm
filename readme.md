@@ -9,7 +9,7 @@
 [docrs]: https://docs.rs/fm-tui/0.1.24
 
 ```
- A TUI file manager inspired by dired and ranger
+A TUI file manager inspired by dired and ranger
 
 Usage: fm [OPTIONS]
 
@@ -18,8 +18,9 @@ Options:
   -s, --server <SERVER>  Nvim server [default: ]
   -A, --all              Display all files (hidden)
   -l, --log              Enable logging
+      --neovim           Started inside neovim terminal emulator
   -h, --help             Print help
-  -V, --version          Print version
+  -V, --version          Print version                                                                                                                                                                              [3,8s]
 ```
 
 ## Platform

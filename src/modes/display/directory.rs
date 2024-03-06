@@ -57,13 +57,7 @@ impl Directory {
         settings: &TabSettings,
         users: &Users,
     ) -> Result<()> {
-        log_info!("entering {path}", path = path.display());
         self.content = Self::files(path, settings.show_hidden, &settings.filter, users)?;
-        log_info!(
-            "read {path}: {nb} files",
-            path = path.display(),
-            nb = self.content.len()
-        );
         settings.sort_kind.sort(&mut self.content);
         self.index = 0;
         if !self.content.is_empty() {
@@ -244,17 +238,8 @@ impl Directory {
             .map(|fileinfo| fileinfo.path.borrow())
             .collect()
     }
-
-    pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
-        self.content
-            .iter()
-            .filter(|f| f.filename.contains(input_string))
-            .map(|f| f.filename.to_string())
-            .collect()
-    }
 }
 
-// impl_selectable_content!(FileInfo, Directory);
 impl_selectable!(Directory);
 impl_content!(FileInfo, Directory);
 

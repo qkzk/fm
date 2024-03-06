@@ -4,7 +4,9 @@ use std::fs::{self, ReadDir};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 
+use crate::common::{is_program_in_path, ZOXIDE};
 use crate::event::ActionMap;
+use crate::io::execute_and_capture_output_with_path;
 use crate::modes::Leave;
 
 /// Different kind of completions
@@ -146,11 +148,27 @@ impl Completion {
 
     fn cd_update_from_input(&mut self, input_string: &str, current_path: &str) {
         self.proposals = vec![];
+        self.cd_update_from_zoxide(input_string, current_path);
         if let Some(expanded_input) = self.expand_input(input_string) {
             self.proposals.push(expanded_input);
         }
         if let Some(cannonicalized_input) = self.canonicalize_input(input_string, current_path) {
             self.proposals.push(cannonicalized_input);
+        }
+    }
+
+    fn cd_update_from_zoxide(&mut self, input_string: &str, current_path: &str) {
+        if !is_program_in_path(ZOXIDE) {
+            return;
+        }
+        let mut args = vec!["query"];
+        args.extend(input_string.split(' '));
+        let Ok(zoxide_output) = execute_and_capture_output_with_path(ZOXIDE, current_path, &args)
+        else {
+            return;
+        };
+        if !zoxide_output.is_empty() {
+            self.proposals.push(zoxide_output.trim().to_string());
         }
     }
 

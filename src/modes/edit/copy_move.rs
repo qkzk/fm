@@ -1,5 +1,6 @@
 use std::fmt::Write;
 use std::path::PathBuf;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread;
 
@@ -10,7 +11,8 @@ use tuikit::prelude::{Attr, Term};
 
 use crate::common::NOTIFY_EXECUTABLE;
 use crate::common::{is_program_in_path, random_name};
-use crate::config::{MENU_COLORS, REFRESH_EVENT};
+use crate::config::MENU_COLORS;
+use crate::event::FmEvents;
 use crate::io::{color_to_attr, execute};
 use crate::modes::human_size;
 use crate::{log_info, log_line};
@@ -138,11 +140,12 @@ pub fn copy_move<P>(
     sources: Vec<PathBuf>,
     dest: P,
     term: Arc<Term>,
+    fm_sender: Arc<Sender<FmEvents>>,
 ) -> Result<()>
 where
     P: AsRef<std::path::Path>,
 {
-    let c_term = Arc::clone(&term);
+    // let c_term = Arc::clone(&term);
     let (in_mem, pb, options) = copy_or_move.setup_progress_bar(term.term_size()?)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&in_mem, &pb, &term, process_info)
@@ -163,7 +166,7 @@ where
             }
         };
 
-        let _ = c_term.send_event(REFRESH_EVENT);
+        fm_sender.send(FmEvents::Refresh).unwrap_or_default();
 
         if let Err(e) = conflict_handler.solve_conflicts() {
             log_info!("Conflict Handler error: {e}");

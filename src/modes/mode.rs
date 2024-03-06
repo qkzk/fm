@@ -20,12 +20,6 @@ pub enum MarkAction {
     New,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum BulkAction {
-    Rename,
-    Create,
-}
-
 /// Different kind of last edition command received requiring a confirmation.
 /// Copy, move and delete require a confirmation to prevent big mistakes.
 #[derive(Clone, Copy, Debug)]
@@ -39,7 +33,7 @@ pub enum NeedConfirmation {
     /// Empty Trash
     EmptyTrash,
     /// Bulk
-    BulkAction(BulkAction),
+    BulkAction,
 }
 
 impl NeedConfirmation {
@@ -63,8 +57,7 @@ impl NeedConfirmation {
             Self::Move => {
                 format!("Files will be moved to {destination}")
             }
-            Self::BulkAction(BulkAction::Rename) => "Those files will be renamed :".to_owned(),
-            Self::BulkAction(BulkAction::Create) => "Those files will be created :".to_owned(),
+            Self::BulkAction => "Those files will be renamed or created :".to_owned(),
         }
     }
 }
@@ -86,8 +79,7 @@ impl std::fmt::Display for NeedConfirmation {
             Self::Move => write!(f, "Move files here :"),
             Self::Copy => write!(f, "Copy files here :"),
             Self::EmptyTrash => write!(f, "Empty the trash ?"),
-            Self::BulkAction(BulkAction::Rename) => write!(f, "Bulk rename :"),
-            Self::BulkAction(BulkAction::Create) => write!(f, "Bulk create :"),
+            Self::BulkAction => write!(f, "Bulk :"),
         }
     }
 }
@@ -203,8 +195,6 @@ impl Leave for InputSimple {
 /// For some of them, it's just moving there, for some it acts on some file.
 #[derive(Clone, Copy, Debug)]
 pub enum Navigate {
-    /// Navigate to a flagged file
-    Jump,
     /// Navigate back to a visited path
     History,
     /// Navigate to a predefined shortcut
@@ -219,8 +209,6 @@ pub enum Navigate {
     Marks(MarkAction),
     /// Pick a compression method
     Compress,
-    /// Bulk rename, new files, new directories
-    BulkMenu,
     /// Shell menu applications. Start a new shell with this application.
     TuiApplication,
     /// Cli info
@@ -233,18 +221,11 @@ impl fmt::Display for Navigate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Self::Marks(_) => write!(f, "Marks jump:"),
-            Self::Jump => write!(
-                f,
-                "<Enter> go to file -- <SPC> remove flag -- <u> unflag all -- <x> delete -- <X> trash -- <f> fuzzy"
-            ),
             Self::History => write!(f, "History :"),
             Self::Shortcut => write!(f, "Shortcut :"),
             Self::Trash => write!(f, "Trash :"),
             Self::TuiApplication => {
                 write!(f, "Start a new shell running a command:")
-            }
-            Self::BulkMenu => {
-                write!(f, "Bulk: rename flagged files or create new files")
             }
             Self::Compress => write!(f, "Compress :"),
             Self::EncryptedDrive => {
@@ -254,7 +235,7 @@ impl fmt::Display for Navigate {
                 write!(f, "Removable devices :")
             }
             Self::CliApplication => write!(f, "Display infos :"),
-            Self::Context=> write!(f, "Context"),
+            Self::Context => write!(f, "Context"),
         }
     }
 }
@@ -265,7 +246,7 @@ impl Leave for Navigate {
     }
 
     fn must_reset_mode(&self) -> bool {
-        !matches!(self, Self::CliApplication | Self::Context | Self::BulkMenu)
+        !matches!(self, Self::CliApplication | Self::Context)
     }
 }
 
@@ -322,6 +303,20 @@ impl Edit {
     /// Does this mode requires a cursor ?
     pub fn show_cursor(&self) -> bool {
         self.cursor_offset() != 0
+    }
+
+    pub fn binds_per_mode(&self) -> &'static str {
+        match self {
+            Self::InputCompleted(_) => "Tab: completion. shift+⬆️, shift+⬇️: previous entries, shift+⬅️: erase line. Enter: validate",
+            Self::InputSimple(InputSimple::Filter) => "Enter reset the filters",
+            Self::InputSimple(InputSimple::Sort ) => "Enter reset the sort",
+            Self::InputSimple(_) => "shift+⬆️, shift+⬇️: previous entries, shift+⬅️: erase line. Enter: validate",
+            Self::Navigate(Navigate::Marks(MarkAction::Jump)) => "Type the mark letter to jump there. up, down to navigate, ENTER to select an element",
+            Self::Navigate(Navigate::Marks(MarkAction::New)) => "Type the mark set a mark here. up, down to navigate, ENTER to select an element",
+            Self::Navigate(_) => "up, down to navigate, ENTER to select an element",
+            Self::NeedConfirmation(_) => "",
+            _ => "",
+        }
     }
 }
 

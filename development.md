@@ -711,8 +711,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] describe what was done succintly
   - [x] test every mode
 
-## Current dev
-
 ### Version 0.1.25
 
 #### Summary
@@ -854,25 +852,114 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] describe what was done succintly
   - [ ] test every mode
 
-## Version 0.1.26
+## Current dev
 
-- [ ] display all specific binds for every mode with a key ?
-- [ ] merge sort & regex, display nb of matches, completion + flag on the fly
-  - [ ] display number of matches while searching
-  - [ ] Sort refactoring
-    - [ ] entering
-    - [ ] setting
-    - [ ] leaving aka reseting
-- [ ] remove MOCP control from fm ???
-- [ ] focusable windows
-  - [ ] move display to status ? it would be easier to know where I clicked
-  - [ ] allow to change focus, only color the focused window border.
-  - [ ] Change focus with ctrl+hjkl or ctrl+arrow
-  - [ ] When a menu is opened, it should still be possible to navigate in files and preview or whatever
-  - [ ] Clicking an unfocused window should only give the focus, not execute anything
+### Version 0.1.26
+
+#### Summary
+
+- BREAKING: removed jump mode completeley.
+  You can see your flagged files in the display::flagged mode, default bind: <F>.
+- BREAKING: removed all MOCP controls from fm. What was it doing there anyway ?.
+  Those change won't break your config file. While building the application, line with reference to removed binds will be erased.
+- search with regex. You can search (Char('/')) a regex pattern. Search next (Char('f')) will use that regex.
+- left or right aligned and clickable elements in header
+- shift+up, shift+down while typing something cycle trough previous entries.
+  Those are filtered: while typing a path, suggestions are limited to previous pathes, not previous commands.
+- shift+left erases the whole input line
+- wrap tuikit::event into custom event. Use an mpsc to request refresh and bulk execution.
+  While editing filenames in bulk, the application isn't bloked anymore.
+- improve neovim filepicking. While ran from a neovim terminal emulator, use the flag `--neovim`. Every _text_ file will be opened directly in current neovim session.
+  Watchout, if you try to open text & non text files at the same time, it will run a new terminal with your text editor instead. Don't mix file kinds.
+- Dynamic filtering while typing a filter
+- Search as you type: do / then type a pattern and you will jump to the match.
+- replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
+- preview torrent files with `transmission-show`
+- preview mark, shortcut & history content in second pane while navigating
+- zoxide integration. While typing a path in "Goto mode" (default keybind "alt+g"), the first proposition will come from your zoxide answers.
+
+#### Changelog
+
+- [x] focusable windows
+
+  - [x] simple focus enum, mostly following what's being done
+  - [x] allow to change focus, only color the focused window border.
+  - [x] Change focus with ctrl+hjkl
+  - [x] Change focus with ctrl+arrow. Removed MOCP completely
+  - [x] single pane borders
+  - [x] give focus with click
+  - [x] give focus with wheel
+  - [x] remove flagged mode completely
+  - [x] merge Action::Delete & Action::DeleteFile
+  - [x] test open file from menu (context ? header ?)
+  - [x] in Display::Flagged, open a single file with o, all files with ctrl+o
+  - [x] dispatch event according to focus
+  - [x] FIX: changing focus left or right only affects the border. Moving does nothing
+  - [x] test everything
+
+- [x] setting second pane as preview should enable dual pane at the same time
+- [x] FIX: leaving mount mode with enter when device is mounted should move to it
+- [x] FIX: clicking footer row execute directory actions, even in flagged display mode
+- [x] display all specific binds for every mode.
+
+- [x] search, display nb of matches, completion + flag on the fly
+
+  - [x] use regex in search
+  - [x] save the regex ???
+  - [x] simplify navigation to skim output
+  - [x] display number of matches while searching.
+  - [x] search refactoring
+
+- [x] input history.
+
+  - [x] require logging to save on disk.
+  - [x] record every typed into as human as possible file
+  - [x] navigate history with shift+up, shift+down, ctrl+left should erase input
+
+- [x] FIX: skim in tree doesn't select the match
+- [x] remove MOCP control from fm
+- [x] allow header & footer to be right aligned
+- [x] merge both bulkthing modes. If more files, just create them. Like [oil](https://github.com/stevearc/oil.nvim)
+- [x] allow different ports in remote
+- [x] sort trash by reversed deletion date
+- [x] gradient over listing, using an iter instead of a vector
+- [x] FIX win second use 1 more line
+- [x] FIX: entering sort doesn't set focus
+- [x] update config from build file by removing references to removed binds.
+- [x] move to encrypted drive when mounting is successful
+- [x] wrap event into an MPSC to allow internal events
+  - [x] wrap
+  - [x] send/receive custom event
+  - [x] bulk: do not freeze the application while waiting for the thread to complete
+  - [x] refresher
+  - [x] copy move
+- [x] improve filepicking from neovim
+  - [x] flag to force neovim filepicking for text files
+  - [x] open single files
+  - [x] open temp file from bulk
+  - [x] open multiple files
+- [x] FIX: too many open files. pdf opened by Poppler...new_from_file aren't closed properly.
+      Open manually and and use Poppler...new_from_data.
+- [x] FIX: in dual pane mode, right aligned elements aren't displayed.
+- [x] FIX: Right pane search & filter click don't match on correct position.
+- [x] dynamic filtering while typing
+- [x] FIX: leaving (with escape) should reset the filter, not leave
+- [x] setting a filter reset the "found" searched path & index
+- [x] search as you type
+- [x] replace `tar tvf` by `bsdtar -v --list --file`. Which can preview .deb and .rpm files
+- [x] torrent with `transmission-show`
+- [x] preview mark, shortcut & history content in second pane while navigating
+- [x] zoxide support for "alt+g" aka goto mode.
+- [x] FIX: `q` while second window should exit the menu
 
 ## TODO
 
+- [ ] floating windows ?
+- [ ] rclone
+- [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
+- [ ] move as you type in Alt+g
+- [ ] use the new mpsc event parser to read commands from stdin or RPC
+- [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving
 - [ ] refactor & unify all shell commands
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
@@ -888,7 +975,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - https://github.com/KillTheMule/nvim-rs/blob/master/examples/basic.rs
   - https://neovim.io/doc/user/api.html
 
-- [ ] zoxide support
 - [ ] temporary marks
 - [ ] context switch
 - [ ] read events from stdin ? can't be done from tuikit. Would require another thread ?

@@ -10,6 +10,8 @@ pub const OPENER_PATH: &str = "~/.config/fm/opener.yaml";
 pub const TUIS_PATH: &str = "~/.config/fm/tuis.yaml";
 /// Filepath of the CLI configuration file
 pub const CLI_PATH: &str = "~/.config/fm/cli.yaml";
+/// Inputhistory
+pub const INPUT_HISTORY_PATH: &str = "~/.config/fm/log/input_history.log";
 /// Filepath of the LOG configuration file
 pub const LOG_CONFIG_PATH: &str = "~/.config/fm/logging_config.yaml";
 /// Path to the action log file
@@ -95,9 +97,9 @@ pub const SORT_LINES: [&str; 9] = [
 ];
 pub const REMOTE_LINES: [&str; 4] = [
     "Mount a directory with sshfs",
-    "Type the arguments as below, separated by a space",
+    "Type the arguments as below, separated by a space. The port is optional",
     "",
-    "username hostname remote_path",
+    "username hostname remote_path port",
 ];
 /// Chmod presentation for the second window
 pub const CHMOD_LINES: [&str; 5] = [
@@ -200,11 +202,14 @@ pub const GIO: &str = "gio";
 pub const LSOF: &str = "lsof";
 /// neovim executable
 pub const NVIM: &str = "nvim";
-/// tar executable
-pub const TAR: &str = "tar";
+/// bsdtar executable, used to display archive content
+pub const BSDTAR: &str = "bsdtar";
 /// libreoffice executable
 pub const LIBREOFFICE: &str = "libreoffice";
 /// lazygit
 pub const LAZYGIT: &str = "lazygit";
 /// duf
 pub const NCDU: &str = "ncdu";
+/// transmission-show
+pub const TRANSMISSION_SHOW: &str = "transmission-show";
+pub const ZOXIDE: &str = "zoxide";

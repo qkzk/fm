@@ -55,4 +55,3 @@ impl History {
 
 impl_selectable!(History);
 impl_content!(DoublePB, History);
-// impl_selectable_content!(DoublePB, History);

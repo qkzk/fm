@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::modes::ContentWindow;
+use crate::modes::ToPath;
 
 #[derive(Clone, Debug)]
 pub struct Flagged {
@@ -59,6 +60,12 @@ impl Flagged {
         self.select_index(index);
     }
 
+    pub fn select_path(&mut self, path: &std::path::Path) {
+        if let Some(position) = self.content.iter().position(|p| p == path) {
+            self.select_index(position)
+        }
+    }
+
     pub fn page_down(&mut self) {
         for _ in 0..10 {
             if self.index + 1 == self.content.len() {
@@ -91,6 +98,13 @@ impl Flagged {
         self.index = 0;
     }
 
+    pub fn extend(&mut self, content: Vec<PathBuf>) {
+        let mut content = content;
+        self.content.append(&mut content);
+        self.reset_window();
+        self.index = 0;
+    }
+
     pub fn clear(&mut self) {
         self.content = vec![];
         self.reset_window();
@@ -112,15 +126,18 @@ impl Flagged {
         self.content[self.index] = new_path;
     }
 
-    pub fn filenames_containing(&self, input_string: &str) -> Vec<String> {
+    pub fn filenames_matching(&self, input_string: &str) -> Vec<String> {
+        let Ok(re) = regex::Regex::new(input_string) else {
+            return vec![];
+        };
         let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
         let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
         self.content
             .iter()
             .filter_map(to_filename)
             .filter_map(to_str)
-            .filter(|&p| p.contains(input_string))
-            .map(|p| p.to_owned())
+            .filter(|f| re.is_match(f))
+            .map(|f| f.to_owned())
             .collect()
     }
 
@@ -178,24 +195,12 @@ impl Flagged {
             .map(|p| p.to_owned())
             .collect()
     }
-
-    /// Basic search in flagged mode.
-    /// Select the first path whose last component (aka its filename) contains the searched pattern.
-    pub fn search(&mut self, searched: &str) {
-        let Some(position) = self.content.iter().position(|path| {
-            path.components()
-                .last()
-                .unwrap()
-                .as_os_str()
-                .to_string_lossy()
-                .contains(searched)
-        }) else {
-            return;
-        };
-        self.select_index(position);
-    }
 }
 
-// impl_selectable_content!(PathBuf, Flagged);
+impl ToPath for PathBuf {
+    fn to_path(&self) -> &Path {
+        self.as_ref()
+    }
+}
 impl_selectable!(Flagged);
 impl_content!(PathBuf, Flagged);
