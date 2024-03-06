@@ -852,8 +852,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] describe what was done succintly
   - [ ] test every mode
 
-## Current dev
-
 ### Version 0.1.26
 
 #### Summary
@@ -951,6 +949,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] preview mark, shortcut & history content in second pane while navigating
 - [x] zoxide support for "alt+g" aka goto mode.
 - [x] FIX: `q` while second window should exit the menu
+
+## Current dev
+
+### Version 0.1.27
+
+#### Summary
+
+#### Changelog
 
 ## TODO
 
