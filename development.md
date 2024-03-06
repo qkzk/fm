@@ -958,6 +958,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Changelog
 
+- [ ] non blocking previews: use the mpsc to do the previews async (once again)
+
 ## TODO
 
 - [ ] floating windows ?
