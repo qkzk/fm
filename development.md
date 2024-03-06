@@ -880,7 +880,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Changelog
 
-- [ ] focusable windows
+- [x] focusable windows
 
   - [x] simple focus enum, mostly following what's being done
   - [x] allow to change focus, only color the focused window border.
@@ -895,7 +895,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] in Display::Flagged, open a single file with o, all files with ctrl+o
   - [x] dispatch event according to focus
   - [x] FIX: changing focus left or right only affects the border. Moving does nothing
-  - [ ] test everything
+  - [x] test everything
 
 - [x] setting second pane as preview should enable dual pane at the same time
 - [x] FIX: leaving mount mode with enter when device is mounted should move to it
@@ -954,6 +954,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
+- [ ] floating windows ?
 - [ ] rclone
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
 - [ ] move as you type in Alt+g
