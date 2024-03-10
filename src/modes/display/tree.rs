@@ -396,9 +396,8 @@ impl Tree {
                 };
                 if next_node.reachable && !self.node_has_parent_folded(next_node) {
                     return next_path.to_owned();
-                } else {
-                    current_path = next_path.clone();
                 }
+                current_path = next_path.clone();
             }
         }
     }
@@ -420,9 +419,8 @@ impl Tree {
                 };
                 if prev_node.reachable && !self.node_has_parent_folded(prev_node) {
                     return prev_path.to_owned();
-                } else {
-                    current_path = prev_path.to_owned();
                 }
+                current_path = prev_path.to_owned();
             }
         }
     }
@@ -594,7 +592,7 @@ impl Tree {
         root_path: &Path,
         nodes: &HashMap<Arc<Path>, Node>,
     ) -> TreeLines {
-        let mut stack = vec![("".to_owned(), root_path.borrow())];
+        let mut stack = vec![("".to_owned(), root_path)];
         let mut lines = vec![];
         let mut index = 0;
 

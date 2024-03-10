@@ -93,7 +93,7 @@ impl EventDispatcher {
                     Ok(())
                 }
                 Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
-                Edit::Navigate(navigate) => Self::navigate_char(navigate, status, c),
+                Edit::Navigate(navigate) => self.navigate_char(navigate, status, c),
                 Edit::Nothing if matches!(tab.display_mode, Display::Preview) => {
                     tab.reset_display_mode_and_view()
                 }
@@ -109,7 +109,7 @@ impl EventDispatcher {
         Ok(())
     }
 
-    fn navigate_char(navigate: Navigate, status: &mut Status, c: char) -> Result<()> {
+    fn navigate_char(&self, navigate: Navigate, status: &mut Status, c: char) -> Result<()> {
         match navigate {
             Navigate::Trash if c == 'x' => status.menu.trash_delete_permanently(),
             Navigate::EncryptedDrive if c == 'm' => status.mount_encrypted_drive(),
@@ -120,6 +120,10 @@ impl EventDispatcher {
             Navigate::RemovableDevices if c == 'u' => status.menu.umount_removable(),
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
+            Navigate::Shortcut if status.menu.shortcut_from_char(c) => {
+                LeaveMode::leave_edit_mode(status, &self.binds)
+            }
+
             _ => {
                 status.reset_edit_mode()?;
                 status.current_tab_mut().reset_display_mode_and_view()

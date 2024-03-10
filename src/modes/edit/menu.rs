@@ -5,6 +5,7 @@ use anyhow::Context;
 use anyhow::Result;
 
 use crate::app::Tab;
+use crate::common::index_from_a;
 use crate::common::is_program_in_path;
 use crate::common::CLI_PATH;
 use crate::common::INPUT_HISTORY_PATH;
@@ -317,6 +318,18 @@ impl Menu {
         right_path: &std::path::Path,
     ) {
         self.shortcut.refresh(mount_points, left_path, right_path)
+    }
+
+    pub fn shortcut_from_char(&mut self, c: char) -> bool {
+        let Some(index) = index_from_a(c) else {
+            return false;
+        };
+        if index < self.shortcut.len() {
+            self.shortcut.index = index;
+            self.window.scroll_to(index);
+            return true;
+        }
+        false
     }
 
     pub fn completion_reset(&mut self) {

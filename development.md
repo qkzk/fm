@@ -956,9 +956,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Summary
 
+- Go to a location with a single key in shortcut mode.
+  Shortcuts are displayed with a single key like "b /dev". Pressing `b` will move to "/dev".
+
 #### Changelog
 
+- [x] display a keybind in shortcut mode
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
+- [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 
 ## TODO
 

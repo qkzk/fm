@@ -822,13 +822,13 @@ impl<'a> WinSecondary<'a> {
             Navigate::Marks(mark_action) => self.draw_marks(canvas, mark_action),
             Navigate::RemovableDevices => self.draw_removable(canvas),
             Navigate::TuiApplication => self.draw_shell_menu(canvas),
-            Navigate::Shortcut => self.draw_destination(canvas, &self.status.menu.shortcut),
+            Navigate::Shortcut => self.draw_shortcut(canvas, &self.status.menu.shortcut),
             Navigate::Trash => self.draw_trash(canvas),
         }
     }
 
     /// Display the possible destinations from a selectable content of PathBuf.
-    fn draw_destination(
+    fn draw_shortcut(
         &self,
         canvas: &mut dyn Canvas,
         selectable: &impl Content<PathBuf>,
@@ -836,11 +836,18 @@ impl<'a> WinSecondary<'a> {
         let content = selectable.content();
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
         let len = content.len();
-        for (row, path, attr) in enumerated_colored_iter!(content)
-            .skip(top)
-            .take(min(bottom, len))
+        for (letter, (row, path, attr)) in
+            std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
+                .skip(top)
+                .take(min(bottom, len))
         {
             let attr = selectable.attr(row, &attr);
+            canvas.print_with_attr(
+                row + 1 - top + ContentWindow::WINDOW_MARGIN_TOP,
+                2,
+                &format!("{letter} "),
+                attr,
+            )?;
             Self::draw_content_line(
                 canvas,
                 row + 1 - top,
