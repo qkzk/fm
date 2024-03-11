@@ -962,6 +962,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 #### Changelog
 
 - [x] display a keybind in shortcut mode
+- [x] add a shortcut to the trash folder
+- [x] less copies while creating shortcuts
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 

@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::common::current_uid;
+use crate::common::{current_uid, TRASH_FOLDER_FILES};
 use crate::common::{CONFIG_FOLDER, HARDCODED_SHORTCUTS};
 use crate::impl_content;
 use crate::impl_selectable;
@@ -28,10 +28,11 @@ impl Shortcut {
     #[must_use]
     pub fn new(start_folder: &Path) -> Self {
         let mut shortcuts = Self::hardcoded_shortcuts();
-        shortcuts = Self::with_home_path(shortcuts);
-        shortcuts = Self::with_config_folder(shortcuts);
-        shortcuts = Self::with_start_folder(shortcuts, start_folder);
-        shortcuts = Self::with_git_root(shortcuts);
+        Self::push_home_path(&mut shortcuts);
+        Self::push_trash_folder(&mut shortcuts);
+        Self::push_config_folder(&mut shortcuts);
+        Self::push_start_folder(&mut shortcuts, start_folder);
+        Self::push_git_root(&mut shortcuts);
         let non_mount_size = shortcuts.len();
         Self {
             content: shortcuts,
@@ -41,31 +42,34 @@ impl Shortcut {
     }
 
     fn hardcoded_shortcuts() -> Vec<PathBuf> {
-        HARDCODED_SHORTCUTS
-            .iter()
-            .map(PathBuf::from)
-            .collect()
+        HARDCODED_SHORTCUTS.iter().map(PathBuf::from).collect()
     }
 
     /// Insert a shortcut to home directory of the current user.
-    fn with_home_path(mut shortcuts: Vec<PathBuf>) -> Vec<PathBuf> {
+    fn push_home_path(shortcuts: &mut Vec<PathBuf>) {
         if let Ok(home_path) = PathBuf::from_str(shellexpand::tilde("~").borrow()) {
             shortcuts.push(home_path);
         }
-        shortcuts
+    }
+
+    /// Insert a shortcut to trash directory of the current user.
+    fn push_trash_folder(shortcuts: &mut Vec<PathBuf>) {
+        if let Ok(trash_path) = PathBuf::from_str(shellexpand::tilde(TRASH_FOLDER_FILES).borrow()) {
+            if trash_path.exists() {
+                shortcuts.push(trash_path);
+            }
+        }
     }
 
     /// Insert a shortcut to config file directory of the current user.
-    fn with_config_folder(mut shortcuts: Vec<PathBuf>) -> Vec<PathBuf> {
+    fn push_config_folder(shortcuts: &mut Vec<PathBuf>) {
         if let Ok(config_folder) = PathBuf::from_str(shellexpand::tilde(CONFIG_FOLDER).borrow()) {
             shortcuts.push(config_folder);
         }
-        shortcuts
     }
 
-    fn with_start_folder(mut shortcuts: Vec<PathBuf>, start_folder: &Path) -> Vec<PathBuf> {
+    fn push_start_folder(shortcuts: &mut Vec<PathBuf>, start_folder: &Path) {
         shortcuts.push(start_folder.to_owned());
-        shortcuts
     }
 
     fn git_root_or_cwd() -> PathBuf {
@@ -75,9 +79,8 @@ impl Shortcut {
         )
     }
 
-    fn with_git_root(mut shortcuts: Vec<PathBuf>) -> Vec<PathBuf> {
+    fn push_git_root(shortcuts: &mut Vec<PathBuf>) {
         shortcuts.push(Self::git_root_or_cwd());
-        shortcuts
     }
 
     fn clear_doublons(&mut self) {
