@@ -170,7 +170,7 @@ fn get_new_filenames(temp_file: &Path) -> Result<Vec<String>> {
 
     let new_names: Vec<String> = reader
         .lines()
-        .flatten()
+        .map_while(Result::ok)
         .map(|line| line.trim().to_owned())
         .filter(|line| !line.is_empty())
         .collect();
