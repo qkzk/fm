@@ -17,7 +17,7 @@ const CONTEXT: [(&str, ActionMap); 10] = [
 
 pub struct ContextMenu {
     pub content: Vec<&'static str>,
-    pub index: usize,
+    index: usize,
     actions: Vec<&'static ActionMap>,
 }
 

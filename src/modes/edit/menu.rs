@@ -325,7 +325,7 @@ impl Menu {
             return false;
         };
         if index < self.shortcut.len() {
-            self.shortcut.index = index;
+            self.shortcut.set_index(index);
             self.window.scroll_to(index);
             return true;
         }
@@ -337,7 +337,7 @@ impl Menu {
             return false;
         };
         if index < self.context.len() {
-            self.context.index = index;
+            self.context.set_index(index);
             self.window.scroll_to(index);
             return true;
         }
