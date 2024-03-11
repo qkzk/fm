@@ -916,8 +916,16 @@ impl<'a> WinSecondary<'a> {
         let selectable = &self.status.menu.context;
         canvas.print_with_attr(1, 2, "Pick an action.", color_to_attr(MENU_COLORS.second))?;
         let content = selectable.content();
-        for (row, desc, attr) in enumerated_colored_iter!(content) {
+        for (letter, (row, desc, attr)) in
+            std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
+        {
             let attr = selectable.attr(row, &attr);
+            canvas.print_with_attr(
+                row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
+                2,
+                &format!("{letter} "),
+                attr,
+            )?;
             Self::draw_content_line(canvas, row + 1, desc, attr)?;
         }
         Ok(())

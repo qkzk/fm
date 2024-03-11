@@ -958,10 +958,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - Go to a location with a single key in shortcut mode.
   Shortcuts are displayed with a single key like "b /dev". Pressing `b` will move to "/dev".
+- Execute an action with a single keypress in context mode. Same as above !
 
 #### Changelog
 
-- [x] display a keybind in shortcut mode
+- [x] display a keybind in shortcut & context mode
 - [x] add a shortcut to the trash folder
 - [x] less copies while creating shortcuts
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)

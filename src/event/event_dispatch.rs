@@ -123,6 +123,9 @@ impl EventDispatcher {
             Navigate::Shortcut if status.menu.shortcut_from_char(c) => {
                 LeaveMode::leave_edit_mode(status, &self.binds)
             }
+            Navigate::Context if status.menu.context_from_char(c) => {
+                LeaveMode::leave_edit_mode(status, &self.binds)
+            }
 
             _ => {
                 status.reset_edit_mode()?;

@@ -332,6 +332,18 @@ impl Menu {
         false
     }
 
+    pub fn context_from_char(&mut self, c: char) -> bool {
+        let Some(index) = index_from_a(c) else {
+            return false;
+        };
+        if index < self.context.len() {
+            self.context.index = index;
+            self.window.scroll_to(index);
+            return true;
+        }
+        false
+    }
+
     pub fn completion_reset(&mut self) {
         self.completion.reset();
     }
