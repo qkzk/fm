@@ -965,6 +965,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] display a keybind in shortcut & context mode
 - [x] add a shortcut to the trash folder
 - [x] less copies while creating shortcuts
+- [x] FIX: replace `DeleteFile` by `Delete` in config file
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 
