@@ -129,6 +129,13 @@ where
 /// #FF00FF -> Color::default()
 /// Unreadable colors are replaced by `Color::default()` which is white.
 fn parse_rgb_color(color: &str) -> Color {
+    if let Some(triplet) = parse_rgb_triplet(color) {
+        return Color::Rgb(triplet.0, triplet.1, triplet.2);
+    }
+    Color::default()
+}
+
+fn parse_rgb_triplet(color: &str) -> Option<(u8, u8, u8)> {
     let color = color.to_lowercase();
     if color.starts_with("rgb(") && color.ends_with(')') {
         let triplet: Vec<u8> = color
@@ -139,13 +146,11 @@ fn parse_rgb_color(color: &str) -> Color {
             .filter_map(|s| s.parse().ok())
             .collect();
         if triplet.len() == 3 {
-            return Color::Rgb(triplet[0], triplet[1], triplet[2]);
+            return Some((triplet[0], triplet[1], triplet[2]));
         }
     }
-
-    Color::default()
+    None
 }
-
 macro_rules! update_attribute {
     ($self_attr:expr, $yaml:ident, $key:expr) => {
         if let Some(attr) = read_yaml_value($yaml, $key) {
@@ -153,6 +158,7 @@ macro_rules! update_attribute {
         }
     };
 }
+
 fn read_yaml_value(yaml: &serde_yaml::value::Value, key: &str) -> Option<String> {
     yaml[key].as_str().map(|s| s.to_string())
 }
@@ -232,6 +238,7 @@ lazy_static::lazy_static! {
     /// Defines a palette which will color the "normal" files based on their extension.
     /// We try to read a yaml value and pick one of 3 palettes :
     /// "red-green", "red-blue" and "green-blue" which is the default.
+    /// "custom" will create a gradient from start_palette to end_palette. Both values should be "rgb(u8, u8, u8)".
     pub static ref COLORER: fn(usize) -> Color = {
         let mut colorer = Colorer::color_green_blue as fn(usize) -> Color;
         if let Ok(file) = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(CONFIG_PATH).to_string())) {
@@ -240,6 +247,7 @@ lazy_static::lazy_static! {
                     match palette {
                         "red-blue" => {colorer = Colorer::color_red_blue as fn(usize) -> Color;},
                         "red-green" => {colorer = Colorer::color_red_green as fn(usize) -> Color;},
+                        "custom" => {colorer = Colorer::color_custom as fn(usize) -> Color;}
                         _ => ()
                     }
                 }
@@ -247,6 +255,25 @@ lazy_static::lazy_static! {
         };
         colorer
     };
+}
+
+fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
+    let config_path = &shellexpand::tilde(CONFIG_PATH).to_string();
+    let config_path = std::path::Path::new(config_path);
+
+    if let Ok(file) = File::open(config_path) {
+        if let Ok(yaml) = serde_yaml::from_reader::<File, serde_yaml::Value>(file) {
+            if let Some(color) = yaml.get(key)?.as_str() {
+                return parse_rgb_triplet(color);
+            }
+        }
+    }
+    None
+}
+
+lazy_static::lazy_static! {
+  pub static ref START_COLOR: (u8, u8, u8) = load_color_from_config("start_palette").unwrap_or((40, 40, 40));
+  pub static ref END_COLOR: (u8, u8, u8) = load_color_from_config("end_palette").unwrap_or((180, 180, 180));
 }
 
 lazy_static::lazy_static! {

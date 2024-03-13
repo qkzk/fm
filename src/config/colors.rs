@@ -2,7 +2,7 @@ use std::hash::Hasher;
 
 use tuikit::attr::Color;
 
-use crate::config::COLORER;
+use crate::config::{COLORER, END_COLOR, START_COLOR};
 
 /// No attr but 3 static methods.
 pub struct Colorer {}
@@ -33,6 +33,11 @@ impl Colorer {
             .chain((128..255).map(|g| Color::Rgb(255, g, 0)))
             .nth(hash % 254)
             .unwrap()
+    }
+
+    pub fn color_custom(hash: usize) -> Color {
+        let lerp = lerp_color(*START_COLOR, *END_COLOR, (hash % 255) as u8);
+        Color::Rgb(lerp.0, lerp.1, lerp.2)
     }
 }
 
@@ -112,4 +117,15 @@ impl Gradient {
     pub fn gradient(&self) -> impl Iterator<Item = Color> + '_ {
         (0..self.len).map(move |step| self.gradient_step(step).as_tuikit())
     }
+}
+
+pub fn lerp_color(c1: (u8, u8, u8), c2: (u8, u8, u8), step: u8) -> (u8, u8, u8) {
+    let step = step as f32;
+    let (r1, g1, b1) = (c1.0 as f32, c1.1 as f32, c1.2 as f32);
+    let (r2, g2, b2) = (c2.0 as f32, c2.1 as f32, c2.2 as f32);
+    (
+        (r1 + (r2 - r1) * step / 255.0).round() as u8,
+        (g1 + (g2 - g1) * step / 255.0).round() as u8,
+        (b1 + (b2 - b1) * step / 255.0).round() as u8,
+    )
 }

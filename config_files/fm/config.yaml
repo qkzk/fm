@@ -10,6 +10,10 @@ terminal: st
 # Define a palette for the "normal" files. 
 # Accepted values are "red-green", "red-blue" and "green-blue"
 # other value will lead to the default palette which is "green-blue".
+# A palette can also be customized with 2 more attributes.
+# palette: custom
+# start_palette: "rgb(255, 110, 128)"
+# end_palette: "rgb(123, 100, 255)"
 palette: green-blue
 
 # Colors for "non normal" files. The list is below.
