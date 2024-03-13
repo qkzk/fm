@@ -966,6 +966,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] add a shortcut to the trash folder
 - [x] less copies while creating shortcuts
 - [x] FIX: replace `DeleteFile` by `Delete` in config file
+- [ ] Custom colors for palette. A lot of work. We can't cast closure that capture environement...
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 
