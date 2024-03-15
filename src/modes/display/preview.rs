@@ -9,6 +9,7 @@ use std::slice::Iter;
 
 use anyhow::{anyhow, Context, Result};
 use content_inspector::{inspect, ContentType};
+use pdfium_render::prelude::*;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
@@ -904,43 +905,90 @@ impl Ueberzug {
         Ok(())
     }
 
+    fn make_pdf_thumbnail(path: &Path, page_number: usize) -> Result<usize> {
+        log_info!("make_pdf_thumbnail start");
+        let page_number = (page_number % 65_535) as u16;
+        let pdfium = Pdfium::new(
+            Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path("./"))
+                .or_else(|_| Pdfium::bind_to_system_library())?,
+        );
+        log_info!("loaded pdfium library");
+        // Open the PDF document
+        let doc = pdfium.load_pdf_from_file(path, None)?;
+        log_info!("pdfium opened doc");
+
+        // Check if the number of pages is valid
+        let num_pages = doc.pages().len();
+        if page_number >= num_pages {
+            return Err(anyhow!(
+                "Invalid page number: {}. Total pages: {}",
+                page_number,
+                num_pages
+            ));
+        }
+        log_info!("pdfium got page number {num_pages}");
+
+        // Get the desired page
+        let page = doc.pages().get(page_number)?;
+
+        log_info!("pdfium go page {page_number}");
+
+        let render_config = PdfRenderConfig::new()
+            .set_target_width(600)
+            .set_maximum_height(600)
+            .rotate_if_landscape(PdfPageRenderRotation::Degrees90, true);
+
+        log_info!("pdfium set render config");
+
+        // Render the page to a bitmap
+        page.render_with_config(&render_config)?
+            .as_image() // Renders this page to an image::DynamicImage...
+            .as_rgba8()
+            .context("couldn't convert to rgba8")? // ... then converts it to an image::Image...
+            .save_with_format(THUMBNAIL_PATH, image::ImageFormat::Png)?;
+
+        log_info!("pdfium exported png");
+
+        Ok(num_pages as usize)
+    }
+
     /// Creates the thumbnail for the `index` page.
     /// Returns the number of pages of the pdf.
     ///
     /// It may fail (and surelly crash the app) if the pdf is password protected.
     /// We pass a generic password which is hardcoded.
-    fn make_pdf_thumbnail(pdf_path: &Path, index: usize) -> Result<usize> {
-        let mut data: Vec<u8> = std::fs::read(pdf_path)?;
-        // let doc: poppler::PopplerDocument =
-        //     poppler::PopplerDocument::new_from_file(pdf_path, "upw")?;
-        let doc: poppler::PopplerDocument =
-            poppler::PopplerDocument::new_from_data(&mut data[..], "upw")?;
-        let length = doc.get_n_pages();
-        if index >= length {
-            return Err(anyhow!(
-                "Poppler: index {index} >= number of page {length}."
-            ));
-        }
-        let page: poppler::PopplerPage = doc
-            .get_page(index)
-            .context("poppler couldn't extract page")?;
-        let (w, h) = page.get_size();
-        let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, w as i32, h as i32)?;
-        let ctx = cairo::Context::new(&surface)?;
-        ctx.save()?;
-        page.render(&ctx);
-        ctx.restore()?;
-        ctx.show_page()?;
-        let Ok(mut file) = std::fs::File::create(THUMBNAIL_PATH) else {
-            return Ok(0);
-        };
-        surface.write_to_png(&mut file)?;
-        surface.finish();
-        // those drops should be useless
-        drop(ctx);
-        drop(surface);
-        Ok(length)
-    }
+    // fn make_pdf_thumbnail(pdf_path: &Path, index: usize) -> Result<usize> {
+    //     let mut data: Vec<u8> = std::fs::read(pdf_path)?;
+    //     // let doc: poppler::PopplerDocument =
+    //     //     poppler::PopplerDocument::new_from_file(pdf_path, "upw")?;
+    //     let doc: poppler::PopplerDocument =
+    //         poppler::PopplerDocument::new_from_data(&mut data[..], "upw")?;
+    //     let length = doc.get_n_pages();
+    //     if index >= length {
+    //         return Err(anyhow!(
+    //             "Poppler: index {index} >= number of page {length}."
+    //         ));
+    //     }
+    //     let page: poppler::PopplerPage = doc
+    //         .get_page(index)
+    //         .context("poppler couldn't extract page")?;
+    //     let (w, h) = page.get_size();
+    //     let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, w as i32, h as i32)?;
+    //     let ctx = cairo::Context::new(&surface)?;
+    //     ctx.save()?;
+    //     page.render(&ctx);
+    //     ctx.restore()?;
+    //     ctx.show_page()?;
+    //     let Ok(mut file) = std::fs::File::create(THUMBNAIL_PATH) else {
+    //         return Ok(0);
+    //     };
+    //     surface.write_to_png(&mut file)?;
+    //     surface.finish();
+    //     // those drops should be useless
+    //     drop(ctx);
+    //     drop(surface);
+    //     Ok(length)
+    // }
 
     fn make_video_thumbnail(video_path: &Path) -> Result<()> {
         let path_str = video_path

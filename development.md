@@ -972,6 +972,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] common parser
   - [ ] common description of what is an acceptable color in config file
   - [ ] don't break compatibiliy
+- [ ] perfomance
+- [ ] flagging a file moves down but doesn't update the preview
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 
