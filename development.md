@@ -972,6 +972,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] common parser
   - [ ] common description of what is an acceptable color in config file
   - [ ] don't break compatibiliy
+- [ ] use pdftoppm & pdfinfo to preview pdfs.
+      poppler can crash if the pdf is encrypted for writing but not for reading.
+      I couldn't find a valid alternative for poppler. Finally i prefered to use external binaries
 - [ ] perfomance
 - [ ] flagging a file moves down but doesn't update the preview
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)

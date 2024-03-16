@@ -61,6 +61,8 @@ pub const LOG_FIRST_SENTENCE: &str = " Logs: ";
 pub const LOG_SECOND_SENTENCE: &str = " Last actions affecting the file tree";
 /// Ueberzug image thumbnails
 pub const THUMBNAIL_PATH: &str = "/tmp/fm_thumbnail.png";
+/// Ueberzug image for pdf
+pub const THUMBNAIL_PDF_PATH: &str = "/tmp/fm_thumbnail";
 /// Libreoffice pdf output
 pub const CALC_PDF_PATH: &str = "/tmp/fm_calc.pdf";
 /// Array of hardcoded shortcuts with standard *nix paths.
@@ -212,4 +214,9 @@ pub const LAZYGIT: &str = "lazygit";
 pub const NCDU: &str = "ncdu";
 /// transmission-show
 pub const TRANSMISSION_SHOW: &str = "transmission-show";
+/// Zoxide executable
 pub const ZOXIDE: &str = "zoxide";
+/// pdftoppm
+pub const PDFTOPPM: &str = "pdftoppm";
+/// pdinfo
+pub const PDFINFO: &str = "pdfinfo";

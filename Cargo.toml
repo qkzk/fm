@@ -65,6 +65,3 @@ zip = "0.6.4"
 tokio = "1"
 ueberzug = "0.1.0"
 unicode-segmentation = "1.10.1"
-pdfium-render = {version="0.8.19", features=["default"]}
-png = "0.17.13"
-image = ">= 0.24.0"
