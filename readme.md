@@ -372,6 +372,8 @@ Most of the openers and tui applications are configurable from config files. Som
 - [fontimage](https://fontforge.org/docs/fontutils/fontimage.html) preview fonts by creating a thumbnail
 - [rsvg-convert](https://github.com/brion/librsvg) preview svg by creating a thumbnail
 - [libreoffice](https://www.libreoffice.org) preview open & MS-office documents
+- [pdftoppm](https://poppler.freedesktop.org/) to convert a .pdf into a displayable .jpg
+- [pdfinfo](https://poppler.freedesktop.org/) to get the number of pages of a pdf file
 
 ## Contribution
 

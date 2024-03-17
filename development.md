@@ -976,7 +976,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       poppler can crash if the pdf is encrypted for writing but not for reading.
 
   - [x] use png for svg & fonts, jpg otherwise. Seems to be faster
-  - [ ] readme : pdftoppm, pdfinfo
+  - [x] readme : pdftoppm, pdfinfo
 
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)

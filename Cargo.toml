@@ -30,7 +30,6 @@ fs_extra = "1.2.0"
 
 [dependencies]
 anyhow = "1.0.28"
-# cairo-rs = { version = "0.15", features = ["png", "pdf"] }
 chrono = "0.4.31"
 clap = { version = "4.0.2", features = ["derive"] }
 content_inspector = "0.2.4"
@@ -44,8 +43,6 @@ log4rs = { version = "1.2.0", features = ["rolling_file_appender", "compound_pol
 nvim-rs = { version = "0.3", features = ["use_tokio"] }
 pathdiff = "0.2.1"
 pgs-files = "0.0.7"
-# poppler = "0.3.2"
-rand = "0.8.5"
 regex = "1.6.0"
 rust-lzma = "0.5.1"
 sanitize-filename = "0.4.0"
@@ -59,9 +56,9 @@ strum_macros = "0.24.3"
 syntect = "5.0.0"
 sysinfo = "0.29.0"
 tar = "0.4.38"
-tuikit = "0.5.0"
-url-escape = "0.1.1"
-zip = "0.6.4"
 tokio = "1"
+tuikit = "0.5.0"
 ueberzug = "0.1.0"
 unicode-segmentation = "1.10.1"
+url-escape = "0.1.1"
+zip = "0.6.4"
