@@ -174,7 +174,7 @@ impl<'a> WinMain<'a> {
     fn draw_files(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
         let _ = WinMainSecondLine::new(self.status, self.tab).draw(canvas);
         self.draw_files_content(canvas)?;
-        if !self.attributes.has_window_below {
+        if !self.attributes.has_window_below && !self.attributes.is_right() {
             let _ = LogLine {}.draw(canvas);
         }
         Ok(None)

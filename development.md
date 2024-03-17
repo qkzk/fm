@@ -959,6 +959,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Go to a location with a single key in shortcut mode.
   Shortcuts are displayed with a single key like "b /dev". Pressing `b` will move to "/dev".
 - Execute an action with a single keypress in context mode. Same as above !
+- Use pdftoppm & pdfinfo to preview pdf files. Faster, less code, more stable.
+  Doesn't crash anymore when a .pdf file is encrypted but can be read by every one.
 
 #### Changelog
 
@@ -982,8 +984,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: flagging a file moves down but doesn't update the preview
-- [ ] FIX: alt + g, type, complete, back crash
-- [ ] FIX: Logline should only be displayed on left tab
+- [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
+- [x] FIX: Logline should only be displayed on left tab
 
 ## TODO
 
