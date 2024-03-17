@@ -60,7 +60,9 @@ pub const LOG_FIRST_SENTENCE: &str = " Logs: ";
 /// Description of the content below, aka what is logged there.
 pub const LOG_SECOND_SENTENCE: &str = " Last actions affecting the file tree";
 /// Ueberzug image thumbnails
-pub const THUMBNAIL_PATH: &str = "/tmp/fm_thumbnail.png";
+pub const THUMBNAIL_PATH_PNG: &str = "/tmp/fm_thumbnail.png";
+/// Ueberzug image thumbnails
+pub const THUMBNAIL_PATH_JPG: &str = "/tmp/fm_thumbnail.jpg";
 /// Ueberzug image for pdf
 pub const THUMBNAIL_PDF_PATH: &str = "/tmp/fm_thumbnail";
 /// Libreoffice pdf output

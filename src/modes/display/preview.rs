@@ -16,8 +16,8 @@ use tuikit::attr::{Attr, Color};
 
 use crate::common::{
     CALC_PDF_PATH, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
-    PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS, THUMBNAIL_PATH, THUMBNAIL_PDF_PATH,
-    TRANSMISSION_SHOW, UEBERZUG,
+    PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS, THUMBNAIL_PATH_JPG, THUMBNAIL_PATH_PNG,
+    THUMBNAIL_PDF_PATH, TRANSMISSION_SHOW, UEBERZUG,
 };
 use crate::log_info;
 use crate::modes::ContentWindow;
@@ -810,15 +810,22 @@ pub struct Ueberzug {
 }
 
 impl Ueberzug {
-    fn thumbnail(original: PathBuf, kind: UeberzugKind) -> Self {
+    fn thumbnail(original: PathBuf, kind: UeberzugKind, thumbnail_path: Option<String>) -> Self {
         let filename = original
             .file_name()
             .unwrap_or_default()
             .to_string_lossy()
             .to_string();
+
+        let path = if let Some(thumbnail_path) = thumbnail_path {
+            thumbnail_path
+        } else {
+            THUMBNAIL_PATH_JPG.to_owned()
+        };
+
         Self {
             original,
-            path: THUMBNAIL_PATH.to_owned(),
+            path,
             filename,
             kind,
             ueberzug: ueberzug::Ueberzug::new(),
@@ -857,17 +864,29 @@ impl Ueberzug {
 
     fn video_thumbnail(video_path: &Path) -> Result<Self> {
         Self::make_video_thumbnail(video_path)?;
-        Ok(Self::thumbnail(video_path.to_owned(), UeberzugKind::Video))
+        Ok(Self::thumbnail(
+            video_path.to_owned(),
+            UeberzugKind::Video,
+            None,
+        ))
     }
 
     fn font_thumbnail(font_path: &Path) -> Result<Self> {
         Self::make_font_thumbnail(font_path)?;
-        Ok(Self::thumbnail(font_path.to_owned(), UeberzugKind::Font))
+        Ok(Self::thumbnail(
+            font_path.to_owned(),
+            UeberzugKind::Font,
+            Some(THUMBNAIL_PATH_PNG.to_owned()),
+        ))
     }
 
     fn svg_thumbnail(svg_path: &Path) -> Result<Self> {
         Self::make_svg_thumbnail(svg_path)?;
-        Ok(Self::thumbnail(svg_path.to_owned(), UeberzugKind::Svg))
+        Ok(Self::thumbnail(
+            svg_path.to_owned(),
+            UeberzugKind::Svg,
+            Some(THUMBNAIL_PATH_PNG.to_owned()),
+        ))
     }
 
     fn office_thumbnail(calc_path: &Path) -> Result<Self> {
@@ -890,7 +909,7 @@ impl Ueberzug {
         let calc_pdf_path = PathBuf::from(CALC_PDF_PATH);
         let length = Self::get_pdf_length(&calc_pdf_path)?;
         Self::make_pdf_thumbnail(&calc_pdf_path, 0)?;
-        let mut thumbnail = Self::thumbnail(calc_pdf_path.to_owned(), UeberzugKind::Pdf);
+        let mut thumbnail = Self::thumbnail(calc_pdf_path.to_owned(), UeberzugKind::Pdf, None);
         thumbnail.length = length;
         Ok(thumbnail)
     }
@@ -898,7 +917,7 @@ impl Ueberzug {
     fn pdf_thumbnail(pdf_path: &Path) -> Result<Self> {
         let length = Self::get_pdf_length(pdf_path)?;
         Self::make_pdf_thumbnail(pdf_path, 0)?;
-        let mut thumbnail = Self::thumbnail(pdf_path.to_owned(), UeberzugKind::Pdf);
+        let mut thumbnail = Self::thumbnail(pdf_path.to_owned(), UeberzugKind::Pdf, None);
         thumbnail.length = length;
         Ok(thumbnail)
     }
@@ -920,7 +939,9 @@ impl Ueberzug {
             PDFTOPPM,
             &[
                 "-singlefile",
-                "-png",
+                "-jpeg",
+                "-jpegopt",
+                "quality=75",
                 "-f",
                 (page_number + 1).to_string().as_ref(),
                 path.to_string_lossy().to_string().as_ref(),
@@ -958,7 +979,7 @@ impl Ueberzug {
                 "thumbnail",
                 "-frames:v",
                 "1",
-                THUMBNAIL_PATH,
+                THUMBNAIL_PATH_JPG,
                 "-y",
             ],
         )
@@ -968,7 +989,7 @@ impl Ueberzug {
         let path_str = font_path
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
-        Self::make_thumbnail(FONTIMAGE, &["-o", THUMBNAIL_PATH, path_str])
+        Self::make_thumbnail(FONTIMAGE, &["-o", THUMBNAIL_PATH_PNG, path_str])
     }
 
     fn make_svg_thumbnail(svg_path: &Path) -> Result<()> {
@@ -977,7 +998,7 @@ impl Ueberzug {
             .context("make_thumbnail: couldn't parse the path into a string")?;
         Self::make_thumbnail(
             RSVG_CONVERT,
-            &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH],
+            &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH_PNG],
         )
     }
 

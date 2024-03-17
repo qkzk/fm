@@ -11,7 +11,7 @@ use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::common::{CALC_PDF_PATH, THUMBNAIL_PATH};
+use crate::common::{CALC_PDF_PATH, THUMBNAIL_PATH_JPG};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::human_size;
@@ -204,7 +204,7 @@ pub fn random_name() -> String {
 
 /// Clear the temporary file used by fm for previewing.
 pub fn clear_tmp_file() {
-    let _ = std::fs::remove_file(THUMBNAIL_PATH);
+    let _ = std::fs::remove_file(THUMBNAIL_PATH_JPG);
     let _ = std::fs::remove_file(CALC_PDF_PATH);
 }
 
