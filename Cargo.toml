@@ -43,6 +43,7 @@ log4rs = { version = "1.2.0", features = ["rolling_file_appender", "compound_pol
 nvim-rs = { version = "0.3", features = ["use_tokio"] }
 pathdiff = "0.2.1"
 pgs-files = "0.0.7"
+rand = "0.8.5"
 regex = "1.6.0"
 rust-lzma = "0.5.1"
 sanitize-filename = "0.4.0"
