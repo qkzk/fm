@@ -976,11 +976,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       poppler can crash if the pdf is encrypted for writing but not for reading.
 
   - [x] use png for svg & fonts, jpg otherwise. Seems to be faster
+  - [ ] readme : pdftoppm, pdfinfo
 
 - [ ] perfomance
-- [ ] flagging a file moves down but doesn't update the preview
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
+- [ ] FIX: flagging a file moves down but doesn't update the preview
+- [ ] FIX: alt + g, type, complete, back crash
+- [ ] FIX: Logline should only be displayed on left tab
 
 ## TODO
 
