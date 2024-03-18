@@ -119,13 +119,13 @@ impl Gradient {
     }
 }
 
-pub fn lerp_color(c1: (u8, u8, u8), c2: (u8, u8, u8), step: u8) -> (u8, u8, u8) {
-    let step = step as f32;
-    let (r1, g1, b1) = (c1.0 as f32, c1.1 as f32, c1.2 as f32);
-    let (r2, g2, b2) = (c2.0 as f32, c2.1 as f32, c2.2 as f32);
+fn lerp_color(start: (u8, u8, u8), end: (u8, u8, u8), step: u8) -> (u8, u8, u8) {
+    let step = step as f32 / 255.0;
+    let (r1, g1, b1) = (start.0 as f32, start.1 as f32, start.2 as f32);
+    let (r2, g2, b2) = (end.0 as f32, end.1 as f32, end.2 as f32);
     (
-        (r1 + (r2 - r1) * step / 255.0).round() as u8,
-        (g1 + (g2 - g1) * step / 255.0).round() as u8,
-        (b1 + (b2 - b1) * step / 255.0).round() as u8,
+        (r1 + (r2 - r1) * step).round() as u8,
+        (g1 + (g2 - g1) * step).round() as u8,
+        (b1 + (b2 - b1) * step).round() as u8,
     )
 }

@@ -980,6 +980,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] use png for svg & fonts, jpg otherwise. Seems to be faster
   - [x] readme : pdftoppm, pdfinfo
 
+- [ ] Allow $TERMINAL as an option in config file
 - [x] FIX: flagging a file moves down but doesn't update the preview
 - [x] FIX: Logline should only be displayed on left tab
 - [ ] perfomance
