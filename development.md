@@ -987,6 +987,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
+- [ ] after newfile, newdir, select it
+- [ ] add F+x binds from ranger
 
 ## TODO
 
