@@ -207,10 +207,14 @@ impl LeaveMode {
     /// Filename is sanitized before processing.
     pub fn new_file(status: &mut Status) -> Result<()> {
         match NodeCreation::Newfile.create(status) {
-            Ok(()) => (),
+            Ok(path) => {
+                status.menu.flagged.push(path.clone());
+                status.refresh_tabs()?;
+                status.current_tab_mut().go_to_file(path);
+            }
             Err(error) => log_info!("Error creating file. Error: {error}",),
         }
-        status.refresh_tabs()
+        Ok(())
     }
 
     /// Creates a new directory with input string as name.
@@ -220,10 +224,14 @@ impl LeaveMode {
     /// Directory name is sanitized before processing.
     pub fn new_dir(status: &mut Status) -> Result<()> {
         match NodeCreation::Newdir.create(status) {
-            Ok(()) => (),
+            Ok(path) => {
+                status.menu.flagged.push(path.clone());
+                status.refresh_tabs()?;
+                status.current_tab_mut().go_to_file(path);
+            }
             Err(error) => log_info!("Error creating directory. Error: {error}",),
         }
-        status.refresh_tabs()
+        Ok(())
     }
 
     /// Tries to execute the selected file with an executable which is read
