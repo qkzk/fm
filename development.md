@@ -984,11 +984,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: flagging a file moves down but doesn't update the preview
 - [x] FIX: Logline should only be displayed on left tab
 - [x] after newfile, newdir, select it
+- [x] add F+x binds from ranger
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
-- [ ] add F+x binds from ranger
 
 ## TODO
 

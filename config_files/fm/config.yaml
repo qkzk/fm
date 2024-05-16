@@ -114,6 +114,16 @@ keys:
   'shift-m': MarksNew
   'shift-o': Sort
   'shift-p': Preview
+  'f1': FuzzyFindHelp
+  'f2': Rename
+  'f3': Preview
+  'f4': OpenFile
+  'f5': CopyPaste
+  'f6': CutPaste
+  'f7': NewDir
+  'f8': Delete
+  'f9': NewFile
+  'f10': Quit
 
 # Custom command :
 # * Use a free keybind

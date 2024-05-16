@@ -128,6 +128,16 @@ impl Bindings {
             (Key::Ctrl('j'), ActionMap::FocusGoDown),
             (Key::Ctrl('k'), ActionMap::FocusGoUp),
             (Key::Ctrl('l'), ActionMap::FocusGoRight),
+            (Key::F(1), ActionMap::FuzzyFindHelp),
+            (Key::F(2), ActionMap::Rename),
+            (Key::F(3), ActionMap::Preview),
+            (Key::F(4), ActionMap::OpenFile),
+            (Key::F(5), ActionMap::CopyPaste),
+            (Key::F(6), ActionMap::CutPaste),
+            (Key::F(7), ActionMap::NewDir),
+            (Key::F(8), ActionMap::Delete),
+            (Key::F(9), ActionMap::NewFile),
+            (Key::F(10), ActionMap::Quit),
         ]);
         let custom = None;
         Self { binds, custom }
