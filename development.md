@@ -961,6 +961,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Execute an action with a single keypress in context mode. Same as above !
 - Use pdftoppm & pdfinfo to preview pdf files. Faster, less code, more stable.
   Doesn't crash anymore when a .pdf file is encrypted but can be read by every one.
+- Newfile and newdirs are flagged and selected after creation
+- Include default binds from midnight commander / ranger for the function files (f1-f10)
 
 #### Changelog
 
@@ -992,6 +994,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
+- [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
