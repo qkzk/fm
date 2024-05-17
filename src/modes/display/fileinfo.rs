@@ -61,7 +61,7 @@ impl FileKind<Valid> {
     /// Returns the expected first symbol from `ln -l` line.
     /// d for directory, s for socket, . for file, c for char device,
     /// b for block, l for links.
-    fn dir_symbol(&self) -> char {
+    pub fn dir_symbol(&self) -> char {
         match self {
             Self::Fifo => 'p',
             Self::Socket => 's',
@@ -82,6 +82,18 @@ impl FileKind<Valid> {
             Self::CharDevice => 'e',
             Self::Socket => 'f',
             Self::Fifo => 'g',
+        }
+    }
+
+    pub fn long_description(&self) -> &'static str {
+        match self {
+            Self::Fifo => "fifo",
+            Self::Socket => "socket",
+            Self::Directory => "directory",
+            Self::NormalFile => "normal file",
+            Self::CharDevice => "char device",
+            Self::BlockDevice => "block device",
+            Self::SymbolicLink(_) => "symbolic link",
         }
     }
 }
@@ -161,7 +173,7 @@ impl FileInfo {
         let path = std::sync::Arc::from(path);
         let owner = extract_owner(&metadata, users);
         let group = extract_group(&metadata, users);
-        let system_time = extract_datetime(&metadata)?;
+        let system_time = extract_datetime(metadata.modified()?)?;
         let is_selected = false;
         let file_kind = FileKind::new(&metadata, &path);
         let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
@@ -286,6 +298,44 @@ impl FileInfo {
             _ => format!("/{name} ", name = self.filename),
         }
     }
+
+    /// Returns informations about the file as a vector of string.
+    pub fn more_info(&self, opener: &crate::io::Opener) -> Vec<String> {
+        let mut lines = vec![];
+        lines.push(format!("Owner:       {owner}", owner = self.owner));
+        lines.push(format!("Group:       {group}", group = self.group));
+        lines.push(format!("Size:     {size}", size = self.size_column));
+        if let Ok(metadata) = std::fs::metadata(&self.path) {
+            if let Ok(created) = metadata.created() {
+                if let Ok(dt) = extract_datetime(created) {
+                    lines.push(format!("Created:     {dt}"))
+                }
+            }
+            if let Ok(accessed) = metadata.accessed() {
+                if let Ok(dt) = extract_datetime(accessed) {
+                    lines.push(format!("Accessed:    {dt}"))
+                }
+            }
+            if let Ok(modified) = metadata.modified() {
+                if let Ok(dt) = extract_datetime(modified) {
+                    lines.push(format!("Modified:    {dt}"))
+                }
+            }
+        }
+        if let Some(opener) = opener.kind(&self.path) {
+            lines.push(format!("Opened with  {opener}"));
+        };
+        if matches!(self.file_kind, FileKind::NormalFile) {
+            let extension = &self.extension.to_lowercase();
+            let ext_kind = crate::modes::ExtensionKind::matcher(extension);
+            lines.push(format!("Previewed as {ext_kind}"));
+        } else {
+            let kind = self.file_kind.long_description();
+            lines.push(format!("Kind:        {kind}"));
+        }
+
+        lines
+    }
 }
 
 fn fileinfo_color(fileinfo: &FileInfo) -> Color {
@@ -378,8 +428,8 @@ fn extract_filename(path: &path::Path) -> Result<std::sync::Arc<str>> {
 }
 
 /// Returns the modified time.
-fn extract_datetime(metadata: &Metadata) -> Result<std::sync::Arc<str>> {
-    let datetime: DateTime<Local> = metadata.modified()?.into();
+pub fn extract_datetime(time: std::time::SystemTime) -> Result<std::sync::Arc<str>> {
+    let datetime: DateTime<Local> = time.into();
     Ok(std::sync::Arc::from(
         format!("{}", datetime.format("%Y/%m/%d %T")).as_str(),
     ))

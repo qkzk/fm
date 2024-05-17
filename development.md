@@ -963,6 +963,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   Doesn't crash anymore when a .pdf file is encrypted but can be read by every one.
 - Newfile and newdirs are flagged and selected after creation
 - Include default binds from midnight commander / ranger for the function files (f1-f10)
+- Display "more info" about a file in context menu (owner, group, size, created/modified/accessed time, opener, previewer)
 
 #### Changelog
 
@@ -988,6 +989,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: Logline should only be displayed on left tab
 - [x] after newfile, newdir, select it
 - [x] add F+x binds from ranger
+- [x] display more info about file in context (atime/ctime/mtime, previewed as ..., opened with ...)
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)

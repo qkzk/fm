@@ -299,7 +299,7 @@ impl fmt::Display for Kind {
         let s = if let Self::External(External(program, _)) = &self {
             program
         } else {
-            ""
+            "internal"
         };
         write!(f, "{s}")
     }

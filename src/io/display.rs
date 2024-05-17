@@ -916,6 +916,7 @@ impl<'a> WinSecondary<'a> {
         let selectable = &self.status.menu.context;
         canvas.print_with_attr(1, 2, "Pick an action.", color_to_attr(MENU_COLORS.second))?;
         let content = selectable.content();
+        let space_used = content.len();
         for (letter, (row, desc, attr)) in
             std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
         {
@@ -927,6 +928,15 @@ impl<'a> WinSecondary<'a> {
                 attr,
             )?;
             Self::draw_content_line(canvas, row + 1, desc, attr)?;
+        }
+        let more_info = self.tab.more_info(&self.status.internal_settings.opener);
+        for (row, text, attr) in enumerated_colored_iter!(more_info) {
+            canvas.print_with_attr(
+                space_used + row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
+                4,
+                text,
+                attr,
+            )?;
         }
         Ok(())
     }

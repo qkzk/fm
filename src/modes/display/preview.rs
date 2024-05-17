@@ -86,6 +86,26 @@ impl ExtensionKind {
     }
 }
 
+impl std::fmt::Display for ExtensionKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Archive => write!(f, "Archive"),
+            Self::Image => write!(f, "Image"),
+            Self::Audio => write!(f, "Audio"),
+            Self::Video => write!(f, "Video"),
+            Self::Font => write!(f, "Font"),
+            Self::Svg => write!(f, "Svg"),
+            Self::Pdf => write!(f, "Pdf"),
+            Self::Iso => write!(f, "Iso"),
+            Self::Notebook => write!(f, "Notebook"),
+            Self::Office => write!(f, "Office"),
+            Self::Epub => write!(f, "Epub"),
+            Self::Torrent => write!(f, "Torrent"),
+            Self::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 pub enum TextKind {
     HELP,

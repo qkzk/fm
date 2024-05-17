@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index,
 };
-use crate::io::Args;
+use crate::io::{Args, Opener};
 use crate::modes::Directory;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
@@ -730,5 +730,12 @@ impl Tab {
             .to_owned();
         self.tree.go(To::Path(&path));
         Ok(())
+    }
+
+    pub fn more_info(&self, opener: &Opener) -> Vec<String> {
+        let Ok(selected) = self.current_file() else {
+            return vec![];
+        };
+        selected.more_info(opener)
     }
 }
