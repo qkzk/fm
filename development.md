@@ -972,6 +972,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: replace `DeleteFile` by `Delete` in config file
 - [ ] Custom colors for palette.
   - [x] it works
+  - [ ] simplify palette : start, stop and merge already defined ones ("red-green", "green-red" and all classic pairs)
+  - [ ] remove custom
   - [ ] refactor all the color configuration
   - [ ] common parser
   - [ ] common description of what is an acceptable color in config file
@@ -982,7 +984,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] use png for svg & fonts, jpg otherwise. Seems to be faster
   - [x] readme : pdftoppm, pdfinfo
 
-- [ ] Allow $TERMINAL as an option in config file
 - [x] FIX: flagging a file moves down but doesn't update the preview
 - [x] FIX: Logline should only be displayed on left tab
 - [x] after newfile, newdir, select it
