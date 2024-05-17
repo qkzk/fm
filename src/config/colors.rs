@@ -2,7 +2,7 @@ use std::hash::Hasher;
 
 use tuikit::attr::Color;
 
-use crate::config::{COLORER, END_COLOR, START_COLOR};
+use crate::config::{COLORER, START_COLOR, STOP_COLOR};
 
 /// No attr but 3 static methods.
 pub struct Colorer {}
@@ -35,8 +35,35 @@ impl Colorer {
             .unwrap()
     }
 
+    /// Picks a blueish/greenish color on color picker hexagon's perimeter.
+    pub fn color_blue_green(hash: usize) -> Color {
+        (128..255)
+            .map(|g| Color::Rgb(0, g, 255))
+            .chain((128..255).map(|b| Color::Rgb(0, 255, b)))
+            .nth(hash % 254)
+            .unwrap()
+    }
+
+    /// Picks a redish/blueish color on color picker hexagon's perimeter.
+    pub fn color_blue_red(hash: usize) -> Color {
+        (128..255)
+            .map(|r| Color::Rgb(r, 0, 255))
+            .chain((128..255).map(|b| Color::Rgb(255, 0, b)))
+            .nth(hash % 254)
+            .unwrap()
+    }
+
+    /// Picks a redish/greenish color on color picker hexagon's perimeter.
+    pub fn color_green_red(hash: usize) -> Color {
+        (128..255)
+            .map(|g| Color::Rgb(255, g, 0))
+            .chain((128..255).map(|r| Color::Rgb(r, 255, 0)))
+            .nth(hash % 254)
+            .unwrap()
+    }
+
     pub fn color_custom(hash: usize) -> Color {
-        let lerp = lerp_color(*START_COLOR, *END_COLOR, (hash % 255) as u8);
+        let lerp = lerp_color(*START_COLOR, *STOP_COLOR, (hash % 255) as u8);
         Color::Rgb(lerp.0, lerp.1, lerp.2)
     }
 }

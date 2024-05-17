@@ -972,12 +972,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: replace `DeleteFile` by `Delete` in config file
 - [ ] Custom colors for palette.
   - [x] it works
-  - [ ] simplify palette : start, stop and merge already defined ones ("red-green", "green-red" and all classic pairs)
-  - [ ] remove custom
+  - [x] simplify palette : start, stop and merge already defined ones ("red-green", "green-red" and all red green blue pairs)
+  - [x] remove custom
+  - [x] common description of what is an acceptable color in config file
+  - [x] don't break compatibiliy but require an update
   - [ ] refactor all the color configuration
   - [ ] common parser
-  - [ ] common description of what is an acceptable color in config file
-  - [ ] don't break compatibiliy
 - [x] use pdftoppm & pdfinfo to preview pdfs.
       poppler can crash if the pdf is encrypted for writing but not for reading.
 

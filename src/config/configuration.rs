@@ -237,23 +237,31 @@ lazy_static::lazy_static! {
 lazy_static::lazy_static! {
     /// Defines a palette which will color the "normal" files based on their extension.
     /// We try to read a yaml value and pick one of 3 palettes :
-    /// "red-green", "red-blue" and "green-blue" which is the default.
+    /// "green-red", "blue-green", "blue-red", "red-green", "red-blue", "green-blue" which is the default.
     /// "custom" will create a gradient from start_palette to end_palette. Both values should be "rgb(u8, u8, u8)".
     pub static ref COLORER: fn(usize) -> Color = {
-        let mut colorer = Colorer::color_green_blue as fn(usize) -> Color;
-        if let Ok(file) = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(CONFIG_PATH).to_string())) {
-            if let Ok(yaml)  = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file) {
-                if let Some(palette) = yaml["palette"].as_str() {
-                    match palette {
-                        "red-blue" => {colorer = Colorer::color_red_blue as fn(usize) -> Color;},
-                        "red-green" => {colorer = Colorer::color_red_green as fn(usize) -> Color;},
-                        "custom" => {colorer = Colorer::color_custom as fn(usize) -> Color;}
-                        _ => ()
-                    }
-                }
-            };
+        let colorer = Colorer::color_green_blue as fn(usize) -> Color;
+        let Ok(file) = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(CONFIG_PATH).to_string())) else {
+            return colorer;
         };
-        colorer
+        let Ok(yaml)  = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file) else {
+            return colorer;
+        };
+        let Some(start) = yaml["palette"]["start"].as_str() else {
+            return colorer;
+        };
+        let Some(stop) = yaml["palette"]["stop"].as_str() else {
+            return colorer;
+        };
+        match (start.to_owned() + "-" + stop).as_ref() {
+            "green-blue" => {Colorer::color_green_blue as fn(usize) -> Color},
+            "red-blue" => {Colorer::color_red_blue as fn(usize) -> Color},
+            "red-green" => {Colorer::color_red_green as fn(usize) -> Color},
+            "blue-green" => {Colorer::color_blue_green as fn(usize) -> Color},
+            "blue-red" => {Colorer::color_blue_red as fn(usize) -> Color},
+            "green-red" => {Colorer::color_green_red as fn(usize) -> Color},
+            _ => {Colorer::color_custom as fn(usize) -> Color}
+        }
     };
 }
 
@@ -263,7 +271,10 @@ fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
 
     if let Ok(file) = File::open(config_path) {
         if let Ok(yaml) = serde_yaml::from_reader::<File, serde_yaml::Value>(file) {
-            if let Some(color) = yaml.get(key)?.as_str() {
+            let Some(palette) = yaml.get("palette") else {
+                return None;
+            };
+            if let Some(color) = palette.get(key)?.as_str() {
                 return parse_rgb_triplet(color);
             }
         }
@@ -272,8 +283,8 @@ fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
 }
 
 lazy_static::lazy_static! {
-  pub static ref START_COLOR: (u8, u8, u8) = load_color_from_config("start_palette").unwrap_or((40, 40, 40));
-  pub static ref END_COLOR: (u8, u8, u8) = load_color_from_config("end_palette").unwrap_or((180, 180, 180));
+  pub static ref START_COLOR: (u8, u8, u8) = load_color_from_config("start").unwrap_or((40, 40, 40));
+  pub static ref STOP_COLOR: (u8, u8, u8) = load_color_from_config("stop").unwrap_or((180, 180, 180));
 }
 
 lazy_static::lazy_static! {

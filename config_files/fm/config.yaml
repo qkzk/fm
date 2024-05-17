@@ -7,14 +7,18 @@ terminal: st
 
 # configurable colors
 
-# Define a palette for the "normal" files. 
-# Accepted values are "red-green", "red-blue" and "green-blue"
-# other value will lead to the default palette which is "green-blue".
-# A palette can also be customized with 2 more attributes.
-# palette: custom
-# start_palette: "rgb(255, 110, 128)"
-# end_palette: "rgb(123, 100, 255)"
-palette: green-blue
+# Define a palette for the "normal" files.
+# File will be colored randomly from their extensions.
+# Accepted values are "red", "green", "blue" or a rgb color
+# Allowed Format for rgb color : `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
+# Unfortunatelly, not all ansi color names are accepted.
+# Unreadable values will lead to the default palette which is "green-blue".
+# palette:
+#   start: "rgb(255, 110, 128)"
+#   stop: "rgb(123, 100, 255)"
+palette:
+  start: green
+  stop: blue
 
 # Colors for "non normal" files. The list is below.
 colors:

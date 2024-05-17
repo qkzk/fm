@@ -4,6 +4,6 @@ mod keybindings;
 
 pub use colors::{extension_color, ColorG, Colorer, Gradient};
 pub use configuration::{
-    load_config, Config, COLORER, COLORS, END_COLOR, MENU_COLORS, START_COLOR, START_FOLDER,
+    load_config, Config, COLORER, COLORS, MENU_COLORS, START_COLOR, START_FOLDER, STOP_COLOR,
 };
 pub use keybindings::Bindings;
