@@ -96,6 +96,19 @@ impl FileKind<Valid> {
             Self::SymbolicLink(_) => "symbolic link",
         }
     }
+
+    #[rustfmt::skip]
+    pub fn size_description(&self) -> &'static str {
+        match self {
+            Self::Fifo              => "Size:       ",
+            Self::Socket            => "Size:       ",
+            Self::Directory         => "Elements:   ",
+            Self::NormalFile        => "Size:       ",
+            Self::CharDevice        => "Major,Minor:",
+            Self::BlockDevice       => "Major,Minor:",
+            Self::SymbolicLink(_)   => "Size:       ",
+        }
+    }
 }
 
 /// Different kind of display for the size column.
@@ -130,6 +143,10 @@ impl SizeColumn {
             FileKind::CharDevice | FileKind::BlockDevice => Self::MajorMinor(major_minor(metadata)),
             _ => Self::Size(size),
         }
+    }
+
+    fn trimed(&self) -> String {
+        format!("{self}").trim().to_owned()
     }
 }
 
@@ -300,11 +317,24 @@ impl FileInfo {
     }
 
     /// Returns informations about the file as a vector of string.
-    pub fn more_info(&self, opener: &crate::io::Opener) -> Vec<String> {
+    pub fn context_info(&self, opener: &crate::io::Opener) -> Vec<String> {
         let mut lines = vec![];
-        lines.push(format!("Owner:       {owner}", owner = self.owner));
-        lines.push(format!("Group:       {group}", group = self.group));
-        lines.push(format!("Size:     {size}", size = self.size_column));
+        lines.push(format!(
+            "Owner/Group: {owner} / {group}",
+            owner = self.owner,
+            group = self.group
+        ));
+        if let Ok(perms) = self.permissions() {
+            lines.push(format!(
+                "Permissions: {dir_symbol}{perms}",
+                dir_symbol = self.dir_symbol()
+            ));
+        }
+        lines.push(format!(
+            "{size_kind} {size}",
+            size_kind = self.file_kind.size_description(),
+            size = self.size_column.trimed()
+        ));
         if let Ok(metadata) = std::fs::metadata(&self.path) {
             if let Ok(created) = metadata.created() {
                 if let Ok(dt) = extract_datetime(created) {
@@ -323,12 +353,12 @@ impl FileInfo {
             }
         }
         if let Some(opener) = opener.kind(&self.path) {
-            lines.push(format!("Opened with  {opener}"));
+            lines.push(format!("Opener:      {opener}"));
         };
         if matches!(self.file_kind, FileKind::NormalFile) {
             let extension = &self.extension.to_lowercase();
             let ext_kind = crate::modes::ExtensionKind::matcher(extension);
-            lines.push(format!("Previewed as {ext_kind}"));
+            lines.push(format!("Previewer:   {ext_kind}"));
         } else {
             let kind = self.file_kind.long_description();
             lines.push(format!("Kind:        {kind}"));

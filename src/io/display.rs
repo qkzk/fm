@@ -929,7 +929,7 @@ impl<'a> WinSecondary<'a> {
             )?;
             Self::draw_content_line(canvas, row + 1, desc, attr)?;
         }
-        let more_info = self.tab.more_info(&self.status.internal_settings.opener);
+        let more_info = self.tab.context_info(&self.status.internal_settings.opener);
         for (row, text, attr) in enumerated_colored_iter!(more_info) {
             canvas.print_with_attr(
                 space_used + row + 1 + ContentWindow::WINDOW_MARGIN_TOP,

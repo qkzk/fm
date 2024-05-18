@@ -732,10 +732,10 @@ impl Tab {
         Ok(())
     }
 
-    pub fn more_info(&self, opener: &Opener) -> Vec<String> {
+    pub fn context_info(&self, opener: &Opener) -> Vec<String> {
         let Ok(selected) = self.current_file() else {
             return vec![];
         };
-        selected.more_info(opener)
+        selected.context_info(opener)
     }
 }
