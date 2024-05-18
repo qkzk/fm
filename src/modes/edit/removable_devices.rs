@@ -1,10 +1,12 @@
+use std::fmt::Display;
+
 use anyhow::{anyhow, Result};
 
-use crate::common::GIO;
 use crate::common::{current_uid, is_dir_empty, is_program_in_path};
+use crate::common::{EJECT_EXECUTABLE, GIO};
 use crate::impl_content;
 use crate::impl_selectable;
-use crate::io::execute_and_output;
+use crate::io::{execute, execute_and_output};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::PasswordHolder;
@@ -38,18 +40,76 @@ impl RemovableDevices {
             return None;
         };
 
-        let content: Vec<_> = stdout
+        let mut content: Vec<_> = stdout
             .lines()
             .filter(|line| line.contains("activation_root"))
             .map(Removable::from_gio)
             .filter_map(std::result::Result::ok)
             .collect();
 
+        content.extend(Self::find_usb(stdout).into_iter());
+
         if content.is_empty() {
             None
         } else {
             Some(Self { content, index: 0 })
         }
+    }
+
+    fn find_usb(stdout: String) -> Vec<Removable> {
+        // TODO rewrite completely, ugly solution
+        let mut found_can_eject = false;
+        let max_dist = 10;
+        let mut line_counter = 0;
+        let mut devices = vec![];
+        let mut name = "";
+        let mut is_mounted = false;
+        for line in stdout.lines() {
+            if !found_can_eject && line.contains("Drive(") {
+                let elems: Vec<&str> = line.split(':').collect();
+                name = elems[1];
+            }
+            if line.contains("can_eject=1") {
+                found_can_eject = true;
+                continue;
+            }
+            if found_can_eject && line.contains("Mount(") {
+                is_mounted = true;
+                if let Ok(device) = Removable::usb_from_gio(line, name, is_mounted) {
+                    devices.push(device);
+                }
+
+                found_can_eject = false;
+                line_counter = 0;
+                is_mounted = false;
+            }
+            if found_can_eject {
+                line_counter += 1;
+            }
+            if line_counter >= max_dist {
+                found_can_eject = false;
+                line_counter = 0;
+                is_mounted = false;
+            }
+        }
+        devices
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub enum RemovableKind {
+    #[default]
+    MTP,
+    USB,
+}
+
+impl Display for RemovableKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let kind = match self {
+            Self::MTP => "MTP",
+            Self::USB => "USB",
+        };
+        writeln!(f, "{kind}",)
     }
 }
 
@@ -58,6 +118,7 @@ impl RemovableDevices {
 #[derive(Debug, Clone, Default)]
 pub struct Removable {
     pub name: String,
+    pub kind: RemovableKind,
     pub path: String,
     pub is_mounted: bool,
 }
@@ -78,9 +139,25 @@ impl Removable {
         let path = format!("/run/user/{uid}/gvfs/mtp:host={name}");
         let pb_path = std::path::Path::new(&path);
         let is_mounted = pb_path.exists() && !is_dir_empty(pb_path)?;
+        let kind = RemovableKind::MTP;
         log_info!("gio {name} - is_mounted {is_mounted}");
         Ok(Self {
             name,
+            kind,
+            path,
+            is_mounted,
+        })
+    }
+
+    fn usb_from_gio(line: &str, name: &str, is_mounted: bool) -> Result<Self> {
+        // "    Mount(0): 134 MB Volume -> file:///run/media/quentin/cfb31e6a-f288-4415-9900-a4822c736fd2"
+        let kind = RemovableKind::USB;
+        let path = line.split("file://").collect::<Vec<&str>>()[1].to_owned();
+        let name = name.trim().to_string();
+
+        Ok(Self {
+            name,
+            kind,
             path,
             is_mounted,
         })
@@ -95,8 +172,23 @@ impl Removable {
         self.mount("", &mut PasswordHolder::default())
     }
 
+    fn eject(&self) -> Result<()> {
+        execute(EJECT_EXECUTABLE, &[&self.path])?;
+        Ok(())
+    }
+
     pub fn umount_simple(&mut self) -> Result<bool> {
-        self.umount("", &mut PasswordHolder::default())
+        let Ok(umount) = self.umount("", &mut PasswordHolder::default()) else {
+            return Ok(false);
+        };
+        if !umount {
+            return Ok(false);
+        }
+        match self.kind {
+            RemovableKind::MTP => (),
+            RemovableKind::USB => self.eject()?,
+        }
+        return Ok(true);
     }
 }
 
