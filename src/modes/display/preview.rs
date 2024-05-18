@@ -52,7 +52,7 @@ pub enum ExtensionKind {
     Epub,
     Torrent,
     #[default]
-    Unknown,
+    Default,
 }
 
 impl ExtensionKind {
@@ -77,7 +77,7 @@ impl ExtensionKind {
             "doc" | "docx" | "odt" | "sxw" | "xlsx" | "xls" => Self::Office,
             "epub" => Self::Epub,
             "torrent" => Self::Torrent,
-            _ => Self::Unknown,
+            _ => Self::Default,
         }
     }
 
@@ -101,7 +101,7 @@ impl std::fmt::Display for ExtensionKind {
             Self::Office => write!(f, "Office"),
             Self::Epub => write!(f, "Epub"),
             Self::Torrent => write!(f, "Torrent"),
-            Self::Unknown => write!(f, "Unknown"),
+            Self::Default => write!(f, "Default"),
         }
     }
 }
