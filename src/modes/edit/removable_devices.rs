@@ -3,12 +3,13 @@ use std::io::Read;
 
 use anyhow::{anyhow, Result};
 
-use crate::common::{current_uid, is_dir_empty, is_program_in_path};
+use crate::common::{current_uid, is_dir_empty, is_program_in_path, MKDIR, MOUNT};
 use crate::common::{EJECT_EXECUTABLE, GIO};
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::io::{
-    execute, execute_and_output, execute_sudo_command, execute_sudo_command_with_password,
+    drop_sudo_privileges, execute_and_output, execute_sudo_command, reset_sudo_faillock,
+    set_sudo_session,
 };
 use crate::log_info;
 use crate::log_line;
@@ -36,7 +37,7 @@ impl RemovableDevices {
         if !is_program_in_path(GIO) {
             return None;
         }
-        let Ok(output) = execute_and_output(GIO, ["mount", "-li"]) else {
+        let Ok(output) = execute_and_output(GIO, [MOUNT, "-li"]) else {
             return None;
         };
         let Ok(stdout) = String::from_utf8(output.stdout) else {
@@ -50,7 +51,7 @@ impl RemovableDevices {
             .filter_map(std::result::Result::ok)
             .collect();
 
-        content.extend(Self::find_usb().into_iter());
+        content.extend(Self::find_usb());
 
         if content.is_empty() {
             None
@@ -67,15 +68,15 @@ impl RemovableDevices {
 #[derive(Debug, Clone, Default)]
 pub enum RemovableKind {
     #[default]
-    MTP,
-    USB,
+    Mtp,
+    Usb,
 }
 
 impl Display for RemovableKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let kind = match self {
-            Self::MTP => "MTP",
-            Self::USB => "USB",
+            Self::Mtp => "MTP",
+            Self::Usb => "USB",
         };
         writeln!(f, "{kind}",)
     }
@@ -108,7 +109,7 @@ impl Removable {
         let path = format!("/run/user/{uid}/gvfs/mtp:host={name}");
         let pb_path = std::path::Path::new(&path);
         let is_mounted = pb_path.exists() && !is_dir_empty(pb_path)?;
-        let kind = RemovableKind::MTP;
+        let kind = RemovableKind::Mtp;
         let is_ejected = false;
         log_info!("gio {name} - is_mounted {is_mounted}");
         Ok(Self {
@@ -134,7 +135,7 @@ impl Removable {
 
         Self {
             name,
-            kind: RemovableKind::USB,
+            kind: RemovableKind::Usb,
             is_mounted,
             path,
             is_ejected,
@@ -144,40 +145,47 @@ impl Removable {
     /// Format itself as a valid `gio mount $device` argument.
     fn format_for_gio(&self) -> String {
         match self.kind {
-            RemovableKind::USB => {
+            RemovableKind::Usb => {
                 let fields = self.name.split(' ').collect::<Vec<&str>>();
                 let volume = fields[0];
                 log_info!("volume path: {volume}");
                 volume.to_owned()
             }
-            RemovableKind::MTP => {
+            RemovableKind::Mtp => {
                 format!("mtp://{name}", name = self.name)
             }
         }
     }
 
-    pub fn mount_simple(&mut self) -> Result<bool> {
-        self.mount("", &mut PasswordHolder::default())
+    pub fn mount_simple(&mut self, password_holder: &mut PasswordHolder) -> Result<bool> {
+        self.mount("", password_holder)
     }
 
-    fn eject(&self) -> Result<()> {
-        execute(EJECT_EXECUTABLE, &[&self.path])?;
-        Ok(())
-    }
-
-    pub fn umount_simple(&mut self) -> Result<bool> {
-        match self.kind {
-            RemovableKind::MTP => {
-                let Ok(umount) = self.umount("", &mut PasswordHolder::default()) else {
-                    return Ok(false);
-                };
-                if !umount {
-                    return Ok(false);
-                }
-            }
-            RemovableKind::USB => self.eject()?,
+    fn eject(&self, password: &mut PasswordHolder) -> Result<bool> {
+        let success = set_sudo_session(password)?;
+        if !success {
+            password.reset();
+            return Ok(false);
         }
-        return Ok(true);
+        let (success, stdout, stderr) = execute_sudo_command(&[EJECT_EXECUTABLE, &self.path])?;
+        log_info!("eject: success: {success}, stdout {stdout}, stderr {stderr}");
+        if !success {
+            reset_sudo_faillock()?
+        }
+        password.reset();
+        drop_sudo_privileges()?;
+        Ok(success)
+    }
+
+    pub fn umount_simple(&mut self, password_holder: &mut PasswordHolder) -> Result<bool> {
+        let Ok(umount) = self.umount("", password_holder) else {
+            return Ok(false);
+        };
+        Ok(umount)
+    }
+
+    pub fn is_usb(&self) -> bool {
+        matches!(self.kind, RemovableKind::Usb)
     }
 }
 
@@ -192,13 +200,40 @@ impl MountCommands for Removable {
     /// Runs a `gio mount $name` command and check
     /// the result.
     /// The `is_mounted` flag is updated accordingly to the result.
-    fn mount(&mut self, _: &str, _: &mut PasswordHolder) -> Result<bool> {
+    fn mount(&mut self, _: &str, password: &mut PasswordHolder) -> Result<bool> {
         if self.is_mounted {
             return Err(anyhow!("Already mounted {name}", name = self.name));
         }
-        self.is_mounted = execute_and_output(GIO, ["mount", &self.format_for_gio()])?
-            .status
-            .success();
+        self.is_mounted = match self.kind {
+            RemovableKind::Mtp => execute_and_output(GIO, ["mount", &self.format_for_gio()])?
+                .status
+                .success(),
+            RemovableKind::Usb => {
+                let success = set_sudo_session(password)?;
+                if !success {
+                    password.reset();
+                    return Ok(false);
+                }
+                let (success, stdout, stderr) =
+                    execute_sudo_command(&[MKDIR, "-p", self.path.as_str()])?;
+                log_info!("mkdir: success {success} -- stdout {stdout} -- stderr {stderr}");
+                let (success, stdout, stderr) = execute_sudo_command(&[
+                    MOUNT,
+                    self.format_for_gio().as_str(),
+                    self.path.as_str(),
+                ])?;
+                password.reset();
+                log_info!("mount: success {success} -- stdout {stdout} -- stderr {stderr}");
+
+                if !success {
+                    reset_sudo_faillock()?
+                }
+                password.reset();
+                drop_sudo_privileges()?;
+                success
+            }
+        };
+
         log_line!(
             "Mounted {device}. Success ? {success}",
             device = self.name,
@@ -212,24 +247,21 @@ impl MountCommands for Removable {
     /// Runs a `gio mount $device_name` command and check
     /// the result.
     /// The `is_mounted` flag is updated accordingly to the result.
-    fn umount(&mut self, _: &str, _: &mut PasswordHolder) -> Result<bool> {
+    fn umount(&mut self, _: &str, password: &mut PasswordHolder) -> Result<bool> {
         if !self.is_mounted {
             return Err(anyhow!("Not mounted {name}", name = self.name));
         }
         self.is_mounted = match self.kind {
-            RemovableKind::MTP => execute_and_output(GIO, ["mount", &self.format_for_gio(), "-u"])?
+            RemovableKind::Mtp => execute_and_output(GIO, ["mount", &self.format_for_gio(), "-u"])?
                 .status
                 .success(),
-            RemovableKind::USB => {
-                execute_sudo_command(&["eject", &self.format_for_gio()])?;
-                true
-            }
+            RemovableKind::Usb => self.eject(password)?,
         };
-        if matches!(self.kind, RemovableKind::USB) {}
+
         log_info!(
             "Unmounted {device}. Success ? {success}",
             device = self.name,
-            success = !self.is_mounted
+            success = self.is_mounted
         );
         Ok(!self.is_mounted)
     }
@@ -303,17 +335,13 @@ fn list_volumes(device: &std::path::Path) -> Vec<String> {
 
     // Check partitions in /sys/class/block/{device_name}/{device_name}{partition_number}
     let sys_block_path = format!("/sys/class/block/{}/", device_name);
-    if let Ok(entries) = std::fs::read_dir(&sys_block_path) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let partition_path = entry.path();
-                if partition_path.join("partition").exists() {
-                    if let Some(partition_name) =
-                        partition_path.file_name().and_then(|n| n.to_str())
-                    {
-                        let partition = format!("/dev/{}", partition_name);
-                        volumes.push(partition);
-                    }
+    if let Ok(entries) = std::fs::read_dir(sys_block_path) {
+        for entry in entries.flatten() {
+            let partition_path = entry.path();
+            if partition_path.join("partition").exists() {
+                if let Some(partition_name) = partition_path.file_name().and_then(|n| n.to_str()) {
+                    let partition = format!("/dev/{}", partition_name);
+                    volumes.push(partition);
                 }
             }
         }
@@ -348,7 +376,7 @@ fn is_removable(p: &std::path::Path) -> Result<bool> {
     file.read_to_string(&mut content)?;
 
     // Check if the content is exactly "1\n"
-    Ok(content.starts_with("1"))
+    Ok(content.starts_with('1'))
 }
 
 /// Gets the user-friendly name of a USB device from its volume path.
@@ -390,18 +418,25 @@ fn get_current_username() -> Option<String> {
 
 /// Gets the UUID of the filesystem on the given volume.
 fn get_volume_uuid(volume: &str) -> Option<String> {
-    let output = std::process::Command::new("blkid")
-        .arg("-s")
+    let output = std::process::Command::new("lsblk")
+        .arg("-lfo")
         .arg("UUID")
-        .arg("-o")
-        .arg("value")
         .arg(volume)
         .output()
         .ok()?;
 
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    log_line!("get_volume_uuid. stdout: {stdout} - stderr: {stderr}");
+
     if output.status.success() {
-        let uuid = String::from_utf8_lossy(&output.stdout);
-        Some(uuid.trim().to_string())
+        let content = String::from_utf8_lossy(&output.stdout);
+        let uuid = content
+            .split_whitespace()
+            .collect::<Vec<&str>>()
+            .last()
+            .map(|s| s.to_owned().to_owned());
+        uuid
     } else {
         None
     }

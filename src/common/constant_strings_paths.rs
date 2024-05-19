@@ -197,6 +197,12 @@ pub const PANDOC: &str = "pandoc";
 pub const ISOINFO: &str = "isoinfo";
 /// socket file explorer
 pub const SS: &str = "ss";
+/// mkdir is used to create path before mounting
+pub const MKDIR: &str = "mkdir";
+/// mount is used to mount usb removable devices
+pub const MOUNT: &str = "mount";
+/// umount is used to mount usb removable devices
+pub const UMOUNT: &str = "umount";
 /// lsblk is used to get mountpoints, info about encrypted drives
 pub const LSBLK: &str = "lsblk";
 /// cryptsetup is used to mount encrypted drives

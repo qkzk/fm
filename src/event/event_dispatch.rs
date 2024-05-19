@@ -115,9 +115,9 @@ impl EventDispatcher {
             Navigate::EncryptedDrive if c == 'm' => status.mount_encrypted_drive(),
             Navigate::EncryptedDrive if c == 'g' => status.go_to_encrypted_drive(),
             Navigate::EncryptedDrive if c == 'u' => status.umount_encrypted_drive(),
-            Navigate::RemovableDevices if c == 'm' => status.menu.mount_removable(),
+            Navigate::RemovableDevices if c == 'm' => status.mount_removable(),
             Navigate::RemovableDevices if c == 'g' => status.go_to_removable(),
-            Navigate::RemovableDevices if c == 'u' => status.menu.umount_removable(),
+            Navigate::RemovableDevices if c == 'u' => status.umount_removable(),
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
             Navigate::Shortcut if status.menu.shortcut_from_char(c) => {

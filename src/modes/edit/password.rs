@@ -24,6 +24,7 @@ impl std::fmt::Display for PasswordKind {
 pub enum PasswordUsage {
     ISO,
     CRYPTSETUP(PasswordKind),
+    USB,
     SUDOCOMMAND,
 }
 

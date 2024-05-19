@@ -178,29 +178,6 @@ impl Menu {
         Some(std::path::PathBuf::from(&device.path))
     }
 
-    pub fn mount_removable(&mut self) -> Result<()> {
-        if self.removable_devices.is_empty() {
-            return Ok(());
-        };
-        let device = &mut self.removable_devices.content[self.removable_devices.index];
-        if device.is_mounted() {
-            return Ok(());
-        }
-        device.mount_simple()?;
-        Ok(())
-    }
-
-    pub fn umount_removable(&mut self) -> Result<()> {
-        if self.removable_devices.is_empty() {
-            return Ok(());
-        };
-        let device = &mut self.removable_devices.content[self.removable_devices.index];
-        if !device.is_mounted() {
-            return Ok(());
-        }
-        device.umount_simple()?;
-        Ok(())
-    }
 
     /// Run sshfs with typed parameters to mount a remote directory in current directory.
     /// sshfs should be reachable in path.

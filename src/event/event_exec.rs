@@ -1,5 +1,4 @@
 use std::borrow::Borrow;
-use std::io::{self, BufRead};
 use std::path;
 
 use anyhow::{Context, Result};
@@ -9,7 +8,6 @@ use crate::app::Status;
 use crate::app::Tab;
 use crate::common::filename_to_clipboard;
 use crate::common::filepath_to_clipboard;
-use crate::common::EJECT_EXECUTABLE;
 use crate::common::LAZYGIT;
 use crate::common::NCDU;
 use crate::common::{is_program_in_path, open_in_current_neovim};
@@ -1323,14 +1321,6 @@ impl EventAction {
             status.menu.trash.update()?;
             status.set_edit_mode(status.index, Edit::Navigate(Navigate::Trash))?;
         }
-        Ok(())
-    }
-
-    pub fn eject(status: &mut Status) -> Result<()> {
-        if !is_program_in_path(EJECT_EXECUTABLE) {
-            log_line!("{EJECT_EXECUTABLE} must be installed to eject removable devices");
-        }
-
         Ok(())
     }
 
