@@ -964,6 +964,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Newfile and newdirs are flagged and selected after creation
 - Include default binds from midnight commander / ranger for the function files (f1-f10)
 - Display "more info" about a file in context menu (owner, group, size, created/modified/accessed time, opener, previewer)
+- List, mount, eject usb keys. Share the same menu as "mtp" devices. Default bind: Alt+Shift+R
 
 #### Changelog
 
@@ -990,6 +991,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] after newfile, newdir, select it
 - [x] add F+x binds from ranger
 - [x] display more info about file in context (atime/ctime/mtime, previewed as ..., opened with ...)
+- [x] mount/eject usb key - merged with mtp as much as possible
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
@@ -1007,7 +1009,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] open a shell while hiding fm, restore after leaving
 - [ ] refactor & unify all shell commands
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
-- [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 - [ ] remote control
