@@ -3,7 +3,9 @@ use std::io::Read;
 
 use anyhow::{anyhow, Result};
 
-use crate::common::{current_uid, is_dir_empty, is_program_in_path, MKDIR, MOUNT};
+use crate::common::{
+    current_uid, filename_from_path, is_dir_empty, is_program_in_path, MKDIR, MOUNT,
+};
 use crate::common::{EJECT_EXECUTABLE, GIO};
 use crate::impl_content;
 use crate::impl_selectable;
@@ -33,25 +35,9 @@ impl RemovableDevices {
     /// Output lines are filtered, looking for `activation_root`.
     /// Then we create a `Removable` instance for every line.
     /// If no line match or if any error happens, we return `None`.
-    pub fn from_gio() -> Option<Self> {
-        if !is_program_in_path(GIO) {
-            return None;
-        }
-        let Ok(output) = execute_and_output(GIO, [MOUNT, "-li"]) else {
-            return None;
-        };
-        let Ok(stdout) = String::from_utf8(output.stdout) else {
-            return None;
-        };
-
-        let mut content: Vec<_> = stdout
-            .lines()
-            .filter(|line| line.contains("activation_root"))
-            .map(Removable::from_gio)
-            .filter_map(std::result::Result::ok)
-            .collect();
-
-        content.extend(Self::find_usb());
+    pub fn find() -> Option<Self> {
+        let mut content = Self::mtp_from_gio();
+        content.extend(Self::usb_from_builder());
 
         if content.is_empty() {
             None
@@ -60,8 +46,27 @@ impl RemovableDevices {
         }
     }
 
-    fn find_usb() -> Vec<Removable> {
-        list_usb_disks().unwrap_or_else(|_| vec![])
+    fn mtp_from_gio() -> Vec<Removable> {
+        if !is_program_in_path(GIO) {
+            return vec![];
+        }
+        let Ok(output) = execute_and_output(GIO, [MOUNT, "-li"]) else {
+            return vec![];
+        };
+        let Ok(stdout) = String::from_utf8(output.stdout) else {
+            return vec![];
+        };
+
+        stdout
+            .lines()
+            .filter(|line| line.contains("activation_root"))
+            .map(Removable::from_gio)
+            .filter_map(std::result::Result::ok)
+            .collect()
+    }
+
+    fn usb_from_builder() -> Vec<Removable> {
+        UsbDevicesBuilder::list_usb_disks().unwrap_or_else(|_| vec![])
     }
 }
 
@@ -125,11 +130,12 @@ impl Removable {
         let (is_mounted, path) = mount_point
             .map(|p| (std::path::Path::new(&p).exists(), p))
             .unwrap_or_else(|| {
-                let mp = build_mount_path(&volume).unwrap_or_else(|| "".to_owned());
+                let mp =
+                    UsbDevicesBuilder::build_mount_path(&volume).unwrap_or_else(|| "".to_owned());
                 (false, mp)
             });
 
-        let name = get_usb_device_name(&volume)
+        let name = UsbDevicesBuilder::get_usb_device_name(&volume)
             .map(|desc_name| format!("{} {}", volume, desc_name))
             .unwrap_or(volume);
 
@@ -157,6 +163,7 @@ impl Removable {
         }
     }
 
+    /// Mount the devices
     pub fn mount_simple(&mut self, password_holder: &mut PasswordHolder) -> Result<bool> {
         self.mount("", password_holder)
     }
@@ -177,6 +184,7 @@ impl Removable {
         Ok(success)
     }
 
+    /// unmount the device. Eject the usb devices.
     pub fn umount_simple(&mut self, password_holder: &mut PasswordHolder) -> Result<bool> {
         let Ok(umount) = self.umount("", password_holder) else {
             return Ok(false);
@@ -184,6 +192,7 @@ impl Removable {
         Ok(umount)
     }
 
+    /// True iff the device is an usb disk.
     pub fn is_usb(&self) -> bool {
         matches!(self.kind, RemovableKind::Usb)
     }
@@ -270,7 +279,11 @@ impl MountCommands for Removable {
 impl MountRepr for Removable {
     /// String representation of the device
     fn as_string(&self) -> Result<String> {
-        Ok(self.name.clone())
+        Ok(format!(
+            " {kind}- {name} ",
+            kind = self.kind,
+            name = self.name.clone()
+        ))
     }
 
     fn device_name(&self) -> Result<String> {
@@ -278,175 +291,161 @@ impl MountRepr for Removable {
     }
 }
 
-fn list_usb_disks() -> Result<Vec<Removable>> {
-    let mut usb_disks = Vec::new();
-    // Path to the directory containing block devices
-    let sys_path = std::path::Path::new("/sys/block");
+struct UsbDevicesBuilder {}
 
-    // Iterate over entries in the block device directory
-    for entry in std::fs::read_dir(sys_path)? {
-        let entry = entry?;
-        let path = entry.path();
+impl UsbDevicesBuilder {
+    fn list_usb_disks() -> Result<Vec<Removable>> {
+        let proc_mounts = Self::read_proc_mounts()?;
 
-        let Ok(mut file) = std::fs::File::open("/proc/mounts") else {
-            return Ok(vec![]);
-        };
+        let usb_disks = std::fs::read_dir("/sys/block")?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|device_path| device_path.is_dir())
+            .filter_map(|device_path| {
+                if filename_from_path(&device_path).ok()?.starts_with("sd")
+                    && Self::is_removable(&device_path.join("removable")).ok()?
+                {
+                    Some(Self::list_volumes(&device_path))
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .flatten()
+            .map(|volume| {
+                let is_ejected = Self::is_device_ejected(std::path::Path::new(&volume));
 
+                Removable::from_usb(
+                    volume.to_owned(),
+                    Self::get_mount_point_for_volume(&proc_mounts, &volume),
+                    is_ejected,
+                )
+            })
+            .collect();
+        Ok(usb_disks)
+    }
+
+    fn read_proc_mounts() -> Result<String> {
+        let mut file = std::fs::File::open("/proc/mounts")?;
         let mut proc_mounts = String::new();
         file.read_to_string(&mut proc_mounts)?;
+        Ok(proc_mounts)
+    }
 
-        // Check if the entry is a directory
-        if path.is_dir() {
-            let device_name = path.file_name().unwrap().to_str().unwrap();
-            // Check if the device name starts with "sd" (common for USB disks)
-            if device_name.starts_with("sd") {
-                // Check if the device has a "removable" flag file
-                let removable_path = path.join("removable");
-                if is_removable(&removable_path)? {
-                    log_info!("USB -- Found {p} which is removable", p = path.display());
-                    // Likely a USB disk, get volume information
-                    let volumes = list_volumes(&path);
-                    log_info!("USB -- Volumes of {p}: {volumes:?}", p = path.display());
-                    let vols: Vec<Removable> = volumes
-                        .iter()
-                        .map(|volume| {
-                            let is_ejected = is_device_ejected(std::path::Path::new(volume));
+    /// Lists volumes for a given device path (like /dev/sdd).
+    /// Check partitions in /sys/class/block/{device_name}/{device_name}{partition_number}
+    fn list_volumes(device: &std::path::Path) -> Result<Vec<String>> {
+        let device_name = filename_from_path(device)?;
 
-                            Removable::from_usb(
-                                volume.to_owned(),
-                                get_mount_point_for_volume(&proc_mounts, volume),
-                                is_ejected,
-                            )
-                        })
-                        .collect();
-                    usb_disks.extend(vols);
-                }
+        let volumes = std::fs::read_dir(format!("/sys/class/block/{}/", device_name))?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|p| p.join("partition").exists())
+            .map(|p| filename_from_path(&p).unwrap_or_default().to_owned())
+            .map(|partition_name| format!("/dev/{}", partition_name))
+            .collect();
+
+        Ok(volumes)
+    }
+
+    /// Extract the mount point of a volume
+    fn get_mount_point_for_volume(proc_mount: &str, volume: &str) -> Option<String> {
+        for line in proc_mount.lines().filter(|line| line.starts_with(volume)) {
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            if fields.len() >= 2 {
+                return Some(fields[1].to_owned());
             }
         }
+        None
     }
 
-    Ok(usb_disks)
-}
+    /// Checks if a device has been ejected.
+    fn is_device_ejected(device: &std::path::Path) -> bool {
+        !device.exists()
+    }
 
-/// Lists volumes for a given device path (like /dev/sdd).
-fn list_volumes(device: &std::path::Path) -> Vec<String> {
-    let mut volumes = Vec::new();
-    let device_name = device.file_name().unwrap().to_str().unwrap();
+    /// Checks if a device is removable
+    fn is_removable(p: &std::path::Path) -> Result<bool> {
+        // Open the file
+        let mut file = std::fs::File::open(p)?;
 
-    // Check partitions in /sys/class/block/{device_name}/{device_name}{partition_number}
-    let sys_block_path = format!("/sys/class/block/{}/", device_name);
-    if let Ok(entries) = std::fs::read_dir(sys_block_path) {
-        for entry in entries.flatten() {
-            let partition_path = entry.path();
-            if partition_path.join("partition").exists() {
-                if let Some(partition_name) = partition_path.file_name().and_then(|n| n.to_str()) {
-                    let partition = format!("/dev/{}", partition_name);
-                    volumes.push(partition);
-                }
-            }
+        // Read the contents of the file
+        let mut content = String::new();
+        file.read_to_string(&mut content)?;
+
+        // Check if the content is exactly "1\n"
+        Ok(content.starts_with('1'))
+    }
+
+    /// Gets the user-friendly name of a USB device from its volume path.
+    fn get_usb_device_name(volume: &str) -> Option<String> {
+        // Extract the base device name (e.g., /dev/sdd1 -> sdd)
+        let volume_path = std::path::Path::new(volume);
+        let device_name = volume_path
+            .file_name()?
+            .to_str()?
+            .trim_end_matches(char::is_numeric);
+
+        // Path to the sysfs directory for the device
+        let device_sysfs_path = std::path::Path::new("/sys/class/block")
+            .join(device_name)
+            .join("device");
+
+        // Read the manufacturer, product, and serial files
+        let vendor = std::fs::read_to_string(device_sysfs_path.join("vendor"))
+            .ok()
+            .unwrap_or_default();
+        let model = std::fs::read_to_string(device_sysfs_path.join("model"))
+            .ok()
+            .unwrap_or_default();
+
+        // Combine the information into a single string
+        let user_friendly_name = format!("{} {}", vendor.trim(), model.trim(),);
+
+        if user_friendly_name.trim().is_empty() {
+            None
+        } else {
+            Some(user_friendly_name)
         }
     }
 
-    volumes
-}
+    /// Gets the current logged-in username.
+    fn get_current_username() -> Option<String> {
+        std::env::var("USER").ok()
+    }
 
-/// Extract the mount point of a volume
-fn get_mount_point_for_volume(proc_mount: &str, volume: &str) -> Option<String> {
-    for line in proc_mount.lines().filter(|line| line.starts_with(volume)) {
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.len() >= 2 {
-            return Some(fields[1].to_owned());
+    /// Gets the UUID of the filesystem on the given volume.
+    fn get_volume_uuid(volume: &str) -> Option<String> {
+        let output = std::process::Command::new("lsblk")
+            .arg("-lfo")
+            .arg("UUID")
+            .arg(volume)
+            .output()
+            .ok()?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log_line!("get_volume_uuid. stdout: {stdout} - stderr: {stderr}");
+
+        if output.status.success() {
+            let content = String::from_utf8_lossy(&output.stdout);
+            let uuid = content
+                .split_whitespace()
+                .collect::<Vec<&str>>()
+                .last()
+                .map(|s| s.to_owned().to_owned());
+            uuid
+        } else {
+            None
         }
     }
-    None
-}
 
-/// Checks if a device has been ejected.
-fn is_device_ejected(device: &std::path::Path) -> bool {
-    !device.exists()
-}
-
-/// Checks if a device is removable
-fn is_removable(p: &std::path::Path) -> Result<bool> {
-    // Open the file
-    let mut file = std::fs::File::open(p)?;
-
-    // Read the contents of the file
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
-
-    // Check if the content is exactly "1\n"
-    Ok(content.starts_with('1'))
-}
-
-/// Gets the user-friendly name of a USB device from its volume path.
-fn get_usb_device_name(volume: &str) -> Option<String> {
-    // Extract the base device name (e.g., /dev/sdd1 -> sdd)
-    let volume_path = std::path::Path::new(volume);
-    let device_name = volume_path
-        .file_name()?
-        .to_str()?
-        .trim_end_matches(char::is_numeric);
-
-    // Path to the sysfs directory for the device
-    let device_sysfs_path = std::path::Path::new("/sys/class/block")
-        .join(device_name)
-        .join("device");
-
-    // Read the manufacturer, product, and serial files
-    let vendor = std::fs::read_to_string(device_sysfs_path.join("vendor"))
-        .ok()
-        .unwrap_or_default();
-    let model = std::fs::read_to_string(device_sysfs_path.join("model"))
-        .ok()
-        .unwrap_or_default();
-
-    // Combine the information into a single string
-    let user_friendly_name = format!("{} {}", vendor.trim(), model.trim(),);
-
-    if user_friendly_name.trim().is_empty() {
-        None
-    } else {
-        Some(user_friendly_name)
+    /// Constructs the mount path in /run/media/{user}/{uuid} format for the given volume path.
+    fn build_mount_path(volume: &str) -> Option<String> {
+        let username = Self::get_current_username()?;
+        let uuid = Self::get_volume_uuid(volume)?;
+        Some(format!("/run/media/{}/{}", username, uuid))
     }
-}
-
-/// Gets the current logged-in username.
-fn get_current_username() -> Option<String> {
-    std::env::var("USER").ok()
-}
-
-/// Gets the UUID of the filesystem on the given volume.
-fn get_volume_uuid(volume: &str) -> Option<String> {
-    let output = std::process::Command::new("lsblk")
-        .arg("-lfo")
-        .arg("UUID")
-        .arg(volume)
-        .output()
-        .ok()?;
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    log_line!("get_volume_uuid. stdout: {stdout} - stderr: {stderr}");
-
-    if output.status.success() {
-        let content = String::from_utf8_lossy(&output.stdout);
-        let uuid = content
-            .split_whitespace()
-            .collect::<Vec<&str>>()
-            .last()
-            .map(|s| s.to_owned().to_owned());
-        uuid
-    } else {
-        None
-    }
-}
-
-/// Constructs the mount path in /run/media/{user}/{uuid} format for the given volume path.
-fn build_mount_path(volume: &str) -> Option<String> {
-    let username = get_current_username()?;
-    let uuid = get_volume_uuid(volume)?;
-    Some(format!("/run/media/{}/{}", username, uuid))
 }
 
 impl_selectable!(RemovableDevices);

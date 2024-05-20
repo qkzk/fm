@@ -973,7 +973,9 @@ impl Status {
         if !self.menu.password_holder.has_sudo() && device.is_usb() {
             self.ask_password(Some(BlockDeviceAction::MOUNT), PasswordUsage::USB)
         } else {
-            device.mount_simple(&mut self.menu.password_holder)?;
+            if device.mount_simple(&mut self.menu.password_holder)? {
+                self.go_to_removable()?;
+            }
             Ok(())
         }
     }
