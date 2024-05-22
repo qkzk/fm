@@ -18,6 +18,7 @@ use crate::io::execute_without_output_with_path;
 use crate::io::read_log;
 use crate::log_info;
 use crate::log_line;
+use crate::modes::copy_move;
 use crate::modes::help_string;
 use crate::modes::lsblk_and_cryptsetup_installed;
 use crate::modes::open_tui_program;
@@ -57,9 +58,10 @@ impl EventAction {
         status.refresh_view()
     }
 
-    /// Refresh the view if files were modified in current directory.
+    /// Refresh the views if files were modified in current directory.
     pub fn refresh_if_needed(status: &mut Status) -> Result<()> {
-        status.current_tab_mut().refresh_if_needed()
+        status.tabs[0].refresh_if_needed()?;
+        status.tabs[1].refresh_if_needed()
     }
 
     pub fn resize(status: &mut Status, width: usize, height: usize) -> Result<()> {
@@ -1551,5 +1553,24 @@ impl EventAction {
 
     pub fn bulk_confirm(status: &mut Status) -> Result<()> {
         status.bulk_execute()
+    }
+
+    pub fn file_copied(status: &mut Status) -> Result<()> {
+        log_info!(
+            "file copied - pool: {pool:?}",
+            pool = status.internal_settings.copy_file_queue
+        );
+        status.internal_settings.file_copied()?;
+        if !status.internal_settings.copy_file_queue.is_empty() {
+            let (sources, dest) = status.internal_settings.copy_file_queue[0].clone();
+            copy_move(
+                crate::modes::CopyMove::Copy,
+                sources,
+                dest,
+                status.internal_settings.term.clone(),
+                std::sync::Arc::clone(&status.fm_sender),
+            )?;
+        }
+        Ok(())
     }
 }

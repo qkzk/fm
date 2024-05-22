@@ -965,6 +965,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Include default binds from midnight commander / ranger for the function files (f1-f10)
 - Display "more info" about a file in context menu (owner, group, size, created/modified/accessed time, opener, previewer)
 - List, mount, eject usb keys. Share the same menu as "mtp" devices. Default bind: Alt+Shift+R
+- FIX: sorting didn't reset the focus to main window
 
 #### Changelog
 
@@ -993,10 +994,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] display more info about file in context (atime/ctime/mtime, previewed as ..., opened with ...)
 - [x] mount/eject usb key - merged with mtp as much as possible
 - [x] Regex matcher move to the first match, making it an incremental search
-- [ ] search & regex matcher. / doesn't flag the files, w flags the files. Both move as you type
-- [ ] multiple copies ???
 - [x] FIX: g / G doesn't work when order isn't default
 - [x] FIX: sorting doesn't refresh the display
+- [ ] search & regex matcher. / doesn't flag the files, w flags the files. Both move as you type
+      -> both should use regex
+- [ ] multiple copies ??? both happens at the same time and display on the same line
+  - [ ] creates a pool, send fm event, dispatch them
+- [ ] BUG: copying large files flickers the display
+- [ ] flagging the last file shouldn't progress to top of screen. Stay there, it's less annoying
+- [ ] pool for copies with waiting
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)

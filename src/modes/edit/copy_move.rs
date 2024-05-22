@@ -135,6 +135,8 @@ impl CopyMove {
 ///
 /// This quite complex behavior is the only way I could find to keep the progress bar while allowing to
 /// create copies of files in the same dir.
+///
+/// It also sends an event "file copied" once all the files are copied
 pub fn copy_move<P>(
     copy_or_move: CopyMove,
     sources: Vec<PathBuf>,
@@ -145,7 +147,6 @@ pub fn copy_move<P>(
 where
     P: AsRef<std::path::Path>,
 {
-    // let c_term = Arc::clone(&term);
     let (in_mem, pb, options) = copy_or_move.setup_progress_bar(term.term_size()?)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&in_mem, &pb, &term, process_info)
@@ -173,6 +174,9 @@ where
         }
 
         copy_or_move.log_and_notify(&human_size(transfered_bytes));
+        if matches!(copy_or_move, CopyMove::Copy) {
+            fm_sender.send(FmEvents::FileCopied).unwrap_or_default();
+        }
     });
     Ok(())
 }

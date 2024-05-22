@@ -562,7 +562,6 @@ impl Tab {
 
     /// Move to the bottom of current view.
     pub fn normal_go_bottom(&mut self) {
-        crate::log_info!("normal_go_bottom");
         let last_index = self.directory.content.len() - 1;
         self.directory.select_index(last_index);
         self.window.scroll_to(last_index)

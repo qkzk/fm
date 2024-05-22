@@ -89,7 +89,6 @@ impl Focus {
     }
 
     pub fn to_parent(&self) -> Self {
-        log_info!("focus to parent");
         match self {
             Self::LeftFile | Self::LeftMenu => Self::LeftFile,
             Self::RightFile | Self::RightMenu => Self::RightFile,
@@ -636,15 +635,29 @@ impl Status {
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
         let sources = self.menu.flagged.content.clone();
 
-        let dest = &self.current_tab().directory_of_selected()?;
+        let dest = &self.current_tab().directory_of_selected()?.to_owned();
 
-        copy_move(
-            cut_or_copy,
-            sources,
-            dest,
-            Arc::clone(&self.internal_settings.term),
-            Arc::clone(&self.fm_sender),
-        )?;
+        let mut must_act_now = true;
+        if matches!(cut_or_copy, CopyMove::Copy) {
+            if !self.internal_settings.copy_file_queue.is_empty() {
+                log_info!("cut_or_copy_flagged_files: act later");
+                must_act_now = false;
+            }
+            self.internal_settings
+                .copy_file_queue
+                .push((sources.to_owned(), dest.clone()));
+        }
+
+        if must_act_now {
+            log_info!("cut_or_copy_flagged_files: act now");
+            copy_move(
+                cut_or_copy,
+                sources,
+                dest,
+                Arc::clone(&self.internal_settings.term),
+                Arc::clone(&self.fm_sender),
+            )?;
+        }
         self.clear_flags_and_reset_view()
     }
 

@@ -27,7 +27,11 @@ pub struct InternalSettings {
     /// Info about the running machine. Only used to detect disks
     /// and their mount points.
     pub sys: System,
+    /// true if the application was launched inside a neovim terminal emulator
     pub inside_neovim: bool,
+    /// queue of pairs (sources, dest) to be copied.
+    /// it shouldn't be massive under normal usage so we can use a vector instead of an efficient queue data structure.
+    pub copy_file_queue: Vec<(Vec<std::path::PathBuf>, std::path::PathBuf)>,
 }
 
 impl InternalSettings {
@@ -37,6 +41,7 @@ impl InternalSettings {
         let must_quit = false;
         let nvim_server = args.server.clone();
         let inside_neovim = args.neovim;
+        let copy_file_pool = vec![];
         Self {
             force_clear,
             must_quit,
@@ -45,6 +50,7 @@ impl InternalSettings {
             sys,
             term,
             inside_neovim,
+            copy_file_queue: copy_file_pool,
         }
     }
 
@@ -88,5 +94,14 @@ impl InternalSettings {
             }
         }
         Err(anyhow!("Couldn't get nvim listen address from `ss` output"))
+    }
+
+    pub fn file_copied(&mut self) -> Result<()> {
+        if self.copy_file_queue.is_empty() {
+            Err(anyhow!("Copy File Pool is empty"))
+        } else {
+            self.copy_file_queue.remove(0);
+            Ok(())
+        }
     }
 }

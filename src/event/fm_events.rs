@@ -9,6 +9,8 @@ pub enum FmEvents {
     Refresh,
     /// User has saved its filenames and we can rename/create them
     BulkExecute,
+    /// The first file in file queue has been copied
+    FileCopied,
     /// Event from the terminal itself (restart, resize, key, mouse etc.)
     Event(Event),
 }
