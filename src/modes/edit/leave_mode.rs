@@ -314,7 +314,9 @@ impl LeaveMode {
             Display::Tree => SortKind::tree_default(),
             _ => SortKind::default(),
         };
-        status.update_second_pane_for_preview()
+        status.update_second_pane_for_preview()?;
+        status.focus = status.focus.to_parent();
+        Ok(())
     }
 
     /// Move back to a previously visited path.

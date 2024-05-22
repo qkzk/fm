@@ -992,6 +992,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] add F+x binds from ranger
 - [x] display more info about file in context (atime/ctime/mtime, previewed as ..., opened with ...)
 - [x] mount/eject usb key - merged with mtp as much as possible
+- [x] Regex matcher move to the first match, making it an incremental search
+- [ ] search & regex matcher. / doesn't flag the files, w flags the files. Both move as you type
+- [ ] multiple copies ???
+- [x] FIX: g / G doesn't work when order isn't default
+- [x] FIX: sorting doesn't refresh the display
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)

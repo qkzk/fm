@@ -88,6 +88,14 @@ impl Focus {
         }
     }
 
+    pub fn to_parent(&self) -> Self {
+        log_info!("focus to parent");
+        match self {
+            Self::LeftFile | Self::LeftMenu => Self::LeftFile,
+            Self::RightFile | Self::RightMenu => Self::RightFile,
+        }
+    }
+
     pub fn index(&self) -> usize {
         *self as usize
     }
@@ -775,6 +783,7 @@ impl Status {
     }
 
     /// Flag every file matching a typed regex.
+    /// Move to the "first" found match
     pub fn select_from_regex(&mut self) -> Result<()> {
         let input = self.menu.input.string();
         if input.is_empty() {
@@ -786,6 +795,10 @@ impl Status {
             _ => return Ok(()),
         };
         regex_matcher(&input, &paths, &mut self.menu.flagged)?;
+        if !self.menu.flagged.is_empty() {
+            self.tabs[self.index]
+                .go_to_file(self.menu.flagged.selected().context("no selected file")?);
+        }
         Ok(())
     }
 
@@ -1296,6 +1309,7 @@ impl Status {
         let len = self.menu.len(Edit::Nothing);
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
+        self.focus = self.focus.to_parent();
         Ok(())
     }
 

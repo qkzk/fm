@@ -289,7 +289,7 @@ impl Tab {
             self.window.reset(self.tree.displayable().lines().len());
             self.set_display_mode(Display::Tree);
         }
-        self.go_to_file(current_file.path.to_path_buf());
+        self.go_to_file(current_file.path);
         Ok(())
     }
 
@@ -462,11 +462,14 @@ impl Tab {
     }
 
     /// Select a file in current view, either directory or tree mode.
-    pub fn go_to_file(&mut self, file: path::PathBuf) {
+    pub fn go_to_file<P>(&mut self, file: P)
+    where
+        P: AsRef<std::path::Path>,
+    {
         if let Display::Tree = self.display_mode {
-            self.tree.go(To::Path(&file));
+            self.tree.go(To::Path(file.as_ref()));
         } else {
-            let index = self.directory.select_file(&file);
+            let index = self.directory.select_file(file.as_ref());
             self.scroll_to(index);
         }
     }
@@ -559,6 +562,7 @@ impl Tab {
 
     /// Move to the bottom of current view.
     pub fn normal_go_bottom(&mut self) {
+        crate::log_info!("normal_go_bottom");
         let last_index = self.directory.content.len() - 1;
         self.directory.select_index(last_index);
         self.window.scroll_to(last_index)

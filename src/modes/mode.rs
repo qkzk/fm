@@ -186,7 +186,7 @@ impl Leave for InputSimple {
     }
 
     fn must_reset_mode(&self) -> bool {
-        !matches!(self, Self::Shell | Self::Password(_, _))
+        !matches!(self, Self::Shell | Self::Password(_, _) | Self::Sort)
     }
 }
 
