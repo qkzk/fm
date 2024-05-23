@@ -33,7 +33,7 @@ pub struct InternalSettings {
     /// queue of pairs (sources, dest) to be copied.
     /// it shouldn't be massive under normal usage so we can use a vector instead of an efficient queue data structure.
     pub copy_file_queue: Vec<(Vec<std::path::PathBuf>, std::path::PathBuf)>,
-    pub copy_progress: Option<InMemoryTerm>,
+    pub in_mem_progress: Option<InMemoryTerm>,
 }
 
 impl InternalSettings {
@@ -54,7 +54,7 @@ impl InternalSettings {
             term,
             inside_neovim,
             copy_file_queue,
-            copy_progress,
+            in_mem_progress: copy_progress,
         }
     }
 
@@ -113,12 +113,12 @@ impl InternalSettings {
     /// Store copy progress bar.
     /// When a copy progress bar is stored,
     /// display manager is responsible for its display in the left tab.
-    pub fn store_copy_progress(&mut self, content: InMemoryTerm) {
-        self.copy_progress = Some(content);
+    pub fn store_copy_progress(&mut self, in_mem_progress_bar: InMemoryTerm) {
+        self.in_mem_progress = Some(in_mem_progress_bar);
     }
 
     /// Set copy progress bar to None.
     pub fn unset_copy_progress(&mut self) {
-        self.copy_progress = None;
+        self.in_mem_progress = None;
     }
 }

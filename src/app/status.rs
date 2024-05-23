@@ -650,13 +650,14 @@ impl Status {
 
         if must_act_now {
             log_info!("cut_or_copy_flagged_files: act now");
-            copy_move(
+            let in_mem = copy_move(
                 cut_or_copy,
                 sources,
                 dest,
                 Arc::clone(&self.internal_settings.term),
                 Arc::clone(&self.fm_sender),
             )?;
+            self.internal_settings.store_copy_progress(in_mem);
         }
         self.clear_flags_and_reset_view()
     }

@@ -1000,14 +1000,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: sorting doesn't refresh the display
 - [ ] search & regex matcher. / doesn't flag the files, w flags the files. Both move as you type
       -> both should use regex
-- [ ] multiple copies
+- [x] multiple copies
   - [x] creates a pool,
   - [x] send fm events
   - [x] dispatch them
   - [x] FIX: copying large files flickers the display
-  - [ ] BUG ???: what happens if dest / source change before copy is made ?
+- [ ] error message when copy / move fails (source or dest changed)
 - [ ] flagging the last file shouldn't progress to top of screen. Stay there, it's less annoying
-- [ ] pool for copies with waiting
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)

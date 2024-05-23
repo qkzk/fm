@@ -172,7 +172,7 @@ impl<'a> WinMain<'a> {
         if self.is_right() {
             return Ok(0);
         }
-        let Some(copy_progress) = &self.status.internal_settings.copy_progress else {
+        let Some(copy_progress) = &self.status.internal_settings.in_mem_progress else {
             return Ok(0);
         };
         let progress_bar = copy_progress.contents();
@@ -180,7 +180,7 @@ impl<'a> WinMain<'a> {
         let content = if nb_copy_left <= 1 {
             progress_bar
         } else {
-            format!("{progress_bar} - Copy 1 of {nb}", nb = nb_copy_left)
+            format!("{progress_bar}     -     1 of {nb}", nb = nb_copy_left)
         };
         Ok(canvas.print_with_attr(1, 2, &content, color_to_attr(MENU_COLORS.palette_4))?)
     }

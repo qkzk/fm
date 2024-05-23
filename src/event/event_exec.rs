@@ -1566,13 +1566,14 @@ impl EventAction {
             status.internal_settings.unset_copy_progress()
         } else {
             let (sources, dest) = status.internal_settings.copy_file_queue[0].clone();
-            copy_move(
+            let in_mem = copy_move(
                 crate::modes::CopyMove::Copy,
                 sources,
                 dest,
                 status.internal_settings.term.clone(),
                 std::sync::Arc::clone(&status.fm_sender),
             )?;
+            status.internal_settings.store_copy_progress(in_mem);
         }
         Ok(())
     }

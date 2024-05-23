@@ -18,14 +18,11 @@ use crate::{log_info, log_line};
 
 /// Send the progress bar to event dispatcher, allowing its display
 fn handle_progress_display(
-    in_mem: &InMemoryTerm,
     pb: &ProgressBar,
-    fm_sender: &Arc<Sender<FmEvents>>,
     process_info: fs_extra::TransitProcess,
 ) -> fs_extra::dir::TransitProcessResult {
     let progress = progress_bar_position(&process_info);
     pb.set_position(progress);
-    let _ = fm_sender.send(FmEvents::CopyProgress(in_mem.to_owned()));
     fs_extra::dir::TransitProcessResult::ContinueOrAbort
 }
 
@@ -138,14 +135,13 @@ pub fn copy_move<P>(
     dest: P,
     term: Arc<Term>,
     fm_sender: Arc<Sender<FmEvents>>,
-) -> Result<()>
+) -> Result<InMemoryTerm>
 where
     P: AsRef<std::path::Path>,
 {
-    let fm_sender2 = fm_sender.clone();
-    let (in_mem, pb, options) = copy_or_move.setup_progress_bar(term.term_size()?)?;
+    let (in_mem, progress_bar, options) = copy_or_move.setup_progress_bar(term.term_size()?)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
-        handle_progress_display(&in_mem, &pb, &fm_sender, process_info)
+        handle_progress_display(&progress_bar, process_info)
     };
     let conflict_handler = ConflictHandler::new(dest, &sources)?;
 
@@ -163,7 +159,7 @@ where
             }
         };
 
-        fm_sender2.send(FmEvents::Refresh).unwrap_or_default();
+        fm_sender.send(FmEvents::Refresh).unwrap_or_default();
 
         if let Err(e) = conflict_handler.solve_conflicts() {
             log_info!("Conflict Handler error: {e}");
@@ -171,10 +167,10 @@ where
 
         copy_or_move.log_and_notify(&human_size(transfered_bytes));
         if matches!(copy_or_move, CopyMove::Copy) {
-            fm_sender2.send(FmEvents::FileCopied).unwrap_or_default();
+            fm_sender.send(FmEvents::FileCopied).unwrap_or_default();
         }
     });
-    Ok(())
+    Ok(in_mem)
 }
 
 /// Deal with conflicting filenames during a copy or a move.
