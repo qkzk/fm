@@ -7,26 +7,25 @@ use std::thread;
 use anyhow::{Context, Result};
 use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
-use tuikit::prelude::{Attr, Term};
+use tuikit::prelude::Term;
 
 use crate::common::NOTIFY_EXECUTABLE;
 use crate::common::{is_program_in_path, random_name};
-use crate::config::MENU_COLORS;
 use crate::event::FmEvents;
-use crate::io::{color_to_attr, execute};
+use crate::io::execute;
 use crate::modes::human_size;
 use crate::{log_info, log_line};
 
-/// Display the updated progress bar on the terminal.
+/// Send the progress bar to event dispatcher, allowing its display
 fn handle_progress_display(
     in_mem: &InMemoryTerm,
     pb: &ProgressBar,
-    term: &Arc<Term>,
+    fm_sender: &Arc<Sender<FmEvents>>,
     process_info: fs_extra::TransitProcess,
 ) -> fs_extra::dir::TransitProcessResult {
-    pb.set_position(progress_bar_position(&process_info));
-    let _ = term.print_with_attr(2, 1, &in_mem.contents(), CopyMove::attr());
-    let _ = term.present();
+    let progress = progress_bar_position(&process_info);
+    pb.set_position(progress);
+    let _ = fm_sender.send(FmEvents::CopyProgress(in_mem.to_owned()));
     fs_extra::dir::TransitProcessResult::ContinueOrAbort
 }
 
@@ -47,10 +46,6 @@ pub enum CopyMove {
 }
 
 impl CopyMove {
-    fn attr() -> Attr {
-        color_to_attr(MENU_COLORS.second)
-    }
-
     fn verb(&self) -> &str {
         match self {
             Self::Copy => "copy",
@@ -120,7 +115,7 @@ impl CopyMove {
 }
 
 /// Will copy or move a bunch of files to `dest`.
-/// A progress bar is displayed on the passed terminal.
+/// A progress bar is displayed.
 /// A notification is then sent to the user if a compatible notification system
 /// is installed.
 ///
@@ -147,9 +142,10 @@ pub fn copy_move<P>(
 where
     P: AsRef<std::path::Path>,
 {
+    let fm_sender2 = fm_sender.clone();
     let (in_mem, pb, options) = copy_or_move.setup_progress_bar(term.term_size()?)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
-        handle_progress_display(&in_mem, &pb, &term, process_info)
+        handle_progress_display(&in_mem, &pb, &fm_sender, process_info)
     };
     let conflict_handler = ConflictHandler::new(dest, &sources)?;
 
@@ -167,7 +163,7 @@ where
             }
         };
 
-        fm_sender.send(FmEvents::Refresh).unwrap_or_default();
+        fm_sender2.send(FmEvents::Refresh).unwrap_or_default();
 
         if let Err(e) = conflict_handler.solve_conflicts() {
             log_info!("Conflict Handler error: {e}");
@@ -175,7 +171,7 @@ where
 
         copy_or_move.log_and_notify(&human_size(transfered_bytes));
         if matches!(copy_or_move, CopyMove::Copy) {
-            fm_sender.send(FmEvents::FileCopied).unwrap_or_default();
+            fm_sender2.send(FmEvents::FileCopied).unwrap_or_default();
         }
     });
     Ok(())

@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::path;
 
 use anyhow::{Context, Result};
+use indicatif::InMemoryTerm;
 
 use crate::app::Focus;
 use crate::app::Status;
@@ -1561,7 +1562,9 @@ impl EventAction {
             pool = status.internal_settings.copy_file_queue
         );
         status.internal_settings.file_copied()?;
-        if !status.internal_settings.copy_file_queue.is_empty() {
+        if status.internal_settings.copy_file_queue.is_empty() {
+            status.internal_settings.unset_copy_progress()
+        } else {
             let (sources, dest) = status.internal_settings.copy_file_queue[0].clone();
             copy_move(
                 crate::modes::CopyMove::Copy,
@@ -1571,6 +1574,11 @@ impl EventAction {
                 std::sync::Arc::clone(&status.fm_sender),
             )?;
         }
+        Ok(())
+    }
+
+    pub fn display_copy_progress(status: &mut Status, content: InMemoryTerm) -> Result<()> {
+        status.internal_settings.store_copy_progress(content);
         Ok(())
     }
 }

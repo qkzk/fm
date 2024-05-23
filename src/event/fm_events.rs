@@ -1,3 +1,4 @@
+use indicatif::InMemoryTerm;
 use tuikit::event::Event;
 
 /// Internal and terminal events.
@@ -11,6 +12,8 @@ pub enum FmEvents {
     BulkExecute,
     /// The first file in file queue has been copied
     FileCopied,
+    /// A progress bar of the current file copy
+    CopyProgress(InMemoryTerm),
     /// Event from the terminal itself (restart, resize, key, mouse etc.)
     Event(Event),
 }

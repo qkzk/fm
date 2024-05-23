@@ -38,6 +38,7 @@ impl EventDispatcher {
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             FmEvents::Refresh => EventAction::refresh_if_needed(status),
             FmEvents::FileCopied => EventAction::file_copied(status),
+            FmEvents::CopyProgress(content) => EventAction::display_copy_progress(status, content),
             _ => Ok(()),
         }
     }

@@ -133,8 +133,8 @@ impl<'a> Draw for WinMain<'a> {
             self.draw_preview_as_second_pane(canvas)?;
             return Ok(());
         }
-        self.draw_content(canvas)?;
         WinMainHeader::new(self.status, self.tab, self.attributes.is_selected)?.draw(canvas)?;
+        self.draw_content(canvas)?;
         WinMainFooter::new(self.status, self.tab, self.attributes.is_selected)?.draw(canvas)?;
         Ok(())
     }
@@ -156,12 +156,33 @@ impl<'a> WinMain<'a> {
     }
 
     fn draw_content(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
+        self.draw_copy_progress_bar(canvas)?;
         match &self.tab.display_mode {
             DisplayMode::Directory => self.draw_files(canvas),
             DisplayMode::Tree => self.draw_tree(canvas),
             DisplayMode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas),
             DisplayMode::Flagged => self.draw_fagged(canvas),
         }
+    }
+
+    /// Display a copy progress bar on the left tab.
+    /// Nothing is drawn if there's no copy atm.
+    /// If the copy file queue has length > 1, we also display its size.
+    fn draw_copy_progress_bar(&self, canvas: &mut dyn Canvas) -> Result<usize> {
+        if self.is_right() {
+            return Ok(0);
+        }
+        let Some(copy_progress) = &self.status.internal_settings.copy_progress else {
+            return Ok(0);
+        };
+        let progress_bar = copy_progress.contents();
+        let nb_copy_left = self.status.internal_settings.copy_file_queue.len();
+        let content = if nb_copy_left <= 1 {
+            progress_bar
+        } else {
+            format!("{progress_bar} - Copy 1 of {nb}", nb = nb_copy_left)
+        };
+        Ok(canvas.print_with_attr(1, 2, &content, color_to_attr(MENU_COLORS.palette_4))?)
     }
 
     /// Displays the current directory content, one line per item like in

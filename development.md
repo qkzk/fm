@@ -966,6 +966,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Display "more info" about a file in context menu (owner, group, size, created/modified/accessed time, opener, previewer)
 - List, mount, eject usb keys. Share the same menu as "mtp" devices. Default bind: Alt+Shift+R
 - FIX: sorting didn't reset the focus to main window
+- Multiple copies. Copy files while another copy is happening. The display won't flicker anymore while copying.
+  Interally, it uses a queue to store the source & destination.
 
 #### Changelog
 
@@ -998,9 +1000,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: sorting doesn't refresh the display
 - [ ] search & regex matcher. / doesn't flag the files, w flags the files. Both move as you type
       -> both should use regex
-- [ ] multiple copies ??? both happens at the same time and display on the same line
-  - [ ] creates a pool, send fm event, dispatch them
-- [ ] BUG: copying large files flickers the display
+- [ ] multiple copies
+  - [x] creates a pool,
+  - [x] send fm events
+  - [x] dispatch them
+  - [x] FIX: copying large files flickers the display
+  - [ ] BUG ???: what happens if dest / source change before copy is made ?
 - [ ] flagging the last file shouldn't progress to top of screen. Stay there, it's less annoying
 - [ ] pool for copies with waiting
 - [ ] perfomance

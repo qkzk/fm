@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use clap::Parser;
+use indicatif::InMemoryTerm;
 use sysinfo::{DiskExt, System, SystemExt};
 use tuikit::term::Term;
 
@@ -32,6 +33,7 @@ pub struct InternalSettings {
     /// queue of pairs (sources, dest) to be copied.
     /// it shouldn't be massive under normal usage so we can use a vector instead of an efficient queue data structure.
     pub copy_file_queue: Vec<(Vec<std::path::PathBuf>, std::path::PathBuf)>,
+    pub copy_progress: Option<InMemoryTerm>,
 }
 
 impl InternalSettings {
@@ -41,7 +43,8 @@ impl InternalSettings {
         let must_quit = false;
         let nvim_server = args.server.clone();
         let inside_neovim = args.neovim;
-        let copy_file_pool = vec![];
+        let copy_file_queue = vec![];
+        let copy_progress = None;
         Self {
             force_clear,
             must_quit,
@@ -50,7 +53,8 @@ impl InternalSettings {
             sys,
             term,
             inside_neovim,
-            copy_file_queue: copy_file_pool,
+            copy_file_queue,
+            copy_progress,
         }
     }
 
@@ -96,6 +100,7 @@ impl InternalSettings {
         Err(anyhow!("Couldn't get nvim listen address from `ss` output"))
     }
 
+    /// Remove the top of the copy queue.
     pub fn file_copied(&mut self) -> Result<()> {
         if self.copy_file_queue.is_empty() {
             Err(anyhow!("Copy File Pool is empty"))
@@ -103,5 +108,17 @@ impl InternalSettings {
             self.copy_file_queue.remove(0);
             Ok(())
         }
+    }
+
+    /// Store copy progress bar.
+    /// When a copy progress bar is stored,
+    /// display manager is responsible for its display in the left tab.
+    pub fn store_copy_progress(&mut self, content: InMemoryTerm) {
+        self.copy_progress = Some(content);
+    }
+
+    /// Set copy progress bar to None.
+    pub fn unset_copy_progress(&mut self) {
+        self.copy_progress = None;
     }
 }
