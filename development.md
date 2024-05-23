@@ -1005,12 +1005,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] send fm events
   - [x] dispatch them
   - [x] FIX: copying large files flickers the display
+- [x] flagging the last file shouldn't progress to top of screen. Stay there, it's less annoying
 - [ ] error message when copy / move fails (source or dest changed)
-- [ ] flagging the last file shouldn't progress to top of screen. Stay there, it's less annoying
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
+- [ ] FIX: Moving big file requires progress bar ? Should be instant
 
 ## TODO
 

@@ -616,12 +616,16 @@ impl Status {
                 }
                 Display::Directory => {
                     self.menu.flagged.toggle(&file.path);
-                    self.current_tab_mut().normal_down_one_row();
+                    if !self.tabs[self.index].directory.selected_is_last() {
+                        self.current_tab_mut().normal_down_one_row();
+                    }
                     let _ = self.update_second_pane_for_preview();
                 }
                 Display::Tree => {
                     self.menu.flagged.toggle(&file.path);
-                    let _ = self.current_tab_mut().tree_select_next();
+                    if !self.tabs[self.index].tree.selected_is_last() {
+                        let _ = self.current_tab_mut().tree_select_next();
+                    }
                     let _ = self.update_second_pane_for_preview();
                 }
                 Display::Preview => (),

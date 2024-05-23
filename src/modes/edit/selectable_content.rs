@@ -12,6 +12,8 @@ pub trait Selectable {
     fn index(&self) -> usize;
     /// set the index to the value if possible
     fn set_index(&mut self, index: usize);
+    /// true if the selected element is the last of content
+    fn selected_is_last(&self) -> bool;
 }
 
 pub trait Content<T>: Selectable {
@@ -82,6 +84,10 @@ macro_rules! impl_selectable {
                 if index < self.len() {
                     self.index = index;
                 }
+            }
+
+            fn selected_is_last(&self) -> bool {
+                return self.index() + 1 == self.len();
             }
         }
     };

@@ -669,6 +669,10 @@ impl Tree {
             stack.push((other_prefix.clone(), leaf));
         }
     }
+
+    pub fn selected_is_last(&self) -> bool {
+        self.displayable_lines.selected_is_last()
+    }
 }
 
 #[inline]
@@ -752,6 +756,10 @@ impl TreeLines {
             self.index = index;
             self.content[self.index].select()
         }
+    }
+
+    fn selected_is_last(&self) -> bool {
+        return self.index + 1 == self.content.len();
     }
 }
 
