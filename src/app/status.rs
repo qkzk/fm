@@ -17,7 +17,9 @@ use crate::app::InternalSettings;
 use crate::app::Session;
 use crate::app::Tab;
 use crate::app::{ClickableLine, FlaggedFooter};
-use crate::common::{args_is_empty, is_sudo_command, open_in_current_neovim, path_to_string};
+use crate::common::{
+    args_is_empty, filename_from_path, is_sudo_command, open_in_current_neovim, path_to_string,
+};
 use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::Bindings;
 use crate::event::FmEvents;
@@ -638,20 +640,10 @@ impl Status {
     /// is sent every time, even for 0 bytes files...
     pub fn cut_or_copy_flagged_files(&mut self, cut_or_copy: CopyMove) -> Result<()> {
         let sources = self.menu.flagged.content.clone();
-
         let dest = &self.current_tab().directory_of_selected()?.to_owned();
 
-        // TODO!
-        // if it's a "simple move" (single file sharing mountpoint between source & dest) {}
-        //        crate::common::disk_used_by_path
-        //          then
-        //              use std::fs::rename
-        // return OK
-        if self.is_simple_move(cut_or_copy, &sources, dest) {
-            let source = sources[0];
-            std::fs::rename(source, dest)?;
-            log_info!("Simple copy {from} to {dest}", from=sources[0].display(), dest=dest.display());
-            return self.clear_flags_and_reset_view();
+        if self.is_simple_move(&cut_or_copy, &sources, dest) {
+            return self.simple_move(&sources, dest);
         }
 
         let mut must_act_now = true;
@@ -679,10 +671,33 @@ impl Status {
         self.clear_flags_and_reset_view()
     }
 
-    fn is_simple_move(cut_or_copy: CopyMove, sources: &Vec<Path::PathBuf>, dest: &std::path::Path) -> bool {
-        matches!(cut_or_copy, CopyMove::Move) 
-        && sources.len() == 1 
-        && crate::common::disk_used_by_path(sources[0]) == crate::common::disk_used_by_path(dest)
+    fn is_simple_move(
+        &self,
+        cut_or_copy: &CopyMove,
+        sources: &Vec<std::path::PathBuf>,
+        dest: &std::path::Path,
+    ) -> bool {
+        matches!(cut_or_copy, CopyMove::Move)
+            && sources.len() == 1
+            && crate::common::disk_used_by_path(self.disks(), &sources[0])
+                == crate::common::disk_used_by_path(self.disks(), dest)
+    }
+
+    fn simple_move(
+        &mut self,
+        sources: &Vec<std::path::PathBuf>,
+        dest: &std::path::Path,
+    ) -> Result<()> {
+        let source = &sources[0];
+        let filename = filename_from_path(source)?;
+        let dest = dest.to_path_buf().join(filename);
+        std::fs::rename(source, &dest)?;
+        log_line!(
+            "Moved {source} to {dest}",
+            source = source.display(),
+            dest = dest.display()
+        );
+        self.clear_flags_and_reset_view()
     }
 
     fn skim_init(&mut self) {
