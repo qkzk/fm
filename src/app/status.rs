@@ -647,6 +647,12 @@ impl Status {
         //          then
         //              use std::fs::rename
         // return OK
+        if self.is_simple_move(cut_or_copy, &sources, dest) {
+            let source = sources[0];
+            std::fs::rename(source, dest)?;
+            log_info!("Simple copy {from} to {dest}", from=sources[0].display(), dest=dest.display());
+            return self.clear_flags_and_reset_view();
+        }
 
         let mut must_act_now = true;
         if matches!(cut_or_copy, CopyMove::Copy) {
@@ -671,6 +677,12 @@ impl Status {
             self.internal_settings.store_copy_progress(in_mem);
         }
         self.clear_flags_and_reset_view()
+    }
+
+    fn is_simple_move(cut_or_copy: CopyMove, sources: &Vec<Path::PathBuf>, dest: &std::path::Path) -> bool {
+        matches!(cut_or_copy, CopyMove::Move) 
+        && sources.len() == 1 
+        && crate::common::disk_used_by_path(sources[0]) == crate::common::disk_used_by_path(dest)
     }
 
     fn skim_init(&mut self) {
