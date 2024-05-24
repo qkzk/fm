@@ -1012,6 +1012,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [ ] FIX: Moving big file requires progress bar ? Should be instant
+  - internally fs_extra uses a copy even for moving file...
+  - skip it completelly when doing moves which doesn't require copy aka same mountpoint
 
 ## TODO
 

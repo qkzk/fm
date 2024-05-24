@@ -641,6 +641,13 @@ impl Status {
 
         let dest = &self.current_tab().directory_of_selected()?.to_owned();
 
+        // TODO!
+        // if it's a "simple move" (single file sharing mountpoint between source & dest) {}
+        //        crate::common::disk_used_by_path
+        //          then
+        //              use std::fs::rename
+        // return OK
+
         let mut must_act_now = true;
         if matches!(cut_or_copy, CopyMove::Copy) {
             if !self.internal_settings.copy_file_queue.is_empty() {
