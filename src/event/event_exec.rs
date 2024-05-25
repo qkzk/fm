@@ -254,7 +254,7 @@ impl EventAction {
         }
         log_info!("clipboard read: {files}");
         status.menu.flagged.clear();
-        files.lines().into_iter().for_each(|f| {
+        files.lines().for_each(|f| {
             let p = path::PathBuf::from(f);
             if p.exists() {
                 status.menu.flagged.push(p);

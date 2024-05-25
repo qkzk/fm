@@ -759,7 +759,7 @@ impl TreeLines {
     }
 
     fn selected_is_last(&self) -> bool {
-        return self.index + 1 == self.content.len();
+        self.index + 1 == self.content.len()
     }
 }
 

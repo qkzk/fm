@@ -674,7 +674,7 @@ impl Status {
     fn is_simple_move(
         &self,
         cut_or_copy: &CopyMove,
-        sources: &Vec<std::path::PathBuf>,
+        sources: &[std::path::PathBuf],
         dest: &std::path::Path,
     ) -> bool {
         matches!(cut_or_copy, CopyMove::Move)
@@ -685,7 +685,7 @@ impl Status {
 
     fn simple_move(
         &mut self,
-        sources: &Vec<std::path::PathBuf>,
+        sources: &[std::path::PathBuf],
         dest: &std::path::Path,
     ) -> Result<()> {
         let source = &sources[0];
