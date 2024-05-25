@@ -68,6 +68,8 @@ const HELP_TO_FORMAT: &str = "
 {Delete:<10}:      delete files permanently
 {TrashMoveFile:<10}:      move to trash
 {Compress:<10}:      compress into an archive
+{FlaggedToClipboard:<10}:      copy flagged files to primary clipbloard
+{FlaggedFromClipboard:<10}:      flag existing files from primary clipboard
 
 - Trash -
 {TrashOpen:<10}:      Open the trash (enter to restore, del clear)

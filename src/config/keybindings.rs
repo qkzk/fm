@@ -138,6 +138,8 @@ impl Bindings {
             (Key::F(8), ActionMap::Delete),
             (Key::F(9), ActionMap::NewFile),
             (Key::F(10), ActionMap::Quit),
+            (Key::F(11), ActionMap::FlaggedToClipboard),
+            (Key::F(12), ActionMap::FlaggedFromClipboard),
         ]);
         let custom = None;
         Self { binds, custom }

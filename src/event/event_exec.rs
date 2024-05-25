@@ -2,6 +2,8 @@ use std::borrow::Borrow;
 use std::path;
 
 use anyhow::{Context, Result};
+use copypasta::ClipboardContext;
+use copypasta::ClipboardProvider;
 use indicatif::InMemoryTerm;
 
 use crate::app::Focus;
@@ -9,6 +11,7 @@ use crate::app::Status;
 use crate::app::Tab;
 use crate::common::filename_to_clipboard;
 use crate::common::filepath_to_clipboard;
+use crate::common::set_clipboard;
 use crate::common::LAZYGIT;
 use crate::common::NCDU;
 use crate::common::{is_program_in_path, open_in_current_neovim};
@@ -222,6 +225,41 @@ impl EventAction {
         if status.focus.is_file() {
             status.flag_all();
         }
+        Ok(())
+    }
+
+    pub fn flagged_to_clipboard(status: &mut Status) -> Result<()> {
+        let files = status
+            .menu
+            .flagged
+            .content()
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        set_clipboard(files);
+        Ok(())
+    }
+
+    pub fn flagged_from_clipboard(status: &mut Status) -> Result<()> {
+        let Ok(mut ctx) = ClipboardContext::new() else {
+            return Ok(());
+        };
+        let Ok(files) = ctx.get_contents() else {
+            return Ok(());
+        };
+        if files.is_empty() {
+            return Ok(());
+        }
+        log_info!("clipboard read: {files}");
+        status.menu.flagged.clear();
+        files.lines().into_iter().for_each(|f| {
+            let p = path::PathBuf::from(f);
+            if p.exists() {
+                status.menu.flagged.push(p);
+            }
+        });
         Ok(())
     }
 

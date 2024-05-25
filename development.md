@@ -968,6 +968,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - FIX: sorting didn't reset the focus to main window
 - Multiple copies. Copy files while another copy is happening. The display won't flicker anymore while copying.
   Interally, it uses a queue to store the source & destination.
+- Copy flagged files to primary clipboard with F11. Flag existing files from clipboard with F12
 
 #### Changelog
 
@@ -998,8 +999,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Regex matcher move to the first match, making it an incremental search
 - [x] FIX: g / G doesn't work when order isn't default
 - [x] FIX: sorting doesn't refresh the display
-- [ ] search & regex matcher. / doesn't flag the files, w flags the files. Both move as you type
-      -> both should use regex
 - [x] multiple copies
   - [x] creates a pool,
   - [x] send fm events
@@ -1008,6 +1007,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] flagging the last file shouldn't progress to top of screen. Stay there, it's less annoying
 - [x] FIX: Moving big file uses progress bar
 - [x] error message when copy / move fails (source or dest changed)
+- [x] copy flagged files to clipboard
+- [x] flag files from clipboard
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
