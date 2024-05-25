@@ -969,6 +969,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Multiple copies. Copy files while another copy is happening. The display won't flicker anymore while copying.
   Interally, it uses a queue to store the source & destination.
 - Copy flagged files to primary clipboard with F11. Flag existing files from clipboard with F12
+- hex colors can be used in config file.
 
 #### Changelog
 
@@ -1013,6 +1014,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
+- [ ] allow hex colors like #16a085 in config
 
 ## TODO
 

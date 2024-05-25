@@ -148,9 +148,19 @@ fn parse_rgb_triplet(color: &str) -> Option<(u8, u8, u8)> {
         if triplet.len() == 3 {
             return Some((triplet[0], triplet[1], triplet[2]));
         }
+    } else if color.starts_with('#') && color.len() >= 7 {
+        let r = parse_hex_byte(&color[1..3])?;
+        let g = parse_hex_byte(&color[3..5])?;
+        let b = parse_hex_byte(&color[5..7])?;
+        return Some((r, g, b));
     }
     None
 }
+
+fn parse_hex_byte(byte: &str) -> Option<u8> {
+    u8::from_str_radix(byte, 16).ok()
+}
+
 macro_rules! update_attribute {
     ($self_attr:expr, $yaml:ident, $key:expr) => {
         if let Some(attr) = read_yaml_value($yaml, $key) {
