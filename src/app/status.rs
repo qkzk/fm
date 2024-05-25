@@ -691,12 +691,19 @@ impl Status {
         let source = &sources[0];
         let filename = filename_from_path(source)?;
         let dest = dest.to_path_buf().join(filename);
-        std::fs::rename(source, &dest)?;
-        log_line!(
-            "Moved {source} to {dest}",
-            source = source.display(),
-            dest = dest.display()
-        );
+        match std::fs::rename(source, &dest) {
+            Ok(()) => {
+                log_line!(
+                    "Moved {source} to {dest}",
+                    source = source.display(),
+                    dest = dest.display()
+                )
+            }
+            Err(e) => {
+                log_info!("Error: {e:?}");
+                log_line!("Error: {e:?}")
+            }
+        }
         self.clear_flags_and_reset_view()
     }
 

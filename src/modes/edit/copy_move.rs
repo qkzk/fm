@@ -154,7 +154,8 @@ where
         ) {
             Ok(transfered_bytes) => transfered_bytes,
             Err(e) => {
-                log_info!("copy move couldn't copy: {e:?}");
+                log_info!("Error: {e:?}");
+                log_line!("Error: {e:?}");
                 0
             }
         };
