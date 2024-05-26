@@ -2,6 +2,7 @@ mod content_window;
 mod directory;
 mod fileinfo;
 mod preview;
+mod preview_holder;
 mod skim;
 mod tree;
 mod users;
@@ -16,6 +17,7 @@ pub use preview::{
     BinaryContent, ColoredText, ExtensionKind, HLContent, Preview, TextKind, TreePreview, Ueberzug,
     Window,
 };
+pub use preview_holder::*;
 pub use skim::{print_ansi_str, Skimer};
 pub use tree::{ColoredString, Go, Node, To, Tree, TreeLineBuilder, TreeLines};
 pub use users::Users;

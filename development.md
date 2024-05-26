@@ -1012,6 +1012,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] flag files from clipboard
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
+  - PH preview builder holding : rx (paths to preview, toggle previewing), previews sized queue,
+  - E.Exec path / file display change -> new paths to PH
+  - display a preview... PH.req(path) -> `Option<Preview>`
+  - [x] preview holder
+  - [ ] attach it somewhere (app ? status ? display ?)
+  - [ ] attach the tx somewhere (status ?)
+  - [ ] change internal api to request previews from status
+  - [ ] change internal api to read previews from display
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [ ] allow hex colors like #16a085 in config
