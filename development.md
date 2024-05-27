@@ -1016,10 +1016,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - E.Exec path / file display change -> new paths to PH
   - display a preview... PH.req(path) -> `Option<Preview>`
   - [x] preview holder
-  - [ ] attach it somewhere (app ? status ? display ?)
-  - [ ] attach the tx somewhere (status ?)
-  - [ ] change internal api to request previews from status
-  - [ ] change internal api to read previews from display
+  - [x] attach the previewholder to display
+  - [x] attach the tx somewhere to status
+  - [x] change internal api to read previews from display
+  - [~] change internal api to request previews from status
+  - [ ] replace tx rx by simple `Arc<PreviewHolder>`
+  - [ ] limit its size (order somewhere or remove non common path)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [ ] allow hex colors like #16a085 in config

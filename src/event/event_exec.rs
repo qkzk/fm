@@ -37,6 +37,7 @@ use crate::modes::MarkAction;
 use crate::modes::Navigate;
 use crate::modes::NeedConfirmation;
 use crate::modes::Preview;
+use crate::modes::PreviewCommand;
 use crate::modes::RemovableDevices;
 use crate::modes::Search;
 use crate::modes::Selectable;
@@ -201,6 +202,10 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
+        status.tx_preview.send(PreviewCommand::Start)?;
+        status.tx_preview.send(PreviewCommand::Paths(vec![status
+            .current_tab()
+            .current_file()?]))?;
         status.current_tab_mut().make_preview()
     }
 

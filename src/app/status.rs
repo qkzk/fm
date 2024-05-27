@@ -32,7 +32,6 @@ use crate::io::{
     reset_sudo_faillock,
 };
 use crate::io::{Extension, Kind};
-use crate::modes::IsoDevice;
 use crate::modes::Menu;
 use crate::modes::MountCommands;
 use crate::modes::MountRepr;
@@ -54,6 +53,7 @@ use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
 use crate::modes::{Display, Go};
 use crate::modes::{FilterKind, InputSimple};
+use crate::modes::{IsoDevice, PreviewCommand};
 use crate::{log_info, log_line};
 
 pub enum Window {
@@ -129,6 +129,7 @@ pub struct Status {
     pub focus: Focus,
     /// Sender of events
     pub fm_sender: Arc<Sender<FmEvents>>,
+    pub tx_preview: Sender<PreviewCommand>,
 }
 
 impl Status {
@@ -141,6 +142,7 @@ impl Status {
         opener: Opener,
         binds: &Bindings,
         fm_sender: Arc<Sender<FmEvents>>,
+        tx_preview: Sender<PreviewCommand>,
     ) -> Result<Self> {
         let skimer = None;
         let index = 0;
@@ -175,6 +177,7 @@ impl Status {
             internal_settings,
             focus,
             fm_sender,
+            tx_preview,
         })
     }
 
@@ -478,9 +481,12 @@ impl Status {
         let Ok(fileinfo) = self.get_correct_fileinfo_for_preview() else {
             return Ok(());
         };
-        let left_tab = &self.tabs[0];
-        let users = &left_tab.users;
-        self.tabs[1].preview = Preview::new(&fileinfo, users).unwrap_or_default();
+        // let left_tab = &self.tabs[0];
+        // let users = &left_tab.users;
+        self.tx_preview.send(PreviewCommand::Start)?;
+        self.tx_preview
+            .send(PreviewCommand::Paths(vec![fileinfo]))?;
+        // self.tabs[1].preview = Preview::new(&fileinfo, users).unwrap_or_default();
         self.tabs[1].window.reset(self.tabs[1].preview.len());
         Ok(())
     }

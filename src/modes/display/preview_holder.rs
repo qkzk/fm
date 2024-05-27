@@ -4,12 +4,14 @@ use std::sync::{mpsc, Arc, Mutex};
 
 use anyhow::{anyhow, Result};
 
+use crate::log_info;
 use crate::modes::FileInfo;
 use crate::modes::Preview;
 use crate::modes::Users;
 
 pub enum PreviewCommand {
-    Toggle,
+    Start,
+    Stop,
     Paths(Vec<FileInfo>),
 }
 
@@ -35,9 +37,22 @@ impl PreviewHolder {
         }
     }
 
+    pub fn poll(&mut self) {
+        while let Some(command) = self.rx.try_iter().next() {
+            self.dispatch(command)
+        }
+    }
+
     pub fn get(&self, p: &std::path::Path) -> Option<Arc<Preview>> {
+        log_info!("preview holder asked for {p}", p = p.display());
         let previews = self.previews.lock().ok()?;
-        previews.get(p).cloned()
+        let ret = previews.get(p).cloned();
+        log_info!(
+            "PreviewHolder has {p}: {r}",
+            p = p.display(),
+            r = ret.is_some()
+        );
+        ret
     }
 
     pub fn size(&mut self) -> Result<usize> {
@@ -55,26 +70,29 @@ impl PreviewHolder {
         Ok(())
     }
 
-    pub fn toggle_previewer(&mut self) -> bool {
-        self.is_previewing = !self.is_previewing;
-        if !self.is_previewing {
-            let _ = self.clear();
-        }
+    pub fn start_previewer(&mut self) -> bool {
+        self.is_previewing = true;
+        self.is_previewing
+    }
+    pub fn stop_previewer(&mut self) -> bool {
+        self.is_previewing = false;
         self.is_previewing
     }
 
     pub fn dispatch(&mut self, command: PreviewCommand) {
+        log_info!("dispatch...");
         match command {
-            PreviewCommand::Toggle => {
-                self.toggle_previewer();
+            PreviewCommand::Start => {
+                self.start_previewer();
+            }
+            PreviewCommand::Stop => {
+                self.stop_previewer();
             }
             PreviewCommand::Paths(fileinfos) => {
-                if !self.is_previewing {
-                    return;
-                };
-                fileinfos.iter().for_each(|file_info| {
+                log_info!("received {fileinfos:?}");
+                for file_info in fileinfos.iter() {
                     let _ = self.build(file_info);
-                })
+                }
             }
         };
     }
@@ -83,11 +101,14 @@ impl PreviewHolder {
         let file_info = file_info.to_owned();
         let preview_hodler = self.previews.clone();
         let users = self.users.clone();
+        log_info!("building preview for {file_info:?}");
         std::thread::spawn(move || -> Result<()> {
             let preview = Preview::new(&file_info, &users)?;
+            log_info!("built preview for {file_info:?}");
             if let Ok(mut preview_holder) = preview_hodler.lock() {
                 if !preview_holder.contains_key(file_info.path.as_ref()) {
                     preview_holder.insert(file_info.path.to_path_buf(), Arc::new(preview));
+                    log_info!("inserted {file_info:?} in preview_holder");
                 }
             }
             Ok(())

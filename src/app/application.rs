@@ -1,3 +1,4 @@
+use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -17,6 +18,7 @@ use crate::event::FmEvents;
 use crate::io::set_loggers;
 use crate::io::Opener;
 use crate::log_info;
+use crate::modes::PreviewHolder;
 
 /// Holds everything about the application itself.
 /// Most attributes holds an `Arc<tuikit::Term::term>`.
@@ -66,18 +68,21 @@ impl FM {
         let event_reader = EventReader::new(term.clone(), fm_receiver);
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = Opener::new(&config.terminal, &config.terminal_flag);
+        let (tx_preview, rx_preview) = mpsc::channel();
+        let preview_holder = PreviewHolder::new(rx_preview);
         let status = Arc::new(Mutex::new(Status::new(
             term.term_size()?.1,
             term.clone(),
             opener,
             &config.binds,
             fm_sender.clone(),
+            tx_preview,
         )?));
         drop(config);
 
         // let refresher = Refresher::new(term.clone());
         let refresher = Refresher::new(fm_sender);
-        let displayer = Displayer::new(term, status.clone());
+        let displayer = Displayer::new(term, status.clone(), preview_holder);
         Ok(Self {
             event_reader,
             event_dispatcher,

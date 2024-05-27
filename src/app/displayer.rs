@@ -7,6 +7,7 @@ use anyhow::{anyhow, Result};
 
 use crate::app::Status;
 use crate::io::Display;
+use crate::modes::PreviewHolder;
 
 pub struct Displayer {
     tx: mpsc::Sender<()>,
@@ -16,9 +17,13 @@ pub struct Displayer {
 impl Displayer {
     const THIRTY_PER_SECONDS_IN_MILLIS: u64 = 33;
 
-    pub fn new(term: Arc<tuikit::term::Term>, status: Arc<Mutex<Status>>) -> Self {
+    pub fn new(
+        term: Arc<tuikit::term::Term>,
+        status: Arc<Mutex<Status>>,
+        preview_holder: PreviewHolder,
+    ) -> Self {
         let (tx, rx) = mpsc::channel();
-        let mut display = Display::new(term);
+        let mut display = Display::new(term, preview_holder);
 
         let handle = thread::spawn(move || -> Result<()> {
             loop {

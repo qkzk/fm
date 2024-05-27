@@ -17,7 +17,6 @@ use crate::common::ENCRYPTED_DEVICE_BINDS;
 use crate::config::{ColorG, Gradient, MENU_COLORS};
 use crate::io::read_last_log_line;
 use crate::log_info;
-use crate::modes::BinaryContent;
 use crate::modes::ColoredText;
 use crate::modes::Content;
 use crate::modes::ContentWindow;
@@ -39,6 +38,7 @@ use crate::modes::Ueberzug;
 use crate::modes::Window;
 use crate::modes::{fileinfo_attr, MarkAction};
 use crate::modes::{parse_input_mode, SecondLine};
+use crate::modes::{BinaryContent, PreviewHolder};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -119,6 +119,7 @@ pub trait Height: Canvas {
 impl Height for dyn Canvas + '_ {}
 
 struct WinMain<'a> {
+    preview_holder: &'a PreviewHolder,
     status: &'a Status,
     tab: &'a Tab,
     attributes: WinMainAttributes,
@@ -143,8 +144,14 @@ impl<'a> Draw for WinMain<'a> {
 impl<'a> Widget for WinMain<'a> {}
 
 impl<'a> WinMain<'a> {
-    fn new(status: &'a Status, index: usize, attributes: WinMainAttributes) -> Self {
+    fn new(
+        status: &'a Status,
+        index: usize,
+        attributes: WinMainAttributes,
+        preview_holder: &'a PreviewHolder,
+    ) -> Self {
         Self {
+            preview_holder,
             status,
             tab: &status.tabs[index],
             attributes,
@@ -386,7 +393,13 @@ impl<'a> WinMain<'a> {
         let length = tab.preview.len();
         let line_number_width = length.to_string().len();
         let height = canvas.height()?;
-        match &tab.preview {
+        let Some(preview) = self.preview_holder.get(&tab.current_file()?.path) else {
+            log_info!("got None from preview_holder");
+            return Ok(None);
+        };
+        log_info!("got Some(preview) from preview_holder");
+        match preview.as_ref() {
+            // match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
                 self.draw_syntaxed(syntaxed, length, canvas, line_number_width, window)?
             }
@@ -1194,13 +1207,17 @@ pub struct Display {
     /// The Tuikit terminal attached to the display.
     /// It will print every symbol shown on screen.
     term: Arc<Term>,
+    preview_holder: PreviewHolder,
 }
 
 impl Display {
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
-    pub fn new(term: Arc<Term>) -> Self {
+    pub fn new(term: Arc<Term>, preview_holder: PreviewHolder) -> Self {
         log_info!("starting display...");
-        Self { term }
+        Self {
+            term,
+            preview_holder,
+        }
     }
 
     /// Display every possible content in the terminal.
@@ -1221,6 +1238,9 @@ impl Display {
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
     pub fn display_all(&mut self, status: &MutexGuard<Status>) -> Result<()> {
+        // log_info!("preview_holder: polling...");
+        self.preview_holder.poll();
+        // log_info!("preview_holder: polled");
         self.hide_cursor()?;
         self.term.clear()?;
 
@@ -1311,14 +1331,14 @@ impl Display {
             first_selected,
             status.tabs[0].need_second_window(),
         );
-        let win_main_left = WinMain::new(status, 0, attributes_left);
+        let win_main_left = WinMain::new(status, 0, attributes_left, &self.preview_holder);
         let attributes_right = WinMainAttributes::new(
             width / 2,
             TabPosition::Right,
             second_selected,
             status.tabs[1].need_second_window(),
         );
-        let win_main_right = WinMain::new(status, 1, attributes_right);
+        let win_main_right = WinMain::new(status, 1, attributes_right, &self.preview_holder);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let borders = self.borders(status);
@@ -1349,7 +1369,7 @@ impl Display {
             true,
             status.tabs[0].need_second_window(),
         );
-        let win_main_left = WinMain::new(status, 0, attributes_left);
+        let win_main_left = WinMain::new(status, 0, attributes_left, &self.preview_holder);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let borders = self.borders(status);
