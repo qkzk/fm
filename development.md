@@ -1023,6 +1023,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] replace tx rx by simple `Arc<PreviewHolder>`
   - [ ] inform tab of window for preview
   - [ ] limit its size (order somewhere or remove non common path)
+  - [ ] command output, help, whatever
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [ ] allow hex colors like #16a085 in config

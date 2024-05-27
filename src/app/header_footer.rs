@@ -496,15 +496,16 @@ mod inner {
         }
 
         fn strings(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
-            match &tab.preview {
-                Preview::Text(text_content) => match text_content.kind {
-                    TextKind::HELP => Self::make_help(),
-                    TextKind::LOG => Self::make_log(),
-                    _ => Self::make_default_preview(status, tab),
-                },
-                Preview::ColoredText(colored_text) => Self::make_colored_text(colored_text),
-                _ => Self::make_default_preview(status, tab),
-            }
+            // match &tab.preview {
+            //     Preview::Text(text_content) => match text_content.kind {
+            //         TextKind::HELP => Self::make_help(),
+            //         TextKind::LOG => Self::make_log(),
+            //         _ => Self::make_default_preview(status, tab),
+            //     },
+            //     Preview::ColoredText(colored_text) => Self::make_colored_text(colored_text),
+            //     _ => Self::make_default_preview(status, tab),
+            // }
+            Self::make_default_preview(status, tab)
         }
 
         fn make_help() -> Vec<(String, HorizontalAlign)> {
@@ -546,13 +547,15 @@ mod inner {
         fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
             if let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) {
                 let mut strings = vec![(" Preview ".to_owned(), HorizontalAlign::Left)];
-                if !tab.preview.is_empty() {
-                    let index = match &tab.preview {
-                        Preview::Ueberzug(image) => image.index + 1,
-                        _ => tab.window.bottom,
-                    };
+                if !tab.preview_len != 0 {
+                    // if !tab.preview.is_empty() {
+                    // let index = match &tab.preview {
+                    //     Preview::Ueberzug(image) => image.index + 1,
+                    //     _ => tab.window.bottom,
+                    // };
+                    let index = tab.window.bottom;
                     strings.push((
-                        format!(" {index} / {len} ", len = tab.preview.len()),
+                        format!(" {index} / {len} ", len = tab.preview_len),
                         HorizontalAlign::Right,
                     ));
                 };

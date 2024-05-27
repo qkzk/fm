@@ -620,10 +620,11 @@ impl EventAction {
             return Ok(());
         }
         let help = help_string(binds, &status.internal_settings.opener);
-        status.current_tab_mut().set_display_mode(Display::Preview);
-        status.current_tab_mut().preview = Preview::help(&help);
-        let len = status.current_tab().preview.len();
-        status.current_tab_mut().window.reset(len);
+        // status.current_tab_mut().set_display_mode(Display::Preview);
+        // TODO help
+        // status.current_tab_mut().preview = Preview::help(&help);
+        // let len = status.current_tab().preview.len();
+        // status.current_tab_mut().window.reset(len);
         Ok(())
     }
 
@@ -636,10 +637,11 @@ impl EventAction {
             return Ok(());
         };
         let tab = status.current_tab_mut();
-        tab.set_display_mode(Display::Preview);
-        tab.preview = Preview::log(log);
-        tab.window.reset(tab.preview.len());
-        tab.preview_go_bottom();
+        // TODO preview log
+        // tab.set_display_mode(Display::Preview);
+        // tab.preview = Preview::log(log);
+        // tab.window.reset(tab.preview.len());
+        // tab.preview_go_bottom();
         Ok(())
     }
 

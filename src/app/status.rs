@@ -467,7 +467,8 @@ impl Status {
             if Session::display_wide_enough(self.term_size()?.0) {
                 self.set_second_pane_for_preview()?;
             } else {
-                self.tabs[1].preview = Preview::empty();
+                // self.tabs[1].preview = Preview::empty();
+                self.tabs[1].reset_preview();
             }
         };
         Ok(())
@@ -518,6 +519,7 @@ impl Status {
             Some(preview) => preview.len(),
             _ => 80,
         };
+        log_info!("build_preview_current_tab. Preview has len {len}");
         self.tabs[self.index].window.reset(len);
         preview_holder.build(&fileinfo)
     }
@@ -541,7 +543,7 @@ impl Status {
             _ => match left_tab.display_mode {
                 Display::Flagged => {
                     let Some(path) = self.menu.flagged.selected() else {
-                        self.tabs[1].preview = Preview::empty();
+                        // self.tabs[1].preview = Preview::empty();
                         return Err(anyhow!("No fileinfo to preview"));
                     };
                     FileInfo::new(path, users)
@@ -1291,7 +1293,8 @@ impl Status {
         self.current_tab_mut().set_display_mode(Display::Preview);
         let preview = Preview::cli_info(&output, command);
         self.current_tab_mut().window.reset(preview.len());
-        self.current_tab_mut().preview = preview;
+        // TODO ! help & command
+        // self.current_tab_mut().preview = preview;
     }
 
     /// Set the nvim listen address from what the user typed.

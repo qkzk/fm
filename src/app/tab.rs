@@ -8,16 +8,15 @@ use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index,
 };
 use crate::io::{Args, Opener};
+use crate::modes::ContentWindow;
 use crate::modes::Directory;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
 use crate::modes::History;
-use crate::modes::Preview;
 use crate::modes::Selectable;
 use crate::modes::SortKind;
 use crate::modes::Users;
 use crate::modes::{Content, Search};
-use crate::modes::{ContentWindow, FileKind};
 use crate::modes::{Display, Edit};
 use crate::modes::{Go, To, Tree};
 
@@ -73,7 +72,7 @@ pub struct Tab {
     pub tree: Tree,
     /// Lines of the previewed files.
     /// Empty if not in preview mode.
-    pub preview: Preview,
+    pub preview_len: usize,
 
     /// The edit mode the application is currenty in.
     /// Most of the time is spent in `EditMode::Nothing`
@@ -128,7 +127,7 @@ impl Tab {
         let display_mode = Display::default();
         let edit_mode = Edit::Nothing;
         let mut window = ContentWindow::new(directory.content.len(), height);
-        let preview = Preview::Empty;
+        let preview_len = 80;
         let history = History::default();
         let search = Search::empty();
         let index = directory.select_file(&path);
@@ -141,7 +140,7 @@ impl Tab {
             window,
             directory,
             height,
-            preview,
+            preview_len,
             search,
             // searched,
             history,
@@ -186,7 +185,7 @@ impl Tab {
     fn display_len(&self) -> usize {
         match self.display_mode {
             Display::Tree => self.tree.display_len(),
-            Display::Preview => self.preview.len(),
+            Display::Preview => self.preview_len,
             Display::Directory => self.directory.len(),
             Display::Flagged => 0,
         }
@@ -210,7 +209,6 @@ impl Tab {
 
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) -> Result<()> {
-        self.preview = Preview::empty();
         if matches!(self.display_mode, Display::Tree) {
             self.make_tree(None)?;
         } else {
@@ -293,33 +291,34 @@ impl Tab {
         Ok(())
     }
 
-    /// Creates a new preview for the selected file.
-    pub fn make_preview(&mut self) -> Result<()> {
-        if self.directory.is_empty() {
-            return Ok(());
-        }
-        let Ok(file_info) = self.current_file() else {
-            return Ok(());
-        };
-        match file_info.file_kind {
-            FileKind::NormalFile => {
-                let preview = Preview::file(&file_info).unwrap_or_default();
-                self.set_display_mode(Display::Preview);
-                self.window.reset(preview.len());
-                self.preview = preview;
-            }
-            FileKind::Directory => self.toggle_tree_mode()?,
-            _ => (),
-        }
-
-        Ok(())
-    }
+    // /// Creates a new preview for the selected file.
+    // pub fn make_preview(&mut self) -> Result<()> {
+    //     if self.directory.is_empty() {
+    //         return Ok(());
+    //     }
+    //     let Ok(file_info) = self.current_file() else {
+    //         return Ok(());
+    //     };
+    //     match file_info.file_kind {
+    //         FileKind::NormalFile => {
+    //             let preview = Preview::file(&file_info).unwrap_or_default();
+    //             self.set_display_mode(Display::Preview);
+    //             self.window.reset(preview.len());
+    //             self.preview = preview;
+    //         }
+    //         FileKind::Directory => self.toggle_tree_mode()?,
+    //         _ => (),
+    //     }
+    //
+    //     Ok(())
+    // }
 
     /// Reset the preview to empty. Used to save some memory.
-    fn reset_preview(&mut self) {
-        if matches!(self.display_mode, Display::Preview) {
-            self.preview = Preview::empty();
-        }
+    pub fn reset_preview(&mut self) {
+        self.preview_len = 80;
+        // if matches!(self.display_mode, Display::Preview) {
+        //     self.preview = Preview::empty();
+        // }
     }
 
     /// Refresh the folder, reselect the last selected file, move the window to it.
@@ -670,34 +669,34 @@ impl Tab {
     /// Move the preview to the bottom
     pub fn preview_go_bottom(&mut self) {
         self.window
-            .scroll_to(self.preview.len().checked_sub(1).unwrap_or_default())
+            .scroll_to(self.preview_len.checked_sub(1).unwrap_or_default())
     }
 
     /// Move 30 lines up or an image in Ueberzug.
     pub fn preview_page_up(&mut self) {
-        match &mut self.preview {
-            Preview::Ueberzug(ref mut image) => image.up_one_row(),
-            _ => {
-                if self.window.top > 0 {
-                    let skip = min(self.window.top, 30);
-                    self.window.bottom -= skip;
-                    self.window.top -= skip;
-                }
-            }
+        // match &mut self.preview {
+        // Preview::Ueberzug(ref mut image) => image.up_one_row(),
+        // _ => {
+        if self.window.top > 0 {
+            let skip = min(self.window.top, 30);
+            self.window.bottom -= skip;
+            self.window.top -= skip;
         }
+        //     }
+        // }
     }
 
     /// Move down 30 rows except for Ueberzug where it moves 1 image down
     pub fn preview_page_down(&mut self) {
-        match &mut self.preview {
-            Preview::Ueberzug(ref mut image) => image.down_one_row(),
-            _ => {
-                if self.window.bottom < self.preview.len() {
-                    let skip = min(self.preview.len() - self.window.bottom, 30);
-                    self.window.bottom += skip;
-                    self.window.top += skip;
-                }
-            }
+        // match &mut self.preview {
+        //     Preview::Ueberzug(ref mut image) => image.down_one_row(),
+        //     _ => {
+        if self.window.bottom < self.preview_len {
+            let skip = min(self.preview_len - self.window.bottom, 30);
+            self.window.bottom += skip;
+            self.window.top += skip;
+            //     }
+            // }
         }
     }
 
