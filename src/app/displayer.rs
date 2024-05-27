@@ -20,7 +20,7 @@ impl Displayer {
     pub fn new(
         term: Arc<tuikit::term::Term>,
         status: Arc<Mutex<Status>>,
-        preview_holder: PreviewHolder,
+        preview_holder: Arc<Mutex<PreviewHolder>>,
     ) -> Self {
         let (tx, rx) = mpsc::channel();
         let mut display = Display::new(term, preview_holder);
@@ -39,7 +39,6 @@ impl Displayer {
                 match status.lock() {
                     Ok(status) => {
                         display.display_all(&status)?;
-                        drop(status);
                     }
                     Err(error) => return Err(anyhow!("Error locking status: {error}")),
                 }

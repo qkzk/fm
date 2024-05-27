@@ -1,4 +1,3 @@
-use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -68,15 +67,15 @@ impl FM {
         let event_reader = EventReader::new(term.clone(), fm_receiver);
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = Opener::new(&config.terminal, &config.terminal_flag);
-        let (tx_preview, rx_preview) = mpsc::channel();
-        let preview_holder = PreviewHolder::new(rx_preview);
+        let preview_holder = Arc::new(Mutex::new(PreviewHolder::new()));
+        let ph2 = Arc::clone(&preview_holder);
         let status = Arc::new(Mutex::new(Status::new(
             term.term_size()?.1,
             term.clone(),
             opener,
             &config.binds,
             fm_sender.clone(),
-            tx_preview,
+            ph2,
         )?));
         drop(config);
 

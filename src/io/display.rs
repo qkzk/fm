@@ -1,6 +1,6 @@
 use std::cmp::min;
 use std::path::PathBuf;
-use std::sync::{Arc, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Context, Result};
 use tuikit::attr::{Attr, Color};
@@ -119,7 +119,7 @@ pub trait Height: Canvas {
 impl Height for dyn Canvas + '_ {}
 
 struct WinMain<'a> {
-    preview_holder: &'a PreviewHolder,
+    preview_holder: &'a Arc<Mutex<PreviewHolder>>,
     status: &'a Status,
     tab: &'a Tab,
     attributes: WinMainAttributes,
@@ -148,7 +148,7 @@ impl<'a> WinMain<'a> {
         status: &'a Status,
         index: usize,
         attributes: WinMainAttributes,
-        preview_holder: &'a PreviewHolder,
+        preview_holder: &'a Arc<Mutex<PreviewHolder>>,
     ) -> Self {
         Self {
             preview_holder,
@@ -167,7 +167,7 @@ impl<'a> WinMain<'a> {
         match &self.tab.display_mode {
             DisplayMode::Directory => self.draw_files(canvas),
             DisplayMode::Tree => self.draw_tree(canvas),
-            DisplayMode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas),
+            DisplayMode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas, false),
             DisplayMode::Flagged => self.draw_fagged(canvas),
         }
     }
@@ -389,15 +389,29 @@ impl<'a> WinMain<'a> {
         tab: &Tab,
         window: &ContentWindow,
         canvas: &mut dyn Canvas,
+        is_preview_second_pane: bool,
     ) -> Result<Option<usize>> {
-        let length = tab.preview.len();
-        let line_number_width = length.to_string().len();
         let height = canvas.height()?;
-        let Some(preview) = self.preview_holder.get(&tab.current_file()?.path) else {
+        let Ok(preview_holder) = self.preview_holder.lock() else {
+            log_info!("Display couldn't lock preview_holder");
+            return Ok(None);
+        };
+        let path = if is_preview_second_pane {
+            self.status.tabs[0].current_file()?.path
+        } else {
+            tab.current_file()?.path
+        };
+        let Some(preview) = preview_holder.get(&path) else {
             log_info!("got None from preview_holder");
             return Ok(None);
         };
-        log_info!("got Some(preview) from preview_holder");
+        let length = preview.len();
+        log_info!(
+            "got Some(preview) from preview_holder. Kind {kind} - len {length}",
+            kind = preview.kind()
+        );
+        let line_number_width = length.to_string().len();
+
         match preview.as_ref() {
             // match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
@@ -551,7 +565,7 @@ impl<'a> WinMain<'a> {
 
     fn draw_preview_as_second_pane(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let tab = &self.status.tabs[1];
-        self.draw_preview(tab, &tab.window, canvas)?;
+        self.draw_preview(tab, &tab.window, canvas, true)?;
         let (width, _) = canvas.size()?;
         draw_clickable_strings(
             0,
@@ -1207,12 +1221,12 @@ pub struct Display {
     /// The Tuikit terminal attached to the display.
     /// It will print every symbol shown on screen.
     term: Arc<Term>,
-    preview_holder: PreviewHolder,
+    preview_holder: Arc<Mutex<PreviewHolder>>,
 }
 
 impl Display {
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
-    pub fn new(term: Arc<Term>, preview_holder: PreviewHolder) -> Self {
+    pub fn new(term: Arc<Term>, preview_holder: Arc<Mutex<PreviewHolder>>) -> Self {
         log_info!("starting display...");
         Self {
             term,
@@ -1238,9 +1252,6 @@ impl Display {
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
     pub fn display_all(&mut self, status: &MutexGuard<Status>) -> Result<()> {
-        // log_info!("preview_holder: polling...");
-        self.preview_holder.poll();
-        // log_info!("preview_holder: polled");
         self.hide_cursor()?;
         self.term.clear()?;
 

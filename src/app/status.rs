@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 use std::sync::mpsc::Sender;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
@@ -32,7 +32,7 @@ use crate::io::{
     reset_sudo_faillock,
 };
 use crate::io::{Extension, Kind};
-use crate::modes::Menu;
+use crate::modes::IsoDevice;
 use crate::modes::MountCommands;
 use crate::modes::MountRepr;
 use crate::modes::NeedConfirmation;
@@ -53,7 +53,7 @@ use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
 use crate::modes::{Display, Go};
 use crate::modes::{FilterKind, InputSimple};
-use crate::modes::{IsoDevice, PreviewCommand};
+use crate::modes::{Menu, PreviewHolder};
 use crate::{log_info, log_line};
 
 pub enum Window {
@@ -129,7 +129,7 @@ pub struct Status {
     pub focus: Focus,
     /// Sender of events
     pub fm_sender: Arc<Sender<FmEvents>>,
-    pub tx_preview: Sender<PreviewCommand>,
+    pub preview_holder: Arc<Mutex<PreviewHolder>>,
 }
 
 impl Status {
@@ -142,7 +142,7 @@ impl Status {
         opener: Opener,
         binds: &Bindings,
         fm_sender: Arc<Sender<FmEvents>>,
-        tx_preview: Sender<PreviewCommand>,
+        preview_holder: Arc<Mutex<PreviewHolder>>,
     ) -> Result<Self> {
         let skimer = None;
         let index = 0;
@@ -177,7 +177,7 @@ impl Status {
             internal_settings,
             focus,
             fm_sender,
-            tx_preview,
+            preview_holder,
         })
     }
 
@@ -481,14 +481,45 @@ impl Status {
         let Ok(fileinfo) = self.get_correct_fileinfo_for_preview() else {
             return Ok(());
         };
-        // let left_tab = &self.tabs[0];
-        // let users = &left_tab.users;
-        self.tx_preview.send(PreviewCommand::Start)?;
-        self.tx_preview
-            .send(PreviewCommand::Paths(vec![fileinfo]))?;
+        let Ok(mut preview_holder) = self.preview_holder.lock() else {
+            return Ok(());
+        };
+        preview_holder.start_previewer();
+        preview_holder.build(&fileinfo)?;
         // self.tabs[1].preview = Preview::new(&fileinfo, users).unwrap_or_default();
-        self.tabs[1].window.reset(self.tabs[1].preview.len());
+        // self.tabs[1].window.reset(self.tabs[1].preview.len());
+        let len = match preview_holder.get(&fileinfo.path) {
+            Some(preview) => preview.len(),
+            _ => 80,
+        };
+        self.tabs[1].window.reset(len);
         Ok(())
+    }
+
+    pub fn start_previewer(&mut self) {
+        log_info!("status locking preview_holder...");
+        let Ok(mut preview_holder) = self.preview_holder.lock() else {
+            log_info!("status couldn't lock preview_holder");
+            return;
+        };
+        preview_holder.start_previewer();
+    }
+
+    pub fn build_preview_current_tab(&mut self) -> Result<()> {
+        log_info!("status locking preview_holder...");
+        let Ok(mut preview_holder) = self.preview_holder.lock() else {
+            log_info!("status couldn't lock preview_holder");
+            return Ok(());
+        };
+        let Ok(fileinfo) = self.current_tab().current_file() else {
+            return Ok(());
+        };
+        let len = match preview_holder.get(&fileinfo.path) {
+            Some(preview) => preview.len(),
+            _ => 80,
+        };
+        self.tabs[self.index].window.reset(len);
+        preview_holder.build(&fileinfo)
     }
 
     fn get_correct_fileinfo_for_preview(&mut self) -> Result<FileInfo> {

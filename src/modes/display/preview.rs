@@ -140,6 +140,25 @@ pub enum Preview {
 impl Preview {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
+    pub fn kind(&self) -> &str {
+        match self {
+            Self::Syntaxed(_) => "Syntaxed",
+            Self::Text(_) => "Text",
+            Self::Binary(_) => "Binary",
+            Self::Archive(_) => "Archive",
+            Self::Ueberzug(_) => "Ueberzug",
+            Self::Media(_) => "Media",
+            Self::Tree(_) => "Tree",
+            Self::Iso(_) => "Iso",
+            Self::ColoredText(_) => "ColoredText",
+            Self::Socket(_) => "Socket",
+            Self::BlockDevice(_) => "BlockDevice",
+            Self::FifoCharDevice(_) => "FifoCharDevice",
+            Self::Torrent(_) => "Torrent",
+            Self::Empty => "Empty",
+        }
+    }
+
     /// Empty preview, holding nothing.
     pub fn empty() -> Self {
         clear_tmp_file();

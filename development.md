@@ -1019,8 +1019,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] attach the previewholder to display
   - [x] attach the tx somewhere to status
   - [x] change internal api to read previews from display
-  - [~] change internal api to request previews from status
-  - [ ] replace tx rx by simple `Arc<PreviewHolder>`
+  - [x] change internal api to request previews from status
+  - [x] replace tx rx by simple `Arc<PreviewHolder>`
+  - [ ] inform tab of window for preview
   - [ ] limit its size (order somewhere or remove non common path)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
