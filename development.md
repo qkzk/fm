@@ -1024,6 +1024,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] replace tx rx by simple `Arc<PreviewHolder>`
   - [x] inform tab of window for preview when first move occurs
   - [x] FIX: ueberzug is always drawned
+  - [x] navigation in second pane as preview
   - [x] custom previews:
     - [x] help
     - [x] commant output
@@ -1032,6 +1033,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [ ] limit its size (order somewhere or remove non common path)
     - [ ] build as many as possible in secondpane...
     - [ ] order ? (from index distance to current ???)
+      - [x] directory
+      - [ ] tree ?
+      - [ ] flagged
     - [ ] clear when necessary (???)
 
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)

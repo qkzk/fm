@@ -442,6 +442,7 @@ impl Tab {
         } else {
             self.window.reset(self.directory.content.len());
         }
+        self.previewed_doc = Some(path.to_string_lossy().to_string());
         Ok(())
     }
 
@@ -587,10 +588,9 @@ impl Tab {
 
     /// Fold every child node in the tree.
     /// Recursively explore the tree and fold every node. Reset the display.
-    pub fn tree_go_to_root(&mut self) -> Result<()> {
+    pub fn tree_go_to_root(&mut self) {
         self.tree.go(To::Root);
-        self.window.scroll_to(0);
-        Ok(())
+        self.window.scroll_to(0)
     }
 
     /// Select the parent of current node.
@@ -625,27 +625,24 @@ impl Tab {
     }
 
     /// Select the next sibling.
-    pub fn tree_select_next(&mut self) -> Result<()> {
+    pub fn tree_select_next(&mut self) {
         self.tree.go(To::Next);
         let index = self.tree.displayable().index();
         self.window.scroll_down_one(index);
-        Ok(())
     }
 
     /// Select the previous siblging
-    pub fn tree_select_prev(&mut self) -> Result<()> {
+    pub fn tree_select_prev(&mut self) {
         self.tree.go(To::Prev);
         let index = self.tree.displayable().index();
         self.window.scroll_up_one(index);
-        Ok(())
     }
 
     /// Go to the last leaf.
-    pub fn tree_go_to_bottom_leaf(&mut self) -> Result<()> {
+    pub fn tree_go_to_bottom_leaf(&mut self) {
         self.tree.go(To::Last);
         let index = self.tree.displayable().index();
         self.window.scroll_to(index);
-        Ok(())
     }
 
     /// Navigate to the next sibling of current file in tree mode.

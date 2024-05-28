@@ -238,6 +238,23 @@ impl Directory {
             .map(|fileinfo| fileinfo.path.borrow())
             .collect()
     }
+
+    pub fn files_ordered_for_preview(&self) -> Vec<FileInfo> {
+        let mut vec_with_distances: Vec<(FileInfo, usize)> = self
+            .content()
+            .clone()
+            .into_iter()
+            .enumerate()
+            .map(|(i, path)| (path, (i as isize - self.index as isize).abs() as usize))
+            .collect();
+
+        vec_with_distances.sort_by_key(|&(_, distance)| distance);
+
+        vec_with_distances
+            .into_iter()
+            .map(|(path, _)| path.to_owned())
+            .collect()
+    }
 }
 
 impl_selectable!(Directory);

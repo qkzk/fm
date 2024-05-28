@@ -103,4 +103,23 @@ impl PreviewHolder {
         });
         Ok(())
     }
+
+    pub fn build_directory(&mut self, files: Vec<FileInfo>) -> Result<()> {
+        let preview_holder = self.previews.clone();
+        let users = self.users.clone();
+        std::thread::spawn(move || -> Result<()> {
+            for file_info in files {
+                let preview = Preview::new(&file_info, &users)?;
+                let Ok(mut preview_holder) = preview_holder.lock() else {
+                    return Ok(());
+                };
+                if !preview_holder.contains_key(file_info.path.as_ref()) {
+                    preview_holder.insert(file_info.path.to_path_buf(), Arc::new(preview));
+                    log_info!("build_directory. {file_info:?} inserted in preview_holder");
+                }
+            }
+            Ok(())
+        });
+        Ok(())
+    }
 }

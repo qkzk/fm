@@ -119,6 +119,7 @@ impl EventAction {
         }
         status.display_settings.toggle_preview();
         if status.display_settings.preview() {
+            status.build_directory_preview()?;
             status.update_second_pane_for_preview()?;
         } else {
             status.set_edit_mode(1, Edit::Nothing)?;
@@ -199,9 +200,10 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        status.current_tab_mut().set_display_mode(Display::Preview);
         status.start_previewer();
-        status.build_preview_current_tab()
+        status.build_preview_current_tab()?;
+        status.current_tab_mut().set_display_mode(Display::Preview);
+        return Ok(());
 
         // status.current_tab_mut().make_preview()
     }
@@ -907,6 +909,7 @@ impl EventAction {
         } else {
             Self::input_history_prev(status)?;
         }
+        status.set_current_previewed_doc();
         Ok(())
     }
 
@@ -917,6 +920,7 @@ impl EventAction {
         } else {
             Self::input_history_next(status)?;
         }
+        status.set_current_previewed_doc();
         Ok(())
     }
 
@@ -925,9 +929,10 @@ impl EventAction {
         match tab.display_mode {
             Display::Directory => tab.normal_up_one_row(),
             Display::Preview => status.preview_page_up(),
-            Display::Tree => tab.tree_select_prev()?,
             Display::Flagged => status.menu.flagged.select_prev(),
-        }
+            Display::Tree => tab.tree_select_prev(),
+        };
+        status.set_current_previewed_doc();
         Ok(())
     }
 
@@ -936,9 +941,10 @@ impl EventAction {
         match tab.display_mode {
             Display::Directory => tab.normal_down_one_row(),
             Display::Preview => status.preview_page_down(),
-            Display::Tree => tab.tree_select_next()?,
             Display::Flagged => status.menu.flagged.select_next(),
-        }
+            Display::Tree => tab.tree_select_next(),
+        };
+        status.set_current_previewed_doc();
         Ok(())
     }
     /// Move down one row in modes allowing movements.
@@ -965,6 +971,7 @@ impl EventAction {
     pub fn move_left(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {
             Self::file_move_left(status.current_tab_mut())?;
+            status.set_current_previewed_doc();
         } else {
             let tab = status.current_tab_mut();
             match tab.edit_mode {
@@ -1089,10 +1096,11 @@ impl EventAction {
             let tab = status.current_tab_mut();
             match tab.display_mode {
                 Display::Directory => tab.normal_go_top(),
-                Display::Preview => status.preview_go_top(),
-                Display::Tree => tab.tree_go_to_root()?,
                 Display::Flagged => status.menu.flagged.select_first(),
+                Display::Preview => status.preview_go_top(),
+                Display::Tree => tab.tree_go_to_root(),
             };
+            status.set_current_previewed_doc();
             status.update_second_pane_for_preview()
         } else {
             status.menu.input.cursor_start();
@@ -1106,10 +1114,11 @@ impl EventAction {
             let tab = status.current_tab_mut();
             match tab.display_mode {
                 Display::Directory => tab.normal_go_bottom(),
-                Display::Preview => status.preview_go_bottom(),
-                Display::Tree => tab.tree_go_to_bottom_leaf()?,
                 Display::Flagged => status.menu.flagged.select_last(),
+                Display::Preview => status.preview_go_bottom(),
+                Display::Tree => tab.tree_go_to_bottom_leaf(),
             };
+            status.set_current_previewed_doc();
             status.update_second_pane_for_preview()?;
         } else {
             status.menu.input.cursor_end();
@@ -1151,6 +1160,7 @@ impl EventAction {
             }
             Display::Flagged => status.menu.flagged.page_up(),
         };
+        status.set_current_previewed_doc();
         Ok(())
     }
 
@@ -1188,6 +1198,7 @@ impl EventAction {
             }
             Display::Flagged => status.menu.flagged.page_down(),
         };
+        status.set_current_previewed_doc();
         Ok(())
     }
 
