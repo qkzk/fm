@@ -12,8 +12,8 @@ use crate::app::Status;
 use crate::app::Tab;
 use crate::app::{ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader};
 use crate::app::{Header, PreviewHeader};
-use crate::common::path_to_string;
 use crate::common::ENCRYPTED_DEVICE_BINDS;
+use crate::common::{path_to_string, string_to_path};
 use crate::config::{ColorG, Gradient, MENU_COLORS};
 use crate::io::read_last_log_line;
 use crate::log_info;
@@ -399,14 +399,19 @@ impl<'a> WinMain<'a> {
         let Ok(previews) = preview_holder.previews.lock() else {
             return Ok(None);
         };
-        let path = if is_preview_second_pane {
-            self.status.tabs[0].current_file()?.path
+        let tab = if is_preview_second_pane {
+            &self.status.tabs[0]
         } else {
-            tab.current_file()?.path
+            tab
         };
+        let Some(s) = &tab.previewed_doc else {
+            return Ok(None);
+        };
+        let path = std::path::Path::new(s);
+        log_info!("previewed_doc: {s} - path {p}", p = path.display());
         previews
             .iter()
-            .filter(|(k, _)| k.as_path() != path.as_ref())
+            .filter(|(k, _)| k.as_path() != path)
             .map(|(_, p)| p)
             .for_each(|p| p.hide());
         drop(previews);

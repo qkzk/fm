@@ -67,6 +67,16 @@ impl PreviewHolder {
         self.is_previewing
     }
 
+    pub fn put_preview<P>(&mut self, path: P, preview: Preview)
+    where
+        P: AsRef<std::path::Path>,
+    {
+        let Ok(mut previews) = self.previews.lock() else {
+            return;
+        };
+        previews.insert(path.as_ref().to_owned(), Arc::new(preview));
+    }
+
     pub fn build(&mut self, file_info: &FileInfo) -> Result<()> {
         let Ok(previews) = self.previews.lock() else {
             return Ok(());

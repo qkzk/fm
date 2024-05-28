@@ -19,7 +19,6 @@ use crate::common::{CONFIG_PATH, GIO};
 use crate::config::Bindings;
 use crate::config::START_FOLDER;
 use crate::io::execute_without_output_with_path;
-use crate::io::read_log;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::copy_move;
@@ -36,7 +35,6 @@ use crate::modes::LeaveMode;
 use crate::modes::MarkAction;
 use crate::modes::Navigate;
 use crate::modes::NeedConfirmation;
-use crate::modes::Preview;
 use crate::modes::RemovableDevices;
 use crate::modes::Search;
 use crate::modes::Selectable;
@@ -613,36 +611,12 @@ impl EventAction {
         }
     }
 
-    /// Display the help which can be navigated and displays the configrable
-    /// binds.
     pub fn help(status: &mut Status, binds: &Bindings) -> Result<()> {
-        if !status.focus.is_file() {
-            return Ok(());
-        }
-        let help = help_string(binds, &status.internal_settings.opener);
-        // status.current_tab_mut().set_display_mode(Display::Preview);
-        // TODO help
-        // status.current_tab_mut().preview = Preview::help(&help);
-        // let len = status.current_tab().preview.len();
-        // status.current_tab_mut().window.reset(len);
-        Ok(())
+        status.help(binds)
     }
 
-    /// Display the last actions impacting the file tree
     pub fn log(status: &mut Status) -> Result<()> {
-        if !status.focus.is_file() {
-            return Ok(());
-        }
-        let Ok(log) = read_log() else {
-            return Ok(());
-        };
-        let tab = status.current_tab_mut();
-        // TODO preview log
-        // tab.set_display_mode(Display::Preview);
-        // tab.preview = Preview::log(log);
-        // tab.window.reset(tab.preview.len());
-        // tab.preview_go_bottom();
-        Ok(())
+        status.log()
     }
 
     /// Enter the cd mode where an user can type a path to jump to.

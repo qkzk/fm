@@ -24,7 +24,6 @@ use crate::common::{
 use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::Bindings;
 use crate::event::FmEvents;
-use crate::io::Internal;
 use crate::io::Opener;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{execute_and_capture_output_with_path, Args};
@@ -32,8 +31,8 @@ use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     reset_sudo_faillock,
 };
+use crate::io::{read_log, Internal};
 use crate::io::{Extension, Kind};
-use crate::modes::IsoDevice;
 use crate::modes::MountCommands;
 use crate::modes::MountRepr;
 use crate::modes::NeedConfirmation;
@@ -49,6 +48,7 @@ use crate::modes::Tree;
 use crate::modes::Users;
 use crate::modes::{copy_move, regex_matcher};
 use crate::modes::{extract_extension, Edit};
+use crate::modes::{help_string, IsoDevice};
 use crate::modes::{BlockDeviceAction, Navigate};
 use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
@@ -1289,15 +1289,51 @@ impl Status {
         }
     }
 
+    fn set_custom_preview(&mut self, name: &str, preview: Preview) {
+        let Ok(mut preview_holder) = self.preview_holder.lock() else {
+            return;
+        };
+        let len = preview.len();
+        preview_holder.put_preview(std::path::Path::new(name), preview);
+        self.tabs[self.index].previewed_doc = Some(name.to_owned());
+        self.tabs[self.index].preview_len = len;
+        self.tabs[self.index].set_display_mode(Display::Preview);
+        self.tabs[self.index].window.reset(len);
+    }
+
+    /// Display the help which can be navigated and displays the configrable
+    /// binds.
+    pub fn help(&mut self, binds: &Bindings) -> Result<()> {
+        if !self.focus.is_file() {
+            return Ok(());
+        }
+        let help = help_string(binds, &self.internal_settings.opener);
+        let preview = Preview::help(&help);
+        self.set_custom_preview("help", preview);
+        Ok(())
+    }
+
+    /// Display the last actions impacting the file tree
+    pub fn log(&mut self) -> Result<()> {
+        if !self.focus.is_file() {
+            return Ok(());
+        }
+        let Ok(log) = read_log() else {
+            return Ok(());
+        };
+        let preview = Preview::log(log);
+        self.set_custom_preview("log", preview);
+        self.preview_go_bottom();
+        Ok(())
+    }
+
     /// Set the display to preview a command output
     pub fn preview_command_output(&mut self, output: String, command: String) {
         log_info!("output {output}");
         let _ = self.reset_edit_mode();
         self.current_tab_mut().set_display_mode(Display::Preview);
         let preview = Preview::cli_info(&output, command);
-        self.current_tab_mut().window.reset(preview.len());
-        // TODO ! help & command
-        // self.current_tab_mut().preview = preview;
+        self.set_custom_preview("command", preview)
     }
 
     /// Set the nvim listen address from what the user typed.

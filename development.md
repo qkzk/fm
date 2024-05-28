@@ -1012,6 +1012,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] flag files from clipboard
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
+
   - PH preview builder holding : rx (paths to preview, toggle previewing), previews sized queue,
   - E.Exec path / file display change -> new paths to PH
   - display a preview... PH.req(path) -> `Option<Preview>`
@@ -1023,14 +1024,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] replace tx rx by simple `Arc<PreviewHolder>`
   - [x] inform tab of window for preview when first move occurs
   - [x] FIX: ueberzug is always drawned
-  - [ ] ???: command output, help, whatever
-    - store previews as "string: preview"
-    - match against the string before building & getting
+  - [x] custom previews:
+    - [x] help
+    - [x] commant output
+    - [x] log
   - [ ] Data structure for previews ?
     - [ ] limit its size (order somewhere or remove non common path)
     - [ ] build as many as possible in secondpane...
     - [ ] order ? (from index distance to current ???)
     - [ ] clear when necessary (???)
+
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [ ] allow hex colors like #16a085 in config

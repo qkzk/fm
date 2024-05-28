@@ -290,11 +290,6 @@ impl Preview {
         Self::FifoCharDevice(FifoCharDevice::new(file_info))
     }
 
-    /// Creates a new, static window used when we display a preview in the second pane
-    pub fn window_for_second_pane(&self, height: usize) -> ContentWindow {
-        ContentWindow::new(self.len(), height)
-    }
-
     fn preview_syntaxed(ext: &str, path: &Path) -> Option<Self> {
         if let Ok(metadata) = metadata(path) {
             if metadata.len() > HLContent::SIZE_LIMIT as u64 {
