@@ -32,7 +32,10 @@ impl PreviewHolder {
 
     pub fn get(&self, p: &std::path::Path) -> Option<Arc<Preview>> {
         log_info!("preview holder asked for {p}", p = p.display());
-        let previews = self.previews.lock().ok()?;
+        let Ok(previews) = self.previews.lock() else {
+            log_info!("PreviewHolder.get: couldn't acquire lock");
+            return None;
+        };
         let ret = previews.get(p).cloned();
         log_info!(
             "PreviewHolder has {p}: {r}",
@@ -44,14 +47,14 @@ impl PreviewHolder {
 
     pub fn size(&mut self) -> Result<usize> {
         let Ok(previews) = self.previews.lock() else {
-            return Err(anyhow!("Couldn't lock preview holder"));
+            return Err(anyhow!("PreviewHolder.size. Couldn't lock preview holder"));
         };
         Ok(previews.len())
     }
 
     pub fn clear(&mut self) -> Result<()> {
         let Ok(mut previews) = self.previews.lock() else {
-            return Err(anyhow!("Couldn't lock preview holder"));
+            return Err(anyhow!("PreviewHolder.clear. Couldn't lock preview holder"));
         };
         previews.clear();
         Ok(())
@@ -72,6 +75,7 @@ impl PreviewHolder {
         P: AsRef<std::path::Path>,
     {
         let Ok(mut previews) = self.previews.lock() else {
+            log_info!("PreviewHolder.put_preview: couldn't acquire lock");
             return;
         };
         previews.insert(path.as_ref().to_owned(), Arc::new(preview));
@@ -79,6 +83,7 @@ impl PreviewHolder {
 
     pub fn build(&mut self, file_info: &FileInfo) -> Result<()> {
         let Ok(previews) = self.previews.lock() else {
+            log_info!("PreviewHolder.build couldn't acquire lock");
             return Ok(());
         };
         if previews.contains_key(file_info.path.as_ref()) {
@@ -91,13 +96,16 @@ impl PreviewHolder {
         log_info!("building preview for {file_info:?}");
         std::thread::spawn(move || -> Result<()> {
             let preview = Preview::new(&file_info, &users)?;
-            log_info!("built preview for {file_info:?}");
             let Ok(mut preview_holder) = preview_holder.lock() else {
+                log_info!("PreviewHolder.build thread. Couldn't acquire lock");
                 return Ok(());
             };
             if !preview_holder.contains_key(file_info.path.as_ref()) {
                 preview_holder.insert(file_info.path.to_path_buf(), Arc::new(preview));
-                log_info!("inserted {file_info:?} in preview_holder");
+                log_info!(
+                    "inserted {p} in preview_holder",
+                    p = file_info.path.display()
+                );
             }
             Ok(())
         });
@@ -111,6 +119,7 @@ impl PreviewHolder {
             for file_info in files {
                 let preview = Preview::new(&file_info, &users)?;
                 let Ok(mut preview_holder) = preview_holder.lock() else {
+                    log_info!("PreviewHolder.build_directory Couldn't acquire lock");
                     return Ok(());
                 };
                 if !preview_holder.contains_key(file_info.path.as_ref()) {

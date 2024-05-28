@@ -1037,6 +1037,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [ ] tree ?
       - [ ] flagged
     - [ ] clear when necessary (???)
+  - [ ] BUG: scrolling quickly crashes
+  - [ ] BUG: can't scroll left tab previews with mouse nor keys
 
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce

@@ -490,8 +490,6 @@ impl Status {
         preview_holder.start_previewer();
         preview_holder.build(&fileinfo)?;
         self.tabs[1].previewed_doc = Some(path_to_string(&fileinfo.path));
-        // self.tabs[1].preview = Preview::new(&fileinfo, users).unwrap_or_default();
-        // self.tabs[1].window.reset(self.tabs[1].preview.len());
         let len = match preview_holder.get(&fileinfo.path) {
             Some(preview) => preview.len(),
             _ => 80,
