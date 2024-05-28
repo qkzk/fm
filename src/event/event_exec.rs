@@ -950,7 +950,7 @@ impl EventAction {
         let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Directory => tab.normal_up_one_row(),
-            Display::Preview => tab.preview_page_up(),
+            Display::Preview => status.preview_page_up(),
             Display::Tree => tab.tree_select_prev()?,
             Display::Flagged => status.menu.flagged.select_prev(),
         }
@@ -961,7 +961,7 @@ impl EventAction {
         let tab = status.current_tab_mut();
         match tab.display_mode {
             Display::Directory => tab.normal_down_one_row(),
-            Display::Preview => tab.preview_page_down(),
+            Display::Preview => status.preview_page_down(),
             Display::Tree => tab.tree_select_next()?,
             Display::Flagged => status.menu.flagged.select_next(),
         }
@@ -1115,7 +1115,7 @@ impl EventAction {
             let tab = status.current_tab_mut();
             match tab.display_mode {
                 Display::Directory => tab.normal_go_top(),
-                Display::Preview => tab.preview_go_top(),
+                Display::Preview => status.preview_go_top(),
                 Display::Tree => tab.tree_go_to_root()?,
                 Display::Flagged => status.menu.flagged.select_first(),
             };
@@ -1132,7 +1132,7 @@ impl EventAction {
             let tab = status.current_tab_mut();
             match tab.display_mode {
                 Display::Directory => tab.normal_go_bottom(),
-                Display::Preview => tab.preview_go_bottom(),
+                Display::Preview => status.preview_go_bottom(),
                 Display::Tree => tab.tree_go_to_bottom_leaf()?,
                 Display::Flagged => status.menu.flagged.select_last(),
             };
@@ -1170,7 +1170,7 @@ impl EventAction {
                 tab.normal_page_up();
                 status.update_second_pane_for_preview()?;
             }
-            Display::Preview => tab.preview_page_up(),
+            Display::Preview => status.preview_page_up(),
             Display::Tree => {
                 tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
@@ -1207,7 +1207,7 @@ impl EventAction {
                 tab.normal_page_down();
                 status.update_second_pane_for_preview()?;
             }
-            Display::Preview => tab.preview_page_down(),
+            Display::Preview => status.preview_page_down(),
             Display::Tree => {
                 tab.tree_page_down();
                 status.update_second_pane_for_preview()?;

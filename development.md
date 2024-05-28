@@ -1021,9 +1021,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] change internal api to read previews from display
   - [x] change internal api to request previews from status
   - [x] replace tx rx by simple `Arc<PreviewHolder>`
-  - [ ] inform tab of window for preview
-  - [ ] limit its size (order somewhere or remove non common path)
-  - [ ] command output, help, whatever
+  - [x] inform tab of window for preview when first move occurs
+  - [ ] BUG: ueberzug is always drawned
+  - [ ] ???: command output, help, whatever
+    - store previews as "string: preview"
+    - match against the string before building & getting
+  - [ ] Data structure for previews ?
+    - [ ] limit its size (order somewhere or remove non common path)
+    - [ ] build as many as possible in secondpane...
+    - [ ] order ? (from index distance to current ???)
+    - [ ] clear when necessary (???)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [ ] allow hex colors like #16a085 in config

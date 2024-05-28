@@ -70,10 +70,10 @@ pub struct Tab {
     pub directory: Directory,
     /// Tree representation of the same path
     pub tree: Tree,
-    /// Lines of the previewed files.
-    /// Empty if not in preview mode.
+    /// Length of the previewed document
     pub preview_len: usize,
-
+    ///
+    pub previewed_doc: Option<String>,
     /// The edit mode the application is currenty in.
     /// Most of the time is spent in `EditMode::Nothing`
     pub edit_mode: Edit,
@@ -128,6 +128,7 @@ impl Tab {
         let edit_mode = Edit::Nothing;
         let mut window = ContentWindow::new(directory.content.len(), height);
         let preview_len = 80;
+        let previewed_doc = None;
         let history = History::default();
         let search = Search::empty();
         let index = directory.select_file(&path);
@@ -141,8 +142,8 @@ impl Tab {
             directory,
             height,
             preview_len,
+            previewed_doc,
             search,
-            // searched,
             history,
             users,
             tree,
@@ -660,46 +661,6 @@ impl Tab {
         let index = self.tree.displayable().index();
         self.window.scroll_to(index);
     }
-
-    /// Move the preview to the top
-    pub fn preview_go_top(&mut self) {
-        self.window.scroll_to(0)
-    }
-
-    /// Move the preview to the bottom
-    pub fn preview_go_bottom(&mut self) {
-        self.window
-            .scroll_to(self.preview_len.checked_sub(1).unwrap_or_default())
-    }
-
-    /// Move 30 lines up or an image in Ueberzug.
-    pub fn preview_page_up(&mut self) {
-        // match &mut self.preview {
-        // Preview::Ueberzug(ref mut image) => image.up_one_row(),
-        // _ => {
-        if self.window.top > 0 {
-            let skip = min(self.window.top, 30);
-            self.window.bottom -= skip;
-            self.window.top -= skip;
-        }
-        //     }
-        // }
-    }
-
-    /// Move down 30 rows except for Ueberzug where it moves 1 image down
-    pub fn preview_page_down(&mut self) {
-        // match &mut self.preview {
-        //     Preview::Ueberzug(ref mut image) => image.down_one_row(),
-        //     _ => {
-        if self.window.bottom < self.preview_len {
-            let skip = min(self.preview_len - self.window.bottom, 30);
-            self.window.bottom += skip;
-            self.window.top += skip;
-            //     }
-            // }
-        }
-    }
-
     /// Select a given row, if there's something in it.
     /// Returns an error if the clicked row is above the headers margin.
     pub fn select_row(&mut self, row: u16) -> Result<()> {

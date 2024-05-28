@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::fs;
 use std::path::Path;
 use std::sync::mpsc::Sender;
@@ -487,6 +488,7 @@ impl Status {
         };
         preview_holder.start_previewer();
         preview_holder.build(&fileinfo)?;
+        self.tabs[1].previewed_doc = Some(path_to_string(&fileinfo.path));
         // self.tabs[1].preview = Preview::new(&fileinfo, users).unwrap_or_default();
         // self.tabs[1].window.reset(self.tabs[1].preview.len());
         let len = match preview_holder.get(&fileinfo.path) {
@@ -519,6 +521,7 @@ impl Status {
             Some(preview) => preview.len(),
             _ => 80,
         };
+        self.tabs[self.index].previewed_doc = Some(path_to_string(&fileinfo.path));
         log_info!("build_preview_current_tab. Preview has len {len}");
         self.tabs[self.index].window.reset(len);
         preview_holder.build(&fileinfo)
@@ -1444,6 +1447,69 @@ impl Status {
     pub fn input_filter(&mut self, c: char) -> Result<()> {
         self.menu.input_insert(c)?;
         self.set_filter()
+    }
+
+    fn update_preview_len(&mut self) {
+        let Some(previewed_doc) = &self.tabs[self.index].previewed_doc else {
+            return;
+        };
+        let Ok(preview_holder) = self.preview_holder.lock() else {
+            return;
+        };
+        let Some(preview) = preview_holder.get(Path::new(previewed_doc)) else {
+            return;
+        };
+        self.tabs[self.index].preview_len = preview.len();
+    }
+
+    /// Move the preview to the top
+    pub fn preview_go_top(&mut self) {
+        self.update_preview_len();
+        self.tabs[self.index].window.scroll_to(0)
+    }
+
+    /// Move the preview to the bottom
+    pub fn preview_go_bottom(&mut self) {
+        self.update_preview_len();
+        self.tabs[self.index].window.scroll_to(
+            self.tabs[self.index]
+                .preview_len
+                .checked_sub(1)
+                .unwrap_or_default(),
+        )
+    }
+
+    /// Move 30 lines up or an image in Ueberzug.
+    pub fn preview_page_up(&mut self) {
+        // match &mut self.preview {
+        // Preview::Ueberzug(ref mut image) => image.up_one_row(),
+        // _ => {
+        self.update_preview_len();
+        if self.tabs[self.index].window.top > 0 {
+            let skip = min(self.tabs[self.index].window.top, 30);
+            self.tabs[self.index].window.bottom -= skip;
+            self.tabs[self.index].window.top -= skip;
+        }
+        //     }
+        // }
+    }
+
+    /// Move down 30 rows except for Ueberzug where it moves 1 image down
+    pub fn preview_page_down(&mut self) {
+        // match &mut self.preview {
+        //     Preview::Ueberzug(ref mut image) => image.down_one_row(),
+        //     _ => {
+        self.update_preview_len();
+        if self.tabs[self.index].window.bottom < self.tabs[self.index].preview_len {
+            let skip = min(
+                self.tabs[self.index].preview_len - self.tabs[self.index].window.bottom,
+                30,
+            );
+            self.tabs[self.index].window.bottom += skip;
+            self.tabs[self.index].window.top += skip;
+            //     }
+            // }
+        }
     }
 }
 
