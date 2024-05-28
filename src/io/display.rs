@@ -396,11 +396,20 @@ impl<'a> WinMain<'a> {
             log_info!("Display couldn't lock preview_holder");
             return Ok(None);
         };
+        let Ok(previews) = preview_holder.previews.lock() else {
+            return Ok(None);
+        };
         let path = if is_preview_second_pane {
             self.status.tabs[0].current_file()?.path
         } else {
             tab.current_file()?.path
         };
+        previews
+            .iter()
+            .filter(|(k, _)| k.as_path() != path.as_ref())
+            .map(|(_, p)| p)
+            .for_each(|p| p.hide());
+        drop(previews);
         let Some(preview) = preview_holder.get(&path) else {
             log_info!("got None from preview_holder");
             return Ok(None);

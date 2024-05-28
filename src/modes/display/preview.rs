@@ -165,6 +165,13 @@ impl Preview {
         Self::Empty
     }
 
+    pub fn hide(&self) {
+        match self {
+            Self::Ueberzug(ueb) => ueb.hide(),
+            _ => (),
+        }
+    }
+
     pub fn new(file_info: &FileInfo, users: &Users) -> Result<Self> {
         match file_info.file_kind {
             FileKind::Directory => Self::directory(file_info, users),
@@ -1091,6 +1098,10 @@ impl Ueberzug {
             scaler: Some(ueberzug::Scalers::FitContain),
             ..Default::default()
         });
+    }
+
+    pub fn hide(&self) {
+        self.ueberzug.clear(&self.filename)
     }
 }
 
