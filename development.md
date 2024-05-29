@@ -1029,6 +1029,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] help
     - [x] commant output
     - [x] log
+  - [x] FIX: can't scroll left tab previews with mouse nor keys
   - [ ] Data structure for previews ?
     - [ ] limit its size (order somewhere or remove non common path)
     - [ ] build as many as possible in secondpane...
@@ -1038,7 +1039,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [ ] flagged
     - [ ] clear when necessary (???)
   - [ ] BUG: scrolling quickly crashes
-  - [ ] BUG: can't scroll left tab previews with mouse nor keys
 
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce

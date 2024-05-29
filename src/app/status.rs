@@ -1530,7 +1530,12 @@ impl Status {
         let Some(preview) = preview_holder.get(Path::new(previewed_doc)) else {
             return;
         };
-        self.tabs[self.index].preview_len = preview.len();
+        let old_len = self.tabs[self.index].preview_len;
+        let true_len = preview.len();
+        self.tabs[self.index].preview_len = true_len;
+        if old_len != true_len {
+            self.tabs[self.index].window.reset(true_len);
+        }
     }
 
     /// Move the preview to the top
@@ -1573,14 +1578,12 @@ impl Status {
             );
             self.tabs[self.index].window.bottom += skip;
             self.tabs[self.index].window.top += skip;
-            //     }
-            // }
         }
     }
 
     pub fn get_current_previewed_doc(&self) -> Option<String> {
         match self.current_tab().display_mode {
-            Display::Preview => None,
+            Display::Preview => self.current_tab().previewed_doc.to_owned(),
             Display::Directory => self
                 .current_tab()
                 .directory
@@ -1602,7 +1605,11 @@ impl Status {
     }
 
     pub fn set_current_previewed_doc(&mut self) {
-        self.current_tab_mut().previewed_doc = self.get_current_previewed_doc()
+        let old_file = &self.current_tab().previewed_doc;
+        let true_file = self.get_current_previewed_doc();
+        if old_file != &true_file {
+            self.current_tab_mut().previewed_doc = true_file;
+        }
     }
 }
 
