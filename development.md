@@ -1036,9 +1036,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] flagged
     - [x] clear when necessary (???)
   - [ ] BUG: ueberzug share same path ? [ueberzug](/home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ueberzug-0.1.0/src/lib.rs) line 41
-    - [ ] use my own ueberzug
+    - [x] use my own ueberzug
+    - [x] don't unwrap/expect if it may fail
+    - [x] identifier = fullpath which should work
     - [ ] share one ueberzug for every one in preview_holder
-    - [ ] identifier = fullpath which should work
+    - [ ] navigation...
   - [ ] BUG: scrolling quickly crashes
   - [ ] BUG: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice
   - [ ] BUG: escape from simple preview shouldn't reset directory index

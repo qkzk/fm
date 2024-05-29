@@ -25,8 +25,8 @@ use crate::io::{
 };
 use crate::log_info;
 use crate::modes::{
-    extract_extension, list_files_tar, list_files_zip, FileKind, FilterKind, SortKind, Tree,
-    TreeLineBuilder, TreeLines, Users,
+    extract_extension, list_files_tar, list_files_zip, FileKind, FilterKind, Scalers, SortKind,
+    Tree, TreeLineBuilder, TreeLines, UeConf, Ueberzug, Users,
 };
 
 /// Different kind of extension for grouped by previewers.
@@ -118,7 +118,7 @@ pub enum Preview {
     Text(TextContent),
     Binary(BinaryContent),
     Archive(ArchiveContent),
-    Ueberzug(Ueberzug),
+    Ueberzug(UeberzugPreview),
     Media(MediaContent),
     Tree(TreePreview),
     Iso(Iso),
@@ -210,28 +210,40 @@ impl Preview {
                             && is_program_in_path(PDFINFO)
                             && is_program_in_path(PDFTOPPM)) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Pdf)?))
+                        Ok(Self::Ueberzug(UeberzugPreview::make(
+                            &path,
+                            UeberzugKind::Pdf,
+                        )?))
                     }
-                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => {
-                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Image)?))
-                    }
+                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => Ok(Self::Ueberzug(
+                        UeberzugPreview::make(&path, UeberzugKind::Image)?,
+                    )),
                     ExtensionKind::Audio if is_program_in_path(MEDIAINFO) => {
                         Ok(Self::Media(MediaContent::new(&path)?))
                     }
                     ExtensionKind::Video
                         if is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Video)?))
+                        Ok(Self::Ueberzug(UeberzugPreview::make(
+                            &path,
+                            UeberzugKind::Video,
+                        )?))
                     }
                     ExtensionKind::Font
                         if is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Font)?))
+                        Ok(Self::Ueberzug(UeberzugPreview::make(
+                            &path,
+                            UeberzugKind::Font,
+                        )?))
                     }
                     ExtensionKind::Svg
                         if is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Svg)?))
+                        Ok(Self::Ueberzug(UeberzugPreview::make(
+                            &path,
+                            UeberzugKind::Svg,
+                        )?))
                     }
                     ExtensionKind::Iso if is_program_in_path(ISOINFO) => {
                         Ok(Self::Iso(Iso::new(&path)?))
@@ -239,9 +251,9 @@ impl Preview {
                     ExtensionKind::Notebook if is_program_in_path(JUPYTER) => {
                         Ok(Self::notebook(&path).context("Preview: Couldn't parse notebook")?)
                     }
-                    ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => {
-                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Office)?))
-                    }
+                    ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => Ok(Self::Ueberzug(
+                        UeberzugPreview::make(&path, UeberzugKind::Office)?,
+                    )),
                     ExtensionKind::Epub if is_program_in_path(PANDOC) => {
                         Ok(Self::epub(&path).context("Preview: Couldn't parse epub")?)
                     }
@@ -830,24 +842,17 @@ pub enum UeberzugKind {
 /// When the preview is reset, the instance is dropped and the image is erased.
 /// Positonning the image is tricky since tuikit doesn't know where it's drawed in the terminal:
 /// the preview can't be placed correctly in embeded terminals.
-pub struct Ueberzug {
+pub struct UeberzugPreview {
     original: PathBuf,
     path: String,
-    filename: String,
     kind: UeberzugKind,
-    ueberzug: ueberzug::Ueberzug,
+    ueberzug: Ueberzug,
     length: usize,
     pub index: usize,
 }
 
-impl Ueberzug {
+impl UeberzugPreview {
     fn thumbnail(original: PathBuf, kind: UeberzugKind, thumbnail_path: Option<String>) -> Self {
-        let filename = original
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string();
-
         let path = if let Some(thumbnail_path) = thumbnail_path {
             thumbnail_path
         } else {
@@ -857,9 +862,8 @@ impl Ueberzug {
         Self {
             original,
             path,
-            filename,
             kind,
-            ueberzug: ueberzug::Ueberzug::new(),
+            ueberzug: Ueberzug::new(),
             length: 0,
             index: 0,
         }
@@ -877,7 +881,6 @@ impl Ueberzug {
     }
 
     fn image_thumbnail(img_path: &Path) -> Result<Self> {
-        let filename = filename_from_path(img_path)?.to_owned();
         let path = img_path
             .to_str()
             .context("ueberzug: couldn't parse the path into a string")?
@@ -885,9 +888,8 @@ impl Ueberzug {
         Ok(Self {
             original: img_path.to_owned(),
             path,
-            filename,
             kind: UeberzugKind::Image,
-            ueberzug: ueberzug::Ueberzug::new(),
+            ueberzug: Ueberzug::new(),
             length: 0,
             index: 0,
         })
@@ -1073,20 +1075,20 @@ impl Ueberzug {
     /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
     /// The whole struct instance is dropped when the preview is reset and the image is deleted.
     pub fn ueberzug(&self, x: u16, y: u16, width: u16, height: u16) {
-        self.ueberzug.draw(&ueberzug::UeConf {
-            identifier: &self.filename,
+        self.ueberzug.draw(&UeConf {
+            identifier: &self.path,
             path: &self.path,
             x,
             y,
             width: Some(width),
             height: Some(height),
-            scaler: Some(ueberzug::Scalers::FitContain),
+            scaler: Some(Scalers::FitContain),
             ..Default::default()
         });
     }
 
     pub fn hide(&self) {
-        self.ueberzug.clear(&self.filename)
+        self.ueberzug.clear(&self.path)
     }
 }
 

@@ -5,6 +5,7 @@ mod preview;
 mod preview_holder;
 mod skim;
 mod tree;
+mod ueberzug;
 mod users;
 
 pub use content_window::ContentWindow;
@@ -14,10 +15,11 @@ pub use fileinfo::{
     ColorEffect, FileInfo, FileKind,
 };
 pub use preview::{
-    BinaryContent, ColoredText, ExtensionKind, HLContent, Preview, TextKind, TreePreview, Ueberzug,
-    Window,
+    BinaryContent, ColoredText, ExtensionKind, HLContent, Preview, TextKind, TreePreview,
+    UeberzugPreview, Window,
 };
 pub use preview_holder::*;
 pub use skim::{print_ansi_str, Skimer};
 pub use tree::{ColoredString, Go, Node, To, Tree, TreeLineBuilder, TreeLines};
+pub use ueberzug::{Scalers, UeConf, Ueberzug};
 pub use users::Users;
