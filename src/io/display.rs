@@ -1,8 +1,9 @@
 use std::cmp::min;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use parking_lot::{RwLock, RwLockReadGuard};
 use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
@@ -119,7 +120,7 @@ pub trait Height: Canvas {
 impl Height for dyn Canvas + '_ {}
 
 struct WinMain<'a> {
-    preview_holder: &'a Arc<Mutex<PreviewHolder>>,
+    preview_holder: &'a Arc<RwLock<PreviewHolder>>,
     status: &'a Status,
     tab: &'a Tab,
     attributes: WinMainAttributes,
@@ -148,7 +149,7 @@ impl<'a> WinMain<'a> {
         status: &'a Status,
         index: usize,
         attributes: WinMainAttributes,
-        preview_holder: &'a Arc<Mutex<PreviewHolder>>,
+        preview_holder: &'a Arc<RwLock<PreviewHolder>>,
     ) -> Self {
         Self {
             preview_holder,
@@ -392,13 +393,6 @@ impl<'a> WinMain<'a> {
         is_preview_second_pane: bool,
     ) -> Result<Option<usize>> {
         let height = canvas.height()?;
-        let Ok(preview_holder) = self.preview_holder.lock() else {
-            log_info!("Display couldn't lock preview_holder");
-            return Ok(None);
-        };
-        let Ok(previews) = preview_holder.previews.lock() else {
-            return Ok(None);
-        };
         let tab = if is_preview_second_pane {
             &self.status.tabs[0]
         } else {
@@ -408,13 +402,15 @@ impl<'a> WinMain<'a> {
             return Ok(None);
         };
         let path = std::path::Path::new(s);
-        previews
+        self.preview_holder
+            .read()
+            .previews
+            .read()
             .iter()
             .filter(|(k, _)| k.as_path() != path)
             .map(|(_, p)| p)
             .for_each(|p| p.hide());
-        drop(previews);
-        let Some(preview) = preview_holder.get(&path) else {
+        let Some(preview) = self.preview_holder.read().get(&path) else {
             log_info!("got None from preview_holder");
             return Ok(None);
         };
@@ -1229,12 +1225,12 @@ pub struct Display {
     /// The Tuikit terminal attached to the display.
     /// It will print every symbol shown on screen.
     term: Arc<Term>,
-    preview_holder: Arc<Mutex<PreviewHolder>>,
+    preview_holder: Arc<RwLock<PreviewHolder>>,
 }
 
 impl Display {
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
-    pub fn new(term: Arc<Term>, preview_holder: Arc<Mutex<PreviewHolder>>) -> Self {
+    pub fn new(term: Arc<Term>, preview_holder: Arc<RwLock<PreviewHolder>>) -> Self {
         log_info!("starting display...");
         Self {
             term,
@@ -1259,7 +1255,7 @@ impl Display {
     /// The preview in preview mode.
     /// Displays one pane or two panes, depending of the width and current
     /// status of the application.
-    pub fn display_all(&mut self, status: &MutexGuard<Status>) -> Result<()> {
+    pub fn display_all(&mut self, status: &RwLockReadGuard<Status>) -> Result<()> {
         self.hide_cursor()?;
         self.term.clear()?;
 

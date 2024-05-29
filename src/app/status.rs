@@ -2,10 +2,11 @@ use std::cmp::min;
 use std::fs;
 use std::path::Path;
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use parking_lot::RwLock;
 use skim::SkimItem;
 use sysinfo::{Disk, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
@@ -130,7 +131,7 @@ pub struct Status {
     pub focus: Focus,
     /// Sender of events
     pub fm_sender: Arc<Sender<FmEvents>>,
-    pub preview_holder: Arc<Mutex<PreviewHolder>>,
+    pub preview_holder: Arc<RwLock<PreviewHolder>>,
 }
 
 impl Status {
@@ -143,7 +144,7 @@ impl Status {
         opener: Opener,
         binds: &Bindings,
         fm_sender: Arc<Sender<FmEvents>>,
-        preview_holder: Arc<Mutex<PreviewHolder>>,
+        preview_holder: Arc<RwLock<PreviewHolder>>,
     ) -> Result<Self> {
         let skimer = None;
         let index = 0;
@@ -484,12 +485,9 @@ impl Status {
             return Ok(());
         };
         let path = path.to_owned();
-        let Ok(mut preview_holder) = self.preview_holder.lock() else {
-            return Ok(());
-        };
-        preview_holder.build(&path)?;
+        self.preview_holder.write().build(&path)?;
         self.tabs[1].previewed_doc = Some(path_to_string(&path));
-        let len = match preview_holder.get(&path) {
+        let len = match self.preview_holder.read().get(&path) {
             Some(preview) => preview.len(),
             _ => 80,
         };
@@ -517,27 +515,19 @@ impl Status {
                 path.to_owned()
             }
         };
-        let Ok(mut preview_holder) = self.preview_holder.lock() else {
-            log_info!("status couldn't lock preview_holder");
-            return Ok(());
-        };
-        let len = match preview_holder.get(&path) {
+        let len = match self.preview_holder.read().get(&path) {
             Some(preview) => preview.len(),
             _ => 80,
         };
         self.tabs[self.index].previewed_doc = Some(path_to_string(&path));
         self.tabs[self.index].window.reset(len);
-        preview_holder.build(&path)
+        self.preview_holder.write().build(&path)
     }
 
     pub fn build_content_preview(&mut self) -> Result<()> {
         if !self.display_settings.preview() {
             return Ok(());
         }
-        let Ok(mut preview_holder) = self.preview_holder.lock() else {
-            log_info!("status couldn't lock preview_holder");
-            return Ok(());
-        };
         let paths = match self.tabs[0].display_mode {
             Display::Directory => self.tabs[0].directory.files_ordered_for_preview(),
             Display::Preview => vec![],
@@ -551,12 +541,14 @@ impl Status {
             "build_content_preview. building {len} previews",
             len = paths.len()
         );
-        preview_holder.clear()?;
-        preview_holder.build_collection(paths)?;
+        let mut phw = self.preview_holder.write();
+        phw.clear()?;
+        phw.build_collection(paths)?;
+        drop(phw);
         let Ok(fileinfo) = self.tabs[0].current_file() else {
             return Ok(());
         };
-        let len = match preview_holder.get(&fileinfo.path) {
+        let len = match self.preview_holder.read().get(&fileinfo.path) {
             Some(preview) => preview.len(),
             _ => 80,
         };
@@ -1329,9 +1321,7 @@ impl Status {
     }
 
     fn set_custom_preview(&mut self, name: &str, preview: Preview) {
-        let Ok(mut preview_holder) = self.preview_holder.lock() else {
-            return;
-        };
+        let mut preview_holder = self.preview_holder.write();
         let len = preview.len();
         preview_holder.put_preview(std::path::Path::new(name), preview);
         self.tabs[self.index].previewed_doc = Some(name.to_owned());
@@ -1528,10 +1518,7 @@ impl Status {
         let Some(previewed_doc) = &self.tabs[self.index].previewed_doc else {
             return;
         };
-        let Ok(preview_holder) = self.preview_holder.lock() else {
-            return;
-        };
-        let Some(preview) = preview_holder.get(Path::new(previewed_doc)) else {
+        let Some(preview) = self.preview_holder.read().get(Path::new(previewed_doc)) else {
             return;
         };
         let old_len = self.tabs[self.index].preview_len;

@@ -1,9 +1,10 @@
 use std::sync::mpsc::{self, TryRecvError};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
+use parking_lot::RwLock;
 
 use crate::app::Status;
 use crate::io::Display;
@@ -19,8 +20,8 @@ impl Displayer {
 
     pub fn new(
         term: Arc<tuikit::term::Term>,
-        status: Arc<Mutex<Status>>,
-        preview_holder: Arc<Mutex<PreviewHolder>>,
+        status: Arc<RwLock<Status>>,
+        preview_holder: Arc<RwLock<PreviewHolder>>,
     ) -> Self {
         let (tx, rx) = mpsc::channel();
         let mut display = Display::new(term, preview_holder);
@@ -36,12 +37,7 @@ impl Displayer {
                     }
                     Err(TryRecvError::Empty) => {}
                 }
-                match status.lock() {
-                    Ok(status) => {
-                        display.display_all(&status)?;
-                    }
-                    Err(error) => return Err(anyhow!("Error locking status: {error}")),
-                }
+                display.display_all(&status.read())?;
                 std::thread::sleep(Duration::from_millis(Self::THIRTY_PER_SECONDS_IN_MILLIS));
             }
             Ok(())

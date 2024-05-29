@@ -1,8 +1,7 @@
 use std::sync::Arc;
-use std::sync::Mutex;
 
-use anyhow::anyhow;
 use anyhow::Result;
+use parking_lot::RwLock;
 
 use crate::app::Displayer;
 use crate::app::Refresher;
@@ -28,7 +27,7 @@ pub struct FM {
     /// Associate the event to a method, modifing the status.
     event_dispatcher: EventDispatcher,
     /// Current status of the application. Mostly the filetrees
-    status: Arc<Mutex<Status>>,
+    status: Arc<RwLock<Status>>,
     /// Refresher is used to force a refresh when a file has been modified externally.
     /// It sends an `Event::Key(Key::AltPageUp)` every 10 seconds.
     /// It also has a `mpsc::Sender` to send a quit message and reset the cursor.
@@ -67,15 +66,15 @@ impl FM {
         let event_reader = EventReader::new(term.clone(), fm_receiver);
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = Opener::new(&config.terminal, &config.terminal_flag);
-        let preview_holder = Arc::new(Mutex::new(PreviewHolder::new()));
-        let ph2 = Arc::clone(&preview_holder);
-        let status = Arc::new(Mutex::new(Status::new(
+        let preview_holder = Arc::new(RwLock::new(PreviewHolder::new()));
+        let preview_holder_2 = Arc::clone(&preview_holder);
+        let status = Arc::new(RwLock::new(Status::new(
             term.term_size()?.1,
             term.clone(),
             opener,
             &config.binds,
             fm_sender.clone(),
-            ph2,
+            preview_holder_2,
         )?));
         drop(config);
 
@@ -102,30 +101,22 @@ impl FM {
 
     /// Update itself, changing its status.
     fn update(&mut self, event: FmEvents) -> Result<()> {
-        match self.status.lock() {
-            Ok(mut status) => {
-                self.event_dispatcher.dispatch(&mut status, event)?;
-                status.refresh_shortcuts();
-                drop(status);
-                Ok(())
-            }
-            Err(error) => Err(anyhow!("Error locking status: {error}")),
-        }
+        self.event_dispatcher
+            .dispatch(&mut self.status.write(), event)?;
+        self.status.write().refresh_shortcuts();
+        Ok(())
     }
 
     /// True iff the application must quit.
-    fn must_quit(&self) -> Result<bool> {
-        match self.status.lock() {
-            Ok(status) => Ok(status.must_quit()),
-            Err(error) => Err(anyhow!("Error locking status: {error}")),
-        }
+    fn must_quit(&self) -> bool {
+        self.status.read().must_quit()
     }
 
     /// Run the status loop.
     pub fn run(&mut self) -> Result<()> {
         while let Ok(event) = self.poll_event() {
             self.update(event)?;
-            if self.must_quit()? {
+            if self.must_quit() {
                 break;
             }
         }
@@ -146,15 +137,9 @@ impl FM {
         drop(self.event_dispatcher);
         self.displayer.quit()?;
         self.refresher.quit()?;
-
-        match self.status.lock() {
-            Ok(status) => {
-                let final_path = status.current_tab_path_str().to_owned();
-                drop(status);
-                Ok(final_path)
-            }
-            Err(error) => Err(anyhow!("Error locking status {error}")),
-        }
+        let final_path = self.status.read().current_tab_path_str().to_owned();
+        drop(self.status);
+        Ok(final_path)
     }
 }
 
