@@ -14,26 +14,20 @@ use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color};
 
+use crate::common::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
 use crate::common::{
     CALC_PDF_PATH, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
     PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS, THUMBNAIL_PATH_JPG, THUMBNAIL_PATH_PNG,
     THUMBNAIL_PDF_PATH, TRANSMISSION_SHOW, UEBERZUG,
 };
-use crate::log_info;
-use crate::modes::ContentWindow;
-use crate::modes::FileInfo;
-use crate::modes::FileKind;
-use crate::modes::Tree;
-use crate::modes::Users;
-
-use crate::common::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
 use crate::io::{
     execute_and_capture_output, execute_and_capture_output_without_check, execute_and_output_no_log,
 };
-use crate::modes::FilterKind;
-use crate::modes::SortKind;
-use crate::modes::{list_files_tar, list_files_zip};
-use crate::modes::{TreeLineBuilder, TreeLines};
+use crate::log_info;
+use crate::modes::{
+    extract_extension, list_files_tar, list_files_zip, FileKind, FilterKind, SortKind, Tree,
+    TreeLineBuilder, TreeLines, Users,
+};
 
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.
@@ -172,18 +166,26 @@ impl Preview {
         }
     }
 
-    pub fn new(file_info: &FileInfo, users: &Users) -> Result<Self> {
-        match file_info.file_kind {
-            FileKind::Directory => Self::directory(file_info, users),
-            _ => Self::file(file_info),
+    pub fn new<P>(path: P, users: &Users) -> Result<Self>
+    where
+        P: AsRef<std::path::Path>,
+    {
+        let path = path.as_ref();
+        let file_kind = FileKind::new(&metadata(path)?, path);
+        match file_kind {
+            FileKind::Directory => Self::directory(path, users),
+            _ => Self::file(file_kind, path),
         }
     }
 
     /// Creates a new `Directory` from the file_info
     /// It explores recursivelly the directory and creates a tree.
     /// The recursive exploration is limited to depth 2.
-    pub fn directory(file_info: &FileInfo, users: &Users) -> Result<Self> {
-        Ok(Self::Tree(TreePreview::new(file_info.path.clone(), users)))
+    pub fn directory(path: &std::path::Path, users: &Users) -> Result<Self> {
+        Ok(Self::Tree(TreePreview::new(
+            std::sync::Arc::from(path),
+            users,
+        )))
     }
 
     /// Creates a new preview instance based on the filekind and the extension of
@@ -192,102 +194,86 @@ impl Preview {
     /// it to the display method.
     /// Directories aren't handled there since we need more arguments to create
     /// their previews.
-    pub fn file(file_info: &FileInfo) -> Result<Self> {
+    pub fn file(file_kind: FileKind<bool>, path: &std::path::Path) -> Result<Self> {
         clear_tmp_file();
-        match file_info.file_kind {
-            FileKind::Directory => Err(anyhow!(
-                "{path} is a directory",
-                path = file_info.path.display()
-            )),
+        let extension = extract_extension(path);
+        match file_kind {
+            FileKind::Directory => Err(anyhow!("{path} is a directory", path = path.display())),
             FileKind::NormalFile => {
-                let extension = &file_info.extension.to_lowercase();
+                let extension = &extension.to_lowercase();
                 match ExtensionKind::matcher(extension) {
-                    ExtensionKind::Archive => Ok(Self::Archive(ArchiveContent::new(
-                        &file_info.path,
-                        extension,
-                    )?)),
+                    ExtensionKind::Archive => {
+                        Ok(Self::Archive(ArchiveContent::new(&path, extension)?))
+                    }
                     ExtensionKind::Pdf
                         if (is_program_in_path(UEBERZUG)
                             && is_program_in_path(PDFINFO)
                             && is_program_in_path(PDFTOPPM)) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(
-                            &file_info.path,
-                            UeberzugKind::Pdf,
-                        )?))
+                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Pdf)?))
                     }
-                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => Ok(Self::Ueberzug(
-                        Ueberzug::make(&file_info.path, UeberzugKind::Image)?,
-                    )),
+                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => {
+                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Image)?))
+                    }
                     ExtensionKind::Audio if is_program_in_path(MEDIAINFO) => {
-                        Ok(Self::Media(MediaContent::new(&file_info.path)?))
+                        Ok(Self::Media(MediaContent::new(&path)?))
                     }
                     ExtensionKind::Video
                         if is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(
-                            &file_info.path,
-                            UeberzugKind::Video,
-                        )?))
+                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Video)?))
                     }
                     ExtensionKind::Font
                         if is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(
-                            &file_info.path,
-                            UeberzugKind::Font,
-                        )?))
+                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Font)?))
                     }
                     ExtensionKind::Svg
                         if is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(
-                            &file_info.path,
-                            UeberzugKind::Svg,
-                        )?))
+                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Svg)?))
                     }
                     ExtensionKind::Iso if is_program_in_path(ISOINFO) => {
-                        Ok(Self::Iso(Iso::new(&file_info.path)?))
+                        Ok(Self::Iso(Iso::new(&path)?))
                     }
                     ExtensionKind::Notebook if is_program_in_path(JUPYTER) => {
-                        Ok(Self::notebook(&file_info.path)
-                            .context("Preview: Couldn't parse notebook")?)
+                        Ok(Self::notebook(&path).context("Preview: Couldn't parse notebook")?)
                     }
-                    ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => Ok(Self::Ueberzug(
-                        Ueberzug::make(&file_info.path, UeberzugKind::Office)?,
-                    )),
+                    ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => {
+                        Ok(Self::Ueberzug(Ueberzug::make(&path, UeberzugKind::Office)?))
+                    }
                     ExtensionKind::Epub if is_program_in_path(PANDOC) => {
-                        Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
+                        Ok(Self::epub(&path).context("Preview: Couldn't parse epub")?)
                     }
                     ExtensionKind::Torrent if is_program_in_path(TRANSMISSION_SHOW) => {
-                        Ok(Self::torrent(&file_info.path)
+                        Ok(Self::torrent(&path)
                             .context("Preview couldn't explore the torrent file")?)
                     }
-                    _ => match Self::preview_syntaxed(extension, &file_info.path) {
+                    _ => match Self::preview_syntaxed(extension, &path) {
                         Some(syntaxed_preview) => Ok(syntaxed_preview),
-                        None => Self::preview_text_or_binary(file_info),
+                        None => Self::preview_text_or_binary(path),
                     },
                 }
             }
-            FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(file_info)),
-            FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(file_info)),
+            FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(path)),
+            FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(path)),
             FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
-                Ok(Self::fifo_chardevice(file_info))
+                Ok(Self::fifo_chardevice(path))
             }
             _ => Ok(Preview::default()),
         }
     }
 
-    fn socket(file_info: &FileInfo) -> Self {
-        Self::Socket(Socket::new(file_info))
+    fn socket(path: &std::path::Path) -> Self {
+        Self::Socket(Socket::new(path))
     }
 
-    fn blockdevice(file_info: &FileInfo) -> Self {
-        Self::BlockDevice(BlockDevice::new(file_info))
+    fn blockdevice(path: &std::path::Path) -> Self {
+        Self::BlockDevice(BlockDevice::new(path))
     }
 
-    fn fifo_chardevice(file_info: &FileInfo) -> Self {
-        Self::FifoCharDevice(FifoCharDevice::new(file_info))
+    fn fifo_chardevice(path: &std::path::Path) -> Self {
+        Self::FifoCharDevice(FifoCharDevice::new(path))
     }
 
     fn preview_syntaxed(ext: &str, path: &Path) -> Option<Self> {
@@ -322,18 +308,21 @@ impl Preview {
         })
     }
 
-    fn preview_text_or_binary(file_info: &FileInfo) -> Result<Self> {
-        let mut file = std::fs::File::open(file_info.path.clone())?;
+    fn preview_text_or_binary(path: &std::path::Path) -> Result<Self> {
+        let mut file = std::fs::File::open(path.clone())?;
         let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
-        if Self::is_binary(file_info, &mut file, &mut buffer) {
-            Ok(Self::Binary(BinaryContent::new(file_info)?))
+        if Self::is_binary(path, &mut file, &mut buffer) {
+            Ok(Self::Binary(BinaryContent::new(path)?))
         } else {
-            Ok(Self::Text(TextContent::from_file(&file_info.path)?))
+            Ok(Self::Text(TextContent::from_file(path)?))
         }
     }
 
-    fn is_binary(file_info: &FileInfo, file: &mut std::fs::File, buffer: &mut [u8]) -> bool {
-        file_info.true_size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
+    fn is_binary(path: &std::path::Path, file: &mut std::fs::File, buffer: &mut [u8]) -> bool {
+        let Ok(meta) = metadata(path) else {
+            return false;
+        };
+        meta.len() >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
             && file.read_exact(buffer).is_ok()
             && inspect(buffer) == ContentType::BINARY
     }
@@ -408,13 +397,14 @@ pub struct Socket {
 impl Socket {
     /// New socket preview
     /// See `man ss` for a description of the arguments.
-    fn new(fileinfo: &FileInfo) -> Self {
+    fn new(path: &Path) -> Self {
+        let filename = filename_from_path(path).unwrap_or_default();
         let content: Vec<String>;
         if let Ok(output) = execute_and_output_no_log(SS, ["-lpmepiT"]) {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
             content = s
                 .lines()
-                .filter(|l| l.contains(&fileinfo.filename.to_string()))
+                .filter(|l| l.contains(&filename))
                 .map(|s| s.to_owned())
                 .collect();
         } else {
@@ -441,14 +431,14 @@ pub struct BlockDevice {
 impl BlockDevice {
     /// New socket preview
     /// See `man ss` for a description of the arguments.
-    fn new(fileinfo: &FileInfo) -> Self {
+    fn new(path: &Path) -> Self {
         let content: Vec<String>;
         if let Ok(output) = execute_and_output_no_log(
             LSBLK,
             [
                 "-lfo",
                 "FSTYPE,PATH,LABEL,UUID,FSVER,MOUNTPOINT,MODEL,SIZE,FSAVAIL,FSUSE%",
-                &path_to_string(&fileinfo.path),
+                &path_to_string(&path),
             ],
         ) {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
@@ -477,11 +467,9 @@ pub struct FifoCharDevice {
 impl FifoCharDevice {
     /// New FIFO preview
     /// See `man lsof` for a description of the arguments.
-    fn new(fileinfo: &FileInfo) -> Self {
+    fn new(path: &std::path::Path) -> Self {
         let content: Vec<String>;
-        if let Ok(output) =
-            execute_and_output_no_log(LSOF, [path_to_string(&fileinfo.path).as_str()])
-        {
+        if let Ok(output) = execute_and_output_no_log(LSOF, [path_to_string(&path).as_str()]) {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
             content = s.lines().map(|s| s.to_owned()).collect();
         } else {
@@ -669,8 +657,8 @@ impl BinaryContent {
     const LINE_WIDTH: usize = 16;
     const SIZE_LIMIT: usize = 1048576;
 
-    fn new(file_info: &FileInfo) -> Result<Self> {
-        let mut reader = BufReader::new(std::fs::File::open(file_info.path.clone())?);
+    fn new(path: &std::path::Path) -> Result<Self> {
+        let mut reader = BufReader::new(std::fs::File::open(path.clone())?);
         let mut buffer = [0; Self::LINE_WIDTH];
         let mut content: Vec<Line> = vec![];
         while let Ok(nb_bytes_read) = reader.read(&mut buffer[..]) {
@@ -684,9 +672,11 @@ impl BinaryContent {
             }
         }
 
+        let meta = metadata(path)?;
+        let true_size = meta.len();
         Ok(Self {
-            path: file_info.path.to_path_buf(),
-            length: file_info.true_size / Self::LINE_WIDTH as u64,
+            path: path.to_path_buf(),
+            length: true_size / Self::LINE_WIDTH as u64,
             content,
         })
     }

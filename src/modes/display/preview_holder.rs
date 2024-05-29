@@ -5,7 +5,6 @@ use std::sync::{Arc, Mutex};
 use anyhow::{anyhow, Result};
 
 use crate::log_info;
-use crate::modes::FileInfo;
 use crate::modes::Preview;
 use crate::modes::Users;
 
@@ -81,50 +80,51 @@ impl PreviewHolder {
         previews.insert(path.as_ref().to_owned(), Arc::new(preview));
     }
 
-    pub fn build(&mut self, file_info: &FileInfo) -> Result<()> {
+    pub fn build(&mut self, path: &std::path::Path) -> Result<()> {
         let Ok(previews) = self.previews.lock() else {
             log_info!("PreviewHolder.build couldn't acquire lock");
             return Ok(());
         };
-        if previews.contains_key(file_info.path.as_ref()) {
+        if previews.contains_key(path) {
             return Ok(());
         }
         drop(previews);
-        let file_info = file_info.to_owned();
         let preview_holder = self.previews.clone();
         let users = self.users.clone();
-        log_info!("building preview for {file_info:?}");
+        log_info!("building preview for {path}", path = path.display());
+        let pathb = path.to_owned();
+
         std::thread::spawn(move || -> Result<()> {
-            let preview = Preview::new(&file_info, &users)?;
+            let preview = Preview::new(pathb.as_path(), &users)?;
             let Ok(mut preview_holder) = preview_holder.lock() else {
                 log_info!("PreviewHolder.build thread. Couldn't acquire lock");
                 return Ok(());
             };
-            if !preview_holder.contains_key(file_info.path.as_ref()) {
-                preview_holder.insert(file_info.path.to_path_buf(), Arc::new(preview));
-                log_info!(
-                    "inserted {p} in preview_holder",
-                    p = file_info.path.display()
-                );
+            if !preview_holder.contains_key(&pathb) {
+                log_info!("inserted {p} in preview_holder", p = pathb.display());
+                preview_holder.insert(pathb, Arc::new(preview));
             }
             Ok(())
         });
         Ok(())
     }
 
-    pub fn build_directory(&mut self, files: Vec<FileInfo>) -> Result<()> {
+    pub fn build_directory(&mut self, files: Vec<PathBuf>) -> Result<()> {
         let preview_holder = self.previews.clone();
         let users = self.users.clone();
         std::thread::spawn(move || -> Result<()> {
-            for file_info in files {
-                let preview = Preview::new(&file_info, &users)?;
+            for path in files {
+                let preview = Preview::new(&path, &users)?;
                 let Ok(mut preview_holder) = preview_holder.lock() else {
                     log_info!("PreviewHolder.build_directory Couldn't acquire lock");
                     return Ok(());
                 };
-                if !preview_holder.contains_key(file_info.path.as_ref()) {
-                    preview_holder.insert(file_info.path.to_path_buf(), Arc::new(preview));
-                    log_info!("build_directory. {file_info:?} inserted in preview_holder");
+                if !preview_holder.contains_key(&path) {
+                    log_info!(
+                        "build_directory. {path} inserted in preview_holder",
+                        path = path.display()
+                    );
+                    preview_holder.insert(path, Arc::new(preview));
                 }
             }
             Ok(())

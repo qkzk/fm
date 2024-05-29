@@ -1030,6 +1030,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] commant output
     - [x] log
   - [x] FIX: can't scroll left tab previews with mouse nor keys
+  - [x] remove all fileinfos in previews, use paths instead
   - [ ] Data structure for previews ?
     - [ ] limit its size (order somewhere or remove non common path)
     - [ ] build as many as possible in secondpane...
@@ -1039,6 +1040,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [ ] flagged
     - [ ] clear when necessary (???)
   - [ ] BUG: scrolling quickly crashes
+  - [ ] BUG: escape from simple preview shouldn't reset directory index
+  - [ ] BUG: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice
 
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce

@@ -33,6 +33,7 @@ use crate::io::{
 };
 use crate::io::{read_log, Internal};
 use crate::io::{Extension, Kind};
+use crate::modes::Content;
 use crate::modes::MountCommands;
 use crate::modes::MountRepr;
 use crate::modes::NeedConfirmation;
@@ -50,7 +51,6 @@ use crate::modes::{copy_move, regex_matcher};
 use crate::modes::{extract_extension, Edit};
 use crate::modes::{help_string, IsoDevice};
 use crate::modes::{BlockDeviceAction, Navigate};
-use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
 use crate::modes::{Display, Go};
 use crate::modes::{FilterKind, InputSimple};
@@ -481,16 +481,17 @@ impl Status {
     fn set_second_pane_for_preview(&mut self) -> Result<()> {
         self.tabs[1].set_display_mode(Display::Preview);
         self.tabs[1].edit_mode = Edit::Nothing;
-        let Ok(fileinfo) = self.get_correct_fileinfo_for_preview() else {
+        let Some(path) = self.get_correct_path_for_preview() else {
             return Ok(());
         };
+        let path = path.to_owned();
         let Ok(mut preview_holder) = self.preview_holder.lock() else {
             return Ok(());
         };
         preview_holder.start_previewer();
-        preview_holder.build(&fileinfo)?;
-        self.tabs[1].previewed_doc = Some(path_to_string(&fileinfo.path));
-        let len = match preview_holder.get(&fileinfo.path) {
+        preview_holder.build(&path)?;
+        self.tabs[1].previewed_doc = Some(path_to_string(&path));
+        let len = match preview_holder.get(&path) {
             Some(preview) => preview.len(),
             _ => 80,
         };
@@ -508,23 +509,23 @@ impl Status {
     }
 
     pub fn build_preview_current_tab(&mut self) -> Result<()> {
-        let fileinfo = match self.current_tab().display_mode {
+        let path = match self.current_tab().display_mode {
             Display::Preview => return Ok(()),
             Display::Tree => {
-                let path = self.current_tab().tree.selected_path();
-                FileInfo::new(path, &self.tabs[0].users)?
+                let path = self.tabs[self.index].tree.selected_path();
+                path.to_owned()
             }
             Display::Directory => {
                 let Ok(fileinfo) = self.current_tab().current_file() else {
                     return Ok(());
                 };
-                fileinfo
+                fileinfo.path.to_path_buf()
             }
             Display::Flagged => {
                 let Some(path) = self.menu.flagged.selected() else {
                     return Ok(());
                 };
-                FileInfo::new(&path, &self.tabs[0].users)?
+                path.to_owned()
             }
         };
         log_info!("status locking preview_holder...");
@@ -532,14 +533,14 @@ impl Status {
             log_info!("status couldn't lock preview_holder");
             return Ok(());
         };
-        let len = match preview_holder.get(&fileinfo.path) {
+        let len = match preview_holder.get(&path) {
             Some(preview) => preview.len(),
             _ => 80,
         };
-        self.tabs[self.index].previewed_doc = Some(path_to_string(&fileinfo.path));
+        self.tabs[self.index].previewed_doc = Some(path_to_string(&path));
         log_info!("build_preview_current_tab. Preview has len {len}");
         self.tabs[self.index].window.reset(len);
-        preview_holder.build(&fileinfo)
+        preview_holder.build(&path)
     }
 
     pub fn build_directory_preview(&mut self) -> Result<()> {
@@ -548,9 +549,9 @@ impl Status {
             log_info!("status couldn't lock preview_holder");
             return Ok(());
         };
-        let files = self.tabs[0].directory.files_ordered_for_preview();
-        log_info!("building {len} previews", len = files.len());
-        preview_holder.build_directory(files)?;
+        let paths = self.tabs[0].directory.files_ordered_for_preview();
+        log_info!("building {len} previews", len = paths.len());
+        preview_holder.build_directory(paths)?;
         let Ok(fileinfo) = self.tabs[0].current_file() else {
             return Ok(());
         };
@@ -562,31 +563,29 @@ impl Status {
         Ok(())
     }
 
-    fn get_correct_fileinfo_for_preview(&mut self) -> Result<FileInfo> {
+    fn get_correct_path_for_preview(&mut self) -> Option<&std::path::Path> {
         let left_tab = &self.tabs[0];
-        let users = &left_tab.users;
         match self.focus {
             Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::Marks(_))) => {
                 let (_, mark_path) = &self.menu.marks.content()[self.menu.marks.index()];
-                FileInfo::new(mark_path, users)
+                Some(mark_path)
             }
             Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::Shortcut)) => {
                 let shortcut_path = &self.menu.shortcut.content()[self.menu.shortcut.index()];
-                FileInfo::new(shortcut_path, users)
+                Some(shortcut_path)
             }
             Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::History)) => {
                 let (history_path, _) = &left_tab.history.content()[left_tab.history.index()];
-                FileInfo::new(history_path, users)
+                Some(history_path)
             }
             _ => match left_tab.display_mode {
                 Display::Flagged => {
                     let Some(path) = self.menu.flagged.selected() else {
-                        // self.tabs[1].preview = Preview::empty();
-                        return Err(anyhow!("No fileinfo to preview"));
+                        return None;
                     };
-                    FileInfo::new(path, users)
+                    Some(path)
                 }
-                _ => left_tab.current_file(),
+                _ => left_tab.current_selected_path(),
             },
         }
     }

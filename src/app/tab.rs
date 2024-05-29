@@ -182,6 +182,13 @@ impl Tab {
         }
     }
 
+    pub fn current_selected_path(&self) -> Option<&std::path::Path> {
+        match self.display_mode {
+            Display::Tree => Some(self.tree.selected_path()),
+            _ => Some(self.directory.content()[self.directory.index].path.as_ref()),
+        }
+    }
+
     /// Number of displayed element in this tab.
     fn display_len(&self) -> usize {
         match self.display_mode {
