@@ -1039,7 +1039,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] use my own ueberzug
     - [x] don't unwrap/expect if it may fail
     - [x] identifier = fullpath which should work
-    - [ ] share one ueberzug for every one in preview_holder
+    - [x] share one ueberzug for every one in preview_holder
+    - [ ] hide previews properly [hide here](/home/quentin/gclem/dev/rust/fm/src/io/display.rs) line 409
     - [ ] navigation...
   - [ ] BUG: scrolling quickly crashes
   - [ ] BUG: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice

@@ -47,6 +47,7 @@ use crate::modes::ShellCommandParser;
 use crate::modes::Skimer;
 use crate::modes::To;
 use crate::modes::Tree;
+use crate::modes::Ueberzug;
 use crate::modes::Users;
 use crate::modes::{copy_move, regex_matcher};
 use crate::modes::{extract_extension, Edit};
@@ -132,6 +133,7 @@ pub struct Status {
     /// Sender of events
     pub fm_sender: Arc<Sender<FmEvents>>,
     pub preview_holder: Arc<RwLock<PreviewHolder>>,
+    pub ueberzug: Arc<Ueberzug>,
 }
 
 impl Status {
@@ -170,6 +172,7 @@ impl Status {
             Tab::new(&args, height, users_right)?,
         ];
         let focus = Focus::default();
+        let ueberzug = Arc::new(Ueberzug::new());
         Ok(Self {
             tabs,
             index,
@@ -180,6 +183,7 @@ impl Status {
             focus,
             fm_sender,
             preview_holder,
+            ueberzug,
         })
     }
 
@@ -485,7 +489,9 @@ impl Status {
             return Ok(());
         };
         let path = path.to_owned();
-        self.preview_holder.write().build(&path)?;
+        self.preview_holder
+            .write()
+            .build(&path, Arc::clone(&self.ueberzug))?;
         self.tabs[1].previewed_doc = Some(path_to_string(&path));
         let len = match self.preview_holder.read().get(&path) {
             Some(preview) => preview.len(),
@@ -521,7 +527,9 @@ impl Status {
         };
         self.tabs[self.index].previewed_doc = Some(path_to_string(&path));
         self.tabs[self.index].window.reset(len);
-        self.preview_holder.write().build(&path)
+        self.preview_holder
+            .write()
+            .build(&path, Arc::clone(&self.ueberzug))
     }
 
     pub fn build_content_preview(&mut self) -> Result<()> {
@@ -543,7 +551,8 @@ impl Status {
         );
         let mut phw = self.preview_holder.write();
         phw.clear()?;
-        phw.build_collection(paths)?;
+        let ueb = Arc::clone(&self.ueberzug);
+        phw.build_collection(paths, ueb)?;
         drop(phw);
         let Ok(fileinfo) = self.tabs[0].current_file() else {
             return Ok(());

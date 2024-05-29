@@ -398,21 +398,26 @@ impl<'a> WinMain<'a> {
         } else {
             tab
         };
-        let Some(s) = &tab.previewed_doc else {
+        let Some(preview_doc) = &tab.previewed_doc else {
             return Ok(None);
         };
-        let path = std::path::Path::new(s);
-        self.preview_holder
-            .read()
-            .previews
-            .read()
-            .iter()
-            .filter(|(k, _)| k.as_path() != path)
-            .map(|(_, p)| p)
-            .for_each(|p| p.hide());
-        let Some(preview) = self.preview_holder.read().get(&path) else {
+        let previewd_path = std::path::Path::new(preview_doc);
+        let Some(preview) = self.preview_holder.read().get(&previewd_path) else {
             log_info!("got None from preview_holder");
             return Ok(None);
+        };
+        // TODO! must find a better way to hide old previews
+        match preview.as_ref() {
+            Preview::Ueberzug(_) => (),
+            _ => self
+                .preview_holder
+                .read()
+                .previews
+                .read()
+                .iter()
+                .filter(|(k, _)| k.as_path() != previewd_path)
+                .map(|(_, p)| p)
+                .for_each(|p| p.hide()),
         };
         let length = preview.len();
         let line_number_width = length.to_string().len();
@@ -505,7 +510,7 @@ impl<'a> WinMain<'a> {
     fn draw_ueberzug(&self, image: &UeberzugPreview, canvas: &mut dyn Canvas) -> Result<()> {
         let (width, height) = canvas.size()?;
         image.match_index()?;
-        image.ueberzug(
+        image.ueberzug_draw(
             self.attributes.x_position as u16 + 2,
             3,
             width as u16 - 2,

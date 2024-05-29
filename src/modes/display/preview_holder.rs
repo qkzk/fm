@@ -7,6 +7,7 @@ use parking_lot::RwLock;
 
 use crate::log_info;
 use crate::modes::Preview;
+use crate::modes::Ueberzug;
 use crate::modes::Users;
 
 #[derive(Clone)]
@@ -42,7 +43,7 @@ impl PreviewHolder {
             .insert(path.as_ref().to_owned(), Arc::new(preview));
     }
 
-    pub fn build(&mut self, path: &std::path::Path) -> Result<()> {
+    pub fn build(&mut self, path: &std::path::Path, ueberzug: Arc<Ueberzug>) -> Result<()> {
         if self.previews.read().contains_key(path) {
             return Ok(());
         }
@@ -52,24 +53,21 @@ impl PreviewHolder {
         let preview_holder = Arc::clone(&self.previews);
         let users = self.users.clone();
         let path = path.to_owned();
-        std::thread::spawn(move || -> Result<()> {
-            let preview = Preview::new(path.as_path(), &users)?;
-            if preview_holder.read().contains_key(&path) {
-                return Ok(());
-            }
-            log_info!("inserted {p} in preview_holder", p = path.display());
-            preview_holder.write().insert(path, Arc::new(preview));
-            Ok(())
-        });
+        let preview = Preview::new(path.as_path(), &users, ueberzug)?;
+        if preview_holder.read().contains_key(&path) {
+            return Ok(());
+        }
+        log_info!("inserted {p} in preview_holder", p = path.display());
+        preview_holder.write().insert(path, Arc::new(preview));
         Ok(())
     }
 
-    pub fn build_collection(&mut self, files: Vec<PathBuf>) -> Result<()> {
+    pub fn build_collection(&mut self, files: Vec<PathBuf>, ueberzug: Arc<Ueberzug>) -> Result<()> {
         let preview_holder = self.previews.clone();
         let users = self.users.clone();
         std::thread::spawn(move || -> Result<()> {
             for path in files {
-                let preview = Preview::new(&path, &users)?;
+                let preview = Preview::new(&path, &users, ueberzug.clone())?;
                 if preview_holder.read().contains_key(&path) {
                     return Ok(());
                 }

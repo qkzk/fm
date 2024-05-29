@@ -6,6 +6,7 @@ use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use content_inspector::{inspect, ContentType};
@@ -166,7 +167,7 @@ impl Preview {
         }
     }
 
-    pub fn new<P>(path: P, users: &Users) -> Result<Self>
+    pub fn new<P>(path: P, users: &Users, ueberzug: Arc<Ueberzug>) -> Result<Self>
     where
         P: AsRef<std::path::Path>,
     {
@@ -174,7 +175,7 @@ impl Preview {
         let file_kind = FileKind::new(&metadata(path)?, path);
         match file_kind {
             FileKind::Directory => Self::directory(path, users),
-            _ => Self::file(file_kind, path),
+            _ => Self::file(file_kind, path, ueberzug),
         }
     }
 
@@ -194,7 +195,11 @@ impl Preview {
     /// it to the display method.
     /// Directories aren't handled there since we need more arguments to create
     /// their previews.
-    pub fn file(file_kind: FileKind<bool>, path: &std::path::Path) -> Result<Self> {
+    pub fn file(
+        file_kind: FileKind<bool>,
+        path: &std::path::Path,
+        ueberzug: Arc<Ueberzug>,
+    ) -> Result<Self> {
         clear_tmp_file();
         let extension = extract_extension(path);
         match file_kind {
@@ -213,10 +218,11 @@ impl Preview {
                         Ok(Self::Ueberzug(UeberzugPreview::make(
                             &path,
                             UeberzugKind::Pdf,
+                            ueberzug,
                         )?))
                     }
                     ExtensionKind::Image if is_program_in_path(UEBERZUG) => Ok(Self::Ueberzug(
-                        UeberzugPreview::make(&path, UeberzugKind::Image)?,
+                        UeberzugPreview::make(&path, UeberzugKind::Image, ueberzug)?,
                     )),
                     ExtensionKind::Audio if is_program_in_path(MEDIAINFO) => {
                         Ok(Self::Media(MediaContent::new(&path)?))
@@ -227,6 +233,7 @@ impl Preview {
                         Ok(Self::Ueberzug(UeberzugPreview::make(
                             &path,
                             UeberzugKind::Video,
+                            ueberzug,
                         )?))
                     }
                     ExtensionKind::Font
@@ -235,6 +242,7 @@ impl Preview {
                         Ok(Self::Ueberzug(UeberzugPreview::make(
                             &path,
                             UeberzugKind::Font,
+                            ueberzug,
                         )?))
                     }
                     ExtensionKind::Svg
@@ -243,6 +251,7 @@ impl Preview {
                         Ok(Self::Ueberzug(UeberzugPreview::make(
                             &path,
                             UeberzugKind::Svg,
+                            ueberzug,
                         )?))
                     }
                     ExtensionKind::Iso if is_program_in_path(ISOINFO) => {
@@ -252,7 +261,7 @@ impl Preview {
                         Ok(Self::notebook(&path).context("Preview: Couldn't parse notebook")?)
                     }
                     ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => Ok(Self::Ueberzug(
-                        UeberzugPreview::make(&path, UeberzugKind::Office)?,
+                        UeberzugPreview::make(&path, UeberzugKind::Office, ueberzug)?,
                     )),
                     ExtensionKind::Epub if is_program_in_path(PANDOC) => {
                         Ok(Self::epub(&path).context("Preview: Couldn't parse epub")?)
@@ -846,13 +855,18 @@ pub struct UeberzugPreview {
     original: PathBuf,
     path: String,
     kind: UeberzugKind,
-    ueberzug: Ueberzug,
+    ueberzug: Arc<Ueberzug>,
     length: usize,
     pub index: usize,
 }
 
 impl UeberzugPreview {
-    fn thumbnail(original: PathBuf, kind: UeberzugKind, thumbnail_path: Option<String>) -> Self {
+    fn thumbnail(
+        original: PathBuf,
+        kind: UeberzugKind,
+        thumbnail_path: Option<String>,
+        ueberzug: Arc<Ueberzug>,
+    ) -> Self {
         let path = if let Some(thumbnail_path) = thumbnail_path {
             thumbnail_path
         } else {
@@ -863,24 +877,24 @@ impl UeberzugPreview {
             original,
             path,
             kind,
-            ueberzug: Ueberzug::new(),
+            ueberzug,
             length: 0,
             index: 0,
         }
     }
 
-    fn make(filepath: &Path, kind: UeberzugKind) -> Result<Self> {
+    fn make(filepath: &Path, kind: UeberzugKind, ueberzug: Arc<Ueberzug>) -> Result<Self> {
         match kind {
-            UeberzugKind::Font => Self::font_thumbnail(filepath),
-            UeberzugKind::Image => Self::image_thumbnail(filepath),
-            UeberzugKind::Office => Self::office_thumbnail(filepath),
-            UeberzugKind::Pdf => Self::pdf_thumbnail(filepath),
-            UeberzugKind::Svg => Self::svg_thumbnail(filepath),
-            UeberzugKind::Video => Self::video_thumbnail(filepath),
+            UeberzugKind::Font => Self::font_thumbnail(filepath, ueberzug),
+            UeberzugKind::Image => Self::image_thumbnail(filepath, ueberzug),
+            UeberzugKind::Office => Self::office_thumbnail(filepath, ueberzug),
+            UeberzugKind::Pdf => Self::pdf_thumbnail(filepath, ueberzug),
+            UeberzugKind::Svg => Self::svg_thumbnail(filepath, ueberzug),
+            UeberzugKind::Video => Self::video_thumbnail(filepath, ueberzug),
         }
     }
 
-    fn image_thumbnail(img_path: &Path) -> Result<Self> {
+    fn image_thumbnail(img_path: &Path, ueberzug: Arc<Ueberzug>) -> Result<Self> {
         let path = img_path
             .to_str()
             .context("ueberzug: couldn't parse the path into a string")?
@@ -889,40 +903,43 @@ impl UeberzugPreview {
             original: img_path.to_owned(),
             path,
             kind: UeberzugKind::Image,
-            ueberzug: Ueberzug::new(),
+            ueberzug,
             length: 0,
             index: 0,
         })
     }
 
-    fn video_thumbnail(video_path: &Path) -> Result<Self> {
+    fn video_thumbnail(video_path: &Path, ueberzug: Arc<Ueberzug>) -> Result<Self> {
         Self::make_video_thumbnail(video_path)?;
         Ok(Self::thumbnail(
             video_path.to_owned(),
             UeberzugKind::Video,
             None,
+            ueberzug,
         ))
     }
 
-    fn font_thumbnail(font_path: &Path) -> Result<Self> {
+    fn font_thumbnail(font_path: &Path, ueberzug: Arc<Ueberzug>) -> Result<Self> {
         Self::make_font_thumbnail(font_path)?;
         Ok(Self::thumbnail(
             font_path.to_owned(),
             UeberzugKind::Font,
             Some(THUMBNAIL_PATH_PNG.to_owned()),
+            ueberzug,
         ))
     }
 
-    fn svg_thumbnail(svg_path: &Path) -> Result<Self> {
+    fn svg_thumbnail(svg_path: &Path, ueberzug: Arc<Ueberzug>) -> Result<Self> {
         Self::make_svg_thumbnail(svg_path)?;
         Ok(Self::thumbnail(
             svg_path.to_owned(),
             UeberzugKind::Svg,
             Some(THUMBNAIL_PATH_PNG.to_owned()),
+            ueberzug,
         ))
     }
 
-    fn office_thumbnail(calc_path: &Path) -> Result<Self> {
+    fn office_thumbnail(calc_path: &Path, ueberzug: Arc<Ueberzug>) -> Result<Self> {
         let calc_str = path_to_string(&calc_path);
         let args = ["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
         let output = execute_and_output_no_log(LIBREOFFICE, args)?;
@@ -942,15 +959,16 @@ impl UeberzugPreview {
         let calc_pdf_path = PathBuf::from(CALC_PDF_PATH);
         let length = Self::get_pdf_length(&calc_pdf_path)?;
         Self::make_pdf_thumbnail(&calc_pdf_path, 0)?;
-        let mut thumbnail = Self::thumbnail(calc_pdf_path.to_owned(), UeberzugKind::Pdf, None);
+        let mut thumbnail =
+            Self::thumbnail(calc_pdf_path.to_owned(), UeberzugKind::Pdf, None, ueberzug);
         thumbnail.length = length;
         Ok(thumbnail)
     }
 
-    fn pdf_thumbnail(pdf_path: &Path) -> Result<Self> {
+    fn pdf_thumbnail(pdf_path: &Path, ueberzug: Arc<Ueberzug>) -> Result<Self> {
         let length = Self::get_pdf_length(pdf_path)?;
         Self::make_pdf_thumbnail(pdf_path, 0)?;
-        let mut thumbnail = Self::thumbnail(pdf_path.to_owned(), UeberzugKind::Pdf, None);
+        let mut thumbnail = Self::thumbnail(pdf_path.to_owned(), UeberzugKind::Pdf, None, ueberzug);
         thumbnail.length = length;
         Ok(thumbnail)
     }
@@ -1074,7 +1092,7 @@ impl UeberzugPreview {
     /// Draw the image with ueberzug in the current window.
     /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
     /// The whole struct instance is dropped when the preview is reset and the image is deleted.
-    pub fn ueberzug(&self, x: u16, y: u16, width: u16, height: u16) {
+    pub fn ueberzug_draw(&self, x: u16, y: u16, width: u16, height: u16) {
         self.ueberzug.draw(&UeConf {
             identifier: &self.path,
             path: &self.path,
