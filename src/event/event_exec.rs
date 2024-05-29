@@ -119,7 +119,7 @@ impl EventAction {
         }
         status.display_settings.toggle_preview();
         if status.display_settings.preview() {
-            status.build_directory_preview()?;
+            status.build_content_preview()?;
             status.update_second_pane_for_preview()?;
         } else {
             status.set_edit_mode(1, Edit::Nothing)?;
@@ -136,6 +136,7 @@ impl EventAction {
             return Ok(());
         }
         status.current_tab_mut().toggle_tree_mode()?;
+        status.build_content_preview()?;
         status.refresh_view()
     }
 
@@ -200,7 +201,6 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        status.start_previewer();
         status.build_preview_current_tab()?;
         status.current_tab_mut().set_display_mode(Display::Preview);
         return Ok(());
@@ -458,7 +458,8 @@ impl EventAction {
             return Ok(());
         }
         if tab.directory.is_selected_dir()? {
-            tab.go_to_selected_dir()
+            tab.go_to_selected_dir()?;
+            status.build_content_preview()
         } else {
             EventAction::open_file(status)
         }
@@ -470,6 +471,7 @@ impl EventAction {
         let is_dir = path.is_dir();
         if is_dir {
             status.current_tab_mut().cd(&path)?;
+            status.build_content_preview()?;
             status.current_tab_mut().make_tree(None)?;
             status.current_tab_mut().set_display_mode(Display::Tree);
             Ok(())
@@ -805,6 +807,7 @@ impl EventAction {
             return Ok(());
         }
         status.current_tab_mut().back()?;
+        status.build_content_preview()?;
         status.update_second_pane_for_preview()
     }
 
@@ -817,6 +820,7 @@ impl EventAction {
         let home: &str = home_cow.borrow();
         let home_path = path::Path::new(home);
         status.current_tab_mut().cd(home_path)?;
+        status.build_content_preview()?;
         status.update_second_pane_for_preview()
     }
 
@@ -826,6 +830,7 @@ impl EventAction {
         }
         let root_path = std::path::PathBuf::from("/");
         status.current_tab_mut().cd(&root_path)?;
+        status.build_content_preview()?;
         status.update_second_pane_for_preview()
     }
 
@@ -834,6 +839,7 @@ impl EventAction {
             return Ok(());
         }
         status.current_tab_mut().cd(&START_FOLDER)?;
+        status.build_content_preview()?;
         status.update_second_pane_for_preview()
     }
 
@@ -846,6 +852,7 @@ impl EventAction {
         tab.set_display_mode(Display::Directory);
         tab.refresh_view()?;
         tab.jump(path)?;
+        status.build_content_preview()?;
         status.update_second_pane_for_preview()
     }
 
@@ -970,7 +977,7 @@ impl EventAction {
     /// move left one char in mode requiring text input.
     pub fn move_left(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {
-            Self::file_move_left(status.current_tab_mut())?;
+            Self::file_move_left(status)?;
             status.set_current_previewed_doc();
         } else {
             let tab = status.current_tab_mut();
@@ -978,19 +985,20 @@ impl EventAction {
                 Edit::InputSimple(_) | Edit::InputCompleted(_) => {
                     status.menu.input.cursor_left();
                 }
-                Edit::Nothing => Self::file_move_left(tab)?,
+                Edit::Nothing => Self::file_move_left(status)?,
                 _ => (),
             }
         }
         status.update_second_pane_for_preview()
     }
 
-    fn file_move_left(tab: &mut Tab) -> Result<()> {
-        match tab.display_mode {
-            Display::Directory => tab.move_to_parent()?,
-            Display::Tree => tab.tree_select_parent()?,
+    fn file_move_left(status: &mut Status) -> Result<()> {
+        match status.current_tab_mut().display_mode {
+            Display::Directory => status.current_tab_mut().move_to_parent()?,
+            Display::Tree => status.current_tab_mut().tree_select_parent()?,
             _ => (),
         };
+        status.build_content_preview()?;
         Ok(())
     }
 

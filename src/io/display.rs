@@ -12,8 +12,8 @@ use crate::app::Status;
 use crate::app::Tab;
 use crate::app::{ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader};
 use crate::app::{Header, PreviewHeader};
+use crate::common::path_to_string;
 use crate::common::ENCRYPTED_DEVICE_BINDS;
-use crate::common::{path_to_string, string_to_path};
 use crate::config::{ColorG, Gradient, MENU_COLORS};
 use crate::io::read_last_log_line;
 use crate::log_info;
@@ -408,7 +408,6 @@ impl<'a> WinMain<'a> {
             return Ok(None);
         };
         let path = std::path::Path::new(s);
-        log_info!("previewed_doc: {s} - path {p}", p = path.display());
         previews
             .iter()
             .filter(|(k, _)| k.as_path() != path)
@@ -420,14 +419,9 @@ impl<'a> WinMain<'a> {
             return Ok(None);
         };
         let length = preview.len();
-        log_info!(
-            "got Some(preview) from preview_holder. Kind {kind} - len {length}",
-            kind = preview.kind()
-        );
         let line_number_width = length.to_string().len();
 
         match preview.as_ref() {
-            // match &tab.preview {
             Preview::Syntaxed(syntaxed) => {
                 self.draw_syntaxed(syntaxed, length, canvas, line_number_width, window)?
             }

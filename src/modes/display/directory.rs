@@ -242,7 +242,6 @@ impl Directory {
     pub fn files_ordered_for_preview(&self) -> Vec<std::path::PathBuf> {
         let mut vec_with_distances: Vec<(std::path::PathBuf, usize)> = self
             .content()
-            .clone()
             .into_iter()
             .enumerate()
             .map(|(i, fileinfo)| {
@@ -252,6 +251,11 @@ impl Directory {
                 )
             })
             .collect();
+
+        crate::log_info!(
+            "Directory. files_ordered_for_preview with length {len}",
+            len = vec_with_distances.len()
+        );
 
         vec_with_distances.sort_by_key(|&(_, distance)| distance);
 

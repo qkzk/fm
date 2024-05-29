@@ -1013,9 +1013,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 
-  - PH preview builder holding : rx (paths to preview, toggle previewing), previews sized queue,
-  - E.Exec path / file display change -> new paths to PH
-  - display a preview... PH.req(path) -> `Option<Preview>`
   - [x] preview holder
   - [x] attach the previewholder to display
   - [x] attach the tx somewhere to status
@@ -1031,17 +1028,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] log
   - [x] FIX: can't scroll left tab previews with mouse nor keys
   - [x] remove all fileinfos in previews, use paths instead
-  - [ ] Data structure for previews ?
-    - [ ] limit its size (order somewhere or remove non common path)
-    - [ ] build as many as possible in secondpane...
-    - [ ] order ? (from index distance to current ???)
+  - [x] Data structure for previews ?
+    - [x] limit its size (order somewhere or remove non common path)
+    - [x] order from index distance to current
       - [x] directory
-      - [ ] tree ?
-      - [ ] flagged
-    - [ ] clear when necessary (???)
+      - [x] tree ?
+      - [x] flagged
+    - [x] clear when necessary (???)
   - [ ] BUG: scrolling quickly crashes
-  - [ ] BUG: escape from simple preview shouldn't reset directory index
   - [ ] BUG: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice
+  - [ ] BUG: escape from simple preview shouldn't reset directory index
 
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce

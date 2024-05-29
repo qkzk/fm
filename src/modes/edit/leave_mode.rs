@@ -99,10 +99,12 @@ impl LeaveMode {
     /// Jump to the current mark.
     pub fn marks_jump(status: &mut Status) -> Result<()> {
         let marks = status.menu.marks.clone();
-        let tab = status.current_tab_mut();
         if let Some((_, path)) = marks.selected() {
-            tab.cd(path)?;
-            tab.window.reset(tab.directory.content.len());
+            status.tabs[status.index].cd(path)?;
+            status.build_content_preview()?;
+            status.tabs[status.index]
+                .window
+                .reset(status.tabs[status.index].directory.content.len());
             status.menu.input.reset();
         }
         status.update_second_pane_for_preview()
@@ -289,6 +291,7 @@ impl LeaveMode {
         let path = string_to_path(completed)?;
         status.menu.input.reset();
         status.current_tab_mut().cd(&path)?;
+        status.build_content_preview()?;
         let len = status.current_tab().directory.content.len();
         status.current_tab_mut().window.reset(len);
         status.update_second_pane_for_preview()
@@ -305,6 +308,7 @@ impl LeaveMode {
             .context("exec shortcut: empty shortcuts")?
             .clone();
         status.current_tab_mut().cd(&path)?;
+        status.build_content_preview()?;
         status.current_tab_mut().refresh_view()?;
         status.update_second_pane_for_preview()
     }
@@ -326,10 +330,10 @@ impl LeaveMode {
             return Ok(());
         };
         let (path, file) = (path.to_owned(), file.to_owned());
-        let tab = status.current_tab_mut();
-        tab.history.drop_queue();
-        tab.cd(&path)?;
-        tab.go_to_file(file);
+        status.current_tab_mut().history.drop_queue();
+        status.current_tab_mut().cd(&path)?;
+        status.build_content_preview()?;
+        status.current_tab_mut().go_to_file(file);
         status.update_second_pane_for_preview()
     }
 

@@ -309,7 +309,7 @@ impl Preview {
     }
 
     fn preview_text_or_binary(path: &std::path::Path) -> Result<Self> {
-        let mut file = std::fs::File::open(path.clone())?;
+        let mut file = std::fs::File::open(path)?;
         let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
         if Self::is_binary(path, &mut file, &mut buffer) {
             Ok(Self::Binary(BinaryContent::new(path)?))
@@ -658,7 +658,7 @@ impl BinaryContent {
     const SIZE_LIMIT: usize = 1048576;
 
     fn new(path: &std::path::Path) -> Result<Self> {
-        let mut reader = BufReader::new(std::fs::File::open(path.clone())?);
+        let mut reader = BufReader::new(std::fs::File::open(path)?);
         let mut buffer = [0; Self::LINE_WIDTH];
         let mut content: Vec<Line> = vec![];
         while let Ok(nb_bytes_read) = reader.read(&mut buffer[..]) {

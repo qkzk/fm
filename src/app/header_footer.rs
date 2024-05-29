@@ -8,8 +8,7 @@ mod inner {
     };
     use crate::event::ActionMap;
     use crate::modes::{
-        shorten_path, ColoredText, Content, Display, FileInfo, FilterKind, Preview, Search,
-        Selectable, TextKind,
+        shorten_path, ColoredText, Content, Display, FileInfo, FilterKind, Search, Selectable,
     };
 
     #[derive(Clone, Copy)]
@@ -496,6 +495,11 @@ mod inner {
         }
 
         fn strings(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
+            match &tab.previewed_doc {
+                Some(s) if s.as_str() == "help" => Self::make_help(),
+                Some(s) if s.as_str() == "log" => Self::make_log(),
+                _ => Self::make_default_preview(status, tab),
+            }
             // match &tab.preview {
             //     Preview::Text(text_content) => match text_content.kind {
             //         TextKind::HELP => Self::make_help(),
@@ -505,7 +509,6 @@ mod inner {
             //     Preview::ColoredText(colored_text) => Self::make_colored_text(colored_text),
             //     _ => Self::make_default_preview(status, tab),
             // }
-            Self::make_default_preview(status, tab)
         }
 
         fn make_help() -> Vec<(String, HorizontalAlign)> {

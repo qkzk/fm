@@ -469,7 +469,6 @@ impl Status {
             if Session::display_wide_enough(self.term_size()?.0) {
                 self.set_second_pane_for_preview()?;
             } else {
-                // self.tabs[1].preview = Preview::empty();
                 self.tabs[1].reset_preview();
             }
         };
@@ -488,7 +487,6 @@ impl Status {
         let Ok(mut preview_holder) = self.preview_holder.lock() else {
             return Ok(());
         };
-        preview_holder.start_previewer();
         preview_holder.build(&path)?;
         self.tabs[1].previewed_doc = Some(path_to_string(&path));
         let len = match preview_holder.get(&path) {
@@ -497,15 +495,6 @@ impl Status {
         };
         self.tabs[1].window.reset(len);
         Ok(())
-    }
-
-    pub fn start_previewer(&mut self) {
-        log_info!("status locking preview_holder...");
-        let Ok(mut preview_holder) = self.preview_holder.lock() else {
-            log_info!("status couldn't lock preview_holder");
-            return;
-        };
-        preview_holder.start_previewer();
     }
 
     pub fn build_preview_current_tab(&mut self) -> Result<()> {
@@ -528,7 +517,6 @@ impl Status {
                 path.to_owned()
             }
         };
-        log_info!("status locking preview_holder...");
         let Ok(mut preview_holder) = self.preview_holder.lock() else {
             log_info!("status couldn't lock preview_holder");
             return Ok(());
@@ -538,20 +526,33 @@ impl Status {
             _ => 80,
         };
         self.tabs[self.index].previewed_doc = Some(path_to_string(&path));
-        log_info!("build_preview_current_tab. Preview has len {len}");
         self.tabs[self.index].window.reset(len);
         preview_holder.build(&path)
     }
 
-    pub fn build_directory_preview(&mut self) -> Result<()> {
-        log_info!("building preview for directory");
+    pub fn build_content_preview(&mut self) -> Result<()> {
+        if !self.display_settings.preview() {
+            return Ok(());
+        }
         let Ok(mut preview_holder) = self.preview_holder.lock() else {
             log_info!("status couldn't lock preview_holder");
             return Ok(());
         };
-        let paths = self.tabs[0].directory.files_ordered_for_preview();
-        log_info!("building {len} previews", len = paths.len());
-        preview_holder.build_directory(paths)?;
+        let paths = match self.tabs[0].display_mode {
+            Display::Directory => self.tabs[0].directory.files_ordered_for_preview(),
+            Display::Preview => vec![],
+            Display::Flagged => self.menu.flagged.content().to_owned(),
+            Display::Tree => self.tabs[0].tree.files_ordered_for_preview(),
+        };
+        if paths.is_empty() {
+            return Ok(());
+        }
+        log_info!(
+            "build_content_preview. building {len} previews",
+            len = paths.len()
+        );
+        preview_holder.clear()?;
+        preview_holder.build_collection(paths)?;
         let Ok(fileinfo) = self.tabs[0].current_file() else {
             return Ok(());
         };
@@ -883,24 +884,25 @@ impl Status {
     }
 
     fn _replace_path_by_skim_output(&mut self, path: std::path::PathBuf) -> Result<()> {
-        let tab = self.current_tab_mut();
         if path.is_file() {
             let Some(parent) = path.parent() else {
                 return Ok(());
             };
-            tab.cd(parent)?;
-            match tab.display_mode {
+            self.tabs[self.index].cd(parent)?;
+            self.build_content_preview()?;
+            match self.tabs[self.index].display_mode {
                 Display::Tree => {
-                    tab.tree.go(To::Path(&path));
+                    self.tabs[self.index].tree.go(To::Path(&path));
                 }
                 Display::Directory => {
-                    let index = tab.directory.select_file(&path);
-                    tab.go_to_index(index);
+                    let index = self.tabs[self.index].directory.select_file(&path);
+                    self.tabs[self.index].go_to_index(index);
                 }
                 Display::Preview | Display::Flagged => (),
             }
         } else if path.is_dir() {
-            tab.cd(&path)?;
+            self.tabs[self.index].cd(&path)?;
+            self.build_content_preview()?;
         }
         Ok(())
     }
@@ -1011,6 +1013,7 @@ impl Status {
                 log_line!("iso : {}", iso_device.as_string()?);
                 let path = iso_device.mountpoints.clone().context("no mount point")?;
                 self.current_tab_mut().cd(&path)?;
+                self.build_content_preview()?;
             };
             self.menu.iso_device = None;
         };
@@ -1068,9 +1071,9 @@ impl Status {
         let Some(path) = self.menu.find_encrypted_drive_mount_point() else {
             return Ok(());
         };
-        let tab = self.current_tab_mut();
-        tab.cd(&path)?;
-        tab.refresh_view()
+        self.tabs[self.index].cd(&path)?;
+        self.build_content_preview()?;
+        self.tabs[self.index].refresh_view()
     }
 
     /// Unmount the selected device.
@@ -1134,6 +1137,7 @@ impl Status {
             return Ok(());
         };
         self.current_tab_mut().cd(&path)?;
+        self.build_content_preview()?;
         self.current_tab_mut().refresh_view()
     }
 
@@ -1215,6 +1219,7 @@ impl Status {
     pub fn marks_jump_char(&mut self, c: char) -> Result<()> {
         if let Some(path) = self.menu.marks.get(c) {
             self.current_tab_mut().cd(&path)?;
+            self.build_content_preview()?;
         }
         self.current_tab_mut().refresh_view()?;
         self.reset_edit_mode()?;

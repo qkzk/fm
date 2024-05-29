@@ -673,6 +673,32 @@ impl Tree {
     pub fn selected_is_last(&self) -> bool {
         self.displayable_lines.selected_is_last()
     }
+
+    pub fn files_ordered_for_preview(&self) -> Vec<std::path::PathBuf> {
+        let mut vec_with_distances: Vec<(std::path::PathBuf, usize)> = self
+            .displayable_lines
+            .content()
+            .into_iter()
+            .enumerate()
+            .map(|(i, displayable_line)| {
+                (
+                    displayable_line.path.to_path_buf(),
+                    (i as isize - self.displayable_lines.index as isize).abs() as usize,
+                )
+            })
+            .collect();
+        crate::log_info!(
+            "Tree. files_ordered_for_preview with length {len}",
+            len = vec_with_distances.len()
+        );
+
+        vec_with_distances.sort_by_key(|&(_, distance)| distance);
+
+        vec_with_distances
+            .into_iter()
+            .map(|(path, _)| path.to_owned())
+            .collect()
+    }
 }
 
 #[inline]
