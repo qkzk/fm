@@ -495,7 +495,7 @@ mod inner {
         }
 
         fn strings(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
-            match &tab.previewed_doc {
+            match &tab.preview_desc.doc {
                 Some(s) if s.as_str() == "help" => Self::make_help(),
                 Some(s) if s.as_str() == "log" => Self::make_log(),
                 _ => Self::make_default_preview(status, tab),
@@ -550,7 +550,7 @@ mod inner {
         fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
             if let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) {
                 let mut strings = vec![(" Preview ".to_owned(), HorizontalAlign::Left)];
-                if !tab.preview_len != 0 {
+                if !tab.preview_desc.len != 0 {
                     // if !tab.preview.is_empty() {
                     // let index = match &tab.preview {
                     //     Preview::Ueberzug(image) => image.index + 1,
@@ -558,7 +558,7 @@ mod inner {
                     // };
                     let index = tab.window.bottom;
                     strings.push((
-                        format!(" {index} / {len} ", len = tab.preview_len),
+                        format!(" {index} / {len} ", len = tab.preview_desc.len),
                         HorizontalAlign::Right,
                     ));
                 };

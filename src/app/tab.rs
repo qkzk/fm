@@ -60,6 +60,32 @@ impl TabSettings {
     }
 }
 
+#[derive(Default)]
+pub struct PreviewDesc {
+    /// Length of the previewed document
+    pub len: usize,
+    /// The document previewed.
+    /// if the document is a file, then we hold its full path.
+    /// if the document is help, log or a command, we hold this string.
+    pub doc: Option<String>,
+    /// Kind of the preview, as a string.
+    pub kind: Option<String>,
+}
+
+impl PreviewDesc {
+    pub fn set_previewed_doc(&mut self, previewed_doc: Option<String>) {
+        self.doc = previewed_doc
+    }
+
+    pub fn set_preview_kind(&mut self, preview_kind: Option<String>) {
+        self.kind = preview_kind
+    }
+
+    pub fn set_preview_len(&mut self, len: usize) {
+        self.len = len
+    }
+}
+
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
 pub struct Tab {
@@ -70,10 +96,8 @@ pub struct Tab {
     pub directory: Directory,
     /// Tree representation of the same path
     pub tree: Tree,
-    /// Length of the previewed document
-    pub preview_len: usize,
-    ///
-    pub previewed_doc: Option<String>,
+    /// Holds length, description and kind of the last previewed doc
+    pub preview_desc: PreviewDesc,
     /// The edit mode the application is currenty in.
     /// Most of the time is spent in `EditMode::Nothing`
     pub edit_mode: Edit,
@@ -127,12 +151,11 @@ impl Tab {
         let display_mode = Display::default();
         let edit_mode = Edit::Nothing;
         let mut window = ContentWindow::new(directory.content.len(), height);
-        let preview_len = 80;
-        let previewed_doc = None;
         let history = History::default();
         let search = Search::empty();
         let index = directory.select_file(&path);
         let tree = Tree::default();
+        let preview_desc = PreviewDesc::default();
 
         window.scroll_to(index);
         Ok(Self {
@@ -141,13 +164,12 @@ impl Tab {
             window,
             directory,
             height,
-            preview_len,
-            previewed_doc,
             search,
             history,
             users,
             tree,
             settings,
+            preview_desc,
         })
     }
 
@@ -193,7 +215,7 @@ impl Tab {
     fn display_len(&self) -> usize {
         match self.display_mode {
             Display::Tree => self.tree.display_len(),
-            Display::Preview => self.preview_len,
+            Display::Preview => self.preview_desc.len,
             Display::Directory => self.directory.len(),
             Display::Flagged => 0,
         }
@@ -323,7 +345,9 @@ impl Tab {
 
     /// Reset the preview to empty. Used to save some memory.
     pub fn reset_preview(&mut self) {
-        self.preview_len = 80;
+        self.preview_desc.len = 80;
+        self.preview_desc.kind = None;
+        self.preview_desc.doc = None;
         // if matches!(self.display_mode, Display::Preview) {
         //     self.preview = Preview::empty();
         // }
@@ -449,12 +473,9 @@ impl Tab {
         } else {
             self.window.reset(self.directory.content.len());
         }
-        self.set_previewed_doc(Some(path.to_string_lossy().to_string()));
+        self.preview_desc
+            .set_previewed_doc(Some(path.to_string_lossy().to_string()));
         Ok(())
-    }
-
-    pub fn set_previewed_doc(&mut self, previewed_doc: Option<String>) {
-        self.previewed_doc = previewed_doc
     }
 
     pub fn back(&mut self) -> Result<()> {

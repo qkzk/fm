@@ -18,5 +18,6 @@ pub use session::Session;
 pub use status::Focus;
 pub use status::Status;
 pub use status::Window;
+pub use tab::PreviewDesc;
 pub use tab::Tab;
 pub use tab::TabSettings;

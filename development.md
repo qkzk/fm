@@ -1042,6 +1042,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] share one ueberzug for every one in preview_holder
     - [x] hide previews properly when a new file is set
     - [ ] navigation...
+    - [ ] header of previews
   - [x] FIX: scrolling quickly crashes
   - [x] FIX: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice
   - [ ] BUG: escape from simple preview shouldn't reset directory index

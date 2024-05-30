@@ -398,7 +398,7 @@ impl<'a> WinMain<'a> {
         } else {
             tab
         };
-        let Some(preview_doc) = &tab.previewed_doc else {
+        let Some(preview_doc) = &tab.preview_desc.doc else {
             return Ok(None);
         };
         let previewd_path = std::path::Path::new(preview_doc);

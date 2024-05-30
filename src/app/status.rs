@@ -492,7 +492,9 @@ impl Status {
         self.preview_holder
             .write()
             .build(&path, Arc::clone(&self.ueberzug))?;
-        self.tabs[1].set_previewed_doc(Some(path_to_string(&path)));
+        self.tabs[1]
+            .preview_desc
+            .set_previewed_doc(Some(path_to_string(&path)));
         self.preview_holder.write().hide_all_images();
         let len = match self.preview_holder.read().get(&path) {
             Some(preview) => preview.len(),
@@ -526,7 +528,9 @@ impl Status {
             Some(preview) => preview.len(),
             _ => 80,
         };
-        self.tabs[self.index].set_previewed_doc(Some(path_to_string(&path)));
+        self.tabs[self.index]
+            .preview_desc
+            .set_previewed_doc(Some(path_to_string(&path)));
         self.preview_holder.write().hide_all_images();
         self.tabs[self.index].window.reset(len);
         self.preview_holder
@@ -1335,9 +1339,11 @@ impl Status {
         let mut preview_holder = self.preview_holder.write();
         let len = preview.len();
         preview_holder.put_preview(std::path::Path::new(name), preview);
-        self.tabs[self.index].set_previewed_doc(Some(name.to_owned()));
+        self.tabs[self.index]
+            .preview_desc
+            .set_previewed_doc(Some(name.to_owned()));
         self.preview_holder.write().hide_all_images();
-        self.tabs[self.index].preview_len = len;
+        self.tabs[self.index].preview_desc.set_preview_len(len);
         self.tabs[self.index].set_display_mode(Display::Preview);
         self.tabs[self.index].window.reset(len);
     }
@@ -1527,15 +1533,15 @@ impl Status {
     }
 
     fn update_preview_len(&mut self) {
-        let Some(previewed_doc) = &self.tabs[self.index].previewed_doc else {
+        let Some(previewed_doc) = &self.tabs[self.index].preview_desc.doc else {
             return;
         };
         let Some(preview) = self.preview_holder.read().get(Path::new(previewed_doc)) else {
             return;
         };
-        let old_len = self.tabs[self.index].preview_len;
+        let old_len = self.tabs[self.index].preview_desc.len;
         let true_len = preview.len();
-        self.tabs[self.index].preview_len = true_len;
+        self.tabs[self.index].preview_desc.set_preview_len(true_len);
         if old_len != true_len {
             self.tabs[self.index].window.reset(true_len);
         }
@@ -1552,7 +1558,8 @@ impl Status {
         self.update_preview_len();
         self.tabs[self.index].window.scroll_to(
             self.tabs[self.index]
-                .preview_len
+                .preview_desc
+                .len
                 .checked_sub(1)
                 .unwrap_or_default(),
         );
@@ -1574,9 +1581,9 @@ impl Status {
         //     Preview::Ueberzug(ref mut image) => image.down_one_row(),
         //     _ => {
         self.update_preview_len();
-        if self.tabs[self.index].window.bottom < self.tabs[self.index].preview_len {
+        if self.tabs[self.index].window.bottom < self.tabs[self.index].preview_desc.len {
             let skip = min(
-                self.tabs[self.index].preview_len - self.tabs[self.index].window.bottom,
+                self.tabs[self.index].preview_desc.len - self.tabs[self.index].window.bottom,
                 30,
             );
             self.tabs[self.index].window.bottom += skip;
@@ -1586,7 +1593,7 @@ impl Status {
 
     pub fn get_current_previewed_doc(&self) -> Option<String> {
         match self.current_tab().display_mode {
-            Display::Preview => self.current_tab().previewed_doc.to_owned(),
+            Display::Preview => self.current_tab().preview_desc.doc.to_owned(),
             Display::Directory => self
                 .current_tab()
                 .directory
@@ -1608,10 +1615,12 @@ impl Status {
     }
 
     pub fn set_current_previewed_doc(&mut self) {
-        let old_file = &self.current_tab().previewed_doc;
+        let old_file = &self.current_tab().preview_desc.doc;
         let true_file = self.get_current_previewed_doc();
         if old_file != &true_file {
-            self.current_tab_mut().set_previewed_doc(true_file);
+            self.current_tab_mut()
+                .preview_desc
+                .set_previewed_doc(true_file);
             self.preview_holder.write().hide_all_images();
         }
     }
