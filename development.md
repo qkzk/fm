@@ -1044,7 +1044,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] navigation in ueberzug pdf
     - [ ] hide previews with escape
     - [ ] header of previews
-  - [ ] BUG: reselect last file after leaving preview in current tab
+    - [ ] refactor ueberzug completely ? it's a total mess
+  - [x] FIX: reselect last file after leaving preview in current tab
   - [x] FIX: scrolling quickly crashes
   - [x] FIX: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice
   - [ ] BUG: escape from simple preview shouldn't reset directory index
