@@ -110,9 +110,8 @@ pub fn execute_and_capture_output<S: AsRef<std::ffi::OsStr> + fmt::Debug>(
     if output.status.success() {
         Ok(String::from_utf8(output.stdout)?)
     } else {
-        Err(anyhow!(
-            "execute_and_capture_output: command didn't finish properly",
-        ))
+        log_info!("execute_and_capture_output: command didn't finish properly",);
+        Ok(String::from_utf8(output.stderr)?)
     }
 }
 
@@ -129,7 +128,7 @@ pub fn execute_and_capture_output_with_path<
     path: P,
     args: &[&str],
 ) -> Result<String> {
-    log_info!("execute_and_capture_output. executable: {exe:?}, arguments: {args:?}",);
+    log_info!("execute_and_capture_output_with_path. executable: {exe:?}, arguments: {args:?}",);
     let child = Command::new(exe)
         .args(args)
         .stdin(Stdio::null())
@@ -142,7 +141,7 @@ pub fn execute_and_capture_output_with_path<
         Ok(String::from_utf8(output.stdout)?)
     } else {
         Err(anyhow!(
-            "execute_and_capture_output: command didn't finish properly",
+            "execute_and_capture_output_with_path: command didn't finish properly",
         ))
     }
 }

@@ -53,7 +53,10 @@ impl PreviewHolder {
         let preview_holder = Arc::clone(&self.previews);
         let users = self.users.clone();
         let path = path.to_owned();
-        let preview = Preview::new(path.as_path(), &users, ueberzug)?;
+        let Ok(preview) = Preview::new(path.as_path(), &users, ueberzug) else {
+            log_info!("Couldn't build preview for {path}", path = path.display());
+            return Ok(());
+        };
         if preview_holder.read().contains_key(&path) {
             return Ok(());
         }
@@ -67,7 +70,10 @@ impl PreviewHolder {
         let users = self.users.clone();
         std::thread::spawn(move || -> Result<()> {
             for path in files {
-                let preview = Preview::new(&path, &users, ueberzug.clone())?;
+                let Ok(preview) = Preview::new(&path, &users, ueberzug.clone()) else {
+                    log_info!("Couldn't build preview for {path}", path = path.display());
+                    return Ok(());
+                };
                 if preview_holder.read().contains_key(&path) {
                     return Ok(());
                 }
@@ -80,5 +86,12 @@ impl PreviewHolder {
             Ok(())
         });
         Ok(())
+    }
+
+    pub fn hide_all_images(&mut self) {
+        self.previews
+            .read()
+            .values()
+            .for_each(|preview| preview.hide())
     }
 }

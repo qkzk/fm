@@ -449,8 +449,12 @@ impl Tab {
         } else {
             self.window.reset(self.directory.content.len());
         }
-        self.previewed_doc = Some(path.to_string_lossy().to_string());
+        self.set_previewed_doc(Some(path.to_string_lossy().to_string()));
         Ok(())
+    }
+
+    pub fn set_previewed_doc(&mut self, previewed_doc: Option<String>) {
+        self.previewed_doc = previewed_doc
     }
 
     pub fn back(&mut self) -> Result<()> {

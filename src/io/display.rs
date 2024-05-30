@@ -406,19 +406,6 @@ impl<'a> WinMain<'a> {
             log_info!("got None from preview_holder");
             return Ok(None);
         };
-        // TODO! must find a better way to hide old previews
-        match preview.as_ref() {
-            Preview::Ueberzug(_) => (),
-            _ => self
-                .preview_holder
-                .read()
-                .previews
-                .read()
-                .iter()
-                .filter(|(k, _)| k.as_path() != previewd_path)
-                .map(|(_, p)| p)
-                .for_each(|p| p.hide()),
-        };
         let length = preview.len();
         let line_number_width = length.to_string().len();
 

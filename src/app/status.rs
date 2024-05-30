@@ -492,7 +492,8 @@ impl Status {
         self.preview_holder
             .write()
             .build(&path, Arc::clone(&self.ueberzug))?;
-        self.tabs[1].previewed_doc = Some(path_to_string(&path));
+        self.tabs[1].set_previewed_doc(Some(path_to_string(&path)));
+        self.preview_holder.write().hide_all_images();
         let len = match self.preview_holder.read().get(&path) {
             Some(preview) => preview.len(),
             _ => 80,
@@ -525,7 +526,8 @@ impl Status {
             Some(preview) => preview.len(),
             _ => 80,
         };
-        self.tabs[self.index].previewed_doc = Some(path_to_string(&path));
+        self.tabs[self.index].set_previewed_doc(Some(path_to_string(&path)));
+        self.preview_holder.write().hide_all_images();
         self.tabs[self.index].window.reset(len);
         self.preview_holder
             .write()
@@ -1333,7 +1335,8 @@ impl Status {
         let mut preview_holder = self.preview_holder.write();
         let len = preview.len();
         preview_holder.put_preview(std::path::Path::new(name), preview);
-        self.tabs[self.index].previewed_doc = Some(name.to_owned());
+        self.tabs[self.index].set_previewed_doc(Some(name.to_owned()));
+        self.preview_holder.write().hide_all_images();
         self.tabs[self.index].preview_len = len;
         self.tabs[self.index].set_display_mode(Display::Preview);
         self.tabs[self.index].window.reset(len);
@@ -1608,7 +1611,8 @@ impl Status {
         let old_file = &self.current_tab().previewed_doc;
         let true_file = self.get_current_previewed_doc();
         if old_file != &true_file {
-            self.current_tab_mut().previewed_doc = true_file;
+            self.current_tab_mut().set_previewed_doc(true_file);
+            self.preview_holder.write().hide_all_images();
         }
     }
 }
