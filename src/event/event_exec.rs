@@ -89,6 +89,7 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Preview | Display::Flagged
         ) {
+            status.preview_holder.write().hide_all_images();
             status
                 .current_tab_mut()
                 .set_display_mode(Display::Directory);

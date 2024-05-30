@@ -1042,7 +1042,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] share one ueberzug for every one in preview_holder
     - [x] hide previews properly when a new file is set
     - [x] navigation in ueberzug pdf
-    - [ ] hide previews with escape
+    - [x] hide previews with escape
     - [ ] header of previews
     - [ ] refactor ueberzug completely ? it's a total mess
   - [x] FIX: reselect last file after leaving preview in current tab
