@@ -322,28 +322,6 @@ impl Tab {
         Ok(())
     }
 
-    // /// Creates a new preview for the selected file.
-    // pub fn make_preview(&mut self) -> Result<()> {
-    //     if self.directory.is_empty() {
-    //         return Ok(());
-    //     }
-    //     let Ok(file_info) = self.current_file() else {
-    //         return Ok(());
-    //     };
-    //     match file_info.file_kind {
-    //         FileKind::NormalFile => {
-    //             let preview = Preview::file(&file_info).unwrap_or_default();
-    //             self.set_display_mode(Display::Preview);
-    //             self.window.reset(preview.len());
-    //             self.preview = preview;
-    //         }
-    //         FileKind::Directory => self.toggle_tree_mode()?,
-    //         _ => (),
-    //     }
-    //
-    //     Ok(())
-    // }
-
     /// Refresh the folder, reselect the last selected file, move the window to it.
     pub fn refresh_and_reselect_file(&mut self) -> Result<()> {
         let selected_path = self

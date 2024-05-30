@@ -8,10 +8,10 @@ use tuikit::attr::{Attr, Color};
 use tuikit::prelude::*;
 use tuikit::term::Term;
 
-use crate::app::Footer;
 use crate::app::Status;
 use crate::app::Tab;
 use crate::app::{ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader};
+use crate::app::{Footer, PreviewFooter};
 use crate::app::{Header, PreviewHeader};
 use crate::common::path_to_string;
 use crate::common::ENCRYPTED_DEVICE_BINDS;
@@ -729,7 +729,7 @@ impl<'a> Draw for WinMainFooter<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
         let (width, height) = canvas.size()?;
         let content = match self.tab.display_mode {
-            DisplayMode::Preview => vec![],
+            DisplayMode::Preview => PreviewFooter::new(self.status)?.elems().to_owned(),
             DisplayMode::Flagged => FlaggedFooter::new(self.status)?.elems().to_owned(),
             _ => Footer::new(self.status, self.tab)?.elems().to_owned(),
         };

@@ -8,7 +8,8 @@ mod inner {
     };
     use crate::event::ActionMap;
     use crate::modes::{
-        shorten_path, ColoredText, Content, Display, FileInfo, FilterKind, Search, Selectable,
+        shorten_path, ColoredText, Content, Display, FileInfo, FilterKind, Preview, Search,
+        Selectable,
     };
 
     #[derive(Clone, Copy)]
@@ -206,6 +207,47 @@ mod inner {
         }
     }
 
+    pub struct PreviewFooter {
+        elems: Vec<ClickableString>,
+        canvas_width: usize,
+        full_width: usize,
+    }
+
+    impl PreviewFooter {
+        const STEP: usize = 16;
+
+        pub fn new(status: &Status) -> Result<Self> {
+            let full_width = status.internal_settings.term_size()?.0;
+            let canvas_width = status.canvas_width()?;
+            let elems = (0..(canvas_width / Self::STEP))
+                .map(|col| {
+                    ClickableString::new(
+                        " ".repeat(Self::STEP),
+                        HorizontalAlign::Left,
+                        ActionMap::Nothing,
+                        Self::STEP * col,
+                    )
+                })
+                .collect();
+            Ok(Self {
+                full_width,
+                canvas_width,
+                elems,
+            })
+        }
+    }
+    impl ClickableLine for PreviewFooter {
+        fn elems(&self) -> &Vec<ClickableString> {
+            &self.elems
+        }
+        fn canvas_width(&self) -> usize {
+            self.canvas_width
+        }
+
+        fn full_width(&self) -> usize {
+            self.full_width
+        }
+    }
     /// Default footer for display directory & tree.
     pub struct Footer {
         elems: Vec<ClickableString>,
@@ -498,17 +540,24 @@ mod inner {
             match &tab.preview_desc.doc {
                 Some(s) if s.as_str() == "help" => Self::make_help(),
                 Some(s) if s.as_str() == "log" => Self::make_log(),
+                Some(s) => {
+                    if let Some(p) = status
+                        .preview_holder
+                        .read()
+                        .get(std::path::Path::new(s.as_str()))
+                    {
+                        match p.as_ref() {
+                            Preview::ColoredText(colored_text) => {
+                                Self::make_colored_text(colored_text)
+                            }
+                            _ => Self::make_default_preview(status, tab),
+                        }
+                    } else {
+                        Self::make_default_preview(status, tab)
+                    }
+                }
                 _ => Self::make_default_preview(status, tab),
             }
-            // match &tab.preview {
-            //     Preview::Text(text_content) => match text_content.kind {
-            //         TextKind::HELP => Self::make_help(),
-            //         TextKind::LOG => Self::make_log(),
-            //         _ => Self::make_default_preview(status, tab),
-            //     },
-            //     Preview::ColoredText(colored_text) => Self::make_colored_text(colored_text),
-            //     _ => Self::make_default_preview(status, tab),
-            // }
         }
 
         fn make_help() -> Vec<(String, HorizontalAlign)> {
@@ -525,7 +574,7 @@ mod inner {
         fn make_log() -> Vec<(String, HorizontalAlign)> {
             vec![
                 (LOG_FIRST_SENTENCE.to_owned(), HorizontalAlign::Left),
-                (LOG_SECOND_SENTENCE.to_owned(), HorizontalAlign::Right),
+                (LOG_SECOND_SENTENCE.to_owned(), HorizontalAlign::Left),
             ]
         }
 
@@ -534,7 +583,7 @@ mod inner {
                 (" Command: ".to_owned(), HorizontalAlign::Left),
                 (
                     format!(" {command} ", command = colored_text.title()),
-                    HorizontalAlign::Right,
+                    HorizontalAlign::Left,
                 ),
             ]
         }
@@ -580,5 +629,6 @@ mod inner {
 }
 
 pub use inner::{
-    ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader, Footer, Header, PreviewHeader,
+    ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader, Footer, Header, PreviewFooter,
+    PreviewHeader,
 };

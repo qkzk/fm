@@ -1043,12 +1043,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] hide previews properly when a new file is set
     - [x] navigation in ueberzug pdf
     - [x] hide previews with escape
-    - [ ] header of previews
+    - [x] header & footer for previews
     - [ ] refactor ueberzug completely ? it's a total mess
   - [x] FIX: reselect last file after leaving preview in current tab
   - [x] FIX: scrolling quickly crashes
   - [x] FIX: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice
-  - [ ] BUG: escape from simple preview shouldn't reset directory index
 
 - [x] use Parkinglot for app.status, display.status, status.preview_holder, display.preview_holder
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)

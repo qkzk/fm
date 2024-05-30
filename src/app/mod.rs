@@ -10,7 +10,8 @@ mod tab;
 pub use application::FM;
 pub use displayer::Displayer;
 pub use header_footer::{
-    ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader, Footer, Header, PreviewHeader,
+    ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader, Footer, Header, PreviewFooter,
+    PreviewHeader,
 };
 pub use internal_settings::InternalSettings;
 pub use refresher::Refresher;

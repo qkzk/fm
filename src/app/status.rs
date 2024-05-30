@@ -1346,7 +1346,7 @@ impl Status {
         self.tabs[self.index]
             .preview_desc
             .set_previewed_doc(Some(name.to_owned()));
-        self.preview_holder.write().hide_all_images();
+        preview_holder.hide_all_images();
         self.tabs[self.index].preview_desc.set_preview_len(len);
         self.tabs[self.index].set_display_mode(Display::Preview);
         self.tabs[self.index].window.reset(len);
