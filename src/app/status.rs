@@ -168,8 +168,8 @@ impl Status {
         let users_right = users_left.clone();
 
         let tabs = [
-            Tab::new(&args, height, users_left)?,
-            Tab::new(&args, height, users_right)?,
+            Tab::new(&args, height, users_left, 0)?,
+            Tab::new(&args, height, users_right, 1)?,
         ];
         let focus = Focus::default();
         let ueberzug = Arc::new(Ueberzug::new());
@@ -473,8 +473,6 @@ impl Status {
         if self.index == 0 && self.display_settings.preview() {
             if Session::display_wide_enough(self.term_size()?.0) {
                 self.set_second_pane_for_preview()?;
-            } else {
-                self.tabs[1].reset_preview();
             }
         };
         Ok(())
@@ -535,7 +533,13 @@ impl Status {
         self.tabs[self.index].window.reset(len);
         self.preview_holder
             .write()
-            .build(&path, Arc::clone(&self.ueberzug))
+            .build(&path, Arc::clone(&self.ueberzug))?;
+        log_info!(
+            "build_preview_current_tab: wrote {path} for index tab {index}",
+            path = path.display(),
+            index = self.index
+        );
+        Ok(())
     }
 
     pub fn build_content_preview(&mut self) -> Result<()> {
@@ -1567,33 +1571,36 @@ impl Status {
 
     /// Move 30 lines up or an image in Ueberzug.
     pub fn preview_page_up(&mut self) {
+        self.update_preview_len();
         if let Some(path_str) = &self.current_tab().preview_desc.doc {
             if matches!(
                 ExtensionKind::matcher(extract_extension(Path::new(&path_str))),
                 ExtensionKind::Pdf
             ) {
-                if let Some(desc) = &self.tabs[self.index].preview_desc.doc {
-                    let path = Path::new(&desc);
-                    if let Some(arc_preview) = self.preview_holder.write().get(path) {
-                        match arc_preview.as_ref() {
-                            Preview::Ueberzug(pdf_preview) => {
-                                let mut new_pdf_preview = pdf_preview.clone();
-                                new_pdf_preview.up_one_row();
-                                self.preview_holder
-                                    .write()
-                                    .put_preview(path, Preview::Ueberzug(new_pdf_preview))
-                            }
-                            _ => (),
-                        }
-                    }
-                };
+                self.move_ueberzug_pdf_up_one_row()
             }
         }
-        self.update_preview_len();
         if self.tabs[self.index].window.top > 0 {
             let skip = min(self.tabs[self.index].window.top, 30);
             self.tabs[self.index].window.bottom -= skip;
             self.tabs[self.index].window.top -= skip;
+        };
+    }
+
+    fn move_ueberzug_pdf_up_one_row(&self) {
+        if let Some(desc) = &self.tabs[self.index].preview_desc.doc {
+            let path = Path::new(&desc);
+            let mut writer = self.preview_holder.write();
+            if let Some(arc_preview) = writer.get(path) {
+                match arc_preview.as_ref() {
+                    Preview::Ueberzug(pdf_preview) => {
+                        let mut new_pdf_preview = pdf_preview.clone();
+                        new_pdf_preview.up_one_row();
+                        writer.put_preview(path, Preview::Ueberzug(new_pdf_preview))
+                    }
+                    _ => (),
+                }
+            }
         };
     }
 
@@ -1604,21 +1611,7 @@ impl Status {
                 ExtensionKind::matcher(extract_extension(Path::new(&path_str))),
                 ExtensionKind::Pdf
             ) {
-                if let Some(desc) = &self.tabs[self.index].preview_desc.doc {
-                    let path = Path::new(&desc);
-                    if let Some(arc_preview) = self.preview_holder.write().get(path) {
-                        match arc_preview.as_ref() {
-                            Preview::Ueberzug(pdf_preview) => {
-                                let mut new_pdf_preview = pdf_preview.clone();
-                                new_pdf_preview.down_one_row();
-                                self.preview_holder
-                                    .write()
-                                    .put_preview(path, Preview::Ueberzug(new_pdf_preview))
-                            }
-                            _ => (),
-                        }
-                    }
-                };
+                self.move_ueberzug_pdf_down_one_row()
             }
         }
         self.update_preview_len();
@@ -1630,6 +1623,23 @@ impl Status {
             self.tabs[self.index].window.bottom += skip;
             self.tabs[self.index].window.top += skip;
         }
+    }
+
+    fn move_ueberzug_pdf_down_one_row(&self) {
+        if let Some(desc) = &self.tabs[self.index].preview_desc.doc {
+            let path = Path::new(&desc);
+            let mut writer = self.preview_holder.write();
+            if let Some(arc_preview) = writer.get(path) {
+                match arc_preview.as_ref() {
+                    Preview::Ueberzug(pdf_preview) => {
+                        let mut new_pdf_preview = pdf_preview.clone();
+                        new_pdf_preview.down_one_row();
+                        writer.put_preview(path, Preview::Ueberzug(new_pdf_preview));
+                    }
+                    _ => (),
+                }
+            }
+        };
     }
 
     pub fn get_current_previewed_doc(&self) -> Option<String> {

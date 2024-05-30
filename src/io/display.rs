@@ -399,11 +399,16 @@ impl<'a> WinMain<'a> {
             tab
         };
         let Some(preview_doc) = &tab.preview_desc.doc else {
+            log_info!(
+                "draw_preview: no preview in tab {index}",
+                index = tab.status_index
+            );
             return Ok(None);
         };
-        let previewd_path = std::path::Path::new(preview_doc);
-        let Some(preview) = self.preview_holder.read().get(&previewd_path) else {
-            log_info!("got None from preview_holder");
+        let previewed_path = std::path::Path::new(preview_doc);
+        log_info!("previewed_path: {path}", path = previewed_path.display());
+        let Some(preview) = self.preview_holder.read().get(&previewed_path) else {
+            log_info!("draw_preview: got None from preview_holder");
             return Ok(None);
         };
         let length = preview.len();

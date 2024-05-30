@@ -77,6 +77,7 @@ impl Default for PreviewDesc {
 
 impl PreviewDesc {
     pub fn set_previewed_doc(&mut self, previewed_doc: Option<String>) {
+        crate::log_info!("wrote {previewed_doc:?}");
         self.doc = previewed_doc
     }
 
@@ -88,6 +89,7 @@ impl PreviewDesc {
 /// Holds every thing about the current tab of the application.
 /// Most of the mutation is done externally.
 pub struct Tab {
+    pub status_index: usize,
     /// Kind of display: `Preview, Normal, Tree`
     pub display_mode: Display,
 
@@ -137,7 +139,7 @@ impl Tab {
     /// - doesn't exist
     /// - can't be explored
     /// - has no parent and isn't a directory (which can't happen)
-    pub fn new(args: &Args, height: usize, users: Users) -> Result<Self> {
+    pub fn new(args: &Args, height: usize, users: Users, status_index: usize) -> Result<Self> {
         let path = std::fs::canonicalize(path::Path::new(&args.path))?;
         let start_dir = if path.is_dir() {
             &path
@@ -158,6 +160,7 @@ impl Tab {
 
         window.scroll_to(index);
         Ok(Self {
+            status_index,
             display_mode,
             edit_mode,
             window,
@@ -278,7 +281,6 @@ impl Tab {
     /// Change the display mode.
     pub fn set_display_mode(&mut self, new_display_mode: Display) {
         self.search.reset_paths();
-        self.reset_preview();
         self.display_mode = new_display_mode
     }
 
@@ -341,12 +343,6 @@ impl Tab {
     //
     //     Ok(())
     // }
-
-    /// Reset the preview to empty. Used to save some memory.
-    pub fn reset_preview(&mut self) {
-        self.preview_desc.len = 80;
-        self.preview_desc.doc = None;
-    }
 
     /// Refresh the folder, reselect the last selected file, move the window to it.
     pub fn refresh_and_reselect_file(&mut self) -> Result<()> {

@@ -1069,6 +1069,7 @@ impl UeberzugPreview {
         if let UeberzugKind::Pdf = self.kind {
             if self.index + 1 < self.len() {
                 self.index += 1;
+                // let _ = Self::make_pdf_thumbnail(&self.original, self.index);
             }
         }
     }
