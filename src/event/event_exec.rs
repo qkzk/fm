@@ -116,8 +116,12 @@ impl EventAction {
     pub fn toggle_preview_second(status: &mut Status) -> Result<()> {
         if !status.display_settings.dual() {
             Self::toggle_dualpane(status)?;
+            if !status.display_settings.preview() {
+                status.display_settings.toggle_preview()
+            }
+        } else {
+            status.display_settings.toggle_preview();
         }
-        status.display_settings.toggle_preview();
         if status.display_settings.preview() {
             status.build_content_preview()?;
             status.update_second_pane_for_preview()?;
