@@ -1035,6 +1035,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] tree ?
       - [x] flagged
     - [x] clear when necessary (???)
+  - [ ] BUG: too much opened files. Limit preview builder_for...
   - [ ] BUG: ueberzug share same path ? [ueberzug](/home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ueberzug-0.1.0/src/lib.rs) line 41
     - [x] use my own ueberzug
     - [x] don't unwrap/expect if it may fail
@@ -1044,12 +1045,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] navigation in ueberzug pdf
     - [x] hide previews with escape
     - [x] header & footer for previews
-    - [ ] refactor ueberzug completely ? it's a total mess
   - [x] FIX: reselect last file after leaving preview in current tab
   - [x] FIX: scrolling quickly crashes
   - [x] FIX: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice
+  - [ ] test everything
+  - [ ] refactor
+  - [ ] test again
 
 - [x] use Parkinglot for app.status, display.status, status.preview_holder, display.preview_holder
+- [ ] refactor ueberzug completely ? it's a total mess
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [ ] allow hex colors like #16a085 in config
