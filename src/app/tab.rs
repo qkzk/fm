@@ -60,7 +60,6 @@ impl TabSettings {
     }
 }
 
-#[derive(Default)]
 pub struct PreviewDesc {
     /// Length of the previewed document
     pub len: usize,
@@ -68,17 +67,17 @@ pub struct PreviewDesc {
     /// if the document is a file, then we hold its full path.
     /// if the document is help, log or a command, we hold this string.
     pub doc: Option<String>,
-    /// Kind of the preview, as a string.
-    pub kind: Option<String>,
+}
+
+impl Default for PreviewDesc {
+    fn default() -> Self {
+        Self { len: 80, doc: None }
+    }
 }
 
 impl PreviewDesc {
     pub fn set_previewed_doc(&mut self, previewed_doc: Option<String>) {
         self.doc = previewed_doc
-    }
-
-    pub fn set_preview_kind(&mut self, preview_kind: Option<String>) {
-        self.kind = preview_kind
     }
 
     pub fn set_preview_len(&mut self, len: usize) {
@@ -346,11 +345,7 @@ impl Tab {
     /// Reset the preview to empty. Used to save some memory.
     pub fn reset_preview(&mut self) {
         self.preview_desc.len = 80;
-        self.preview_desc.kind = None;
         self.preview_desc.doc = None;
-        // if matches!(self.display_mode, Display::Preview) {
-        //     self.preview = Preview::empty();
-        // }
     }
 
     /// Refresh the folder, reselect the last selected file, move the window to it.

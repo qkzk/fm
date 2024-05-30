@@ -34,7 +34,6 @@ use crate::io::{
 };
 use crate::io::{read_log, Internal};
 use crate::io::{Extension, Kind};
-use crate::modes::Content;
 use crate::modes::MountCommands;
 use crate::modes::MountRepr;
 use crate::modes::NeedConfirmation;
@@ -53,6 +52,7 @@ use crate::modes::{copy_move, regex_matcher};
 use crate::modes::{extract_extension, Edit};
 use crate::modes::{help_string, IsoDevice};
 use crate::modes::{BlockDeviceAction, Navigate};
+use crate::modes::{Content, ExtensionKind};
 use crate::modes::{ContentWindow, CopyMove};
 use crate::modes::{Display, Go};
 use crate::modes::{FilterKind, InputSimple};
@@ -1567,6 +1567,28 @@ impl Status {
 
     /// Move 30 lines up or an image in Ueberzug.
     pub fn preview_page_up(&mut self) {
+        if let Some(path_str) = &self.current_tab().preview_desc.doc {
+            if matches!(
+                ExtensionKind::matcher(extract_extension(Path::new(&path_str))),
+                ExtensionKind::Pdf
+            ) {
+                if let Some(desc) = &self.tabs[self.index].preview_desc.doc {
+                    let path = Path::new(&desc);
+                    if let Some(arc_preview) = self.preview_holder.write().get(path) {
+                        match arc_preview.as_ref() {
+                            Preview::Ueberzug(pdf_preview) => {
+                                let mut new_pdf_preview = pdf_preview.clone();
+                                new_pdf_preview.up_one_row();
+                                self.preview_holder
+                                    .write()
+                                    .put_preview(path, Preview::Ueberzug(new_pdf_preview))
+                            }
+                            _ => (),
+                        }
+                    }
+                };
+            }
+        }
         self.update_preview_len();
         if self.tabs[self.index].window.top > 0 {
             let skip = min(self.tabs[self.index].window.top, 30);
@@ -1577,9 +1599,28 @@ impl Status {
 
     /// Move down 30 rows except for Ueberzug where it moves 1 image down
     pub fn preview_page_down(&mut self) {
-        // match &mut self.preview {
-        //     Preview::Ueberzug(ref mut image) => image.down_one_row(),
-        //     _ => {
+        if let Some(path_str) = &self.current_tab().preview_desc.doc {
+            if matches!(
+                ExtensionKind::matcher(extract_extension(Path::new(&path_str))),
+                ExtensionKind::Pdf
+            ) {
+                if let Some(desc) = &self.tabs[self.index].preview_desc.doc {
+                    let path = Path::new(&desc);
+                    if let Some(arc_preview) = self.preview_holder.write().get(path) {
+                        match arc_preview.as_ref() {
+                            Preview::Ueberzug(pdf_preview) => {
+                                let mut new_pdf_preview = pdf_preview.clone();
+                                new_pdf_preview.down_one_row();
+                                self.preview_holder
+                                    .write()
+                                    .put_preview(path, Preview::Ueberzug(new_pdf_preview))
+                            }
+                            _ => (),
+                        }
+                    }
+                };
+            }
+        }
         self.update_preview_len();
         if self.tabs[self.index].window.bottom < self.tabs[self.index].preview_desc.len {
             let skip = min(

@@ -837,6 +837,7 @@ impl MediaContent {
     }
 }
 
+#[derive(Clone)]
 pub enum UeberzugKind {
     Font,
     Image,
@@ -851,6 +852,7 @@ pub enum UeberzugKind {
 /// When the preview is reset, the instance is dropped and the image is erased.
 /// Positonning the image is tricky since tuikit doesn't know where it's drawed in the terminal:
 /// the preview can't be placed correctly in embeded terminals.
+#[derive(Clone)]
 pub struct UeberzugPreview {
     original: PathBuf,
     path: String,

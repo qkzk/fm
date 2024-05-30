@@ -1041,7 +1041,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] identifier = fullpath which should work
     - [x] share one ueberzug for every one in preview_holder
     - [x] hide previews properly when a new file is set
-    - [ ] navigation...
+    - [x] navigation in ueberzug pdf
     - [ ] header of previews
   - [x] FIX: scrolling quickly crashes
   - [x] FIX: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice
