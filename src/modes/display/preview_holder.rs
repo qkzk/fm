@@ -17,7 +17,7 @@ pub struct PreviewHolder {
 }
 
 impl PreviewHolder {
-    const MAX_SIZE: usize = 1000;
+    const MAX_SIZE: usize = 500;
 
     pub fn new() -> Self {
         let users = Users::new();
@@ -69,7 +69,7 @@ impl PreviewHolder {
         let preview_holder = self.previews.clone();
         let users = self.users.clone();
         std::thread::spawn(move || -> Result<()> {
-            for path in files {
+            for path in files.into_iter().take(Self::MAX_SIZE) {
                 let Ok(preview) = Preview::new(&path, &users, ueberzug.clone()) else {
                     log_info!("Couldn't build preview for {path}", path = path.display());
                     return Ok(());

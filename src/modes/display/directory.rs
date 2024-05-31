@@ -7,7 +7,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 
 use crate::app::TabSettings;
-use crate::common::{filename_from_path, path_to_string};
+use crate::common::{cyclic_distance, filename_from_path, path_to_string};
 use crate::io::git;
 use crate::modes::FilterKind;
 use crate::modes::SortKind;
@@ -240,6 +240,7 @@ impl Directory {
     }
 
     pub fn files_ordered_for_preview(&self) -> Vec<std::path::PathBuf> {
+        let n = self.len() as isize;
         let mut vec_with_distances: Vec<(std::path::PathBuf, usize)> = self
             .content()
             .into_iter()
@@ -247,7 +248,7 @@ impl Directory {
             .map(|(i, fileinfo)| {
                 (
                     fileinfo.path.to_path_buf(),
-                    (i as isize - self.index as isize).abs() as usize,
+                    cyclic_distance(n, i as isize, self.index as isize) as usize,
                 )
             })
             .collect();

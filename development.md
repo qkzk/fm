@@ -1048,6 +1048,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: reselect last file after leaving preview in current tab
   - [x] FIX: scrolling quickly crashes
   - [x] FIX: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice
+  - [x] better order for adding element in preview holder : min(|b - a|, n - |b - a|)
   - [ ] test everything
   - [ ] refactor
   - [ ] test again

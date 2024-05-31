@@ -327,3 +327,10 @@ impl UtfWidth for &str {
 pub fn index_from_a(lettre: char) -> Option<usize> {
     (lettre as usize).checked_sub('a' as usize)
 }
+
+/// Computes twice the number of steps between a & b in Z/nZ
+/// d = n - |2 * |b - a| - n| = min(|b - a|, n - |b - a|)
+/// It could also be precomputed for n but i don't think it would be that useful
+pub fn cyclic_distance(n: isize, a: isize, b: isize) -> isize {
+    n - (2 * (b - a).abs() - n).abs()
+}

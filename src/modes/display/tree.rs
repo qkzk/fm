@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
+use crate::common::cyclic_distance;
 use crate::common::filename_from_path;
 use crate::common::has_last_modification_happened_less_than;
 use crate::modes::files_collection;
@@ -675,6 +676,7 @@ impl Tree {
     }
 
     pub fn files_ordered_for_preview(&self) -> Vec<std::path::PathBuf> {
+        let n = self.len() as isize;
         let mut vec_with_distances: Vec<(std::path::PathBuf, usize)> = self
             .displayable_lines
             .content()
@@ -683,7 +685,7 @@ impl Tree {
             .map(|(i, displayable_line)| {
                 (
                     displayable_line.path.to_path_buf(),
-                    (i as isize - self.displayable_lines.index as isize).abs() as usize,
+                    cyclic_distance(n, i as isize, self.displayable_lines.index as isize) as usize,
                 )
             })
             .collect();

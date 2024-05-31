@@ -559,11 +559,11 @@ impl Status {
             "build_content_preview. building {len} previews",
             len = paths.len()
         );
-        let mut phw = self.preview_holder.write();
-        phw.clear()?;
+        let mut preview_holder = self.preview_holder.write();
+        preview_holder.clear()?;
         let ueb = Arc::clone(&self.ueberzug);
-        phw.build_collection(paths, ueb)?;
-        drop(phw);
+        preview_holder.build_collection(paths, ueb)?;
+        drop(preview_holder);
         let Ok(fileinfo) = self.tabs[0].current_file() else {
             return Ok(());
         };
