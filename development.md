@@ -1035,8 +1035,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
       - [x] tree ?
       - [x] flagged
     - [x] clear when necessary (???)
-  - [ ] BUG: too much opened files. Limit preview builder_for...
-  - [ ] BUG: ueberzug share same path ? [ueberzug](/home/quentin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ueberzug-0.1.0/src/lib.rs) line 41
+  - [x] share ueberzug for all previews using it
     - [x] use my own ueberzug
     - [x] don't unwrap/expect if it may fail
     - [x] identifier = fullpath which should work
