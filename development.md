@@ -1048,12 +1048,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: scrolling quickly crashes
   - [x] FIX: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice
   - [x] better order for adding element in preview holder : min(|b - a|, n - |b - a|)
+  - [ ] threadpool for building all previews as once
   - [ ] test everything
   - [ ] refactor
   - [ ] test again
 
 - [x] use Parkinglot for app.status, display.status, status.preview_holder, display.preview_holder
 - [ ] refactor ueberzug completely ? it's a total mess
+  - [ ] use a window or something else to store pdf index. Don't mutate anything, just call the method with index parameter
+  - [ ] separate command_builder (which creates the correct attribute for ueberzug command) from command_executer (which calls the command & creates the thumbnail)
+  - [ ] lazyness: status->command_build, display->command_executer don't create thumbnails too soon
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [ ] allow hex colors like #16a085 in config

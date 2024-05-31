@@ -489,7 +489,7 @@ impl Status {
         let path = path.to_owned();
         self.preview_holder
             .write()
-            .build(&path, Arc::clone(&self.ueberzug))?;
+            .build_single(&path, Arc::clone(&self.ueberzug));
         self.tabs[1]
             .preview_desc
             .set_previewed_doc(Some(path_to_string(&path)));
@@ -533,7 +533,7 @@ impl Status {
         self.tabs[self.index].window.reset(len);
         self.preview_holder
             .write()
-            .build(&path, Arc::clone(&self.ueberzug))?;
+            .build_single(&path, Arc::clone(&self.ueberzug));
         log_info!(
             "build_preview_current_tab: wrote {path} for index tab {index}",
             path = path.display(),
@@ -560,9 +560,7 @@ impl Status {
             len = paths.len()
         );
         let mut preview_holder = self.preview_holder.write();
-        preview_holder.clear()?;
-        let ueb = Arc::clone(&self.ueberzug);
-        preview_holder.build_collection(paths, ueb)?;
+        preview_holder.build_collection(paths, &self.ueberzug);
         drop(preview_holder);
         let Ok(fileinfo) = self.tabs[0].current_file() else {
             return Ok(());
