@@ -417,8 +417,15 @@ impl<'a> WinMain<'a> {
         };
         let length = preview.len();
         let line_number_width = length.to_string().len();
+        let preview = preview.as_ref();
+        if !matches!(preview, Preview::Ueberzug(_)) {
+            self.status
+                .preview_holder
+                .write()
+                .hide_all_images(self.ueberzug.clone());
+        }
 
-        match preview.as_ref() {
+        match preview {
             Preview::Syntaxed(syntaxed) => {
                 self.draw_syntaxed(syntaxed, length, canvas, line_number_width, window)?
             }

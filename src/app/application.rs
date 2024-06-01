@@ -70,6 +70,7 @@ impl FM {
         let opener = Opener::new(&config.terminal, &config.terminal_flag);
         let preview_holder = Arc::new(RwLock::new(PreviewHolder::default()));
         let preview_holder_2 = Arc::clone(&preview_holder);
+        let ueberzug = Arc::new(Ueberzug::default());
         let status = Arc::new(RwLock::new(Status::new(
             term.term_size()?.1,
             term.clone(),
@@ -77,17 +78,13 @@ impl FM {
             &config.binds,
             fm_sender.clone(),
             preview_holder_2,
+            ueberzug.clone(),
         )?));
         drop(config);
 
         // let refresher = Refresher::new(term.clone());
         let refresher = Refresher::new(fm_sender);
-        let displayer = Displayer::new(
-            term,
-            status.clone(),
-            preview_holder,
-            Arc::new(Ueberzug::default()),
-        );
+        let displayer = Displayer::new(term, status.clone(), preview_holder, ueberzug);
         Ok(Self {
             event_reader,
             event_dispatcher,

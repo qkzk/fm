@@ -147,6 +147,7 @@ impl Status {
         binds: &Bindings,
         fm_sender: Arc<Sender<FmEvents>>,
         preview_holder: Arc<RwLock<PreviewHolder>>,
+        ueberzug: Arc<Ueberzug>,
     ) -> Result<Self> {
         let skimer = None;
         let index = 0;
@@ -172,7 +173,6 @@ impl Status {
             Tab::new(&args, height, users_right, 1)?,
         ];
         let focus = Focus::default();
-        let ueberzug = Arc::new(Ueberzug::new());
         Ok(Self {
             tabs,
             index,
@@ -491,15 +491,19 @@ impl Status {
         self.tabs[1]
             .preview_desc
             .set_previewed_doc(Some(path_to_string(&path)));
-        self.preview_holder
-            .write()
-            .hide_all_images(self.ueberzug.clone());
+        self.hide_all_images();
         let len = match self.preview_holder.read().get(&path) {
             Some(preview) => preview.len(),
             _ => 80,
         };
         self.tabs[1].window.reset(len);
         Ok(())
+    }
+
+    pub fn hide_all_images(&self) {
+        self.preview_holder
+            .write()
+            .hide_all_images(self.ueberzug.clone());
     }
 
     pub fn build_preview_current_tab(&mut self) -> Result<()> {

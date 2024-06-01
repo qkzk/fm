@@ -841,21 +841,21 @@ impl UeberzugKind {
 pub struct UebPreview {
     kind: UeberzugKind,
     original: PathBuf,
-    displayed: PathBuf,
+    identifier: PathBuf,
     length: usize,
     pub index: usize,
 }
 
 impl UebPreview {
     pub fn new(original: &Path, kind: UeberzugKind) -> Self {
-        let displayed = Self::create_displayed_path(original, &kind);
+        let identifier = Self::create_identifier(original, &kind);
         let length = Self::calc_length(original, &kind);
         let original = original.to_owned();
         let index = 0;
         Self {
             kind,
             original,
-            displayed,
+            identifier,
             length,
             index,
         }
@@ -865,7 +865,7 @@ impl UebPreview {
         1
     }
 
-    fn create_displayed_path(original_path: &Path, kind: &UeberzugKind) -> PathBuf {
+    fn create_identifier(original_path: &Path, kind: &UeberzugKind) -> PathBuf {
         // Ensure images are displayed with their correct path
         if matches!(kind, UeberzugKind::Image) {
             return original_path.to_owned();
@@ -882,25 +882,27 @@ impl UebPreview {
     }
 
     fn build_thumbnail(&self) -> Result<()> {
-        if self.displayed.exists() {
+        if self.identifier.exists() {
             return Ok(());
         }
         match self.kind {
             UeberzugKind::Image => (),
-            UeberzugKind::Video => Thumbnail::video(&self.original, &self.displayed)?,
-            UeberzugKind::Font => Thumbnail::font(&self.original, &self.displayed)?,
-            UeberzugKind::Svg => Thumbnail::svg(&self.original, &self.displayed)?,
-            UeberzugKind::Pdf => Thumbnail::pdf(&self.original, self.index, &self.displayed)?,
-            UeberzugKind::Office => Thumbnail::office(&self.original, &self.displayed)?,
+            UeberzugKind::Video => Thumbnail::video(&self.original, &self.identifier)?,
+            UeberzugKind::Font => Thumbnail::font(&self.original, &self.identifier)?,
+            UeberzugKind::Svg => Thumbnail::svg(&self.original, &self.identifier)?,
+            UeberzugKind::Pdf => Thumbnail::pdf(&self.original, self.index, &self.identifier)?,
+            UeberzugKind::Office => Thumbnail::office(&self.original, &self.identifier)?,
         };
         Ok(())
     }
 
     pub fn draw(&self, ueberzug: &Ueberzug, x: u16, y: u16, width: u16, height: u16) -> Result<()> {
         self.build_thumbnail()?;
+        let identifier = self.identifier.to_string_lossy();
+        log_info!("drawing {id}", id = identifier);
         ueberzug.draw(&UeConf {
-            identifier: &self.displayed.to_string_lossy().as_ref(),
-            path: &self.displayed.to_string_lossy().as_ref(),
+            identifier: identifier.as_ref(),
+            path: identifier.as_ref(),
             x,
             y,
             width: Some(width),
@@ -920,7 +922,7 @@ impl UebPreview {
     }
 
     pub fn hide(&self, ueberzug: &Ueberzug) {
-        ueberzug.clear(self.displayed.to_string_lossy().as_ref())
+        ueberzug.clear(self.identifier.to_string_lossy().as_ref())
     }
 }
 
