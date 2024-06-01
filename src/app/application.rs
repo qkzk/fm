@@ -6,6 +6,7 @@ use parking_lot::RwLock;
 use crate::app::Displayer;
 use crate::app::Refresher;
 use crate::app::Status;
+use crate::common::delete_matching_files;
 use crate::common::CONFIG_PATH;
 use crate::common::{clear_tmp_file, init_term};
 use crate::config::load_config;
@@ -17,6 +18,7 @@ use crate::io::set_loggers;
 use crate::io::Opener;
 use crate::log_info;
 use crate::modes::PreviewHolder;
+use crate::modes::Ueberzug;
 
 /// Holds everything about the application itself.
 /// Most attributes holds an `Arc<tuikit::Term::term>`.
@@ -80,7 +82,12 @@ impl FM {
 
         // let refresher = Refresher::new(term.clone());
         let refresher = Refresher::new(fm_sender);
-        let displayer = Displayer::new(term, status.clone(), preview_holder);
+        let displayer = Displayer::new(
+            term,
+            status.clone(),
+            preview_holder,
+            Arc::new(Ueberzug::default()),
+        );
         Ok(Self {
             event_reader,
             event_dispatcher,
@@ -117,6 +124,7 @@ impl FM {
         while let Ok(event) = self.poll_event() {
             self.update(event)?;
             if self.must_quit() {
+                delete_matching_files("/tmp", "fm_thumbnail")?;
                 break;
             }
         }

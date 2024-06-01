@@ -68,10 +68,9 @@ impl PreviewHolder {
         previews: Arc<RwLock<BTreeMap<PathBuf, Arc<Preview>>>>,
         path: PathBuf,
         users: Users,
-        ueberzug: Arc<Ueberzug>,
     ) {
         self.pool.execute(move || {
-            Self::build_and_store_preview(&previews, path, &users, ueberzug);
+            Self::build_and_store_preview(&previews, path, &users);
         });
     }
 
@@ -81,12 +80,11 @@ impl PreviewHolder {
         previews: &Arc<RwLock<BTreeMap<PathBuf, Arc<Preview>>>>,
         path: PathBuf,
         users: &Users,
-        ueberzug: Arc<Ueberzug>,
     ) {
         if previews.read().contains_key(&path) {
             return;
         }
-        let Ok(preview) = Preview::new(&path, users, ueberzug) else {
+        let Ok(preview) = Preview::new(&path, users) else {
             log_info!("Couldn't build preview for {path}", path = path.display());
             return;
         };
@@ -96,7 +94,7 @@ impl PreviewHolder {
 
     /// Buid and store a preview for a single file. Does nothing if the preview already exists.
     /// If there's already too much previews, it will clear them first.
-    pub fn build_single(&mut self, path: &Path, ueberzug: Arc<Ueberzug>) {
+    pub fn build_single(&mut self, path: &Path) {
         if self.previews.read().contains_key(path) {
             return;
         }
@@ -106,28 +104,27 @@ impl PreviewHolder {
         let previews = Arc::clone(&self.previews);
         let users = self.users.clone();
         let path = path.to_owned();
-        self.execute_preview_task(previews, path, users, ueberzug);
+        self.execute_preview_task(previews, path, users);
     }
 
     /// Build and store a preview for multiple files.
     /// Clear the collection first since it should be called when changing directory.
-    pub fn build_collection(&mut self, paths: Vec<PathBuf>, ueberzug: &Arc<Ueberzug>) {
+    pub fn build_collection(&mut self, paths: Vec<PathBuf>) {
         self.clear();
         for path in paths.into_iter().take(Self::MAX_PREVIEWS) {
             let previews = self.previews.clone();
             let users = self.users.clone();
-            let ueberzug = ueberzug.clone();
-            self.execute_preview_task(previews, path, users, ueberzug);
+            self.execute_preview_task(previews, path, users);
         }
     }
 
     // TODO! is there a better way ?
     /// Ask ueberzug command to erase all its displayed images.
-    pub fn hide_all_images(&mut self) {
+    pub fn hide_all_images(&mut self, ueberzug: Arc<Ueberzug>) {
         self.previews
             .read()
             .values()
-            .for_each(|preview| preview.hide())
+            .for_each(|preview| preview.hide(&ueberzug))
     }
 }
 

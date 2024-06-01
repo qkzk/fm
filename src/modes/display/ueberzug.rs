@@ -42,6 +42,12 @@ use crate::log_info;
 /// Main Ueberzug Struct
 pub struct Ueberzug(RwLock<Option<Child>>);
 
+impl Default for Ueberzug {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Ueberzug {
     /// Creates the Default Ueberzug instance
     /// One instance can handel multiple images provided they have different identifiers
@@ -61,6 +67,7 @@ impl Ueberzug {
     }
     /// Clear the drawn image only requires the identifier
     pub fn clear(&self, identifier: &str) {
+        log_info!("hiding {identifier}");
         let config = UeConf {
             action: Actions::Remove,
             identifier,

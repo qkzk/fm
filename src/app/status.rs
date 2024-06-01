@@ -487,13 +487,13 @@ impl Status {
             return Ok(());
         };
         let path = path.to_owned();
-        self.preview_holder
-            .write()
-            .build_single(&path, Arc::clone(&self.ueberzug));
+        self.preview_holder.write().build_single(&path);
         self.tabs[1]
             .preview_desc
             .set_previewed_doc(Some(path_to_string(&path)));
-        self.preview_holder.write().hide_all_images();
+        self.preview_holder
+            .write()
+            .hide_all_images(self.ueberzug.clone());
         let len = match self.preview_holder.read().get(&path) {
             Some(preview) => preview.len(),
             _ => 80,
@@ -529,11 +529,11 @@ impl Status {
         self.tabs[self.index]
             .preview_desc
             .set_previewed_doc(Some(path_to_string(&path)));
-        self.preview_holder.write().hide_all_images();
-        self.tabs[self.index].window.reset(len);
         self.preview_holder
             .write()
-            .build_single(&path, Arc::clone(&self.ueberzug));
+            .hide_all_images(self.ueberzug.clone());
+        self.tabs[self.index].window.reset(len);
+        self.preview_holder.write().build_single(&path);
         log_info!(
             "build_preview_current_tab: wrote {path} for index tab {index}",
             path = path.display(),
@@ -560,7 +560,7 @@ impl Status {
             len = paths.len()
         );
         let mut preview_holder = self.preview_holder.write();
-        preview_holder.build_collection(paths, &self.ueberzug);
+        preview_holder.build_collection(paths);
         drop(preview_holder);
         let Ok(fileinfo) = self.tabs[0].current_file() else {
             return Ok(());
@@ -1344,7 +1344,7 @@ impl Status {
         self.tabs[self.index]
             .preview_desc
             .set_previewed_doc(Some(name.to_owned()));
-        preview_holder.hide_all_images();
+        preview_holder.hide_all_images(self.ueberzug.clone());
         self.tabs[self.index].preview_desc.set_preview_len(len);
         self.tabs[self.index].set_display_mode(Display::Preview);
         self.tabs[self.index].window.reset(len);
@@ -1670,7 +1670,9 @@ impl Status {
             self.current_tab_mut()
                 .preview_desc
                 .set_previewed_doc(true_file);
-            self.preview_holder.write().hide_all_images();
+            self.preview_holder
+                .write()
+                .hide_all_images(self.ueberzug.clone());
         }
     }
 }

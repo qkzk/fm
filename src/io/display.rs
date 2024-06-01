@@ -18,7 +18,6 @@ use crate::common::ENCRYPTED_DEVICE_BINDS;
 use crate::config::{ColorG, Gradient, MENU_COLORS};
 use crate::io::read_last_log_line;
 use crate::log_info;
-use crate::modes::ColoredText;
 use crate::modes::Content;
 use crate::modes::ContentWindow;
 use crate::modes::Display as DisplayMode;
@@ -35,11 +34,12 @@ use crate::modes::Selectable;
 use crate::modes::Trash;
 use crate::modes::TreeLineBuilder;
 use crate::modes::TreePreview;
-use crate::modes::UeberzugPreview;
+use crate::modes::UebPreview;
 use crate::modes::Window;
 use crate::modes::{fileinfo_attr, MarkAction};
 use crate::modes::{parse_input_mode, SecondLine};
 use crate::modes::{BinaryContent, PreviewHolder};
+use crate::modes::{ColoredText, Ueberzug};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -124,6 +124,8 @@ struct WinMain<'a> {
     status: &'a Status,
     tab: &'a Tab,
     attributes: WinMainAttributes,
+    /// ueberzug instance
+    ueberzug: Arc<Ueberzug>,
 }
 
 impl<'a> Draw for WinMain<'a> {
@@ -150,12 +152,14 @@ impl<'a> WinMain<'a> {
         index: usize,
         attributes: WinMainAttributes,
         preview_holder: &'a Arc<RwLock<PreviewHolder>>,
+        ueberzug: Arc<Ueberzug>,
     ) -> Self {
         Self {
             preview_holder,
             status,
             tab: &status.tabs[index],
             attributes,
+            ueberzug,
         }
     }
 
@@ -499,15 +503,16 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn draw_ueberzug(&self, image: &UeberzugPreview, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_ueberzug(&self, image: &UebPreview, canvas: &mut dyn Canvas) -> Result<()> {
         let (width, height) = canvas.size()?;
-        image.match_index()?;
-        image.ueberzug_draw(
+        // image.match_index()?;
+        image.draw(
+            &self.ueberzug,
             self.attributes.x_position as u16 + 2,
             3,
             width as u16 - 2,
             height as u16 - 2,
-        );
+        )?;
         Ok(())
     }
 
@@ -1223,15 +1228,21 @@ pub struct Display {
     /// It will print every symbol shown on screen.
     term: Arc<Term>,
     preview_holder: Arc<RwLock<PreviewHolder>>,
+    ueberzug: Arc<Ueberzug>,
 }
 
 impl Display {
     /// Returns a new `Display` instance from a `tuikit::term::Term` object.
-    pub fn new(term: Arc<Term>, preview_holder: Arc<RwLock<PreviewHolder>>) -> Self {
+    pub fn new(
+        term: Arc<Term>,
+        preview_holder: Arc<RwLock<PreviewHolder>>,
+        ueberzug: Arc<Ueberzug>,
+    ) -> Self {
         log_info!("starting display...");
         Self {
             term,
             preview_holder,
+            ueberzug,
         }
     }
 
@@ -1343,14 +1354,26 @@ impl Display {
             first_selected,
             status.tabs[0].need_second_window(),
         );
-        let win_main_left = WinMain::new(status, 0, attributes_left, &self.preview_holder);
+        let win_main_left = WinMain::new(
+            status,
+            0,
+            attributes_left,
+            &self.preview_holder,
+            self.ueberzug.clone(),
+        );
         let attributes_right = WinMainAttributes::new(
             width / 2,
             TabPosition::Right,
             second_selected,
             status.tabs[1].need_second_window(),
         );
-        let win_main_right = WinMain::new(status, 1, attributes_right, &self.preview_holder);
+        let win_main_right = WinMain::new(
+            status,
+            1,
+            attributes_right,
+            &self.preview_holder,
+            self.ueberzug.clone(),
+        );
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let borders = self.borders(status);
@@ -1381,7 +1404,13 @@ impl Display {
             true,
             status.tabs[0].need_second_window(),
         );
-        let win_main_left = WinMain::new(status, 0, attributes_left, &self.preview_holder);
+        let win_main_left = WinMain::new(
+            status,
+            0,
+            attributes_left,
+            &self.preview_holder,
+            self.ueberzug.clone(),
+        );
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let borders = self.borders(status);

@@ -8,7 +8,7 @@ use parking_lot::RwLock;
 
 use crate::app::Status;
 use crate::io::Display;
-use crate::modes::PreviewHolder;
+use crate::modes::{PreviewHolder, Ueberzug};
 
 pub struct Displayer {
     tx: mpsc::Sender<()>,
@@ -22,9 +22,10 @@ impl Displayer {
         term: Arc<tuikit::term::Term>,
         status: Arc<RwLock<Status>>,
         preview_holder: Arc<RwLock<PreviewHolder>>,
+        uerberzug: Arc<Ueberzug>,
     ) -> Self {
         let (tx, rx) = mpsc::channel();
-        let mut display = Display::new(term, preview_holder);
+        let mut display = Display::new(term, preview_holder, uerberzug);
 
         let handle = thread::spawn(move || -> Result<()> {
             loop {

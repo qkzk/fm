@@ -334,3 +334,21 @@ pub fn index_from_a(lettre: char) -> Option<usize> {
 pub fn cyclic_distance(n: isize, a: isize, b: isize) -> isize {
     n - (2 * (b - a).abs() - n).abs()
 }
+
+pub fn delete_matching_files(directory: &str, pattern: &str) -> Result<()> {
+    for entry in std::fs::read_dir(directory)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(file_name) = path.file_name() {
+                if let Some(file_name_str) = file_name.to_str() {
+                    if file_name_str.starts_with(pattern) {
+                        std::fs::remove_file(&path)?;
+                        println!("Deleted file: {:?}", path);
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
