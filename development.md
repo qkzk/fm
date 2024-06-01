@@ -1048,7 +1048,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: scrolling quickly crashes
   - [x] FIX: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice
   - [x] better order for adding element in preview holder : min(|b - a|, n - |b - a|)
-  - [ ] threadpool for building all previews as once
+  - [x] threadpool for building all previews as once
   - [ ] test everything
   - [ ] refactor
   - [ ] test again
