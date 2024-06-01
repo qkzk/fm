@@ -66,7 +66,7 @@ impl FM {
         let event_reader = EventReader::new(term.clone(), fm_receiver);
         let event_dispatcher = EventDispatcher::new(config.binds.clone());
         let opener = Opener::new(&config.terminal, &config.terminal_flag);
-        let preview_holder = Arc::new(RwLock::new(PreviewHolder::new()));
+        let preview_holder = Arc::new(RwLock::new(PreviewHolder::default()));
         let preview_holder_2 = Arc::clone(&preview_holder);
         let status = Arc::new(RwLock::new(Status::new(
             term.term_size()?.1,
