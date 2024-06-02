@@ -1060,7 +1060,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] lazyness: status->command_build, display->command_executer don't create thumbnails too soon
   - [x] hide preview when leaving preview modes or changing image.
   - [ ] BUG: docx isn't previewed (it seems to creates a jpg and believe it's a pdf)
-  - [ ] BUG: hide preview when dual -> single
+  - [x] FIX: hide preview when dual -> single
+  - [ ] BUG: resize doesn't hide preview
   - [x] pdf & docs navigation
 - [ ] refactor event exec reset mode
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)

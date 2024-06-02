@@ -115,6 +115,12 @@ impl EventAction {
     /// is too low to display both panes.
     pub fn toggle_dualpane(status: &mut Status) -> Result<()> {
         status.display_settings.toggle_dual();
+        if !status.display_settings.dual() {
+            status
+                .preview_holder
+                .write()
+                .hide_preview(1, &status.ueberzug);
+        }
         status.select_left();
         Ok(())
     }
