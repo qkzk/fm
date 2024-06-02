@@ -17,6 +17,8 @@ pub struct PreviewHolder {
     pub previews: Arc<RwLock<BTreeMap<PathBuf, Arc<Preview>>>>,
     pool: ThreadPool,
     users: Users,
+    previewed_left: Option<PathBuf>,
+    previewed_right: Option<PathBuf>,
 }
 
 impl Default for PreviewHolder {
@@ -24,10 +26,14 @@ impl Default for PreviewHolder {
         let users = Users::new();
         let previews = Arc::new(RwLock::new(BTreeMap::new()));
         let pool = ThreadPool::new(Self::NB_WORKERS);
+        let previewed_left = None;
+        let previewed_right = None;
         Self {
             previews,
             pool,
             users,
+            previewed_left,
+            previewed_right,
         }
     }
 }
@@ -59,6 +65,37 @@ impl PreviewHolder {
         self.previews
             .write()
             .insert(path.as_ref().to_owned(), Arc::new(preview));
+    }
+
+    pub fn set_previewed(&mut self, path: PathBuf, tab_index: usize) {
+        if tab_index == 0 {
+            self.previewed_left = Some(path);
+        } else {
+            self.previewed_right = Some(path);
+        }
+    }
+
+    pub fn hide_preview(&mut self, tab_index: usize, ueberzug: &Ueberzug) {
+        let preview_to_hide = if tab_index == 0 {
+            &self.previewed_left
+        } else {
+            &self.previewed_right
+        };
+        let Some(path) = preview_to_hide else {
+            return;
+        };
+        let Some(preview) = self.get(path) else {
+            return;
+        };
+        preview.hide(&ueberzug)
+    }
+
+    pub fn is_previewing(&self, tab_index: usize) -> &Option<PathBuf> {
+        if tab_index == 0 {
+            &self.previewed_left
+        } else {
+            &self.previewed_right
+        }
     }
 
     /// Execute the preview creation and add it to the collection.
@@ -116,15 +153,6 @@ impl PreviewHolder {
             let users = self.users.clone();
             self.execute_preview_task(previews, path, users);
         }
-    }
-
-    // TODO! is there a better way ?
-    /// Ask ueberzug command to erase all its displayed images.
-    pub fn hide_all_images(&mut self, ueberzug: Arc<Ueberzug>) {
-        self.previews
-            .read()
-            .values()
-            .for_each(|preview| preview.hide(&ueberzug))
     }
 }
 

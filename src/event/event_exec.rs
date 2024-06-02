@@ -89,7 +89,10 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Preview | Display::Flagged
         ) {
-            status.hide_all_images();
+            status
+                .preview_holder
+                .write()
+                .hide_preview(status.index, &status.ueberzug);
             status
                 .current_tab_mut()
                 .set_display_mode(Display::Directory);
@@ -130,7 +133,10 @@ impl EventAction {
             status.build_content_preview()?;
             status.update_second_pane_for_preview()?;
         } else {
-            status.hide_all_images();
+            status
+                .preview_holder
+                .write()
+                .hide_preview(1, &status.ueberzug);
             status.set_edit_mode(1, Edit::Nothing)?;
             status.tabs[1].display_mode = Display::Directory;
             status.tabs[1].refresh_view()?;
@@ -146,7 +152,10 @@ impl EventAction {
         }
         status.current_tab_mut().toggle_tree_mode()?;
         if !matches!(status.current_tab().display_mode, Display::Tree) {
-            status.hide_all_images();
+            status
+                .preview_holder
+                .write()
+                .hide_preview(status.index, &status.ueberzug);
         }
         status.build_content_preview()?;
         status.refresh_view()

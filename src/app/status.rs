@@ -487,23 +487,20 @@ impl Status {
             return Ok(());
         };
         let path = path.to_owned();
-        self.preview_holder.write().build_single(&path);
+        let mut preview_holder = self.preview_holder.write();
+        preview_holder.hide_preview(1, &self.ueberzug);
+        preview_holder.build_single(&path);
         self.tabs[1]
             .preview_desc
             .set_previewed_doc(Some(path_to_string(&path)));
-        self.hide_all_images();
-        let len = match self.preview_holder.read().get(&path) {
+
+        let len = match preview_holder.get(&path) {
             Some(preview) => preview.len(),
             _ => 80,
         };
+        preview_holder.set_previewed(path, 1);
         self.tabs[1].window.reset(len);
         Ok(())
-    }
-
-    pub fn hide_all_images(&self) {
-        self.preview_holder
-            .write()
-            .hide_all_images(self.ueberzug.clone());
     }
 
     pub fn build_preview_current_tab(&mut self) -> Result<()> {
@@ -526,23 +523,24 @@ impl Status {
                 path.to_owned()
             }
         };
-        let len = match self.preview_holder.read().get(&path) {
+        let mut preview_holder = self.preview_holder.write();
+        preview_holder.hide_preview(self.index, &self.ueberzug);
+        preview_holder.build_single(&path);
+
+        let len = match preview_holder.get(&path) {
             Some(preview) => preview.len(),
             _ => 80,
         };
         self.tabs[self.index]
             .preview_desc
             .set_previewed_doc(Some(path_to_string(&path)));
-        self.preview_holder
-            .write()
-            .hide_all_images(self.ueberzug.clone());
         self.tabs[self.index].window.reset(len);
-        self.preview_holder.write().build_single(&path);
         log_info!(
             "build_preview_current_tab: wrote {path} for index tab {index}",
             path = path.display(),
             index = self.index
         );
+        preview_holder.set_previewed(path, self.index);
         Ok(())
     }
 
@@ -565,14 +563,14 @@ impl Status {
         );
         let mut preview_holder = self.preview_holder.write();
         preview_holder.build_collection(paths);
-        drop(preview_holder);
         let Ok(fileinfo) = self.tabs[0].current_file() else {
             return Ok(());
         };
-        let len = match self.preview_holder.read().get(&fileinfo.path) {
+        let len = match preview_holder.get(&fileinfo.path) {
             Some(preview) => preview.len(),
             _ => 80,
         };
+        drop(preview_holder);
         self.tabs[self.index].window.reset(len);
         Ok(())
     }
@@ -1344,11 +1342,13 @@ impl Status {
     fn set_custom_preview(&mut self, name: &str, preview: Preview) {
         let mut preview_holder = self.preview_holder.write();
         let len = preview.len();
-        preview_holder.put_preview(std::path::Path::new(name), preview);
+        let path = std::path::PathBuf::from("name");
+        preview_holder.put_preview(&path, preview);
+        preview_holder.hide_preview(self.index, &self.ueberzug);
         self.tabs[self.index]
             .preview_desc
             .set_previewed_doc(Some(name.to_owned()));
-        preview_holder.hide_all_images(self.ueberzug.clone());
+        preview_holder.set_previewed(path, self.index);
         self.tabs[self.index].preview_desc.set_preview_len(len);
         self.tabs[self.index].set_display_mode(Display::Preview);
         self.tabs[self.index].window.reset(len);
@@ -1676,7 +1676,7 @@ impl Status {
                 .set_previewed_doc(true_file);
             self.preview_holder
                 .write()
-                .hide_all_images(self.ueberzug.clone());
+                .hide_preview(self.index, &self.ueberzug);
         }
     }
 }
