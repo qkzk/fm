@@ -875,6 +875,10 @@ impl UeberzugPreview {
         }
     }
 
+    pub fn has_multiple_pages(&self) -> bool {
+        matches!(self.kind, UeberzugKind::Pdf | UeberzugKind::Office) && self.length > 1
+    }
+
     fn get_pdf_length(path: &Path) -> Result<usize> {
         let output =
             execute_and_capture_output(PDFINFO, &[path.to_string_lossy().to_string().as_ref()])?;
@@ -924,7 +928,9 @@ impl UeberzugPreview {
             UeberzugKind::Font => Thumbnail::font(&self.original, &self.identifier)?,
             UeberzugKind::Svg => Thumbnail::svg(&self.original, &self.identifier)?,
             UeberzugKind::Pdf => Thumbnail::pdf(&self.original, self.index, &self.identifier)?,
-            UeberzugKind::Office => Thumbnail::office(&self.original, &self.identifier)?,
+            UeberzugKind::Office => {
+                Thumbnail::office(&self.original, self.index, &self.identifier)?
+            }
         };
         Ok(())
     }
@@ -1058,7 +1064,7 @@ impl Thumbnail {
         Ok(())
     }
 
-    fn office(calc_path: &Path, output_path: &Path) -> Result<()> {
+    fn office(calc_path: &Path, page_index: usize, output_path: &Path) -> Result<()> {
         let calc_str = path_to_string(&calc_path);
         let args = ["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
         let output = execute_and_output_no_log(LIBREOFFICE, args)?;
@@ -1074,9 +1080,7 @@ impl Thumbnail {
         let filename = calc_path.file_name().context("")?;
         pdf_path.push(filename);
         pdf_path.set_extension("pdf");
-        std::fs::rename(pdf_path, output_path)?;
-        let length = UeberzugPreview::get_pdf_length(&output_path).unwrap_or_else(|_| 1);
-        Self::pdf(output_path, length, output_path)
+        Self::pdf(&pdf_path, page_index, output_path)
     }
 }
 

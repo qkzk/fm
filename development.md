@@ -1059,7 +1059,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] separate command_builder (which creates the correct attribute for ueberzug command) from command_executer (which calls the command & creates the thumbnail)
   - [x] lazyness: status->command_build, display->command_executer don't create thumbnails too soon
   - [x] hide preview when leaving preview modes or changing image.
-  - [ ] BUG: docx isn't previewed (it seems to creates a jpg and believe it's a pdf)
+  - [x] FIX: docx isn't previewed
   - [x] FIX: hide preview when dual -> single
   - [x] FIX: resize doesn't hide preview
   - [x] pdf & docs navigation

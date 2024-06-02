@@ -1602,8 +1602,8 @@ impl Status {
             return;
         };
         match arc_preview.as_ref() {
-            Preview::Ueberzug(pdf_preview) => {
-                let mut new_pdf_preview = pdf_preview.clone();
+            Preview::Ueberzug(preview) if preview.has_multiple_pages() => {
+                let mut new_pdf_preview = preview.clone();
                 new_pdf_preview.up_one_row();
                 writer.put_preview(path, Preview::Ueberzug(new_pdf_preview))
             }
@@ -1642,8 +1642,8 @@ impl Status {
             return;
         };
         match arc_preview.as_ref() {
-            Preview::Ueberzug(pdf_preview) => {
-                let mut new_pdf_preview = pdf_preview.clone();
+            Preview::Ueberzug(preview) if preview.has_multiple_pages() => {
+                let mut new_pdf_preview = preview.clone();
                 new_pdf_preview.down_one_row();
                 preview_holder.put_preview(path, Preview::Ueberzug(new_pdf_preview));
             }
