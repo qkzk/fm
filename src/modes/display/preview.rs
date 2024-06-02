@@ -160,9 +160,8 @@ impl Preview {
     }
 
     pub fn hide(&self, ueberzug: &Ueberzug) {
-        match self {
-            Self::Ueberzug(ueb) => ueb.hide(ueberzug),
-            _ => (),
+        if let Self::Ueberzug(ueb) = self {
+            ueb.hide(ueberzug)
         }
     }
 

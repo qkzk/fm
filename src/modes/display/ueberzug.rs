@@ -111,8 +111,8 @@ pub enum Actions {
 impl fmt::Display for Actions {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Actions::Add => write!(f, "add"),
-            &Actions::Remove => write!(f, "remove"),
+            Actions::Add => write!(f, "add"),
+            Actions::Remove => write!(f, "remove"),
         }
     }
 }
@@ -130,12 +130,12 @@ pub enum Scalers {
 impl fmt::Display for Scalers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Scalers::Contain => write!(f, "contain"),
-            &Scalers::Cover => write!(f, "cover"),
-            &Scalers::Crop => write!(f, "crop"),
-            &Scalers::Distort => write!(f, "distort"),
-            &Scalers::FitContain => write!(f, "fit_contain"),
-            &Scalers::ForcedCover => write!(f, "forced_cover"),
+            Scalers::Contain => write!(f, "contain"),
+            Scalers::Cover => write!(f, "cover"),
+            Scalers::Crop => write!(f, "crop"),
+            Scalers::Distort => write!(f, "distort"),
+            Scalers::FitContain => write!(f, "fit_contain"),
+            Scalers::ForcedCover => write!(f, "forced_cover"),
         }
     }
 }

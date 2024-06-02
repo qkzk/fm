@@ -622,11 +622,8 @@ mod inner {
                 return (index, len);
             };
             len = preview.len();
-            match preview.as_ref() {
-                Preview::Ueberzug(ueb_preview) => {
-                    index = ueb_preview.index + 1;
-                }
-                _ => (),
+            if let Preview::Ueberzug(ueb_preview) = preview.as_ref() {
+                index = ueb_preview.index + 1;
             }
             (index, len)
         }
