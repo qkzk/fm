@@ -457,6 +457,9 @@ impl Status {
     /// up or down.
     pub fn resize(&mut self, width: usize, height: usize) -> Result<()> {
         self.set_dual_pane_if_wide_enough(width)?;
+        if !self.display_settings.dual() {
+            self.preview_holder.write().hide_preview(1, &self.ueberzug);
+        }
         self.tabs[0].set_height(height);
         self.tabs[1].set_height(height);
         self.refresh_status()

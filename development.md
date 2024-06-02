@@ -1061,7 +1061,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] hide preview when leaving preview modes or changing image.
   - [ ] BUG: docx isn't previewed (it seems to creates a jpg and believe it's a pdf)
   - [x] FIX: hide preview when dual -> single
-  - [ ] BUG: resize doesn't hide preview
+  - [x] FIX: resize doesn't hide preview
   - [x] pdf & docs navigation
 - [ ] refactor event exec reset mode
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
