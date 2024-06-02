@@ -243,7 +243,7 @@ impl Directory {
         let n = self.len() as isize;
         let mut vec_with_distances: Vec<(std::path::PathBuf, usize)> = self
             .content()
-            .into_iter()
+            .iter()
             .enumerate()
             .map(|(i, fileinfo)| {
                 (

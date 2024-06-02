@@ -473,10 +473,8 @@ impl Status {
 
     /// Check if the second pane should display a preview and force it.
     pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
-        if self.index == 0 && self.display_settings.preview() {
-            if Session::display_wide_enough(self.term_size()?.0) {
-                self.set_second_pane_for_preview()?;
-            }
+        if self.index == 0 && self.display_settings.preview() && Session::display_wide_enough(self.term_size()?.0) {
+            self.set_second_pane_for_preview()?;
         };
         Ok(())
     }
@@ -717,7 +715,7 @@ impl Status {
                 Display::Tree => {
                     self.menu.flagged.toggle(&file.path);
                     if !self.tabs[self.index].tree.selected_is_last() {
-                        let _ = self.current_tab_mut().tree_select_next();
+                        self.current_tab_mut().tree_select_next();
                     }
                     let _ = self.update_second_pane_for_preview();
                 }
@@ -1657,8 +1655,7 @@ impl Status {
             Display::Directory => self
                 .current_tab()
                 .directory
-                .selected()
-                .and_then(|f| Some(f.path.to_string_lossy().to_string())),
+                .selected().map(|f| f.path.to_string_lossy().to_string()),
             Display::Tree => Some(
                 self.current_tab()
                     .tree
@@ -1669,8 +1666,7 @@ impl Status {
             Display::Flagged => self
                 .menu
                 .flagged
-                .selected()
-                .and_then(|p| Some(p.to_string_lossy().to_string())),
+                .selected().map(|p| p.to_string_lossy().to_string()),
         }
     }
 

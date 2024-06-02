@@ -87,7 +87,7 @@ impl PreviewHolder {
         let Some(preview) = self.get(path) else {
             return;
         };
-        preview.hide(&ueberzug)
+        preview.hide(ueberzug)
     }
 
     pub fn is_previewing(&self, tab_index: usize) -> &Option<PathBuf> {
@@ -172,7 +172,8 @@ impl ThreadPool {
         let mut workers = Vec::with_capacity(size);
 
         for id in 0..size {
-            workers.push(worker(id, Arc::clone(&receiver)));
+            worker(id, Arc::clone(&receiver));
+            workers.push(());
         }
         Self { sender }
     }

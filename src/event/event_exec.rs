@@ -230,7 +230,7 @@ impl EventAction {
         }
         status.build_preview_current_tab()?;
         status.current_tab_mut().set_display_mode(Display::Preview);
-        return Ok(());
+        Ok(())
 
         // status.current_tab_mut().make_preview()
     }

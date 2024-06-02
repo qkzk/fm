@@ -680,7 +680,7 @@ impl Tree {
         let mut vec_with_distances: Vec<(std::path::PathBuf, usize)> = self
             .displayable_lines
             .content()
-            .into_iter()
+            .iter()
             .enumerate()
             .map(|(i, displayable_line)| {
                 (

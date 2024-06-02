@@ -624,7 +624,7 @@ mod inner {
             len = preview.len();
             match preview.as_ref() {
                 Preview::Ueberzug(ueb_preview) => {
-                    index = (&ueb_preview).index + 1;
+                    index = ueb_preview.index + 1;
                 }
                 _ => (),
             }

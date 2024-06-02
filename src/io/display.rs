@@ -410,7 +410,7 @@ impl<'a> WinMain<'a> {
             return Ok(None);
         };
         let previewed_path = std::path::Path::new(preview_doc);
-        let Some(preview) = self.preview_holder.read().get(&previewed_path) else {
+        let Some(preview) = self.preview_holder.read().get(previewed_path) else {
             log_info!("draw_preview: got None from preview_holder");
             return Ok(None);
         };
