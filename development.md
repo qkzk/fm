@@ -1055,7 +1055,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] use Parkinglot for app.status, display.status, status.preview_holder, display.preview_holder
 - [ ] refactor ueberzug completely
-  - [ ] use a window or something else to store pdf index. Don't mutate anything, just call the method with index parameter
   - [x] separate command_builder (which creates the correct attribute for ueberzug command) from command_executer (which calls the command & creates the thumbnail)
   - [x] lazyness: status->command_build, display->command_executer don't create thumbnails too soon
   - [x] hide preview when leaving preview modes or changing image.
@@ -1063,6 +1062,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] FIX: hide preview when dual -> single
   - [x] FIX: resize doesn't hide preview
   - [x] pdf & docs navigation
+  - [x] index setter
+  - [x] display index & len in header
+  - [ ] test & refactor
 - [ ] refactor event exec reset mode
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce

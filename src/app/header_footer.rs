@@ -597,28 +597,38 @@ mod inner {
         }
 
         fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
-            if let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) {
-                let mut strings = vec![(" Preview ".to_owned(), HorizontalAlign::Left)];
-                if !tab.preview_desc.len != 0 {
-                    // if !tab.preview.is_empty() {
-                    // let index = match &tab.preview {
-                    //     Preview::Ueberzug(image) => image.index + 1,
-                    //     _ => tab.window.bottom,
-                    // };
-                    let index = tab.window.bottom;
-                    strings.push((
-                        format!(" {index} / {len} ", len = tab.preview_desc.len),
-                        HorizontalAlign::Right,
-                    ));
-                };
-                strings.push((
-                    format!(" {} ", fileinfo.path.display()),
-                    HorizontalAlign::Left,
-                ));
-                strings
-            } else {
-                vec![("".to_owned(), HorizontalAlign::Left)]
+            let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) else {
+                return vec![("".to_owned(), HorizontalAlign::Left)];
+            };
+            let mut strings = vec![(" Preview ".to_owned(), HorizontalAlign::Left)];
+            if !tab.preview_desc.len != 0 {
+                let (index, len) = Self::get_preview_index_len(status, tab);
+                strings.push((format!(" {index} / {len} "), HorizontalAlign::Right));
+            };
+            let short_path = shorten_path(&fileinfo.path, None)
+                .unwrap_or_else(|_| fileinfo.path.to_string_lossy().to_string());
+            strings.push((short_path, HorizontalAlign::Left));
+            strings
+        }
+
+        fn get_preview_index_len(status: &Status, tab: &Tab) -> (usize, usize) {
+            let mut index = tab.window.bottom;
+            let mut len = tab.preview_desc.len;
+            let preview_holder = status.preview_holder.read();
+            let Some(path) = preview_holder.is_previewing(tab.status_index) else {
+                return (index, len);
+            };
+            let Some(preview) = preview_holder.get(path) else {
+                return (index, len);
+            };
+            len = preview.len();
+            match preview.as_ref() {
+                Preview::Ueberzug(ueb_preview) => {
+                    index = (&ueb_preview).index + 1;
+                }
+                _ => (),
             }
+            (index, len)
         }
 
         /// Make a default preview header
