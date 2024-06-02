@@ -75,8 +75,26 @@ impl ExtensionKind {
         }
     }
 
-    pub fn is(self, kind: Self) -> bool {
-        self == kind
+    fn has_programs(&self) -> bool {
+        match self {
+            Self::Pdf => {
+                is_program_in_path(UEBERZUG)
+                    && is_program_in_path(PDFINFO)
+                    && is_program_in_path(PDFTOPPM)
+            }
+            Self::Image => is_program_in_path(UEBERZUG),
+            Self::Audio => is_program_in_path(MEDIAINFO),
+            Self::Video => is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG),
+            Self::Font => is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE),
+            Self::Svg => is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT),
+            Self::Iso => is_program_in_path(ISOINFO),
+            Self::Notebook => is_program_in_path(JUPYTER),
+            Self::Office => is_program_in_path(LIBREOFFICE),
+            Self::Epub => is_program_in_path(PANDOC),
+            Self::Torrent => is_program_in_path(TRANSMISSION_SHOW),
+
+            _ => true,
+        }
     }
 }
 
@@ -195,83 +213,61 @@ impl Preview {
     /// their previews.
     pub fn file(file_kind: FileKind<bool>, path: &std::path::Path) -> Result<Self> {
         clear_tmp_file();
-        let extension = extract_extension(path);
         match file_kind {
             FileKind::Directory => Err(anyhow!("{path} is a directory", path = path.display())),
-            FileKind::NormalFile => {
-                let extension = &extension.to_lowercase();
-                match ExtensionKind::matcher(extension) {
-                    ExtensionKind::Archive => {
-                        Ok(Self::Archive(ArchiveContent::new(path, extension)?))
-                    }
-                    ExtensionKind::Pdf
-                        if (is_program_in_path(UEBERZUG)
-                            && is_program_in_path(PDFINFO)
-                            && is_program_in_path(PDFTOPPM)) =>
-                    {
-                        Ok(Self::Ueberzug(UeberzugPreview::new(
-                            path,
-                            UeberzugKind::Pdf,
-                        )))
-                    }
-                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => Ok(Self::Ueberzug(
-                        UeberzugPreview::new(path, UeberzugKind::Image),
-                    )),
-                    ExtensionKind::Audio if is_program_in_path(MEDIAINFO) => {
-                        Ok(Self::Media(MediaContent::new(path)?))
-                    }
-                    ExtensionKind::Video
-                        if is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG) =>
-                    {
-                        Ok(Self::Ueberzug(UeberzugPreview::new(
-                            path,
-                            UeberzugKind::Video,
-                        )))
-                    }
-                    ExtensionKind::Font
-                        if is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE) =>
-                    {
-                        Ok(Self::Ueberzug(UeberzugPreview::new(
-                            path,
-                            UeberzugKind::Font,
-                        )))
-                    }
-                    ExtensionKind::Svg
-                        if is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT) =>
-                    {
-                        Ok(Self::Ueberzug(UeberzugPreview::new(
-                            path,
-                            UeberzugKind::Svg,
-                        )))
-                    }
-                    ExtensionKind::Iso if is_program_in_path(ISOINFO) => {
-                        Ok(Self::Iso(Iso::new(path)?))
-                    }
-                    ExtensionKind::Notebook if is_program_in_path(JUPYTER) => {
-                        Ok(Self::notebook(path).context("Preview: Couldn't parse notebook")?)
-                    }
-                    ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => Ok(Self::Ueberzug(
-                        UeberzugPreview::new(path, UeberzugKind::Office),
-                    )),
-                    ExtensionKind::Epub if is_program_in_path(PANDOC) => {
-                        Ok(Self::epub(path).context("Preview: Couldn't parse epub")?)
-                    }
-                    ExtensionKind::Torrent if is_program_in_path(TRANSMISSION_SHOW) => {
-                        Ok(Self::torrent(path)
-                            .context("Preview couldn't explore the torrent file")?)
-                    }
-                    _ => match Self::preview_syntaxed(extension, path) {
-                        Some(syntaxed_preview) => Ok(syntaxed_preview),
-                        None => Self::preview_text_or_binary(path),
-                    },
-                }
-            }
+            FileKind::NormalFile => Self::normal_file(path),
             FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(path)),
             FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(path)),
             FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
                 Ok(Self::fifo_chardevice(path))
             }
             _ => Ok(Preview::default()),
+        }
+    }
+
+    fn normal_file(path: &std::path::Path) -> Result<Self> {
+        let extension = &extract_extension(path).to_lowercase();
+        let kind = ExtensionKind::matcher(extension);
+        match kind {
+            ExtensionKind::Archive => Ok(Self::Archive(ArchiveContent::new(path, extension)?)),
+            ExtensionKind::Pdf if kind.has_programs() => Ok(Self::Ueberzug(UeberzugPreview::new(
+                path,
+                UeberzugKind::Pdf,
+            ))),
+            ExtensionKind::Image if kind.has_programs() => Ok(Self::Ueberzug(
+                UeberzugPreview::new(path, UeberzugKind::Image),
+            )),
+            ExtensionKind::Audio if kind.has_programs() => {
+                Ok(Self::Media(MediaContent::new(path)?))
+            }
+            ExtensionKind::Video if kind.has_programs() => Ok(Self::Ueberzug(
+                UeberzugPreview::new(path, UeberzugKind::Video),
+            )),
+            ExtensionKind::Font if kind.has_programs() => Ok(Self::Ueberzug(UeberzugPreview::new(
+                path,
+                UeberzugKind::Font,
+            ))),
+            ExtensionKind::Svg if kind.has_programs() => Ok(Self::Ueberzug(UeberzugPreview::new(
+                path,
+                UeberzugKind::Svg,
+            ))),
+            ExtensionKind::Iso if kind.has_programs() => Ok(Self::Iso(Iso::new(path)?)),
+            ExtensionKind::Notebook if kind.has_programs() => {
+                Ok(Self::notebook(path).context("Preview: Couldn't parse notebook")?)
+            }
+            ExtensionKind::Office if kind.has_programs() => Ok(Self::Ueberzug(
+                UeberzugPreview::new(path, UeberzugKind::Office),
+            )),
+            ExtensionKind::Epub if kind.has_programs() => {
+                Ok(Self::epub(path).context("Preview: Couldn't parse epub")?)
+            }
+            ExtensionKind::Torrent if kind.has_programs() => {
+                Ok(Self::torrent(path).context("Preview couldn't explore the torrent file")?)
+            }
+            _ => match Self::preview_syntaxed(extension, path) {
+                Some(syntaxed_preview) => Ok(syntaxed_preview),
+                None => Self::preview_text_or_binary(path),
+            },
         }
     }
 
