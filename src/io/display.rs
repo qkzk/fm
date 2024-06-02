@@ -34,7 +34,7 @@ use crate::modes::Selectable;
 use crate::modes::Trash;
 use crate::modes::TreeLineBuilder;
 use crate::modes::TreePreview;
-use crate::modes::UebPreview;
+use crate::modes::UeberzugPreview;
 use crate::modes::Window;
 use crate::modes::{fileinfo_attr, MarkAction};
 use crate::modes::{parse_input_mode, SecondLine};
@@ -410,7 +410,6 @@ impl<'a> WinMain<'a> {
             return Ok(None);
         };
         let previewed_path = std::path::Path::new(preview_doc);
-        log_info!("previewed_path: {path}", path = previewed_path.display());
         let Some(preview) = self.preview_holder.read().get(&previewed_path) else {
             log_info!("draw_preview: got None from preview_holder");
             return Ok(None);
@@ -504,7 +503,7 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn draw_ueberzug(&self, image: &UebPreview, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_ueberzug(&self, image: &UeberzugPreview, canvas: &mut dyn Canvas) -> Result<()> {
         let (width, height) = canvas.size()?;
         // image.match_index()?;
         image.draw(

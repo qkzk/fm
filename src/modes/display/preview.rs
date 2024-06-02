@@ -20,7 +20,9 @@ use crate::common::{
     FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO, PANDOC, PDFINFO,
     PDFTOPPM, RSVG_CONVERT, SS, TRANSMISSION_SHOW, UEBERZUG,
 };
-use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_log};
+use crate::io::{
+    execute_and_capture_output, execute_and_capture_output_without_check, execute_and_output_no_log,
+};
 use crate::log_info;
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, FileKind, FilterKind, Scalers, SortKind,
@@ -116,7 +118,7 @@ pub enum Preview {
     Text(TextContent),
     Binary(BinaryContent),
     Archive(ArchiveContent),
-    Ueberzug(UebPreview),
+    Ueberzug(UeberzugPreview),
     Media(MediaContent),
     Tree(TreePreview),
     Iso(Iso),
@@ -208,28 +210,40 @@ impl Preview {
                             && is_program_in_path(PDFINFO)
                             && is_program_in_path(PDFTOPPM)) =>
                     {
-                        Ok(Self::Ueberzug(UebPreview::new(path, UeberzugKind::Pdf)))
+                        Ok(Self::Ueberzug(UeberzugPreview::new(
+                            path,
+                            UeberzugKind::Pdf,
+                        )))
                     }
-                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => {
-                        Ok(Self::Ueberzug(UebPreview::new(path, UeberzugKind::Image)))
-                    }
+                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => Ok(Self::Ueberzug(
+                        UeberzugPreview::new(path, UeberzugKind::Image),
+                    )),
                     ExtensionKind::Audio if is_program_in_path(MEDIAINFO) => {
                         Ok(Self::Media(MediaContent::new(&path)?))
                     }
                     ExtensionKind::Video
                         if is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG) =>
                     {
-                        Ok(Self::Ueberzug(UebPreview::new(path, UeberzugKind::Video)))
+                        Ok(Self::Ueberzug(UeberzugPreview::new(
+                            path,
+                            UeberzugKind::Video,
+                        )))
                     }
                     ExtensionKind::Font
                         if is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE) =>
                     {
-                        Ok(Self::Ueberzug(UebPreview::new(path, UeberzugKind::Font)))
+                        Ok(Self::Ueberzug(UeberzugPreview::new(
+                            path,
+                            UeberzugKind::Font,
+                        )))
                     }
                     ExtensionKind::Svg
                         if is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT) =>
                     {
-                        Ok(Self::Ueberzug(UebPreview::new(path, UeberzugKind::Svg)))
+                        Ok(Self::Ueberzug(UeberzugPreview::new(
+                            path,
+                            UeberzugKind::Svg,
+                        )))
                     }
                     ExtensionKind::Iso if is_program_in_path(ISOINFO) => {
                         Ok(Self::Iso(Iso::new(&path)?))
@@ -237,9 +251,9 @@ impl Preview {
                     ExtensionKind::Notebook if is_program_in_path(JUPYTER) => {
                         Ok(Self::notebook(&path).context("Preview: Couldn't parse notebook")?)
                     }
-                    ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => {
-                        Ok(Self::Ueberzug(UebPreview::new(path, UeberzugKind::Office)))
-                    }
+                    ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => Ok(Self::Ueberzug(
+                        UeberzugPreview::new(path, UeberzugKind::Office),
+                    )),
                     ExtensionKind::Epub if is_program_in_path(PANDOC) => {
                         Ok(Self::epub(&path).context("Preview: Couldn't parse epub")?)
                     }
@@ -838,7 +852,7 @@ impl UeberzugKind {
 }
 
 #[derive(Clone)]
-pub struct UebPreview {
+pub struct UeberzugPreview {
     kind: UeberzugKind,
     original: PathBuf,
     identifier: PathBuf,
@@ -846,7 +860,7 @@ pub struct UebPreview {
     pub index: usize,
 }
 
-impl UebPreview {
+impl UeberzugPreview {
     pub fn new(original: &Path, kind: UeberzugKind) -> Self {
         let identifier = Self::create_identifier(original, &kind);
         let length = Self::calc_length(original, &kind);
@@ -861,8 +875,27 @@ impl UebPreview {
         }
     }
 
+    fn get_pdf_length(path: &Path) -> Result<usize> {
+        let output =
+            execute_and_capture_output(PDFINFO, &[path.to_string_lossy().to_string().as_ref()])?;
+        let line = output.lines().find(|line| line.starts_with("Pages: "));
+
+        match line {
+            Some(line) => {
+                let page_count_str = line.split_whitespace().nth(1).unwrap();
+                let page_count = page_count_str.parse::<usize>()?;
+                Ok(page_count)
+            }
+            None => Err(anyhow::Error::msg("Couldn't find the page number")),
+        }
+    }
+
     fn calc_length(original_path: &Path, kind: &UeberzugKind) -> usize {
-        1
+        if matches!(kind, UeberzugKind::Pdf) {
+            Self::get_pdf_length(original_path).unwrap_or_else(|_| 1)
+        } else {
+            1
+        }
     }
 
     fn create_identifier(original_path: &Path, kind: &UeberzugKind) -> PathBuf {
@@ -899,7 +932,6 @@ impl UebPreview {
     pub fn draw(&self, ueberzug: &Ueberzug, x: u16, y: u16, width: u16, height: u16) -> Result<()> {
         self.build_thumbnail()?;
         let identifier = self.identifier.to_string_lossy();
-        log_info!("drawing {id}", id = identifier);
         ueberzug.draw(&UeConf {
             identifier: identifier.as_ref(),
             path: identifier.as_ref(),
@@ -913,12 +945,30 @@ impl UebPreview {
         Ok(())
     }
 
+    fn delete_identifier(&self) -> bool {
+        if self.identifier.exists() {
+            std::fs::remove_file(&self.identifier).is_ok()
+        } else {
+            false
+        }
+    }
+
     pub fn up_one_row(&mut self) {
-        todo!()
+        if matches!(self.kind, UeberzugKind::Pdf | UeberzugKind::Office) && self.index > 0 {
+            self.index -= 1;
+            // this is required since the pdf file is already displayed which means the file is created and no thumbnail will be made
+            self.delete_identifier();
+        }
     }
 
     pub fn down_one_row(&mut self) {
-        todo!()
+        if matches!(self.kind, UeberzugKind::Pdf | UeberzugKind::Office)
+            && self.index + 1 < self.length
+        {
+            self.index += 1;
+            // this is required since the pdf file is already displayed which means the file is created and no thumbnail will be made
+            self.delete_identifier();
+        }
     }
 
     pub fn hide(&self, ueberzug: &Ueberzug) {
@@ -1025,9 +1075,8 @@ impl Thumbnail {
         pdf_path.push(filename);
         pdf_path.set_extension("pdf");
         std::fs::rename(pdf_path, output_path)?;
-        let length = 1;
-        // TODO! let length = Self::get_pdf_length(&output_path)?;
-        Self::pdf(output_path, 0, output_path)
+        let length = UeberzugPreview::get_pdf_length(&output_path).unwrap_or_else(|_| 1);
+        Self::pdf(output_path, length, output_path)
     }
 }
 

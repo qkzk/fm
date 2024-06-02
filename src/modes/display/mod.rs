@@ -16,7 +16,7 @@ pub use fileinfo::{
 };
 pub use preview::{
     BinaryContent, ColoredText, ExtensionKind, HLContent, Preview, TextKind, TreePreview,
-    UebPreview, Window,
+    UeberzugPreview, Window,
 };
 pub use preview_holder::*;
 pub use skim::{print_ansi_str, Skimer};

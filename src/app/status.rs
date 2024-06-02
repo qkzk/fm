@@ -1590,20 +1590,22 @@ impl Status {
     }
 
     fn move_ueberzug_pdf_up_one_row(&self) {
-        if let Some(desc) = &self.tabs[self.index].preview_desc.doc {
-            let path = Path::new(&desc);
-            let mut writer = self.preview_holder.write();
-            if let Some(arc_preview) = writer.get(path) {
-                match arc_preview.as_ref() {
-                    Preview::Ueberzug(pdf_preview) => {
-                        let mut new_pdf_preview = pdf_preview.clone();
-                        new_pdf_preview.up_one_row();
-                        writer.put_preview(path, Preview::Ueberzug(new_pdf_preview))
-                    }
-                    _ => (),
-                }
-            }
+        let Some(desc) = &self.tabs[self.index].preview_desc.doc else {
+            return;
         };
+        let path = Path::new(&desc);
+        let mut writer = self.preview_holder.write();
+        let Some(arc_preview) = writer.get(path) else {
+            return;
+        };
+        match arc_preview.as_ref() {
+            Preview::Ueberzug(pdf_preview) => {
+                let mut new_pdf_preview = pdf_preview.clone();
+                new_pdf_preview.up_one_row();
+                writer.put_preview(path, Preview::Ueberzug(new_pdf_preview))
+            }
+            _ => (),
+        }
     }
 
     /// Move down 30 rows except for Ueberzug where it moves 1 image down
@@ -1628,20 +1630,22 @@ impl Status {
     }
 
     fn move_ueberzug_pdf_down_one_row(&self) {
-        if let Some(desc) = &self.tabs[self.index].preview_desc.doc {
-            let path = Path::new(&desc);
-            let mut writer = self.preview_holder.write();
-            if let Some(arc_preview) = writer.get(path) {
-                match arc_preview.as_ref() {
-                    Preview::Ueberzug(pdf_preview) => {
-                        let mut new_pdf_preview = pdf_preview.clone();
-                        new_pdf_preview.down_one_row();
-                        writer.put_preview(path, Preview::Ueberzug(new_pdf_preview));
-                    }
-                    _ => (),
-                }
-            }
+        let Some(desc) = &self.tabs[self.index].preview_desc.doc else {
+            return;
         };
+        let path = Path::new(&desc);
+        let mut preview_holder = self.preview_holder.write();
+        let Some(arc_preview) = preview_holder.get(path) else {
+            return;
+        };
+        match arc_preview.as_ref() {
+            Preview::Ueberzug(pdf_preview) => {
+                let mut new_pdf_preview = pdf_preview.clone();
+                new_pdf_preview.down_one_row();
+                preview_holder.put_preview(path, Preview::Ueberzug(new_pdf_preview));
+            }
+            _ => (),
+        }
     }
 
     pub fn get_current_previewed_doc(&self) -> Option<String> {
