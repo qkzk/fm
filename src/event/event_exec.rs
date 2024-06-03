@@ -145,8 +145,9 @@ impl EventAction {
                 .hide_preview(1, &status.ueberzug);
             status.set_edit_mode(1, Edit::Nothing)?;
             status.tabs[1].display_mode = Display::Directory;
-            status.tabs[1].refresh_view()?;
+            status.tabs[1].refresh_and_reselect_file()?;
         }
+        status.tabs[0].refresh_and_reselect_file()?;
         Ok(())
     }
 
