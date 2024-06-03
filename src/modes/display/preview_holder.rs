@@ -205,7 +205,9 @@ type Job = Box<dyn FnOnce() + Send + 'static>;
 /// reads a job from mpsc and execute it.
 fn worker(_id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) {
     thread::spawn(move || loop {
-        let job = receiver.lock().recv().unwrap();
+        let Ok(job) = receiver.lock().recv() else {
+            break;
+        };
         job();
     });
 }
