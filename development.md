@@ -1065,6 +1065,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] index setter
   - [x] display index & len in header
   - [ ] test & refactor
+- [x] build a few thumbnail at once
 - [ ] refactor event exec reset mode
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce

@@ -913,7 +913,7 @@ impl UeberzugPreview {
         self.length
     }
 
-    fn build_thumbnail(&self) -> Result<()> {
+    pub fn build_thumbnail(&self) -> Result<()> {
         if self.identifier.exists() {
             return Ok(());
         }

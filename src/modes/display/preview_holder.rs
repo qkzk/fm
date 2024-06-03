@@ -105,9 +105,10 @@ impl PreviewHolder {
         previews: Arc<RwLock<BTreeMap<PathBuf, Arc<Preview>>>>,
         path: PathBuf,
         users: Users,
+        should_build_thumbnail: bool,
     ) {
         self.pool.execute(move || {
-            Self::build_and_store_preview(&previews, path, &users);
+            Self::build_and_store_preview(&previews, path, &users, should_build_thumbnail);
         });
     }
 
@@ -117,6 +118,7 @@ impl PreviewHolder {
         previews: &Arc<RwLock<BTreeMap<PathBuf, Arc<Preview>>>>,
         path: PathBuf,
         users: &Users,
+        should_build_thumbnail: bool,
     ) {
         if previews.read().contains_key(&path) {
             return;
@@ -125,6 +127,11 @@ impl PreviewHolder {
             log_info!("Couldn't build preview for {path}", path = path.display());
             return;
         };
+        if should_build_thumbnail {
+            if let Preview::Ueberzug(ueb) = &preview {
+                let _ = ueb.build_thumbnail();
+            };
+        }
         log_info!("inserted {p} in preview_holder", p = path.display());
         previews.write().insert(path, Arc::new(preview));
     }
@@ -141,17 +148,19 @@ impl PreviewHolder {
         let previews = Arc::clone(&self.previews);
         let users = self.users.clone();
         let path = path.to_owned();
-        self.execute_preview_task(previews, path, users);
+        self.execute_preview_task(previews, path, users, true);
     }
 
     /// Build and store a preview for multiple files.
     /// Clear the collection first since it should be called when changing directory.
     pub fn build_collection(&mut self, paths: Vec<PathBuf>) {
         self.clear();
+        let mut thumbnail_counter = 10;
         for path in paths.into_iter().take(Self::MAX_PREVIEWS) {
             let previews = self.previews.clone();
             let users = self.users.clone();
-            self.execute_preview_task(previews, path, users);
+            self.execute_preview_task(previews, path, users, thumbnail_counter >= 0);
+            thumbnail_counter -= 1;
         }
     }
 }
