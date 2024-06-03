@@ -1076,11 +1076,23 @@ impl Thumbnail {
             );
             return Err(anyhow!("{LIBREOFFICE} couldn't convert {calc_str} to pdf"));
         }
+        let pdf_path = Self::rename_office_pdf(calc_path)?;
+        Self::pdf(&pdf_path, page_index, output_path)
+    }
+
+    fn rename_office_pdf(calc_path: &Path) -> Result<PathBuf> {
         let mut pdf_path = std::path::PathBuf::from("/tmp");
         let filename = calc_path.file_name().context("")?;
         pdf_path.push(filename);
         pdf_path.set_extension("pdf");
-        Self::pdf(&pdf_path, page_index, output_path)
+        let new_filename = format!(
+            "fm_thumbnail_{filename}",
+            filename = filename.to_string_lossy()
+        );
+        let mut new_pdf_path = std::path::PathBuf::from("/tmp");
+        new_pdf_path.push(new_filename);
+        std::fs::rename(&pdf_path, &new_pdf_path)?;
+        Ok(new_pdf_path)
     }
 }
 
