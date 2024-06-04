@@ -473,7 +473,10 @@ impl Status {
 
     /// Check if the second pane should display a preview and force it.
     pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
-        if self.index == 0 && self.display_settings.preview() && Session::display_wide_enough(self.term_size()?.0) {
+        if self.index == 0
+            && self.display_settings.preview()
+            && Session::display_wide_enough(self.term_size()?.0)
+        {
             self.set_second_pane_for_preview()?;
         };
         Ok(())
@@ -1612,9 +1615,11 @@ impl Status {
     /// Move down 30 rows except for Ueberzug where it moves 1 image down
     pub fn preview_page_down(&mut self) {
         if let Some(path_str) = &self.current_tab().preview_desc.doc {
+            let ext = extract_extension(Path::new(&path_str));
+            log_info!("preview_page_down: {path_str} {ext}");
             if matches!(
-                ExtensionKind::matcher(extract_extension(Path::new(&path_str))),
-                ExtensionKind::Pdf
+                ExtensionKind::matcher(ext),
+                ExtensionKind::Pdf | ExtensionKind::Office
             ) {
                 self.move_ueberzug_pdf_down_one_row()
             }
@@ -1631,6 +1636,7 @@ impl Status {
     }
 
     fn move_ueberzug_pdf_down_one_row(&self) {
+        log_info!("move_ueberzug_pdf_down_one_row");
         let Some(desc) = &self.tabs[self.index].preview_desc.doc else {
             return;
         };
@@ -1639,6 +1645,7 @@ impl Status {
         let Some(arc_preview) = preview_holder.get(path) else {
             return;
         };
+        log_info!("move_ueberzug_pdf_down_one_row found preview");
         match arc_preview.as_ref() {
             Preview::Ueberzug(preview) if preview.has_multiple_pages() => {
                 let mut new_pdf_preview = preview.clone();
@@ -1655,7 +1662,8 @@ impl Status {
             Display::Directory => self
                 .current_tab()
                 .directory
-                .selected().map(|f| f.path.to_string_lossy().to_string()),
+                .selected()
+                .map(|f| f.path.to_string_lossy().to_string()),
             Display::Tree => Some(
                 self.current_tab()
                     .tree
@@ -1666,7 +1674,8 @@ impl Status {
             Display::Flagged => self
                 .menu
                 .flagged
-                .selected().map(|p| p.to_string_lossy().to_string()),
+                .selected()
+                .map(|p| p.to_string_lossy().to_string()),
         }
     }
 

@@ -1011,7 +1011,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] copy flagged files to clipboard
 - [x] flag files from clipboard
 - [ ] perfomance
-- [ ] non blocking previews: use the mpsc to do the previews async (once again)
+- [ ] non blocking previews
 
   - [x] preview holder
   - [x] attach the previewholder to display
@@ -1044,6 +1044,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] navigation in ueberzug pdf
     - [x] hide previews with escape
     - [x] header & footer for previews
+    - [ ] length of office previews
   - [x] FIX: reselect last file after leaving preview in current tab
   - [x] FIX: scrolling quickly crashes
   - [x] FIX: Alt+P from non dual mode sets dual but not preview as second pane. Must do it twice

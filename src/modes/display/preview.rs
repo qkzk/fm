@@ -870,8 +870,17 @@ impl UeberzugPreview {
         }
     }
 
+    pub fn update_office_len(&mut self) {
+        self.length = Self::calc_length(&self.original, &self.kind);
+        log_info!(
+            "update_office_len: {path}: len {len}",
+            path = self.original.display(),
+            len = self.length
+        );
+    }
+
     pub fn has_multiple_pages(&self) -> bool {
-        matches!(self.kind, UeberzugKind::Pdf | UeberzugKind::Office) && self.length > 1
+        matches!(self.kind, UeberzugKind::Pdf | UeberzugKind::Office)
     }
 
     fn get_pdf_length(path: &Path) -> Result<usize> {
@@ -890,10 +899,12 @@ impl UeberzugPreview {
     }
 
     fn calc_length(original_path: &Path, kind: &UeberzugKind) -> usize {
-        if matches!(kind, UeberzugKind::Pdf) {
-            Self::get_pdf_length(original_path).unwrap_or(1)
-        } else {
-            1
+        match &kind {
+            UeberzugKind::Pdf => Self::get_pdf_length(original_path).unwrap_or(1),
+            UeberzugKind::Office => {
+                Self::get_pdf_length(&Thumbnail::office_pdf_name(original_path)).unwrap_or(1)
+            }
+            _ => 1,
         }
     }
 
@@ -968,6 +979,10 @@ impl UeberzugPreview {
     }
 
     pub fn down_one_row(&mut self) {
+        if matches!(self.kind, UeberzugKind::Office) {
+            log_info!("down_one_row: office");
+            self.update_office_len();
+        }
         if matches!(self.kind, UeberzugKind::Pdf | UeberzugKind::Office)
             && self.index + 1 < self.length
         {
@@ -1080,9 +1095,17 @@ impl Thumbnail {
         Self::pdf(&pdf_path, page_index, output_path)
     }
 
-    fn rename_office_pdf(calc_path: &Path) -> Result<PathBuf> {
+    fn office_built_pdf_name(calc_path: &Path) -> PathBuf {
+        let mut built_pdf_path = std::path::PathBuf::from("/tmp");
+        let filename = calc_path.file_name().unwrap_or_default();
+        built_pdf_path.push(filename);
+        built_pdf_path.set_extension("pdf");
+        built_pdf_path
+    }
+
+    fn office_pdf_name(calc_path: &Path) -> PathBuf {
         let mut pdf_path = std::path::PathBuf::from("/tmp");
-        let filename = calc_path.file_name().context("")?;
+        let filename = calc_path.file_name().unwrap_or_default();
         pdf_path.push(filename);
         pdf_path.set_extension("pdf");
         let new_filename = format!(
@@ -1091,7 +1114,13 @@ impl Thumbnail {
         );
         let mut new_pdf_path = std::path::PathBuf::from("/tmp");
         new_pdf_path.push(new_filename);
-        std::fs::rename(&pdf_path, &new_pdf_path)?;
+        new_pdf_path
+    }
+
+    fn rename_office_pdf(calc_path: &Path) -> Result<PathBuf> {
+        let built_pdf_path = Self::office_built_pdf_name(calc_path);
+        let new_pdf_path = Self::office_pdf_name(calc_path);
+        std::fs::rename(&built_pdf_path, &new_pdf_path)?;
         Ok(new_pdf_path)
     }
 }
