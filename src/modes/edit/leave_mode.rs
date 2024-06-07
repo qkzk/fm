@@ -399,6 +399,12 @@ impl LeaveMode {
     /// Apply a filter to the displayed files.
     /// See `crate::filter` for more details.
     pub fn filter(status: &mut Status) -> Result<()> {
+        if status.display_settings.preview() {
+            status
+                .preview_holder
+                .read()
+                .hide_preview(1, &status.ueberzug);
+        }
         status.set_filter()?;
         status.menu.input.reset();
         let mut search = status.tabs[status.index].search.clone();

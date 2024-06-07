@@ -30,6 +30,9 @@
 //! sleep(Duration::from_secs(1));
 //! ```
 
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
+use std::collections::HashSet;
 use std::fmt;
 use std::io::Write;
 use std::process::Child;
@@ -40,7 +43,10 @@ use parking_lot::RwLock;
 use crate::log_info;
 
 /// Main Ueberzug Struct
-pub struct Ueberzug(RwLock<Option<Child>>);
+pub struct Ueberzug {
+    ueb: RwLock<Option<Child>>,
+    displayed: RwLock<HashSet<String>>,
+}
 
 impl Default for Ueberzug {
     fn default() -> Self {
@@ -52,18 +58,23 @@ impl Ueberzug {
     /// Creates the Default Ueberzug instance
     /// One instance can handel multiple images provided they have different identifiers
     pub fn new() -> Self {
-        Self(RwLock::new(None))
+        Self {
+            ueb: RwLock::new(None),
+            displayed: RwLock::new(HashSet::new()),
+        }
     }
     /// Draws the Image using UeConf
     pub fn draw(&self, config: &UeConf) {
         let cmd = config.to_json();
         if let Err(e) = self.run(&cmd) {
-            println!(
-                "could not draw {},from path {}",
-                config.identifier, config.path
+            log_info!(
+                "could not draw {}, from path {} - error {}",
+                config.identifier,
+                config.path,
+                e
             );
-            println!("{}", e);
         };
+        self.displayed.write().insert(config.identifier.to_owned());
     }
     /// Clear the drawn image only requires the identifier
     pub fn clear(&self, identifier: &str) {
@@ -75,13 +86,26 @@ impl Ueberzug {
         };
         let cmd = config.to_json();
         match self.run(&cmd) {
-            Ok(()) => (),
+            Ok(()) => {
+                self.displayed.write().remove(config.identifier);
+            }
             Err(error) => log_info!("Failed to Clear Image {error:?}"),
         }
     }
 
+    pub fn clear_all(&self) {
+        log_info!("ueberzug clear_all");
+        let mut ueberzug = self.ueb.write();
+        *ueberzug = None;
+        drop(ueberzug);
+        log_info!(
+            "ueberzug is none: {is_none}",
+            is_none = self.ueb.read().is_none()
+        );
+    }
+
     fn run(&self, cmd: &str) -> Result<(), std::io::Error> {
-        let mut ueberzug = self.0.write();
+        let mut ueberzug = self.ueb.write();
         if ueberzug.is_none() {
             *ueberzug = Some(
                 std::process::Command::new("ueberzug")
@@ -96,9 +120,21 @@ impl Ueberzug {
             log_info!("ueberzug: stdin is None");
             return Ok(());
         };
-        stdin.write_all(cmd.as_bytes())?;
-
-        Ok(())
+        match stdin.write_all(cmd.as_bytes()) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                if let Some(32) = error.raw_os_error() {
+                    // broken pipe, ueberzug has been killed
+                    // drop current instance
+                    log_info!("ueberzug has been killed");
+                    *ueberzug = None;
+                    // call it again
+                    self.run(cmd)
+                } else {
+                    Err(error)
+                }
+            }
+        }
     }
 }
 

@@ -9,6 +9,7 @@ use indicatif::InMemoryTerm;
 use crate::app::Focus;
 use crate::app::Status;
 use crate::app::Tab;
+use crate::common::delete_matching_files;
 use crate::common::filename_to_clipboard;
 use crate::common::filepath_to_clipboard;
 use crate::common::set_clipboard;
@@ -577,6 +578,7 @@ impl EventAction {
     /// Enter the filter mode, where you can filter.
     /// See `crate::modes::Filter` for more details.
     pub fn filter(status: &mut Status) -> Result<()> {
+        status.ueberzug.clear_all();
         if matches!(
             status.current_tab().edit_mode,
             Edit::InputSimple(InputSimple::Filter)
@@ -599,14 +601,6 @@ impl EventAction {
             return Ok(());
         }
         status.bulk_ask_filenames()?;
-        // if matches!(
-        //     status.current_tab().edit_mode,
-        //     Edit::Navigate(Navigate::BulkMenu)
-        // ) {
-        //     status.reset_edit_mode()?;
-        // } else {
-        //     status.set_edit_mode(status.index, Edit::Navigate(Navigate::BulkMenu))?;
-        // }
         Ok(())
     }
 

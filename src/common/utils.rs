@@ -344,7 +344,6 @@ pub fn delete_matching_files(directory: &str, pattern: &str) -> Result<()> {
                 if let Some(file_name_str) = file_name.to_str() {
                     if file_name_str.starts_with(pattern) {
                         std::fs::remove_file(&path)?;
-                        println!("Deleted file: {:?}", path);
                     }
                 }
             }

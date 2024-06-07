@@ -1228,7 +1228,7 @@ pub struct Display {
     /// It will print every symbol shown on screen.
     term: Arc<Term>,
     preview_holder: Arc<RwLock<PreviewHolder>>,
-    ueberzug: Arc<Ueberzug>,
+    pub ueberzug: Arc<Ueberzug>,
 }
 
 impl Display {

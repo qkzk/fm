@@ -10,6 +10,8 @@ use crate::modes::Preview;
 use crate::modes::Ueberzug;
 use crate::modes::Users;
 
+use super::UeberzugPreview;
+
 /// Holds thre previews and a threadpool to create them.
 /// Allow creation of preview for a single file or a collection.
 #[derive(Clone)]
@@ -75,7 +77,7 @@ impl PreviewHolder {
         }
     }
 
-    pub fn hide_preview(&mut self, tab_index: usize, ueberzug: &Ueberzug) {
+    pub fn hide_preview(&self, tab_index: usize, ueberzug: &Ueberzug) {
         let preview_to_hide = if tab_index == 0 {
             &self.previewed_left
         } else {
@@ -87,6 +89,7 @@ impl PreviewHolder {
         let Some(preview) = self.get(path) else {
             return;
         };
+        log_info!("hiding {path}", path = path.display());
         preview.hide(ueberzug)
     }
 

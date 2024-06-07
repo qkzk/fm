@@ -422,17 +422,9 @@ impl Status {
 
     /// Reset the selected tab view to the default.
     pub fn refresh_status(&mut self) -> Result<()> {
-        self.force_clear();
         self.refresh_users()?;
         self.refresh_tabs()?;
         Ok(())
-    }
-
-    /// Set a "force clear" flag to true, which will reset the display.
-    /// It's used when some command or whatever may pollute the terminal.
-    /// We ensure to clear it before displaying again.
-    pub fn force_clear(&mut self) {
-        self.internal_settings.force_clear();
     }
 
     /// Refresh the users for every tab
@@ -1583,7 +1575,8 @@ impl Status {
                 ExtensionKind::matcher(extract_extension(Path::new(&path_str))),
                 ExtensionKind::Pdf
             ) {
-                self.move_ueberzug_pdf_up_one_row()
+                self.move_ueberzug_pdf_up_one_row();
+                return;
             }
         }
         if self.tabs[self.index].window.top > 0 {
@@ -1603,7 +1596,7 @@ impl Status {
             return;
         };
         match arc_preview.as_ref() {
-            Preview::Ueberzug(preview) if preview.has_multiple_pages() => {
+            Preview::Ueberzug(preview) if preview.is_pdf_or_office() => {
                 let mut new_pdf_preview = preview.clone();
                 new_pdf_preview.up_one_row();
                 writer.put_preview(path, Preview::Ueberzug(new_pdf_preview))
@@ -1621,7 +1614,8 @@ impl Status {
                 ExtensionKind::matcher(ext),
                 ExtensionKind::Pdf | ExtensionKind::Office
             ) {
-                self.move_ueberzug_pdf_down_one_row()
+                self.move_ueberzug_pdf_down_one_row();
+                return;
             }
         }
         self.update_preview_len();
@@ -1647,7 +1641,7 @@ impl Status {
         };
         log_info!("move_ueberzug_pdf_down_one_row found preview");
         match arc_preview.as_ref() {
-            Preview::Ueberzug(preview) if preview.has_multiple_pages() => {
+            Preview::Ueberzug(preview) if preview.is_pdf_or_office() => {
                 let mut new_pdf_preview = preview.clone();
                 new_pdf_preview.down_one_row();
                 preview_holder.put_preview(path, Preview::Ueberzug(new_pdf_preview));

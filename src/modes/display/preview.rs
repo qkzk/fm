@@ -879,7 +879,7 @@ impl UeberzugPreview {
         );
     }
 
-    pub fn has_multiple_pages(&self) -> bool {
+    pub fn is_pdf_or_office(&self) -> bool {
         matches!(self.kind, UeberzugKind::Pdf | UeberzugKind::Office)
     }
 
@@ -924,9 +924,9 @@ impl UeberzugPreview {
         self.length
     }
 
-    pub fn build_thumbnail(&self) -> Result<()> {
+    pub fn build_thumbnail(&self) -> Result<bool> {
         if self.identifier.exists() {
-            return Ok(());
+            return Ok(false);
         }
         match self.kind {
             UeberzugKind::Image => (),
@@ -938,14 +938,15 @@ impl UeberzugPreview {
                 Thumbnail::office(&self.original, self.index, &self.identifier)?
             }
         };
-        Ok(())
+        Ok(true)
     }
 
     pub fn draw(&self, ueberzug: &Ueberzug, x: u16, y: u16, width: u16, height: u16) -> Result<()> {
-        self.build_thumbnail()?;
-        let identifier = self.identifier.to_string_lossy();
-        let ueconf = Self::build_ue_conf(identifier.as_ref(), x, y, width, height);
-        ueberzug.draw(&ueconf);
+        if !self.build_thumbnail()? {
+            let identifier = self.identifier.to_string_lossy();
+            let ueconf = Self::build_ue_conf(identifier.as_ref(), x, y, width, height);
+            ueberzug.draw(&ueconf);
+        }
         Ok(())
     }
 

@@ -12,10 +12,9 @@ use crate::common::SS;
 use crate::io::execute_and_output;
 use crate::io::Args;
 use crate::io::Opener;
+use crate::log_info;
 
 pub struct InternalSettings {
-    /// Do we have to clear the screen ?
-    pub force_clear: bool,
     /// True if the user issued a quit event (`Key::Char('q')` by default).
     /// It's used to exit the main loop before reseting the cursor.
     pub must_quit: bool,
@@ -39,14 +38,12 @@ pub struct InternalSettings {
 impl InternalSettings {
     pub fn new(opener: Opener, term: Arc<Term>, sys: System) -> Self {
         let args = Args::parse();
-        let force_clear = false;
         let must_quit = false;
         let nvim_server = args.server.clone();
         let inside_neovim = args.neovim;
         let copy_file_queue = vec![];
         let copy_progress = None;
         Self {
-            force_clear,
             must_quit,
             nvim_server,
             opener,
@@ -61,13 +58,6 @@ impl InternalSettings {
     /// Returns the sice of the terminal (width, height)
     pub fn term_size(&self) -> Result<(usize, usize)> {
         Ok(self.term.term_size()?)
-    }
-
-    /// Set a "force clear" flag to true, which will reset the display.
-    /// It's used when some command or whatever may pollute the terminal.
-    /// We ensure to clear it before displaying again.
-    pub fn force_clear(&mut self) {
-        self.force_clear = true;
     }
 
     pub fn mount_points(&mut self) -> Vec<&std::path::Path> {
