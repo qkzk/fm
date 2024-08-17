@@ -875,7 +875,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - preview torrent files with `transmission-show`
 - preview mark, shortcut & history content in second pane while navigating
 - zoxide integration. While typing a path in "Goto mode" (default keybind "alt+g"), the first proposition will come from your zoxide answers.
-- click on right pane while previewing a tree moves there.
 
 #### Changelog
 
@@ -950,7 +949,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] preview mark, shortcut & history content in second pane while navigating
 - [x] zoxide support for "alt+g" aka goto mode.
 - [x] FIX: `q` while second window should exit the menu
-- [x] while in "second pane for preview" and previewing a tree, a click on a previewed tree moves the left pane there.
 
 ## Current dev
 
@@ -972,6 +970,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   Interally, it uses a queue to store the source & destination.
 - Copy flagged files to primary clipboard with F11. Flag existing files from clipboard with F12
 - hex colors can be used in config file.
+- click on right pane while previewing a tree moves there.
 
 #### Changelog
 
@@ -1012,11 +1011,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] error message when copy / move fails (source or dest changed)
 - [x] copy flagged files to clipboard
 - [x] flag files from clipboard
+- [x] while in "second pane for preview" and previewing a tree, a click on a previewed tree moves the left pane there.
+- [x] allow hex colors like #16a085 in config
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
-- [ ] allow hex colors like #16a085 in config
 
 ## TODO
 
