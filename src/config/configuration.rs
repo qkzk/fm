@@ -85,7 +85,8 @@ impl Config {
 /// 1. hardcoded values
 ///
 /// 2. configured values from `~/.config/fm/config_file_name.yaml` if those files exists.
-/// If the config fle is poorly formated its simply ignored.
+///
+/// If the config file is poorly formated its simply ignored.
 pub fn load_config(path: &str) -> Result<Config> {
     let mut config = Config::default();
     let file = File::open(path::Path::new(&shellexpand::tilde(path).to_string()))?;
@@ -281,9 +282,7 @@ fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
 
     if let Ok(file) = File::open(config_path) {
         if let Ok(yaml) = serde_yaml::from_reader::<File, serde_yaml::Value>(file) {
-            let Some(palette) = yaml.get("palette") else {
-                return None;
-            };
+            let palette = yaml.get("palette")?;
             if let Some(color) = palette.get(key)?.as_str() {
                 return parse_rgb_triplet(color);
             }

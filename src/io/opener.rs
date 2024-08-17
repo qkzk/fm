@@ -313,6 +313,7 @@ impl fmt::Display for Kind {
 /// There's two exceptions :
 /// - iso files, which are mounted. It requires a sudo password.
 /// - neovim filepicking. It uses a socket to send RPC command.
+///
 /// It may open a single or multiple files, trying to regroup them by opener.
 #[derive(Clone)]
 pub struct Opener {

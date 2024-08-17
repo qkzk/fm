@@ -37,9 +37,7 @@ pub struct CliCommand {
 
 impl CliCommand {
     fn new(desc: String, args: String) -> Option<Self> {
-        let Some(executable) = args.split(' ').next() else {
-            return None;
-        };
+        let executable = args.split(' ').next()?;
         if !is_program_in_path(executable) {
             return None;
         }
@@ -125,7 +123,7 @@ impl CliApplications {
             .content
             .iter()
             .map(|cli| cli.desc.len())
-            .fold(std::usize::MIN, |a, b| a.max(b));
+            .fold(usize::MIN, |a, b| a.max(b));
         self.desc_size = desc_size;
         self
     }

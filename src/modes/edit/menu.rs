@@ -82,7 +82,7 @@ pub struct Menu {
     pub sudo_command: Option<String>,
     /// History - here for compatibility reasons only
     pub history: History,
-    ///
+    /// The user input history.
     pub input_history: InputHistory,
 }
 
@@ -156,15 +156,11 @@ impl Menu {
     }
 
     pub fn find_encrypted_drive_mount_point(&self) -> Option<std::path::PathBuf> {
-        let Some(device) = self.encrypted_devices.selected() else {
-            return None;
-        };
+        let device = self.encrypted_devices.selected()?;
         if !device.is_mounted() {
             return None;
         }
-        let Some(mount_point) = device.mount_point() else {
-            return None;
-        };
+        let mount_point = device.mount_point()?;
         Some(std::path::PathBuf::from(mount_point))
     }
 
@@ -177,7 +173,6 @@ impl Menu {
         }
         Some(std::path::PathBuf::from(&device.path))
     }
-
 
     /// Run sshfs with typed parameters to mount a remote directory in current directory.
     /// sshfs should be reachable in path.

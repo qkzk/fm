@@ -298,15 +298,12 @@ impl Status {
                 if matches!(self.current_tab().display_mode, Display::Flagged) {
                     self.menu.flagged.select_row(row)
                 } else if self.has_clicked_on_second_pane_preview() {
-                    match &self.tabs[1].preview {
-                        Preview::Tree(tree_preview) => {
-                            let index = row_to_window_index(row) + self.tabs[1].window.top;
-                            let path = &tree_preview.tree.path_from_index(index)?;
-                            self.tabs[0].cd_to_file(&path)?;
-                            self.index = 0;
-                            self.focus = Focus::LeftFile;
-                        }
-                        _ => (),
+                    if let Preview::Tree(tree_preview) = &self.tabs[1].preview {
+                        let index = row_to_window_index(row) + self.tabs[1].window.top;
+                        let path = &tree_preview.tree.path_from_index(index)?;
+                        self.tabs[0].cd_to_file(path)?;
+                        self.index = 0;
+                        self.focus = Focus::LeftFile;
                     }
                 } else {
                     self.current_tab_mut().select_row(row)?
@@ -1426,9 +1423,7 @@ impl Status {
 
 fn parse_keyname(keyname: &str) -> Option<String> {
     let mut split = keyname.split('(');
-    let Some(mutator) = split.next() else {
-        return None;
-    };
+    let mutator = split.next()?;
     let mut mutator = mutator.to_lowercase();
     let Some(param) = split.next() else {
         return Some(mutator);

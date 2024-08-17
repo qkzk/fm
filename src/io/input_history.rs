@@ -79,9 +79,7 @@ impl InputHistory {
     }
 
     pub fn current(&self) -> Option<&str> {
-        let Some(elem) = self.filtered.get(self.index) else {
-            return None;
-        };
+        let elem = self.filtered.get(self.index)?;
         Some(&elem.content)
     }
 
@@ -202,9 +200,7 @@ impl HistoryElement {
     }
 
     pub fn from_mode_input_string(mode: Edit, input_string: &str) -> Option<Self> {
-        let Some(kind) = HistoryKind::from_mode(mode) else {
-            return None;
-        };
+        let kind = HistoryKind::from_mode(mode)?;
         Some(Self {
             kind,
             content: input_string.to_owned(),
