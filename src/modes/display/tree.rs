@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use crate::common::filename_from_path;
 use crate::common::has_last_modification_happened_less_than;
@@ -672,6 +672,16 @@ impl Tree {
 
     pub fn selected_is_last(&self) -> bool {
         self.displayable_lines.selected_is_last()
+    }
+
+    pub fn path_from_index(&self, index: usize) -> Result<std::path::PathBuf> {
+        let displayable = self.displayable();
+        Ok(displayable
+            .lines()
+            .get(index)
+            .context("tree: no selected file")?
+            .path()
+            .to_owned())
     }
 }
 

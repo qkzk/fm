@@ -177,7 +177,7 @@ impl Tab {
             _ => Ok(self
                 .directory
                 .selected()
-                .context("no selected file")?
+                .context("current_file: no selected file")?
                 .to_owned()),
         }
     }
@@ -326,7 +326,7 @@ impl Tab {
     pub fn refresh_and_reselect_file(&mut self) -> Result<()> {
         let selected_path = self
             .current_file()
-            .context("no selected file")?
+            .context("refresh: no selected file")?
             .path
             .clone();
         self.refresh_view()?;
@@ -416,6 +416,14 @@ impl Tab {
         }
         Ok(())
     }
+
+    pub fn cd_to_file(&mut self, path: &path::Path) -> Result<()> {
+        let parent = path.parent().context("no parent")?;
+        self.cd(parent)?;
+        self.go_to_file(path);
+        Ok(())
+    }
+
     /// Set the pathcontent to a new path.
     /// Reset the window.
     /// Add the last path to the history of visited paths.
@@ -728,7 +736,7 @@ impl Tab {
         let path = displayable
             .lines()
             .get(index)
-            .context("no selected file")?
+            .context("tree: no selected file")?
             .path()
             .to_owned();
         self.tree.go(To::Path(&path));

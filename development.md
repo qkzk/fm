@@ -875,6 +875,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - preview torrent files with `transmission-show`
 - preview mark, shortcut & history content in second pane while navigating
 - zoxide integration. While typing a path in "Goto mode" (default keybind "alt+g"), the first proposition will come from your zoxide answers.
+- click on right pane while previewing a tree moves there.
 
 #### Changelog
 
@@ -949,6 +950,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] preview mark, shortcut & history content in second pane while navigating
 - [x] zoxide support for "alt+g" aka goto mode.
 - [x] FIX: `q` while second window should exit the menu
+- [x] while in "second pane for preview" and previewing a tree, a click on a previewed tree moves the left pane there.
 
 ## Current dev
 

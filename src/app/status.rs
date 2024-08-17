@@ -19,6 +19,7 @@ use crate::app::Tab;
 use crate::app::{ClickableLine, FlaggedFooter};
 use crate::common::{
     args_is_empty, filename_from_path, is_sudo_command, open_in_current_neovim, path_to_string,
+    row_to_window_index,
 };
 use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::Bindings;
@@ -279,6 +280,11 @@ impl Status {
         Ok(())
     }
 
+    /// True iff user has clicked on a preview in second pane.
+    fn has_clicked_on_second_pane_preview(&self) -> bool {
+        self.display_settings.dual() && self.display_settings.preview() && self.index == 1
+    }
+
     fn click_action_from_window(
         &mut self,
         window: &Window,
@@ -291,6 +297,17 @@ impl Status {
             Window::Files => {
                 if matches!(self.current_tab().display_mode, Display::Flagged) {
                     self.menu.flagged.select_row(row)
+                } else if self.has_clicked_on_second_pane_preview() {
+                    match &self.tabs[1].preview {
+                        Preview::Tree(tree_preview) => {
+                            let index = row_to_window_index(row) + self.tabs[1].window.top;
+                            let path = &tree_preview.tree.path_from_index(index)?;
+                            self.tabs[0].cd_to_file(&path)?;
+                            self.index = 0;
+                            self.focus = Focus::LeftFile;
+                        }
+                        _ => (),
+                    }
                 } else {
                     self.current_tab_mut().select_row(row)?
                 }
