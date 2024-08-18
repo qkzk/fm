@@ -1013,6 +1013,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] flag files from clipboard
 - [x] while in "second pane for preview" and previewing a tree, a click on a previewed tree moves the left pane there.
 - [x] allow hex colors like #16a085 in config
+- [x] moving left (up in filetree) should select provenance
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)

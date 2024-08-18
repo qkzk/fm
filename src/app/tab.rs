@@ -524,7 +524,7 @@ impl Tab {
             self.back()?;
             return Ok(());
         }
-        self.cd(parent)
+        self.cd_to_file(&path)
     }
 
     /// Select the file at index and move the window to this file.
