@@ -23,4 +23,8 @@ pub struct Args {
     /// Started inside neovim terminal emulator
     #[arg(long, default_value_t = false)]
     pub neovim: bool,
+
+    /// Dump the keybinds in terminal and exit
+    #[arg(long, default_value_t = false)]
+    pub keybinds: bool,
 }

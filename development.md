@@ -971,6 +971,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Copy flagged files to primary clipboard with F11. Flag existing files from clipboard with F12
 - hex colors can be used in config file.
 - click on right pane while previewing a tree moves there.
+- Display keybindings sorted by alphabetical order with `$ fm --keybinds`
 
 #### Changelog
 
@@ -1014,10 +1015,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] while in "second pane for preview" and previewing a tree, a click on a previewed tree moves the left pane there.
 - [x] allow hex colors like #16a085 in config
 - [x] moving left (up in filetree) should select provenance
+- [x] dump keybinds & refactor help message
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
+- [ ] reduce dependencies
 
 ## TODO
 

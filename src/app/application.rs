@@ -1,8 +1,10 @@
+use std::process::exit;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use anyhow::anyhow;
 use anyhow::Result;
+use clap::Parser;
 
 use crate::app::Displayer;
 use crate::app::Refresher;
@@ -15,6 +17,7 @@ use crate::event::EventDispatcher;
 use crate::event::EventReader;
 use crate::event::FmEvents;
 use crate::io::set_loggers;
+use crate::io::Args;
 use crate::io::Opener;
 use crate::log_info;
 
@@ -52,15 +55,22 @@ impl FM {
     ///
     /// May fail if the [`tuikit::prelude::term`] can't be started or crashes
     pub fn start() -> Result<Self> {
-        let (fm_sender, fm_receiver) = std::sync::mpsc::channel::<FmEvents>();
         set_loggers()?;
         let Ok(config) = load_config(CONFIG_PATH) else {
             exit_wrong_config()
         };
+
+        if Args::parse().keybinds {
+            println!("{binds}", binds = config.binds.to_str());
+            exit(0);
+        }
+
         log_info!(
             "start folder: {startfolder}",
             startfolder = &START_FOLDER.display()
         );
+
+        let (fm_sender, fm_receiver) = std::sync::mpsc::channel::<FmEvents>();
         let term = Arc::new(init_term()?);
         let fm_sender = Arc::new(fm_sender);
         let event_reader = EventReader::new(term.clone(), fm_receiver);

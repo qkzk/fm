@@ -210,4 +210,20 @@ impl Bindings {
         }
         self.custom = Some(custom);
     }
+
+    /// Format all keybindings in alphabetical order.
+    pub fn to_str(&self) -> String {
+        let mut binds = vec![];
+        for (key, action) in self.binds.iter() {
+            binds.push(format!(
+                "{key:?}:         {action} - {desc}\n",
+                desc = action.description()
+            ))
+        }
+        binds.sort();
+        let binds = binds.join("");
+
+        let keybinds_string = format!("fm keybindings \n\n{binds}");
+        keybinds_string
+    }
 }
