@@ -567,14 +567,6 @@ impl EventAction {
             return Ok(());
         }
         status.bulk_ask_filenames()?;
-        // if matches!(
-        //     status.current_tab().edit_mode,
-        //     Edit::Navigate(Navigate::BulkMenu)
-        // ) {
-        //     status.reset_edit_mode()?;
-        // } else {
-        //     status.set_edit_mode(status.index, Edit::Navigate(Navigate::BulkMenu))?;
-        // }
         Ok(())
     }
 
