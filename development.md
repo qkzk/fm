@@ -1016,6 +1016,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] allow hex colors like #16a085 in config
 - [x] moving left (up in filetree) should select provenance
 - [x] dump keybinds & refactor help message
+- [x] FIX: leaving preview in current tab doesn't select the last file
 - [ ] perfomance
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)

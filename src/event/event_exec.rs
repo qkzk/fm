@@ -91,8 +91,10 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Preview | Display::Flagged
         ) {
-            status.tabs[status.index].set_display_mode(Display::Directory);
-            status.tabs[status.index].refresh_view()?;
+            status
+                .current_tab_mut()
+                .set_display_mode(Display::Directory);
+            status.current_tab_mut().refresh_and_reselect_file()?;
         }
         status.menu.input.reset();
         status.menu.completion.reset();
