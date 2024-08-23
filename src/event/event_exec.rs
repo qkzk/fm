@@ -877,19 +877,7 @@ impl EventAction {
             Display::Tree => status.tabs[status.index]
                 .search
                 .tree(&mut status.tabs[status.index].tree),
-            Display::Directory => {
-                if let Some(path) = status.tabs[status.index].search.select_next() {
-                    status.tabs[status.index].go_to_file(path)
-                } else if let (paths, Some(index), Some(path)) = status.tabs[status.index]
-                    .search
-                    .directory_search_next(&status.tabs[status.index])
-                {
-                    status.tabs[status.index]
-                        .search
-                        .set_index_paths(index, paths);
-                    status.tabs[status.index].go_to_file(path);
-                }
-            }
+            Display::Directory => status.tabs[status.index].directory_search_next(),
             Display::Preview => {
                 return Ok(());
             }

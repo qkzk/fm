@@ -743,6 +743,15 @@ impl Tab {
         Ok(())
     }
 
+    pub fn directory_search_next(&mut self) {
+        if let Some(path) = self.search.select_next() {
+            self.go_to_file(path)
+        } else if let (paths, Some(index), Some(path)) = self.search.directory_search_next(self) {
+            self.search.set_index_paths(index, paths);
+            self.go_to_file(path);
+        }
+    }
+
     pub fn context_info(&self, opener: &Opener) -> Vec<String> {
         let Ok(selected) = self.current_file() else {
             return vec![];
