@@ -30,7 +30,7 @@ fs_extra = "1.2.0"
 
 [dependencies]
 anyhow = "1.0.28"
-chrono = "0.4.31"
+chrono = "0.4.38"
 clap = { version = "4.0.2", features = ["derive"] }
 content_inspector = "0.2.4"
 copypasta = "0.8.1"
@@ -41,6 +41,7 @@ lazy_static = "1.4.0"
 log = { version = "0.4.0", features = ["std"] }
 log4rs = { version = "1.2.0", features = ["rolling_file_appender", "compound_policy", "size_trigger", "fixed_window_roller"] }
 nvim-rs = { version = "0.3", features = ["use_tokio"] }
+opendal = { version = "0.49.2", features = ["services-gdrive"] }
 pathdiff = "0.2.1"
 pgs-files = "0.0.7"
 rand = "0.8.5"
