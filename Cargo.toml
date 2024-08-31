@@ -10,6 +10,7 @@ repository = "https://github.com/qkzk/fm"
 keywords = ["tui", "file-manager", "file", "manager", "tuikit"]
 categories = ["command-line-utilities", "filesystem", "os::unix-apis"]
 documentation = "https://docs.rs/fm-tui/latest/"
+default-run = "fm"
 
 [profile.release]
 # strip = true  # Automatically strip symbols from the binary.
@@ -19,6 +20,10 @@ lto = true # instructs the linker to optimize at the link stage.
 [[bin]]
 name = "fm"
 path = "src/main.rs"
+
+[[bin]]
+name = "google_drive_config_helper"
+path = "src/google_drive_config_helper/main.rs"
 
 [lib]
 name = "fm"
@@ -41,6 +46,7 @@ lazy_static = "1.4.0"
 log = { version = "0.4.0", features = ["std"] }
 log4rs = { version = "1.2.0", features = ["rolling_file_appender", "compound_policy", "size_trigger", "fixed_window_roller"] }
 nvim-rs = { version = "0.3", features = ["use_tokio"] }
+oauth2 = "4.4.2"
 opendal = { version = "0.49.2", features = ["services-gdrive"] }
 pathdiff = "0.2.1"
 pgs-files = "0.0.7"
