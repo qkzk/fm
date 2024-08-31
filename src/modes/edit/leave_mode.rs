@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
+use opendal::EntryMode;
 
 use crate::app::Status;
 use crate::common::path_to_string;
@@ -60,6 +61,10 @@ impl LeaveMode {
             Edit::Navigate(Navigate::Trash) => LeaveMode::trash(status),
             Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status),
             Edit::Navigate(Navigate::CliApplication) => LeaveMode::cli_info(status),
+            Edit::Navigate(Navigate::Cloud) => {
+                LeaveMode::cloud(status)?;
+                return Ok(());
+            }
             Edit::Navigate(Navigate::EncryptedDrive) => LeaveMode::go_to_mount(status),
             Edit::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMode::marks_update(status),
             Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMode::marks_jump(status),
@@ -140,6 +145,19 @@ impl LeaveMode {
         let (output, command) = status.menu.cli_applications.execute(status)?;
         log_info!("cli info: command {command}, output\n{output}");
         status.preview_command_output(output, command);
+        Ok(())
+    }
+
+    pub fn cloud(status: &mut Status) -> Result<()> {
+        //TODO what to do ????
+        // navigate into the selected file
+        if let Some(entry) = status.menu.cloud.selected() {
+            match entry.metadata().mode() {
+                EntryMode::Unknown => (),
+                EntryMode::FILE => status.menu.cloud_copy(),
+                EntryMode::DIR => status.menu.cloud_navigate()?,
+            }
+        }
         Ok(())
     }
 

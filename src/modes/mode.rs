@@ -215,6 +215,8 @@ pub enum Navigate {
     CliApplication,
     /// Context menu
     Context,
+    /// Cloud menu
+    Cloud,
 }
 
 impl fmt::Display for Navigate {
@@ -236,6 +238,7 @@ impl fmt::Display for Navigate {
             }
             Self::CliApplication => write!(f, "Display infos :"),
             Self::Context => write!(f, "Context"),
+            Self::Cloud => write!(f, "Cloud"),
         }
     }
 }

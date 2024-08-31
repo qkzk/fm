@@ -974,6 +974,7 @@ impl EventAction {
                     status.menu.input.cursor_left();
                 }
                 Edit::Nothing => Self::file_move_left(tab)?,
+                Edit::Navigate(Navigate::Cloud) => status.menu.cloud.move_to_parent()?,
                 _ => (),
             }
         }
@@ -1460,6 +1461,11 @@ impl EventAction {
             status.reset_edit_mode()?;
         }
         status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Remote))
+    }
+
+    pub fn cloud_drive(status: &mut Status) -> Result<()> {
+        status.refresh_cloud()?;
+        status.set_edit_mode(status.index, Edit::Navigate(Navigate::Cloud))
     }
 
     /// Click a file at `row`, `col`.

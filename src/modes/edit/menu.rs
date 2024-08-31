@@ -4,6 +4,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use anyhow::Result;
 
+use crate::app::Status;
 use crate::app::Tab;
 use crate::common::index_from_a;
 use crate::common::is_program_in_path;
@@ -17,6 +18,7 @@ use crate::event::FmEvents;
 use crate::io::drop_sudo_privileges;
 use crate::io::execute_and_capture_output_with_path;
 use crate::io::InputHistory;
+use crate::io::OpendalContainer;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::Bulk;
@@ -84,6 +86,8 @@ pub struct Menu {
     pub history: History,
     /// The user input history.
     pub input_history: InputHistory,
+    /// cloud
+    pub cloud: OpendalContainer,
 }
 
 impl Menu {
@@ -113,6 +117,7 @@ impl Menu {
             tui_applications: TuiApplications::new(TUIS_PATH),
             window: ContentWindow::new(0, 80),
             input_history: InputHistory::load(INPUT_HISTORY_PATH)?,
+            cloud: OpendalContainer::default(),
         })
     }
 
@@ -316,6 +321,13 @@ impl Menu {
         false
     }
 
+    pub fn cloud_navigate(&mut self) -> Result<()> {
+        let path = self.cloud.selected().context("no path")?.path().to_owned();
+        self.cloud.update_path(&path)
+    }
+
+    pub fn cloud_copy(&mut self) {}
+
     pub fn completion_reset(&mut self) {
         self.completion.reset();
     }
@@ -389,6 +401,7 @@ impl Menu {
             Navigate::Shortcut => func(&mut self.shortcut),
             Navigate::Trash => func(&mut self.trash),
             Navigate::TuiApplication => func(&mut self.tui_applications),
+            Navigate::Cloud => func(&mut self.cloud),
         }
     }
 
@@ -407,6 +420,7 @@ impl Menu {
             Navigate::Shortcut => func(&self.shortcut),
             Navigate::Trash => func(&self.trash),
             Navigate::TuiApplication => func(&self.tui_applications),
+            Navigate::Cloud => func(&self.cloud),
         }
     }
 }

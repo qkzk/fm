@@ -352,6 +352,7 @@ impl Status {
                     Navigate::Shortcut => self.menu.shortcut.set_index(index),
                     Navigate::Trash => self.menu.trash.set_index(index),
                     Navigate::TuiApplication => self.menu.tui_applications.set_index(index),
+                    Navigate::Cloud => self.menu.cloud.set_index(index),
                 },
                 Edit::InputCompleted(_) => self.menu.completion.set_index(index),
                 _ => (),
@@ -1418,6 +1419,13 @@ impl Status {
     pub fn input_filter(&mut self, c: char) -> Result<()> {
         self.menu.input_insert(c)?;
         self.set_filter()
+    }
+
+    pub fn refresh_cloud(&mut self) -> Result<()> {
+        if self.menu.cloud.is_empty() {
+            self.menu.cloud = crate::io::google_drive()?;
+        }
+        Ok(())
     }
 }
 

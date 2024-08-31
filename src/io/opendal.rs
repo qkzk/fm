@@ -1,9 +1,11 @@
 use anyhow::Result;
 use opendal::services;
 use opendal::Entry;
+use opendal::EntryMode;
 use opendal::Operator;
 use serde::Deserialize;
 
+use crate::common::path_to_string;
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::log_info;
@@ -40,66 +42,129 @@ async fn create_google_drive_operator(google_drive_config: &GoogleDriveConfig) -
 }
 
 #[tokio::main]
-pub async fn google_drive() -> Result<()> {
+pub async fn google_drive() -> Result<OpendalContainer> {
     let google_drive_config = read_google_drive_config("google_drive_token.yaml").await?;
     let op = create_google_drive_operator(&google_drive_config).await?;
 
     // List all files and directories at the root level.
     let entries = op.list(&google_drive_config.root_folder).await?;
 
-    log_info!(
-        "Google drive: {name} - {folder}",
-        name = google_drive_config.drive_name,
-        folder = google_drive_config.root_folder,
-    );
-    // Iterate over the list of files/directories.
-
-    let entries_container = EntriesContainer::new(
+    // Create the container
+    let opendal_container = OpendalContainer::new(
+        op,
         OpendalKind::GoogleDrive,
         &google_drive_config.drive_name,
+        &google_drive_config.root_folder,
         entries,
     );
 
-    for entry in entries_container.content.iter() {
+    for entry in opendal_container.content.iter() {
         log_info!("Found: {}", entry.path());
         log_info!("metadata {:?}", entry.metadata());
     }
 
-    Ok(())
+    Ok(opendal_container)
 }
 
 pub enum OpendalKind {
+    Empty,
     GoogleDrive,
 }
 
 impl OpendalKind {
     pub fn repr(&self) -> &'static str {
         match self {
-            &Self::GoogleDrive => "google_drive",
+            Self::Empty => "empty",
+            Self::GoogleDrive => "Google Drive",
         }
     }
 }
 
-pub struct EntriesContainer {
+pub fn entry_mode_fmt(entry: &Entry) -> &'static str {
+    match entry.metadata().mode() {
+        EntryMode::Unknown => "? ",
+        EntryMode::DIR => "D ",
+        EntryMode::FILE => "F ",
+    }
+}
+
+pub struct OpendalContainer {
+    pub op: Option<Operator>,
     pub kind: OpendalKind,
+    desc: String,
     pub path: std::path::PathBuf,
+    pub root: std::path::PathBuf,
     pub index: usize,
     pub content: Vec<Entry>,
 }
 
-impl EntriesContainer {
-    pub fn new(kind: OpendalKind, drive_name: &str, content: Vec<Entry>) -> Self {
+impl Default for OpendalContainer {
+    fn default() -> Self {
         Self {
-            path: std::path::PathBuf::from(&format!(
-                "{kind_format}/{drive_name}/",
-                kind_format = kind.repr()
-            )),
+            op: None,
+            kind: OpendalKind::Empty,
+            desc: "empty".to_owned(),
+            path: std::path::PathBuf::from(""),
+            root: std::path::PathBuf::from(""),
+            index: 0,
+            content: vec![],
+        }
+    }
+}
+
+impl OpendalContainer {
+    pub fn new(
+        op: Operator,
+        kind: OpendalKind,
+        drive_name: &str,
+        root_path: &str,
+        content: Vec<Entry>,
+    ) -> Self {
+        Self {
+            op: Some(op),
+            desc: format!("{kind_format}/{drive_name}", kind_format = kind.repr()),
+            path: std::path::PathBuf::from(root_path),
+            root: std::path::PathBuf::from(root_path),
             kind,
             index: 0,
             content,
         }
     }
+
+    #[tokio::main]
+    pub async fn update_path(&mut self, path: &str) -> Result<()> {
+        if let Some(op) = &self.op {
+            self.content = op.list(path).await?;
+            self.path = std::path::PathBuf::from(path);
+            self.index = 0;
+        };
+        Ok(())
+    }
+
+    #[tokio::main]
+    pub async fn move_to_parent(&mut self) -> Result<()> {
+        if let Some(op) = &self.op {
+            if self.path == self.root {
+                return Ok(());
+            };
+            if let Some(parent) = self.path.to_owned().parent() {
+                self.path = parent.to_path_buf();
+                self.content = op.list(&path_to_string(&parent)).await?;
+                self.index = 0;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn desc(&self) -> String {
+        format!(
+            "{d}{sep}{p}",
+            d = self.desc,
+            sep = if self.path == self.root { "" } else { "/" },
+            p = self.path.display()
+        )
+    }
 }
 
-impl_selectable!(EntriesContainer);
-impl_content!(Entry, EntriesContainer);
+impl_selectable!(OpendalContainer);
+impl_content!(Entry, OpendalContainer);

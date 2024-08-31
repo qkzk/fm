@@ -40,6 +40,8 @@ use crate::modes::Window;
 use crate::modes::{fileinfo_attr, MarkAction};
 use crate::modes::{parse_input_mode, SecondLine};
 
+use super::entry_mode_fmt;
+
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
     ($t:ident) => {
@@ -845,6 +847,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::TuiApplication => self.draw_shell_menu(canvas),
             Navigate::Shortcut => self.draw_shortcut(canvas, &self.status.menu.shortcut),
             Navigate::Trash => self.draw_trash(canvas),
+            Navigate::Cloud => self.draw_cloud(canvas),
         }
     }
 
@@ -901,6 +904,41 @@ impl<'a> WinSecondary<'a> {
         } else {
             self.draw_trash_content(canvas, trash)
         };
+        Ok(())
+    }
+
+    fn draw_cloud(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let cloud = &self.status.menu.cloud;
+        let _ = canvas.print_with_attr(
+            2,
+            2,
+            &cloud.desc(),
+            Attr {
+                fg: tuikit::attr::Color::LIGHT_MAGENTA,
+                ..Attr::default()
+            },
+        );
+        let content = cloud.content();
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, entry, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
+            let attr = cloud.attr(row, &attr);
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP + 2 - top,
+                4,
+                entry_mode_fmt(entry),
+                attr,
+            )?;
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP + 2 - top,
+                6,
+                entry.path(),
+                attr,
+            )?;
+        }
         Ok(())
     }
 
