@@ -1444,7 +1444,7 @@ impl Status {
     }
 
     #[tokio::main]
-    pub async fn cloud_copy(&mut self) -> Result<()> {
+    pub async fn cloud_download_file(&mut self) -> Result<()> {
         let Ok((cloud, op)) = self.get_cloud_and_op() else {
             return Ok(());
         };
@@ -1456,11 +1456,13 @@ impl Status {
         };
         let curr_path = self.current_tab_path_str();
         let local_file_path = &format!("{curr_path}/{filename}");
+        // TODO handle existing file properly. Use automatic renamer.
         if std::path::Path::new(local_file_path).exists() {
             log_info!("Local file {local_file_path} already exists. Can't download here");
             log_line!("Local file {local_file_path} already exists. Choose another path or rename the existing file first.");
             return Ok(());
         }
+        // TODO handle big files properly
         let buf = op.read(selected.path()).await?;
         let mut file = File::create(local_file_path).await?;
         file.write_all(&buf.to_bytes()).await?;

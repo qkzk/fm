@@ -149,12 +149,10 @@ impl LeaveMode {
     }
 
     pub fn cloud(status: &mut Status) -> Result<()> {
-        //TODO what to do ????
-        // navigate into the selected file
         if let Some(entry) = status.menu.cloud.selected() {
             match entry.metadata().mode() {
                 EntryMode::Unknown => (),
-                EntryMode::FILE => status.cloud_copy()?,
+                EntryMode::FILE => status.cloud_download_file()?,
                 EntryMode::DIR => status.menu.cloud_navigate()?,
             }
         }

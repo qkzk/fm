@@ -1018,6 +1018,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] dump keybinds & refactor help message
 - [x] FIX: leaving preview in current tab doesn't select the last file
 - [ ] perfomance
+- [ ] Apache OpenDAL: [Official Documentation](https://opendal.apache.org/) - [crates.io](https://crates.io/crates/opendal)
+  - [ ] refresh token creation
+  - [ ] tutorial for users
+  - [ ] token & secret handling
+  - [ ] simplest configuration
+  - [ ] google drive listing
+  - [ ] listing
+  - [ ] directory navigation
+  - [ ] file downloading
+  - [ ] directory creation
+  - [ ] file uploading
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
@@ -1025,7 +1036,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
-- [ ] Apache OpenDAL: [Official Documentation](https://opendal.apache.org/) - [crates.io](https://crates.io/crates/opendal)
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone

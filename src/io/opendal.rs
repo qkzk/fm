@@ -14,7 +14,6 @@ use crate::log_info;
 struct GoogleDriveConfig {
     drive_name: String,
     root_folder: String,
-    // access_token: String,
     refresh_token: String,
     client_id: String,
     client_secret: String,
