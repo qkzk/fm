@@ -326,8 +326,6 @@ impl Menu {
         self.cloud.update_path(&path)
     }
 
-    pub fn cloud_copy(&mut self) {}
-
     pub fn completion_reset(&mut self) {
         self.completion.reset();
     }

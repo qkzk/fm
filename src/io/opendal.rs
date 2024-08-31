@@ -43,7 +43,9 @@ async fn create_google_drive_operator(google_drive_config: &GoogleDriveConfig) -
 
 #[tokio::main]
 pub async fn google_drive() -> Result<OpendalContainer> {
-    let google_drive_config = read_google_drive_config("google_drive_token.yaml").await?;
+    let google_drive_config =
+        read_google_drive_config("/home/quentin/gclem/dev/rust/fm/google_drive_token.yaml").await?;
+    log_info!("found google_drive_config");
     let op = create_google_drive_operator(&google_drive_config).await?;
 
     // List all files and directories at the root level.

@@ -5,8 +5,11 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use opendal::Operator;
 use skim::SkimItem;
 use sysinfo::{Disk, RefreshKind, System, SystemExt};
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
@@ -24,8 +27,6 @@ use crate::common::{
 use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::Bindings;
 use crate::event::FmEvents;
-use crate::io::Internal;
-use crate::io::Opener;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{execute_and_capture_output_with_path, Args};
 use crate::io::{
@@ -33,6 +34,8 @@ use crate::io::{
     reset_sudo_faillock,
 };
 use crate::io::{Extension, Kind};
+use crate::io::{Internal, OpendalKind};
+use crate::io::{OpendalContainer, Opener};
 use crate::modes::IsoDevice;
 use crate::modes::Menu;
 use crate::modes::MountCommands;
@@ -1425,6 +1428,47 @@ impl Status {
         if self.menu.cloud.is_empty() {
             self.menu.cloud = crate::io::google_drive()?;
         }
+        Ok(())
+    }
+
+    fn get_cloud_and_op(&self) -> Result<(&OpendalContainer, &Operator)> {
+        let cloud = &self.menu.cloud;
+        if matches!(cloud.kind, OpendalKind::Empty) {
+            Err(anyhow!("No cloud container is set"))
+        } else {
+            let Some(op) = &cloud.op else {
+                return Err(anyhow!("Cloud container has no operator"));
+            };
+            Ok((cloud, op))
+        }
+    }
+
+    #[tokio::main]
+    pub async fn cloud_copy(&mut self) -> Result<()> {
+        let Ok((cloud, op)) = self.get_cloud_and_op() else {
+            return Ok(());
+        };
+        let Some(selected) = cloud.selected() else {
+            return Ok(());
+        };
+        let Some(filename) = selected.path().split('/').last() else {
+            return Ok(());
+        };
+        let curr_path = self.current_tab_path_str();
+        let local_file_path = &format!("{curr_path}/{filename}");
+        if std::path::Path::new(local_file_path).exists() {
+            log_info!("Local file {local_file_path} already exists. Can't download here");
+            log_line!("Local file {local_file_path} already exists. Choose another path or rename the existing file first.");
+            return Ok(());
+        }
+        let buf = op.read(selected.path()).await?;
+        let mut file = File::create(local_file_path).await?;
+        file.write_all(&buf.to_bytes()).await?;
+        log_info!(
+            "Downloaded {desc}/{filename} to local file {local_file_path}",
+            desc = cloud.desc(),
+        );
+
         Ok(())
     }
 }

@@ -154,7 +154,7 @@ impl LeaveMode {
         if let Some(entry) = status.menu.cloud.selected() {
             match entry.metadata().mode() {
                 EntryMode::Unknown => (),
-                EntryMode::FILE => status.menu.cloud_copy(),
+                EntryMode::FILE => status.cloud_copy()?,
                 EntryMode::DIR => status.menu.cloud_navigate()?,
             }
         }
