@@ -33,7 +33,6 @@ async fn create_google_drive_operator(google_drive_config: &GoogleDriveConfig) -
         .refresh_token(&google_drive_config.refresh_token)
         .client_id(&google_drive_config.client_id)
         .client_secret(&google_drive_config.client_secret)
-        // .access_token(&google_drive_config.access_token)
         .root(&google_drive_config.root_folder);
 
     let op = Operator::new(builder)?.finish();
