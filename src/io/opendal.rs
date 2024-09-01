@@ -174,6 +174,14 @@ impl OpendalContainer {
         Ok(())
     }
 
+    pub async fn refresh_current(&mut self) -> Result<()> {
+        let Some(op) = &self.op else {
+            return Ok(());
+        };
+        self.content = op.list(&path_to_string(&self.path)).await?;
+        Ok(())
+    }
+
     #[tokio::main]
     pub async fn move_to_parent(&mut self) -> Result<()> {
         if let Some(op) = &self.op {

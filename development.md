@@ -1029,7 +1029,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] directory navigation
   - [x] file downloading
   - [x] directory creation
-  - [ ] file uploading
+  - [x] file uploading
   - [x] file deletion
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)

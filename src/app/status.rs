@@ -36,7 +36,6 @@ use crate::io::{
 use crate::io::{Extension, Kind};
 use crate::io::{Internal, OpendalKind};
 use crate::io::{OpendalContainer, Opener};
-use crate::modes::Menu;
 use crate::modes::MountCommands;
 use crate::modes::MountRepr;
 use crate::modes::NeedConfirmation;
@@ -56,6 +55,7 @@ use crate::modes::{BlockDeviceAction, Navigate};
 use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
 use crate::modes::{Display, Go};
+use crate::modes::{FileKind, Menu};
 use crate::modes::{FilterKind, InputSimple};
 use crate::modes::{IsoDevice, PickerCaller};
 use crate::{log_info, log_line};
@@ -1478,6 +1478,27 @@ impl Status {
     }
 
     #[tokio::main]
+    pub async fn cloud_upload_selected(&mut self) -> Result<()> {
+        let Some(op) = &self.menu.cloud.op else {
+            return Ok(());
+        };
+        let Some(local_file) = self.tabs[self.index].directory.selected() else {
+            return Ok(());
+        };
+        if !matches!(local_file.file_kind, FileKind::NormalFile) {
+            return Ok(());
+        }
+        let bytes = tokio::fs::read(&local_file.path).await?;
+        let filename = local_file.filename.as_ref();
+        let mut dest_path = self.menu.cloud.path.clone();
+        dest_path.push(filename);
+        let dest_path_str = path_to_string(&dest_path);
+        op.write(&dest_path_str, bytes).await?;
+        self.menu.cloud.refresh_current().await?;
+        Ok(())
+    }
+
+    #[tokio::main]
     pub async fn cloud_newdir(&mut self, dirname: String) -> Result<()> {
         let current_path = &self.menu.cloud.path;
         let Some(op) = &self.menu.cloud.op else {
@@ -1489,8 +1510,7 @@ impl Status {
             fullpath.push('/');
         }
         op.create_dir(&fullpath).await?;
-        self.menu.cloud.content = op.list(&path_to_string(&current_path)).await?;
-
+        self.menu.cloud.refresh_current().await?;
         Ok(())
     }
 
