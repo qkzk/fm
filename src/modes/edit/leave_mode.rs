@@ -26,6 +26,7 @@ use crate::modes::MarkAction;
 use crate::modes::Navigate;
 use crate::modes::NodeCreation;
 use crate::modes::PasswordUsage;
+use crate::modes::PickerCaller;
 use crate::modes::Search;
 use crate::modes::SortKind;
 
@@ -447,17 +448,16 @@ impl LeaveMode {
         let Some(caller) = &status.menu.picker.caller else {
             return Ok(());
         };
-        match caller.as_str() {
-            "cloud_drive" => {
+        match caller {
+            PickerCaller::Cloud => {
                 let Some(selected) = status.menu.picker.selected() else {
                     return Ok(());
                 };
                 // TODO! pick correct file
-                status.menu.cloud = crate::io::google_drive(crate::io::TOKEN_FILE)?;
+                status.menu.cloud = crate::io::google_drive(selected)?;
                 status.set_edit_mode(status.index, Edit::Navigate(Navigate::Cloud))?;
             }
-            "other" => (),
-            _ => (),
+            PickerCaller::Unknown => (),
         }
         Ok(())
     }

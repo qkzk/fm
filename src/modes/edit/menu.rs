@@ -4,7 +4,6 @@ use std::sync::Arc;
 use anyhow::Context;
 use anyhow::Result;
 
-use crate::app::Status;
 use crate::app::Tab;
 use crate::common::index_from_a;
 use crate::common::is_program_in_path;
@@ -41,13 +40,12 @@ use crate::modes::Marks;
 use crate::modes::MountCommands;
 use crate::modes::Navigate;
 use crate::modes::PasswordHolder;
+use crate::modes::Picker;
 use crate::modes::RemovableDevices;
 use crate::modes::Selectable;
 use crate::modes::Shortcut;
 use crate::modes::Trash;
 use crate::modes::TuiApplications;
-
-use super::Picker;
 
 pub struct Menu {
     /// Window for scrollable menus

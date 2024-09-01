@@ -737,6 +737,10 @@ struct WinSecondary<'a> {
 
 impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+        self.draw_cursor(canvas)?;
+        WinSecondaryFirstLine::new(self.status).draw(canvas)?;
+        self.draw_second_line(canvas)?;
+        self.draw_binds_per_mode(canvas, self.tab.edit_mode)?;
         match self.tab.edit_mode {
             Edit::Navigate(mode) => self.draw_navigate(mode, canvas),
             Edit::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
@@ -744,10 +748,6 @@ impl<'a> Draw for WinSecondary<'a> {
             Edit::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
             _ => return Ok(()),
         }?;
-        self.draw_cursor(canvas)?;
-        WinSecondaryFirstLine::new(self.status).draw(canvas)?;
-        self.draw_second_line(canvas)?;
-        self.draw_binds_per_mode(canvas, self.tab.edit_mode)?;
         Ok(())
     }
 }
@@ -965,9 +965,14 @@ impl<'a> WinSecondary<'a> {
     fn draw_picker(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.picker;
         let content = selectable.content();
+        if let Some(desc) = &self.status.menu.picker.desc {
+            let _ =
+                canvas.print_with_attr(1, 2, &" ".repeat(80), color_to_attr(MENU_COLORS.second));
+            let _ = canvas.print_with_attr(1, 2, desc, color_to_attr(MENU_COLORS.second));
+        }
         for (row, pickable, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, &attr);
-            Self::draw_content_line(canvas, row + 1, &pickable, attr)?;
+            Self::draw_content_line(canvas, row + 1, pickable, attr)?;
         }
         Ok(())
     }

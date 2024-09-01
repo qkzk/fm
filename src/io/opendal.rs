@@ -10,7 +10,7 @@ use crate::impl_content;
 use crate::impl_selectable;
 use crate::log_info;
 
-pub const TOKEN_FILE: &str = "/home/quentin/gclem/dev/rust/fm/google_drive_token.yaml";
+pub const TOKEN_BASE_PATH: &str = "/home/quentin/gclem/dev/rust/fm/config_files/fm/";
 
 #[derive(Deserialize, Debug)]
 struct GoogleDriveConfig {
@@ -21,9 +21,14 @@ struct GoogleDriveConfig {
     client_secret: String,
 }
 
+fn build_token_filename(config_name: &str) -> String {
+    format!("{TOKEN_BASE_PATH}token_{config_name}.yaml")
+}
+
 /// Read the token & root folder from the token file.
-async fn read_google_drive_config(config_file: &str) -> Result<GoogleDriveConfig> {
-    let token_data = tokio::fs::read_to_string(config_file).await?;
+async fn read_google_drive_config(config_name: &str) -> Result<GoogleDriveConfig> {
+    let config_filename = build_token_filename(config_name);
+    let token_data = tokio::fs::read_to_string(config_filename).await?;
     let google_drive_token: GoogleDriveConfig = serde_yaml::from_str(&token_data)?;
     log_info!("config {google_drive_token:?}");
     Ok(google_drive_token)

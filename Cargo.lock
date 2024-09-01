@@ -945,6 +945,7 @@ dependencies = [
  "tuikit",
  "ueberzug",
  "unicode-segmentation",
+ "url",
  "url-escape",
  "zip",
 ]

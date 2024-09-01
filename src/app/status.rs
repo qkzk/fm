@@ -36,7 +36,6 @@ use crate::io::{
 use crate::io::{Extension, Kind};
 use crate::io::{Internal, OpendalKind};
 use crate::io::{OpendalContainer, Opener};
-use crate::modes::IsoDevice;
 use crate::modes::Menu;
 use crate::modes::MountCommands;
 use crate::modes::MountRepr;
@@ -58,6 +57,7 @@ use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
 use crate::modes::{Display, Go};
 use crate::modes::{FilterKind, InputSimple};
+use crate::modes::{IsoDevice, PickerCaller};
 use crate::{log_info, log_line};
 
 pub enum Window {
@@ -1425,20 +1425,28 @@ impl Status {
         self.set_filter()
     }
 
-    pub fn refresh_cloud(&mut self) -> Result<()> {
-        if !self.menu.cloud.is_set() {
-            self.menu.cloud = crate::io::google_drive(crate::io::TOKEN_FILE)?;
-        }
-        Ok(())
+    fn get_cloud_token_names(&self) -> Result<Vec<String>> {
+        Ok(std::fs::read_dir(crate::io::TOKEN_BASE_PATH)?
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().is_file())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .filter(|filename| filename.starts_with("token_"))
+            .filter(|filename| filename.ends_with(".yaml"))
+            .map(|filename| filename.replace("token_", ""))
+            .map(|filename| filename.replace(".yaml", ""))
+            .collect())
     }
 
     pub fn cloud_open(&mut self) -> Result<()> {
         if self.menu.cloud.is_set() {
             self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
         } else {
-            self.menu.picker.clear();
-            self.menu.picker.caller = Some("cloud_drive".to_owned());
-            self.menu.picker.content.push("leclemenceau".to_owned());
+            let content = self.get_cloud_token_names()?;
+            self.menu.picker.set(
+                Some(PickerCaller::Cloud),
+                Some("Pick a cloud provider".to_owned()),
+                content,
+            );
             self.set_edit_mode(self.index, Edit::Navigate(Navigate::Picker))
         }
     }
