@@ -1022,13 +1022,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] refresh token creation
   - [x] write tokens in config folder for user
   - [x] keybindings in menu
-  - [ ] tutorial for users
+  - [ ] readme for users
   - [x] token handling
   - [x] simplest configuration
   - [x] google drive listing
   - [x] listing
   - [x] directory navigation
-  - [x] file downloading
+  - [x] file downloading :
+    - [x] directory mode
+    - [ ] tree mode
   - [x] directory creation
   - [x] file uploading
   - [x] file deletion
