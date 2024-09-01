@@ -1464,15 +1464,7 @@ impl EventAction {
     }
 
     pub fn cloud_drive(status: &mut Status) -> Result<()> {
-        if status.menu.cloud.is_set() {
-            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Cloud))
-        } else {
-            status.menu.picker.clear();
-            status.menu.picker.caller = Some("cloud_drive".to_owned());
-            status.menu.picker.content.push("leclemenceau".to_owned());
-            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Picker))
-        }
-        // status.refresh_cloud()?;
+        status.cloud_open()
     }
 
     /// Click a file at `row`, `col`.

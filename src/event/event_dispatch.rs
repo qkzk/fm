@@ -127,7 +127,7 @@ impl EventDispatcher {
             Navigate::Context if status.menu.context_from_char(c) => {
                 LeaveMode::leave_edit_mode(status, &self.binds)
             }
-
+            Navigate::Cloud if c == 'l' => status.cloud_disconnect(),
             _ => {
                 status.reset_edit_mode()?;
                 status.current_tab_mut().reset_display_mode_and_view()

@@ -1432,6 +1432,22 @@ impl Status {
         Ok(())
     }
 
+    pub fn cloud_open(&mut self) -> Result<()> {
+        if self.menu.cloud.is_set() {
+            self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
+        } else {
+            self.menu.picker.clear();
+            self.menu.picker.caller = Some("cloud_drive".to_owned());
+            self.menu.picker.content.push("leclemenceau".to_owned());
+            self.set_edit_mode(self.index, Edit::Navigate(Navigate::Picker))
+        }
+    }
+
+    pub fn cloud_disconnect(&mut self) -> Result<()> {
+        self.menu.cloud.disconnect();
+        self.cloud_open()
+    }
+
     fn get_cloud_and_op(&self) -> Result<(&OpendalContainer, &Operator)> {
         let cloud = &self.menu.cloud;
         if matches!(cloud.kind, OpendalKind::Empty) {
