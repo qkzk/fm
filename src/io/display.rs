@@ -848,6 +848,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::Shortcut => self.draw_shortcut(canvas, &self.status.menu.shortcut),
             Navigate::Trash => self.draw_trash(canvas),
             Navigate::Cloud => self.draw_cloud(canvas),
+            Navigate::Picker => self.draw_picker(canvas),
         }
     }
 
@@ -959,6 +960,16 @@ impl<'a> WinSecondary<'a> {
             let attr = trash.attr(row, &attr);
             let _ = Self::draw_content_line(canvas, row + 1 - top, &trashinfo.to_string(), attr);
         }
+    }
+
+    fn draw_picker(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let selectable = &self.status.menu.picker;
+        let content = selectable.content();
+        for (row, pickable, attr) in enumerated_colored_iter!(content) {
+            let attr = selectable.attr(row, &attr);
+            Self::draw_content_line(canvas, row + 1, &pickable, attr)?;
+        }
+        Ok(())
     }
 
     fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {

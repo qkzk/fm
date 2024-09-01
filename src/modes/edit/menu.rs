@@ -47,6 +47,8 @@ use crate::modes::Shortcut;
 use crate::modes::Trash;
 use crate::modes::TuiApplications;
 
+use super::Picker;
+
 pub struct Menu {
     /// Window for scrollable menus
     pub window: ContentWindow,
@@ -88,6 +90,8 @@ pub struct Menu {
     pub input_history: InputHistory,
     /// cloud
     pub cloud: OpendalContainer,
+    /// basic picker
+    pub picker: Picker,
 }
 
 impl Menu {
@@ -118,6 +122,7 @@ impl Menu {
             window: ContentWindow::new(0, 80),
             input_history: InputHistory::load(INPUT_HISTORY_PATH)?,
             cloud: OpendalContainer::default(),
+            picker: Picker::default(),
         })
     }
 
@@ -400,6 +405,7 @@ impl Menu {
             Navigate::Trash => func(&mut self.trash),
             Navigate::TuiApplication => func(&mut self.tui_applications),
             Navigate::Cloud => func(&mut self.cloud),
+            Navigate::Picker => func(&mut self.picker),
         }
     }
 
@@ -419,6 +425,7 @@ impl Menu {
             Navigate::Trash => func(&self.trash),
             Navigate::TuiApplication => func(&self.tui_applications),
             Navigate::Cloud => func(&self.cloud),
+            Navigate::Picker => func(&self.picker),
         }
     }
 }

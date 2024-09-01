@@ -71,6 +71,7 @@ impl LeaveMode {
             Edit::Navigate(Navigate::Compress) => LeaveMode::compress(status),
             Edit::Navigate(Navigate::Context) => LeaveMode::context(status, binds),
             Edit::Navigate(Navigate::RemovableDevices) => LeaveMode::go_to_mount(status),
+            Edit::Navigate(Navigate::Picker) => LeaveMode::picker(status),
             Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
             Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status, true),
             Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
@@ -437,5 +438,10 @@ impl LeaveMode {
             Edit::Navigate(Navigate::RemovableDevices) => status.go_to_removable(),
             _ => Ok(()),
         }
+    }
+
+    pub fn picker(status: &mut Status) -> Result<()> {
+        todo!();
+        Ok(())
     }
 }

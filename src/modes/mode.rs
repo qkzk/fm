@@ -217,6 +217,8 @@ pub enum Navigate {
     Context,
     /// Cloud menu
     Cloud,
+    /// Picker menu
+    Picker,
 }
 
 impl fmt::Display for Navigate {
@@ -239,6 +241,7 @@ impl fmt::Display for Navigate {
             Self::CliApplication => write!(f, "Display infos :"),
             Self::Context => write!(f, "Context"),
             Self::Cloud => write!(f, "Cloud"),
+            Self::Picker => write!(f, "Picker"),
         }
     }
 }

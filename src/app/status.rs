@@ -356,6 +356,7 @@ impl Status {
                     Navigate::Trash => self.menu.trash.set_index(index),
                     Navigate::TuiApplication => self.menu.tui_applications.set_index(index),
                     Navigate::Cloud => self.menu.cloud.set_index(index),
+                    Navigate::Picker => self.menu.picker.set_index(index),
                 },
                 Edit::InputCompleted(_) => self.menu.completion.set_index(index),
                 _ => (),

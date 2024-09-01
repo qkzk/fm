@@ -31,6 +31,7 @@ impl SecondLine for Navigate {
             Self::CliApplication => "Pick a command",
             Self::Cloud => "Pick a file",
             Self::RemovableDevices => "",
+            Self::Picker => "Pick an item",
         }
     }
 }
