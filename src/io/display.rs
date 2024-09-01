@@ -915,7 +915,7 @@ impl<'a> WinSecondary<'a> {
             2,
             &cloud.desc(),
             Attr {
-                fg: tuikit::attr::Color::LIGHT_MAGENTA,
+                fg: tuikit::attr::Color::LIGHT_BLUE,
                 ..Attr::default()
             },
         );

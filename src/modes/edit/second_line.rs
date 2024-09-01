@@ -29,7 +29,7 @@ impl SecondLine for Navigate {
             Self::EncryptedDrive => "m: mount   --   u: unmount   --   g: go to mount point",
             Self::TuiApplication => "Pick a command",
             Self::CliApplication => "Pick a command",
-            Self::Cloud => "Pick a file",
+            Self::Cloud => "Remote navigation",
             Self::RemovableDevices => "",
             Self::Picker => "Pick an item",
         }

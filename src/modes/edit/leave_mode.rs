@@ -455,16 +455,8 @@ impl LeaveMode {
             return Ok(());
         };
         match caller {
-            PickerCaller::Cloud => {
-                let Some(selected) = status.menu.picker.selected() else {
-                    return Ok(());
-                };
-                // TODO! pick correct file
-                status.menu.cloud = crate::io::google_drive(selected)?;
-                status.set_edit_mode(status.index, Edit::Navigate(Navigate::Cloud))?;
-            }
-            PickerCaller::Unknown => (),
+            PickerCaller::Cloud => status.cloud_load_config(),
+            PickerCaller::Unknown => Ok(()),
         }
-        Ok(())
     }
 }

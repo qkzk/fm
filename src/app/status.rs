@@ -21,18 +21,18 @@ use crate::app::Session;
 use crate::app::Tab;
 use crate::app::{ClickableLine, FlaggedFooter};
 use crate::common::{
-    args_is_empty, filename_from_path, is_sudo_command, open_in_current_neovim, path_to_string,
-    row_to_window_index,
+    args_is_empty, filename_from_path, is_sudo_command, open_in_current_neovim,
+    path_to_config_folder, path_to_string, row_to_window_index,
 };
 use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::Bindings;
 use crate::event::FmEvents;
-use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{execute_and_capture_output_with_path, Args};
 use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     reset_sudo_faillock,
 };
+use crate::io::{google_drive, MIN_WIDTH_FOR_DUAL_PANE};
 use crate::io::{Extension, Kind};
 use crate::io::{Internal, OpendalKind};
 use crate::io::{OpendalContainer, Opener};
@@ -1426,7 +1426,8 @@ impl Status {
     }
 
     fn get_cloud_token_names(&self) -> Result<Vec<String>> {
-        Ok(std::fs::read_dir(crate::io::TOKEN_BASE_PATH)?
+        let config_path = path_to_config_folder()?;
+        Ok(std::fs::read_dir(&config_path)?
             .filter_map(|e| e.ok())
             .filter(|e| e.path().is_file())
             .map(|e| e.file_name().to_string_lossy().to_string())
@@ -1435,6 +1436,18 @@ impl Status {
             .map(|filename| filename.replace("token_", ""))
             .map(|filename| filename.replace(".yaml", ""))
             .collect())
+    }
+
+    pub fn cloud_load_config(&mut self) -> Result<()> {
+        let Some(picked) = self.menu.picker.selected() else {
+            return Ok(());
+        };
+        let Ok(cloud) = google_drive(picked) else {
+            log_line!("Invalid config file {picked}");
+            return Ok(());
+        };
+        self.menu.cloud = cloud;
+        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
     }
 
     pub fn cloud_open(&mut self) -> Result<()> {

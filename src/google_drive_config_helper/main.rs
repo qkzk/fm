@@ -7,6 +7,8 @@ use oauth2::{
 };
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 
+use fm::common::path_to_config_folder;
+
 async fn read_input() -> String {
     let mut input = String::new();
     let mut stdin = BufReader::new(io::stdin());
@@ -78,6 +80,12 @@ fn extract_refresh_token(
         .to_owned())
 }
 
+fn build_token_path(token_filename: &str) -> Result<std::path::PathBuf> {
+    let mut token_path = path_to_config_folder()?;
+    token_path.push(token_filename);
+    Ok(token_path)
+}
+
 /// Creates a google drive token file for fm.
 /// It will allow fm to list and manipulate the files on google drive.
 #[tokio::main]
@@ -103,18 +111,25 @@ async fn main() -> Result<()> {
     let refresh_token = extract_refresh_token(token_result)?;
     println!("Refresh token: {refresh_token}");
 
-    // 7. Write the token file
+    // 7. Create the token filepath
     let token_filename = format!("token_{drive_name}.yaml");
-    let file_content = GoogleDriveConfig {
+    let token_path = build_token_path(&token_filename)?;
+
+    // 8. Serialize the token
+    let file_content = GoogleDriveConfig::serialized(
         drive_name,
         root_folder,
         client_id,
         client_secret,
         refresh_token,
-    }
-    .serialize();
-    tokio::fs::write(&token_filename, file_content.as_bytes()).await?;
-    println!("Token saved to {token_filename}");
+    );
+
+    // 8. Write the token file
+    tokio::fs::write(&token_path, file_content.as_bytes()).await?;
+    println!(
+        "Token saved to {token_path}",
+        token_path = token_path.display()
+    );
 
     Ok(())
 }
@@ -141,5 +156,22 @@ client_secret: \"{cs}\"",
             ci = self.client_id,
             cs = self.client_secret,
         )
+    }
+
+    fn serialized(
+        drive_name: String,
+        root_folder: String,
+        refresh_token: String,
+        client_id: String,
+        client_secret: String,
+    ) -> String {
+        Self {
+            drive_name,
+            root_folder,
+            refresh_token,
+            client_id,
+            client_secret,
+        }
+        .serialize()
     }
 }

@@ -123,7 +123,8 @@ Different modes for the bottom window
             RefreshView,
             CopyFilename,
             CopyFilepath,
-            OpenConfig
+            OpenConfig,
+            CloudDrive,
         ),
         more_actions = action_descriptions!(Action),
         flagged_actions = action_descriptions!(

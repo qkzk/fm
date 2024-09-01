@@ -6,11 +6,10 @@ use opendal::Operator;
 use serde::Deserialize;
 
 use crate::common::path_to_string;
+use crate::common::CONFIG_FOLDER;
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::log_info;
-
-pub const TOKEN_BASE_PATH: &str = "/home/quentin/gclem/dev/rust/fm/config_files/fm/";
 
 #[derive(Deserialize, Debug)]
 struct GoogleDriveConfig {
@@ -22,7 +21,8 @@ struct GoogleDriveConfig {
 }
 
 fn build_token_filename(config_name: &str) -> String {
-    format!("{TOKEN_BASE_PATH}token_{config_name}.yaml")
+    let token_base_path = shellexpand::tilde(CONFIG_FOLDER);
+    format!("{token_base_path}/token_{config_name}.yaml")
 }
 
 /// Read the token & root folder from the token file.
