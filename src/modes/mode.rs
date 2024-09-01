@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::common::{
-    CHMOD_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES,
+    CHMOD_LINES, CLOUD_NEWDIR_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES,
     PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES, RENAME_LINES,
     SHELL_LINES, SORT_LINES,
 };
@@ -113,6 +113,8 @@ pub enum InputSimple {
     Shell,
     /// Mount a remote directory with sshfs
     Remote,
+    /// Create a new file in the current cloud
+    CloudNewdir,
 }
 
 impl fmt::Display for InputSimple {
@@ -124,6 +126,7 @@ impl fmt::Display for InputSimple {
             Self::Newdir => write!(f, "Newdir:  "),
             Self::RegexMatch => write!(f, "Regex:   "),
             Self::SetNvimAddr => write!(f, "Neovim:  "),
+            Self::CloudNewdir => write!(f, "Newdir:  "),
             Self::Shell => write!(f, "Shell:   "),
             Self::Sort => {
                 write!(f, "Sort: ")
@@ -165,6 +168,7 @@ impl InputSimple {
             Self::Shell => &SHELL_LINES,
             Self::Sort => &SORT_LINES,
             Self::Remote => &REMOTE_LINES,
+            Self::CloudNewdir => &CLOUD_NEWDIR_LINES,
         }
     }
 

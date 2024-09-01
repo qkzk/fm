@@ -106,6 +106,7 @@ pub const REMOTE_LINES: [&str; 4] = [
     "",
     "username hostname remote_path port",
 ];
+pub const CLOUD_NEWDIR_LINES: [&str; 1] = ["Create a new directory in current cloud path"];
 /// Chmod presentation for the second window
 pub const CHMOD_LINES: [&str; 5] = [
     "Type an octal mode like 754.",

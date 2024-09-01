@@ -1020,7 +1020,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] perfomance
 - [ ] Apache OpenDAL: [Official Documentation](https://opendal.apache.org/) - [crates.io](https://crates.io/crates/opendal)
   - [x] refresh token creation
-  - [ ] write in config for user
+  - [ ] write tokens in config folder for user
   - [ ] tutorial for users
   - [x] token handling
   - [x] simplest configuration
@@ -1028,8 +1028,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] listing
   - [x] directory navigation
   - [x] file downloading
-  - [ ] directory creation
+  - [x] directory creation
   - [ ] file uploading
+  - [x] file deletion
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce

@@ -1472,6 +1472,28 @@ impl Status {
         }
     }
 
+    pub fn cloud_enter_newdir(&mut self) -> Result<()> {
+        self.set_edit_mode(self.index, Edit::InputSimple(InputSimple::CloudNewdir))?;
+        self.refresh_view()
+    }
+
+    #[tokio::main]
+    pub async fn cloud_newdir(&mut self, dirname: String) -> Result<()> {
+        let current_path = &self.menu.cloud.path;
+        let Some(op) = &self.menu.cloud.op else {
+            return Err(anyhow!("Cloud container has no operator"));
+        };
+        let fp = current_path.join(dirname);
+        let mut fullpath = path_to_string(&fp);
+        if !fullpath.ends_with('/') {
+            fullpath.push('/');
+        }
+        op.create_dir(&fullpath).await?;
+        self.menu.cloud.content = op.list(&path_to_string(&current_path)).await?;
+
+        Ok(())
+    }
+
     #[tokio::main]
     pub async fn cloud_download_file(&mut self) -> Result<()> {
         let Ok((cloud, op)) = self.get_cloud_and_op() else {
