@@ -1426,8 +1426,8 @@ impl Status {
     }
 
     pub fn refresh_cloud(&mut self) -> Result<()> {
-        if self.menu.cloud.is_empty() {
-            self.menu.cloud = crate::io::google_drive()?;
+        if !self.menu.cloud.is_set() {
+            self.menu.cloud = crate::io::google_drive(crate::io::TOKEN_FILE)?;
         }
         Ok(())
     }

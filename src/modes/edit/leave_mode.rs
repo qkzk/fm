@@ -71,7 +71,10 @@ impl LeaveMode {
             Edit::Navigate(Navigate::Compress) => LeaveMode::compress(status),
             Edit::Navigate(Navigate::Context) => LeaveMode::context(status, binds),
             Edit::Navigate(Navigate::RemovableDevices) => LeaveMode::go_to_mount(status),
-            Edit::Navigate(Navigate::Picker) => LeaveMode::picker(status),
+            Edit::Navigate(Navigate::Picker) => {
+                LeaveMode::picker(status)?;
+                return Ok(());
+            }
             Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
             Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status, true),
             Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
@@ -441,7 +444,21 @@ impl LeaveMode {
     }
 
     pub fn picker(status: &mut Status) -> Result<()> {
-        todo!();
+        let Some(caller) = &status.menu.picker.caller else {
+            return Ok(());
+        };
+        match caller.as_str() {
+            "cloud_drive" => {
+                let Some(selected) = status.menu.picker.selected() else {
+                    return Ok(());
+                };
+                // TODO! pick correct file
+                status.menu.cloud = crate::io::google_drive(crate::io::TOKEN_FILE)?;
+                status.set_edit_mode(status.index, Edit::Navigate(Navigate::Cloud))?;
+            }
+            "other" => (),
+            _ => (),
+        }
         Ok(())
     }
 }

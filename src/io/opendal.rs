@@ -10,6 +10,8 @@ use crate::impl_content;
 use crate::impl_selectable;
 use crate::log_info;
 
+pub const TOKEN_FILE: &str = "/home/quentin/gclem/dev/rust/fm/google_drive_token.yaml";
+
 #[derive(Deserialize, Debug)]
 struct GoogleDriveConfig {
     drive_name: String,
@@ -40,9 +42,8 @@ async fn create_google_drive_operator(google_drive_config: &GoogleDriveConfig) -
 }
 
 #[tokio::main]
-pub async fn google_drive() -> Result<OpendalContainer> {
-    let google_drive_config =
-        read_google_drive_config("/home/quentin/gclem/dev/rust/fm/google_drive_token.yaml").await?;
+pub async fn google_drive(token_file: &str) -> Result<OpendalContainer> {
+    let google_drive_config = read_google_drive_config(token_file).await?;
     log_info!("found google_drive_config");
     let op = create_google_drive_operator(&google_drive_config).await?;
 
@@ -129,6 +130,20 @@ impl OpendalContainer {
             index: 0,
             content,
         }
+    }
+
+    pub fn is_set(&self) -> bool {
+        self.op.is_some()
+    }
+
+    pub fn disconnect(&mut self) {
+        self.op = None;
+        self.kind = OpendalKind::Empty;
+        self.desc = "empty".to_owned();
+        self.path = std::path::PathBuf::from("");
+        self.root = std::path::PathBuf::from("");
+        self.index = 0;
+        self.content = vec![];
     }
 
     #[tokio::main]
