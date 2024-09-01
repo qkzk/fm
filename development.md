@@ -1023,7 +1023,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] write in config for user
   - [ ] tutorial for users
   - [x] token handling
-  - [ ] properly store secret
   - [x] simplest configuration
   - [x] google drive listing
   - [x] listing

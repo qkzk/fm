@@ -128,6 +128,7 @@ impl EventDispatcher {
                 LeaveMode::leave_edit_mode(status, &self.binds)
             }
             Navigate::Cloud if c == 'l' => status.cloud_disconnect(),
+            Navigate::Cloud if c == 'x' => status.cloud_delete(),
             _ => {
                 status.reset_edit_mode()?;
                 status.current_tab_mut().reset_display_mode_and_view()

@@ -152,6 +152,19 @@ impl OpendalContainer {
     }
 
     #[tokio::main]
+    pub async fn delete(&mut self) -> Result<()> {
+        let Some(op) = &self.op else {
+            return Ok(());
+        };
+        let Some(entry) = self.selected() else {
+            return Ok(());
+        };
+        op.delete(entry.path()).await?;
+        self.content = op.list(&path_to_string(&self.path)).await?;
+        Ok(())
+    }
+
+    #[tokio::main]
     pub async fn update_path(&mut self, path: &str) -> Result<()> {
         if let Some(op) = &self.op {
             self.content = op.list(path).await?;

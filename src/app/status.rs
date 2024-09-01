@@ -1456,6 +1456,10 @@ impl Status {
         self.cloud_open()
     }
 
+    pub fn cloud_delete(&mut self) -> Result<()> {
+        self.menu.cloud.delete()
+    }
+
     fn get_cloud_and_op(&self) -> Result<(&OpendalContainer, &Operator)> {
         let cloud = &self.menu.cloud;
         if matches!(cloud.kind, OpendalKind::Empty) {
