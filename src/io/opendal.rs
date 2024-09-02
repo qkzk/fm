@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use anyhow::Result;
 use opendal::services;
 use opendal::Entry;
@@ -10,6 +11,8 @@ use crate::common::CONFIG_FOLDER;
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::log_info;
+use crate::log_line;
+use crate::modes::FileInfo;
 
 #[derive(Deserialize, Debug)]
 struct GoogleDriveConfig {
@@ -141,6 +144,42 @@ impl OpendalContainer {
         self.op.is_some()
     }
 
+    fn cloud_build_dest_filename(&self, local_file: &FileInfo) -> String {
+        let filename = local_file.filename.as_ref();
+        let mut dest_path = self.path.clone();
+        dest_path.push(filename);
+        path_to_string(&dest_path)
+    }
+
+    pub async fn upload(&self, local_file: &FileInfo) -> Result<()> {
+        let Some(op) = &self.op else {
+            return Ok(());
+        };
+        let dest_path_str = self.cloud_build_dest_filename(local_file);
+        let bytes = tokio::fs::read(&local_file.path).await?;
+        op.write(&dest_path_str, bytes).await?;
+        log_line!(
+            "Uploaded {filename} to {path}",
+            filename = local_file.filename,
+            path = self.path.display()
+        );
+        Ok(())
+    }
+
+    pub async fn create_newdir(&mut self, dirname: String) -> Result<()> {
+        let current_path = &self.path;
+        let Some(op) = &self.op else {
+            return Err(anyhow!("Cloud container has no operator"));
+        };
+        let fp = current_path.join(dirname);
+        let mut fullpath = path_to_string(&fp);
+        if !fullpath.ends_with('/') {
+            fullpath.push('/');
+        }
+        op.create_dir(&fullpath).await?;
+        Ok(())
+    }
+
     pub fn disconnect(&mut self) {
         self.op = None;
         self.kind = OpendalKind::Empty;
@@ -151,7 +190,6 @@ impl OpendalContainer {
         self.content = vec![];
     }
 
-    #[tokio::main]
     pub async fn delete(&mut self) -> Result<()> {
         let Some(op) = &self.op else {
             return Ok(());
@@ -160,7 +198,6 @@ impl OpendalContainer {
             return Ok(());
         };
         op.delete(entry.path()).await?;
-        self.content = op.list(&path_to_string(&self.path)).await?;
         Ok(())
     }
 

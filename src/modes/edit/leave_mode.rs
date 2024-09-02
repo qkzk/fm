@@ -165,7 +165,7 @@ impl LeaveMode {
     fn cloud_newdir(status: &mut Status) -> Result<()> {
         let dirname = status.menu.input.string();
         status.menu.input.reset();
-        status.cloud_newdir(dirname)?;
+        status.cloud_create_newdir(dirname)?;
         status.reset_edit_mode()?;
         status.cloud_open()
     }

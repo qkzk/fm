@@ -1469,8 +1469,10 @@ impl Status {
         self.cloud_open()
     }
 
-    pub fn cloud_delete(&mut self) -> Result<()> {
-        self.menu.cloud.delete()
+    #[tokio::main]
+    pub async fn cloud_delete(&mut self) -> Result<()> {
+        self.menu.cloud.delete().await?;
+        self.menu.cloud.refresh_current().await
     }
 
     fn get_cloud_and_op(&self) -> Result<(&OpendalContainer, &Operator)> {
@@ -1485,46 +1487,33 @@ impl Status {
         }
     }
 
-    pub fn cloud_enter_newdir(&mut self) -> Result<()> {
+    pub fn cloud_enter_newdir_mode(&mut self) -> Result<()> {
         self.set_edit_mode(self.index, Edit::InputSimple(InputSimple::CloudNewdir))?;
         self.refresh_view()
     }
 
-    #[tokio::main]
-    pub async fn cloud_upload_selected(&mut self) -> Result<()> {
-        let Some(op) = &self.menu.cloud.op else {
-            return Ok(());
-        };
-        let Some(local_file) = self.tabs[self.index].directory.selected() else {
-            return Ok(());
-        };
-        if !matches!(local_file.file_kind, FileKind::NormalFile) {
-            return Ok(());
+    fn get_normal_selected_file(&self) -> Option<&FileInfo> {
+        let local_file = self.tabs[self.index].directory.selected()?;
+        match local_file.file_kind {
+            FileKind::NormalFile => Some(local_file),
+            _ => None,
         }
-        let bytes = tokio::fs::read(&local_file.path).await?;
-        let filename = local_file.filename.as_ref();
-        let mut dest_path = self.menu.cloud.path.clone();
-        dest_path.push(filename);
-        let dest_path_str = path_to_string(&dest_path);
-        op.write(&dest_path_str, bytes).await?;
-        self.menu.cloud.refresh_current().await?;
-        Ok(())
     }
 
     #[tokio::main]
-    pub async fn cloud_newdir(&mut self, dirname: String) -> Result<()> {
-        let current_path = &self.menu.cloud.path;
-        let Some(op) = &self.menu.cloud.op else {
-            return Err(anyhow!("Cloud container has no operator"));
+    pub async fn cloud_upload_selected_file(&mut self) -> Result<()> {
+        let Some(local_file) = self.get_normal_selected_file() else {
+            log_line!("Can only upload normal files.");
+            return Ok(());
         };
-        let fp = current_path.join(dirname);
-        let mut fullpath = path_to_string(&fp);
-        if !fullpath.ends_with('/') {
-            fullpath.push('/');
-        }
-        op.create_dir(&fullpath).await?;
-        self.menu.cloud.refresh_current().await?;
-        Ok(())
+        self.menu.cloud.upload(local_file).await?;
+        self.menu.cloud.refresh_current().await
+    }
+
+    #[tokio::main]
+    pub async fn cloud_create_newdir(&mut self, dirname: String) -> Result<()> {
+        self.menu.cloud.create_newdir(dirname).await?;
+        self.menu.cloud.refresh_current().await
     }
 
     #[tokio::main]
