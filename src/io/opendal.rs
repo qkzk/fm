@@ -5,6 +5,8 @@ use opendal::Entry;
 use opendal::EntryMode;
 use opendal::Operator;
 use serde::Deserialize;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 
 use crate::common::path_to_string;
 use crate::common::CONFIG_FOLDER;
@@ -166,6 +168,48 @@ impl OpendalContainer {
         Ok(())
     }
 
+    pub fn selected_filename(&self) -> Option<&str> {
+        let selected = self.selected()?;
+        selected.path().split('/').last()
+    }
+
+    fn create_downloaded_path(&self, dest: &str) -> Option<std::path::PathBuf> {
+        let distant_filename = self.selected_filename()?;
+        let mut dest = std::path::PathBuf::from(dest);
+        dest.push(distant_filename);
+        if dest.exists() {
+            log_info!(
+                "Local file {dest} already exists. Can't download here",
+                dest = dest.display()
+            );
+            log_line!("Local file {dest} already exists. Choose another path or rename the existing file first.", dest=dest.display());
+            None
+        } else {
+            Some(dest)
+        }
+    }
+
+    pub async fn download(&self, dest: &str) -> Result<()> {
+        let Some(op) = &self.op else {
+            return Ok(());
+        };
+        let Some(selected) = self.selected() else {
+            return Ok(());
+        };
+        let distant_filepath = selected.path();
+        let Some(dest) = self.create_downloaded_path(dest) else {
+            return Ok(());
+        };
+        let buf = op.read(distant_filepath).await?;
+        let mut file = File::create(&dest).await?;
+        file.write_all(&buf.to_bytes()).await?;
+        log_info!(
+            "Downloaded {distant_filepath} to local file {dest}",
+            dest = dest.display(),
+        );
+        Ok(())
+    }
+
     pub async fn create_newdir(&mut self, dirname: String) -> Result<()> {
         let current_path = &self.path;
         let Some(op) = &self.op else {
@@ -211,11 +255,16 @@ impl OpendalContainer {
         Ok(())
     }
 
+    fn ensure_index_in_bounds(&mut self) {
+        self.index = std::cmp::min(self.content.len().saturating_sub(1), self.index)
+    }
+
     pub async fn refresh_current(&mut self) -> Result<()> {
         let Some(op) = &self.op else {
             return Ok(());
         };
         self.content = op.list(&path_to_string(&self.path)).await?;
+        self.ensure_index_in_bounds();
         Ok(())
     }
 

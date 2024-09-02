@@ -8,8 +8,6 @@ use clap::Parser;
 use opendal::Operator;
 use skim::SkimItem;
 use sysinfo::{Disk, RefreshKind, System, SystemExt};
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
@@ -1475,18 +1473,6 @@ impl Status {
         self.menu.cloud.refresh_current().await
     }
 
-    fn get_cloud_and_op(&self) -> Result<(&OpendalContainer, &Operator)> {
-        let cloud = &self.menu.cloud;
-        if matches!(cloud.kind, OpendalKind::Empty) {
-            Err(anyhow!("No cloud container is set"))
-        } else {
-            let Some(op) = &cloud.op else {
-                return Err(anyhow!("Cloud container has no operator"));
-            };
-            Ok((cloud, op))
-        }
-    }
-
     pub fn cloud_enter_newdir_mode(&mut self) -> Result<()> {
         self.set_edit_mode(self.index, Edit::InputSimple(InputSimple::CloudNewdir))?;
         self.refresh_view()
@@ -1518,33 +1504,8 @@ impl Status {
 
     #[tokio::main]
     pub async fn cloud_download_file(&mut self) -> Result<()> {
-        let Ok((cloud, op)) = self.get_cloud_and_op() else {
-            return Ok(());
-        };
-        let Some(selected) = cloud.selected() else {
-            return Ok(());
-        };
-        let Some(filename) = selected.path().split('/').last() else {
-            return Ok(());
-        };
-        let curr_path = self.current_tab_path_str();
-        let local_file_path = &format!("{curr_path}/{filename}");
-        // TODO handle existing file properly. Use automatic renamer.
-        if std::path::Path::new(local_file_path).exists() {
-            log_info!("Local file {local_file_path} already exists. Can't download here");
-            log_line!("Local file {local_file_path} already exists. Choose another path or rename the existing file first.");
-            return Ok(());
-        }
-        // TODO handle big files properly
-        let buf = op.read(selected.path()).await?;
-        let mut file = File::create(local_file_path).await?;
-        file.write_all(&buf.to_bytes()).await?;
-        log_info!(
-            "Downloaded {desc}/{filename} to local file {local_file_path}",
-            desc = cloud.desc(),
-        );
-
-        Ok(())
+        let local_path = self.current_tab_path_str();
+        self.menu.cloud.download(&local_path).await
     }
 }
 
