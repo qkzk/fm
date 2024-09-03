@@ -324,11 +324,6 @@ impl Menu {
         false
     }
 
-    pub fn cloud_navigate(&mut self) -> Result<()> {
-        let path = self.cloud.selected().context("no path")?.path().to_owned();
-        self.cloud.update_path(&path)
-    }
-
     pub fn completion_reset(&mut self) {
         self.completion.reset();
     }

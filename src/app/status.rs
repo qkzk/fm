@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use opendal::{EntryMode, Operator};
+use opendal::EntryMode;
 use skim::SkimItem;
 use sysinfo::{Disk, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
@@ -25,6 +25,8 @@ use crate::common::{
 use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::Bindings;
 use crate::event::FmEvents;
+use crate::io::Internal;
+use crate::io::Opener;
 use crate::io::{execute_and_capture_output_with_path, Args};
 use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
@@ -32,8 +34,6 @@ use crate::io::{
 };
 use crate::io::{google_drive, MIN_WIDTH_FOR_DUAL_PANE};
 use crate::io::{Extension, Kind};
-use crate::io::{Internal, OpendalKind};
-use crate::io::{OpendalContainer, Opener};
 use crate::modes::MountCommands;
 use crate::modes::MountRepr;
 use crate::modes::NeedConfirmation;
@@ -1467,10 +1467,9 @@ impl Status {
         self.cloud_open()
     }
 
-    #[tokio::main]
-    pub async fn cloud_delete(&mut self) -> Result<()> {
-        self.menu.cloud.delete().await?;
-        self.menu.cloud.refresh_current().await
+    pub fn cloud_delete(&mut self) -> Result<()> {
+        self.menu.cloud.delete()?;
+        self.menu.cloud.refresh_current()
     }
 
     pub fn cloud_enter_newdir_mode(&mut self) -> Result<()> {
@@ -1486,34 +1485,26 @@ impl Status {
         }
     }
 
-    #[tokio::main]
-    pub async fn cloud_upload_selected_file(&mut self) -> Result<()> {
+    pub fn cloud_upload_selected_file(&mut self) -> Result<()> {
         let Some(local_file) = self.get_normal_selected_file() else {
             log_line!("Can only upload normal files.");
             return Ok(());
         };
-        self.menu.cloud.upload(local_file).await?;
-        self.menu.cloud.refresh_current().await
+        self.menu.cloud.upload(local_file)?;
+        self.menu.cloud.refresh_current()
     }
 
-    #[tokio::main]
-    pub async fn cloud_create_newdir(&mut self, dirname: String) -> Result<()> {
-        self.menu.cloud.create_newdir(dirname).await?;
-        self.menu.cloud.refresh_current().await
-    }
-
-    #[tokio::main]
-    async fn cloud_download_file(&mut self) -> Result<()> {
-        let local_path = self.current_tab_path_str();
-        self.menu.cloud.download(&local_path).await
+    pub fn cloud_create_newdir(&mut self, dirname: String) -> Result<()> {
+        self.menu.cloud.create_newdir(dirname)?;
+        self.menu.cloud.refresh_current()
     }
 
     pub fn cloud_enter_file_or_dir(&mut self) -> Result<()> {
         if let Some(entry) = self.menu.cloud.selected() {
             match entry.metadata().mode() {
                 EntryMode::Unknown => (),
-                EntryMode::FILE => self.cloud_download_file()?,
-                EntryMode::DIR => self.menu.cloud_navigate()?,
+                EntryMode::FILE => self.menu.cloud.download(&self.current_tab_path_str())?,
+                EntryMode::DIR => self.menu.cloud.navigate()?,
             };
         };
         Ok(())

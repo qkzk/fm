@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use anyhow::Context;
 use anyhow::Result;
 use opendal::services;
 use opendal::Entry;
@@ -148,6 +149,7 @@ impl OpendalContainer {
         path_to_string(&dest_path)
     }
 
+    #[tokio::main]
     pub async fn upload(&self, local_file: &FileInfo) -> Result<()> {
         let Some(op) = &self.op else {
             return Ok(());
@@ -163,7 +165,7 @@ impl OpendalContainer {
         Ok(())
     }
 
-    pub fn selected_filename(&self) -> Option<&str> {
+    fn selected_filename(&self) -> Option<&str> {
         self.selected()?.path().split('/').last()
     }
 
@@ -183,6 +185,7 @@ impl OpendalContainer {
         }
     }
 
+    #[tokio::main]
     pub async fn download(&self, dest: &str) -> Result<()> {
         let Some(op) = &self.op else {
             return Ok(());
@@ -204,6 +207,7 @@ impl OpendalContainer {
         Ok(())
     }
 
+    #[tokio::main]
     pub async fn create_newdir(&mut self, dirname: String) -> Result<()> {
         let current_path = &self.path;
         let Some(op) = &self.op else {
@@ -230,6 +234,7 @@ impl OpendalContainer {
         log_info!("Disconnected from {desc}");
     }
 
+    #[tokio::main]
     pub async fn delete(&mut self) -> Result<()> {
         let Some(op) = &self.op else {
             return Ok(());
@@ -245,7 +250,7 @@ impl OpendalContainer {
     }
 
     #[tokio::main]
-    pub async fn update_path(&mut self, path: &str) -> Result<()> {
+    async fn update_path(&mut self, path: &str) -> Result<()> {
         if let Some(op) = &self.op {
             self.content = op.list(path).await?;
             self.path = std::path::PathBuf::from(path);
@@ -254,10 +259,16 @@ impl OpendalContainer {
         Ok(())
     }
 
+    pub fn navigate(&mut self) -> Result<()> {
+        let path = self.selected().context("no path")?.path().to_owned();
+        self.update_path(&path)
+    }
+
     fn ensure_index_in_bounds(&mut self) {
         self.index = std::cmp::min(self.content.len().saturating_sub(1), self.index)
     }
 
+    #[tokio::main]
     pub async fn refresh_current(&mut self) -> Result<()> {
         let Some(op) = &self.op else {
             return Ok(());
