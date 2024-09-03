@@ -1037,6 +1037,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] log errors
   - [ ] prevent crashing
   - [ ] refactor to opendal file
+  - [ ] move all tokio::main to opendal
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce

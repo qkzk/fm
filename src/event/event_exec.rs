@@ -1002,6 +1002,7 @@ impl EventAction {
                     status.menu.input.cursor_right();
                     Ok(())
                 }
+                Edit::Navigate(Navigate::Cloud) => status.cloud_enter_file_or_dir(),
                 Edit::Nothing => Self::enter_file(status),
                 _ => Ok(()),
             }

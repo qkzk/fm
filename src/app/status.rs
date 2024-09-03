@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use opendal::Operator;
+use opendal::{EntryMode, Operator};
 use skim::SkimItem;
 use sysinfo::{Disk, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
@@ -1503,9 +1503,20 @@ impl Status {
     }
 
     #[tokio::main]
-    pub async fn cloud_download_file(&mut self) -> Result<()> {
+    async fn cloud_download_file(&mut self) -> Result<()> {
         let local_path = self.current_tab_path_str();
         self.menu.cloud.download(&local_path).await
+    }
+
+    pub fn cloud_enter_file_or_dir(&mut self) -> Result<()> {
+        if let Some(entry) = self.menu.cloud.selected() {
+            match entry.metadata().mode() {
+                EntryMode::Unknown => (),
+                EntryMode::FILE => self.cloud_download_file()?,
+                EntryMode::DIR => self.menu.cloud_navigate()?,
+            };
+        };
+        Ok(())
     }
 }
 

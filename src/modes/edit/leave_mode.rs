@@ -2,7 +2,6 @@ use std::borrow::Borrow;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
-use opendal::EntryMode;
 
 use crate::app::Status;
 use crate::common::path_to_string;
@@ -152,14 +151,7 @@ impl LeaveMode {
     }
 
     fn cloud_enter(status: &mut Status) -> Result<()> {
-        if let Some(entry) = status.menu.cloud.selected() {
-            match entry.metadata().mode() {
-                EntryMode::Unknown => (),
-                EntryMode::FILE => status.cloud_download_file()?,
-                EntryMode::DIR => status.menu.cloud_navigate()?,
-            }
-        }
-        Ok(())
+        status.cloud_enter_file_or_dir()
     }
 
     fn cloud_newdir(status: &mut Status) -> Result<()> {

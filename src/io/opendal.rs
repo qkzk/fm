@@ -69,11 +69,6 @@ pub async fn google_drive(token_file: &str) -> Result<OpendalContainer> {
         entries,
     );
 
-    for entry in opendal_container.content.iter() {
-        log_info!("Found: {}", entry.path());
-        log_info!("metadata {:?}", entry.metadata());
-    }
-
     Ok(opendal_container)
 }
 
@@ -169,8 +164,7 @@ impl OpendalContainer {
     }
 
     pub fn selected_filename(&self) -> Option<&str> {
-        let selected = self.selected()?;
-        selected.path().split('/').last()
+        self.selected()?.path().split('/').last()
     }
 
     fn create_downloaded_path(&self, dest: &str) -> Option<std::path::PathBuf> {
@@ -225,6 +219,7 @@ impl OpendalContainer {
     }
 
     pub fn disconnect(&mut self) {
+        let desc = self.desc.to_owned();
         self.op = None;
         self.kind = OpendalKind::Empty;
         self.desc = "empty".to_owned();
@@ -232,6 +227,7 @@ impl OpendalContainer {
         self.root = std::path::PathBuf::from("");
         self.index = 0;
         self.content = vec![];
+        log_info!("Disconnected from {desc}");
     }
 
     pub async fn delete(&mut self) -> Result<()> {
@@ -241,7 +237,10 @@ impl OpendalContainer {
         let Some(entry) = self.selected() else {
             return Ok(());
         };
-        op.delete(entry.path()).await?;
+        let file_to_delete = entry.path();
+        op.delete(file_to_delete).await?;
+        log_info!("Deleted {file_to_delete}");
+        log_line!("Deleted {file_to_delete}");
         Ok(())
     }
 
@@ -285,10 +284,10 @@ impl OpendalContainer {
 
     pub fn desc(&self) -> String {
         format!(
-            "{d}{sep}{p}",
-            d = self.desc,
+            "{desc}{sep}{path}",
+            desc = self.desc,
             sep = if self.path == self.root { "" } else { "/" },
-            p = self.path.display()
+            path = self.path.display()
         )
     }
 }
