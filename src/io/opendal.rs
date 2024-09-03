@@ -26,37 +26,40 @@ struct GoogleDriveConfig {
     client_secret: String,
 }
 
-fn build_token_filename(config_name: &str) -> String {
-    let token_base_path = shellexpand::tilde(CONFIG_FOLDER);
-    format!("{token_base_path}/token_{config_name}.yaml")
+impl GoogleDriveConfig {
+    fn build_token_filename(config_name: &str) -> String {
+        let token_base_path = shellexpand::tilde(CONFIG_FOLDER);
+        format!("{token_base_path}/token_{config_name}.yaml")
+    }
+
+    /// Read the token & root folder from the token file.
+    async fn from_config(config_name: &str) -> Result<Self> {
+        let config_filename = Self::build_token_filename(config_name);
+        let token_data = tokio::fs::read_to_string(config_filename).await?;
+        let google_drive_token: Self = serde_yaml::from_str(&token_data)?;
+        log_info!("config {google_drive_token:?}");
+        Ok(google_drive_token)
+    }
+
+    /// Set up the Google Drive backend.
+    async fn build_operator(&self) -> Result<Operator> {
+        let builder = services::Gdrive::default()
+            .refresh_token(&self.refresh_token)
+            .client_id(&self.client_id)
+            .client_secret(&self.client_secret)
+            .root(&self.root_folder);
+
+        let op = Operator::new(builder)?.finish();
+        Ok(op)
+    }
 }
 
-/// Read the token & root folder from the token file.
-async fn read_google_drive_config(config_name: &str) -> Result<GoogleDriveConfig> {
-    let config_filename = build_token_filename(config_name);
-    let token_data = tokio::fs::read_to_string(config_filename).await?;
-    let google_drive_token: GoogleDriveConfig = serde_yaml::from_str(&token_data)?;
-    log_info!("config {google_drive_token:?}");
-    Ok(google_drive_token)
-}
-
-/// Set up the Google Drive backend.
-async fn create_google_drive_operator(google_drive_config: &GoogleDriveConfig) -> Result<Operator> {
-    let builder = services::Gdrive::default()
-        .refresh_token(&google_drive_config.refresh_token)
-        .client_id(&google_drive_config.client_id)
-        .client_secret(&google_drive_config.client_secret)
-        .root(&google_drive_config.root_folder);
-
-    let op = Operator::new(builder)?.finish();
-    Ok(op)
-}
-
+/// Builds a google drive opendal container from a token filename.
 #[tokio::main]
 pub async fn google_drive(token_file: &str) -> Result<OpendalContainer> {
-    let google_drive_config = read_google_drive_config(token_file).await?;
+    let google_drive_config = GoogleDriveConfig::from_config(token_file).await?;
     log_info!("found google_drive_config");
-    let op = create_google_drive_operator(&google_drive_config).await?;
+    let op = google_drive_config.build_operator().await?;
 
     // List all files and directories at the root level.
     let entries = op.list(&google_drive_config.root_folder).await?;
@@ -73,13 +76,14 @@ pub async fn google_drive(token_file: &str) -> Result<OpendalContainer> {
     Ok(opendal_container)
 }
 
+/// Different kind of opendal container
 pub enum OpendalKind {
     Empty,
     GoogleDrive,
 }
 
 impl OpendalKind {
-    pub fn repr(&self) -> &'static str {
+    fn repr(&self) -> &'static str {
         match self {
             Self::Empty => "empty",
             Self::GoogleDrive => "Google Drive",
@@ -87,14 +91,24 @@ impl OpendalKind {
     }
 }
 
-pub fn entry_mode_fmt(entry: &Entry) -> &'static str {
-    match entry.metadata().mode() {
-        EntryMode::Unknown => "? ",
-        EntryMode::DIR => "D ",
-        EntryMode::FILE => "F ",
+/// Formating used to display elements.
+pub trait ModeFormat {
+    fn mode_fmt(&self) -> &'static str;
+}
+
+impl ModeFormat for Entry {
+    fn mode_fmt(&self) -> &'static str {
+        match self.metadata().mode() {
+            EntryMode::Unknown => "? ",
+            EntryMode::DIR => "D ",
+            EntryMode::FILE => "F ",
+        }
     }
 }
 
+/// Holds any relevant content of an opendal container.
+/// It has an operator, allowing action on the remote files and knows
+/// about the root path and current content.
 pub struct OpendalContainer {
     pub op: Option<Operator>,
     pub kind: OpendalKind,
@@ -120,7 +134,7 @@ impl Default for OpendalContainer {
 }
 
 impl OpendalContainer {
-    pub fn new(
+    fn new(
         op: Operator,
         kind: OpendalKind,
         drive_name: &str,
@@ -138,6 +152,7 @@ impl OpendalContainer {
         }
     }
 
+    /// True if the opendal container is really set. IE if it's connected to a remote container.
     pub fn is_set(&self) -> bool {
         self.op.is_some()
     }
@@ -149,6 +164,7 @@ impl OpendalContainer {
         path_to_string(&dest_path)
     }
 
+    /// Upload the local file to the remote container in its current path.
     #[tokio::main]
     pub async fn upload(&self, local_file: &FileInfo) -> Result<()> {
         let Some(op) = &self.op else {
@@ -185,6 +201,11 @@ impl OpendalContainer {
         }
     }
 
+    /// Download the currently selected remote file to dest. The filename is preserved.
+    /// Nothing is done if a local file with same filename already exists in current path.
+    ///
+    /// This will most likely change in the future since it's not the default behavior of
+    /// most modern file managers.
     #[tokio::main]
     pub async fn download(&self, dest: &str) -> Result<()> {
         let Some(op) = &self.op else {
@@ -207,6 +228,7 @@ impl OpendalContainer {
         Ok(())
     }
 
+    /// Creates a new remote directory with dirname in current path.
     #[tokio::main]
     pub async fn create_newdir(&mut self, dirname: String) -> Result<()> {
         let current_path = &self.path;
@@ -222,6 +244,7 @@ impl OpendalContainer {
         Ok(())
     }
 
+    /// Disconnect itself, reseting it's parameters.
     pub fn disconnect(&mut self) {
         let desc = self.desc.to_owned();
         self.op = None;
@@ -234,6 +257,8 @@ impl OpendalContainer {
         log_info!("Disconnected from {desc}");
     }
 
+    /// Delete the currently selected remote file
+    /// Nothing is done if current path is empty.
     #[tokio::main]
     pub async fn delete(&mut self) -> Result<()> {
         let Some(op) = &self.op else {
@@ -259,6 +284,11 @@ impl OpendalContainer {
         Ok(())
     }
 
+    /// Enter in the selected file or directory.
+    ///
+    /// # Errors:
+    ///
+    /// Will fail if the selected file is not a directory of the current path is empty.
     pub fn navigate(&mut self) -> Result<()> {
         let path = self.selected().context("no path")?.path().to_owned();
         self.update_path(&path)
@@ -268,6 +298,8 @@ impl OpendalContainer {
         self.index = std::cmp::min(self.content.len().saturating_sub(1), self.index)
     }
 
+    /// Refresh the current remote path.
+    /// Nothing is done if no connexion is established.
     #[tokio::main]
     pub async fn refresh_current(&mut self) -> Result<()> {
         let Some(op) = &self.op else {
@@ -278,6 +310,7 @@ impl OpendalContainer {
         Ok(())
     }
 
+    /// Move to remote parent directory if possible
     #[tokio::main]
     pub async fn move_to_parent(&mut self) -> Result<()> {
         if let Some(op) = &self.op {

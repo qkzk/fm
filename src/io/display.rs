@@ -16,6 +16,7 @@ use crate::common::path_to_string;
 use crate::common::ENCRYPTED_DEVICE_BINDS;
 use crate::config::{ColorG, Gradient, MENU_COLORS};
 use crate::io::read_last_log_line;
+use crate::io::ModeFormat;
 use crate::log_info;
 use crate::modes::BinaryContent;
 use crate::modes::ColoredText;
@@ -39,8 +40,6 @@ use crate::modes::Ueberzug;
 use crate::modes::Window;
 use crate::modes::{fileinfo_attr, MarkAction};
 use crate::modes::{parse_input_mode, SecondLine};
-
-use super::entry_mode_fmt;
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -930,7 +929,7 @@ impl<'a> WinSecondary<'a> {
             let _ = canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 2 - top,
                 4,
-                entry_mode_fmt(entry),
+                entry.mode_fmt(),
                 attr,
             )?;
             let _ = canvas.print_with_attr(
