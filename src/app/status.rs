@@ -1477,8 +1477,8 @@ impl Status {
         self.refresh_view()
     }
 
-    fn get_normal_selected_file(&self) -> Option<&FileInfo> {
-        let local_file = self.tabs[self.index].directory.selected()?;
+    fn get_normal_selected_file(&self) -> Option<FileInfo> {
+        let local_file = self.tabs[self.index].current_file().ok()?;
         match local_file.file_kind {
             FileKind::NormalFile => Some(local_file),
             _ => None,
@@ -1490,7 +1490,7 @@ impl Status {
             log_line!("Can only upload normal files.");
             return Ok(());
         };
-        self.menu.cloud.upload(local_file)?;
+        self.menu.cloud.upload(&local_file)?;
         self.menu.cloud.refresh_current()
     }
 
@@ -1503,7 +1503,10 @@ impl Status {
         if let Some(entry) = self.menu.cloud.selected() {
             match entry.metadata().mode() {
                 EntryMode::Unknown => (),
-                EntryMode::FILE => self.menu.cloud.download(&self.current_tab_path_str())?,
+                EntryMode::FILE => self
+                    .menu
+                    .cloud
+                    .download(self.current_tab().directory_of_selected()?)?,
                 EntryMode::DIR => self.menu.cloud.navigate()?,
             };
         };

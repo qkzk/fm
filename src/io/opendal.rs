@@ -35,9 +35,8 @@ impl GoogleDriveConfig {
     /// Read the token & root folder from the token file.
     async fn from_config(config_name: &str) -> Result<Self> {
         let config_filename = Self::build_token_filename(config_name);
-        let token_data = tokio::fs::read_to_string(config_filename).await?;
+        let token_data = tokio::fs::read_to_string(&config_filename).await?;
         let google_drive_token: Self = serde_yaml::from_str(&token_data)?;
-        log_info!("config {google_drive_token:?}");
         Ok(google_drive_token)
     }
 
@@ -58,7 +57,7 @@ impl GoogleDriveConfig {
 #[tokio::main]
 pub async fn google_drive(token_file: &str) -> Result<OpendalContainer> {
     let google_drive_config = GoogleDriveConfig::from_config(token_file).await?;
-    log_info!("found google_drive_config");
+    log_info!("found google drive config {token_file}");
     let op = google_drive_config.build_operator().await?;
 
     // List all files and directories at the root level.
@@ -185,9 +184,9 @@ impl OpendalContainer {
         self.selected()?.path().split('/').last()
     }
 
-    fn create_downloaded_path(&self, dest: &str) -> Option<std::path::PathBuf> {
+    fn create_downloaded_path(&self, dest: &std::path::Path) -> Option<std::path::PathBuf> {
         let distant_filename = self.selected_filename()?;
-        let mut dest = std::path::PathBuf::from(dest);
+        let mut dest = dest.to_path_buf();
         dest.push(distant_filename);
         if dest.exists() {
             log_info!(
@@ -207,7 +206,7 @@ impl OpendalContainer {
     /// This will most likely change in the future since it's not the default behavior of
     /// most modern file managers.
     #[tokio::main]
-    pub async fn download(&self, dest: &str) -> Result<()> {
+    pub async fn download(&self, dest: &std::path::Path) -> Result<()> {
         let Some(op) = &self.op else {
             return Ok(());
         };
@@ -215,15 +214,15 @@ impl OpendalContainer {
             return Ok(());
         };
         let distant_filepath = selected.path();
-        let Some(dest) = self.create_downloaded_path(dest) else {
+        let Some(dest_full_path) = self.create_downloaded_path(dest) else {
             return Ok(());
         };
         let buf = op.read(distant_filepath).await?;
-        let mut file = File::create(&dest).await?;
+        let mut file = File::create(&dest_full_path).await?;
         file.write_all(&buf.to_bytes()).await?;
         log_info!(
-            "Downloaded {distant_filepath} to local file {dest}",
-            dest = dest.display(),
+            "Downloaded {distant_filepath} to local file {path}",
+            path = dest_full_path.display(),
         );
         Ok(())
     }

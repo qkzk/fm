@@ -1030,14 +1030,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] directory navigation
   - [x] file downloading :
     - [x] directory mode
-    - [ ] tree mode
+    - [x] tree mode
   - [x] directory creation
   - [x] file uploading
   - [x] file deletion
-  - [ ] log errors
+  - [x] move all tokio::main to opendal
+  - [x] log errors
   - [ ] prevent crashing
   - [ ] refactor to opendal file
-  - [ ] move all tokio::main to opendal
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
