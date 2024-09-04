@@ -1424,8 +1424,7 @@ impl Status {
     }
 
     fn get_cloud_token_names(&self) -> Result<Vec<String>> {
-        let config_path = path_to_config_folder()?;
-        Ok(std::fs::read_dir(&config_path)?
+        Ok(std::fs::read_dir(path_to_config_folder()?)?
             .filter_map(|e| e.ok())
             .filter(|e| e.path().is_file())
             .map(|e| e.file_name().to_string_lossy().to_string())
