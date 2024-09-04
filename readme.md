@@ -181,6 +181,34 @@ Critical actions will be logged to `~/.config/fm/log/fm.log` and actions affecti
 The last action is displayed at the bottom of the screen and can be read with `Alt+l` like a preview.
 Those logs can be seen even if logging is disabled, it just won't be up to date.
 
+### Google Drive
+
+With the help of the amazing [OpenDal](https://opendal.apache.org/) library from Apache, you can access your remote GoogleDrive files within fm.
+
+You must setup a client id and a client secret first. Once it's done, the helper binary `google_drive_config_helper` will create the configuration file for you.
+It uses a refresh token which will automatically be refreshed for you by OpenDal.
+
+Open the Cloud menu with Shift-Alt-C and pick a valid config file.
+Once done, you can navigate your files with the arrow keys, download them with Return, upload the selected file with u, Delete a remote file with X (no confirmation !) and create a new directory with d.
+
+You can setup many google drive accounts but only one can be opened at once. Use `l` to _leave_ the current one and select another one.
+
+This is an advanced user feature with rough edges.
+
+#### Initial setup
+
+1. Open google cloud console and setup a new project for fm
+2. Add the google drive API for your project
+3. Add OAuth 2.0 credentials and copy the client id and client secret.
+4. Run the helper binary `google_drive_config_helper`.
+
+#### Notes:
+
+- This feature is still in beta and is subject to change a lot.
+- Be careful with your files.
+- A lot of GoogleDrive features aren't supported yet, mostly because I couldn't test them. If you want to sync your files in Linux, you should take a look at [rclone](https://rclone.org/).
+- OpenDal provides a [lot of services](https://docs.rs/opendal/latest/opendal/services/index.html), not only GoogleDrive. If you want more services like that, open an issue and I'll take a look.
+
 ### More
 
 - Copy a filename/filepath to clipboard with Ctrl+n, Ctrl+p

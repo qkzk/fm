@@ -20,8 +20,12 @@ async fn read_input() -> String {
 }
 
 async fn gather_input_data() -> (String, String, String, String) {
-    println!("This application will create a refresh token allowing you to access your files on google drive. It will also create a token file used by fm.");
-    println!("Please enter friendly name for your google drive folder:");
+    println!("This application will create a refresh token allowing you to access your files on google drive from fm.
+It will also create a token file used by fm.
+You need to setup GoogleDrive's API from your account first.
+Please refer to the fm documentation on GitHub for more information about it. : https://github.com/qkzk/fm
+
+Please enter a friendly name for your google drive folder:");
     let drive_name = read_input().await;
     println!("Please enter your root folder. Default is /:");
     let mut root_folder = read_input().await;

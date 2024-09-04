@@ -1023,6 +1023,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] write tokens in config folder for user
   - [x] keybindings in menu
   - [ ] readme for users
+    - [ ] basic description
+    - [ ] links to GCP
   - [x] token handling
   - [x] simplest configuration
   - [x] google drive listing
@@ -1036,8 +1038,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] file deletion
   - [x] move all tokio::main to opendal
   - [x] log errors
-  - [ ] prevent crashing
-  - [ ] refactor to opendal file
+  - [ ] merge into a single binary ???
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
