@@ -1023,7 +1023,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] write tokens in config folder for user
   - [x] keybindings in menu
   - [ ] readme for users
-    - [ ] basic description
+    - [x] basic description
     - [ ] links to GCP
   - [x] token handling
   - [x] simplest configuration
@@ -1039,6 +1039,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] move all tokio::main to opendal
   - [x] log errors
   - [ ] merge into a single binary ???
+  - [ ] BUG: opendal crashes if multiple files have the same name. See [issue](https://github.com/apache/opendal/issues/5099)
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
