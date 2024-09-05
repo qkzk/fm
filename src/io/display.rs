@@ -41,6 +41,18 @@ use crate::modes::Window;
 use crate::modes::{fileinfo_attr, MarkAction};
 use crate::modes::{parse_input_mode, SecondLine};
 
+trait ClearLine {
+    fn clear_line(&mut self, row: usize) -> Result<()>;
+}
+
+impl ClearLine for dyn Canvas + '_ {
+    fn clear_line(&mut self, row: usize) -> Result<()> {
+        let (width, _) = self.size()?;
+        self.print(row, 0, &" ".repeat(width))?;
+        Ok(())
+    }
+}
+
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
     ($t:ident) => {
@@ -739,7 +751,6 @@ impl<'a> Draw for WinSecondary<'a> {
         self.draw_cursor(canvas)?;
         WinSecondaryFirstLine::new(self.status).draw(canvas)?;
         self.draw_second_line(canvas)?;
-        self.draw_binds_per_mode(canvas, self.tab.edit_mode)?;
         match self.tab.edit_mode {
             Edit::Navigate(mode) => self.draw_navigate(mode, canvas),
             Edit::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
@@ -747,6 +758,7 @@ impl<'a> Draw for WinSecondary<'a> {
             Edit::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
             _ => return Ok(()),
         }?;
+        self.draw_binds_per_mode(canvas, self.tab.edit_mode)?;
         Ok(())
     }
 }
@@ -786,8 +798,8 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_binds_per_mode(&self, canvas: &mut dyn Canvas, mode: Edit) -> Result<()> {
-        let (width, height) = canvas.size()?;
-        canvas.print(height - 1, 0, &" ".repeat(width))?;
+        let height = canvas.height()?;
+        canvas.clear_line(height - 1)?;
         canvas.print_with_attr(
             height - 1,
             2,
@@ -965,9 +977,8 @@ impl<'a> WinSecondary<'a> {
         let selectable = &self.status.menu.picker;
         let content = selectable.content();
         if let Some(desc) = &self.status.menu.picker.desc {
-            let _ =
-                canvas.print_with_attr(1, 2, &" ".repeat(80), color_to_attr(MENU_COLORS.second));
-            let _ = canvas.print_with_attr(1, 2, desc, color_to_attr(MENU_COLORS.second));
+            canvas.clear_line(1)?;
+            canvas.print_with_attr(1, 2, desc, color_to_attr(MENU_COLORS.second))?;
         }
         for (row, pickable, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, &attr);

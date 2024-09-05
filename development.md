@@ -1045,7 +1045,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
-- [ ] BUG: too much thing on menu and last line
+- [x] FIX: too much thing on menu and last line
 - [ ] reduce dependencies
 
 ## TODO
