@@ -927,13 +927,13 @@ impl<'a> WinSecondary<'a> {
         {
             let attr = cloud.attr(row, &attr);
             let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP + 2 - top,
+                row + ContentWindow::WINDOW_MARGIN_TOP + 1 - top,
                 4,
                 entry.mode_fmt(),
                 attr,
             )?;
             let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP + 2 - top,
+                row + ContentWindow::WINDOW_MARGIN_TOP + 1 - top,
                 6,
                 entry.path(),
                 attr,
@@ -1157,6 +1157,7 @@ impl<'a> WinSecondary<'a> {
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => self.draw_confirm_empty_trash(canvas)?,
             NeedConfirmation::BulkAction => self.draw_confirm_bulk(canvas)?,
+            NeedConfirmation::DeleteCloud => self.draw_confirm_delete_cloud(canvas)?,
             _ => self.draw_confirm_default(canvas)?,
         }
         Ok(())
@@ -1180,6 +1181,20 @@ impl<'a> WinSecondary<'a> {
         for (row, line, attr) in enumerated_colored_iter!(content) {
             Self::draw_content_line(canvas, row + 2, line, attr)?;
         }
+        Ok(())
+    }
+
+    fn draw_confirm_delete_cloud(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let line = if let Some(selected) = &self.status.menu.cloud.selected() {
+            &format!(
+                "{desc}{sel}",
+                desc = self.status.menu.cloud.desc(),
+                sel = selected.path()
+            )
+        } else {
+            "No selected file"
+        };
+        Self::draw_content_line(canvas, 3, line, Attr::from(Color::LIGHT_RED))?;
         Ok(())
     }
 

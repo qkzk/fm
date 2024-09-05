@@ -34,6 +34,8 @@ pub enum NeedConfirmation {
     EmptyTrash,
     /// Bulk
     BulkAction,
+    /// Delete cloud files
+    DeleteCloud,
 }
 
 impl NeedConfirmation {
@@ -58,6 +60,7 @@ impl NeedConfirmation {
                 format!("Files will be moved to {destination}")
             }
             Self::BulkAction => "Those files will be renamed or created :".to_owned(),
+            Self::DeleteCloud => "Remote Files will be deleted permanently".to_owned(),
         }
     }
 }
@@ -76,6 +79,7 @@ impl std::fmt::Display for NeedConfirmation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Self::Delete => write!(f, "Delete files :"),
+            Self::DeleteCloud => write!(f, "Delete files :"),
             Self::Move => write!(f, "Move files here :"),
             Self::Copy => write!(f, "Copy files here :"),
             Self::EmptyTrash => write!(f, "Empty the trash ?"),

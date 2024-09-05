@@ -1283,7 +1283,11 @@ impl Status {
     /// The action is only executed if the user typed the char `y`
     pub fn confirm(&mut self, c: char, confirmed_action: NeedConfirmation) -> Result<()> {
         if c == 'y' {
-            let _ = self.match_confirmed_mode(confirmed_action);
+            if let Ok(must_leave) = self.match_confirmed_mode(confirmed_action) {
+                if must_leave {
+                    return Ok(());
+                }
+            }
         }
         self.reset_edit_mode()?;
         self.current_tab_mut().refresh_view()?;
@@ -1292,14 +1296,19 @@ impl Status {
     }
 
     /// Execute a `NeedConfirmation` action (delete, move, copy, empty trash)
-    fn match_confirmed_mode(&mut self, confirmed_action: NeedConfirmation) -> Result<()> {
+    fn match_confirmed_mode(&mut self, confirmed_action: NeedConfirmation) -> Result<bool> {
         match confirmed_action {
             NeedConfirmation::Delete => self.confirm_delete_files(),
             NeedConfirmation::Move => self.cut_or_copy_flagged_files(CopyMove::Move),
             NeedConfirmation::Copy => self.cut_or_copy_flagged_files(CopyMove::Copy),
             NeedConfirmation::EmptyTrash => self.confirm_trash_empty(),
             NeedConfirmation::BulkAction => self.confirm_bulk_action(),
-        }
+            NeedConfirmation::DeleteCloud => {
+                self.cloud_confirm_delete()?;
+                return Ok(true);
+            }
+        }?;
+        Ok(false)
     }
 
     /// Execute an action when the header line was clicked.
@@ -1467,9 +1476,19 @@ impl Status {
         self.cloud_open()
     }
 
-    pub fn cloud_delete(&mut self) -> Result<()> {
+    pub fn cloud_enter_delete_mode(&mut self) -> Result<()> {
+        self.set_edit_mode(
+            self.index,
+            Edit::NeedConfirmation(NeedConfirmation::DeleteCloud),
+        )
+    }
+
+    pub fn cloud_confirm_delete(&mut self) -> Result<()> {
         self.menu.cloud.delete()?;
-        self.menu.cloud.refresh_current()
+        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))?;
+        self.menu.cloud.refresh_current()?;
+        self.menu.window.scroll_to(self.menu.cloud.index);
+        Ok(())
     }
 
     pub fn cloud_enter_newdir_mode(&mut self) -> Result<()> {
