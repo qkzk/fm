@@ -59,9 +59,18 @@ pub async fn google_drive(token_file: &str) -> Result<OpendalContainer> {
     let google_drive_config = GoogleDriveConfig::from_config(token_file).await?;
     log_info!("found google drive config {token_file}");
     let op = google_drive_config.build_operator().await?;
+    log_info!("created operator");
 
     // List all files and directories at the root level.
-    let entries = op.list(&google_drive_config.root_folder).await?;
+    // let entries = op.list(&google_drive_config.root_folder).await?;
+    let entries = match op.list(&google_drive_config.root_folder).await {
+        Ok(entries) => entries,
+        Err(err) => {
+            log_info!("Error: {err:?}");
+            return Err(anyhow!("error: {err:?}"));
+        }
+    };
+    log_info!("listed entries");
 
     // Create the container
     let opendal_container = OpendalContainer::new(

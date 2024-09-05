@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use oauth2::basic::{BasicClient, BasicTokenType};
 use oauth2::reqwest::async_http_client;
 use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EmptyExtraTokenFields, Scope,
-    StandardTokenResponse, TokenResponse, TokenUrl,
+    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EmptyExtraTokenFields,
+    RedirectUrl, Scope, StandardTokenResponse, TokenResponse, TokenUrl,
 };
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 
@@ -48,12 +48,14 @@ fn create_client(client_id: &str, client_secret: &str) -> Result<BasicClient> {
         Some(TokenUrl::new(
             "https://oauth2.googleapis.com/token".to_string(),
         )?),
-    );
+    )
+    // Set the URL the user will be redirected to after the authorization process.
+    .set_redirect_uri(RedirectUrl::new("urn:ietf:wg:oauth:2.0:oob".to_string())?);
     Ok(client)
 }
 
 fn get_auth_url(client: &BasicClient) -> url::Url {
-    let (auth_url, _) = client
+    let (auth_url, csrf_token) = client
         .authorize_url(CsrfToken::new_random)
         // Set the desired scopes.
         .add_scope(Scope::new(
@@ -61,6 +63,7 @@ fn get_auth_url(client: &BasicClient) -> url::Url {
         ))
         .add_extra_param("access_type", "offline") // Request offline access for a refresh
         .url();
+    println!("token {csrf_token:?}", csrf_token = csrf_token.secret());
     auth_url
 }
 
@@ -123,9 +126,9 @@ async fn main() -> Result<()> {
     let file_content = GoogleDriveConfig::serialized(
         drive_name,
         root_folder,
+        refresh_token,
         client_id,
         client_secret,
-        refresh_token,
     );
 
     // 8. Write the token file

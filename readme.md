@@ -198,9 +198,10 @@ This is an advanced user feature with rough edges.
 #### Initial setup
 
 1. Open google cloud console and setup a new project for fm
-2. Add the google drive API for your project
-3. Add OAuth 2.0 credentials and copy the client id and client secret.
-4. Run the helper binary `google_drive_config_helper`.
+2. Add the google drive API for your project and create credentials
+3. Add a tester with the same account
+4. Add OAuth 2.0 credentials and copy the client id and client secret.
+5. Run the helper binary `google_drive_config_helper`.
 
 #### Notes:
 

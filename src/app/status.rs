@@ -1437,6 +1437,7 @@ impl Status {
 
     pub fn cloud_load_config(&mut self) -> Result<()> {
         let Some(picked) = self.menu.picker.selected() else {
+            log_info!("nothing selected");
             return Ok(());
         };
         let Ok(cloud) = google_drive(picked) else {
