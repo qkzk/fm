@@ -4,7 +4,7 @@ version = "0.1.27"
 authors = ["Quentin Konieczko <qu3nt1n@gmail.com>"]
 edition = "2021"
 license-file = "LICENSE.txt"
-description = "A TUI file manager inspired by dired and ranger"
+description = "FM : a file manager inspired by ranger and dired{n}{n}Config files   ~/.config/fm/{n}Documentation  https://github.com/qkzk/fm{n}"
 readme = "readme.md"
 repository = "https://github.com/qkzk/fm"
 keywords = ["tui", "file-manager", "file", "manager", "tuikit"]
@@ -20,10 +20,6 @@ lto = true # instructs the linker to optimize at the link stage.
 [[bin]]
 name = "fm"
 path = "src/main.rs"
-
-[[bin]]
-name = "google_drive_config_helper"
-path = "src/google_drive_config_helper/main.rs"
 
 [lib]
 name = "fm"

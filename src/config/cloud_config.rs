@@ -7,7 +7,7 @@ use oauth2::{
 };
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 
-use fm::common::path_to_config_folder;
+use crate::common::path_to_config_folder;
 
 async fn read_input() -> String {
     let mut input = String::new();
@@ -96,7 +96,7 @@ fn build_token_path(token_filename: &str) -> Result<std::path::PathBuf> {
 /// Creates a google drive token file for fm.
 /// It will allow fm to list and manipulate the files on google drive.
 #[tokio::main]
-async fn main() -> Result<()> {
+pub async fn cloud_config() -> Result<()> {
     // 1. Ask user a friendly name, a root folder, his id and secret.
     let (drive_name, root_folder, client_id, client_secret) = gather_input_data().await;
 

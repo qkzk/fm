@@ -9,7 +9,11 @@
 [docrs]: https://docs.rs/fm-tui/0.1.24
 
 ```
-A TUI file manager inspired by dired and ranger
+FM : a file manager inspired by ranger and dired
+
+Config files   ~/.config/fm/
+Documentation  https://github.com/qkzk/fm
+
 
 Usage: fm [OPTIONS]
 
@@ -19,8 +23,10 @@ Options:
   -A, --all              Display all files (hidden)
   -l, --log              Enable logging
       --neovim           Started inside neovim terminal emulator
+      --keybinds         Print keybinds
+      --cloudconfig      Configure a google drive client
   -h, --help             Print help
-  -V, --version          Print version                                                                                                                                                                              [3,8s]
+  -V, --version          Print version
 ```
 
 ## Platform
@@ -185,7 +191,7 @@ Those logs can be seen even if logging is disabled, it just won't be up to date.
 
 With the help of the amazing [OpenDal](https://opendal.apache.org/) library from Apache, you can access your remote GoogleDrive files within fm.
 
-You must setup a client id and a client secret first. Once it's done, the helper binary `google_drive_config_helper` will create the configuration file for you.
+You must setup a client id and a client secret first. Once it's done, the helper `fm --cloudconfig` will create the configuration file for you.
 It uses a refresh token which will automatically be refreshed for you by OpenDal.
 
 Open the Cloud menu with Shift-Alt-C and pick a valid config file.

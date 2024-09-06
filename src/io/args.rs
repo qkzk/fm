@@ -2,7 +2,7 @@ use clap::Parser;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(author, version, about)]
-/// FM : dired / ranger like file manager{n}
+/// FM : dired / ranger like file manager{n} {n}Config files: ~/.config/fm/{n}Documentation: https://github.com/qkzk/fm{n}
 pub struct Args {
     /// Starting path. directory or file
     #[arg(short, long, default_value_t = String::from("."))]
@@ -24,7 +24,11 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub neovim: bool,
 
-    /// Dump the keybinds in terminal and exit
+    /// Print keybinds
     #[arg(long, default_value_t = false)]
     pub keybinds: bool,
+
+    /// Configure a google drive client
+    #[arg(long, default_value_t = false)]
+    pub cloudconfig: bool,
 }

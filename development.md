@@ -1040,7 +1040,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] log errors
   - [x] delete confirmation
   - [x] FIX: window is offset after deletion when deleted wasn't on first screen
-  - [ ] merge into a single binary ???
+  - [x] merge into a single binary
   - [ ] BUG: opendal crashes if multiple files have the same name. See [issue](https://github.com/apache/opendal/issues/5099)
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)

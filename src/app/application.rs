@@ -11,6 +11,7 @@ use crate::app::Refresher;
 use crate::app::Status;
 use crate::common::CONFIG_PATH;
 use crate::common::{clear_tmp_file, init_term};
+use crate::config::cloud_config;
 use crate::config::load_config;
 use crate::config::START_FOLDER;
 use crate::event::EventDispatcher;
@@ -60,8 +61,15 @@ impl FM {
             exit_wrong_config()
         };
 
-        if Args::parse().keybinds {
+        let args = Args::parse();
+
+        if args.keybinds {
             println!("{binds}", binds = config.binds.to_str());
+            exit(0);
+        }
+
+        if args.cloudconfig {
+            cloud_config()?;
             exit(0);
         }
 
