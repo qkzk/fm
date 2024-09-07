@@ -974,7 +974,7 @@ impl EventAction {
                     status.menu.input.cursor_left();
                 }
                 Edit::Nothing => Self::file_move_left(tab)?,
-                Edit::Navigate(Navigate::Cloud) => status.menu.cloud.move_to_parent()?,
+                Edit::Navigate(Navigate::Cloud) => status.cloud_move_to_parent()?,
                 _ => (),
             }
         }

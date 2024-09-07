@@ -271,10 +271,13 @@ impl OpendalContainer {
         Ok(())
     }
 
-    #[tokio::main]
     async fn update_path(&mut self, path: &str) -> Result<()> {
         if let Some(op) = &self.op {
             self.content = op.list(path).await?;
+            for entry in self.content.iter() {
+                let metadata = entry.metadata();
+                log_info!("Path {path} - metadata {metadata:?}", path = entry.path());
+            }
             self.path = std::path::PathBuf::from(path);
             self.index = 0;
         };
@@ -286,9 +289,10 @@ impl OpendalContainer {
     /// # Errors:
     ///
     /// Will fail if the selected file is not a directory of the current path is empty.
-    pub fn navigate(&mut self) -> Result<()> {
+    #[tokio::main]
+    pub async fn enter_selected(&mut self) -> Result<()> {
         let path = self.selected().context("no path")?.path().to_owned();
-        self.update_path(&path)
+        self.update_path(&path).await
     }
 
     fn ensure_index_in_bounds(&mut self) {
@@ -299,10 +303,9 @@ impl OpendalContainer {
     /// Nothing is done if no connexion is established.
     #[tokio::main]
     pub async fn refresh_current(&mut self) -> Result<()> {
-        let Some(op) = &self.op else {
-            return Ok(());
-        };
-        self.content = op.list(&path_to_string(&self.path)).await?;
+        let old_index = self.index;
+        self.update_path(&path_to_string(&self.path)).await?;
+        self.index = old_index;
         self.ensure_index_in_bounds();
         Ok(())
     }
@@ -310,14 +313,12 @@ impl OpendalContainer {
     /// Move to remote parent directory if possible
     #[tokio::main]
     pub async fn move_to_parent(&mut self) -> Result<()> {
-        if let Some(op) = &self.op {
+        if self.op.is_some() {
             if self.path == self.root {
                 return Ok(());
             };
             if let Some(parent) = self.path.to_owned().parent() {
-                self.path = parent.to_path_buf();
-                self.content = op.list(&path_to_string(&parent)).await?;
-                self.index = 0;
+                self.update_path(&path_to_string(&parent)).await?;
             }
         }
         Ok(())

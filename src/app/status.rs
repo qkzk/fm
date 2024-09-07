@@ -1526,9 +1526,25 @@ impl Status {
                     .menu
                     .cloud
                     .download(self.current_tab().directory_of_selected()?)?,
-                EntryMode::DIR => self.menu.cloud.navigate()?,
+                EntryMode::DIR => {
+                    self.menu.cloud.enter_selected()?;
+                    self.cloud_set_content_window_len()?;
+                }
             };
         };
+        Ok(())
+    }
+
+    fn cloud_set_content_window_len(&mut self) -> Result<()> {
+        let len = self.menu.cloud.content.len();
+        let height = self.second_window_height()?;
+        self.menu.window = ContentWindow::new(len, height);
+        Ok(())
+    }
+
+    pub fn cloud_move_to_parent(&mut self) -> Result<()> {
+        self.menu.cloud.move_to_parent()?;
+        self.cloud_set_content_window_len()?;
         Ok(())
     }
 }
