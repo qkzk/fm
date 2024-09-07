@@ -110,8 +110,8 @@ impl ModeFormat for Entry {
     fn mode_fmt(&self) -> &'static str {
         match self.metadata().mode() {
             EntryMode::Unknown => "? ",
-            EntryMode::DIR => "D ",
-            EntryMode::FILE => "F ",
+            EntryMode::DIR => "d ",
+            EntryMode::FILE => ". ",
         }
     }
 }
