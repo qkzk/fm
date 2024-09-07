@@ -203,13 +203,23 @@ This is an advanced user feature with rough edges.
 
 #### Initial setup
 
-1. Open google cloud console and setup a new project for fm
-2. Add the google drive API for your project and create credentials
-3. Add a tester with the same account
-4. Add OAuth 2.0 credentials and copy the client id and client secret.
-5. Run the helper binary `google_drive_config_helper`.
+You need to provide credentials to access a google drive account. The only way to get them is to create a project in Google Cloud and share the credentials.
 
-#### Notes:
+1. Open google cloud console and setup a new project for fm
+2. Add the google drive API for your project with the scopes `https://www.googleapis.com/auth/drive` and create credentials
+3. Add a tester with the same email account
+4. Add OAuth 2.0 credentials and copy the client id and client secret.
+5. Publish your application. It changes nothing but make the refresh tokens last longer.
+6. Run the helper `fm --cloudconfig` and provide the requested informations.
+
+More infos about credentials can be found in the [rclone](https://rclone.org/drive/#making-your-own-client-id) documentation.
+
+#### Multiple files having the same name
+
+For some reason, GoogleDrive allows multiple files to have exactly the same name. ATM it crashes OpenDal in _testing mode_ and those files are ignored in _release_ mode.
+Only developpers of fm should be concerned.
+
+#### Notes
 
 - This feature is still in beta and is subject to change a lot.
 - Be careful with your files.
