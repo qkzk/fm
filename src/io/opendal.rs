@@ -85,7 +85,9 @@ pub async fn google_drive(token_file: &str) -> Result<OpendalContainer> {
 }
 
 /// Different kind of opendal container
+#[derive(Default)]
 pub enum OpendalKind {
+    #[default]
     Empty,
     GoogleDrive,
 }
@@ -117,6 +119,7 @@ impl ModeFormat for Entry {
 /// Holds any relevant content of an opendal container.
 /// It has an operator, allowing action on the remote files and knows
 /// about the root path and current content.
+#[derive(Default)]
 pub struct OpendalContainer {
     pub op: Option<Operator>,
     pub kind: OpendalKind,
@@ -125,20 +128,6 @@ pub struct OpendalContainer {
     pub root: std::path::PathBuf,
     pub index: usize,
     pub content: Vec<Entry>,
-}
-
-impl Default for OpendalContainer {
-    fn default() -> Self {
-        Self {
-            op: None,
-            kind: OpendalKind::Empty,
-            desc: "empty".to_owned(),
-            path: std::path::PathBuf::from(""),
-            root: std::path::PathBuf::from(""),
-            index: 0,
-            content: vec![],
-        }
-    }
 }
 
 impl OpendalContainer {
