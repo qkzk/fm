@@ -1444,6 +1444,7 @@ impl Status {
             .collect())
     }
 
+    /// Load the selected cloud configuration file from the config folder and open navigation the menu.
     pub fn cloud_load_config(&mut self) -> Result<()> {
         let Some(picked) = self.menu.picker.selected() else {
             log_info!("nothing selected");
@@ -1457,6 +1458,9 @@ impl Status {
         self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
     }
 
+    /// Open the cloud menu.
+    /// If no cloud has been selected yet, all cloud config file will be displayed.
+    /// if a cloud has been selected, it will open it.
     pub fn cloud_open(&mut self) -> Result<()> {
         if self.menu.cloud.is_set() {
             self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
@@ -1471,11 +1475,14 @@ impl Status {
         }
     }
 
+    /// Disconnect from the current cloud and open the picker
     pub fn cloud_disconnect(&mut self) -> Result<()> {
         self.menu.cloud.disconnect();
         self.cloud_open()
     }
 
+    /// Enter the delete mode and ask confirmation.
+    /// Only the currently selected file can be deleted.
     pub fn cloud_enter_delete_mode(&mut self) -> Result<()> {
         self.set_edit_mode(
             self.index,
@@ -1483,10 +1490,7 @@ impl Status {
         )
     }
 
-    pub fn cloud_update_metadata(&mut self) -> Result<()> {
-        self.menu.cloud.update_metadata()
-    }
-
+    /// Delete the selected file once a confirmation has been received from the user.
     pub fn cloud_confirm_delete(&mut self) -> Result<()> {
         self.menu.cloud.delete()?;
         self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))?;
@@ -1495,9 +1499,21 @@ impl Status {
         Ok(())
     }
 
+    /// Update the metadata of the current file.
+    pub fn cloud_update_metadata(&mut self) -> Result<()> {
+        self.menu.cloud.update_metadata()
+    }
+
+    /// Ask the user to enter a name for the new directory.
     pub fn cloud_enter_newdir_mode(&mut self) -> Result<()> {
         self.set_edit_mode(self.index, Edit::InputSimple(InputSimple::CloudNewdir))?;
         self.refresh_view()
+    }
+
+    /// Create the new directory in current path with the name the user entered.
+    pub fn cloud_create_newdir(&mut self, dirname: String) -> Result<()> {
+        self.menu.cloud.create_newdir(dirname)?;
+        self.menu.cloud.refresh_current()
     }
 
     fn get_normal_selected_file(&self) -> Option<FileInfo> {
@@ -1508,6 +1524,7 @@ impl Status {
         }
     }
 
+    /// Upload the current file (tree or directory mode) the the current remote path.
     pub fn cloud_upload_selected_file(&mut self) -> Result<()> {
         let Some(local_file) = self.get_normal_selected_file() else {
             log_line!("Can only upload normal files.");
@@ -1517,11 +1534,7 @@ impl Status {
         self.menu.cloud.refresh_current()
     }
 
-    pub fn cloud_create_newdir(&mut self, dirname: String) -> Result<()> {
-        self.menu.cloud.create_newdir(dirname)?;
-        self.menu.cloud.refresh_current()
-    }
-
+    /// Enter a file (download it) or the directory (explore it).
     pub fn cloud_enter_file_or_dir(&mut self) -> Result<()> {
         if let Some(entry) = self.menu.cloud.selected() {
             match entry.metadata().mode() {
@@ -1546,6 +1559,8 @@ impl Status {
         Ok(())
     }
 
+    /// Move to the parent folder if possible.
+    /// Nothing is done in the root folder.
     pub fn cloud_move_to_parent(&mut self) -> Result<()> {
         self.menu.cloud.move_to_parent()?;
         self.cloud_set_content_window_len()?;
