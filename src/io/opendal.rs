@@ -122,13 +122,24 @@ impl ModeFormat for Entry {
 /// about the root path and current content.
 #[derive(Default)]
 pub struct OpendalContainer {
-    pub op: Option<Operator>,
-    pub kind: OpendalKind,
-    desc: String,
-    pub path: std::path::PathBuf,
-    pub root: std::path::PathBuf,
+    /// Operator executing requests
+    op: Option<Operator>,
+    /// What kind of OpenDal container is it ?
+    /// ATM only GoogleDrive and Unknown
+    kind: OpendalKind,
+    /// Friendly name of the container to be displayed
+    name: String,
+    /// Current path in the cloud
+    path: std::path::PathBuf,
+    /// Configured root path
+    root: std::path::PathBuf,
+    /// Current index
     pub index: usize,
+    /// Retrieved files
     pub content: Vec<Entry>,
+    /// Last retrieved information
+    /// We keep a pair: index and string.
+    /// It may be cached in the future
     pub metadata_repr: Option<(usize, String)>,
 }
 
@@ -142,7 +153,7 @@ impl OpendalContainer {
     ) -> Self {
         Self {
             op: Some(op),
-            desc: format!("{kind_format}/{drive_name}", kind_format = kind.repr()),
+            name: format!("{kind_format}/{drive_name}", kind_format = kind.repr()),
             path: std::path::PathBuf::from(root_path),
             root: std::path::PathBuf::from(root_path),
             kind,
@@ -161,6 +172,7 @@ impl OpendalContainer {
         ))
     }
 
+    /// Update the metadata with for the currently selected file
     #[tokio::main]
     pub async fn update_metadata(&mut self) -> Result<()> {
         let Some(op) = &self.op else {
@@ -277,10 +289,10 @@ impl OpendalContainer {
 
     /// Disconnect itself, reseting it's parameters.
     pub fn disconnect(&mut self) {
-        let desc = self.desc.to_owned();
+        let desc = self.name.to_owned();
         self.op = None;
         self.kind = OpendalKind::Empty;
-        self.desc = "empty".to_owned();
+        self.name = "empty".to_owned();
         self.path = std::path::PathBuf::from("");
         self.root = std::path::PathBuf::from("");
         self.index = 0;
@@ -355,10 +367,11 @@ impl OpendalContainer {
         Ok(())
     }
 
+    /// Format a description of the current container: Name and path.
     pub fn desc(&self) -> String {
         format!(
             "{desc}{sep}{path}",
-            desc = self.desc,
+            desc = self.name,
             sep = if self.path == self.root { "" } else { "/" },
             path = self.path.display()
         )
