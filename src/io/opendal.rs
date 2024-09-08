@@ -15,6 +15,7 @@ use crate::impl_content;
 use crate::impl_selectable;
 use crate::log_info;
 use crate::log_line;
+use crate::modes::human_size;
 use crate::modes::FileInfo;
 
 #[derive(Deserialize, Debug)]
@@ -128,6 +129,7 @@ pub struct OpendalContainer {
     pub root: std::path::PathBuf,
     pub index: usize,
     pub content: Vec<Entry>,
+    pub metadata_repr: Option<(usize, String)>,
 }
 
 impl OpendalContainer {
@@ -146,7 +148,39 @@ impl OpendalContainer {
             kind,
             index: 0,
             content,
+            metadata_repr: None,
         }
+    }
+
+    fn selected_filepath(&self) -> Option<String> {
+        Some(format!(
+            "{path}{sep}{filename}",
+            path = self.path.display(),
+            sep = if self.path == self.root { "" } else { "/" },
+            filename = self.selected_filename()?,
+        ))
+    }
+
+    #[tokio::main]
+    pub async fn update_metadata(&mut self) -> Result<()> {
+        let Some(op) = &self.op else {
+            return Ok(());
+        };
+        let Some(filename) = self.selected_filename() else {
+            return Ok(());
+        };
+        let metadata = op
+            .stat_with(&self.selected_filepath().context("No selected file")?)
+            .await?;
+        let last_modified = match metadata.last_modified() {
+            Some(dt) => &dt.format("%Y/%m/%d %H:%M:%S").to_string(),
+            None => "",
+        };
+        let size = human_size(metadata.content_length());
+        let metadata_repr = format!("{size} {last_modified} {filename} ");
+        self.metadata_repr = Some((self.index, metadata_repr));
+
+        Ok(())
     }
 
     /// True if the opendal container is really set. IE if it's connected to a remote container.
@@ -274,12 +308,9 @@ impl OpendalContainer {
     async fn update_path(&mut self, path: &str) -> Result<()> {
         if let Some(op) = &self.op {
             self.content = op.list(path).await?;
-            for entry in self.content.iter() {
-                let metadata = entry.metadata();
-                log_info!("Path {path} - metadata {metadata:?}", path = entry.path());
-            }
             self.path = std::path::PathBuf::from(path);
             self.index = 0;
+            self.metadata_repr = None;
         };
         Ok(())
     }

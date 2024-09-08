@@ -1483,6 +1483,10 @@ impl Status {
         )
     }
 
+    pub fn cloud_update_metadata(&mut self) -> Result<()> {
+        self.menu.cloud.update_metadata()
+    }
+
     pub fn cloud_confirm_delete(&mut self) -> Result<()> {
         self.menu.cloud.delete()?;
         self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))?;

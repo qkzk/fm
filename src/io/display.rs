@@ -921,10 +921,16 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_cloud(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let cloud = &self.status.menu.cloud;
+        let mut desc = cloud.desc();
+        if let Some((index, metadata)) = &cloud.metadata_repr {
+            if index == &cloud.index {
+                desc = format!("{desc} - {metadata}");
+            }
+        }
         let _ = canvas.print_with_attr(
             2,
             2,
-            &cloud.desc(),
+            &desc,
             Attr {
                 fg: tuikit::attr::Color::LIGHT_BLUE,
                 ..Attr::default()
