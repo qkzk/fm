@@ -972,6 +972,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - hex colors can be used in config file.
 - click on right pane while previewing a tree moves there.
 - Display keybindings sorted by alphabetical order with `$ fm --keybinds`
+- Google drive. Navigate, download, upload file to google drive once configured. See the readme for more details.
 
 #### Changelog
 
@@ -1022,9 +1023,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] refresh token creation
   - [x] write tokens in config folder for user
   - [x] keybindings in menu
-  - [ ] readme for users
-    - [x] basic description
-    - [ ] links to GCP
+  - [x] readme for users
   - [x] token handling
   - [x] simplest configuration
   - [x] google drive listing
