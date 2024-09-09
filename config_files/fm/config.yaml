@@ -7,10 +7,20 @@ terminal: st
 
 # configurable colors
 
-# Define a palette for the "normal" files. 
-# Accepted values are "red-green", "red-blue" and "green-blue"
-# other value will lead to the default palette which is "green-blue".
-palette: green-blue
+# Define a palette for the "normal" files.
+# File will be colored randomly from their extensions.
+# Accepted values are "red", "green", "blue" or a rgb color
+# Allowed Format for rgb color :
+#   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
+#   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals
+# Unfortunatelly, not all ansi color names are accepted.
+# Unreadable values will lead to the default palette which is "green-blue".
+# palette:
+#   start: "rgb(255, 110, 128)"
+#   stop: "rgb(123, 100, 255)"
+palette:
+  start: green
+  stop: blue
 
 # Colors for "non normal" files. The list is below.
 colors:
@@ -19,7 +29,9 @@ colors:
   # List of allowed colors:
   #   white,        black,        red,       green,       blue,       yellow,       cyan,       magenta 
   #   light_white,  light_black,  light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
-  # Allowed Format for rgb color : `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
+  # Allowed Format for rgb color :
+  #   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
+  #   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals
   directory: red
   block: yellow
   char: green
@@ -88,7 +100,7 @@ keys:
   't': Tree
   'u': ClearFlags
   'v': ReverseFlags
-  'x': DeleteFile
+  'x': Delete
   'w': RegexMatch
   'alt-b': Bulk
   'alt-d': ToggleDualPane
@@ -110,6 +122,16 @@ keys:
   'shift-m': MarksNew
   'shift-o': Sort
   'shift-p': Preview
+  'f1': FuzzyFindHelp
+  'f2': Rename
+  'f3': Preview
+  'f4': OpenFile
+  'f5': CopyPaste
+  'f6': CutPaste
+  'f7': NewDir
+  'f8': Delete
+  'f9': NewFile
+  'f10': Quit
 
 # Custom command :
 # * Use a free keybind

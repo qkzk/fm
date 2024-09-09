@@ -17,7 +17,7 @@ pub struct IsoDevice {
 }
 
 impl IsoDevice {
-    const FILENAME: &str = "fm_iso";
+    const FILENAME: &'static str = "fm_iso";
 
     /// Creates a new instance from an iso file path.
     #[must_use]

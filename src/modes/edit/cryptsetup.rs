@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
 
-use crate::common::{current_username, is_program_in_path};
+use crate::common::{current_username, is_program_in_path, MKDIR};
 use crate::common::{CRYPTSETUP, LSBLK};
 use crate::impl_content;
 use crate::impl_selectable;
@@ -179,7 +179,7 @@ impl CryptoDevice {
 impl MountParameters for CryptoDevice {
     fn format_mkdir_parameters(&self, username: &str) -> [String; 3] {
         [
-            "mkdir".to_owned(),
+            MKDIR.to_owned(),
             "-p".to_owned(),
             format!("/run/media/{}/{}", username, self.device_name()),
         ]

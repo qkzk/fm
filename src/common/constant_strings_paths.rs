@@ -60,7 +60,11 @@ pub const LOG_FIRST_SENTENCE: &str = " Logs: ";
 /// Description of the content below, aka what is logged there.
 pub const LOG_SECOND_SENTENCE: &str = " Last actions affecting the file tree";
 /// Ueberzug image thumbnails
-pub const THUMBNAIL_PATH: &str = "/tmp/fm_thumbnail.png";
+pub const THUMBNAIL_PATH_PNG: &str = "/tmp/fm_thumbnail.png";
+/// Ueberzug image thumbnails
+pub const THUMBNAIL_PATH_JPG: &str = "/tmp/fm_thumbnail.jpg";
+/// Ueberzug image for pdf
+pub const THUMBNAIL_PDF_PATH: &str = "/tmp/fm_thumbnail";
 /// Libreoffice pdf output
 pub const CALC_PDF_PATH: &str = "/tmp/fm_calc.pdf";
 /// Array of hardcoded shortcuts with standard *nix paths.
@@ -81,6 +85,7 @@ pub const RG_EXECUTABLE: &str = "rg --line-number \"{}\"";
 pub const GREP_EXECUTABLE: &str = "grep -rI --line-number \"{}\"";
 pub const SSHFS_EXECUTABLE: &str = "sshfs";
 pub const NOTIFY_EXECUTABLE: &str = "notity-send";
+pub const EJECT_EXECUTABLE: &str = "eject";
 /// Encrypted devices bind description
 pub const ENCRYPTED_DEVICE_BINDS: &str = "m: mount   --   u: unmount   --   g: go to mount point";
 /// Sort presentation for the second window
@@ -101,6 +106,7 @@ pub const REMOTE_LINES: [&str; 4] = [
     "",
     "username hostname remote_path port",
 ];
+pub const CLOUD_NEWDIR_LINES: [&str; 1] = ["Create a new directory in current cloud path"];
 /// Chmod presentation for the second window
 pub const CHMOD_LINES: [&str; 5] = [
     "Type an octal mode like 754.",
@@ -192,6 +198,12 @@ pub const PANDOC: &str = "pandoc";
 pub const ISOINFO: &str = "isoinfo";
 /// socket file explorer
 pub const SS: &str = "ss";
+/// mkdir is used to create path before mounting
+pub const MKDIR: &str = "mkdir";
+/// mount is used to mount usb removable devices
+pub const MOUNT: &str = "mount";
+/// umount is used to mount usb removable devices
+pub const UMOUNT: &str = "umount";
 /// lsblk is used to get mountpoints, info about encrypted drives
 pub const LSBLK: &str = "lsblk";
 /// cryptsetup is used to mount encrypted drives
@@ -212,4 +224,9 @@ pub const LAZYGIT: &str = "lazygit";
 pub const NCDU: &str = "ncdu";
 /// transmission-show
 pub const TRANSMISSION_SHOW: &str = "transmission-show";
+/// Zoxide executable
 pub const ZOXIDE: &str = "zoxide";
+/// pdftoppm
+pub const PDFTOPPM: &str = "pdftoppm";
+/// pdinfo
+pub const PDFINFO: &str = "pdfinfo";

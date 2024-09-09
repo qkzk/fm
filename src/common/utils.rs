@@ -3,6 +3,8 @@ use std::fs::metadata;
 use std::io::BufRead;
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
+use std::path::PathBuf;
+use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
@@ -11,7 +13,8 @@ use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::common::{CALC_PDF_PATH, THUMBNAIL_PATH};
+use crate::common::CONFIG_FOLDER;
+use crate::common::{CALC_PDF_PATH, THUMBNAIL_PATH_JPG};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::human_size;
@@ -100,11 +103,15 @@ pub fn current_username() -> Result<String> {
         .cloned()
 }
 
-/// True iff the command is available in $PATH.
+/// True if the program is given by an absolute path which exists or
+/// if the command is available in $PATH.
 pub fn is_program_in_path<S>(program: S) -> bool
 where
-    S: Into<String> + std::fmt::Display,
+    S: Into<String> + std::fmt::Display + AsRef<Path>,
 {
+    if program.as_ref().exists() {
+        return true;
+    }
     if let Ok(path) = std::env::var("PATH") {
         for p in path.split(':') {
             let p_str = &format!("{p}/{program}");
@@ -204,7 +211,7 @@ pub fn random_name() -> String {
 
 /// Clear the temporary file used by fm for previewing.
 pub fn clear_tmp_file() {
-    let _ = std::fs::remove_file(THUMBNAIL_PATH);
+    let _ = std::fs::remove_file(THUMBNAIL_PATH_JPG);
     let _ = std::fs::remove_file(CALC_PDF_PATH);
 }
 
@@ -318,4 +325,15 @@ impl UtfWidth for &str {
             .collect::<Vec<String>>()
             .len()
     }
+}
+
+pub fn index_from_a(lettre: char) -> Option<usize> {
+    (lettre as usize).checked_sub('a' as usize)
+}
+
+/// A PathBuf of the current config folder.
+pub fn path_to_config_folder() -> Result<PathBuf> {
+    Ok(std::path::PathBuf::from_str(
+        shellexpand::tilde(CONFIG_FOLDER).borrow(),
+    )?)
 }

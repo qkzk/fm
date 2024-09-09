@@ -37,6 +37,7 @@ impl EventDispatcher {
             }
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
             FmEvents::Refresh => EventAction::refresh_if_needed(status),
+            FmEvents::FileCopied => EventAction::file_copied(status),
             _ => Ok(()),
         }
     }
@@ -93,7 +94,7 @@ impl EventDispatcher {
                     Ok(())
                 }
                 Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
-                Edit::Navigate(navigate) => Self::navigate_char(navigate, status, c),
+                Edit::Navigate(navigate) => self.navigate_char(navigate, status, c),
                 Edit::Nothing if matches!(tab.display_mode, Display::Preview) => {
                     tab.reset_display_mode_and_view()
                 }
@@ -109,17 +110,28 @@ impl EventDispatcher {
         Ok(())
     }
 
-    fn navigate_char(navigate: Navigate, status: &mut Status, c: char) -> Result<()> {
+    fn navigate_char(&self, navigate: Navigate, status: &mut Status, c: char) -> Result<()> {
         match navigate {
             Navigate::Trash if c == 'x' => status.menu.trash_delete_permanently(),
             Navigate::EncryptedDrive if c == 'm' => status.mount_encrypted_drive(),
             Navigate::EncryptedDrive if c == 'g' => status.go_to_encrypted_drive(),
             Navigate::EncryptedDrive if c == 'u' => status.umount_encrypted_drive(),
-            Navigate::RemovableDevices if c == 'm' => status.menu.mount_removable(),
+            Navigate::RemovableDevices if c == 'm' => status.mount_removable(),
             Navigate::RemovableDevices if c == 'g' => status.go_to_removable(),
-            Navigate::RemovableDevices if c == 'u' => status.menu.umount_removable(),
+            Navigate::RemovableDevices if c == 'u' => status.umount_removable(),
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
+            Navigate::Shortcut if status.menu.shortcut_from_char(c) => {
+                LeaveMode::leave_edit_mode(status, &self.binds)
+            }
+            Navigate::Context if status.menu.context_from_char(c) => {
+                LeaveMode::leave_edit_mode(status, &self.binds)
+            }
+            Navigate::Cloud if c == 'l' => status.cloud_disconnect(),
+            Navigate::Cloud if c == 'd' => status.cloud_enter_newdir_mode(),
+            Navigate::Cloud if c == 'u' => status.cloud_upload_selected_file(),
+            Navigate::Cloud if c == 'x' => status.cloud_enter_delete_mode(),
+            Navigate::Cloud if c == '?' => status.cloud_update_metadata(),
             _ => {
                 status.reset_edit_mode()?;
                 status.current_tab_mut().reset_display_mode_and_view()

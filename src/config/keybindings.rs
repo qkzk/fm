@@ -91,6 +91,7 @@ impl Bindings {
             (Key::Char('Z'), ActionMap::TreeUnFoldAll),
             (Key::Alt('b'), ActionMap::Bulk),
             (Key::Alt('c'), ActionMap::OpenConfig),
+            (Key::Alt('C'), ActionMap::CloudDrive),
             (Key::Alt('d'), ActionMap::ToggleDualPane),
             (Key::Alt('e'), ActionMap::EncryptedDrive),
             (Key::Alt('f'), ActionMap::Filter),
@@ -128,6 +129,18 @@ impl Bindings {
             (Key::Ctrl('j'), ActionMap::FocusGoDown),
             (Key::Ctrl('k'), ActionMap::FocusGoUp),
             (Key::Ctrl('l'), ActionMap::FocusGoRight),
+            (Key::F(1), ActionMap::FuzzyFindHelp),
+            (Key::F(2), ActionMap::Rename),
+            (Key::F(3), ActionMap::Preview),
+            (Key::F(4), ActionMap::OpenFile),
+            (Key::F(5), ActionMap::CopyPaste),
+            (Key::F(6), ActionMap::CutPaste),
+            (Key::F(7), ActionMap::NewDir),
+            (Key::F(8), ActionMap::Delete),
+            (Key::F(9), ActionMap::NewFile),
+            (Key::F(10), ActionMap::Quit),
+            (Key::F(11), ActionMap::FlaggedToClipboard),
+            (Key::F(12), ActionMap::FlaggedFromClipboard),
         ]);
         let custom = None;
         Self { binds, custom }
@@ -197,5 +210,21 @@ impl Bindings {
             custom.push(format!("{keymap:?}:        {custom_str}\n"));
         }
         self.custom = Some(custom);
+    }
+
+    /// Format all keybindings in alphabetical order.
+    pub fn to_str(&self) -> String {
+        let mut binds = vec![];
+        for (key, action) in self.binds.iter() {
+            binds.push(format!(
+                "{key:?}:         {action} - {desc}\n",
+                desc = action.description()
+            ))
+        }
+        binds.sort();
+        let binds = binds.join("");
+
+        let keybinds_string = format!("fm keybindings \n\n{binds}");
+        keybinds_string
     }
 }

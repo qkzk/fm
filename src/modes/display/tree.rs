@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use crate::common::filename_from_path;
 use crate::common::has_last_modification_happened_less_than;
@@ -396,9 +396,8 @@ impl Tree {
                 };
                 if next_node.reachable && !self.node_has_parent_folded(next_node) {
                     return next_path.to_owned();
-                } else {
-                    current_path = next_path.clone();
                 }
+                current_path = next_path.clone();
             }
         }
     }
@@ -420,9 +419,8 @@ impl Tree {
                 };
                 if prev_node.reachable && !self.node_has_parent_folded(prev_node) {
                     return prev_path.to_owned();
-                } else {
-                    current_path = prev_path.to_owned();
                 }
+                current_path = prev_path.to_owned();
             }
         }
     }
@@ -594,7 +592,7 @@ impl Tree {
         root_path: &Path,
         nodes: &HashMap<Arc<Path>, Node>,
     ) -> TreeLines {
-        let mut stack = vec![("".to_owned(), root_path.borrow())];
+        let mut stack = vec![("".to_owned(), root_path)];
         let mut lines = vec![];
         let mut index = 0;
 
@@ -670,6 +668,20 @@ impl Tree {
         for leaf in children {
             stack.push((other_prefix.clone(), leaf));
         }
+    }
+
+    pub fn selected_is_last(&self) -> bool {
+        self.displayable_lines.selected_is_last()
+    }
+
+    pub fn path_from_index(&self, index: usize) -> Result<std::path::PathBuf> {
+        let displayable = self.displayable();
+        Ok(displayable
+            .lines()
+            .get(index)
+            .context("tree: no selected file")?
+            .path()
+            .to_owned())
     }
 }
 
@@ -754,6 +766,10 @@ impl TreeLines {
             self.index = index;
             self.content[self.index].select()
         }
+    }
+
+    fn selected_is_last(&self) -> bool {
+        self.index + 1 == self.content.len()
     }
 }
 

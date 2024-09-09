@@ -16,7 +16,8 @@ use tuikit::attr::{Attr, Color};
 
 use crate::common::{
     CALC_PDF_PATH, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
-    PANDOC, RSVG_CONVERT, SS, THUMBNAIL_PATH, TRANSMISSION_SHOW, UEBERZUG,
+    PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS, THUMBNAIL_PATH_JPG, THUMBNAIL_PATH_PNG,
+    THUMBNAIL_PDF_PATH, TRANSMISSION_SHOW, UEBERZUG,
 };
 use crate::log_info;
 use crate::modes::ContentWindow;
@@ -26,7 +27,9 @@ use crate::modes::Tree;
 use crate::modes::Users;
 
 use crate::common::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
-use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_log};
+use crate::io::{
+    execute_and_capture_output, execute_and_capture_output_without_check, execute_and_output_no_log,
+};
 use crate::modes::FilterKind;
 use crate::modes::SortKind;
 use crate::modes::{list_files_tar, list_files_zip};
@@ -49,7 +52,7 @@ pub enum ExtensionKind {
     Epub,
     Torrent,
     #[default]
-    Unknown,
+    Default,
 }
 
 impl ExtensionKind {
@@ -74,12 +77,32 @@ impl ExtensionKind {
             "doc" | "docx" | "odt" | "sxw" | "xlsx" | "xls" => Self::Office,
             "epub" => Self::Epub,
             "torrent" => Self::Torrent,
-            _ => Self::Unknown,
+            _ => Self::Default,
         }
     }
 
     pub fn is(self, kind: Self) -> bool {
         self == kind
+    }
+}
+
+impl std::fmt::Display for ExtensionKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Archive => write!(f, "archive"),
+            Self::Image => write!(f, "image"),
+            Self::Audio => write!(f, "audio"),
+            Self::Video => write!(f, "video"),
+            Self::Font => write!(f, "font"),
+            Self::Svg => write!(f, "svg"),
+            Self::Pdf => write!(f, "pdf"),
+            Self::Iso => write!(f, "iso"),
+            Self::Notebook => write!(f, "notebook"),
+            Self::Office => write!(f, "office"),
+            Self::Epub => write!(f, "epub"),
+            Self::Torrent => write!(f, "torrent"),
+            Self::Default => write!(f, "default"),
+        }
     }
 }
 
@@ -157,10 +180,16 @@ impl Preview {
                         &file_info.path,
                         extension,
                     )?)),
-                    ExtensionKind::Pdf => Ok(Self::Ueberzug(Ueberzug::make(
-                        &file_info.path,
-                        UeberzugKind::Pdf,
-                    )?)),
+                    ExtensionKind::Pdf
+                        if (is_program_in_path(UEBERZUG)
+                            && is_program_in_path(PDFINFO)
+                            && is_program_in_path(PDFTOPPM)) =>
+                    {
+                        Ok(Self::Ueberzug(Ueberzug::make(
+                            &file_info.path,
+                            UeberzugKind::Pdf,
+                        )?))
+                    }
                     ExtensionKind::Image if is_program_in_path(UEBERZUG) => Ok(Self::Ueberzug(
                         Ueberzug::make(&file_info.path, UeberzugKind::Image)?,
                     )),
@@ -801,15 +830,22 @@ pub struct Ueberzug {
 }
 
 impl Ueberzug {
-    fn thumbnail(original: PathBuf, kind: UeberzugKind) -> Self {
+    fn thumbnail(original: PathBuf, kind: UeberzugKind, thumbnail_path: Option<String>) -> Self {
         let filename = original
             .file_name()
             .unwrap_or_default()
             .to_string_lossy()
             .to_string();
+
+        let path = if let Some(thumbnail_path) = thumbnail_path {
+            thumbnail_path
+        } else {
+            THUMBNAIL_PATH_JPG.to_owned()
+        };
+
         Self {
             original,
-            path: THUMBNAIL_PATH.to_owned(),
+            path,
             filename,
             kind,
             ueberzug: ueberzug::Ueberzug::new(),
@@ -848,17 +884,29 @@ impl Ueberzug {
 
     fn video_thumbnail(video_path: &Path) -> Result<Self> {
         Self::make_video_thumbnail(video_path)?;
-        Ok(Self::thumbnail(video_path.to_owned(), UeberzugKind::Video))
+        Ok(Self::thumbnail(
+            video_path.to_owned(),
+            UeberzugKind::Video,
+            None,
+        ))
     }
 
     fn font_thumbnail(font_path: &Path) -> Result<Self> {
         Self::make_font_thumbnail(font_path)?;
-        Ok(Self::thumbnail(font_path.to_owned(), UeberzugKind::Font))
+        Ok(Self::thumbnail(
+            font_path.to_owned(),
+            UeberzugKind::Font,
+            Some(THUMBNAIL_PATH_PNG.to_owned()),
+        ))
     }
 
     fn svg_thumbnail(svg_path: &Path) -> Result<Self> {
         Self::make_svg_thumbnail(svg_path)?;
-        Ok(Self::thumbnail(svg_path.to_owned(), UeberzugKind::Svg))
+        Ok(Self::thumbnail(
+            svg_path.to_owned(),
+            UeberzugKind::Svg,
+            Some(THUMBNAIL_PATH_PNG.to_owned()),
+        ))
     }
 
     fn office_thumbnail(calc_path: &Path) -> Result<Self> {
@@ -879,15 +927,17 @@ impl Ueberzug {
         pdf_path.set_extension("pdf");
         std::fs::rename(pdf_path, CALC_PDF_PATH)?;
         let calc_pdf_path = PathBuf::from(CALC_PDF_PATH);
-        let length = Self::make_pdf_thumbnail(&calc_pdf_path, 0)?;
-        let mut thumbnail = Self::thumbnail(calc_pdf_path.to_owned(), UeberzugKind::Pdf);
+        let length = Self::get_pdf_length(&calc_pdf_path)?;
+        Self::make_pdf_thumbnail(&calc_pdf_path, 0)?;
+        let mut thumbnail = Self::thumbnail(calc_pdf_path.to_owned(), UeberzugKind::Pdf, None);
         thumbnail.length = length;
         Ok(thumbnail)
     }
 
     fn pdf_thumbnail(pdf_path: &Path) -> Result<Self> {
-        let length = Self::make_pdf_thumbnail(pdf_path, 0)?;
-        let mut thumbnail = Self::thumbnail(pdf_path.to_owned(), UeberzugKind::Pdf);
+        let length = Self::get_pdf_length(pdf_path)?;
+        Self::make_pdf_thumbnail(pdf_path, 0)?;
+        let mut thumbnail = Self::thumbnail(pdf_path.to_owned(), UeberzugKind::Pdf, None);
         thumbnail.length = length;
         Ok(thumbnail)
     }
@@ -904,42 +954,36 @@ impl Ueberzug {
         Ok(())
     }
 
-    /// Creates the thumbnail for the `index` page.
-    /// Returns the number of pages of the pdf.
-    ///
-    /// It may fail (and surelly crash the app) if the pdf is password protected.
-    /// We pass a generic password which is hardcoded.
-    fn make_pdf_thumbnail(pdf_path: &Path, index: usize) -> Result<usize> {
-        let mut data: Vec<u8> = std::fs::read(pdf_path)?;
-        // let doc: poppler::PopplerDocument =
-        //     poppler::PopplerDocument::new_from_file(pdf_path, "upw")?;
-        let doc: poppler::PopplerDocument =
-            poppler::PopplerDocument::new_from_data(&mut data[..], "upw")?;
-        let length = doc.get_n_pages();
-        if index >= length {
-            return Err(anyhow!(
-                "Poppler: index {index} >= number of page {length}."
-            ));
+    fn make_pdf_thumbnail(path: &Path, page_number: usize) -> Result<()> {
+        execute_and_capture_output_without_check(
+            PDFTOPPM,
+            &[
+                "-singlefile",
+                "-jpeg",
+                "-jpegopt",
+                "quality=75",
+                "-f",
+                (page_number + 1).to_string().as_ref(),
+                path.to_string_lossy().to_string().as_ref(),
+                THUMBNAIL_PDF_PATH,
+            ],
+        )?;
+        Ok(())
+    }
+
+    fn get_pdf_length(path: &Path) -> Result<usize> {
+        let output =
+            execute_and_capture_output(PDFINFO, &[path.to_string_lossy().to_string().as_ref()])?;
+        let line = output.lines().find(|line| line.starts_with("Pages: "));
+
+        match line {
+            Some(line) => {
+                let page_count_str = line.split_whitespace().nth(1).unwrap();
+                let page_count = page_count_str.parse::<usize>()?;
+                Ok(page_count)
+            }
+            None => Err(anyhow::Error::msg("Couldn't find the page number")),
         }
-        let page: poppler::PopplerPage = doc
-            .get_page(index)
-            .context("poppler couldn't extract page")?;
-        let (w, h) = page.get_size();
-        let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, w as i32, h as i32)?;
-        let ctx = cairo::Context::new(&surface)?;
-        ctx.save()?;
-        page.render(&ctx);
-        ctx.restore()?;
-        ctx.show_page()?;
-        let Ok(mut file) = std::fs::File::create(THUMBNAIL_PATH) else {
-            return Ok(0);
-        };
-        surface.write_to_png(&mut file)?;
-        surface.finish();
-        // those drops should be useless
-        drop(ctx);
-        drop(surface);
-        Ok(length)
     }
 
     fn make_video_thumbnail(video_path: &Path) -> Result<()> {
@@ -955,7 +999,7 @@ impl Ueberzug {
                 "thumbnail",
                 "-frames:v",
                 "1",
-                THUMBNAIL_PATH,
+                THUMBNAIL_PATH_JPG,
                 "-y",
             ],
         )
@@ -965,7 +1009,7 @@ impl Ueberzug {
         let path_str = font_path
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
-        Self::make_thumbnail(FONTIMAGE, &["-o", THUMBNAIL_PATH, path_str])
+        Self::make_thumbnail(FONTIMAGE, &["-o", THUMBNAIL_PATH_PNG, path_str])
     }
 
     fn make_svg_thumbnail(svg_path: &Path) -> Result<()> {
@@ -974,7 +1018,7 @@ impl Ueberzug {
             .context("make_thumbnail: couldn't parse the path into a string")?;
         Self::make_thumbnail(
             RSVG_CONVERT,
-            &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH],
+            &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH_PNG],
         )
     }
 

@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index,
 };
-use crate::io::Args;
+use crate::io::{Args, Opener};
 use crate::modes::Directory;
 use crate::modes::FileInfo;
 use crate::modes::FilterKind;
@@ -162,7 +162,7 @@ impl Tab {
         }
     }
 
-    /// Current path of this tab.
+    /// Current path of this tab in directory display mode.
     pub fn current_path(&self) -> &path::Path {
         self.directory.path.borrow()
     }
@@ -177,7 +177,7 @@ impl Tab {
             _ => Ok(self
                 .directory
                 .selected()
-                .context("no selected file")?
+                .context("current_file: no selected file")?
                 .to_owned()),
         }
     }
@@ -289,7 +289,7 @@ impl Tab {
             self.window.reset(self.tree.displayable().lines().len());
             self.set_display_mode(Display::Tree);
         }
-        self.go_to_file(current_file.path.to_path_buf());
+        self.go_to_file(current_file.path);
         Ok(())
     }
 
@@ -326,7 +326,7 @@ impl Tab {
     pub fn refresh_and_reselect_file(&mut self) -> Result<()> {
         let selected_path = self
             .current_file()
-            .context("no selected file")?
+            .context("refresh: no selected file")?
             .path
             .clone();
         self.refresh_view()?;
@@ -416,6 +416,14 @@ impl Tab {
         }
         Ok(())
     }
+
+    pub fn cd_to_file(&mut self, path: &path::Path) -> Result<()> {
+        let parent = path.parent().context("no parent")?;
+        self.cd(parent)?;
+        self.go_to_file(path);
+        Ok(())
+    }
+
     /// Set the pathcontent to a new path.
     /// Reset the window.
     /// Add the last path to the history of visited paths.
@@ -462,11 +470,14 @@ impl Tab {
     }
 
     /// Select a file in current view, either directory or tree mode.
-    pub fn go_to_file(&mut self, file: path::PathBuf) {
+    pub fn go_to_file<P>(&mut self, file: P)
+    where
+        P: AsRef<std::path::Path>,
+    {
         if let Display::Tree = self.display_mode {
-            self.tree.go(To::Path(&file));
+            self.tree.go(To::Path(file.as_ref()));
         } else {
-            let index = self.directory.select_file(&file);
+            let index = self.directory.select_file(file.as_ref());
             self.scroll_to(index);
         }
     }
@@ -513,7 +524,7 @@ impl Tab {
             self.back()?;
             return Ok(());
         }
-        self.cd(parent)
+        self.cd_to_file(&path)
     }
 
     /// Select the file at index and move the window to this file.
@@ -725,10 +736,26 @@ impl Tab {
         let path = displayable
             .lines()
             .get(index)
-            .context("no selected file")?
+            .context("tree: no selected file")?
             .path()
             .to_owned();
         self.tree.go(To::Path(&path));
         Ok(())
+    }
+
+    pub fn directory_search_next(&mut self) {
+        if let Some(path) = self.search.select_next() {
+            self.go_to_file(path)
+        } else if let (paths, Some(index), Some(path)) = self.search.directory_search_next(self) {
+            self.search.set_index_paths(index, paths);
+            self.go_to_file(path);
+        }
+    }
+
+    pub fn context_info(&self, opener: &Opener) -> Vec<String> {
+        let Ok(selected) = self.current_file() else {
+            return vec![];
+        };
+        selected.context_info(opener)
     }
 }

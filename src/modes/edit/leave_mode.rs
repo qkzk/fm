@@ -25,6 +25,7 @@ use crate::modes::MarkAction;
 use crate::modes::Navigate;
 use crate::modes::NodeCreation;
 use crate::modes::PasswordUsage;
+use crate::modes::PickerCaller;
 use crate::modes::Search;
 use crate::modes::SortKind;
 
@@ -54,18 +55,30 @@ impl LeaveMode {
             Edit::InputSimple(InputSimple::Password(action, usage)) => {
                 LeaveMode::password(status, action, usage)
             }
+            Edit::InputSimple(InputSimple::CloudNewdir) => {
+                LeaveMode::cloud_newdir(status)?;
+                return Ok(());
+            }
             Edit::InputSimple(InputSimple::Remote) => LeaveMode::remote(status),
             Edit::Navigate(Navigate::History) => LeaveMode::history(status),
             Edit::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status),
             Edit::Navigate(Navigate::Trash) => LeaveMode::trash(status),
             Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status),
             Edit::Navigate(Navigate::CliApplication) => LeaveMode::cli_info(status),
+            Edit::Navigate(Navigate::Cloud) => {
+                LeaveMode::cloud_enter(status)?;
+                return Ok(());
+            }
             Edit::Navigate(Navigate::EncryptedDrive) => LeaveMode::go_to_mount(status),
             Edit::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMode::marks_update(status),
             Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMode::marks_jump(status),
             Edit::Navigate(Navigate::Compress) => LeaveMode::compress(status),
             Edit::Navigate(Navigate::Context) => LeaveMode::context(status, binds),
             Edit::Navigate(Navigate::RemovableDevices) => LeaveMode::go_to_mount(status),
+            Edit::Navigate(Navigate::Picker) => {
+                LeaveMode::picker(status)?;
+                return Ok(());
+            }
             Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
             Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status, true),
             Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
@@ -97,7 +110,7 @@ impl LeaveMode {
     }
 
     /// Jump to the current mark.
-    pub fn marks_jump(status: &mut Status) -> Result<()> {
+    fn marks_jump(status: &mut Status) -> Result<()> {
         let marks = status.menu.marks.clone();
         let tab = status.current_tab_mut();
         if let Some((_, path)) = marks.selected() {
@@ -111,7 +124,7 @@ impl LeaveMode {
     /// Update the selected mark with the current path.
     /// Doesn't change its char.
     /// If it doesn't fail, a new pair will be set with (oldchar, new path).
-    pub fn marks_update(status: &mut Status) -> Result<()> {
+    fn marks_update(status: &mut Status) -> Result<()> {
         let marks = status.menu.marks.clone();
         if let Some((ch, _)) = marks.selected() {
             let len = status.current_tab().directory.content.len();
@@ -124,23 +137,29 @@ impl LeaveMode {
         Ok(())
     }
 
-    /// Execute the picked bulk command and reset the menu bulk to None.
-    pub fn bulk_ask(status: &mut Status) -> Result<()> {
-        status.bulk_ask_filenames()?;
-        status.update_second_pane_for_preview()
-    }
-
     /// Execute a shell command picked from the tui_applications menu.
     /// It will be run an a spawned terminal
-    pub fn shellmenu(status: &mut Status) -> Result<()> {
+    fn shellmenu(status: &mut Status) -> Result<()> {
         status.menu.tui_applications.execute(status)
     }
 
-    pub fn cli_info(status: &mut Status) -> Result<()> {
+    fn cli_info(status: &mut Status) -> Result<()> {
         let (output, command) = status.menu.cli_applications.execute(status)?;
         log_info!("cli info: command {command}, output\n{output}");
         status.preview_command_output(output, command);
         Ok(())
+    }
+
+    fn cloud_enter(status: &mut Status) -> Result<()> {
+        status.cloud_enter_file_or_dir()
+    }
+
+    fn cloud_newdir(status: &mut Status) -> Result<()> {
+        let dirname = status.menu.input.string();
+        status.menu.input.reset();
+        status.cloud_create_newdir(dirname)?;
+        status.reset_edit_mode()?;
+        status.cloud_open()
     }
 
     /// Change permission of the flagged files.
@@ -148,18 +167,18 @@ impl LeaveMode {
     /// the file.
     /// Nothing is done if the user typed nothing or an invalid permission like
     /// 955.
-    pub fn chmod(status: &mut Status) -> Result<()> {
+    fn chmod(status: &mut Status) -> Result<()> {
         status.chmod()
     }
 
-    pub fn set_nvim_addr(status: &mut Status) -> Result<()> {
+    fn set_nvim_addr(status: &mut Status) -> Result<()> {
         status.internal_settings.nvim_server = status.menu.input.string();
         status.reset_edit_mode()?;
         Ok(())
     }
 
     /// Select the first file matching the typed regex in current dir.
-    pub fn regex(status: &mut Status) -> Result<()> {
+    fn regex(status: &mut Status) -> Result<()> {
         status.select_from_regex()?;
         status.menu.input.reset();
         Ok(())
@@ -171,7 +190,7 @@ impl LeaveMode {
     /// Returns `Ok(true)` if a refresh is required,
     /// `Ok(false)` if we should stay in the current mode (aka, a password is required)
     /// It won't return an `Err` if the command fail.
-    pub fn shell(status: &mut Status) -> Result<()> {
+    fn shell(status: &mut Status) -> Result<()> {
         status.parse_shell_command()?;
         Ok(())
     }
@@ -181,7 +200,7 @@ impl LeaveMode {
     /// Intermediates directory are created if needed.
     /// It acts like a move (without any confirmation...)
 
-    pub fn rename(status: &mut Status) -> Result<()> {
+    fn rename(status: &mut Status) -> Result<()> {
         let old_path = status.current_tab().current_file()?.path;
         let new_name = status.menu.input.string();
         let new_path = match rename(&old_path, &new_name) {
@@ -205,12 +224,16 @@ impl LeaveMode {
     /// Creates a new file with input string as name.
     /// Nothing is done if the file already exists.
     /// Filename is sanitized before processing.
-    pub fn new_file(status: &mut Status) -> Result<()> {
+    fn new_file(status: &mut Status) -> Result<()> {
         match NodeCreation::Newfile.create(status) {
-            Ok(()) => (),
+            Ok(path) => {
+                status.menu.flagged.push(path.clone());
+                status.refresh_tabs()?;
+                status.current_tab_mut().go_to_file(path);
+            }
             Err(error) => log_info!("Error creating file. Error: {error}",),
         }
-        status.refresh_tabs()
+        Ok(())
     }
 
     /// Creates a new directory with input string as name.
@@ -218,19 +241,23 @@ impl LeaveMode {
     /// We use `fs::create_dir` internally so it will fail if the input string
     /// ie. the user can create `newdir` or `newdir/newfolder`.
     /// Directory name is sanitized before processing.
-    pub fn new_dir(status: &mut Status) -> Result<()> {
+    fn new_dir(status: &mut Status) -> Result<()> {
         match NodeCreation::Newdir.create(status) {
-            Ok(()) => (),
+            Ok(path) => {
+                status.menu.flagged.push(path.clone());
+                status.refresh_tabs()?;
+                status.current_tab_mut().go_to_file(path);
+            }
             Err(error) => log_info!("Error creating directory. Error: {error}",),
         }
-        status.refresh_tabs()
+        Ok(())
     }
 
     /// Tries to execute the selected file with an executable which is read
     /// from the input string. It will fail silently if the executable can't
     /// be found.
     /// Optional parameters can be passed normally. ie. `"ls -lah"`
-    pub fn exec(status: &mut Status) -> Result<()> {
+    fn exec(status: &mut Status) -> Result<()> {
         if status.current_tab().directory.content.is_empty() {
             return Err(anyhow!("exec: empty directory"));
         }
@@ -273,7 +300,7 @@ impl LeaveMode {
     /// The first completion proposition is used, `~` expansion is done.
     /// If no result were found, no cd is done and we go back to normal mode
     /// silently.
-    pub fn cd(status: &mut Status) -> Result<()> {
+    fn cd(status: &mut Status) -> Result<()> {
         if status.menu.completion.is_empty() {
             return Ok(());
         }
@@ -288,7 +315,7 @@ impl LeaveMode {
 
     /// Move to the selected shortcut.
     /// It may fail if the user has no permission to visit the path.
-    pub fn shortcut(status: &mut Status) -> Result<()> {
+    fn shortcut(status: &mut Status) -> Result<()> {
         status.menu.input.reset();
         let path = status
             .menu
@@ -306,12 +333,14 @@ impl LeaveMode {
             Display::Tree => SortKind::tree_default(),
             _ => SortKind::default(),
         };
-        status.update_second_pane_for_preview()
+        status.update_second_pane_for_preview()?;
+        status.focus = status.focus.to_parent();
+        Ok(())
     }
 
     /// Move back to a previously visited path.
     /// It may fail if the user has no permission to visit the path
-    pub fn history(status: &mut Status) -> Result<()> {
+    fn history(status: &mut Status) -> Result<()> {
         let Some((path, file)) = status.current_tab().history.selected() else {
             return Ok(());
         };
@@ -324,7 +353,7 @@ impl LeaveMode {
     }
 
     /// Execute a password command (sudo or device passphrase).
-    pub fn password(
+    fn password(
         status: &mut Status,
         action: Option<BlockDeviceAction>,
         usage: PasswordUsage,
@@ -337,7 +366,7 @@ impl LeaveMode {
     /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
     /// Files which are above the CWD are filtered out since they can't be added to an archive.
     /// Archive creation depends on CWD so we ensure it's set to the selected tab.
-    pub fn compress(status: &mut Status) -> Result<()> {
+    fn compress(status: &mut Status) -> Result<()> {
         let here = &status.current_tab().directory.path;
         std::env::set_current_dir(here)?;
         let files_with_relative_paths: Vec<std::path::PathBuf> = status
@@ -363,7 +392,7 @@ impl LeaveMode {
     }
 
     /// Open a menu with most common actions
-    pub fn context(status: &mut Status, binds: &Bindings) -> Result<()> {
+    fn context(status: &mut Status, binds: &Bindings) -> Result<()> {
         let command = status.menu.context.matcher().to_owned();
         EventAction::reset_mode(status)?;
         command.matcher(status, binds)
@@ -372,7 +401,7 @@ impl LeaveMode {
     /// Execute the selected command.
     /// Some commands does nothing as they require to be executed from a specific
     /// context.
-    pub fn action(status: &mut Status, binds: &Bindings) -> Result<()> {
+    fn action(status: &mut Status, binds: &Bindings) -> Result<()> {
         let command_str = status.menu.completion.current_proposition();
         let Ok(command) = ActionMap::from_str(command_str) else {
             return Ok(());
@@ -384,7 +413,7 @@ impl LeaveMode {
 
     /// Apply a filter to the displayed files.
     /// See `crate::filter` for more details.
-    pub fn filter(status: &mut Status) -> Result<()> {
+    fn filter(status: &mut Status) -> Result<()> {
         status.set_filter()?;
         status.menu.input.reset();
         let mut search = status.tabs[status.index].search.clone();
@@ -398,18 +427,28 @@ impl LeaveMode {
     /// sshfs should be reachable in path.
     /// The user must type 3 arguments like this : `username hostname remote_path`.
     /// If the user doesn't provide 3 arguments,
-    pub fn remote(status: &mut Status) -> Result<()> {
+    fn remote(status: &mut Status) -> Result<()> {
         let current_path = &path_to_string(&status.current_tab().directory_of_selected()?);
         status.menu.mount_remote(current_path);
         Ok(())
     }
 
     /// Go to the _mounted_ device. Does nothing if the device isn't mounted.
-    pub fn go_to_mount(status: &mut Status) -> Result<()> {
+    fn go_to_mount(status: &mut Status) -> Result<()> {
         match status.current_tab().edit_mode {
             Edit::Navigate(Navigate::EncryptedDrive) => status.go_to_encrypted_drive(),
             Edit::Navigate(Navigate::RemovableDevices) => status.go_to_removable(),
             _ => Ok(()),
+        }
+    }
+
+    fn picker(status: &mut Status) -> Result<()> {
+        let Some(caller) = &status.menu.picker.caller else {
+            return Ok(());
+        };
+        match caller {
+            PickerCaller::Cloud => status.cloud_load_config(),
+            PickerCaller::Unknown => Ok(()),
         }
     }
 }

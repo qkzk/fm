@@ -5,6 +5,7 @@ use anyhow::Context;
 use anyhow::Result;
 
 use crate::app::Tab;
+use crate::common::index_from_a;
 use crate::common::is_program_in_path;
 use crate::common::CLI_PATH;
 use crate::common::INPUT_HISTORY_PATH;
@@ -16,6 +17,7 @@ use crate::event::FmEvents;
 use crate::io::drop_sudo_privileges;
 use crate::io::execute_and_capture_output_with_path;
 use crate::io::InputHistory;
+use crate::io::OpendalContainer;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::Bulk;
@@ -38,6 +40,7 @@ use crate::modes::Marks;
 use crate::modes::MountCommands;
 use crate::modes::Navigate;
 use crate::modes::PasswordHolder;
+use crate::modes::Picker;
 use crate::modes::RemovableDevices;
 use crate::modes::Selectable;
 use crate::modes::Shortcut;
@@ -81,8 +84,12 @@ pub struct Menu {
     pub sudo_command: Option<String>,
     /// History - here for compatibility reasons only
     pub history: History,
-    ///
+    /// The user input history.
     pub input_history: InputHistory,
+    /// cloud
+    pub cloud: OpendalContainer,
+    /// basic picker
+    pub picker: Picker,
 }
 
 impl Menu {
@@ -112,6 +119,8 @@ impl Menu {
             tui_applications: TuiApplications::new(TUIS_PATH),
             window: ContentWindow::new(0, 80),
             input_history: InputHistory::load(INPUT_HISTORY_PATH)?,
+            cloud: OpendalContainer::default(),
+            picker: Picker::default(),
         })
     }
 
@@ -155,15 +164,11 @@ impl Menu {
     }
 
     pub fn find_encrypted_drive_mount_point(&self) -> Option<std::path::PathBuf> {
-        let Some(device) = self.encrypted_devices.selected() else {
-            return None;
-        };
+        let device = self.encrypted_devices.selected()?;
         if !device.is_mounted() {
             return None;
         }
-        let Some(mount_point) = device.mount_point() else {
-            return None;
-        };
+        let mount_point = device.mount_point()?;
         Some(std::path::PathBuf::from(mount_point))
     }
 
@@ -175,30 +180,6 @@ impl Menu {
             return None;
         }
         Some(std::path::PathBuf::from(&device.path))
-    }
-
-    pub fn mount_removable(&mut self) -> Result<()> {
-        if self.removable_devices.is_empty() {
-            return Ok(());
-        };
-        let device = &mut self.removable_devices.content[self.removable_devices.index];
-        if device.is_mounted() {
-            return Ok(());
-        }
-        device.mount_simple()?;
-        Ok(())
-    }
-
-    pub fn umount_removable(&mut self) -> Result<()> {
-        if self.removable_devices.is_empty() {
-            return Ok(());
-        };
-        let device = &mut self.removable_devices.content[self.removable_devices.index];
-        if !device.is_mounted() {
-            return Ok(());
-        }
-        device.umount_simple()?;
-        Ok(())
     }
 
     /// Run sshfs with typed parameters to mount a remote directory in current directory.
@@ -319,6 +300,30 @@ impl Menu {
         self.shortcut.refresh(mount_points, left_path, right_path)
     }
 
+    pub fn shortcut_from_char(&mut self, c: char) -> bool {
+        let Some(index) = index_from_a(c) else {
+            return false;
+        };
+        if index < self.shortcut.len() {
+            self.shortcut.set_index(index);
+            self.window.scroll_to(index);
+            return true;
+        }
+        false
+    }
+
+    pub fn context_from_char(&mut self, c: char) -> bool {
+        let Some(index) = index_from_a(c) else {
+            return false;
+        };
+        if index < self.context.len() {
+            self.context.set_index(index);
+            self.window.scroll_to(index);
+            return true;
+        }
+        false
+    }
+
     pub fn completion_reset(&mut self) {
         self.completion.reset();
     }
@@ -392,6 +397,8 @@ impl Menu {
             Navigate::Shortcut => func(&mut self.shortcut),
             Navigate::Trash => func(&mut self.trash),
             Navigate::TuiApplication => func(&mut self.tui_applications),
+            Navigate::Cloud => func(&mut self.cloud),
+            Navigate::Picker => func(&mut self.picker),
         }
     }
 
@@ -410,6 +417,8 @@ impl Menu {
             Navigate::Shortcut => func(&self.shortcut),
             Navigate::Trash => func(&self.trash),
             Navigate::TuiApplication => func(&self.tui_applications),
+            Navigate::Cloud => func(&self.cloud),
+            Navigate::Picker => func(&self.picker),
         }
     }
 }

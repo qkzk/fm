@@ -852,8 +852,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] describe what was done succintly
   - [ ] test every mode
 
-## Current dev
-
 ### Version 0.1.26
 
 #### Summary
@@ -952,8 +950,108 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] zoxide support for "alt+g" aka goto mode.
 - [x] FIX: `q` while second window should exit the menu
 
+## Current dev
+
+### Version 0.1.27
+
+#### Summary
+
+- Go to a location with a single key in shortcut mode.
+  Shortcuts are displayed with a single key like "b /dev". Pressing `b` will move to "/dev".
+- Execute an action with a single keypress in context mode. Same as above !
+- Use pdftoppm & pdfinfo to preview pdf files. Faster, less code, more stable.
+  Doesn't crash anymore when a .pdf file is encrypted but can be read by every one.
+- Newfile and newdirs are flagged and selected after creation
+- Include default binds from midnight commander / ranger for the function files (f1-f10)
+- Display "more info" about a file in context menu (owner, group, size, created/modified/accessed time, opener, previewer)
+- List, mount, eject usb keys. Share the same menu as "mtp" devices. Default bind: Alt+Shift+R
+- FIX: sorting didn't reset the focus to main window
+- Multiple copies. Copy files while another copy is happening. The display won't flicker anymore while copying.
+  Interally, it uses a queue to store the source & destination.
+- Copy flagged files to primary clipboard with F11. Flag existing files from clipboard with F12
+- hex colors can be used in config file.
+- click on right pane while previewing a tree moves there.
+- Display keybindings sorted by alphabetical order with `$ fm --keybinds`
+- Google drive. Navigate, download, upload file to google drive once configured. See the readme for more details.
+
+#### Changelog
+
+- [x] display a keybind in shortcut & context mode
+- [x] add a shortcut to the trash folder
+- [x] less copies while creating shortcuts
+- [x] FIX: replace `DeleteFile` by `Delete` in config file
+- [ ] Custom colors for palette.
+  - [x] it works
+  - [x] simplify palette : start, stop and merge already defined ones ("red-green", "green-red" and all red green blue pairs)
+  - [x] remove custom
+  - [x] common description of what is an acceptable color in config file
+  - [x] don't break compatibiliy but require an update
+  - [ ] refactor all the color configuration
+  - [ ] common parser
+- [x] use pdftoppm & pdfinfo to preview pdfs.
+      poppler can crash if the pdf is encrypted for writing but not for reading.
+
+  - [x] use png for svg & fonts, jpg otherwise. Seems to be faster
+  - [x] readme : pdftoppm, pdfinfo
+
+- [x] FIX: flagging a file moves down but doesn't update the preview
+- [x] FIX: Logline should only be displayed on left tab
+- [x] after newfile, newdir, select it
+- [x] add F+x binds from ranger
+- [x] display more info about file in context (atime/ctime/mtime, previewed as ..., opened with ...)
+- [x] mount/eject usb key - merged with mtp as much as possible
+- [x] Regex matcher move to the first match, making it an incremental search
+- [x] FIX: g / G doesn't work when order isn't default
+- [x] FIX: sorting doesn't refresh the display
+- [x] multiple copies
+  - [x] creates a pool,
+  - [x] send fm events
+  - [x] dispatch them
+  - [x] FIX: copying large files flickers the display
+- [x] flagging the last file shouldn't progress to top of screen. Stay there, it's less annoying
+- [x] FIX: Moving big file uses progress bar
+- [x] error message when copy / move fails (source or dest changed)
+- [x] copy flagged files to clipboard
+- [x] flag files from clipboard
+- [x] while in "second pane for preview" and previewing a tree, a click on a previewed tree moves the left pane there.
+- [x] allow hex colors like #16a085 in config
+- [x] moving left (up in filetree) should select provenance
+- [x] dump keybinds & refactor help message
+- [x] FIX: leaving preview in current tab doesn't select the last file
+- [ ] perfomance
+- [ ] Apache OpenDAL: [Official Documentation](https://opendal.apache.org/) - [crates.io](https://crates.io/crates/opendal)
+  - [x] refresh token creation
+  - [x] write tokens in config folder for user
+  - [x] keybindings in menu
+  - [x] readme for users
+  - [x] token handling
+  - [x] simplest configuration
+  - [x] google drive listing
+  - [x] listing
+  - [x] directory navigation
+  - [x] file downloading :
+    - [x] directory mode
+    - [x] tree mode
+  - [x] directory creation
+  - [x] file uploading
+  - [x] file deletion
+  - [x] move all tokio::main to opendal
+  - [x] log errors
+  - [x] delete confirmation
+  - [x] FIX: window is offset after deletion when deleted wasn't on first screen
+  - [x] merge into a single binary
+  - [x] FIX: while navigating, contentwindow len isn't updated
+  - [x] WONTDO: metadata for cloud files. Way too long for big folder
+  - [ ] BUG: opendal crashes if multiple files have the same name. See [issue](https://github.com/apache/opendal/issues/5099)
+- [ ] non blocking previews: use the mpsc to do the previews async (once again)
+- [ ] stop & undo actions (bulkrename, copy, move, delete ???)
+- [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
+- [x] FIX: too much thing on menu and last line
+- [ ] reduce dependencies
+
 ## TODO
 
+- [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
@@ -963,7 +1061,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] open a shell while hiding fm, restore after leaving
 - [ ] refactor & unify all shell commands
 - [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
-- [ ] mount usb key - should be merged with mtp
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 - [ ] remote control

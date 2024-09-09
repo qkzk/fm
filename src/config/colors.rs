@@ -2,7 +2,7 @@ use std::hash::Hasher;
 
 use tuikit::attr::Color;
 
-use crate::config::COLORER;
+use crate::config::{COLORER, START_COLOR, STOP_COLOR};
 
 /// No attr but 3 static methods.
 pub struct Colorer {}
@@ -33,6 +33,38 @@ impl Colorer {
             .chain((128..255).map(|g| Color::Rgb(255, g, 0)))
             .nth(hash % 254)
             .unwrap()
+    }
+
+    /// Picks a blueish/greenish color on color picker hexagon's perimeter.
+    pub fn color_blue_green(hash: usize) -> Color {
+        (128..255)
+            .map(|g| Color::Rgb(0, g, 255))
+            .chain((128..255).map(|b| Color::Rgb(0, 255, b)))
+            .nth(hash % 254)
+            .unwrap()
+    }
+
+    /// Picks a redish/blueish color on color picker hexagon's perimeter.
+    pub fn color_blue_red(hash: usize) -> Color {
+        (128..255)
+            .map(|r| Color::Rgb(r, 0, 255))
+            .chain((128..255).map(|b| Color::Rgb(255, 0, b)))
+            .nth(hash % 254)
+            .unwrap()
+    }
+
+    /// Picks a redish/greenish color on color picker hexagon's perimeter.
+    pub fn color_green_red(hash: usize) -> Color {
+        (128..255)
+            .map(|g| Color::Rgb(255, g, 0))
+            .chain((128..255).map(|r| Color::Rgb(r, 255, 0)))
+            .nth(hash % 254)
+            .unwrap()
+    }
+
+    pub fn color_custom(hash: usize) -> Color {
+        let lerp = lerp_color(*START_COLOR, *STOP_COLOR, (hash % 255) as u8);
+        Color::Rgb(lerp.0, lerp.1, lerp.2)
     }
 }
 
@@ -112,4 +144,15 @@ impl Gradient {
     pub fn gradient(&self) -> impl Iterator<Item = Color> + '_ {
         (0..self.len).map(move |step| self.gradient_step(step).as_tuikit())
     }
+}
+
+fn lerp_color(start: (u8, u8, u8), end: (u8, u8, u8), step: u8) -> (u8, u8, u8) {
+    let step = step as f32 / 255.0;
+    let (r1, g1, b1) = (start.0 as f32, start.1 as f32, start.2 as f32);
+    let (r2, g2, b2) = (end.0 as f32, end.1 as f32, end.2 as f32);
+    (
+        (r1 + (r2 - r1) * step).round() as u8,
+        (g1 + (g2 - g1) * step).round() as u8,
+        (b1 + (b2 - b1) * step).round() as u8,
+    )
 }

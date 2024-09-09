@@ -2,9 +2,10 @@ use crate::event::ActionMap;
 use crate::impl_content;
 use crate::impl_selectable;
 
-const CONTEXT: [(&str, ActionMap); 9] = [
+const CONTEXT: [(&str, ActionMap); 10] = [
     ("Open", ActionMap::OpenFile),
     ("Open with", ActionMap::Exec),
+    ("Open in Neovim", ActionMap::NvimFilepicker),
     ("Flag", ActionMap::ToggleFlag),
     ("Rename", ActionMap::Rename),
     ("Delete", ActionMap::Delete),

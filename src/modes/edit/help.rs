@@ -2,118 +2,8 @@ use anyhow::Result;
 use strfmt::strfmt;
 
 use crate::config::Bindings;
+use crate::event::ActionMap;
 use crate::io::Opener;
-
-/// Help message to be displayed when help key is pressed.
-/// Default help key is `'h'`.
-
-const HELP_TO_FORMAT: &str = "
-{Quit:<10}:      quit
-{Help:<10}:      help
-
-- Navigation -
-{MoveLeft:<10}:      cd to parent directory 
-{MoveRight:<10}:      cd to child directory
-{MoveUp:<10}:      one line up  
-{MoveDown:<10}:      one line down
-{KeyHome:<10}:      go to first line
-{End:<10}:      go to last line
-{PageUp:<10}:      10 lines up
-{PageDown:<10}:      10 lines down
-{Tab:<10}:      cycle tab
-
-- Actions -
-{ToggleDualPane:<10}:      toggle dual pane - if the width is sufficiant
-{TogglePreviewSecond:<10}:      toggle a preview on the second pane
-{ToggleDisplayFull:<10}:      toggle metadata on files
-{ToggleHidden:<10}:      toggle hidden
-{Shell:<10}:      shell in current directory
-{OpenFile:<10}:      open the selected file with :
-    - default       {Default}
-    - audio         {Audio}
-    - images        {Bitmap}
-    - office        {Office}
-    - pdf, ebooks   {Readable}
-    - text          {Text}
-    - video         {Video}
-    - vectorials    {Vectorial}
-    - compressed files are decompressed
-    - iso images are mounted
-{NvimFilepicker:<10}:      open in current nvim session
-{NvimSetAddress:<10}:      setup the nvim rpc address
-{Preview:<10}:      preview this file
-{Back:<10}:      move back to previous dir
-{Home:<10}:      move to $HOME
-{GoRoot:<10}:      move to root (/)
-{GoStart:<10}:      move to starting point
-{MarksNew:<10}:      mark current path
-{MarksJump:<10}:      jump to a mark
-{SearchNext:<10}:      search next matching element
-{FuzzyFind:<10}:      fuzzy finder for file
-{FuzzyFindLine:<10}:      fuzzy finder for line
-{FuzzyFindHelp:<10}:      fuzzy finder from help
-{RefreshView:<10}:      refresh view
-{CopyFilename:<10}:      copy filename to clipboard
-{CopyFilepath:<10}:      copy filepath to clipboard
-{OpenConfig:<10}:      open the config file
-
-- Action on flagged files - 
-{ToggleFlag:<10}:      toggle flag on a file 
-{FlagAll:<10}:      flag all
-{ClearFlags:<10}:      clear flags
-{ReverseFlags:<10}:      reverse flags
-{Symlink:<10}:      symlink to current dir
-{CopyPaste:<10}:      copy to current dir
-{CutPaste:<10}:      move to current dir
-{Delete:<10}:      delete files permanently
-{TrashMoveFile:<10}:      move to trash
-{Compress:<10}:      compress into an archive
-
-- Trash -
-{TrashOpen:<10}:      Open the trash (enter to restore, del clear)
-{TrashEmpty:<10}:      Empty the trash
-
-- Tree -
-Navigate as usual. Most actions works as in 'normal' view.
-{Tree:<10}:      Toggle tree mode
-{TreeFold:<10}:      Fold a node
-{TreeFoldAll:<10}:      Fold every node
-{TreeUnFoldAll:<10}:      Unfold every node
-
-    - DISPLAY MODES - 
-Different modes for the main window
-{ResetMode:<10}:      NORMAL
-{Tree:<10} :      TREE
-{DisplayFlagged} :      FLAGGED
-{Preview} :      PREVIEW  
-
-    - EDIT MODES -
-Different modes for the bottom window
-{Chmod:<10}:      CHMOD 
-{Exec:<10}:      OPEN WITH 
-{NewDir:<10}:      NEWDIR 
-{NewFile:<10}:      NEWFILE
-{Rename:<10}:      RENAME
-{Cd:<10}:      CD
-{RegexMatch:<10}:      REGEXMATCH
-{Sort:<10}:      SORT
-{History:<10}:      HISTORY
-{Shortcut:<10}:      SHORTCUT
-{EncryptedDrive:<10}:      ENCRYPTED DRIVE
-    (m: open & mount,  u: unmount & close, g: go there)
-{RemovableDevices:<10}:      REMOVABLE MTP DEVICES
-    (m: mount,  u: unmount, g: go there)
-{Search:<10}:      SEARCH
-{Action:<10}:      ACTION
-{Bulk:<10}:      BULK
-{TuiMenu:<10}:      TUI APPS
-{CliMenu:<10}:      CLI APPS
-{RemoteMount:<10}:      MOUNT REMOTE PATH
-{Filter:<10}:      FILTER 
-    (by name \"n name\", by ext \"e ext\", \"d only directories\" or \"a all\" for reset)
-{Context:<10}:      CONTEXT
-{Enter:<10}:      Execute mode then NORMAL
-";
 
 const CUSTOM_HELP: &str = "
 - CUSTOM ACTIONS -
@@ -147,10 +37,143 @@ Using default keybindings.
     }
 }
 
+macro_rules! action_descriptions {
+    ( $( $name:ident ),* $(,)? ) => {
+        format!(
+            concat!(
+                $(
+                    "{{", stringify!($name), ":<10}}:      {}\n",
+                )*
+            ),
+            $(
+                ActionMap::$name.description(),
+            )*
+        )
+    };
+}
+
+/// Help message to be displayed when help key is pressed.
+/// Default help key is `'h'`.
+fn format_help_message() -> String {
+    format!(
+        "
+{quit}
+
+- Navigation -
+{navigation}
+
+- Actions -
+{actions}
+    - default       {{Default}}
+    - audio         {{Audio}}
+    - images        {{Bitmap}}
+    - office        {{Office}}
+    - pdf, ebooks   {{Readable}}
+    - text          {{Text}}
+    - video         {{Video}}
+    - vectorials    {{Vectorial}}
+    - compressed files are decompressed
+    - iso images are mounted
+
+{more_actions}
+
+- Action on flagged files -
+{flagged_actions}
+
+- Trash -
+{trash_actions}
+
+- Tree -
+Navigate as usual. Most actions work as in 'normal' view.
+
+{tree_actions}
+
+    - DISPLAY MODES -
+Different modes for the main window
+{display_modes}
+
+    - EDIT MODES -
+Different modes for the bottom window
+{edit_modes}
+",
+        quit = action_descriptions!(Quit, Help),
+        navigation = action_descriptions!(
+            MoveLeft, MoveRight, MoveUp, MoveDown, KeyHome, End, PageUp, PageDown, Tab
+        ),
+        actions = action_descriptions!(
+            ToggleDualPane,
+            TogglePreviewSecond,
+            ToggleDisplayFull,
+            ToggleHidden,
+            Shell,
+            OpenFile,
+            NvimFilepicker,
+            NvimSetAddress,
+            Preview,
+            Back,
+            Home,
+            GoRoot,
+            GoStart,
+            MarksNew,
+            MarksJump,
+            SearchNext,
+            FuzzyFind,
+            FuzzyFindLine,
+            FuzzyFindHelp,
+            RefreshView,
+            CopyFilename,
+            CopyFilepath,
+            OpenConfig,
+            CloudDrive,
+        ),
+        more_actions = action_descriptions!(Action),
+        flagged_actions = action_descriptions!(
+            ToggleFlag,
+            FlagAll,
+            ClearFlags,
+            ReverseFlags,
+            Symlink,
+            CopyPaste,
+            CutPaste,
+            Delete,
+            TrashMoveFile,
+            Compress,
+            FlaggedToClipboard,
+            FlaggedFromClipboard
+        ),
+        trash_actions = action_descriptions!(TrashOpen, TrashEmpty),
+        tree_actions = action_descriptions!(Tree, TreeFold, TreeFoldAll, TreeUnFoldAll),
+        display_modes = action_descriptions!(ResetMode, Tree, DisplayFlagged, Preview),
+        edit_modes = action_descriptions!(
+            Chmod,
+            Exec,
+            NewDir,
+            NewFile,
+            Rename,
+            Cd,
+            RegexMatch,
+            Sort,
+            History,
+            Shortcut,
+            EncryptedDrive,
+            RemovableDevices,
+            Search,
+            Action,
+            Bulk,
+            TuiMenu,
+            CliMenu,
+            RemoteMount,
+            Filter,
+            Context,
+            Enter
+        ),
+    )
+}
+
 fn make_help_with_config(binds: &Bindings, opener: &Opener) -> Result<String> {
     let mut keybind_reversed = binds.keybind_reversed();
     keybind_reversed.extend(opener.association.as_map_of_strings());
-    let mut help = strfmt(HELP_TO_FORMAT, &keybind_reversed)?;
+    let mut help = strfmt(&format_help_message(), &keybind_reversed)?;
     help = complete_with_custom_binds(&binds.custom, help);
     // std::fs::write("help.txt", &help)?; // keep here to save a new version of the help content
     Ok(help)

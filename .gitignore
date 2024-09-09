@@ -3,3 +3,4 @@
 *.vimspector*
 *compress_example
 *nohup*
+*token*

@@ -6,7 +6,7 @@ use anyhow::Result;
 use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
 use flate2::Compression;
 use lzma::LzmaWriter;
-use zip::write::FileOptions;
+use zip::write::SimpleFileOptions;
 
 use crate::impl_content;
 use crate::impl_selectable;
@@ -148,11 +148,12 @@ impl Compresser {
 
     fn zip(archive: std::fs::File, files: Vec<std::path::PathBuf>) -> Result<()> {
         let mut zip = zip::ZipWriter::new(archive);
+        let options = SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored)
+            .unix_permissions(0o755)
+            .compression_method(zip::CompressionMethod::Bzip2);
         for file in files.iter() {
-            zip.start_file(
-                file.to_string_lossy().as_ref(),
-                FileOptions::default().compression_method(zip::CompressionMethod::Bzip2),
-            )?;
+            zip.start_file(file.to_string_lossy().as_ref(), options)?;
             let mut buffer = Vec::new();
             let mut content = std::fs::File::open(file)?;
             content.read_to_end(&mut buffer)?;

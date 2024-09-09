@@ -2,12 +2,16 @@ use std::borrow::Borrow;
 use std::path;
 
 use anyhow::{Context, Result};
+use copypasta::ClipboardContext;
+use copypasta::ClipboardProvider;
+use indicatif::InMemoryTerm;
 
 use crate::app::Focus;
 use crate::app::Status;
 use crate::app::Tab;
 use crate::common::filename_to_clipboard;
 use crate::common::filepath_to_clipboard;
+use crate::common::set_clipboard;
 use crate::common::LAZYGIT;
 use crate::common::NCDU;
 use crate::common::{is_program_in_path, open_in_current_neovim};
@@ -18,6 +22,7 @@ use crate::io::execute_without_output_with_path;
 use crate::io::read_log;
 use crate::log_info;
 use crate::log_line;
+use crate::modes::copy_move;
 use crate::modes::help_string;
 use crate::modes::lsblk_and_cryptsetup_installed;
 use crate::modes::open_tui_program;
@@ -57,9 +62,10 @@ impl EventAction {
         status.refresh_view()
     }
 
-    /// Refresh the view if files were modified in current directory.
+    /// Refresh the views if files were modified in current directory.
     pub fn refresh_if_needed(status: &mut Status) -> Result<()> {
-        status.current_tab_mut().refresh_if_needed()
+        status.tabs[0].refresh_if_needed()?;
+        status.tabs[1].refresh_if_needed()
     }
 
     pub fn resize(status: &mut Status, width: usize, height: usize) -> Result<()> {
@@ -85,8 +91,10 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Preview | Display::Flagged
         ) {
-            status.tabs[status.index].set_display_mode(Display::Directory);
-            status.tabs[status.index].refresh_view()?;
+            status
+                .current_tab_mut()
+                .set_display_mode(Display::Directory);
+            status.current_tab_mut().refresh_and_reselect_file()?;
         }
         status.menu.input.reset();
         status.menu.completion.reset();
@@ -219,6 +227,41 @@ impl EventAction {
         if status.focus.is_file() {
             status.flag_all();
         }
+        Ok(())
+    }
+
+    pub fn flagged_to_clipboard(status: &mut Status) -> Result<()> {
+        let files = status
+            .menu
+            .flagged
+            .content()
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        set_clipboard(files);
+        Ok(())
+    }
+
+    pub fn flagged_from_clipboard(status: &mut Status) -> Result<()> {
+        let Ok(mut ctx) = ClipboardContext::new() else {
+            return Ok(());
+        };
+        let Ok(files) = ctx.get_contents() else {
+            return Ok(());
+        };
+        if files.is_empty() {
+            return Ok(());
+        }
+        log_info!("clipboard read: {files}");
+        status.menu.flagged.clear();
+        files.lines().for_each(|f| {
+            let p = path::PathBuf::from(f);
+            if p.exists() {
+                status.menu.flagged.push(p);
+            }
+        });
         Ok(())
     }
 
@@ -524,14 +567,6 @@ impl EventAction {
             return Ok(());
         }
         status.bulk_ask_filenames()?;
-        // if matches!(
-        //     status.current_tab().edit_mode,
-        //     Edit::Navigate(Navigate::BulkMenu)
-        // ) {
-        //     status.reset_edit_mode()?;
-        // } else {
-        //     status.set_edit_mode(status.index, Edit::Navigate(Navigate::BulkMenu))?;
-        // }
         Ok(())
     }
 
@@ -834,19 +869,7 @@ impl EventAction {
             Display::Tree => status.tabs[status.index]
                 .search
                 .tree(&mut status.tabs[status.index].tree),
-            Display::Directory => {
-                if let Some(path) = status.tabs[status.index].search.select_next() {
-                    status.tabs[status.index].go_to_file(path)
-                } else if let (paths, Some(index), Some(path)) = status.tabs[status.index]
-                    .search
-                    .directory_search_next(&status.tabs[status.index])
-                {
-                    status.tabs[status.index]
-                        .search
-                        .set_index_paths(index, paths);
-                    status.tabs[status.index].go_to_file(path);
-                }
-            }
+            Display::Directory => status.tabs[status.index].directory_search_next(),
             Display::Preview => {
                 return Ok(());
             }
@@ -951,6 +974,7 @@ impl EventAction {
                     status.menu.input.cursor_left();
                 }
                 Edit::Nothing => Self::file_move_left(tab)?,
+                Edit::Navigate(Navigate::Cloud) => status.cloud_move_to_parent()?,
                 _ => (),
             }
         }
@@ -978,6 +1002,7 @@ impl EventAction {
                     status.menu.input.cursor_right();
                     Ok(())
                 }
+                Edit::Navigate(Navigate::Cloud) => status.cloud_enter_file_or_dir(),
                 Edit::Nothing => Self::enter_file(status),
                 _ => Ok(()),
             }
@@ -1357,7 +1382,7 @@ impl EventAction {
                 log_line!("gio must be installed.");
                 return Ok(());
             }
-            status.menu.removable_devices = RemovableDevices::from_gio().unwrap_or_default();
+            status.menu.removable_devices = RemovableDevices::find().unwrap_or_default();
             status.set_edit_mode(status.index, Edit::Navigate(Navigate::RemovableDevices))?;
         }
         Ok(())
@@ -1437,6 +1462,10 @@ impl EventAction {
             status.reset_edit_mode()?;
         }
         status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Remote))
+    }
+
+    pub fn cloud_drive(status: &mut Status) -> Result<()> {
+        status.cloud_open()
     }
 
     /// Click a file at `row`, `col`.
@@ -1551,5 +1580,32 @@ impl EventAction {
 
     pub fn bulk_confirm(status: &mut Status) -> Result<()> {
         status.bulk_execute()
+    }
+
+    pub fn file_copied(status: &mut Status) -> Result<()> {
+        log_info!(
+            "file copied - pool: {pool:?}",
+            pool = status.internal_settings.copy_file_queue
+        );
+        status.internal_settings.file_copied()?;
+        if status.internal_settings.copy_file_queue.is_empty() {
+            status.internal_settings.unset_copy_progress()
+        } else {
+            let (sources, dest) = status.internal_settings.copy_file_queue[0].clone();
+            let in_mem = copy_move(
+                crate::modes::CopyMove::Copy,
+                sources,
+                dest,
+                status.internal_settings.term.clone(),
+                std::sync::Arc::clone(&status.fm_sender),
+            )?;
+            status.internal_settings.store_copy_progress(in_mem);
+        }
+        Ok(())
+    }
+
+    pub fn display_copy_progress(status: &mut Status, content: InMemoryTerm) -> Result<()> {
+        status.internal_settings.store_copy_progress(content);
+        Ok(())
     }
 }
