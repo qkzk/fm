@@ -17,6 +17,7 @@ use crate::event::FmEvents;
 use crate::io::drop_sudo_privileges;
 use crate::io::execute_and_capture_output_with_path;
 use crate::io::InputHistory;
+use crate::io::OpendalContainer;
 use crate::log_info;
 use crate::log_line;
 use crate::modes::Bulk;
@@ -39,6 +40,7 @@ use crate::modes::Marks;
 use crate::modes::MountCommands;
 use crate::modes::Navigate;
 use crate::modes::PasswordHolder;
+use crate::modes::Picker;
 use crate::modes::RemovableDevices;
 use crate::modes::Selectable;
 use crate::modes::Shortcut;
@@ -84,6 +86,10 @@ pub struct Menu {
     pub history: History,
     /// The user input history.
     pub input_history: InputHistory,
+    /// cloud
+    pub cloud: OpendalContainer,
+    /// basic picker
+    pub picker: Picker,
 }
 
 impl Menu {
@@ -113,6 +119,8 @@ impl Menu {
             tui_applications: TuiApplications::new(TUIS_PATH),
             window: ContentWindow::new(0, 80),
             input_history: InputHistory::load(INPUT_HISTORY_PATH)?,
+            cloud: OpendalContainer::default(),
+            picker: Picker::default(),
         })
     }
 
@@ -389,6 +397,8 @@ impl Menu {
             Navigate::Shortcut => func(&mut self.shortcut),
             Navigate::Trash => func(&mut self.trash),
             Navigate::TuiApplication => func(&mut self.tui_applications),
+            Navigate::Cloud => func(&mut self.cloud),
+            Navigate::Picker => func(&mut self.picker),
         }
     }
 
@@ -407,6 +417,8 @@ impl Menu {
             Navigate::Shortcut => func(&self.shortcut),
             Navigate::Trash => func(&self.trash),
             Navigate::TuiApplication => func(&self.tui_applications),
+            Navigate::Cloud => func(&self.cloud),
+            Navigate::Picker => func(&self.picker),
         }
     }
 }

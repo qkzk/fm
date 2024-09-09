@@ -94,10 +94,12 @@ impl ContentWindow {
             return;
         }
         if self.is_index_outside_window(index) {
+            let height = self.bottom - self.top;
             self.top = max(index, Self::WINDOW_PADDING) - Self::WINDOW_PADDING;
             self.bottom = (self.top + Self::default_bottom(self.height, self.len))
                 .checked_sub(Self::BOTTOM_ROWS)
                 .unwrap_or(2);
+            self.bottom = min(self.bottom, self.top + height);
         }
     }
 

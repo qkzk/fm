@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::common::{
-    CHMOD_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES,
+    CHMOD_LINES, CLOUD_NEWDIR_LINES, FILTER_LINES, NEWDIR_LINES, NEWFILE_LINES, NVIM_ADDRESS_LINES,
     PASSWORD_LINES_DEVICE, PASSWORD_LINES_SUDO, REGEX_LINES, REMOTE_LINES, RENAME_LINES,
     SHELL_LINES, SORT_LINES,
 };
@@ -34,6 +34,8 @@ pub enum NeedConfirmation {
     EmptyTrash,
     /// Bulk
     BulkAction,
+    /// Delete cloud files
+    DeleteCloud,
 }
 
 impl NeedConfirmation {
@@ -58,6 +60,7 @@ impl NeedConfirmation {
                 format!("Files will be moved to {destination}")
             }
             Self::BulkAction => "Those files will be renamed or created :".to_owned(),
+            Self::DeleteCloud => "Remote Files will be deleted permanently".to_owned(),
         }
     }
 }
@@ -76,6 +79,7 @@ impl std::fmt::Display for NeedConfirmation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Self::Delete => write!(f, "Delete files :"),
+            Self::DeleteCloud => write!(f, "Delete files :"),
             Self::Move => write!(f, "Move files here :"),
             Self::Copy => write!(f, "Copy files here :"),
             Self::EmptyTrash => write!(f, "Empty the trash ?"),
@@ -113,6 +117,8 @@ pub enum InputSimple {
     Shell,
     /// Mount a remote directory with sshfs
     Remote,
+    /// Create a new file in the current cloud
+    CloudNewdir,
 }
 
 impl fmt::Display for InputSimple {
@@ -124,6 +130,7 @@ impl fmt::Display for InputSimple {
             Self::Newdir => write!(f, "Newdir:  "),
             Self::RegexMatch => write!(f, "Regex:   "),
             Self::SetNvimAddr => write!(f, "Neovim:  "),
+            Self::CloudNewdir => write!(f, "Newdir:  "),
             Self::Shell => write!(f, "Shell:   "),
             Self::Sort => {
                 write!(f, "Sort: ")
@@ -165,6 +172,7 @@ impl InputSimple {
             Self::Shell => &SHELL_LINES,
             Self::Sort => &SORT_LINES,
             Self::Remote => &REMOTE_LINES,
+            Self::CloudNewdir => &CLOUD_NEWDIR_LINES,
         }
     }
 
@@ -215,6 +223,10 @@ pub enum Navigate {
     CliApplication,
     /// Context menu
     Context,
+    /// Cloud menu
+    Cloud,
+    /// Picker menu
+    Picker,
 }
 
 impl fmt::Display for Navigate {
@@ -236,6 +248,8 @@ impl fmt::Display for Navigate {
             }
             Self::CliApplication => write!(f, "Display infos :"),
             Self::Context => write!(f, "Context"),
+            Self::Cloud => write!(f, "Cloud"),
+            Self::Picker => write!(f, "Picker"),
         }
     }
 }
@@ -313,7 +327,8 @@ impl Edit {
             Self::InputSimple(_) => "shift+⬆️, shift+⬇️: previous entries, shift+⬅️: erase line. Enter: validate",
             Self::Navigate(Navigate::Marks(MarkAction::Jump)) => "Type the mark letter to jump there. up, down to navigate, ENTER to select an element",
             Self::Navigate(Navigate::Marks(MarkAction::New)) => "Type the mark set a mark here. up, down to navigate, ENTER to select an element",
-            Self::Navigate(_) => "up, down to navigate, ENTER to select an element",
+            Self::Navigate(Navigate::Cloud) => "l: leave drive, arrows: navigation, Enter: enter dir / download file, d: new dir, x: delete selected, u: upload local file",
+            Self::Navigate(_) => "up, down to navigate, Enter to select an element",
             Self::NeedConfirmation(_) => "",
             _ => "",
         }

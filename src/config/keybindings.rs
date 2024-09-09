@@ -91,6 +91,7 @@ impl Bindings {
             (Key::Char('Z'), ActionMap::TreeUnFoldAll),
             (Key::Alt('b'), ActionMap::Bulk),
             (Key::Alt('c'), ActionMap::OpenConfig),
+            (Key::Alt('C'), ActionMap::CloudDrive),
             (Key::Alt('d'), ActionMap::ToggleDualPane),
             (Key::Alt('e'), ActionMap::EncryptedDrive),
             (Key::Alt('f'), ActionMap::Filter),

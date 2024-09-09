@@ -16,6 +16,7 @@ use crate::common::path_to_string;
 use crate::common::ENCRYPTED_DEVICE_BINDS;
 use crate::config::{ColorG, Gradient, MENU_COLORS};
 use crate::io::read_last_log_line;
+use crate::io::ModeFormat;
 use crate::log_info;
 use crate::modes::BinaryContent;
 use crate::modes::ColoredText;
@@ -39,6 +40,18 @@ use crate::modes::Ueberzug;
 use crate::modes::Window;
 use crate::modes::{fileinfo_attr, MarkAction};
 use crate::modes::{parse_input_mode, SecondLine};
+
+trait ClearLine {
+    fn clear_line(&mut self, row: usize) -> Result<()>;
+}
+
+impl ClearLine for dyn Canvas + '_ {
+    fn clear_line(&mut self, row: usize) -> Result<()> {
+        let (width, _) = self.size()?;
+        self.print(row, 0, &" ".repeat(width))?;
+        Ok(())
+    }
+}
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 macro_rules! enumerated_colored_iter {
@@ -735,6 +748,9 @@ struct WinSecondary<'a> {
 
 impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+        self.draw_cursor(canvas)?;
+        WinSecondaryFirstLine::new(self.status).draw(canvas)?;
+        self.draw_second_line(canvas)?;
         match self.tab.edit_mode {
             Edit::Navigate(mode) => self.draw_navigate(mode, canvas),
             Edit::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
@@ -742,9 +758,6 @@ impl<'a> Draw for WinSecondary<'a> {
             Edit::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
             _ => return Ok(()),
         }?;
-        self.draw_cursor(canvas)?;
-        WinSecondaryFirstLine::new(self.status).draw(canvas)?;
-        self.draw_second_line(canvas)?;
         self.draw_binds_per_mode(canvas, self.tab.edit_mode)?;
         Ok(())
     }
@@ -785,8 +798,8 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_binds_per_mode(&self, canvas: &mut dyn Canvas, mode: Edit) -> Result<()> {
-        let (width, height) = canvas.size()?;
-        canvas.print(height - 1, 0, &" ".repeat(width))?;
+        let height = canvas.height()?;
+        canvas.clear_line(height - 1)?;
         canvas.print_with_attr(
             height - 1,
             2,
@@ -845,6 +858,8 @@ impl<'a> WinSecondary<'a> {
             Navigate::TuiApplication => self.draw_shell_menu(canvas),
             Navigate::Shortcut => self.draw_shortcut(canvas, &self.status.menu.shortcut),
             Navigate::Trash => self.draw_trash(canvas),
+            Navigate::Cloud => self.draw_cloud(canvas),
+            Navigate::Picker => self.draw_picker(canvas),
         }
     }
 
@@ -904,6 +919,47 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
+    fn draw_cloud(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let cloud = &self.status.menu.cloud;
+        let mut desc = cloud.desc();
+        if let Some((index, metadata)) = &cloud.metadata_repr {
+            if index == &cloud.index {
+                desc = format!("{desc} - {metadata}");
+            }
+        }
+        let _ = canvas.print_with_attr(
+            2,
+            2,
+            &desc,
+            Attr {
+                fg: tuikit::attr::Color::LIGHT_BLUE,
+                ..Attr::default()
+            },
+        );
+        let content = cloud.content();
+        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        let len = content.len();
+        for (row, entry, attr) in enumerated_colored_iter!(content)
+            .skip(top)
+            .take(min(bottom, len))
+        {
+            let attr = cloud.attr(row, &attr);
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP + 1 - top,
+                4,
+                entry.mode_fmt(),
+                attr,
+            )?;
+            let _ = canvas.print_with_attr(
+                row + ContentWindow::WINDOW_MARGIN_TOP + 1 - top,
+                6,
+                entry.path(),
+                attr,
+            )?;
+        }
+        Ok(())
+    }
+
     fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
         let _ = canvas.print_with_attr(
             1,
@@ -921,6 +977,20 @@ impl<'a> WinSecondary<'a> {
             let attr = trash.attr(row, &attr);
             let _ = Self::draw_content_line(canvas, row + 1 - top, &trashinfo.to_string(), attr);
         }
+    }
+
+    fn draw_picker(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let selectable = &self.status.menu.picker;
+        let content = selectable.content();
+        if let Some(desc) = &self.status.menu.picker.desc {
+            canvas.clear_line(1)?;
+            canvas.print_with_attr(1, 2, desc, color_to_attr(MENU_COLORS.second))?;
+        }
+        for (row, pickable, attr) in enumerated_colored_iter!(content) {
+            let attr = selectable.attr(row, &attr);
+            Self::draw_content_line(canvas, row + 1, pickable, attr)?;
+        }
+        Ok(())
     }
 
     fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -1104,6 +1174,7 @@ impl<'a> WinSecondary<'a> {
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => self.draw_confirm_empty_trash(canvas)?,
             NeedConfirmation::BulkAction => self.draw_confirm_bulk(canvas)?,
+            NeedConfirmation::DeleteCloud => self.draw_confirm_delete_cloud(canvas)?,
             _ => self.draw_confirm_default(canvas)?,
         }
         Ok(())
@@ -1127,6 +1198,20 @@ impl<'a> WinSecondary<'a> {
         for (row, line, attr) in enumerated_colored_iter!(content) {
             Self::draw_content_line(canvas, row + 2, line, attr)?;
         }
+        Ok(())
+    }
+
+    fn draw_confirm_delete_cloud(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let line = if let Some(selected) = &self.status.menu.cloud.selected() {
+            &format!(
+                "{desc}{sel}",
+                desc = self.status.menu.cloud.desc(),
+                sel = selected.path()
+            )
+        } else {
+            "No selected file"
+        };
+        Self::draw_content_line(canvas, 3, line, Attr::from(Color::LIGHT_RED))?;
         Ok(())
     }
 

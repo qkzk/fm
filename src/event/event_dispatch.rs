@@ -127,7 +127,11 @@ impl EventDispatcher {
             Navigate::Context if status.menu.context_from_char(c) => {
                 LeaveMode::leave_edit_mode(status, &self.binds)
             }
-
+            Navigate::Cloud if c == 'l' => status.cloud_disconnect(),
+            Navigate::Cloud if c == 'd' => status.cloud_enter_newdir_mode(),
+            Navigate::Cloud if c == 'u' => status.cloud_upload_selected_file(),
+            Navigate::Cloud if c == 'x' => status.cloud_enter_delete_mode(),
+            Navigate::Cloud if c == '?' => status.cloud_update_metadata(),
             _ => {
                 status.reset_edit_mode()?;
                 status.current_tab_mut().reset_display_mode_and_view()

@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use opendal::EntryMode;
 use skim::SkimItem;
 use sysinfo::{Disk, RefreshKind, System, SystemExt};
 use tuikit::prelude::{from_keyname, Event};
@@ -18,23 +19,21 @@ use crate::app::Session;
 use crate::app::Tab;
 use crate::app::{ClickableLine, FlaggedFooter};
 use crate::common::{
-    args_is_empty, filename_from_path, is_sudo_command, open_in_current_neovim, path_to_string,
-    row_to_window_index,
+    args_is_empty, filename_from_path, is_sudo_command, open_in_current_neovim,
+    path_to_config_folder, path_to_string, row_to_window_index,
 };
 use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::Bindings;
 use crate::event::FmEvents;
 use crate::io::Internal;
 use crate::io::Opener;
-use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::io::{execute_and_capture_output_with_path, Args};
 use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     reset_sudo_faillock,
 };
+use crate::io::{google_drive, MIN_WIDTH_FOR_DUAL_PANE};
 use crate::io::{Extension, Kind};
-use crate::modes::IsoDevice;
-use crate::modes::Menu;
 use crate::modes::MountCommands;
 use crate::modes::MountRepr;
 use crate::modes::NeedConfirmation;
@@ -54,7 +53,9 @@ use crate::modes::{BlockDeviceAction, Navigate};
 use crate::modes::{Content, FileInfo};
 use crate::modes::{ContentWindow, CopyMove};
 use crate::modes::{Display, Go};
+use crate::modes::{FileKind, Menu};
 use crate::modes::{FilterKind, InputSimple};
+use crate::modes::{IsoDevice, PickerCaller};
 use crate::{log_info, log_line};
 
 pub enum Window {
@@ -352,6 +353,8 @@ impl Status {
                     Navigate::Shortcut => self.menu.shortcut.set_index(index),
                     Navigate::Trash => self.menu.trash.set_index(index),
                     Navigate::TuiApplication => self.menu.tui_applications.set_index(index),
+                    Navigate::Cloud => self.menu.cloud.set_index(index),
+                    Navigate::Picker => self.menu.picker.set_index(index),
                 },
                 Edit::InputCompleted(_) => self.menu.completion.set_index(index),
                 _ => (),
@@ -1280,7 +1283,11 @@ impl Status {
     /// The action is only executed if the user typed the char `y`
     pub fn confirm(&mut self, c: char, confirmed_action: NeedConfirmation) -> Result<()> {
         if c == 'y' {
-            let _ = self.match_confirmed_mode(confirmed_action);
+            if let Ok(must_leave) = self.match_confirmed_mode(confirmed_action) {
+                if must_leave {
+                    return Ok(());
+                }
+            }
         }
         self.reset_edit_mode()?;
         self.current_tab_mut().refresh_view()?;
@@ -1289,14 +1296,19 @@ impl Status {
     }
 
     /// Execute a `NeedConfirmation` action (delete, move, copy, empty trash)
-    fn match_confirmed_mode(&mut self, confirmed_action: NeedConfirmation) -> Result<()> {
+    fn match_confirmed_mode(&mut self, confirmed_action: NeedConfirmation) -> Result<bool> {
         match confirmed_action {
             NeedConfirmation::Delete => self.confirm_delete_files(),
             NeedConfirmation::Move => self.cut_or_copy_flagged_files(CopyMove::Move),
             NeedConfirmation::Copy => self.cut_or_copy_flagged_files(CopyMove::Copy),
             NeedConfirmation::EmptyTrash => self.confirm_trash_empty(),
             NeedConfirmation::BulkAction => self.confirm_bulk_action(),
-        }
+            NeedConfirmation::DeleteCloud => {
+                self.cloud_confirm_delete()?;
+                return Ok(true);
+            }
+        }?;
+        Ok(false)
     }
 
     /// Execute an action when the header line was clicked.
@@ -1418,6 +1430,141 @@ impl Status {
     pub fn input_filter(&mut self, c: char) -> Result<()> {
         self.menu.input_insert(c)?;
         self.set_filter()
+    }
+
+    fn get_cloud_token_names(&self) -> Result<Vec<String>> {
+        Ok(std::fs::read_dir(path_to_config_folder()?)?
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().is_file())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .filter(|filename| filename.starts_with("token_"))
+            .filter(|filename| filename.ends_with(".yaml"))
+            .map(|filename| filename.replace("token_", ""))
+            .map(|filename| filename.replace(".yaml", ""))
+            .collect())
+    }
+
+    /// Load the selected cloud configuration file from the config folder and open navigation the menu.
+    pub fn cloud_load_config(&mut self) -> Result<()> {
+        let Some(picked) = self.menu.picker.selected() else {
+            log_info!("nothing selected");
+            return Ok(());
+        };
+        let Ok(cloud) = google_drive(picked) else {
+            log_line!("Invalid config file {picked}");
+            return Ok(());
+        };
+        self.menu.cloud = cloud;
+        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
+    }
+
+    /// Open the cloud menu.
+    /// If no cloud has been selected yet, all cloud config file will be displayed.
+    /// if a cloud has been selected, it will open it.
+    pub fn cloud_open(&mut self) -> Result<()> {
+        if self.menu.cloud.is_set() {
+            self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
+        } else {
+            let content = self.get_cloud_token_names()?;
+            self.menu.picker.set(
+                Some(PickerCaller::Cloud),
+                Some("Pick a cloud provider".to_owned()),
+                content,
+            );
+            self.set_edit_mode(self.index, Edit::Navigate(Navigate::Picker))
+        }
+    }
+
+    /// Disconnect from the current cloud and open the picker
+    pub fn cloud_disconnect(&mut self) -> Result<()> {
+        self.menu.cloud.disconnect();
+        self.cloud_open()
+    }
+
+    /// Enter the delete mode and ask confirmation.
+    /// Only the currently selected file can be deleted.
+    pub fn cloud_enter_delete_mode(&mut self) -> Result<()> {
+        self.set_edit_mode(
+            self.index,
+            Edit::NeedConfirmation(NeedConfirmation::DeleteCloud),
+        )
+    }
+
+    /// Delete the selected file once a confirmation has been received from the user.
+    pub fn cloud_confirm_delete(&mut self) -> Result<()> {
+        self.menu.cloud.delete()?;
+        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))?;
+        self.menu.cloud.refresh_current()?;
+        self.menu.window.scroll_to(self.menu.cloud.index);
+        Ok(())
+    }
+
+    /// Update the metadata of the current file.
+    pub fn cloud_update_metadata(&mut self) -> Result<()> {
+        self.menu.cloud.update_metadata()
+    }
+
+    /// Ask the user to enter a name for the new directory.
+    pub fn cloud_enter_newdir_mode(&mut self) -> Result<()> {
+        self.set_edit_mode(self.index, Edit::InputSimple(InputSimple::CloudNewdir))?;
+        self.refresh_view()
+    }
+
+    /// Create the new directory in current path with the name the user entered.
+    pub fn cloud_create_newdir(&mut self, dirname: String) -> Result<()> {
+        self.menu.cloud.create_newdir(dirname)?;
+        self.menu.cloud.refresh_current()
+    }
+
+    fn get_normal_selected_file(&self) -> Option<FileInfo> {
+        let local_file = self.tabs[self.index].current_file().ok()?;
+        match local_file.file_kind {
+            FileKind::NormalFile => Some(local_file),
+            _ => None,
+        }
+    }
+
+    /// Upload the current file (tree or directory mode) the the current remote path.
+    pub fn cloud_upload_selected_file(&mut self) -> Result<()> {
+        let Some(local_file) = self.get_normal_selected_file() else {
+            log_line!("Can only upload normal files.");
+            return Ok(());
+        };
+        self.menu.cloud.upload(&local_file)?;
+        self.menu.cloud.refresh_current()
+    }
+
+    /// Enter a file (download it) or the directory (explore it).
+    pub fn cloud_enter_file_or_dir(&mut self) -> Result<()> {
+        if let Some(entry) = self.menu.cloud.selected() {
+            match entry.metadata().mode() {
+                EntryMode::Unknown => (),
+                EntryMode::FILE => self
+                    .menu
+                    .cloud
+                    .download(self.current_tab().directory_of_selected()?)?,
+                EntryMode::DIR => {
+                    self.menu.cloud.enter_selected()?;
+                    self.cloud_set_content_window_len()?;
+                }
+            };
+        };
+        Ok(())
+    }
+
+    fn cloud_set_content_window_len(&mut self) -> Result<()> {
+        let len = self.menu.cloud.content.len();
+        let height = self.second_window_height()?;
+        self.menu.window = ContentWindow::new(len, height);
+        Ok(())
+    }
+
+    /// Move to the parent folder if possible.
+    /// Nothing is done in the root folder.
+    pub fn cloud_move_to_parent(&mut self) -> Result<()> {
+        self.menu.cloud.move_to_parent()?;
+        self.cloud_set_content_window_len()?;
+        Ok(())
     }
 }
 

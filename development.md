@@ -972,6 +972,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - hex colors can be used in config file.
 - click on right pane while previewing a tree moves there.
 - Display keybindings sorted by alphabetical order with `$ fm --keybinds`
+- Google drive. Navigate, download, upload file to google drive once configured. See the readme for more details.
 
 #### Changelog
 
@@ -1018,14 +1019,38 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] dump keybinds & refactor help message
 - [x] FIX: leaving preview in current tab doesn't select the last file
 - [ ] perfomance
+- [ ] Apache OpenDAL: [Official Documentation](https://opendal.apache.org/) - [crates.io](https://crates.io/crates/opendal)
+  - [x] refresh token creation
+  - [x] write tokens in config folder for user
+  - [x] keybindings in menu
+  - [x] readme for users
+  - [x] token handling
+  - [x] simplest configuration
+  - [x] google drive listing
+  - [x] listing
+  - [x] directory navigation
+  - [x] file downloading :
+    - [x] directory mode
+    - [x] tree mode
+  - [x] directory creation
+  - [x] file uploading
+  - [x] file deletion
+  - [x] move all tokio::main to opendal
+  - [x] log errors
+  - [x] delete confirmation
+  - [x] FIX: window is offset after deletion when deleted wasn't on first screen
+  - [x] merge into a single binary
+  - [x] FIX: while navigating, contentwindow len isn't updated
+  - [x] WONTDO: metadata for cloud files. Way too long for big folder
+  - [ ] BUG: opendal crashes if multiple files have the same name. See [issue](https://github.com/apache/opendal/issues/5099)
 - [ ] non blocking previews: use the mpsc to do the previews async (once again)
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
+- [x] FIX: too much thing on menu and last line
 - [ ] reduce dependencies
 
 ## TODO
 
-- [ ] Apache OpenDAL: [Official Documentation](https://opendal.apache.org/) - [crates.io](https://crates.io/crates/opendal)
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone

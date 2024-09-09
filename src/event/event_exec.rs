@@ -974,6 +974,7 @@ impl EventAction {
                     status.menu.input.cursor_left();
                 }
                 Edit::Nothing => Self::file_move_left(tab)?,
+                Edit::Navigate(Navigate::Cloud) => status.cloud_move_to_parent()?,
                 _ => (),
             }
         }
@@ -1001,6 +1002,7 @@ impl EventAction {
                     status.menu.input.cursor_right();
                     Ok(())
                 }
+                Edit::Navigate(Navigate::Cloud) => status.cloud_enter_file_or_dir(),
                 Edit::Nothing => Self::enter_file(status),
                 _ => Ok(()),
             }
@@ -1460,6 +1462,10 @@ impl EventAction {
             status.reset_edit_mode()?;
         }
         status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Remote))
+    }
+
+    pub fn cloud_drive(status: &mut Status) -> Result<()> {
+        status.cloud_open()
     }
 
     /// Click a file at `row`, `col`.

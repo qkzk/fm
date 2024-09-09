@@ -3,6 +3,8 @@ use std::fs::metadata;
 use std::io::BufRead;
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
+use std::path::PathBuf;
+use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
@@ -11,6 +13,7 @@ use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::common::CONFIG_FOLDER;
 use crate::common::{CALC_PDF_PATH, THUMBNAIL_PATH_JPG};
 use crate::log_info;
 use crate::log_line;
@@ -326,4 +329,11 @@ impl UtfWidth for &str {
 
 pub fn index_from_a(lettre: char) -> Option<usize> {
     (lettre as usize).checked_sub('a' as usize)
+}
+
+/// A PathBuf of the current config folder.
+pub fn path_to_config_folder() -> Result<PathBuf> {
+    Ok(std::path::PathBuf::from_str(
+        shellexpand::tilde(CONFIG_FOLDER).borrow(),
+    )?)
 }

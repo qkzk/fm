@@ -9,7 +9,11 @@
 [docrs]: https://docs.rs/fm-tui/0.1.24
 
 ```
-A TUI file manager inspired by dired and ranger
+FM : a file manager inspired by ranger and dired
+
+Config files   ~/.config/fm/
+Documentation  https://github.com/qkzk/fm
+
 
 Usage: fm [OPTIONS]
 
@@ -19,8 +23,10 @@ Options:
   -A, --all              Display all files (hidden)
   -l, --log              Enable logging
       --neovim           Started inside neovim terminal emulator
+      --keybinds         Print keybinds
+      --cloudconfig      Configure a google drive client
   -h, --help             Print help
-  -V, --version          Print version                                                                                                                                                                              [3,8s]
+  -V, --version          Print version
 ```
 
 ## Platform
@@ -180,6 +186,45 @@ Critical actions will be logged to `~/.config/fm/log/fm.log` and actions affecti
 
 The last action is displayed at the bottom of the screen and can be read with `Alt+l` like a preview.
 Those logs can be seen even if logging is disabled, it just won't be up to date.
+
+### Google Drive
+
+With the help of the amazing [OpenDal](https://opendal.apache.org/) library from Apache, you can access your remote GoogleDrive files within fm.
+
+You must setup a client id and a client secret first. Once it's done, the helper `fm --cloudconfig` will create the configuration file for you.
+It uses a refresh token which will automatically be refreshed for you by OpenDal.
+
+Open the Cloud menu with Shift-Alt-C and pick a valid config file.
+Once done, you can navigate your files with the arrow keys, download them with Return, upload the selected file with u, Delete a remote file with X (no confirmation !) and create a new directory with d.
+
+You can setup many google drive accounts but only one can be opened at once. Use `l` to _leave_ the current one and select another one.
+
+This is an advanced user feature with rough edges.
+
+#### Initial setup
+
+You need to provide credentials to access a google drive account. The only way to get them is to create a project in Google Cloud and share the credentials.
+
+1. Open google cloud console and setup a new project for fm
+2. Add the google drive API for your project with the scopes `https://www.googleapis.com/auth/drive` and create credentials
+3. Add a tester with the same email account
+4. Add OAuth 2.0 credentials and copy the client id and client secret.
+5. Publish your application. It changes nothing but make the refresh tokens last longer.
+6. Run the helper `fm --cloudconfig` and provide the requested informations.
+
+More infos about credentials can be found in the [rclone](https://rclone.org/drive/#making-your-own-client-id) documentation.
+
+#### Multiple files having the same name
+
+For some reason, GoogleDrive allows multiple files to have exactly the same name. ATM it crashes OpenDal in _testing mode_ and those files are ignored in _release_ mode.
+Only developpers of fm should be concerned.
+
+#### Notes
+
+- This feature is still in beta and is subject to change a lot.
+- Be careful with your files.
+- A lot of GoogleDrive features aren't supported yet, mostly because I couldn't test them. If you want to sync your files in Linux, you should take a look at [rclone](https://rclone.org/).
+- OpenDal provides a [lot of services](https://docs.rs/opendal/latest/opendal/services/index.html), not only GoogleDrive. If you want more services like that, open an issue and I'll take a look.
 
 ### More
 

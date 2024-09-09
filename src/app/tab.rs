@@ -162,7 +162,7 @@ impl Tab {
         }
     }
 
-    /// Current path of this tab.
+    /// Current path of this tab in directory display mode.
     pub fn current_path(&self) -> &path::Path {
         self.directory.path.borrow()
     }

@@ -2,8 +2,8 @@ use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::common::{current_uid, TRASH_FOLDER_FILES};
-use crate::common::{CONFIG_FOLDER, HARDCODED_SHORTCUTS};
+use crate::common::HARDCODED_SHORTCUTS;
+use crate::common::{current_uid, path_to_config_folder, TRASH_FOLDER_FILES};
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::io::git_root;
@@ -63,7 +63,7 @@ impl Shortcut {
 
     /// Insert a shortcut to config file directory of the current user.
     fn push_config_folder(shortcuts: &mut Vec<PathBuf>) {
-        if let Ok(config_folder) = PathBuf::from_str(shellexpand::tilde(CONFIG_FOLDER).borrow()) {
+        if let Ok(config_folder) = path_to_config_folder() {
             shortcuts.push(config_folder);
         }
     }
