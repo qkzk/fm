@@ -245,7 +245,7 @@ impl_content!(FileInfo, Directory);
 
 const MAX_PATH_ELEM_SIZE: usize = 50;
 
-/// Shorten a path to be displayed in [`MAX_PATH_ELEM_SIZE`] chars or less.
+/// Shorten a path to be displayed in 50 chars or less.
 /// Each element of the path is shortened if needed.
 pub fn shorten_path(path: &Path, size: Option<usize>) -> Result<String> {
     if path == Path::new("/") {

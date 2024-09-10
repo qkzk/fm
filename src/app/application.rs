@@ -54,7 +54,7 @@ impl FM {
     ///
     /// # Errors
     ///
-    /// May fail if the [`tuikit::prelude::term`] can't be started or crashes
+    /// May fail if the [`tuikit::term`] can't be started or crashes
     pub fn start() -> Result<Self> {
         set_loggers()?;
         let Ok(config) = load_config(CONFIG_PATH) else {
@@ -153,7 +153,7 @@ impl FM {
     /// # Errors
     ///
     /// May fail if the terminal crashes
-    /// May also fail if the thread running in [`crate::application::Refresher`] crashed
+    /// May also fail if the thread running in [`crate::app::Refresher`] crashed
     pub fn quit(self) -> Result<String> {
         clear_tmp_file();
         drop(self.event_reader);
