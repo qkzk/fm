@@ -927,7 +927,6 @@ dependencies = [
  "opendal",
  "pathdiff",
  "pgs-files",
- "rand 0.8.5",
  "regex",
  "rust-lzma",
  "sanitize-filename",

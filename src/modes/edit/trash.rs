@@ -5,8 +5,6 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use chrono::{Local, NaiveDateTime};
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
 
 use crate::common::{read_lines, TRASH_CONFIRM_LINE};
 use crate::common::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO, TRASH_INFO_EXTENSION};
@@ -496,11 +494,7 @@ fn parsed_date_from_path_info(ds: &str) -> Result<()> {
 }
 
 fn rand_string() -> String {
-    thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(2)
-        .map(char::from)
-        .collect()
+    crate::common::random_alpha_chars().take(2).collect()
 }
 
 fn find_parent(path: &Path) -> Result<PathBuf> {

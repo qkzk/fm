@@ -8,7 +8,6 @@ use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
-use rand::Rng;
 use sysinfo::{Disk, DiskExt};
 use tuikit::term::Term;
 use unicode_segmentation::UnicodeSegmentation;
@@ -201,10 +200,9 @@ pub fn open_in_current_neovim(path: &Path, nvim_server: &str) {
 pub fn random_name() -> String {
     let mut rand_str = String::with_capacity(10);
     rand_str.push_str("fm-");
-    rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
+    crate::common::random_alpha_chars()
         .take(7)
-        .for_each(|ch| rand_str.push(ch as char));
+        .for_each(|ch| rand_str.push(ch));
     rand_str.push_str(".txt");
     rand_str
 }

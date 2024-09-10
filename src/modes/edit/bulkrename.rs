@@ -72,7 +72,7 @@ impl BulkExecutor {
                 return Ok(());
             };
             file.write_all(filename.as_bytes())?;
-            file.write_all(&[b'\n'])?;
+            file.write_all(b"\n")?;
         }
         Ok(())
     }

@@ -297,10 +297,7 @@ impl Tree {
         files
             .iter()
             .map(|fileinfo| fileinfo.path.clone())
-            .map(|path| {
-                stack.push(path.clone());
-                path
-            })
+            .inspect(|path| stack.push(path.clone()))
             .collect()
     }
 

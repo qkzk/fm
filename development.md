@@ -1065,6 +1065,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] add --locked in `cargo install fm-tui --locked` to prevent some weird display bug
 - [x] Fix documentation
 - [ ] Fix dependencies hell
+  - [x] random. Only used to create random temporary filename. Replaced with 0 deps custom random generator.
 - [ ] Badges to latest version
 
 ## TODO
