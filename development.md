@@ -1064,8 +1064,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] add --locked in `cargo install fm-tui --locked` to prevent some weird display bug
 - [x] Fix documentation
-- [ ] Badges
 - [ ] Fix dependencies hell
+- [ ] Badges to latest version
 
 ## TODO
 
