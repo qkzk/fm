@@ -40,7 +40,7 @@ Linux is the only supported platform. It may be usable on MacOS but I can't be s
 ## Installation
 
 ```sh
-cargo install fm-tui
+cargo install fm-tui --locked
 ```
 
 ## Usage

@@ -950,8 +950,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] zoxide support for "alt+g" aka goto mode.
 - [x] FIX: `q` while second window should exit the menu
 
-## Current dev
-
 ### Version 0.1.27
 
 #### Summary
@@ -1048,6 +1046,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [x] FIX: too much thing on menu and last line
 - [ ] reduce dependencies
+
+## Current dev
+
+### Version 0.1.28
+
+#### Changelog
+
+- [x] add --locked in `cargo install fm-tui --locked` to prevent some weird display bug
+- [ ] Fix dependencies hell
+- [ ] Fix documentation
 
 ## TODO
 
