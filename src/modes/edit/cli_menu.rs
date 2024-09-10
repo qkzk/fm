@@ -3,6 +3,7 @@ use anyhow::Result;
 
 use crate::app::Status;
 use crate::common::is_program_in_path;
+use crate::common::tilde;
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::io::execute_with_ansi_colors;
@@ -79,9 +80,8 @@ pub trait CLApplications<T: Execute<U>, U>: Sized + Default + Content<T> {
     }
 
     fn update_from_config(mut self, config_file: &str) -> Self {
-        let Ok(file) = std::fs::File::open(std::path::Path::new(
-            &shellexpand::tilde(config_file).to_string(),
-        )) else {
+        let Ok(file) = std::fs::File::open(std::path::Path::new(&tilde(config_file).to_string()))
+        else {
             log_info!("Couldn't open cli file at {config_file}. Using default");
             return self;
         };

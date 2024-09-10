@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 use chrono::{Local, NaiveDateTime};
 
-use crate::common::{read_lines, TRASH_CONFIRM_LINE};
+use crate::common::{read_lines, tilde, TRASH_CONFIRM_LINE};
 use crate::common::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO, TRASH_INFO_EXTENSION};
 use crate::config::Bindings;
 use crate::impl_content;
@@ -222,8 +222,8 @@ impl Trash {
     /// This function uses [`std::fs::create_dir_all`] internally and may fail
     /// for the same reasons.
     pub fn new(binds: &Bindings) -> Result<Self> {
-        let trash_folder_files = shellexpand::tilde(TRASH_FOLDER_FILES).to_string();
-        let trash_folder_info = shellexpand::tilde(TRASH_FOLDER_INFO).to_string();
+        let trash_folder_files = tilde(TRASH_FOLDER_FILES).to_string();
+        let trash_folder_info = tilde(TRASH_FOLDER_INFO).to_string();
         create_if_not_exists(&trash_folder_files)?;
         create_if_not_exists(&trash_folder_info)?;
         let empty_trash_binds = match binds.keybind_reversed().get("TrashEmpty") {

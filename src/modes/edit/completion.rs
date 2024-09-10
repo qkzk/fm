@@ -4,7 +4,7 @@ use std::fs::{self, ReadDir};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 
-use crate::common::{is_program_in_path, ZOXIDE};
+use crate::common::{is_program_in_path, tilde, ZOXIDE};
 use crate::event::ActionMap;
 use crate::io::execute_and_capture_output_with_path;
 use crate::modes::Leave;
@@ -173,7 +173,7 @@ impl Completion {
     }
 
     fn expand_input(&mut self, input_string: &str) -> Option<String> {
-        let expanded_input = shellexpand::tilde(input_string).into_owned();
+        let expanded_input = tilde(input_string).into_owned();
         if std::path::PathBuf::from(&expanded_input).exists() {
             Some(expanded_input)
         } else {
@@ -308,5 +308,5 @@ fn create_parent(vec_steps: Vec<&str>) -> String {
         "".to_owned()
     };
     parent.push_str(&vec_steps.join("/"));
-    shellexpand::tilde(&parent).to_string()
+    tilde(&parent).to_string()
 }

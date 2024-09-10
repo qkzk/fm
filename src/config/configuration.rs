@@ -5,7 +5,7 @@ use clap::Parser;
 use serde_yaml;
 use tuikit::attr::{Attr, Color};
 
-use crate::common::{is_program_in_path, DEFAULT_TERMINAL_FLAG};
+use crate::common::{is_program_in_path, tilde, DEFAULT_TERMINAL_FLAG};
 use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 use crate::config::Bindings;
 use crate::config::Colorer;
@@ -89,7 +89,7 @@ impl Config {
 /// If the config file is poorly formated its simply ignored.
 pub fn load_config(path: &str) -> Result<Config> {
     let mut config = Config::default();
-    let file = File::open(path::Path::new(&shellexpand::tilde(path).to_string()))?;
+    let file = File::open(path::Path::new(&tilde(path).to_string()))?;
     let Ok(yaml) = serde_yaml::from_reader(file) else {
         return Ok(config);
     };
@@ -236,7 +236,7 @@ lazy_static::lazy_static! {
     /// avoids to pass them everytime.
     pub static ref COLORS: Colors = {
         let mut colors = Colors::default();
-        if let Ok(file) = File::open(path::Path::new(&shellexpand::tilde(CONFIG_PATH).to_string())) {
+        if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
             if let Ok(yaml)  = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file) {
                 colors.update_from_config(&yaml["colors"]);
             };
@@ -252,7 +252,7 @@ lazy_static::lazy_static! {
     /// "custom" will create a gradient from start_palette to end_palette. Both values should be "rgb(u8, u8, u8)".
     pub static ref COLORER: fn(usize) -> Color = {
         let colorer = Colorer::color_green_blue as fn(usize) -> Color;
-        let Ok(file) = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(CONFIG_PATH).to_string())) else {
+        let Ok(file) = std::fs::File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string())) else {
             return colorer;
         };
         let Ok(yaml)  = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file) else {
@@ -277,7 +277,7 @@ lazy_static::lazy_static! {
 }
 
 fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
-    let config_path = &shellexpand::tilde(CONFIG_PATH).to_string();
+    let config_path = &tilde(CONFIG_PATH).to_string();
     let config_path = std::path::Path::new(config_path);
 
     if let Ok(file) = File::open(config_path) {
@@ -330,9 +330,7 @@ impl Default for MenuColors {
 
 impl MenuColors {
     pub fn update(mut self) -> Self {
-        if let Ok(file) = File::open(path::Path::new(
-            &shellexpand::tilde(CONFIG_PATH).to_string(),
-        )) {
+        if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
             if let Ok(yaml) =
                 serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file)
             {

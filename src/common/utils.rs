@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::borrow::Cow;
 use std::fs::metadata;
 use std::io::BufRead;
 use std::os::unix::fs::MetadataExt;
@@ -163,7 +164,7 @@ pub fn row_to_window_index(row: u16) -> usize {
 /// Convert a string into a valid, expanded and canonicalized path.
 /// Doesn't check if the path exists.
 pub fn string_to_path(path_string: &str) -> Result<std::path::PathBuf> {
-    let expanded_cow_path = shellexpand::tilde(&path_string);
+    let expanded_cow_path = tilde(&path_string);
     let expanded_target: &str = expanded_cow_path.borrow();
     Ok(std::fs::canonicalize(expanded_target)?)
 }
@@ -331,7 +332,33 @@ pub fn index_from_a(lettre: char) -> Option<usize> {
 
 /// A PathBuf of the current config folder.
 pub fn path_to_config_folder() -> Result<PathBuf> {
-    Ok(std::path::PathBuf::from_str(
-        shellexpand::tilde(CONFIG_FOLDER).borrow(),
-    )?)
+    Ok(std::path::PathBuf::from_str(tilde(CONFIG_FOLDER).borrow())?)
+}
+
+fn home_dir() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .and_then(|h| if h.is_empty() { None } else { Some(h) })
+        .map(PathBuf::from)
+}
+
+/// Expand ~/Downloads to /home/user/Downloads where user is the current user.
+/// Copied from <https://gitlab.com/ijackson/rust-shellexpand/-/blob/main/src/funcs.rs?ref_type=heads#L673>
+pub fn tilde(input_str: &str) -> Cow<str> {
+    if let Some(input_after_tilde) = input_str.strip_prefix('~') {
+        if input_after_tilde.is_empty() || input_after_tilde.starts_with('/') {
+            if let Some(hd) = home_dir() {
+                let result = format!("{}{}", hd.display(), input_after_tilde);
+                result.into()
+            } else {
+                // home dir is not available
+                input_str.into()
+            }
+        } else {
+            // we cannot handle `~otheruser/` paths yet
+            input_str.into()
+        }
+    } else {
+        // input doesn't start with tilde
+        input_str.into()
+    }
 }

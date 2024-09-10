@@ -8,6 +8,7 @@ use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::common::is_program_in_path;
+use crate::common::tilde;
 use crate::common::{
     OPENER_AUDIO, OPENER_DEFAULT, OPENER_IMAGE, OPENER_OFFICE, OPENER_PATH, OPENER_READABLE,
     OPENER_TEXT, OPENER_VECT, OPENER_VIDEO,
@@ -130,9 +131,7 @@ impl Association {
     }
 
     fn parse_yaml_file(path: &str) -> Option<serde_yaml::value::Value> {
-        let Ok(file) =
-            std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))
-        else {
+        let Ok(file) = std::fs::File::open(std::path::Path::new(&tilde(path).to_string())) else {
             eprintln!("Couldn't find opener file at {path}. Using default.");
             log_info!("Unable to open {path}. Using default opener");
             return None;

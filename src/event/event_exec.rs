@@ -14,7 +14,7 @@ use crate::common::filepath_to_clipboard;
 use crate::common::set_clipboard;
 use crate::common::LAZYGIT;
 use crate::common::NCDU;
-use crate::common::{is_program_in_path, open_in_current_neovim};
+use crate::common::{is_program_in_path, open_in_current_neovim, tilde};
 use crate::common::{CONFIG_PATH, GIO};
 use crate::config::Bindings;
 use crate::config::START_FOLDER;
@@ -825,7 +825,7 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        let home_cow = shellexpand::tilde("~");
+        let home_cow = tilde("~");
         let home: &str = home_cow.borrow();
         let home_path = path::Path::new(home);
         status.current_tab_mut().cd(home_path)?;
@@ -1396,9 +1396,8 @@ impl EventAction {
         match status
             .internal_settings
             .opener
-            .open_single(&path::PathBuf::from(
-                shellexpand::tilde(CONFIG_PATH).to_string(),
-            )) {
+            .open_single(&path::PathBuf::from(tilde(CONFIG_PATH).to_string()))
+        {
             Ok(_) => (),
             Err(e) => log_info!("Error opening {:?}: the config file {}", CONFIG_PATH, e),
         }

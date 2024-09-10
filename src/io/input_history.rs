@@ -8,6 +8,7 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::{
     common::read_lines,
+    common::tilde,
     io::Args,
     modes::{Edit, InputCompleted, InputSimple},
 };
@@ -22,7 +23,7 @@ pub struct InputHistory {
 
 impl InputHistory {
     pub fn load(path: &str) -> Result<Self> {
-        let file_path = std::path::PathBuf::from(shellexpand::tilde(path).to_string());
+        let file_path = std::path::PathBuf::from(tilde(path).to_string());
         Ok(Self {
             content: Self::load_content(&file_path)?,
             file_path,

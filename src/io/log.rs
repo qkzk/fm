@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use log4rs;
 
 use crate::common::extract_lines;
-use crate::common::{ACTION_LOG_PATH, LOG_CONFIG_PATH};
+use crate::common::{tilde, ACTION_LOG_PATH, LOG_CONFIG_PATH};
 use crate::io::Args;
 
 /// Set the logs.
@@ -23,10 +23,7 @@ use crate::io::Args;
 pub fn set_loggers() -> Result<()> {
     let args = Args::parse();
     if args.log {
-        log4rs::init_file(
-            shellexpand::tilde(LOG_CONFIG_PATH).as_ref(),
-            Default::default(),
-        )?;
+        log4rs::init_file(tilde(LOG_CONFIG_PATH).as_ref(), Default::default())?;
         // clear_useless_env_home()?;
 
         log::info!("fm is starting with logs enabled");
@@ -61,7 +58,7 @@ pub fn set_loggers() -> Result<()> {
 
 /// Returns the last line of the log file.
 pub fn read_log() -> Result<Vec<String>> {
-    let log_path = shellexpand::tilde(ACTION_LOG_PATH).to_string();
+    let log_path = tilde(ACTION_LOG_PATH).to_string();
     let content = std::fs::read_to_string(log_path)?;
     Ok(extract_lines(content))
 }

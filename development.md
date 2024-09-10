@@ -1067,6 +1067,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Fix dependencies hell
   - [x] random. Only used to create random temporary filename. Replaced with 0 deps custom random generator.
   - [x] sanitize_filename. Only used when creating new files/directory. Well... I'll let the user do what he wants.
+  - [x] shellexpand. Used everywhere for its tilde("~/Downloads") expansion but only use one function.
 - [ ] Badges to latest version
 
 ## TODO

@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 
 use crate::common::read_lines;
+use crate::common::tilde;
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::log_info;
@@ -39,7 +40,7 @@ impl Marks {
     /// and the file is saved again.
     #[must_use]
     pub fn new(config_path: &str) -> Self {
-        let path = PathBuf::from(shellexpand::tilde(config_path).to_string());
+        let path = PathBuf::from(tilde(config_path).to_string());
         Self::read_from_file(path)
     }
 

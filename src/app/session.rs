@@ -3,6 +3,7 @@ use std::fs::File;
 use serde::Serialize;
 use serde_yaml::{Error as YamlError, Value as YamlValue};
 
+use crate::common::tilde;
 use crate::common::SESSION_PATH;
 use crate::io::MIN_WIDTH_FOR_DUAL_PANE;
 use crate::log_info;
@@ -39,7 +40,7 @@ impl Default for Session {
             dual: true,
             metadata: true,
             preview: false,
-            filepath: shellexpand::tilde(SESSION_PATH).to_string(),
+            filepath: tilde(SESSION_PATH).to_string(),
         }
     }
 }

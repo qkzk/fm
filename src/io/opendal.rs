@@ -10,6 +10,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
 use crate::common::path_to_string;
+use crate::common::tilde;
 use crate::common::CONFIG_FOLDER;
 use crate::impl_content;
 use crate::impl_selectable;
@@ -29,7 +30,7 @@ struct GoogleDriveConfig {
 
 impl GoogleDriveConfig {
     fn build_token_filename(config_name: &str) -> String {
-        let token_base_path = shellexpand::tilde(CONFIG_FOLDER);
+        let token_base_path = tilde(CONFIG_FOLDER);
         format!("{token_base_path}/token_{config_name}.yaml")
     }
 
