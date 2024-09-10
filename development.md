@@ -2,6 +2,15 @@
 
 I write every step in this file.
 
+## How to publish a new version
+
+1. cargo clippy
+2. cargo run --release
+3. cargo docs --open
+4. merge on github & publish a new version
+5. cargo publish --dry-run
+6. cargo publish
+
 ## DONE
 
 - [x] filetype
