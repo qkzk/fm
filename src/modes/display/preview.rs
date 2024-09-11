@@ -419,7 +419,7 @@ pub struct BlockDevice {
 
 impl BlockDevice {
     /// New socket preview
-    /// See `man ss` for a description of the arguments.
+    /// See `man lsblk` for a description of the arguments.
     fn new(fileinfo: &FileInfo) -> Self {
         let content: Vec<String>;
         if let Ok(output) = execute_and_output_no_log(
