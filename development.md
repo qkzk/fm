@@ -1062,6 +1062,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Changelog
 
+- [x] use fontstyle from syntect while previewing highlighted files
 - [x] add --locked in `cargo install fm-tui --locked` to prevent some weird display bug
 - [x] Fix documentation
 - [ ] Fix dependencies hell

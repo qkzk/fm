@@ -10,9 +10,9 @@ use std::slice::Iter;
 use anyhow::{anyhow, Context, Result};
 use content_inspector::{inspect, ContentType};
 use syntect::easy::HighlightLines;
-use syntect::highlighting::{Style, ThemeSet};
+use syntect::highlighting::{FontStyle, Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
-use tuikit::attr::{Attr, Color};
+use tuikit::attr::{Attr, Color, Effect};
 
 use crate::common::{
     CALC_PDF_PATH, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
@@ -617,8 +617,28 @@ impl SyntaxedString {
     fn from_syntect(col: usize, content: &str, style: Style) -> Self {
         let content = content.to_owned();
         let fg = style.foreground;
-        let attr = Attr::from(Color::Rgb(fg.r, fg.g, fg.b));
+        let attr = Attr {
+            fg: Color::Rgb(fg.r, fg.g, fg.b),
+            bg: Color::default(),
+            effect: Self::fontstyle_to_effect(&style.font_style),
+        };
         Self { col, content, attr }
+    }
+
+    fn fontstyle_to_effect(font_style: &FontStyle) -> Effect {
+        let mut effect = Effect::empty();
+
+        // If the FontStyle has the bold bit set, add bold to the Effect
+        if font_style.contains(FontStyle::BOLD) {
+            effect |= Effect::BOLD;
+        }
+
+        // If the FontStyle has the underline bit set, add underline to the Effect
+        if font_style.contains(FontStyle::UNDERLINE) {
+            effect |= Effect::UNDERLINE;
+        }
+
+        effect
     }
 
     /// Prints itself on a tuikit canvas.
