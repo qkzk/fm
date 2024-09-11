@@ -1064,6 +1064,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] use fontstyle from syntect while previewing highlighted files
 - [x] add --locked in `cargo install fm-tui --locked` to prevent some weird display bug
+- [x] lazy loading of monokai theme
 - [x] Fix documentation
 - [ ] Fix dependencies hell
   - [x] random. Only used to create random temporary filename. Replaced with 0 deps custom random generator.

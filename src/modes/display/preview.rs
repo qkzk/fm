@@ -1,7 +1,6 @@
 use std::cmp::min;
 use std::fmt::Write as _;
 use std::fs::metadata;
-use std::io::Cursor;
 use std::io::{BufRead, BufReader, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
@@ -10,7 +9,7 @@ use std::slice::Iter;
 use anyhow::{anyhow, Context, Result};
 use content_inspector::{inspect, ContentType};
 use syntect::easy::HighlightLines;
-use syntect::highlighting::{FontStyle, Style, ThemeSet};
+use syntect::highlighting::{FontStyle, Style};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color, Effect};
 
@@ -19,6 +18,7 @@ use crate::common::{
     PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS, THUMBNAIL_PATH_JPG, THUMBNAIL_PATH_PNG,
     THUMBNAIL_PDF_PATH, TRANSMISSION_SHOW, UEBERZUG,
 };
+use crate::config::MONOKAI_THEME;
 use crate::log_info;
 use crate::modes::ContentWindow;
 use crate::modes::FileInfo;
@@ -546,9 +546,9 @@ pub struct HLContent {
 impl HLContent {
     const SIZE_LIMIT: usize = 32768;
     /// Creates a new displayable content of a syntect supported file.
-    /// It may file if the file isn't properly formatted or the extension
+    /// It may fail if the file isn't properly formatted or the extension
     /// is wrong (ie. python content with .c extension).
-    /// ATM only Solarized (dark) theme is supported.
+    /// ATM only Monokaï (dark) theme is supported.
     fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
         let raw_content = read_nb_lines(path, Self::SIZE_LIMIT)?;
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
@@ -577,12 +577,8 @@ impl HLContent {
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
     ) -> Result<Vec<Vec<SyntaxedString>>> {
-        let mut monokai = BufReader::new(Cursor::new(include_bytes!(
-            "../../../assets/themes/Monokai_Extended.tmTheme"
-        )));
-        let theme = ThemeSet::load_from_reader(&mut monokai)?;
         let mut highlighted_content = vec![];
-        let mut highlighter = HighlightLines::new(syntax_ref, &theme);
+        let mut highlighter = HighlightLines::new(syntax_ref, &MONOKAI_THEME);
 
         for line in raw_content.iter() {
             let mut col = 0;
