@@ -1,11 +1,18 @@
+use std::sync::RwLock;
+
 use anyhow::Result;
 use clap::Parser;
 use log4rs;
 
 use crate::common::extract_lines;
 use crate::common::{tilde, ACTION_LOG_PATH, LOG_CONFIG_PATH};
-use crate::config::{LAST_LOG_INFO, LAST_LOG_LINE};
 use crate::io::Args;
+
+/// Holds the last action which is displayed to the user
+static LAST_LOG_LINE: RwLock<String> = RwLock::new(String::new());
+
+/// Holds the last line of the log
+static LAST_LOG_INFO: RwLock<String> = RwLock::new(String::new());
 
 /// Set the logs.
 /// First we read the `-l` `--log` command line argument which default to false.
@@ -64,7 +71,7 @@ pub fn read_log() -> Result<Vec<String>> {
 /// Read the last value of the "log line".
 /// Fail silently if the global variable can't be read and returns an empty string.
 pub fn read_last_log_line() -> String {
-    let Some(last_log_line) = LAST_LOG_LINE.get() else {
+    let Ok(last_log_line) = LAST_LOG_LINE.read() else {
         return "".to_owned();
     };
     last_log_line.to_owned()
@@ -76,9 +83,11 @@ fn write_last_log_line<S>(log: S)
 where
     S: Into<String> + std::fmt::Display,
 {
-    let Ok(()) = LAST_LOG_LINE.set(log.to_string()) else {
+    let Ok(mut last_log_line) = LAST_LOG_LINE.write() else {
+        log::info!("Couldn't write to LAST_LOG_LINE");
         return;
     };
+    *last_log_line = log.to_string();
 }
 
 /// Write a line to both the global variable `LAST_LOG_LINE` and the special log
@@ -103,10 +112,10 @@ macro_rules! log_line {
 /// Read the last value of the "log info".
 /// Fail silently if the global variable can't be read and returns an empty string.
 fn read_last_log_info() -> String {
-    let Some(last_log_line) = LAST_LOG_INFO.get() else {
+    let Ok(last_log_info) = LAST_LOG_INFO.read() else {
         return "".to_owned();
     };
-    last_log_line.to_owned()
+    last_log_info.to_owned()
 }
 
 /// Write a new log info to the global variable `LAST_LOG_INFO`.
@@ -115,9 +124,11 @@ fn write_last_log_info<S>(log: &S)
 where
     S: Into<String> + std::fmt::Display,
 {
-    let Ok(()) = LAST_LOG_INFO.set(log.to_string()) else {
+    let Ok(mut last_log_info) = LAST_LOG_INFO.write() else {
+        log::info!("Couldn't write to LAST_LOG_LINE");
         return;
     };
+    *last_log_info = log.to_string();
 }
 
 /// Write a line to both the global variable `LAST_LOG_INFO` and the info log

@@ -40,12 +40,6 @@ pub static MENU_COLORS: OnceLock<MenuColors> = OnceLock::new();
 /// Highlighting theme color used to preview code file
 pub static MONOKAI_THEME: OnceLock<Theme> = OnceLock::new();
 
-/// Holds the last action which is displayed to the user
-pub static LAST_LOG_LINE: OnceLock<String> = OnceLock::new();
-
-/// Holds the last line of the log
-pub static LAST_LOG_INFO: OnceLock<String> = OnceLock::new();
-
 /// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
 pub static START_FOLDER: OnceLock<PathBuf> = OnceLock::new();
 
