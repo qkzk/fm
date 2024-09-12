@@ -767,7 +767,10 @@ impl Status {
         let skim = skimer.search_line_in_file(&self.current_tab().directory_str());
         let paths: Vec<std::path::PathBuf> = skim
             .iter()
-            .map(|s| std::path::PathBuf::from(s.output().to_string()))
+            .map(|s| s.output().to_string())
+            .map(|s| s.split_once(':').unwrap_or(("", "")).0.to_owned())
+            .filter(|s| !s.is_empty())
+            .map(std::path::PathBuf::from)
             .collect();
         self.menu.flagged.update(paths);
         let Some(output) = skim.first() else {

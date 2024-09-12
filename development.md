@@ -1066,6 +1066,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] add --locked in `cargo install fm-tui --locked` to prevent some weird display bug
 - [x] lazy loading of monokai theme
 - [x] Fix a bug where ~ wasn't expanded in starting path and lazy loading of path wasn't read
+- [x] Fix: ctrl+s returns a string filename:line:col which shouldn't be treated as a path
 - [x] Fix documentation
 - [ ] Fix dependencies hell
   - [x] random. Only used to create random temporary filename. Replaced with 0 deps custom random generator.
