@@ -1081,6 +1081,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] colorer
     - [x] move config setter to configuration.rs
     - [x] convert oncelock errors to anyhow's
+- [ ] update deps to latest versions
 - [ ] Badges to latest version
 
 ## TODO
