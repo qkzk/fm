@@ -1,12 +1,10 @@
-use std::sync::RwLock;
-
 use anyhow::Result;
 use clap::Parser;
-use lazy_static::lazy_static;
 use log4rs;
 
 use crate::common::extract_lines;
 use crate::common::{tilde, ACTION_LOG_PATH, LOG_CONFIG_PATH};
+use crate::config::{LAST_LOG_INFO, LAST_LOG_LINE};
 use crate::io::Args;
 
 /// Set the logs.
@@ -63,10 +61,6 @@ pub fn read_log() -> Result<Vec<String>> {
     Ok(extract_lines(content))
 }
 
-lazy_static! {
-    static ref LAST_LOG_LINE: RwLock<String> = RwLock::new("".to_owned());
-}
-
 /// Read the last value of the "log line".
 /// It's a global string created with `lazy_static!(...)`
 /// Fail silently if the global variable can't be read and returns an empty string.
@@ -107,10 +101,6 @@ macro_rules! log_line {
       format!($($arg)+)
     )
   );
-}
-
-lazy_static! {
-    static ref LAST_LOG_INFO: RwLock<String> = RwLock::new("".to_owned());
 }
 
 /// Read the last value of the "log info".

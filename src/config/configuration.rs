@@ -1,4 +1,5 @@
 use std::io::{BufReader, Cursor};
+use std::sync::RwLock;
 use std::{fs::File, path};
 
 use anyhow::Result;
@@ -378,4 +379,12 @@ lazy_static::lazy_static! {
     )));
         ThemeSet::load_from_reader(&mut monokai).expect("Couldn't find monokai theme")
     };
+}
+
+lazy_static::lazy_static! {
+    pub static ref LAST_LOG_INFO: RwLock<String> = RwLock::new("".to_owned());
+}
+
+lazy_static::lazy_static! {
+    pub static ref LAST_LOG_LINE: RwLock<String> = RwLock::new("".to_owned());
 }
