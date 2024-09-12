@@ -2,13 +2,13 @@ use std::{fs::File, path};
 
 use anyhow::Result;
 use serde_yaml;
-use syntect::highlighting::Theme;
-use tuikit::attr::{Attr, Color};
+use tuikit::attr::Attr;
+use tuikit::attr::Color;
 
-use crate::common::{is_program_in_path, tilde, DEFAULT_TERMINAL_FLAG};
+use crate::common::tilde;
+use crate::common::{is_program_in_path, DEFAULT_TERMINAL_FLAG};
 use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 use crate::config::Bindings;
-use crate::config::Colorer;
 use crate::io::color_to_attr;
 
 /// Holds every configurable aspect of the application.
@@ -24,6 +24,7 @@ pub struct Config {
     /// Configurable keybindings.
     pub binds: Bindings,
 }
+
 impl Default for Config {
     /// Returns a default config with hardcoded values.
     fn default() -> Self {
@@ -225,20 +226,6 @@ impl Default for Colors {
     }
 }
 
-/// Colors read from the config file.
-/// We define a colors for every kind of file except normal files.
-/// Colors for normal files are calculated from their extension and
-/// are greens or blues.
-///
-/// Colors are setup on start and never change afterwards.
-pub static COLORS: std::sync::OnceLock<Colors> = std::sync::OnceLock::new();
-
-/// Defines a palette which will color the "normal" files based on their extension.
-/// We try to read a yaml value and pick one of 3 palettes :
-/// "green-red", "blue-green", "blue-red", "red-green", "red-blue", "green-blue" which is the default.
-/// "custom" will create a gradient from start_palette to end_palette. Both values should be "rgb(u8, u8, u8)".
-pub static COLORER: std::sync::OnceLock<fn(usize) -> Color> = std::sync::OnceLock::new();
-
 pub fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
     let config_path = &tilde(CONFIG_PATH).to_string();
     let config_path = std::path::Path::new(config_path);
@@ -253,9 +240,6 @@ pub fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
     }
     None
 }
-
-pub static START_COLOR: std::sync::OnceLock<(u8, u8, u8)> = std::sync::OnceLock::new();
-pub static STOP_COLOR: std::sync::OnceLock<(u8, u8, u8)> = std::sync::OnceLock::new();
 
 pub struct MenuColors {
     pub first: Color,
@@ -286,9 +270,7 @@ impl Default for MenuColors {
 impl MenuColors {
     pub fn update(mut self) -> Self {
         if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
-            if let Ok(yaml) =
-                serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file)
-            {
+            if let Ok(yaml) = serde_yaml::from_reader::<File, serde_yaml::value::Value>(file) {
                 let menu_colors = &yaml["menu_colors"];
                 update_attribute!(self.first, menu_colors, "first");
                 update_attribute!(self.second, menu_colors, "second");
@@ -318,13 +300,3 @@ impl MenuColors {
         self.palette().len()
     }
 }
-
-pub static MENU_COLORS: std::sync::OnceLock<MenuColors> = std::sync::OnceLock::new();
-
-pub static MONOKAI_THEME: std::sync::OnceLock<Theme> = std::sync::OnceLock::new();
-
-pub static LAST_LOG_LINE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
-pub static LAST_LOG_INFO: std::sync::OnceLock<String> = std::sync::OnceLock::new();
-
-/// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
-pub static START_FOLDER: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();

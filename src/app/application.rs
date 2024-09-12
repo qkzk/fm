@@ -6,26 +6,17 @@ use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 use clap::Parser;
-use tuikit::attr::Color;
 
 use crate::app::Displayer;
 use crate::app::Refresher;
 use crate::app::Status;
-use crate::common::tilde;
 use crate::common::CONFIG_PATH;
 use crate::common::{clear_tmp_file, init_term};
 use crate::config::cloud_config;
-use crate::config::load_color_from_config;
 use crate::config::load_config;
-use crate::config::Colorer;
-use crate::config::Colors;
-use crate::config::MenuColors;
-use crate::config::COLORER;
-use crate::config::COLORS;
-use crate::config::MENU_COLORS;
-use crate::config::START_COLOR;
+use crate::config::set_configurable_static;
+use crate::config::Config;
 use crate::config::START_FOLDER;
-use crate::config::STOP_COLOR;
 use crate::event::EventDispatcher;
 use crate::event::EventReader;
 use crate::event::FmEvents;
@@ -70,26 +61,20 @@ impl FM {
     pub fn start() -> Result<Self> {
         set_loggers()?;
         let Ok(config) = load_config(CONFIG_PATH) else {
-            exit_wrong_config()
+            Self::exit_wrong_config()
         };
-        Self::set_menu_colors();
-        Self::set_start_stop_colors();
-        Self::set_file_colors();
-        Self::set_colorer();
 
         let args = Args::parse();
 
         if args.keybinds {
-            println!("{binds}", binds = config.binds.to_str());
-            exit(0);
+            Self::exit_with_binds(&config);
         }
 
         if args.cloudconfig {
-            cloud_config()?;
-            exit(0);
+            Self::exit_with_cloud_config()?;
         }
 
-        Self::set_start_folder(&args);
+        set_configurable_static(&args.path)?;
         Self::display_start_folder()?;
 
         let (fm_sender, fm_receiver) = std::sync::mpsc::channel::<FmEvents>();
@@ -107,7 +92,6 @@ impl FM {
         )?));
         drop(config);
 
-        // let refresher = Refresher::new(term.clone());
         let refresher = Refresher::new(fm_sender);
         let displayer = Displayer::new(term, status.clone());
         Ok(Self {
@@ -119,12 +103,6 @@ impl FM {
         })
     }
 
-    fn set_start_folder(args: &Args) {
-        START_FOLDER
-            .set(std::fs::canonicalize(tilde(&args.path).as_ref()).unwrap_or_default())
-            .unwrap_or_default()
-    }
-
     fn display_start_folder() -> Result<()> {
         let startfolder = START_FOLDER.get().context("Startfolder should be set")?;
         log_info!(
@@ -134,63 +112,22 @@ impl FM {
         Ok(())
     }
 
-    fn set_menu_colors() {
-        MENU_COLORS
-            .set(MenuColors::default().update())
-            .unwrap_or_default();
+    fn exit_with_binds(config: &Config) {
+        println!("{binds}", binds = config.binds.to_str());
+        exit(0);
     }
 
-    fn set_start_stop_colors() {
-        let start_color = load_color_from_config("start").unwrap_or((40, 40, 40));
-        let stop_color = load_color_from_config("stop").unwrap_or((180, 180, 180));
-        START_COLOR.set(start_color).expect("Shouldn't be set");
-        STOP_COLOR.set(stop_color).expect("Shouldn't be set");
+    fn exit_with_cloud_config() -> Result<()> {
+        cloud_config()?;
+        exit(0);
     }
 
-    fn set_file_colors() {
-        let mut colors = Colors::default();
-        if let Ok(file) = std::fs::File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string()))
-        {
-            if let Ok(yaml) =
-                serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file)
-            {
-                colors.update_from_config(&yaml["colors"]);
-            };
-        };
-        COLORS.set(colors).expect("Colors shouldn't be set");
-    }
-
-    fn read_colorer() -> fn(usize) -> Color {
-        let colorer = Colorer::color_green_blue as fn(usize) -> Color;
-        let Ok(file) = std::fs::File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string()))
-        else {
-            return colorer;
-        };
-        let Ok(yaml) = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file)
-        else {
-            return colorer;
-        };
-        let Some(start) = yaml["palette"]["start"].as_str() else {
-            return colorer;
-        };
-        let Some(stop) = yaml["palette"]["stop"].as_str() else {
-            return colorer;
-        };
-        match (start.to_owned() + "-" + stop).as_ref() {
-            "green-blue" => Colorer::color_green_blue as fn(usize) -> Color,
-            "red-blue" => Colorer::color_red_blue as fn(usize) -> Color,
-            "red-green" => Colorer::color_red_green as fn(usize) -> Color,
-            "blue-green" => Colorer::color_blue_green as fn(usize) -> Color,
-            "blue-red" => Colorer::color_blue_red as fn(usize) -> Color,
-            "green-red" => Colorer::color_green_red as fn(usize) -> Color,
-            _ => Colorer::color_custom as fn(usize) -> Color,
-        }
-    }
-
-    fn set_colorer() {
-        COLORER
-            .set(Self::read_colorer())
-            .expect("Colorer shouldn't be set");
+    /// Exit the application and log a message.
+    /// Used when the config can't be read.
+    fn exit_wrong_config() -> ! {
+        eprintln!("Couldn't load the config file at {CONFIG_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/config.yaml for an example.");
+        log_info!("Couldn't read the config file {CONFIG_PATH}");
+        std::process::exit(1)
     }
 
     /// Return the last event received by the terminal
@@ -249,46 +186,12 @@ impl FM {
         self.displayer.quit()?;
         self.refresher.quit()?;
 
-        match self.status.lock() {
-            Ok(status) => {
-                let final_path = status.current_tab_path_str().to_owned();
-                drop(status);
-                Ok(final_path)
-            }
-            Err(error) => Err(anyhow!("Error locking status {error}")),
-        }
+        let status = self
+            .status
+            .lock()
+            .map_err(|error| anyhow!("Error locking status: {error}"))?;
+        let final_path = status.current_tab_path_str().to_owned();
+        drop(status);
+        Ok(final_path)
     }
 }
-
-/// Exit the application and log a message.
-/// Used when the config can't be read.
-fn exit_wrong_config() -> ! {
-    eprintln!("Couldn't load the config file at {CONFIG_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/config.yaml for an example.");
-    log_info!("Couldn't read the config file {CONFIG_PATH}");
-    std::process::exit(1)
-}
-
-// /// Force clear the display if the status requires it, then reset it in status.
-// ///
-// /// # Errors
-// ///
-// /// May fail if the terminal crashes
-// fn force_clear_if_needed(a_status: bool) -> Result<()> {
-//     let mut status = a_status.lock().unwrap();
-//     if status.internal_settings.force_clear {
-//         self.display.force_clear()?;
-//         status.internal_settings.force_clear = false;
-//     }
-//     Ok(())
-// }
-
-// /// Display itself using its `display` attribute.
-// ///
-// /// # Errors
-// ///
-// /// May fail if the terminal crashes
-// /// The display itself may fail if it encounters unreadable file in preview mode
-// fn display(&mut self, status: MutexGuard<Status>) -> Result<()> {
-// self.force_clear_if_needed()?;
-// self.display.display_all(status)
-// }

@@ -899,7 +899,6 @@ dependencies = [
  "flate2",
  "fs_extra",
  "indicatif",
- "lazy_static",
  "log",
  "log4rs",
  "nvim-rs",

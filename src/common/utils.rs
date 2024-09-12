@@ -164,7 +164,7 @@ pub fn row_to_window_index(row: u16) -> usize {
 /// Convert a string into a valid, expanded and canonicalized path.
 /// Doesn't check if the path exists.
 pub fn string_to_path(path_string: &str) -> Result<std::path::PathBuf> {
-    let expanded_cow_path = tilde(&path_string);
+    let expanded_cow_path = tilde(path_string);
     let expanded_target: &str = expanded_cow_path.borrow();
     Ok(std::fs::canonicalize(expanded_target)?)
 }
