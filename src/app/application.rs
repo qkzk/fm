@@ -16,7 +16,9 @@ use crate::common::{clear_tmp_file, init_term};
 use crate::config::cloud_config;
 use crate::config::load_color_from_config;
 use crate::config::load_config;
+use crate::config::Colors;
 use crate::config::MenuColors;
+use crate::config::COLORS;
 use crate::config::MENU_COLORS;
 use crate::config::START_COLOR;
 use crate::config::START_FOLDER;
@@ -69,6 +71,7 @@ impl FM {
         };
         Self::set_menu_colors();
         Self::set_start_stop_colors();
+        Self::set_file_colors();
 
         let args = Args::parse();
 
@@ -138,6 +141,19 @@ impl FM {
         let stop_color = load_color_from_config("stop").unwrap_or((180, 180, 180));
         START_COLOR.set(start_color).expect("Shouldn't be set");
         STOP_COLOR.set(stop_color).expect("Shouldn't be set");
+    }
+
+    fn set_file_colors() {
+        let mut colors = Colors::default();
+        if let Ok(file) = std::fs::File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string()))
+        {
+            if let Ok(yaml) =
+                serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file)
+            {
+                colors.update_from_config(&yaml["colors"]);
+            };
+        };
+        COLORS.set(colors).expect("Colors shouldn't be set");
     }
 
     /// Return the last event received by the terminal

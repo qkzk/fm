@@ -225,25 +225,13 @@ impl Default for Colors {
     }
 }
 
-lazy_static::lazy_static! {
-    /// Colors read from the config file.
-    /// We define a colors for every kind of file except normal files.
-    /// Colors for normal files are calculated from their extension and
-    /// are greens or blues.
-    ///
-    /// Colors are setup on start and never change afterwards.
-    /// Since many functions use colors for formating, using `lazy_static`
-    /// avoids to pass them everytime.
-    pub static ref COLORS: Colors = {
-        let mut colors = Colors::default();
-        if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
-            if let Ok(yaml)  = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file) {
-                colors.update_from_config(&yaml["colors"]);
-            };
-        };
-        colors
-    };
-}
+/// Colors read from the config file.
+/// We define a colors for every kind of file except normal files.
+/// Colors for normal files are calculated from their extension and
+/// are greens or blues.
+///
+/// Colors are setup on start and never change afterwards.
+pub static COLORS: std::sync::OnceLock<Colors> = std::sync::OnceLock::new();
 
 lazy_static::lazy_static! {
     /// Defines a palette which will color the "normal" files based on their extension.

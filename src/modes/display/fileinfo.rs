@@ -369,14 +369,15 @@ impl FileInfo {
 }
 
 fn fileinfo_color(fileinfo: &FileInfo) -> Color {
+    let colors = COLORS.get().expect("Colors should be set");
     match fileinfo.file_kind {
-        FileKind::Directory => COLORS.directory,
-        FileKind::BlockDevice => COLORS.block,
-        FileKind::CharDevice => COLORS.char,
-        FileKind::Fifo => COLORS.fifo,
-        FileKind::Socket => COLORS.socket,
-        FileKind::SymbolicLink(true) => COLORS.symlink,
-        FileKind::SymbolicLink(false) => COLORS.broken,
+        FileKind::Directory => colors.directory,
+        FileKind::BlockDevice => colors.block,
+        FileKind::CharDevice => colors.char,
+        FileKind::Fifo => colors.fifo,
+        FileKind::Socket => colors.socket,
+        FileKind::SymbolicLink(true) => colors.symlink,
+        FileKind::SymbolicLink(false) => colors.broken,
         _ => extension_color(&fileinfo.extension),
     }
 }

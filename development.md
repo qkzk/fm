@@ -1077,6 +1077,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] start folder
     - [x] menu colors
     - [x] start color, stop color
+    - [x] file colors
 - [ ] Badges to latest version
 
 ## TODO
