@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index,
 };
+use crate::config::START_FOLDER;
 use crate::io::{Args, Opener};
 use crate::modes::Directory;
 use crate::modes::FileInfo;
@@ -116,9 +117,9 @@ impl Tab {
     /// - can't be explored
     /// - has no parent and isn't a directory (which can't happen)
     pub fn new(args: &Args, height: usize, users: Users) -> Result<Self> {
-        let path = std::fs::canonicalize(path::Path::new(&args.path))?;
+        let path = &START_FOLDER;
         let start_dir = if path.is_dir() {
-            &path
+            path
         } else {
             path.parent().context("")?
         };
@@ -131,7 +132,7 @@ impl Tab {
         let preview = Preview::Empty;
         let history = History::default();
         let search = Search::empty();
-        let index = directory.select_file(&path);
+        let index = directory.select_file(path);
         let tree = Tree::default();
 
         window.scroll_to(index);

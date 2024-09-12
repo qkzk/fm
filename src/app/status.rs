@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
@@ -23,7 +22,7 @@ use crate::common::{
     path_to_config_folder, path_to_string, row_to_window_index,
 };
 use crate::common::{current_username, disk_space, is_program_in_path};
-use crate::config::Bindings;
+use crate::config::{Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::Internal;
 use crate::io::Opener;
@@ -148,9 +147,9 @@ impl Status {
         let index = 0;
 
         let args = Args::parse();
-        let path = std::fs::canonicalize(Path::new(&args.path))?;
+        let path = &START_FOLDER;
         let start_dir = if path.is_dir() {
-            &path
+            path
         } else {
             path.parent().context("")?
         };

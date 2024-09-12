@@ -300,7 +300,8 @@ lazy_static::lazy_static! {
 lazy_static::lazy_static! {
     /// Starting folder of the application. Read from arguments `-P` or `.`.
     pub static ref START_FOLDER: std::path::PathBuf =
-        std::fs::canonicalize(crate::io::Args::parse().path).unwrap_or_default();
+        std::fs::canonicalize(tilde(&crate::io::Args::parse().path).as_ref()).unwrap_or_default();
+
 }
 
 pub struct MenuColors {
