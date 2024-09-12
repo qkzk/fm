@@ -358,14 +358,12 @@ impl MenuColors {
     }
 }
 
-lazy_static::lazy_static! {
-    pub static ref MENU_COLORS: MenuColors = MenuColors::default().update();
-}
+pub static MENU_COLORS: std::sync::OnceLock<MenuColors> = std::sync::OnceLock::new();
 
 pub static MONOKAI_THEME: std::sync::OnceLock<Theme> = std::sync::OnceLock::new();
 
 pub static LAST_LOG_LINE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 pub static LAST_LOG_INFO: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
-/// Starting folder of the application. Read from arguments `-P` or `.`.
+/// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
 pub static START_FOLDER: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();

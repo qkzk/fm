@@ -15,6 +15,8 @@ use crate::common::CONFIG_PATH;
 use crate::common::{clear_tmp_file, init_term};
 use crate::config::cloud_config;
 use crate::config::load_config;
+use crate::config::MenuColors;
+use crate::config::MENU_COLORS;
 use crate::config::START_FOLDER;
 use crate::event::EventDispatcher;
 use crate::event::EventReader;
@@ -62,6 +64,7 @@ impl FM {
         let Ok(config) = load_config(CONFIG_PATH) else {
             exit_wrong_config()
         };
+        Self::set_menu_colors();
 
         let args = Args::parse();
 
@@ -118,6 +121,12 @@ impl FM {
             startfolder = startfolder.display(),
         );
         Ok(())
+    }
+
+    fn set_menu_colors() {
+        MENU_COLORS
+            .set(MenuColors::default().update())
+            .unwrap_or_default();
     }
 
     /// Return the last event received by the terminal

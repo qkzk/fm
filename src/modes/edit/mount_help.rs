@@ -42,9 +42,14 @@ pub trait MountRepr: MountCommands {
     /// Using configurable colors. "first" when mounted, "inert border" otherwise
     fn attr(&self) -> tuikit::attr::Attr {
         if self.is_mounted() {
-            color_to_attr(MENU_COLORS.first)
+            color_to_attr(MENU_COLORS.get().expect("Menu colors should be set").first)
         } else {
-            color_to_attr(MENU_COLORS.inert_border)
+            color_to_attr(
+                MENU_COLORS
+                    .get()
+                    .expect("Menu colors should be set")
+                    .inert_border,
+            )
         }
     }
 }
