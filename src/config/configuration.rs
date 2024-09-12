@@ -233,36 +233,11 @@ impl Default for Colors {
 /// Colors are setup on start and never change afterwards.
 pub static COLORS: std::sync::OnceLock<Colors> = std::sync::OnceLock::new();
 
-lazy_static::lazy_static! {
-    /// Defines a palette which will color the "normal" files based on their extension.
-    /// We try to read a yaml value and pick one of 3 palettes :
-    /// "green-red", "blue-green", "blue-red", "red-green", "red-blue", "green-blue" which is the default.
-    /// "custom" will create a gradient from start_palette to end_palette. Both values should be "rgb(u8, u8, u8)".
-    pub static ref COLORER: fn(usize) -> Color = {
-        let colorer = Colorer::color_green_blue as fn(usize) -> Color;
-        let Ok(file) = std::fs::File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string())) else {
-            return colorer;
-        };
-        let Ok(yaml)  = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file) else {
-            return colorer;
-        };
-        let Some(start) = yaml["palette"]["start"].as_str() else {
-            return colorer;
-        };
-        let Some(stop) = yaml["palette"]["stop"].as_str() else {
-            return colorer;
-        };
-        match (start.to_owned() + "-" + stop).as_ref() {
-            "green-blue" => {Colorer::color_green_blue as fn(usize) -> Color},
-            "red-blue" => {Colorer::color_red_blue as fn(usize) -> Color},
-            "red-green" => {Colorer::color_red_green as fn(usize) -> Color},
-            "blue-green" => {Colorer::color_blue_green as fn(usize) -> Color},
-            "blue-red" => {Colorer::color_blue_red as fn(usize) -> Color},
-            "green-red" => {Colorer::color_green_red as fn(usize) -> Color},
-            _ => {Colorer::color_custom as fn(usize) -> Color}
-        }
-    };
-}
+/// Defines a palette which will color the "normal" files based on their extension.
+/// We try to read a yaml value and pick one of 3 palettes :
+/// "green-red", "blue-green", "blue-red", "red-green", "red-blue", "green-blue" which is the default.
+/// "custom" will create a gradient from start_palette to end_palette. Both values should be "rgb(u8, u8, u8)".
+pub static COLORER: std::sync::OnceLock<fn(usize) -> Color> = std::sync::OnceLock::new();
 
 pub fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
     let config_path = &tilde(CONFIG_PATH).to_string();

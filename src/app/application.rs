@@ -6,6 +6,7 @@ use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 use clap::Parser;
+use tuikit::attr::Color;
 
 use crate::app::Displayer;
 use crate::app::Refresher;
@@ -16,8 +17,10 @@ use crate::common::{clear_tmp_file, init_term};
 use crate::config::cloud_config;
 use crate::config::load_color_from_config;
 use crate::config::load_config;
+use crate::config::Colorer;
 use crate::config::Colors;
 use crate::config::MenuColors;
+use crate::config::COLORER;
 use crate::config::COLORS;
 use crate::config::MENU_COLORS;
 use crate::config::START_COLOR;
@@ -72,6 +75,7 @@ impl FM {
         Self::set_menu_colors();
         Self::set_start_stop_colors();
         Self::set_file_colors();
+        Self::set_colorer();
 
         let args = Args::parse();
 
@@ -154,6 +158,39 @@ impl FM {
             };
         };
         COLORS.set(colors).expect("Colors shouldn't be set");
+    }
+
+    fn read_colorer() -> fn(usize) -> Color {
+        let colorer = Colorer::color_green_blue as fn(usize) -> Color;
+        let Ok(file) = std::fs::File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string()))
+        else {
+            return colorer;
+        };
+        let Ok(yaml) = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file)
+        else {
+            return colorer;
+        };
+        let Some(start) = yaml["palette"]["start"].as_str() else {
+            return colorer;
+        };
+        let Some(stop) = yaml["palette"]["stop"].as_str() else {
+            return colorer;
+        };
+        match (start.to_owned() + "-" + stop).as_ref() {
+            "green-blue" => Colorer::color_green_blue as fn(usize) -> Color,
+            "red-blue" => Colorer::color_red_blue as fn(usize) -> Color,
+            "red-green" => Colorer::color_red_green as fn(usize) -> Color,
+            "blue-green" => Colorer::color_blue_green as fn(usize) -> Color,
+            "blue-red" => Colorer::color_blue_red as fn(usize) -> Color,
+            "green-red" => Colorer::color_green_red as fn(usize) -> Color,
+            _ => Colorer::color_custom as fn(usize) -> Color,
+        }
+    }
+
+    fn set_colorer() {
+        COLORER
+            .set(Self::read_colorer())
+            .expect("Colorer shouldn't be set");
     }
 
     /// Return the last event received by the terminal

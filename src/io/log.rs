@@ -62,7 +62,6 @@ pub fn read_log() -> Result<Vec<String>> {
 }
 
 /// Read the last value of the "log line".
-/// It's a global string created with `lazy_static!(...)`
 /// Fail silently if the global variable can't be read and returns an empty string.
 pub fn read_last_log_line() -> String {
     let Some(last_log_line) = LAST_LOG_LINE.get() else {
@@ -72,7 +71,6 @@ pub fn read_last_log_line() -> String {
 }
 
 /// Write a new log line to the global variable `LAST_LOG_LINE`.
-/// It uses `lazy_static` to manipulate the global variable.
 /// Fail silently if the global variable can't be written.
 fn write_last_log_line<S>(log: S)
 where
@@ -103,7 +101,6 @@ macro_rules! log_line {
 }
 
 /// Read the last value of the "log info".
-/// It's a global string created with `lazy_static!(...)`
 /// Fail silently if the global variable can't be read and returns an empty string.
 fn read_last_log_info() -> String {
     let Some(last_log_line) = LAST_LOG_INFO.get() else {
@@ -113,7 +110,6 @@ fn read_last_log_info() -> String {
 }
 
 /// Write a new log info to the global variable `LAST_LOG_INFO`.
-/// It uses `lazy_static` to manipulate the global variable.
 /// Fail silently if the global variable can't be written.
 fn write_last_log_info<S>(log: &S)
 where

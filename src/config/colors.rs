@@ -75,7 +75,7 @@ impl Colorer {
 pub fn extension_color(extension: &str) -> Color {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     hasher.write(extension.as_bytes());
-    COLORER(hasher.finish() as usize)
+    COLORER.get().expect("Colorer should be set")(hasher.finish() as usize)
 }
 
 #[derive(Debug, Clone, Copy)]

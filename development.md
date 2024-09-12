@@ -1071,13 +1071,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] random. Only used to create random temporary filename. Replaced with 0 deps custom random generator.
   - [x] sanitize_filename. Only used when creating new files/directory. Well... I'll let the user do what he wants.
   - [x] shellexpand. Used everywhere for its tilde("~/Downloads") expansion but only use one function.
-  - [ ] lazystatic
+  - [ ] lazystatic replaced by OnceLock
     - [x] logs
     - [x] monokai
     - [x] start folder
     - [x] menu colors
     - [x] start color, stop color
     - [x] file colors
+    - [x] colorer
+    - [ ] move config setter to configuration.rs
 - [ ] Badges to latest version
 
 ## TODO
