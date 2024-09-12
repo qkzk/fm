@@ -147,7 +147,7 @@ impl Status {
         let index = 0;
 
         let args = Args::parse();
-        let path = &START_FOLDER;
+        let path = &START_FOLDER.get().context("Start folder should be set")?;
         let start_dir = if path.is_dir() {
             path
         } else {

@@ -1,7 +1,6 @@
 use std::{fs::File, path};
 
 use anyhow::Result;
-use clap::Parser;
 use serde_yaml;
 use syntect::highlighting::Theme;
 use tuikit::attr::{Attr, Color};
@@ -297,13 +296,6 @@ lazy_static::lazy_static! {
   pub static ref STOP_COLOR: (u8, u8, u8) = load_color_from_config("stop").unwrap_or((180, 180, 180));
 }
 
-lazy_static::lazy_static! {
-    /// Starting folder of the application. Read from arguments `-P` or `.`.
-    pub static ref START_FOLDER: std::path::PathBuf =
-        std::fs::canonicalize(tilde(&crate::io::Args::parse().path).as_ref()).unwrap_or_default();
-
-}
-
 pub struct MenuColors {
     pub first: Color,
     pub second: Color,
@@ -374,3 +366,6 @@ pub static MONOKAI_THEME: std::sync::OnceLock<Theme> = std::sync::OnceLock::new(
 
 pub static LAST_LOG_LINE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 pub static LAST_LOG_INFO: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// Starting folder of the application. Read from arguments `-P` or `.`.
+pub static START_FOLDER: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();

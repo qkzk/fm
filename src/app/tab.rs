@@ -117,7 +117,7 @@ impl Tab {
     /// - can't be explored
     /// - has no parent and isn't a directory (which can't happen)
     pub fn new(args: &Args, height: usize, users: Users) -> Result<Self> {
-        let path = &START_FOLDER;
+        let path = &START_FOLDER.get().context("Startfolder should be set")?;
         let start_dir = if path.is_dir() {
             path
         } else {

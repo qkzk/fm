@@ -845,7 +845,9 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        status.current_tab_mut().cd(&START_FOLDER)?;
+        status
+            .current_tab_mut()
+            .cd(START_FOLDER.get().context("Start folder should be set")?)?;
         status.update_second_pane_for_preview()
     }
 

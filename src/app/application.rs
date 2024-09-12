@@ -3,12 +3,14 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use anyhow::anyhow;
+use anyhow::Context;
 use anyhow::Result;
 use clap::Parser;
 
 use crate::app::Displayer;
 use crate::app::Refresher;
 use crate::app::Status;
+use crate::common::tilde;
 use crate::common::CONFIG_PATH;
 use crate::common::{clear_tmp_file, init_term};
 use crate::config::cloud_config;
@@ -73,10 +75,8 @@ impl FM {
             exit(0);
         }
 
-        log_info!(
-            "start folder: {startfolder}",
-            startfolder = &START_FOLDER.display()
-        );
+        Self::set_start_folder(&args);
+        Self::display_start_folder()?;
 
         let (fm_sender, fm_receiver) = std::sync::mpsc::channel::<FmEvents>();
         let term = Arc::new(init_term()?);
@@ -103,6 +103,21 @@ impl FM {
             refresher,
             displayer,
         })
+    }
+
+    fn set_start_folder(args: &Args) {
+        START_FOLDER
+            .set(std::fs::canonicalize(tilde(&args.path).as_ref()).unwrap_or_default())
+            .unwrap_or_default()
+    }
+
+    fn display_start_folder() -> Result<()> {
+        let startfolder = START_FOLDER.get().context("Startfolder should be set")?;
+        log_info!(
+            "start folder: {startfolder}",
+            startfolder = startfolder.display(),
+        );
+        Ok(())
     }
 
     /// Return the last event received by the terminal
