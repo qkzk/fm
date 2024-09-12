@@ -1,11 +1,9 @@
-use std::io::{BufReader, Cursor};
-use std::sync::RwLock;
 use std::{fs::File, path};
 
 use anyhow::Result;
 use clap::Parser;
 use serde_yaml;
-use syntect::highlighting::{Theme, ThemeSet};
+use syntect::highlighting::Theme;
 use tuikit::attr::{Attr, Color};
 
 use crate::common::{is_program_in_path, tilde, DEFAULT_TERMINAL_FLAG};
@@ -371,20 +369,7 @@ lazy_static::lazy_static! {
     pub static ref MENU_COLORS: MenuColors = MenuColors::default().update();
 }
 
-lazy_static::lazy_static! {
-    /// Monokai theme used for highlighted previews of code file.
-    pub static ref MONOKAI_THEME: Theme = {
-        let mut monokai = BufReader::new(Cursor::new(include_bytes!(
-        "../../assets/themes/Monokai_Extended.tmTheme"
-    )));
-        ThemeSet::load_from_reader(&mut monokai).expect("Couldn't find monokai theme")
-    };
-}
+pub static MONOKAI_THEME: std::sync::OnceLock<Theme> = std::sync::OnceLock::new();
 
-lazy_static::lazy_static! {
-    pub static ref LAST_LOG_INFO: RwLock<String> = RwLock::new("".to_owned());
-}
-
-lazy_static::lazy_static! {
-    pub static ref LAST_LOG_LINE: RwLock<String> = RwLock::new("".to_owned());
-}
+pub static LAST_LOG_LINE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+pub static LAST_LOG_INFO: std::sync::OnceLock<String> = std::sync::OnceLock::new();

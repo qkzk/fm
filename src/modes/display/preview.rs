@@ -1,7 +1,7 @@
 use std::cmp::min;
 use std::fmt::Write as _;
 use std::fs::metadata;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Cursor, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
@@ -9,7 +9,7 @@ use std::slice::Iter;
 use anyhow::{anyhow, Context, Result};
 use content_inspector::{inspect, ContentType};
 use syntect::easy::HighlightLines;
-use syntect::highlighting::{FontStyle, Style};
+use syntect::highlighting::{FontStyle, Style, Theme, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 use tuikit::attr::{Attr, Color, Effect};
 
@@ -572,13 +572,23 @@ impl HLContent {
         self.length
     }
 
+    fn set_monokai() -> &'static Theme {
+        MONOKAI_THEME.get_or_init(|| {
+            let mut monokai = BufReader::new(Cursor::new(include_bytes!(
+                "../../../assets/themes/Monokai_Extended.tmTheme"
+            )));
+            ThemeSet::load_from_reader(&mut monokai).expect("Couldn't find monokai theme")
+        })
+    }
+
     fn parse_raw_content(
         raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
     ) -> Result<Vec<Vec<SyntaxedString>>> {
         let mut highlighted_content = vec![];
-        let mut highlighter = HighlightLines::new(syntax_ref, &MONOKAI_THEME);
+        let monokai = Self::set_monokai();
+        let mut highlighter = HighlightLines::new(syntax_ref, monokai);
 
         for line in raw_content.iter() {
             let mut col = 0;

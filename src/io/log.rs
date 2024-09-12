@@ -65,7 +65,7 @@ pub fn read_log() -> Result<Vec<String>> {
 /// It's a global string created with `lazy_static!(...)`
 /// Fail silently if the global variable can't be read and returns an empty string.
 pub fn read_last_log_line() -> String {
-    let Ok(last_log_line) = LAST_LOG_LINE.read() else {
+    let Some(last_log_line) = LAST_LOG_LINE.get() else {
         return "".to_owned();
     };
     last_log_line.to_owned()
@@ -78,10 +78,9 @@ fn write_last_log_line<S>(log: S)
 where
     S: Into<String> + std::fmt::Display,
 {
-    let Ok(mut new_log_line) = LAST_LOG_LINE.write() else {
+    let Ok(()) = LAST_LOG_LINE.set(log.to_string()) else {
         return;
     };
-    *new_log_line = log.to_string();
 }
 
 /// Write a line to both the global variable `LAST_LOG_LINE` and the special log
@@ -107,7 +106,7 @@ macro_rules! log_line {
 /// It's a global string created with `lazy_static!(...)`
 /// Fail silently if the global variable can't be read and returns an empty string.
 fn read_last_log_info() -> String {
-    let Ok(last_log_line) = LAST_LOG_INFO.read() else {
+    let Some(last_log_line) = LAST_LOG_INFO.get() else {
         return "".to_owned();
     };
     last_log_line.to_owned()
@@ -120,10 +119,9 @@ fn write_last_log_info<S>(log: &S)
 where
     S: Into<String> + std::fmt::Display,
 {
-    let Ok(mut new_log_info) = LAST_LOG_INFO.write() else {
+    let Ok(()) = LAST_LOG_INFO.set(log.to_string()) else {
         return;
     };
-    *new_log_info = log.to_string();
 }
 
 /// Write a line to both the global variable `LAST_LOG_INFO` and the info log
