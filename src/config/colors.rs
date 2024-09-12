@@ -63,7 +63,9 @@ impl Colorer {
     }
 
     pub fn color_custom(hash: usize) -> Color {
-        let lerp = lerp_color(*START_COLOR, *STOP_COLOR, (hash % 255) as u8);
+        let start_color = START_COLOR.get().expect("Start color should be set");
+        let stop_color = STOP_COLOR.get().expect("Stop color should be set");
+        let lerp = lerp_color(*start_color, *stop_color, (hash % 255) as u8);
         Color::Rgb(lerp.0, lerp.1, lerp.2)
     }
 }

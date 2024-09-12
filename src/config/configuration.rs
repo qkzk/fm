@@ -276,7 +276,7 @@ lazy_static::lazy_static! {
     };
 }
 
-fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
+pub fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
     let config_path = &tilde(CONFIG_PATH).to_string();
     let config_path = std::path::Path::new(config_path);
 
@@ -291,10 +291,8 @@ fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
     None
 }
 
-lazy_static::lazy_static! {
-  pub static ref START_COLOR: (u8, u8, u8) = load_color_from_config("start").unwrap_or((40, 40, 40));
-  pub static ref STOP_COLOR: (u8, u8, u8) = load_color_from_config("stop").unwrap_or((180, 180, 180));
-}
+pub static START_COLOR: std::sync::OnceLock<(u8, u8, u8)> = std::sync::OnceLock::new();
+pub static STOP_COLOR: std::sync::OnceLock<(u8, u8, u8)> = std::sync::OnceLock::new();
 
 pub struct MenuColors {
     pub first: Color,

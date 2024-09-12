@@ -1076,6 +1076,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] monokai
     - [x] start folder
     - [x] menu colors
+    - [x] start color, stop color
 - [ ] Badges to latest version
 
 ## TODO

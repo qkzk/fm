@@ -14,10 +14,13 @@ use crate::common::tilde;
 use crate::common::CONFIG_PATH;
 use crate::common::{clear_tmp_file, init_term};
 use crate::config::cloud_config;
+use crate::config::load_color_from_config;
 use crate::config::load_config;
 use crate::config::MenuColors;
 use crate::config::MENU_COLORS;
+use crate::config::START_COLOR;
 use crate::config::START_FOLDER;
+use crate::config::STOP_COLOR;
 use crate::event::EventDispatcher;
 use crate::event::EventReader;
 use crate::event::FmEvents;
@@ -65,6 +68,7 @@ impl FM {
             exit_wrong_config()
         };
         Self::set_menu_colors();
+        Self::set_start_stop_colors();
 
         let args = Args::parse();
 
@@ -127,6 +131,13 @@ impl FM {
         MENU_COLORS
             .set(MenuColors::default().update())
             .unwrap_or_default();
+    }
+
+    fn set_start_stop_colors() {
+        let start_color = load_color_from_config("start").unwrap_or((40, 40, 40));
+        let stop_color = load_color_from_config("stop").unwrap_or((180, 180, 180));
+        START_COLOR.set(start_color).expect("Shouldn't be set");
+        STOP_COLOR.set(stop_color).expect("Shouldn't be set");
     }
 
     /// Return the last event received by the terminal
