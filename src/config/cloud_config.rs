@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use oauth2::basic::{BasicClient, BasicTokenType};
 use oauth2::reqwest::async_http_client;
 use oauth2::{
@@ -8,6 +8,7 @@ use oauth2::{
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 
 use crate::common::path_to_config_folder;
+use crate::io::GoogleDriveConfig;
 
 async fn read_input() -> String {
     let mut input = String::new();
@@ -71,10 +72,17 @@ async fn get_token_result(
     client: &BasicClient,
     code: String,
 ) -> Result<StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>> {
-    Ok(client
+    match client
         .exchange_code(AuthorizationCode::new(code))
         .request_async(async_http_client)
-        .await?)
+        .await
+    {
+        Ok(res) => Ok(res),
+        Err(error) => {
+            println!("Error: {error:?}");
+            bail!("Error {error}")
+        }
+    }
 }
 
 fn extract_refresh_token(
@@ -123,13 +131,14 @@ pub async fn cloud_config() -> Result<()> {
     let token_path = build_token_path(&token_filename)?;
 
     // 8. Serialize the token
-    let file_content = GoogleDriveConfig::serialized(
+    let file_content = GoogleDriveConfig::new(
         drive_name,
         root_folder,
         refresh_token,
         client_id,
         client_secret,
-    );
+    )
+    .serialize()?;
 
     // 8. Write the token file
     tokio::fs::write(&token_path, file_content.as_bytes()).await?;
@@ -139,46 +148,4 @@ pub async fn cloud_config() -> Result<()> {
     );
 
     Ok(())
-}
-
-struct GoogleDriveConfig {
-    drive_name: String,
-    root_folder: String,
-    refresh_token: String,
-    client_id: String,
-    client_secret: String,
-}
-
-impl GoogleDriveConfig {
-    fn serialize(&self) -> String {
-        format!(
-            "drive_name: \"{dn}\"
-root_folder: \"{rf}\"
-refresh_token: \"{rt}\"
-client_id: \"{ci}\"
-client_secret: \"{cs}\"",
-            dn = self.drive_name,
-            rf = self.root_folder,
-            rt = self.refresh_token,
-            ci = self.client_id,
-            cs = self.client_secret,
-        )
-    }
-
-    fn serialized(
-        drive_name: String,
-        root_folder: String,
-        refresh_token: String,
-        client_id: String,
-        client_secret: String,
-    ) -> String {
-        Self {
-            drive_name,
-            root_folder,
-            refresh_token,
-            client_id,
-            client_secret,
-        }
-        .serialize()
-    }
 }

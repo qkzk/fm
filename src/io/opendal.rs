@@ -6,7 +6,9 @@ use opendal::Entry;
 use opendal::EntryMode;
 use opendal::Operator;
 use serde::Deserialize;
+use serde::Serialize;
 use serde_yml::from_str;
+use serde_yml::to_string as to_yml_string;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
@@ -20,8 +22,8 @@ use crate::log_line;
 use crate::modes::human_size;
 use crate::modes::FileInfo;
 
-#[derive(Deserialize, Debug)]
-struct GoogleDriveConfig {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GoogleDriveConfig {
     drive_name: String,
     root_folder: String,
     refresh_token: String,
@@ -30,6 +32,26 @@ struct GoogleDriveConfig {
 }
 
 impl GoogleDriveConfig {
+    pub fn new(
+        drive_name: String,
+        root_folder: String,
+        refresh_token: String,
+        client_id: String,
+        client_secret: String,
+    ) -> Self {
+        Self {
+            drive_name,
+            root_folder,
+            refresh_token,
+            client_id,
+            client_secret,
+        }
+    }
+
+    pub fn serialize(&self) -> Result<String> {
+        Ok(to_yml_string(self)?)
+    }
+
     fn build_token_filename(config_name: &str) -> String {
         let token_base_path = tilde(CONFIG_FOLDER);
         format!("{token_base_path}/token_{config_name}.yaml")

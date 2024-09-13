@@ -1084,6 +1084,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] convert oncelock errors to anyhow's
 - [ ] update deps to latest versions
   - [x] replace serde_yaml (deprecated) by serde_yml (actively maintened)
+  - [x] use serde_yml to write google cloud config files. Share the same struct between files.
 - [ ] Badges to latest version
 
 ## TODO
