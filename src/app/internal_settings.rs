@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use indicatif::InMemoryTerm;
-use sysinfo::{DiskExt, System, SystemExt};
+use sysinfo::Disks;
 use tuikit::term::Term;
 
 use crate::common::is_program_in_path;
@@ -27,7 +27,7 @@ pub struct InternalSettings {
     pub term: Arc<Term>,
     /// Info about the running machine. Only used to detect disks
     /// and their mount points.
-    pub sys: System,
+    pub disks: Disks,
     /// true if the application was launched inside a neovim terminal emulator
     pub inside_neovim: bool,
     /// queue of pairs (sources, dest) to be copied.
@@ -37,7 +37,7 @@ pub struct InternalSettings {
 }
 
 impl InternalSettings {
-    pub fn new(opener: Opener, term: Arc<Term>, sys: System) -> Self {
+    pub fn new(opener: Opener, term: Arc<Term>, disks: Disks) -> Self {
         let args = Args::parse();
         let force_clear = false;
         let must_quit = false;
@@ -50,7 +50,7 @@ impl InternalSettings {
             must_quit,
             nvim_server,
             opener,
-            sys,
+            disks,
             term,
             inside_neovim,
             copy_file_queue,
@@ -71,8 +71,8 @@ impl InternalSettings {
     }
 
     pub fn mount_points(&mut self) -> Vec<&std::path::Path> {
-        self.sys.refresh_disks_list();
-        self.sys.disks().iter().map(|d| d.mount_point()).collect()
+        self.disks.refresh_list();
+        self.disks.iter().map(|d| d.mount_point()).collect()
     }
 
     pub fn update_nvim_listen_address(&mut self) {

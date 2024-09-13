@@ -6,7 +6,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use opendal::EntryMode;
 use skim::SkimItem;
-use sysinfo::{Disk, RefreshKind, System, SystemExt};
+use sysinfo::{Disk, Disks};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
@@ -18,7 +18,7 @@ use crate::app::Session;
 use crate::app::Tab;
 use crate::app::{ClickableLine, FlaggedFooter};
 use crate::common::{
-    args_is_empty, filename_from_path, is_sudo_command, open_in_current_neovim,
+    args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
     path_to_config_folder, path_to_string, row_to_window_index,
 };
 use crate::common::{current_username, disk_space, is_program_in_path};
@@ -153,9 +153,9 @@ impl Status {
         } else {
             path.parent().context("")?
         };
-        let sys = System::new_with_specifics(RefreshKind::new().with_disks());
+        let disks = Disks::new_with_refreshed_list();
         let display_settings = Session::new(term.term_size()?.0);
-        let mut internal_settings = InternalSettings::new(opener, term, sys);
+        let mut internal_settings = InternalSettings::new(opener, term, disks);
         let mount_points = internal_settings.mount_points();
         let menu = Menu::new(start_dir, &mount_points, binds, fm_sender.clone())?;
 
@@ -389,13 +389,13 @@ impl Status {
     }
 
     /// Returns an array of Disks
-    pub fn disks(&self) -> &[Disk] {
-        self.internal_settings.sys.disks()
+    pub fn disks(&self) -> Vec<&Disk> {
+        self.internal_settings.disks.into_iter().collect()
     }
 
     /// Returns a the disk spaces for the selected tab..
     pub fn disk_spaces_of_selected(&self) -> String {
-        disk_space(self.disks(), self.current_tab().current_path())
+        disk_space(&self.disks(), self.current_tab().current_path())
     }
 
     /// Returns the sice of the terminal (width, height)
@@ -693,10 +693,20 @@ impl Status {
         sources: &[std::path::PathBuf],
         dest: &std::path::Path,
     ) -> bool {
-        matches!(cut_or_copy, CopyMove::Move)
-            && sources.len() == 1
-            && crate::common::disk_used_by_path(self.disks(), &sources[0])
-                == crate::common::disk_used_by_path(self.disks(), dest)
+        if matches!(cut_or_copy, CopyMove::Copy) {
+            return false;
+        }
+        if sources.len() != 1 {
+            return false;
+        }
+        let disks = &self.disks();
+        let Some(s) = disk_used_by_path(disks, &sources[0]) else {
+            return false;
+        };
+        let Some(d) = disk_used_by_path(disks, dest) else {
+            return false;
+        };
+        s.mount_point() == d.mount_point()
     }
 
     fn simple_move(

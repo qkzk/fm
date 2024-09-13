@@ -49,11 +49,11 @@ rust-lzma = "0.6.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_yml = "0.0.12" # test serde_yml
 skim-qkzk = "0.9.14"
-strfmt = "0.2.2"
-strum = {version = "0.24.1", features = ["derive"]}
-strum_macros = "0.24.3"
+strfmt = "0.2.4"
+strum = {version = "0.26.3", features = ["derive"]}
+strum_macros = "0.26.4"
 syntect = "5.0.0"
-sysinfo = "0.29.0"
+sysinfo = "0.31.4"
 tar = "0.4.38"
 tokio = "1"
 tuikit = "0.5.0"
