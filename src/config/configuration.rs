@@ -125,38 +125,47 @@ where
 }
 
 /// Tries to parse an unknown color into a `Color::Rgb(u8, u8, u8)`
-/// rgb format should never fail.
+/// rgb and hexadecimal formats should never fail.
 /// Other formats are unknown.
 /// rgb( 123,   78,          0) -> Color::Rgb(123, 78, 0)
-/// #FF00FF -> Color::default()
+/// #FF00FF -> Color::Rgb(255, 0, 255)
 /// Unreadable colors are replaced by `Color::default()` which is white.
 fn parse_rgb_color(color: &str) -> Color {
-    if let Some(triplet) = parse_rgb_triplet(color) {
+    if let Some(triplet) = parse_text_triplet(color) {
         return Color::Rgb(triplet.0, triplet.1, triplet.2);
     }
     Color::default()
 }
 
-fn parse_rgb_triplet(color: &str) -> Option<(u8, u8, u8)> {
+fn parse_text_triplet(color: &str) -> Option<(u8, u8, u8)> {
     let color = color.to_lowercase();
     if color.starts_with("rgb(") && color.ends_with(')') {
-        let triplet: Vec<u8> = color
-            .replace("rgb(", "")
-            .replace([')', ' '], "")
-            .trim()
-            .split(',')
-            .filter_map(|s| s.parse().ok())
-            .collect();
-        if triplet.len() == 3 {
-            return Some((triplet[0], triplet[1], triplet[2]));
-        }
+        return parse_rgb_triplet(&color);
     } else if color.starts_with('#') && color.len() >= 7 {
-        let r = parse_hex_byte(&color[1..3])?;
-        let g = parse_hex_byte(&color[3..5])?;
-        let b = parse_hex_byte(&color[5..7])?;
-        return Some((r, g, b));
+        return parse_hex_triplet(&color);
     }
     None
+}
+
+fn parse_rgb_triplet(color: &str) -> Option<(u8, u8, u8)> {
+    let triplet: Vec<u8> = color
+        .replace("rgb(", "")
+        .replace([')', ' '], "")
+        .trim()
+        .split(',')
+        .filter_map(|s| s.parse().ok())
+        .collect();
+    if triplet.len() == 3 {
+        return Some((triplet[0], triplet[1], triplet[2]));
+    }
+    None
+}
+
+fn parse_hex_triplet(color: &str) -> Option<(u8, u8, u8)> {
+    let r = parse_hex_byte(&color[1..3])?;
+    let g = parse_hex_byte(&color[3..5])?;
+    let b = parse_hex_byte(&color[5..7])?;
+    Some((r, g, b))
 }
 
 fn parse_hex_byte(byte: &str) -> Option<u8> {
@@ -234,7 +243,7 @@ pub fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
         if let Ok(yaml) = from_reader::<File, Value>(file) {
             let palette = yaml.get("palette")?;
             if let Some(color) = palette.get(key)?.as_str() {
-                return parse_rgb_triplet(color);
+                return parse_text_triplet(color);
             }
         }
     }
