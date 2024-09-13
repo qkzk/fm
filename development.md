@@ -1083,6 +1083,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] move config setter to configuration.rs
     - [x] convert oncelock errors to anyhow's
 - [ ] update deps to latest versions
+- [ ] test serde_yml instead of serde_yaml : use it in opendal
 - [ ] Badges to latest version
 
 ## TODO
