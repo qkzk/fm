@@ -1,7 +1,7 @@
 use std::{fs::File, path};
 
 use anyhow::Result;
-use serde_yaml;
+use serde_yaml::{from_reader, Value};
 use tuikit::attr::Attr;
 use tuikit::attr::Color;
 
@@ -38,7 +38,7 @@ impl Default for Config {
 
 impl Config {
     /// Updates the config from  a configuration content.
-    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> Result<()> {
+    fn update_from_config(&mut self, yaml: &Value) -> Result<()> {
         self.binds.update_normal(&yaml["keys"]);
         self.binds.update_custom(&yaml["custom"]);
         self.update_terminal(&yaml["terminal"]);
@@ -49,7 +49,7 @@ impl Config {
     /// First we try to use the current terminal. If it's a fake one (ie. inside neovim float term),
     /// we look for the configured one,
     /// else nothing is done.
-    fn update_terminal(&mut self, yaml: &serde_yaml::value::Value) {
+    fn update_terminal(&mut self, yaml: &Value) {
         let terminal_currently_used = std::env::var("TERM").unwrap_or_default();
         if !terminal_currently_used.is_empty() && is_program_in_path(&terminal_currently_used) {
             self.terminal = terminal_currently_used
@@ -58,7 +58,7 @@ impl Config {
         }
     }
 
-    fn update_terminal_flag(&mut self, terminal_flag: &serde_yaml::value::Value) {
+    fn update_terminal_flag(&mut self, terminal_flag: &Value) {
         let terminal = self.terminal();
         if let Some(terminal_flag) = read_yaml_value(terminal_flag, terminal) {
             self.terminal_flag = terminal_flag.as_str().to_owned();
@@ -91,7 +91,7 @@ impl Config {
 pub fn load_config(path: &str) -> Result<Config> {
     let mut config = Config::default();
     let file = File::open(path::Path::new(&tilde(path).to_string()))?;
-    let Ok(yaml) = serde_yaml::from_reader(file) else {
+    let Ok(yaml) = from_reader(file) else {
         return Ok(config);
     };
     let _ = config.update_from_config(&yaml);
@@ -171,7 +171,7 @@ macro_rules! update_attribute {
     };
 }
 
-fn read_yaml_value(yaml: &serde_yaml::value::Value, key: &str) -> Option<String> {
+fn read_yaml_value(yaml: &Value, key: &str) -> Option<String> {
     yaml[key].as_str().map(|s| s.to_string())
 }
 
@@ -209,7 +209,7 @@ impl Colors {
     }
 
     /// Update every color from a yaml value (read from the config file).
-    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
+    pub fn update_from_config(&mut self, yaml: &Value) {
         update_attribute!(self.directory, yaml, "directory");
         update_attribute!(self.block, yaml, "block");
         update_attribute!(self.char, yaml, "char");
@@ -231,7 +231,7 @@ pub fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
     let config_path = std::path::Path::new(config_path);
 
     if let Ok(file) = File::open(config_path) {
-        if let Ok(yaml) = serde_yaml::from_reader::<File, serde_yaml::Value>(file) {
+        if let Ok(yaml) = from_reader::<File, Value>(file) {
             let palette = yaml.get("palette")?;
             if let Some(color) = palette.get(key)?.as_str() {
                 return parse_rgb_triplet(color);
@@ -270,7 +270,7 @@ impl Default for MenuColors {
 impl MenuColors {
     pub fn update(mut self) -> Self {
         if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
-            if let Ok(yaml) = serde_yaml::from_reader::<File, serde_yaml::value::Value>(file) {
+            if let Ok(yaml) = from_reader::<File, Value>(file) {
                 let menu_colors = &yaml["menu_colors"];
                 update_attribute!(self.first, menu_colors, "first");
                 update_attribute!(self.second, menu_colors, "second");

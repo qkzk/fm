@@ -1,4 +1,5 @@
 use anyhow::Result;
+use serde_yaml::Mapping;
 
 use crate::app::Status;
 use crate::common::is_program_in_path;
@@ -66,7 +67,7 @@ impl Default for TuiApplications {
 }
 
 impl CLApplications<String, ()> for TuiApplications {
-    fn parse_yaml(&mut self, yaml: &serde_yaml::mapping::Mapping) {
+    fn parse_yaml(&mut self, yaml: &Mapping) {
         for (key, _) in yaml {
             let Some(command) = key.as_str() else {
                 continue;

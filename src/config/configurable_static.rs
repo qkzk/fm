@@ -4,6 +4,8 @@ use std::sync::OnceLock;
 
 use anyhow::anyhow;
 use anyhow::Result;
+use serde_yaml::from_reader;
+use serde_yaml::Value;
 use syntect::highlighting::Theme;
 use tuikit::attr::Color;
 
@@ -73,7 +75,7 @@ fn set_start_stop_colors() -> Result<()> {
 fn set_file_colors() -> Result<()> {
     let mut colors = Colors::default();
     if let Ok(file) = File::open(Path::new(&tilde(CONFIG_PATH).to_string())) {
-        if let Ok(yaml) = serde_yaml::from_reader::<File, serde_yaml::value::Value>(file) {
+        if let Ok(yaml) = from_reader::<File, Value>(file) {
             colors.update_from_config(&yaml["colors"]);
         };
     };
@@ -88,7 +90,7 @@ fn read_colorer() -> fn(usize) -> Color {
     let Ok(file) = File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string())) else {
         return colorer;
     };
-    let Ok(yaml) = serde_yaml::from_reader::<File, serde_yaml::value::Value>(file) else {
+    let Ok(yaml) = from_reader::<File, Value>(file) else {
         return colorer;
     };
     let Some(start) = yaml["palette"]["start"].as_str() else {

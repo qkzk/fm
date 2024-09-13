@@ -1,7 +1,7 @@
 use std::fs::File;
 
 use serde::Serialize;
-use serde_yaml::{Error as YamlError, Value as YamlValue};
+use serde_yaml::{from_reader, to_writer, Error as YamlError, Value as YamlValue};
 
 use crate::common::tilde;
 use crate::common::SESSION_PATH;
@@ -58,7 +58,7 @@ impl Session {
             log_info!("Couldn't open file {file}", file = self.filepath);
             return self;
         };
-        let Ok(yaml): Result<YamlValue, YamlError> = serde_yaml::from_reader(file) else {
+        let Ok(yaml): Result<YamlValue, YamlError> = from_reader(file) else {
             log_info!(
                 "Couldn't parse session from file {file}",
                 file = self.filepath
@@ -145,7 +145,7 @@ impl Session {
                 return;
             }
         };
-        match serde_yaml::to_writer(&mut file, &self) {
+        match to_writer(&mut file, &self) {
             Ok(()) => (),
             Err(e) => log_info!(
                 "Couldn't write config to session {file}. Error: {e:?}",

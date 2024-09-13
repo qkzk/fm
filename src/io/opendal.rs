@@ -6,6 +6,7 @@ use opendal::Entry;
 use opendal::EntryMode;
 use opendal::Operator;
 use serde::Deserialize;
+use serde_yaml::from_str;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
@@ -38,7 +39,7 @@ impl GoogleDriveConfig {
     async fn from_config(config_name: &str) -> Result<Self> {
         let config_filename = Self::build_token_filename(config_name);
         let token_data = tokio::fs::read_to_string(&config_filename).await?;
-        let google_drive_token: Self = serde_yaml::from_str(&token_data)?;
+        let google_drive_token: Self = from_str(&token_data)?;
         Ok(google_drive_token)
     }
 

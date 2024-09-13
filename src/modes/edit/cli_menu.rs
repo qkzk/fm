@@ -1,5 +1,7 @@
 use anyhow::Context;
 use anyhow::Result;
+use serde_yaml::from_reader;
+use serde_yaml::Mapping;
 
 use crate::app::Status;
 use crate::common::is_program_in_path;
@@ -85,7 +87,7 @@ pub trait CLApplications<T: Execute<U>, U>: Sized + Default + Content<T> {
             log_info!("Couldn't open cli file at {config_file}. Using default");
             return self;
         };
-        match serde_yaml::from_reader(file) {
+        match from_reader(file) {
             Ok(yaml) => {
                 self.parse_yaml(&yaml);
             }
@@ -96,7 +98,7 @@ pub trait CLApplications<T: Execute<U>, U>: Sized + Default + Content<T> {
         self
     }
 
-    fn parse_yaml(&mut self, yaml: &serde_yaml::mapping::Mapping);
+    fn parse_yaml(&mut self, yaml: &Mapping);
 
     /// Run the selected command and capture its output.
     /// Some environement variables are first set to ensure the colored output.
@@ -130,7 +132,7 @@ impl CliApplications {
 }
 
 impl CLApplications<CliCommand, (String, String)> for CliApplications {
-    fn parse_yaml(&mut self, yaml: &serde_yaml::mapping::Mapping) {
+    fn parse_yaml(&mut self, yaml: &Mapping) {
         for (key, mapping) in yaml {
             let Some(name) = key.as_str() else {
                 continue;

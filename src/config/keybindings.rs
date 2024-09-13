@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
 
+use serde_yaml::Value;
 use tuikit::prelude::{from_keyname, Key};
 
 use crate::common::CONFIG_PATH;
@@ -163,7 +164,7 @@ impl Bindings {
     /// Update the binds from a config file.
     /// It may fail (and leave keybinding intact) if the file isn't formated properly.
     /// An unknown or poorly formated key will be ignored.
-    pub fn update_normal(&mut self, yaml: &serde_yaml::value::Value) {
+    pub fn update_normal(&mut self, yaml: &Value) {
         let Some(mappings) = yaml.as_mapping() else {
             return;
         };
@@ -187,7 +188,7 @@ impl Bindings {
         }
     }
 
-    pub fn update_custom(&mut self, yaml: &serde_yaml::value::Value) {
+    pub fn update_custom(&mut self, yaml: &Value) {
         let Some(mappings) = yaml.as_mapping() else {
             return;
         };
