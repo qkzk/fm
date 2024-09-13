@@ -6,7 +6,7 @@ use opendal::Entry;
 use opendal::EntryMode;
 use opendal::Operator;
 use serde::Deserialize;
-use serde_yaml::from_str;
+use serde_yml::from_str;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 

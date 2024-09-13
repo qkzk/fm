@@ -1,7 +1,7 @@
 use anyhow::Context;
 use anyhow::Result;
-use serde_yaml::from_reader;
-use serde_yaml::Mapping;
+use serde_yml::from_reader;
+use serde_yml::Mapping;
 
 use crate::app::Status;
 use crate::common::is_program_in_path;

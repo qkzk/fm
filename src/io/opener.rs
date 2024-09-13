@@ -3,8 +3,8 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
-use serde_yaml::from_reader;
-use serde_yaml::Value;
+use serde_yml::from_reader;
+use serde_yml::Value;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 

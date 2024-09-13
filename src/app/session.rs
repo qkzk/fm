@@ -1,7 +1,7 @@
 use std::fs::File;
 
 use serde::Serialize;
-use serde_yaml::{from_reader, to_writer, Error as YamlError, Value as YamlValue};
+use serde_yml::{from_reader, to_writer, Error as YamlError, Value as YamlValue};
 
 use crate::common::tilde;
 use crate::common::SESSION_PATH;

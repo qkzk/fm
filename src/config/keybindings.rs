@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ToString;
 
-use serde_yaml::Value;
+use serde_yml::Value;
 use tuikit::prelude::{from_keyname, Key};
 
 use crate::common::CONFIG_PATH;

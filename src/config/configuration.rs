@@ -1,7 +1,7 @@
 use std::{fs::File, path};
 
 use anyhow::Result;
-use serde_yaml::{from_reader, Value};
+use serde_yml::{from_reader, Value};
 use tuikit::attr::Attr;
 use tuikit::attr::Color;
 

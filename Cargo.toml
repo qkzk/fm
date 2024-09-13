@@ -47,7 +47,7 @@ pgs-files = "0.0.7"
 regex = "1.10.6"
 rust-lzma = "0.6.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_yaml = "0.9.13" # test serde_yml
+serde_yml = "0.0.12" # test serde_yml
 skim-qkzk = "0.9.14"
 strfmt = "0.2.2"
 strum = {version = "0.24.1", features = ["derive"]}

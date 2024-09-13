@@ -4,8 +4,8 @@ use std::sync::OnceLock;
 
 use anyhow::anyhow;
 use anyhow::Result;
-use serde_yaml::from_reader;
-use serde_yaml::Value;
+use serde_yml::from_reader;
+use serde_yml::Value;
 use syntect::highlighting::Theme;
 use tuikit::attr::Color;
 
