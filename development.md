@@ -993,8 +993,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] remove custom
   - [x] common description of what is an acceptable color in config file
   - [x] don't break compatibiliy but require an update
-  - [ ] refactor all the color configuration
-  - [ ] common parser
 - [x] use pdftoppm & pdfinfo to preview pdfs.
       poppler can crash if the pdf is encrypted for writing but not for reading.
 
@@ -1025,7 +1023,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] moving left (up in filetree) should select provenance
 - [x] dump keybinds & refactor help message
 - [x] FIX: leaving preview in current tab doesn't select the last file
-- [ ] perfomance
 - [ ] Apache OpenDAL: [Official Documentation](https://opendal.apache.org/) - [crates.io](https://crates.io/crates/opendal)
   - [x] refresh token creation
   - [x] write tokens in config folder for user
@@ -1054,7 +1051,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [x] FIX: too much thing on menu and last line
-- [ ] reduce dependencies
 
 ## Current dev
 
@@ -1068,7 +1064,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Fix a bug where ~ wasn't expanded in starting path and lazy loading of path wasn't read
 - [x] Fix: ctrl+s returns a string filename:line:col which shouldn't be treated as a path
 - [x] Fix documentation
-- [ ] Fix dependencies hell
+- [x] Dependencies hell
   - [x] random. Only used to create random temporary filename. Replaced with 0 deps custom random generator.
   - [x] sanitize_filename. Only used when creating new files/directory. Well... I'll let the user do what he wants.
   - [x] shellexpand. Used everywhere for its tilde("~/Downloads") expansion but only use one function.
@@ -1082,10 +1078,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] colorer
     - [x] move config setter to configuration.rs
     - [x] convert oncelock errors to anyhow's
-- [ ] update deps to latest versions
-  - [x] replace serde_yaml (deprecated) by serde_yml (actively maintened)
-  - [x] use serde_yml to write google cloud config files. Share the same struct between files.
+  - [x] update deps to latest versions
+    - [x] replace serde_yaml (deprecated) by serde_yml (actively maintened)
+    - [x] use serde_yml to write google cloud config files. Share the same struct between files.
 - [ ] Badges to latest version
+- [ ] Colors are all the places and lack a common pattern
+  - [ ] refactor all the color configuration
+  - [ ] common parser
 
 ## TODO
 
