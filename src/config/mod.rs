@@ -7,8 +7,8 @@ mod keybindings;
 pub use cloud_config::cloud_config;
 pub use colors::{extension_color, ColorG, Colorer, Gradient};
 pub use configurable_static::{
-    set_configurable_static, COLORER, COLORS, MENU_COLORS, MONOKAI_THEME, START_COLOR,
-    START_FOLDER, STOP_COLOR,
+    set_configurable_static, COLORER, FILE_ATTRS, GRADIENT_NORMAL_FILE, MENU_ATTRS, MONOKAI_THEME,
+    START_FOLDER,
 };
-pub use configuration::{load_color_from_config, load_config, Colors, Config, MenuColors};
+pub use configuration::{load_color_from_config, load_config, Config, FileAttr, MenuAttrs};
 pub use keybindings::Bindings;

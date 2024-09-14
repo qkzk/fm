@@ -6,11 +6,12 @@ use std::path;
 use anyhow::{Context, Result};
 use chrono::offset::Local;
 use chrono::DateTime;
-use tuikit::prelude::{Attr, Color, Effect};
+use tuikit::prelude::Attr;
 
 use crate::common::PERMISSIONS_STR;
 use crate::config::extension_color;
-use crate::config::COLORS;
+use crate::config::FILE_ATTRS;
+use crate::io::color_to_attr;
 use crate::modes::MAX_MODE;
 use crate::modes::{human_size, read_symlink_dest};
 use crate::modes::{ToPath, Users};
@@ -355,25 +356,17 @@ impl FileInfo {
         lines
     }
 
-    fn kind_color(&self) -> Color {
-        let colors = COLORS.get().expect("Colors should be set");
-        match self.file_kind {
-            FileKind::Directory => colors.directory,
-            FileKind::BlockDevice => colors.block,
-            FileKind::CharDevice => colors.char,
-            FileKind::Fifo => colors.fifo,
-            FileKind::Socket => colors.socket,
-            FileKind::SymbolicLink(true) => colors.symlink,
-            FileKind::SymbolicLink(false) => colors.broken,
-            _ => extension_color(&self.extension),
-        }
-    }
-
     pub fn attr(&self) -> Attr {
-        Attr {
-            fg: self.kind_color(),
-            bg: Color::default(),
-            effect: Effect::empty(),
+        let attrs = FILE_ATTRS.get().expect("Colors should be set");
+        match self.file_kind {
+            FileKind::Directory => attrs.directory,
+            FileKind::BlockDevice => attrs.block,
+            FileKind::CharDevice => attrs.char,
+            FileKind::Fifo => attrs.fifo,
+            FileKind::Socket => attrs.socket,
+            FileKind::SymbolicLink(true) => attrs.symlink,
+            FileKind::SymbolicLink(false) => attrs.broken,
+            _ => color_to_attr(extension_color(&self.extension)),
         }
     }
 }

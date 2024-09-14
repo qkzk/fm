@@ -99,7 +99,7 @@ pub fn load_config(path: &str) -> Result<Config> {
 }
 
 /// Convert a string color into a `tuikit::Color` instance.
-pub fn str_to_tuikit<S>(color: S) -> Color
+fn str_to_tuikit<S>(color: S) -> Color
 where
     S: AsRef<str>,
 {
@@ -172,14 +172,6 @@ fn parse_hex_byte(byte: &str) -> Option<u8> {
     u8::from_str_radix(byte, 16).ok()
 }
 
-macro_rules! update_color {
-    ($self_attr:expr, $yaml:ident, $key:expr) => {
-        if let Some(color) = read_yaml_value($yaml, $key) {
-            $self_attr = str_to_tuikit(color);
-        }
-    };
-}
-
 macro_rules! update_attr {
     ($self_attr:expr, $yaml:ident, $key:expr) => {
         if let Some(color) = read_yaml_value($yaml, $key) {
@@ -195,49 +187,49 @@ fn read_yaml_value(yaml: &Value, key: &str) -> Option<String> {
 /// Holds configurable colors for every kind of file.
 /// "Normal" files are displayed with a different color by extension.
 #[derive(Debug, Clone)]
-pub struct Colors {
+pub struct FileAttr {
     /// Color for `directory` files.
-    pub directory: Color,
-    /// Color for `block` files.
-    pub block: Color,
-    /// Color for `char` files.
-    pub char: Color,
-    /// Color for `fifo` files.
-    pub fifo: Color,
-    /// Color for `socket` files.
-    pub socket: Color,
-    /// Color for `symlink` files.
-    pub symlink: Color,
-    /// Color for broken `symlink` files.
-    pub broken: Color,
+    pub directory: Attr,
+    /// Attr for `block` files.
+    pub block: Attr,
+    /// Attr for `char` files.
+    pub char: Attr,
+    /// Attr for `fifo` files.
+    pub fifo: Attr,
+    /// Attr for `socket` files.
+    pub socket: Attr,
+    /// Attr for `symlink` files.
+    pub symlink: Attr,
+    /// Attr for broken `symlink` files.
+    pub broken: Attr,
 }
 
-impl Colors {
+impl FileAttr {
     fn new() -> Self {
         Self {
-            directory: Color::RED,
-            block: Color::YELLOW,
-            char: Color::GREEN,
-            fifo: Color::BLUE,
-            socket: Color::CYAN,
-            symlink: Color::MAGENTA,
-            broken: Color::WHITE,
+            directory: color_to_attr(Color::RED),
+            block: color_to_attr(Color::YELLOW),
+            char: color_to_attr(Color::GREEN),
+            fifo: color_to_attr(Color::BLUE),
+            socket: color_to_attr(Color::CYAN),
+            symlink: color_to_attr(Color::MAGENTA),
+            broken: color_to_attr(Color::WHITE),
         }
     }
 
     /// Update every color from a yaml value (read from the config file).
     pub fn update_from_config(&mut self, yaml: &Value) {
-        update_color!(self.directory, yaml, "directory");
-        update_color!(self.block, yaml, "block");
-        update_color!(self.char, yaml, "char");
-        update_color!(self.fifo, yaml, "fifo");
-        update_color!(self.socket, yaml, "socket");
-        update_color!(self.symlink, yaml, "symlink");
-        update_color!(self.broken, yaml, "broken");
+        update_attr!(self.directory, yaml, "directory");
+        update_attr!(self.block, yaml, "block");
+        update_attr!(self.char, yaml, "char");
+        update_attr!(self.fifo, yaml, "fifo");
+        update_attr!(self.socket, yaml, "socket");
+        update_attr!(self.symlink, yaml, "symlink");
+        update_attr!(self.broken, yaml, "broken");
     }
 }
 
-impl Default for Colors {
+impl Default for FileAttr {
     fn default() -> Self {
         Self::new()
     }
@@ -258,7 +250,7 @@ pub fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
     None
 }
 
-pub struct MenuColors {
+pub struct MenuAttrs {
     pub first: Attr,
     pub second: Attr,
     pub selected_border: Attr,
@@ -269,7 +261,7 @@ pub struct MenuColors {
     pub palette_4: Attr,
 }
 
-impl Default for MenuColors {
+impl Default for MenuAttrs {
     fn default() -> Self {
         Self {
             first: color_to_attr(Color::Rgb(45, 250, 209)),
@@ -284,7 +276,7 @@ impl Default for MenuColors {
     }
 }
 
-impl MenuColors {
+impl MenuAttrs {
     pub fn update(mut self) -> Self {
         if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
             if let Ok(yaml) = from_reader::<File, Value>(file) {

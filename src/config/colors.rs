@@ -2,7 +2,9 @@ use std::hash::Hasher;
 
 use tuikit::attr::Color;
 
-use crate::config::{COLORER, START_COLOR, STOP_COLOR};
+use crate::config::COLORER;
+
+use super::GRADIENT_NORMAL_FILE;
 
 /// No attr but 3 static methods.
 pub struct Colorer {}
@@ -63,10 +65,10 @@ impl Colorer {
     }
 
     pub fn color_custom(hash: usize) -> Color {
-        let start_color = START_COLOR.get().expect("Start color should be set");
-        let stop_color = STOP_COLOR.get().expect("Stop color should be set");
-        let lerp = lerp_color(*start_color, *stop_color, (hash % 255) as u8);
-        Color::Rgb(lerp.0, lerp.1, lerp.2)
+        let gradient = GRADIENT_NORMAL_FILE
+            .get()
+            .expect("Gradient normal file should be set");
+        gradient.step(hash % 254).as_tuikit()
     }
 }
 
@@ -96,6 +98,13 @@ impl Default for ColorG {
 }
 
 impl ColorG {
+    pub fn new(triplet: (u8, u8, u8)) -> Self {
+        Self {
+            r: triplet.0,
+            g: triplet.1,
+            b: triplet.2,
+        }
+    }
     /// Parse a tuikit color into it's rgb values.
     /// Non parsable colors returns None.
     pub fn from_tuikit(color: Color) -> Option<Self> {
@@ -129,7 +138,7 @@ impl Gradient {
         }
     }
 
-    fn gradient_step(&self, step: usize) -> ColorG {
+    fn step(&self, step: usize) -> ColorG {
         let position = self.step_ratio * step as f32;
 
         let r = self.start.r as f32 + (self.end.r as f32 - self.start.r as f32) * position;
@@ -144,17 +153,6 @@ impl Gradient {
     }
 
     pub fn gradient(&self) -> impl Iterator<Item = Color> + '_ {
-        (0..self.len).map(move |step| self.gradient_step(step).as_tuikit())
+        (0..self.len).map(|step| self.step(step).as_tuikit())
     }
-}
-
-fn lerp_color(start: (u8, u8, u8), end: (u8, u8, u8), step: u8) -> (u8, u8, u8) {
-    let step = step as f32 / 255.0;
-    let (r1, g1, b1) = (start.0 as f32, start.1 as f32, start.2 as f32);
-    let (r2, g2, b2) = (end.0 as f32, end.1 as f32, end.2 as f32);
-    (
-        (r1 + (r2 - r1) * step).round() as u8,
-        (g1 + (g2 - g1) * step).round() as u8,
-        (b1 + (b2 - b1) * step).round() as u8,
-    )
 }

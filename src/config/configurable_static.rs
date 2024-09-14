@@ -13,8 +13,10 @@ use crate::common::tilde;
 use crate::common::CONFIG_PATH;
 use crate::config::configuration::load_color_from_config;
 use crate::config::Colorer;
-use crate::config::Colors;
-use crate::config::MenuColors;
+use crate::config::FileAttr;
+use crate::config::MenuAttrs;
+
+use super::{ColorG, Gradient};
 
 /// Colors read from the config file.
 /// We define a colors for every kind of file except normal files.
@@ -22,7 +24,7 @@ use crate::config::MenuColors;
 /// are greens or blues.
 ///
 /// Colors are setup on start and never change afterwards.
-pub static COLORS: OnceLock<Colors> = OnceLock::new();
+pub static FILE_ATTRS: OnceLock<FileAttr> = OnceLock::new();
 
 /// Defines a palette which will color the "normal" files based on their extension.
 /// We try to read a yaml value and pick one of 3 palettes :
@@ -30,20 +32,30 @@ pub static COLORS: OnceLock<Colors> = OnceLock::new();
 /// "custom" will create a gradient from start_palette to end_palette. Both values should be "rgb(u8, u8, u8)".
 pub static COLORER: OnceLock<fn(usize) -> Color> = OnceLock::new();
 
-/// First color of palette for normal file
-pub static START_COLOR: OnceLock<(u8, u8, u8)> = OnceLock::new();
-
-/// Last color of palette for normal file
-pub static STOP_COLOR: OnceLock<(u8, u8, u8)> = OnceLock::new();
+/// Gradient for normal files
+pub static GRADIENT_NORMAL_FILE: OnceLock<Gradient> = OnceLock::new();
 
 /// Menu color struct
-pub static MENU_COLORS: OnceLock<MenuColors> = OnceLock::new();
+pub static MENU_ATTRS: OnceLock<MenuAttrs> = OnceLock::new();
 
 /// Highlighting theme color used to preview code file
 pub static MONOKAI_THEME: OnceLock<Theme> = OnceLock::new();
 
 /// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
 pub static START_FOLDER: OnceLock<PathBuf> = OnceLock::new();
+
+fn set_gradient_normal_file() -> Result<()> {
+    let start_color = load_color_from_config("start").unwrap_or((40, 40, 40));
+    let stop_color = load_color_from_config("stop").unwrap_or((180, 180, 180));
+    GRADIENT_NORMAL_FILE
+        .set(Gradient::new(
+            ColorG::new(start_color),
+            ColorG::new(stop_color),
+            255,
+        ))
+        .map_err(|_| anyhow!("GRADIENT_NORMAL_FILE shouldn't be set"))?;
+    Ok(())
+}
 
 fn set_start_folder(start_folder: &str) -> Result<()> {
     START_FOLDER
@@ -52,35 +64,22 @@ fn set_start_folder(start_folder: &str) -> Result<()> {
     Ok(())
 }
 
-fn set_menu_colors() -> Result<()> {
-    MENU_COLORS
-        .set(MenuColors::default().update())
+fn set_menu_attrs() -> Result<()> {
+    MENU_ATTRS
+        .set(MenuAttrs::default().update())
         .map_err(|_| anyhow!("Menu colors shouldn't be set"))?;
     Ok(())
 }
 
-fn set_start_stop_colors() -> Result<()> {
-    let start_color = load_color_from_config("start").unwrap_or((40, 40, 40));
-    let stop_color = load_color_from_config("stop").unwrap_or((180, 180, 180));
-
-    START_COLOR
-        .set(start_color)
-        .map_err(|_| anyhow!("Start color shouldn't be set"))?;
-    STOP_COLOR
-        .set(stop_color)
-        .map_err(|_| anyhow!("Stop color shouldn't be set"))?;
-    Ok(())
-}
-
-fn set_file_colors() -> Result<()> {
-    let mut colors = Colors::default();
+fn set_file_attrs() -> Result<()> {
+    let mut attrs = FileAttr::default();
     if let Ok(file) = File::open(Path::new(&tilde(CONFIG_PATH).to_string())) {
         if let Ok(yaml) = from_reader::<File, Value>(file) {
-            colors.update_from_config(&yaml["colors"]);
+            attrs.update_from_config(&yaml["colors"]);
         };
     };
-    COLORS
-        .set(colors)
+    FILE_ATTRS
+        .set(attrs)
         .map_err(|_| anyhow!("File colors shouldn't be set"))?;
     Ok(())
 }
@@ -117,13 +116,18 @@ fn set_colorer() -> Result<()> {
     Ok(())
 }
 
+fn set_gradient_menu() -> Result<()> {
+    Ok(())
+}
+
 /// Set all the values which could be configured from config file or arguments staticly.
 /// It allows us to read those values globally without having to pass them through to every function.
 /// All values use a [`std::sync::OnceLock`] internally.
 pub fn set_configurable_static(start_folder: &str) -> Result<()> {
-    set_menu_colors()?;
-    set_start_stop_colors()?;
-    set_file_colors()?;
+    set_menu_attrs()?;
+    set_gradient_normal_file()?;
+    set_file_attrs()?;
     set_colorer()?;
+    set_gradient_menu()?;
     set_start_folder(start_folder)
 }

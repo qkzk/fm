@@ -14,7 +14,7 @@ use crate::app::{ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader};
 use crate::app::{Header, PreviewHeader};
 use crate::common::path_to_string;
 use crate::common::ENCRYPTED_DEVICE_BINDS;
-use crate::config::{ColorG, Gradient, MENU_COLORS};
+use crate::config::{ColorG, Gradient, MENU_ATTRS};
 use crate::io::read_last_log_line;
 use crate::io::ModeFormat;
 use crate::log_info;
@@ -60,7 +60,7 @@ macro_rules! enumerated_colored_iter {
             $t.iter().enumerate(),
             Gradient::new(
                 ColorG::from_tuikit(
-                    MENU_COLORS
+                    MENU_ATTRS
                         .get()
                         .expect("Menu colors should be set")
                         .first
@@ -68,7 +68,7 @@ macro_rules! enumerated_colored_iter {
                 )
                 .unwrap_or_default(),
                 ColorG::from_tuikit(
-                    MENU_COLORS
+                    MENU_ATTRS
                         .get()
                         .expect("Menu colors should be set")
                         .palette_3
@@ -213,7 +213,7 @@ impl<'a> WinMain<'a> {
             1,
             2,
             &content,
-            MENU_COLORS
+            MENU_ATTRS
                 .get()
                 .expect("Menu colors should be set")
                 .palette_4,
@@ -315,7 +315,7 @@ impl<'a> WinMain<'a> {
                 row,
                 0,
                 "█",
-                MENU_COLORS.get().expect("Menu colors should be set").second,
+                MENU_ATTRS.get().expect("Menu colors should be set").second,
             )?;
         }
         Ok(())
@@ -409,7 +409,7 @@ impl<'a> WinMain<'a> {
             row_position_in_canvas,
             0,
             &line_number_to_print.to_string(),
-            MENU_COLORS.get().expect("Menu colors should be set").first,
+            MENU_ATTRS.get().expect("Menu colors should be set").first,
         )?)
     }
 
@@ -506,7 +506,7 @@ impl<'a> WinMain<'a> {
                 row,
                 0,
                 &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
-                MENU_COLORS.get().expect("Menu colors should be set").first,
+                MENU_ATTRS.get().expect("Menu colors should be set").first,
             )?;
             line.print_bytes(canvas, row, line_number_width_hex + 1);
             line.print_ascii(canvas, row, line_number_width_hex + 43);
@@ -721,7 +721,7 @@ impl Draw for LogLine {
             height - 2,
             4,
             &read_last_log_line(),
-            MENU_COLORS.get().expect("Menu colors should be set").second,
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
         Ok(())
     }
@@ -748,13 +748,13 @@ impl<'a> Draw for WinMainFooter<'a> {
             DisplayMode::Flagged => FlaggedFooter::new(self.status)?.elems().to_owned(),
             _ => Footer::new(self.status, self.tab)?.elems().to_owned(),
         };
-        let mut attr = MENU_COLORS.get().expect("Menu colors should be set").first;
+        let mut attr = MENU_ATTRS.get().expect("Menu colors should be set").first;
         let last_index = (content.len().saturating_sub(1))
-            % MENU_COLORS
+            % MENU_ATTRS
                 .get()
                 .expect("Menu colors should be set")
                 .palette_size();
-        let mut background = MENU_COLORS
+        let mut background = MENU_ATTRS
             .get()
             .expect("Menu colors should be set")
             .palette()[last_index];
@@ -815,9 +815,9 @@ impl<'a> WinSecondary<'a> {
                 let mut col = 11;
                 for (text, is_valid) in &mode_parsed {
                     let attr = if *is_valid {
-                        MENU_COLORS.get().expect("Menu colors should be set").first
+                        MENU_ATTRS.get().expect("Menu colors should be set").first
                     } else {
-                        MENU_COLORS.get().expect("Menu colors should be set").second
+                        MENU_ATTRS.get().expect("Menu colors should be set").second
                     };
                     col += 1 + canvas.print_with_attr(1, col, text, attr)?;
                 }
@@ -827,7 +827,7 @@ impl<'a> WinSecondary<'a> {
                     1,
                     2,
                     edit.second_line(),
-                    MENU_COLORS.get().expect("Menu colors should be set").second,
+                    MENU_ATTRS.get().expect("Menu colors should be set").second,
                 )?;
             }
         }
@@ -841,7 +841,7 @@ impl<'a> WinSecondary<'a> {
             height - 1,
             2,
             mode.binds_per_mode(),
-            MENU_COLORS.get().expect("Menu colors should be set").second,
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
         Ok(())
     }
@@ -1002,7 +1002,7 @@ impl<'a> WinSecondary<'a> {
             1,
             2,
             &self.status.menu.trash.help,
-            MENU_COLORS.get().expect("Menu colors should be set").second,
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         );
         let content = trash.content();
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
@@ -1025,7 +1025,7 @@ impl<'a> WinSecondary<'a> {
                 1,
                 2,
                 desc,
-                MENU_COLORS.get().expect("Menu colors should be set").second,
+                MENU_ATTRS.get().expect("Menu colors should be set").second,
             )?;
         }
         for (row, pickable, attr) in enumerated_colored_iter!(content) {
@@ -1051,7 +1051,7 @@ impl<'a> WinSecondary<'a> {
             1,
             2,
             "Pick an action.",
-            MENU_COLORS.get().expect("Menu colors should be set").second,
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
         let content = selectable.content();
         let space_used = content.len();
@@ -1085,7 +1085,7 @@ impl<'a> WinSecondary<'a> {
             2,
             4,
             "mark  path",
-            MENU_COLORS.get().expect("Menu colors should be set").second,
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
 
         let content = self.status.menu.marks.as_strings();
@@ -1107,7 +1107,7 @@ impl<'a> WinSecondary<'a> {
             1,
             2,
             self.tab.edit_mode.second_line(),
-            MENU_COLORS.get().expect("Menu colors should be set").second,
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
 
         let content = &self.status.menu.tui_applications.content;
@@ -1128,7 +1128,7 @@ impl<'a> WinSecondary<'a> {
             1,
             2,
             self.tab.edit_mode.second_line(),
-            MENU_COLORS.get().expect("Menu colors should be set").second,
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
 
         let content = &self.status.menu.cli_applications.content;
@@ -1177,7 +1177,7 @@ impl<'a> WinSecondary<'a> {
             1,
             2,
             ENCRYPTED_DEVICE_BINDS,
-            MENU_COLORS.get().expect("Menu colors should be set").second,
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
         let len = selectable.len();
@@ -1221,7 +1221,7 @@ impl<'a> WinSecondary<'a> {
             canvas,
             0,
             &confirmed_mode.confirmation_string(&dest),
-            MENU_COLORS.get().expect("Menu colors should be set").second,
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => self.draw_confirm_empty_trash(canvas)?,
@@ -1281,7 +1281,7 @@ impl<'a> WinSecondary<'a> {
             canvas,
             0,
             "Trash is empty",
-            MENU_COLORS.get().expect("Menu colors should be set").second,
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         );
     }
 
@@ -1432,11 +1432,11 @@ impl Display {
 
     /// Left File, Left Menu, Right File, Right Menu
     fn borders(&self, status: &Status) -> [Attr; 4] {
-        let mut borders = [MENU_COLORS
+        let mut borders = [MENU_ATTRS
             .get()
             .expect("Menu colors should be set")
             .inert_border; 4];
-        let selected_border = MENU_COLORS
+        let selected_border = MENU_ATTRS
             .get()
             .expect("Menu colors should be set")
             .selected_border;
@@ -1529,7 +1529,7 @@ fn draw_colored_strings(
     let mut col = 1;
     for (text, attr) in std::iter::zip(
         strings.iter(),
-        MENU_COLORS
+        MENU_ATTRS
             .get()
             .expect("Menu colors should be set")
             .palette()
@@ -1554,7 +1554,7 @@ fn draw_clickable_strings(
 ) -> Result<()> {
     for (elem, attr) in std::iter::zip(
         elems.iter(),
-        MENU_COLORS
+        MENU_ATTRS
             .get()
             .expect("Menu colors should be set")
             .palette()
