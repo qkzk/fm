@@ -44,6 +44,19 @@ pub static MONOKAI_THEME: OnceLock<Theme> = OnceLock::new();
 /// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
 pub static START_FOLDER: OnceLock<PathBuf> = OnceLock::new();
 
+pub static GREEN_BLUE: OnceLock<[Color; 254]> = OnceLock::new();
+
+fn set_green_blue() -> Result<()> {
+    let palette: Vec<Color> = (128..255)
+        .map(|b| Color::Rgb(255, 0, b))
+        .chain((128..255).map(|r| Color::Rgb(r, 0, 255)))
+        .collect();
+    let mut p = [Color::Rgb(0, 0, 0); 254];
+    p.copy_from_slice(&palette);
+    GREEN_BLUE.set(p).map_err(|_| anyhow!(""))?;
+    Ok(())
+}
+
 fn set_gradient_normal_file() -> Result<()> {
     let start_color = load_color_from_config("start").unwrap_or((40, 40, 40));
     let stop_color = load_color_from_config("stop").unwrap_or((180, 180, 180));

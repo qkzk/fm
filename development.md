@@ -1087,6 +1087,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] MenuColors should hold attr since it's what's used everywhere
   - [x] fileinfo attr should be moved into fileinfo itself and return an attr
   - [ ] common parser
+  - [ ] use lookup tables instead of palettes
+  - [ ] custom palettes seems to be broken
 - [x] remove is_selected from fileinfo
 
 ## TODO
