@@ -28,6 +28,7 @@ use crate::modes::FileInfo;
 use crate::modes::HLContent;
 use crate::modes::InputSimple;
 use crate::modes::LineDisplay;
+use crate::modes::MarkAction;
 use crate::modes::MountRepr;
 use crate::modes::Navigate;
 use crate::modes::NeedConfirmation;
@@ -38,7 +39,6 @@ use crate::modes::TreeLineBuilder;
 use crate::modes::TreePreview;
 use crate::modes::Ueberzug;
 use crate::modes::Window;
-use crate::modes::{fileinfo_attr, MarkAction};
 use crate::modes::{parse_input_mode, SecondLine};
 
 trait ClearLine {
@@ -274,7 +274,7 @@ impl<'a> WinMain<'a> {
         if row > height {
             return Ok(());
         }
-        let mut attr = fileinfo_attr(file);
+        let mut attr = file.attr();
         if index == self.tab.directory.index {
             attr.effect |= Effect::REVERSE;
         }
@@ -371,7 +371,7 @@ impl<'a> WinMain<'a> {
         }
 
         let s_prefix = tree_line_maker.prefix();
-        let mut attr = tree_line_maker.attr();
+        let mut attr = tree_line_maker.attr;
         let path = tree_line_maker.path();
 
         self.print_as_flagged(canvas, row, path, &mut attr)?;
@@ -606,7 +606,7 @@ impl<'a> WinMain<'a> {
             .take(min(canvas.height()?, window.bottom + 1))
         {
             let fileinfo = FileInfo::new(path, &self.tab.users)?;
-            let mut attr = fileinfo_attr(&fileinfo);
+            let mut attr = fileinfo.attr();
             if index == self.status.menu.flagged.index {
                 attr.effect |= Effect::REVERSE;
             }
@@ -615,7 +615,7 @@ impl<'a> WinMain<'a> {
         }
         if let Some(selected) = self.status.menu.flagged.selected() {
             let fileinfo = FileInfo::new(selected, &self.tab.users)?;
-            canvas.print_with_attr(1, 1, &fileinfo.format(6, 6)?, fileinfo_attr(&fileinfo))?;
+            canvas.print_with_attr(1, 1, &fileinfo.format(6, 6)?, fileinfo.attr())?;
         };
         Ok(None)
     }
@@ -702,7 +702,7 @@ impl WinMainSecondLine {
     fn second_line_detailed(file: &FileInfo) -> Self {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
-        let mut attr = fileinfo_attr(file);
+        let mut attr = file.attr();
         attr.effect ^= Effect::REVERSE;
 
         Self {

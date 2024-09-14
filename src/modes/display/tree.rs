@@ -4,16 +4,17 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use tuikit::attr::Attr;
 
 use crate::common::filename_from_path;
 use crate::common::has_last_modification_happened_less_than;
 use crate::modes::files_collection;
+use crate::modes::FileInfo;
 use crate::modes::FilterKind;
 use crate::modes::Flagged;
 use crate::modes::SortKind;
 use crate::modes::ToPath;
 use crate::modes::Users;
-use crate::modes::{ColorEffect, FileInfo};
 
 /// Holds a string, its display attributes and the associated pathbuf.
 #[derive(Clone, Debug)]
@@ -21,19 +22,15 @@ pub struct ColoredString {
     /// A text to be printed. In most case, it should be a filename.
     pub text: String,
     /// A pair of [`tuikit::attr::Color`] and [`tuikit::attr::Effect`] used to enhance the text.
-    pub color_effect: ColorEffect,
+    pub attr: Attr,
     /// The complete path of this string.
     pub path: Arc<Path>,
 }
 
 impl ColoredString {
     /// Creates a new colored string.
-    pub fn new(text: String, color_effect: ColorEffect, path: Arc<Path>) -> Self {
-        Self {
-            text,
-            color_effect,
-            path,
-        }
+    pub fn new(text: String, attr: Attr, path: Arc<Path>) -> Self {
+        Self { text, attr, path }
     }
 }
 
@@ -777,14 +774,14 @@ pub struct TreeLineBuilder {
     folded: bool,
     prefix: Arc<str>,
     pub path: Arc<Path>,
-    color_effect: ColorEffect,
+    pub attr: Attr,
     metadata: String,
 }
 
 impl TreeLineBuilder {
     /// Uses references to fileinfo, prefix, node & path to create an instance.
     fn new(fileinfo: &FileInfo, prefix: &str, node: &Node, path: &Path) -> Self {
-        let color_effect = ColorEffect::for_file(fileinfo);
+        let attr = fileinfo.attr();
         let prefix = Arc::from(prefix);
         let path = Arc::from(path);
         let metadata = fileinfo
@@ -796,7 +793,7 @@ impl TreeLineBuilder {
             folded,
             prefix,
             path,
-            color_effect,
+            attr,
             metadata,
         }
     }
@@ -804,11 +801,6 @@ impl TreeLineBuilder {
     /// Formated filename
     pub fn filename(&self) -> String {
         filename_format(&self.path, self.folded)
-    }
-
-    /// `tuikit::attr::Attr` of the line
-    pub fn attr(&self) -> tuikit::attr::Attr {
-        self.color_effect.attr()
     }
 
     /// Vertical bar displayed before the filename to show
@@ -831,13 +823,13 @@ impl TreeLineBuilder {
     /// Change the current effect to Empty, displaying
     /// the file as not selected
     pub fn unselect(&mut self) {
-        self.color_effect.effect = tuikit::attr::Effect::empty();
+        self.attr.effect = tuikit::attr::Effect::empty();
     }
 
     /// Change the current effect to `REVERSE`, displaying
     /// the file as selected.
     pub fn select(&mut self) {
-        self.color_effect.effect = tuikit::attr::Effect::REVERSE;
+        self.attr.effect = tuikit::attr::Effect::REVERSE;
     }
 }
 

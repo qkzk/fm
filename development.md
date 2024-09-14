@@ -1085,7 +1085,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] Colors are all the places and lack a common pattern
   - [ ] refactor all the color configuration
   - [x] MenuColors should hold attr since it's what's used everywhere
-  - [ ] fileinfo attr should be moved into fileinfo itself and return an attr
+  - [x] fileinfo attr should be moved into fileinfo itself and return an attr
   - [ ] common parser
 - [x] remove is_selected from fileinfo
 

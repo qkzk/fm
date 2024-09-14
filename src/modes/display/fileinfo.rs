@@ -354,58 +354,28 @@ impl FileInfo {
 
         lines
     }
-}
 
-fn fileinfo_color(fileinfo: &FileInfo) -> Color {
-    let colors = COLORS.get().expect("Colors should be set");
-    match fileinfo.file_kind {
-        FileKind::Directory => colors.directory,
-        FileKind::BlockDevice => colors.block,
-        FileKind::CharDevice => colors.char,
-        FileKind::Fifo => colors.fifo,
-        FileKind::Socket => colors.socket,
-        FileKind::SymbolicLink(true) => colors.symlink,
-        FileKind::SymbolicLink(false) => colors.broken,
-        _ => extension_color(&fileinfo.extension),
-    }
-}
-
-/// Holds a `tuikit::attr::Color` and a `tuikit::attr::Effect`
-/// Both are used to print the file.
-/// When printing we still need to know if the file is flagged,
-/// which may change the `tuikit::attr::Effect`.
-#[derive(Clone, Debug)]
-pub struct ColorEffect {
-    color: Color,
-    pub effect: Effect,
-}
-
-impl ColorEffect {
-    /// Calculates a color and an effect from `fm::file_info::FileInfo`.
-    /// Used in `Display::Directory` mode where selection is stored in fileinfo itself.
-    #[inline]
-    pub fn for_file(fileinfo: &FileInfo) -> ColorEffect {
-        let color = fileinfo_color(fileinfo);
-        let effect = Effect::empty();
-
-        Self { color, effect }
-    }
-
-    /// Makes a new `tuikit::attr::Attr` where `bg` is default.
-    pub fn attr(&self) -> Attr {
-        Attr {
-            fg: self.color,
-            bg: Color::default(),
-            effect: self.effect,
+    fn kind_color(&self) -> Color {
+        let colors = COLORS.get().expect("Colors should be set");
+        match self.file_kind {
+            FileKind::Directory => colors.directory,
+            FileKind::BlockDevice => colors.block,
+            FileKind::CharDevice => colors.char,
+            FileKind::Fifo => colors.fifo,
+            FileKind::Socket => colors.socket,
+            FileKind::SymbolicLink(true) => colors.symlink,
+            FileKind::SymbolicLink(false) => colors.broken,
+            _ => extension_color(&self.extension),
         }
     }
-}
 
-/// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
-/// effect.
-/// Selected file is reversed.
-pub fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
-    ColorEffect::for_file(fileinfo).attr()
+    pub fn attr(&self) -> Attr {
+        Attr {
+            fg: self.kind_color(),
+            bg: Color::default(),
+            effect: Effect::empty(),
+        }
+    }
 }
 
 /// True if the file isn't hidden.
