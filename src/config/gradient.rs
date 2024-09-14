@@ -1,15 +1,12 @@
-use std::hash::Hasher;
-
 use tuikit::attr::Color;
 
 use crate::config::COLORER;
+use crate::config::GRADIENT_NORMAL_FILE;
 
-use super::GRADIENT_NORMAL_FILE;
+/// No attr but a few static methods.
+pub struct NormalFileColorer {}
 
-/// No attr but 3 static methods.
-pub struct Colorer {}
-
-impl Colorer {
+impl NormalFileColorer {
     /// Picks a blueish/greenish color on color picker hexagon's perimeter.
     pub fn color_green_blue(hash: usize) -> Color {
         (128..255)
@@ -72,12 +69,20 @@ impl Colorer {
     }
 }
 
+fn sum_hash(string: &str) -> usize {
+    let hash: usize = string
+        .as_bytes()
+        .iter()
+        .map(|s| *s as usize)
+        .reduce(|acc, elt| acc.saturating_mul(254).saturating_add(elt))
+        .unwrap_or_default();
+    hash & 254
+}
+
 /// Returns a color based on the extension.
 /// Those colors will always be the same, but a palette is defined from a yaml value.
 pub fn extension_color(extension: &str) -> Color {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    hasher.write(extension.as_bytes());
-    COLORER.get().expect("Colorer should be set")(hasher.finish() as usize)
+    COLORER.get().expect("Colorer should be set")(sum_hash(extension))
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -12,9 +12,9 @@ use tuikit::attr::Color;
 use crate::common::tilde;
 use crate::common::CONFIG_PATH;
 use crate::config::configuration::load_color_from_config;
-use crate::config::Colorer;
 use crate::config::FileAttr;
 use crate::config::MenuAttrs;
+use crate::config::NormalFileColorer;
 
 use super::{ColorG, Gradient};
 
@@ -85,7 +85,7 @@ fn set_file_attrs() -> Result<()> {
 }
 
 fn read_colorer() -> fn(usize) -> Color {
-    let colorer = Colorer::color_green_blue as fn(usize) -> Color;
+    let colorer = NormalFileColorer::color_green_blue as fn(usize) -> Color;
     let Ok(file) = File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string())) else {
         return colorer;
     };
@@ -99,13 +99,13 @@ fn read_colorer() -> fn(usize) -> Color {
         return colorer;
     };
     match (start.to_owned() + "-" + stop).as_ref() {
-        "green-blue" => Colorer::color_green_blue as fn(usize) -> Color,
-        "red-blue" => Colorer::color_red_blue as fn(usize) -> Color,
-        "red-green" => Colorer::color_red_green as fn(usize) -> Color,
-        "blue-green" => Colorer::color_blue_green as fn(usize) -> Color,
-        "blue-red" => Colorer::color_blue_red as fn(usize) -> Color,
-        "green-red" => Colorer::color_green_red as fn(usize) -> Color,
-        _ => Colorer::color_custom as fn(usize) -> Color,
+        "green-blue" => NormalFileColorer::color_green_blue as fn(usize) -> Color,
+        "red-blue" => NormalFileColorer::color_red_blue as fn(usize) -> Color,
+        "red-green" => NormalFileColorer::color_red_green as fn(usize) -> Color,
+        "blue-green" => NormalFileColorer::color_blue_green as fn(usize) -> Color,
+        "blue-red" => NormalFileColorer::color_blue_red as fn(usize) -> Color,
+        "green-red" => NormalFileColorer::color_green_red as fn(usize) -> Color,
+        _ => NormalFileColorer::color_custom as fn(usize) -> Color,
     }
 }
 
