@@ -275,6 +275,9 @@ impl<'a> WinMain<'a> {
             return Ok(());
         }
         let mut attr = fileinfo_attr(file);
+        if index == self.tab.directory.index {
+            attr.effect |= Effect::REVERSE;
+        }
         let content = self.format_file_content(file, owner_size, group_size)?;
         self.print_as_flagged(canvas, row, &file.path, &mut attr)?;
         let col = if self.status.menu.flagged.contains(&file.path) {

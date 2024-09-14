@@ -784,7 +784,7 @@ pub struct TreeLineBuilder {
 impl TreeLineBuilder {
     /// Uses references to fileinfo, prefix, node & path to create an instance.
     fn new(fileinfo: &FileInfo, prefix: &str, node: &Node, path: &Path) -> Self {
-        let color_effect = ColorEffect::node(fileinfo, node.selected());
+        let color_effect = ColorEffect::for_file(fileinfo);
         let prefix = Arc::from(prefix);
         let path = Arc::from(path);
         let metadata = fileinfo

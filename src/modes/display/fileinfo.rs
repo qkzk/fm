@@ -171,7 +171,7 @@ pub struct FileInfo {
     /// System time of last modification
     pub system_time: std::sync::Arc<str>,
     /// Is this file currently selected ?
-    pub is_selected: bool,
+    // is_selected: bool,
     /// What kind of file is this ?
     pub file_kind: FileKind<Valid>,
     /// Extension of the file. `""` for a directory.
@@ -191,7 +191,6 @@ impl FileInfo {
         let owner = extract_owner(&metadata, users);
         let group = extract_group(&metadata, users);
         let system_time = extract_datetime(metadata.modified()?)?;
-        let is_selected = false;
         let file_kind = FileKind::new(&metadata, &path);
         let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
@@ -205,7 +204,6 @@ impl FileInfo {
             owner,
             group,
             system_time,
-            is_selected,
             file_kind,
             extension,
             kind_format,
@@ -278,16 +276,6 @@ impl FileInfo {
     pub fn format_simple(&self) -> Result<String> {
         let s: &str = self.filename.borrow();
         Ok(s.to_string())
-    }
-
-    /// Select the file.
-    pub fn select(&mut self) {
-        self.is_selected = true;
-    }
-
-    /// Unselect the file.
-    pub fn unselect(&mut self) {
-        self.is_selected = false;
     }
 
     /// True iff the file is hidden (aka starts with a '.').
@@ -396,28 +384,9 @@ impl ColorEffect {
     /// Calculates a color and an effect from `fm::file_info::FileInfo`.
     /// Used in `Display::Directory` mode where selection is stored in fileinfo itself.
     #[inline]
-    pub fn directory(fileinfo: &FileInfo) -> ColorEffect {
+    pub fn for_file(fileinfo: &FileInfo) -> ColorEffect {
         let color = fileinfo_color(fileinfo);
-
-        let effect = if fileinfo.is_selected {
-            Effect::REVERSE
-        } else {
-            Effect::empty()
-        };
-
-        Self { color, effect }
-    }
-
-    /// Calculates a color and an effect from `crate::app::file_info` and a flag.
-    /// The "selected file" is stored in the node itself, we only need that boolean attribute.
-    #[inline]
-    pub fn node(fileinfo: &FileInfo, is_selected: bool) -> Self {
-        let color = fileinfo_color(fileinfo);
-        let effect = if is_selected {
-            Effect::REVERSE
-        } else {
-            Effect::empty()
-        };
+        let effect = Effect::empty();
 
         Self { color, effect }
     }
@@ -436,7 +405,7 @@ impl ColorEffect {
 /// effect.
 /// Selected file is reversed.
 pub fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
-    ColorEffect::directory(fileinfo).attr()
+    ColorEffect::for_file(fileinfo).attr()
 }
 
 /// True if the file isn't hidden.

@@ -400,7 +400,6 @@ impl Tab {
         match self.display_mode {
             Display::Directory => {
                 let path = self.current_file()?.path;
-                self.directory.unselect_current();
                 self.settings.update_sort_from_char(c);
                 crate::log_info!("sort kind: {sortkind}", sortkind = self.settings.sort_kind);
                 self.directory.sort(&self.settings.sort_kind);
@@ -549,17 +548,13 @@ impl Tab {
 
     /// Move down one row if possible.
     pub fn normal_down_one_row(&mut self) {
-        self.directory.unselect_current();
         self.directory.next();
-        self.directory.select_current();
         self.window.scroll_down_one(self.directory.index)
     }
 
     /// Move up one row if possible.
     pub fn normal_up_one_row(&mut self) {
-        self.directory.unselect_current();
         self.directory.prev();
-        self.directory.select_current();
         self.window.scroll_up_one(self.directory.index)
     }
 

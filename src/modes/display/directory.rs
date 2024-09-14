@@ -38,9 +38,6 @@ impl Directory {
         let sort_kind = SortKind::default();
         sort_kind.sort(&mut content);
         let index: usize = 0;
-        if !content.is_empty() {
-            content[index].select();
-        }
         let used_space = get_used_space(&content);
 
         Ok(Self {
@@ -60,9 +57,6 @@ impl Directory {
         self.content = Self::files(path, settings.show_hidden, &settings.filter, users)?;
         settings.sort_kind.sort(&mut self.content);
         self.index = 0;
-        if !self.content.is_empty() {
-            self.content[0].select()
-        }
         self.used_space = get_used_space(&self.content);
         self.path = Arc::from(path);
         Ok(())
@@ -124,8 +118,6 @@ impl Directory {
     /// Select the file from a given index.
     pub fn select_index(&mut self, index: usize) {
         if index < self.content.len() {
-            self.unselect_current();
-            self.content[index].select();
             self.index = index;
         }
     }
@@ -138,9 +130,6 @@ impl Directory {
         let sort_kind = SortKind::default();
         self.sort(&sort_kind);
         self.index = 0;
-        if !self.content.is_empty() {
-            self.content[self.index].select();
-        }
         Ok(())
     }
 
@@ -183,26 +172,6 @@ impl Directory {
     /// A string representation of the git status of the path.
     pub fn git_string(&self) -> Result<String> {
         git(&self.path)
-    }
-
-    /// Unselect the current item.
-    /// Since we use a common trait to navigate the files,
-    /// this method is required.
-    pub fn unselect_current(&mut self) {
-        if self.is_empty() {
-            return;
-        }
-        self.content[self.index].unselect();
-    }
-
-    /// Select the current item.
-    /// Since we use a common trait to navigate the files,
-    /// this method is required.
-    pub fn select_current(&mut self) {
-        if self.is_empty() {
-            return;
-        }
-        self.content[self.index].select();
     }
 
     /// Returns an iterator of the files (`FileInfo`) in content.

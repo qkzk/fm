@@ -35,7 +35,7 @@ pub fn init_term() -> Result<Term> {
 /// We sort the disks by descending mount point size, then
 /// we return the first disk whose mount point match the path.
 pub fn disk_used_by_path<'a>(disks: &'a [&'a Disk], path: &Path) -> Option<&'a Disk> {
-    let mut disks: Vec<&Disk> = disks.iter().map(|d| *d).collect();
+    let mut disks: Vec<&Disk> = disks.to_vec();
     disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
     disks.reverse();
     disks
