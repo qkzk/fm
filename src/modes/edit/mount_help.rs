@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::{config::MENU_COLORS, io::color_to_attr, modes::PasswordHolder};
+use crate::{config::MENU_COLORS, modes::PasswordHolder};
 
 /// Bunch of methods used to mount / unmount a block device or a device image file.
 pub trait MountCommands {
@@ -42,14 +42,12 @@ pub trait MountRepr: MountCommands {
     /// Using configurable colors. "first" when mounted, "inert border" otherwise
     fn attr(&self) -> tuikit::attr::Attr {
         if self.is_mounted() {
-            color_to_attr(MENU_COLORS.get().expect("Menu colors should be set").first)
+            MENU_COLORS.get().expect("Menu colors should be set").first
         } else {
-            color_to_attr(
-                MENU_COLORS
-                    .get()
-                    .expect("Menu colors should be set")
-                    .inert_border,
-            )
+            MENU_COLORS
+                .get()
+                .expect("Menu colors should be set")
+                .inert_border
         }
     }
 }

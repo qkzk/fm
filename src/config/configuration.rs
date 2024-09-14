@@ -172,10 +172,18 @@ fn parse_hex_byte(byte: &str) -> Option<u8> {
     u8::from_str_radix(byte, 16).ok()
 }
 
-macro_rules! update_attribute {
+macro_rules! update_color {
     ($self_attr:expr, $yaml:ident, $key:expr) => {
-        if let Some(attr) = read_yaml_value($yaml, $key) {
-            $self_attr = str_to_tuikit(attr);
+        if let Some(color) = read_yaml_value($yaml, $key) {
+            $self_attr = str_to_tuikit(color);
+        }
+    };
+}
+
+macro_rules! update_attr {
+    ($self_attr:expr, $yaml:ident, $key:expr) => {
+        if let Some(color) = read_yaml_value($yaml, $key) {
+            $self_attr = color_to_attr(str_to_tuikit(color));
         }
     };
 }
@@ -219,13 +227,13 @@ impl Colors {
 
     /// Update every color from a yaml value (read from the config file).
     pub fn update_from_config(&mut self, yaml: &Value) {
-        update_attribute!(self.directory, yaml, "directory");
-        update_attribute!(self.block, yaml, "block");
-        update_attribute!(self.char, yaml, "char");
-        update_attribute!(self.fifo, yaml, "fifo");
-        update_attribute!(self.socket, yaml, "socket");
-        update_attribute!(self.symlink, yaml, "symlink");
-        update_attribute!(self.broken, yaml, "broken");
+        update_color!(self.directory, yaml, "directory");
+        update_color!(self.block, yaml, "block");
+        update_color!(self.char, yaml, "char");
+        update_color!(self.fifo, yaml, "fifo");
+        update_color!(self.socket, yaml, "socket");
+        update_color!(self.symlink, yaml, "symlink");
+        update_color!(self.broken, yaml, "broken");
     }
 }
 
@@ -251,27 +259,27 @@ pub fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
 }
 
 pub struct MenuColors {
-    pub first: Color,
-    pub second: Color,
-    pub selected_border: Color,
-    pub inert_border: Color,
-    pub palette_1: Color,
-    pub palette_2: Color,
-    pub palette_3: Color,
-    pub palette_4: Color,
+    pub first: Attr,
+    pub second: Attr,
+    pub selected_border: Attr,
+    pub inert_border: Attr,
+    pub palette_1: Attr,
+    pub palette_2: Attr,
+    pub palette_3: Attr,
+    pub palette_4: Attr,
 }
 
 impl Default for MenuColors {
     fn default() -> Self {
         Self {
-            first: Color::Rgb(45, 250, 209),
-            second: Color::Rgb(230, 189, 87),
-            selected_border: Color::Rgb(45, 250, 209),
-            inert_border: Color::Rgb(248, 248, 248),
-            palette_1: Color::Rgb(45, 250, 209),
-            palette_2: Color::Rgb(230, 189, 87),
-            palette_3: Color::Rgb(230, 167, 255),
-            palette_4: Color::Rgb(59, 204, 255),
+            first: color_to_attr(Color::Rgb(45, 250, 209)),
+            second: color_to_attr(Color::Rgb(230, 189, 87)),
+            selected_border: color_to_attr(Color::Rgb(45, 250, 209)),
+            inert_border: color_to_attr(Color::Rgb(248, 248, 248)),
+            palette_1: color_to_attr(Color::Rgb(45, 250, 209)),
+            palette_2: color_to_attr(Color::Rgb(230, 189, 87)),
+            palette_3: color_to_attr(Color::Rgb(230, 167, 255)),
+            palette_4: color_to_attr(Color::Rgb(59, 204, 255)),
         }
     }
 }
@@ -281,14 +289,14 @@ impl MenuColors {
         if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
             if let Ok(yaml) = from_reader::<File, Value>(file) {
                 let menu_colors = &yaml["menu_colors"];
-                update_attribute!(self.first, menu_colors, "first");
-                update_attribute!(self.second, menu_colors, "second");
-                update_attribute!(self.selected_border, menu_colors, "selected_border");
-                update_attribute!(self.inert_border, menu_colors, "inert_border");
-                update_attribute!(self.palette_1, menu_colors, "palette_1");
-                update_attribute!(self.palette_2, menu_colors, "palette_2");
-                update_attribute!(self.palette_3, menu_colors, "palette_3");
-                update_attribute!(self.palette_4, menu_colors, "palette_4");
+                update_attr!(self.first, menu_colors, "first");
+                update_attr!(self.second, menu_colors, "second");
+                update_attr!(self.selected_border, menu_colors, "selected_border");
+                update_attr!(self.inert_border, menu_colors, "inert_border");
+                update_attr!(self.palette_1, menu_colors, "palette_1");
+                update_attr!(self.palette_2, menu_colors, "palette_2");
+                update_attr!(self.palette_3, menu_colors, "palette_3");
+                update_attr!(self.palette_4, menu_colors, "palette_4");
             }
         }
         self
@@ -297,10 +305,10 @@ impl MenuColors {
     #[inline]
     pub const fn palette(&self) -> [Attr; 4] {
         [
-            color_to_attr(self.palette_1),
-            color_to_attr(self.palette_2),
-            color_to_attr(self.palette_3),
-            color_to_attr(self.palette_4),
+            self.palette_1,
+            self.palette_2,
+            self.palette_3,
+            self.palette_4,
         ]
     }
 
