@@ -137,7 +137,7 @@ fn parse_rgb_color(color: &str) -> Color {
     Color::default()
 }
 
-fn parse_text_triplet(color: &str) -> Option<(u8, u8, u8)> {
+pub fn parse_text_triplet(color: &str) -> Option<(u8, u8, u8)> {
     let color = color.to_lowercase();
     if color.starts_with("rgb(") && color.ends_with(')') {
         return parse_rgb_triplet(&color);

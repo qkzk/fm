@@ -11,12 +11,12 @@ use tuikit::attr::Color;
 
 use crate::common::tilde;
 use crate::common::CONFIG_PATH;
-use crate::config::configuration::load_color_from_config;
 use crate::config::FileAttr;
 use crate::config::MenuAttrs;
 use crate::config::NormalFileColorer;
+use crate::log_info;
 
-use super::{ColorG, Gradient};
+use super::{parse_text_triplet, ColorG, Gradient};
 
 /// Colors read from the config file.
 /// We define a colors for every kind of file except normal files.
@@ -43,32 +43,6 @@ pub static MONOKAI_THEME: OnceLock<Theme> = OnceLock::new();
 
 /// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
 pub static START_FOLDER: OnceLock<PathBuf> = OnceLock::new();
-
-pub static GREEN_BLUE: OnceLock<[Color; 254]> = OnceLock::new();
-
-fn set_green_blue() -> Result<()> {
-    let palette: Vec<Color> = (128..255)
-        .map(|b| Color::Rgb(255, 0, b))
-        .chain((128..255).map(|r| Color::Rgb(r, 0, 255)))
-        .collect();
-    let mut p = [Color::Rgb(0, 0, 0); 254];
-    p.copy_from_slice(&palette);
-    GREEN_BLUE.set(p).map_err(|_| anyhow!(""))?;
-    Ok(())
-}
-
-fn set_gradient_normal_file() -> Result<()> {
-    let start_color = load_color_from_config("start").unwrap_or((40, 40, 40));
-    let stop_color = load_color_from_config("stop").unwrap_or((180, 180, 180));
-    GRADIENT_NORMAL_FILE
-        .set(Gradient::new(
-            ColorG::new(start_color),
-            ColorG::new(stop_color),
-            255,
-        ))
-        .map_err(|_| anyhow!("GRADIENT_NORMAL_FILE shouldn't be set"))?;
-    Ok(())
-}
 
 fn set_start_folder(start_folder: &str) -> Result<()> {
     START_FOLDER
@@ -97,39 +71,53 @@ fn set_file_attrs() -> Result<()> {
     Ok(())
 }
 
-fn read_colorer() -> fn(usize) -> Color {
-    let colorer = NormalFileColorer::color_green_blue as fn(usize) -> Color;
-    let Ok(file) = File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string())) else {
-        return colorer;
+fn read_normal_file_colorer() -> (ColorG, ColorG) {
+    // palette:
+    //   start: yellow, #ffff00, rgb(255, 255, 0)
+    //   stop:  magenta, #ff00ff, rgb(255, 0, 255)
+    let default_pair = (ColorG::new((0, 255, 0)), ColorG::new((0, 0, 255)));
+    let Ok(file) = File::open(tilde(CONFIG_PATH).as_ref()) else {
+        return default_pair;
     };
     let Ok(yaml) = from_reader::<File, Value>(file) else {
-        return colorer;
+        return default_pair;
     };
     let Some(start) = yaml["palette"]["start"].as_str() else {
-        return colorer;
+        return default_pair;
     };
     let Some(stop) = yaml["palette"]["stop"].as_str() else {
-        return colorer;
+        return default_pair;
     };
-    match (start.to_owned() + "-" + stop).as_ref() {
-        "green-blue" => NormalFileColorer::color_green_blue as fn(usize) -> Color,
-        "red-blue" => NormalFileColorer::color_red_blue as fn(usize) -> Color,
-        "red-green" => NormalFileColorer::color_red_green as fn(usize) -> Color,
-        "blue-green" => NormalFileColorer::color_blue_green as fn(usize) -> Color,
-        "blue-red" => NormalFileColorer::color_blue_red as fn(usize) -> Color,
-        "green-red" => NormalFileColorer::color_green_red as fn(usize) -> Color,
-        _ => NormalFileColorer::color_custom as fn(usize) -> Color,
-    }
+    let start_color = if let Some(triplet) = parse_text_triplet(start) {
+        ColorG::new(triplet)
+    } else if let Some(color) = ColorG::from_ansi_desc(start) {
+        color
+    } else {
+        default_pair.0
+    };
+    let stop_color = if let Some(triplet) = parse_text_triplet(stop) {
+        ColorG::new(triplet)
+    } else if let Some(color) = ColorG::from_ansi_desc(stop) {
+        color
+    } else {
+        default_pair.0
+    };
+    log_info!(
+        "start: {start}, start_color {start_color:?}
+stop: {stop}, stop_color {stop_color:?}"
+    );
+    (start_color, stop_color)
 }
 
-fn set_colorer() -> Result<()> {
+fn set_normal_file_colorer() -> Result<()> {
+    let (start_color, stop_color) = read_normal_file_colorer();
+    GRADIENT_NORMAL_FILE
+        .set(Gradient::new(start_color, stop_color, 254))
+        .map_err(|_| anyhow!("Gradient shouldn't be set"))?;
     COLORER
-        .set(read_colorer())
+        .set(NormalFileColorer::colorer as fn(usize) -> Color)
         .map_err(|_| anyhow!("Colorer shouldn't be set"))?;
-    Ok(())
-}
 
-fn set_gradient_menu() -> Result<()> {
     Ok(())
 }
 
@@ -138,9 +126,7 @@ fn set_gradient_menu() -> Result<()> {
 /// All values use a [`std::sync::OnceLock`] internally.
 pub fn set_configurable_static(start_folder: &str) -> Result<()> {
     set_menu_attrs()?;
-    set_gradient_normal_file()?;
     set_file_attrs()?;
-    set_colorer()?;
-    set_gradient_menu()?;
+    set_normal_file_colorer()?;
     set_start_folder(start_folder)
 }

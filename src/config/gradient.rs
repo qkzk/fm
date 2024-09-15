@@ -7,61 +7,7 @@ use crate::config::GRADIENT_NORMAL_FILE;
 pub struct NormalFileColorer {}
 
 impl NormalFileColorer {
-    /// Picks a blueish/greenish color on color picker hexagon's perimeter.
-    pub fn color_green_blue(hash: usize) -> Color {
-        (128..255)
-            .map(|b| Color::Rgb(0, 255, b))
-            .chain((128..255).map(|g| Color::Rgb(0, g, 255)))
-            .nth(hash % 254)
-            .unwrap()
-    }
-
-    /// Picks a redish/blueish color on color picker hexagon's perimeter.
-    pub fn color_red_blue(hash: usize) -> Color {
-        (128..255)
-            .map(|b| Color::Rgb(255, 0, b))
-            .chain((128..255).map(|r| Color::Rgb(r, 0, 255)))
-            .nth(hash % 254)
-            .unwrap()
-    }
-
-    /// Picks a redish/greenish color on color picker hexagon's perimeter.
-    pub fn color_red_green(hash: usize) -> Color {
-        (128..255)
-            .map(|r| Color::Rgb(r, 255, 0))
-            .chain((128..255).map(|g| Color::Rgb(255, g, 0)))
-            .nth(hash % 254)
-            .unwrap()
-    }
-
-    /// Picks a blueish/greenish color on color picker hexagon's perimeter.
-    pub fn color_blue_green(hash: usize) -> Color {
-        (128..255)
-            .map(|g| Color::Rgb(0, g, 255))
-            .chain((128..255).map(|b| Color::Rgb(0, 255, b)))
-            .nth(hash % 254)
-            .unwrap()
-    }
-
-    /// Picks a redish/blueish color on color picker hexagon's perimeter.
-    pub fn color_blue_red(hash: usize) -> Color {
-        (128..255)
-            .map(|r| Color::Rgb(r, 0, 255))
-            .chain((128..255).map(|b| Color::Rgb(255, 0, b)))
-            .nth(hash % 254)
-            .unwrap()
-    }
-
-    /// Picks a redish/greenish color on color picker hexagon's perimeter.
-    pub fn color_green_red(hash: usize) -> Color {
-        (128..255)
-            .map(|g| Color::Rgb(255, g, 0))
-            .chain((128..255).map(|r| Color::Rgb(r, 255, 0)))
-            .nth(hash % 254)
-            .unwrap()
-    }
-
-    pub fn color_custom(hash: usize) -> Color {
+    pub fn colorer(hash: usize) -> Color {
         let gradient = GRADIENT_NORMAL_FILE
             .get()
             .expect("Gradient normal file should be set");
@@ -121,6 +67,30 @@ impl ColorG {
 
     fn as_tuikit(&self) -> Color {
         Color::Rgb(self.r, self.g, self.b)
+    }
+
+    pub fn from_ansi_desc(color_name: &str) -> Option<Self> {
+        match color_name.to_lowercase().as_str() {
+            "black" => Some(Self::new((0, 0, 0))),
+            "red" => Some(Self::new((255, 0, 0))),
+            "green" => Some(Self::new((0, 255, 0))),
+            "yellow" => Some(Self::new((255, 255, 0))),
+            "blue" => Some(Self::new((0, 0, 255))),
+            "magenta" => Some(Self::new((255, 0, 255))),
+            "cyan" => Some(Self::new((0, 255, 255))),
+            "white" => Some(Self::new((255, 255, 255))),
+
+            "light_black" | "bright_black" => Some(Self::new((85, 85, 85))),
+            "light_red" | "bright_red" => Some(Self::new((255, 85, 85))),
+            "light_green" | "bright_green" => Some(Self::new((85, 255, 85))),
+            "light_yellow" | "bright_yellow" => Some(Self::new((255, 255, 85))),
+            "light_blue" | "bright_blue" => Some(Self::new((85, 85, 255))),
+            "light_magenta" | "bright_magenta" => Some(Self::new((255, 85, 255))),
+            "light_cyan" | "bright_cyan" => Some(Self::new((85, 255, 255))),
+            "light_white" | "bright_white" => Some(Self::new((255, 255, 255))),
+
+            _ => None,
+        }
     }
 }
 
