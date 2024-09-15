@@ -9,9 +9,8 @@ use crate::common::tilde;
 use crate::common::{is_program_in_path, DEFAULT_TERMINAL_FLAG};
 use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 use crate::config::Bindings;
+use crate::config::ColorG;
 use crate::io::color_to_attr;
-
-use super::ColorG;
 
 /// Holds every configurable aspect of the application.
 /// All attributes are hardcoded then updated from optional values
@@ -134,84 +133,10 @@ pub fn read_normal_file_colorer() -> (ColorG, ColorG) {
     };
     (start_color, stop_color)
 }
-/// Convert a string color into a `tuikit::Color` instance.
-fn str_to_tuikit<S>(color: S) -> Color
-where
-    S: AsRef<str>,
-{
-    match color.as_ref() {
-        "white" => Color::WHITE,
-        "red" => Color::RED,
-        "green" => Color::GREEN,
-        "blue" => Color::BLUE,
-        "yellow" => Color::YELLOW,
-        "cyan" => Color::CYAN,
-        "magenta" => Color::MAGENTA,
-        "black" => Color::BLACK,
-        "light_white" => Color::LIGHT_WHITE,
-        "light_red" => Color::LIGHT_RED,
-        "light_green" => Color::LIGHT_GREEN,
-        "light_blue" => Color::LIGHT_BLUE,
-        "light_yellow" => Color::LIGHT_YELLOW,
-        "light_cyan" => Color::LIGHT_CYAN,
-        "light_magenta" => Color::LIGHT_MAGENTA,
-        "light_black" => Color::LIGHT_BLACK,
-        color => parse_rgb_color(color),
-    }
-}
-
-/// Tries to parse an unknown color into a `Color::Rgb(u8, u8, u8)`
-/// rgb and hexadecimal formats should never fail.
-/// Other formats are unknown.
-/// rgb( 123,   78,          0) -> Color::Rgb(123, 78, 0)
-/// #FF00FF -> Color::Rgb(255, 0, 255)
-/// Unreadable colors are replaced by `Color::default()` which is white.
-fn parse_rgb_color(color: &str) -> Color {
-    if let Some(triplet) = parse_text_triplet(color) {
-        return Color::Rgb(triplet.0, triplet.1, triplet.2);
-    }
-    Color::default()
-}
-
-pub fn parse_text_triplet(color: &str) -> Option<(u8, u8, u8)> {
-    let color = color.to_lowercase();
-    if color.starts_with("rgb(") && color.ends_with(')') {
-        return parse_rgb_triplet(&color);
-    } else if color.starts_with('#') && color.len() >= 7 {
-        return parse_hex_triplet(&color);
-    }
-    None
-}
-
-fn parse_rgb_triplet(color: &str) -> Option<(u8, u8, u8)> {
-    let triplet: Vec<u8> = color
-        .replace("rgb(", "")
-        .replace([')', ' '], "")
-        .trim()
-        .split(',')
-        .filter_map(|s| s.parse().ok())
-        .collect();
-    if triplet.len() == 3 {
-        return Some((triplet[0], triplet[1], triplet[2]));
-    }
-    None
-}
-
-fn parse_hex_triplet(color: &str) -> Option<(u8, u8, u8)> {
-    let r = parse_hex_byte(&color[1..3])?;
-    let g = parse_hex_byte(&color[3..5])?;
-    let b = parse_hex_byte(&color[5..7])?;
-    Some((r, g, b))
-}
-
-fn parse_hex_byte(byte: &str) -> Option<u8> {
-    u8::from_str_radix(byte, 16).ok()
-}
-
 macro_rules! update_attr {
     ($self_attr:expr, $yaml:ident, $key:expr) => {
         if let Some(color) = read_yaml_value($yaml, $key) {
-            $self_attr = color_to_attr(str_to_tuikit(color));
+            $self_attr = color_to_attr(crate::config::str_to_tuikit(color));
         }
     };
 }
@@ -254,7 +179,7 @@ impl FileAttr {
     }
 
     /// Update every color from a yaml value (read from the config file).
-    pub fn update_from_config(&mut self, yaml: &Value) {
+    fn update_values(&mut self, yaml: &Value) {
         update_attr!(self.directory, yaml, "directory");
         update_attr!(self.block, yaml, "block");
         update_attr!(self.char, yaml, "char");
@@ -263,27 +188,28 @@ impl FileAttr {
         update_attr!(self.symlink, yaml, "symlink");
         update_attr!(self.broken, yaml, "broken");
     }
+
+    fn update_from_config(&mut self) {
+        let Ok(file) = File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string())) else {
+            return;
+        };
+        let Ok(yaml) = from_reader::<File, Value>(file) else {
+            return;
+        };
+        self.update_values(&yaml["colors"]);
+    }
+
+    pub fn from_config() -> Self {
+        let mut attrs = Self::default();
+        attrs.update_from_config();
+        attrs
+    }
 }
 
 impl Default for FileAttr {
     fn default() -> Self {
         Self::new()
     }
-}
-
-pub fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
-    let config_path = &tilde(CONFIG_PATH).to_string();
-    let config_path = std::path::Path::new(config_path);
-
-    if let Ok(file) = File::open(config_path) {
-        if let Ok(yaml) = from_reader::<File, Value>(file) {
-            let palette = yaml.get("palette")?;
-            if let Some(color) = palette.get(key)?.as_str() {
-                return parse_text_triplet(color);
-            }
-        }
-    }
-    None
 }
 
 pub struct MenuAttrs {

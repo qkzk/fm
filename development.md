@@ -1087,8 +1087,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] fileinfo attr should be moved into fileinfo itself and return an attr
   - [x] simplify palette setup
   - [x] normal file colorer use lookup tables instead of palettes
+  - [x] gradient.rs to make gradients, color.rs for parsing, writing, converting colors, configuration.rs to setup, static_once.rs for static thing
   - [ ] common parser. Would simplify a lot but I won't be able to use ANSI settings at all
-  - [ ] gradient.rs to make gradients, color.rs for parsing, writing, converting colors, configuration.rs to setup, static_once.rs for static thing
 - [ ] allow $TERM or whatever in config to use the default terminal. I should also use its correct flags.
 - [ ] Badges to latest version
 

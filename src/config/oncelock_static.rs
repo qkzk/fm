@@ -1,16 +1,12 @@
-use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use anyhow::anyhow;
 use anyhow::Result;
-use serde_yml::from_reader;
-use serde_yml::Value;
 use syntect::highlighting::Theme;
 use tuikit::attr::Color;
 
 use crate::common::tilde;
-use crate::common::CONFIG_PATH;
 use crate::config::FileAttr;
 use crate::config::MenuAttrs;
 use crate::config::NormalFileColorer;
@@ -51,14 +47,8 @@ fn set_start_folder(start_folder: &str) -> Result<()> {
 }
 
 fn set_file_attrs() -> Result<()> {
-    let mut attrs = FileAttr::default();
-    if let Ok(file) = File::open(Path::new(&tilde(CONFIG_PATH).to_string())) {
-        if let Ok(yaml) = from_reader::<File, Value>(file) {
-            attrs.update_from_config(&yaml["colors"]);
-        };
-    };
     FILE_ATTRS
-        .set(attrs)
+        .set(FileAttr::from_config())
         .map_err(|_| anyhow!("File colors shouldn't be set"))?;
     Ok(())
 }
