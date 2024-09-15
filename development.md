@@ -1056,6 +1056,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ### Version 0.1.28
 
+#### Summary
+
+- Refactored colors, configuration. Replaced lazystatic by oncelock, reducing the dependencies.
+- Removed a few dependencies.
+- Fixed the documentation.
+- Changed the way to install the application: use `cargo install fm-tui --locked` to prevent weird display bugs
+- Loaded monokai lazyly, no need to store it forever in the binary if you never preview a source file
+- Improved the source code previewing by allowing more details from syntect
+- Fixed a bug where ~ wasn't expanded from args
+
 #### Changelog
 
 - [x] use fontstyle from syntect while previewing highlighted files
