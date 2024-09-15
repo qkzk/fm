@@ -1098,6 +1098,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] simplify palette setup
   - [x] normal file colorer use lookup tables instead of palettes
   - [x] gradient.rs to make gradients, color.rs for parsing, writing, converting colors, configuration.rs to setup, static_once.rs for static thing
+- [x] Compress should use the selected file if nothing is flagged
 - [ ] Badges to latest version
 
 ## TODO

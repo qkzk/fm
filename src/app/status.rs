@@ -576,6 +576,18 @@ impl Status {
         self.reset_tabs_view()
     }
 
+    /// Returns the pathes of flagged file or the selected file if nothing is flagged
+    pub fn flagged_or_selected(&self) -> Vec<std::path::PathBuf> {
+        if self.menu.flagged.is_empty() {
+            let Ok(file) = self.current_tab().current_file() else {
+                return vec![];
+            };
+            vec![file.path.to_path_buf()]
+        } else {
+            self.menu.flagged.content().to_owned()
+        }
+    }
+
     /// Returns a vector of path of files which are both flagged and in current
     /// directory.
     /// It's necessary since the user may have flagged files OUTSIDE of current
