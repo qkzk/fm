@@ -258,11 +258,8 @@ impl Tab {
 
     /// Makes a new tree of the current path.
     pub fn make_tree(&mut self, sort_kind: Option<SortKind>) -> Result<()> {
-        let sort_kind = match sort_kind {
-            Some(sort_kind) => sort_kind,
-            None => SortKind::tree_default(),
-        };
-        self.settings.sort_kind = sort_kind.to_owned();
+        let sort_kind = sort_kind.unwrap_or_default();
+        self.settings.sort_kind = sort_kind;
         let path = self.directory.path.clone();
         let users = &self.users;
         self.tree = Tree::new(
