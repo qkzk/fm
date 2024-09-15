@@ -1100,6 +1100,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] gradient.rs to make gradients, color.rs for parsing, writing, converting colors, configuration.rs to setup, static_once.rs for static thing
 - [x] Compress should use the selected file if nothing is flagged
 - [x] Fix: opening tree mode with selection on "." doesn't display "." as selected
+- [x] refactor draw tree line
 - [ ] Badges to latest version
 
 ## TODO

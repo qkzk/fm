@@ -279,7 +279,7 @@ impl<'a> WinMain<'a> {
             attr.effect |= Effect::REVERSE;
         }
         let content = self.format_file_content(file, owner_size, group_size)?;
-        self.print_as_flagged(canvas, row, &file.path, &mut attr)?;
+        self.print_flagged_symbol(canvas, row, &file.path, &mut attr)?;
         let col = if self.status.menu.flagged.contains(&file.path) {
             2
         } else {
@@ -302,7 +302,7 @@ impl<'a> WinMain<'a> {
         }
     }
 
-    fn print_as_flagged(
+    fn print_flagged_symbol(
         &self,
         canvas: &mut dyn Canvas,
         row: usize,
@@ -332,7 +332,7 @@ impl<'a> WinMain<'a> {
         let height = canvas.height()?;
         let length = self.tab.tree.displayable().lines().len();
 
-        for (index, content_line) in self
+        for (index, line_builder) in self
             .tab
             .tree
             .displayable()
@@ -344,7 +344,7 @@ impl<'a> WinMain<'a> {
         {
             self.draw_tree_line(
                 canvas,
-                content_line,
+                line_builder,
                 TreeLinePosition {
                     left_margin,
                     top: self.tab.window.top,
@@ -357,47 +357,49 @@ impl<'a> WinMain<'a> {
         Ok(self.tab.tree.displayable().index())
     }
 
+    // TODO! refactor this method
     fn draw_tree_line(
         &self,
         canvas: &mut dyn Canvas,
-        tree_line_maker: &TreeLineBuilder,
+        line_builder: &TreeLineBuilder,
         position_param: TreeLinePosition,
-        display_medatadata: bool,
+        with_medatadata: bool,
     ) -> Result<()> {
-        let (left_margin, top, index, height) = position_param.export();
-        let row = index + ContentWindow::WINDOW_MARGIN_TOP - top;
+        let (mut col, top, index, height) = position_param.export();
+        let row = (index + ContentWindow::WINDOW_MARGIN_TOP).saturating_sub(top);
         if row > height {
             return Ok(());
         }
 
-        let s_prefix = tree_line_maker.prefix();
-        let mut attr = tree_line_maker.attr;
-        let path = tree_line_maker.path();
+        let mut attr = line_builder.attr;
+        let path = line_builder.path();
+        self.print_flagged_symbol(canvas, row, path, &mut attr)?;
 
-        self.print_as_flagged(canvas, row, path, &mut attr)?;
-
-        let col_metadata = if display_medatadata {
-            let s_metadata = tree_line_maker.metadata();
-            canvas.print_with_attr(row, left_margin, s_metadata, attr)?
-        } else {
-            0
-        };
-
-        let offset = if index == 0 { 2 } else { 1 };
-        let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, s_prefix)?;
-
-        let flagged_offset = if self.status.menu.flagged.contains(path) {
-            1
-        } else {
-            0
-        };
-        canvas.print_with_attr(
-            row,
-            left_margin + col_metadata + col_tree_prefix + offset + flagged_offset,
-            &tree_line_maker.filename(),
-            attr,
-        )?;
+        col += Self::draw_tree_metadata(canvas, with_medatadata, row, col, line_builder, attr)?;
+        col += if index == 0 { 2 } else { 1 };
+        col += canvas.print(row, col, line_builder.prefix())?;
+        col += self.tree_line_calc_flagged_offset(path);
+        canvas.print_with_attr(row, col, &line_builder.filename(), attr)?;
         Ok(())
+    }
+
+    fn draw_tree_metadata(
+        canvas: &mut dyn Canvas,
+        with_medatadata: bool,
+        row: usize,
+        col: usize,
+        line_builder: &TreeLineBuilder,
+        attr: Attr,
+    ) -> Result<usize> {
+        if with_medatadata {
+            Ok(canvas.print_with_attr(row, col, line_builder.metadata(), attr)?)
+        } else {
+            Ok(0)
+        }
+    }
+
+    fn tree_line_calc_flagged_offset(&self, path: &std::path::Path) -> usize {
+        self.status.menu.flagged.contains(path) as usize
     }
 
     fn draw_line_number(
@@ -537,7 +539,7 @@ impl<'a> WinMain<'a> {
         let content = tree_content.lines();
         let length = content.len();
 
-        for (index, content_line) in
+        for (index, tree_line_builder) in
             tree_preview
                 .tree
                 .displayable()
@@ -545,7 +547,7 @@ impl<'a> WinMain<'a> {
         {
             self.draw_tree_line(
                 canvas,
-                content_line,
+                tree_line_builder,
                 TreeLinePosition {
                     left_margin: 0,
                     top: window.top,
