@@ -10,8 +10,8 @@ use crate::common::tilde;
 use crate::config::FileAttr;
 use crate::config::MenuAttrs;
 use crate::config::NormalFileColorer;
-
-use super::{read_normal_file_colorer, Gradient};
+use crate::config::MAX_GRADIENT_NORMAL;
+use crate::config::{read_normal_file_colorer, Gradient};
 
 /// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
 pub static START_FOLDER: OnceLock<PathBuf> = OnceLock::new();
@@ -34,7 +34,7 @@ pub static MENU_ATTRS: OnceLock<MenuAttrs> = OnceLock::new();
 pub static COLORER: OnceLock<fn(usize) -> Color> = OnceLock::new();
 
 /// Gradient for normal files
-pub static ARRAY_GRADIENT: OnceLock<[Color; 254]> = OnceLock::new();
+pub static ARRAY_GRADIENT: OnceLock<[Color; MAX_GRADIENT_NORMAL]> = OnceLock::new();
 
 /// Highlighting theme color used to preview code file
 pub static MONOKAI_THEME: OnceLock<Theme> = OnceLock::new();
@@ -63,7 +63,7 @@ fn set_menu_attrs() -> Result<()> {
 fn set_normal_file_colorer() -> Result<()> {
     let (start_color, stop_color) = read_normal_file_colorer();
     ARRAY_GRADIENT
-        .set(Gradient::new(start_color, stop_color, 254).into_array()?)
+        .set(Gradient::new(start_color, stop_color, MAX_GRADIENT_NORMAL).as_array()?)
         .map_err(|_| anyhow!("Gradient shouldn't be set"))?;
     COLORER
         .set(NormalFileColorer::colorer as fn(usize) -> Color)

@@ -112,7 +112,7 @@ pub fn load_config(path: &str) -> Result<Config> {
 ///
 /// If we can't read those values, we'll return green and blue.
 pub fn read_normal_file_colorer() -> (ColorG, ColorG) {
-    let default_pair = (ColorG::new((0, 255, 0)), ColorG::new((0, 0, 255)));
+    let default_pair = (ColorG::new(0, 255, 0), ColorG::new(0, 0, 255));
     let Ok(file) = File::open(tilde(CONFIG_PATH).as_ref()) else {
         return default_pair;
     };

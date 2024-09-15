@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use tuikit::attr::Color;
 
 use crate::config::ColorG;
+use crate::config::MAX_GRADIENT_NORMAL;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Gradient {
@@ -36,10 +37,11 @@ impl Gradient {
         }
     }
 
-    pub fn into_array(&self) -> Result<[Color; 254]> {
-        let v: Vec<Color> = self.gradient().collect();
-        let a = v.try_into().map_err(|e| anyhow!("Couldn't dump {e:?}"))?;
-        Ok(a)
+    pub fn as_array(&self) -> Result<[Color; MAX_GRADIENT_NORMAL]> {
+        self.gradient()
+            .collect::<Vec<Color>>()
+            .try_into()
+            .map_err(|_| anyhow!("Couldn't create an array for gradient"))
     }
 
     pub fn gradient(&self) -> impl Iterator<Item = Color> + '_ {

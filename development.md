@@ -1082,14 +1082,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] replace serde_yaml (deprecated) by serde_yml (actively maintened)
     - [x] use serde_yml to write google cloud config files. Share the same struct between files.
 - [x] remove is_selected from fileinfo
-- [ ] Refactor all the Color/ColorG configuration
+- [x] Refactor all the Color/ColorG configuration
   - [x] MenuColors should hold attr since it's what's used everywhere
   - [x] fileinfo attr should be moved into fileinfo itself and return an attr
   - [x] simplify palette setup
   - [x] normal file colorer use lookup tables instead of palettes
   - [x] gradient.rs to make gradients, color.rs for parsing, writing, converting colors, configuration.rs to setup, static_once.rs for static thing
-  - [ ] common parser. Would simplify a lot but I won't be able to use ANSI settings at all
-- [ ] allow $TERM or whatever in config to use the default terminal. I should also use its correct flags.
 - [ ] Badges to latest version
 
 ## TODO

@@ -3,7 +3,10 @@ use tuikit::attr::Color;
 use crate::config::ARRAY_GRADIENT;
 use crate::config::COLORER;
 
-/// No attr but a few static methods.
+pub const MAX_GRADIENT_NORMAL: usize = 254;
+
+/// No attr but a method to color give a color for any extension.
+/// Extension should be hashed to an usize first.
 pub struct NormalFileColorer {}
 
 impl NormalFileColorer {
@@ -11,7 +14,7 @@ impl NormalFileColorer {
         let gradient = ARRAY_GRADIENT
             .get()
             .expect("Gradient normal file should be set");
-        gradient[hash % 254]
+        gradient[hash % MAX_GRADIENT_NORMAL]
     }
 }
 
@@ -20,9 +23,9 @@ fn sum_hash(string: &str) -> usize {
         .as_bytes()
         .iter()
         .map(|s| *s as usize)
-        .reduce(|acc, elt| acc.saturating_mul(254).saturating_add(elt))
+        .reduce(|acc, elt| acc.saturating_mul(MAX_GRADIENT_NORMAL).saturating_add(elt))
         .unwrap_or_default();
-    hash & 254
+    hash & MAX_GRADIENT_NORMAL
 }
 
 /// Returns a color based on the extension.
@@ -49,12 +52,8 @@ impl Default for ColorG {
 }
 
 impl ColorG {
-    pub fn new(triplet: (u8, u8, u8)) -> Self {
-        Self {
-            r: triplet.0,
-            g: triplet.1,
-            b: triplet.2,
-        }
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { r, g, b }
     }
     /// Parse a tuikit color into it's rgb values.
     /// Non parsable colors returns None.
@@ -69,27 +68,28 @@ impl ColorG {
         Color::Rgb(self.r, self.g, self.b)
     }
 
+    #[rustfmt::skip]
     fn from_ansi_desc(color_name: &str) -> Option<Self> {
         match color_name.to_lowercase().as_str() {
-            "black" => Some(Self::new((0, 0, 0))),
-            "red" => Some(Self::new((255, 0, 0))),
-            "green" => Some(Self::new((0, 255, 0))),
-            "yellow" => Some(Self::new((255, 255, 0))),
-            "blue" => Some(Self::new((0, 0, 255))),
-            "magenta" => Some(Self::new((255, 0, 255))),
-            "cyan" => Some(Self::new((0, 255, 255))),
-            "white" => Some(Self::new((255, 255, 255))),
+            "black"         => Some(Self::new(0,     0,   0)),
+            "red"           => Some(Self::new(255,   0,   0)),
+            "green"         => Some(Self::new(0,   255,   0)),
+            "yellow"        => Some(Self::new(255, 255,   0)),
+            "blue"          => Some(Self::new(0,     0, 255)),
+            "magenta"       => Some(Self::new(255,   0, 255)),
+            "cyan"          => Some(Self::new(0,   255, 255)),
+            "white"         => Some(Self::new(255, 255, 255)),
 
-            "light_black" | "bright_black" => Some(Self::new((85, 85, 85))),
-            "light_red" | "bright_red" => Some(Self::new((255, 85, 85))),
-            "light_green" | "bright_green" => Some(Self::new((85, 255, 85))),
-            "light_yellow" | "bright_yellow" => Some(Self::new((255, 255, 85))),
-            "light_blue" | "bright_blue" => Some(Self::new((85, 85, 255))),
-            "light_magenta" | "bright_magenta" => Some(Self::new((255, 85, 255))),
-            "light_cyan" | "bright_cyan" => Some(Self::new((85, 255, 255))),
-            "light_white" | "bright_white" => Some(Self::new((255, 255, 255))),
+            "light_black"   => Some(Self::new(85,   85,  85)),
+            "light_red"     => Some(Self::new(255,  85,  85)),
+            "light_green"   => Some(Self::new(85,  255,  85)),
+            "light_yellow"  => Some(Self::new(255, 255,  85)),
+            "light_blue"    => Some(Self::new(85,   85, 255)),
+            "light_magenta" => Some(Self::new(255,  85, 255)),
+            "light_cyan"    => Some(Self::new(85,  255, 255)),
+            "light_white"   => Some(Self::new(255, 255, 255)),
 
-            _ => None,
+            _               => None,
         }
     }
 
@@ -99,54 +99,54 @@ impl ColorG {
     /// Only the default values are used. If the user changed "red" to be #ffff00 (which is yellow...)
     /// in its terminal setup, we can't know. So, what the user will get on screen is red: #ff0000.
     pub fn parse_any_color(text: &str) -> Option<Self> {
-        if let Some(triplet) = parse_text_triplet(text) {
-            Some(Self::new(triplet))
-        } else {
-            Self::from_ansi_desc(text)
+        match parse_text_triplet(text) {
+            Some((r, g, b)) => Some(Self::new(r, g, b)),
+            None => Self::from_ansi_desc(text),
         }
     }
 }
 
-/// Convert a string color into a `tuikit::Color` instance.
+/// Tries to parse a string color into a [`tuikit::attr::Color`].
+/// Ansi colors are converted to their corresponding version in tuikit.
+/// rgb and hexadecimal formats are parsed also.
+/// rgb( 123,   78,          0)     -> Color::Rgb(123, 78, 0)
+/// #FF00FF                         -> Color::Rgb(255, 0, 255)
+/// Other formats are unknown.
+/// Unreadable colors are replaced by `Color::default()` which is white.
+#[rustfmt::skip]
 pub fn str_to_tuikit<S>(color: S) -> Color
 where
     S: AsRef<str>,
 {
     match color.as_ref() {
-        "white" => Color::WHITE,
-        "red" => Color::RED,
-        "green" => Color::GREEN,
-        "blue" => Color::BLUE,
-        "yellow" => Color::YELLOW,
-        "cyan" => Color::CYAN,
-        "magenta" => Color::MAGENTA,
-        "black" => Color::BLACK,
-        "light_white" => Color::LIGHT_WHITE,
-        "light_red" => Color::LIGHT_RED,
-        "light_green" => Color::LIGHT_GREEN,
-        "light_blue" => Color::LIGHT_BLUE,
-        "light_yellow" => Color::LIGHT_YELLOW,
-        "light_cyan" => Color::LIGHT_CYAN,
+        "white"         => Color::WHITE,
+        "red"           => Color::RED,
+        "green"         => Color::GREEN,
+        "blue"          => Color::BLUE,
+        "yellow"        => Color::YELLOW,
+        "cyan"          => Color::CYAN,
+        "magenta"       => Color::MAGENTA,
+        "black"         => Color::BLACK,
+        "light_white"   => Color::LIGHT_WHITE,
+        "light_red"     => Color::LIGHT_RED,
+        "light_green"   => Color::LIGHT_GREEN,
+        "light_blue"    => Color::LIGHT_BLUE,
+        "light_yellow"  => Color::LIGHT_YELLOW,
+        "light_cyan"    => Color::LIGHT_CYAN,
         "light_magenta" => Color::LIGHT_MAGENTA,
-        "light_black" => Color::LIGHT_BLACK,
-        color => parse_rgb_color(color),
+        "light_black"   => Color::LIGHT_BLACK,
+        color     => parse_text_triplet_unfaillible(color),
     }
 }
 
-/// Tries to parse an unknown color into a `Color::Rgb(u8, u8, u8)`
-/// rgb and hexadecimal formats should never fail.
-/// Other formats are unknown.
-/// rgb( 123,   78,          0) -> Color::Rgb(123, 78, 0)
-/// #FF00FF -> Color::Rgb(255, 0, 255)
-/// Unreadable colors are replaced by `Color::default()` which is white.
-fn parse_rgb_color(color: &str) -> Color {
-    if let Some(triplet) = parse_text_triplet(color) {
-        return Color::Rgb(triplet.0, triplet.1, triplet.2);
+fn parse_text_triplet_unfaillible(color: &str) -> Color {
+    match parse_text_triplet(color) {
+        Some((r, g, b)) => Color::Rgb(r, g, b),
+        None => Color::default(),
     }
-    Color::default()
 }
 
-pub fn parse_text_triplet(color: &str) -> Option<(u8, u8, u8)> {
+fn parse_text_triplet(color: &str) -> Option<(u8, u8, u8)> {
     let color = color.to_lowercase();
     if color.starts_with("rgb(") && color.ends_with(')') {
         return parse_rgb_triplet(&color);
