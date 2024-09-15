@@ -10,7 +10,8 @@ pub use configurable_static::{
     START_FOLDER,
 };
 pub use configuration::{
-    load_color_from_config, load_config, parse_text_triplet, Config, FileAttr, MenuAttrs,
+    load_color_from_config, load_config, parse_text_triplet, read_normal_file_colorer, Config,
+    FileAttr, MenuAttrs,
 };
 pub use gradient::{extension_color, ColorG, Gradient, NormalFileColorer};
 pub use keybindings::Bindings;

@@ -1,17 +1,19 @@
+use anyhow::{anyhow, Result};
 use tuikit::attr::Color;
 
+use crate::config::configurable_static::ARRAY_GRADIENT;
+use crate::config::parse_text_triplet;
 use crate::config::COLORER;
-use crate::config::GRADIENT_NORMAL_FILE;
 
 /// No attr but a few static methods.
 pub struct NormalFileColorer {}
 
 impl NormalFileColorer {
     pub fn colorer(hash: usize) -> Color {
-        let gradient = GRADIENT_NORMAL_FILE
+        let gradient = ARRAY_GRADIENT
             .get()
             .expect("Gradient normal file should be set");
-        gradient.step(hash % 254).as_tuikit()
+        gradient[hash % 254]
     }
 }
 
@@ -69,7 +71,7 @@ impl ColorG {
         Color::Rgb(self.r, self.g, self.b)
     }
 
-    pub fn from_ansi_desc(color_name: &str) -> Option<Self> {
+    fn from_ansi_desc(color_name: &str) -> Option<Self> {
         match color_name.to_lowercase().as_str() {
             "black" => Some(Self::new((0, 0, 0))),
             "red" => Some(Self::new((255, 0, 0))),
@@ -90,6 +92,19 @@ impl ColorG {
             "light_white" | "bright_white" => Some(Self::new((255, 255, 255))),
 
             _ => None,
+        }
+    }
+
+    /// Parse a color in any kind of format: ANSI text (red etc.), rgb or hex.
+    /// The parser for ANSI text colors recognize all common name whatever the capitalization.
+    /// It doesn't try to parse rgb or hex values
+    /// Only the default values are used. If the user changed "red" to be #ffff00 (which is yellow...)
+    /// in its terminal setup, we can't know. So, what the user will get on screen is red: #ff0000.
+    pub fn parse_any_color(text: &str) -> Option<Self> {
+        if let Some(triplet) = parse_text_triplet(text) {
+            Some(Self::new(triplet))
+        } else {
+            Self::from_ansi_desc(text)
         }
     }
 }
@@ -125,6 +140,12 @@ impl Gradient {
             g: g.round() as u8,
             b: b.round() as u8,
         }
+    }
+
+    pub fn into_array(&self) -> Result<[Color; 254]> {
+        let v: Vec<Color> = self.gradient().collect();
+        let a = v.try_into().map_err(|e| anyhow!("Couldn't dump {e:?}"))?;
+        Ok(a)
     }
 
     pub fn gradient(&self) -> impl Iterator<Item = Color> + '_ {

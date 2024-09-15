@@ -11,6 +11,8 @@ use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 use crate::config::Bindings;
 use crate::io::color_to_attr;
 
+use super::ColorG;
+
 /// Holds every configurable aspect of the application.
 /// All attributes are hardcoded then updated from optional values
 /// of the config file.
@@ -98,6 +100,40 @@ pub fn load_config(path: &str) -> Result<Config> {
     Ok(config)
 }
 
+/// Reads the config file and parse the "palette" values.
+/// The palette format looks like this (with different accepted format)
+/// ```yaml
+/// palette:
+///   start: yellow, #ffff00, rgb(255, 255, 0)
+///   stop:  #ff00ff
+/// ```
+/// Recognized formats are : ansi names (yellow, light_red etc.), rgb like rgb(255, 55, 132) and hexadecimal like #ff3388.
+/// The ANSI names are recognized but we can't get the user settings for all kinds of terminal
+/// so we'll have to use default values.
+///
+/// If we can't read those values, we'll return green and blue.
+pub fn read_normal_file_colorer() -> (ColorG, ColorG) {
+    let default_pair = (ColorG::new((0, 255, 0)), ColorG::new((0, 0, 255)));
+    let Ok(file) = File::open(tilde(CONFIG_PATH).as_ref()) else {
+        return default_pair;
+    };
+    let Ok(yaml) = from_reader::<File, Value>(file) else {
+        return default_pair;
+    };
+    let Some(start) = yaml["palette"]["start"].as_str() else {
+        return default_pair;
+    };
+    let Some(stop) = yaml["palette"]["stop"].as_str() else {
+        return default_pair;
+    };
+    let Some(start_color) = ColorG::parse_any_color(start) else {
+        return default_pair;
+    };
+    let Some(stop_color) = ColorG::parse_any_color(stop) else {
+        return default_pair;
+    };
+    (start_color, stop_color)
+}
 /// Convert a string color into a `tuikit::Color` instance.
 fn str_to_tuikit<S>(color: S) -> Color
 where
