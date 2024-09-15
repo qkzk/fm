@@ -781,7 +781,11 @@ pub struct TreeLineBuilder {
 impl TreeLineBuilder {
     /// Uses references to fileinfo, prefix, node & path to create an instance.
     fn new(fileinfo: &FileInfo, prefix: &str, node: &Node, path: &Path) -> Self {
-        let attr = fileinfo.attr();
+        let mut attr = fileinfo.attr();
+        // required for some edge cases when opening the tree while "." is the selected file
+        if node.selected() {
+            attr.effect |= tuikit::attr::Effect::REVERSE;
+        }
         let prefix = Arc::from(prefix);
         let path = Arc::from(path);
         let metadata = fileinfo
