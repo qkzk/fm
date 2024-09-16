@@ -1052,8 +1052,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [x] FIX: too much thing on menu and last line
 
-## Current dev
-
 ### Version 0.1.28
 
 #### Summary
@@ -1103,6 +1101,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] refactor draw tree line
 - [x] Fix: Crash when quiting. "sending on a closed channel". From quit -> refresher::quit
 - [ ] Badges to latest version
+
+## Current dev
+
+### Version 0.1.29
+
+#### Summary
+
+#### Changelog
+
+- [ ] status, tab, event exec refactor. What should go where ? status is too big and should be splitted
 
 ## TODO
 
