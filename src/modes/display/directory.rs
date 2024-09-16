@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::collections::BTreeSet;
 use std::fs::read_dir;
 use std::iter::Enumerate;
 use std::path::Path;
@@ -9,10 +10,7 @@ use anyhow::{Context, Result};
 use crate::app::TabSettings;
 use crate::common::{filename_from_path, path_to_string};
 use crate::io::git;
-use crate::modes::FilterKind;
-use crate::modes::SortKind;
-use crate::modes::Users;
-use crate::modes::{is_not_hidden, FileInfo, FileKind};
+use crate::modes::{is_not_hidden, FileInfo, FileKind, FilterKind, SortKind, Users};
 use crate::{impl_content, impl_selectable, log_info};
 
 /// Holds the information about file in the current directory.
@@ -81,13 +79,11 @@ impl Directory {
 
     fn create_dot_dotdot(path: &Path, users: &Users) -> Result<Vec<FileInfo>> {
         let current = FileInfo::from_path_with_name(path, ".", users)?;
-        match path.parent() {
-            Some(parent) => {
-                let parent = FileInfo::from_path_with_name(parent, "..", users)?;
-                Ok(vec![current, parent])
-            }
-            None => Ok(vec![current]),
-        }
+        let Some(parent) = path.parent() else {
+            return Ok(vec![current]);
+        };
+        let parent = FileInfo::from_path_with_name(parent, "..", users)?;
+        Ok(vec![current, parent])
     }
 
     /// Convert a path to a &str.
@@ -103,14 +99,14 @@ impl Directory {
 
     /// Calculates the size of the owner column.
     pub fn owner_column_width(&self) -> usize {
-        let owner_size_btreeset: std::collections::BTreeSet<usize> =
+        let owner_size_btreeset: BTreeSet<usize> =
             self.iter().map(|file| file.owner.len()).collect();
         *owner_size_btreeset.iter().next_back().unwrap_or(&1)
     }
 
     /// Calculates the size of the group column.
     pub fn group_column_width(&self) -> usize {
-        let group_size_btreeset: std::collections::BTreeSet<usize> =
+        let group_size_btreeset: BTreeSet<usize> =
             self.iter().map(|file| file.group.len()).collect();
         *group_size_btreeset.iter().next_back().unwrap_or(&1)
     }
