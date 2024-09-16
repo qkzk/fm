@@ -1101,6 +1101,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Compress should use the selected file if nothing is flagged
 - [x] Fix: opening tree mode with selection on "." doesn't display "." as selected
 - [x] refactor draw tree line
+- [x] Fix: Crash when quiting. "sending on a closed channel". From quit -> refresher::quit
 - [ ] Badges to latest version
 
 ## TODO

@@ -183,8 +183,8 @@ impl FM {
         clear_tmp_file();
         drop(self.event_reader);
         drop(self.event_dispatcher);
-        self.displayer.quit()?;
-        self.refresher.quit()?;
+        self.displayer.quit();
+        self.refresher.quit();
 
         let status = self
             .status
