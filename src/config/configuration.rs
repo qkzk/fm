@@ -1,14 +1,15 @@
 use std::{fs::File, path};
 
 use anyhow::Result;
-use clap::Parser;
-use serde_yaml;
-use tuikit::attr::{Attr, Color};
+use serde_yml::{from_reader, Value};
+use tuikit::attr::Attr;
+use tuikit::attr::Color;
 
+use crate::common::tilde;
 use crate::common::{is_program_in_path, DEFAULT_TERMINAL_FLAG};
 use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 use crate::config::Bindings;
-use crate::config::Colorer;
+use crate::config::ColorG;
 use crate::io::color_to_attr;
 
 /// Holds every configurable aspect of the application.
@@ -24,6 +25,7 @@ pub struct Config {
     /// Configurable keybindings.
     pub binds: Bindings,
 }
+
 impl Default for Config {
     /// Returns a default config with hardcoded values.
     fn default() -> Self {
@@ -37,7 +39,7 @@ impl Default for Config {
 
 impl Config {
     /// Updates the config from  a configuration content.
-    fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) -> Result<()> {
+    fn update_from_config(&mut self, yaml: &Value) -> Result<()> {
         self.binds.update_normal(&yaml["keys"]);
         self.binds.update_custom(&yaml["custom"]);
         self.update_terminal(&yaml["terminal"]);
@@ -48,7 +50,7 @@ impl Config {
     /// First we try to use the current terminal. If it's a fake one (ie. inside neovim float term),
     /// we look for the configured one,
     /// else nothing is done.
-    fn update_terminal(&mut self, yaml: &serde_yaml::value::Value) {
+    fn update_terminal(&mut self, yaml: &Value) {
         let terminal_currently_used = std::env::var("TERM").unwrap_or_default();
         if !terminal_currently_used.is_empty() && is_program_in_path(&terminal_currently_used) {
             self.terminal = terminal_currently_used
@@ -57,7 +59,7 @@ impl Config {
         }
     }
 
-    fn update_terminal_flag(&mut self, terminal_flag: &serde_yaml::value::Value) {
+    fn update_terminal_flag(&mut self, terminal_flag: &Value) {
         let terminal = self.terminal();
         if let Some(terminal_flag) = read_yaml_value(terminal_flag, terminal) {
             self.terminal_flag = terminal_flag.as_str().to_owned();
@@ -89,262 +91,166 @@ impl Config {
 /// If the config file is poorly formated its simply ignored.
 pub fn load_config(path: &str) -> Result<Config> {
     let mut config = Config::default();
-    let file = File::open(path::Path::new(&shellexpand::tilde(path).to_string()))?;
-    let Ok(yaml) = serde_yaml::from_reader(file) else {
+    let file = File::open(path::Path::new(&tilde(path).to_string()))?;
+    let Ok(yaml) = from_reader(file) else {
         return Ok(config);
     };
     let _ = config.update_from_config(&yaml);
     Ok(config)
 }
 
-/// Convert a string color into a `tuikit::Color` instance.
-pub fn str_to_tuikit<S>(color: S) -> Color
-where
-    S: AsRef<str>,
-{
-    match color.as_ref() {
-        "white" => Color::WHITE,
-        "red" => Color::RED,
-        "green" => Color::GREEN,
-        "blue" => Color::BLUE,
-        "yellow" => Color::YELLOW,
-        "cyan" => Color::CYAN,
-        "magenta" => Color::MAGENTA,
-        "black" => Color::BLACK,
-        "light_white" => Color::LIGHT_WHITE,
-        "light_red" => Color::LIGHT_RED,
-        "light_green" => Color::LIGHT_GREEN,
-        "light_blue" => Color::LIGHT_BLUE,
-        "light_yellow" => Color::LIGHT_YELLOW,
-        "light_cyan" => Color::LIGHT_CYAN,
-        "light_magenta" => Color::LIGHT_MAGENTA,
-        "light_black" => Color::LIGHT_BLACK,
-        color => parse_rgb_color(color),
-    }
+/// Reads the config file and parse the "palette" values.
+/// The palette format looks like this (with different accepted format)
+/// ```yaml
+/// palette:
+///   start: yellow, #ffff00, rgb(255, 255, 0)
+///   stop:  #ff00ff
+/// ```
+/// Recognized formats are : ansi names (yellow, light_red etc.), rgb like rgb(255, 55, 132) and hexadecimal like #ff3388.
+/// The ANSI names are recognized but we can't get the user settings for all kinds of terminal
+/// so we'll have to use default values.
+///
+/// If we can't read those values, we'll return green and blue.
+pub fn read_normal_file_colorer() -> (ColorG, ColorG) {
+    let default_pair = (ColorG::new(0, 255, 0), ColorG::new(0, 0, 255));
+    let Ok(file) = File::open(tilde(CONFIG_PATH).as_ref()) else {
+        return default_pair;
+    };
+    let Ok(yaml) = from_reader::<File, Value>(file) else {
+        return default_pair;
+    };
+    let Some(start) = yaml["palette"]["start"].as_str() else {
+        return default_pair;
+    };
+    let Some(stop) = yaml["palette"]["stop"].as_str() else {
+        return default_pair;
+    };
+    let Some(start_color) = ColorG::parse_any_color(start) else {
+        return default_pair;
+    };
+    let Some(stop_color) = ColorG::parse_any_color(stop) else {
+        return default_pair;
+    };
+    (start_color, stop_color)
 }
-
-/// Tries to parse an unknown color into a `Color::Rgb(u8, u8, u8)`
-/// rgb format should never fail.
-/// Other formats are unknown.
-/// rgb( 123,   78,          0) -> Color::Rgb(123, 78, 0)
-/// #FF00FF -> Color::default()
-/// Unreadable colors are replaced by `Color::default()` which is white.
-fn parse_rgb_color(color: &str) -> Color {
-    if let Some(triplet) = parse_rgb_triplet(color) {
-        return Color::Rgb(triplet.0, triplet.1, triplet.2);
-    }
-    Color::default()
-}
-
-fn parse_rgb_triplet(color: &str) -> Option<(u8, u8, u8)> {
-    let color = color.to_lowercase();
-    if color.starts_with("rgb(") && color.ends_with(')') {
-        let triplet: Vec<u8> = color
-            .replace("rgb(", "")
-            .replace([')', ' '], "")
-            .trim()
-            .split(',')
-            .filter_map(|s| s.parse().ok())
-            .collect();
-        if triplet.len() == 3 {
-            return Some((triplet[0], triplet[1], triplet[2]));
-        }
-    } else if color.starts_with('#') && color.len() >= 7 {
-        let r = parse_hex_byte(&color[1..3])?;
-        let g = parse_hex_byte(&color[3..5])?;
-        let b = parse_hex_byte(&color[5..7])?;
-        return Some((r, g, b));
-    }
-    None
-}
-
-fn parse_hex_byte(byte: &str) -> Option<u8> {
-    u8::from_str_radix(byte, 16).ok()
-}
-
-macro_rules! update_attribute {
+macro_rules! update_attr {
     ($self_attr:expr, $yaml:ident, $key:expr) => {
-        if let Some(attr) = read_yaml_value($yaml, $key) {
-            $self_attr = str_to_tuikit(attr);
+        if let Some(color) = read_yaml_value($yaml, $key) {
+            $self_attr = color_to_attr(crate::config::str_to_tuikit(color));
         }
     };
 }
 
-fn read_yaml_value(yaml: &serde_yaml::value::Value, key: &str) -> Option<String> {
+fn read_yaml_value(yaml: &Value, key: &str) -> Option<String> {
     yaml[key].as_str().map(|s| s.to_string())
 }
 
 /// Holds configurable colors for every kind of file.
 /// "Normal" files are displayed with a different color by extension.
 #[derive(Debug, Clone)]
-pub struct Colors {
+pub struct FileAttr {
     /// Color for `directory` files.
-    pub directory: Color,
-    /// Color for `block` files.
-    pub block: Color,
-    /// Color for `char` files.
-    pub char: Color,
-    /// Color for `fifo` files.
-    pub fifo: Color,
-    /// Color for `socket` files.
-    pub socket: Color,
-    /// Color for `symlink` files.
-    pub symlink: Color,
-    /// Color for broken `symlink` files.
-    pub broken: Color,
+    pub directory: Attr,
+    /// Attr for `block` files.
+    pub block: Attr,
+    /// Attr for `char` files.
+    pub char: Attr,
+    /// Attr for `fifo` files.
+    pub fifo: Attr,
+    /// Attr for `socket` files.
+    pub socket: Attr,
+    /// Attr for `symlink` files.
+    pub symlink: Attr,
+    /// Attr for broken `symlink` files.
+    pub broken: Attr,
 }
 
-impl Colors {
+impl FileAttr {
     fn new() -> Self {
         Self {
-            directory: Color::RED,
-            block: Color::YELLOW,
-            char: Color::GREEN,
-            fifo: Color::BLUE,
-            socket: Color::CYAN,
-            symlink: Color::MAGENTA,
-            broken: Color::WHITE,
+            directory: color_to_attr(Color::RED),
+            block: color_to_attr(Color::YELLOW),
+            char: color_to_attr(Color::GREEN),
+            fifo: color_to_attr(Color::BLUE),
+            socket: color_to_attr(Color::CYAN),
+            symlink: color_to_attr(Color::MAGENTA),
+            broken: color_to_attr(Color::WHITE),
         }
     }
 
     /// Update every color from a yaml value (read from the config file).
-    pub fn update_from_config(&mut self, yaml: &serde_yaml::value::Value) {
-        update_attribute!(self.directory, yaml, "directory");
-        update_attribute!(self.block, yaml, "block");
-        update_attribute!(self.char, yaml, "char");
-        update_attribute!(self.fifo, yaml, "fifo");
-        update_attribute!(self.socket, yaml, "socket");
-        update_attribute!(self.symlink, yaml, "symlink");
-        update_attribute!(self.broken, yaml, "broken");
+    fn update_values(&mut self, yaml: &Value) {
+        update_attr!(self.directory, yaml, "directory");
+        update_attr!(self.block, yaml, "block");
+        update_attr!(self.char, yaml, "char");
+        update_attr!(self.fifo, yaml, "fifo");
+        update_attr!(self.socket, yaml, "socket");
+        update_attr!(self.symlink, yaml, "symlink");
+        update_attr!(self.broken, yaml, "broken");
+    }
+
+    fn update_from_config(&mut self) {
+        let Ok(file) = File::open(std::path::Path::new(&tilde(CONFIG_PATH).to_string())) else {
+            return;
+        };
+        let Ok(yaml) = from_reader::<File, Value>(file) else {
+            return;
+        };
+        self.update_values(&yaml["colors"]);
+    }
+
+    pub fn from_config() -> Self {
+        let mut attrs = Self::default();
+        attrs.update_from_config();
+        attrs
     }
 }
 
-impl Default for Colors {
+impl Default for FileAttr {
     fn default() -> Self {
         Self::new()
     }
 }
 
-lazy_static::lazy_static! {
-    /// Colors read from the config file.
-    /// We define a colors for every kind of file except normal files.
-    /// Colors for normal files are calculated from their extension and
-    /// are greens or blues.
-    ///
-    /// Colors are setup on start and never change afterwards.
-    /// Since many functions use colors for formating, using `lazy_static`
-    /// avoids to pass them everytime.
-    pub static ref COLORS: Colors = {
-        let mut colors = Colors::default();
-        if let Ok(file) = File::open(path::Path::new(&shellexpand::tilde(CONFIG_PATH).to_string())) {
-            if let Ok(yaml)  = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file) {
-                colors.update_from_config(&yaml["colors"]);
-            };
-        };
-        colors
-    };
+pub struct MenuAttrs {
+    pub first: Attr,
+    pub second: Attr,
+    pub selected_border: Attr,
+    pub inert_border: Attr,
+    pub palette_1: Attr,
+    pub palette_2: Attr,
+    pub palette_3: Attr,
+    pub palette_4: Attr,
 }
 
-lazy_static::lazy_static! {
-    /// Defines a palette which will color the "normal" files based on their extension.
-    /// We try to read a yaml value and pick one of 3 palettes :
-    /// "green-red", "blue-green", "blue-red", "red-green", "red-blue", "green-blue" which is the default.
-    /// "custom" will create a gradient from start_palette to end_palette. Both values should be "rgb(u8, u8, u8)".
-    pub static ref COLORER: fn(usize) -> Color = {
-        let colorer = Colorer::color_green_blue as fn(usize) -> Color;
-        let Ok(file) = std::fs::File::open(std::path::Path::new(&shellexpand::tilde(CONFIG_PATH).to_string())) else {
-            return colorer;
-        };
-        let Ok(yaml)  = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file) else {
-            return colorer;
-        };
-        let Some(start) = yaml["palette"]["start"].as_str() else {
-            return colorer;
-        };
-        let Some(stop) = yaml["palette"]["stop"].as_str() else {
-            return colorer;
-        };
-        match (start.to_owned() + "-" + stop).as_ref() {
-            "green-blue" => {Colorer::color_green_blue as fn(usize) -> Color},
-            "red-blue" => {Colorer::color_red_blue as fn(usize) -> Color},
-            "red-green" => {Colorer::color_red_green as fn(usize) -> Color},
-            "blue-green" => {Colorer::color_blue_green as fn(usize) -> Color},
-            "blue-red" => {Colorer::color_blue_red as fn(usize) -> Color},
-            "green-red" => {Colorer::color_green_red as fn(usize) -> Color},
-            _ => {Colorer::color_custom as fn(usize) -> Color}
-        }
-    };
-}
-
-fn load_color_from_config(key: &str) -> Option<(u8, u8, u8)> {
-    let config_path = &shellexpand::tilde(CONFIG_PATH).to_string();
-    let config_path = std::path::Path::new(config_path);
-
-    if let Ok(file) = File::open(config_path) {
-        if let Ok(yaml) = serde_yaml::from_reader::<File, serde_yaml::Value>(file) {
-            let palette = yaml.get("palette")?;
-            if let Some(color) = palette.get(key)?.as_str() {
-                return parse_rgb_triplet(color);
-            }
-        }
-    }
-    None
-}
-
-lazy_static::lazy_static! {
-  pub static ref START_COLOR: (u8, u8, u8) = load_color_from_config("start").unwrap_or((40, 40, 40));
-  pub static ref STOP_COLOR: (u8, u8, u8) = load_color_from_config("stop").unwrap_or((180, 180, 180));
-}
-
-lazy_static::lazy_static! {
-    /// Starting folder of the application. Read from arguments `-P` or `.`.
-    pub static ref START_FOLDER: std::path::PathBuf =
-        std::fs::canonicalize(crate::io::Args::parse().path).unwrap_or_default();
-}
-
-pub struct MenuColors {
-    pub first: Color,
-    pub second: Color,
-    pub selected_border: Color,
-    pub inert_border: Color,
-    pub palette_1: Color,
-    pub palette_2: Color,
-    pub palette_3: Color,
-    pub palette_4: Color,
-}
-
-impl Default for MenuColors {
+impl Default for MenuAttrs {
     fn default() -> Self {
         Self {
-            first: Color::Rgb(45, 250, 209),
-            second: Color::Rgb(230, 189, 87),
-            selected_border: Color::Rgb(45, 250, 209),
-            inert_border: Color::Rgb(248, 248, 248),
-            palette_1: Color::Rgb(45, 250, 209),
-            palette_2: Color::Rgb(230, 189, 87),
-            palette_3: Color::Rgb(230, 167, 255),
-            palette_4: Color::Rgb(59, 204, 255),
+            first: color_to_attr(Color::Rgb(45, 250, 209)),
+            second: color_to_attr(Color::Rgb(230, 189, 87)),
+            selected_border: color_to_attr(Color::Rgb(45, 250, 209)),
+            inert_border: color_to_attr(Color::Rgb(248, 248, 248)),
+            palette_1: color_to_attr(Color::Rgb(45, 250, 209)),
+            palette_2: color_to_attr(Color::Rgb(230, 189, 87)),
+            palette_3: color_to_attr(Color::Rgb(230, 167, 255)),
+            palette_4: color_to_attr(Color::Rgb(59, 204, 255)),
         }
     }
 }
 
-impl MenuColors {
+impl MenuAttrs {
     pub fn update(mut self) -> Self {
-        if let Ok(file) = File::open(path::Path::new(
-            &shellexpand::tilde(CONFIG_PATH).to_string(),
-        )) {
-            if let Ok(yaml) =
-                serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file)
-            {
+        if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
+            if let Ok(yaml) = from_reader::<File, Value>(file) {
                 let menu_colors = &yaml["menu_colors"];
-                update_attribute!(self.first, menu_colors, "first");
-                update_attribute!(self.second, menu_colors, "second");
-                update_attribute!(self.selected_border, menu_colors, "selected_border");
-                update_attribute!(self.inert_border, menu_colors, "inert_border");
-                update_attribute!(self.palette_1, menu_colors, "palette_1");
-                update_attribute!(self.palette_2, menu_colors, "palette_2");
-                update_attribute!(self.palette_3, menu_colors, "palette_3");
-                update_attribute!(self.palette_4, menu_colors, "palette_4");
+                update_attr!(self.first, menu_colors, "first");
+                update_attr!(self.second, menu_colors, "second");
+                update_attr!(self.selected_border, menu_colors, "selected_border");
+                update_attr!(self.inert_border, menu_colors, "inert_border");
+                update_attr!(self.palette_1, menu_colors, "palette_1");
+                update_attr!(self.palette_2, menu_colors, "palette_2");
+                update_attr!(self.palette_3, menu_colors, "palette_3");
+                update_attr!(self.palette_4, menu_colors, "palette_4");
             }
         }
         self
@@ -353,10 +259,10 @@ impl MenuColors {
     #[inline]
     pub const fn palette(&self) -> [Attr; 4] {
         [
-            color_to_attr(self.palette_1),
-            color_to_attr(self.palette_2),
-            color_to_attr(self.palette_3),
-            color_to_attr(self.palette_4),
+            self.palette_1,
+            self.palette_2,
+            self.palette_3,
+            self.palette_4,
         ]
     }
 
@@ -364,8 +270,4 @@ impl MenuColors {
     pub const fn palette_size(&self) -> usize {
         self.palette().len()
     }
-}
-
-lazy_static::lazy_static! {
-    pub static ref MENU_COLORS: MenuColors = MenuColors::default().update();
 }

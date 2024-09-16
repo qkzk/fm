@@ -33,7 +33,7 @@ impl NodeCreation {
     pub fn create(&self, status: &mut Status) -> Result<std::path::PathBuf> {
         let tab = status.current_tab_mut();
         let root_path = Self::root_path(tab)?;
-        let path = root_path.join(sanitize_filename::sanitize(status.menu.input.string()));
+        let path = root_path.join(status.menu.input.string());
 
         if path.exists() {
             log_line!("{self} {path} already exists", path = path.display());

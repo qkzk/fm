@@ -223,7 +223,6 @@ impl LeaveMode {
 
     /// Creates a new file with input string as name.
     /// Nothing is done if the file already exists.
-    /// Filename is sanitized before processing.
     fn new_file(status: &mut Status) -> Result<()> {
         match NodeCreation::Newfile.create(status) {
             Ok(path) => {
@@ -240,7 +239,6 @@ impl LeaveMode {
     /// Nothing is done if the directory already exists.
     /// We use `fs::create_dir` internally so it will fail if the input string
     /// ie. the user can create `newdir` or `newdir/newfolder`.
-    /// Directory name is sanitized before processing.
     fn new_dir(status: &mut Status) -> Result<()> {
         match NodeCreation::Newdir.create(status) {
             Ok(path) => {
@@ -370,9 +368,7 @@ impl LeaveMode {
         let here = &status.current_tab().directory.path;
         std::env::set_current_dir(here)?;
         let files_with_relative_paths: Vec<std::path::PathBuf> = status
-            .menu
-            .flagged
-            .content
+            .flagged_or_selected()
             .iter()
             .filter_map(|abs_path| pathdiff::diff_paths(abs_path, here))
             .filter(|f| !f.starts_with(".."))

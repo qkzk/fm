@@ -1,8 +1,7 @@
 use std::cmp::min;
 use std::fmt::Write as _;
 use std::fs::metadata;
-use std::io::Cursor;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Cursor, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
@@ -10,15 +9,16 @@ use std::slice::Iter;
 use anyhow::{anyhow, Context, Result};
 use content_inspector::{inspect, ContentType};
 use syntect::easy::HighlightLines;
-use syntect::highlighting::{Style, ThemeSet};
+use syntect::highlighting::{FontStyle, Style, Theme, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
-use tuikit::attr::{Attr, Color};
+use tuikit::attr::{Attr, Color, Effect};
 
 use crate::common::{
     CALC_PDF_PATH, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
     PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS, THUMBNAIL_PATH_JPG, THUMBNAIL_PATH_PNG,
     THUMBNAIL_PDF_PATH, TRANSMISSION_SHOW, UEBERZUG,
 };
+use crate::config::MONOKAI_THEME;
 use crate::log_info;
 use crate::modes::ContentWindow;
 use crate::modes::FileInfo;
@@ -419,7 +419,7 @@ pub struct BlockDevice {
 
 impl BlockDevice {
     /// New socket preview
-    /// See `man ss` for a description of the arguments.
+    /// See `man lsblk` for a description of the arguments.
     fn new(fileinfo: &FileInfo) -> Self {
         let content: Vec<String>;
         if let Ok(output) = execute_and_output_no_log(
@@ -546,9 +546,9 @@ pub struct HLContent {
 impl HLContent {
     const SIZE_LIMIT: usize = 32768;
     /// Creates a new displayable content of a syntect supported file.
-    /// It may file if the file isn't properly formatted or the extension
+    /// It may fail if the file isn't properly formatted or the extension
     /// is wrong (ie. python content with .c extension).
-    /// ATM only Solarized (dark) theme is supported.
+    /// ATM only Monokaï (dark) theme is supported.
     fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
         let raw_content = read_nb_lines(path, Self::SIZE_LIMIT)?;
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
@@ -572,17 +572,23 @@ impl HLContent {
         self.length
     }
 
+    fn set_monokai() -> &'static Theme {
+        MONOKAI_THEME.get_or_init(|| {
+            let mut monokai = BufReader::new(Cursor::new(include_bytes!(
+                "../../../assets/themes/Monokai_Extended.tmTheme"
+            )));
+            ThemeSet::load_from_reader(&mut monokai).expect("Couldn't find monokai theme")
+        })
+    }
+
     fn parse_raw_content(
         raw_content: Vec<String>,
         syntax_set: SyntaxSet,
         syntax_ref: &SyntaxReference,
     ) -> Result<Vec<Vec<SyntaxedString>>> {
-        let mut monokai = BufReader::new(Cursor::new(include_bytes!(
-            "../../../assets/themes/Monokai_Extended.tmTheme"
-        )));
-        let theme = ThemeSet::load_from_reader(&mut monokai)?;
         let mut highlighted_content = vec![];
-        let mut highlighter = HighlightLines::new(syntax_ref, &theme);
+        let monokai = Self::set_monokai();
+        let mut highlighter = HighlightLines::new(syntax_ref, monokai);
 
         for line in raw_content.iter() {
             let mut col = 0;
@@ -617,8 +623,28 @@ impl SyntaxedString {
     fn from_syntect(col: usize, content: &str, style: Style) -> Self {
         let content = content.to_owned();
         let fg = style.foreground;
-        let attr = Attr::from(Color::Rgb(fg.r, fg.g, fg.b));
+        let attr = Attr {
+            fg: Color::Rgb(fg.r, fg.g, fg.b),
+            bg: Color::default(),
+            effect: Self::fontstyle_to_effect(&style.font_style),
+        };
         Self { col, content, attr }
+    }
+
+    fn fontstyle_to_effect(font_style: &FontStyle) -> Effect {
+        let mut effect = Effect::empty();
+
+        // If the FontStyle has the bold bit set, add bold to the Effect
+        if font_style.contains(FontStyle::BOLD) {
+            effect |= Effect::BOLD;
+        }
+
+        // If the FontStyle has the underline bit set, add underline to the Effect
+        if font_style.contains(FontStyle::UNDERLINE) {
+            effect |= Effect::UNDERLINE;
+        }
+
+        effect
     }
 
     /// Prints itself on a tuikit canvas.

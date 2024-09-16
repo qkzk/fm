@@ -14,7 +14,7 @@ use crate::app::{ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader};
 use crate::app::{Header, PreviewHeader};
 use crate::common::path_to_string;
 use crate::common::ENCRYPTED_DEVICE_BINDS;
-use crate::config::{ColorG, Gradient, MENU_COLORS};
+use crate::config::{ColorG, Gradient, MENU_ATTRS};
 use crate::io::read_last_log_line;
 use crate::io::ModeFormat;
 use crate::log_info;
@@ -28,6 +28,7 @@ use crate::modes::FileInfo;
 use crate::modes::HLContent;
 use crate::modes::InputSimple;
 use crate::modes::LineDisplay;
+use crate::modes::MarkAction;
 use crate::modes::MountRepr;
 use crate::modes::Navigate;
 use crate::modes::NeedConfirmation;
@@ -38,7 +39,6 @@ use crate::modes::TreeLineBuilder;
 use crate::modes::TreePreview;
 use crate::modes::Ueberzug;
 use crate::modes::Window;
-use crate::modes::{fileinfo_attr, MarkAction};
 use crate::modes::{parse_input_mode, SecondLine};
 
 trait ClearLine {
@@ -59,8 +59,22 @@ macro_rules! enumerated_colored_iter {
         std::iter::zip(
             $t.iter().enumerate(),
             Gradient::new(
-                ColorG::from_tuikit(MENU_COLORS.first).unwrap_or_default(),
-                ColorG::from_tuikit(MENU_COLORS.palette_3).unwrap_or_default(),
+                ColorG::from_tuikit(
+                    MENU_ATTRS
+                        .get()
+                        .expect("Menu colors should be set")
+                        .first
+                        .fg,
+                )
+                .unwrap_or_default(),
+                ColorG::from_tuikit(
+                    MENU_ATTRS
+                        .get()
+                        .expect("Menu colors should be set")
+                        .palette_3
+                        .fg,
+                )
+                .unwrap_or_default(),
                 $t.len(),
             )
             .gradient()
@@ -195,7 +209,15 @@ impl<'a> WinMain<'a> {
         } else {
             format!("{progress_bar}     -     1 of {nb}", nb = nb_copy_left)
         };
-        Ok(canvas.print_with_attr(1, 2, &content, color_to_attr(MENU_COLORS.palette_4))?)
+        Ok(canvas.print_with_attr(
+            1,
+            2,
+            &content,
+            MENU_ATTRS
+                .get()
+                .expect("Menu colors should be set")
+                .palette_4,
+        )?)
     }
 
     /// Displays the current directory content, one line per item like in
@@ -252,9 +274,12 @@ impl<'a> WinMain<'a> {
         if row > height {
             return Ok(());
         }
-        let mut attr = fileinfo_attr(file);
+        let mut attr = file.attr();
+        if index == self.tab.directory.index {
+            attr.effect |= Effect::REVERSE;
+        }
         let content = self.format_file_content(file, owner_size, group_size)?;
-        self.print_as_flagged(canvas, row, &file.path, &mut attr)?;
+        self.print_flagged_symbol(canvas, row, &file.path, &mut attr)?;
         let col = if self.status.menu.flagged.contains(&file.path) {
             2
         } else {
@@ -277,7 +302,7 @@ impl<'a> WinMain<'a> {
         }
     }
 
-    fn print_as_flagged(
+    fn print_flagged_symbol(
         &self,
         canvas: &mut dyn Canvas,
         row: usize,
@@ -286,7 +311,12 @@ impl<'a> WinMain<'a> {
     ) -> Result<()> {
         if self.status.menu.flagged.contains(path) {
             attr.effect |= Effect::BOLD;
-            canvas.print_with_attr(row, 0, "█", color_to_attr(MENU_COLORS.second))?;
+            canvas.print_with_attr(
+                row,
+                0,
+                "█",
+                MENU_ATTRS.get().expect("Menu colors should be set").second,
+            )?;
         }
         Ok(())
     }
@@ -302,7 +332,7 @@ impl<'a> WinMain<'a> {
         let height = canvas.height()?;
         let length = self.tab.tree.displayable().lines().len();
 
-        for (index, content_line) in self
+        for (index, line_builder) in self
             .tab
             .tree
             .displayable()
@@ -314,7 +344,7 @@ impl<'a> WinMain<'a> {
         {
             self.draw_tree_line(
                 canvas,
-                content_line,
+                line_builder,
                 TreeLinePosition {
                     left_margin,
                     top: self.tab.window.top,
@@ -327,47 +357,49 @@ impl<'a> WinMain<'a> {
         Ok(self.tab.tree.displayable().index())
     }
 
+    // TODO! refactor this method
     fn draw_tree_line(
         &self,
         canvas: &mut dyn Canvas,
-        tree_line_maker: &TreeLineBuilder,
+        line_builder: &TreeLineBuilder,
         position_param: TreeLinePosition,
-        display_medatadata: bool,
+        with_medatadata: bool,
     ) -> Result<()> {
-        let (left_margin, top, index, height) = position_param.export();
-        let row = index + ContentWindow::WINDOW_MARGIN_TOP - top;
+        let (mut col, top, index, height) = position_param.export();
+        let row = (index + ContentWindow::WINDOW_MARGIN_TOP).saturating_sub(top);
         if row > height {
             return Ok(());
         }
 
-        let s_prefix = tree_line_maker.prefix();
-        let mut attr = tree_line_maker.attr();
-        let path = tree_line_maker.path();
+        let mut attr = line_builder.attr;
+        let path = line_builder.path();
+        self.print_flagged_symbol(canvas, row, path, &mut attr)?;
 
-        self.print_as_flagged(canvas, row, path, &mut attr)?;
-
-        let col_metadata = if display_medatadata {
-            let s_metadata = tree_line_maker.metadata();
-            canvas.print_with_attr(row, left_margin, s_metadata, attr)?
-        } else {
-            0
-        };
-
-        let offset = if index == 0 { 2 } else { 1 };
-        let col_tree_prefix = canvas.print(row, left_margin + col_metadata + offset, s_prefix)?;
-
-        let flagged_offset = if self.status.menu.flagged.contains(path) {
-            1
-        } else {
-            0
-        };
-        canvas.print_with_attr(
-            row,
-            left_margin + col_metadata + col_tree_prefix + offset + flagged_offset,
-            &tree_line_maker.filename(),
-            attr,
-        )?;
+        col += Self::draw_tree_metadata(canvas, with_medatadata, row, col, line_builder, attr)?;
+        col += if index == 0 { 2 } else { 1 };
+        col += canvas.print(row, col, line_builder.prefix())?;
+        col += self.tree_line_calc_flagged_offset(path);
+        canvas.print_with_attr(row, col, &line_builder.filename(), attr)?;
         Ok(())
+    }
+
+    fn draw_tree_metadata(
+        canvas: &mut dyn Canvas,
+        with_medatadata: bool,
+        row: usize,
+        col: usize,
+        line_builder: &TreeLineBuilder,
+        attr: Attr,
+    ) -> Result<usize> {
+        if with_medatadata {
+            Ok(canvas.print_with_attr(row, col, line_builder.metadata(), attr)?)
+        } else {
+            Ok(0)
+        }
+    }
+
+    fn tree_line_calc_flagged_offset(&self, path: &std::path::Path) -> usize {
+        self.status.menu.flagged.contains(path) as usize
     }
 
     fn draw_line_number(
@@ -379,7 +411,7 @@ impl<'a> WinMain<'a> {
             row_position_in_canvas,
             0,
             &line_number_to_print.to_string(),
-            color_to_attr(MENU_COLORS.first),
+            MENU_ATTRS.get().expect("Menu colors should be set").first,
         )?)
     }
 
@@ -476,7 +508,7 @@ impl<'a> WinMain<'a> {
                 row,
                 0,
                 &format_line_nr_hex(i + 1 + window.top, line_number_width_hex),
-                color_to_attr(MENU_COLORS.first),
+                MENU_ATTRS.get().expect("Menu colors should be set").first,
             )?;
             line.print_bytes(canvas, row, line_number_width_hex + 1);
             line.print_ascii(canvas, row, line_number_width_hex + 43);
@@ -507,7 +539,7 @@ impl<'a> WinMain<'a> {
         let content = tree_content.lines();
         let length = content.len();
 
-        for (index, content_line) in
+        for (index, tree_line_builder) in
             tree_preview
                 .tree
                 .displayable()
@@ -515,7 +547,7 @@ impl<'a> WinMain<'a> {
         {
             self.draw_tree_line(
                 canvas,
-                content_line,
+                tree_line_builder,
                 TreeLinePosition {
                     left_margin: 0,
                     top: window.top,
@@ -576,7 +608,7 @@ impl<'a> WinMain<'a> {
             .take(min(canvas.height()?, window.bottom + 1))
         {
             let fileinfo = FileInfo::new(path, &self.tab.users)?;
-            let mut attr = fileinfo_attr(&fileinfo);
+            let mut attr = fileinfo.attr();
             if index == self.status.menu.flagged.index {
                 attr.effect |= Effect::REVERSE;
             }
@@ -585,7 +617,7 @@ impl<'a> WinMain<'a> {
         }
         if let Some(selected) = self.status.menu.flagged.selected() {
             let fileinfo = FileInfo::new(selected, &self.tab.users)?;
-            canvas.print_with_attr(1, 1, &fileinfo.format(6, 6)?, fileinfo_attr(&fileinfo))?;
+            canvas.print_with_attr(1, 1, &fileinfo.format(6, 6)?, fileinfo.attr())?;
         };
         Ok(None)
     }
@@ -672,7 +704,7 @@ impl WinMainSecondLine {
     fn second_line_detailed(file: &FileInfo) -> Self {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
-        let mut attr = fileinfo_attr(file);
+        let mut attr = file.attr();
         attr.effect ^= Effect::REVERSE;
 
         Self {
@@ -691,7 +723,7 @@ impl Draw for LogLine {
             height - 2,
             4,
             &read_last_log_line(),
-            color_to_attr(MENU_COLORS.second),
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
         Ok(())
     }
@@ -718,9 +750,16 @@ impl<'a> Draw for WinMainFooter<'a> {
             DisplayMode::Flagged => FlaggedFooter::new(self.status)?.elems().to_owned(),
             _ => Footer::new(self.status, self.tab)?.elems().to_owned(),
         };
-        let mut attr = color_to_attr(MENU_COLORS.first);
-        let last_index = (content.len().saturating_sub(1)) % MENU_COLORS.palette_size();
-        let mut background = MENU_COLORS.palette()[last_index];
+        let mut attr = MENU_ATTRS.get().expect("Menu colors should be set").first;
+        let last_index = (content.len().saturating_sub(1))
+            % MENU_ATTRS
+                .get()
+                .expect("Menu colors should be set")
+                .palette_size();
+        let mut background = MENU_ATTRS
+            .get()
+            .expect("Menu colors should be set")
+            .palette()[last_index];
         if self.is_selected {
             attr.effect |= Effect::REVERSE;
             background.effect |= Effect::REVERSE;
@@ -778,9 +817,9 @@ impl<'a> WinSecondary<'a> {
                 let mut col = 11;
                 for (text, is_valid) in &mode_parsed {
                     let attr = if *is_valid {
-                        color_to_attr(MENU_COLORS.first)
+                        MENU_ATTRS.get().expect("Menu colors should be set").first
                     } else {
-                        color_to_attr(MENU_COLORS.second)
+                        MENU_ATTRS.get().expect("Menu colors should be set").second
                     };
                     col += 1 + canvas.print_with_attr(1, col, text, attr)?;
                 }
@@ -790,7 +829,7 @@ impl<'a> WinSecondary<'a> {
                     1,
                     2,
                     edit.second_line(),
-                    color_to_attr(MENU_COLORS.second),
+                    MENU_ATTRS.get().expect("Menu colors should be set").second,
                 )?;
             }
         }
@@ -804,7 +843,7 @@ impl<'a> WinSecondary<'a> {
             height - 1,
             2,
             mode.binds_per_mode(),
-            color_to_attr(MENU_COLORS.second),
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
         Ok(())
     }
@@ -965,7 +1004,7 @@ impl<'a> WinSecondary<'a> {
             1,
             2,
             &self.status.menu.trash.help,
-            color_to_attr(MENU_COLORS.second),
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         );
         let content = trash.content();
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
@@ -984,7 +1023,12 @@ impl<'a> WinSecondary<'a> {
         let content = selectable.content();
         if let Some(desc) = &self.status.menu.picker.desc {
             canvas.clear_line(1)?;
-            canvas.print_with_attr(1, 2, desc, color_to_attr(MENU_COLORS.second))?;
+            canvas.print_with_attr(
+                1,
+                2,
+                desc,
+                MENU_ATTRS.get().expect("Menu colors should be set").second,
+            )?;
         }
         for (row, pickable, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, &attr);
@@ -1005,7 +1049,12 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_context(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.context;
-        canvas.print_with_attr(1, 2, "Pick an action.", color_to_attr(MENU_COLORS.second))?;
+        canvas.print_with_attr(
+            1,
+            2,
+            "Pick an action.",
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
+        )?;
         let content = selectable.content();
         let space_used = content.len();
         for (letter, (row, desc, attr)) in
@@ -1034,7 +1083,12 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_marks(&self, canvas: &mut dyn Canvas, mark_action: MarkAction) -> Result<()> {
         canvas.print(1, 2, mark_action.second_line())?;
-        canvas.print_with_attr(2, 4, "mark  path", color_to_attr(MENU_COLORS.second))?;
+        canvas.print_with_attr(
+            2,
+            4,
+            "mark  path",
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
+        )?;
 
         let content = self.status.menu.marks.as_strings();
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
@@ -1055,7 +1109,7 @@ impl<'a> WinSecondary<'a> {
             1,
             2,
             self.tab.edit_mode.second_line(),
-            color_to_attr(MENU_COLORS.second),
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
 
         let content = &self.status.menu.tui_applications.content;
@@ -1076,7 +1130,7 @@ impl<'a> WinSecondary<'a> {
             1,
             2,
             self.tab.edit_mode.second_line(),
-            color_to_attr(MENU_COLORS.second),
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
 
         let content = &self.status.menu.cli_applications.content;
@@ -1125,7 +1179,7 @@ impl<'a> WinSecondary<'a> {
             1,
             2,
             ENCRYPTED_DEVICE_BINDS,
-            color_to_attr(MENU_COLORS.second),
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
         let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
         let len = selectable.len();
@@ -1169,7 +1223,7 @@ impl<'a> WinSecondary<'a> {
             canvas,
             0,
             &confirmed_mode.confirmation_string(&dest),
-            color_to_attr(MENU_COLORS.second),
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
         match confirmed_mode {
             NeedConfirmation::EmptyTrash => self.draw_confirm_empty_trash(canvas)?,
@@ -1229,7 +1283,7 @@ impl<'a> WinSecondary<'a> {
             canvas,
             0,
             "Trash is empty",
-            color_to_attr(MENU_COLORS.second),
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
         );
     }
 
@@ -1380,8 +1434,14 @@ impl Display {
 
     /// Left File, Left Menu, Right File, Right Menu
     fn borders(&self, status: &Status) -> [Attr; 4] {
-        let mut borders = [color_to_attr(MENU_COLORS.inert_border); 4];
-        let selected_border = color_to_attr(MENU_COLORS.selected_border);
+        let mut borders = [MENU_ATTRS
+            .get()
+            .expect("Menu colors should be set")
+            .inert_border; 4];
+        let selected_border = MENU_ATTRS
+            .get()
+            .expect("Menu colors should be set")
+            .selected_border;
         borders[status.focus.index()] = selected_border;
         borders
     }
@@ -1469,7 +1529,15 @@ fn draw_colored_strings(
     effect_reverse: bool,
 ) -> Result<()> {
     let mut col = 1;
-    for (text, attr) in std::iter::zip(strings.iter(), MENU_COLORS.palette().iter().cycle()) {
+    for (text, attr) in std::iter::zip(
+        strings.iter(),
+        MENU_ATTRS
+            .get()
+            .expect("Menu colors should be set")
+            .palette()
+            .iter()
+            .cycle(),
+    ) {
         let mut attr = *attr;
         if effect_reverse {
             attr.effect |= Effect::REVERSE;
@@ -1486,7 +1554,15 @@ fn draw_clickable_strings(
     canvas: &mut dyn Canvas,
     effect_reverse: bool,
 ) -> Result<()> {
-    for (elem, attr) in std::iter::zip(elems.iter(), MENU_COLORS.palette().iter().cycle()) {
+    for (elem, attr) in std::iter::zip(
+        elems.iter(),
+        MENU_ATTRS
+            .get()
+            .expect("Menu colors should be set")
+            .palette()
+            .iter()
+            .cycle(),
+    ) {
         let mut attr = *attr;
         if effect_reverse {
             attr.effect |= Effect::REVERSE;

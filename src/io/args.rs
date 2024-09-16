@@ -2,7 +2,7 @@ use clap::Parser;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(author, version, about)]
-/// FM : dired / ranger like file manager{n} {n}Config files: ~/.config/fm/{n}Documentation: https://github.com/qkzk/fm{n}
+/// FM : dired / ranger like file manager{n} {n}Config files: ~/.config/fm/{n}Documentation: <https://github.com/qkzk/fm>{n}
 pub struct Args {
     /// Starting path. directory or file
     #[arg(short, long, default_value_t = String::from("."))]

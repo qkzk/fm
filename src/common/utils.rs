@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::borrow::Cow;
 use std::fs::metadata;
 use std::io::BufRead;
 use std::os::unix::fs::MetadataExt;
@@ -8,8 +9,7 @@ use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use copypasta::{ClipboardContext, ClipboardProvider};
-use rand::Rng;
-use sysinfo::{Disk, DiskExt};
+use sysinfo::Disk;
 use tuikit::term::Term;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -34,8 +34,8 @@ pub fn init_term() -> Result<Term> {
 ///
 /// We sort the disks by descending mount point size, then
 /// we return the first disk whose mount point match the path.
-pub fn disk_used_by_path<'a>(disks: &'a [Disk], path: &Path) -> Option<&'a Disk> {
-    let mut disks: Vec<&Disk> = disks.iter().collect();
+pub fn disk_used_by_path<'a>(disks: &'a [&'a Disk], path: &Path) -> Option<&'a Disk> {
+    let mut disks: Vec<&Disk> = disks.to_vec();
     disks.sort_by_key(|disk| disk.mount_point().as_os_str().len());
     disks.reverse();
     disks
@@ -54,7 +54,7 @@ fn disk_space_used(disk: Option<&Disk>) -> String {
 /// We can't be sure what's the disk of a given path, so we have to look
 /// if the mount point is a parent of given path.
 /// This solution is ugly but... for a lack of a better one...
-pub fn disk_space(disks: &[Disk], path: &Path) -> String {
+pub fn disk_space(disks: &[&Disk], path: &Path) -> String {
     if path.as_os_str().is_empty() {
         return "".to_owned();
     }
@@ -164,7 +164,7 @@ pub fn row_to_window_index(row: u16) -> usize {
 /// Convert a string into a valid, expanded and canonicalized path.
 /// Doesn't check if the path exists.
 pub fn string_to_path(path_string: &str) -> Result<std::path::PathBuf> {
-    let expanded_cow_path = shellexpand::tilde(&path_string);
+    let expanded_cow_path = tilde(path_string);
     let expanded_target: &str = expanded_cow_path.borrow();
     Ok(std::fs::canonicalize(expanded_target)?)
 }
@@ -201,10 +201,9 @@ pub fn open_in_current_neovim(path: &Path, nvim_server: &str) {
 pub fn random_name() -> String {
     let mut rand_str = String::with_capacity(10);
     rand_str.push_str("fm-");
-    rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
+    crate::common::random_alpha_chars()
         .take(7)
-        .for_each(|ch| rand_str.push(ch as char));
+        .for_each(|ch| rand_str.push(ch));
     rand_str.push_str(".txt");
     rand_str
 }
@@ -333,7 +332,33 @@ pub fn index_from_a(lettre: char) -> Option<usize> {
 
 /// A PathBuf of the current config folder.
 pub fn path_to_config_folder() -> Result<PathBuf> {
-    Ok(std::path::PathBuf::from_str(
-        shellexpand::tilde(CONFIG_FOLDER).borrow(),
-    )?)
+    Ok(std::path::PathBuf::from_str(tilde(CONFIG_FOLDER).borrow())?)
+}
+
+fn home_dir() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .and_then(|h| if h.is_empty() { None } else { Some(h) })
+        .map(PathBuf::from)
+}
+
+/// Expand ~/Downloads to /home/user/Downloads where user is the current user.
+/// Copied from <https://gitlab.com/ijackson/rust-shellexpand/-/blob/main/src/funcs.rs?ref_type=heads#L673>
+pub fn tilde(input_str: &str) -> Cow<str> {
+    if let Some(input_after_tilde) = input_str.strip_prefix('~') {
+        if input_after_tilde.is_empty() || input_after_tilde.starts_with('/') {
+            if let Some(hd) = home_dir() {
+                let result = format!("{}{}", hd.display(), input_after_tilde);
+                result.into()
+            } else {
+                // home dir is not available
+                input_str.into()
+            }
+        } else {
+            // we cannot handle `~otheruser/` paths yet
+            input_str.into()
+        }
+    } else {
+        // input doesn't start with tilde
+        input_str.into()
+    }
 }

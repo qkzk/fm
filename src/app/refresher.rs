@@ -3,8 +3,6 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::Result;
-
 use crate::event::FmEvents;
 use crate::log_info;
 
@@ -57,9 +55,11 @@ impl Refresher {
 
     /// Send a quit message to the receiver, signaling it to quit.
     /// Join the refreshing thread which should be terminated.
-    pub fn quit(self) -> Result<()> {
-        self.tx.send(())?;
+    pub fn quit(self) {
+        match self.tx.send(()) {
+            Ok(_) => (),
+            Err(e) => log_info!("Refresher::quit error {e:?}"),
+        };
         let _ = self.handle.join();
-        Ok(())
     }
 }

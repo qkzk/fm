@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-use sysinfo::{DiskExt, RefreshKind, System, SystemExt};
+use sysinfo::Disks;
 
 use crate::common::{current_username, is_program_in_path, MKDIR};
 use crate::common::{CRYPTSETUP, LSBLK};
@@ -103,10 +103,8 @@ impl CryptoDevice {
     }
 
     pub fn mount_point(&self) -> Option<String> {
-        let mut system = System::new_with_specifics(RefreshKind::new().with_disks());
-        system.refresh_disks_list();
-        system
-            .disks()
+        let disks = Disks::new_with_refreshed_list();
+        disks
             .iter()
             .map(|d| d.mount_point())
             .filter_map(|p| p.to_str())

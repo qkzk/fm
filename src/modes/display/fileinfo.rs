@@ -6,11 +6,12 @@ use std::path;
 use anyhow::{Context, Result};
 use chrono::offset::Local;
 use chrono::DateTime;
-use tuikit::prelude::{Attr, Color, Effect};
+use tuikit::prelude::Attr;
 
 use crate::common::PERMISSIONS_STR;
 use crate::config::extension_color;
-use crate::config::COLORS;
+use crate::config::FILE_ATTRS;
+use crate::io::color_to_attr;
 use crate::modes::MAX_MODE;
 use crate::modes::{human_size, read_symlink_dest};
 use crate::modes::{ToPath, Users};
@@ -171,7 +172,7 @@ pub struct FileInfo {
     /// System time of last modification
     pub system_time: std::sync::Arc<str>,
     /// Is this file currently selected ?
-    pub is_selected: bool,
+    // is_selected: bool,
     /// What kind of file is this ?
     pub file_kind: FileKind<Valid>,
     /// Extension of the file. `""` for a directory.
@@ -191,7 +192,6 @@ impl FileInfo {
         let owner = extract_owner(&metadata, users);
         let group = extract_group(&metadata, users);
         let system_time = extract_datetime(metadata.modified()?)?;
-        let is_selected = false;
         let file_kind = FileKind::new(&metadata, &path);
         let size_column = SizeColumn::new(true_size, &metadata, &file_kind);
         let extension = extract_extension(&path).into();
@@ -205,7 +205,6 @@ impl FileInfo {
             owner,
             group,
             system_time,
-            is_selected,
             file_kind,
             extension,
             kind_format,
@@ -278,16 +277,6 @@ impl FileInfo {
     pub fn format_simple(&self) -> Result<String> {
         let s: &str = self.filename.borrow();
         Ok(s.to_string())
-    }
-
-    /// Select the file.
-    pub fn select(&mut self) {
-        self.is_selected = true;
-    }
-
-    /// Unselect the file.
-    pub fn unselect(&mut self) {
-        self.is_selected = false;
     }
 
     /// True iff the file is hidden (aka starts with a '.').
@@ -366,76 +355,20 @@ impl FileInfo {
 
         lines
     }
-}
 
-fn fileinfo_color(fileinfo: &FileInfo) -> Color {
-    match fileinfo.file_kind {
-        FileKind::Directory => COLORS.directory,
-        FileKind::BlockDevice => COLORS.block,
-        FileKind::CharDevice => COLORS.char,
-        FileKind::Fifo => COLORS.fifo,
-        FileKind::Socket => COLORS.socket,
-        FileKind::SymbolicLink(true) => COLORS.symlink,
-        FileKind::SymbolicLink(false) => COLORS.broken,
-        _ => extension_color(&fileinfo.extension),
-    }
-}
-
-/// Holds a `tuikit::attr::Color` and a `tuikit::attr::Effect`
-/// Both are used to print the file.
-/// When printing we still need to know if the file is flagged,
-/// which may change the `tuikit::attr::Effect`.
-#[derive(Clone, Debug)]
-pub struct ColorEffect {
-    color: Color,
-    pub effect: Effect,
-}
-
-impl ColorEffect {
-    /// Calculates a color and an effect from `fm::file_info::FileInfo`.
-    /// Used in `Display::Directory` mode where selection is stored in fileinfo itself.
-    #[inline]
-    pub fn directory(fileinfo: &FileInfo) -> ColorEffect {
-        let color = fileinfo_color(fileinfo);
-
-        let effect = if fileinfo.is_selected {
-            Effect::REVERSE
-        } else {
-            Effect::empty()
-        };
-
-        Self { color, effect }
-    }
-
-    /// Calculates a color and an effect from `crate::app::file_info` and a flag.
-    /// The "selected file" is stored in the node itself, we only need that boolean attribute.
-    #[inline]
-    pub fn node(fileinfo: &FileInfo, is_selected: bool) -> Self {
-        let color = fileinfo_color(fileinfo);
-        let effect = if is_selected {
-            Effect::REVERSE
-        } else {
-            Effect::empty()
-        };
-
-        Self { color, effect }
-    }
-
-    /// Makes a new `tuikit::attr::Attr` where `bg` is default.
     pub fn attr(&self) -> Attr {
-        Attr {
-            fg: self.color,
-            bg: Color::default(),
-            effect: self.effect,
+        let attrs = FILE_ATTRS.get().expect("Colors should be set");
+        match self.file_kind {
+            FileKind::Directory => attrs.directory,
+            FileKind::BlockDevice => attrs.block,
+            FileKind::CharDevice => attrs.char,
+            FileKind::Fifo => attrs.fifo,
+            FileKind::Socket => attrs.socket,
+            FileKind::SymbolicLink(true) => attrs.symlink,
+            FileKind::SymbolicLink(false) => attrs.broken,
+            _ => color_to_attr(extension_color(&self.extension)),
         }
     }
-}
-
-/// Associates a filetype to `tuikit::prelude::Attr` : fg color, bg color and
-/// effect.
-/// Selected file is reversed.
-pub fn fileinfo_attr(fileinfo: &FileInfo) -> Attr {
-    ColorEffect::directory(fileinfo).attr()
 }
 
 /// True if the file isn't hidden.

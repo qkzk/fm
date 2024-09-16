@@ -14,7 +14,6 @@ terminal: st
 #   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
 #   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals
 # Unfortunatelly, not all ansi color names are accepted.
-# Unreadable values will lead to the default palette which is "green-blue".
 # palette:
 #   start: "rgb(255, 110, 128)"
 #   stop: "rgb(123, 100, 255)"

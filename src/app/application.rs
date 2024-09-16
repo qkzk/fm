@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use anyhow::anyhow;
+use anyhow::Context;
 use anyhow::Result;
 use clap::Parser;
 
@@ -13,6 +14,8 @@ use crate::common::CONFIG_PATH;
 use crate::common::{clear_tmp_file, init_term};
 use crate::config::cloud_config;
 use crate::config::load_config;
+use crate::config::set_configurable_static;
+use crate::config::Config;
 use crate::config::START_FOLDER;
 use crate::event::EventDispatcher;
 use crate::event::EventReader;
@@ -54,29 +57,25 @@ impl FM {
     ///
     /// # Errors
     ///
-    /// May fail if the [`tuikit::prelude::term`] can't be started or crashes
+    /// May fail if the [`tuikit::term`] can't be started or crashes
     pub fn start() -> Result<Self> {
         set_loggers()?;
         let Ok(config) = load_config(CONFIG_PATH) else {
-            exit_wrong_config()
+            Self::exit_wrong_config()
         };
 
         let args = Args::parse();
 
         if args.keybinds {
-            println!("{binds}", binds = config.binds.to_str());
-            exit(0);
+            Self::exit_with_binds(&config);
         }
 
         if args.cloudconfig {
-            cloud_config()?;
-            exit(0);
+            Self::exit_with_cloud_config()?;
         }
 
-        log_info!(
-            "start folder: {startfolder}",
-            startfolder = &START_FOLDER.display()
-        );
+        set_configurable_static(&args.path)?;
+        Self::display_start_folder()?;
 
         let (fm_sender, fm_receiver) = std::sync::mpsc::channel::<FmEvents>();
         let term = Arc::new(init_term()?);
@@ -93,7 +92,6 @@ impl FM {
         )?));
         drop(config);
 
-        // let refresher = Refresher::new(term.clone());
         let refresher = Refresher::new(fm_sender);
         let displayer = Displayer::new(term, status.clone());
         Ok(Self {
@@ -103,6 +101,33 @@ impl FM {
             refresher,
             displayer,
         })
+    }
+
+    fn display_start_folder() -> Result<()> {
+        let startfolder = START_FOLDER.get().context("Startfolder should be set")?;
+        log_info!(
+            "start folder: {startfolder}",
+            startfolder = startfolder.display(),
+        );
+        Ok(())
+    }
+
+    fn exit_with_binds(config: &Config) {
+        println!("{binds}", binds = config.binds.to_str());
+        exit(0);
+    }
+
+    fn exit_with_cloud_config() -> Result<()> {
+        cloud_config()?;
+        exit(0);
+    }
+
+    /// Exit the application and log a message.
+    /// Used when the config can't be read.
+    fn exit_wrong_config() -> ! {
+        eprintln!("Couldn't load the config file at {CONFIG_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/config.yaml for an example.");
+        log_info!("Couldn't read the config file {CONFIG_PATH}");
+        std::process::exit(1)
     }
 
     /// Return the last event received by the terminal
@@ -153,54 +178,20 @@ impl FM {
     /// # Errors
     ///
     /// May fail if the terminal crashes
-    /// May also fail if the thread running in [`crate::application::Refresher`] crashed
+    /// May also fail if the thread running in [`crate::app::Refresher`] crashed
     pub fn quit(self) -> Result<String> {
         clear_tmp_file();
         drop(self.event_reader);
         drop(self.event_dispatcher);
-        self.displayer.quit()?;
-        self.refresher.quit()?;
+        self.displayer.quit();
+        self.refresher.quit();
 
-        match self.status.lock() {
-            Ok(status) => {
-                let final_path = status.current_tab_path_str().to_owned();
-                drop(status);
-                Ok(final_path)
-            }
-            Err(error) => Err(anyhow!("Error locking status {error}")),
-        }
+        let status = self
+            .status
+            .lock()
+            .map_err(|error| anyhow!("Error locking status: {error}"))?;
+        let final_path = status.current_tab_path_str().to_owned();
+        drop(status);
+        Ok(final_path)
     }
 }
-
-/// Exit the application and log a message.
-/// Used when the config can't be read.
-fn exit_wrong_config() -> ! {
-    eprintln!("Couldn't load the config file at {CONFIG_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/config.yaml for an example.");
-    log_info!("Couldn't read the config file {CONFIG_PATH}");
-    std::process::exit(1)
-}
-
-// /// Force clear the display if the status requires it, then reset it in status.
-// ///
-// /// # Errors
-// ///
-// /// May fail if the terminal crashes
-// fn force_clear_if_needed(a_status: bool) -> Result<()> {
-//     let mut status = a_status.lock().unwrap();
-//     if status.internal_settings.force_clear {
-//         self.display.force_clear()?;
-//         status.internal_settings.force_clear = false;
-//     }
-//     Ok(())
-// }
-
-// /// Display itself using its `display` attribute.
-// ///
-// /// # Errors
-// ///
-// /// May fail if the terminal crashes
-// /// The display itself may fail if it encounters unreadable file in preview mode
-// fn display(&mut self, status: MutexGuard<Status>) -> Result<()> {
-// self.force_clear_if_needed()?;
-// self.display.display_all(status)
-// }

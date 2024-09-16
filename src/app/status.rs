@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::Path;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
@@ -7,7 +6,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use opendal::EntryMode;
 use skim::SkimItem;
-use sysinfo::{Disk, RefreshKind, System, SystemExt};
+use sysinfo::{Disk, Disks};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
@@ -19,11 +18,11 @@ use crate::app::Session;
 use crate::app::Tab;
 use crate::app::{ClickableLine, FlaggedFooter};
 use crate::common::{
-    args_is_empty, filename_from_path, is_sudo_command, open_in_current_neovim,
+    args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
     path_to_config_folder, path_to_string, row_to_window_index,
 };
 use crate::common::{current_username, disk_space, is_program_in_path};
-use crate::config::Bindings;
+use crate::config::{Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::Internal;
 use crate::io::Opener;
@@ -148,15 +147,15 @@ impl Status {
         let index = 0;
 
         let args = Args::parse();
-        let path = std::fs::canonicalize(Path::new(&args.path))?;
+        let path = &START_FOLDER.get().context("Start folder should be set")?;
         let start_dir = if path.is_dir() {
-            &path
+            path
         } else {
             path.parent().context("")?
         };
-        let sys = System::new_with_specifics(RefreshKind::new().with_disks());
+        let disks = Disks::new_with_refreshed_list();
         let display_settings = Session::new(term.term_size()?.0);
-        let mut internal_settings = InternalSettings::new(opener, term, sys);
+        let mut internal_settings = InternalSettings::new(opener, term, disks);
         let mount_points = internal_settings.mount_points();
         let menu = Menu::new(start_dir, &mount_points, binds, fm_sender.clone())?;
 
@@ -390,13 +389,13 @@ impl Status {
     }
 
     /// Returns an array of Disks
-    pub fn disks(&self) -> &[Disk] {
-        self.internal_settings.sys.disks()
+    pub fn disks(&self) -> Vec<&Disk> {
+        self.internal_settings.disks.into_iter().collect()
     }
 
     /// Returns a the disk spaces for the selected tab..
     pub fn disk_spaces_of_selected(&self) -> String {
-        disk_space(self.disks(), self.current_tab().current_path())
+        disk_space(&self.disks(), self.current_tab().current_path())
     }
 
     /// Returns the sice of the terminal (width, height)
@@ -577,6 +576,18 @@ impl Status {
         self.reset_tabs_view()
     }
 
+    /// Returns the pathes of flagged file or the selected file if nothing is flagged
+    pub fn flagged_or_selected(&self) -> Vec<std::path::PathBuf> {
+        if self.menu.flagged.is_empty() {
+            let Ok(file) = self.current_tab().current_file() else {
+                return vec![];
+            };
+            vec![file.path.to_path_buf()]
+        } else {
+            self.menu.flagged.content().to_owned()
+        }
+    }
+
     /// Returns a vector of path of files which are both flagged and in current
     /// directory.
     /// It's necessary since the user may have flagged files OUTSIDE of current
@@ -694,10 +705,20 @@ impl Status {
         sources: &[std::path::PathBuf],
         dest: &std::path::Path,
     ) -> bool {
-        matches!(cut_or_copy, CopyMove::Move)
-            && sources.len() == 1
-            && crate::common::disk_used_by_path(self.disks(), &sources[0])
-                == crate::common::disk_used_by_path(self.disks(), dest)
+        if matches!(cut_or_copy, CopyMove::Copy) {
+            return false;
+        }
+        if sources.len() != 1 {
+            return false;
+        }
+        let disks = &self.disks();
+        let Some(s) = disk_used_by_path(disks, &sources[0]) else {
+            return false;
+        };
+        let Some(d) = disk_used_by_path(disks, dest) else {
+            return false;
+        };
+        s.mount_point() == d.mount_point()
     }
 
     fn simple_move(
@@ -768,7 +789,10 @@ impl Status {
         let skim = skimer.search_line_in_file(&self.current_tab().directory_str());
         let paths: Vec<std::path::PathBuf> = skim
             .iter()
-            .map(|s| std::path::PathBuf::from(s.output().to_string()))
+            .map(|s| s.output().to_string())
+            .map(|s| s.split_once(':').unwrap_or(("", "")).0.to_owned())
+            .filter(|s| !s.is_empty())
+            .map(std::path::PathBuf::from)
             .collect();
         self.menu.flagged.update(paths);
         let Some(output) = skim.first() else {
@@ -1079,7 +1103,7 @@ impl Status {
     }
 
     /// Reads and parse a shell command. Some arguments may be expanded.
-    /// See [`crate::modes::edit::ShellCommandParser`] for more information.
+    /// See [`crate::modes::ShellCommandParser`] for more information.
     pub fn parse_shell_command(&mut self) -> Result<bool> {
         let shell_command = self.menu.input.string();
         let mut args = ShellCommandParser::new(&shell_command).compute(self)?;

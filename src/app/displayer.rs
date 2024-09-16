@@ -7,6 +7,7 @@ use anyhow::{anyhow, Result};
 
 use crate::app::Status;
 use crate::io::Display;
+use crate::log_info;
 
 pub struct Displayer {
     tx: mpsc::Sender<()>,
@@ -45,10 +46,12 @@ impl Displayer {
         Self { tx, handle }
     }
 
-    pub fn quit(self) -> Result<()> {
+    pub fn quit(self) {
         crate::log_info!("stopping display loop");
-        self.tx.send(())?;
+        match self.tx.send(()) {
+            Ok(()) => (),
+            Err(e) => log_info!("Displayer::quit error {e:?}"),
+        };
         let _ = self.handle.join();
-        Ok(())
     }
 }

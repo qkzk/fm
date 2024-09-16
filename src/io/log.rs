@@ -2,12 +2,17 @@ use std::sync::RwLock;
 
 use anyhow::Result;
 use clap::Parser;
-use lazy_static::lazy_static;
 use log4rs;
 
 use crate::common::extract_lines;
-use crate::common::{ACTION_LOG_PATH, LOG_CONFIG_PATH};
+use crate::common::{tilde, ACTION_LOG_PATH, LOG_CONFIG_PATH};
 use crate::io::Args;
+
+/// Holds the last action which is displayed to the user
+static LAST_LOG_LINE: RwLock<String> = RwLock::new(String::new());
+
+/// Holds the last line of the log
+static LAST_LOG_INFO: RwLock<String> = RwLock::new(String::new());
 
 /// Set the logs.
 /// First we read the `-l` `--log` command line argument which default to false.
@@ -23,10 +28,7 @@ use crate::io::Args;
 pub fn set_loggers() -> Result<()> {
     let args = Args::parse();
     if args.log {
-        log4rs::init_file(
-            shellexpand::tilde(LOG_CONFIG_PATH).as_ref(),
-            Default::default(),
-        )?;
+        log4rs::init_file(tilde(LOG_CONFIG_PATH).as_ref(), Default::default())?;
         // clear_useless_env_home()?;
 
         log::info!("fm is starting with logs enabled");
@@ -61,17 +63,12 @@ pub fn set_loggers() -> Result<()> {
 
 /// Returns the last line of the log file.
 pub fn read_log() -> Result<Vec<String>> {
-    let log_path = shellexpand::tilde(ACTION_LOG_PATH).to_string();
+    let log_path = tilde(ACTION_LOG_PATH).to_string();
     let content = std::fs::read_to_string(log_path)?;
     Ok(extract_lines(content))
 }
 
-lazy_static! {
-    static ref LAST_LOG_LINE: RwLock<String> = RwLock::new("".to_owned());
-}
-
 /// Read the last value of the "log line".
-/// It's a global string created with `lazy_static!(...)`
 /// Fail silently if the global variable can't be read and returns an empty string.
 pub fn read_last_log_line() -> String {
     let Ok(last_log_line) = LAST_LOG_LINE.read() else {
@@ -81,16 +78,16 @@ pub fn read_last_log_line() -> String {
 }
 
 /// Write a new log line to the global variable `LAST_LOG_LINE`.
-/// It uses `lazy_static` to manipulate the global variable.
 /// Fail silently if the global variable can't be written.
 fn write_last_log_line<S>(log: S)
 where
     S: Into<String> + std::fmt::Display,
 {
-    let Ok(mut new_log_line) = LAST_LOG_LINE.write() else {
+    let Ok(mut last_log_line) = LAST_LOG_LINE.write() else {
+        log::info!("Couldn't write to LAST_LOG_LINE");
         return;
     };
-    *new_log_line = log.to_string();
+    *last_log_line = log.to_string();
 }
 
 /// Write a line to both the global variable `LAST_LOG_LINE` and the special log
@@ -112,31 +109,26 @@ macro_rules! log_line {
   );
 }
 
-lazy_static! {
-    static ref LAST_LOG_INFO: RwLock<String> = RwLock::new("".to_owned());
-}
-
 /// Read the last value of the "log info".
-/// It's a global string created with `lazy_static!(...)`
 /// Fail silently if the global variable can't be read and returns an empty string.
 fn read_last_log_info() -> String {
-    let Ok(last_log_line) = LAST_LOG_INFO.read() else {
+    let Ok(last_log_info) = LAST_LOG_INFO.read() else {
         return "".to_owned();
     };
-    last_log_line.to_owned()
+    last_log_info.to_owned()
 }
 
 /// Write a new log info to the global variable `LAST_LOG_INFO`.
-/// It uses `lazy_static` to manipulate the global variable.
 /// Fail silently if the global variable can't be written.
 fn write_last_log_info<S>(log: &S)
 where
     S: Into<String> + std::fmt::Display,
 {
-    let Ok(mut new_log_info) = LAST_LOG_INFO.write() else {
+    let Ok(mut last_log_info) = LAST_LOG_INFO.write() else {
+        log::info!("Couldn't write to LAST_LOG_LINE");
         return;
     };
-    *new_log_info = log.to_string();
+    *last_log_info = log.to_string();
 }
 
 /// Write a line to both the global variable `LAST_LOG_INFO` and the info log

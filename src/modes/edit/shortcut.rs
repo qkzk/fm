@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use crate::common::HARDCODED_SHORTCUTS;
-use crate::common::{current_uid, path_to_config_folder, TRASH_FOLDER_FILES};
+use crate::common::{current_uid, path_to_config_folder, tilde, TRASH_FOLDER_FILES};
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::io::git_root;
@@ -47,14 +47,14 @@ impl Shortcut {
 
     /// Insert a shortcut to home directory of the current user.
     fn push_home_path(shortcuts: &mut Vec<PathBuf>) {
-        if let Ok(home_path) = PathBuf::from_str(shellexpand::tilde("~").borrow()) {
+        if let Ok(home_path) = PathBuf::from_str(tilde("~").borrow()) {
             shortcuts.push(home_path);
         }
     }
 
     /// Insert a shortcut to trash directory of the current user.
     fn push_trash_folder(shortcuts: &mut Vec<PathBuf>) {
-        if let Ok(trash_path) = PathBuf::from_str(shellexpand::tilde(TRASH_FOLDER_FILES).borrow()) {
+        if let Ok(trash_path) = PathBuf::from_str(tilde(TRASH_FOLDER_FILES).borrow()) {
             if trash_path.exists() {
                 shortcuts.push(trash_path);
             }

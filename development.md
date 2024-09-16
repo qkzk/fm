@@ -2,6 +2,15 @@
 
 I write every step in this file.
 
+## How to publish a new version
+
+1. cargo clippy
+2. cargo run --release
+3. cargo docs --open
+4. merge on github & publish a new version
+5. cargo publish --dry-run
+6. cargo publish
+
 ## DONE
 
 - [x] filetype
@@ -950,8 +959,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] zoxide support for "alt+g" aka goto mode.
 - [x] FIX: `q` while second window should exit the menu
 
-## Current dev
-
 ### Version 0.1.27
 
 #### Summary
@@ -986,8 +993,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] remove custom
   - [x] common description of what is an acceptable color in config file
   - [x] don't break compatibiliy but require an update
-  - [ ] refactor all the color configuration
-  - [ ] common parser
 - [x] use pdftoppm & pdfinfo to preview pdfs.
       poppler can crash if the pdf is encrypted for writing but not for reading.
 
@@ -1018,7 +1023,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] moving left (up in filetree) should select provenance
 - [x] dump keybinds & refactor help message
 - [x] FIX: leaving preview in current tab doesn't select the last file
-- [ ] perfomance
 - [ ] Apache OpenDAL: [Official Documentation](https://opendal.apache.org/) - [crates.io](https://crates.io/crates/opendal)
   - [x] refresh token creation
   - [x] write tokens in config folder for user
@@ -1047,7 +1051,58 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] stop & undo actions (bulkrename, copy, move, delete ???)
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [x] FIX: too much thing on menu and last line
-- [ ] reduce dependencies
+
+## Current dev
+
+### Version 0.1.28
+
+#### Summary
+
+- Refactored colors, configuration. Replaced lazystatic by oncelock, reducing the dependencies.
+- Removed a few dependencies.
+- Fixed the documentation.
+- Changed the way to install the application: use `cargo install fm-tui --locked` to prevent weird display bugs
+- Loaded monokai lazyly, no need to store it forever in the binary if you never preview a source file
+- Improved the source code previewing by allowing more details from syntect
+- Fixed a bug where ~ wasn't expanded from args
+
+#### Changelog
+
+- [x] use fontstyle from syntect while previewing highlighted files
+- [x] add --locked in `cargo install fm-tui --locked` to prevent some weird display bug
+- [x] lazy loading of monokai theme
+- [x] Fix a bug where ~ wasn't expanded in starting path and lazy loading of path wasn't read
+- [x] Fix: ctrl+s returns a string filename:line:col which shouldn't be treated as a path
+- [x] Fix documentation
+- [x] Dependencies hell
+  - [x] random. Only used to create random temporary filename. Replaced with 0 deps custom random generator.
+  - [x] sanitize_filename. Only used when creating new files/directory. Well... I'll let the user do what he wants.
+  - [x] shellexpand. Used everywhere for its tilde("~/Downloads") expansion but only use one function.
+  - [x] lazystatic replaced by OnceLock
+    - [x] logs
+    - [x] monokai
+    - [x] start folder
+    - [x] menu colors
+    - [x] start color, stop color
+    - [x] file colors
+    - [x] colorer
+    - [x] move config setter to configuration.rs
+    - [x] convert oncelock errors to anyhow's
+  - [x] update deps to latest versions
+    - [x] replace serde_yaml (deprecated) by serde_yml (actively maintened)
+    - [x] use serde_yml to write google cloud config files. Share the same struct between files.
+- [x] remove is_selected from fileinfo
+- [x] Refactor all the Color/ColorG configuration
+  - [x] MenuColors should hold attr since it's what's used everywhere
+  - [x] fileinfo attr should be moved into fileinfo itself and return an attr
+  - [x] simplify palette setup
+  - [x] normal file colorer use lookup tables instead of palettes
+  - [x] gradient.rs to make gradients, color.rs for parsing, writing, converting colors, configuration.rs to setup, static_once.rs for static thing
+- [x] Compress should use the selected file if nothing is flagged
+- [x] Fix: opening tree mode with selection on "." doesn't display "." as selected
+- [x] refactor draw tree line
+- [x] Fix: Crash when quiting. "sending on a closed channel". From quit -> refresher::quit
+- [ ] Badges to latest version
 
 ## TODO
 

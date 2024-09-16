@@ -94,7 +94,7 @@ impl ContentWindow {
             return;
         }
         if self.is_index_outside_window(index) {
-            let height = self.bottom - self.top;
+            let height = self.bottom.checked_sub(self.top).unwrap_or_default();
             self.top = max(index, Self::WINDOW_PADDING) - Self::WINDOW_PADDING;
             self.bottom = (self.top + Self::default_bottom(self.height, self.len))
                 .checked_sub(Self::BOTTOM_ROWS)

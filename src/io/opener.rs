@@ -3,11 +3,13 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
-use serde_yaml;
+use serde_yml::from_reader;
+use serde_yml::Value;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::common::is_program_in_path;
+use crate::common::tilde;
 use crate::common::{
     OPENER_AUDIO, OPENER_DEFAULT, OPENER_IMAGE, OPENER_OFFICE, OPENER_PATH, OPENER_READABLE,
     OPENER_TEXT, OPENER_VECT, OPENER_VIDEO,
@@ -129,16 +131,13 @@ impl Association {
         self
     }
 
-    fn parse_yaml_file(path: &str) -> Option<serde_yaml::value::Value> {
-        let Ok(file) =
-            std::fs::File::open(std::path::Path::new(&shellexpand::tilde(path).to_string()))
-        else {
+    fn parse_yaml_file(path: &str) -> Option<Value> {
+        let Ok(file) = std::fs::File::open(std::path::Path::new(&tilde(path).to_string())) else {
             eprintln!("Couldn't find opener file at {path}. Using default.");
             log_info!("Unable to open {path}. Using default opener");
             return None;
         };
-        let Ok(yaml) = serde_yaml::from_reader::<std::fs::File, serde_yaml::value::Value>(file)
-        else {
+        let Ok(yaml) = from_reader::<std::fs::File, Value>(file) else {
             eprintln!("Couldn't read the opener config file at {path}.
 See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/opener.yaml for an example. Using default.");
             log_info!("Unable to parse openers from {path}. Using default opener");
@@ -147,7 +146,7 @@ See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/opener.yaml
         Some(yaml)
     }
 
-    fn update(&mut self, yaml: serde_yaml::value::Value) {
+    fn update(&mut self, yaml: Value) {
         open_file_with!(self, "audio", Audio, yaml);
         open_file_with!(self, "bitmap_image", Bitmap, yaml);
         open_file_with!(self, "libreoffice", Office, yaml);
@@ -271,7 +270,7 @@ impl Kind {
         Self::External(External::new(opener_pair))
     }
 
-    fn from_yaml(yaml: &serde_yaml::value::Value) -> Option<Self> {
+    fn from_yaml(yaml: &Value) -> Option<Self> {
         Some(Self::external((
             yaml.get("opener")?.as_str()?,
             yaml.get("use_term")?.as_bool()?,

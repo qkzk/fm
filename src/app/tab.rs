@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index,
 };
+use crate::config::START_FOLDER;
 use crate::io::{Args, Opener};
 use crate::modes::Directory;
 use crate::modes::FileInfo;
@@ -116,9 +117,9 @@ impl Tab {
     /// - can't be explored
     /// - has no parent and isn't a directory (which can't happen)
     pub fn new(args: &Args, height: usize, users: Users) -> Result<Self> {
-        let path = std::fs::canonicalize(path::Path::new(&args.path))?;
+        let path = &START_FOLDER.get().context("Startfolder should be set")?;
         let start_dir = if path.is_dir() {
-            &path
+            path
         } else {
             path.parent().context("")?
         };
@@ -131,7 +132,7 @@ impl Tab {
         let preview = Preview::Empty;
         let history = History::default();
         let search = Search::empty();
-        let index = directory.select_file(&path);
+        let index = directory.select_file(path);
         let tree = Tree::default();
 
         window.scroll_to(index);
@@ -257,11 +258,8 @@ impl Tab {
 
     /// Makes a new tree of the current path.
     pub fn make_tree(&mut self, sort_kind: Option<SortKind>) -> Result<()> {
-        let sort_kind = match sort_kind {
-            Some(sort_kind) => sort_kind,
-            None => SortKind::tree_default(),
-        };
-        self.settings.sort_kind = sort_kind.to_owned();
+        let sort_kind = sort_kind.unwrap_or_default();
+        self.settings.sort_kind = sort_kind;
         let path = self.directory.path.clone();
         let users = &self.users;
         self.tree = Tree::new(
@@ -399,7 +397,6 @@ impl Tab {
         match self.display_mode {
             Display::Directory => {
                 let path = self.current_file()?.path;
-                self.directory.unselect_current();
                 self.settings.update_sort_from_char(c);
                 crate::log_info!("sort kind: {sortkind}", sortkind = self.settings.sort_kind);
                 self.directory.sort(&self.settings.sort_kind);
@@ -548,17 +545,13 @@ impl Tab {
 
     /// Move down one row if possible.
     pub fn normal_down_one_row(&mut self) {
-        self.directory.unselect_current();
         self.directory.next();
-        self.directory.select_current();
         self.window.scroll_down_one(self.directory.index)
     }
 
     /// Move up one row if possible.
     pub fn normal_up_one_row(&mut self) {
-        self.directory.unselect_current();
         self.directory.prev();
-        self.directory.select_current();
         self.window.scroll_up_one(self.directory.index)
     }
 
