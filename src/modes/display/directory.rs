@@ -208,42 +208,6 @@ impl Directory {
 impl_selectable!(Directory);
 impl_content!(FileInfo, Directory);
 
-const MAX_PATH_ELEM_SIZE: usize = 50;
-
-/// Shorten a path to be displayed in 50 chars or less.
-/// Each element of the path is shortened if needed.
-pub fn shorten_path(path: &Path, size: Option<usize>) -> Result<String> {
-    if path == Path::new("/") {
-        return Ok("".to_owned());
-    }
-    let size = match size {
-        Some(size) => size,
-        None => MAX_PATH_ELEM_SIZE,
-    };
-    let path_string = path
-        .to_str()
-        .context("summarize: couldn't parse the path")?
-        .to_owned();
-
-    if path_string.len() < size {
-        return Ok(path_string);
-    }
-
-    let splitted_path: Vec<_> = path_string.split('/').collect();
-    let size_per_elem = std::cmp::max(1, size / (splitted_path.len() + 1)) + 1;
-    let shortened_elems: Vec<_> = splitted_path
-        .iter()
-        .filter_map(|p| {
-            if p.len() <= size_per_elem {
-                Some(*p)
-            } else {
-                p.get(0..size_per_elem)
-            }
-        })
-        .collect();
-    Ok(shortened_elems.join("/"))
-}
-
 /// Returns `Some(destination)` where `destination` is a String if the path is
 /// the destination of a symlink,
 /// Returns `None` if the link is broken, if the path doesn't exists or if the path

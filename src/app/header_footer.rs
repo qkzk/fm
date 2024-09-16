@@ -3,13 +3,12 @@ mod inner {
 
     use crate::app::{Status, Tab};
     use crate::common::{
-        UtfWidth, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
+        PathShortener, UtfWidth, HELP_FIRST_SENTENCE, HELP_SECOND_SENTENCE, LOG_FIRST_SENTENCE,
         LOG_SECOND_SENTENCE,
     };
     use crate::event::ActionMap;
     use crate::modes::{
-        shorten_path, ColoredText, Content, Display, FileInfo, FilterKind, Preview, Search,
-        Selectable, TextKind,
+        ColoredText, Content, Display, FileInfo, FilterKind, Preview, Search, Selectable, TextKind,
     };
 
     #[derive(Clone, Copy)]
@@ -146,7 +145,12 @@ mod inner {
 
         fn elem_shorten_path(tab: &Tab, left: usize) -> Result<ClickableString> {
             Ok(ClickableString::new(
-                format!(" {}", shorten_path(&tab.directory.path, None)?),
+                format!(
+                    " {}",
+                    PathShortener::path(&tab.directory.path)
+                        .context("Couldn't parse path")?
+                        .shorten()
+                ),
                 HorizontalAlign::Left,
                 ActionMap::Cd,
                 left,
@@ -157,8 +161,10 @@ mod inner {
             let text = match tab.display_mode {
                 Display::Tree => format!(
                     "/{rel}",
-                    rel =
-                        shorten_path(tab.tree.selected_path_relative_to_root()?, Some(width / 2))?
+                    rel = PathShortener::path(tab.tree.selected_path_relative_to_root()?)
+                        .context("Couldn't parse path")?
+                        .with_size(width / 2)
+                        .shorten()
                 ),
                 _ => {
                     if let Some(fileinfo) = tab.directory.selected() {

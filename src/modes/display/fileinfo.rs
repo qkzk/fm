@@ -10,12 +10,9 @@ use chrono::DateTime;
 use tuikit::prelude::Attr;
 
 use crate::common::PERMISSIONS_STR;
-use crate::config::extension_color;
-use crate::config::FILE_ATTRS;
+use crate::config::{extension_color, FILE_ATTRS};
 use crate::io::color_to_attr;
-use crate::modes::MAX_MODE;
-use crate::modes::{human_size, read_symlink_dest};
-use crate::modes::{ToPath, Users};
+use crate::modes::{human_size, read_symlink_dest, ToPath, Users, MAX_MODE};
 
 type Valid = bool;
 
@@ -244,13 +241,17 @@ impl FileInfo {
         let mut repr = self.format_base(owner_col_width, group_col_width)?;
         repr.push(' ');
         repr.push_str(&self.filename);
+        self.expand_symlink(&mut repr);
+        Ok(repr)
+    }
+
+    fn expand_symlink(&self, repr: &mut String) {
         if let FileKind::SymbolicLink(_) = self.file_kind {
             match read_symlink_dest(&self.path) {
                 Some(dest) => repr.push_str(&format!(" -> {dest}")),
                 None => repr.push_str("  broken link"),
             }
         }
-        Ok(repr)
     }
 
     fn format_base(&self, owner_col_width: usize, group_col_width: usize) -> Result<String> {
@@ -295,16 +296,16 @@ impl FileInfo {
     pub fn filename_without_dot_dotdot(&self) -> String {
         match self.filename.as_ref() {
             "." => "/ ".to_owned(),
-            ".." => {
-                let name = if let Ok(name) = extract_filename(&self.path) {
-                    name
-                } else {
-                    Arc::from("")
-                };
-                format!("/{name} ")
-            }
+            ".." => self.filename_without_dotdot(),
             _ => format!("/{name} ", name = self.filename),
         }
+    }
+
+    fn filename_without_dotdot(&self) -> String {
+        let Ok(filename) = extract_filename(&self.path) else {
+            return "/ ".to_string();
+        };
+        format!("/{filename} ")
     }
 
     /// Returns informations about the file as a vector of string.
