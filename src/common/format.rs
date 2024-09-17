@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use crate::common::UtfWidth;
+
 /// Shorten a path to be displayed in 50 chars or less.
 /// Each element of the path is shortened if needed.
 pub struct PathShortener {
@@ -8,7 +10,7 @@ pub struct PathShortener {
 }
 
 impl PathShortener {
-    const MAX_PATH_ELEM_SIZE: usize = 50;
+    const MAX_PATH_ELEM_SIZE: usize = 80;
 
     pub fn path(path: &Path) -> Option<Self> {
         Some(Self {
@@ -23,7 +25,7 @@ impl PathShortener {
     }
 
     pub fn shorten(self) -> String {
-        if self.path_str.len() < self.size {
+        if self.path_str.utf_width() < self.size {
             return self.path_str;
         }
         self.shorten_long_path()

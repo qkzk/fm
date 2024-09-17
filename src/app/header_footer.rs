@@ -12,7 +12,7 @@ mod inner {
     };
 
     #[derive(Clone, Copy)]
-    pub enum HorizontalAlign {
+    pub enum Align {
         Left,
         Right,
     }
@@ -35,11 +35,11 @@ mod inner {
         /// It calculates its position with `col` and `align`.
         /// If left aligned, the text size will be added to `col` and the text will span from col to col + width.
         /// otherwise, the text will spawn from col - width to col.
-        fn new(text: String, align: HorizontalAlign, action: ActionMap, col: usize) -> Self {
+        fn new(text: String, align: Align, action: ActionMap, col: usize) -> Self {
             let width = text.utf_width();
             let (left, right) = match align {
-                HorizontalAlign::Left => (col, col + width),
-                HorizontalAlign::Right => (col - width - 3, col - 3),
+                Align::Left => (col, col + width),
+                Align::Right => (col - width - 3, col - 3),
             };
             Self {
                 text,
@@ -152,7 +152,7 @@ mod inner {
                         .context("Couldn't parse path")?
                         .shorten()
                 ),
-                HorizontalAlign::Left,
+                Align::Left,
                 ActionMap::Cd,
                 left,
             ))
@@ -179,28 +179,18 @@ mod inner {
             };
             Ok(ClickableString::new(
                 text,
-                HorizontalAlign::Left,
+                Align::Left,
                 ActionMap::Rename,
                 left,
             ))
         }
 
         fn elem_search(search: &Search, right: usize) -> ClickableString {
-            ClickableString::new(
-                search.to_string(),
-                HorizontalAlign::Right,
-                ActionMap::Search,
-                right,
-            )
+            ClickableString::new(search.to_string(), Align::Right, ActionMap::Search, right)
         }
 
         fn elem_filter(filter: &FilterKind, right: usize) -> ClickableString {
-            ClickableString::new(
-                format!(" {filter}"),
-                HorizontalAlign::Right,
-                ActionMap::Filter,
-                right,
-            )
+            ClickableString::new(format!(" {filter}"), Align::Right, ActionMap::Filter, right)
         }
     }
 
@@ -267,7 +257,7 @@ mod inner {
             for (index, string) in padded_strings.iter().enumerate() {
                 let elem = ClickableString::new(
                     string.to_owned(),
-                    HorizontalAlign::Left,
+                    Align::Left,
                     Self::FOOTER_ACTIONS[index].to_owned(),
                     left,
                 );
@@ -375,7 +365,7 @@ mod inner {
         fn make_elems(status: &Status, width: usize) -> Vec<ClickableString> {
             let title = ClickableString::new(
                 "Fuzzy files".to_owned(),
-                HorizontalAlign::Left,
+                Align::Left,
                 Self::ACTIONS[0].to_owned(),
                 0,
             );
@@ -389,7 +379,7 @@ mod inner {
                     .unwrap_or(&std::path::PathBuf::new())
                     .to_string_lossy()
                     .to_string(),
-                HorizontalAlign::Left,
+                Align::Left,
                 Self::ACTIONS[1].to_owned(),
                 left,
             );
@@ -441,7 +431,7 @@ mod inner {
             for (index, string) in padded_strings.iter().enumerate() {
                 let elem = ClickableString::new(
                     string.to_owned(),
-                    HorizontalAlign::Left,
+                    Align::Left,
                     Self::ACTIONS[index].to_owned(),
                     left,
                 );
@@ -472,19 +462,12 @@ mod inner {
             Self::pair_to_clickable(&pairs, width)
         }
 
-        fn pair_to_clickable(
-            pairs: &[(String, HorizontalAlign)],
-            width: usize,
-        ) -> Vec<ClickableString> {
+        fn pair_to_clickable(pairs: &[(String, Align)], width: usize) -> Vec<ClickableString> {
             let mut left = 0;
             let mut right = width;
             let mut elems = vec![];
             for (text, align) in pairs.iter() {
-                let pos = if let HorizontalAlign::Left = align {
-                    left
-                } else {
-                    right
-                };
+                let pos = if let Align::Left = align { left } else { right };
                 let elem = ClickableString::new(
                     text.to_owned(),
                     align.to_owned(),
@@ -492,10 +475,10 @@ mod inner {
                     pos,
                 );
                 match align {
-                    HorizontalAlign::Left => {
+                    Align::Left => {
                         left += elem.width();
                     }
-                    HorizontalAlign::Right => {
+                    Align::Right => {
                         right -= elem.width();
                     }
                 }
@@ -504,7 +487,7 @@ mod inner {
             elems
         }
 
-        fn strings(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
+        fn strings(status: &Status, tab: &Tab) -> Vec<(String, Align)> {
             match &tab.preview {
                 Preview::Text(text_content) => match text_content.kind {
                     TextKind::HELP => Self::make_help(),
@@ -516,30 +499,30 @@ mod inner {
             }
         }
 
-        fn make_help() -> Vec<(String, HorizontalAlign)> {
+        fn make_help() -> Vec<(String, Align)> {
             vec![
-                (HELP_FIRST_SENTENCE.to_owned(), HorizontalAlign::Left),
+                (HELP_FIRST_SENTENCE.to_owned(), Align::Left),
                 (
                     format!(" Version: {v} ", v = std::env!("CARGO_PKG_VERSION")),
-                    HorizontalAlign::Left,
+                    Align::Left,
                 ),
-                (HELP_SECOND_SENTENCE.to_owned(), HorizontalAlign::Right),
+                (HELP_SECOND_SENTENCE.to_owned(), Align::Right),
             ]
         }
 
-        fn make_log() -> Vec<(String, HorizontalAlign)> {
+        fn make_log() -> Vec<(String, Align)> {
             vec![
-                (LOG_FIRST_SENTENCE.to_owned(), HorizontalAlign::Left),
-                (LOG_SECOND_SENTENCE.to_owned(), HorizontalAlign::Right),
+                (LOG_FIRST_SENTENCE.to_owned(), Align::Left),
+                (LOG_SECOND_SENTENCE.to_owned(), Align::Right),
             ]
         }
 
-        fn make_colored_text(colored_text: &ColoredText) -> Vec<(String, HorizontalAlign)> {
+        fn make_colored_text(colored_text: &ColoredText) -> Vec<(String, Align)> {
             vec![
-                (" Command: ".to_owned(), HorizontalAlign::Left),
+                (" Command: ".to_owned(), Align::Left),
                 (
                     format!(" {command} ", command = colored_text.title()),
-                    HorizontalAlign::Right,
+                    Align::Right,
                 ),
             ]
         }
@@ -552,9 +535,9 @@ mod inner {
             }
         }
 
-        fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, HorizontalAlign)> {
+        fn make_default_preview(status: &Status, tab: &Tab) -> Vec<(String, Align)> {
             if let Ok(fileinfo) = Self::_pick_previewed_fileinfo(status) {
-                let mut strings = vec![(" Preview ".to_owned(), HorizontalAlign::Left)];
+                let mut strings = vec![(" Preview ".to_owned(), Align::Left)];
                 if !tab.preview.is_empty() {
                     let index = match &tab.preview {
                         Preview::Ueberzug(image) => image.index + 1,
@@ -562,16 +545,13 @@ mod inner {
                     };
                     strings.push((
                         format!(" {index} / {len} ", len = tab.preview.len()),
-                        HorizontalAlign::Right,
+                        Align::Right,
                     ));
                 };
-                strings.push((
-                    format!(" {} ", fileinfo.path.display()),
-                    HorizontalAlign::Left,
-                ));
+                strings.push((format!(" {} ", fileinfo.path.display()), Align::Left));
                 strings
             } else {
-                vec![("".to_owned(), HorizontalAlign::Left)]
+                vec![("".to_owned(), Align::Left)]
             }
         }
 
