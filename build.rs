@@ -30,8 +30,12 @@ fn main() {
 fn update_breaking_config() {
     let config = tilde("~/.config/fm/config.yaml");
     let config: &str = config.borrow();
-    let content = std::fs::read_to_string(config)
-        .expect("config file should be readable")
+
+    let Ok(config_file) = std::fs::read_to_string(config) else {
+        // Config file doesn't exist, nothing to update.
+        return;
+    };
+    let content = config_file
         .lines()
         .map(String::from)
         .filter(|line| !line.contains("Jump"))
