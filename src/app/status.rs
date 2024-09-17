@@ -417,6 +417,35 @@ impl Status {
         Ok(())
     }
 
+    /// Leave an edit mode and refresh the menu.
+    /// It should only be called when edit mode isn't nothing.
+    pub fn leave_edit_mode(&mut self) -> Result<()> {
+        if matches!(
+            self.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::Filter)
+        ) {
+            self.current_tab_mut().settings.reset_filter()
+        }
+        if self.reset_edit_mode()? {
+            self.current_tab_mut().refresh_view()?;
+        } else {
+            self.current_tab_mut().refresh_params();
+        }
+        Ok(())
+    }
+
+    /// Leave the preview or flagged display mode.
+    /// Should only be called when :
+    /// 1. No menu is opened
+    ///
+    /// AND
+    ///
+    /// 2. Display mode is preview or flagged.
+    pub fn leave_preview_flagged(&mut self) -> Result<()> {
+        self.current_tab_mut().set_display_mode(Display::Directory);
+        self.current_tab_mut().refresh_and_reselect_file()
+    }
+
     /// Reset the edit mode to "Nothing" (closing any menu) and returns
     /// true if the display should be refreshed.
     pub fn reset_edit_mode(&mut self) -> Result<bool> {

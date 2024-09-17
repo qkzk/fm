@@ -1,6 +1,7 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
+use crate::common::tilde;
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::modes::ContentWindow;
@@ -194,6 +195,25 @@ impl Flagged {
             .filter(|p| p.starts_with(dir))
             .map(|p| p.to_owned())
             .collect()
+    }
+
+    /// Returns a string with every path in content on a separate line.
+    pub fn content_to_string(&self) -> String {
+        self.content()
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect::<Vec<String>>()
+            .join("\n")
+    }
+
+    pub fn replace_by_string(&mut self, files: String) {
+        self.clear();
+        files.lines().for_each(|f| {
+            let p = std::path::PathBuf::from(tilde(f).as_ref());
+            if p.exists() {
+                self.push(p);
+            }
+        });
     }
 }
 

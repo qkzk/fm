@@ -128,6 +128,13 @@ pub fn extract_lines(content: String) -> Vec<String> {
     content.lines().map(|line| line.to_string()).collect()
 }
 
+pub fn get_clipboard() -> Option<String> {
+    let Ok(mut ctx) = ClipboardContext::new() else {
+        return None;
+    };
+    ctx.get_contents().ok()
+}
+
 pub fn set_clipboard(content: String) {
     log_info!("copied to clipboard: {}", content);
     let Ok(mut ctx) = ClipboardContext::new() else {

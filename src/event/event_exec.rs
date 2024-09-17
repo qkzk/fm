@@ -2,44 +2,22 @@ use std::borrow::Borrow;
 use std::path;
 
 use anyhow::{Context, Result};
-use copypasta::ClipboardContext;
-use copypasta::ClipboardProvider;
 use indicatif::InMemoryTerm;
 
-use crate::app::Focus;
-use crate::app::Status;
-use crate::app::Tab;
-use crate::common::filename_to_clipboard;
-use crate::common::filepath_to_clipboard;
-use crate::common::set_clipboard;
-use crate::common::LAZYGIT;
-use crate::common::NCDU;
-use crate::common::{is_program_in_path, open_in_current_neovim, tilde};
-use crate::common::{CONFIG_PATH, GIO};
-use crate::config::Bindings;
-use crate::config::START_FOLDER;
-use crate::io::execute_without_output_with_path;
-use crate::io::read_log;
+use crate::app::{Focus, Status, Tab};
+use crate::common::{
+    filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_program_in_path,
+    open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO, LAZYGIT, NCDU,
+};
+use crate::config::{Bindings, START_FOLDER};
+use crate::io::{execute_without_output_with_path, read_log};
 use crate::log_info;
 use crate::log_line;
-use crate::modes::copy_move;
-use crate::modes::help_string;
-use crate::modes::lsblk_and_cryptsetup_installed;
-use crate::modes::open_tui_program;
-use crate::modes::Content;
-use crate::modes::ContentWindow;
-use crate::modes::Display;
-use crate::modes::Edit;
-use crate::modes::InputCompleted;
-use crate::modes::InputSimple;
-use crate::modes::LeaveMode;
-use crate::modes::MarkAction;
-use crate::modes::Navigate;
-use crate::modes::NeedConfirmation;
-use crate::modes::Preview;
-use crate::modes::RemovableDevices;
-use crate::modes::Search;
-use crate::modes::Selectable;
+use crate::modes::{
+    copy_move, help_string, lsblk_and_cryptsetup_installed, open_tui_program, Content,
+    ContentWindow, Display, Edit, InputCompleted, InputSimple, LeaveMode, MarkAction, Navigate,
+    NeedConfirmation, Preview, RemovableDevices, Search, Selectable,
+};
 
 /// Links events from tuikit to custom actions.
 /// It mutates `Status` or its children `Tab`.
@@ -47,7 +25,8 @@ pub struct EventAction {}
 
 impl EventAction {
     /// Once a quit event is received, we change a flag and break the main loop.
-    /// It's usefull to reset the cursor before leaving the application.
+    /// It's useful to be able to reset the cursor before leaving the application.
+    /// If a menu is opened, closes it.
     pub fn quit(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {
             status.internal_settings.must_quit = true;
@@ -76,25 +55,12 @@ impl EventAction {
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(status: &mut Status) -> Result<()> {
         if !matches!(status.current_tab().edit_mode, Edit::Nothing) {
-            if matches!(
-                status.current_tab().edit_mode,
-                Edit::InputSimple(InputSimple::Filter)
-            ) {
-                status.current_tab_mut().settings.reset_filter()
-            }
-            if status.reset_edit_mode()? {
-                status.tabs[status.index].refresh_view()?;
-            } else {
-                status.tabs[status.index].refresh_params();
-            }
+            status.leave_edit_mode()?;
         } else if matches!(
             status.current_tab().display_mode,
             Display::Preview | Display::Flagged
         ) {
-            status
-                .current_tab_mut()
-                .set_display_mode(Display::Directory);
-            status.current_tab_mut().refresh_and_reselect_file()?;
+            status.leave_preview_flagged()?
         }
         status.menu.input.reset();
         status.menu.completion.reset();
@@ -177,6 +143,8 @@ impl EventAction {
         Ok(())
     }
 
+    /// Toggle the display of flagged files.
+    /// Does nothing if a menu is opened.
     pub fn display_flagged(status: &mut Status) -> Result<()> {
         if !status.focus.is_file() {
             return Ok(());
@@ -230,38 +198,23 @@ impl EventAction {
         Ok(())
     }
 
+    /// Push every flagged path to the clipboard.
     pub fn flagged_to_clipboard(status: &mut Status) -> Result<()> {
-        let files = status
-            .menu
-            .flagged
-            .content()
-            .iter()
-            .map(|path| path.to_string_lossy().into_owned())
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        set_clipboard(files);
+        set_clipboard(status.menu.flagged.content_to_string());
         Ok(())
     }
 
+    /// Replace the currently flagged files by those in clipboard.
+    /// Does nothing if the clipboard is empty or can't be read.
     pub fn flagged_from_clipboard(status: &mut Status) -> Result<()> {
-        let Ok(mut ctx) = ClipboardContext::new() else {
-            return Ok(());
-        };
-        let Ok(files) = ctx.get_contents() else {
+        let Some(files) = get_clipboard() else {
             return Ok(());
         };
         if files.is_empty() {
             return Ok(());
         }
         log_info!("clipboard read: {files}");
-        status.menu.flagged.clear();
-        files.lines().for_each(|f| {
-            let p = path::PathBuf::from(tilde(f).as_ref());
-            if p.exists() {
-                status.menu.flagged.push(p);
-            }
-        });
+        status.menu.flagged.replace_by_string(files);
         Ok(())
     }
 
