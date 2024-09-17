@@ -144,7 +144,6 @@ mod inner {
         }
 
         fn elem_shorten_path(tab: &Tab, left: usize) -> Result<ClickableString> {
-            tab.directory.is_dotdot_selected();
             Ok(ClickableString::new(
                 format!(
                     " {}",
