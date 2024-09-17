@@ -159,22 +159,8 @@ mod inner {
 
         fn elem_filename(tab: &Tab, width: usize, left: usize) -> Result<ClickableString> {
             let text = match tab.display_mode {
-                Display::Tree => format!(
-                    "/{rel}",
-                    rel = PathShortener::path(tab.tree.selected_path_relative_to_root()?)
-                        .context("Couldn't parse path")?
-                        .with_size(width / 2)
-                        .shorten()
-                ),
-                _ => {
-                    if tab.directory.is_dotdot_selected() {
-                        "".to_owned()
-                    } else if let Some(fileinfo) = tab.directory.selected() {
-                        fileinfo.filename_without_dot_dotdot()
-                    } else {
-                        "".to_owned()
-                    }
-                }
+                Display::Tree => Self::elem_tree_filename(tab, width)?,
+                _ => Self::elem_directory_filename(tab),
             };
             Ok(ClickableString::new(
                 text,
@@ -182,6 +168,31 @@ mod inner {
                 ActionMap::Rename,
                 left,
             ))
+        }
+
+        fn elem_tree_filename(tab: &Tab, width: usize) -> Result<String> {
+            Ok(format!(
+                "{sep}{rel}",
+                rel = PathShortener::path(tab.tree.selected_path_relative_to_root()?)
+                    .context("Couldn't parse path")?
+                    .with_size(width / 2)
+                    .shorten(),
+                sep = if tab.tree.root_path() == std::path::Path::new("/") {
+                    ""
+                } else {
+                    "/"
+                }
+            ))
+        }
+
+        fn elem_directory_filename(tab: &Tab) -> String {
+            if tab.directory.is_dotdot_selected() {
+                "".to_owned()
+            } else if let Some(fileinfo) = tab.directory.selected() {
+                fileinfo.filename_without_dot_dotdot()
+            } else {
+                "".to_owned()
+            }
         }
 
         fn elem_search(search: &Search, right: usize) -> ClickableString {

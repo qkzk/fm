@@ -1115,7 +1115,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Fix: when ".." is selected, header path is wrong. This is a big one...
 - [x] Fix: directory mode when path is root, header is wrong, should just be "/""run" not "/""/run"
 - [x] Fix attempt of docs. Don't panic in build if no config file is found. That was dumb
-- [ ] Bug: Tree mode, when path is root, header is wrong
+- [x] Fix: Tree mode, when path is root, header is wrong
 
 ## TODO
 
