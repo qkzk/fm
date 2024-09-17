@@ -929,7 +929,7 @@ impl EventAction {
         match tab.display_mode {
             Display::Directory => tab.normal_up_one_row(),
             Display::Preview => tab.preview_page_up(),
-            Display::Tree => tab.tree_select_prev()?,
+            Display::Tree => tab.tree_select_prev(),
             Display::Flagged => status.menu.flagged.select_prev(),
         }
         Ok(())
@@ -940,7 +940,7 @@ impl EventAction {
         match tab.display_mode {
             Display::Directory => tab.normal_down_one_row(),
             Display::Preview => tab.preview_page_down(),
-            Display::Tree => tab.tree_select_next()?,
+            Display::Tree => tab.tree_select_next(),
             Display::Flagged => status.menu.flagged.select_next(),
         }
         Ok(())
@@ -1113,7 +1113,7 @@ impl EventAction {
             match tab.display_mode {
                 Display::Directory => tab.normal_go_bottom(),
                 Display::Preview => tab.preview_go_bottom(),
-                Display::Tree => tab.tree_go_to_bottom_leaf()?,
+                Display::Tree => tab.tree_go_to_bottom_leaf(),
                 Display::Flagged => status.menu.flagged.select_last(),
             };
             status.update_second_pane_for_preview()?;

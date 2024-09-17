@@ -654,7 +654,7 @@ impl Status {
                 Display::Tree => {
                     self.menu.flagged.toggle(&file.path);
                     if !self.tabs[self.index].tree.selected_is_last() {
-                        let _ = self.current_tab_mut().tree_select_next();
+                        self.current_tab_mut().tree_select_next();
                     }
                     let _ = self.update_second_pane_for_preview();
                 }

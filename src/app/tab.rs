@@ -269,6 +269,14 @@ impl Tab {
         Ok(())
     }
 
+    fn make_tree_for_parent(&mut self) -> Result<()> {
+        let Some(parent) = self.tree.root_path().parent() else {
+            return Ok(());
+        };
+        self.cd(parent.to_owned().as_ref())?;
+        self.make_tree(Some(self.settings.sort_kind))
+    }
+
     /// Enter or leave display tree mode.
     pub fn toggle_tree_mode(&mut self) -> Result<()> {
         let current_file = self.current_file()?;
@@ -594,11 +602,7 @@ impl Tab {
     /// If we were at the root node, move to the parent and make a new tree.
     pub fn tree_select_parent(&mut self) -> Result<()> {
         if self.tree.is_on_root() {
-            let Some(parent) = self.tree.root_path().parent() else {
-                return Ok(());
-            };
-            self.cd(parent.to_owned().as_ref())?;
-            self.make_tree(Some(self.settings.sort_kind))?;
+            self.make_tree_for_parent()?;
         } else {
             self.tree.go(To::Parent);
         }
@@ -619,24 +623,21 @@ impl Tab {
     }
 
     /// Select the next sibling.
-    pub fn tree_select_next(&mut self) -> Result<()> {
+    pub fn tree_select_next(&mut self) {
         self.tree.go(To::Next);
         self.window.scroll_down_one(self.tree.displayable().index());
-        Ok(())
     }
 
     /// Select the previous siblging
-    pub fn tree_select_prev(&mut self) -> Result<()> {
+    pub fn tree_select_prev(&mut self) {
         self.tree.go(To::Prev);
         self.window.scroll_up_one(self.tree.displayable().index());
-        Ok(())
     }
 
     /// Go to the last leaf.
-    pub fn tree_go_to_bottom_leaf(&mut self) -> Result<()> {
+    pub fn tree_go_to_bottom_leaf(&mut self) {
         self.tree.go(To::Last);
         self.window.scroll_to(self.tree.displayable().index());
-        Ok(())
     }
 
     /// Navigate to the next sibling of current file in tree mode.
