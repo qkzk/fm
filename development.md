@@ -1112,7 +1112,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [ ] status, tab, event exec refactor. What should go where ? status is too big and should be splitted
   - [ ] refactor path reducer
-- [ ] Bug: when ".." is selected, header path is wrong. This is a big one...
+- [x] Fix: when ".." is selected, header path is wrong. This is a big one...
+- [ ] when path is root, header is wrong, should just be "/""run" not "/""/run"
 
 ## TODO
 

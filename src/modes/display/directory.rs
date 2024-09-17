@@ -203,6 +203,17 @@ impl Directory {
             .map(|fileinfo| fileinfo.path.borrow())
             .collect()
     }
+
+    /// True iff the selected path is ".." which is the parent dir.
+    pub fn is_dotdot_selected(&self) -> bool {
+        let Some(selected) = &self.selected() else {
+            return false;
+        };
+        let Some(parent) = self.path.parent() else {
+            return false;
+        };
+        selected.path.as_ref() == parent
+    }
 }
 
 impl_selectable!(Directory);

@@ -144,6 +144,7 @@ mod inner {
         }
 
         fn elem_shorten_path(tab: &Tab, left: usize) -> Result<ClickableString> {
+            tab.directory.is_dotdot_selected();
             Ok(ClickableString::new(
                 format!(
                     " {}",
@@ -167,7 +168,9 @@ mod inner {
                         .shorten()
                 ),
                 _ => {
-                    if let Some(fileinfo) = tab.directory.selected() {
+                    if tab.directory.is_dotdot_selected() {
+                        "".to_owned()
+                    } else if let Some(fileinfo) = tab.directory.selected() {
                         fileinfo.filename_without_dot_dotdot()
                     } else {
                         "".to_owned()
