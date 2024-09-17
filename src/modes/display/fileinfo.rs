@@ -291,13 +291,27 @@ impl FileInfo {
         self.path.is_dir()
     }
 
+    /// True iff the parent of the file is root.
+    /// It's also true for the root folder itself.
+    fn is_root_or_parent_is_root(&self) -> bool {
+        match self.path.as_ref().parent() {
+            None => true,
+            Some(parent) => parent == path::Path::new("/"),
+        }
+    }
+
     /// Formated proper name.
     /// "/ " for `.`
     pub fn filename_without_dot_dotdot(&self) -> String {
+        let sep = if self.is_root_or_parent_is_root() {
+            ""
+        } else {
+            "/"
+        };
         match self.filename.as_ref() {
-            "." => "/ ".to_owned(),
+            "." => format!("{sep} "),
             ".." => self.filename_without_dotdot(),
-            _ => format!("/{name} ", name = self.filename),
+            _ => format!("{sep}{name} ", name = self.filename,),
         }
     }
 

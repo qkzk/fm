@@ -1111,9 +1111,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 #### Changelog
 
 - [ ] status, tab, event exec refactor. What should go where ? status is too big and should be splitted
-  - [ ] refactor path reducer
+  - [x] refactor path reducer
 - [x] Fix: when ".." is selected, header path is wrong. This is a big one...
-- [ ] when path is root, header is wrong, should just be "/""run" not "/""/run"
+- [x] Fix: directory mode when path is root, header is wrong, should just be "/""run" not "/""/run"
+- [ ] Bug: Tree mode, when path is root, header is wrong
 
 ## TODO
 
