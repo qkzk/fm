@@ -85,7 +85,7 @@ impl EventAction {
             if status.reset_edit_mode()? {
                 status.tabs[status.index].refresh_view()?;
             } else {
-                status.tabs[status.index].refresh_params()?;
+                status.tabs[status.index].refresh_params();
             }
         } else if matches!(
             status.current_tab().display_mode,
@@ -468,7 +468,7 @@ impl EventAction {
         let is_dir = path.is_dir();
         if is_dir {
             status.current_tab_mut().cd(&path)?;
-            status.current_tab_mut().make_tree(None)?;
+            status.current_tab_mut().make_tree(None);
             status.current_tab_mut().set_display_mode(Display::Tree);
             Ok(())
         } else {

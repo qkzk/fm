@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 use std::cmp::min;
 use std::path;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 
@@ -206,14 +207,13 @@ impl Tab {
     }
 
     /// Refresh everything but the view
-    pub fn refresh_params(&mut self) -> Result<()> {
+    pub fn refresh_params(&mut self) {
         self.preview = Preview::empty();
         if matches!(self.display_mode, Display::Tree) {
-            self.make_tree(None)?;
+            self.make_tree(None);
         } else {
             self.tree = Tree::default()
         };
-        Ok(())
     }
 
     /// Refresh the current view.
@@ -222,7 +222,7 @@ impl Tab {
     pub fn refresh_view(&mut self) -> Result<()> {
         self.directory.reset_files(&self.settings, &self.users)?;
         self.window.reset(self.display_len());
-        self.refresh_params()?;
+        self.refresh_params();
         Ok(())
     }
 
@@ -253,7 +253,7 @@ impl Tab {
     }
 
     /// Makes a new tree of the current path.
-    pub fn make_tree(&mut self, sort_kind: Option<SortKind>) -> Result<()> {
+    pub fn make_tree(&mut self, sort_kind: Option<SortKind>) {
         let sort_kind = sort_kind.unwrap_or_default();
         self.settings.sort_kind = sort_kind;
         let path = self.directory.path.clone();
@@ -266,7 +266,6 @@ impl Tab {
             self.settings.show_hidden,
             &self.settings.filter,
         );
-        Ok(())
     }
 
     fn make_tree_for_parent(&mut self) -> Result<()> {
@@ -274,7 +273,8 @@ impl Tab {
             return Ok(());
         };
         self.cd(parent.to_owned().as_ref())?;
-        self.make_tree(Some(self.settings.sort_kind))
+        self.make_tree(Some(self.settings.sort_kind));
+        Ok(())
     }
 
     /// Enter or leave display tree mode.
@@ -287,7 +287,7 @@ impl Tab {
             }?;
             self.set_display_mode(Display::Directory);
         } else {
-            self.make_tree(None)?;
+            self.make_tree(None);
             self.window.reset(self.tree.displayable().lines().len());
             self.set_display_mode(Display::Tree);
         }
@@ -296,6 +296,8 @@ impl Tab {
     }
 
     /// Creates a new preview for the selected file.
+    /// If the selected file is a directory, it will create a tree.
+    /// Does nothing if directory is empty or in flagged or preview display mode.
     pub fn make_preview(&mut self) -> Result<()> {
         if self.directory.is_empty() {
             return Ok(());
@@ -304,17 +306,21 @@ impl Tab {
             return Ok(());
         };
         match file_info.file_kind {
-            FileKind::NormalFile => {
-                let preview = Preview::file(&file_info).unwrap_or_default();
-                self.set_display_mode(Display::Preview);
-                self.window.reset(preview.len());
-                self.preview = preview;
-            }
+            FileKind::NormalFile => self.make_preview_unchecked(file_info),
             FileKind::Directory => self.toggle_tree_mode()?,
             _ => (),
         }
 
         Ok(())
+    }
+
+    /// Creates a preview and assign it.
+    /// Doesn't check if it's the correct action to do according to display.
+    fn make_preview_unchecked(&mut self, file_info: FileInfo) {
+        let preview = Preview::file(&file_info).unwrap_or_default();
+        self.set_display_mode(Display::Preview);
+        self.window.reset(preview.len());
+        self.preview = preview;
     }
 
     /// Reset the preview to empty. Used to save some memory.
@@ -326,12 +332,21 @@ impl Tab {
 
     /// Refresh the folder, reselect the last selected file, move the window to it.
     pub fn refresh_and_reselect_file(&mut self) -> Result<()> {
-        let selected_path = self
+        let selected_path = self.clone_selected_path()?;
+        self.refresh_view()?;
+        self.reselect(selected_path);
+        Ok(())
+    }
+
+    fn clone_selected_path(&self) -> Result<Arc<path::Path>> {
+        Ok(self
             .current_file()
             .context("refresh: no selected file")?
             .path
-            .clone();
-        self.refresh_view()?;
+            .clone())
+    }
+
+    fn reselect(&mut self, selected_path: Arc<path::Path>) {
         match self.display_mode {
             Display::Preview => (),
             Display::Directory => {
@@ -345,7 +360,6 @@ impl Tab {
             }
             Display::Flagged => (),
         }
-        Ok(())
     }
 
     /// Reset the display mode and its view.
@@ -368,7 +382,7 @@ impl Tab {
         self.directory.reset_files(&self.settings, &self.users)?;
         self.window.reset(self.directory.content.len());
         if let Display::Tree = self.display_mode {
-            self.make_tree(None)?
+            self.make_tree(None)
         }
         Ok(())
     }
@@ -393,7 +407,7 @@ impl Tab {
         }
         match self.display_mode {
             Display::Directory => self.sort_directory(c)?,
-            Display::Tree => self.sort_tree(c)?,
+            Display::Tree => self.sort_tree(c),
             _ => (),
         }
         Ok(())
@@ -408,12 +422,11 @@ impl Tab {
         Ok(())
     }
 
-    fn sort_tree(&mut self, c: char) -> Result<()> {
+    fn sort_tree(&mut self, c: char) {
         self.settings.update_sort_from_char(c);
         let selected_path = self.tree.selected_path().to_owned();
-        self.make_tree(Some(self.settings.sort_kind))?;
+        self.make_tree(Some(self.settings.sort_kind));
         self.tree.go(To::Path(&selected_path));
-        Ok(())
     }
 
     pub fn cd_to_file(&mut self, path: &path::Path) -> Result<()> {
@@ -444,7 +457,7 @@ impl Tab {
         self.directory
             .change_directory(path, &self.settings, &self.users)?;
         if matches!(self.display_mode, Display::Tree) {
-            self.make_tree(Some(self.settings.sort_kind))?;
+            self.make_tree(Some(self.settings.sort_kind));
             self.window.reset(self.tree.displayable().lines().len());
         } else {
             self.window.reset(self.directory.content.len());
@@ -513,7 +526,7 @@ impl Tab {
     fn jump_tree(&mut self, jump_target: &path::Path, target_dir: &path::Path) -> Result<()> {
         if !self.tree.paths().contains(&target_dir) {
             self.cd(target_dir)?;
-            self.make_tree(None)?
+            self.make_tree(None);
         }
         self.tree.go(To::Path(jump_target));
         Ok(())

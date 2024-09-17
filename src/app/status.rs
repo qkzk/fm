@@ -1443,7 +1443,7 @@ impl Status {
             &self.tabs[self.index].users,
         )?;
         if let Display::Tree = self.current_tab().display_mode {
-            self.current_tab_mut().make_tree(None)?;
+            self.current_tab_mut().make_tree(None);
         }
         let len = self.current_tab().directory.content.len();
         self.current_tab_mut().window.reset(len);
