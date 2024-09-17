@@ -101,7 +101,7 @@ impl InternalSettings {
     }
 
     /// Remove the top of the copy queue.
-    pub fn file_copied(&mut self) -> Result<()> {
+    pub fn copy_file_remove_head(&mut self) -> Result<()> {
         if self.copy_file_queue.is_empty() {
             Err(anyhow!("Copy File Pool is empty"))
         } else {

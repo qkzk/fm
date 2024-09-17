@@ -1541,19 +1541,11 @@ impl EventAction {
             "file copied - pool: {pool:?}",
             pool = status.internal_settings.copy_file_queue
         );
-        status.internal_settings.file_copied()?;
+        status.internal_settings.copy_file_remove_head()?;
         if status.internal_settings.copy_file_queue.is_empty() {
             status.internal_settings.unset_copy_progress()
         } else {
-            let (sources, dest) = status.internal_settings.copy_file_queue[0].clone();
-            let in_mem = copy_move(
-                crate::modes::CopyMove::Copy,
-                sources,
-                dest,
-                status.internal_settings.term.clone(),
-                std::sync::Arc::clone(&status.fm_sender),
-            )?;
-            status.internal_settings.store_copy_progress(in_mem);
+            status.copy_next_file_in_queue()?;
         }
         Ok(())
     }

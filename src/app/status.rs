@@ -774,6 +774,19 @@ impl Status {
         self.clear_flags_and_reset_view()
     }
 
+    pub fn copy_next_file_in_queue(&mut self) -> Result<()> {
+        let (sources, dest) = self.internal_settings.copy_file_queue[0].clone();
+        let in_mem = copy_move(
+            crate::modes::CopyMove::Copy,
+            sources,
+            dest,
+            self.internal_settings.term.clone(),
+            std::sync::Arc::clone(&self.fm_sender),
+        )?;
+        self.internal_settings.store_copy_progress(in_mem);
+        Ok(())
+    }
+
     fn skim_init(&mut self) {
         self.skimer = Some(Skimer::new(Arc::clone(&self.internal_settings.term)));
     }
