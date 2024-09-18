@@ -63,6 +63,8 @@ pub const LOG_SECOND_SENTENCE: &str = " Last actions affecting the file tree";
 pub const THUMBNAIL_PATH_PNG: &str = "/tmp/fm_thumbnail.png";
 /// Ueberzug image thumbnails
 pub const THUMBNAIL_PATH_JPG: &str = "/tmp/fm_thumbnail.jpg";
+/// Ueberzug image for videos, without extension
+pub const THUMBNAIL_PATH_NO_EXT: &str = "/tmp/fm_thumbnail";
 /// Ueberzug image for pdf
 pub const THUMBNAIL_PDF_PATH: &str = "/tmp/fm_thumbnail";
 /// Libreoffice pdf output

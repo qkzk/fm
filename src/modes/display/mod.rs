@@ -4,6 +4,7 @@ mod fileinfo;
 mod preview;
 mod skim;
 mod tree;
+mod uber;
 mod users;
 
 pub use content_window::ContentWindow;
@@ -17,4 +18,5 @@ pub use preview::{
 };
 pub use skim::{print_ansi_str, Skimer};
 pub use tree::{ColoredString, Go, Node, To, Tree, TreeLineBuilder, TreeLines};
+pub use uber::*;
 pub use users::Users;
