@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use crate::common::{
     filename_from_path, path_to_string, CALC_PDF_PATH, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO,
@@ -26,7 +27,7 @@ pub struct Ueber {
     identifier: String,
     images: Vec<PathBuf>,
     length: usize,
-    index: usize,
+    pub index: usize,
     ueberzug: ueberzug::Ueberzug,
 }
 
@@ -81,6 +82,11 @@ impl Ueber {
     /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
     /// The whole struct instance is dropped when the preview is reset and the image is deleted.
     pub fn draw(&self, x: u16, y: u16, width: u16, height: u16) {
+        log_info!(
+            "ueber draws {image} {index}",
+            image = self.images[self.index].display(),
+            index = self.index
+        );
         self.ueberzug.draw(&ueberzug::UeConf {
             identifier: &self.identifier,
             path: &self.images[self.index].to_string_lossy(),
@@ -110,7 +116,8 @@ impl UeberBuilder {
         "/tmp/fm_thumbnail6.jpg",
     ];
 
-    pub fn new(source: PathBuf, kind: Kind) -> Self {
+    pub fn new(source: &Arc<Path>, kind: Kind) -> Self {
+        let source = source.to_path_buf();
         Self { source, kind }
     }
 
@@ -126,27 +133,33 @@ impl UeberBuilder {
     }
 
     fn build_office(self) -> Result<Ueber> {
+        log_info!("build_office: build starting!");
         let calc_str = path_to_string(&self.source);
         let args = ["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
         let output = execute_and_output_no_log(LIBREOFFICE, args)?;
-        if !output.stderr.is_empty() {
-            log_info!(
-                "libreoffice conversion output: {} {}",
-                String::from_utf8(output.stdout).unwrap_or_default(),
-                String::from_utf8(output.stderr).unwrap_or_default()
-            );
-            return Err(anyhow!("{LIBREOFFICE} couldn't convert {calc_str} to pdf"));
-        }
+        log_info!("build_office: here");
+        // if !output.stderr.is_empty() {
+        //     log_info!(
+        //         "libreoffice conversion output: {} {}",
+        //         String::from_utf8(output.stdout).unwrap_or_default(),
+        //         String::from_utf8(output.stderr).unwrap_or_default()
+        //     );
+        //     return {
+        //         Err(anyhow!("{LIBREOFFICE} couldn't convert {calc_str} to pdf"))
+        //     }
+        //     ;
+        // }
         let mut pdf_path = std::path::PathBuf::from("/tmp");
         let filename = self.source.file_name().context("")?;
         pdf_path.push(filename);
         pdf_path.set_extension("pdf");
-        std::fs::rename(pdf_path, CALC_PDF_PATH)?;
+        std::fs::rename(&pdf_path, CALC_PDF_PATH)?;
         let calc_pdf_path = PathBuf::from(CALC_PDF_PATH);
-        let identifier = filename_from_path(&self.source)?.to_owned();
+        let identifier = filename_from_path(&pdf_path)?.to_owned();
         let length = Self::get_pdf_length(&calc_pdf_path)?;
         Self::make_pdf_thumbnails(&calc_pdf_path)?;
         let images = Self::make_pdf_images_paths(length)?;
+        log_info!("build_office: build complete!");
         Ok(Ueber::new(
             Kind::Pdf,
             self.source,
@@ -161,7 +174,6 @@ impl UeberBuilder {
         execute_and_capture_output_without_check(
             PDFTOPPM,
             &[
-                "-singlefile",
                 "-jpeg",
                 "-jpegopt",
                 "quality=75",
@@ -172,8 +184,8 @@ impl UeberBuilder {
     }
 
     fn make_pdf_images_paths(length: usize) -> Result<Vec<PathBuf>> {
-        let images = (1..length)
-            .map(|index| PathBuf::from(format!("{THUMBNAIL_PDF_PATH}{index}.jpg")))
+        let images = (1..length + 1)
+            .map(|index| PathBuf::from(format!("{THUMBNAIL_PDF_PATH}-{index}.jpg")))
             .collect();
         Ok(images)
     }
@@ -187,6 +199,10 @@ impl UeberBuilder {
             Some(line) => {
                 let page_count_str = line.split_whitespace().nth(1).unwrap();
                 let page_count = page_count_str.parse::<usize>()?;
+                log_info!(
+                    "pdf {path} has {page_count_str} pages",
+                    path = path.display()
+                );
                 Ok(page_count)
             }
             None => Err(anyhow::Error::msg("Couldn't find the page number")),
@@ -198,6 +214,7 @@ impl UeberBuilder {
         let identifier = filename_from_path(&self.source)?.to_owned();
         Self::make_pdf_thumbnails(&self.source)?;
         let images = Self::make_pdf_images_paths(length)?;
+        log_info!("build_pdf images: {images:?}");
         Ok(Ueber::new(
             Kind::Pdf,
             self.source,

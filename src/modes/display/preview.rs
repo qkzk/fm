@@ -35,6 +35,8 @@ use crate::modes::SortKind;
 use crate::modes::{list_files_tar, list_files_zip};
 use crate::modes::{TreeLineBuilder, TreeLines};
 
+use crate::modes::{Kind as UeberzugKind2, Ueber, UeberBuilder};
+
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.
 #[derive(Default, Eq, PartialEq)]
@@ -124,7 +126,7 @@ pub enum Preview {
     Text(TextContent),
     Binary(BinaryContent),
     Archive(ArchiveContent),
-    Ueberzug(Ueberzug),
+    Ueberzug(Ueber),
     Media(MediaContent),
     Tree(TreePreview),
     Iso(Iso),
@@ -185,13 +187,12 @@ impl Preview {
                             && is_program_in_path(PDFINFO)
                             && is_program_in_path(PDFTOPPM)) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(
-                            &file_info.path,
-                            UeberzugKind::Pdf,
-                        )?))
+                        Ok(Self::Ueberzug(
+                            UeberBuilder::new(&file_info.path, UeberzugKind2::Pdf).build()?,
+                        ))
                     }
                     ExtensionKind::Image if is_program_in_path(UEBERZUG) => Ok(Self::Ueberzug(
-                        Ueberzug::make(&file_info.path, UeberzugKind::Image)?,
+                        UeberBuilder::new(&file_info.path, UeberzugKind2::Image).build()?,
                     )),
                     ExtensionKind::Audio if is_program_in_path(MEDIAINFO) => {
                         Ok(Self::Media(MediaContent::new(&file_info.path)?))
@@ -199,26 +200,23 @@ impl Preview {
                     ExtensionKind::Video
                         if is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(
-                            &file_info.path,
-                            UeberzugKind::Video,
-                        )?))
+                        Ok(Self::Ueberzug(
+                            UeberBuilder::new(&file_info.path, UeberzugKind2::Video).build()?,
+                        ))
                     }
                     ExtensionKind::Font
                         if is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(
-                            &file_info.path,
-                            UeberzugKind::Font,
-                        )?))
+                        Ok(Self::Ueberzug(
+                            UeberBuilder::new(&file_info.path, UeberzugKind2::Font).build()?,
+                        ))
                     }
                     ExtensionKind::Svg
                         if is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT) =>
                     {
-                        Ok(Self::Ueberzug(Ueberzug::make(
-                            &file_info.path,
-                            UeberzugKind::Svg,
-                        )?))
+                        Ok(Self::Ueberzug(
+                            UeberBuilder::new(&file_info.path, UeberzugKind2::Svg).build()?,
+                        ))
                     }
                     ExtensionKind::Iso if is_program_in_path(ISOINFO) => {
                         Ok(Self::Iso(Iso::new(&file_info.path)?))
@@ -228,7 +226,7 @@ impl Preview {
                             .context("Preview: Couldn't parse notebook")?)
                     }
                     ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => Ok(Self::Ueberzug(
-                        Ueberzug::make(&file_info.path, UeberzugKind::Office)?,
+                        UeberBuilder::new(&file_info.path, UeberzugKind2::Office).build()?,
                     )),
                     ExtensionKind::Epub if is_program_in_path(PANDOC) => {
                         Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)

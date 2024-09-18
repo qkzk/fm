@@ -18,7 +18,6 @@ use crate::config::{ColorG, Gradient, MENU_ATTRS};
 use crate::io::read_last_log_line;
 use crate::io::ModeFormat;
 use crate::log_info;
-use crate::modes::BinaryContent;
 use crate::modes::ColoredText;
 use crate::modes::Content;
 use crate::modes::ContentWindow;
@@ -40,6 +39,7 @@ use crate::modes::TreePreview;
 use crate::modes::Ueberzug;
 use crate::modes::Window;
 use crate::modes::{parse_input_mode, SecondLine};
+use crate::modes::{BinaryContent, Ueber};
 
 trait ClearLine {
     fn clear_line(&mut self, row: usize) -> Result<()>;
@@ -516,10 +516,10 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn draw_ueberzug(&self, image: &Ueberzug, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_ueberzug(&self, image: &Ueber, canvas: &mut dyn Canvas) -> Result<()> {
         let (width, height) = canvas.size()?;
-        image.match_index()?;
-        image.ueberzug(
+        // image.match_index()?;
+        image.draw(
             self.attributes.x_position as u16 + 2,
             3,
             width as u16 - 2,
