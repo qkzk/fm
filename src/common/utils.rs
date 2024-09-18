@@ -216,9 +216,14 @@ pub fn random_name() -> String {
 }
 
 /// Clear the temporary file used by fm for previewing.
-pub fn clear_tmp_file() {
-    let _ = std::fs::remove_file(THUMBNAIL_PATH_JPG);
-    let _ = std::fs::remove_file(CALC_PDF_PATH);
+pub fn clear_tmp_files() {
+    let Ok(read_dir) = std::fs::read_dir("/tmp") else {
+        return;
+    };
+    read_dir
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_name().to_string_lossy().starts_with("fm_thumbnail"))
+        .for_each(|e| std::fs::remove_file(e.path()).unwrap_or_default())
 }
 
 /// True if the directory is empty,

@@ -153,12 +153,12 @@ impl UeberBuilder {
         let filename = self.source.file_name().context("")?;
         pdf_path.push(filename);
         pdf_path.set_extension("pdf");
-        std::fs::rename(&pdf_path, CALC_PDF_PATH)?;
-        let calc_pdf_path = PathBuf::from(CALC_PDF_PATH);
+        let calc_pdf_path = PathBuf::from(&pdf_path);
         let identifier = filename_from_path(&pdf_path)?.to_owned();
         let length = Self::get_pdf_length(&calc_pdf_path)?;
         Self::make_pdf_thumbnails(&calc_pdf_path)?;
         let images = Self::make_pdf_images_paths(length)?;
+        std::fs::remove_file(&pdf_path)?;
         log_info!("build_office: build complete!");
         Ok(Ueber::new(
             Kind::Pdf,

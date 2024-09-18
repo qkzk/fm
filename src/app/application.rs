@@ -11,7 +11,7 @@ use crate::app::Displayer;
 use crate::app::Refresher;
 use crate::app::Status;
 use crate::common::CONFIG_PATH;
-use crate::common::{clear_tmp_file, init_term};
+use crate::common::{clear_tmp_files, init_term};
 use crate::config::cloud_config;
 use crate::config::load_config;
 use crate::config::set_configurable_static;
@@ -180,7 +180,7 @@ impl FM {
     /// May fail if the terminal crashes
     /// May also fail if the thread running in [`crate::app::Refresher`] crashed
     pub fn quit(self) -> Result<String> {
-        clear_tmp_file();
+        clear_tmp_files();
         drop(self.event_reader);
         drop(self.event_dispatcher);
         self.displayer.quit();

@@ -26,7 +26,7 @@ use crate::modes::FileKind;
 use crate::modes::Tree;
 use crate::modes::Users;
 
-use crate::common::{clear_tmp_file, filename_from_path, is_program_in_path, path_to_string};
+use crate::common::{clear_tmp_files, filename_from_path, is_program_in_path, path_to_string};
 use crate::io::{
     execute_and_capture_output, execute_and_capture_output_without_check, execute_and_output_no_log,
 };
@@ -144,7 +144,7 @@ impl Preview {
 
     /// Empty preview, holding nothing.
     pub fn empty() -> Self {
-        clear_tmp_file();
+        clear_tmp_files();
         Self::Empty
     }
 
@@ -169,7 +169,7 @@ impl Preview {
     /// Directories aren't handled there since we need more arguments to create
     /// their previews.
     pub fn file(file_info: &FileInfo) -> Result<Self> {
-        clear_tmp_file();
+        clear_tmp_files();
         match file_info.file_kind {
             FileKind::Directory => Err(anyhow!(
                 "{path} is a directory",
