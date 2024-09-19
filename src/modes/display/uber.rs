@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -161,24 +161,16 @@ impl UeberBuilder {
         log_info!("build_office: build starting!");
         let calc_str = path_to_string(&self.source);
         let args = ["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
-        let output = execute_and_output_no_log(LIBREOFFICE, args)?;
+        execute_and_output_no_log(LIBREOFFICE, args)?;
         log_info!("build_office: here");
-        // if !output.stderr.is_empty() {
-        //     log_info!(
-        //         "libreoffice conversion output: {} {}",
-        //         String::from_utf8(output.stdout).unwrap_or_default(),
-        //         String::from_utf8(output.stderr).unwrap_or_default()
-        //     );
-        //     return {
-        //         Err(anyhow!("{LIBREOFFICE} couldn't convert {calc_str} to pdf"))
-        //     }
-        //     ;
-        // }
         let mut pdf_path = std::path::PathBuf::from("/tmp");
         let filename = self.source.file_name().context("")?;
         pdf_path.push(filename);
         pdf_path.set_extension("pdf");
         let calc_pdf_path = PathBuf::from(&pdf_path);
+        if !pdf_path.exists() {
+            bail!("{LIBREOFFICE} couldn't convert {calc_str} to pdf");
+        }
         let identifier = filename_from_path(&pdf_path)?.to_owned();
         let length = Self::get_pdf_length(&calc_pdf_path)?;
         Thumbnail::create(&self.kind, pdf_path.to_string_lossy().as_ref())?;
@@ -306,7 +298,7 @@ impl Thumbnail {
             "-i",
             path_str,
             "-vf",
-            "fps=1/10",
+            "fps=1/60",
             "-vsync",
             "vfr",
             "-frames:v",
