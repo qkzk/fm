@@ -150,24 +150,11 @@ impl UeberBuilder {
         let calc_pdf_path = PathBuf::from(&pdf_path);
         let identifier = filename_from_path(&pdf_path)?.to_owned();
         let length = Self::get_pdf_length(&calc_pdf_path)?;
-        Self::make_pdf_thumbnails(&calc_pdf_path)?;
+        Thumbnail::create(&self.kind, pdf_path.to_string_lossy().as_ref())?;
         let images = Self::make_pdf_images_paths(length)?;
         std::fs::remove_file(&pdf_path)?;
         log_info!("build_office: build complete!");
         Ok(Ueber::new(Kind::Pdf, identifier, images, length))
-    }
-
-    fn make_pdf_thumbnails(path: &Path) -> Result<String> {
-        execute_and_capture_output_without_check(
-            PDFTOPPM,
-            &[
-                "-jpeg",
-                "-jpegopt",
-                "quality=75",
-                path.to_string_lossy().to_string().as_ref(),
-                THUMBNAIL_PDF_PATH,
-            ],
-        )
     }
 
     fn make_pdf_images_paths(length: usize) -> Result<Vec<PathBuf>> {
@@ -199,10 +186,10 @@ impl UeberBuilder {
     fn build_pdf(self) -> Result<Ueber> {
         let length = Self::get_pdf_length(&self.source)?;
         let identifier = filename_from_path(&self.source)?.to_owned();
-        Self::make_pdf_thumbnails(&self.source)?;
+        Thumbnail::create(&self.kind, self.source.to_string_lossy().as_ref())?;
         let images = Self::make_pdf_images_paths(length)?;
         log_info!("build_pdf images: {images:?}");
-        Ok(Ueber::new(Kind::Pdf, identifier, images, length))
+        Ok(Ueber::new(self.kind, identifier, images, length))
     }
 
     fn build_video(self) -> Result<Ueber> {
@@ -210,18 +197,7 @@ impl UeberBuilder {
             .source
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
-        let ffmpeg_args = [
-            "-i",
-            path_str,
-            "-vf",
-            "fps=1/10",
-            "-vsync",
-            "vfr",
-            "-frames:v",
-            "6",
-            &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
-        ];
-        Self::create_thumbnail(FFMPEG, &ffmpeg_args)?;
+        Thumbnail::create(&self.kind, path_str)?;
         let images: Vec<PathBuf> = Self::VIDEO_THUMBNAILS
             .map(PathBuf::from)
             .into_iter()
@@ -243,7 +219,7 @@ impl UeberBuilder {
             .source
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
-        Self::create_thumbnail(FONTIMAGE, &["-o", THUMBNAIL_PATH_PNG, path_str])?;
+        Thumbnail::create(&self.kind, path_str)?;
         let images = vec![PathBuf::from(THUMBNAIL_PATH_PNG)];
         self.build_single_image(images)
     }
@@ -258,15 +234,71 @@ impl UeberBuilder {
             .source
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
-        Self::create_thumbnail(
-            RSVG_CONVERT,
-            &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH_PNG],
-        )?;
+        Thumbnail::create(&self.kind, path_str)?;
         let images = vec![PathBuf::from(THUMBNAIL_PATH_PNG)];
         self.build_single_image(images)
     }
+}
 
-    fn create_thumbnail(exe: &str, args: &[&str]) -> Result<()> {
+struct Thumbnail;
+
+impl Thumbnail {
+    fn create(kind: &Kind, path_str: &str) -> Result<()> {
+        match kind {
+            Kind::Font => Self::create_font(path_str),
+            Kind::Office => Self::create_office(path_str),
+            Kind::Pdf => Self::create_pdf(path_str),
+            Kind::Svg => Self::create_svg(path_str),
+            Kind::Video => Self::create_video(path_str),
+
+            Kind::Image => Ok(()),
+        }
+    }
+
+    fn create_font(path_str: &str) -> Result<()> {
+        Self::execute(FONTIMAGE, &["-o", THUMBNAIL_PATH_PNG, path_str])
+    }
+
+    fn create_office(path_str: &str) -> Result<()> {
+        Self::create_pdf(path_str)
+    }
+
+    fn create_svg(path_str: &str) -> Result<()> {
+        Thumbnail::execute(
+            RSVG_CONVERT,
+            &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH_PNG],
+        )
+    }
+
+    fn create_video(path_str: &str) -> Result<()> {
+        let ffmpeg_args = [
+            "-i",
+            path_str,
+            "-vf",
+            "fps=1/10",
+            "-vsync",
+            "vfr",
+            "-frames:v",
+            "6",
+            &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
+        ];
+        Thumbnail::execute(FFMPEG, &ffmpeg_args)
+    }
+
+    fn create_pdf(path_str: &str) -> Result<()> {
+        Self::execute(
+            PDFTOPPM,
+            &[
+                "-jpeg",
+                "-jpegopt",
+                "quality=75",
+                path_str,
+                THUMBNAIL_PDF_PATH,
+            ],
+        )
+    }
+
+    fn execute(exe: &str, args: &[&str]) -> Result<()> {
         let output = execute_and_output_no_log(exe, args.to_owned())?;
         if !output.stderr.is_empty() {
             log_info!(
