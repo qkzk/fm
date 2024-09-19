@@ -24,8 +24,8 @@ use crate::common::{
 use crate::config::MONOKAI_THEME;
 use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_log};
 use crate::modes::{
-    list_files_tar, list_files_zip, ContentWindow, FileInfo, FileKind, FilterKind,
-    Kind as UeberzugKind, SortKind, Tree, TreeLineBuilder, TreeLines, Ueber, UeberBuilder, Users,
+    list_files_tar, list_files_zip, ContentWindow, FileInfo, FileKind, FilterKind, SortKind, Tree,
+    TreeLineBuilder, TreeLines, Ueber, UeberBuilder, Users,
 };
 
 /// Different kind of extension for grouped by previewers.
@@ -75,10 +75,6 @@ impl ExtensionKind {
         }
     }
 
-    pub fn is(self, kind: Self) -> bool {
-        self == kind
-    }
-
     fn has_programs(&self) -> bool {
         match self {
             Self::Audio => is_program_in_path(MEDIAINFO),
@@ -99,6 +95,18 @@ impl ExtensionKind {
 
             _ => true,
         }
+    }
+
+    fn is_ueber_kind(&self) -> bool {
+        matches!(
+            &self,
+            ExtensionKind::Font
+                | ExtensionKind::Image
+                | ExtensionKind::Office
+                | ExtensionKind::Pdf
+                | ExtensionKind::Svg
+                | ExtensionKind::Video
+        )
     }
 }
 
@@ -246,49 +254,32 @@ impl<'a> PreviewBuilder<'a> {
 
     fn normal_file(&self) -> Result<Preview> {
         let extension = &self.file_info.extension.to_lowercase();
+        let path = &self.file_info.path;
         let kind = ExtensionKind::matcher(extension);
         match kind {
             ExtensionKind::Archive => Ok(Preview::Archive(ArchiveContent::new(
                 &self.file_info.path,
                 extension,
             )?)),
-            ExtensionKind::Iso if kind.has_programs() => {
-                Ok(Preview::Iso(Iso::new(&self.file_info.path)?))
-            }
+            ExtensionKind::Iso if kind.has_programs() => Ok(Preview::Iso(Iso::new(path)?)),
             ExtensionKind::Epub if kind.has_programs() => Ok(Preview::Text(
-                TextContent::epub(&self.file_info.path).context("Couldn't read epub")?,
+                TextContent::epub(path).context("Preview: Couldn't read epub")?,
             )),
             ExtensionKind::Torrent if kind.has_programs() => Ok(Preview::Torrent(
-                Torrent::new(&self.file_info.path).context("")?,
+                Torrent::new(path).context("Preview: Couldn't read torrent")?,
             )),
             ExtensionKind::Notebook if kind.has_programs() => {
-                Ok(Self::notebook(&self.file_info.path)
-                    .context("Preview: Couldn't parse notebook")?)
+                Ok(Self::notebook(path).context("Preview: Couldn't parse notebook")?)
             }
             ExtensionKind::Audio if kind.has_programs() => {
-                Ok(Preview::Media(MediaContent::new(&self.file_info.path)?))
+                Ok(Preview::Media(MediaContent::new(path)?))
             }
-            ExtensionKind::Font if kind.has_programs() => Ok(Preview::Ueberzug(
-                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
+            _ if kind.is_ueber_kind() && kind.has_programs() => Ok(Preview::Ueberzug(
+                UeberBuilder::new(path, kind.into()).build()?,
             )),
-            ExtensionKind::Image if kind.has_programs() => Ok(Preview::Ueberzug(
-                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
-            )),
-            ExtensionKind::Office if kind.has_programs() => Ok(Preview::Ueberzug(
-                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
-            )),
-            ExtensionKind::Pdf if kind.has_programs() => Ok(Preview::Ueberzug(
-                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
-            )),
-            ExtensionKind::Svg if kind.has_programs() => Ok(Preview::Ueberzug(
-                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
-            )),
-            ExtensionKind::Video if kind.has_programs() => Ok(Preview::Ueberzug(
-                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
-            )),
-            _ => match self.preview_syntaxed(extension) {
+            _ => match self.syntaxed(extension) {
                 Some(syntaxed_preview) => Ok(syntaxed_preview),
-                None => self.preview_text_or_binary(),
+                None => self.text_or_binary(),
             },
         }
     }
@@ -305,7 +296,7 @@ impl<'a> PreviewBuilder<'a> {
         Preview::FifoCharDevice(FifoCharDevice::new(self.file_info))
     }
 
-    fn preview_syntaxed(&self, ext: &str) -> Option<Preview> {
+    fn syntaxed(&self, ext: &str) -> Option<Preview> {
         if let Ok(metadata) = metadata(&self.file_info.path) {
             if metadata.len() > HLContent::SIZE_LIMIT as u64 {
                 return None;
@@ -339,7 +330,7 @@ impl<'a> PreviewBuilder<'a> {
         })
     }
 
-    fn preview_text_or_binary(&self) -> Result<Preview> {
+    fn text_or_binary(&self) -> Result<Preview> {
         let mut file = std::fs::File::open(self.file_info.path.clone())?;
         let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
         if self.is_binary(&mut file, &mut buffer) {
@@ -489,7 +480,8 @@ pub struct TextContent {
 }
 
 impl TextContent {
-    const SIZE_LIMIT: usize = 1048576;
+    /// Only files with less than 1MiB will be read
+    const SIZE_LIMIT: usize = 1 << 20;
 
     fn help(help: &str) -> Self {
         let content: Vec<String> = help.lines().map(|line| line.to_owned()).collect();
@@ -546,7 +538,9 @@ pub struct HLContent {
 }
 
 impl HLContent {
-    const SIZE_LIMIT: usize = 32768;
+    /// Only files with less than 32kiB will be read
+    const SIZE_LIMIT: usize = 1 << 15;
+
     /// Creates a new displayable content of a syntect supported file.
     /// It may fail if the file isn't properly formatted or the extension
     /// is wrong (ie. python content with .c extension).
@@ -574,7 +568,7 @@ impl HLContent {
         self.length
     }
 
-    fn set_monokai() -> &'static Theme {
+    fn get_or_init_monokai() -> &'static Theme {
         MONOKAI_THEME.get_or_init(|| {
             let mut monokai = BufReader::new(Cursor::new(include_bytes!(
                 "../../../assets/themes/Monokai_Extended.tmTheme"
@@ -589,7 +583,7 @@ impl HLContent {
         syntax_ref: &SyntaxReference,
     ) -> Result<Vec<Vec<SyntaxedString>>> {
         let mut highlighted_content = vec![];
-        let monokai = Self::set_monokai();
+        let monokai = Self::get_or_init_monokai();
         let mut highlighter = HighlightLines::new(syntax_ref, monokai);
 
         for line in raw_content.iter() {
@@ -719,6 +713,9 @@ pub struct Line {
 }
 
 impl Line {
+    const ASCII_MIN_PRINTABLE: u8 = 31;
+    const ASCII_MAX_PRINTABLE: u8 = 126;
+
     fn new(line: Vec<u8>) -> Self {
         Self { line }
     }
@@ -726,14 +723,14 @@ impl Line {
     /// Format a line of 16 bytes as BigEndian, separated by spaces.
     /// Every byte is zero filled if necessary.
     fn format_hex(&self) -> String {
-        let mut s = String::new();
+        let mut hex_repr = String::new();
         for (i, byte) in self.line.iter().enumerate() {
-            let _ = write!(s, "{byte:02x}");
+            let _ = write!(hex_repr, "{byte:02x}");
             if i % 2 == 1 {
-                s.push(' ');
+                hex_repr.push(' ');
             }
         }
-        s
+        hex_repr
     }
 
     /// Format a line of 16 bytes as an ASCII string.
@@ -741,7 +738,7 @@ impl Line {
     fn format_as_ascii(&self) -> String {
         let mut line_of_char = String::new();
         for byte in self.line.iter() {
-            if *byte < 31 || *byte > 126 {
+            if *byte < Self::ASCII_MIN_PRINTABLE || *byte > Self::ASCII_MAX_PRINTABLE {
                 line_of_char.push('.')
             } else if let Some(c) = char::from_u32(*byte as u32) {
                 line_of_char.push(c);
