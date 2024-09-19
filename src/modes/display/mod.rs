@@ -18,5 +18,5 @@ pub use preview::{
 };
 pub use skim::{print_ansi_str, Skimer};
 pub use tree::{ColoredString, Go, Node, To, Tree, TreeLineBuilder, TreeLines};
-pub use uber::*;
+pub use uber::{Ueber, UeberBuilder};
 pub use users::Users;

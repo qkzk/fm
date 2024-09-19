@@ -111,21 +111,22 @@ impl ExtensionKind {
 }
 
 impl std::fmt::Display for ExtensionKind {
+    #[rustfmt::skip]
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::Archive => write!(f, "archive"),
-            Self::Image => write!(f, "image"),
-            Self::Audio => write!(f, "audio"),
-            Self::Video => write!(f, "video"),
-            Self::Font => write!(f, "font"),
-            Self::Svg => write!(f, "svg"),
-            Self::Pdf => write!(f, "pdf"),
-            Self::Iso => write!(f, "iso"),
-            Self::Notebook => write!(f, "notebook"),
-            Self::Office => write!(f, "office"),
-            Self::Epub => write!(f, "epub"),
-            Self::Torrent => write!(f, "torrent"),
-            Self::Default => write!(f, "default"),
+            Self::Archive   => write!(f, "archive"),
+            Self::Image     => write!(f, "image"),
+            Self::Audio     => write!(f, "audio"),
+            Self::Video     => write!(f, "video"),
+            Self::Font      => write!(f, "font"),
+            Self::Svg       => write!(f, "svg"),
+            Self::Pdf       => write!(f, "pdf"),
+            Self::Iso       => write!(f, "iso"),
+            Self::Notebook  => write!(f, "notebook"),
+            Self::Office    => write!(f, "office"),
+            Self::Epub      => write!(f, "epub"),
+            Self::Torrent   => write!(f, "torrent"),
+            Self::Default   => write!(f, "default"),
         }
     }
 }
