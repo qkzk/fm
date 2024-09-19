@@ -1,11 +1,11 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::common::{
-    filename_from_path, path_to_string, CALC_PDF_PATH, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO,
-    PDFTOPPM, RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG, THUMBNAIL_PDF_PATH,
+    filename_from_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO, PDFTOPPM,
+    RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG, THUMBNAIL_PDF_PATH,
 };
 use crate::io::{
     execute_and_capture_output, execute_and_capture_output_without_check, execute_and_output_no_log,
@@ -21,9 +21,14 @@ pub enum Kind {
     Video,
 }
 
+impl Kind {
+    fn allow_multiples(&self) -> bool {
+        matches!(self, Self::Pdf | Self::Video)
+    }
+}
+
 pub struct Ueber {
     kind: Kind,
-    source: PathBuf,
     identifier: String,
     images: Vec<PathBuf>,
     length: usize,
@@ -32,18 +37,11 @@ pub struct Ueber {
 }
 
 impl Ueber {
-    fn new(
-        kind: Kind,
-        source: PathBuf,
-        identifier: String,
-        images: Vec<PathBuf>,
-        length: usize,
-        index: usize,
-    ) -> Self {
+    fn new(kind: Kind, identifier: String, images: Vec<PathBuf>, length: usize) -> Self {
         let ueberzug = ueberzug::Ueberzug::new();
+        let index = 0;
         Self {
             kind,
-            source,
             identifier,
             images,
             length,
@@ -53,19 +51,15 @@ impl Ueber {
     }
     /// Only affect pdf thumbnail. Will decrease the index if possible.
     pub fn up_one_row(&mut self) {
-        if let Kind::Pdf = self.kind {
-            if self.index > 0 {
-                self.index -= 1;
-            }
+        if self.kind.allow_multiples() && self.index > 0 {
+            self.index -= 1;
         }
     }
 
     /// Only affect pdf thumbnail. Will increase the index if possible.
     pub fn down_one_row(&mut self) {
-        if let Kind::Pdf = self.kind {
-            if self.index + 1 < self.len() {
-                self.index += 1;
-            }
+        if self.kind.allow_multiples() && self.index + 1 < self.len() {
+            self.index += 1;
         }
     }
 
@@ -108,12 +102,12 @@ pub struct UeberBuilder {
 impl UeberBuilder {
     // TODO! don't use static str but the str defined in constants
     const VIDEO_THUMBNAILS: [&'static str; 6] = [
-        "/tmp/fm_thumbnail1.jpg",
-        "/tmp/fm_thumbnail2.jpg",
-        "/tmp/fm_thumbnail3.jpg",
-        "/tmp/fm_thumbnail4.jpg",
-        "/tmp/fm_thumbnail5.jpg",
-        "/tmp/fm_thumbnail6.jpg",
+        "/tmp/fm_thumbnail_1.jpg",
+        "/tmp/fm_thumbnail_2.jpg",
+        "/tmp/fm_thumbnail_3.jpg",
+        "/tmp/fm_thumbnail_4.jpg",
+        "/tmp/fm_thumbnail_5.jpg",
+        "/tmp/fm_thumbnail_6.jpg",
     ];
 
     pub fn new(source: &Arc<Path>, kind: Kind) -> Self {
@@ -160,14 +154,7 @@ impl UeberBuilder {
         let images = Self::make_pdf_images_paths(length)?;
         std::fs::remove_file(&pdf_path)?;
         log_info!("build_office: build complete!");
-        Ok(Ueber::new(
-            Kind::Pdf,
-            self.source,
-            identifier,
-            images,
-            length,
-            0,
-        ))
+        Ok(Ueber::new(Kind::Pdf, identifier, images, length))
     }
 
     fn make_pdf_thumbnails(path: &Path) -> Result<String> {
@@ -215,14 +202,7 @@ impl UeberBuilder {
         Self::make_pdf_thumbnails(&self.source)?;
         let images = Self::make_pdf_images_paths(length)?;
         log_info!("build_pdf images: {images:?}");
-        Ok(Ueber::new(
-            Kind::Pdf,
-            self.source,
-            identifier,
-            images,
-            length,
-            0,
-        ))
+        Ok(Ueber::new(Kind::Pdf, identifier, images, length))
     }
 
     fn build_video(self) -> Result<Ueber> {
@@ -230,52 +210,32 @@ impl UeberBuilder {
             .source
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
-        Self::create_thumbnail(
-            FFMPEG,
-            &[
-                "-i",
-                path_str,
-                "-vf",
-                "\"select='not(mod(n\\,floor(t/6)))',scale=320:-1\"",
-                "thumbnail",
-                "-vsync",
-                "vfr",
-                "-frames:v",
-                "6",
-                "1",
-                &format!("{THUMBNAIL_PATH_NO_EXT}%d.jpg"),
-                "-y",
-            ],
-        )?;
-        let images = Self::VIDEO_THUMBNAILS
+        let ffmpeg_args = [
+            "-i",
+            path_str,
+            "-vf",
+            "fps=1/10",
+            "-vsync",
+            "vfr",
+            "-frames:v",
+            "6",
+            &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
+        ];
+        Self::create_thumbnail(FFMPEG, &ffmpeg_args)?;
+        let images: Vec<PathBuf> = Self::VIDEO_THUMBNAILS
             .map(PathBuf::from)
             .into_iter()
+            .filter(|p| p.exists())
             .collect();
         let identifier = filename_from_path(&self.source)?.to_owned();
-        let length = 6;
-        let index = 0;
-        Ok(Ueber::new(
-            self.kind,
-            self.source,
-            identifier,
-            images,
-            length,
-            index,
-        ))
+        let length = images.len();
+        Ok(Ueber::new(self.kind, identifier, images, length))
     }
 
     fn build_single_image(self, images: Vec<PathBuf>) -> Result<Ueber> {
         let identifier = filename_from_path(&self.source)?.to_owned();
         let length = 1;
-        let index = 0;
-        Ok(Ueber::new(
-            self.kind,
-            self.source,
-            identifier,
-            images,
-            length,
-            index,
-        ))
+        Ok(Ueber::new(self.kind, identifier, images, length))
     }
 
     fn build_font(self) -> Result<Ueber> {
