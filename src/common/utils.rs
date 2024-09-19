@@ -3,8 +3,7 @@ use std::borrow::Cow;
 use std::fs::metadata;
 use std::io::BufRead;
 use std::os::unix::fs::MetadataExt;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
@@ -14,13 +13,8 @@ use tuikit::term::Term;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::CONFIG_FOLDER;
-use crate::common::{CALC_PDF_PATH, THUMBNAIL_PATH_JPG};
-use crate::log_info;
-use crate::log_line;
-use crate::modes::human_size;
-use crate::modes::nvim;
-use crate::modes::ContentWindow;
-use crate::modes::Users;
+use crate::modes::{human_size, nvim, ContentWindow, Users};
+use crate::{log_info, log_line};
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
 pub fn init_term() -> Result<Term> {
@@ -322,10 +316,7 @@ pub trait UtfWidth {
 
 impl UtfWidth for String {
     fn utf_width(&self) -> usize {
-        self.graphemes(true)
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>()
-            .len()
+        self.as_str().utf_width()
     }
 }
 
