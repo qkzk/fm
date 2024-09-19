@@ -714,9 +714,6 @@ pub struct Line {
 }
 
 impl Line {
-    const ASCII_MIN_PRINTABLE: u8 = 31;
-    const ASCII_MAX_PRINTABLE: u8 = 126;
-
     fn new(line: Vec<u8>) -> Self {
         Self { line }
     }
@@ -734,20 +731,21 @@ impl Line {
         hex_repr
     }
 
+    /// Converts a byte into '.' if it represent a non ASCII printable char
+    /// or it's corresponding char.
+    fn byte_to_char(byte: &u8) -> char {
+        let ch = *byte as char;
+        if !ch.is_ascii_graphic() {
+            '.'
+        } else {
+            ch
+        }
+    }
+
     /// Format a line of 16 bytes as an ASCII string.
     /// Non ASCII printable bytes are replaced by dots.
     fn format_as_ascii(&self) -> String {
-        let mut line_of_char = String::new();
-        for byte in self.line.iter() {
-            if *byte < Self::ASCII_MIN_PRINTABLE || *byte > Self::ASCII_MAX_PRINTABLE {
-                line_of_char.push('.')
-            } else if let Some(c) = char::from_u32(*byte as u32) {
-                line_of_char.push(c);
-            } else {
-                line_of_char.push(' ')
-            }
-        }
-        line_of_char
+        self.line.iter().map(Self::byte_to_char).collect()
     }
 
     /// Print line of pair of bytes in hexadecimal, 16 bytes long.
