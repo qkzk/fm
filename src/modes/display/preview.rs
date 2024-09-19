@@ -8,34 +8,24 @@ use std::slice::Iter;
 
 use anyhow::{anyhow, Context, Result};
 use content_inspector::{inspect, ContentType};
-use syntect::easy::HighlightLines;
-use syntect::highlighting::{FontStyle, Style, Theme, ThemeSet};
-use syntect::parsing::{SyntaxReference, SyntaxSet};
+use syntect::{
+    easy::HighlightLines,
+    highlighting::{FontStyle, Style, Theme, ThemeSet},
+    parsing::{SyntaxReference, SyntaxSet},
+};
 use tuikit::attr::{Attr, Color, Effect};
 
 use crate::common::{
-    CALC_PDF_PATH, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, LSOF, MEDIAINFO,
-    PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS, THUMBNAIL_PATH_JPG, THUMBNAIL_PATH_PNG,
-    THUMBNAIL_PDF_PATH, TRANSMISSION_SHOW, UEBERZUG,
+    clear_tmp_files, is_program_in_path, path_to_string, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER,
+    LIBREOFFICE, LSBLK, LSOF, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS,
+    TRANSMISSION_SHOW, UEBERZUG,
 };
 use crate::config::MONOKAI_THEME;
-use crate::log_info;
-use crate::modes::ContentWindow;
-use crate::modes::FileInfo;
-use crate::modes::FileKind;
-use crate::modes::Tree;
-use crate::modes::Users;
-
-use crate::common::{clear_tmp_files, filename_from_path, is_program_in_path, path_to_string};
-use crate::io::{
-    execute_and_capture_output, execute_and_capture_output_without_check, execute_and_output_no_log,
+use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_log};
+use crate::modes::{
+    list_files_tar, list_files_zip, ContentWindow, FileInfo, FileKind, FilterKind,
+    Kind as UeberzugKind, SortKind, Tree, TreeLineBuilder, TreeLines, Ueber, UeberBuilder, Users,
 };
-use crate::modes::FilterKind;
-use crate::modes::SortKind;
-use crate::modes::{list_files_tar, list_files_zip};
-use crate::modes::{TreeLineBuilder, TreeLines};
-
-use crate::modes::{Kind as UeberzugKind2, Ueber, UeberBuilder};
 
 /// Different kind of extension for grouped by previewers.
 /// Any extension we can preview should be matched here.
@@ -85,6 +75,28 @@ impl ExtensionKind {
 
     pub fn is(self, kind: Self) -> bool {
         self == kind
+    }
+
+    fn has_programs(&self) -> bool {
+        match self {
+            Self::Pdf => {
+                is_program_in_path(UEBERZUG)
+                    && is_program_in_path(PDFINFO)
+                    && is_program_in_path(PDFTOPPM)
+            }
+            Self::Image => is_program_in_path(UEBERZUG),
+            Self::Audio => is_program_in_path(MEDIAINFO),
+            Self::Video => is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG),
+            Self::Font => is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE),
+            Self::Svg => is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT),
+            Self::Iso => is_program_in_path(ISOINFO),
+            Self::Notebook => is_program_in_path(JUPYTER),
+            Self::Office => is_program_in_path(LIBREOFFICE),
+            Self::Epub => is_program_in_path(PANDOC),
+            Self::Torrent => is_program_in_path(TRANSMISSION_SHOW),
+
+            _ => true,
+        }
     }
 }
 
@@ -171,82 +183,59 @@ impl Preview {
     pub fn file(file_info: &FileInfo) -> Result<Self> {
         clear_tmp_files();
         match file_info.file_kind {
-            FileKind::Directory => Err(anyhow!(
-                "{path} is a directory",
-                path = file_info.path.display()
-            )),
-            FileKind::NormalFile => {
-                let extension = &file_info.extension.to_lowercase();
-                match ExtensionKind::matcher(extension) {
-                    ExtensionKind::Archive => Ok(Self::Archive(ArchiveContent::new(
-                        &file_info.path,
-                        extension,
-                    )?)),
-                    ExtensionKind::Pdf
-                        if (is_program_in_path(UEBERZUG)
-                            && is_program_in_path(PDFINFO)
-                            && is_program_in_path(PDFTOPPM)) =>
-                    {
-                        Ok(Self::Ueberzug(
-                            UeberBuilder::new(&file_info.path, UeberzugKind2::Pdf).build()?,
-                        ))
-                    }
-                    ExtensionKind::Image if is_program_in_path(UEBERZUG) => Ok(Self::Ueberzug(
-                        UeberBuilder::new(&file_info.path, UeberzugKind2::Image).build()?,
-                    )),
-                    ExtensionKind::Audio if is_program_in_path(MEDIAINFO) => {
-                        Ok(Self::Media(MediaContent::new(&file_info.path)?))
-                    }
-                    ExtensionKind::Video
-                        if is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG) =>
-                    {
-                        Ok(Self::Ueberzug(
-                            UeberBuilder::new(&file_info.path, UeberzugKind2::Video).build()?,
-                        ))
-                    }
-                    ExtensionKind::Font
-                        if is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE) =>
-                    {
-                        Ok(Self::Ueberzug(
-                            UeberBuilder::new(&file_info.path, UeberzugKind2::Font).build()?,
-                        ))
-                    }
-                    ExtensionKind::Svg
-                        if is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT) =>
-                    {
-                        Ok(Self::Ueberzug(
-                            UeberBuilder::new(&file_info.path, UeberzugKind2::Svg).build()?,
-                        ))
-                    }
-                    ExtensionKind::Iso if is_program_in_path(ISOINFO) => {
-                        Ok(Self::Iso(Iso::new(&file_info.path)?))
-                    }
-                    ExtensionKind::Notebook if is_program_in_path(JUPYTER) => {
-                        Ok(Self::notebook(&file_info.path)
-                            .context("Preview: Couldn't parse notebook")?)
-                    }
-                    ExtensionKind::Office if is_program_in_path(LIBREOFFICE) => Ok(Self::Ueberzug(
-                        UeberBuilder::new(&file_info.path, UeberzugKind2::Office).build()?,
-                    )),
-                    ExtensionKind::Epub if is_program_in_path(PANDOC) => {
-                        Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
-                    }
-                    ExtensionKind::Torrent if is_program_in_path(TRANSMISSION_SHOW) => {
-                        Ok(Self::torrent(&file_info.path)
-                            .context("Preview couldn't explore the torrent file")?)
-                    }
-                    _ => match Self::preview_syntaxed(extension, &file_info.path) {
-                        Some(syntaxed_preview) => Ok(syntaxed_preview),
-                        None => Self::preview_text_or_binary(file_info),
-                    },
-                }
-            }
+            FileKind::Directory => Err(anyhow!("{p} is a directory", p = file_info.path.display())),
+            FileKind::NormalFile => Self::normal_file(file_info),
             FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(file_info)),
             FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(file_info)),
             FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
                 Ok(Self::fifo_chardevice(file_info))
             }
             _ => Ok(Preview::default()),
+        }
+    }
+
+    fn normal_file(file_info: &FileInfo) -> Result<Self> {
+        let extension = &file_info.extension.to_lowercase();
+        let kind = ExtensionKind::matcher(extension);
+        match kind {
+            ExtensionKind::Archive => Ok(Self::Archive(ArchiveContent::new(
+                &file_info.path,
+                extension,
+            )?)),
+            ExtensionKind::Pdf if kind.has_programs() => Ok(Self::Ueberzug(
+                UeberBuilder::new(&file_info.path, UeberzugKind::Pdf).build()?,
+            )),
+            ExtensionKind::Image if kind.has_programs() => Ok(Self::Ueberzug(
+                UeberBuilder::new(&file_info.path, UeberzugKind::Image).build()?,
+            )),
+            ExtensionKind::Audio if kind.has_programs() => {
+                Ok(Self::Media(MediaContent::new(&file_info.path)?))
+            }
+            ExtensionKind::Video if kind.has_programs() => Ok(Self::Ueberzug(
+                UeberBuilder::new(&file_info.path, UeberzugKind::Video).build()?,
+            )),
+            ExtensionKind::Font if kind.has_programs() => Ok(Self::Ueberzug(
+                UeberBuilder::new(&file_info.path, UeberzugKind::Font).build()?,
+            )),
+            ExtensionKind::Svg if kind.has_programs() => Ok(Self::Ueberzug(
+                UeberBuilder::new(&file_info.path, UeberzugKind::Svg).build()?,
+            )),
+            ExtensionKind::Iso if kind.has_programs() => Ok(Self::Iso(Iso::new(&file_info.path)?)),
+            ExtensionKind::Notebook if kind.has_programs() => {
+                Ok(Self::notebook(&file_info.path).context("Preview: Couldn't parse notebook")?)
+            }
+            ExtensionKind::Office if kind.has_programs() => Ok(Self::Ueberzug(
+                UeberBuilder::new(&file_info.path, UeberzugKind::Office).build()?,
+            )),
+            ExtensionKind::Epub if kind.has_programs() => {
+                Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
+            }
+            ExtensionKind::Torrent if kind.has_programs() => Ok(Self::torrent(&file_info.path)
+                .context("Preview couldn't explore the torrent file")?),
+            _ => match Self::preview_syntaxed(extension, &file_info.path) {
+                Some(syntaxed_preview) => Ok(syntaxed_preview),
+                None => Self::preview_text_or_binary(file_info),
+            },
         }
     }
 
@@ -826,276 +815,6 @@ impl MediaContent {
 
     fn len(&self) -> usize {
         self.length
-    }
-}
-
-pub enum UeberzugKind {
-    Font,
-    Image,
-    Office,
-    Pdf,
-    Svg,
-    Video,
-}
-
-/// Holds a path, a filename and an instance of ueberzug::Ueberzug.
-/// The ueberzug instance is held as long as the preview is displayed.
-/// When the preview is reset, the instance is dropped and the image is erased.
-/// Positonning the image is tricky since tuikit doesn't know where it's drawed in the terminal:
-/// the preview can't be placed correctly in embeded terminals.
-pub struct Ueberzug {
-    original: PathBuf,
-    path: String,
-    filename: String,
-    kind: UeberzugKind,
-    ueberzug: ueberzug::Ueberzug,
-    length: usize,
-    pub index: usize,
-}
-
-impl Ueberzug {
-    fn thumbnail(original: PathBuf, kind: UeberzugKind, thumbnail_path: Option<String>) -> Self {
-        let filename = original
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string();
-
-        let path = if let Some(thumbnail_path) = thumbnail_path {
-            thumbnail_path
-        } else {
-            THUMBNAIL_PATH_JPG.to_owned()
-        };
-
-        Self {
-            original,
-            path,
-            filename,
-            kind,
-            ueberzug: ueberzug::Ueberzug::new(),
-            length: 0,
-            index: 0,
-        }
-    }
-
-    fn make(filepath: &Path, kind: UeberzugKind) -> Result<Self> {
-        match kind {
-            UeberzugKind::Font => Self::font_thumbnail(filepath),
-            UeberzugKind::Image => Self::image_thumbnail(filepath),
-            UeberzugKind::Office => Self::office_thumbnail(filepath),
-            UeberzugKind::Pdf => Self::pdf_thumbnail(filepath),
-            UeberzugKind::Svg => Self::svg_thumbnail(filepath),
-            UeberzugKind::Video => Self::video_thumbnail(filepath),
-        }
-    }
-
-    fn image_thumbnail(img_path: &Path) -> Result<Self> {
-        let filename = filename_from_path(img_path)?.to_owned();
-        let path = img_path
-            .to_str()
-            .context("ueberzug: couldn't parse the path into a string")?
-            .to_owned();
-        Ok(Self {
-            original: img_path.to_owned(),
-            path,
-            filename,
-            kind: UeberzugKind::Image,
-            ueberzug: ueberzug::Ueberzug::new(),
-            length: 0,
-            index: 0,
-        })
-    }
-
-    fn video_thumbnail(video_path: &Path) -> Result<Self> {
-        Self::make_video_thumbnail(video_path)?;
-        Ok(Self::thumbnail(
-            video_path.to_owned(),
-            UeberzugKind::Video,
-            None,
-        ))
-    }
-
-    fn font_thumbnail(font_path: &Path) -> Result<Self> {
-        Self::make_font_thumbnail(font_path)?;
-        Ok(Self::thumbnail(
-            font_path.to_owned(),
-            UeberzugKind::Font,
-            Some(THUMBNAIL_PATH_PNG.to_owned()),
-        ))
-    }
-
-    fn svg_thumbnail(svg_path: &Path) -> Result<Self> {
-        Self::make_svg_thumbnail(svg_path)?;
-        Ok(Self::thumbnail(
-            svg_path.to_owned(),
-            UeberzugKind::Svg,
-            Some(THUMBNAIL_PATH_PNG.to_owned()),
-        ))
-    }
-
-    fn office_thumbnail(calc_path: &Path) -> Result<Self> {
-        let calc_str = path_to_string(&calc_path);
-        let args = ["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
-        let output = execute_and_output_no_log(LIBREOFFICE, args)?;
-        if !output.stderr.is_empty() {
-            log_info!(
-                "libreoffice conversion output: {} {}",
-                String::from_utf8(output.stdout).unwrap_or_default(),
-                String::from_utf8(output.stderr).unwrap_or_default()
-            );
-            return Err(anyhow!("{LIBREOFFICE} couldn't convert {calc_str} to pdf"));
-        }
-        let mut pdf_path = std::path::PathBuf::from("/tmp");
-        let filename = calc_path.file_name().context("")?;
-        pdf_path.push(filename);
-        pdf_path.set_extension("pdf");
-        std::fs::rename(pdf_path, CALC_PDF_PATH)?;
-        let calc_pdf_path = PathBuf::from(CALC_PDF_PATH);
-        let length = Self::get_pdf_length(&calc_pdf_path)?;
-        Self::make_pdf_thumbnail(&calc_pdf_path, 0)?;
-        let mut thumbnail = Self::thumbnail(calc_pdf_path.to_owned(), UeberzugKind::Pdf, None);
-        thumbnail.length = length;
-        Ok(thumbnail)
-    }
-
-    fn pdf_thumbnail(pdf_path: &Path) -> Result<Self> {
-        let length = Self::get_pdf_length(pdf_path)?;
-        Self::make_pdf_thumbnail(pdf_path, 0)?;
-        let mut thumbnail = Self::thumbnail(pdf_path.to_owned(), UeberzugKind::Pdf, None);
-        thumbnail.length = length;
-        Ok(thumbnail)
-    }
-
-    fn make_thumbnail(exe: &str, args: &[&str]) -> Result<()> {
-        let output = execute_and_output_no_log(exe, args.to_owned())?;
-        if !output.stderr.is_empty() {
-            log_info!(
-                "make thumbnail output: {} {}",
-                String::from_utf8(output.stdout).unwrap_or_default(),
-                String::from_utf8(output.stderr).unwrap_or_default()
-            );
-        }
-        Ok(())
-    }
-
-    fn make_pdf_thumbnail(path: &Path, page_number: usize) -> Result<()> {
-        execute_and_capture_output_without_check(
-            PDFTOPPM,
-            &[
-                "-singlefile",
-                "-jpeg",
-                "-jpegopt",
-                "quality=75",
-                "-f",
-                (page_number + 1).to_string().as_ref(),
-                path.to_string_lossy().to_string().as_ref(),
-                THUMBNAIL_PDF_PATH,
-            ],
-        )?;
-        Ok(())
-    }
-
-    fn get_pdf_length(path: &Path) -> Result<usize> {
-        let output =
-            execute_and_capture_output(PDFINFO, &[path.to_string_lossy().to_string().as_ref()])?;
-        let line = output.lines().find(|line| line.starts_with("Pages: "));
-
-        match line {
-            Some(line) => {
-                let page_count_str = line.split_whitespace().nth(1).unwrap();
-                let page_count = page_count_str.parse::<usize>()?;
-                Ok(page_count)
-            }
-            None => Err(anyhow::Error::msg("Couldn't find the page number")),
-        }
-    }
-
-    fn make_video_thumbnail(video_path: &Path) -> Result<()> {
-        let path_str = video_path
-            .to_str()
-            .context("make_thumbnail: couldn't parse the path into a string")?;
-        Self::make_thumbnail(
-            FFMPEG,
-            &[
-                "-i",
-                path_str,
-                "-vf",
-                "thumbnail",
-                "-frames:v",
-                "1",
-                THUMBNAIL_PATH_JPG,
-                "-y",
-            ],
-        )
-    }
-
-    fn make_font_thumbnail(font_path: &Path) -> Result<()> {
-        let path_str = font_path
-            .to_str()
-            .context("make_thumbnail: couldn't parse the path into a string")?;
-        Self::make_thumbnail(FONTIMAGE, &["-o", THUMBNAIL_PATH_PNG, path_str])
-    }
-
-    fn make_svg_thumbnail(svg_path: &Path) -> Result<()> {
-        let path_str = svg_path
-            .to_str()
-            .context("make_thumbnail: couldn't parse the path into a string")?;
-        Self::make_thumbnail(
-            RSVG_CONVERT,
-            &["--keep-aspect-ratio", path_str, "-o", THUMBNAIL_PATH_PNG],
-        )
-    }
-
-    /// Only affect pdf thumbnail. Will decrease the index if possible.
-    pub fn up_one_row(&mut self) {
-        if let UeberzugKind::Pdf = self.kind {
-            if self.index > 0 {
-                self.index -= 1;
-            }
-        }
-    }
-
-    /// Only affect pdf thumbnail. Will increase the index if possible.
-    pub fn down_one_row(&mut self) {
-        if let UeberzugKind::Pdf = self.kind {
-            if self.index + 1 < self.len() {
-                self.index += 1;
-            }
-        }
-    }
-
-    /// 0 for every kind except pdf where it's the number of pages.
-    pub fn len(&self) -> usize {
-        self.length
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Update the thumbnail of the pdf to match its own index.
-    /// Does nothing for other kinds.
-    pub fn match_index(&self) -> Result<()> {
-        if let UeberzugKind::Pdf = self.kind {
-            Self::make_pdf_thumbnail(&self.original, self.index)?;
-        }
-        Ok(())
-    }
-
-    /// Draw the image with ueberzug in the current window.
-    /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
-    /// The whole struct instance is dropped when the preview is reset and the image is deleted.
-    pub fn ueberzug(&self, x: u16, y: u16, width: u16, height: u16) {
-        self.ueberzug.draw(&ueberzug::UeConf {
-            identifier: &self.filename,
-            path: &self.path,
-            x,
-            y,
-            width: Some(width),
-            height: Some(height),
-            scaler: Some(ueberzug::Scalers::FitContain),
-            ..Default::default()
-        });
     }
 }
 
