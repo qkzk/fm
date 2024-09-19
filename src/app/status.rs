@@ -33,7 +33,6 @@ use crate::io::{
 };
 use crate::io::{google_drive, MIN_WIDTH_FOR_DUAL_PANE};
 use crate::io::{Extension, Kind};
-use crate::modes::MountCommands;
 use crate::modes::MountRepr;
 use crate::modes::NeedConfirmation;
 use crate::modes::PasswordKind;
@@ -55,6 +54,7 @@ use crate::modes::{Display, Go};
 use crate::modes::{FileKind, Menu};
 use crate::modes::{FilterKind, InputSimple};
 use crate::modes::{IsoDevice, PickerCaller};
+use crate::modes::{MountCommands, PreviewBuilder};
 use crate::{log_info, log_line};
 
 pub enum Window {
@@ -509,7 +509,7 @@ impl Status {
             if Session::display_wide_enough(self.term_size()?.0) {
                 self.set_second_pane_for_preview()?;
             } else {
-                self.tabs[1].preview = Preview::empty();
+                self.tabs[1].preview = PreviewBuilder::empty();
             }
         };
         Ok(())
@@ -525,7 +525,9 @@ impl Status {
         };
         let left_tab = &self.tabs[0];
         let users = &left_tab.users;
-        self.tabs[1].preview = Preview::new(&fileinfo, users).unwrap_or_default();
+        self.tabs[1].preview = PreviewBuilder::new(&fileinfo, users)
+            .build()
+            .unwrap_or_default();
         self.tabs[1].window.reset(self.tabs[1].preview.len());
         Ok(())
     }
@@ -549,7 +551,7 @@ impl Status {
             _ => match left_tab.display_mode {
                 Display::Flagged => {
                     let Some(path) = self.menu.flagged.selected() else {
-                        self.tabs[1].preview = Preview::empty();
+                        self.tabs[1].preview = PreviewBuilder::empty();
                         return Err(anyhow!("No fileinfo to preview"));
                     };
                     FileInfo::new(path, users)
@@ -1335,7 +1337,7 @@ impl Status {
         log_info!("output {output}");
         let _ = self.reset_edit_mode();
         self.current_tab_mut().set_display_mode(Display::Preview);
-        let preview = Preview::cli_info(&output, command);
+        let preview = PreviewBuilder::cli_info(&output, command);
         self.current_tab_mut().window.reset(preview.len());
         self.current_tab_mut().preview = preview;
     }

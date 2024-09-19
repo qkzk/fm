@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -7,11 +7,12 @@ use crate::common::{
     filename_from_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO, PDFTOPPM,
     RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG, THUMBNAIL_PDF_PATH,
 };
-use crate::io::{
-    execute_and_capture_output, execute_and_capture_output_without_check, execute_and_output_no_log,
-};
+use crate::io::{execute_and_capture_output, execute_and_output_no_log};
 use crate::log_info;
 
+use super::ExtensionKind;
+
+#[derive(Default)]
 pub enum Kind {
     Font,
     Image,
@@ -19,11 +20,40 @@ pub enum Kind {
     Pdf,
     Svg,
     Video,
+    #[default]
+    Unknown,
 }
 
 impl Kind {
     fn allow_multiples(&self) -> bool {
         matches!(self, Self::Pdf | Self::Video)
+    }
+}
+
+impl From<ExtensionKind> for Kind {
+    fn from(val: ExtensionKind) -> Self {
+        match &val {
+            ExtensionKind::Font => Self::Font,
+            ExtensionKind::Image => Self::Image,
+            ExtensionKind::Office => Self::Office,
+            ExtensionKind::Pdf => Self::Pdf,
+            ExtensionKind::Svg => Self::Svg,
+            ExtensionKind::Video => Self::Video,
+            _ => Self::Unknown,
+        }
+    }
+}
+impl std::fmt::Display for Kind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Font => write!(f, "font"),
+            Self::Image => write!(f, "image"),
+            Self::Office => write!(f, "office"),
+            Self::Pdf => write!(f, "pdf"),
+            Self::Svg => write!(f, "svg"),
+            Self::Unknown => write!(f, "unknown"),
+            Self::Video => write!(f, "video"),
+        }
     }
 }
 
@@ -123,6 +153,7 @@ impl UeberBuilder {
             Kind::Pdf => self.build_pdf(),
             Kind::Svg => self.build_svg(),
             Kind::Video => self.build_video(),
+            _ => Err(anyhow!("Unknown kind {kind}", kind = self.kind)),
         }
     }
 
@@ -251,7 +282,7 @@ impl Thumbnail {
             Kind::Svg => Self::create_svg(path_str),
             Kind::Video => Self::create_video(path_str),
 
-            Kind::Image => Ok(()),
+            _ => Ok(()),
         }
     }
 

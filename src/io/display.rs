@@ -36,7 +36,6 @@ use crate::modes::Selectable;
 use crate::modes::Trash;
 use crate::modes::TreeLineBuilder;
 use crate::modes::TreePreview;
-use crate::modes::Ueberzug;
 use crate::modes::Window;
 use crate::modes::{parse_input_mode, SecondLine};
 use crate::modes::{BinaryContent, Ueber};

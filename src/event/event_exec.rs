@@ -14,9 +14,9 @@ use crate::io::{execute_without_output_with_path, read_log};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    copy_move, help_string, lsblk_and_cryptsetup_installed, open_tui_program, Content,
-    ContentWindow, Display, Edit, InputCompleted, InputSimple, LeaveMode, MarkAction, Navigate,
-    NeedConfirmation, Preview, RemovableDevices, Search, Selectable,
+    help_string, lsblk_and_cryptsetup_installed, open_tui_program, Content, ContentWindow, Display,
+    Edit, InputCompleted, InputSimple, LeaveMode, MarkAction, Navigate, NeedConfirmation,
+    PreviewBuilder, RemovableDevices, Search, Selectable,
 };
 
 /// Links events from tuikit to custom actions.
@@ -564,7 +564,7 @@ impl EventAction {
         }
         let help = help_string(binds, &status.internal_settings.opener);
         status.current_tab_mut().set_display_mode(Display::Preview);
-        status.current_tab_mut().preview = Preview::help(&help);
+        status.current_tab_mut().preview = PreviewBuilder::help(&help);
         let len = status.current_tab().preview.len();
         status.current_tab_mut().window.reset(len);
         Ok(())
@@ -580,7 +580,7 @@ impl EventAction {
         };
         let tab = status.current_tab_mut();
         tab.set_display_mode(Display::Preview);
-        tab.preview = Preview::log(log);
+        tab.preview = PreviewBuilder::log(log);
         tab.window.reset(tab.preview.len());
         tab.preview_go_bottom();
         Ok(())

@@ -13,7 +13,7 @@ use crate::io::{Args, Opener};
 use crate::log_info;
 use crate::modes::{
     Content, ContentWindow, Directory, Display, Edit, FileInfo, FileKind, FilterKind, Go, History,
-    Preview, Search, Selectable, SortKind, To, Tree, Users,
+    Preview, PreviewBuilder, Search, Selectable, SortKind, To, Tree, Users,
 };
 
 pub struct TabSettings {
@@ -208,7 +208,7 @@ impl Tab {
 
     /// Refresh everything but the view
     pub fn refresh_params(&mut self) {
-        self.preview = Preview::empty();
+        self.preview = PreviewBuilder::empty();
         if matches!(self.display_mode, Display::Tree) {
             self.make_tree(None);
         } else {
@@ -317,7 +317,9 @@ impl Tab {
     /// Creates a preview and assign it.
     /// Doesn't check if it's the correct action to do according to display.
     fn make_preview_unchecked(&mut self, file_info: FileInfo) {
-        let preview = Preview::file(&file_info).unwrap_or_default();
+        let preview = PreviewBuilder::new(&file_info, &self.users)
+            .build()
+            .unwrap_or_default();
         self.set_display_mode(Display::Preview);
         self.window.reset(preview.len());
         self.preview = preview;
@@ -326,7 +328,7 @@ impl Tab {
     /// Reset the preview to empty. Used to save some memory.
     fn reset_preview(&mut self) {
         if matches!(self.display_mode, Display::Preview) {
-            self.preview = Preview::empty();
+            self.preview = PreviewBuilder::empty();
         }
     }
 

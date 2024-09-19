@@ -1,4 +1,5 @@
 use std::cmp::min;
+use std::convert::Into;
 use std::fmt::Write as _;
 use std::fs::metadata;
 use std::io::{BufRead, BufReader, Cursor, Read};
@@ -32,17 +33,18 @@ use crate::modes::{
 #[derive(Default, Eq, PartialEq)]
 pub enum ExtensionKind {
     Archive,
-    Image,
     Audio,
-    Video,
+    Epub,
     Font,
-    Svg,
-    Pdf,
+    Image,
     Iso,
     Notebook,
     Office,
-    Epub,
+    Pdf,
+    Svg,
     Torrent,
+    Video,
+
     #[default]
     Default,
 }
@@ -79,21 +81,21 @@ impl ExtensionKind {
 
     fn has_programs(&self) -> bool {
         match self {
+            Self::Audio => is_program_in_path(MEDIAINFO),
+            Self::Epub => is_program_in_path(PANDOC),
+            Self::Font => is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE),
+            Self::Image => is_program_in_path(UEBERZUG),
+            Self::Iso => is_program_in_path(ISOINFO),
+            Self::Notebook => is_program_in_path(JUPYTER),
+            Self::Office => is_program_in_path(LIBREOFFICE),
             Self::Pdf => {
                 is_program_in_path(UEBERZUG)
                     && is_program_in_path(PDFINFO)
                     && is_program_in_path(PDFTOPPM)
             }
-            Self::Image => is_program_in_path(UEBERZUG),
-            Self::Audio => is_program_in_path(MEDIAINFO),
-            Self::Video => is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG),
-            Self::Font => is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE),
             Self::Svg => is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT),
-            Self::Iso => is_program_in_path(ISOINFO),
-            Self::Notebook => is_program_in_path(JUPYTER),
-            Self::Office => is_program_in_path(LIBREOFFICE),
-            Self::Epub => is_program_in_path(PANDOC),
             Self::Torrent => is_program_in_path(TRANSMISSION_SHOW),
+            Self::Video => is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG),
 
             _ => true,
         }
@@ -152,181 +154,6 @@ pub enum Preview {
 }
 
 impl Preview {
-    const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
-
-    /// Empty preview, holding nothing.
-    pub fn empty() -> Self {
-        clear_tmp_files();
-        Self::Empty
-    }
-
-    pub fn new(file_info: &FileInfo, users: &Users) -> Result<Self> {
-        match file_info.file_kind {
-            FileKind::Directory => Self::directory(file_info, users),
-            _ => Self::file(file_info),
-        }
-    }
-
-    /// Creates a new `Directory` from the file_info
-    /// It explores recursivelly the directory and creates a tree.
-    /// The recursive exploration is limited to depth 2.
-    pub fn directory(file_info: &FileInfo, users: &Users) -> Result<Self> {
-        Ok(Self::Tree(TreePreview::new(file_info.path.clone(), users)))
-    }
-
-    /// Creates a new preview instance based on the filekind and the extension of
-    /// the file.
-    /// Sometimes it reads the content of the file, sometimes it delegates
-    /// it to the display method.
-    /// Directories aren't handled there since we need more arguments to create
-    /// their previews.
-    pub fn file(file_info: &FileInfo) -> Result<Self> {
-        clear_tmp_files();
-        match file_info.file_kind {
-            FileKind::Directory => Err(anyhow!("{p} is a directory", p = file_info.path.display())),
-            FileKind::NormalFile => Self::normal_file(file_info),
-            FileKind::Socket if is_program_in_path(SS) => Ok(Self::socket(file_info)),
-            FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(Self::blockdevice(file_info)),
-            FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
-                Ok(Self::fifo_chardevice(file_info))
-            }
-            _ => Ok(Preview::default()),
-        }
-    }
-
-    fn normal_file(file_info: &FileInfo) -> Result<Self> {
-        let extension = &file_info.extension.to_lowercase();
-        let kind = ExtensionKind::matcher(extension);
-        match kind {
-            ExtensionKind::Archive => Ok(Self::Archive(ArchiveContent::new(
-                &file_info.path,
-                extension,
-            )?)),
-            ExtensionKind::Pdf if kind.has_programs() => Ok(Self::Ueberzug(
-                UeberBuilder::new(&file_info.path, UeberzugKind::Pdf).build()?,
-            )),
-            ExtensionKind::Image if kind.has_programs() => Ok(Self::Ueberzug(
-                UeberBuilder::new(&file_info.path, UeberzugKind::Image).build()?,
-            )),
-            ExtensionKind::Audio if kind.has_programs() => {
-                Ok(Self::Media(MediaContent::new(&file_info.path)?))
-            }
-            ExtensionKind::Video if kind.has_programs() => Ok(Self::Ueberzug(
-                UeberBuilder::new(&file_info.path, UeberzugKind::Video).build()?,
-            )),
-            ExtensionKind::Font if kind.has_programs() => Ok(Self::Ueberzug(
-                UeberBuilder::new(&file_info.path, UeberzugKind::Font).build()?,
-            )),
-            ExtensionKind::Svg if kind.has_programs() => Ok(Self::Ueberzug(
-                UeberBuilder::new(&file_info.path, UeberzugKind::Svg).build()?,
-            )),
-            ExtensionKind::Iso if kind.has_programs() => Ok(Self::Iso(Iso::new(&file_info.path)?)),
-            ExtensionKind::Notebook if kind.has_programs() => {
-                Ok(Self::notebook(&file_info.path).context("Preview: Couldn't parse notebook")?)
-            }
-            ExtensionKind::Office if kind.has_programs() => Ok(Self::Ueberzug(
-                UeberBuilder::new(&file_info.path, UeberzugKind::Office).build()?,
-            )),
-            ExtensionKind::Epub if kind.has_programs() => {
-                Ok(Self::epub(&file_info.path).context("Preview: Couldn't parse epub")?)
-            }
-            ExtensionKind::Torrent if kind.has_programs() => Ok(Self::torrent(&file_info.path)
-                .context("Preview couldn't explore the torrent file")?),
-            _ => match Self::preview_syntaxed(extension, &file_info.path) {
-                Some(syntaxed_preview) => Ok(syntaxed_preview),
-                None => Self::preview_text_or_binary(file_info),
-            },
-        }
-    }
-
-    fn socket(file_info: &FileInfo) -> Self {
-        Self::Socket(Socket::new(file_info))
-    }
-
-    fn blockdevice(file_info: &FileInfo) -> Self {
-        Self::BlockDevice(BlockDevice::new(file_info))
-    }
-
-    fn fifo_chardevice(file_info: &FileInfo) -> Self {
-        Self::FifoCharDevice(FifoCharDevice::new(file_info))
-    }
-
-    /// Creates a new, static window used when we display a preview in the second pane
-    pub fn window_for_second_pane(&self, height: usize) -> ContentWindow {
-        ContentWindow::new(self.len(), height)
-    }
-
-    fn preview_syntaxed(ext: &str, path: &Path) -> Option<Self> {
-        if let Ok(metadata) = metadata(path) {
-            if metadata.len() > HLContent::SIZE_LIMIT as u64 {
-                return None;
-            }
-        } else {
-            return None;
-        };
-        let ss = SyntaxSet::load_defaults_nonewlines();
-        ss.find_syntax_by_extension(ext).map(|syntax| {
-            Self::Syntaxed(HLContent::new(path, ss.clone(), syntax).unwrap_or_default())
-        })
-    }
-
-    fn notebook(path: &Path) -> Option<Self> {
-        let path_str = path.to_str()?;
-        // nbconvert is bundled with jupyter, no need to check again
-        let output = execute_and_capture_output_without_check(
-            JUPYTER,
-            &["nbconvert", "--to", "markdown", path_str, "--stdout"],
-        )
-        .ok()?;
-        Self::syntaxed_from_str(output, "md")
-    }
-
-    fn syntaxed_from_str(output: String, ext: &str) -> Option<Self> {
-        let ss = SyntaxSet::load_defaults_nonewlines();
-        ss.find_syntax_by_extension(ext).map(|syntax| {
-            Self::Syntaxed(HLContent::from_str(&output, ss.clone(), syntax).unwrap_or_default())
-        })
-    }
-
-    fn preview_text_or_binary(file_info: &FileInfo) -> Result<Self> {
-        let mut file = std::fs::File::open(file_info.path.clone())?;
-        let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
-        if Self::is_binary(file_info, &mut file, &mut buffer) {
-            Ok(Self::Binary(BinaryContent::new(file_info)?))
-        } else {
-            Ok(Self::Text(TextContent::from_file(&file_info.path)?))
-        }
-    }
-
-    fn is_binary(file_info: &FileInfo, file: &mut std::fs::File, buffer: &mut [u8]) -> bool {
-        file_info.true_size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
-            && file.read_exact(buffer).is_ok()
-            && inspect(buffer) == ContentType::BINARY
-    }
-
-    /// Creates the help preview as if it was a text file.
-    pub fn help(help: &str) -> Self {
-        Self::Text(TextContent::help(help))
-    }
-
-    pub fn log(log: Vec<String>) -> Self {
-        Self::Text(TextContent::log(log))
-    }
-
-    pub fn cli_info(output: &str, command: String) -> Self {
-        Self::ColoredText(ColoredText::new(output, command))
-    }
-
-    pub fn epub(path: &Path) -> Result<Self> {
-        Ok(Self::Text(
-            TextContent::epub(path).context("Couldn't read epub")?,
-        ))
-    }
-
-    pub fn torrent(path: &Path) -> Result<Self> {
-        Ok(Self::Torrent(Torrent::new(path).context("")?))
-    }
-
     /// The size (most of the time the number of lines) of the preview.
     /// Some preview (thumbnail, empty) can't be scrolled and their size is always 0.
     pub fn len(&self) -> usize {
@@ -350,7 +177,195 @@ impl Preview {
 
     /// True if nothing is currently previewed.
     pub fn is_empty(&self) -> bool {
-        matches!(*self, Self::Empty)
+        matches!(self, Self::Empty)
+    }
+
+    /// Creates a new, static window used when we display a preview in the second pane
+    pub fn window_for_second_pane(&self, height: usize) -> ContentWindow {
+        ContentWindow::new(self.len(), height)
+    }
+}
+
+pub struct PreviewBuilder<'a> {
+    file_info: &'a FileInfo,
+    users: &'a Users,
+}
+
+impl<'a> PreviewBuilder<'a> {
+    const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
+
+    pub fn new(file_info: &'a FileInfo, users: &'a Users) -> Self {
+        Self { file_info, users }
+    }
+
+    /// Empty preview, holding nothing.
+    pub fn empty() -> Preview {
+        clear_tmp_files();
+        Preview::Empty
+    }
+
+    pub fn build(&self) -> Result<Preview> {
+        match self.file_info.file_kind {
+            FileKind::Directory => self.directory(),
+            _ => self.file(),
+        }
+    }
+
+    /// Creates a new `Directory` from the self.file_info
+    /// It explores recursivelly the directory and creates a tree.
+    /// The recursive exploration is limited to depth 2.
+    fn directory(&self) -> Result<Preview> {
+        Ok(Preview::Tree(TreePreview::new(
+            self.file_info.path.clone(),
+            self.users,
+        )))
+    }
+
+    /// Creates a new preview instance based on the filekind and the extension of
+    /// the file.
+    /// Sometimes it reads the content of the file, sometimes it delegates
+    /// it to the display method.
+    /// Directories aren't handled there since we need more arguments to create
+    /// their previews.
+    fn file(&self) -> Result<Preview> {
+        clear_tmp_files();
+        match self.file_info.file_kind {
+            FileKind::Directory => Err(anyhow!(
+                "{p} is a directory",
+                p = self.file_info.path.display()
+            )),
+            FileKind::NormalFile => self.normal_file(),
+            FileKind::Socket if is_program_in_path(SS) => Ok(self.socket()),
+            FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(self.blockdevice()),
+            FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
+                Ok(self.fifo_chardevice())
+            }
+            _ => Ok(Preview::default()),
+        }
+    }
+
+    fn normal_file(&self) -> Result<Preview> {
+        let extension = &self.file_info.extension.to_lowercase();
+        let kind = ExtensionKind::matcher(extension);
+        match kind {
+            ExtensionKind::Archive => Ok(Preview::Archive(ArchiveContent::new(
+                &self.file_info.path,
+                extension,
+            )?)),
+            ExtensionKind::Iso if kind.has_programs() => {
+                Ok(Preview::Iso(Iso::new(&self.file_info.path)?))
+            }
+            ExtensionKind::Epub if kind.has_programs() => Ok(Preview::Text(
+                TextContent::epub(&self.file_info.path).context("Couldn't read epub")?,
+            )),
+            ExtensionKind::Torrent if kind.has_programs() => Ok(Preview::Torrent(
+                Torrent::new(&self.file_info.path).context("")?,
+            )),
+            ExtensionKind::Notebook if kind.has_programs() => {
+                Ok(Self::notebook(&self.file_info.path)
+                    .context("Preview: Couldn't parse notebook")?)
+            }
+            ExtensionKind::Audio if kind.has_programs() => {
+                Ok(Preview::Media(MediaContent::new(&self.file_info.path)?))
+            }
+            ExtensionKind::Font if kind.has_programs() => Ok(Preview::Ueberzug(
+                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
+            )),
+            ExtensionKind::Image if kind.has_programs() => Ok(Preview::Ueberzug(
+                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
+            )),
+            ExtensionKind::Office if kind.has_programs() => Ok(Preview::Ueberzug(
+                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
+            )),
+            ExtensionKind::Pdf if kind.has_programs() => Ok(Preview::Ueberzug(
+                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
+            )),
+            ExtensionKind::Svg if kind.has_programs() => Ok(Preview::Ueberzug(
+                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
+            )),
+            ExtensionKind::Video if kind.has_programs() => Ok(Preview::Ueberzug(
+                UeberBuilder::new(&self.file_info.path, kind.into()).build()?,
+            )),
+            _ => match self.preview_syntaxed(extension) {
+                Some(syntaxed_preview) => Ok(syntaxed_preview),
+                None => self.preview_text_or_binary(),
+            },
+        }
+    }
+
+    fn socket(&self) -> Preview {
+        Preview::Socket(Socket::new(self.file_info))
+    }
+
+    fn blockdevice(&self) -> Preview {
+        Preview::BlockDevice(BlockDevice::new(self.file_info))
+    }
+
+    fn fifo_chardevice(&self) -> Preview {
+        Preview::FifoCharDevice(FifoCharDevice::new(self.file_info))
+    }
+
+    fn preview_syntaxed(&self, ext: &str) -> Option<Preview> {
+        if let Ok(metadata) = metadata(&self.file_info.path) {
+            if metadata.len() > HLContent::SIZE_LIMIT as u64 {
+                return None;
+            }
+        } else {
+            return None;
+        };
+        let ss = SyntaxSet::load_defaults_nonewlines();
+        ss.find_syntax_by_extension(ext).map(|syntax| {
+            Preview::Syntaxed(
+                HLContent::new(&self.file_info.path, ss.clone(), syntax).unwrap_or_default(),
+            )
+        })
+    }
+
+    fn notebook(path: &Path) -> Option<Preview> {
+        let path_str = path.to_str()?;
+        // nbconvert is bundled with jupyter, no need to check again
+        let output = execute_and_capture_output_without_check(
+            JUPYTER,
+            &["nbconvert", "--to", "markdown", path_str, "--stdout"],
+        )
+        .ok()?;
+        Self::syntaxed_from_str(output, "md")
+    }
+
+    fn syntaxed_from_str(output: String, ext: &str) -> Option<Preview> {
+        let ss = SyntaxSet::load_defaults_nonewlines();
+        ss.find_syntax_by_extension(ext).map(|syntax| {
+            Preview::Syntaxed(HLContent::from_str(&output, ss.clone(), syntax).unwrap_or_default())
+        })
+    }
+
+    fn preview_text_or_binary(&self) -> Result<Preview> {
+        let mut file = std::fs::File::open(self.file_info.path.clone())?;
+        let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
+        if self.is_binary(&mut file, &mut buffer) {
+            Ok(Preview::Binary(BinaryContent::new(self.file_info)?))
+        } else {
+            Ok(Preview::Text(TextContent::from_file(&self.file_info.path)?))
+        }
+    }
+
+    fn is_binary(&self, file: &mut std::fs::File, buffer: &mut [u8]) -> bool {
+        self.file_info.true_size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
+            && file.read_exact(buffer).is_ok()
+            && inspect(buffer) == ContentType::BINARY
+    }
+
+    /// Creates the help preview as if it was a text file.
+    pub fn help(help: &str) -> Preview {
+        Preview::Text(TextContent::help(help))
+    }
+
+    pub fn log(log: Vec<String>) -> Preview {
+        Preview::Text(TextContent::log(log))
+    }
+
+    pub fn cli_info(output: &str, command: String) -> Preview {
+        Preview::ColoredText(ColoredText::new(output, command))
     }
 }
 
