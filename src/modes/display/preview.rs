@@ -275,13 +275,20 @@ impl<'a> PreviewBuilder<'a> {
             ExtensionKind::Audio if kind.has_programs() => {
                 Ok(Preview::Media(MediaContent::new(path)?))
             }
-            _ if kind.is_ueber_kind() && kind.has_programs() => Ok(Preview::Ueberzug(
-                UeberBuilder::new(path, kind.into()).build()?,
-            )),
+            _ if kind.is_ueber_kind() && kind.has_programs() => Self::ueber(path, kind),
             _ => match self.syntaxed(extension) {
                 Some(syntaxed_preview) => Ok(syntaxed_preview),
                 None => self.text_or_binary(),
             },
+        }
+    }
+
+    fn ueber(path: &Path, kind: ExtensionKind) -> Result<Preview> {
+        let preview = UeberBuilder::new(path, kind.into()).build()?;
+        if preview.is_empty() {
+            Ok(Preview::Empty)
+        } else {
+            Ok(Preview::Ueberzug(preview))
         }
     }
 

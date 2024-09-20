@@ -1,7 +1,6 @@
 use anyhow::{anyhow, bail, Context, Result};
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::time::Instant;
 
 use crate::common::{
@@ -69,9 +68,10 @@ pub struct Ueber {
 }
 
 impl Ueber {
-    fn new(kind: Kind, identifier: String, images: Vec<PathBuf>, length: usize) -> Self {
+    fn new(kind: Kind, identifier: String, images: Vec<PathBuf>) -> Self {
         let ueberzug = ueberzug::Ueberzug::new();
         let index = 0;
+        let length = images.len();
         let since = Instant::now();
         Self {
             since,
@@ -157,7 +157,7 @@ impl UeberBuilder {
         "/tmp/fm_thumbnail_6.jpg",
     ];
 
-    pub fn new(source: &Arc<Path>, kind: Kind) -> Self {
+    pub fn new(source: &Path, kind: Kind) -> Self {
         let source = source.to_path_buf();
         Self { source, kind }
     }
@@ -190,16 +190,18 @@ impl UeberBuilder {
         }
         let identifier = filename_from_path(&pdf_path)?.to_owned();
         let length = Self::get_pdf_length(&calc_pdf_path)?;
-        Thumbnail::create(&self.kind, pdf_path.to_string_lossy().as_ref())?;
+        Thumbnail::create(&self.kind, pdf_path.to_string_lossy().as_ref());
         let images = Self::make_pdf_images_paths(length)?;
         std::fs::remove_file(&pdf_path)?;
+
         log_info!("build_office: build complete!");
-        Ok(Ueber::new(Kind::Pdf, identifier, images, length))
+        Ok(Ueber::new(Kind::Pdf, identifier, images))
     }
 
     fn make_pdf_images_paths(length: usize) -> Result<Vec<PathBuf>> {
         let images = (1..length + 1)
             .map(|index| PathBuf::from(format!("{THUMBNAIL_PDF_PATH}-{index}.jpg")))
+            .filter(|p| p.exists())
             .collect();
         Ok(images)
     }
@@ -226,10 +228,10 @@ impl UeberBuilder {
     fn build_pdf(self) -> Result<Ueber> {
         let length = Self::get_pdf_length(&self.source)?;
         let identifier = filename_from_path(&self.source)?.to_owned();
-        Thumbnail::create(&self.kind, self.source.to_string_lossy().as_ref())?;
+        Thumbnail::create(&self.kind, self.source.to_string_lossy().as_ref());
         let images = Self::make_pdf_images_paths(length)?;
         log_info!("build_pdf images: {images:?}");
-        Ok(Ueber::new(self.kind, identifier, images, length))
+        Ok(Ueber::new(self.kind, identifier, images))
     }
 
     fn build_video(self) -> Result<Ueber> {
@@ -237,21 +239,19 @@ impl UeberBuilder {
             .source
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
-        Thumbnail::create(&self.kind, path_str)?;
+        Thumbnail::create(&self.kind, path_str);
         let images: Vec<PathBuf> = Self::VIDEO_THUMBNAILS
             .map(PathBuf::from)
             .into_iter()
             .filter(|p| p.exists())
             .collect();
         let identifier = filename_from_path(&self.source)?.to_owned();
-        let length = images.len();
-        Ok(Ueber::new(self.kind, identifier, images, length))
+        Ok(Ueber::new(self.kind, identifier, images))
     }
 
     fn build_single_image(self, images: Vec<PathBuf>) -> Result<Ueber> {
         let identifier = filename_from_path(&self.source)?.to_owned();
-        let length = 1;
-        Ok(Ueber::new(self.kind, identifier, images, length))
+        Ok(Ueber::new(self.kind, identifier, images))
     }
 
     fn build_font(self) -> Result<Ueber> {
@@ -259,8 +259,9 @@ impl UeberBuilder {
             .source
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
-        Thumbnail::create(&self.kind, path_str)?;
-        let images = vec![PathBuf::from(THUMBNAIL_PATH_PNG)];
+        Thumbnail::create(&self.kind, path_str);
+        let p = PathBuf::from(THUMBNAIL_PATH_PNG);
+        let images = if p.exists() { vec![p] } else { vec![] };
         self.build_single_image(images)
     }
 
@@ -274,8 +275,9 @@ impl UeberBuilder {
             .source
             .to_str()
             .context("make_thumbnail: couldn't parse the path into a string")?;
-        Thumbnail::create(&self.kind, path_str)?;
-        let images = vec![PathBuf::from(THUMBNAIL_PATH_PNG)];
+        Thumbnail::create(&self.kind, path_str);
+        let p = PathBuf::from(THUMBNAIL_PATH_PNG);
+        let images = if p.exists() { vec![p] } else { vec![] };
         self.build_single_image(images)
     }
 }
@@ -283,8 +285,8 @@ impl UeberBuilder {
 struct Thumbnail;
 
 impl Thumbnail {
-    fn create(kind: &Kind, path_str: &str) -> Result<()> {
-        match kind {
+    fn create(kind: &Kind, path_str: &str) {
+        let _ = match kind {
             Kind::Font => Self::create_font(path_str),
             Kind::Office => Self::create_office(path_str),
             Kind::Pdf => Self::create_pdf(path_str),
@@ -292,7 +294,7 @@ impl Thumbnail {
             Kind::Video => Self::create_video(path_str),
 
             _ => Ok(()),
-        }
+        };
     }
 
     fn create_font(path_str: &str) -> Result<()> {
@@ -314,11 +316,12 @@ impl Thumbnail {
         let ffmpeg_args = [
             "-i",
             path_str,
+            "-an",
+            "-sn",
             "-vf",
-            "fps=1/60",
-            "scale=320:-1",
-            "-vsync",
-            "vfr",
+            "fps=1/60,scale=480:-1",
+            "-threads",
+            "2",
             "-frames:v",
             "6",
             &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
@@ -341,13 +344,13 @@ impl Thumbnail {
 
     fn execute(exe: &str, args: &[&str]) -> Result<()> {
         let output = execute_and_output_no_log(exe, args.to_owned())?;
-        if !output.stderr.is_empty() {
-            log_info!(
-                "make thumbnail output: {} {}",
-                String::from_utf8(output.stdout).unwrap_or_default(),
-                String::from_utf8(output.stderr).unwrap_or_default()
-            );
-        }
+        // if !output.stderr.is_empty() {
+        log_info!(
+            "make thumbnail output: {} {}",
+            String::from_utf8(output.stdout).unwrap_or_default(),
+            String::from_utf8(output.stderr).unwrap_or_default()
+        );
+        // }
         Ok(())
     }
 }
