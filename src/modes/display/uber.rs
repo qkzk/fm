@@ -1,11 +1,12 @@
 use anyhow::{anyhow, bail, Context, Result};
 
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use crate::common::{
     filename_from_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO, PDFTOPPM,
-    RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG, THUMBNAIL_PDF_PATH,
+    RSVG_CONVERT, THUMBNAIL_PATH_NO_EXT, THUMBNAIL_PATH_PNG,
 };
 use crate::io::{execute_and_capture_output, execute_and_output_no_log};
 use crate::log_info;
@@ -31,8 +32,8 @@ impl Kind {
 }
 
 impl From<ExtensionKind> for Kind {
-    fn from(val: ExtensionKind) -> Self {
-        match &val {
+    fn from(kind: ExtensionKind) -> Self {
+        match &kind {
             ExtensionKind::Font => Self::Font,
             ExtensionKind::Image => Self::Image,
             ExtensionKind::Office => Self::Office,
@@ -147,14 +148,12 @@ pub struct UeberBuilder {
 }
 
 impl UeberBuilder {
-    // TODO! don't use static str but the str defined in constants
-    const VIDEO_THUMBNAILS: [&'static str; 6] = [
+    const VIDEO_THUMBNAILS: [&'static str; 5] = [
         "/tmp/fm_thumbnail_1.jpg",
         "/tmp/fm_thumbnail_2.jpg",
         "/tmp/fm_thumbnail_3.jpg",
         "/tmp/fm_thumbnail_4.jpg",
         "/tmp/fm_thumbnail_5.jpg",
-        "/tmp/fm_thumbnail_6.jpg",
     ];
 
     pub fn new(source: &Path, kind: Kind) -> Self {
@@ -175,32 +174,39 @@ impl UeberBuilder {
     }
 
     fn build_office(self) -> Result<Ueber> {
-        log_info!("build_office: build starting!");
         let calc_str = path_to_string(&self.source);
-        let args = ["--convert-to", "pdf", "--outdir", "/tmp", &calc_str];
-        execute_and_output_no_log(LIBREOFFICE, args)?;
-        log_info!("build_office: here");
-        let mut pdf_path = std::path::PathBuf::from("/tmp");
-        let filename = self.source.file_name().context("")?;
+        Self::convert_office_to_pdf(&calc_str)?;
+        let pdf = Self::office_to_pdf_filename(
+            self.source
+                .file_name()
+                .context("couldn't extract filename")?,
+        )?;
+        if !pdf.exists() {
+            bail!("couldn't convert {calc_str} to pdf");
+        }
+        let identifier = filename_from_path(&pdf)?.to_owned();
+        Thumbnail::create(&self.kind, pdf.to_string_lossy().as_ref());
+        let images = Self::make_pdf_images_paths(Self::get_pdf_length(&pdf)?)?;
+        std::fs::remove_file(&pdf)?;
+
+        Ok(Ueber::new(Kind::Pdf, identifier, images))
+    }
+
+    fn convert_office_to_pdf(calc_str: &str) -> Result<std::process::Output> {
+        let args = ["--convert-to", "pdf", "--outdir", "/tmp", calc_str];
+        execute_and_output_no_log(LIBREOFFICE, args)
+    }
+
+    fn office_to_pdf_filename(filename: &OsStr) -> Result<PathBuf> {
+        let mut pdf_path = PathBuf::from("/tmp");
         pdf_path.push(filename);
         pdf_path.set_extension("pdf");
-        let calc_pdf_path = PathBuf::from(&pdf_path);
-        if !pdf_path.exists() {
-            bail!("{LIBREOFFICE} couldn't convert {calc_str} to pdf");
-        }
-        let identifier = filename_from_path(&pdf_path)?.to_owned();
-        let length = Self::get_pdf_length(&calc_pdf_path)?;
-        Thumbnail::create(&self.kind, pdf_path.to_string_lossy().as_ref());
-        let images = Self::make_pdf_images_paths(length)?;
-        std::fs::remove_file(&pdf_path)?;
-
-        log_info!("build_office: build complete!");
-        Ok(Ueber::new(Kind::Pdf, identifier, images))
+        Ok(pdf_path)
     }
 
     fn make_pdf_images_paths(length: usize) -> Result<Vec<PathBuf>> {
         let images = (1..length + 1)
-            .map(|index| PathBuf::from(format!("{THUMBNAIL_PDF_PATH}-{index}.jpg")))
+            .map(|index| PathBuf::from(format!("{THUMBNAIL_PATH_NO_EXT}-{index}.jpg")))
             .filter(|p| p.exists())
             .collect();
         Ok(images)
@@ -221,7 +227,7 @@ impl UeberBuilder {
                 );
                 Ok(page_count)
             }
-            None => Err(anyhow::Error::msg("Couldn't find the page number")),
+            None => Err(anyhow!("Couldn't find the page number")),
         }
     }
 
@@ -319,11 +325,11 @@ impl Thumbnail {
             "-an",
             "-sn",
             "-vf",
-            "fps=1/60,scale=480:-1",
+            "fps=1/100,scale=480:-1",
             "-threads",
             "2",
             "-frames:v",
-            "6",
+            "5",
             &format!("{THUMBNAIL_PATH_NO_EXT}_%d.jpg"),
         ];
         Thumbnail::execute(FFMPEG, &ffmpeg_args)
@@ -337,7 +343,7 @@ impl Thumbnail {
                 "-jpegopt",
                 "quality=75",
                 path_str,
-                THUMBNAIL_PDF_PATH,
+                THUMBNAIL_PATH_NO_EXT,
             ],
         )
     }

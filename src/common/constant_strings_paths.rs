@@ -65,8 +65,6 @@ pub const THUMBNAIL_PATH_PNG: &str = "/tmp/fm_thumbnail.png";
 pub const THUMBNAIL_PATH_JPG: &str = "/tmp/fm_thumbnail.jpg";
 /// Ueberzug image for videos, without extension
 pub const THUMBNAIL_PATH_NO_EXT: &str = "/tmp/fm_thumbnail";
-/// Ueberzug image for pdf
-pub const THUMBNAIL_PDF_PATH: &str = "/tmp/fm_thumbnail";
 /// Libreoffice pdf output
 pub const CALC_PDF_PATH: &str = "/tmp/fm_calc.pdf";
 /// Array of hardcoded shortcuts with standard *nix paths.
