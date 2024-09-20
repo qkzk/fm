@@ -1116,7 +1116,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Fix: directory mode when path is root, header is wrong, should just be "/""run" not "/""/run"
 - [x] Fix attempt of docs. Don't panic in build if no config file is found. That was dumb
 - [x] Fix: Tree mode, when path is root, header is wrong
-- [ ] video slideshow
+- [ ] Preview refactor
+  - [x] mod for ueberzug
+  - [x] builder for ueberzug
+  - [x] creator for thumbnail
+  - [x] video slideshow
+  - [ ] BUG: ueberzug creation may crash the app (poison lock etc.) `Error: Error locking status: poisoned lock: another task failed inside`
+  - [x] preview builder
+  - [ ] preview refactor
+  - [ ] simplify the mess as much as possible
 
 ## TODO
 
