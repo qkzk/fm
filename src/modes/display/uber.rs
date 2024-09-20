@@ -2,6 +2,7 @@ use anyhow::{anyhow, bail, Context, Result};
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
 
 use crate::common::{
     filename_from_path, path_to_string, FFMPEG, FONTIMAGE, LIBREOFFICE, PDFINFO, PDFTOPPM,
@@ -26,7 +27,7 @@ pub enum Kind {
 
 impl Kind {
     fn allow_multiples(&self) -> bool {
-        matches!(self, Self::Pdf | Self::Video)
+        matches!(self, Self::Pdf)
     }
 }
 
@@ -58,6 +59,7 @@ impl std::fmt::Display for Kind {
 }
 
 pub struct Ueber {
+    since: Instant,
     kind: Kind,
     identifier: String,
     images: Vec<PathBuf>,
@@ -70,7 +72,9 @@ impl Ueber {
     fn new(kind: Kind, identifier: String, images: Vec<PathBuf>, length: usize) -> Self {
         let ueberzug = ueberzug::Ueberzug::new();
         let index = 0;
+        let since = Instant::now();
         Self {
+            since,
             kind,
             identifier,
             images,
@@ -102,6 +106,19 @@ impl Ueber {
         self.len() == 0
     }
 
+    fn video_index(&self) -> usize {
+        let elapsed = self.since.elapsed().as_secs() as usize;
+        elapsed % self.images.len()
+    }
+
+    fn image_index(&self) -> usize {
+        if matches!(self.kind, Kind::Video) {
+            self.video_index()
+        } else {
+            self.index
+        }
+    }
+
     /// Draw the image with ueberzug in the current window.
     /// The position is absolute, which is problematic when the app is embeded into a floating terminal.
     /// The whole struct instance is dropped when the preview is reset and the image is deleted.
@@ -113,7 +130,7 @@ impl Ueber {
         );
         self.ueberzug.draw(&ueberzug::UeConf {
             identifier: &self.identifier,
-            path: &self.images[self.index].to_string_lossy(),
+            path: &self.images[self.image_index()].to_string_lossy(),
             x,
             y,
             width: Some(width),
@@ -299,6 +316,7 @@ impl Thumbnail {
             path_str,
             "-vf",
             "fps=1/60",
+            "scale=320:-1",
             "-vsync",
             "vfr",
             "-frames:v",
