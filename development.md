@@ -1121,7 +1121,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] builder for ueberzug
   - [x] creator for thumbnail
   - [x] video slideshow
-  - [ ] BUG: ueberzug creation may crash the app (poison lock etc.) `Error: Error locking status: poisoned lock: another task failed inside`
+  - [x] Fix: ueberzug creation may crash the app (poison lock etc.) `Error: Error locking status: poisoned lock: another task failed inside`
   - [x] preview builder
   - [ ] preview refactor
   - [ ] simplify the mess as much as possible
