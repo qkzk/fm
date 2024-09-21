@@ -1125,7 +1125,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] preview builder
   - [ ] preview refactor
   - [ ] simplify the mess as much as possible
-- [ ] Focus & mouseover
+- [ ] Focus & mouseover. Demande de passer le terminal en mode raw et réécrire tous les events de souris
 
 ## TODO
 
