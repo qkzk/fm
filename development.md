@@ -1125,6 +1125,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] preview builder
   - [ ] preview refactor
   - [ ] simplify the mess as much as possible
+- [ ] Focus & mouseover
 
 ## TODO
 

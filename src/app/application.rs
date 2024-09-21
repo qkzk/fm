@@ -2,31 +2,18 @@ use std::process::exit;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use anyhow::anyhow;
-use anyhow::Context;
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 
-use crate::app::Displayer;
-use crate::app::Refresher;
-use crate::app::Status;
-use crate::common::CONFIG_PATH;
-use crate::common::{clear_tmp_files, init_term};
-use crate::config::cloud_config;
-use crate::config::load_config;
-use crate::config::set_configurable_static;
-use crate::config::Config;
-use crate::config::START_FOLDER;
-use crate::event::EventDispatcher;
-use crate::event::EventReader;
-use crate::event::FmEvents;
-use crate::io::set_loggers;
-use crate::io::Args;
-use crate::io::Opener;
+use crate::app::{Displayer, Refresher, Status};
+use crate::common::{clear_tmp_files, init_term, print_on_quit, CONFIG_PATH};
+use crate::config::{cloud_config, load_config, set_configurable_static, Config, START_FOLDER};
+use crate::event::{EventDispatcher, EventReader, FmEvents};
+use crate::io::{set_loggers, Args, Opener};
 use crate::log_info;
 
 /// Holds everything about the application itself.
-/// Most attributes holds an `Arc<tuikit::Term::term>`.
+/// Most attributes holds an [`std::sync::Arc`] with [`tuikit::term::Term`].
 /// Dropping the instance of FM allows to write again to stdout.
 pub struct FM {
     /// Poll the event sent to the terminal by the user or the OS
@@ -127,7 +114,7 @@ impl FM {
     fn exit_wrong_config() -> ! {
         eprintln!("Couldn't load the config file at {CONFIG_PATH}. See https://raw.githubusercontent.com/qkzk/fm/master/config_files/fm/config.yaml for an example.");
         log_info!("Couldn't read the config file {CONFIG_PATH}");
-        std::process::exit(1)
+        exit(1)
     }
 
     /// Return the last event received by the terminal
@@ -160,15 +147,15 @@ impl FM {
         }
     }
 
-    /// Run the status loop.
-    pub fn run(&mut self) -> Result<()> {
+    /// Run the status loop and returns itself after completion.
+    pub fn run(mut self) -> Result<Self> {
         while let Ok(event) = self.poll_event() {
             self.update(event)?;
             if self.must_quit()? {
                 break;
             }
         }
-        Ok(())
+        Ok(self)
     }
 
     /// Display the cursor,
@@ -179,19 +166,22 @@ impl FM {
     ///
     /// May fail if the terminal crashes
     /// May also fail if the thread running in [`crate::app::Refresher`] crashed
-    pub fn quit(self) -> Result<String> {
+    pub fn quit(self) -> Result<()> {
+        let final_path = self
+            .status
+            .lock()
+            .map_err(|error| anyhow!("Error locking status: {error}"))?
+            .current_tab_path_str()
+            .to_owned();
+
         clear_tmp_files();
         drop(self.event_reader);
         drop(self.event_dispatcher);
         self.displayer.quit();
         self.refresher.quit();
+        drop(self.status);
 
-        let status = self
-            .status
-            .lock()
-            .map_err(|error| anyhow!("Error locking status: {error}"))?;
-        let final_path = status.current_tab_path_str().to_owned();
-        drop(status);
-        Ok(final_path)
+        print_on_quit(final_path);
+        Ok(())
     }
 }
