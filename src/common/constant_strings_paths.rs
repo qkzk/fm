@@ -211,7 +211,7 @@ pub const CRYPTSETUP: &str = "cryptsetup";
 /// gio is used to mount removable devices
 pub const GIO: &str = "gio";
 /// used to get information about fifo files
-pub const LSOF: &str = "lsof";
+pub const UDEVADM: &str = "udevadm";
 /// neovim executable
 pub const NVIM: &str = "nvim";
 /// bsdtar executable, used to display archive content

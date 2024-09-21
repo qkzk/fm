@@ -1125,10 +1125,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] preview builder
   - [ ] preview refactor
   - [ ] simplify the mess as much as possible
-- [ ] Focus & mouseover. Demande de passer le terminal en mode raw et réécrire tous les events de souris
+- [ ] preview symlink to folder as the target
 
 ## TODO
 
+- [ ] replace tuikit by ratatui + crossterm
+- [ ] Focus & mouseover. Mousemove require raw terminal mode.. Requires to rewrite every event (Mousepress, mouse release etc.)
+      Another motivation to switch to ratatui + crossterm.
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone

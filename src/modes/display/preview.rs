@@ -18,14 +18,14 @@ use tuikit::attr::{Attr, Color, Effect};
 
 use crate::common::{
     clear_tmp_files, is_program_in_path, path_to_string, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER,
-    LIBREOFFICE, LSBLK, LSOF, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS,
-    TRANSMISSION_SHOW, UEBERZUG,
+    LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS, TRANSMISSION_SHOW,
+    UDEVADM, UEBERZUG,
 };
 use crate::config::MONOKAI_THEME;
 use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_log};
 use crate::modes::{
-    list_files_tar, list_files_zip, ContentWindow, FileInfo, FileKind, FilterKind, SortKind, Tree,
-    TreeLineBuilder, TreeLines, Ueber, UeberBuilder, Users,
+    list_files_tar, list_files_zip, read_symlink_dest, ContentWindow, FileInfo, FileKind,
+    FilterKind, SortKind, Tree, TreeLineBuilder, TreeLines, Ueber, UeberBuilder, Users,
 };
 
 /// Different kind of extension for grouped by previewers.
@@ -213,7 +213,7 @@ impl<'a> PreviewBuilder<'a> {
         Preview::Empty
     }
 
-    pub fn build(&self) -> Result<Preview> {
+    pub fn build(self) -> Result<Preview> {
         match self.file_info.file_kind {
             FileKind::Directory => self.directory(),
             _ => self.file(),
@@ -236,20 +236,35 @@ impl<'a> PreviewBuilder<'a> {
     /// it to the display method.
     /// Directories aren't handled there since we need more arguments to create
     /// their previews.
-    fn file(&self) -> Result<Preview> {
+    fn file(self) -> Result<Preview> {
         clear_tmp_files();
         match self.file_info.file_kind {
-            FileKind::Directory => Err(anyhow!(
-                "{p} is a directory",
-                p = self.file_info.path.display()
-            )),
             FileKind::NormalFile => self.normal_file(),
             FileKind::Socket if is_program_in_path(SS) => Ok(self.socket()),
             FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(self.blockdevice()),
-            FileKind::Fifo | FileKind::CharDevice if is_program_in_path(LSOF) => {
+            FileKind::Fifo | FileKind::CharDevice if is_program_in_path(UDEVADM) => {
                 Ok(self.fifo_chardevice())
             }
+            FileKind::SymbolicLink(valid) if valid => self.valid_symlink(),
             _ => Ok(Preview::default()),
+        }
+    }
+
+    fn valid_symlink(&self) -> Result<Preview> {
+        let dest = read_symlink_dest(&self.file_info.path).context("broken symlink")?;
+        let p = Path::new(&dest);
+        if p.is_dir() {
+            Ok(Preview::Tree(TreePreview::new(p.into(), self.users)))
+        } else {
+            Ok(Preview::default())
+            // let Ok(file_info) = FileInfo::new(p, self.users) else {
+            //     return Preview::default();
+            // };
+            // self.file_info = &file_info;
+            // let Ok(preview) = Self::new(&file_info, self.users).build() else {
+            //     return Preview::default();
+            // };
+            // preview
         }
     }
 
@@ -293,15 +308,15 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     fn socket(&self) -> Preview {
-        Preview::Socket(Socket::new(self.file_info))
+        Preview::Socket(Socket::new(&self.file_info.path))
     }
 
     fn blockdevice(&self) -> Preview {
-        Preview::BlockDevice(BlockDevice::new(self.file_info))
+        Preview::BlockDevice(BlockDevice::new(&self.file_info.path))
     }
 
     fn fifo_chardevice(&self) -> Preview {
-        Preview::FifoCharDevice(FifoCharDevice::new(self.file_info))
+        Preview::FifoCharDevice(FifoCharDevice::new(&self.file_info.path))
     }
 
     fn syntaxed(&self, ext: &str) -> Option<Preview> {
@@ -388,13 +403,13 @@ pub struct Socket {
 impl Socket {
     /// New socket preview
     /// See `man ss` for a description of the arguments.
-    fn new(fileinfo: &FileInfo) -> Self {
+    fn new(path: &Path) -> Self {
         let content: Vec<String>;
         if let Ok(output) = execute_and_output_no_log(SS, ["-lpmepiT"]) {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
             content = s
                 .lines()
-                .filter(|l| l.contains(&fileinfo.filename.to_string()))
+                .filter(|l| l.contains(path.file_name().unwrap().to_string_lossy().as_ref()))
                 .map(|s| s.to_owned())
                 .collect();
         } else {
@@ -421,14 +436,14 @@ pub struct BlockDevice {
 impl BlockDevice {
     /// New socket preview
     /// See `man lsblk` for a description of the arguments.
-    fn new(fileinfo: &FileInfo) -> Self {
+    fn new(path: &Path) -> Self {
         let content: Vec<String>;
         if let Ok(output) = execute_and_output_no_log(
             LSBLK,
             [
                 "-lfo",
                 "FSTYPE,PATH,LABEL,UUID,FSVER,MOUNTPOINT,MODEL,SIZE,FSAVAIL,FSUSE%",
-                &path_to_string(&fileinfo.path),
+                &path_to_string(&path),
             ],
         ) {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
@@ -447,7 +462,7 @@ impl BlockDevice {
     }
 }
 
-/// Preview a fifo or a chardevice file with lsof
+/// Preview a fifo or a chardevice file with udevadm
 #[derive(Clone, Default)]
 pub struct FifoCharDevice {
     content: Vec<String>,
@@ -456,12 +471,19 @@ pub struct FifoCharDevice {
 
 impl FifoCharDevice {
     /// New FIFO preview
-    /// See `man lsof` for a description of the arguments.
-    fn new(fileinfo: &FileInfo) -> Self {
+    /// See `man udevadm` for a description of the arguments.
+    fn new(path: &Path) -> Self {
         let content: Vec<String>;
-        if let Ok(output) =
-            execute_and_output_no_log(LSOF, [path_to_string(&fileinfo.path).as_str()])
-        {
+        if let Ok(output) = execute_and_output_no_log(
+            UDEVADM,
+            [
+                "info",
+                "-a",
+                "-n",
+                path_to_string(&path).as_str(),
+                "--no-pager",
+            ],
+        ) {
             let s = String::from_utf8(output.stdout).unwrap_or_default();
             content = s.lines().map(|s| s.to_owned()).collect();
         } else {
