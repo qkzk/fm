@@ -317,7 +317,7 @@ impl Tab {
     /// Creates a preview and assign it.
     /// Doesn't check if it's the correct action to do according to display.
     fn make_preview_unchecked(&mut self, file_info: FileInfo) {
-        let preview = PreviewBuilder::new(&file_info, &self.users)
+        let preview = PreviewBuilder::new(&file_info.path, &self.users)
             .build()
             .unwrap_or_default();
         self.set_display_mode(Display::Preview);

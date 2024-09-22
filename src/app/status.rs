@@ -525,7 +525,7 @@ impl Status {
         };
         let left_tab = &self.tabs[0];
         let users = &left_tab.users;
-        self.tabs[1].preview = PreviewBuilder::new(&fileinfo, users)
+        self.tabs[1].preview = PreviewBuilder::new(&fileinfo.path, users)
             .build()
             .unwrap_or_default();
         self.tabs[1].window.reset(self.tabs[1].preview.len());

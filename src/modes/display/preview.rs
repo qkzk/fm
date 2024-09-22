@@ -24,7 +24,7 @@ use crate::common::{
 use crate::config::MONOKAI_THEME;
 use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_log};
 use crate::modes::{
-    list_files_tar, list_files_zip, read_symlink_dest, ContentWindow, FileInfo, FileKind,
+    extract_extension, list_files_tar, list_files_zip, read_symlink_dest, ContentWindow, FileKind,
     FilterKind, SortKind, Tree, TreeLineBuilder, TreeLines, Ueber, UeberBuilder, Users,
 };
 
@@ -196,15 +196,18 @@ impl Preview {
 }
 
 pub struct PreviewBuilder<'a> {
-    file_info: &'a FileInfo,
+    path: PathBuf,
     users: &'a Users,
 }
 
 impl<'a> PreviewBuilder<'a> {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
-    pub fn new(file_info: &'a FileInfo, users: &'a Users) -> Self {
-        Self { file_info, users }
+    pub fn new(path: &Path, users: &'a Users) -> Self {
+        Self {
+            path: path.to_owned(),
+            users,
+        }
     }
 
     /// Empty preview, holding nothing.
@@ -214,9 +217,10 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     pub fn build(self) -> Result<Preview> {
-        match self.file_info.file_kind {
+        let file_kind = FileKind::new(&self.path.metadata()?, &self.path);
+        match file_kind {
             FileKind::Directory => self.directory(),
-            _ => self.file(),
+            _ => self.file(file_kind),
         }
     }
 
@@ -225,7 +229,7 @@ impl<'a> PreviewBuilder<'a> {
     /// The recursive exploration is limited to depth 2.
     fn directory(&self) -> Result<Preview> {
         Ok(Preview::Tree(TreePreview::new(
-            self.file_info.path.clone(),
+            std::sync::Arc::from(self.path.as_path()),
             self.users,
         )))
     }
@@ -236,9 +240,9 @@ impl<'a> PreviewBuilder<'a> {
     /// it to the display method.
     /// Directories aren't handled there since we need more arguments to create
     /// their previews.
-    fn file(self) -> Result<Preview> {
+    fn file(self, file_kind: FileKind<bool>) -> Result<Preview> {
         clear_tmp_files();
-        match self.file_info.file_kind {
+        match file_kind {
             FileKind::NormalFile => self.normal_file(),
             FileKind::Socket if is_program_in_path(SS) => Ok(self.socket()),
             FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(self.blockdevice()),
@@ -251,7 +255,7 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     fn valid_symlink(&self) -> Result<Preview> {
-        let dest = read_symlink_dest(&self.file_info.path).context("broken symlink")?;
+        let dest = read_symlink_dest(&self.path).context("broken symlink")?;
         let p = Path::new(&dest);
         if p.is_dir() {
             Ok(Preview::Tree(TreePreview::new(p.into(), self.users)))
@@ -269,13 +273,12 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     fn normal_file(&self) -> Result<Preview> {
-        let extension = &self.file_info.extension.to_lowercase();
-        let path = &self.file_info.path;
-        let kind = ExtensionKind::matcher(extension);
+        let extension = extract_extension(&self.path).to_lowercase();
+        let path = &self.path;
+        let kind = ExtensionKind::matcher(&extension);
         match kind {
             ExtensionKind::Archive => Ok(Preview::Archive(ArchiveContent::new(
-                &self.file_info.path,
-                extension,
+                &self.path, &extension,
             )?)),
             ExtensionKind::Iso if kind.has_programs() => Ok(Preview::Iso(Iso::new(path)?)),
             ExtensionKind::Epub if kind.has_programs() => Ok(Preview::Text(
@@ -291,7 +294,7 @@ impl<'a> PreviewBuilder<'a> {
                 Ok(Preview::Media(MediaContent::new(path)?))
             }
             _ if kind.is_ueber_kind() && kind.has_programs() => Self::ueber(path, kind),
-            _ => match self.syntaxed(extension) {
+            _ => match self.syntaxed(&extension) {
                 Some(syntaxed_preview) => Ok(syntaxed_preview),
                 None => self.text_or_binary(),
             },
@@ -308,19 +311,19 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     fn socket(&self) -> Preview {
-        Preview::Socket(Socket::new(&self.file_info.path))
+        Preview::Socket(Socket::new(&self.path))
     }
 
     fn blockdevice(&self) -> Preview {
-        Preview::BlockDevice(BlockDevice::new(&self.file_info.path))
+        Preview::BlockDevice(BlockDevice::new(&self.path))
     }
 
     fn fifo_chardevice(&self) -> Preview {
-        Preview::FifoCharDevice(FifoCharDevice::new(&self.file_info.path))
+        Preview::FifoCharDevice(FifoCharDevice::new(&self.path))
     }
 
     fn syntaxed(&self, ext: &str) -> Option<Preview> {
-        if let Ok(metadata) = metadata(&self.file_info.path) {
+        if let Ok(metadata) = metadata(&self.path) {
             if metadata.len() > HLContent::SIZE_LIMIT as u64 {
                 return None;
             }
@@ -329,9 +332,7 @@ impl<'a> PreviewBuilder<'a> {
         };
         let ss = SyntaxSet::load_defaults_nonewlines();
         ss.find_syntax_by_extension(ext).map(|syntax| {
-            Preview::Syntaxed(
-                HLContent::new(&self.file_info.path, ss.clone(), syntax).unwrap_or_default(),
-            )
+            Preview::Syntaxed(HLContent::new(&self.path, ss.clone(), syntax).unwrap_or_default())
         })
     }
 
@@ -354,17 +355,21 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     fn text_or_binary(&self) -> Result<Preview> {
-        let mut file = std::fs::File::open(self.file_info.path.clone())?;
+        let mut file = std::fs::File::open(&self.path)?;
         let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
         if self.is_binary(&mut file, &mut buffer) {
-            Ok(Preview::Binary(BinaryContent::new(&self.file_info.path)?))
+            Ok(Preview::Binary(BinaryContent::new(&self.path)?))
         } else {
-            Ok(Preview::Text(TextContent::from_file(&self.file_info.path)?))
+            Ok(Preview::Text(TextContent::from_file(&self.path)?))
         }
     }
 
     fn is_binary(&self, file: &mut std::fs::File, buffer: &mut [u8]) -> bool {
-        self.file_info.true_size >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
+        let Ok(metadata) = self.path.metadata() else {
+            return false;
+        };
+
+        metadata.len() >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
             && file.read_exact(buffer).is_ok()
             && inspect(buffer) == ContentType::BINARY
     }
