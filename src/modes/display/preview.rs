@@ -707,10 +707,20 @@ impl BinaryContent {
         let Ok(metadata) = path.metadata() else {
             return Ok(Self::default());
         };
-        let size = metadata.len();
+        let length = metadata.len() / Self::LINE_WIDTH as u64;
+        let content = Self::read_content(path)?;
+
+        Ok(Self {
+            path: path.to_path_buf(),
+            length,
+            content,
+        })
+    }
+
+    fn read_content(path: &Path) -> Result<Vec<Line>> {
         let mut reader = BufReader::new(std::fs::File::open(path)?);
         let mut buffer = [0; Self::LINE_WIDTH];
-        let mut content: Vec<Line> = vec![];
+        let mut content = vec![];
         while let Ok(nb_bytes_read) = reader.read(&mut buffer[..]) {
             if nb_bytes_read != Self::LINE_WIDTH {
                 content.push(Line::new((&buffer[0..nb_bytes_read]).into()));
@@ -721,12 +731,7 @@ impl BinaryContent {
                 break;
             }
         }
-
-        Ok(Self {
-            path: path.to_path_buf(),
-            length: size / Self::LINE_WIDTH as u64,
-            content,
-        })
+        Ok(content)
     }
 
     /// WATCHOUT !
@@ -806,41 +811,6 @@ impl Line {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct ColoredText {
-    title: String,
-    pub content: Vec<String>,
-    len: usize,
-    pub selected_index: usize,
-}
-
-impl ColoredText {
-    pub fn len(&self) -> usize {
-        self.len
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
-    pub fn title(&self) -> &str {
-        self.title.as_str()
-    }
-
-    /// Make a new previewed colored text.
-    pub fn new(output: &str, title: String) -> Self {
-        let content: Vec<String> = output.lines().map(|line| line.to_owned()).collect();
-        let len = content.len();
-        let selected_index = 0;
-        Self {
-            title,
-            content,
-            len,
-            selected_index,
-        }
-    }
-}
-
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
@@ -878,5 +848,4 @@ pub type VecSyntaxedString = Vec<SyntaxedString>;
 impl_window!(HLContent, VecSyntaxedString);
 impl_window!(Text, String);
 impl_window!(BinaryContent, Line);
-impl_window!(ColoredText, String);
 impl_window!(TreeLines, TreeLineBuilder);
