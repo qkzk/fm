@@ -357,7 +357,7 @@ impl<'a> PreviewBuilder<'a> {
         let mut file = std::fs::File::open(self.file_info.path.clone())?;
         let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
         if self.is_binary(&mut file, &mut buffer) {
-            Ok(Preview::Binary(BinaryContent::new(self.file_info)?))
+            Ok(Preview::Binary(BinaryContent::new(&self.file_info.path)?))
         } else {
             Ok(Preview::Text(TextContent::from_file(&self.file_info.path)?))
         }
@@ -689,7 +689,7 @@ impl SyntaxedString {
 /// It doesn't try to respect endianness.
 /// The lines are formatted to display 16 bytes.
 /// The number of lines is truncated to $2^20 = 1048576$.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct BinaryContent {
     pub path: PathBuf,
     length: u64,
@@ -700,8 +700,12 @@ impl BinaryContent {
     const LINE_WIDTH: usize = 16;
     const SIZE_LIMIT: usize = 1048576;
 
-    fn new(file_info: &FileInfo) -> Result<Self> {
-        let mut reader = BufReader::new(std::fs::File::open(file_info.path.clone())?);
+    fn new(path: &Path) -> Result<Self> {
+        let Ok(metadata) = path.metadata() else {
+            return Ok(Self::default());
+        };
+        let size = metadata.len();
+        let mut reader = BufReader::new(std::fs::File::open(path)?);
         let mut buffer = [0; Self::LINE_WIDTH];
         let mut content: Vec<Line> = vec![];
         while let Ok(nb_bytes_read) = reader.read(&mut buffer[..]) {
@@ -716,8 +720,8 @@ impl BinaryContent {
         }
 
         Ok(Self {
-            path: file_info.path.to_path_buf(),
-            length: file_info.true_size / Self::LINE_WIDTH as u64,
+            path: path.to_path_buf(),
+            length: size / Self::LINE_WIDTH as u64,
             content,
         })
     }
