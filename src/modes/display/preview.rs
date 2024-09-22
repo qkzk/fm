@@ -1,7 +1,7 @@
 use std::cmp::min;
 use std::convert::Into;
 use std::fmt::Write as _;
-use std::fs::metadata;
+use std::fs::symlink_metadata;
 use std::io::{BufRead, BufReader, Cursor, Read};
 use std::iter::{Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
@@ -224,7 +224,7 @@ impl<'a> PreviewBuilder<'a> {
     /// their previews.
     pub fn build(self) -> Result<Preview> {
         clear_tmp_files();
-        let file_kind = FileKind::new(&self.path.metadata()?, &self.path);
+        let file_kind = FileKind::new(&symlink_metadata(&self.path)?, &self.path);
         match file_kind {
             FileKind::Directory => self.directory(),
             FileKind::NormalFile => self.normal_file(),
@@ -250,6 +250,7 @@ impl<'a> PreviewBuilder<'a> {
 
     fn valid_symlink(&self) -> Result<Preview> {
         let dest = read_symlink_dest(&self.path).context("broken symlink")?;
+        crate::log_info!("dest: {dest}");
         let dest_path = Path::new(&dest);
         if dest_path.is_dir() {
             Ok(Preview::Tree(TreePreview::new(
@@ -315,17 +316,14 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     fn syntaxed(&self, ext: &str) -> Option<Preview> {
-        if let Ok(metadata) = metadata(&self.path) {
-            if metadata.len() > HLContent::SIZE_LIMIT as u64 {
-                return None;
-            }
-        } else {
+        if symlink_metadata(&self.path).ok()?.len() > HLContent::SIZE_LIMIT as u64 {
             return None;
         };
         let ss = SyntaxSet::load_defaults_nonewlines();
-        ss.find_syntax_by_extension(ext).map(|syntax| {
-            Preview::Syntaxed(HLContent::new(&self.path, ss.clone(), syntax).unwrap_or_default())
-        })
+        Some(Preview::Syntaxed(
+            HLContent::new(&self.path, ss.clone(), ss.find_syntax_by_extension(ext)?)
+                .unwrap_or_default(),
+        ))
     }
 
     fn notebook(path: &Path) -> Option<Preview> {
@@ -341,9 +339,10 @@ impl<'a> PreviewBuilder<'a> {
 
     fn syntaxed_from_str(output: String, ext: &str) -> Option<Preview> {
         let ss = SyntaxSet::load_defaults_nonewlines();
-        ss.find_syntax_by_extension(ext).map(|syntax| {
-            Preview::Syntaxed(HLContent::from_str(&output, ss.clone(), syntax).unwrap_or_default())
-        })
+        Some(Preview::Syntaxed(
+            HLContent::from_str(&output, ss.clone(), ss.find_syntax_by_extension(ext)?)
+                .unwrap_or_default(),
+        ))
     }
 
     fn text_or_binary(&self) -> Result<Preview> {
@@ -574,16 +573,23 @@ impl HLContent {
     /// ATM only Monokaï (dark) theme is supported.
     fn new(path: &Path, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
         let raw_content = read_nb_lines(path, Self::SIZE_LIMIT)?;
-        let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
-
-        Ok(Self {
-            length: highlighted_content.len(),
-            content: highlighted_content,
-        })
+        Self::build(raw_content, syntax_set, syntax_ref)
     }
 
     fn from_str(text: &str, syntax_set: SyntaxSet, syntax_ref: &SyntaxReference) -> Result<Self> {
-        let raw_content = text.lines().map(|s| s.to_owned()).collect();
+        let raw_content = text
+            .lines()
+            .take(Self::SIZE_LIMIT)
+            .map(|s| s.to_owned())
+            .collect();
+        Self::build(raw_content, syntax_set, syntax_ref)
+    }
+
+    fn build(
+        raw_content: Vec<String>,
+        syntax_set: SyntaxSet,
+        syntax_ref: &SyntaxReference,
+    ) -> Result<Self> {
         let highlighted_content = Self::parse_raw_content(raw_content, syntax_set, syntax_ref)?;
         Ok(Self {
             length: highlighted_content.len(),
