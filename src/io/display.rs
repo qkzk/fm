@@ -440,28 +440,7 @@ impl<'a> WinMain<'a> {
             Preview::ColoredText(colored_text) => {
                 self.draw_colored_text(colored_text, length, canvas, window)?
             }
-            Preview::Archive(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Media(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
             Preview::Text(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Iso(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Socket(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::BlockDevice(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::FifoCharDevice(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Torrent(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
 

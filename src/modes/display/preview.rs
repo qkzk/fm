@@ -22,7 +22,7 @@ use crate::common::{
     UDEVADM, UEBERZUG,
 };
 use crate::config::MONOKAI_THEME;
-use crate::io::{execute_and_capture_output_without_check, execute_and_output_no_log};
+use crate::io::execute_and_capture_output_without_check;
 use crate::modes::{
     extract_extension, list_files_tar, list_files_zip, read_symlink_dest, ContentWindow, FileKind,
     FilterKind, SortKind, Tree, TreeLineBuilder, TreeLines, Ueber, UeberBuilder, Users,
@@ -133,11 +133,19 @@ impl std::fmt::Display for ExtensionKind {
 
 #[derive(Clone, Default)]
 pub enum TextKind {
-    HELP,
-    LOG,
-    EPUB,
     #[default]
     TEXTFILE,
+
+    ARCHIVE,
+    BLOCKDEVICE,
+    EPUB,
+    FIFOCHARDEVICE,
+    HELP,
+    ISO,
+    LOG,
+    MEDIACONTENT,
+    SOCKET,
+    TORRENT,
 }
 
 /// Different kind of preview used to display some informaitons
@@ -146,18 +154,11 @@ pub enum TextKind {
 #[derive(Default)]
 pub enum Preview {
     Syntaxed(HLContent),
-    Text(TextContent),
+    Text(Text),
     Binary(BinaryContent),
-    Archive(ArchiveContent),
     Ueberzug(Ueber),
-    Media(MediaContent),
     Tree(TreePreview),
-    Iso(Iso),
     ColoredText(ColoredText),
-    Socket(Socket),
-    BlockDevice(BlockDevice),
-    FifoCharDevice(FifoCharDevice),
-    Torrent(Torrent),
     #[default]
     Empty,
 }
@@ -171,16 +172,9 @@ impl Preview {
             Self::Syntaxed(syntaxed) => syntaxed.len(),
             Self::Text(text) => text.len(),
             Self::Binary(binary) => binary.len(),
-            Self::Archive(zip) => zip.len(),
             Self::Ueberzug(ueberzug) => ueberzug.len(),
-            Self::Media(media) => media.len(),
             Self::Tree(tree) => tree.len(),
-            Self::Iso(iso) => iso.len(),
             Self::ColoredText(text) => text.len(),
-            Self::Socket(socket) => socket.len(),
-            Self::BlockDevice(blockdevice) => blockdevice.len(),
-            Self::FifoCharDevice(fifo) => fifo.len(),
-            Self::Torrent(torrent) => torrent.len(),
         }
     }
 
@@ -228,10 +222,10 @@ impl<'a> PreviewBuilder<'a> {
         match file_kind {
             FileKind::Directory => self.directory(),
             FileKind::NormalFile => self.normal_file(),
-            FileKind::Socket if is_program_in_path(SS) => Ok(self.socket()),
-            FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(self.blockdevice()),
+            FileKind::Socket if is_program_in_path(SS) => self.socket(),
+            FileKind::BlockDevice if is_program_in_path(LSBLK) => self.block_device(),
             FileKind::Fifo | FileKind::CharDevice if is_program_in_path(UDEVADM) => {
-                Ok(self.fifo_chardevice())
+                self.fifo_chardevice()
             }
             FileKind::SymbolicLink(valid) if valid => self.valid_symlink(),
             _ => Ok(Preview::default()),
@@ -270,21 +264,19 @@ impl<'a> PreviewBuilder<'a> {
         let path = &self.path;
         let kind = ExtensionKind::matcher(&extension);
         match kind {
-            ExtensionKind::Archive => Ok(Preview::Archive(ArchiveContent::new(
-                &self.path, &extension,
-            )?)),
-            ExtensionKind::Iso if kind.has_programs() => Ok(Preview::Iso(Iso::new(path)?)),
+            ExtensionKind::Archive => Ok(Preview::Text(Text::archive(&self.path, &extension)?)),
+            ExtensionKind::Iso if kind.has_programs() => Ok(Preview::Text(Text::iso(path)?)),
             ExtensionKind::Epub if kind.has_programs() => Ok(Preview::Text(
-                TextContent::epub(path).context("Preview: Couldn't read epub")?,
+                Text::epub(path).context("Preview: Couldn't read epub")?,
             )),
-            ExtensionKind::Torrent if kind.has_programs() => Ok(Preview::Torrent(
-                Torrent::new(path).context("Preview: Couldn't read torrent")?,
+            ExtensionKind::Torrent if kind.has_programs() => Ok(Preview::Text(
+                Text::torrent(path).context("Preview: Couldn't read torrent")?,
             )),
             ExtensionKind::Notebook if kind.has_programs() => {
                 Ok(Self::notebook(path).context("Preview: Couldn't parse notebook")?)
             }
             ExtensionKind::Audio if kind.has_programs() => {
-                Ok(Preview::Media(MediaContent::new(path)?))
+                Ok(Preview::Text(Text::media_content(path)?))
             }
             _ if kind.is_ueber_kind() && kind.has_programs() => Self::ueber(path, kind),
             _ => match self.syntaxed(&extension) {
@@ -303,16 +295,16 @@ impl<'a> PreviewBuilder<'a> {
         }
     }
 
-    fn socket(&self) -> Preview {
-        Preview::Socket(Socket::new(&self.path))
+    fn socket(&self) -> Result<Preview> {
+        Ok(Preview::Text(Text::socket(&self.path)?))
     }
 
-    fn blockdevice(&self) -> Preview {
-        Preview::BlockDevice(BlockDevice::new(&self.path))
+    fn block_device(&self) -> Result<Preview> {
+        Ok(Preview::Text(Text::block_device(&self.path)?))
     }
 
-    fn fifo_chardevice(&self) -> Preview {
-        Preview::FifoCharDevice(FifoCharDevice::new(&self.path))
+    fn fifo_chardevice(&self) -> Result<Preview> {
+        Ok(Preview::Text(Text::fifo_chardevice(&self.path)?))
     }
 
     fn syntaxed(&self, ext: &str) -> Option<Preview> {
@@ -351,7 +343,7 @@ impl<'a> PreviewBuilder<'a> {
         if self.is_binary(&mut file, &mut buffer) {
             Ok(Preview::Binary(BinaryContent::new(&self.path)?))
         } else {
-            Ok(Preview::Text(TextContent::from_file(&self.path)?))
+            Ok(Preview::Text(Text::from_file(&self.path)?))
         }
     }
 
@@ -367,11 +359,11 @@ impl<'a> PreviewBuilder<'a> {
 
     /// Creates the help preview as if it was a text file.
     pub fn help(help: &str) -> Preview {
-        Preview::Text(TextContent::help(help))
+        Preview::Text(Text::help(help))
     }
 
     pub fn log(log: Vec<String>) -> Preview {
-        Preview::Text(TextContent::log(log))
+        Preview::Text(Text::log(log))
     }
 
     pub fn cli_info(output: &str, command: String) -> Preview {
@@ -389,123 +381,16 @@ fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
         .collect())
 }
 
-/// Preview a socket file with `ss -lpmepiT`
-#[derive(Clone, Default)]
-pub struct Socket {
-    content: Vec<String>,
-    length: usize,
-}
-
-impl Socket {
-    /// New socket preview
-    /// See `man ss` for a description of the arguments.
-    fn new(path: &Path) -> Self {
-        let content: Vec<String>;
-        if let Ok(output) = execute_and_output_no_log(SS, ["-lpmepiT"]) {
-            let s = String::from_utf8(output.stdout).unwrap_or_default();
-            content = s
-                .lines()
-                .filter(|l| l.contains(path.file_name().unwrap().to_string_lossy().as_ref()))
-                .map(|s| s.to_owned())
-                .collect();
-        } else {
-            content = vec![];
-        }
-        Self {
-            length: content.len(),
-            content,
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.length
-    }
-}
-
-/// Preview a blockdevice file with lsblk
-#[derive(Clone, Default)]
-pub struct BlockDevice {
-    content: Vec<String>,
-    length: usize,
-}
-
-impl BlockDevice {
-    /// New socket preview
-    /// See `man lsblk` for a description of the arguments.
-    fn new(path: &Path) -> Self {
-        let content: Vec<String>;
-        if let Ok(output) = execute_and_output_no_log(
-            LSBLK,
-            [
-                "-lfo",
-                "FSTYPE,PATH,LABEL,UUID,FSVER,MOUNTPOINT,MODEL,SIZE,FSAVAIL,FSUSE%",
-                &path_to_string(&path),
-            ],
-        ) {
-            let s = String::from_utf8(output.stdout).unwrap_or_default();
-            content = s.lines().map(|s| s.to_owned()).collect();
-        } else {
-            content = vec![];
-        }
-        Self {
-            length: content.len(),
-            content,
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.length
-    }
-}
-
-/// Preview a fifo or a chardevice file with udevadm
-#[derive(Clone, Default)]
-pub struct FifoCharDevice {
-    content: Vec<String>,
-    length: usize,
-}
-
-impl FifoCharDevice {
-    /// New FIFO preview
-    /// See `man udevadm` for a description of the arguments.
-    fn new(path: &Path) -> Self {
-        let content: Vec<String>;
-        if let Ok(output) = execute_and_output_no_log(
-            UDEVADM,
-            [
-                "info",
-                "-a",
-                "-n",
-                path_to_string(&path).as_str(),
-                "--no-pager",
-            ],
-        ) {
-            let s = String::from_utf8(output.stdout).unwrap_or_default();
-            content = s.lines().map(|s| s.to_owned()).collect();
-        } else {
-            content = vec![];
-        }
-        Self {
-            length: content.len(),
-            content,
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.length
-    }
-}
-
 /// Holds a preview of a text content.
 /// It's a boxed vector of strings (per line)
 #[derive(Clone, Default)]
-pub struct TextContent {
+pub struct Text {
     pub kind: TextKind,
     content: Vec<String>,
     length: usize,
 }
 
-impl TextContent {
+impl Text {
     /// Only files with less than 1MiB will be read
     const SIZE_LIMIT: usize = 1 << 20;
 
@@ -548,6 +433,104 @@ impl TextContent {
             length: content.len(),
             content,
         })
+    }
+
+    fn from_command_output(kind: TextKind, command: &str, args: &[&str]) -> Result<Self> {
+        let content: Vec<String> = execute_and_capture_output_without_check(command, args)?
+            .lines()
+            .map(|s| s.to_owned())
+            .collect();
+        Ok(Self {
+            kind,
+            length: content.len(),
+            content,
+        })
+    }
+
+    fn media_content(path: &Path) -> Result<Self> {
+        Self::from_command_output(
+            TextKind::MEDIACONTENT,
+            MEDIAINFO,
+            &[path_to_string(&path).as_str()],
+        )
+    }
+
+    /// Holds a list of file of an archive as returned by
+    /// `ZipArchive::file_names` or from  a `tar tvf` command.
+    /// A generic error message prevent it from returning an error.
+    fn archive(path: &Path, ext: &str) -> Result<Self> {
+        let content = match ext {
+            "zip" => list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]),
+            "zst" | "gz" | "bz" | "xz" | "gzip" | "bzip2" | "deb" | "rpm" => {
+                list_files_tar(path).unwrap_or(vec!["Invalid Tar content".to_owned()])
+            }
+            _ => vec![format!("Unsupported format: {ext}")],
+        };
+
+        Ok(Self {
+            kind: TextKind::ARCHIVE,
+            length: content.len(),
+            content,
+        })
+    }
+
+    fn iso(path: &Path) -> Result<Self> {
+        Self::from_command_output(
+            TextKind::ISO,
+            ISOINFO,
+            &["-l", "-i", &path_to_string(&path)],
+        )
+    }
+
+    fn torrent(path: &Path) -> Result<Self> {
+        Self::from_command_output(
+            TextKind::TORRENT,
+            TRANSMISSION_SHOW,
+            &[&path_to_string(&path)],
+        )
+    }
+
+    /// New socket preview
+    /// See `man ss` for a description of the arguments.
+    fn socket(path: &Path) -> Result<Self> {
+        let mut preview = Self::from_command_output(TextKind::SOCKET, SS, &["-lpmepiT"])?;
+        preview.content = preview
+            .content
+            .iter()
+            .filter(|l| l.contains(path.file_name().unwrap().to_string_lossy().as_ref()))
+            .map(|s| s.to_owned())
+            .collect();
+        Ok(preview)
+    }
+
+    /// New blockdevice preview
+    /// See `man lsblk` for a description of the arguments.
+    fn block_device(path: &Path) -> Result<Self> {
+        Self::from_command_output(
+            TextKind::BLOCKDEVICE,
+            LSBLK,
+            &[
+                "-lfo",
+                "FSTYPE,PATH,LABEL,UUID,FSVER,MOUNTPOINT,MODEL,SIZE,FSAVAIL,FSUSE%",
+                &path_to_string(&path),
+            ],
+        )
+    }
+
+    /// New FIFO preview
+    /// See `man udevadm` for a description of the arguments.
+    fn fifo_chardevice(path: &Path) -> Result<Self> {
+        Self::from_command_output(
+            TextKind::FIFOCHARDEVICE,
+            UDEVADM,
+            &[
+                "info",
+                "-a",
+                "-n",
+                path_to_string(&path).as_str(),
+                "--no-pager",
+            ],
+        )
     }
 
     fn len(&self) -> usize {
@@ -806,65 +789,6 @@ impl Line {
     }
 }
 
-/// Holds a list of file of an archive as returned by
-/// `ZipArchive::file_names` or from  a `tar tvf` command.
-/// A generic error message prevent it from returning an error.
-#[derive(Clone)]
-pub struct ArchiveContent {
-    length: usize,
-    content: Vec<String>,
-}
-
-impl ArchiveContent {
-    fn new(path: &Path, ext: &str) -> Result<Self> {
-        let content = match ext {
-            "zip" => list_files_zip(path).unwrap_or(vec!["Invalid Zip content".to_owned()]),
-            "zst" | "gz" | "bz" | "xz" | "gzip" | "bzip2" | "deb" | "rpm" => {
-                list_files_tar(path).unwrap_or(vec!["Invalid Tar content".to_owned()])
-            }
-            _ => vec![format!("Unsupported format: {ext}")],
-        };
-
-        Ok(Self {
-            length: content.len(),
-            content,
-        })
-    }
-
-    fn len(&self) -> usize {
-        self.length
-    }
-}
-
-/// Holds media info about a "media" file (mostly videos and audios).
-/// Requires the [`mediainfo`](https://mediaarea.net/) executable installed in path.
-#[derive(Clone)]
-pub struct MediaContent {
-    length: usize,
-    /// The media info details.
-    content: Vec<String>,
-}
-
-impl MediaContent {
-    fn new(path: &Path) -> Result<Self> {
-        let content: Vec<String>;
-        if let Ok(output) = execute_and_output_no_log(MEDIAINFO, [path_to_string(&path).as_str()]) {
-            let s = String::from_utf8(output.stdout).unwrap_or_default();
-            content = s.lines().map(|s| s.to_owned()).collect();
-        } else {
-            content = vec![];
-        }
-        Ok(Self {
-            length: content.len(),
-            content,
-        })
-    }
-
-    fn len(&self) -> usize {
-        self.length
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ColoredText {
     title: String,
@@ -927,54 +851,6 @@ impl TreePreview {
     }
 }
 
-pub struct Iso {
-    pub content: Vec<String>,
-    length: usize,
-}
-
-impl Iso {
-    fn new(path: &Path) -> Result<Self> {
-        let path = path.to_str().context("couldn't parse the path")?;
-        let content: Vec<String> =
-            execute_and_capture_output_without_check(ISOINFO, &["-l", "-i", path])?
-                .lines()
-                .map(|s| s.to_owned())
-                .collect();
-
-        Ok(Self {
-            length: content.len(),
-            content,
-        })
-    }
-
-    fn len(&self) -> usize {
-        self.length
-    }
-}
-
-pub struct Torrent {
-    pub content: Vec<String>,
-    length: usize,
-}
-
-impl Torrent {
-    fn new(path: &Path) -> Result<Self> {
-        let path = path.to_str().context("couldn't parse the path")?;
-        let content: Vec<String> =
-            execute_and_capture_output_without_check(TRANSMISSION_SHOW, &[path])?
-                .lines()
-                .map(|s| s.to_owned())
-                .collect();
-        Ok(Self {
-            length: content.len(),
-            content,
-        })
-    }
-    fn len(&self) -> usize {
-        self.length
-    }
-}
-
 /// Common trait for many preview methods which are just a bunch of lines with
 /// no specific formatting.
 /// Some previewing (thumbnail and syntaxed text) needs more details.
@@ -1010,14 +886,7 @@ macro_rules! impl_window {
 pub type VecSyntaxedString = Vec<SyntaxedString>;
 
 impl_window!(HLContent, VecSyntaxedString);
-impl_window!(TextContent, String);
+impl_window!(Text, String);
 impl_window!(BinaryContent, Line);
-impl_window!(ArchiveContent, String);
-impl_window!(MediaContent, String);
-impl_window!(Iso, String);
 impl_window!(ColoredText, String);
-impl_window!(Socket, String);
-impl_window!(BlockDevice, String);
-impl_window!(FifoCharDevice, String);
 impl_window!(TreeLines, TreeLineBuilder);
-impl_window!(Torrent, String);
