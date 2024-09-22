@@ -7,7 +7,7 @@ use std::iter::{Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
 use std::slice::Iter;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
 use syntect::{
     easy::HighlightLines,

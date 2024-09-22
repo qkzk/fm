@@ -1125,7 +1125,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] preview builder
   - [ ] preview refactor
   - [ ] simplify the mess as much as possible
-- [ ] preview symlink to folder as the target
+- [x] preview symlink to folder as the target
+- [ ] preview symlink to files as the target. More difficult, must change PreviewBuilder completely
+- [x] Alt+g should accept pathes to file from input and go there
 
 ## TODO
 
