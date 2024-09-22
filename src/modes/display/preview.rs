@@ -216,11 +216,25 @@ impl<'a> PreviewBuilder<'a> {
         Preview::Empty
     }
 
+    /// Creates a new preview instance based on the filekind and the extension of
+    /// the file.
+    /// Sometimes it reads the content of the file, sometimes it delegates
+    /// it to the display method.
+    /// Directories aren't handled there since we need more arguments to create
+    /// their previews.
     pub fn build(self) -> Result<Preview> {
+        clear_tmp_files();
         let file_kind = FileKind::new(&self.path.metadata()?, &self.path);
         match file_kind {
             FileKind::Directory => self.directory(),
-            _ => self.file(file_kind),
+            FileKind::NormalFile => self.normal_file(),
+            FileKind::Socket if is_program_in_path(SS) => Ok(self.socket()),
+            FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(self.blockdevice()),
+            FileKind::Fifo | FileKind::CharDevice if is_program_in_path(UDEVADM) => {
+                Ok(self.fifo_chardevice())
+            }
+            FileKind::SymbolicLink(valid) if valid => self.valid_symlink(),
+            _ => Ok(Preview::default()),
         }
     }
 
@@ -234,41 +248,19 @@ impl<'a> PreviewBuilder<'a> {
         )))
     }
 
-    /// Creates a new preview instance based on the filekind and the extension of
-    /// the file.
-    /// Sometimes it reads the content of the file, sometimes it delegates
-    /// it to the display method.
-    /// Directories aren't handled there since we need more arguments to create
-    /// their previews.
-    fn file(self, file_kind: FileKind<bool>) -> Result<Preview> {
-        clear_tmp_files();
-        match file_kind {
-            FileKind::NormalFile => self.normal_file(),
-            FileKind::Socket if is_program_in_path(SS) => Ok(self.socket()),
-            FileKind::BlockDevice if is_program_in_path(LSBLK) => Ok(self.blockdevice()),
-            FileKind::Fifo | FileKind::CharDevice if is_program_in_path(UDEVADM) => {
-                Ok(self.fifo_chardevice())
-            }
-            FileKind::SymbolicLink(valid) if valid => self.valid_symlink(),
-            _ => Ok(Preview::default()),
-        }
-    }
-
     fn valid_symlink(&self) -> Result<Preview> {
         let dest = read_symlink_dest(&self.path).context("broken symlink")?;
-        let p = Path::new(&dest);
-        if p.is_dir() {
-            Ok(Preview::Tree(TreePreview::new(p.into(), self.users)))
+        let dest_path = Path::new(&dest);
+        if dest_path.is_dir() {
+            Ok(Preview::Tree(TreePreview::new(
+                dest_path.into(),
+                self.users,
+            )))
         } else {
-            Ok(Preview::default())
-            // let Ok(file_info) = FileInfo::new(p, self.users) else {
-            //     return Preview::default();
-            // };
-            // self.file_info = &file_info;
-            // let Ok(preview) = Self::new(&file_info, self.users).build() else {
-            //     return Preview::default();
-            // };
-            // preview
+            let Ok(preview) = Self::new(dest_path, self.users).build() else {
+                return Ok(Preview::default());
+            };
+            Ok(preview)
         }
     }
 

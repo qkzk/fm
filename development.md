@@ -1125,7 +1125,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] Fix: ueberzug creation may crash the app (poison lock etc.) `Error: Error locking status: poisoned lock: another task failed inside`
   - [x] preview builder
   - [x] preview symlink to folder as the target
-  - [ ] preview symlink to files as the target. More difficult, must change PreviewBuilder completely
+  - [x] preview symlink to files as the target. Must change PreviewBuilder completely
   - [ ] preview refactor
   - [ ] simplify the mess as much as possible
 

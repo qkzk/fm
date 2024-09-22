@@ -306,9 +306,8 @@ impl Tab {
             return Ok(());
         };
         match file_info.file_kind {
-            FileKind::NormalFile => self.make_preview_unchecked(file_info),
             FileKind::Directory => self.toggle_tree_mode()?,
-            _ => (),
+            _ => self.make_preview_unchecked(file_info),
         }
 
         Ok(())
