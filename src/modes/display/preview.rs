@@ -17,9 +17,9 @@ use syntect::{
 use tuikit::attr::{Attr, Color, Effect};
 
 use crate::common::{
-    clear_tmp_files, is_program_in_path, path_to_string, FFMPEG, FONTIMAGE, ISOINFO, JUPYTER,
-    LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS, TRANSMISSION_SHOW,
-    UDEVADM, UEBERZUG,
+    clear_tmp_files, filename_from_path, is_in_path, path_to_string, FFMPEG, FONTIMAGE, ISOINFO,
+    JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS,
+    TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
 };
 use crate::config::MONOKAI_THEME;
 use crate::io::execute_and_capture_output_without_check;
@@ -51,49 +51,58 @@ pub enum ExtensionKind {
 
 impl ExtensionKind {
     /// Match any known extension against an extension kind.
+    #[rustfmt::skip]
     pub fn matcher(ext: &str) -> Self {
         match ext {
-            "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z"
-            | "gz" | "zst" | "deb" | "rpm" => Self::Archive,
-            "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "cr2" | "nef" | "orf" | "sr2" => {
-                Self::Image
-            }
-            "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac"
-            | "mac" | "flac" => Self::Audio,
-            "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" | "wmv" | "m4v" | "mov" => {
-                Self::Video
-            }
-            "ttf" | "otf" => Self::Font,
-            "svg" | "svgz" => Self::Svg,
-            "pdf" => Self::Pdf,
-            "iso" => Self::Iso,
-            "ipynb" => Self::Notebook,
-            "doc" | "docx" | "odt" | "sxw" | "xlsx" | "xls" => Self::Office,
-            "epub" => Self::Epub,
-            "torrent" => Self::Torrent,
-            _ => Self::Default,
+            "zip" | "gzip" | "bzip2" | "xz" | "lzip" | "lzma" | "tar" | "mtree" | "raw" | "7z" | "gz" | "zst" | "deb" | "rpm"
+            => Self::Archive,
+            "png" | "jpg" | "jpeg" | "tiff" | "heif" | "gif" | "cr2" | "nef" | "orf" | "sr2"
+            => Self::Image,
+            "ogg" | "ogm" | "riff" | "mp2" | "mp3" | "wm" | "qt" | "ac3" | "dts" | "aac" | "mac" | "flac"
+            => Self::Audio,
+            "mkv" | "webm" | "mpeg" | "mp4" | "avi" | "flv" | "mpg" | "wmv" | "m4v" | "mov"
+            => Self::Video,
+            "ttf" | "otf"
+            => Self::Font,
+            "svg" | "svgz"
+            => Self::Svg,
+            "pdf"
+            => Self::Pdf,
+            "iso"
+            => Self::Iso,
+            "ipynb"
+            => Self::Notebook,
+            "doc" | "docx" | "odt" | "sxw" | "xlsx" | "xls" 
+            => Self::Office,
+            "epub"
+            => Self::Epub,
+            "torrent"
+            => Self::Torrent,
+            _
+            => Self::Default,
         }
     }
 
+    #[rustfmt::skip]
     fn has_programs(&self) -> bool {
         match self {
-            Self::Audio => is_program_in_path(MEDIAINFO),
-            Self::Epub => is_program_in_path(PANDOC),
-            Self::Font => is_program_in_path(UEBERZUG) && is_program_in_path(FONTIMAGE),
-            Self::Image => is_program_in_path(UEBERZUG),
-            Self::Iso => is_program_in_path(ISOINFO),
-            Self::Notebook => is_program_in_path(JUPYTER),
-            Self::Office => is_program_in_path(LIBREOFFICE),
-            Self::Pdf => {
-                is_program_in_path(UEBERZUG)
-                    && is_program_in_path(PDFINFO)
-                    && is_program_in_path(PDFTOPPM)
+            Self::Epub      => is_in_path(PANDOC),
+            Self::Iso       => is_in_path(ISOINFO),
+            Self::Notebook  => is_in_path(JUPYTER),
+            Self::Audio     => is_in_path(MEDIAINFO),
+            Self::Office    => is_in_path(LIBREOFFICE),
+            Self::Torrent   => is_in_path(TRANSMISSION_SHOW),
+            Self::Image     => is_in_path(UEBERZUG),
+            Self::Svg       => is_in_path(UEBERZUG) && is_in_path(RSVG_CONVERT),
+            Self::Video     => is_in_path(UEBERZUG) && is_in_path(FFMPEG),
+            Self::Font      => is_in_path(UEBERZUG) && is_in_path(FONTIMAGE),
+            Self::Pdf       => {
+                               is_in_path(UEBERZUG)
+                            && is_in_path(PDFINFO)
+                            && is_in_path(PDFTOPPM)
             }
-            Self::Svg => is_program_in_path(UEBERZUG) && is_program_in_path(RSVG_CONVERT),
-            Self::Torrent => is_program_in_path(TRANSMISSION_SHOW),
-            Self::Video => is_program_in_path(UEBERZUG) && is_program_in_path(FFMPEG),
 
-            _ => true,
+            _           => true,
         }
     }
 
@@ -131,23 +140,6 @@ impl std::fmt::Display for ExtensionKind {
     }
 }
 
-#[derive(Clone, Default)]
-pub enum TextKind {
-    #[default]
-    TEXTFILE,
-
-    ARCHIVE,
-    BLOCKDEVICE,
-    EPUB,
-    FIFOCHARDEVICE,
-    HELP,
-    ISO,
-    LOG,
-    MEDIACONTENT,
-    SOCKET,
-    TORRENT,
-}
-
 /// Different kind of preview used to display some informaitons
 /// About the file.
 /// We check if it's an archive first, then a pdf file, an image, a media file
@@ -157,8 +149,7 @@ pub enum Preview {
     Text(Text),
     Binary(BinaryContent),
     Ueberzug(Ueber),
-    Tree(TreePreview),
-    ColoredText(ColoredText),
+    Tree(Tree),
     #[default]
     Empty,
 }
@@ -169,12 +160,11 @@ impl Preview {
     pub fn len(&self) -> usize {
         match self {
             Self::Empty => 0,
-            Self::Syntaxed(syntaxed) => syntaxed.len(),
-            Self::Text(text) => text.len(),
-            Self::Binary(binary) => binary.len(),
-            Self::Ueberzug(ueberzug) => ueberzug.len(),
-            Self::Tree(tree) => tree.len(),
-            Self::ColoredText(text) => text.len(),
+            Self::Syntaxed(preview) => preview.len(),
+            Self::Text(preview) => preview.len(),
+            Self::Binary(preview) => preview.len(),
+            Self::Ueberzug(preview) => preview.len(),
+            Self::Tree(tree) => tree.displayable().lines().len(),
         }
     }
 
@@ -222,11 +212,9 @@ impl<'a> PreviewBuilder<'a> {
         match file_kind {
             FileKind::Directory => self.directory(),
             FileKind::NormalFile => self.normal_file(),
-            FileKind::Socket if is_program_in_path(SS) => self.socket(),
-            FileKind::BlockDevice if is_program_in_path(LSBLK) => self.block_device(),
-            FileKind::Fifo | FileKind::CharDevice if is_program_in_path(UDEVADM) => {
-                self.fifo_chardevice()
-            }
+            FileKind::Socket if is_in_path(SS) => self.socket(),
+            FileKind::BlockDevice if is_in_path(LSBLK) => self.block_device(),
+            FileKind::Fifo | FileKind::CharDevice if is_in_path(UDEVADM) => self.fifo_chardevice(),
             FileKind::SymbolicLink(valid) if valid => self.valid_symlink(),
             _ => Ok(Preview::default()),
         }
@@ -236,27 +224,20 @@ impl<'a> PreviewBuilder<'a> {
     /// It explores recursivelly the directory and creates a tree.
     /// The recursive exploration is limited to depth 2.
     fn directory(&self) -> Result<Preview> {
-        Ok(Preview::Tree(TreePreview::new(
+        Ok(Preview::Tree(Tree::new(
             std::sync::Arc::from(self.path.as_path()),
+            4,
+            SortKind::tree_default(),
             self.users,
+            false,
+            &FilterKind::All,
         )))
     }
 
     fn valid_symlink(&self) -> Result<Preview> {
         let dest = read_symlink_dest(&self.path).context("broken symlink")?;
-        crate::log_info!("dest: {dest}");
         let dest_path = Path::new(&dest);
-        if dest_path.is_dir() {
-            Ok(Preview::Tree(TreePreview::new(
-                dest_path.into(),
-                self.users,
-            )))
-        } else {
-            let Ok(preview) = Self::new(dest_path, self.users).build() else {
-                return Ok(Preview::default());
-            };
-            Ok(preview)
-        }
+        Self::new(dest_path, self.users).build()
     }
 
     fn normal_file(&self) -> Result<Preview> {
@@ -367,7 +348,7 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     pub fn cli_info(output: &str, command: String) -> Preview {
-        Preview::ColoredText(ColoredText::new(output, command))
+        Preview::Text(Text::cli_info(output, command))
     }
 }
 
@@ -381,11 +362,30 @@ fn read_nb_lines(path: &Path, size_limit: usize) -> Result<Vec<String>> {
         .collect())
 }
 
+#[derive(Clone, Default)]
+pub enum TextKind {
+    #[default]
+    TEXTFILE,
+
+    Archive,
+    Blockdevice,
+    CliInfo,
+    Epub,
+    FifoChardevice,
+    Help,
+    Iso,
+    Log,
+    Mediacontent,
+    Socket,
+    Torrent,
+}
+
 /// Holds a preview of a text content.
-/// It's a boxed vector of strings (per line)
+/// It's a vector of strings (per line)
 #[derive(Clone, Default)]
 pub struct Text {
     pub kind: TextKind,
+    pub title: String,
     content: Vec<String>,
     length: usize,
 }
@@ -397,7 +397,8 @@ impl Text {
     fn help(help: &str) -> Self {
         let content: Vec<String> = help.lines().map(|line| line.to_owned()).collect();
         Self {
-            kind: TextKind::HELP,
+            title: "Help".to_string(),
+            kind: TextKind::Help,
             length: content.len(),
             content,
         }
@@ -405,7 +406,8 @@ impl Text {
 
     fn log(content: Vec<String>) -> Self {
         Self {
-            kind: TextKind::LOG,
+            title: "Logs".to_string(),
+            kind: TextKind::Log,
             length: content.len(),
             content,
         }
@@ -420,7 +422,8 @@ impl Text {
         .ok()?;
         let content: Vec<String> = output.lines().map(|line| line.to_owned()).collect();
         Some(Self {
-            kind: TextKind::EPUB,
+            title: "Epub".to_string(),
+            kind: TextKind::Epub,
             length: content.len(),
             content,
         })
@@ -429,6 +432,7 @@ impl Text {
     fn from_file(path: &Path) -> Result<Self> {
         let content = read_nb_lines(path, Self::SIZE_LIMIT)?;
         Ok(Self {
+            title: filename_from_path(path).context("")?.to_owned(),
             kind: TextKind::TEXTFILE,
             length: content.len(),
             content,
@@ -441,6 +445,7 @@ impl Text {
             .map(|s| s.to_owned())
             .collect();
         Ok(Self {
+            title: command.to_owned(),
             kind,
             length: content.len(),
             content,
@@ -449,7 +454,7 @@ impl Text {
 
     fn media_content(path: &Path) -> Result<Self> {
         Self::from_command_output(
-            TextKind::MEDIACONTENT,
+            TextKind::Mediacontent,
             MEDIAINFO,
             &[path_to_string(&path).as_str()],
         )
@@ -468,7 +473,8 @@ impl Text {
         };
 
         Ok(Self {
-            kind: TextKind::ARCHIVE,
+            title: filename_from_path(path).context("")?.to_owned(),
+            kind: TextKind::Archive,
             length: content.len(),
             content,
         })
@@ -476,7 +482,7 @@ impl Text {
 
     fn iso(path: &Path) -> Result<Self> {
         Self::from_command_output(
-            TextKind::ISO,
+            TextKind::Iso,
             ISOINFO,
             &["-l", "-i", &path_to_string(&path)],
         )
@@ -484,7 +490,7 @@ impl Text {
 
     fn torrent(path: &Path) -> Result<Self> {
         Self::from_command_output(
-            TextKind::TORRENT,
+            TextKind::Torrent,
             TRANSMISSION_SHOW,
             &[&path_to_string(&path)],
         )
@@ -493,7 +499,7 @@ impl Text {
     /// New socket preview
     /// See `man ss` for a description of the arguments.
     fn socket(path: &Path) -> Result<Self> {
-        let mut preview = Self::from_command_output(TextKind::SOCKET, SS, &["-lpmepiT"])?;
+        let mut preview = Self::from_command_output(TextKind::Socket, SS, &["-lpmepiT"])?;
         preview.content = preview
             .content
             .iter()
@@ -507,7 +513,7 @@ impl Text {
     /// See `man lsblk` for a description of the arguments.
     fn block_device(path: &Path) -> Result<Self> {
         Self::from_command_output(
-            TextKind::BLOCKDEVICE,
+            TextKind::Blockdevice,
             LSBLK,
             &[
                 "-lfo",
@@ -521,7 +527,7 @@ impl Text {
     /// See `man udevadm` for a description of the arguments.
     fn fifo_chardevice(path: &Path) -> Result<Self> {
         Self::from_command_output(
-            TextKind::FIFOCHARDEVICE,
+            TextKind::FifoChardevice,
             UDEVADM,
             &[
                 "info",
@@ -531,6 +537,17 @@ impl Text {
                 "--no-pager",
             ],
         )
+    }
+    /// Make a new previewed colored text.
+    pub fn cli_info(output: &str, title: String) -> Self {
+        let content: Vec<String> = output.lines().map(|line| line.to_owned()).collect();
+        let length = content.len();
+        Self {
+            title,
+            kind: TextKind::CliInfo,
+            content,
+            length,
+        }
     }
 
     fn len(&self) -> usize {
@@ -821,33 +838,6 @@ impl ColoredText {
             len,
             selected_index,
         }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct TreePreview {
-    pub tree: Tree,
-}
-
-impl TreePreview {
-    pub fn new(path: std::sync::Arc<Path>, users: &Users) -> Self {
-        let tree = Tree::new(
-            path,
-            4,
-            SortKind::tree_default(),
-            users,
-            false,
-            &FilterKind::All,
-        );
-        Self { tree }
-    }
-
-    pub fn len(&self) -> usize {
-        self.tree.displayable().lines().len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.tree.is_empty()
     }
 }
 

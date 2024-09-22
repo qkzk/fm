@@ -3,42 +3,26 @@ use std::path::PathBuf;
 use std::sync::{Arc, MutexGuard};
 
 use anyhow::{Context, Result};
-use tuikit::attr::{Attr, Color};
-use tuikit::prelude::*;
-use tuikit::term::Term;
+use tuikit::{
+    attr::{Attr, Color},
+    prelude::*,
+    term::Term,
+};
 
-use crate::app::Footer;
-use crate::app::Status;
-use crate::app::Tab;
-use crate::app::{ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader};
-use crate::app::{Header, PreviewHeader};
-use crate::common::path_to_string;
-use crate::common::ENCRYPTED_DEVICE_BINDS;
+use crate::app::{
+    ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader, Footer, Header, PreviewHeader,
+    Status, Tab,
+};
+use crate::common::{path_to_string, ENCRYPTED_DEVICE_BINDS};
 use crate::config::{ColorG, Gradient, MENU_ATTRS};
-use crate::io::read_last_log_line;
-use crate::io::ModeFormat;
+use crate::io::{read_last_log_line, ModeFormat};
 use crate::log_info;
-use crate::modes::ColoredText;
-use crate::modes::Content;
-use crate::modes::ContentWindow;
-use crate::modes::Display as DisplayMode;
-use crate::modes::Edit;
-use crate::modes::FileInfo;
-use crate::modes::HLContent;
-use crate::modes::InputSimple;
-use crate::modes::LineDisplay;
-use crate::modes::MarkAction;
-use crate::modes::MountRepr;
-use crate::modes::Navigate;
-use crate::modes::NeedConfirmation;
-use crate::modes::Preview;
-use crate::modes::Selectable;
-use crate::modes::Trash;
-use crate::modes::TreeLineBuilder;
-use crate::modes::TreePreview;
-use crate::modes::Window;
-use crate::modes::{parse_input_mode, SecondLine};
-use crate::modes::{BinaryContent, Ueber};
+use crate::modes::{
+    parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, Edit,
+    FileInfo, HLContent, InputSimple, LineDisplay, MarkAction, MountRepr, Navigate,
+    NeedConfirmation, Preview, SecondLine, Selectable, Text, TextKind, Trash, Tree,
+    TreeLineBuilder, Ueber, Window,
+};
 
 trait ClearLine {
     fn clear_line(&mut self, row: usize) -> Result<()>;
@@ -437,7 +421,7 @@ impl<'a> WinMain<'a> {
             Preview::Binary(bin) => self.draw_binary(bin, length, canvas, window)?,
             Preview::Ueberzug(image) => self.draw_ueberzug(image, canvas)?,
             Preview::Tree(tree_preview) => self.draw_tree_preview(tree_preview, window, canvas)?,
-            Preview::ColoredText(colored_text) => {
+            Preview::Text(colored_text) if matches!(colored_text.kind, TextKind::CliInfo) => {
                 self.draw_colored_text(colored_text, length, canvas, window)?
             }
             Preview::Text(text) => {
@@ -508,20 +492,17 @@ impl<'a> WinMain<'a> {
 
     fn draw_tree_preview(
         &self,
-        tree_preview: &TreePreview,
+        tree: &Tree,
         window: &ContentWindow,
         canvas: &mut dyn Canvas,
     ) -> Result<()> {
         let height = canvas.height()?;
-        let tree_content = tree_preview.tree.displayable();
+        let tree_content = tree.displayable();
         let content = tree_content.lines();
         let length = content.len();
 
         for (index, tree_line_builder) in
-            tree_preview
-                .tree
-                .displayable()
-                .window(window.top, window.bottom, length)
+            tree.displayable().window(window.top, window.bottom, length)
         {
             self.draw_tree_line(
                 canvas,
@@ -540,7 +521,7 @@ impl<'a> WinMain<'a> {
 
     fn draw_colored_text(
         &self,
-        colored_text: &ColoredText,
+        colored_text: &Text,
         length: usize,
         canvas: &mut dyn Canvas,
         window: &ContentWindow,

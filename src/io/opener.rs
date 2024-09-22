@@ -8,7 +8,7 @@ use serde_yml::Value;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
-use crate::common::is_program_in_path;
+use crate::common::is_in_path;
 use crate::common::tilde;
 use crate::common::{
     OPENER_AUDIO, OPENER_DEFAULT, OPENER_IMAGE, OPENER_OFFICE, OPENER_PATH, OPENER_READABLE,
@@ -282,7 +282,7 @@ impl Kind {
     }
 
     fn is_valid(&self) -> bool {
-        !self.is_external() || is_program_in_path(self.external_program().unwrap_or_default().0)
+        !self.is_external() || is_in_path(self.external_program().unwrap_or_default().0)
     }
 
     fn external_program(&self) -> Result<(&str, bool)> {

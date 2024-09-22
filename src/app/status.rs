@@ -21,7 +21,7 @@ use crate::common::{
     args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
     path_to_config_folder, path_to_string, row_to_window_index,
 };
-use crate::common::{current_username, disk_space, is_program_in_path};
+use crate::common::{current_username, disk_space, is_in_path};
 use crate::config::{Bindings, START_FOLDER};
 use crate::event::FmEvents;
 use crate::io::Internal;
@@ -298,9 +298,9 @@ impl Status {
                 if matches!(self.current_tab().display_mode, Display::Flagged) {
                     self.menu.flagged.select_row(row)
                 } else if self.has_clicked_on_second_pane_preview() {
-                    if let Preview::Tree(tree_preview) = &self.tabs[1].preview {
+                    if let Preview::Tree(tree) = &self.tabs[1].preview {
                         let index = row_to_window_index(row) + self.tabs[1].window.top;
-                        let path = &tree_preview.tree.path_from_index(index)?;
+                        let path = &tree.path_from_index(index)?;
                         self.tabs[0].cd_to_file(path)?;
                         self.index = 0;
                         self.focus = Focus::LeftFile;
@@ -1162,7 +1162,7 @@ impl Status {
             self.ask_password(None, PasswordUsage::SUDOCOMMAND)?;
             Ok(false)
         } else {
-            if !is_program_in_path(&executable) {
+            if !is_in_path(&executable) {
                 return Ok(true);
             }
             let current_directory = self.current_tab().directory_of_selected()?.to_owned();

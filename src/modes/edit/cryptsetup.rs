@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use sysinfo::Disks;
 
-use crate::common::{current_username, is_program_in_path, MKDIR};
+use crate::common::{current_username, is_in_path, MKDIR};
 use crate::common::{CRYPTSETUP, LSBLK};
 use crate::impl_content;
 use crate::impl_selectable;
@@ -35,7 +35,7 @@ fn get_devices() -> Result<String> {
 /// True iff `lsblk` and `cryptsetup` are in path.
 /// Nothing here can be done without those programs.
 pub fn lsblk_and_cryptsetup_installed() -> bool {
-    is_program_in_path(LSBLK) && is_program_in_path(CRYPTSETUP)
+    is_in_path(LSBLK) && is_in_path(CRYPTSETUP)
 }
 
 /// Represent an encrypted device.

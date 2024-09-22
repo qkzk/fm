@@ -8,7 +8,7 @@ mod inner {
     };
     use crate::event::ActionMap;
     use crate::modes::{
-        ColoredText, Content, Display, FileInfo, FilterKind, Preview, Search, Selectable, TextKind,
+        Content, Display, FileInfo, FilterKind, Preview, Search, Selectable, Text, TextKind,
     };
 
     #[derive(Clone, Copy)]
@@ -500,11 +500,11 @@ mod inner {
         fn strings(status: &Status, tab: &Tab) -> Vec<(String, Align)> {
             match &tab.preview {
                 Preview::Text(text_content) => match text_content.kind {
-                    TextKind::HELP => Self::make_help(),
-                    TextKind::LOG => Self::make_log(),
+                    TextKind::CliInfo => Self::make_colored_text(text_content),
+                    TextKind::Help => Self::make_help(),
+                    TextKind::Log => Self::make_log(),
                     _ => Self::make_default_preview(status, tab),
                 },
-                Preview::ColoredText(colored_text) => Self::make_colored_text(colored_text),
                 _ => Self::make_default_preview(status, tab),
             }
         }
@@ -527,11 +527,11 @@ mod inner {
             ]
         }
 
-        fn make_colored_text(colored_text: &ColoredText) -> Vec<(String, Align)> {
+        fn make_colored_text(colored_text: &Text) -> Vec<(String, Align)> {
             vec![
                 (" Command: ".to_owned(), Align::Left),
                 (
-                    format!(" {command} ", command = colored_text.title()),
+                    format!(" {command} ", command = colored_text.title),
                     Align::Right,
                 ),
             ]

@@ -99,7 +99,7 @@ pub fn current_username() -> Result<String> {
 
 /// True if the program is given by an absolute path which exists or
 /// if the command is available in $PATH.
-pub fn is_program_in_path<S>(program: S) -> bool
+pub fn is_in_path<S>(program: S) -> bool
 where
     S: Into<String> + std::fmt::Display + AsRef<Path>,
 {

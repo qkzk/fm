@@ -10,7 +10,7 @@ use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, Pr
 use tuikit::prelude::Term;
 
 use crate::common::NOTIFY_EXECUTABLE;
-use crate::common::{is_program_in_path, random_name};
+use crate::common::{is_in_path, random_name};
 use crate::event::FmEvents;
 use crate::io::execute;
 use crate::modes::human_size;
@@ -307,7 +307,7 @@ impl Drop for ConflictHandler {
 /// Send a notification to the desktop.
 /// Does nothing if "notify-send" isn't installed.
 fn notify(text: &str) -> Result<()> {
-    if is_program_in_path(NOTIFY_EXECUTABLE) {
+    if is_in_path(NOTIFY_EXECUTABLE) {
         execute(NOTIFY_EXECUTABLE, &[text])?;
     }
     Ok(())

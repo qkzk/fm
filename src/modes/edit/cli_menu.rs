@@ -4,7 +4,7 @@ use serde_yml::from_reader;
 use serde_yml::Mapping;
 
 use crate::app::Status;
-use crate::common::is_program_in_path;
+use crate::common::is_in_path;
 use crate::common::tilde;
 use crate::impl_content;
 use crate::impl_selectable;
@@ -41,7 +41,7 @@ pub struct CliCommand {
 impl CliCommand {
     fn new(desc: String, args: String) -> Option<Self> {
         let executable = args.split(' ').next()?;
-        if !is_program_in_path(executable) {
+        if !is_in_path(executable) {
             return None;
         }
         let desc = desc.replace('_', " ");

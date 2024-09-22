@@ -1126,6 +1126,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] preview builder
   - [x] preview symlink to folder as the target
   - [x] preview symlink to files as the target. Must change PreviewBuilder completely
+  - [x] merge all previews which hold text into a single variant
   - [ ] preview refactor
     - [ ] enum Preview -> struct Preview {kind: kind, content: window+selectable+draw}
   - [ ] simplify the mess as much as possible

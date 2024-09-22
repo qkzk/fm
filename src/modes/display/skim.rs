@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use skim::prelude::*;
 use tuikit::term::Term;
 
-use crate::common::is_program_in_path;
+use crate::common::is_in_path;
 use crate::common::{BAT_EXECUTABLE, CAT_EXECUTABLE, GREP_EXECUTABLE, RG_EXECUTABLE};
 
 /// Used to call skim, a clone of fzf.
@@ -107,7 +107,7 @@ fn pick_first_installed<'a>(commands: &'a [&'a str]) -> Option<&'a str> {
         let Some(program) = command.split_whitespace().next() else {
             continue;
         };
-        if is_program_in_path(program) {
+        if is_in_path(program) {
             return Some(command);
         }
     }

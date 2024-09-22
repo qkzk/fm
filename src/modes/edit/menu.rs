@@ -6,7 +6,7 @@ use anyhow::Result;
 
 use crate::app::Tab;
 use crate::common::index_from_a;
-use crate::common::is_program_in_path;
+use crate::common::is_in_path;
 use crate::common::CLI_PATH;
 use crate::common::INPUT_HISTORY_PATH;
 use crate::common::MARKS_FILEPATH;
@@ -191,7 +191,7 @@ impl Menu {
         let user_hostname_path_port: Vec<&str> = input.split(' ').collect();
         self.input.reset();
 
-        if !is_program_in_path(SSHFS_EXECUTABLE) {
+        if !is_in_path(SSHFS_EXECUTABLE) {
             log_info!("{SSHFS_EXECUTABLE} isn't in path");
             return;
         }

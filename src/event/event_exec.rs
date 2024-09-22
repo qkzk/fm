@@ -6,7 +6,7 @@ use indicatif::InMemoryTerm;
 
 use crate::app::{Focus, Status, Tab};
 use crate::common::{
-    filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_program_in_path,
+    filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_in_path,
     open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO, LAZYGIT, NCDU,
 };
 use crate::config::{Bindings, START_FOLDER};
@@ -1333,7 +1333,7 @@ impl EventAction {
         ) {
             status.reset_edit_mode()?;
         } else {
-            if !is_program_in_path(GIO) {
+            if !is_in_path(GIO) {
                 log_line!("gio must be installed.");
                 return Ok(());
             }

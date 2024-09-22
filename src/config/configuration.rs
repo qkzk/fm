@@ -6,7 +6,7 @@ use tuikit::attr::Attr;
 use tuikit::attr::Color;
 
 use crate::common::tilde;
-use crate::common::{is_program_in_path, DEFAULT_TERMINAL_FLAG};
+use crate::common::{is_in_path, DEFAULT_TERMINAL_FLAG};
 use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
 use crate::config::Bindings;
 use crate::config::ColorG;
@@ -52,7 +52,7 @@ impl Config {
     /// else nothing is done.
     fn update_terminal(&mut self, yaml: &Value) {
         let terminal_currently_used = std::env::var("TERM").unwrap_or_default();
-        if !terminal_currently_used.is_empty() && is_program_in_path(&terminal_currently_used) {
+        if !terminal_currently_used.is_empty() && is_in_path(&terminal_currently_used) {
             self.terminal = terminal_currently_used
         } else if let Some(configured_terminal) = yaml.as_str() {
             self.terminal = configured_terminal.to_owned()

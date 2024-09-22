@@ -3,9 +3,7 @@ use std::io::Read;
 
 use anyhow::{anyhow, Result};
 
-use crate::common::{
-    current_uid, filename_from_path, is_dir_empty, is_program_in_path, MKDIR, MOUNT,
-};
+use crate::common::{current_uid, filename_from_path, is_dir_empty, is_in_path, MKDIR, MOUNT};
 use crate::common::{EJECT_EXECUTABLE, GIO};
 use crate::impl_content;
 use crate::impl_selectable;
@@ -47,7 +45,7 @@ impl RemovableDevices {
     }
 
     fn mtp_from_gio() -> Vec<Removable> {
-        if !is_program_in_path(GIO) {
+        if !is_in_path(GIO) {
             return vec![];
         }
         let Ok(output) = execute_and_output(GIO, [MOUNT, "-li"]) else {

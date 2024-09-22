@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::common::{current_username, is_program_in_path, SETSID};
+use crate::common::{current_username, is_in_path, SETSID};
 use crate::modes::PasswordHolder;
 use crate::{log_info, log_line};
 
@@ -24,7 +24,7 @@ where
 {
     log_info!("execute. executable: {exe:?}, arguments: {args:?}");
     log_line!("Execute: {exe:?}, arguments: {args:?}");
-    if is_program_in_path(SETSID) {
+    if is_in_path(SETSID) {
         Ok(Command::new(SETSID)
             .arg(exe)
             .args(args)
@@ -71,7 +71,7 @@ where
         "execute_in_child_without_output_with_path. executable: {exe:?}, arguments: {args:?}"
     );
     let params = args.unwrap_or(&[]);
-    if is_program_in_path(SETSID) {
+    if is_in_path(SETSID) {
         Ok(Command::new(SETSID)
             .arg(exe)
             .stdin(Stdio::null())
@@ -202,7 +202,7 @@ pub fn execute_with_ansi_colors(args: &[&str]) -> Result<std::process::Output> {
 pub fn execute_custom(exec_command: String, files: &[std::path::PathBuf]) -> Result<bool> {
     let mut args: Vec<&str> = exec_command.split(' ').collect();
     let command = args.remove(0);
-    if !std::path::Path::new(command).exists() && !is_program_in_path(command) {
+    if !std::path::Path::new(command).exists() && !is_in_path(command) {
         log_info!("{command} can't be found - args {exec_command:?}");
         return Ok(false);
     }
