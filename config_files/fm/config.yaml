@@ -9,11 +9,12 @@ terminal: st
 
 # Define a palette for the "normal" files.
 # File will be colored randomly from their extensions.
-# Accepted values are "red", "green", "blue" or a rgb color
+# List of allowed ANSI colors:
+#   white,        black,        red,       green,       blue,       yellow,       cyan,       magenta 
+#   light_white,  light_black,  light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
 # Allowed Format for rgb color :
 #   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
 #   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals
-# Unfortunatelly, not all ansi color names are accepted.
 # palette:
 #   start: "rgb(255, 110, 128)"
 #   stop: "rgb(123, 100, 255)"
@@ -22,15 +23,15 @@ palette:
   stop: blue
 
 # Colors for "non normal" files. The list is below.
+# you can define an ANSI color or an rgb color for any kind of file except "normal" files.
+# colors for normal files are calculated on the fly from the "palette" values provided above.
+# List of allowed ANSI colors:
+#   white,        black,        red,       green,       blue,       yellow,       cyan,       magenta 
+#   light_white,  light_black,  light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
+# Allowed Format for rgb color :
+#   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
+#   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals
 colors:
-  # you can define an ANSI color or an rgb color for any kind of file except "normal" files.
-  # colors for normal files are calculated on the fly.
-  # List of allowed colors:
-  #   white,        black,        red,       green,       blue,       yellow,       cyan,       magenta 
-  #   light_white,  light_black,  light_red, light_green, light_blue, light_yellow, light_cyan, light_magenta 
-  # Allowed Format for rgb color :
-  #   - `rgb(r, g, b)` where r, g and b are integers between 0 and 255 included.
-  #   - `#rrggbb` aka hex colors, where rr, gg and bb are hexadecimals
   directory: red
   block: yellow
   char: green
@@ -40,6 +41,7 @@ colors:
   broken: light_magenta
 
 # Colors for menus, headers, footers etc.
+# The same values are accepted.
 menu_colors:
   # first color
   first: rgb(45, 250, 209)
@@ -148,6 +150,7 @@ keys:
 custom:
   # open the selected file with chrome
   'alt-u': "/usr/bin/google-chrome-stable %s"
+  # drag & drop the selected file to a GUI application
   'shift-d': "/usr/bin/dragon-drop %s"  
 
 # DO NOT EDIT UNLESS YOU WANT TO ADD AN UNKNOWN TERMINAL EMULATOR

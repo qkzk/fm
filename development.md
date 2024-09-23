@@ -1100,6 +1100,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Fix: opening tree mode with selection on "." doesn't display "." as selected
 - [x] refactor draw tree line
 - [x] Fix: Crash when quiting. "sending on a closed channel". From quit -> refresher::quit
+- [ ]
 - [ ] Badges to latest version
 
 ## Current dev
@@ -1107,6 +1108,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ### Version 0.1.29
 
 #### Summary
+
+- Fixed the documentation and updated the badges
+- Flagged files are now displayed in a menu instead of the main window. You can still jump to them, removed them individually
+- Fix jump mode (Alt+g) to allow paths to file. It will jump there and select the file.
+- Preview valid symlink as their target. Broken symlink aren't previewed at all
+- Fixed a few bugs. See details below.
 
 #### Changelog
 
