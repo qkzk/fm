@@ -9,7 +9,7 @@ use crate::common::{
     has_last_modification_happened_less_than, path_to_string, row_to_window_index,
 };
 use crate::config::START_FOLDER;
-use crate::io::{Args, Opener};
+use crate::io::Args;
 use crate::log_info;
 use crate::modes::{
     Content, ContentWindow, Directory, Display, Edit, FileInfo, FileKind, FilterKind, Go, History,
@@ -726,12 +726,5 @@ impl Tab {
             self.search.set_index_paths(index, paths);
             self.go_to_file(path);
         }
-    }
-
-    pub fn context_info(&self, opener: &Opener) -> Vec<String> {
-        let Ok(selected) = self.current_file() else {
-            return vec![];
-        };
-        selected.context_info(opener)
     }
 }

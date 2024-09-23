@@ -39,7 +39,7 @@ pub use cli_menu::CliApplications;
 pub use cli_menu::Execute;
 pub use completion::{Completion, InputCompleted};
 pub use compress::Compresser;
-pub use context::ContextMenu;
+pub use context::{ContextMenu, MoreInfos};
 pub use copy_move::{copy_move, CopyMove};
 pub use cryptsetup::{lsblk_and_cryptsetup_installed, BlockDeviceAction, CryptoDeviceOpener};
 pub use decompress::{decompress_gz, decompress_xz, decompress_zip};

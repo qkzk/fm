@@ -143,7 +143,7 @@ impl SizeColumn {
         }
     }
 
-    fn trimed(&self) -> String {
+    pub fn trimed(&self) -> String {
         format!("{self}").trim().to_owned()
     }
 }
@@ -319,57 +319,6 @@ impl FileInfo {
             return "/ ".to_string();
         };
         format!("/{filename} ")
-    }
-
-    /// Returns informations about the file as a vector of string.
-    pub fn context_info(&self, opener: &crate::io::Opener) -> Vec<String> {
-        let mut lines = vec![];
-        lines.push(format!(
-            "Owner/Group: {owner} / {group}",
-            owner = self.owner,
-            group = self.group
-        ));
-        if let Ok(perms) = self.permissions() {
-            lines.push(format!(
-                "Permissions: {dir_symbol}{perms}",
-                dir_symbol = self.dir_symbol()
-            ));
-        }
-        lines.push(format!(
-            "{size_kind} {size}",
-            size_kind = self.file_kind.size_description(),
-            size = self.size_column.trimed()
-        ));
-        if let Ok(metadata) = std::fs::metadata(&self.path) {
-            if let Ok(created) = metadata.created() {
-                if let Ok(dt) = extract_datetime(created) {
-                    lines.push(format!("Created:     {dt}"))
-                }
-            }
-            if let Ok(accessed) = metadata.accessed() {
-                if let Ok(dt) = extract_datetime(accessed) {
-                    lines.push(format!("Accessed:    {dt}"))
-                }
-            }
-            if let Ok(modified) = metadata.modified() {
-                if let Ok(dt) = extract_datetime(modified) {
-                    lines.push(format!("Modified:    {dt}"))
-                }
-            }
-        }
-        if let Some(opener) = opener.kind(&self.path) {
-            lines.push(format!("Opener:      {opener}"));
-        };
-        if matches!(self.file_kind, FileKind::NormalFile) {
-            let extension = &self.extension.to_lowercase();
-            let ext_kind = crate::modes::ExtensionKind::matcher(extension);
-            lines.push(format!("Previewer:   {ext_kind}"));
-        } else {
-            let kind = self.file_kind.long_description();
-            lines.push(format!("Kind:        {kind}"));
-        }
-
-        lines
     }
 
     pub fn attr(&self) -> Attr {

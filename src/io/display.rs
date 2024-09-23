@@ -16,7 +16,7 @@ use crate::io::{read_last_log_line, ModeFormat};
 use crate::log_info;
 use crate::modes::{
     parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, Edit,
-    FileInfo, HLContent, InputSimple, LineDisplay, MarkAction, MountRepr, Navigate,
+    FileInfo, HLContent, InputSimple, LineDisplay, MarkAction, MoreInfos, MountRepr, Navigate,
     NeedConfirmation, Preview, SecondLine, Selectable, Text, TextKind, Trash, Tree,
     TreeLineBuilder, Ueber, Window,
 };
@@ -975,6 +975,11 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_context(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        self.draw_context_selectable(canvas)?;
+        self.draw_context_more_infos(canvas)
+    }
+
+    fn draw_context_selectable(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.context;
         canvas.print_with_attr(
             1,
@@ -983,7 +988,6 @@ impl<'a> WinSecondary<'a> {
             MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
         let content = selectable.content();
-        let space_used = content.len();
         for (letter, (row, desc, attr)) in
             std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
         {
@@ -996,14 +1000,18 @@ impl<'a> WinSecondary<'a> {
             )?;
             Self::draw_content_line(canvas, row + 1, desc, attr)?;
         }
-        let more_info = self.tab.context_info(&self.status.internal_settings.opener);
+        Ok(())
+    }
+
+    fn draw_context_more_infos(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let space_used = &self.status.menu.context.content.len();
+        let more_info = MoreInfos::new(
+            &self.tab.current_file()?,
+            &self.status.internal_settings.opener,
+        )
+        .to_lines();
         for (row, text, attr) in enumerated_colored_iter!(more_info) {
-            canvas.print_with_attr(
-                space_used + row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
-                4,
-                text,
-                attr,
-            )?;
+            Self::draw_content_line(canvas, space_used + row + 1, text, attr)?;
         }
         Ok(())
     }

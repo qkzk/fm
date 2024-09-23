@@ -8,7 +8,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 
 use crate::app::TabSettings;
-use crate::common::{filename_from_path, path_to_string};
+use crate::common::filename_from_path;
 use crate::io::git;
 use crate::modes::{is_not_hidden, FileInfo, FileKind, FilterKind, SortKind, Users};
 use crate::{impl_content, impl_selectable, log_info};
@@ -86,12 +86,6 @@ impl Directory {
         Ok(vec![current, parent])
     }
 
-    /// Convert a path to a &str.
-    /// It may fails if the path contains non valid utf-8 chars.
-    pub fn path_to_str(&self) -> String {
-        path_to_string(&self.path)
-    }
-
     /// Sort the file with current key.
     pub fn sort(&mut self, sort_kind: &SortKind) {
         sort_kind.sort(&mut self.content)
@@ -123,15 +117,9 @@ impl Directory {
     /// Select the first file if any.
     pub fn reset_files(&mut self, settings: &TabSettings, users: &Users) -> Result<()> {
         self.content = Self::files(&self.path, settings.show_hidden, &settings.filter, users)?;
-        let sort_kind = SortKind::default();
-        self.sort(&sort_kind);
+        self.sort(&SortKind::default());
         self.index = 0;
         Ok(())
-    }
-
-    /// True if the path starts with a subpath.
-    pub fn contains(&self, path: &Path) -> bool {
-        path.starts_with(&self.path)
     }
 
     /// Is the selected file a directory ?
@@ -153,7 +141,6 @@ impl Directory {
                 .unwrap_or_default();
                 Ok(Path::new(&dest).is_dir())
             }
-            FileKind::SymbolicLink(false) => Ok(false),
             _ => Ok(false),
         }
     }
@@ -265,13 +252,15 @@ pub fn files_collection(
     }
 }
 
+const SIZES: [&str; 9] = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"];
+
 /// Convert a file size from bytes to human readable string.
+#[inline]
 pub fn human_size(bytes: u64) -> String {
-    let size = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"];
     let factor = (bytes.to_string().chars().count() as u64 - 1) / 3_u64;
     format!(
         "{:>3}{:<1}",
         bytes / (1024_u64).pow(factor as u32),
-        size[factor as usize]
+        SIZES[factor as usize]
     )
 }

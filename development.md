@@ -1139,6 +1139,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] flagged should be a menu
   - [x] use a menu to display flagged files
   - [x] display binds
+- [x] refactor context menu "more info" into a struct with explicit methods
 - [ ] google drive should be a display ?
 
 ## TODO
