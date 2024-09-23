@@ -17,8 +17,8 @@ use syntect::{
 use tuikit::attr::{Attr, Color, Effect};
 
 use crate::common::{
-    clear_tmp_files, filename_from_path, is_in_path, path_to_string, FFMPEG, FONTIMAGE, ISOINFO,
-    JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS,
+    clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
+    ISOINFO, JUPYTER, LIBREOFFICE, LSBLK, MEDIAINFO, PANDOC, PDFINFO, PDFTOPPM, RSVG_CONVERT, SS,
     TRANSMISSION_SHOW, UDEVADM, UEBERZUG,
 };
 use crate::config::MONOKAI_THEME;
@@ -86,6 +86,7 @@ impl ExtensionKind {
     #[rustfmt::skip]
     fn has_programs(&self) -> bool {
         match self {
+            Self::Archive   => is_in_path(BSDTAR),
             Self::Epub      => is_in_path(PANDOC),
             Self::Iso       => is_in_path(ISOINFO),
             Self::Notebook  => is_in_path(JUPYTER),
@@ -215,7 +216,7 @@ impl<'a> PreviewBuilder<'a> {
             FileKind::Socket if is_in_path(SS) => self.socket(),
             FileKind::BlockDevice if is_in_path(LSBLK) => self.block_device(),
             FileKind::Fifo | FileKind::CharDevice if is_in_path(UDEVADM) => self.fifo_chardevice(),
-            FileKind::SymbolicLink(valid) if valid => self.valid_symlink(),
+            FileKind::SymbolicLink(true) => self.valid_symlink(),
             _ => Ok(Preview::default()),
         }
     }
@@ -242,24 +243,25 @@ impl<'a> PreviewBuilder<'a> {
 
     fn normal_file(&self) -> Result<Preview> {
         let extension = extract_extension(&self.path).to_lowercase();
-        let path = &self.path;
         let kind = ExtensionKind::matcher(&extension);
         match kind {
-            ExtensionKind::Archive => Ok(Preview::Text(Text::archive(&self.path, &extension)?)),
-            ExtensionKind::Iso if kind.has_programs() => Ok(Preview::Text(Text::iso(path)?)),
+            ExtensionKind::Archive if kind.has_programs() => {
+                Ok(Preview::Text(Text::archive(&self.path, &extension)?))
+            }
+            ExtensionKind::Iso if kind.has_programs() => Ok(Preview::Text(Text::iso(&self.path)?)),
             ExtensionKind::Epub if kind.has_programs() => Ok(Preview::Text(
-                Text::epub(path).context("Preview: Couldn't read epub")?,
+                Text::epub(&self.path).context("Preview: Couldn't read epub")?,
             )),
             ExtensionKind::Torrent if kind.has_programs() => Ok(Preview::Text(
-                Text::torrent(path).context("Preview: Couldn't read torrent")?,
+                Text::torrent(&self.path).context("Preview: Couldn't read torrent")?,
             )),
             ExtensionKind::Notebook if kind.has_programs() => {
-                Ok(Self::notebook(path).context("Preview: Couldn't parse notebook")?)
+                Ok(Self::notebook(&self.path).context("Preview: Couldn't parse notebook")?)
             }
             ExtensionKind::Audio if kind.has_programs() => {
-                Ok(Preview::Text(Text::media_content(path)?))
+                Ok(Preview::Text(Text::media_content(&self.path)?))
             }
-            _ if kind.is_ueber_kind() && kind.has_programs() => Self::ueber(path, kind),
+            _ if kind.is_ueber_kind() && kind.has_programs() => Self::ueber(&self.path, kind),
             _ => match self.syntaxed(&extension) {
                 Some(syntaxed_preview) => Ok(syntaxed_preview),
                 None => self.text_or_binary(),
@@ -319,23 +321,23 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     fn text_or_binary(&self) -> Result<Preview> {
-        let mut file = std::fs::File::open(&self.path)?;
-        let mut buffer = vec![0; Self::CONTENT_INSPECTOR_MIN_SIZE];
-        if self.is_binary(&mut file, &mut buffer) {
+        if self.is_binary()? {
             Ok(Preview::Binary(BinaryContent::new(&self.path)?))
         } else {
             Ok(Preview::Text(Text::from_file(&self.path)?))
         }
     }
 
-    fn is_binary(&self, file: &mut std::fs::File, buffer: &mut [u8]) -> bool {
+    fn is_binary(&self) -> Result<bool> {
+        let mut file = std::fs::File::open(&self.path)?;
+        let mut buffer = [0; Self::CONTENT_INSPECTOR_MIN_SIZE];
         let Ok(metadata) = self.path.metadata() else {
-            return false;
+            return Ok(false);
         };
 
-        metadata.len() >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
-            && file.read_exact(buffer).is_ok()
-            && inspect(buffer) == ContentType::BINARY
+        Ok(metadata.len() >= Self::CONTENT_INSPECTOR_MIN_SIZE as u64
+            && file.read_exact(&mut buffer).is_ok()
+            && inspect(&buffer) == ContentType::BINARY)
     }
 
     /// Creates the help preview as if it was a text file.
@@ -776,10 +778,10 @@ impl Line {
     /// or it's corresponding char.
     fn byte_to_char(byte: &u8) -> char {
         let ch = *byte as char;
-        if !ch.is_ascii_graphic() {
-            '.'
-        } else {
+        if ch.is_ascii_graphic() {
             ch
+        } else {
+            '.'
         }
     }
 

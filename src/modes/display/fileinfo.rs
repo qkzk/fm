@@ -51,8 +51,7 @@ impl FileKind<Valid> {
         } else if meta.file_type().is_fifo() {
             Self::Fifo
         } else if meta.file_type().is_symlink() {
-            let valid = is_valid_symlink(filepath);
-            Self::SymbolicLink(valid)
+            Self::SymbolicLink(is_valid_symlink(filepath))
         } else {
             Self::NormalFile
         }
