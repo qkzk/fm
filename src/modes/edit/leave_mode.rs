@@ -440,7 +440,8 @@ impl LeaveMode {
             PickerCaller::Unknown => Ok(()),
         }
     }
+
     fn flagged(status: &mut Status) -> Result<()> {
-        todo!();
+        status.jump_flagged()
     }
 }

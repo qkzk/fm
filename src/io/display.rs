@@ -549,33 +549,6 @@ impl<'a> WinMain<'a> {
         )?;
         Ok(())
     }
-
-    fn draw_fagged(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
-        let window = &self.status.menu.flagged.window;
-        for (index, path) in self
-            .status
-            .menu
-            .flagged
-            .content
-            .iter()
-            .enumerate()
-            .skip(window.top)
-            .take(min(canvas.height()?, window.bottom + 0))
-        {
-            let fileinfo = FileInfo::new(path, &self.tab.users)?;
-            let mut attr = fileinfo.attr();
-            if index == self.status.menu.flagged.index {
-                attr.effect |= Effect::REVERSE;
-            }
-            let row = index + 2 - window.top;
-            canvas.print_with_attr(row, 0, &fileinfo.path.to_string_lossy(), attr)?;
-        }
-        if let Some(selected) = self.status.menu.flagged.selected() {
-            let fileinfo = FileInfo::new(selected, &self.tab.users)?;
-            canvas.print_with_attr(0, 1, &fileinfo.format(6, 6)?, fileinfo.attr())?;
-        };
-        Ok(None)
-    }
 }
 
 struct TreeLinePosition {

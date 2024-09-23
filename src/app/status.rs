@@ -679,6 +679,18 @@ impl Status {
         }
     }
 
+    pub fn jump_flagged(&mut self) -> Result<()> {
+        let Some(path) = self.menu.flagged.selected() else {
+            return Ok(());
+        };
+        let path = path.to_owned();
+        let tab = self.current_tab_mut();
+        tab.set_display_mode(Display::Directory);
+        tab.refresh_view()?;
+        tab.jump(path)?;
+        self.update_second_pane_for_preview()
+    }
+
     /// Execute a move or a copy of the flagged files to current directory.
     /// A progress bar is displayed (invisible for small files) and a notification
     /// is sent every time, even for 0 bytes files...

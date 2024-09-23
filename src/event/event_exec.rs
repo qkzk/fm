@@ -154,7 +154,7 @@ impl EventAction {
                 .menu
                 .flagged
                 .set_height(status.internal_settings.term.term_size()?.1);
-            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Flagged));
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Flagged))?;
         }
         Ok(())
     }
@@ -790,15 +790,7 @@ impl EventAction {
     }
 
     fn jump_flagged(status: &mut Status) -> Result<()> {
-        let Some(path) = status.menu.flagged.selected() else {
-            return Ok(());
-        };
-        let path = path.to_owned();
-        let tab = status.current_tab_mut();
-        tab.set_display_mode(Display::Directory);
-        tab.refresh_view()?;
-        tab.jump(path)?;
-        status.update_second_pane_for_preview()
+        status.jump_flagged()
     }
 
     pub fn search_next(status: &mut Status) -> Result<()> {
