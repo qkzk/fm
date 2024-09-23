@@ -1130,7 +1130,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] preview refactor
     - [ ] enum Preview -> struct Preview {kind: kind, content: window+selectable+draw}
   - [ ] simplify the mess as much as possible
-- [ ] flagged should be a menu ?
+- [x] flagged should be a menu
+  - [x] use a menu to display flagged files
+  - [x] display binds
 - [ ] google drive should be a display ?
 
 ## TODO
