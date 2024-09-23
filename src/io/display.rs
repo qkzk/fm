@@ -1242,7 +1242,7 @@ impl<'a> WinSecondary<'a> {
             .iter()
             .enumerate()
             .skip(window.top)
-            .take(min(canvas.height()?, window.bottom + 0))
+            .take(min(canvas.height()?, window.bottom))
         {
             let fileinfo = FileInfo::new(path, &self.tab.users)?;
             let mut attr = fileinfo.attr();
@@ -1250,11 +1250,11 @@ impl<'a> WinSecondary<'a> {
                 attr.effect |= Effect::REVERSE;
             }
             let row = index + 2 - window.top;
-            canvas.print_with_attr(row, 0, &fileinfo.path.to_string_lossy(), attr)?;
+            canvas.print_with_attr(row, 2, &fileinfo.path.to_string_lossy(), attr)?;
         }
         if let Some(selected) = self.status.menu.flagged.selected() {
             let fileinfo = FileInfo::new(selected, &self.tab.users)?;
-            canvas.print_with_attr(0, 1, &fileinfo.format(6, 6)?, fileinfo.attr())?;
+            canvas.print_with_attr(0, 2, &fileinfo.format(6, 6)?, fileinfo.attr())?;
         };
         Ok(())
     }

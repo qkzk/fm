@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::{
     app::{Status, Tab},
-    modes::{Display, Flagged, Go, To, ToPath, Tree},
+    modes::{Display, Go, To, ToPath, Tree},
 };
 
 #[derive(Clone)]
@@ -179,43 +179,6 @@ impl Search {
                     found_path = Some(line.path.to_path_buf());
                     found = true;
                 }
-            }
-        }
-        found_path
-    }
-
-    fn flagged(&mut self, flagged: &mut Flagged) {
-        if let Some(path) = self.select_next() {
-            flagged.select_path(&path);
-            return;
-        } else {
-            self.reset_paths();
-        }
-        if let Some(path) = self.find_in_flagged(flagged) {
-            flagged.select_path(&path);
-        }
-    }
-
-    fn find_in_flagged(&mut self, flagged: &Flagged) -> Option<std::path::PathBuf> {
-        let mut found = false;
-        let mut found_path = None;
-
-        for path in flagged
-            .content
-            .iter()
-            .skip(flagged.index + 1)
-            .chain(flagged.content.iter().take(flagged.index + 1))
-        {
-            if self
-                .regex
-                .is_match(&path.file_name().unwrap().to_string_lossy())
-            {
-                if !found {
-                    found = true;
-                    found_path = Some(path.to_path_buf());
-                    self.index = self.paths.len();
-                }
-                self.paths.push(path.to_path_buf());
             }
         }
         found_path

@@ -14,9 +14,9 @@ use crate::io::{execute_without_output_with_path, read_log};
 use crate::log_info;
 use crate::log_line;
 use crate::modes::{
-    help_string, lsblk_and_cryptsetup_installed, open_tui_program, Content, ContentWindow, Display,
-    Edit, InputCompleted, InputSimple, LeaveMode, MarkAction, Navigate, NeedConfirmation,
-    PreviewBuilder, RemovableDevices, Search, Selectable,
+    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow, Display, Edit,
+    InputCompleted, InputSimple, LeaveMode, MarkAction, Navigate, NeedConfirmation, PreviewBuilder,
+    RemovableDevices, Search, Selectable,
 };
 
 /// Links events from tuikit to custom actions.
@@ -787,10 +787,6 @@ impl EventAction {
             .current_tab_mut()
             .cd(START_FOLDER.get().context("Start folder should be set")?)?;
         status.update_second_pane_for_preview()
-    }
-
-    fn jump_flagged(status: &mut Status) -> Result<()> {
-        status.jump_flagged()
     }
 
     pub fn search_next(status: &mut Status) -> Result<()> {

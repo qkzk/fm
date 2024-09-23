@@ -1440,8 +1440,7 @@ impl Status {
     }
 
     pub fn fuzzy_flags(&mut self) -> Result<()> {
-        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Flagged));
-        Ok(())
+        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Flagged))
     }
 
     pub fn sort(&mut self, c: char) -> Result<()> {
