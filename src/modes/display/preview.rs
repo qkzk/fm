@@ -24,8 +24,8 @@ use crate::common::{
 use crate::config::MONOKAI_THEME;
 use crate::io::execute_and_capture_output_without_check;
 use crate::modes::{
-    extract_extension, list_files_tar, list_files_zip, read_symlink_dest, ContentWindow, FileKind,
-    FilterKind, SortKind, Tree, TreeLineBuilder, TreeLines, Ueber, UeberBuilder, Users,
+    extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind,
+    SortKind, Tree, TreeLineBuilder, TreeLines, Ueber, UeberBuilder, Users,
 };
 
 /// Different kind of extension for grouped by previewers.
@@ -236,9 +236,11 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     fn valid_symlink(&self) -> Result<Preview> {
-        let dest = read_symlink_dest(&self.path).context("broken symlink")?;
-        let dest_path = Path::new(&dest);
-        Self::new(dest_path, self.users).build()
+        Self::new(
+            &std::fs::read_link(&self.path).unwrap_or_default(),
+            self.users,
+        )
+        .build()
     }
 
     fn normal_file(&self) -> Result<Preview> {

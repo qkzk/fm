@@ -1141,6 +1141,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display binds
 - [x] refactor context menu "more info" into a struct with explicit methods
 - [ ] google drive should be a display ?
+- [ ] don't use ANSI colors
+  - [ ] config
+  - [ ] src
 
 ## TODO
 

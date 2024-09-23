@@ -12,7 +12,7 @@ use tuikit::prelude::Attr;
 use crate::common::PERMISSIONS_STR;
 use crate::config::{extension_color, FILE_ATTRS};
 use crate::io::color_to_attr;
-use crate::modes::{human_size, read_symlink_dest, ToPath, Users, MAX_MODE};
+use crate::modes::{human_size, ToPath, Users, MAX_MODE};
 
 type Valid = bool;
 
@@ -246,9 +246,11 @@ impl FileInfo {
 
     fn expand_symlink(&self, repr: &mut String) {
         if let FileKind::SymbolicLink(_) = self.file_kind {
-            match read_symlink_dest(&self.path) {
-                Some(dest) => repr.push_str(&format!(" -> {dest}")),
-                None => repr.push_str("  broken link"),
+            match std::fs::read_link(&self.path) {
+                Ok(dest) if dest.exists() => {
+                    repr.push_str(&format!(" -> {dest}", dest = dest.display()))
+                }
+                _ => repr.push_str("  broken link"),
             }
         }
     }

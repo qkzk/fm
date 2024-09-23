@@ -38,7 +38,7 @@ colors:
   fifo: blue
   socket: cyan
   symlink: magenta
-  broken: light_magenta
+  broken: blue
 
 # Colors for menus, headers, footers etc.
 # The same values are accepted.

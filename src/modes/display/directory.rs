@@ -129,8 +129,8 @@ impl Directory {
         match fileinfo.file_kind {
             FileKind::Directory => Ok(true),
             FileKind::SymbolicLink(true) => {
-                let dest = read_symlink_dest(&fileinfo.path).unwrap_or_default();
-                Ok(Path::new(&dest).is_dir())
+                let dest = std::fs::read_link(&fileinfo.path).unwrap_or_default();
+                Ok(dest.is_dir())
             }
             _ => Ok(false),
         }
@@ -196,17 +196,6 @@ impl Directory {
 
 impl_selectable!(Directory);
 impl_content!(FileInfo, Directory);
-
-/// Returns `Some(destination)` where `destination` is a String if the path is
-/// the destination of a symlink,
-/// Returns `None` if the link is broken, if the path doesn't exists or if the path
-/// isn't a symlink.
-pub fn read_symlink_dest(path: &Path) -> Option<String> {
-    match std::fs::read_link(path) {
-        Ok(dest) if dest.exists() => Some(dest.to_str()?.to_owned()),
-        _ => None,
-    }
-}
 
 fn get_used_space(files: &[FileInfo]) -> u64 {
     files
