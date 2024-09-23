@@ -227,6 +227,8 @@ pub enum Navigate {
     Cloud,
     /// Picker menu
     Picker,
+    /// Flagged files
+    Flagged,
 }
 
 impl fmt::Display for Navigate {
@@ -250,6 +252,7 @@ impl fmt::Display for Navigate {
             Self::Context => write!(f, "Context"),
             Self::Cloud => write!(f, "Cloud"),
             Self::Picker => write!(f, "Picker"),
+            Self::Flagged => write!(f, "Flagged"),
         }
     }
 }
@@ -376,6 +379,4 @@ pub enum Display {
     Tree,
     /// Preview a file or directory
     Preview,
-    /// Fuzzy
-    Flagged,
 }

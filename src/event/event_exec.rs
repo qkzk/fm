@@ -56,11 +56,8 @@ impl EventAction {
     pub fn reset_mode(status: &mut Status) -> Result<()> {
         if !matches!(status.current_tab().edit_mode, Edit::Nothing) {
             status.leave_edit_mode()?;
-        } else if matches!(
-            status.current_tab().display_mode,
-            Display::Preview | Display::Flagged
-        ) {
-            status.leave_preview_flagged()?
+        } else if matches!(status.current_tab().display_mode, Display::Preview) {
+            status.leave_preview()?
         }
         status.menu.input.reset();
         status.menu.completion.reset();
@@ -149,16 +146,15 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        if matches!(status.current_tab().display_mode, Display::Flagged) {
-            status
-                .current_tab_mut()
-                .set_display_mode(Display::Directory);
-        } else {
+        let edit_mode = &status.current_tab().edit_mode;
+        if matches!(edit_mode, Edit::Navigate(Navigate::Flagged)) {
+            status.leave_edit_mode()?;
+        } else if matches!(edit_mode, Edit::Nothing) {
             status
                 .menu
                 .flagged
                 .set_height(status.internal_settings.term.term_size()?.1);
-            status.current_tab_mut().set_display_mode(Display::Flagged);
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Flagged));
         }
         Ok(())
     }
@@ -296,9 +292,6 @@ impl EventAction {
     }
 
     fn set_copy_paste(status: &mut Status, copy_or_move: NeedConfirmation) -> Result<()> {
-        if matches!(status.current_tab().display_mode, Display::Flagged) {
-            return Ok(());
-        };
         if status.menu.flagged.is_empty() {
             return Ok(());
         }
@@ -394,7 +387,6 @@ impl EventAction {
         match status.current_tab_mut().display_mode {
             Display::Directory => Self::normal_enter_file(status),
             Display::Tree => Self::tree_enter_file(status),
-            Display::Flagged => Self::jump_flagged(status),
             _ => Ok(()),
         }
     }
@@ -440,14 +432,7 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        if matches!(status.current_tab().display_mode, Display::Flagged) {
-            let Some(path) = status.menu.flagged.selected() else {
-                return Ok(());
-            };
-            let path = path.to_owned();
-            status.open_single_file(&path);
-            Ok(())
-        } else if status.menu.flagged.is_empty() {
+        if status.menu.flagged.is_empty() {
             status.open_selected_file()
         } else {
             status.open_flagged_files()
@@ -828,9 +813,6 @@ impl EventAction {
             Display::Preview => {
                 return Ok(());
             }
-            Display::Flagged => status.tabs[status.index]
-                .search
-                .flagged(&mut status.menu.flagged),
         }
         status.refresh_status()?;
         status.update_second_pane_for_preview()?;
@@ -883,7 +865,6 @@ impl EventAction {
             Display::Directory => tab.normal_up_one_row(),
             Display::Preview => tab.preview_page_up(),
             Display::Tree => tab.tree_select_prev(),
-            Display::Flagged => status.menu.flagged.select_prev(),
         }
         Ok(())
     }
@@ -894,7 +875,6 @@ impl EventAction {
             Display::Directory => tab.normal_down_one_row(),
             Display::Preview => tab.preview_page_down(),
             Display::Tree => tab.tree_select_next(),
-            Display::Flagged => status.menu.flagged.select_next(),
         }
         Ok(())
     }
@@ -1050,7 +1030,6 @@ impl EventAction {
                 Display::Directory => tab.normal_go_top(),
                 Display::Preview => tab.preview_go_top(),
                 Display::Tree => tab.tree_go_to_root()?,
-                Display::Flagged => status.menu.flagged.select_first(),
             };
             status.update_second_pane_for_preview()
         } else {
@@ -1067,7 +1046,6 @@ impl EventAction {
                 Display::Directory => tab.normal_go_bottom(),
                 Display::Preview => tab.preview_go_bottom(),
                 Display::Tree => tab.tree_go_to_bottom_leaf(),
-                Display::Flagged => status.menu.flagged.select_last(),
             };
             status.update_second_pane_for_preview()?;
         } else {
@@ -1108,7 +1086,6 @@ impl EventAction {
                 tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
             }
-            Display::Flagged => status.menu.flagged.page_up(),
         };
         Ok(())
     }
@@ -1145,7 +1122,6 @@ impl EventAction {
                 tab.tree_page_down();
                 status.update_second_pane_for_preview()?;
             }
-            Display::Flagged => status.menu.flagged.page_down(),
         };
         Ok(())
     }
@@ -1212,12 +1188,6 @@ impl EventAction {
                 };
                 filename_to_clipboard(&file_info.path);
             }
-            Display::Flagged => {
-                let Some(path) = status.menu.flagged.selected() else {
-                    return Ok(());
-                };
-                filename_to_clipboard(path);
-            }
             _ => return Ok(()),
         }
         Ok(())
@@ -1234,12 +1204,6 @@ impl EventAction {
                     return Ok(());
                 };
                 filepath_to_clipboard(&file_info.path);
-            }
-            Display::Flagged => {
-                let Some(path) = status.menu.flagged.selected() else {
-                    return Ok(());
-                };
-                filepath_to_clipboard(path);
             }
             _ => return Ok(()),
         }

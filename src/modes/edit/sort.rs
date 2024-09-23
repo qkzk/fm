@@ -75,13 +75,13 @@ impl SortKind {
     /// If the character is lowercase, we sort by Ascending order, else Descending order.
     /// If the character is 'r' or 'R' we reverse current kind of sort.
     pub fn update_from_char(&mut self, c: char) {
-        match c {
-            'k' | 'K' => self.sort_by = SortBy::Kind,
-            'n' | 'N' => self.sort_by = SortBy::File,
-            'm' | 'M' => self.sort_by = SortBy::Date,
-            's' | 'S' => self.sort_by = SortBy::Size,
-            'e' | 'E' => self.sort_by = SortBy::Exte,
-            'r' | 'R' => self.order = self.order.reverse(),
+        match c.to_ascii_uppercase() {
+            'K' => self.sort_by = SortBy::Kind,
+            'N' => self.sort_by = SortBy::File,
+            'M' => self.sort_by = SortBy::Date,
+            'S' => self.sort_by = SortBy::Size,
+            'E' => self.sort_by = SortBy::Exte,
+            'R' => self.order = self.order.reverse(),
             _ => {
                 return;
             }

@@ -79,6 +79,7 @@ impl LeaveMode {
                 LeaveMode::picker(status)?;
                 return Ok(());
             }
+            Edit::Navigate(Navigate::Flagged) => LeaveMode::flagged(status),
             Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
             Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status, true),
             Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
@@ -203,21 +204,13 @@ impl LeaveMode {
     fn rename(status: &mut Status) -> Result<()> {
         let old_path = status.current_tab().current_file()?.path;
         let new_name = status.menu.input.string();
-        let new_path = match rename(&old_path, &new_name) {
-            Ok(new_path) => new_path,
-            Err(error) => {
-                log_info!(
-                    "Error renaming {old_path} to {new_name}. Error: {error}",
-                    old_path = old_path.display()
-                );
-                return Err(error);
-            }
+        if let Err(error) = rename(&old_path, &new_name) {
+            log_info!(
+                "Error renaming {old_path} to {new_name}. Error: {error}",
+                old_path = old_path.display()
+            );
+            return Err(error);
         };
-        if matches!(status.current_tab().display_mode, Display::Flagged)
-            && status.menu.flagged.contains(&old_path)
-        {
-            status.menu.flagged.replace(&old_path, &new_path);
-        }
         status.current_tab_mut().refresh_view()
     }
 
@@ -446,5 +439,8 @@ impl LeaveMode {
             PickerCaller::Cloud => status.cloud_load_config(),
             PickerCaller::Unknown => Ok(()),
         }
+    }
+    fn flagged(status: &mut Status) -> Result<()> {
+        todo!();
     }
 }

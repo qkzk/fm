@@ -150,7 +150,7 @@ impl Menu {
                 let files = match tab.display_mode {
                     Display::Preview => vec![],
                     Display::Tree => tab.search.complete(tab.tree.displayable().content()),
-                    Display::Flagged => tab.search.complete(self.flagged.content()),
+                    // Display::Flagged => tab.search.complete(self.flagged.content()),
                     Display::Directory => tab.search.complete(tab.directory.content()),
                 };
                 self.completion.search(files);
@@ -399,6 +399,7 @@ impl Menu {
             Navigate::TuiApplication => func(&mut self.tui_applications),
             Navigate::Cloud => func(&mut self.cloud),
             Navigate::Picker => func(&mut self.picker),
+            Navigate::Flagged => func(&mut self.flagged),
         }
     }
 
@@ -419,6 +420,7 @@ impl Menu {
             Navigate::TuiApplication => func(&self.tui_applications),
             Navigate::Cloud => func(&self.cloud),
             Navigate::Picker => func(&self.picker),
+            Navigate::Flagged => func(&self.flagged),
         }
     }
 }

@@ -186,7 +186,6 @@ impl Tab {
             Display::Tree => self.tree.display_len(),
             Display::Preview => self.preview.len(),
             Display::Directory => self.directory.len(),
-            Display::Flagged => 0,
         }
     }
 
@@ -237,7 +236,6 @@ impl Tab {
                 has_last_modification_happened_less_than(&self.directory.path, 10)?
             }
             Display::Tree => self.tree.has_modified_dirs(),
-            Display::Flagged => false, // TODO! what to do ????,
         } {
             self.refresh_and_reselect_file()
         } else {
@@ -359,7 +357,6 @@ impl Tab {
                 let index = self.tree.displayable().index();
                 self.scroll_to(index);
             }
-            Display::Flagged => (),
         }
     }
 
@@ -442,7 +439,7 @@ impl Tab {
     /// Add the last path to the history of visited paths.
     /// Does nothing in preview or flagged display mode.
     pub fn cd(&mut self, path: &path::Path) -> Result<()> {
-        if matches!(self.display_mode, Display::Preview | Display::Flagged) {
+        if matches!(self.display_mode, Display::Preview) {
             return Ok(());
         }
         self.search.reset_paths();
@@ -467,7 +464,7 @@ impl Tab {
     }
 
     pub fn back(&mut self) -> Result<()> {
-        if matches!(self.display_mode, Display::Preview | Display::Flagged) {
+        if matches!(self.display_mode, Display::Preview) {
             return Ok(());
         }
         if self.history.content.is_empty() {
@@ -507,10 +504,6 @@ impl Tab {
             Display::Preview => return Ok(()),
             Display::Directory => self.jump_directory(&jump_target, target_dir)?,
             Display::Tree => self.jump_tree(&jump_target, target_dir)?,
-            Display::Flagged => {
-                self.set_display_mode(Display::Directory);
-                self.jump(jump_target)?;
-            }
         }
         Ok(())
     }

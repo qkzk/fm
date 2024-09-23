@@ -70,7 +70,6 @@ impl Search {
             Display::Directory => {
                 self.directory(status.current_tab_mut());
             }
-            Display::Flagged => self.flagged(&mut status.menu.flagged),
             _ => (),
         };
         status.update_second_pane_for_preview()
@@ -185,7 +184,7 @@ impl Search {
         found_path
     }
 
-    pub fn flagged(&mut self, flagged: &mut Flagged) {
+    fn flagged(&mut self, flagged: &mut Flagged) {
         if let Some(path) = self.select_next() {
             flagged.select_path(&path);
             return;

@@ -9,10 +9,7 @@ use tuikit::{
     term::Term,
 };
 
-use crate::app::{
-    ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader, Footer, Header, PreviewHeader,
-    Status, Tab,
-};
+use crate::app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab};
 use crate::common::{path_to_string, ENCRYPTED_DEVICE_BINDS};
 use crate::config::{ColorG, Gradient, MENU_ATTRS};
 use crate::io::{read_last_log_line, ModeFormat};
@@ -171,7 +168,6 @@ impl<'a> WinMain<'a> {
             DisplayMode::Directory => self.draw_files(canvas),
             DisplayMode::Tree => self.draw_tree(canvas),
             DisplayMode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas),
-            DisplayMode::Flagged => self.draw_fagged(canvas),
         }
     }
 
@@ -564,19 +560,19 @@ impl<'a> WinMain<'a> {
             .iter()
             .enumerate()
             .skip(window.top)
-            .take(min(canvas.height()?, window.bottom + 1))
+            .take(min(canvas.height()?, window.bottom + 0))
         {
             let fileinfo = FileInfo::new(path, &self.tab.users)?;
             let mut attr = fileinfo.attr();
             if index == self.status.menu.flagged.index {
                 attr.effect |= Effect::REVERSE;
             }
-            let row = index + 3 - window.top;
-            canvas.print_with_attr(row, 1, &fileinfo.path.to_string_lossy(), attr)?;
+            let row = index + 2 - window.top;
+            canvas.print_with_attr(row, 0, &fileinfo.path.to_string_lossy(), attr)?;
         }
         if let Some(selected) = self.status.menu.flagged.selected() {
             let fileinfo = FileInfo::new(selected, &self.tab.users)?;
-            canvas.print_with_attr(1, 1, &fileinfo.format(6, 6)?, fileinfo.attr())?;
+            canvas.print_with_attr(0, 1, &fileinfo.format(6, 6)?, fileinfo.attr())?;
         };
         Ok(None)
     }
@@ -614,7 +610,6 @@ impl<'a> Draw for WinMainHeader<'a> {
         let (width, _) = canvas.size()?;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => PreviewHeader::elems(self.status, self.tab, width),
-            DisplayMode::Flagged => FlaggedHeader::new(self.status)?.elems().to_vec(),
             _ => Header::new(self.status, self.tab)?.elems().to_owned(),
         };
         draw_clickable_strings(0, 0, &content, canvas, self.is_selected)?;
@@ -706,7 +701,6 @@ impl<'a> Draw for WinMainFooter<'a> {
         let (width, height) = canvas.size()?;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => vec![],
-            DisplayMode::Flagged => FlaggedFooter::new(self.status)?.elems().to_owned(),
             _ => Footer::new(self.status, self.tab)?.elems().to_owned(),
         };
         let mut attr = MENU_ATTRS.get().expect("Menu colors should be set").first;
@@ -858,6 +852,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::Trash => self.draw_trash(canvas),
             Navigate::Cloud => self.draw_cloud(canvas),
             Navigate::Picker => self.draw_picker(canvas),
+            Navigate::Flagged => self.draw_flagged(canvas),
         }
     }
 
@@ -1262,6 +1257,33 @@ impl<'a> WinSecondary<'a> {
         attr: tuikit::attr::Attr,
     ) -> Result<usize> {
         Ok(canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr)?)
+    }
+
+    fn draw_flagged(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let window = &self.status.menu.flagged.window;
+        for (index, path) in self
+            .status
+            .menu
+            .flagged
+            .content
+            .iter()
+            .enumerate()
+            .skip(window.top)
+            .take(min(canvas.height()?, window.bottom + 0))
+        {
+            let fileinfo = FileInfo::new(path, &self.tab.users)?;
+            let mut attr = fileinfo.attr();
+            if index == self.status.menu.flagged.index {
+                attr.effect |= Effect::REVERSE;
+            }
+            let row = index + 2 - window.top;
+            canvas.print_with_attr(row, 0, &fileinfo.path.to_string_lossy(), attr)?;
+        }
+        if let Some(selected) = self.status.menu.flagged.selected() {
+            let fileinfo = FileInfo::new(selected, &self.tab.users)?;
+            canvas.print_with_attr(0, 1, &fileinfo.format(6, 6)?, fileinfo.attr())?;
+        };
+        Ok(())
     }
 }
 

@@ -10,13 +10,12 @@ use sysinfo::{Disk, Disks};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
-use crate::app::FlaggedHeader;
+use crate::app::ClickableLine;
 use crate::app::Footer;
 use crate::app::Header;
 use crate::app::InternalSettings;
 use crate::app::Session;
 use crate::app::Tab;
-use crate::app::{ClickableLine, FlaggedFooter};
 use crate::common::{
     args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
     path_to_config_folder, path_to_string, row_to_window_index,
@@ -295,9 +294,7 @@ impl Status {
         match window {
             Window::Header => self.header_action(col, binds),
             Window::Files => {
-                if matches!(self.current_tab().display_mode, Display::Flagged) {
-                    self.menu.flagged.select_row(row)
-                } else if self.has_clicked_on_second_pane_preview() {
+                if self.has_clicked_on_second_pane_preview() {
                     if let Preview::Tree(tree) = &self.tabs[1].preview {
                         let index = row_to_window_index(row) + self.tabs[1].window.top;
                         let path = &tree.path_from_index(index)?;
@@ -354,6 +351,7 @@ impl Status {
                     Navigate::TuiApplication => self.menu.tui_applications.set_index(index),
                     Navigate::Cloud => self.menu.cloud.set_index(index),
                     Navigate::Picker => self.menu.picker.set_index(index),
+                    Navigate::Flagged => self.menu.flagged.set_index(index),
                 },
                 Edit::InputCompleted(_) => self.menu.completion.set_index(index),
                 _ => (),
@@ -441,7 +439,7 @@ impl Status {
     /// AND
     ///
     /// 2. Display mode is preview or flagged.
-    pub fn leave_preview_flagged(&mut self) -> Result<()> {
+    pub fn leave_preview(&mut self) -> Result<()> {
         self.current_tab_mut().set_display_mode(Display::Directory);
         self.current_tab_mut().refresh_and_reselect_file()
     }
@@ -548,16 +546,7 @@ impl Status {
                 let (history_path, _) = &left_tab.history.content()[left_tab.history.index()];
                 FileInfo::new(history_path, users)
             }
-            _ => match left_tab.display_mode {
-                Display::Flagged => {
-                    let Some(path) = self.menu.flagged.selected() else {
-                        self.tabs[1].preview = PreviewBuilder::empty();
-                        return Err(anyhow!("No fileinfo to preview"));
-                    };
-                    FileInfo::new(path, users)
-                }
-                _ => left_tab.current_file(),
-            },
+            _ => left_tab.current_file(),
         }
     }
 
@@ -652,7 +641,6 @@ impl Status {
         match self.current_tab().display_mode {
             Display::Preview => (),
             Display::Tree => (),
-            Display::Flagged => (),
             Display::Directory => {
                 self.tabs[self.index]
                     .directory
@@ -672,9 +660,6 @@ impl Status {
                 return;
             };
             match tab.display_mode {
-                Display::Flagged => {
-                    self.menu.flagged.remove_selected();
-                }
                 Display::Directory => {
                     self.menu.flagged.toggle(&file.path);
                     if !self.tabs[self.index].directory.selected_is_last() {
@@ -906,7 +891,7 @@ impl Status {
                     let index = tab.directory.select_file(&path);
                     tab.go_to_index(index);
                 }
-                Display::Preview | Display::Flagged => (),
+                Display::Preview => (),
             }
         } else if path.is_dir() {
             tab.cd(&path)?;
@@ -1384,9 +1369,6 @@ impl Status {
         let is_right = !self.focus.is_left();
         match self.current_tab().display_mode {
             Display::Preview => Ok(()),
-            Display::Flagged => FlaggedHeader::new(self)?
-                .action(col as usize, is_right)
-                .matcher(self, binds),
             _ => Header::new(self, self.current_tab())?
                 .action(col as usize, is_right)
                 .matcher(self, binds),
@@ -1401,10 +1383,6 @@ impl Status {
             Display::Preview => return Ok(()),
             Display::Tree | Display::Directory => {
                 let footer = Footer::new(self, self.current_tab())?;
-                footer.action(col as usize, is_right).to_owned()
-            }
-            Display::Flagged => {
-                let footer = FlaggedFooter::new(self)?;
                 footer.action(col as usize, is_right).to_owned()
             }
         };
@@ -1450,7 +1428,7 @@ impl Status {
     }
 
     pub fn fuzzy_flags(&mut self) -> Result<()> {
-        self.current_tab_mut().set_display_mode(Display::Flagged);
+        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Flagged));
         Ok(())
     }
 

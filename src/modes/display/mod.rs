@@ -13,8 +13,7 @@ pub use fileinfo::{
     convert_octal_mode, extract_datetime, extract_extension, is_not_hidden, FileInfo, FileKind,
 };
 pub use preview::{
-    BinaryContent, ColoredText, ExtensionKind, HLContent, Preview, PreviewBuilder, Text, TextKind,
-    Window,
+    BinaryContent, ExtensionKind, HLContent, Preview, PreviewBuilder, Text, TextKind, Window,
 };
 pub use skim::{print_ansi_str, Skimer};
 pub use tree::{ColoredString, Go, Node, To, Tree, TreeLineBuilder, TreeLines};
