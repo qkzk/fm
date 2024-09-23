@@ -125,20 +125,11 @@ impl Directory {
     /// Is the selected file a directory ?
     /// It may fails if the current path is empty, aka if nothing is selected.
     pub fn is_selected_dir(&self) -> Result<bool> {
-        match self
-            .selected()
-            .context("is selected dir: Empty directory")?
-            .file_kind
-        {
+        let fileinfo = self.selected().context("")?;
+        match fileinfo.file_kind {
             FileKind::Directory => Ok(true),
             FileKind::SymbolicLink(true) => {
-                let dest = read_symlink_dest(
-                    &self
-                        .selected()
-                        .context("is selected dir: unreachable")?
-                        .path,
-                )
-                .unwrap_or_default();
+                let dest = read_symlink_dest(&fileinfo.path).unwrap_or_default();
                 Ok(Path::new(&dest).is_dir())
             }
             _ => Ok(false),
