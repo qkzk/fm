@@ -243,8 +243,8 @@ impl MenuAttrs {
         if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
             if let Ok(yaml) = from_reader::<File, Value>(file) {
                 let menu_colors = &yaml["colors"];
-                update_attr!(self.first, menu_colors, "first");
-                update_attr!(self.second, menu_colors, "second");
+                update_attr!(self.first, menu_colors, "header_first");
+                update_attr!(self.second, menu_colors, "header_second");
                 update_attr!(self.selected_border, menu_colors, "selected_border");
                 update_attr!(self.inert_border, menu_colors, "inert_border");
                 update_attr!(self.palette_1, menu_colors, "palette_1");
