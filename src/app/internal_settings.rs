@@ -6,12 +6,8 @@ use indicatif::InMemoryTerm;
 use sysinfo::Disks;
 use tuikit::term::Term;
 
-use crate::common::is_in_path;
-use crate::common::NVIM;
-use crate::common::SS;
-use crate::io::execute_and_output;
-use crate::io::Args;
-use crate::io::Opener;
+use crate::common::{is_in_path, NVIM, SS};
+use crate::io::{execute_and_output, Args, Opener};
 
 pub struct InternalSettings {
     /// Do we have to clear the screen ?

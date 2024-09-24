@@ -1,8 +1,7 @@
 use anyhow::{anyhow, Result};
 use tuikit::attr::Color;
 
-use crate::config::ColorG;
-use crate::config::MAX_GRADIENT_NORMAL;
+use crate::config::{ColorG, MAX_GRADIENT_NORMAL};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Gradient {

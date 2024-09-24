@@ -4,8 +4,7 @@ use anyhow::Result;
 use clap::Parser;
 use log4rs;
 
-use crate::common::extract_lines;
-use crate::common::{tilde, ACTION_LOG_PATH, LOG_CONFIG_PATH};
+use crate::common::{extract_lines, tilde, ACTION_LOG_PATH, LOG_CONFIG_PATH};
 use crate::io::Args;
 
 /// Holds the last action which is displayed to the user

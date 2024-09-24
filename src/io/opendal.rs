@@ -12,16 +12,9 @@ use serde_yml::to_string as to_yml_string;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
-use crate::common::path_to_config_folder;
-use crate::common::path_to_string;
-use crate::common::tilde;
-use crate::common::CONFIG_FOLDER;
-use crate::impl_content;
-use crate::impl_selectable;
-use crate::log_info;
-use crate::log_line;
-use crate::modes::human_size;
-use crate::modes::FileInfo;
+use crate::common::{path_to_config_folder, path_to_string, tilde, CONFIG_FOLDER};
+use crate::modes::{human_size, FileInfo};
+use crate::{impl_content, impl_selectable, log_info, log_line};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GoogleDriveConfig {

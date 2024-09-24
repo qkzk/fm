@@ -8,16 +8,13 @@ use serde_yml::Value;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
-use crate::common::is_in_path;
-use crate::common::tilde;
 use crate::common::{
-    OPENER_AUDIO, OPENER_DEFAULT, OPENER_IMAGE, OPENER_OFFICE, OPENER_PATH, OPENER_READABLE,
-    OPENER_TEXT, OPENER_VECT, OPENER_VIDEO,
+    is_in_path, tilde, OPENER_AUDIO, OPENER_DEFAULT, OPENER_IMAGE, OPENER_OFFICE, OPENER_PATH,
+    OPENER_READABLE, OPENER_TEXT, OPENER_VECT, OPENER_VIDEO,
 };
 use crate::io::execute;
 use crate::log_info;
-use crate::modes::extract_extension;
-use crate::modes::{decompress_gz, decompress_xz, decompress_zip};
+use crate::modes::{decompress_gz, decompress_xz, decompress_zip, extract_extension};
 
 /// Different kind of extensions for default openers.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Display, Default, EnumString, EnumIter)]

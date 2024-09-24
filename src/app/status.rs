@@ -10,50 +10,24 @@ use sysinfo::{Disk, Disks};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
-use crate::app::ClickableLine;
-use crate::app::Footer;
-use crate::app::Header;
-use crate::app::InternalSettings;
-use crate::app::Session;
-use crate::app::Tab;
+use crate::app::{ClickableLine, Footer, Header, InternalSettings, Session, Tab};
 use crate::common::{
-    args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
-    path_to_string, row_to_window_index,
+    args_is_empty, current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
+    is_sudo_command, open_in_current_neovim, path_to_string, row_to_window_index,
 };
-use crate::common::{current_username, disk_space, is_in_path};
 use crate::config::{Bindings, START_FOLDER};
 use crate::event::FmEvents;
-use crate::io::Opener;
-use crate::io::{execute_and_capture_output_with_path, Args};
 use crate::io::{
-    execute_and_capture_output_without_check, execute_sudo_command_with_password,
-    reset_sudo_faillock,
+    execute_and_capture_output_with_path, execute_and_capture_output_without_check,
+    execute_sudo_command_with_password, get_cloud_token_names, google_drive, reset_sudo_faillock,
+    Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
-use crate::io::{get_cloud_token_names, Internal};
-use crate::io::{google_drive, MIN_WIDTH_FOR_DUAL_PANE};
-use crate::io::{Extension, Kind};
-use crate::modes::MountRepr;
-use crate::modes::NeedConfirmation;
-use crate::modes::PasswordKind;
-use crate::modes::PasswordUsage;
-use crate::modes::Permissions;
-use crate::modes::Preview;
-use crate::modes::Selectable;
-use crate::modes::ShellCommandParser;
-use crate::modes::Skimer;
-use crate::modes::To;
-use crate::modes::Tree;
-use crate::modes::Users;
-use crate::modes::{copy_move, regex_matcher};
-use crate::modes::{extract_extension, Edit};
-use crate::modes::{BlockDeviceAction, Navigate};
-use crate::modes::{Content, FileInfo};
-use crate::modes::{ContentWindow, CopyMove};
-use crate::modes::{Display, Go};
-use crate::modes::{FileKind, Menu};
-use crate::modes::{FilterKind, InputSimple};
-use crate::modes::{IsoDevice, PickerCaller};
-use crate::modes::{MountCommands, PreviewBuilder};
+use crate::modes::{
+    copy_move, extract_extension, regex_matcher, BlockDeviceAction, Content, ContentWindow,
+    CopyMove, Display, Edit, FileInfo, FileKind, FilterKind, Go, InputSimple, IsoDevice, Menu,
+    MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
+    PickerCaller, Preview, PreviewBuilder, Selectable, ShellCommandParser, Skimer, To, Tree, Users,
+};
 use crate::{log_info, log_line};
 
 pub enum Window {

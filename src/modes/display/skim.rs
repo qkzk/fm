@@ -2,8 +2,7 @@ use anyhow::{Context, Result};
 use skim::prelude::*;
 use tuikit::term::Term;
 
-use crate::common::is_in_path;
-use crate::common::{BAT_EXECUTABLE, CAT_EXECUTABLE, GREP_EXECUTABLE, RG_EXECUTABLE};
+use crate::common::{is_in_path, BAT_EXECUTABLE, CAT_EXECUTABLE, GREP_EXECUTABLE, RG_EXECUTABLE};
 
 /// Used to call skim, a clone of fzf.
 /// It's a simple wrapper around `Skim` which is used to simplify the interface.

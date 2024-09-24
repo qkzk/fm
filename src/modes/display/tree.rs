@@ -6,15 +6,8 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use tuikit::attr::Attr;
 
-use crate::common::filename_from_path;
-use crate::common::has_last_modification_happened_less_than;
-use crate::modes::files_collection;
-use crate::modes::FileInfo;
-use crate::modes::FilterKind;
-use crate::modes::Flagged;
-use crate::modes::SortKind;
-use crate::modes::ToPath;
-use crate::modes::Users;
+use crate::common::{filename_from_path, has_last_modification_happened_less_than};
+use crate::modes::{files_collection, FileInfo, FilterKind, Flagged, SortKind, ToPath, Users};
 
 /// Holds a string, its display attributes and the associated pathbuf.
 #[derive(Clone, Debug)]

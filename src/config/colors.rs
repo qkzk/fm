@@ -1,7 +1,6 @@
 use tuikit::attr::Color;
 
-use crate::config::ARRAY_GRADIENT;
-use crate::config::COLORER;
+use crate::config::{ARRAY_GRADIENT, COLORER};
 
 pub const MAX_GRADIENT_NORMAL: usize = 254;
 

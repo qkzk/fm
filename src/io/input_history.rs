@@ -6,12 +6,9 @@ use strum_macros::Display;
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::{
-    common::read_lines,
-    common::tilde,
-    io::Args,
-    modes::{Edit, InputCompleted, InputSimple},
-};
+use crate::common::{read_lines, tilde};
+use crate::io::Args;
+use crate::modes::{Edit, InputCompleted, InputSimple};
 
 pub struct InputHistory {
     file_path: std::path::PathBuf,

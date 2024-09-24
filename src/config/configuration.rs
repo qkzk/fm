@@ -2,14 +2,12 @@ use std::{fs::File, path};
 
 use anyhow::Result;
 use serde_yml::{from_reader, Value};
-use tuikit::attr::Attr;
-use tuikit::attr::Color;
+use tuikit::attr::{Attr, Color};
 
-use crate::common::tilde;
-use crate::common::{is_in_path, DEFAULT_TERMINAL_FLAG};
-use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
-use crate::config::Bindings;
-use crate::config::ColorG;
+use crate::common::{
+    is_in_path, tilde, CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION, DEFAULT_TERMINAL_FLAG,
+};
+use crate::config::{Bindings, ColorG};
 use crate::io::color_to_attr;
 
 /// Holds every configurable aspect of the application.

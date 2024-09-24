@@ -10,7 +10,6 @@ use std::path::Path;
 use anyhow::{anyhow, Context, Result};
 
 use crate::common::is_in_path;
-
 use crate::io::execute_and_output_no_log;
 
 #[derive(Default)]
