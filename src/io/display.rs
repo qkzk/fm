@@ -863,12 +863,12 @@ impl<'a> WinSecondary<'a> {
     fn draw_history(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.tab.history;
         let content = selectable.content();
-        for (row, pair, attr) in enumerated_colored_iter!(content) {
+        for (row, path, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, &attr);
             Self::draw_content_line(
                 canvas,
                 row + 1,
-                pair.0.to_str().context("Unreadable filename")?,
+                path.to_str().context("Unreadable filename")?,
                 attr,
             )?;
         }

@@ -332,14 +332,12 @@ impl LeaveMode {
     /// Move back to a previously visited path.
     /// It may fail if the user has no permission to visit the path
     fn history(status: &mut Status) -> Result<()> {
-        let Some((path, file)) = status.current_tab().history.selected() else {
+        let Some(file) = status.tabs[status.index].history.selected() else {
             return Ok(());
         };
-        let (path, file) = (path.to_owned(), file.to_owned());
-        let tab = status.current_tab_mut();
-        tab.history.drop_queue();
-        tab.cd(&path)?;
-        tab.go_to_file(file);
+        let file = file.to_owned();
+        status.tabs[status.index].cd_to_file(&file)?;
+        status.tabs[status.index].history.drop_queue();
         status.update_second_pane_for_preview()
     }
 

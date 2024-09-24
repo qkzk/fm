@@ -450,8 +450,7 @@ impl Tab {
                 return Ok(());
             }
         }
-        self.history
-            .push(&self.directory.path, &self.current_file()?.path);
+        self.history.push(&self.current_file()?.path);
         self.directory
             .change_directory(path, &self.settings, &self.users)?;
         if matches!(self.display_mode, Display::Tree) {
@@ -470,12 +469,11 @@ impl Tab {
         if self.history.content.is_empty() {
             return Ok(());
         }
-        let Some((path, file)) = self.history.content.pop() else {
+        let Some(file) = self.history.content.pop() else {
             return Ok(());
         };
         self.history.content.pop();
-        self.cd(&path)?;
-        self.go_to_file(file);
+        self.cd_to_file(&file)?;
         Ok(())
     }
 

@@ -543,7 +543,7 @@ impl Status {
                 FileInfo::new(shortcut_path, users)
             }
             Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::History)) => {
-                let (history_path, _) = &left_tab.history.content()[left_tab.history.index()];
+                let history_path = &left_tab.history.content()[left_tab.history.index()];
                 FileInfo::new(history_path, users)
             }
             _ => left_tab.current_file(),
