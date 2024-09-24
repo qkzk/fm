@@ -18,7 +18,7 @@ use crate::app::Session;
 use crate::app::Tab;
 use crate::common::{
     args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
-    path_to_config_folder, path_to_string, row_to_window_index,
+    path_to_string, row_to_window_index,
 };
 use crate::common::{current_username, disk_space, is_in_path};
 use crate::config::{Bindings, START_FOLDER};
