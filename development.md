@@ -1103,8 +1103,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ]
 - [ ] Badges to latest version
 
-## Current dev
-
 ### Version 0.1.29
 
 #### Summary
@@ -1153,15 +1151,26 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] only one "colors" map in yaml file
   - [x] migration of config file : detailed in release
 
+## Current dev
+
+### Version 0.1.30
+
+#### Summary
+
+#### Changelog
+
+- [ ] menus refactor
+  - [ ] open 2 menus at once
+  - [ ] moving left shouldn't move right
+  - [ ] closing left shouldn't clear right
+  - [ ] maybe use the same system as preview, create them on the fly
+  - [ ] attach menus to tab, where they belong
+  - [ ] leaving left menu shouldn't reset right menu
+
 ## TODO
 
 - [ ] google drive should be a display ?
 - [ ] status, tab, event exec refactor. What should go where ? status is too big and should be splitted
-- [ ] menus refactor
-  - [ ] open 2 menus at once
-  - [ ] maybe use the same system as preview, create them on the fly
-  - [ ] attach menus to tab, where they belong
-  - [ ] leaving left menu shouldn't reset right menu
 - [ ] replace tuikit by ratatui + crossterm
 - [ ] Focus & mouseover. Mousemove require raw terminal mode.. Requires to rewrite every event (Mousepress, mouse release etc.)
       Another motivation to switch to ratatui + crossterm.
