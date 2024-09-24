@@ -2,7 +2,8 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::{common::filename_from_path, modes::edit::Flagged};
+use crate::common::filename_from_path;
+use crate::modes::edit::Flagged;
 
 /// Flag every file matching a typed regex in current directory.
 ///

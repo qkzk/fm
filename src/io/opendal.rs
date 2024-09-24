@@ -12,15 +12,9 @@ use serde_yml::to_string as to_yml_string;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
-use crate::common::path_to_string;
-use crate::common::tilde;
-use crate::common::CONFIG_FOLDER;
-use crate::impl_content;
-use crate::impl_selectable;
-use crate::log_info;
-use crate::log_line;
-use crate::modes::human_size;
-use crate::modes::FileInfo;
+use crate::common::{path_to_config_folder, path_to_string, tilde, CONFIG_FOLDER};
+use crate::modes::{human_size, FileInfo};
+use crate::{impl_content, impl_selectable, log_info, log_line};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GoogleDriveConfig {
@@ -124,6 +118,18 @@ impl OpendalKind {
             Self::GoogleDrive => "Google Drive",
         }
     }
+}
+
+pub fn get_cloud_token_names() -> Result<Vec<String>> {
+    Ok(std::fs::read_dir(path_to_config_folder()?)?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_file())
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|filename| filename.starts_with("token_"))
+        .filter(|filename| filename.ends_with(".yaml"))
+        .map(|filename| filename.replace("token_", ""))
+        .map(|filename| filename.replace(".yaml", ""))
+        .collect())
 }
 
 /// Formating used to display elements.

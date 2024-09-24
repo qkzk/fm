@@ -9,8 +9,7 @@ use std::path::Path;
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::common::is_program_in_path;
-
+use crate::common::is_in_path;
 use crate::io::execute_and_output_no_log;
 
 #[derive(Default)]
@@ -137,7 +136,7 @@ fn porcelain2() -> Result<std::process::Output> {
 /// Returns a string representation of the git status of this path.
 /// Will return an empty string if we're not in a git repository.
 pub fn git(path: &Path) -> Result<String> {
-    if !is_program_in_path("git") {
+    if !is_in_path("git") {
         return Ok("".to_owned());
     }
     if std::env::set_current_dir(path).is_err() {

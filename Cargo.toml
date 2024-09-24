@@ -1,6 +1,6 @@
 [package]
 name = "fm-tui"
-version = "0.1.28"
+version = "0.1.29"
 authors = ["Quentin Konieczko <qu3nt1n@gmail.com>"]
 edition = "2021"
 license-file = "LICENSE.txt"

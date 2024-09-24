@@ -227,6 +227,8 @@ pub enum Navigate {
     Cloud,
     /// Picker menu
     Picker,
+    /// Flagged files
+    Flagged,
 }
 
 impl fmt::Display for Navigate {
@@ -250,6 +252,7 @@ impl fmt::Display for Navigate {
             Self::Context => write!(f, "Context"),
             Self::Cloud => write!(f, "Cloud"),
             Self::Picker => write!(f, "Picker"),
+            Self::Flagged => write!(f, "Flagged"),
         }
     }
 }
@@ -328,6 +331,7 @@ impl Edit {
             Self::Navigate(Navigate::Marks(MarkAction::Jump)) => "Type the mark letter to jump there. up, down to navigate, ENTER to select an element",
             Self::Navigate(Navigate::Marks(MarkAction::New)) => "Type the mark set a mark here. up, down to navigate, ENTER to select an element",
             Self::Navigate(Navigate::Cloud) => "l: leave drive, arrows: navigation, Enter: enter dir / download file, d: new dir, x: delete selected, u: upload local file",
+            Self::Navigate(Navigate::Flagged) => "Up, Down: navigate, Enter / j: jump to this file, x: remove from flagged, u: clear",
             Self::Navigate(_) => "up, down to navigate, Enter to select an element",
             Self::NeedConfirmation(_) => "",
             _ => "",
@@ -376,6 +380,4 @@ pub enum Display {
     Tree,
     /// Preview a file or directory
     Preview,
-    /// Fuzzy
-    Flagged,
 }

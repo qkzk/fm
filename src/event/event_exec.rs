@@ -2,44 +2,22 @@ use std::borrow::Borrow;
 use std::path;
 
 use anyhow::{Context, Result};
-use copypasta::ClipboardContext;
-use copypasta::ClipboardProvider;
 use indicatif::InMemoryTerm;
 
-use crate::app::Focus;
-use crate::app::Status;
-use crate::app::Tab;
-use crate::common::filename_to_clipboard;
-use crate::common::filepath_to_clipboard;
-use crate::common::set_clipboard;
-use crate::common::LAZYGIT;
-use crate::common::NCDU;
-use crate::common::{is_program_in_path, open_in_current_neovim, tilde};
-use crate::common::{CONFIG_PATH, GIO};
-use crate::config::Bindings;
-use crate::config::START_FOLDER;
-use crate::io::execute_without_output_with_path;
-use crate::io::read_log;
+use crate::app::{Focus, Status, Tab};
+use crate::common::{
+    filename_to_clipboard, filepath_to_clipboard, get_clipboard, is_in_path,
+    open_in_current_neovim, set_clipboard, tilde, CONFIG_PATH, GIO, LAZYGIT, NCDU,
+};
+use crate::config::{Bindings, START_FOLDER};
+use crate::io::{execute_without_output_with_path, read_log};
 use crate::log_info;
 use crate::log_line;
-use crate::modes::copy_move;
-use crate::modes::help_string;
-use crate::modes::lsblk_and_cryptsetup_installed;
-use crate::modes::open_tui_program;
-use crate::modes::Content;
-use crate::modes::ContentWindow;
-use crate::modes::Display;
-use crate::modes::Edit;
-use crate::modes::InputCompleted;
-use crate::modes::InputSimple;
-use crate::modes::LeaveMode;
-use crate::modes::MarkAction;
-use crate::modes::Navigate;
-use crate::modes::NeedConfirmation;
-use crate::modes::Preview;
-use crate::modes::RemovableDevices;
-use crate::modes::Search;
-use crate::modes::Selectable;
+use crate::modes::{
+    help_string, lsblk_and_cryptsetup_installed, open_tui_program, ContentWindow, Display, Edit,
+    InputCompleted, InputSimple, LeaveMode, MarkAction, Navigate, NeedConfirmation, PreviewBuilder,
+    RemovableDevices, Search, Selectable,
+};
 
 /// Links events from tuikit to custom actions.
 /// It mutates `Status` or its children `Tab`.
@@ -47,7 +25,8 @@ pub struct EventAction {}
 
 impl EventAction {
     /// Once a quit event is received, we change a flag and break the main loop.
-    /// It's usefull to reset the cursor before leaving the application.
+    /// It's useful to be able to reset the cursor before leaving the application.
+    /// If a menu is opened, closes it.
     pub fn quit(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {
             status.internal_settings.must_quit = true;
@@ -76,25 +55,9 @@ impl EventAction {
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(status: &mut Status) -> Result<()> {
         if !matches!(status.current_tab().edit_mode, Edit::Nothing) {
-            if matches!(
-                status.current_tab().edit_mode,
-                Edit::InputSimple(InputSimple::Filter)
-            ) {
-                status.current_tab_mut().settings.reset_filter()
-            }
-            if status.reset_edit_mode()? {
-                status.tabs[status.index].refresh_view()?;
-            } else {
-                status.tabs[status.index].refresh_params()?;
-            }
-        } else if matches!(
-            status.current_tab().display_mode,
-            Display::Preview | Display::Flagged
-        ) {
-            status
-                .current_tab_mut()
-                .set_display_mode(Display::Directory);
-            status.current_tab_mut().refresh_and_reselect_file()?;
+            status.leave_edit_mode()?;
+        } else if matches!(status.current_tab().display_mode, Display::Preview) {
+            status.leave_preview()?
         }
         status.menu.input.reset();
         status.menu.completion.reset();
@@ -177,20 +140,21 @@ impl EventAction {
         Ok(())
     }
 
+    /// Toggle the display of flagged files.
+    /// Does nothing if a menu is opened.
     pub fn display_flagged(status: &mut Status) -> Result<()> {
         if !status.focus.is_file() {
             return Ok(());
         }
-        if matches!(status.current_tab().display_mode, Display::Flagged) {
-            status
-                .current_tab_mut()
-                .set_display_mode(Display::Directory);
-        } else {
+        let edit_mode = &status.current_tab().edit_mode;
+        if matches!(edit_mode, Edit::Navigate(Navigate::Flagged)) {
+            status.leave_edit_mode()?;
+        } else if matches!(edit_mode, Edit::Nothing) {
             status
                 .menu
                 .flagged
                 .set_height(status.internal_settings.term.term_size()?.1);
-            status.current_tab_mut().set_display_mode(Display::Flagged);
+            status.set_edit_mode(status.index, Edit::Navigate(Navigate::Flagged))?;
         }
         Ok(())
     }
@@ -230,38 +194,23 @@ impl EventAction {
         Ok(())
     }
 
+    /// Push every flagged path to the clipboard.
     pub fn flagged_to_clipboard(status: &mut Status) -> Result<()> {
-        let files = status
-            .menu
-            .flagged
-            .content()
-            .iter()
-            .map(|path| path.to_string_lossy().into_owned())
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        set_clipboard(files);
+        set_clipboard(status.menu.flagged.content_to_string());
         Ok(())
     }
 
+    /// Replace the currently flagged files by those in clipboard.
+    /// Does nothing if the clipboard is empty or can't be read.
     pub fn flagged_from_clipboard(status: &mut Status) -> Result<()> {
-        let Ok(mut ctx) = ClipboardContext::new() else {
-            return Ok(());
-        };
-        let Ok(files) = ctx.get_contents() else {
+        let Some(files) = get_clipboard() else {
             return Ok(());
         };
         if files.is_empty() {
             return Ok(());
         }
         log_info!("clipboard read: {files}");
-        status.menu.flagged.clear();
-        files.lines().for_each(|f| {
-            let p = path::PathBuf::from(tilde(f).as_ref());
-            if p.exists() {
-                status.menu.flagged.push(p);
-            }
-        });
+        status.menu.flagged.replace_by_string(files);
         Ok(())
     }
 
@@ -343,9 +292,6 @@ impl EventAction {
     }
 
     fn set_copy_paste(status: &mut Status, copy_or_move: NeedConfirmation) -> Result<()> {
-        if matches!(status.current_tab().display_mode, Display::Flagged) {
-            return Ok(());
-        };
         if status.menu.flagged.is_empty() {
             return Ok(());
         }
@@ -441,7 +387,6 @@ impl EventAction {
         match status.current_tab_mut().display_mode {
             Display::Directory => Self::normal_enter_file(status),
             Display::Tree => Self::tree_enter_file(status),
-            Display::Flagged => Self::jump_flagged(status),
             _ => Ok(()),
         }
     }
@@ -468,7 +413,7 @@ impl EventAction {
         let is_dir = path.is_dir();
         if is_dir {
             status.current_tab_mut().cd(&path)?;
-            status.current_tab_mut().make_tree(None)?;
+            status.current_tab_mut().make_tree(None);
             status.current_tab_mut().set_display_mode(Display::Tree);
             Ok(())
         } else {
@@ -487,14 +432,7 @@ impl EventAction {
         if !status.focus.is_file() {
             return Ok(());
         }
-        if matches!(status.current_tab().display_mode, Display::Flagged) {
-            let Some(path) = status.menu.flagged.selected() else {
-                return Ok(());
-            };
-            let path = path.to_owned();
-            status.open_single_file(&path);
-            Ok(())
-        } else if status.menu.flagged.is_empty() {
+        if status.menu.flagged.is_empty() {
             status.open_selected_file()
         } else {
             status.open_flagged_files()
@@ -611,7 +549,7 @@ impl EventAction {
         }
         let help = help_string(binds, &status.internal_settings.opener);
         status.current_tab_mut().set_display_mode(Display::Preview);
-        status.current_tab_mut().preview = Preview::help(&help);
+        status.current_tab_mut().preview = PreviewBuilder::help(&help);
         let len = status.current_tab().preview.len();
         status.current_tab_mut().window.reset(len);
         Ok(())
@@ -627,7 +565,7 @@ impl EventAction {
         };
         let tab = status.current_tab_mut();
         tab.set_display_mode(Display::Preview);
-        tab.preview = Preview::log(log);
+        tab.preview = PreviewBuilder::log(log);
         tab.window.reset(tab.preview.len());
         tab.preview_go_bottom();
         Ok(())
@@ -851,18 +789,6 @@ impl EventAction {
         status.update_second_pane_for_preview()
     }
 
-    fn jump_flagged(status: &mut Status) -> Result<()> {
-        let Some(path) = status.menu.flagged.selected() else {
-            return Ok(());
-        };
-        let path = path.to_owned();
-        let tab = status.current_tab_mut();
-        tab.set_display_mode(Display::Directory);
-        tab.refresh_view()?;
-        tab.jump(path)?;
-        status.update_second_pane_for_preview()
-    }
-
     pub fn search_next(status: &mut Status) -> Result<()> {
         if !status.focus.is_file() {
             return Ok(());
@@ -875,9 +801,6 @@ impl EventAction {
             Display::Preview => {
                 return Ok(());
             }
-            Display::Flagged => status.tabs[status.index]
-                .search
-                .flagged(&mut status.menu.flagged),
         }
         status.refresh_status()?;
         status.update_second_pane_for_preview()?;
@@ -929,8 +852,7 @@ impl EventAction {
         match tab.display_mode {
             Display::Directory => tab.normal_up_one_row(),
             Display::Preview => tab.preview_page_up(),
-            Display::Tree => tab.tree_select_prev()?,
-            Display::Flagged => status.menu.flagged.select_prev(),
+            Display::Tree => tab.tree_select_prev(),
         }
         Ok(())
     }
@@ -940,8 +862,7 @@ impl EventAction {
         match tab.display_mode {
             Display::Directory => tab.normal_down_one_row(),
             Display::Preview => tab.preview_page_down(),
-            Display::Tree => tab.tree_select_next()?,
-            Display::Flagged => status.menu.flagged.select_next(),
+            Display::Tree => tab.tree_select_next(),
         }
         Ok(())
     }
@@ -1097,7 +1018,6 @@ impl EventAction {
                 Display::Directory => tab.normal_go_top(),
                 Display::Preview => tab.preview_go_top(),
                 Display::Tree => tab.tree_go_to_root()?,
-                Display::Flagged => status.menu.flagged.select_first(),
             };
             status.update_second_pane_for_preview()
         } else {
@@ -1113,8 +1033,7 @@ impl EventAction {
             match tab.display_mode {
                 Display::Directory => tab.normal_go_bottom(),
                 Display::Preview => tab.preview_go_bottom(),
-                Display::Tree => tab.tree_go_to_bottom_leaf()?,
-                Display::Flagged => status.menu.flagged.select_last(),
+                Display::Tree => tab.tree_go_to_bottom_leaf(),
             };
             status.update_second_pane_for_preview()?;
         } else {
@@ -1155,7 +1074,6 @@ impl EventAction {
                 tab.tree_page_up();
                 status.update_second_pane_for_preview()?;
             }
-            Display::Flagged => status.menu.flagged.page_up(),
         };
         Ok(())
     }
@@ -1192,7 +1110,6 @@ impl EventAction {
                 tab.tree_page_down();
                 status.update_second_pane_for_preview()?;
             }
-            Display::Flagged => status.menu.flagged.page_down(),
         };
         Ok(())
     }
@@ -1259,12 +1176,6 @@ impl EventAction {
                 };
                 filename_to_clipboard(&file_info.path);
             }
-            Display::Flagged => {
-                let Some(path) = status.menu.flagged.selected() else {
-                    return Ok(());
-                };
-                filename_to_clipboard(path);
-            }
             _ => return Ok(()),
         }
         Ok(())
@@ -1281,12 +1192,6 @@ impl EventAction {
                     return Ok(());
                 };
                 filepath_to_clipboard(&file_info.path);
-            }
-            Display::Flagged => {
-                let Some(path) = status.menu.flagged.selected() else {
-                    return Ok(());
-                };
-                filepath_to_clipboard(path);
             }
             _ => return Ok(()),
         }
@@ -1380,7 +1285,7 @@ impl EventAction {
         ) {
             status.reset_edit_mode()?;
         } else {
-            if !is_program_in_path(GIO) {
+            if !is_in_path(GIO) {
                 log_line!("gio must be installed.");
                 return Ok(());
             }
@@ -1588,19 +1493,11 @@ impl EventAction {
             "file copied - pool: {pool:?}",
             pool = status.internal_settings.copy_file_queue
         );
-        status.internal_settings.file_copied()?;
+        status.internal_settings.copy_file_remove_head()?;
         if status.internal_settings.copy_file_queue.is_empty() {
             status.internal_settings.unset_copy_progress()
         } else {
-            let (sources, dest) = status.internal_settings.copy_file_queue[0].clone();
-            let in_mem = copy_move(
-                crate::modes::CopyMove::Copy,
-                sources,
-                dest,
-                status.internal_settings.term.clone(),
-                std::sync::Arc::clone(&status.fm_sender),
-            )?;
-            status.internal_settings.store_copy_progress(in_mem);
+            status.copy_next_file_in_queue()?;
         }
         Ok(())
     }

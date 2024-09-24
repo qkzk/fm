@@ -63,8 +63,8 @@ pub const LOG_SECOND_SENTENCE: &str = " Last actions affecting the file tree";
 pub const THUMBNAIL_PATH_PNG: &str = "/tmp/fm_thumbnail.png";
 /// Ueberzug image thumbnails
 pub const THUMBNAIL_PATH_JPG: &str = "/tmp/fm_thumbnail.jpg";
-/// Ueberzug image for pdf
-pub const THUMBNAIL_PDF_PATH: &str = "/tmp/fm_thumbnail";
+/// Ueberzug image for videos, without extension
+pub const THUMBNAIL_PATH_NO_EXT: &str = "/tmp/fm_thumbnail";
 /// Libreoffice pdf output
 pub const CALC_PDF_PATH: &str = "/tmp/fm_calc.pdf";
 /// Array of hardcoded shortcuts with standard *nix paths.
@@ -211,7 +211,7 @@ pub const CRYPTSETUP: &str = "cryptsetup";
 /// gio is used to mount removable devices
 pub const GIO: &str = "gio";
 /// used to get information about fifo files
-pub const LSOF: &str = "lsof";
+pub const UDEVADM: &str = "udevadm";
 /// neovim executable
 pub const NVIM: &str = "nvim";
 /// bsdtar executable, used to display archive content

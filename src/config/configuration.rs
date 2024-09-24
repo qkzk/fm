@@ -2,14 +2,12 @@ use std::{fs::File, path};
 
 use anyhow::Result;
 use serde_yml::{from_reader, Value};
-use tuikit::attr::Attr;
-use tuikit::attr::Color;
+use tuikit::attr::{Attr, Color};
 
-use crate::common::tilde;
-use crate::common::{is_program_in_path, DEFAULT_TERMINAL_FLAG};
-use crate::common::{CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION};
-use crate::config::Bindings;
-use crate::config::ColorG;
+use crate::common::{
+    is_in_path, tilde, CONFIG_PATH, DEFAULT_TERMINAL_APPLICATION, DEFAULT_TERMINAL_FLAG,
+};
+use crate::config::{Bindings, ColorG};
 use crate::io::color_to_attr;
 
 /// Holds every configurable aspect of the application.
@@ -52,7 +50,7 @@ impl Config {
     /// else nothing is done.
     fn update_terminal(&mut self, yaml: &Value) {
         let terminal_currently_used = std::env::var("TERM").unwrap_or_default();
-        if !terminal_currently_used.is_empty() && is_program_in_path(&terminal_currently_used) {
+        if !terminal_currently_used.is_empty() && is_in_path(&terminal_currently_used) {
             self.terminal = terminal_currently_used
         } else if let Some(configured_terminal) = yaml.as_str() {
             self.terminal = configured_terminal.to_owned()
@@ -102,9 +100,9 @@ pub fn load_config(path: &str) -> Result<Config> {
 /// Reads the config file and parse the "palette" values.
 /// The palette format looks like this (with different accepted format)
 /// ```yaml
-/// palette:
-///   start: yellow, #ffff00, rgb(255, 255, 0)
-///   stop:  #ff00ff
+/// colors:
+///   normal_start: yellow, #ffff00, rgb(255, 255, 0)
+///   normal_stop:  #ff00ff
 /// ```
 /// Recognized formats are : ansi names (yellow, light_red etc.), rgb like rgb(255, 55, 132) and hexadecimal like #ff3388.
 /// The ANSI names are recognized but we can't get the user settings for all kinds of terminal
@@ -119,10 +117,10 @@ pub fn read_normal_file_colorer() -> (ColorG, ColorG) {
     let Ok(yaml) = from_reader::<File, Value>(file) else {
         return default_pair;
     };
-    let Some(start) = yaml["palette"]["start"].as_str() else {
+    let Some(start) = yaml["colors"]["normal_start"].as_str() else {
         return default_pair;
     };
-    let Some(stop) = yaml["palette"]["stop"].as_str() else {
+    let Some(stop) = yaml["colors"]["normal_stop"].as_str() else {
         return default_pair;
     };
     let Some(start_color) = ColorG::parse_any_color(start) else {
@@ -242,9 +240,9 @@ impl MenuAttrs {
     pub fn update(mut self) -> Self {
         if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
             if let Ok(yaml) = from_reader::<File, Value>(file) {
-                let menu_colors = &yaml["menu_colors"];
-                update_attr!(self.first, menu_colors, "first");
-                update_attr!(self.second, menu_colors, "second");
+                let menu_colors = &yaml["colors"];
+                update_attr!(self.first, menu_colors, "header_first");
+                update_attr!(self.second, menu_colors, "header_second");
                 update_attr!(self.selected_border, menu_colors, "selected_border");
                 update_attr!(self.inert_border, menu_colors, "inert_border");
                 update_attr!(self.palette_1, menu_colors, "palette_1");

@@ -2,12 +2,12 @@ use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::common::HARDCODED_SHORTCUTS;
-use crate::common::{current_uid, path_to_config_folder, tilde, TRASH_FOLDER_FILES};
-use crate::impl_content;
-use crate::impl_selectable;
+use crate::common::{
+    current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
+};
 use crate::io::git_root;
 use crate::log_info;
+use crate::{impl_content, impl_selectable};
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.
 /// Also know which shortcut is currently selected by the user.

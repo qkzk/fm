@@ -6,12 +6,8 @@ use indicatif::InMemoryTerm;
 use sysinfo::Disks;
 use tuikit::term::Term;
 
-use crate::common::is_program_in_path;
-use crate::common::NVIM;
-use crate::common::SS;
-use crate::io::execute_and_output;
-use crate::io::Args;
-use crate::io::Opener;
+use crate::common::{is_in_path, NVIM, SS};
+use crate::io::{execute_and_output, Args, Opener};
 
 pub struct InternalSettings {
     /// Do we have to clear the screen ?
@@ -84,7 +80,7 @@ impl InternalSettings {
     }
 
     fn parse_nvim_address_from_ss_output() -> Result<String> {
-        if !is_program_in_path(SS) {
+        if !is_in_path(SS) {
             return Err(anyhow!("{SS} isn't installed"));
         }
         if let Ok(output) = execute_and_output(SS, ["-l"]) {
@@ -101,7 +97,7 @@ impl InternalSettings {
     }
 
     /// Remove the top of the copy queue.
-    pub fn file_copied(&mut self) -> Result<()> {
+    pub fn copy_file_remove_head(&mut self) -> Result<()> {
         if self.copy_file_queue.is_empty() {
             Err(anyhow!("Copy File Pool is empty"))
         } else {

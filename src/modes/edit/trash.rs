@@ -6,13 +6,12 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 use chrono::{Local, NaiveDateTime};
 
-use crate::common::{read_lines, tilde, TRASH_CONFIRM_LINE};
-use crate::common::{TRASH_FOLDER_FILES, TRASH_FOLDER_INFO, TRASH_INFO_EXTENSION};
+use crate::common::{
+    read_lines, tilde, TRASH_CONFIRM_LINE, TRASH_FOLDER_FILES, TRASH_FOLDER_INFO,
+    TRASH_INFO_EXTENSION,
+};
 use crate::config::Bindings;
-use crate::impl_content;
-use crate::impl_selectable;
-use crate::log_info;
-use crate::log_line;
+use crate::{impl_content, impl_selectable, log_info, log_line};
 
 const TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 

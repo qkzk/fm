@@ -2,7 +2,7 @@ use std::fs;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
 use opendal::EntryMode;
 use skim::SkimItem;
@@ -10,51 +10,24 @@ use sysinfo::{Disk, Disks};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
-use crate::app::FlaggedHeader;
-use crate::app::Footer;
-use crate::app::Header;
-use crate::app::InternalSettings;
-use crate::app::Session;
-use crate::app::Tab;
-use crate::app::{ClickableLine, FlaggedFooter};
+use crate::app::{ClickableLine, Footer, Header, InternalSettings, Session, Tab};
 use crate::common::{
-    args_is_empty, disk_used_by_path, filename_from_path, is_sudo_command, open_in_current_neovim,
-    path_to_config_folder, path_to_string, row_to_window_index,
+    args_is_empty, current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
+    is_sudo_command, open_in_current_neovim, path_to_string, row_to_window_index,
 };
-use crate::common::{current_username, disk_space, is_program_in_path};
 use crate::config::{Bindings, START_FOLDER};
 use crate::event::FmEvents;
-use crate::io::Internal;
-use crate::io::Opener;
-use crate::io::{execute_and_capture_output_with_path, Args};
 use crate::io::{
-    execute_and_capture_output_without_check, execute_sudo_command_with_password,
-    reset_sudo_faillock,
+    execute_and_capture_output_with_path, execute_and_capture_output_without_check,
+    execute_sudo_command_with_password, get_cloud_token_names, google_drive, reset_sudo_faillock,
+    Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
-use crate::io::{google_drive, MIN_WIDTH_FOR_DUAL_PANE};
-use crate::io::{Extension, Kind};
-use crate::modes::MountCommands;
-use crate::modes::MountRepr;
-use crate::modes::NeedConfirmation;
-use crate::modes::PasswordKind;
-use crate::modes::PasswordUsage;
-use crate::modes::Permissions;
-use crate::modes::Preview;
-use crate::modes::Selectable;
-use crate::modes::ShellCommandParser;
-use crate::modes::Skimer;
-use crate::modes::To;
-use crate::modes::Tree;
-use crate::modes::Users;
-use crate::modes::{copy_move, regex_matcher};
-use crate::modes::{extract_extension, Edit};
-use crate::modes::{BlockDeviceAction, Navigate};
-use crate::modes::{Content, FileInfo};
-use crate::modes::{ContentWindow, CopyMove};
-use crate::modes::{Display, Go};
-use crate::modes::{FileKind, Menu};
-use crate::modes::{FilterKind, InputSimple};
-use crate::modes::{IsoDevice, PickerCaller};
+use crate::modes::{
+    copy_move, extract_extension, regex_matcher, BlockDeviceAction, Content, ContentWindow,
+    CopyMove, Display, Edit, FileInfo, FileKind, FilterKind, Go, InputSimple, IsoDevice, Menu,
+    MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
+    PickerCaller, Preview, PreviewBuilder, Selectable, ShellCommandParser, Skimer, To, Tree, Users,
+};
 use crate::{log_info, log_line};
 
 pub enum Window {
@@ -295,12 +268,10 @@ impl Status {
         match window {
             Window::Header => self.header_action(col, binds),
             Window::Files => {
-                if matches!(self.current_tab().display_mode, Display::Flagged) {
-                    self.menu.flagged.select_row(row)
-                } else if self.has_clicked_on_second_pane_preview() {
-                    if let Preview::Tree(tree_preview) = &self.tabs[1].preview {
+                if self.has_clicked_on_second_pane_preview() {
+                    if let Preview::Tree(tree) = &self.tabs[1].preview {
                         let index = row_to_window_index(row) + self.tabs[1].window.top;
-                        let path = &tree_preview.tree.path_from_index(index)?;
+                        let path = &tree.path_from_index(index)?;
                         self.tabs[0].cd_to_file(path)?;
                         self.index = 0;
                         self.focus = Focus::LeftFile;
@@ -354,6 +325,7 @@ impl Status {
                     Navigate::TuiApplication => self.menu.tui_applications.set_index(index),
                     Navigate::Cloud => self.menu.cloud.set_index(index),
                     Navigate::Picker => self.menu.picker.set_index(index),
+                    Navigate::Flagged => self.menu.flagged.set_index(index),
                 },
                 Edit::InputCompleted(_) => self.menu.completion.set_index(index),
                 _ => (),
@@ -415,6 +387,35 @@ impl Status {
             tab.refresh_and_reselect_file()?
         }
         Ok(())
+    }
+
+    /// Leave an edit mode and refresh the menu.
+    /// It should only be called when edit mode isn't nothing.
+    pub fn leave_edit_mode(&mut self) -> Result<()> {
+        if matches!(
+            self.current_tab().edit_mode,
+            Edit::InputSimple(InputSimple::Filter)
+        ) {
+            self.current_tab_mut().settings.reset_filter()
+        }
+        if self.reset_edit_mode()? {
+            self.current_tab_mut().refresh_view()?;
+        } else {
+            self.current_tab_mut().refresh_params();
+        }
+        Ok(())
+    }
+
+    /// Leave the preview or flagged display mode.
+    /// Should only be called when :
+    /// 1. No menu is opened
+    ///
+    /// AND
+    ///
+    /// 2. Display mode is preview or flagged.
+    pub fn leave_preview(&mut self) -> Result<()> {
+        self.current_tab_mut().set_display_mode(Display::Directory);
+        self.current_tab_mut().refresh_and_reselect_file()
     }
 
     /// Reset the edit mode to "Nothing" (closing any menu) and returns
@@ -480,7 +481,7 @@ impl Status {
             if Session::display_wide_enough(self.term_size()?.0) {
                 self.set_second_pane_for_preview()?;
             } else {
-                self.tabs[1].preview = Preview::empty();
+                self.tabs[1].preview = PreviewBuilder::empty();
             }
         };
         Ok(())
@@ -496,7 +497,9 @@ impl Status {
         };
         let left_tab = &self.tabs[0];
         let users = &left_tab.users;
-        self.tabs[1].preview = Preview::new(&fileinfo, users).unwrap_or_default();
+        self.tabs[1].preview = PreviewBuilder::new(&fileinfo.path, users)
+            .build()
+            .unwrap_or_default();
         self.tabs[1].window.reset(self.tabs[1].preview.len());
         Ok(())
     }
@@ -514,19 +517,10 @@ impl Status {
                 FileInfo::new(shortcut_path, users)
             }
             Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::History)) => {
-                let (history_path, _) = &left_tab.history.content()[left_tab.history.index()];
+                let history_path = &left_tab.history.content()[left_tab.history.index()];
                 FileInfo::new(history_path, users)
             }
-            _ => match left_tab.display_mode {
-                Display::Flagged => {
-                    let Some(path) = self.menu.flagged.selected() else {
-                        self.tabs[1].preview = Preview::empty();
-                        return Err(anyhow!("No fileinfo to preview"));
-                    };
-                    FileInfo::new(path, users)
-                }
-                _ => left_tab.current_file(),
-            },
+            _ => left_tab.current_file(),
         }
     }
 
@@ -621,7 +615,6 @@ impl Status {
         match self.current_tab().display_mode {
             Display::Preview => (),
             Display::Tree => (),
-            Display::Flagged => (),
             Display::Directory => {
                 self.tabs[self.index]
                     .directory
@@ -641,9 +634,6 @@ impl Status {
                 return;
             };
             match tab.display_mode {
-                Display::Flagged => {
-                    self.menu.flagged.remove_selected();
-                }
                 Display::Directory => {
                     self.menu.flagged.toggle(&file.path);
                     if !self.tabs[self.index].directory.selected_is_last() {
@@ -654,13 +644,25 @@ impl Status {
                 Display::Tree => {
                     self.menu.flagged.toggle(&file.path);
                     if !self.tabs[self.index].tree.selected_is_last() {
-                        let _ = self.current_tab_mut().tree_select_next();
+                        self.current_tab_mut().tree_select_next();
                     }
                     let _ = self.update_second_pane_for_preview();
                 }
                 Display::Preview => (),
             }
         }
+    }
+
+    pub fn jump_flagged(&mut self) -> Result<()> {
+        let Some(path) = self.menu.flagged.selected() else {
+            return Ok(());
+        };
+        let path = path.to_owned();
+        let tab = self.current_tab_mut();
+        tab.set_display_mode(Display::Directory);
+        tab.refresh_view()?;
+        tab.jump(path)?;
+        self.update_second_pane_for_preview()
     }
 
     /// Execute a move or a copy of the flagged files to current directory.
@@ -745,6 +747,19 @@ impl Status {
         self.clear_flags_and_reset_view()
     }
 
+    pub fn copy_next_file_in_queue(&mut self) -> Result<()> {
+        let (sources, dest) = self.internal_settings.copy_file_queue[0].clone();
+        let in_mem = copy_move(
+            crate::modes::CopyMove::Copy,
+            sources,
+            dest,
+            self.internal_settings.term.clone(),
+            std::sync::Arc::clone(&self.fm_sender),
+        )?;
+        self.internal_settings.store_copy_progress(in_mem);
+        Ok(())
+    }
+
     fn skim_init(&mut self) {
         self.skimer = Some(Skimer::new(Arc::clone(&self.internal_settings.term)));
     }
@@ -814,21 +829,21 @@ impl Status {
 
     fn _skim_find_keybinding(&mut self, help: String) -> Result<tuikit::prelude::Key> {
         let Some(Ok(skimer)) = &mut self.skimer else {
-            return Err(anyhow!("Skim isn't initialised"));
+            bail!("Skim isn't initialised");
         };
         let skim = skimer.search_in_text(&help);
         let Some(output) = skim.first() else {
-            return Err(anyhow!("Skim hasn't sent anything"));
+            bail!("Skim hasn't sent anything");
         };
         let line = output.output().into_owned();
         let Some(keybind) = line.split(':').next() else {
-            return Err(anyhow!("No keybind found"));
+            bail!("No keybind found");
         };
         let Some(keyname) = parse_keyname(keybind) else {
-            return Err(anyhow!("No keyname found for {keybind}"));
+            bail!("No keyname found for {keybind}");
         };
         let Some(key) = from_keyname(&keyname) else {
-            return Err(anyhow!("{keyname} isn't a valid Key name."));
+            bail!("{keyname} isn't a valid Key name.");
         };
         Ok(key)
     }
@@ -862,7 +877,7 @@ impl Status {
                     let index = tab.directory.select_file(&path);
                     tab.go_to_index(index);
                 }
-                Display::Preview | Display::Flagged => (),
+                Display::Preview => (),
             }
         } else if path.is_dir() {
             tab.cd(&path)?;
@@ -1118,7 +1133,7 @@ impl Status {
             self.ask_password(None, PasswordUsage::SUDOCOMMAND)?;
             Ok(false)
         } else {
-            if !is_program_in_path(&executable) {
+            if !is_in_path(&executable) {
                 return Ok(true);
             }
             let current_directory = self.current_tab().directory_of_selected()?.to_owned();
@@ -1293,7 +1308,7 @@ impl Status {
         log_info!("output {output}");
         let _ = self.reset_edit_mode();
         self.current_tab_mut().set_display_mode(Display::Preview);
-        let preview = Preview::cli_info(&output, command);
+        let preview = PreviewBuilder::cli_info(&output, command);
         self.current_tab_mut().window.reset(preview.len());
         self.current_tab_mut().preview = preview;
     }
@@ -1340,9 +1355,6 @@ impl Status {
         let is_right = !self.focus.is_left();
         match self.current_tab().display_mode {
             Display::Preview => Ok(()),
-            Display::Flagged => FlaggedHeader::new(self)?
-                .action(col as usize, is_right)
-                .matcher(self, binds),
             _ => Header::new(self, self.current_tab())?
                 .action(col as usize, is_right)
                 .matcher(self, binds),
@@ -1357,10 +1369,6 @@ impl Status {
             Display::Preview => return Ok(()),
             Display::Tree | Display::Directory => {
                 let footer = Footer::new(self, self.current_tab())?;
-                footer.action(col as usize, is_right).to_owned()
-            }
-            Display::Flagged => {
-                let footer = FlaggedFooter::new(self)?;
                 footer.action(col as usize, is_right).to_owned()
             }
         };
@@ -1406,8 +1414,7 @@ impl Status {
     }
 
     pub fn fuzzy_flags(&mut self) -> Result<()> {
-        self.current_tab_mut().set_display_mode(Display::Flagged);
-        Ok(())
+        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Flagged))
     }
 
     pub fn sort(&mut self, c: char) -> Result<()> {
@@ -1436,36 +1443,13 @@ impl Status {
     /// Doesn't reset the input.
     pub fn set_filter(&mut self) -> Result<()> {
         let filter = FilterKind::from_input(&self.menu.input.string());
-        self.current_tab_mut().settings.set_filter(filter);
-        // ugly hack to please borrow checker :(
-        self.tabs[self.index].directory.reset_files(
-            &self.tabs[self.index].settings,
-            &self.tabs[self.index].users,
-        )?;
-        if let Display::Tree = self.current_tab().display_mode {
-            self.current_tab_mut().make_tree(None)?;
-        }
-        let len = self.current_tab().directory.content.len();
-        self.current_tab_mut().window.reset(len);
-        Ok(())
+        self.current_tab_mut().set_filter(filter)
     }
 
     /// input the typed char and update the filterkind.
     pub fn input_filter(&mut self, c: char) -> Result<()> {
         self.menu.input_insert(c)?;
         self.set_filter()
-    }
-
-    fn get_cloud_token_names(&self) -> Result<Vec<String>> {
-        Ok(std::fs::read_dir(path_to_config_folder()?)?
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().is_file())
-            .map(|e| e.file_name().to_string_lossy().to_string())
-            .filter(|filename| filename.starts_with("token_"))
-            .filter(|filename| filename.ends_with(".yaml"))
-            .map(|filename| filename.replace("token_", ""))
-            .map(|filename| filename.replace(".yaml", ""))
-            .collect())
     }
 
     /// Load the selected cloud configuration file from the config folder and open navigation the menu.
@@ -1489,7 +1473,7 @@ impl Status {
         if self.menu.cloud.is_set() {
             self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
         } else {
-            let content = self.get_cloud_token_names()?;
+            let content = get_cloud_token_names()?;
             self.menu.picker.set(
                 Some(PickerCaller::Cloud),
                 Some("Pick a cloud provider".to_owned()),

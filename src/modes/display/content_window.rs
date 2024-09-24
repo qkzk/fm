@@ -120,4 +120,21 @@ impl ContentWindow {
     pub fn is_row_in_header(row: u16) -> bool {
         row < Self::HEADER_ROWS as u16
     }
+
+    pub fn preview_page_up(&mut self) {
+        if self.top == 0 {
+            return;
+        }
+        let skip = min(self.top, 30);
+        self.bottom -= skip;
+        self.top -= skip;
+    }
+
+    pub fn preview_page_down(&mut self, preview_len: usize) {
+        if self.bottom < preview_len {
+            let skip = min(preview_len - self.bottom, 30);
+            self.bottom += skip;
+            self.top += skip;
+        }
+    }
 }

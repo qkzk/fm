@@ -1,7 +1,7 @@
+use std::{fs::File, path::Path};
+
 use anyhow::{Context, Result};
 use flate2::read::{GzDecoder, ZlibDecoder};
-use std::fs::File;
-use std::path::Path;
 use tar::Archive;
 
 use crate::common::{path_to_string, BSDTAR};

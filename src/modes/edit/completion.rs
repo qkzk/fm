@@ -4,7 +4,7 @@ use std::fs::{self, ReadDir};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 
-use crate::common::{is_program_in_path, tilde, ZOXIDE};
+use crate::common::{is_in_path, tilde, ZOXIDE};
 use crate::event::ActionMap;
 use crate::io::execute_and_capture_output_with_path;
 use crate::modes::Leave;
@@ -158,7 +158,7 @@ impl Completion {
     }
 
     fn cd_update_from_zoxide(&mut self, input_string: &str, current_path: &str) {
-        if !is_program_in_path(ZOXIDE) {
+        if !is_in_path(ZOXIDE) {
             return;
         }
         let mut args = vec!["query"];

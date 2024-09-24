@@ -2,13 +2,11 @@ use anyhow::Result;
 use serde_yml::Mapping;
 
 use crate::app::Status;
-use crate::common::is_program_in_path;
-use crate::impl_content;
-use crate::impl_selectable;
+use crate::common::is_in_path;
 use crate::io::{execute_without_output, execute_without_output_with_path};
 use crate::log_line;
-use crate::modes::CLApplications;
-use crate::modes::Execute;
+use crate::modes::{CLApplications, Execute};
+use crate::{impl_content, impl_selectable};
 
 /// Execute a command requiring to be ran from current working directory.
 ///
@@ -33,7 +31,7 @@ fn execute_shell(status: &Status) -> Result<()> {
 
 /// Directly open a a TUI application
 pub fn open_tui_program(status: &mut Status, program: &str) -> Result<()> {
-    if is_program_in_path(program) {
+    if is_in_path(program) {
         require_cwd_and_command(status, program)
     } else {
         Ok(())
@@ -72,7 +70,7 @@ impl CLApplications<String, ()> for TuiApplications {
             let Some(command) = key.as_str() else {
                 continue;
             };
-            if is_program_in_path(command) {
+            if is_in_path(command) {
                 self.content.push(command.to_owned());
             }
         }

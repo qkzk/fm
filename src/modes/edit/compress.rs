@@ -8,9 +8,7 @@ use flate2::Compression;
 use lzma::LzmaWriter;
 use zip::write::SimpleFileOptions;
 
-use crate::impl_content;
-use crate::impl_selectable;
-use crate::log_line;
+use crate::{impl_content, impl_selectable, log_line};
 
 /// Different kind of compression methods
 #[derive(Debug)]

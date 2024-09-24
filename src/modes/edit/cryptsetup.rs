@@ -1,18 +1,13 @@
 use anyhow::{anyhow, Context, Result};
 use sysinfo::Disks;
 
-use crate::common::{current_username, is_program_in_path, MKDIR};
-use crate::common::{CRYPTSETUP, LSBLK};
-use crate::impl_content;
-use crate::impl_selectable;
-use crate::io::execute_and_output;
+use crate::common::{current_username, is_in_path, CRYPTSETUP, LSBLK, MKDIR};
 use crate::io::{
-    drop_sudo_privileges, execute_sudo_command, execute_sudo_command_with_password,
-    reset_sudo_faillock, set_sudo_session,
+    drop_sudo_privileges, execute_and_output, execute_sudo_command,
+    execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session,
 };
-use crate::log_info;
-use crate::modes::{MountCommands, MountParameters, MountRepr};
-use crate::modes::{PasswordHolder, PasswordKind};
+use crate::modes::{MountCommands, MountParameters, MountRepr, PasswordHolder, PasswordKind};
+use crate::{impl_content, impl_selectable, log_info};
 
 /// Possible actions on encrypted drives
 #[derive(Debug, Clone, Copy)]
@@ -35,7 +30,7 @@ fn get_devices() -> Result<String> {
 /// True iff `lsblk` and `cryptsetup` are in path.
 /// Nothing here can be done without those programs.
 pub fn lsblk_and_cryptsetup_installed() -> bool {
-    is_program_in_path(LSBLK) && is_program_in_path(CRYPTSETUP)
+    is_in_path(LSBLK) && is_in_path(CRYPTSETUP)
 }
 
 /// Represent an encrypted device.

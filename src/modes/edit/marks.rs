@@ -4,12 +4,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::common::read_lines;
-use crate::common::tilde;
-use crate::impl_content;
-use crate::impl_selectable;
-use crate::log_info;
-use crate::log_line;
+use crate::common::{read_lines, tilde};
+use crate::{impl_content, impl_selectable, log_info, log_line};
 
 /// Holds the marks created by the user.
 /// It's an ordered map between any char (except :) and a `PathBuf`.

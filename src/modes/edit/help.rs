@@ -143,7 +143,7 @@ Different modes for the bottom window
         ),
         trash_actions = action_descriptions!(TrashOpen, TrashEmpty),
         tree_actions = action_descriptions!(Tree, TreeFold, TreeFoldAll, TreeUnFoldAll),
-        display_modes = action_descriptions!(ResetMode, Tree, DisplayFlagged, Preview),
+        display_modes = action_descriptions!(ResetMode, Tree, Preview),
         edit_modes = action_descriptions!(
             Chmod,
             Exec,
@@ -164,6 +164,7 @@ Different modes for the bottom window
             CliMenu,
             RemoteMount,
             Filter,
+            DisplayFlagged,
             Context,
             Enter
         ),

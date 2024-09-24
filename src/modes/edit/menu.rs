@@ -5,47 +5,22 @@ use anyhow::Context;
 use anyhow::Result;
 
 use crate::app::Tab;
-use crate::common::index_from_a;
-use crate::common::is_program_in_path;
-use crate::common::CLI_PATH;
-use crate::common::INPUT_HISTORY_PATH;
-use crate::common::MARKS_FILEPATH;
-use crate::common::SSHFS_EXECUTABLE;
-use crate::common::TUIS_PATH;
+use crate::common::{
+    index_from_a, is_in_path, CLI_PATH, INPUT_HISTORY_PATH, MARKS_FILEPATH, SSHFS_EXECUTABLE,
+    TUIS_PATH,
+};
 use crate::config::Bindings;
 use crate::event::FmEvents;
-use crate::io::drop_sudo_privileges;
-use crate::io::execute_and_capture_output_with_path;
-use crate::io::InputHistory;
-use crate::io::OpendalContainer;
-use crate::log_info;
-use crate::log_line;
-use crate::modes::Bulk;
-use crate::modes::CLApplications;
-use crate::modes::CliApplications;
-use crate::modes::Completion;
-use crate::modes::Compresser;
-use crate::modes::Content;
-use crate::modes::ContentWindow;
-use crate::modes::ContextMenu;
-use crate::modes::CryptoDeviceOpener;
-use crate::modes::Display;
-use crate::modes::Edit;
-use crate::modes::Flagged;
-use crate::modes::History;
-use crate::modes::Input;
-use crate::modes::InputCompleted;
-use crate::modes::IsoDevice;
-use crate::modes::Marks;
-use crate::modes::MountCommands;
-use crate::modes::Navigate;
-use crate::modes::PasswordHolder;
-use crate::modes::Picker;
-use crate::modes::RemovableDevices;
-use crate::modes::Selectable;
-use crate::modes::Shortcut;
-use crate::modes::Trash;
-use crate::modes::TuiApplications;
+use crate::io::{
+    drop_sudo_privileges, execute_and_capture_output_with_path, InputHistory, OpendalContainer,
+};
+use crate::modes::{
+    Bulk, CLApplications, CliApplications, Completion, Compresser, Content, ContentWindow,
+    ContextMenu, CryptoDeviceOpener, Display, Edit, Flagged, History, Input, InputCompleted,
+    IsoDevice, Marks, MountCommands, Navigate, PasswordHolder, Picker, RemovableDevices,
+    Selectable, Shortcut, Trash, TuiApplications,
+};
+use crate::{log_info, log_line};
 
 pub struct Menu {
     /// Window for scrollable menus
@@ -150,7 +125,7 @@ impl Menu {
                 let files = match tab.display_mode {
                     Display::Preview => vec![],
                     Display::Tree => tab.search.complete(tab.tree.displayable().content()),
-                    Display::Flagged => tab.search.complete(self.flagged.content()),
+                    // Display::Flagged => tab.search.complete(self.flagged.content()),
                     Display::Directory => tab.search.complete(tab.directory.content()),
                 };
                 self.completion.search(files);
@@ -191,7 +166,7 @@ impl Menu {
         let user_hostname_path_port: Vec<&str> = input.split(' ').collect();
         self.input.reset();
 
-        if !is_program_in_path(SSHFS_EXECUTABLE) {
+        if !is_in_path(SSHFS_EXECUTABLE) {
             log_info!("{SSHFS_EXECUTABLE} isn't in path");
             return;
         }
@@ -399,6 +374,7 @@ impl Menu {
             Navigate::TuiApplication => func(&mut self.tui_applications),
             Navigate::Cloud => func(&mut self.cloud),
             Navigate::Picker => func(&mut self.picker),
+            Navigate::Flagged => func(&mut self.flagged),
         }
     }
 
@@ -419,6 +395,7 @@ impl Menu {
             Navigate::TuiApplication => func(&self.tui_applications),
             Navigate::Cloud => func(&self.cloud),
             Navigate::Picker => func(&self.picker),
+            Navigate::Flagged => func(&self.flagged),
         }
     }
 }

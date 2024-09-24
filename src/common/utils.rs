@@ -3,8 +3,7 @@ use std::borrow::Cow;
 use std::fs::metadata;
 use std::io::BufRead;
 use std::os::unix::fs::MetadataExt;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
@@ -14,13 +13,8 @@ use tuikit::term::Term;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::common::CONFIG_FOLDER;
-use crate::common::{CALC_PDF_PATH, THUMBNAIL_PATH_JPG};
-use crate::log_info;
-use crate::log_line;
-use crate::modes::human_size;
-use crate::modes::nvim;
-use crate::modes::ContentWindow;
-use crate::modes::Users;
+use crate::modes::{human_size, nvim, ContentWindow, Users};
+use crate::{log_info, log_line};
 
 /// Returns a `Display` instance after `tuikit::term::Term` creation.
 pub fn init_term() -> Result<Term> {
@@ -105,7 +99,7 @@ pub fn current_username() -> Result<String> {
 
 /// True if the program is given by an absolute path which exists or
 /// if the command is available in $PATH.
-pub fn is_program_in_path<S>(program: S) -> bool
+pub fn is_in_path<S>(program: S) -> bool
 where
     S: Into<String> + std::fmt::Display + AsRef<Path>,
 {
@@ -126,6 +120,13 @@ where
 /// Extract the lines of a string
 pub fn extract_lines(content: String) -> Vec<String> {
     content.lines().map(|line| line.to_string()).collect()
+}
+
+pub fn get_clipboard() -> Option<String> {
+    let Ok(mut ctx) = ClipboardContext::new() else {
+        return None;
+    };
+    ctx.get_contents().ok()
 }
 
 pub fn set_clipboard(content: String) {
@@ -209,9 +210,14 @@ pub fn random_name() -> String {
 }
 
 /// Clear the temporary file used by fm for previewing.
-pub fn clear_tmp_file() {
-    let _ = std::fs::remove_file(THUMBNAIL_PATH_JPG);
-    let _ = std::fs::remove_file(CALC_PDF_PATH);
+pub fn clear_tmp_files() {
+    let Ok(read_dir) = std::fs::read_dir("/tmp") else {
+        return;
+    };
+    read_dir
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_name().to_string_lossy().starts_with("fm_thumbnail"))
+        .for_each(|e| std::fs::remove_file(e.path()).unwrap_or_default())
 }
 
 /// True if the directory is empty,
@@ -310,10 +316,7 @@ pub trait UtfWidth {
 
 impl UtfWidth for String {
     fn utf_width(&self) -> usize {
-        self.graphemes(true)
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>()
-            .len()
+        self.as_str().utf_width()
     }
 }
 

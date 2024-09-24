@@ -132,6 +132,12 @@ impl EventDispatcher {
             Navigate::Cloud if c == 'u' => status.cloud_upload_selected_file(),
             Navigate::Cloud if c == 'x' => status.cloud_enter_delete_mode(),
             Navigate::Cloud if c == '?' => status.cloud_update_metadata(),
+            Navigate::Flagged if c == 'u' => {
+                status.menu.flagged.clear();
+                Ok(())
+            }
+            Navigate::Flagged if c == 'x' => status.menu.remove_selected_flagged(),
+            Navigate::Flagged if c == 'j' => status.jump_flagged(),
             _ => {
                 status.reset_edit_mode()?;
                 status.current_tab_mut().reset_display_mode_and_view()

@@ -3,43 +3,23 @@ use std::path::PathBuf;
 use std::sync::{Arc, MutexGuard};
 
 use anyhow::{Context, Result};
-use tuikit::attr::{Attr, Color};
-use tuikit::prelude::*;
-use tuikit::term::Term;
+use tuikit::{
+    attr::{Attr, Color},
+    prelude::*,
+    term::Term,
+};
 
-use crate::app::Footer;
-use crate::app::Status;
-use crate::app::Tab;
-use crate::app::{ClickableLine, ClickableString, FlaggedFooter, FlaggedHeader};
-use crate::app::{Header, PreviewHeader};
-use crate::common::path_to_string;
-use crate::common::ENCRYPTED_DEVICE_BINDS;
+use crate::app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab};
+use crate::common::{path_to_string, ENCRYPTED_DEVICE_BINDS};
 use crate::config::{ColorG, Gradient, MENU_ATTRS};
-use crate::io::read_last_log_line;
-use crate::io::ModeFormat;
+use crate::io::{read_last_log_line, ModeFormat};
 use crate::log_info;
-use crate::modes::BinaryContent;
-use crate::modes::ColoredText;
-use crate::modes::Content;
-use crate::modes::ContentWindow;
-use crate::modes::Display as DisplayMode;
-use crate::modes::Edit;
-use crate::modes::FileInfo;
-use crate::modes::HLContent;
-use crate::modes::InputSimple;
-use crate::modes::LineDisplay;
-use crate::modes::MarkAction;
-use crate::modes::MountRepr;
-use crate::modes::Navigate;
-use crate::modes::NeedConfirmation;
-use crate::modes::Preview;
-use crate::modes::Selectable;
-use crate::modes::Trash;
-use crate::modes::TreeLineBuilder;
-use crate::modes::TreePreview;
-use crate::modes::Ueberzug;
-use crate::modes::Window;
-use crate::modes::{parse_input_mode, SecondLine};
+use crate::modes::{
+    parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, Edit,
+    FileInfo, HLContent, InputSimple, LineDisplay, MarkAction, MoreInfos, MountRepr, Navigate,
+    NeedConfirmation, Preview, SecondLine, Selectable, Text, TextKind, Trash, Tree,
+    TreeLineBuilder, Ueber, Window,
+};
 
 trait ClearLine {
     fn clear_line(&mut self, row: usize) -> Result<()>;
@@ -188,7 +168,6 @@ impl<'a> WinMain<'a> {
             DisplayMode::Directory => self.draw_files(canvas),
             DisplayMode::Tree => self.draw_tree(canvas),
             DisplayMode::Preview => self.draw_preview(self.tab, &self.tab.window, canvas),
-            DisplayMode::Flagged => self.draw_fagged(canvas),
         }
     }
 
@@ -438,31 +417,10 @@ impl<'a> WinMain<'a> {
             Preview::Binary(bin) => self.draw_binary(bin, length, canvas, window)?,
             Preview::Ueberzug(image) => self.draw_ueberzug(image, canvas)?,
             Preview::Tree(tree_preview) => self.draw_tree_preview(tree_preview, window, canvas)?,
-            Preview::ColoredText(colored_text) => {
+            Preview::Text(colored_text) if matches!(colored_text.kind, TextKind::CliInfo) => {
                 self.draw_colored_text(colored_text, length, canvas, window)?
             }
-            Preview::Archive(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Media(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
             Preview::Text(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Iso(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Socket(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::BlockDevice(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::FifoCharDevice(text) => {
-                impl_preview!(text, tab, length, canvas, line_number_width, window, height)
-            }
-            Preview::Torrent(text) => {
                 impl_preview!(text, tab, length, canvas, line_number_width, window, height)
             }
 
@@ -516,10 +474,10 @@ impl<'a> WinMain<'a> {
         Ok(())
     }
 
-    fn draw_ueberzug(&self, image: &Ueberzug, canvas: &mut dyn Canvas) -> Result<()> {
+    fn draw_ueberzug(&self, image: &Ueber, canvas: &mut dyn Canvas) -> Result<()> {
         let (width, height) = canvas.size()?;
-        image.match_index()?;
-        image.ueberzug(
+        // image.match_index()?;
+        image.draw(
             self.attributes.x_position as u16 + 2,
             3,
             width as u16 - 2,
@@ -530,20 +488,17 @@ impl<'a> WinMain<'a> {
 
     fn draw_tree_preview(
         &self,
-        tree_preview: &TreePreview,
+        tree: &Tree,
         window: &ContentWindow,
         canvas: &mut dyn Canvas,
     ) -> Result<()> {
         let height = canvas.height()?;
-        let tree_content = tree_preview.tree.displayable();
+        let tree_content = tree.displayable();
         let content = tree_content.lines();
         let length = content.len();
 
         for (index, tree_line_builder) in
-            tree_preview
-                .tree
-                .displayable()
-                .window(window.top, window.bottom, length)
+            tree.displayable().window(window.top, window.bottom, length)
         {
             self.draw_tree_line(
                 canvas,
@@ -562,7 +517,7 @@ impl<'a> WinMain<'a> {
 
     fn draw_colored_text(
         &self,
-        colored_text: &ColoredText,
+        colored_text: &Text,
         length: usize,
         canvas: &mut dyn Canvas,
         window: &ContentWindow,
@@ -593,33 +548,6 @@ impl<'a> WinMain<'a> {
             false,
         )?;
         Ok(())
-    }
-
-    fn draw_fagged(&self, canvas: &mut dyn Canvas) -> Result<Option<usize>> {
-        let window = &self.status.menu.flagged.window;
-        for (index, path) in self
-            .status
-            .menu
-            .flagged
-            .content
-            .iter()
-            .enumerate()
-            .skip(window.top)
-            .take(min(canvas.height()?, window.bottom + 1))
-        {
-            let fileinfo = FileInfo::new(path, &self.tab.users)?;
-            let mut attr = fileinfo.attr();
-            if index == self.status.menu.flagged.index {
-                attr.effect |= Effect::REVERSE;
-            }
-            let row = index + 3 - window.top;
-            canvas.print_with_attr(row, 1, &fileinfo.path.to_string_lossy(), attr)?;
-        }
-        if let Some(selected) = self.status.menu.flagged.selected() {
-            let fileinfo = FileInfo::new(selected, &self.tab.users)?;
-            canvas.print_with_attr(1, 1, &fileinfo.format(6, 6)?, fileinfo.attr())?;
-        };
-        Ok(None)
     }
 }
 
@@ -655,7 +583,6 @@ impl<'a> Draw for WinMainHeader<'a> {
         let (width, _) = canvas.size()?;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => PreviewHeader::elems(self.status, self.tab, width),
-            DisplayMode::Flagged => FlaggedHeader::new(self.status)?.elems().to_vec(),
             _ => Header::new(self.status, self.tab)?.elems().to_owned(),
         };
         draw_clickable_strings(0, 0, &content, canvas, self.is_selected)?;
@@ -747,7 +674,6 @@ impl<'a> Draw for WinMainFooter<'a> {
         let (width, height) = canvas.size()?;
         let content = match self.tab.display_mode {
             DisplayMode::Preview => vec![],
-            DisplayMode::Flagged => FlaggedFooter::new(self.status)?.elems().to_owned(),
             _ => Footer::new(self.status, self.tab)?.elems().to_owned(),
         };
         let mut attr = MENU_ATTRS.get().expect("Menu colors should be set").first;
@@ -899,6 +825,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::Trash => self.draw_trash(canvas),
             Navigate::Cloud => self.draw_cloud(canvas),
             Navigate::Picker => self.draw_picker(canvas),
+            Navigate::Flagged => self.draw_flagged(canvas),
         }
     }
 
@@ -936,12 +863,12 @@ impl<'a> WinSecondary<'a> {
     fn draw_history(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.tab.history;
         let content = selectable.content();
-        for (row, pair, attr) in enumerated_colored_iter!(content) {
+        for (row, path, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, &attr);
             Self::draw_content_line(
                 canvas,
                 row + 1,
-                pair.0.to_str().context("Unreadable filename")?,
+                path.to_str().context("Unreadable filename")?,
                 attr,
             )?;
         }
@@ -1048,6 +975,11 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_context(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        self.draw_context_selectable(canvas)?;
+        self.draw_context_more_infos(canvas)
+    }
+
+    fn draw_context_selectable(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.context;
         canvas.print_with_attr(
             1,
@@ -1056,7 +988,6 @@ impl<'a> WinSecondary<'a> {
             MENU_ATTRS.get().expect("Menu colors should be set").second,
         )?;
         let content = selectable.content();
-        let space_used = content.len();
         for (letter, (row, desc, attr)) in
             std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
         {
@@ -1069,14 +1000,18 @@ impl<'a> WinSecondary<'a> {
             )?;
             Self::draw_content_line(canvas, row + 1, desc, attr)?;
         }
-        let more_info = self.tab.context_info(&self.status.internal_settings.opener);
+        Ok(())
+    }
+
+    fn draw_context_more_infos(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let space_used = &self.status.menu.context.content.len();
+        let more_info = MoreInfos::new(
+            &self.tab.current_file()?,
+            &self.status.internal_settings.opener,
+        )
+        .to_lines();
         for (row, text, attr) in enumerated_colored_iter!(more_info) {
-            canvas.print_with_attr(
-                space_used + row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
-                4,
-                text,
-                attr,
-            )?;
+            Self::draw_content_line(canvas, space_used + row + 1, text, attr)?;
         }
         Ok(())
     }
@@ -1303,6 +1238,33 @@ impl<'a> WinSecondary<'a> {
         attr: tuikit::attr::Attr,
     ) -> Result<usize> {
         Ok(canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr)?)
+    }
+
+    fn draw_flagged(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let window = &self.status.menu.flagged.window;
+        for (index, path) in self
+            .status
+            .menu
+            .flagged
+            .content
+            .iter()
+            .enumerate()
+            .skip(window.top)
+            .take(min(canvas.height()?, window.bottom))
+        {
+            let fileinfo = FileInfo::new(path, &self.tab.users)?;
+            let mut attr = fileinfo.attr();
+            if index == self.status.menu.flagged.index {
+                attr.effect |= Effect::REVERSE;
+            }
+            let row = index + 2 - window.top;
+            canvas.print_with_attr(row, 2, &fileinfo.path.to_string_lossy(), attr)?;
+        }
+        if let Some(selected) = self.status.menu.flagged.selected() {
+            let fileinfo = FileInfo::new(selected, &self.tab.users)?;
+            canvas.print_with_attr(0, 2, &fileinfo.format(6, 6)?, fileinfo.attr())?;
+        };
+        Ok(())
     }
 }
 

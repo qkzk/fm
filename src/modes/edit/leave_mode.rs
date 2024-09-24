@@ -4,30 +4,15 @@ use std::str::FromStr;
 use anyhow::{anyhow, Context, Result};
 
 use crate::app::Status;
-use crate::common::path_to_string;
-use crate::common::rename;
-use crate::common::string_to_path;
+use crate::common::{path_to_string, rename, string_to_path};
 use crate::config::Bindings;
-use crate::event::ActionMap;
-use crate::event::EventAction;
+use crate::event::{ActionMap, EventAction};
 use crate::io::execute_custom;
-use crate::log_info;
-use crate::log_line;
-use crate::modes::BlockDeviceAction;
-use crate::modes::CLApplications;
-use crate::modes::Content;
-use crate::modes::Display;
-use crate::modes::Edit;
-use crate::modes::InputCompleted;
-use crate::modes::InputSimple;
-use crate::modes::Leave;
-use crate::modes::MarkAction;
-use crate::modes::Navigate;
-use crate::modes::NodeCreation;
-use crate::modes::PasswordUsage;
-use crate::modes::PickerCaller;
-use crate::modes::Search;
-use crate::modes::SortKind;
+use crate::modes::{
+    BlockDeviceAction, CLApplications, Content, Display, Edit, InputCompleted, InputSimple, Leave,
+    MarkAction, Navigate, NodeCreation, PasswordUsage, PickerCaller, Search, SortKind,
+};
+use crate::{log_info, log_line};
 
 /// Methods called when executing something with Enter key.
 pub struct LeaveMode;
@@ -79,6 +64,7 @@ impl LeaveMode {
                 LeaveMode::picker(status)?;
                 return Ok(());
             }
+            Edit::Navigate(Navigate::Flagged) => LeaveMode::flagged(status),
             Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
             Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status, true),
             Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
@@ -203,21 +189,13 @@ impl LeaveMode {
     fn rename(status: &mut Status) -> Result<()> {
         let old_path = status.current_tab().current_file()?.path;
         let new_name = status.menu.input.string();
-        let new_path = match rename(&old_path, &new_name) {
-            Ok(new_path) => new_path,
-            Err(error) => {
-                log_info!(
-                    "Error renaming {old_path} to {new_name}. Error: {error}",
-                    old_path = old_path.display()
-                );
-                return Err(error);
-            }
+        if let Err(error) = rename(&old_path, &new_name) {
+            log_info!(
+                "Error renaming {old_path} to {new_name}. Error: {error}",
+                old_path = old_path.display()
+            );
+            return Err(error);
         };
-        if matches!(status.current_tab().display_mode, Display::Flagged)
-            && status.menu.flagged.contains(&old_path)
-        {
-            status.menu.flagged.replace(&old_path, &new_path);
-        }
         status.current_tab_mut().refresh_view()
     }
 
@@ -305,7 +283,7 @@ impl LeaveMode {
         let completed = status.menu.completion.current_proposition();
         let path = string_to_path(completed)?;
         status.menu.input.reset();
-        status.current_tab_mut().cd(&path)?;
+        status.current_tab_mut().cd_to_file(&path)?;
         let len = status.current_tab().directory.content.len();
         status.current_tab_mut().window.reset(len);
         status.update_second_pane_for_preview()
@@ -339,14 +317,12 @@ impl LeaveMode {
     /// Move back to a previously visited path.
     /// It may fail if the user has no permission to visit the path
     fn history(status: &mut Status) -> Result<()> {
-        let Some((path, file)) = status.current_tab().history.selected() else {
+        let Some(file) = status.tabs[status.index].history.selected() else {
             return Ok(());
         };
-        let (path, file) = (path.to_owned(), file.to_owned());
-        let tab = status.current_tab_mut();
-        tab.history.drop_queue();
-        tab.cd(&path)?;
-        tab.go_to_file(file);
+        let file = file.to_owned();
+        status.tabs[status.index].cd_to_file(&file)?;
+        status.tabs[status.index].history.drop_queue();
         status.update_second_pane_for_preview()
     }
 
@@ -446,5 +422,9 @@ impl LeaveMode {
             PickerCaller::Cloud => status.cloud_load_config(),
             PickerCaller::Unknown => Ok(()),
         }
+    }
+
+    fn flagged(status: &mut Status) -> Result<()> {
+        status.jump_flagged()
     }
 }

@@ -4,19 +4,16 @@ use std::io::Read;
 use anyhow::{anyhow, Result};
 
 use crate::common::{
-    current_uid, filename_from_path, is_dir_empty, is_program_in_path, MKDIR, MOUNT,
+    current_uid, filename_from_path, is_dir_empty, is_in_path, EJECT_EXECUTABLE, GIO, MKDIR, MOUNT,
 };
-use crate::common::{EJECT_EXECUTABLE, GIO};
 use crate::impl_content;
 use crate::impl_selectable;
 use crate::io::{
     drop_sudo_privileges, execute_and_output, execute_sudo_command, reset_sudo_faillock,
     set_sudo_session,
 };
-use crate::log_info;
-use crate::log_line;
-use crate::modes::PasswordHolder;
-use crate::modes::{MountCommands, MountRepr};
+use crate::modes::{MountCommands, MountRepr, PasswordHolder};
+use crate::{log_info, log_line};
 
 /// Holds info about removable devices.
 /// We can navigate this struct.
@@ -47,7 +44,7 @@ impl RemovableDevices {
     }
 
     fn mtp_from_gio() -> Vec<Removable> {
-        if !is_program_in_path(GIO) {
+        if !is_in_path(GIO) {
             return vec![];
         }
         let Ok(output) = execute_and_output(GIO, [MOUNT, "-li"]) else {

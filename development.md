@@ -1052,8 +1052,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] FIX: alt + g, type, complete, back crash. Can't reproduce
 - [x] FIX: too much thing on menu and last line
 
-## Current dev
-
 ### Version 0.1.28
 
 #### Summary
@@ -1102,10 +1100,71 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Fix: opening tree mode with selection on "." doesn't display "." as selected
 - [x] refactor draw tree line
 - [x] Fix: Crash when quiting. "sending on a closed channel". From quit -> refresher::quit
+- [ ]
 - [ ] Badges to latest version
+
+## Current dev
+
+### Version 0.1.29
+
+#### Summary
+
+- Fixed the documentation and updated the badges
+- Flagged files are now displayed in a menu instead of the main window. You can still jump to them, removed them individually
+- Fix jump mode (Alt+g) to allow paths to file. It will jump there and select the file.
+- Preview valid symlink as their target. Broken symlink aren't previewed at all
+- Fixed a few bugs. See details below.
+- **Breaking changes**: color configuration.
+
+  Only one mapping is used in config.yml. All colors are now regrouped there.
+  Some names have changed :
+
+  - "start" -> "normal_start"
+  - "stop" -> "normal_stop"
+
+  Your old config will still be loaded, but their colors won't be recognized unless you update the config.
+  See the [source](config_file/fm/config.yml) for more infos.
+
+#### Changelog
+
+- [x] refactor path reducer
+- [x] Fix: when ".." is selected, header path is wrong. This is a big one...
+- [x] Fix: directory mode when path is root, header is wrong, should just be "/""run" not "/""/run"
+- [x] Fix attempt of docs. Don't panic in build if no config file is found. That was dumb
+- [x] Fix: Tree mode, when path is root, header is wrong
+- [x] Alt+g should accept pathes to file from input and go there
+- [x] Preview refactor
+  - [x] mod for ueberzug
+  - [x] builder for ueberzug
+  - [x] creator for thumbnail
+  - [x] video slideshow
+  - [x] Fix: ueberzug creation may crash the app (poison lock etc.) `Error: Error locking status: poisoned lock: another task failed inside`
+  - [x] preview builder
+  - [x] preview symlink to folder as the target
+  - [x] preview symlink to files as the target. Must change PreviewBuilder completely
+  - [x] merge all previews which hold text into a single variant
+  - [x] simplify the mess as much as possible
+- [x] flagged should be a menu
+  - [x] use a menu to display flagged files
+  - [x] display binds
+- [x] refactor context menu "more info" into a struct with explicit methods
+- [x] simplify history a little
+- [x] simplify color configuration
+  - [x] only one "colors" map in yaml file
+  - [x] migration of config file : detailed in release
 
 ## TODO
 
+- [ ] google drive should be a display ?
+- [ ] status, tab, event exec refactor. What should go where ? status is too big and should be splitted
+- [ ] menus refactor
+  - [ ] open 2 menus at once
+  - [ ] maybe use the same system as preview, create them on the fly
+  - [ ] attach menus to tab, where they belong
+  - [ ] leaving left menu shouldn't reset right menu
+- [ ] replace tuikit by ratatui + crossterm
+- [ ] Focus & mouseover. Mousemove require raw terminal mode.. Requires to rewrite every event (Mousepress, mouse release etc.)
+      Another motivation to switch to ratatui + crossterm.
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone

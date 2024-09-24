@@ -7,11 +7,9 @@ use syntect::highlighting::Theme;
 use tuikit::attr::Color;
 
 use crate::common::tilde;
-use crate::config::FileAttr;
-use crate::config::MenuAttrs;
-use crate::config::NormalFileColorer;
-use crate::config::MAX_GRADIENT_NORMAL;
-use crate::config::{read_normal_file_colorer, Gradient};
+use crate::config::{
+    read_normal_file_colorer, FileAttr, Gradient, MenuAttrs, NormalFileColorer, MAX_GRADIENT_NORMAL,
+};
 
 /// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
 pub static START_FOLDER: OnceLock<PathBuf> = OnceLock::new();

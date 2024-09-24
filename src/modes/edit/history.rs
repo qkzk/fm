@@ -1,28 +1,25 @@
 use std::path::{Path, PathBuf};
 
-use crate::impl_content;
-use crate::impl_selectable;
-
-type DoublePB = (PathBuf, PathBuf);
+use crate::{impl_content, impl_selectable};
 
 /// A stack of visited paths.
 /// We save the last folder and the selected file every time a `PatchContent` is updated.
 /// We also ensure not to save the same pair multiple times.
 #[derive(Default, Clone)]
 pub struct History {
-    pub content: Vec<DoublePB>,
+    pub content: Vec<PathBuf>,
     pub index: usize,
 }
 
 impl History {
     /// Add a new path and a selected file in the stack, without duplicates, and select the last
     /// one.
-    pub fn push(&mut self, path: &Path, file: &Path) {
-        let pair = (path.to_owned(), file.to_owned());
-        if !self.content.contains(&pair) {
-            self.content.push(pair);
+    pub fn push(&mut self, file: &Path) {
+        if !self.content.contains(&file.to_path_buf()) {
+            self.content.push(file.to_owned());
             self.index = self.len() - 1;
         }
+        // TODO! Else ... ?
     }
 
     /// Drop the last visited paths from the stack, after the selected one.
@@ -49,9 +46,9 @@ impl History {
         if self.is_empty() {
             return false;
         }
-        self.content[self.len() - 1].0 == path
+        self.content[self.len() - 1] == path
     }
 }
 
 impl_selectable!(History);
-impl_content!(DoublePB, History);
+impl_content!(PathBuf, History);
