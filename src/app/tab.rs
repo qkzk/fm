@@ -368,6 +368,21 @@ impl Tab {
         self.refresh_view()
     }
 
+    pub fn reset_my_files(&mut self) -> Result<()> {
+        self.directory.reset_files(&self.settings, &self.users)
+    }
+
+    pub fn set_filter(&mut self, filter: FilterKind) -> Result<()> {
+        self.settings.set_filter(filter);
+        self.reset_my_files()?;
+        if let Display::Tree = self.display_mode {
+            self.make_tree(None);
+        }
+        let len = self.directory.content.len();
+        self.window.reset(len);
+        Ok(())
+    }
+
     /// Set the height of the window and itself.
     pub fn set_height(&mut self, height: usize) {
         self.window.set_height(height);

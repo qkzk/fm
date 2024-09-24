@@ -2,7 +2,7 @@ use std::fs;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
 use opendal::EntryMode;
 use skim::SkimItem;
@@ -23,13 +23,13 @@ use crate::common::{
 use crate::common::{current_username, disk_space, is_in_path};
 use crate::config::{Bindings, START_FOLDER};
 use crate::event::FmEvents;
-use crate::io::Internal;
 use crate::io::Opener;
 use crate::io::{execute_and_capture_output_with_path, Args};
 use crate::io::{
     execute_and_capture_output_without_check, execute_sudo_command_with_password,
     reset_sudo_faillock,
 };
+use crate::io::{get_cloud_token_names, Internal};
 use crate::io::{google_drive, MIN_WIDTH_FOR_DUAL_PANE};
 use crate::io::{Extension, Kind};
 use crate::modes::MountRepr;
@@ -855,21 +855,21 @@ impl Status {
 
     fn _skim_find_keybinding(&mut self, help: String) -> Result<tuikit::prelude::Key> {
         let Some(Ok(skimer)) = &mut self.skimer else {
-            return Err(anyhow!("Skim isn't initialised"));
+            bail!("Skim isn't initialised");
         };
         let skim = skimer.search_in_text(&help);
         let Some(output) = skim.first() else {
-            return Err(anyhow!("Skim hasn't sent anything"));
+            bail!("Skim hasn't sent anything");
         };
         let line = output.output().into_owned();
         let Some(keybind) = line.split(':').next() else {
-            return Err(anyhow!("No keybind found"));
+            bail!("No keybind found");
         };
         let Some(keyname) = parse_keyname(keybind) else {
-            return Err(anyhow!("No keyname found for {keybind}"));
+            bail!("No keyname found for {keybind}");
         };
         let Some(key) = from_keyname(&keyname) else {
-            return Err(anyhow!("{keyname} isn't a valid Key name."));
+            bail!("{keyname} isn't a valid Key name.");
         };
         Ok(key)
     }
@@ -1469,36 +1469,13 @@ impl Status {
     /// Doesn't reset the input.
     pub fn set_filter(&mut self) -> Result<()> {
         let filter = FilterKind::from_input(&self.menu.input.string());
-        self.current_tab_mut().settings.set_filter(filter);
-        // ugly hack to please borrow checker :(
-        self.tabs[self.index].directory.reset_files(
-            &self.tabs[self.index].settings,
-            &self.tabs[self.index].users,
-        )?;
-        if let Display::Tree = self.current_tab().display_mode {
-            self.current_tab_mut().make_tree(None);
-        }
-        let len = self.current_tab().directory.content.len();
-        self.current_tab_mut().window.reset(len);
-        Ok(())
+        self.current_tab_mut().set_filter(filter)
     }
 
     /// input the typed char and update the filterkind.
     pub fn input_filter(&mut self, c: char) -> Result<()> {
         self.menu.input_insert(c)?;
         self.set_filter()
-    }
-
-    fn get_cloud_token_names(&self) -> Result<Vec<String>> {
-        Ok(std::fs::read_dir(path_to_config_folder()?)?
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().is_file())
-            .map(|e| e.file_name().to_string_lossy().to_string())
-            .filter(|filename| filename.starts_with("token_"))
-            .filter(|filename| filename.ends_with(".yaml"))
-            .map(|filename| filename.replace("token_", ""))
-            .map(|filename| filename.replace(".yaml", ""))
-            .collect())
     }
 
     /// Load the selected cloud configuration file from the config folder and open navigation the menu.
@@ -1522,7 +1499,7 @@ impl Status {
         if self.menu.cloud.is_set() {
             self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
         } else {
-            let content = self.get_cloud_token_names()?;
+            let content = get_cloud_token_names()?;
             self.menu.picker.set(
                 Some(PickerCaller::Cloud),
                 Some("Pick a cloud provider".to_owned()),
