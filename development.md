@@ -1127,14 +1127,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Changelog
 
-- [ ] status, tab, event exec refactor. What should go where ? status is too big and should be splitted
-  - [x] refactor path reducer
+- [x] refactor path reducer
 - [x] Fix: when ".." is selected, header path is wrong. This is a big one...
 - [x] Fix: directory mode when path is root, header is wrong, should just be "/""run" not "/""/run"
 - [x] Fix attempt of docs. Don't panic in build if no config file is found. That was dumb
 - [x] Fix: Tree mode, when path is root, header is wrong
 - [x] Alt+g should accept pathes to file from input and go there
-- [ ] Preview refactor
+- [x] Preview refactor
   - [x] mod for ueberzug
   - [x] builder for ueberzug
   - [x] creator for thumbnail
@@ -1144,8 +1143,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] preview symlink to folder as the target
   - [x] preview symlink to files as the target. Must change PreviewBuilder completely
   - [x] merge all previews which hold text into a single variant
-  - [ ] preview refactor
-  - [ ] simplify the mess as much as possible
+  - [x] simplify the mess as much as possible
 - [x] flagged should be a menu
   - [x] use a menu to display flagged files
   - [x] display binds
@@ -1154,10 +1152,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] simplify color configuration
   - [x] only one "colors" map in yaml file
   - [x] migration of config file : detailed in release
-- [ ] google drive should be a display ?
 
 ## TODO
 
+- [ ] google drive should be a display ?
+- [ ] status, tab, event exec refactor. What should go where ? status is too big and should be splitted
+- [ ] menus refactor
+  - [ ] open 2 menus at once
+  - [ ] maybe use the same system as preview, create them on the fly
+  - [ ] attach menus to tab, where they belong
+  - [ ] leaving left menu shouldn't reset right menu
 - [ ] replace tuikit by ratatui + crossterm
 - [ ] Focus & mouseover. Mousemove require raw terminal mode.. Requires to rewrite every event (Mousepress, mouse release etc.)
       Another motivation to switch to ratatui + crossterm.
