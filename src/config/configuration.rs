@@ -102,9 +102,9 @@ pub fn load_config(path: &str) -> Result<Config> {
 /// Reads the config file and parse the "palette" values.
 /// The palette format looks like this (with different accepted format)
 /// ```yaml
-/// palette:
-///   start: yellow, #ffff00, rgb(255, 255, 0)
-///   stop:  #ff00ff
+/// colors:
+///   normal_start: yellow, #ffff00, rgb(255, 255, 0)
+///   normal_stop:  #ff00ff
 /// ```
 /// Recognized formats are : ansi names (yellow, light_red etc.), rgb like rgb(255, 55, 132) and hexadecimal like #ff3388.
 /// The ANSI names are recognized but we can't get the user settings for all kinds of terminal
