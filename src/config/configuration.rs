@@ -119,10 +119,10 @@ pub fn read_normal_file_colorer() -> (ColorG, ColorG) {
     let Ok(yaml) = from_reader::<File, Value>(file) else {
         return default_pair;
     };
-    let Some(start) = yaml["palette"]["start"].as_str() else {
+    let Some(start) = yaml["colors"]["normal_start"].as_str() else {
         return default_pair;
     };
-    let Some(stop) = yaml["palette"]["stop"].as_str() else {
+    let Some(stop) = yaml["colors"]["normal_stop"].as_str() else {
         return default_pair;
     };
     let Some(start_color) = ColorG::parse_any_color(start) else {
@@ -242,7 +242,7 @@ impl MenuAttrs {
     pub fn update(mut self) -> Self {
         if let Ok(file) = File::open(path::Path::new(&tilde(CONFIG_PATH).to_string())) {
             if let Ok(yaml) = from_reader::<File, Value>(file) {
-                let menu_colors = &yaml["menu_colors"];
+                let menu_colors = &yaml["colors"];
                 update_attr!(self.first, menu_colors, "first");
                 update_attr!(self.second, menu_colors, "second");
                 update_attr!(self.selected_border, menu_colors, "selected_border");

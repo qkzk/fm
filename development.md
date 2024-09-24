@@ -1140,10 +1140,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] use a menu to display flagged files
   - [x] display binds
 - [x] refactor context menu "more info" into a struct with explicit methods
+- [x] simplify history a little
+- [ ] simplify color configuration
+  - [x] only one "colors" map in yaml file
+  - [ ] migration of config file : display a warning
 - [ ] google drive should be a display ?
-- [ ] don't use ANSI colors
-  - [ ] config
-  - [ ] src
 
 ## TODO
 

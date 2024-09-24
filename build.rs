@@ -20,29 +20,6 @@ fn main() {
         Ok(_) => (),
         Err(e) => eprintln!("{e:?}"),
     }
-
-    update_breaking_config()
-}
-
-/// Remove old binds from user config file.
-///
-/// Remove all binds to `Jump` and `Mocp...` variants since they were removed from fm.
-fn update_breaking_config() {
-    let config = tilde("~/.config/fm/config.yaml");
-    let config: &str = config.borrow();
-
-    let Ok(config_file) = std::fs::read_to_string(config) else {
-        // Config file doesn't exist, nothing to update.
-        return;
-    };
-    let content = config_file
-        .lines()
-        .map(String::from)
-        .filter(|line| !line.contains("Jump"))
-        .filter(|line| !line.contains("Mocp"))
-        .collect::<Vec<String>>()
-        .join("\n");
-    std::fs::write(config, content).expect("config should be writabe");
 }
 
 fn home_dir() -> Option<std::path::PathBuf> {
