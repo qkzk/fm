@@ -1114,6 +1114,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Fix jump mode (Alt+g) to allow paths to file. It will jump there and select the file.
 - Preview valid symlink as their target. Broken symlink aren't previewed at all
 - Fixed a few bugs. See details below.
+- **Breaking changes**: color configuration.
+
+  Only one mapping is used in config.yml. All colors are now regrouped there.
+  Some names have changed :
+
+  - "start" -> "normal_start"
+  - "stop" -> "normal_stop"
+
+  Your old config will still be loaded, but their colors won't be recognized unless you update the config.
+  See the [source](config_file/fm/config.yml) for more infos.
 
 #### Changelog
 
@@ -1141,9 +1151,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] display binds
 - [x] refactor context menu "more info" into a struct with explicit methods
 - [x] simplify history a little
-- [ ] simplify color configuration
+- [x] simplify color configuration
   - [x] only one "colors" map in yaml file
-  - [ ] migration of config file : display a warning
+  - [x] migration of config file : detailed in release
 - [ ] google drive should be a display ?
 
 ## TODO
