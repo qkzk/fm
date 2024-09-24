@@ -424,7 +424,21 @@ impl Status {
         self.menu.reset();
         let must_refresh = matches!(self.current_tab().display_mode, Display::Preview);
         self.set_edit_mode(self.index, Edit::Nothing)?;
+        self.set_height_of_unfocused_menu()?;
         Ok(must_refresh)
+    }
+
+    fn set_height_of_unfocused_menu(&mut self) -> Result<()> {
+        let unfocused_tab = &self.tabs[1 - self.index];
+        match unfocused_tab.edit_mode {
+            Edit::Nothing => (),
+            unfocused_mode => {
+                let len = self.menu.len(unfocused_mode);
+                let height = self.second_window_height()?;
+                self.menu.window = ContentWindow::new(len, height);
+            }
+        }
+        Ok(())
     }
 
     /// Reset the selected tab view to the default.

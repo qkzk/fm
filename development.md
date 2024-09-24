@@ -1100,7 +1100,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Fix: opening tree mode with selection on "." doesn't display "." as selected
 - [x] refactor draw tree line
 - [x] Fix: Crash when quiting. "sending on a closed channel". From quit -> refresher::quit
-- [ ]
 - [ ] Badges to latest version
 
 ### Version 0.1.29
@@ -1162,7 +1161,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] menus refactor
   - [ ] open 2 menus at once
   - [ ] moving left shouldn't move right
-  - [ ] closing left shouldn't clear right
+  - [x] Fix: closing left menu shouldn't clear right
   - [ ] maybe use the same system as preview, create them on the fly
   - [ ] attach menus to tab, where they belong
   - [ ] leaving left menu shouldn't reset right menu
