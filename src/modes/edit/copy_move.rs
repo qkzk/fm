@@ -9,8 +9,7 @@ use fs_extra;
 use indicatif::{InMemoryTerm, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use tuikit::prelude::Term;
 
-use crate::common::NOTIFY_EXECUTABLE;
-use crate::common::{is_in_path, random_name};
+use crate::common::{is_in_path, random_name, NOTIFY_EXECUTABLE};
 use crate::event::FmEvents;
 use crate::io::execute;
 use crate::modes::human_size;

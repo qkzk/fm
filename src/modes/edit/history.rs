@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::impl_content;
-use crate::impl_selectable;
+use crate::{impl_content, impl_selectable};
 
 /// A stack of visited paths.
 /// We save the last folder and the selected file every time a `PatchContent` is updated.

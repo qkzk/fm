@@ -6,11 +6,9 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
-use crate::common::TMP_FOLDER_PATH;
-use crate::common::{random_name, rename};
+use crate::common::{random_name, rename, TMP_FOLDER_PATH};
 use crate::event::FmEvents;
-use crate::log_info;
-use crate::log_line;
+use crate::{log_info, log_line};
 
 struct BulkExecutor {
     original_filepath: Vec<PathBuf>,

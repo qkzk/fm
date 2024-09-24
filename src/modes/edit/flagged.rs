@@ -2,10 +2,8 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use crate::common::tilde;
-use crate::impl_content;
-use crate::impl_selectable;
-use crate::modes::ContentWindow;
-use crate::modes::ToPath;
+use crate::modes::{ContentWindow, ToPath};
+use crate::{impl_content, impl_selectable};
 
 #[derive(Clone, Debug)]
 pub struct Flagged {

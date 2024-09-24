@@ -3,8 +3,7 @@ use std::fs;
 
 use anyhow::{Context, Result};
 
-use crate::app::Status;
-use crate::app::Tab;
+use crate::app::{Status, Tab};
 use crate::log_line;
 use crate::modes::Display as DisplayMode;
 

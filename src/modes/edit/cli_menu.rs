@@ -4,14 +4,10 @@ use serde_yml::from_reader;
 use serde_yml::Mapping;
 
 use crate::app::Status;
-use crate::common::is_in_path;
-use crate::common::tilde;
-use crate::impl_content;
-use crate::impl_selectable;
+use crate::common::{is_in_path, tilde};
 use crate::io::execute_with_ansi_colors;
-use crate::log_info;
-use crate::log_line;
 use crate::modes::ShellCommandParser;
+use crate::{impl_content, impl_selectable, log_info, log_line};
 
 pub trait Execute<T> {
     fn execute(&self, status: &Status) -> Result<T>;

@@ -4,30 +4,15 @@ use std::str::FromStr;
 use anyhow::{anyhow, Context, Result};
 
 use crate::app::Status;
-use crate::common::path_to_string;
-use crate::common::rename;
-use crate::common::string_to_path;
+use crate::common::{path_to_string, rename, string_to_path};
 use crate::config::Bindings;
-use crate::event::ActionMap;
-use crate::event::EventAction;
+use crate::event::{ActionMap, EventAction};
 use crate::io::execute_custom;
-use crate::log_info;
-use crate::log_line;
-use crate::modes::BlockDeviceAction;
-use crate::modes::CLApplications;
-use crate::modes::Content;
-use crate::modes::Display;
-use crate::modes::Edit;
-use crate::modes::InputCompleted;
-use crate::modes::InputSimple;
-use crate::modes::Leave;
-use crate::modes::MarkAction;
-use crate::modes::Navigate;
-use crate::modes::NodeCreation;
-use crate::modes::PasswordUsage;
-use crate::modes::PickerCaller;
-use crate::modes::Search;
-use crate::modes::SortKind;
+use crate::modes::{
+    BlockDeviceAction, CLApplications, Content, Display, Edit, InputCompleted, InputSimple, Leave,
+    MarkAction, Navigate, NodeCreation, PasswordUsage, PickerCaller, Search, SortKind,
+};
+use crate::{log_info, log_line};
 
 /// Methods called when executing something with Enter key.
 pub struct LeaveMode;

@@ -1,6 +1,7 @@
 use anyhow::Result;
 
-use crate::{app::Status, common::path_to_string};
+use crate::app::Status;
+use crate::common::path_to_string;
 
 /// Expanded tokens from a configured command.
 /// %s is converted into a `Selected`

@@ -1,9 +1,7 @@
 use anyhow::Result;
 
-use crate::{
-    app::{Status, Tab},
-    modes::{Display, Go, To, ToPath, Tree},
-};
+use crate::app::{Status, Tab};
+use crate::modes::{Display, Go, To, ToPath, Tree};
 
 #[derive(Clone)]
 pub struct Search {

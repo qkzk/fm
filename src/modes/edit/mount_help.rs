@@ -1,6 +1,7 @@
 use anyhow::Result;
 
-use crate::{config::MENU_ATTRS, modes::PasswordHolder};
+use crate::config::MENU_ATTRS;
+use crate::modes::PasswordHolder;
 
 /// Bunch of methods used to mount / unmount a block device or a device image file.
 pub trait MountCommands {

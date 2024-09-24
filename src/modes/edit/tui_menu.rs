@@ -3,12 +3,10 @@ use serde_yml::Mapping;
 
 use crate::app::Status;
 use crate::common::is_in_path;
-use crate::impl_content;
-use crate::impl_selectable;
 use crate::io::{execute_without_output, execute_without_output_with_path};
 use crate::log_line;
-use crate::modes::CLApplications;
-use crate::modes::Execute;
+use crate::modes::{CLApplications, Execute};
+use crate::{impl_content, impl_selectable};
 
 /// Execute a command requiring to be ran from current working directory.
 ///
