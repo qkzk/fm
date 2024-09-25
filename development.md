@@ -1169,6 +1169,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
         display and execution should be as generic as navigation (seletable etc.) as possible.
         Use as much trait as I can
         Separate statefull from stateless menus, take inspiration from flutter
+- [x] Fix: can't clic flagged. Display is offset by something
 
 ## TODO
 

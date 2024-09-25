@@ -1257,7 +1257,7 @@ impl<'a> WinSecondary<'a> {
             if index == self.status.menu.flagged.index {
                 attr.effect |= Effect::REVERSE;
             }
-            let row = index + 2 - window.top;
+            let row = index + 1 - window.top + ContentWindow::WINDOW_MARGIN_TOP;
             canvas.print_with_attr(row, 2, &fileinfo.path.to_string_lossy(), attr)?;
         }
         if let Some(selected) = self.status.menu.flagged.selected() {
