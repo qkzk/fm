@@ -1241,25 +1241,24 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_flagged(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let window = &self.status.menu.flagged.window;
-        for (index, path) in self
-            .status
-            .menu
-            .flagged
-            .content
-            .iter()
-            .enumerate()
-            .skip(window.top)
-            .take(min(canvas.height()?, window.bottom))
-        {
-            let fileinfo = FileInfo::new(path, &self.tab.users)?;
-            let mut attr = fileinfo.attr();
+        self.draw_flagged_files(canvas)?;
+        self.draw_flagged_selected(canvas)
+    }
+
+    fn draw_flagged_files(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let top = &self.status.menu.window.top;
+        for (index, path) in self.status.menu.flagged.content().iter().enumerate() {
+            let mut attr = FileInfo::new(path, &self.tab.users)?.attr();
             if index == self.status.menu.flagged.index {
                 attr.effect |= Effect::REVERSE;
             }
-            let row = index + 1 - window.top + ContentWindow::WINDOW_MARGIN_TOP;
-            canvas.print_with_attr(row, 2, &fileinfo.path.to_string_lossy(), attr)?;
+            let row = index + 1 - top + ContentWindow::WINDOW_MARGIN_TOP;
+            canvas.print_with_attr(row, 2, &path.to_string_lossy(), attr)?;
         }
+        Ok(())
+    }
+
+    fn draw_flagged_selected(&self, canvas: &mut dyn Canvas) -> Result<()> {
         if let Some(selected) = self.status.menu.flagged.selected() {
             let fileinfo = FileInfo::new(selected, &self.tab.users)?;
             canvas.print_with_attr(0, 2, &fileinfo.format(6, 6)?, fileinfo.attr())?;
