@@ -37,7 +37,7 @@ pub enum Window {
     Footer,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug)]
 pub enum Focus {
     #[default]
     LeftFile,
@@ -643,27 +643,31 @@ impl Status {
     pub fn toggle_flag_for_selected(&mut self) {
         let tab = self.current_tab();
 
-        if matches!(tab.edit_mode, Edit::Nothing) {
-            let Ok(file) = tab.current_file() else {
-                return;
-            };
-            match tab.display_mode {
-                Display::Directory => {
-                    self.menu.flagged.toggle(&file.path);
-                    if !self.tabs[self.index].directory.selected_is_last() {
-                        self.current_tab_mut().normal_down_one_row();
-                    }
-                    let _ = self.update_second_pane_for_preview();
+        if !matches!(
+            tab.edit_mode,
+            Edit::Nothing | Edit::Navigate(Navigate::Flagged)
+        ) {
+            return;
+        }
+        let Ok(file) = tab.current_file() else {
+            return;
+        };
+        match tab.display_mode {
+            Display::Directory => {
+                self.menu.flagged.toggle(&file.path);
+                if !self.tabs[self.index].directory.selected_is_last() {
+                    self.current_tab_mut().normal_down_one_row();
                 }
-                Display::Tree => {
-                    self.menu.flagged.toggle(&file.path);
-                    if !self.tabs[self.index].tree.selected_is_last() {
-                        self.current_tab_mut().tree_select_next();
-                    }
-                    let _ = self.update_second_pane_for_preview();
-                }
-                Display::Preview => (),
+                let _ = self.update_second_pane_for_preview();
             }
+            Display::Tree => {
+                self.menu.flagged.toggle(&file.path);
+                if !self.tabs[self.index].tree.selected_is_last() {
+                    self.current_tab_mut().tree_select_next();
+                }
+                let _ = self.update_second_pane_for_preview();
+            }
+            Display::Preview => (),
         }
     }
 
