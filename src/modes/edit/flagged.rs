@@ -1,11 +1,9 @@
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use crate::common::tilde;
-use crate::modes::{ContentWindow, ToPath};
 use crate::{impl_content, impl_selectable};
 
-#[derive(Clone, Debug)]
+#[derive(Default)]
 pub struct Flagged {
     /// Contains the different flagged files.
     /// It's basically a `Set` (of whatever kind) and insertion would be faster
@@ -16,156 +14,56 @@ pub struct Flagged {
     pub content: Vec<PathBuf>,
     /// The index of the selected file. Used to jump.
     pub index: usize,
-    pub window: ContentWindow,
 }
 
 impl Flagged {
-    pub fn new(content: Vec<PathBuf>, terminal_height: usize) -> Self {
-        Self {
-            window: ContentWindow::new(content.len(), terminal_height),
-            content,
-            index: 0,
-        }
-    }
-
-    pub fn select_next(&mut self) {
-        self.next();
-        self.window.scroll_down_one(self.index);
-    }
-
-    pub fn select_prev(&mut self) {
-        self.prev();
-        self.window.scroll_up_one(self.index);
-    }
-
-    pub fn select_first(&mut self) {
-        self.index = 0;
-        self.window.scroll_to(0);
-    }
-
-    pub fn select_last(&mut self) {
-        self.index = self.content.len().checked_sub(1).unwrap_or_default();
-        self.window.scroll_to(self.index);
-    }
-
-    /// Set the index to the minimum of given index and the maximum possible index (len - 1)
-    pub fn select_index(&mut self, index: usize) {
-        self.index = index.min(self.content.len().checked_sub(1).unwrap_or_default());
-        self.window.scroll_to(self.index);
-    }
-
-    pub fn select_row(&mut self, row: u16) {
-        let index = row.checked_sub(4).unwrap_or_default() as usize + self.window.top;
-        self.select_index(index);
-    }
-
-    pub fn select_path(&mut self, path: &std::path::Path) {
-        if let Some(position) = self.content.iter().position(|p| p == path) {
-            self.select_index(position)
-        }
-    }
-
-    pub fn page_down(&mut self) {
-        for _ in 0..10 {
-            if self.index + 1 == self.content.len() {
-                break;
-            }
-            self.select_next();
-        }
-    }
-
-    pub fn page_up(&mut self) {
-        for _ in 0..10 {
-            if self.index == 0 {
-                break;
-            }
-            self.select_prev();
-        }
-    }
-
-    pub fn reset_window(&mut self) {
-        self.window.reset(self.content.len())
-    }
-
-    pub fn set_height(&mut self, height: usize) {
-        self.window.set_height(height);
-    }
-
     pub fn update(&mut self, content: Vec<PathBuf>) {
         self.content = content;
-        self.reset_window();
+        self.content.sort();
         self.index = 0;
     }
 
-    pub fn extend(&mut self, content: Vec<PathBuf>) {
-        let mut content = content;
+    pub fn extend(&mut self, mut content: Vec<PathBuf>) {
         self.content.append(&mut content);
-        self.reset_window();
+        self.content.sort();
         self.index = 0;
     }
 
     pub fn clear(&mut self) {
         self.content = vec![];
-        self.reset_window();
         self.index = 0;
     }
 
     pub fn remove_selected(&mut self) {
         self.content.remove(self.index);
-        if self.index > 0 {
-            self.index -= 1;
-        }
-        self.reset_window();
-    }
-
-    pub fn replace_selected(&mut self, new_path: PathBuf) {
-        if self.content.is_empty() {
-            return;
-        }
-        self.content[self.index] = new_path;
-    }
-
-    pub fn filenames_matching(&self, input_string: &str) -> Vec<String> {
-        let Ok(re) = regex::Regex::new(input_string) else {
-            return vec![];
-        };
-        let to_filename: fn(&PathBuf) -> Option<&OsStr> = |path| path.file_name();
-        let to_str: fn(&OsStr) -> Option<&str> = |filename| filename.to_str();
-        self.content
-            .iter()
-            .filter_map(to_filename)
-            .filter_map(to_str)
-            .filter(|f| re.is_match(f))
-            .map(|f| f.to_owned())
-            .collect()
+        self.index = self.index.saturating_sub(1);
     }
 
     /// Push a new path into the content.
     /// We maintain the content sorted and it's used to make `contains` faster.
     pub fn push(&mut self, path: PathBuf) {
-        match self.content.binary_search(&path) {
-            Ok(_) => (),
-            Err(pos) => {
-                self.content.insert(pos, path);
-                self.reset_window()
-            }
-        }
+        let Err(pos) = self.content.binary_search(&path) else {
+            return;
+        };
+        self.content.insert(pos, path);
     }
 
     /// Toggle the flagged status of a path.
     /// Remove the path from the content if it's flagged, flag it if it's not.
     /// The implantation assumes the content to be sorted.
     pub fn toggle(&mut self, path: &Path) {
-        let path_buf = path.to_path_buf();
-        match self.content.binary_search(&path_buf) {
-            Ok(pos) => {
-                self.content.remove(pos);
-            }
-            Err(pos) => {
-                self.content.insert(pos, path_buf);
-            }
+        let path = path.to_path_buf();
+        match self.content.binary_search(&path) {
+            Ok(pos) => self.remove_index(pos),
+            Err(pos) => self.content.insert(pos, path),
         }
-        self.reset_window();
+    }
+
+    fn remove_index(&mut self, index: usize) {
+        self.content.remove(index);
+        if self.index >= self.len() {
+            self.index = self.index.saturating_sub(1);
+        }
     }
 
     /// True if the `path` is flagged.
@@ -175,13 +73,6 @@ impl Flagged {
     #[must_use]
     pub fn contains(&self, path: &Path) -> bool {
         self.content.binary_search(&path.to_path_buf()).is_ok()
-    }
-
-    pub fn replace(&mut self, old_path: &Path, new_path: &Path) {
-        let Ok(index) = self.content.binary_search(&old_path.to_path_buf()) else {
-            return;
-        };
-        self.content[index] = new_path.to_owned();
     }
 
     /// Returns a vector of path which are present in the current directory.
@@ -207,7 +98,7 @@ impl Flagged {
     pub fn replace_by_string(&mut self, files: String) {
         self.clear();
         files.lines().for_each(|f| {
-            let p = std::path::PathBuf::from(tilde(f).as_ref());
+            let p = PathBuf::from(tilde(f).as_ref());
             if p.exists() {
                 self.push(p);
             }
@@ -215,10 +106,5 @@ impl Flagged {
     }
 }
 
-impl ToPath for PathBuf {
-    fn to_path(&self) -> &Path {
-        self.as_ref()
-    }
-}
 impl_selectable!(Flagged);
 impl_content!(PathBuf, Flagged);

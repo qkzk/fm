@@ -64,6 +64,11 @@ impl ContentWindow {
         self.bottom = Self::default_bottom(self.len, self.height);
     }
 
+    pub fn set_len(&mut self, len: usize) {
+        self.len = len;
+        self.bottom = Self::default_bottom(len, self.height);
+    }
+
     /// Move the window one line up if possible.
     /// Does nothing if the index can't be reached.
     pub fn scroll_up_one(&mut self, index: usize) {

@@ -1158,8 +1158,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Changelog
 
-- [x] Fix: can't clic flagged. Display is offset by something
-- [x] Fix: can't flag files when flagged menu is opened
+- [x] Refactor flagged files
+  - [x] Fix: can't clic flagged. Display is offset by something
+  - [x] Fix: can't flag files when flagged menu is opened
+  - [x] Fix: removing flagged files can crash.
+  - [x] removed window from flagged
 - [ ] menus refactor
   - [x] Fix: closing left menu shouldn't clear right
   - [ ] open 2 menus at once and navigate separately

@@ -641,33 +641,31 @@ impl Status {
 
     /// Flag the selected file if any
     pub fn toggle_flag_for_selected(&mut self) {
-        let tab = self.current_tab();
-
-        if !matches!(
-            tab.edit_mode,
-            Edit::Nothing | Edit::Navigate(Navigate::Flagged)
-        ) {
-            return;
-        }
-        let Ok(file) = tab.current_file() else {
+        let Ok(file) = self.current_tab().current_file() else {
             return;
         };
-        match tab.display_mode {
+        match self.current_tab().display_mode {
             Display::Directory => {
                 self.menu.flagged.toggle(&file.path);
-                if !self.tabs[self.index].directory.selected_is_last() {
-                    self.current_tab_mut().normal_down_one_row();
+                if !self.current_tab().directory.selected_is_last() {
+                    self.tabs[self.index].normal_down_one_row();
                 }
                 let _ = self.update_second_pane_for_preview();
             }
             Display::Tree => {
                 self.menu.flagged.toggle(&file.path);
-                if !self.tabs[self.index].tree.selected_is_last() {
+                if !self.current_tab().tree.selected_is_last() {
                     self.current_tab_mut().tree_select_next();
                 }
                 let _ = self.update_second_pane_for_preview();
             }
             Display::Preview => (),
+        }
+        if matches!(
+            self.current_tab().edit_mode,
+            Edit::Navigate(Navigate::Flagged)
+        ) {
+            self.menu.window.set_len(self.menu.flagged.len());
         }
     }
 

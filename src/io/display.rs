@@ -1261,7 +1261,7 @@ impl<'a> WinSecondary<'a> {
     fn draw_flagged_selected(&self, canvas: &mut dyn Canvas) -> Result<()> {
         if let Some(selected) = self.status.menu.flagged.selected() {
             let fileinfo = FileInfo::new(selected, &self.tab.users)?;
-            canvas.print_with_attr(0, 2, &fileinfo.format(6, 6)?, fileinfo.attr())?;
+            canvas.print_with_attr(2, 2, &fileinfo.format(6, 6)?, fileinfo.attr())?;
         };
         Ok(())
     }

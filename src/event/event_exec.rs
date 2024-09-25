@@ -150,10 +150,6 @@ impl EventAction {
         if matches!(edit_mode, Edit::Navigate(Navigate::Flagged)) {
             status.leave_edit_mode()?;
         } else if matches!(edit_mode, Edit::Nothing) {
-            status
-                .menu
-                .flagged
-                .set_height(status.internal_settings.term.term_size()?.1);
             status.set_edit_mode(status.index, Edit::Navigate(Navigate::Flagged))?;
         }
         Ok(())
