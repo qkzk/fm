@@ -1165,7 +1165,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] removed window from flagged
 - [ ] menus refactor
   - [x] Fix: closing left menu shouldn't clear right
-  - [x] refactor menu.remote_mount
+  - [x] refactor menu.remote_mount into a separate module with parser & executer
   - [ ] open 2 menus at once and navigate separately
         use 2 windows ?
   - [ ] moving left shouldn't move right
