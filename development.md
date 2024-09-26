@@ -1165,15 +1165,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] removed window from flagged
 - [ ] menus refactor
   - [x] Fix: closing left menu shouldn't clear right
+  - [x] refactor menu.remote_mount
   - [ ] open 2 menus at once and navigate separately
         use 2 windows ?
   - [ ] moving left shouldn't move right
-  - [ ] maybe use the same system as preview, create them on the fly
-  - [ ] attach menus to tab, where they belong
-  - [ ] dissociate content (creation, update), navigation (next, prev, selected), action (`execute<Variant>(selected: &Variant)`) & display
-        display and execution should be as generic as navigation (seletable etc.) as possible.
-        Use as much trait as I can
-        Separate statefull from stateless menus, take inspiration from flutter
 
 ## TODO
 
