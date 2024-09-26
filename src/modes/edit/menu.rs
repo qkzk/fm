@@ -24,6 +24,8 @@ pub struct Menu {
     pub bulk: Bulk,
     /// CLI applications
     pub cli_applications: CliApplications,
+    /// cloud
+    pub cloud: OpendalContainer,
     /// Completion list and index in it.
     pub completion: Completion,
     /// Compression methods
@@ -36,12 +38,16 @@ pub struct Menu {
     pub flagged: Flagged,
     /// The typed input by the user
     pub input: Input,
+    /// The user input history.
+    pub input_history: InputHistory,
     /// Iso mounter. Set to None by default, dropped ASAP
     pub iso_device: Option<IsoDevice>,
     /// Marks allows you to jump to a save mark
     pub marks: Marks,
     /// Hold password between their typing and usage
     pub password_holder: PasswordHolder,
+    /// basic picker
+    pub picker: Picker,
     /// MTP devices
     pub removable_devices: RemovableDevices,
     /// Predefined shortcuts
@@ -54,12 +60,6 @@ pub struct Menu {
     pub sudo_command: Option<String>,
     /// History - here for compatibility reasons only
     pub history: History,
-    /// The user input history.
-    pub input_history: InputHistory,
-    /// cloud
-    pub cloud: OpendalContainer,
-    /// basic picker
-    pub picker: Picker,
 }
 
 impl Menu {
@@ -72,6 +72,7 @@ impl Menu {
         Ok(Self {
             bulk: Bulk::new(fm_sender),
             cli_applications: CliApplications::new(CLI_PATH).update_desc_size(),
+            cloud: OpendalContainer::default(),
             completion: Completion::default(),
             compression: Compresser::default(),
             context: ContextMenu::default(),
@@ -79,18 +80,17 @@ impl Menu {
             flagged: Flagged::default(),
             history: History::default(),
             input: Input::default(),
+            input_history: InputHistory::load(INPUT_HISTORY_PATH)?,
             iso_device: None,
             marks: Marks::new(MARKS_FILEPATH),
             password_holder: PasswordHolder::default(),
+            picker: Picker::default(),
             removable_devices: RemovableDevices::default(),
             shortcut: Shortcut::new(start_dir).with_mount_points(mount_points),
             sudo_command: None,
             trash: Trash::new(binds)?,
             tui_applications: TuiApplications::new(TUIS_PATH),
             window: ContentWindow::new(0, 80),
-            input_history: InputHistory::load(INPUT_HISTORY_PATH)?,
-            cloud: OpendalContainer::default(),
-            picker: Picker::default(),
         })
     }
 

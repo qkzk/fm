@@ -230,7 +230,7 @@ impl Trash {
             None => "alt-x".to_owned(),
         };
 
-        let help = TRASH_CONFIRM_LINE.to_owned() + &format!("{empty_trash_binds}: Empty the trash");
+        let help = format!("{TRASH_CONFIRM_LINE}{empty_trash_binds}: Empty the trash");
 
         let index = 0;
         let content = vec![];
