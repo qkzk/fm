@@ -166,16 +166,26 @@ impl Menu {
         let user_hostname_path_port: Vec<&str> = input.split(' ').collect();
         self.input.reset();
 
+        let Some((username, hostname, remote_path, port)) =
+            Self::parse_remote_args(user_hostname_path_port)
+        else {
+            return;
+        };
+
+        Self::execute_mount_remote(username, hostname, remote_path, port, current_path);
+    }
+
+    fn parse_remote_args(user_hostname_path_port: Vec<&str>) -> Option<(&str, &str, &str, &str)> {
         if !is_in_path(SSHFS_EXECUTABLE) {
             log_info!("{SSHFS_EXECUTABLE} isn't in path");
-            return;
+            return None;
         }
         let number_of_args = user_hostname_path_port.len();
         if number_of_args != 3 && number_of_args != 4 {
             log_info!(
                 "Wrong number of parameters for {SSHFS_EXECUTABLE}, expected 3 or 4, got {number_of_args}",
             );
-            return;
+            return None;
         };
 
         let (username, hostname, remote_path) = (
@@ -189,7 +199,16 @@ impl Menu {
         } else {
             user_hostname_path_port[3]
         };
+        Some((username, hostname, remote_path, port))
+    }
 
+    fn execute_mount_remote(
+        username: &str,
+        hostname: &str,
+        remote_path: &str,
+        port: &str,
+        current_path: &str,
+    ) {
         let first_arg = format!("{username}@{hostname}:{remote_path}");
         let output = execute_and_capture_output_with_path(
             SSHFS_EXECUTABLE,
