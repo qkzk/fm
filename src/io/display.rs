@@ -12,7 +12,7 @@ use tuikit::{
 use crate::app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab};
 use crate::common::{path_to_string, ENCRYPTED_DEVICE_BINDS};
 use crate::config::{ColorG, Gradient, MENU_ATTRS};
-use crate::io::{read_last_log_line, ModeFormat};
+use crate::io::{read_last_log_line, DrawMenu, ModeFormat};
 use crate::log_info;
 use crate::modes::{
     parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, Edit,
@@ -835,34 +835,39 @@ impl<'a> WinSecondary<'a> {
         canvas: &mut dyn Canvas,
         selectable: &impl Content<PathBuf>,
     ) -> Result<()> {
-        let content = selectable.content();
-        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        let len = content.len();
-        for (letter, (row, path, attr)) in
-            std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
-                .skip(top)
-                .take(min(bottom, len))
-        {
-            let attr = selectable.attr(row, &attr);
-            canvas.print_with_attr(
-                row + 1 - top + ContentWindow::WINDOW_MARGIN_TOP,
-                2,
-                &format!("{letter} "),
-                attr,
-            )?;
-            Self::draw_content_line(
-                canvas,
-                row + 1 - top,
-                path.to_str().context("Unreadable filename")?,
-                attr,
-            )?;
-        }
-        Ok(())
+        self.status
+            .menu
+            .shortcut
+            .draw_menu(canvas, &self.status.menu.window, Navigate::Shortcut)
+        // let content = selectable.content();
+        // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        // let len = content.len();
+        // for (letter, (row, path, attr)) in
+        //     std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
+        //         .skip(top)
+        //         .take(min(bottom, len))
+        // {
+        //     let attr = selectable.attr(row, &attr);
+        //     canvas.print_with_attr(
+        //         row + 1 - top + ContentWindow::WINDOW_MARGIN_TOP,
+        //         2,
+        //         &format!("{letter} "),
+        //         attr,
+        //     )?;
+        //     Self::draw_content_line(
+        //         canvas,
+        //         row + 1 - top,
+        //         path.to_str().context("Unreadable filename")?,
+        //         attr,
+        //     )?;
+        // }
+        // Ok(())
     }
 
     fn draw_history(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.tab.history;
         let content = selectable.content();
+        log_info!("window : {window:?}", window = self.status.menu.window);
         for (row, path, attr) in enumerated_colored_iter!(content) {
             let attr = selectable.attr(row, &attr);
             Self::draw_content_line(
@@ -1017,25 +1022,10 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_marks(&self, canvas: &mut dyn Canvas, mark_action: MarkAction) -> Result<()> {
-        canvas.print(1, 2, mark_action.second_line())?;
-        canvas.print_with_attr(
-            2,
-            4,
-            "mark  path",
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
-        )?;
-
-        let content = self.status.menu.marks.as_strings();
-        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        let len = content.len();
-        for (row, line, attr) in enumerated_colored_iter!(content)
-            .skip(top)
-            .take(min(bottom, len))
-        {
-            let attr = self.status.menu.marks.attr(row, &attr);
-            Self::draw_content_line(canvas, row + 1 - top, line, attr)?;
-        }
-        Ok(())
+        self.status
+            .menu
+            .marks
+            .draw_menu(canvas, &self.status.menu.window, mark_action)
     }
 
     // TODO: refactor both methods below with common trait selectable

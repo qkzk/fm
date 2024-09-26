@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 
 use crate::common::{read_lines, tilde};
+use crate::io::DrawMenu;
+use crate::modes::MarkAction;
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
 /// Holds the marks created by the user.
@@ -181,3 +183,5 @@ impl Marks {
 type Pair = (char, PathBuf);
 impl_selectable!(Marks);
 impl_content!(Pair, Marks);
+
+impl DrawMenu<MarkAction, Pair> for Marks {}
