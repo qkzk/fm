@@ -111,4 +111,4 @@ impl Flagged {
 impl_selectable!(Flagged);
 impl_content!(PathBuf, Flagged);
 
-impl DrawMenu<Navigate, PathBuf> for Flagged {}
+impl DrawMenu<PathBuf> for Flagged {}

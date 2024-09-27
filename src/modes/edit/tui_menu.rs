@@ -80,4 +80,4 @@ impl CLApplications<String, ()> for TuiApplications {
 impl_selectable!(TuiApplications);
 impl_content!(String, TuiApplications);
 
-impl DrawMenu<Navigate, String> for TuiApplications {}
+impl DrawMenu<String> for TuiApplications {}

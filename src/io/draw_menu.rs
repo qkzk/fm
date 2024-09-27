@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cmp::min;
 
 use anyhow::Result;
@@ -41,30 +42,35 @@ macro_rules! colored_skip_take {
     };
 }
 
-pub trait ToPrint {
-    fn to_print(&self) -> String;
+pub trait CowStr {
+    fn cow_str(&self) -> Cow<str>;
 }
 
-impl ToPrint for (char, std::path::PathBuf) {
-    fn to_print(&self) -> String {
-        format!("{c} {p}", c = self.0, p = self.1.display())
+impl CowStr for (char, std::path::PathBuf) {
+    fn cow_str(&self) -> Cow<str> {
+        format!("{c} {p}", c = self.0, p = self.1.display()).into()
     }
 }
 
-impl ToPrint for std::path::PathBuf {
-    fn to_print(&self) -> String {
-        self.to_string_lossy().to_string()
+impl CowStr for std::path::PathBuf {
+    fn cow_str(&self) -> Cow<str> {
+        self.to_string_lossy()
     }
 }
 
-impl ToPrint for String {
-    fn to_print(&self) -> String {
-        self.to_owned()
+impl CowStr for String {
+    fn cow_str(&self) -> Cow<str> {
+        self.into()
     }
 }
 
-pub trait DrawMenu<T: SecondLine, U: ToPrint> {
-    fn draw_menu(&self, canvas: &mut dyn Canvas, window: &ContentWindow, mode: T) -> Result<()>
+pub trait DrawMenu<U: CowStr> {
+    fn draw_menu(
+        &self,
+        canvas: &mut dyn Canvas,
+        window: &ContentWindow,
+        mode: &dyn SecondLine,
+    ) -> Result<()>
     where
         Self: Content<U>,
     {
@@ -74,7 +80,7 @@ pub trait DrawMenu<T: SecondLine, U: ToPrint> {
             canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top,
                 4,
-                &line.to_print(),
+                &line.cow_str(),
                 self.attr(row, &attr),
             )?;
         }

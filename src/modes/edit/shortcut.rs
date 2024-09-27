@@ -7,7 +7,7 @@ use crate::common::{
 };
 use crate::io::{git_root, DrawMenu};
 use crate::log_info;
-use crate::modes::{ContentWindow, Navigate};
+use crate::modes::{ContentWindow, SecondLine};
 use crate::{impl_content, impl_selectable};
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.
@@ -174,15 +174,15 @@ impl_selectable!(Shortcut);
 impl_content!(PathBuf, Shortcut);
 use crate::config::{ColorG, Gradient, MENU_ATTRS};
 use crate::io::color_to_attr;
-use crate::io::ToPrint;
+use crate::io::CowStr;
 use std::cmp::min;
 
-impl DrawMenu<Navigate, PathBuf> for Shortcut {
+impl DrawMenu<PathBuf> for Shortcut {
     fn draw_menu(
         &self,
         canvas: &mut dyn tuikit::prelude::Canvas,
         window: &ContentWindow,
-        _mode: Navigate,
+        _mode: &dyn SecondLine,
     ) -> anyhow::Result<()>
     where
         Self: Content<PathBuf>,
@@ -202,7 +202,7 @@ impl DrawMenu<Navigate, PathBuf> for Shortcut {
             canvas.print_with_attr(
                 row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top,
                 4,
-                &path.to_print(),
+                &path.cow_str(),
                 self.attr(row, &attr),
             )?;
         }

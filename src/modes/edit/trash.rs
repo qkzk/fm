@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fs::{create_dir, read_dir, remove_dir_all};
 use std::io::prelude::*;
@@ -11,7 +12,7 @@ use crate::common::{
     TRASH_INFO_EXTENSION,
 };
 use crate::config::Bindings;
-use crate::io::{DrawMenu, ToPrint};
+use crate::io::{CowStr, DrawMenu};
 use crate::modes::Navigate;
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
@@ -516,10 +517,10 @@ where
     Ok(())
 }
 
-impl ToPrint for Info {
-    fn to_print(&self) -> String {
-        self.to_string()
+impl CowStr for Info {
+    fn cow_str(&self) -> Cow<str> {
+        self.to_string().into()
     }
 }
 
-impl DrawMenu<Navigate, Info> for Trash {}
+impl DrawMenu<Info> for Trash {}

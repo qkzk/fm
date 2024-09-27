@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use anyhow::Context;
 use anyhow::Result;
 use serde_yml::from_reader;
@@ -5,7 +7,7 @@ use serde_yml::Mapping;
 
 use crate::app::Status;
 use crate::common::{is_in_path, tilde};
-use crate::io::{execute_with_ansi_colors, DrawMenu, ToPrint};
+use crate::io::{execute_with_ansi_colors, CowStr, DrawMenu};
 use crate::modes::{Navigate, ShellCommandParser};
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
@@ -150,8 +152,8 @@ impl CLApplications<CliCommand, (String, String)> for CliApplications {
 impl_selectable!(CliApplications);
 impl_content!(CliCommand, CliApplications);
 
-impl ToPrint for CliCommand {
-    fn to_print(&self) -> String {
+impl CowStr for CliCommand {
+    fn cow_str(&self) -> Cow<str> {
         let desc_size = 20_usize.saturating_sub(self.desc.len());
         format!(
             "{desc}{space:<desc_size$}{exe}",
@@ -159,7 +161,8 @@ impl ToPrint for CliCommand {
             exe = self.executable,
             space = " "
         )
+        .into()
     }
 }
 
-impl DrawMenu<Navigate, CliCommand> for CliApplications {}
+impl DrawMenu<CliCommand> for CliApplications {}

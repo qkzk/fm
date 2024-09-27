@@ -55,4 +55,4 @@ impl History {
 impl_selectable!(History);
 impl_content!(PathBuf, History);
 
-impl DrawMenu<Navigate, PathBuf> for History {}
+impl DrawMenu<PathBuf> for History {}

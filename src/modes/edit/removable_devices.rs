@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt::Display;
 use std::io::Read;
 
@@ -10,7 +11,7 @@ use crate::impl_content;
 use crate::impl_selectable;
 use crate::io::{
     drop_sudo_privileges, execute_and_output, execute_sudo_command, reset_sudo_faillock,
-    set_sudo_session, DrawMenu, ToPrint,
+    set_sudo_session, CowStr, DrawMenu,
 };
 use crate::modes::{MountCommands, MountRepr, Navigate, PasswordHolder};
 use crate::{log_info, log_line};
@@ -448,10 +449,10 @@ impl UsbDevicesBuilder {
 impl_selectable!(RemovableDevices);
 impl_content!(Removable, RemovableDevices);
 
-impl ToPrint for Removable {
-    fn to_print(&self) -> String {
-        self.device_name().unwrap_or_default()
+impl CowStr for Removable {
+    fn cow_str(&self) -> Cow<str> {
+        self.device_name().unwrap_or_default().into()
     }
 }
 
-impl DrawMenu<Navigate, Removable> for RemovableDevices {}
+impl DrawMenu<Removable> for RemovableDevices {}

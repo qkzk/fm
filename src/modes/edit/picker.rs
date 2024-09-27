@@ -38,4 +38,4 @@ impl Picker {
 impl_selectable!(Picker);
 impl_content!(String, Picker);
 
-impl DrawMenu<Navigate, String> for Picker {}
+impl DrawMenu<String> for Picker {}

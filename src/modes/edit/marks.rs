@@ -184,4 +184,4 @@ type Pair = (char, PathBuf);
 impl_selectable!(Marks);
 impl_content!(Pair, Marks);
 
-impl DrawMenu<MarkAction, Pair> for Marks {}
+impl DrawMenu<Pair> for Marks {}

@@ -1,10 +1,12 @@
+use std::borrow::Cow;
+
 use anyhow::{anyhow, Context, Result};
 use sysinfo::Disks;
 
 use crate::common::{current_username, is_in_path, CRYPTSETUP, LSBLK, MKDIR};
 use crate::io::{
     drop_sudo_privileges, execute_and_output, execute_sudo_command,
-    execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, DrawMenu, ToPrint,
+    execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr, DrawMenu,
 };
 use crate::modes::{
     MountCommands, MountParameters, MountRepr, Navigate, PasswordHolder, PasswordKind,
@@ -319,10 +321,10 @@ impl CryptoDeviceOpener {
 impl_selectable!(CryptoDeviceOpener);
 impl_content!(CryptoDevice, CryptoDeviceOpener);
 
-impl ToPrint for CryptoDevice {
-    fn to_print(&self) -> String {
-        self.as_string().unwrap_or_default()
+impl CowStr for CryptoDevice {
+    fn cow_str(&self) -> Cow<str> {
+        self.as_string().unwrap_or_default().into()
     }
 }
 
-impl DrawMenu<Navigate, CryptoDevice> for CryptoDeviceOpener {}
+impl DrawMenu<CryptoDevice> for CryptoDeviceOpener {}

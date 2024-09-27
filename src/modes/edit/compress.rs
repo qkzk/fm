@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io::Write;
 
@@ -8,7 +8,7 @@ use flate2::Compression;
 use lzma::LzmaWriter;
 use zip::write::SimpleFileOptions;
 
-use crate::io::{DrawMenu, ToPrint};
+use crate::io::{CowStr, DrawMenu};
 use crate::modes::Navigate;
 use crate::{impl_content, impl_selectable, log_line};
 
@@ -22,17 +22,18 @@ pub enum CompressionMethod {
     Lzma,
 }
 
-impl Display for CompressionMethod {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl CompressionMethod {
+    fn to_str(&self) -> &'static str {
         match self {
-            Self::Zip => write!(f, "ZIP:     archive.zip"),
-            Self::Defl => write!(f, "DEFLATE: archive.tar.gz"),
-            Self::Lzma => write!(f, "LZMA:    archive.tar.xz"),
-            Self::Gz => write!(f, "GZ:      archive.tar.gz"),
-            Self::Zlib => write!(f, "ZLIB:    archive.tar.xz"),
+            Self::Zip => "ZIP:     archive.zip",
+            Self::Defl => "DEFLATE: archive.tar.gz",
+            Self::Lzma => "LZMA:    archive.tar.xz",
+            Self::Gz => "GZ:      archive.tar.gz",
+            Self::Zlib => "ZLIB:    archive.tar.xz",
         }
     }
 }
+
 /// Holds a vector of CompressionMethod and a few methods to compress some files.
 #[derive(Debug)]
 pub struct Compresser {
@@ -71,7 +72,7 @@ impl Compresser {
             CompressionMethod::Gz => Self::gzip(Self::archive(here, "archive.tar.gz")?, files)?,
             CompressionMethod::Defl => Self::defl(Self::archive(here, "archive.tar.gz")?, files)?,
         }
-        log_line!("Compressed with {selected}");
+        log_line!("Compressed with {selected}", selected = selected.to_str());
         Ok(())
     }
 
@@ -169,10 +170,10 @@ impl Compresser {
 impl_selectable!(Compresser);
 impl_content!(CompressionMethod, Compresser);
 
-impl ToPrint for CompressionMethod {
-    fn to_print(&self) -> String {
-        format!("{}", self)
+impl CowStr for CompressionMethod {
+    fn cow_str(&self) -> Cow<str> {
+        self.to_str().into()
     }
 }
 
-impl DrawMenu<Navigate, CompressionMethod> for Compresser {}
+impl DrawMenu<CompressionMethod> for Compresser {}

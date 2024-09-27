@@ -1,19 +1,13 @@
-use anyhow::anyhow;
-use anyhow::Context;
-use anyhow::Result;
-use opendal::services;
-use opendal::Entry;
-use opendal::EntryMode;
-use opendal::Operator;
-use serde::Deserialize;
-use serde::Serialize;
-use serde_yml::from_str;
-use serde_yml::to_string as to_yml_string;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+use std::borrow::Cow;
+
+use anyhow::{anyhow, Context, Result};
+use opendal::{services, Entry, EntryMode, Operator};
+use serde::{Deserialize, Serialize};
+use serde_yml::{from_str, to_string as to_yml_string};
+use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::common::{path_to_config_folder, path_to_string, tilde, CONFIG_FOLDER};
-use crate::io::{DrawMenu, ToPrint};
+use crate::io::{CowStr, DrawMenu};
 use crate::modes::{human_size, FileInfo, Navigate};
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
@@ -412,10 +406,10 @@ impl OpendalContainer {
 impl_selectable!(OpendalContainer);
 impl_content!(Entry, OpendalContainer);
 
-impl ToPrint for Entry {
-    fn to_print(&self) -> String {
-        format!("{mode} {path}", mode = self.mode_fmt(), path = self.path())
+impl CowStr for Entry {
+    fn cow_str(&self) -> Cow<str> {
+        format!("{mode} {path}", mode = self.mode_fmt(), path = self.path()).into()
     }
 }
 
-impl DrawMenu<Navigate, Entry> for OpendalContainer {}
+impl DrawMenu<Entry> for OpendalContainer {}
