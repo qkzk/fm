@@ -182,7 +182,7 @@ impl DrawMenu<Navigate, PathBuf> for Shortcut {
         &self,
         canvas: &mut dyn tuikit::prelude::Canvas,
         window: &ContentWindow,
-        mode: Navigate,
+        _mode: Navigate,
     ) -> anyhow::Result<()>
     where
         Self: Content<PathBuf>,

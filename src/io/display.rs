@@ -932,22 +932,23 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
+        let _ = trash.draw_menu(canvas, &self.status.menu.window, Navigate::Trash);
         let _ = canvas.print_with_attr(
             1,
             2,
-            &self.status.menu.trash.help,
+            &trash.help,
             MENU_ATTRS.get().expect("Menu colors should be set").second,
         );
-        let content = trash.content();
-        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        let len = content.len();
-        for (row, trashinfo, attr) in enumerated_colored_iter!(content)
-            .skip(top)
-            .take(min(bottom, len))
-        {
-            let attr = trash.attr(row, &attr);
-            let _ = Self::draw_content_line(canvas, row + 1 - top, &trashinfo.to_string(), attr);
-        }
+        // let content = trash.content();
+        // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        // let len = content.len();
+        // for (row, trashinfo, attr) in enumerated_colored_iter!(content)
+        //     .skip(top)
+        //     .take(min(bottom, len))
+        // {
+        //     let attr = trash.attr(row, &attr);
+        //     let _ = Self::draw_content_line(canvas, row + 1 - top, &trashinfo.to_string(), attr);
+        // }
     }
 
     fn draw_picker(&self, canvas: &mut dyn Canvas) -> Result<()> {

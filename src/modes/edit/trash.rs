@@ -513,3 +513,14 @@ where
     }
     Ok(())
 }
+
+use crate::io::{DrawMenu, ToPrint};
+use crate::modes::Navigate;
+
+impl ToPrint for Info {
+    fn to_print(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl DrawMenu<Navigate, Info> for Trash {}
