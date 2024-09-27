@@ -6,9 +6,8 @@ use crate::common::{
     current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
 };
 use crate::io::{git_root, DrawMenu};
-use crate::log_info;
 use crate::modes::{ContentWindow, SecondLine};
-use crate::{impl_content, impl_selectable};
+use crate::{colored_skip_take, impl_content, impl_selectable, log_info};
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.
 /// Also know which shortcut is currently selected by the user.
@@ -188,10 +187,9 @@ impl DrawMenu<PathBuf> for Shortcut {
         Self: Content<PathBuf>,
     {
         let content = self.content();
-        for (letter, (row, path, attr)) in std::iter::zip(
-            ('a'..='z').cycle(),
-            crate::colored_skip_take!(content, window),
-        ) {
+        for (letter, (row, path, attr)) in
+            std::iter::zip(('a'..='z').cycle(), colored_skip_take!(content, window))
+        {
             let attr = self.attr(row, &attr);
             canvas.print_with_attr(
                 row + 1 - window.top + ContentWindow::WINDOW_MARGIN_TOP,

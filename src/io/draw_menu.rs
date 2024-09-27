@@ -42,6 +42,8 @@ macro_rules! colored_skip_take {
     };
 }
 
+/// Converts itself into a [`std::borrow::Cow<str>`].
+/// It's used to call `print_with_attr` which requires an `&str`.
 pub trait CowStr {
     fn cow_str(&self) -> Cow<str>;
 }
@@ -64,7 +66,12 @@ impl CowStr for String {
     }
 }
 
-pub trait DrawMenu<U: CowStr> {
+/// Trait used to display a scrollable content
+/// Element are itered from the top to the bottom of the window index
+/// and printed in the canvas.
+/// Since the content kind is linked to a mode,
+/// it prints the second line of the mode.
+pub trait DrawMenu<T: CowStr> {
     fn draw_menu(
         &self,
         canvas: &mut dyn Canvas,
@@ -72,9 +79,14 @@ pub trait DrawMenu<U: CowStr> {
         mode: &dyn SecondLine,
     ) -> Result<()>
     where
-        Self: Content<U>,
+        Self: Content<T>,
     {
-        canvas.print(1, 2, mode.second_line())?;
+        canvas.print_with_attr(
+            1,
+            2,
+            mode.second_line(),
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
+        )?;
         let content = self.content();
         for (row, line, attr) in colored_skip_take!(content, window) {
             canvas.print_with_attr(

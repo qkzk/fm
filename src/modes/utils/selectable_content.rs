@@ -1,3 +1,4 @@
+use tuikit::attr::Attr;
 pub trait Selectable {
     /// True iff the content is empty
     fn is_empty(&self) -> bool;
@@ -24,7 +25,7 @@ pub trait Content<T>: Selectable {
     /// add an element to the content
     fn push(&mut self, t: T);
     /// [`tuikit::prelude::Attr`] used to display an element
-    fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr;
+    fn attr(&self, index: usize, attr: &Attr) -> Attr;
 }
 
 pub trait ToPath {
@@ -100,6 +101,7 @@ macro_rules! impl_selectable {
 #[macro_export]
 macro_rules! impl_content {
     ($content_type:ident, $struct:ident) => {
+        use tuikit::attr::{Attr, Effect};
         use $crate::modes::Content;
 
         /// Implement a selectable content for this struct.
@@ -121,14 +123,15 @@ macro_rules! impl_content {
             }
 
             /// Reverse the received effect if the index match the selected index.
-            fn attr(&self, index: usize, attr: &tuikit::attr::Attr) -> tuikit::attr::Attr {
+            fn attr(&self, index: usize, attr: &Attr) -> Attr {
                 let mut attr = *attr;
                 if index == self.index() {
-                    attr.effect |= tuikit::attr::Effect::REVERSE;
+                    attr.effect |= Effect::REVERSE;
                 }
                 attr
             }
 
+            /// Push a new element at the end of content
             fn push(&mut self, element: $content_type) {
                 self.content.push(element)
             }
