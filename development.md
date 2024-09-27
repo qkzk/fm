@@ -1170,6 +1170,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [ ] open 2 menus at once and navigate separately
         use 2 windows ?
   - [ ] moving left shouldn't move right
+- [x] DrawMenu used to display most of navigable elements.
 
 ## TODO
 
