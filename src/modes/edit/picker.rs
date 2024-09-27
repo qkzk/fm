@@ -35,3 +35,14 @@ impl Picker {
 
 impl_selectable!(Picker);
 impl_content!(String, Picker);
+
+use crate::io::{DrawMenu, ToPrint};
+use crate::modes::Navigate;
+
+impl ToPrint for String {
+    fn to_print(&self) -> String {
+        self.to_owned()
+    }
+}
+
+impl DrawMenu<Navigate, String> for Picker {}

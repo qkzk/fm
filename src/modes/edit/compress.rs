@@ -167,3 +167,14 @@ impl Compresser {
 // impl_selectable_content!(CompressionMethod, Compresser);
 impl_selectable!(Compresser);
 impl_content!(CompressionMethod, Compresser);
+
+use crate::io::{DrawMenu, ToPrint};
+use crate::modes::Navigate;
+
+impl ToPrint for CompressionMethod {
+    fn to_print(&self) -> String {
+        format!("{}", self)
+    }
+}
+
+impl DrawMenu<Navigate, CompressionMethod> for Compresser {}

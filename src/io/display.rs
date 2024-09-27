@@ -953,8 +953,8 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_picker(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.picker;
-        let content = selectable.content();
-        if let Some(desc) = &self.status.menu.picker.desc {
+        selectable.draw_menu(canvas, &self.status.menu.window, Navigate::Picker)?;
+        if let Some(desc) = &selectable.desc {
             canvas.clear_line(1)?;
             canvas.print_with_attr(
                 1,
@@ -963,21 +963,24 @@ impl<'a> WinSecondary<'a> {
                 MENU_ATTRS.get().expect("Menu colors should be set").second,
             )?;
         }
-        for (row, pickable, attr) in enumerated_colored_iter!(content) {
-            let attr = selectable.attr(row, &attr);
-            Self::draw_content_line(canvas, row + 1, pickable, attr)?;
-        }
         Ok(())
+        // let content = selectable.content();
+        // for (row, pickable, attr) in enumerated_colored_iter!(content) {
+        //     let attr = selectable.attr(row, &attr);
+        //     Self::draw_content_line(canvas, row + 1, pickable, attr)?;
+        // }
+        // Ok(())
     }
 
     fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.compression;
-        let content = selectable.content();
-        for (row, compression_method, attr) in enumerated_colored_iter!(content) {
-            let attr = selectable.attr(row, &attr);
-            Self::draw_content_line(canvas, row + 1, &compression_method.to_string(), attr)?;
-        }
-        Ok(())
+        selectable.draw_menu(canvas, &self.status.menu.window, Navigate::Compress)
+        // let content = selectable.content();
+        // for (row, compression_method, attr) in enumerated_colored_iter!(content) {
+        //     let attr = selectable.attr(row, &attr);
+        //     Self::draw_content_line(canvas, row + 1, &compression_method.to_string(), attr)?;
+        // }
+        // Ok(())
     }
 
     fn draw_context(&self, canvas: &mut dyn Canvas) -> Result<()> {
