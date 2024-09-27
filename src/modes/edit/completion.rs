@@ -6,7 +6,7 @@ use strum::IntoEnumIterator;
 
 use crate::common::{is_in_path, tilde, ZOXIDE};
 use crate::event::ActionMap;
-use crate::io::execute_and_capture_output_with_path;
+use crate::io::{execute_and_capture_output_with_path, DrawMenu};
 use crate::modes::Leave;
 use crate::{impl_content, impl_selectable};
 
@@ -281,7 +281,5 @@ fn create_parent(vec_steps: Vec<&str>) -> String {
 
 impl_selectable!(Completion);
 impl_content!(String, Completion);
-
-use crate::io::DrawMenu;
 
 impl DrawMenu<InputCompleted, String> for Completion {}

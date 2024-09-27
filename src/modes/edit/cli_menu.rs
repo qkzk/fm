@@ -5,8 +5,8 @@ use serde_yml::Mapping;
 
 use crate::app::Status;
 use crate::common::{is_in_path, tilde};
-use crate::io::execute_with_ansi_colors;
-use crate::modes::ShellCommandParser;
+use crate::io::{execute_with_ansi_colors, DrawMenu, ToPrint};
+use crate::modes::{Navigate, ShellCommandParser};
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
 pub trait Execute<T> {
@@ -149,9 +149,6 @@ impl CLApplications<CliCommand, (String, String)> for CliApplications {
 
 impl_selectable!(CliApplications);
 impl_content!(CliCommand, CliApplications);
-
-use crate::io::{DrawMenu, ToPrint};
-use crate::modes::Navigate;
 
 impl ToPrint for CliCommand {
     fn to_print(&self) -> String {

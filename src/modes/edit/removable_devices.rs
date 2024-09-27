@@ -10,9 +10,9 @@ use crate::impl_content;
 use crate::impl_selectable;
 use crate::io::{
     drop_sudo_privileges, execute_and_output, execute_sudo_command, reset_sudo_faillock,
-    set_sudo_session,
+    set_sudo_session, DrawMenu, ToPrint,
 };
-use crate::modes::{MountCommands, MountRepr, PasswordHolder};
+use crate::modes::{MountCommands, MountRepr, Navigate, PasswordHolder};
 use crate::{log_info, log_line};
 
 /// Holds info about removable devices.
@@ -447,9 +447,6 @@ impl UsbDevicesBuilder {
 
 impl_selectable!(RemovableDevices);
 impl_content!(Removable, RemovableDevices);
-
-use crate::io::{DrawMenu, ToPrint};
-use crate::modes::Navigate;
 
 impl ToPrint for Removable {
     fn to_print(&self) -> String {

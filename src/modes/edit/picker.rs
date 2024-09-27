@@ -1,3 +1,5 @@
+use crate::io::{DrawMenu, ToPrint};
+use crate::modes::Navigate;
 use crate::{impl_content, impl_selectable};
 
 pub enum PickerCaller {
@@ -35,9 +37,6 @@ impl Picker {
 
 impl_selectable!(Picker);
 impl_content!(String, Picker);
-
-use crate::io::{DrawMenu, ToPrint};
-use crate::modes::Navigate;
 
 impl ToPrint for String {
     fn to_print(&self) -> String {

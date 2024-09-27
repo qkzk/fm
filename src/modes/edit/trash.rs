@@ -11,6 +11,8 @@ use crate::common::{
     TRASH_INFO_EXTENSION,
 };
 use crate::config::Bindings;
+use crate::io::{DrawMenu, ToPrint};
+use crate::modes::Navigate;
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
 const TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
@@ -513,9 +515,6 @@ where
     }
     Ok(())
 }
-
-use crate::io::{DrawMenu, ToPrint};
-use crate::modes::Navigate;
 
 impl ToPrint for Info {
     fn to_print(&self) -> String {

@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use crate::common::tilde;
+use crate::io::DrawMenu;
+use crate::modes::Navigate;
 use crate::{impl_content, impl_selectable};
 
 #[derive(Default)]
@@ -108,8 +110,5 @@ impl Flagged {
 
 impl_selectable!(Flagged);
 impl_content!(PathBuf, Flagged);
-
-use crate::io::DrawMenu;
-use crate::modes::Navigate;
 
 impl DrawMenu<Navigate, PathBuf> for Flagged {}

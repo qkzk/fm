@@ -3,9 +3,9 @@ use serde_yml::Mapping;
 
 use crate::app::Status;
 use crate::common::is_in_path;
-use crate::io::{execute_without_output, execute_without_output_with_path};
+use crate::io::{execute_without_output, execute_without_output_with_path, DrawMenu};
 use crate::log_line;
-use crate::modes::{CLApplications, Execute};
+use crate::modes::{CLApplications, Execute, Navigate};
 use crate::{impl_content, impl_selectable};
 
 /// Execute a command requiring to be ran from current working directory.
@@ -45,7 +45,7 @@ impl Execute<()> for String {
         } else {
             require_cwd_and_command(status, self)?;
         };
-        log_line!("Executed {name}", name = self);
+        log_line!("Executed {self}");
         Ok(())
     }
 }
@@ -79,8 +79,5 @@ impl CLApplications<String, ()> for TuiApplications {
 
 impl_selectable!(TuiApplications);
 impl_content!(String, TuiApplications);
-
-use crate::io::DrawMenu;
-use crate::modes::Navigate;
 
 impl DrawMenu<Navigate, String> for TuiApplications {}

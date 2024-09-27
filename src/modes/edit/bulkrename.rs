@@ -1,14 +1,16 @@
-use anyhow::{anyhow, Result};
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::Sender;
-use std::sync::Arc;
+use std::sync::{mpsc::Sender, Arc};
 use std::thread;
 use std::time::{Duration, SystemTime};
+
+use anyhow::{anyhow, Result};
 
 use crate::common::{random_name, rename, TMP_FOLDER_PATH};
 use crate::event::FmEvents;
 use crate::{log_info, log_line};
+
+type OptionVecPathBuf = Option<Vec<PathBuf>>;
 
 struct BulkExecutor {
     original_filepath: Vec<PathBuf>,
@@ -87,7 +89,7 @@ impl BulkExecutor {
         Ok((renamed_paths, created_paths))
     }
 
-    fn rename_all(&self, new_filenames: &[String]) -> Result<Option<Vec<PathBuf>>> {
+    fn rename_all(&self, new_filenames: &[String]) -> Result<OptionVecPathBuf> {
         let mut paths = vec![];
         for (path, filename) in self.original_filepath.iter().zip(new_filenames.iter()) {
             match rename(path, filename) {
@@ -102,7 +104,7 @@ impl BulkExecutor {
         Ok(Some(paths))
     }
 
-    fn create_all_files(&self, new_filenames: &[String]) -> Result<Option<Vec<PathBuf>>> {
+    fn create_all_files(&self, new_filenames: &[String]) -> Result<OptionVecPathBuf> {
         let mut paths = vec![];
         for filename in new_filenames.iter().skip(self.original_filepath.len()) {
             let Some(path) = self.create_file(filename)? else {
@@ -275,5 +277,3 @@ impl Bulk {
         self.bulk.as_ref().map(|bulk| bulk.temp_file.to_owned())
     }
 }
-
-type OptionVecPathBuf = Option<Vec<PathBuf>>;

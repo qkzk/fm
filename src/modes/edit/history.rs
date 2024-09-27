@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use crate::io::DrawMenu;
+use crate::modes::Navigate;
 use crate::{impl_content, impl_selectable};
 
 /// A stack of visited paths.
@@ -52,8 +54,5 @@ impl History {
 
 impl_selectable!(History);
 impl_content!(PathBuf, History);
-
-use crate::io::DrawMenu;
-use crate::modes::Navigate;
 
 impl DrawMenu<Navigate, PathBuf> for History {}

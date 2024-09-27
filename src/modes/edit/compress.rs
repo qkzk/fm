@@ -8,6 +8,8 @@ use flate2::Compression;
 use lzma::LzmaWriter;
 use zip::write::SimpleFileOptions;
 
+use crate::io::{DrawMenu, ToPrint};
+use crate::modes::Navigate;
 use crate::{impl_content, impl_selectable, log_line};
 
 /// Different kind of compression methods
@@ -166,9 +168,6 @@ impl Compresser {
 
 impl_selectable!(Compresser);
 impl_content!(CompressionMethod, Compresser);
-
-use crate::io::{DrawMenu, ToPrint};
-use crate::modes::Navigate;
 
 impl ToPrint for CompressionMethod {
     fn to_print(&self) -> String {
