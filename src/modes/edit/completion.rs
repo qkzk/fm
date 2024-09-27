@@ -8,6 +8,7 @@ use crate::common::{is_in_path, tilde, ZOXIDE};
 use crate::event::ActionMap;
 use crate::io::execute_and_capture_output_with_path;
 use crate::modes::Leave;
+use crate::{impl_content, impl_selectable};
 
 /// Different kind of completions
 #[derive(Clone, Default, Copy)]
@@ -59,78 +60,45 @@ impl Leave for InputCompleted {
 #[derive(Clone, Default)]
 pub struct Completion {
     /// Possible completions
-    pub proposals: Vec<String>,
+    pub content: Vec<String>,
     /// Which completion is selected by the user
     pub index: usize,
 }
 
 impl Completion {
-    pub fn len(&self) -> usize {
-        self.proposals.len()
-    }
-
     /// Is there any completion option ?
     pub fn is_empty(&self) -> bool {
-        self.proposals.is_empty()
-    }
-
-    /// Move the index to next element, cycling to 0.
-    /// Does nothing if the list is empty.
-    pub fn next(&mut self) {
-        if self.proposals.is_empty() {
-            return;
-        }
-        self.index = (self.index + 1) % self.proposals.len()
-    }
-
-    /// Move the index to previous element, cycling to the last one.
-    /// Does nothing if the list is empty.
-    pub fn prev(&mut self) {
-        if self.proposals.is_empty() {
-            return;
-        }
-        if self.index > 0 {
-            self.index -= 1
-        } else {
-            self.index = self.proposals.len() - 1
-        }
-    }
-
-    /// Set the index to a new value if the value is below the length.
-    pub fn set_index(&mut self, index: usize) {
-        if index < self.proposals.len() {
-            self.index = index;
-        }
+        self.content.is_empty()
     }
 
     /// Returns the currently selected proposition.
     /// Returns an empty string if `proposals` is empty.
     pub fn current_proposition(&self) -> &str {
-        if self.proposals.is_empty() {
+        if self.content.is_empty() {
             return "";
         }
-        &self.proposals[self.index]
+        &self.content[self.index]
     }
 
     /// Updates the proposition with a new `Vec`.
     /// Reset the index to 0.
     fn update(&mut self, proposals: Vec<String>) {
         self.index = 0;
-        self.proposals = proposals;
-        self.proposals.dedup()
+        self.content = proposals;
+        self.content.dedup()
     }
 
     fn extend(&mut self, proposals: &[String]) {
         self.index = 0;
-        self.proposals.extend_from_slice(proposals);
-        self.proposals.dedup()
+        self.content.extend_from_slice(proposals);
+        self.content.dedup()
     }
 
     /// Empty the proposals `Vec`.
     /// Reset the index.
     pub fn reset(&mut self) {
         self.index = 0;
-        self.proposals.clear();
+        self.content.clear();
     }
 
     /// Cd completion.
@@ -147,13 +115,13 @@ impl Completion {
     }
 
     fn cd_update_from_input(&mut self, input_string: &str, current_path: &str) {
-        self.proposals = vec![];
+        self.content = vec![];
         self.cd_update_from_zoxide(input_string, current_path);
         if let Some(expanded_input) = self.expand_input(input_string) {
-            self.proposals.push(expanded_input);
+            self.content.push(expanded_input);
         }
         if let Some(cannonicalized_input) = self.canonicalize_input(input_string, current_path) {
-            self.proposals.push(cannonicalized_input);
+            self.content.push(cannonicalized_input);
         }
     }
 
@@ -168,7 +136,7 @@ impl Completion {
             return;
         };
         if !zoxide_output.is_empty() {
-            self.proposals.push(zoxide_output.trim().to_string());
+            self.content.push(zoxide_output.trim().to_string());
         }
     }
 
@@ -310,3 +278,10 @@ fn create_parent(vec_steps: Vec<&str>) -> String {
     parent.push_str(&vec_steps.join("/"));
     tilde(&parent).to_string()
 }
+
+impl_selectable!(Completion);
+impl_content!(String, Completion);
+
+use crate::io::DrawMenu;
+
+impl DrawMenu<InputCompleted, String> for Completion {}

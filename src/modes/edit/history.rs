@@ -52,3 +52,8 @@ impl History {
 
 impl_selectable!(History);
 impl_content!(PathBuf, History);
+
+use crate::io::DrawMenu;
+use crate::modes::Navigate;
+
+impl DrawMenu<Navigate, PathBuf> for History {}

@@ -1,5 +1,4 @@
 use std::cmp::min;
-use std::path::PathBuf;
 use std::sync::{Arc, MutexGuard};
 
 use anyhow::{Context, Result};
@@ -10,18 +9,16 @@ use tuikit::{
 };
 
 use crate::app::{ClickableLine, ClickableString, Footer, Header, PreviewHeader, Status, Tab};
-use crate::common::{path_to_string, ENCRYPTED_DEVICE_BINDS};
+use crate::common::path_to_string;
 use crate::config::{ColorG, Gradient, MENU_ATTRS};
-use crate::io::{read_last_log_line, DrawMenu, ModeFormat};
+use crate::io::{read_last_log_line, DrawMenu};
 use crate::log_info;
 use crate::modes::{
     parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, Edit,
-    FileInfo, HLContent, InputSimple, LineDisplay, MarkAction, MoreInfos, MountRepr, Navigate,
+    FileInfo, HLContent, InputCompleted, InputSimple, LineDisplay, MarkAction, MoreInfos, Navigate,
     NeedConfirmation, Preview, SecondLine, Selectable, Text, TextKind, Trash, Tree,
     TreeLineBuilder, Ueber, Window,
 };
-
-use super::ToPrint;
 
 trait ClearLine {
     fn clear_line(&mut self, row: usize) -> Result<()>;
@@ -721,7 +718,7 @@ impl<'a> Draw for WinSecondary<'a> {
         match self.tab.edit_mode {
             Edit::Navigate(mode) => self.draw_navigate(mode, canvas),
             Edit::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
-            Edit::InputCompleted(_) => self.draw_completion(canvas),
+            Edit::InputCompleted(mode) => self.draw_completion(canvas, mode),
             Edit::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
             _ => return Ok(()),
         }?;
@@ -778,18 +775,15 @@ impl<'a> WinSecondary<'a> {
 
     /// Display the possible completion items. The currently selected one is
     /// reversed.
-    fn draw_completion(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let content = &self.status.menu.completion.proposals;
-        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        let len = content.len();
-        for (row, candidate, attr) in enumerated_colored_iter!(content)
-            .skip(top)
-            .take(min(bottom, len))
-        {
-            let attr = self.status.menu.completion.attr(row, &attr);
-            Self::draw_content_line(canvas, row + 1 - top, candidate, attr)?;
-        }
-        Ok(())
+    fn draw_completion(
+        &self,
+        canvas: &mut dyn Canvas,
+        input_completed: InputCompleted,
+    ) -> Result<()> {
+        self.status
+            .menu
+            .completion
+            .draw_menu(canvas, &self.status.menu.window, input_completed)
     }
 
     fn draw_static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {
@@ -816,70 +810,34 @@ impl<'a> WinSecondary<'a> {
     fn draw_navigate(&self, navigable_mode: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
         match navigable_mode {
             Navigate::CliApplication => self.draw_cli_applications(canvas),
+            Navigate::Cloud => self.draw_cloud(canvas),
             Navigate::Compress => self.draw_compress(canvas),
             Navigate::Context => self.draw_context(canvas),
             Navigate::EncryptedDrive => self.draw_encrypted_drive(canvas),
+            Navigate::Flagged => self.draw_flagged(canvas),
             Navigate::History => self.draw_history(canvas),
             Navigate::Marks(mark_action) => self.draw_marks(canvas, mark_action),
-            Navigate::RemovableDevices => self.draw_removable(canvas),
-            Navigate::TuiApplication => self.draw_shell_menu(canvas),
-            Navigate::Shortcut => self.draw_shortcut(canvas, &self.status.menu.shortcut),
-            Navigate::Trash => self.draw_trash(canvas),
-            Navigate::Cloud => self.draw_cloud(canvas),
             Navigate::Picker => self.draw_picker(canvas),
-            Navigate::Flagged => self.draw_flagged(canvas),
+            Navigate::RemovableDevices => self.draw_removable(canvas),
+            Navigate::Shortcut => self.draw_shortcut(canvas),
+            Navigate::Trash => self.draw_trash(canvas),
+            Navigate::TuiApplication => self.draw_shell_menu(canvas),
         }
     }
 
     /// Display the possible destinations from a selectable content of PathBuf.
-    fn draw_shortcut(
-        &self,
-        canvas: &mut dyn Canvas,
-        selectable: &impl Content<PathBuf>,
-    ) -> Result<()> {
+    fn draw_shortcut(&self, canvas: &mut dyn Canvas) -> Result<()> {
         self.status
             .menu
             .shortcut
             .draw_menu(canvas, &self.status.menu.window, Navigate::Shortcut)
-        // let content = selectable.content();
-        // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        // let len = content.len();
-        // for (letter, (row, path, attr)) in
-        //     std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
-        //         .skip(top)
-        //         .take(min(bottom, len))
-        // {
-        //     let attr = selectable.attr(row, &attr);
-        //     canvas.print_with_attr(
-        //         row + 1 - top + ContentWindow::WINDOW_MARGIN_TOP,
-        //         2,
-        //         &format!("{letter} "),
-        //         attr,
-        //     )?;
-        //     Self::draw_content_line(
-        //         canvas,
-        //         row + 1 - top,
-        //         path.to_str().context("Unreadable filename")?,
-        //         attr,
-        //     )?;
-        // }
-        // Ok(())
     }
 
     fn draw_history(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.tab.history;
-        let content = selectable.content();
-        log_info!("window : {window:?}", window = self.status.menu.window);
-        for (row, path, attr) in enumerated_colored_iter!(content) {
-            let attr = selectable.attr(row, &attr);
-            Self::draw_content_line(
-                canvas,
-                row + 1,
-                path.to_str().context("Unreadable filename")?,
-                attr,
-            )?;
-        }
-        Ok(())
+        let mut window = ContentWindow::new(selectable.len(), canvas.height()?);
+        window.scroll_to(selectable.index);
+        selectable.draw_menu(canvas, &window, Navigate::History)
     }
 
     fn draw_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -910,28 +868,6 @@ impl<'a> WinSecondary<'a> {
             },
         );
         cloud.draw_menu(canvas, &self.status.menu.window, Navigate::Cloud)
-        // let content = cloud.content();
-        // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        // let len = content.len();
-        // for (row, entry, attr) in enumerated_colored_iter!(content)
-        //     .skip(top)
-        //     .take(min(bottom, len))
-        // {
-        //     let attr = cloud.attr(row, &attr);
-        //     let _ = canvas.print_with_attr(
-        //         row + ContentWindow::WINDOW_MARGIN_TOP + 1 - top,
-        //         4,
-        //         entry.mode_fmt(),
-        //         attr,
-        //     )?;
-        //     let _ = canvas.print_with_attr(
-        //         row + ContentWindow::WINDOW_MARGIN_TOP + 1 - top,
-        //         6,
-        //         entry.path(),
-        //         attr,
-        //     )?;
-        // }
-        // Ok(())
     }
 
     fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
@@ -942,16 +878,6 @@ impl<'a> WinSecondary<'a> {
             &trash.help,
             MENU_ATTRS.get().expect("Menu colors should be set").second,
         );
-        // let content = trash.content();
-        // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        // let len = content.len();
-        // for (row, trashinfo, attr) in enumerated_colored_iter!(content)
-        //     .skip(top)
-        //     .take(min(bottom, len))
-        // {
-        //     let attr = trash.attr(row, &attr);
-        //     let _ = Self::draw_content_line(canvas, row + 1 - top, &trashinfo.to_string(), attr);
-        // }
     }
 
     fn draw_picker(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -967,23 +893,11 @@ impl<'a> WinSecondary<'a> {
             )?;
         }
         Ok(())
-        // let content = selectable.content();
-        // for (row, pickable, attr) in enumerated_colored_iter!(content) {
-        //     let attr = selectable.attr(row, &attr);
-        //     Self::draw_content_line(canvas, row + 1, pickable, attr)?;
-        // }
-        // Ok(())
     }
 
     fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.compression;
         selectable.draw_menu(canvas, &self.status.menu.window, Navigate::Compress)
-        // let content = selectable.content();
-        // for (row, compression_method, attr) in enumerated_colored_iter!(content) {
-        //     let attr = selectable.attr(row, &attr);
-        //     Self::draw_content_line(canvas, row + 1, &compression_method.to_string(), attr)?;
-        // }
-        // Ok(())
     }
 
     fn draw_context(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -1042,18 +956,6 @@ impl<'a> WinSecondary<'a> {
             &self.status.menu.window,
             Navigate::TuiApplication,
         )
-        //
-        // let content = &self.status.menu.tui_applications.content;
-        // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        // let len = content.len();
-        // for (row, command, attr) in enumerated_colored_iter!(content)
-        //     .skip(top)
-        //     .take(min(bottom, len))
-        // {
-        //     let attr = self.status.menu.tui_applications.attr(row, &attr);
-        //     Self::draw_content_line(canvas, row + 1 - top, command, attr)?;
-        // }
-        // Ok(())
     }
 
     fn draw_cli_applications(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -1062,30 +964,6 @@ impl<'a> WinSecondary<'a> {
             &self.status.menu.window,
             Navigate::TuiApplication,
         )
-
-        // let content = &self.status.menu.cli_applications.content;
-        // let desc_size = self.status.menu.cli_applications.desc_size;
-        // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        // let len = content.len();
-        // for (row, cli_command, attr) in enumerated_colored_iter!(content)
-        //     .skip(top)
-        //     .take(min(bottom, len))
-        // {
-        //     let attr = self.status.menu.cli_applications.attr(row, &attr);
-        //     canvas.print_with_attr(
-        //         row + 1 + ContentWindow::WINDOW_MARGIN_TOP - top,
-        //         4,
-        //         &cli_command.desc,
-        //         attr,
-        //     )?;
-        //     canvas.print_with_attr(
-        //         row + 1 + ContentWindow::WINDOW_MARGIN_TOP - top,
-        //         8 + desc_size,
-        //         &cli_command.executable,
-        //         attr,
-        //     )?;
-        // }
-        // Ok(())
     }
 
     fn draw_encrypted_drive(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -1103,37 +981,6 @@ impl<'a> WinSecondary<'a> {
             Navigate::RemovableDevices,
         )
     }
-
-    // fn draw_mountable_devices<T, U>(
-    //     &self,
-    //     selectable: &(impl Content<T>, impl DrawMenu<T, U>),
-    //     canvas: &mut dyn Canvas,
-    //     mode: Navigate,
-    // ) -> Result<()>
-    // where
-    //     T: MountRepr + SecondLine,
-    //     U: ToPrint,
-    // {
-    //     selectable.draw_menu(canvas, &self.status.menu.window, mode)
-    //     // canvas.print_with_attr(
-    //     //     1,
-    //     //     2,
-    //     //     ENCRYPTED_DEVICE_BINDS,
-    //     //     MENU_ATTRS.get().expect("Menu colors should be set").second,
-    //     // )?;
-    //     // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-    //     // let len = selectable.len();
-    //     // for (i, device) in selectable
-    //     //     .content()
-    //     //     .iter()
-    //     //     .enumerate()
-    //     //     .skip(top)
-    //     //     .take(min(bottom, len))
-    //     // {
-    //     //     self.draw_mountable_device(selectable, i - top, device, canvas)?
-    //     // }
-    //     // Ok(())
-    // }
 
     /// Display a list of edited (deleted, copied, moved, trashed) files for confirmation
     fn draw_confirm(
