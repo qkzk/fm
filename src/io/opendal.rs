@@ -13,7 +13,8 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
 use crate::common::{path_to_config_folder, path_to_string, tilde, CONFIG_FOLDER};
-use crate::modes::{human_size, FileInfo};
+use crate::io::{DrawMenu, ToPrint};
+use crate::modes::{human_size, FileInfo, Navigate};
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -410,9 +411,6 @@ impl OpendalContainer {
 
 impl_selectable!(OpendalContainer);
 impl_content!(Entry, OpendalContainer);
-
-use crate::io::{DrawMenu, ToPrint};
-use crate::modes::Navigate;
 
 impl ToPrint for Entry {
     fn to_print(&self) -> String {

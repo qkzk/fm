@@ -57,6 +57,12 @@ impl ToPrint for std::path::PathBuf {
     }
 }
 
+impl ToPrint for String {
+    fn to_print(&self) -> String {
+        self.to_owned()
+    }
+}
+
 pub trait DrawMenu<T: SecondLine, U: ToPrint> {
     fn draw_menu(&self, canvas: &mut dyn Canvas, window: &ContentWindow, mode: T) -> Result<()>
     where
