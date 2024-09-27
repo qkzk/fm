@@ -410,3 +410,14 @@ impl OpendalContainer {
 
 impl_selectable!(OpendalContainer);
 impl_content!(Entry, OpendalContainer);
+
+use crate::io::{DrawMenu, ToPrint};
+use crate::modes::Navigate;
+
+impl ToPrint for Entry {
+    fn to_print(&self) -> String {
+        format!("{mode} {path}", mode = self.mode_fmt(), path = self.path())
+    }
+}
+
+impl DrawMenu<Navigate, Entry> for OpendalContainer {}

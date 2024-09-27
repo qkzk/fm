@@ -909,28 +909,29 @@ impl<'a> WinSecondary<'a> {
                 ..Attr::default()
             },
         );
-        let content = cloud.content();
-        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        let len = content.len();
-        for (row, entry, attr) in enumerated_colored_iter!(content)
-            .skip(top)
-            .take(min(bottom, len))
-        {
-            let attr = cloud.attr(row, &attr);
-            let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP + 1 - top,
-                4,
-                entry.mode_fmt(),
-                attr,
-            )?;
-            let _ = canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP + 1 - top,
-                6,
-                entry.path(),
-                attr,
-            )?;
-        }
-        Ok(())
+        cloud.draw_menu(canvas, &self.status.menu.window, Navigate::Cloud)
+        // let content = cloud.content();
+        // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        // let len = content.len();
+        // for (row, entry, attr) in enumerated_colored_iter!(content)
+        //     .skip(top)
+        //     .take(min(bottom, len))
+        // {
+        //     let attr = cloud.attr(row, &attr);
+        //     let _ = canvas.print_with_attr(
+        //         row + ContentWindow::WINDOW_MARGIN_TOP + 1 - top,
+        //         4,
+        //         entry.mode_fmt(),
+        //         attr,
+        //     )?;
+        //     let _ = canvas.print_with_attr(
+        //         row + ContentWindow::WINDOW_MARGIN_TOP + 1 - top,
+        //         6,
+        //         entry.path(),
+        //         attr,
+        //     )?;
+        // }
+        // Ok(())
     }
 
     fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
