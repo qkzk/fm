@@ -316,3 +316,14 @@ impl CryptoDeviceOpener {
 
 impl_selectable!(CryptoDeviceOpener);
 impl_content!(CryptoDevice, CryptoDeviceOpener);
+
+use crate::io::{DrawMenu, ToPrint};
+use crate::modes::Navigate;
+
+impl ToPrint for CryptoDevice {
+    fn to_print(&self) -> String {
+        self.as_string().unwrap_or_default()
+    }
+}
+
+impl DrawMenu<Navigate, CryptoDevice> for CryptoDeviceOpener {}

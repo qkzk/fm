@@ -447,3 +447,14 @@ impl UsbDevicesBuilder {
 
 impl_selectable!(RemovableDevices);
 impl_content!(Removable, RemovableDevices);
+
+use crate::io::{DrawMenu, ToPrint};
+use crate::modes::Navigate;
+
+impl ToPrint for Removable {
+    fn to_print(&self) -> String {
+        self.device_name().unwrap_or_default()
+    }
+}
+
+impl DrawMenu<Navigate, Removable> for RemovableDevices {}

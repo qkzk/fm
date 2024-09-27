@@ -21,6 +21,8 @@ use crate::modes::{
     TreeLineBuilder, Ueber, Window,
 };
 
+use super::ToPrint;
+
 trait ClearLine {
     fn clear_line(&mut self, row: usize) -> Result<()>;
 }
@@ -1086,57 +1088,51 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_encrypted_drive(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.draw_mountable_devices(&self.status.menu.encrypted_devices, canvas)
+        self.status.menu.encrypted_devices.draw_menu(
+            canvas,
+            &self.status.menu.window,
+            Navigate::EncryptedDrive,
+        )
     }
 
     fn draw_removable(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.draw_mountable_devices(&self.status.menu.removable_devices, canvas)?;
-        Ok(())
+        self.status.menu.removable_devices.draw_menu(
+            canvas,
+            &self.status.menu.window,
+            Navigate::RemovableDevices,
+        )
     }
 
-    fn draw_mountable_devices<T>(
-        &self,
-        selectable: &impl Content<T>,
-        canvas: &mut dyn Canvas,
-    ) -> Result<()>
-    where
-        T: MountRepr,
-    {
-        canvas.print_with_attr(
-            1,
-            2,
-            ENCRYPTED_DEVICE_BINDS,
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
-        )?;
-        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        let len = selectable.len();
-        for (i, device) in selectable
-            .content()
-            .iter()
-            .enumerate()
-            .skip(top)
-            .take(min(bottom, len))
-        {
-            self.draw_mountable_device(selectable, i - top, device, canvas)?
-        }
-        Ok(())
-    }
-
-    fn draw_mountable_device<T>(
-        &self,
-        selectable: &impl Content<T>,
-        index: usize,
-        device: &T,
-        canvas: &mut dyn Canvas,
-    ) -> Result<()>
-    where
-        T: MountRepr,
-    {
-        let row = calc_line_row(index, &self.tab.window) + 1;
-        let attr = selectable.attr(index, &device.attr());
-        canvas.print_with_attr(row, 3, &device.device_name()?, attr)?;
-        Ok(())
-    }
+    // fn draw_mountable_devices<T, U>(
+    //     &self,
+    //     selectable: &(impl Content<T>, impl DrawMenu<T, U>),
+    //     canvas: &mut dyn Canvas,
+    //     mode: Navigate,
+    // ) -> Result<()>
+    // where
+    //     T: MountRepr + SecondLine,
+    //     U: ToPrint,
+    // {
+    //     selectable.draw_menu(canvas, &self.status.menu.window, mode)
+    //     // canvas.print_with_attr(
+    //     //     1,
+    //     //     2,
+    //     //     ENCRYPTED_DEVICE_BINDS,
+    //     //     MENU_ATTRS.get().expect("Menu colors should be set").second,
+    //     // )?;
+    //     // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+    //     // let len = selectable.len();
+    //     // for (i, device) in selectable
+    //     //     .content()
+    //     //     .iter()
+    //     //     .enumerate()
+    //     //     .skip(top)
+    //     //     .take(min(bottom, len))
+    //     // {
+    //     //     self.draw_mountable_device(selectable, i - top, device, canvas)?
+    //     // }
+    //     // Ok(())
+    // }
 
     /// Display a list of edited (deleted, copied, moved, trashed) files for confirmation
     fn draw_confirm(
