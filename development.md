@@ -1163,6 +1163,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] Fix: can't flag files when flagged menu is opened
   - [x] Fix: removing flagged files can crash.
   - [x] removed window from flagged
+  - [x] Fix: Too much flags + scroll = crash
 - [ ] menus refactor
   - [x] Fix: closing left menu shouldn't clear right
   - [x] refactor menu.remote_mount into a separate module with parser & executer

@@ -108,3 +108,8 @@ impl Flagged {
 
 impl_selectable!(Flagged);
 impl_content!(PathBuf, Flagged);
+
+use crate::io::DrawMenu;
+use crate::modes::Navigate;
+
+impl DrawMenu<Navigate, PathBuf> for Flagged {}

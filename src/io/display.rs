@@ -1234,16 +1234,10 @@ impl<'a> WinSecondary<'a> {
     }
 
     fn draw_flagged_files(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let top = &self.status.menu.window.top;
-        for (index, path) in self.status.menu.flagged.content().iter().enumerate() {
-            let mut attr = FileInfo::new(path, &self.tab.users)?.attr();
-            if index == self.status.menu.flagged.index {
-                attr.effect |= Effect::REVERSE;
-            }
-            let row = index + 1 - top + ContentWindow::WINDOW_MARGIN_TOP;
-            canvas.print_with_attr(row, 2, &path.to_string_lossy(), attr)?;
-        }
-        Ok(())
+        self.status
+            .menu
+            .flagged
+            .draw_menu(canvas, &self.status.menu.window, Navigate::Flagged)
     }
 
     fn draw_flagged_selected(&self, canvas: &mut dyn Canvas) -> Result<()> {
