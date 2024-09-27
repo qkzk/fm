@@ -13,7 +13,7 @@ use crate::io::{
     drop_sudo_privileges, execute_and_output, execute_sudo_command, reset_sudo_faillock,
     set_sudo_session, CowStr, DrawMenu,
 };
-use crate::modes::{MountCommands, MountRepr, Navigate, PasswordHolder};
+use crate::modes::{MountCommands, MountRepr, PasswordHolder};
 use crate::{log_info, log_line};
 
 /// Holds info about removable devices.

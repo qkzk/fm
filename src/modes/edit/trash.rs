@@ -13,7 +13,6 @@ use crate::common::{
 };
 use crate::config::Bindings;
 use crate::io::{CowStr, DrawMenu};
-use crate::modes::Navigate;
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
 const TRASHINFO_DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";

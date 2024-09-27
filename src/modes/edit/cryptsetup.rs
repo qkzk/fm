@@ -9,7 +9,7 @@ use crate::io::{
     execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr, DrawMenu,
 };
 use crate::modes::{
-    MountCommands, MountParameters, MountRepr, Navigate, PasswordHolder, PasswordKind,
+    MountCommands, MountParameters, MountRepr, PasswordHolder, PasswordKind,
 };
 use crate::{impl_content, impl_selectable, log_info};
 

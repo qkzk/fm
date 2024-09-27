@@ -8,7 +8,7 @@ use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::common::{path_to_config_folder, path_to_string, tilde, CONFIG_FOLDER};
 use crate::io::{CowStr, DrawMenu};
-use crate::modes::{human_size, FileInfo, Navigate};
+use crate::modes::{human_size, FileInfo};
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
 #[derive(Serialize, Deserialize, Debug)]

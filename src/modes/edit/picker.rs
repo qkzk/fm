@@ -1,5 +1,4 @@
 use crate::io::DrawMenu;
-use crate::modes::Navigate;
 use crate::{impl_content, impl_selectable};
 
 pub enum PickerCaller {

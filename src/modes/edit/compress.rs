@@ -9,7 +9,6 @@ use lzma::LzmaWriter;
 use zip::write::SimpleFileOptions;
 
 use crate::io::{CowStr, DrawMenu};
-use crate::modes::Navigate;
 use crate::{impl_content, impl_selectable, log_line};
 
 /// Different kind of compression methods

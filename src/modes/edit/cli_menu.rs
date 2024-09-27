@@ -8,7 +8,7 @@ use serde_yml::Mapping;
 use crate::app::Status;
 use crate::common::{is_in_path, tilde};
 use crate::io::{execute_with_ansi_colors, CowStr, DrawMenu};
-use crate::modes::{Navigate, ShellCommandParser};
+use crate::modes::ShellCommandParser;
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
 pub trait Execute<T> {

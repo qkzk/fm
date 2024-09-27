@@ -5,7 +5,7 @@ use crate::app::Status;
 use crate::common::is_in_path;
 use crate::io::{execute_without_output, execute_without_output_with_path, DrawMenu};
 use crate::log_line;
-use crate::modes::{CLApplications, Execute, Navigate};
+use crate::modes::{CLApplications, Execute};
 use crate::{impl_content, impl_selectable};
 
 /// Execute a command requiring to be ran from current working directory.

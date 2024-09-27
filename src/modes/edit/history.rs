@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use crate::io::DrawMenu;
-use crate::modes::Navigate;
 use crate::{impl_content, impl_selectable};
 
 /// A stack of visited paths.
