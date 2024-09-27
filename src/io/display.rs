@@ -1034,57 +1034,55 @@ impl<'a> WinSecondary<'a> {
 
     // TODO: refactor both methods below with common trait selectable
     fn draw_shell_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(
-            1,
-            2,
-            self.tab.edit_mode.second_line(),
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
-        )?;
-
-        let content = &self.status.menu.tui_applications.content;
-        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        let len = content.len();
-        for (row, command, attr) in enumerated_colored_iter!(content)
-            .skip(top)
-            .take(min(bottom, len))
-        {
-            let attr = self.status.menu.tui_applications.attr(row, &attr);
-            Self::draw_content_line(canvas, row + 1 - top, command, attr)?;
-        }
-        Ok(())
+        self.status.menu.tui_applications.draw_menu(
+            canvas,
+            &self.status.menu.window,
+            Navigate::TuiApplication,
+        )
+        //
+        // let content = &self.status.menu.tui_applications.content;
+        // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        // let len = content.len();
+        // for (row, command, attr) in enumerated_colored_iter!(content)
+        //     .skip(top)
+        //     .take(min(bottom, len))
+        // {
+        //     let attr = self.status.menu.tui_applications.attr(row, &attr);
+        //     Self::draw_content_line(canvas, row + 1 - top, command, attr)?;
+        // }
+        // Ok(())
     }
 
     fn draw_cli_applications(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        canvas.print_with_attr(
-            1,
-            2,
-            self.tab.edit_mode.second_line(),
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
-        )?;
+        self.status.menu.cli_applications.draw_menu(
+            canvas,
+            &self.status.menu.window,
+            Navigate::TuiApplication,
+        )
 
-        let content = &self.status.menu.cli_applications.content;
-        let desc_size = self.status.menu.cli_applications.desc_size;
-        let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
-        let len = content.len();
-        for (row, cli_command, attr) in enumerated_colored_iter!(content)
-            .skip(top)
-            .take(min(bottom, len))
-        {
-            let attr = self.status.menu.cli_applications.attr(row, &attr);
-            canvas.print_with_attr(
-                row + 1 + ContentWindow::WINDOW_MARGIN_TOP - top,
-                4,
-                &cli_command.desc,
-                attr,
-            )?;
-            canvas.print_with_attr(
-                row + 1 + ContentWindow::WINDOW_MARGIN_TOP - top,
-                8 + desc_size,
-                &cli_command.executable,
-                attr,
-            )?;
-        }
-        Ok(())
+        // let content = &self.status.menu.cli_applications.content;
+        // let desc_size = self.status.menu.cli_applications.desc_size;
+        // let (top, bottom) = (self.status.menu.window.top, self.status.menu.window.bottom);
+        // let len = content.len();
+        // for (row, cli_command, attr) in enumerated_colored_iter!(content)
+        //     .skip(top)
+        //     .take(min(bottom, len))
+        // {
+        //     let attr = self.status.menu.cli_applications.attr(row, &attr);
+        //     canvas.print_with_attr(
+        //         row + 1 + ContentWindow::WINDOW_MARGIN_TOP - top,
+        //         4,
+        //         &cli_command.desc,
+        //         attr,
+        //     )?;
+        //     canvas.print_with_attr(
+        //         row + 1 + ContentWindow::WINDOW_MARGIN_TOP - top,
+        //         8 + desc_size,
+        //         &cli_command.executable,
+        //         attr,
+        //     )?;
+        // }
+        // Ok(())
     }
 
     fn draw_encrypted_drive(&self, canvas: &mut dyn Canvas) -> Result<()> {

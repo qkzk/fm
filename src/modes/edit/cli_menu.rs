@@ -149,3 +149,20 @@ impl CLApplications<CliCommand, (String, String)> for CliApplications {
 
 impl_selectable!(CliApplications);
 impl_content!(CliCommand, CliApplications);
+
+use crate::io::{DrawMenu, ToPrint};
+use crate::modes::Navigate;
+
+impl ToPrint for CliCommand {
+    fn to_print(&self) -> String {
+        let desc_size = 20_usize.saturating_sub(self.desc.len());
+        format!(
+            "{desc}{space:<desc_size$}{exe}",
+            desc = self.desc,
+            exe = self.executable,
+            space = " "
+        )
+    }
+}
+
+impl DrawMenu<Navigate, CliCommand> for CliApplications {}

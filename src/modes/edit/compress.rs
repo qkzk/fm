@@ -164,7 +164,6 @@ impl Compresser {
     }
 }
 
-// impl_selectable_content!(CompressionMethod, Compresser);
 impl_selectable!(Compresser);
 impl_content!(CompressionMethod, Compresser);
 

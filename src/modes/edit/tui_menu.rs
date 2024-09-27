@@ -79,3 +79,8 @@ impl CLApplications<String, ()> for TuiApplications {
 
 impl_selectable!(TuiApplications);
 impl_content!(String, TuiApplications);
+
+use crate::io::DrawMenu;
+use crate::modes::Navigate;
+
+impl DrawMenu<Navigate, String> for TuiApplications {}
