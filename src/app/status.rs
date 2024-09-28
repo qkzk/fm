@@ -105,7 +105,7 @@ pub struct Status {
     /// Index of the current selected tab
     pub index: usize,
 
-    skimer: Option<Result<Skimer>>,
+    skimer: Option<Skimer>,
 
     /// Navigable menu
     pub menu: Menu,
@@ -791,7 +791,7 @@ impl Status {
     }
 
     fn skim_init(&mut self) {
-        self.skimer = Some(Skimer::new(Arc::clone(&self.internal_settings.term)));
+        self.skimer = Skimer::new(Arc::clone(&self.internal_settings.term)).ok();
     }
 
     /// Replace the tab content with the first result of skim.
@@ -803,7 +803,7 @@ impl Status {
     }
 
     fn _skim_output_to_tab(&mut self) -> Result<()> {
-        let Some(Ok(skimer)) = &self.skimer else {
+        let Some(skimer) = &self.skimer else {
             return Ok(());
         };
         let skim = skimer.search_filename(&self.current_tab().directory_str());
@@ -828,7 +828,7 @@ impl Status {
     }
 
     fn _skim_line_output_to_tab(&mut self) -> Result<()> {
-        let Some(Ok(skimer)) = &self.skimer else {
+        let Some(skimer) = &self.skimer else {
             return Ok(());
         };
         let skim = skimer.search_line_in_file(&self.current_tab().directory_str());
@@ -858,7 +858,7 @@ impl Status {
     }
 
     fn _skim_find_keybinding(&mut self, help: String) -> Result<tuikit::prelude::Key> {
-        let Some(Ok(skimer)) = &mut self.skimer else {
+        let Some(skimer) = &mut self.skimer else {
             bail!("Skim isn't initialised");
         };
         let skim = skimer.search_in_text(&help);
