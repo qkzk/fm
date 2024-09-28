@@ -1,6 +1,8 @@
 use std::borrow::Borrow;
 use std::cmp::min;
+use std::iter::{Enumerate, Skip, Take};
 use std::path;
+use std::slice;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -196,7 +198,7 @@ impl Tab {
 
     /// Returns true if the current mode requires 2 windows.
     /// Only Tree, Normal & Preview doesn't require 2 windows.
-    pub fn need_second_window(&self) -> bool {
+    pub fn need_menu_window(&self) -> bool {
         !matches!(self.edit_mode, Edit::Nothing)
     }
 
@@ -739,5 +741,13 @@ impl Tab {
             self.search.set_index_paths(index, paths);
             self.go_to_file(path);
         }
+    }
+
+    pub fn dir_enum_skip_take(&self) -> Take<Skip<Enumerate<slice::Iter<FileInfo>>>> {
+        let len = self.directory.content.len();
+        self.directory
+            .enumerate()
+            .skip(self.window.top)
+            .take(min(len, self.window.bottom))
     }
 }

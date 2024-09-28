@@ -1,13 +1,18 @@
 use std::borrow::Borrow;
+use std::cmp::min;
 use std::collections::HashMap;
+use std::iter::{Enumerate, Skip, Take};
 use std::path::Path;
+use std::slice;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use tuikit::attr::Attr;
 
 use crate::common::{filename_from_path, has_last_modification_happened_less_than};
-use crate::modes::{files_collection, FileInfo, FilterKind, Flagged, SortKind, ToPath, Users};
+use crate::modes::{
+    files_collection, ContentWindow, FileInfo, FilterKind, Flagged, SortKind, ToPath, Users,
+};
 
 /// Holds a string, its display attributes and the associated pathbuf.
 #[derive(Clone, Debug)]
@@ -669,6 +674,19 @@ impl Tree {
             .context("tree: no selected file")?
             .path()
             .to_owned())
+    }
+
+    pub fn lines_enum_skip_take(
+        &self,
+        window: &ContentWindow,
+    ) -> Take<Skip<Enumerate<slice::Iter<TreeLineBuilder>>>> {
+        let lines = self.displayable().lines();
+        let length = lines.len();
+        lines
+            .iter()
+            .enumerate()
+            .skip(window.top)
+            .take(min(length, window.bottom + 1))
     }
 }
 
