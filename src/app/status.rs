@@ -796,10 +796,10 @@ impl Status {
 
     /// Replace the tab content with the first result of skim.
     /// It calls skim, reads its output, then update the tab content.
-    pub fn skim_output_to_tab(&mut self) -> Result<()> {
+    pub fn skim_output_to_tab(&mut self) {
         self.skim_init();
         let _ = self._skim_output_to_tab();
-        self.drop_skim()
+        self.drop_skim();
     }
 
     fn _skim_output_to_tab(&mut self) -> Result<()> {
@@ -821,10 +821,10 @@ impl Status {
     /// Replace the tab content with the first result of skim.
     /// It calls skim, reads its output, then update the tab content.
     /// The output is splited at `:` since we only care about the path, not the line number.
-    pub fn skim_line_output_to_tab(&mut self) -> Result<()> {
+    pub fn skim_line_output_to_tab(&mut self) {
         self.skim_init();
         let _ = self._skim_line_output_to_tab();
-        self.drop_skim()
+        self.drop_skim();
     }
 
     fn _skim_line_output_to_tab(&mut self) -> Result<()> {
@@ -849,12 +849,12 @@ impl Status {
     /// Run a command directly from help.
     /// Search a command in skim, if it's a keybinding, run it directly.
     /// If the result can't be parsed, nothing is done.
-    pub fn skim_find_keybinding_and_run(&mut self, help: String) -> Result<()> {
+    pub fn skim_find_keybinding_and_run(&mut self, help: String) {
         self.skim_init();
         if let Ok(key) = self._skim_find_keybinding(help) {
             let _ = self.internal_settings.term.send_event(Event::Key(key));
         };
-        self.drop_skim()
+        self.drop_skim();
     }
 
     fn _skim_find_keybinding(&mut self, help: String) -> Result<tuikit::prelude::Key> {
@@ -915,9 +915,8 @@ impl Status {
         Ok(())
     }
 
-    fn drop_skim(&mut self) -> Result<()> {
+    fn drop_skim(&mut self) {
         self.skimer = None;
-        Ok(())
     }
 
     /// Update the flagged files depending of the input regex.
