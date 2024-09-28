@@ -30,6 +30,7 @@ use crate::modes::{
 };
 use crate::{log_info, log_line};
 
+/// Kind of "windows" : Header, Files, Menu, Footer.
 pub enum Window {
     Header,
     Files,
@@ -37,6 +38,7 @@ pub enum Window {
     Footer,
 }
 
+/// Responsible for switching the focus from one window to another.
 #[derive(Default, Clone, Copy, Debug)]
 pub enum Focus {
     #[default]
@@ -47,14 +49,22 @@ pub enum Focus {
 }
 
 impl Focus {
+    /// True if the focus is on left tab.
+    /// Always true if only one tab is shown
     pub fn is_left(&self) -> bool {
         matches!(self, Self::LeftMenu | Self::LeftFile)
     }
 
+    /// True if the focus is on a top window.
+    /// Always true if no menu is shown.
     pub fn is_file(&self) -> bool {
         matches!(self, Self::LeftFile | Self::RightFile)
     }
 
+    /// Switch from left to right and to file.
+    /// `LeftMenu` -> `RightFile`
+    /// `LeftFile` -> `RightFile`
+    /// And vice versa.
     pub fn switch(&self) -> Self {
         match self {
             Self::LeftFile => Self::RightFile,
@@ -64,6 +74,9 @@ impl Focus {
         }
     }
 
+    /// Returns the "parent" of current focus.
+    /// File parent it itself (weird, I know), Menu parent is its associated file.
+    /// Couldn't figure a better name.
     pub fn to_parent(&self) -> Self {
         match self {
             Self::LeftFile | Self::LeftMenu => Self::LeftFile,
@@ -71,6 +84,7 @@ impl Focus {
         }
     }
 
+    /// In that order : `LeftFile, LeftMenu, RightFile, RightMenu`
     pub fn index(&self) -> usize {
         *self as usize
     }
