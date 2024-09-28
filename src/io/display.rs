@@ -950,7 +950,6 @@ impl<'a> WinSecondary<'a> {
             .draw_menu(canvas, &self.status.menu.window)
     }
 
-    // TODO: refactor both methods below with common trait selectable
     fn draw_shell_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
         self.status
             .menu
@@ -1222,14 +1221,9 @@ impl Display {
 
     /// Left File, Left Menu, Right File, Right Menu
     fn borders(&self, status: &Status) -> [Attr; 4] {
-        let mut borders = [MENU_ATTRS
-            .get()
-            .expect("Menu colors should be set")
-            .inert_border; 4];
-        let selected_border = MENU_ATTRS
-            .get()
-            .expect("Menu colors should be set")
-            .selected_border;
+        let menu_attrs = MENU_ATTRS.get().expect("MENU_ATTRS should be set");
+        let mut borders = [menu_attrs.inert_border; 4];
+        let selected_border = menu_attrs.selected_border;
         borders[status.focus.index()] = selected_border;
         borders
     }
