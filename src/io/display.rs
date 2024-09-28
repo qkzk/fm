@@ -343,11 +343,7 @@ impl<'a> DirectoryDisplay<'a> {
         }
         let content = Self::format_file_content(self.status, file, owner_size, group_size)?;
         Files::print_flagged_symbol(self.status, canvas, row, &file.path, &mut attr)?;
-        let col = if self.status.menu.flagged.contains(&file.path) {
-            2
-        } else {
-            1
-        };
+        let col = 1 + self.status.menu.flagged.contains(&file.path) as usize;
         canvas.print_with_attr(row, col, &content, attr)?;
         Ok(())
     }
