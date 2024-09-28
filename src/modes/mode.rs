@@ -267,6 +267,22 @@ impl Leave for Navigate {
     }
 }
 
+impl Navigate {
+    /// True if the draw_menu trait can be called directly to display this mode
+    pub fn simple_draw_menu(&self) -> bool {
+        matches!(
+            self,
+            Self::Compress
+                | Self::Shortcut
+                | Self::TuiApplication
+                | Self::CliApplication
+                | Self::EncryptedDrive
+                | Self::RemovableDevices
+                | Self::Marks(_)
+        )
+    }
+}
+
 /// Different "edit" mode in which the application can be.
 /// It dictates the reaction to event and what to display in the bottom window.
 #[derive(Clone, Copy)]

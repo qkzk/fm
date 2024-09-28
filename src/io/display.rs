@@ -877,21 +877,18 @@ impl<'a> Menu<'a> {
         Ok(())
     }
 
-    fn navigate(&self, navigable_mode: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
-        match navigable_mode {
-            Navigate::CliApplication => self.cli_applications(canvas),
+    fn navigate(&self, navigate: Navigate, canvas: &mut dyn Canvas) -> Result<()> {
+        if navigate.simple_draw_menu() {
+            return self.status.menu.draw_navigate(canvas, navigate);
+        }
+        match navigate {
             Navigate::Cloud => self.cloud(canvas),
-            Navigate::Compress => self.compress(canvas),
             Navigate::Context => self.context(canvas),
-            Navigate::EncryptedDrive => self.encrypted_drive(canvas),
             Navigate::Flagged => self.flagged(canvas),
             Navigate::History => self.history(canvas),
-            Navigate::Marks(_) => self.marks(canvas),
             Navigate::Picker => self.picker(canvas),
-            Navigate::RemovableDevices => self.removable_devices(canvas),
-            Navigate::Shortcut => self.shortcut(canvas),
             Navigate::Trash => self.trash(canvas),
-            Navigate::TuiApplication => self.tui_applications(canvas),
+            _ => unreachable!("menu.simple_draw_menu should cover this mode"),
         }
     }
 
@@ -1008,11 +1005,24 @@ impl<'a> Menu<'a> {
         Ok(())
     }
 
-    fn compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
+    fn flagged(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        self.flagged_files(canvas)?;
+        self.flagged_selected(canvas)
+    }
+
+    fn flagged_files(&self, canvas: &mut dyn Canvas) -> Result<()> {
         self.status
             .menu
-            .compression
+            .flagged
             .draw_menu(canvas, &self.status.menu.window)
+    }
+
+    fn flagged_selected(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        if let Some(selected) = self.status.menu.flagged.selected() {
+            let fileinfo = FileInfo::new(selected, &self.tab.users)?;
+            canvas.print_with_attr(2, 2, &fileinfo.format(6, 6)?, fileinfo.attr())?;
+        };
+        Ok(())
     }
 
     /// Display the possible completion items. The currently selected one is
@@ -1021,48 +1031,6 @@ impl<'a> Menu<'a> {
         self.status
             .menu
             .completion
-            .draw_menu(canvas, &self.status.menu.window)
-    }
-
-    /// Display the possible destinations from a selectable content of PathBuf.
-    fn shortcut(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.status
-            .menu
-            .shortcut
-            .draw_menu(canvas, &self.status.menu.window)
-    }
-    fn marks(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.status
-            .menu
-            .marks
-            .draw_menu(canvas, &self.status.menu.window)
-    }
-
-    fn tui_applications(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.status
-            .menu
-            .tui_applications
-            .draw_menu(canvas, &self.status.menu.window)
-    }
-
-    fn cli_applications(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.status
-            .menu
-            .cli_applications
-            .draw_menu(canvas, &self.status.menu.window)
-    }
-
-    fn encrypted_drive(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.status
-            .menu
-            .encrypted_devices
-            .draw_menu(canvas, &self.status.menu.window)
-    }
-
-    fn removable_devices(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.status
-            .menu
-            .removable_devices
             .draw_menu(canvas, &self.status.menu.window)
     }
 
@@ -1153,26 +1121,6 @@ impl<'a> Menu<'a> {
         attr: tuikit::attr::Attr,
     ) -> Result<usize> {
         Ok(canvas.print_with_attr(row + ContentWindow::WINDOW_MARGIN_TOP, 4, text, attr)?)
-    }
-
-    fn flagged(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.flagged_files(canvas)?;
-        self.flagged_selected(canvas)
-    }
-
-    fn flagged_files(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.status
-            .menu
-            .flagged
-            .draw_menu(canvas, &self.status.menu.window)
-    }
-
-    fn flagged_selected(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        if let Some(selected) = self.status.menu.flagged.selected() {
-            let fileinfo = FileInfo::new(selected, &self.tab.users)?;
-            canvas.print_with_attr(2, 2, &fileinfo.format(6, 6)?, fileinfo.attr())?;
-        };
-        Ok(())
     }
 }
 

@@ -1,13 +1,16 @@
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
+use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
+use tuikit::prelude::Canvas;
 
 use crate::app::Tab;
 use crate::common::{index_from_a, CLI_PATH, INPUT_HISTORY_PATH, MARKS_FILEPATH, TUIS_PATH};
 use crate::config::Bindings;
 use crate::event::FmEvents;
+use crate::io::DrawMenu;
 use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
 use crate::log_line;
 use crate::modes::{
@@ -361,6 +364,25 @@ impl Menu {
             Navigate::Cloud => func(&self.cloud),
             Navigate::Picker => func(&self.picker),
             Navigate::Flagged => func(&self.flagged),
+        }
+    }
+
+    /// Draw a navigation menu with its simple `draw_menu` method.
+    ///
+    /// # Errors
+    ///
+    /// Some mode can't be displayed directly and this method will raise an error.
+    /// It's the responsability of the caller to check beforehand.
+    pub fn draw_navigate(&self, canvas: &mut dyn Canvas, navigate: Navigate) -> Result<()> {
+        match navigate {
+            Navigate::Compress => self.compression.draw_menu(canvas, &self.window),
+            Navigate::Shortcut => self.shortcut.draw_menu(canvas, &self.window),
+            Navigate::Marks(_) => self.marks.draw_menu(canvas, &self.window),
+            Navigate::TuiApplication => self.tui_applications.draw_menu(canvas, &self.window),
+            Navigate::CliApplication => self.cli_applications.draw_menu(canvas, &self.window),
+            Navigate::EncryptedDrive => self.encrypted_devices.draw_menu(canvas, &self.window),
+            Navigate::RemovableDevices => self.removable_devices.draw_menu(canvas, &self.window),
+            _ => bail!("{navigate} requires more information to be displayed."),
         }
     }
 }
