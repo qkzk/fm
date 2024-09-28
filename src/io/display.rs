@@ -412,7 +412,6 @@ impl<'a> TreeDisplay<'a> {
         Ok(())
     }
 
-    // TODO! refactor this method
     fn tree_line(
         status: &Status,
         canvas: &mut dyn Canvas,
@@ -917,6 +916,25 @@ impl<'a> Menu<'a> {
         Ok(())
     }
 
+    fn trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
+        let _ = trash.draw_menu(canvas, &self.status.menu.window);
+        let _ = canvas.print_with_attr(
+            1,
+            2,
+            &trash.help,
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
+        );
+    }
+
+    fn trash_is_empty(&self, canvas: &mut dyn Canvas) {
+        let _ = Self::content_line(
+            canvas,
+            0,
+            "Trash is empty",
+            MENU_ATTRS.get().expect("Menu colors should be set").second,
+        );
+    }
+
     fn cloud(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let cloud = &self.status.menu.cloud;
         let mut desc = cloud.desc();
@@ -929,22 +947,12 @@ impl<'a> Menu<'a> {
             2,
             2,
             &desc,
-            Attr {
-                fg: tuikit::attr::Color::LIGHT_BLUE,
-                ..Attr::default()
-            },
+            MENU_ATTRS
+                .get()
+                .expect("Menu colors should be set")
+                .palette_4,
         );
         cloud.draw_menu(canvas, &self.status.menu.window)
-    }
-
-    fn trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
-        let _ = trash.draw_menu(canvas, &self.status.menu.window);
-        let _ = canvas.print_with_attr(
-            1,
-            2,
-            &trash.help,
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
-        );
     }
 
     fn picker(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -1112,7 +1120,15 @@ impl<'a> Menu<'a> {
         } else {
             "No selected file"
         };
-        Self::content_line(canvas, 3, line, Attr::from(Color::LIGHT_RED))?;
+        Self::content_line(
+            canvas,
+            3,
+            line,
+            MENU_ATTRS
+                .get()
+                .context("MENU_ATTRS should be set")?
+                .palette_4,
+        )?;
         Ok(())
     }
 
@@ -1123,15 +1139,6 @@ impl<'a> Menu<'a> {
             self.confirm_non_empty_trash(canvas)?
         }
         Ok(())
-    }
-
-    fn trash_is_empty(&self, canvas: &mut dyn Canvas) {
-        let _ = Self::content_line(
-            canvas,
-            0,
-            "Trash is empty",
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
-        );
     }
 
     fn confirm_non_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
