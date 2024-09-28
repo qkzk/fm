@@ -123,6 +123,40 @@ pub trait Height: Canvas {
 
 impl Height for dyn Canvas + '_ {}
 
+struct WinMainBuilder;
+
+impl WinMainBuilder {
+    fn dual(status: &Status, width: usize) -> (WinMain, WinMain) {
+        let first_selected = status.focus.is_left();
+        let second_selected = !first_selected;
+        let attributes_left = WinMainAttributes::new(
+            0,
+            TabPosition::Left,
+            first_selected,
+            status.tabs[0].need_second_window(),
+        );
+        let win_main_left = WinMain::new(status, 0, attributes_left);
+        let attributes_right = WinMainAttributes::new(
+            width / 2,
+            TabPosition::Right,
+            second_selected,
+            status.tabs[1].need_second_window(),
+        );
+        let win_main_right = WinMain::new(status, 1, attributes_right);
+        (win_main_left, win_main_right)
+    }
+
+    fn single(status: &Status) -> WinMain {
+        let attributes_left = WinMainAttributes::new(
+            0,
+            TabPosition::Left,
+            true,
+            status.tabs[0].need_second_window(),
+        );
+        WinMain::new(status, 0, attributes_left)
+    }
+}
+
 struct WinMain<'a> {
     status: &'a Status,
     tab: &'a Tab,
@@ -1230,22 +1264,7 @@ impl Display {
 
     fn draw_dual_pane(&mut self, status: &Status) -> Result<()> {
         let (width, _) = self.term.term_size()?;
-        let first_selected = status.focus.is_left();
-        let second_selected = !first_selected;
-        let attributes_left = WinMainAttributes::new(
-            0,
-            TabPosition::Left,
-            first_selected,
-            status.tabs[0].need_second_window(),
-        );
-        let win_main_left = WinMain::new(status, 0, attributes_left);
-        let attributes_right = WinMainAttributes::new(
-            width / 2,
-            TabPosition::Right,
-            second_selected,
-            status.tabs[1].need_second_window(),
-        );
-        let win_main_right = WinMain::new(status, 1, attributes_right);
+        let (win_main_left, win_main_right) = WinMainBuilder::dual(status, width);
         let win_second_left = WinSecondary::new(status, 0);
         let win_second_right = WinSecondary::new(status, 1);
         let borders = self.borders(status);
@@ -1270,13 +1289,7 @@ impl Display {
     }
 
     fn draw_single_pane(&mut self, status: &Status) -> Result<()> {
-        let attributes_left = WinMainAttributes::new(
-            0,
-            TabPosition::Left,
-            true,
-            status.tabs[0].need_second_window(),
-        );
-        let win_main_left = WinMain::new(status, 0, attributes_left);
+        let win_main_left = WinMainBuilder::single(status);
         let win_second_left = WinSecondary::new(status, 0);
         let percent_left = self.size_for_second_window(&status.tabs[0])?;
         let borders = self.borders(status);
