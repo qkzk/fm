@@ -15,9 +15,8 @@ use crate::io::{read_last_log_line, DrawMenu};
 use crate::log_info;
 use crate::modes::{
     parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, Edit,
-    FileInfo, HLContent, InputSimple, LineDisplay, MarkAction, MoreInfos, Navigate,
-    NeedConfirmation, Preview, SecondLine, Selectable, Text, TextKind, Trash, Tree,
-    TreeLineBuilder, Ueber, Window,
+    FileInfo, HLContent, InputSimple, LineDisplay, MoreInfos, Navigate, NeedConfirmation, Preview,
+    SecondLine, Selectable, Text, TextKind, Trash, Tree, TreeLineBuilder, Ueber, Window,
 };
 
 trait ClearLine {
@@ -718,7 +717,7 @@ impl<'a> Draw for WinSecondary<'a> {
         match self.tab.edit_mode {
             Edit::Navigate(mode) => self.draw_navigate(mode, canvas),
             Edit::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
-            Edit::InputCompleted(mode) => self.draw_completion(canvas, &mode),
+            Edit::InputCompleted(_) => self.draw_completion(canvas),
             Edit::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
             _ => return Ok(()),
         }?;
@@ -775,16 +774,11 @@ impl<'a> WinSecondary<'a> {
 
     /// Display the possible completion items. The currently selected one is
     /// reversed.
-    fn draw_completion(
-        &self,
-        canvas: &mut dyn Canvas,
-        input_completed: &dyn SecondLine,
-    ) -> Result<()> {
-        self.status.menu.completion.draw_menu(
-            canvas,
-            &self.status.menu.window,
-            input_completed as &dyn SecondLine,
-        )
+    fn draw_completion(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        self.status
+            .menu
+            .completion
+            .draw_menu(canvas, &self.status.menu.window)
     }
 
     fn draw_static_lines(lines: &[&str], canvas: &mut dyn Canvas) -> Result<()> {
@@ -817,7 +811,7 @@ impl<'a> WinSecondary<'a> {
             Navigate::EncryptedDrive => self.draw_encrypted_drive(canvas),
             Navigate::Flagged => self.draw_flagged(canvas),
             Navigate::History => self.draw_history(canvas),
-            Navigate::Marks(mark_action) => self.draw_marks(canvas, mark_action),
+            Navigate::Marks(_) => self.draw_marks(canvas),
             Navigate::Picker => self.draw_picker(canvas),
             Navigate::RemovableDevices => self.draw_removable(canvas),
             Navigate::Shortcut => self.draw_shortcut(canvas),
@@ -831,14 +825,14 @@ impl<'a> WinSecondary<'a> {
         self.status
             .menu
             .shortcut
-            .draw_menu(canvas, &self.status.menu.window, &Navigate::Shortcut)
+            .draw_menu(canvas, &self.status.menu.window)
     }
 
     fn draw_history(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.tab.history;
         let mut window = ContentWindow::new(selectable.len(), canvas.height()?);
         window.scroll_to(selectable.index);
-        selectable.draw_menu(canvas, &window, &Navigate::History)
+        selectable.draw_menu(canvas, &window)
     }
 
     fn draw_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -868,11 +862,11 @@ impl<'a> WinSecondary<'a> {
                 ..Attr::default()
             },
         );
-        cloud.draw_menu(canvas, &self.status.menu.window, &Navigate::Cloud)
+        cloud.draw_menu(canvas, &self.status.menu.window)
     }
 
     fn draw_trash_content(&self, canvas: &mut dyn Canvas, trash: &Trash) {
-        let _ = trash.draw_menu(canvas, &self.status.menu.window, &Navigate::Trash);
+        let _ = trash.draw_menu(canvas, &self.status.menu.window);
         let _ = canvas.print_with_attr(
             1,
             2,
@@ -883,7 +877,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_picker(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.picker;
-        selectable.draw_menu(canvas, &self.status.menu.window, &Navigate::Picker)?;
+        selectable.draw_menu(canvas, &self.status.menu.window)?;
         if let Some(desc) = &selectable.desc {
             canvas.clear_line(1)?;
             canvas.print_with_attr(
@@ -898,7 +892,7 @@ impl<'a> WinSecondary<'a> {
 
     fn draw_compress(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let selectable = &self.status.menu.compression;
-        selectable.draw_menu(canvas, &self.status.menu.window, &Navigate::Compress)
+        selectable.draw_menu(canvas, &self.status.menu.window)
     }
 
     fn draw_context(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -943,44 +937,40 @@ impl<'a> WinSecondary<'a> {
         Ok(())
     }
 
-    fn draw_marks(&self, canvas: &mut dyn Canvas, mark_action: MarkAction) -> Result<()> {
+    fn draw_marks(&self, canvas: &mut dyn Canvas) -> Result<()> {
         self.status
             .menu
             .marks
-            .draw_menu(canvas, &self.status.menu.window, &mark_action)
+            .draw_menu(canvas, &self.status.menu.window)
     }
 
     // TODO: refactor both methods below with common trait selectable
     fn draw_shell_menu(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.status.menu.tui_applications.draw_menu(
-            canvas,
-            &self.status.menu.window,
-            &Navigate::TuiApplication,
-        )
+        self.status
+            .menu
+            .tui_applications
+            .draw_menu(canvas, &self.status.menu.window)
     }
 
     fn draw_cli_applications(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.status.menu.cli_applications.draw_menu(
-            canvas,
-            &self.status.menu.window,
-            &Navigate::TuiApplication,
-        )
+        self.status
+            .menu
+            .cli_applications
+            .draw_menu(canvas, &self.status.menu.window)
     }
 
     fn draw_encrypted_drive(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.status.menu.encrypted_devices.draw_menu(
-            canvas,
-            &self.status.menu.window,
-            &Navigate::EncryptedDrive,
-        )
+        self.status
+            .menu
+            .encrypted_devices
+            .draw_menu(canvas, &self.status.menu.window)
     }
 
     fn draw_removable(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        self.status.menu.removable_devices.draw_menu(
-            canvas,
-            &self.status.menu.window,
-            &Navigate::RemovableDevices,
-        )
+        self.status
+            .menu
+            .removable_devices
+            .draw_menu(canvas, &self.status.menu.window)
     }
 
     /// Display a list of edited (deleted, copied, moved, trashed) files for confirmation
@@ -1086,7 +1076,7 @@ impl<'a> WinSecondary<'a> {
         self.status
             .menu
             .flagged
-            .draw_menu(canvas, &self.status.menu.window, &Navigate::Flagged)
+            .draw_menu(canvas, &self.status.menu.window)
     }
 
     fn draw_flagged_selected(&self, canvas: &mut dyn Canvas) -> Result<()> {

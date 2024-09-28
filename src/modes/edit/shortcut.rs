@@ -6,7 +6,7 @@ use crate::common::{
     current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
 };
 use crate::io::{git_root, DrawMenu};
-use crate::modes::{ContentWindow, SecondLine};
+use crate::modes::ContentWindow;
 use crate::{colored_skip_take, impl_content, impl_selectable, log_info};
 
 /// Holds the hardcoded and mountpoints shortcuts the user can jump to.
@@ -181,7 +181,6 @@ impl DrawMenu<PathBuf> for Shortcut {
         &self,
         canvas: &mut dyn tuikit::prelude::Canvas,
         window: &ContentWindow,
-        _mode: &dyn SecondLine,
     ) -> anyhow::Result<()>
     where
         Self: Content<PathBuf>,

@@ -1171,6 +1171,17 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
         use 2 windows ?
   - [ ] moving left shouldn't move right
 - [x] DrawMenu used to display most of navigable elements.
+- [ ] sanitize input everytime, do it separately so action functions are sure to work on safe input
+
+    - [ ] string -> path.exist ?
+    - [ ] exe -> in_path ?
+    - [ ] "a b c d" -> len = 4 ?
+  ```rust
+  pub trait Sanitize {
+      fn sanitize(input: String) -> Result<String, Err<String>>;
+  }
+
+  ```
 
 ## TODO
 

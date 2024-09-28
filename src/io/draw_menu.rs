@@ -6,7 +6,7 @@ use tuikit::prelude::Canvas;
 
 use crate::config::{ColorG, Gradient, MENU_ATTRS};
 use crate::io::color_to_attr;
-use crate::modes::{Content, ContentWindow, SecondLine};
+use crate::modes::{Content, ContentWindow};
 
 /// Iter over the content, returning a triplet of `(index, line, attr)`.
 #[macro_export]
@@ -72,21 +72,10 @@ impl CowStr for String {
 /// Since the content kind is linked to a mode,
 /// it prints the second line of the mode.
 pub trait DrawMenu<T: CowStr> {
-    fn draw_menu(
-        &self,
-        canvas: &mut dyn Canvas,
-        window: &ContentWindow,
-        mode: &dyn SecondLine,
-    ) -> Result<()>
+    fn draw_menu(&self, canvas: &mut dyn Canvas, window: &ContentWindow) -> Result<()>
     where
         Self: Content<T>,
     {
-        canvas.print_with_attr(
-            1,
-            2,
-            mode.second_line(),
-            MENU_ATTRS.get().expect("Menu colors should be set").second,
-        )?;
         let content = self.content();
         for (row, line, attr) in colored_skip_take!(content, window) {
             canvas.print_with_attr(
