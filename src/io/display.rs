@@ -711,17 +711,12 @@ struct WinSecondary<'a> {
 
 impl<'a> Draw for WinSecondary<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
+        let mode = self.tab.edit_mode;
         self.draw_cursor(canvas)?;
         WinSecondaryFirstLine::new(self.status).draw(canvas)?;
         self.draw_second_line(canvas)?;
-        match self.tab.edit_mode {
-            Edit::Navigate(mode) => self.draw_navigate(mode, canvas),
-            Edit::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
-            Edit::InputCompleted(_) => self.draw_completion(canvas),
-            Edit::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
-            _ => return Ok(()),
-        }?;
-        self.draw_binds_per_mode(canvas, self.tab.edit_mode)?;
+        self.draw_content_per_mode(canvas, mode)?;
+        self.draw_binds_per_mode(canvas, mode)?;
         Ok(())
     }
 }
@@ -734,30 +729,55 @@ impl<'a> WinSecondary<'a> {
         }
     }
 
+    /// Hide the cursor if the current mode doesn't require one.
+    /// Otherwise, display a cursor in the top row, at a correct column.
+    ///
+    /// # Errors
+    ///
+    /// may fail if we can't display on the terminal.
+    fn draw_cursor(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let offset = self.tab.edit_mode.cursor_offset();
+        let index = self.status.menu.input.index();
+        canvas.set_cursor(0, offset + index)?;
+        canvas.show_cursor(self.tab.edit_mode.show_cursor())?;
+        Ok(())
+    }
+
     fn draw_second_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
+        let second = MENU_ATTRS.get().expect("Menu colors should be set").second;
         match self.tab.edit_mode {
             Edit::InputSimple(InputSimple::Chmod) => {
-                let mode_parsed = parse_input_mode(&self.status.menu.input.string());
-                let mut col = 11;
-                for (text, is_valid) in &mode_parsed {
-                    let attr = if *is_valid {
-                        MENU_ATTRS.get().expect("Menu colors should be set").first
-                    } else {
-                        MENU_ATTRS.get().expect("Menu colors should be set").second
-                    };
-                    col += 1 + canvas.print_with_attr(1, col, text, attr)?;
-                }
+                let first = MENU_ATTRS.get().expect("Menu colors should be set").first;
+                self.draw_second_line_chmod(canvas, first, second)?
             }
-            edit => {
-                canvas.print_with_attr(
-                    1,
-                    2,
-                    edit.second_line(),
-                    MENU_ATTRS.get().expect("Menu colors should be set").second,
-                )?;
-            }
-        }
+            edit => canvas.print_with_attr(1, 2, edit.second_line(), second)?,
+        };
         Ok(())
+    }
+
+    fn draw_second_line_chmod(
+        &self,
+        canvas: &mut dyn Canvas,
+        first: Attr,
+        second: Attr,
+    ) -> Result<usize> {
+        let mode_parsed = parse_input_mode(&self.status.menu.input.string());
+        let mut col = 11;
+        for (text, is_valid) in &mode_parsed {
+            let attr = if *is_valid { first } else { second };
+            col += 1 + canvas.print_with_attr(1, col, text, attr)?;
+        }
+        Ok(col)
+    }
+
+    fn draw_content_per_mode(&self, canvas: &mut dyn Canvas, mode: Edit) -> Result<()> {
+        match mode {
+            Edit::Navigate(mode) => self.draw_navigate(mode, canvas),
+            Edit::NeedConfirmation(mode) => self.draw_confirm(mode, canvas),
+            Edit::InputCompleted(_) => self.draw_completion(canvas),
+            Edit::InputSimple(mode) => Self::draw_static_lines(mode.lines(), canvas),
+            _ => Ok(()),
+        }
     }
 
     fn draw_binds_per_mode(&self, canvas: &mut dyn Canvas, mode: Edit) -> Result<()> {
@@ -785,20 +805,6 @@ impl<'a> WinSecondary<'a> {
         for (row, line, attr) in enumerated_colored_iter!(lines) {
             Self::draw_content_line(canvas, row, line, attr)?;
         }
-        Ok(())
-    }
-
-    /// Hide the cursor if the current mode doesn't require one.
-    /// Otherwise, display a cursor in the top row, at a correct column.
-    ///
-    /// # Errors
-    ///
-    /// may fail if we can't display on the terminal.
-    fn draw_cursor(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let offset = self.tab.edit_mode.cursor_offset();
-        let index = self.status.menu.input.index();
-        canvas.set_cursor(0, offset + index)?;
-        canvas.show_cursor(self.tab.edit_mode.show_cursor())?;
         Ok(())
     }
 
