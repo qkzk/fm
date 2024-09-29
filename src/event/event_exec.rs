@@ -339,8 +339,11 @@ impl EventAction {
         Ok(())
     }
 
-    /// Enter the new node mode.
-    fn new_node(status: &mut Status, edit: Edit) -> Result<()> {
+    /// Enter a new node mode.
+    fn new_node(status: &mut Status, input_kind: InputSimple) -> Result<()> {
+        if !matches!(input_kind, InputSimple::Newdir | InputSimple::Newfile) {
+            return Ok(());
+        }
         if matches!(
             status.current_tab().edit_mode,
             Edit::InputSimple(InputSimple::Newdir | InputSimple::Newfile)
@@ -352,19 +355,19 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Directory | Display::Tree
         ) {
-            status.set_edit_mode(status.index, edit)
-        } else {
-            Ok(())
+            status.set_edit_mode(status.index, Edit::InputSimple(input_kind))?;
         }
+        Ok(())
     }
+
     /// Enter the new dir mode.
     pub fn new_dir(status: &mut Status) -> Result<()> {
-        Self::new_node(status, Edit::InputSimple(InputSimple::Newdir))
+        Self::new_node(status, InputSimple::Newdir)
     }
 
     /// Enter the new file mode.
     pub fn new_file(status: &mut Status) -> Result<()> {
-        Self::new_node(status, Edit::InputSimple(InputSimple::Newfile))
+        Self::new_node(status, InputSimple::Newfile)
     }
 
     fn enter_file(status: &mut Status) -> Result<()> {
@@ -394,12 +397,8 @@ impl EventAction {
     /// Execute the selected node if it's a file else enter the directory.
     fn tree_enter_file(status: &mut Status) -> Result<()> {
         let path = status.current_tab().current_file()?.path;
-        let is_dir = path.is_dir();
-        if is_dir {
-            status.current_tab_mut().cd(&path)?;
-            status.current_tab_mut().make_tree(None);
-            status.current_tab_mut().set_display_mode(Display::Tree);
-            Ok(())
+        if path.is_dir() {
+            status.current_tab_mut().tree_enter_dir(path)
         } else {
             EventAction::open_file(status)
         }
@@ -938,7 +937,7 @@ impl EventAction {
 
     /// A right click opens a file or a directory.
     pub fn double_click(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
-        if let Ok(()) = EventAction::click(status, row, col, binds) {
+        if EventAction::click(status, row, col, binds).is_ok() {
             EventAction::enter_file(status)?;
         };
         Ok(())

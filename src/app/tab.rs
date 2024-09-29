@@ -675,6 +675,13 @@ impl Tab {
         self.window.scroll_to(self.tree.displayable().index());
     }
 
+    pub fn tree_enter_dir(&mut self, path: std::sync::Arc<path::Path>) -> Result<()> {
+        self.cd(&path)?;
+        self.make_tree(None);
+        self.set_display_mode(Display::Tree);
+        Ok(())
+    }
+
     /// Move the preview to the top
     pub fn preview_go_top(&mut self) {
         self.window.scroll_to(0)
