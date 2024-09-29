@@ -1103,12 +1103,20 @@ impl Status {
     /// See [`crate::modes::ShellCommandParser`] for more information.
     pub fn parse_shell_command(&mut self) -> Result<bool> {
         let shell_command = self.menu.input.string();
-        let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
+        let args = ShellCommandParser::new(&shell_command).compute(self)?;
         log_info!("command {shell_command} args: {args:?}");
         if args_is_empty(&args) {
             self.set_edit_mode(self.index, Edit::Nothing)?;
             return Ok(true);
         }
+        self.execute_parsed_command(shell_command, args)
+    }
+
+    fn execute_parsed_command(
+        &mut self,
+        shell_command: String,
+        mut args: Vec<String>,
+    ) -> Result<bool> {
         let executable = args.remove(0);
         if is_sudo_command(&executable) {
             self.menu.sudo_command = Some(shell_command);
