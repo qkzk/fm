@@ -289,7 +289,7 @@ impl FileInfo {
     }
 
     pub fn is_dir(&self) -> bool {
-        self.path.is_dir()
+        matches!(self.file_kind, FileKind::Directory)
     }
 
     /// True iff the parent of the file is root.
@@ -323,7 +323,11 @@ impl FileInfo {
         format!("/{filename} ")
     }
 
+    #[inline]
     pub fn attr(&self) -> Attr {
+        if matches!(self.file_kind, FileKind::NormalFile) {
+            return color_to_attr(extension_color(&self.extension));
+        }
         let attrs = FILE_ATTRS.get().expect("Colors should be set");
         match self.file_kind {
             FileKind::Directory => attrs.directory,
@@ -333,7 +337,7 @@ impl FileInfo {
             FileKind::Socket => attrs.socket,
             FileKind::SymbolicLink(true) => attrs.symlink,
             FileKind::SymbolicLink(false) => attrs.broken,
-            _ => color_to_attr(extension_color(&self.extension)),
+            _ => unreachable!("Should be done already"),
         }
     }
 }

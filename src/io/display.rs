@@ -1305,6 +1305,7 @@ fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
     format!("{line_nr:0width$x}")
 }
 
+#[inline]
 pub const fn color_to_attr(color: Color) -> Attr {
     Attr {
         fg: color,

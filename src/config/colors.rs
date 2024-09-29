@@ -9,6 +9,7 @@ pub const MAX_GRADIENT_NORMAL: usize = 254;
 pub struct NormalFileColorer {}
 
 impl NormalFileColorer {
+    #[inline]
     pub fn colorer(hash: usize) -> Color {
         let gradient = ARRAY_GRADIENT
             .get()
@@ -17,6 +18,7 @@ impl NormalFileColorer {
     }
 }
 
+#[inline]
 fn sum_hash(string: &str) -> usize {
     let hash: usize = string
         .as_bytes()
@@ -29,6 +31,7 @@ fn sum_hash(string: &str) -> usize {
 
 /// Returns a color based on the extension.
 /// Those colors will always be the same, but a palette is defined from a yaml value.
+#[inline]
 pub fn extension_color(extension: &str) -> Color {
     COLORER.get().expect("Colorer should be set")(sum_hash(extension))
 }
