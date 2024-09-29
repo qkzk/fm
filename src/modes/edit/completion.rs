@@ -11,7 +11,7 @@ use crate::modes::Leave;
 use crate::{impl_content, impl_selectable};
 
 /// Different kind of completions
-#[derive(Clone, Default, Copy)]
+#[derive(Clone, Default, Copy, Eq, PartialEq)]
 pub enum InputCompleted {
     #[default]
     /// Complete a directory path in filesystem

@@ -8,13 +8,11 @@ use crate::io::{
     drop_sudo_privileges, execute_and_output, execute_sudo_command,
     execute_sudo_command_with_password, reset_sudo_faillock, set_sudo_session, CowStr, DrawMenu,
 };
-use crate::modes::{
-    MountCommands, MountParameters, MountRepr, PasswordHolder, PasswordKind,
-};
+use crate::modes::{MountCommands, MountParameters, MountRepr, PasswordHolder, PasswordKind};
 use crate::{impl_content, impl_selectable, log_info};
 
 /// Possible actions on encrypted drives
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum BlockDeviceAction {
     MOUNT,
     UMOUNT,

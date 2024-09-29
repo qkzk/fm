@@ -93,7 +93,7 @@ impl std::fmt::Display for NeedConfirmation {
 /// the name of a new file, of a new directory,
 /// A regex to match all files in current directory,
 /// a kind of sort, a mark name, a new mark or a filter.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum InputSimple {
     /// Rename the selected file
     Rename,

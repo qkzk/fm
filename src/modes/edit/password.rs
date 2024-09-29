@@ -1,5 +1,5 @@
 /// Different kind of password
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum PasswordKind {
     SUDO,
     CRYPTSETUP,
@@ -20,7 +20,7 @@ impl std::fmt::Display for PasswordKind {
 /// * mounting an ISO file,
 /// * opening an mounting an encrypted device.
 /// * running a sudo command
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum PasswordUsage {
     ISO,
     CRYPTSETUP(PasswordKind),
