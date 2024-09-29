@@ -1172,10 +1172,7 @@ impl Status {
     pub fn marks_new(&mut self, c: char) -> Result<()> {
         let path = self.current_tab_mut().directory.path.clone();
         self.menu.marks.new_mark(c, &path)?;
-        {
-            let tab: &mut Tab = self.current_tab_mut();
-            tab.refresh_view()
-        }?;
+        self.current_tab_mut().refresh_view()?;
         self.reset_edit_mode()?;
         self.refresh_status()
     }
@@ -1262,7 +1259,6 @@ impl Status {
         )?;
         self.menu.clear_sudo_attributes()?;
         self.preview_command_output(output, sudo_command.to_owned());
-        // self.refresh_status()
         Ok(())
     }
 
@@ -1463,14 +1459,18 @@ impl Status {
         if self.menu.cloud.is_set() {
             self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
         } else {
-            let content = get_cloud_token_names()?;
-            self.menu.picker.set(
-                Some(PickerCaller::Cloud),
-                Some("Pick a cloud provider".to_owned()),
-                content,
-            );
-            self.set_edit_mode(self.index, Edit::Navigate(Navigate::Picker))
+            self.cloud_picker()
         }
+    }
+
+    fn cloud_picker(&mut self) -> Result<()> {
+        let content = get_cloud_token_names()?;
+        self.menu.picker.set(
+            Some(PickerCaller::Cloud),
+            Some("Pick a cloud provider".to_owned()),
+            content,
+        );
+        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Picker))
     }
 
     /// Disconnect from the current cloud and open the picker
