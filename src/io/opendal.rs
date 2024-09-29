@@ -120,10 +120,8 @@ pub fn get_cloud_token_names() -> Result<Vec<String>> {
         .filter_map(|e| e.ok())
         .filter(|e| e.path().is_file())
         .map(|e| e.file_name().to_string_lossy().to_string())
-        .filter(|filename| filename.starts_with("token_"))
-        .filter(|filename| filename.ends_with(".yaml"))
-        .map(|filename| filename.replace("token_", ""))
-        .map(|filename| filename.replace(".yaml", ""))
+        .filter(|filename| filename.starts_with("token_") && filename.ends_with(".yaml"))
+        .map(|filename| filename.replace("token_", "").replace(".yaml", ""))
         .collect())
 }
 
