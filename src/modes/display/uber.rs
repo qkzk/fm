@@ -10,8 +10,7 @@ use crate::common::{
 };
 use crate::io::{execute_and_capture_output, execute_and_output_no_log};
 use crate::log_info;
-
-use super::ExtensionKind;
+use crate::modes::ExtensionKind;
 
 #[derive(Default)]
 pub enum Kind {
