@@ -1188,6 +1188,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
   ```
 
+- [ ] cd mode improvment
+  - [ ] first 10 skim results in alt+g ?
+  - [ ] tab should explore dirs in current selection if it's a dir :
+    1. type /de
+    2. type TAB
+    3. completion proposes : /dev/input /dev/fb0 etc.
+  - [ ] show some hint like "zoxide" "skim" "abs path" etc.
+
 ## TODO
 
 - [ ] google drive should be a display ?
