@@ -35,7 +35,7 @@ impl ContentWindow {
     /// It's not the number of rows displayed since the content may
     /// not be long enough to fill the window.
     fn nb_displayed_rows(height: usize) -> usize {
-        height - Self::HEADER_ROWS - Self::FOOTER_ROWS
+        height.saturating_sub(Self::HEADER_ROWS + Self::FOOTER_ROWS)
     }
 
     /// Default value for the bottom index.
@@ -85,7 +85,7 @@ impl ContentWindow {
         if self.len < self.height {
             return;
         }
-        if index < self.top || index > self.bottom - Self::WINDOW_PADDING {
+        if index < self.top || index + Self::WINDOW_PADDING > self.bottom {
             self.top += 1;
             self.bottom += 1;
         }
