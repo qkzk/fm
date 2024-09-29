@@ -94,35 +94,42 @@ impl EventDispatcher {
         }
     }
 
-    // TODO! move those binds elsewhere and document them properly
     fn navigate_char(&self, navigate: Navigate, status: &mut Status, c: char) -> Result<()> {
         match navigate {
             Navigate::Trash if c == 'x' => status.menu.trash_delete_permanently(),
+
             Navigate::EncryptedDrive if c == 'm' => status.mount_encrypted_drive(),
             Navigate::EncryptedDrive if c == 'g' => status.go_to_encrypted_drive(),
             Navigate::EncryptedDrive if c == 'u' => status.umount_encrypted_drive(),
+
             Navigate::RemovableDevices if c == 'm' => status.mount_removable(),
             Navigate::RemovableDevices if c == 'g' => status.go_to_removable(),
             Navigate::RemovableDevices if c == 'u' => status.umount_removable(),
+
             Navigate::Marks(MarkAction::Jump) => status.marks_jump_char(c),
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
+
             Navigate::Shortcut if status.menu.shortcut_from_char(c) => {
                 LeaveMode::leave_edit_mode(status, &self.binds)
             }
+
             Navigate::Context if status.menu.context_from_char(c) => {
                 LeaveMode::leave_edit_mode(status, &self.binds)
             }
+
             Navigate::Cloud if c == 'l' => status.cloud_disconnect(),
             Navigate::Cloud if c == 'd' => status.cloud_enter_newdir_mode(),
             Navigate::Cloud if c == 'u' => status.cloud_upload_selected_file(),
             Navigate::Cloud if c == 'x' => status.cloud_enter_delete_mode(),
             Navigate::Cloud if c == '?' => status.cloud_update_metadata(),
+
             Navigate::Flagged if c == 'u' => {
                 status.menu.flagged.clear();
                 Ok(())
             }
             Navigate::Flagged if c == 'x' => status.menu.remove_selected_flagged(),
             Navigate::Flagged if c == 'j' => status.jump_flagged(),
+
             _ => {
                 status.reset_edit_mode()?;
                 status.current_tab_mut().reset_display_mode_and_view()
