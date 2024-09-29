@@ -25,9 +25,9 @@ use crate::io::{
 use crate::modes::{
     copy_move, extract_extension, parse_line_output, regex_matcher, BlockDeviceAction, Content,
     ContentWindow, CopyMove, Display, Edit, FileInfo, FileKind, FilterKind, InputSimple, IsoDevice,
-    Menu, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
-    Permissions, PickerCaller, Preview, PreviewBuilder, Selectable, ShellCommandParser, Skimer,
-    Users,
+    LeaveMode, Menu, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind,
+    PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable,
+    ShellCommandParser, Skimer, Users,
 };
 use crate::{log_info, log_line};
 
@@ -869,6 +869,24 @@ impl Status {
 
     fn drop_skim(&mut self) {
         self.skimer = None;
+    }
+
+    pub fn complete_search(&mut self, c: char) -> Result<()> {
+        self.update_search()?;
+        LeaveMode::search(self, false)?;
+        self.complete(c)
+    }
+
+    fn update_search(&mut self) -> Result<()> {
+        if let Ok(search) = Search::new(&self.menu.input.string()) {
+            self.current_tab_mut().search = search;
+        };
+        Ok(())
+    }
+
+    pub fn complete(&mut self, c: char) -> Result<()> {
+        self.menu.input.insert(c);
+        self.menu.input_complete(&mut self.tabs[self.index])
     }
 
     /// Update the flagged files depending of the input regex.

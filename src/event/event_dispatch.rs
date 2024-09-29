@@ -4,9 +4,7 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::app::Status;
 use crate::config::Bindings;
 use crate::event::event_exec::EventAction;
-use crate::modes::{
-    Display, Edit, InputCompleted, InputSimple, LeaveMode, MarkAction, Navigate, Search,
-};
+use crate::modes::{Display, Edit, InputCompleted, InputSimple, LeaveMode, MarkAction, Navigate};
 
 use super::FmEvents;
 
@@ -84,15 +82,8 @@ impl EventDispatcher {
                 Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
                 Edit::InputSimple(InputSimple::Filter) => status.input_filter(c),
                 Edit::InputSimple(_) => status.menu.input_insert(c),
-                Edit::InputCompleted(input_completed) => {
-                    status.menu.input.insert(c);
-                    if matches!(input_completed, InputCompleted::Search) {
-                        Self::update_search(status)?;
-                        LeaveMode::search(status, false)?
-                    }
-                    status.menu.input_complete(&mut status.tabs[status.index])?;
-                    Ok(())
-                }
+                Edit::InputCompleted(InputCompleted::Search) => status.complete_search(c),
+                Edit::InputCompleted(_) => status.complete(c),
                 Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
                 Edit::Navigate(navigate) => self.navigate_char(navigate, status, c),
                 Edit::Nothing if matches!(tab.display_mode, Display::Preview) => {
@@ -103,13 +94,7 @@ impl EventDispatcher {
         }
     }
 
-    fn update_search(status: &mut Status) -> Result<()> {
-        if let Ok(search) = Search::new(&status.menu.input.string()) {
-            status.current_tab_mut().search = search;
-        };
-        Ok(())
-    }
-
+    // TODO! move those binds elsewhere and document them properly
     fn navigate_char(&self, navigate: Navigate, status: &mut Status, c: char) -> Result<()> {
         match navigate {
             Navigate::Trash if c == 'x' => status.menu.trash_delete_permanently(),
