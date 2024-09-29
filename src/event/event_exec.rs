@@ -86,13 +86,12 @@ impl EventAction {
         }
         status.display_settings.toggle_preview();
         if status.display_settings.preview() {
-            status.update_second_pane_for_preview()?;
+            status.update_second_pane_for_preview()
         } else {
             status.set_edit_mode(1, Edit::Nothing)?;
             status.tabs[1].display_mode = Display::Directory;
-            status.tabs[1].refresh_view()?;
+            status.tabs[1].refresh_view()
         }
-        Ok(())
     }
 
     /// Creates a tree in every mode but "Tree".
@@ -240,12 +239,11 @@ impl EventAction {
             return Ok(());
         };
         let selected = status.current_tab().current_file()?;
-        let sel_path = selected.path;
-        if sel_path == status.current_tab().directory.path {
+        if selected.path == status.current_tab().directory.path {
             return Ok(());
         }
         if let Some(parent) = status.current_tab().directory.path.parent() {
-            if sel_path == std::sync::Arc::from(parent) {
+            if selected.path == std::sync::Arc::from(parent) {
                 return Ok(());
             }
         }
@@ -341,11 +339,11 @@ impl EventAction {
         Ok(())
     }
 
-    /// Enter the new dir mode.
-    pub fn new_dir(status: &mut Status) -> Result<()> {
+    /// Enter the new node mode.
+    fn new_node(status: &mut Status, edit: Edit) -> Result<()> {
         if matches!(
             status.current_tab().edit_mode,
-            Edit::InputSimple(InputSimple::Newdir)
+            Edit::InputSimple(InputSimple::Newdir | InputSimple::Newfile)
         ) {
             status.reset_edit_mode()?;
             return Ok(());
@@ -354,29 +352,19 @@ impl EventAction {
             status.current_tab().display_mode,
             Display::Directory | Display::Tree
         ) {
-            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Newdir))
+            status.set_edit_mode(status.index, edit)
         } else {
             Ok(())
         }
     }
+    /// Enter the new dir mode.
+    pub fn new_dir(status: &mut Status) -> Result<()> {
+        Self::new_node(status, Edit::InputSimple(InputSimple::Newdir))
+    }
 
     /// Enter the new file mode.
     pub fn new_file(status: &mut Status) -> Result<()> {
-        if matches!(
-            status.current_tab().edit_mode,
-            Edit::InputSimple(InputSimple::Newfile)
-        ) {
-            status.reset_edit_mode()?;
-            return Ok(());
-        }
-        if matches!(
-            status.current_tab().display_mode,
-            Display::Directory | Display::Tree
-        ) {
-            status.set_edit_mode(status.index, Edit::InputSimple(InputSimple::Newfile))
-        } else {
-            Ok(())
-        }
+        Self::new_node(status, Edit::InputSimple(InputSimple::Newfile))
     }
 
     fn enter_file(status: &mut Status) -> Result<()> {
