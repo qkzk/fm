@@ -19,7 +19,7 @@ use crate::modes::{
 pub struct ColoredString {
     /// A text to be printed. In most case, it should be a filename.
     pub text: String,
-    /// A pair of [`tuikit::attr::Color`] and [`tuikit::attr::Effect`] used to enhance the text.
+    /// A [`tuikit::attr::Attr`] used to enhance the text.
     pub attr: Attr,
     /// The complete path of this string.
     pub path: Arc<Path>,
