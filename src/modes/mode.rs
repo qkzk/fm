@@ -353,6 +353,11 @@ impl Edit {
             _ => "",
         }
     }
+
+    /// True if the edit mode is "Nothing" aka no menu is opened in this tab.
+    pub fn is_nothing(&self) -> bool {
+        matches!(self, Self::Nothing)
+    }
 }
 
 impl Leave for Edit {

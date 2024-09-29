@@ -325,6 +325,11 @@ impl Menu {
         self.window.scroll_to(self.index(Edit::Navigate(navigate)));
     }
 
+    pub fn set_index(&mut self, index: usize, navigate: Navigate) {
+        self.apply_method_mut(navigate, |variant| variant.set_index(index));
+        self.window.scroll_to(self.index(Edit::Navigate(navigate)))
+    }
+
     fn apply_method_mut<F, T>(&mut self, navigate: Navigate, func: F) -> T
     where
         F: FnOnce(&mut dyn Selectable) -> T,

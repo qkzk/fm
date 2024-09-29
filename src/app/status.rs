@@ -23,10 +23,11 @@ use crate::io::{
     Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, extract_extension, regex_matcher, BlockDeviceAction, Content, ContentWindow,
-    CopyMove, Display, Edit, FileInfo, FileKind, FilterKind, Go, InputSimple, IsoDevice, Menu,
-    MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage, Permissions,
-    PickerCaller, Preview, PreviewBuilder, Selectable, ShellCommandParser, Skimer, To, Tree, Users,
+    copy_move, extract_extension, parse_line_output, regex_matcher, BlockDeviceAction, Content,
+    ContentWindow, CopyMove, Display, Edit, FileInfo, FileKind, FilterKind, InputSimple, IsoDevice,
+    Menu, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind, PasswordUsage,
+    Permissions, PickerCaller, Preview, PreviewBuilder, Selectable, ShellCommandParser, Skimer,
+    Users,
 };
 use crate::{log_info, log_line};
 
@@ -194,19 +195,19 @@ impl Status {
 
     pub fn set_focus_from_mode(&mut self) {
         if self.index == 0 {
-            if matches!(self.tabs[self.index].edit_mode, Edit::Nothing) {
+            if self.tabs[0].edit_mode.is_nothing() {
                 self.focus = Focus::LeftFile;
             } else {
                 self.focus = Focus::LeftMenu;
             }
-        } else if matches!(self.tabs[self.index].edit_mode, Edit::Nothing) {
+        } else if self.tabs[1].edit_mode.is_nothing() {
             self.focus = Focus::RightFile;
         } else {
             self.focus = Focus::RightMenu;
         }
     }
 
-    /// Select the other tab if two are displayed. Does nother otherwise.
+    /// Select the other tab if two are displayed. Does nothing otherwise.
     pub fn next(&mut self) {
         if !self.display_settings.dual() {
             return;
@@ -215,7 +216,7 @@ impl Status {
         self.switch_focus();
     }
 
-    /// Select the other tab if two are displayed. Does nother otherwise.
+    /// Select the other tab if two are displayed. Does nothing otherwise.
     pub fn prev(&mut self) {
         self.next();
     }
@@ -236,7 +237,7 @@ impl Status {
     }
 
     fn window_from_row(&self, row: u16, height: usize) -> Window {
-        let win_height = if matches!(self.current_tab().edit_mode, Edit::Nothing) {
+        let win_height = if self.current_tab().edit_mode.is_nothing() {
             height
         } else {
             height / 2
@@ -253,7 +254,7 @@ impl Status {
         }
     }
 
-    pub fn set_focus(&mut self, row: u16, col: u16) -> Result<Window> {
+    pub fn set_focus_from_pos(&mut self, row: u16, col: u16) -> Result<Window> {
         self.select_tab_from_col(col)?;
         let window = self.window_from_row(row, self.term_size()?.1);
         self.set_focus_from_window_and_index(&window);
@@ -262,7 +263,7 @@ impl Status {
 
     /// Execute a click at `row`, `col`. Action depends on which window was clicked.
     pub fn click(&mut self, row: u16, col: u16, binds: &Bindings) -> Result<()> {
-        let window = self.set_focus(row, col)?;
+        let window = self.set_focus_from_pos(row, col)?;
         self.click_action_from_window(&window, row, col, binds)?;
         Ok(())
     }
@@ -327,19 +328,8 @@ impl Status {
             let index = offset - 4 + self.menu.window.top;
             match self.current_tab().edit_mode {
                 Edit::Navigate(navigate) => match navigate {
-                    Navigate::CliApplication => self.menu.cli_applications.set_index(index),
-                    Navigate::Compress => self.menu.compression.set_index(index),
-                    Navigate::Context => self.menu.context.set_index(index),
-                    Navigate::EncryptedDrive => self.menu.encrypted_devices.set_index(index),
                     Navigate::History => self.current_tab_mut().history.set_index(index),
-                    Navigate::Marks(_) => self.menu.marks.set_index(index),
-                    Navigate::RemovableDevices => self.menu.removable_devices.set_index(index),
-                    Navigate::Shortcut => self.menu.shortcut.set_index(index),
-                    Navigate::Trash => self.menu.trash.set_index(index),
-                    Navigate::TuiApplication => self.menu.tui_applications.set_index(index),
-                    Navigate::Cloud => self.menu.cloud.set_index(index),
-                    Navigate::Picker => self.menu.picker.set_index(index),
-                    Navigate::Flagged => self.menu.flagged.set_index(index),
+                    navigate => self.menu.set_index(index, navigate),
                 },
                 Edit::InputCompleted(_) => self.menu.completion.set_index(index),
                 _ => (),
@@ -497,12 +487,6 @@ impl Status {
         self.refresh_status()
     }
 
-    /// Drop the current tree, replace it with an empty one.
-    pub fn remove_tree(&mut self) -> Result<()> {
-        self.current_tab_mut().tree = Tree::default();
-        Ok(())
-    }
-
     /// Check if the second pane should display a preview and force it.
     pub fn update_second_pane_for_preview(&mut self) -> Result<()> {
         if self.index == 0 && self.display_settings.preview() {
@@ -569,7 +553,7 @@ impl Status {
 
     pub fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Edit) -> Result<()> {
         let height = self.internal_settings.term.term_size()?.1;
-        let prim_window_height = if matches!(edit_mode, Edit::Nothing) {
+        let prim_window_height = if edit_mode.is_nothing() {
             height
         } else {
             height / 2
@@ -640,16 +624,12 @@ impl Status {
     /// Reverse every flag in _current_ directory. Flagged files in other
     /// directory aren't affected.
     pub fn reverse_flags(&mut self) {
-        match self.current_tab().display_mode {
-            Display::Preview => (),
-            Display::Tree => (),
-            Display::Directory => {
-                self.tabs[self.index]
-                    .directory
-                    .content
-                    .iter()
-                    .for_each(|file| self.menu.flagged.toggle(&file.path));
-            }
+        if matches!(self.current_tab().display_mode, Display::Directory) {
+            self.tabs[self.index]
+                .directory
+                .content
+                .iter()
+                .for_each(|file| self.menu.flagged.toggle(&file.path));
         }
     }
 
@@ -703,32 +683,10 @@ impl Status {
         let dest = &self.current_tab().directory_of_selected()?.to_owned();
 
         if self.is_simple_move(&cut_or_copy, &sources, dest) {
-            return self.simple_move(&sources, dest);
+            self.simple_move(&sources, dest)
+        } else {
+            self.complex_move(cut_or_copy, sources, dest)
         }
-
-        let mut must_act_now = true;
-        if matches!(cut_or_copy, CopyMove::Copy) {
-            if !self.internal_settings.copy_file_queue.is_empty() {
-                log_info!("cut_or_copy_flagged_files: act later");
-                must_act_now = false;
-            }
-            self.internal_settings
-                .copy_file_queue
-                .push((sources.to_owned(), dest.clone()));
-        }
-
-        if must_act_now {
-            log_info!("cut_or_copy_flagged_files: act now");
-            let in_mem = copy_move(
-                cut_or_copy,
-                sources,
-                dest,
-                Arc::clone(&self.internal_settings.term),
-                Arc::clone(&self.fm_sender),
-            )?;
-            self.internal_settings.store_copy_progress(in_mem);
-        }
-        self.clear_flags_and_reset_view()
     }
 
     fn is_simple_move(
@@ -773,6 +731,37 @@ impl Status {
                 log_info!("Error: {e:?}");
                 log_line!("Error: {e:?}")
             }
+        }
+        self.clear_flags_and_reset_view()
+    }
+
+    fn complex_move(
+        &mut self,
+        cut_or_copy: CopyMove,
+        sources: Vec<std::path::PathBuf>,
+        dest: &std::path::PathBuf,
+    ) -> Result<()> {
+        let mut must_act_now = true;
+        if matches!(cut_or_copy, CopyMove::Copy) {
+            if !self.internal_settings.copy_file_queue.is_empty() {
+                log_info!("cut_or_copy_flagged_files: act later");
+                must_act_now = false;
+            }
+            self.internal_settings
+                .copy_file_queue
+                .push((sources.to_owned(), dest.clone()));
+        }
+
+        if must_act_now {
+            log_info!("cut_or_copy_flagged_files: act now");
+            let in_mem = copy_move(
+                cut_or_copy,
+                sources,
+                dest,
+                Arc::clone(&self.internal_settings.term),
+                Arc::clone(&self.fm_sender),
+            )?;
+            self.internal_settings.store_copy_progress(in_mem);
         }
         self.clear_flags_and_reset_view()
     }
@@ -832,18 +821,13 @@ impl Status {
             return Ok(());
         };
         let skim = skimer.search_line_in_file(&self.current_tab().directory_str());
-        let paths: Vec<std::path::PathBuf> = skim
-            .iter()
-            .map(|s| s.output().to_string())
-            .map(|s| s.split_once(':').unwrap_or(("", "")).0.to_owned())
-            .filter(|s| !s.is_empty())
-            .map(std::path::PathBuf::from)
-            .collect();
-        self.menu.flagged.update(paths);
-        let Some(output) = skim.first() else {
-            return Ok(());
-        };
-        self._update_tab_from_skim_line_output(output)
+        let paths = parse_line_output(&skim);
+
+        if !paths.is_empty() {
+            self.current_tab_mut().cd_to_file(&paths[0])?;
+            self.menu.flagged.update(paths);
+        }
+        Ok(())
     }
 
     /// Run a command directly from help.
@@ -878,41 +862,9 @@ impl Status {
         Ok(key)
     }
 
-    fn _update_tab_from_skim_line_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {
-        let output_str = skim_output.output().to_string();
-        let Some(filename) = output_str.split(':').next() else {
-            return Ok(());
-        };
-        let path = fs::canonicalize(filename)?;
-        self._replace_path_by_skim_output(path)
-    }
-
     fn _update_tab_from_skim_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {
         let path = fs::canonicalize(skim_output.output().to_string())?;
-        self._replace_path_by_skim_output(path)
-    }
-
-    fn _replace_path_by_skim_output(&mut self, path: std::path::PathBuf) -> Result<()> {
-        let tab = self.current_tab_mut();
-        if path.is_file() {
-            let Some(parent) = path.parent() else {
-                return Ok(());
-            };
-            tab.cd(parent)?;
-            match tab.display_mode {
-                Display::Tree => {
-                    tab.tree.go(To::Path(&path));
-                }
-                Display::Directory => {
-                    let index = tab.directory.select_file(&path);
-                    tab.go_to_index(index);
-                }
-                Display::Preview => (),
-            }
-        } else if path.is_dir() {
-            tab.cd(&path)?;
-        }
-        Ok(())
+        self.current_tab_mut().cd_to_file(&path)
     }
 
     fn drop_skim(&mut self) {
@@ -1037,6 +989,7 @@ impl Status {
                 iso_device.umount(&current_username()?, &mut self.menu.password_holder)?;
             };
         }
+        self.menu.iso_device = None;
         Ok(())
     }
 

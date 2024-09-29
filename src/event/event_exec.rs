@@ -933,7 +933,7 @@ impl EventAction {
     }
 
     pub fn wheel_up(status: &mut Status, row: u16, col: u16, nb_of_scrolls: u16) -> Result<()> {
-        status.set_focus(row, col)?;
+        status.set_focus_from_pos(row, col)?;
         for _ in 0..nb_of_scrolls {
             Self::move_up(status)?
         }
@@ -941,7 +941,7 @@ impl EventAction {
     }
 
     pub fn wheel_down(status: &mut Status, row: u16, col: u16, nb_of_scrolls: u16) -> Result<()> {
-        status.set_focus(row, col)?;
+        status.set_focus_from_pos(row, col)?;
         for _ in 0..nb_of_scrolls {
             Self::move_down(status)?
         }
