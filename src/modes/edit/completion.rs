@@ -25,15 +25,12 @@ pub enum InputCompleted {
 }
 
 impl fmt::Display for InputCompleted {
+    #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            #[rustfmt::skip]
             Self::Exec      => write!(f, "Open with: "),
-            #[rustfmt::skip]
             Self::Cd        => write!(f, "Cd:        "),
-            #[rustfmt::skip]
             Self::Search    => write!(f, "Search:    "),
-            #[rustfmt::skip]
             Self::Action    => write!(f, "Action:    "),
         }
     }
@@ -105,6 +102,7 @@ impl Completion {
     /// Looks for the valid path completing what the user typed.
     pub fn cd(&mut self, input_string: &str, current_path: &str) -> Result<()> {
         self.cd_update_from_input(input_string, current_path);
+        self.extend_with_children(input_string);
         let (parent, last_name) = split_input_string(input_string);
         if last_name.is_empty() {
             return Ok(());
@@ -123,6 +121,26 @@ impl Completion {
         if let Some(cannonicalized_input) = self.canonicalize_input(input_string, current_path) {
             self.content.push(cannonicalized_input);
         }
+    }
+
+    /// Children of current input if it ends with  a /
+    fn extend_with_children(&mut self, input_string: &str) {
+        if !input_string.ends_with('/') {
+            return;
+        }
+        let input_path = std::path::Path::new(input_string);
+        if !input_path.is_dir() {
+            return;
+        }
+        let Ok(entries) = fs::read_dir(input_path) else {
+            return;
+        };
+        let children: Vec<String> = entries
+            .filter_map(|e| e.ok())
+            .map(|e| e.path().to_string_lossy().to_string())
+            .take(5)
+            .collect();
+        self.extend(&children);
     }
 
     fn cd_update_from_zoxide(&mut self, input_string: &str, current_path: &str) {
