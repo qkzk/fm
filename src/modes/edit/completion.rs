@@ -137,7 +137,7 @@ impl Completion {
         };
         let children: Vec<String> = entries
             .filter_map(|e| e.ok())
-            .map(|e| e.path().to_string_lossy().to_string())
+            .map(|e| e.path().to_string_lossy().into_owned())
             .take(5)
             .collect();
         self.extend(&children);
