@@ -1175,6 +1175,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] renamed most methods
   - [x] separated by mode
   - [x] common interface using `draw` method from tuikit
+- [x] cd: after typing '/' extend with children
+- [ ] BUG: :Preview does nothing. Can't fix it easily
+- [ ] exec: allow %t in first param to be expanded to $TERM + flags
+
+  - [x] %t + TAB -> /usr/bin/alacritty -e
+  - [ ] BUG empty preview is displayed after ???
+  - [ ] pressing tab to complete should expand the command immediatly
+  - [ ] documentation, help, test
+  - [ ] merge ActionMap::Exec & ActionMap::ShellCOmmand whatever it's the same
+
 - [ ] sanitize input everytime, do it separately so action functions are sure to work on safe input
 
   - [ ] string -> path.exist ?
@@ -1187,11 +1197,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   }
 
   ```
-
-- [ ] cd mode improvment
-  - [ ] first 10 skim results in alt+g ?
-  - [x] cd: after typing '/' extend with children
-  - [ ] show some hint like "zoxide" "skim" "abs path" etc. /dev/nvram
 
 ## TODO
 

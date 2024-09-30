@@ -102,13 +102,12 @@ impl Completion {
     /// Looks for the valid path completing what the user typed.
     pub fn cd(&mut self, input_string: &str, current_path: &str) -> Result<()> {
         self.cd_update_from_input(input_string, current_path);
-        self.extend_with_children(input_string);
         let (parent, last_name) = split_input_string(input_string);
-        if last_name.is_empty() {
-            return Ok(());
+        if !last_name.is_empty() {
+            self.extend_absolute_paths(&parent, &last_name);
+            self.extend_relative_paths(current_path, &last_name);
         }
-        self.extend_absolute_paths(&parent, &last_name);
-        self.extend_relative_paths(current_path, &last_name);
+        self.extend_with_children(input_string);
         Ok(())
     }
 
@@ -138,7 +137,6 @@ impl Completion {
         let children: Vec<String> = entries
             .filter_map(|e| e.ok())
             .map(|e| e.path().to_string_lossy().into_owned())
-            .take(5)
             .collect();
         self.extend(&children);
     }

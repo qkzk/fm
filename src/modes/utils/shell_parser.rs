@@ -17,6 +17,7 @@ pub enum Token {
     Flagged,
     Path,
     Selected,
+    Term,
 }
 
 impl Token {
@@ -27,6 +28,7 @@ impl Token {
             "%n" => Self::Filename,
             "%f" => Self::Flagged,
             "%d" => Self::Path,
+            "%t" => Self::Term,
             _ => Self::Arg(arg.to_owned()),
         }
     }
@@ -79,6 +81,7 @@ impl ShellCommandParser {
                     computed.push(Self::extension(status)?);
                 }
                 Token::Flagged => computed.extend_from_slice(&Self::flagged(status)),
+                Token::Term => computed.extend_from_slice(&Self::term(status)),
             }
         }
         Ok(computed)
@@ -108,5 +111,12 @@ impl ShellCommandParser {
             .iter()
             .map(path_to_string)
             .collect()
+    }
+
+    fn term(status: &Status) -> [String; 2] {
+        [
+            status.internal_settings.opener.terminal.to_owned(),
+            status.internal_settings.opener.terminal_flag.to_owned(),
+        ]
     }
 }

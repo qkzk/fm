@@ -1119,13 +1119,24 @@ impl Status {
 
     /// Reads and parse a shell command. Some arguments may be expanded.
     /// See [`crate::modes::ShellCommandParser`] for more information.
-    pub fn parse_shell_command(&mut self) -> Result<bool> {
+    pub fn parse_shell_command_from_input(&mut self) -> Result<bool> {
         let shell_command = self.menu.input.string();
-        let args = ShellCommandParser::new(&shell_command).compute(self)?;
+        self.parse_shell_command(shell_command, None)
+    }
+
+    pub fn parse_shell_command(
+        &mut self,
+        shell_command: String,
+        files: Option<Vec<String>>,
+    ) -> Result<bool> {
+        let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
         log_info!("command {shell_command} args: {args:?}");
         if args_is_empty(&args) {
             self.set_edit_mode(self.index, Edit::Nothing)?;
             return Ok(true);
+        }
+        if let Some(files) = files {
+            args.extend(files);
         }
         self.execute_parsed_command(shell_command, args)
     }

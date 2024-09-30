@@ -177,7 +177,7 @@ impl LeaveMode {
     /// `Ok(false)` if we should stay in the current mode (aka, a password is required)
     /// It won't return an `Err` if the command fail.
     fn shell(status: &mut Status) -> Result<()> {
-        status.parse_shell_command()?;
+        status.parse_shell_command_from_input()?;
         Ok(())
     }
 
@@ -237,16 +237,32 @@ impl LeaveMode {
         if status.current_tab().directory.content.is_empty() {
             return Err(anyhow!("exec: empty directory"));
         }
-        // status.menu.completion_tab();
         let exec_command = status.menu.input.string();
-        let paths = status.menu.flagged.content();
-        if let Ok(success) = execute_custom(exec_command, paths) {
-            if success {
-                status.menu.completion.reset();
-                status.menu.input.reset();
-            }
+        if status.parse_shell_command(
+            exec_command,
+            Some(
+                status
+                    .menu
+                    .flagged
+                    .content
+                    .iter()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .collect(),
+            ),
+        )? {
+            status.menu.completion.reset();
+            status.menu.input.reset();
         }
         Ok(())
+        // let paths = status.menu.flagged.content();
+
+        // if let Ok(success) = execute_custom(exec_command, paths) {
+        //     if success {
+        //         status.menu.completion.reset();
+        //         status.menu.input.reset();
+        //     }
+        // }
+        // Ok(())
     }
 
     /// Executes a search in current folder, selecting the first file matching
@@ -380,6 +396,8 @@ impl LeaveMode {
         };
         log_info!("Command {command}");
 
+        status.reset_edit_mode()?;
+        status.focus = status.focus.to_parent();
         command.matcher(status, binds)
     }
 
