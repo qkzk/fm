@@ -1321,6 +1321,9 @@ impl Status {
     /// Set the display to preview a command output
     pub fn preview_command_output(&mut self, output: String, command: String) {
         log_info!("output {output}");
+        if output.is_empty() {
+            return;
+        }
         let _ = self.reset_edit_mode();
         self.current_tab_mut().set_display_mode(Display::Preview);
         let preview = PreviewBuilder::cli_info(&output, command);

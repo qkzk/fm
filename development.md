@@ -1180,7 +1180,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] exec: allow %t in first param to be expanded to $TERM + flags
 
   - [x] %t + TAB -> /usr/bin/alacritty -e
-  - [ ] BUG empty preview is displayed after ???
+  - [x] Fix after ! command, empty preview is displayed
   - [ ] pressing tab to complete should expand the command immediatly
   - [ ] documentation, help, test
   - [ ] merge ActionMap::Exec & ActionMap::ShellCOmmand whatever it's the same
