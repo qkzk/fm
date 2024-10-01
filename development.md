@@ -1177,26 +1177,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] common interface using `draw` method from tuikit
 - [x] cd: after typing '/' extend with children
 - [ ] BUG: :Preview does nothing. Can't fix it easily
-- [ ] exec: allow %t in first param to be expanded to $TERM + flags
+- [x] exec: allow %t in first param to be expanded to $TERM + flags
 
   - [x] %t + TAB -> /usr/bin/alacritty -e
   - [x] Fix after ! command, empty preview is displayed
-  - [ ] pressing tab to complete should expand the command immediatly
-  - [ ] documentation, help, test
-  - [ ] merge ActionMap::Exec & ActionMap::ShellCOmmand whatever it's the same
-
-- [ ] sanitize input everytime, do it separately so action functions are sure to work on safe input
-
-  - [ ] string -> path.exist ?
-  - [ ] exe -> in_path ?
-  - [ ] "a b c d" -> len = 4 ?
-
-  ```rust
-  pub trait Sanitize {
-      fn sanitize(input: String) -> Result<String, Err<String>>;
-  }
-
-  ```
+  - [x] documentation, help
 
 ## TODO
 

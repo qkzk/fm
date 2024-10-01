@@ -1,13 +1,12 @@
 use std::borrow::Borrow;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{bail, Context, Result};
 
 use crate::app::Status;
 use crate::common::{path_to_string, rename, string_to_path};
 use crate::config::Bindings;
 use crate::event::{ActionMap, EventAction};
-use crate::io::execute_custom;
 use crate::modes::{
     BlockDeviceAction, CLApplications, Content, Display, Edit, InputCompleted, InputSimple, Leave,
     MarkAction, Navigate, NodeCreation, PasswordUsage, PickerCaller, Search, SortKind,
@@ -65,7 +64,10 @@ impl LeaveMode {
                 return Ok(());
             }
             Edit::Navigate(Navigate::Flagged) => LeaveMode::flagged(status),
-            Edit::InputCompleted(InputCompleted::Exec) => LeaveMode::exec(status),
+            Edit::InputCompleted(InputCompleted::Exec) => {
+                LeaveMode::exec(status)?;
+                return Ok(());
+            }
             Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status, true),
             Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
             Edit::InputCompleted(InputCompleted::Action) => LeaveMode::action(status, binds),
@@ -235,34 +237,14 @@ impl LeaveMode {
     /// Optional parameters can be passed normally. ie. `"ls -lah"`
     fn exec(status: &mut Status) -> Result<()> {
         if status.current_tab().directory.content.is_empty() {
-            return Err(anyhow!("exec: empty directory"));
+            bail!("exec: empty directory")
         }
         let exec_command = status.menu.input.string();
-        if status.parse_shell_command(
-            exec_command,
-            Some(
-                status
-                    .menu
-                    .flagged
-                    .content
-                    .iter()
-                    .map(|p| p.to_string_lossy().to_string())
-                    .collect(),
-            ),
-        )? {
+        if status.parse_shell_command(exec_command, Some(status.menu.flagged.as_strings()))? {
             status.menu.completion.reset();
             status.menu.input.reset();
         }
         Ok(())
-        // let paths = status.menu.flagged.content();
-
-        // if let Ok(success) = execute_custom(exec_command, paths) {
-        //     if success {
-        //         status.menu.completion.reset();
-        //         status.menu.input.reset();
-        //     }
-        // }
-        // Ok(())
     }
 
     /// Executes a search in current folder, selecting the first file matching

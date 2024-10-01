@@ -480,7 +480,7 @@ impl<'a> Draw for PreviewDisplay<'a> {
             Preview::Binary(bin) => self.binary(bin, length, canvas, window)?,
             Preview::Ueberzug(image) => self.ueberzug(image, canvas)?,
             Preview::Tree(tree_preview) => self.tree_preview(tree_preview, window, canvas)?,
-            Preview::Text(colored_text) if matches!(colored_text.kind, TextKind::CliInfo) => {
+            Preview::Text(colored_text) if matches!(colored_text.kind, TextKind::CommandStdout) => {
                 self.colored_text(colored_text, length, canvas, window)?
             }
             Preview::Text(text) => {

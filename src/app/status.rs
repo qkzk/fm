@@ -1320,7 +1320,7 @@ impl Status {
 
     /// Set the display to preview a command output
     pub fn preview_command_output(&mut self, output: String, command: String) {
-        log_info!("output {output}");
+        log_info!("output:\n {output}");
         if output.is_empty() {
             return;
         }

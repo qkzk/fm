@@ -500,7 +500,7 @@ mod inner {
         fn strings(status: &Status, tab: &Tab) -> Vec<(String, Align)> {
             match &tab.preview {
                 Preview::Text(text_content) => match text_content.kind {
-                    TextKind::CliInfo => Self::make_colored_text(text_content),
+                    TextKind::CommandStdout => Self::make_colored_text(text_content),
                     TextKind::Help => Self::make_help(),
                     TextKind::Log => Self::make_log(),
                     _ => Self::make_default_preview(status, tab),

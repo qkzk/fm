@@ -352,7 +352,7 @@ impl<'a> PreviewBuilder<'a> {
     }
 
     pub fn cli_info(output: &str, command: String) -> Preview {
-        Preview::Text(Text::cli_info(output, command))
+        Preview::Text(Text::command_stdout(output, command))
     }
 }
 
@@ -373,7 +373,7 @@ pub enum TextKind {
 
     Archive,
     Blockdevice,
-    CliInfo,
+    CommandStdout,
     Epub,
     FifoChardevice,
     Help,
@@ -543,12 +543,12 @@ impl Text {
         )
     }
     /// Make a new previewed colored text.
-    pub fn cli_info(output: &str, title: String) -> Self {
+    pub fn command_stdout(output: &str, title: String) -> Self {
         let content: Vec<String> = output.lines().map(|line| line.to_owned()).collect();
         let length = content.len();
         Self {
             title,
-            kind: TextKind::CliInfo,
+            kind: TextKind::CommandStdout,
             content,
             length,
         }

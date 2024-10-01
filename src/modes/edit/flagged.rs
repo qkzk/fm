@@ -105,6 +105,14 @@ impl Flagged {
             }
         });
     }
+
+    /// Returns the flagged files as a vector of strings
+    pub fn as_strings(&self) -> Vec<String> {
+        self.content
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect()
+    }
 }
 
 impl_selectable!(Flagged);
