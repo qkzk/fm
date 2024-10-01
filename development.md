@@ -1156,6 +1156,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 #### Summary
 
+- shell & exec menu allow %t as terminal expansion. It allows you to open a file in a new terminal.
+  `! %t nvim %s` will open the selected file with neovim in a new terminal.
+- cd command (Alt+g) includes children of a path (detected as soon as you type a /)
+
 #### Changelog
 
 - [x] Refactor flagged files
@@ -1176,12 +1180,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] separated by mode
   - [x] common interface using `draw` method from tuikit
 - [x] cd: after typing '/' extend with children
-- [ ] BUG: :Preview does nothing. Can't fix it easily
 - [x] exec: allow %t in first param to be expanded to $TERM + flags
 
   - [x] %t + TAB -> /usr/bin/alacritty -e
   - [x] Fix after ! command, empty preview is displayed
   - [x] documentation, help
+
+- [ ] BUG: :Preview does nothing. Can't fix it easily
 
 ## TODO
 
