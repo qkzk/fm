@@ -1149,6 +1149,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] simplify color configuration
   - [x] only one "colors" map in yaml file
   - [x] migration of config file : detailed in release
+- [ ] common text editor shortcut. Ctrl+left/right ? conflict with focus move... same as ctrl+hjkl to move focus.
+      Needs a lot of key remap
 
 ## Current dev
 
@@ -1159,6 +1161,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - shell & exec menu allow %t as terminal expansion. It allows you to open a file in a new terminal.
   `! %t nvim %s` will open the selected file with neovim in a new terminal.
 - cd command (Alt+g) includes children of a path (detected as soon as you type a /)
+- double clic on a menu item to execute it. Same as a clic then press enter.
 
 #### Changelog
 
