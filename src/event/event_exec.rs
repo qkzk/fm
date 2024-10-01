@@ -938,7 +938,11 @@ impl EventAction {
     /// A right click opens a file or a directory.
     pub fn double_click(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
         if EventAction::click(status, row, col, binds).is_ok() {
-            EventAction::enter_file(status)?;
+            if status.focus.is_file() {
+                EventAction::enter_file(status)?;
+            } else {
+                LeaveMode::leave_edit_mode(status, binds)?;
+            }
         };
         Ok(())
     }

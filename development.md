@@ -1187,6 +1187,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] documentation, help
 
 - [ ] BUG: :Preview does nothing. Can't fix it easily
+- [ ] revisit cloud configuration make it permanent
+- [x] double clic on menu items
 
 ## TODO
 
