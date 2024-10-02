@@ -130,6 +130,7 @@ impl FM {
     fn update(&mut self, event: FmEvents) -> Result<()> {
         match self.status.lock() {
             Ok(mut status) => {
+                status.attach_preview()?;
                 self.event_dispatcher.dispatch(&mut status, event)?;
                 status.refresh_shortcuts();
                 drop(status);
@@ -179,6 +180,9 @@ impl FM {
         drop(self.event_dispatcher);
         self.displayer.quit();
         self.refresher.quit();
+        if let Ok(status) = self.status.lock() {
+            status.previewer.quit()
+        }
         drop(self.status);
 
         print_on_quit(final_path);

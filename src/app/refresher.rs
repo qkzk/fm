@@ -16,7 +16,7 @@ pub struct Refresher {
 
 impl Refresher {
     /// Between 2 refreshed
-    const TEN_SECONDS_IN_DECISECONDS: u8 = 10 * 10;
+    const TEN_SECONDS_IN_CENTISECONDS: u16 = 10 * 100;
 
     /// Event sent to Fm event poller which is interpreted
     /// as a request for refresh.
@@ -30,24 +30,25 @@ impl Refresher {
     /// event as a signal(1) and hangs the terminal.
     pub fn new(fm_sender: Arc<Sender<FmEvents>>) -> Self {
         let (tx, rx) = mpsc::channel();
-        let mut counter: u8 = 0;
+        let mut counter: u16 = 0;
         let handle = thread::spawn(move || loop {
             match rx.try_recv() {
                 Ok(_) | Err(TryRecvError::Disconnected) => {
                     log_info!("terminating refresher");
-                    // let _ = term.show_cursor(true);
                     return;
                 }
                 Err(TryRecvError::Empty) => {}
             }
             counter += 1;
-            thread::sleep(Duration::from_millis(100));
-            if counter >= Self::TEN_SECONDS_IN_DECISECONDS {
+            thread::sleep(Duration::from_millis(10));
+            let event = if counter >= Self::TEN_SECONDS_IN_CENTISECONDS {
                 counter = 0;
-                if fm_sender.send(FmEvents::Refresh).is_err() {
-                    // if term.send_event(REFRESH_EVENT).is_err() {
-                    break;
-                }
+                FmEvents::Refresh
+            } else {
+                FmEvents::Empty
+            };
+            if fm_sender.send(event).is_err() {
+                break;
             }
         });
         Self { tx, handle }

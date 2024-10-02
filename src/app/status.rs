@@ -1,5 +1,5 @@
 use std::fs;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{self, Sender, TryRecvError};
 use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
@@ -10,7 +10,7 @@ use sysinfo::{Disk, Disks};
 use tuikit::prelude::{from_keyname, Event};
 use tuikit::term::Term;
 
-use crate::app::{ClickableLine, Footer, Header, InternalSettings, Session, Tab};
+use crate::app::{ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab};
 use crate::common::{
     args_is_empty, current_username, disk_space, disk_used_by_path, filename_from_path, is_in_path,
     is_sudo_command, open_in_current_neovim, path_to_string, row_to_window_index,
@@ -118,6 +118,10 @@ pub struct Status {
     pub focus: Focus,
     /// Sender of events
     pub fm_sender: Arc<Sender<FmEvents>>,
+    /// Receiver of previews, used to build & display previews without bloking
+    preview_receiver: mpsc::Receiver<(Preview, usize)>,
+    /// Non bloking preview builder
+    pub previewer: Previewer,
 }
 
 impl Status {
@@ -155,6 +159,8 @@ impl Status {
             Tab::new(&args, height, users_right)?,
         ];
         let focus = Focus::default();
+        let (previewer_sender, preview_receiver) = mpsc::channel();
+        let previewer = Previewer::new(previewer_sender);
         Ok(Self {
             tabs,
             index,
@@ -164,6 +170,8 @@ impl Status {
             internal_settings,
             focus,
             fm_sender,
+            preview_receiver,
+            previewer,
         })
     }
 
@@ -509,10 +517,27 @@ impl Status {
         };
         let left_tab = &self.tabs[0];
         let users = &left_tab.users;
-        self.tabs[1].preview = PreviewBuilder::new(&fileinfo.path, users)
-            .build()
-            .unwrap_or_default();
-        self.tabs[1].window.reset(self.tabs[1].preview.len());
+        self.previewer
+            .build(fileinfo.path.to_path_buf(), Arc::from(users.clone()), 1)?;
+        // self.tabs[1].preview = PreviewBuilder::new(&fileinfo.path, users)
+        //     .build()
+        //     .unwrap_or_default();
+        // self.tabs[1].window.reset(self.tabs[1].preview.len());
+        Ok(())
+    }
+
+    pub fn attach_preview(&mut self) -> Result<()> {
+        match self.preview_receiver.try_recv() {
+            Ok((preview, index)) => {
+                self.tabs[index].preview = preview;
+                self.tabs[index]
+                    .window
+                    .reset(self.tabs[index].preview.len());
+                log_info!("attached a preview !");
+            }
+            Err(TryRecvError::Disconnected) => bail!("Previewer Disconnected"),
+            Err(TryRecvError::Empty) => (),
+        }
         Ok(())
     }
 

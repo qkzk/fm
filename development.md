@@ -1149,8 +1149,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] simplify color configuration
   - [x] only one "colors" map in yaml file
   - [x] migration of config file : detailed in release
-- [ ] common text editor shortcut. Ctrl+left/right ? conflict with focus move... same as ctrl+hjkl to move focus.
-      Needs a lot of key remap
 
 ## Current dev
 
@@ -1192,6 +1190,15 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: :Preview does nothing. Can't fix it easily
 - [ ] revisit cloud configuration make it permanent
 - [x] double clic on menu items
+- [x] non bloking previews, "simple" way.
+  - [x] struct with a thread and 2 mpsc: one to ask for previews, one to send them back. The first is also used to break the loop.
+  - [x] refresher send more events, also asking for previews to be checked
+  - [x] check if a preview should be asked in app every event received
+  - [ ] tests, perf, memory usage...
+  - [ ] remove comments & useless logs in status & previewer
+- [ ] common text editor shortcut. Ctrl+left/right ? conflict with focus move... same as ctrl+hjkl to move focus.
+      Needs a lot of key remap
+- [ ] directory preview should just be a "directory" ?
 
 ## TODO
 

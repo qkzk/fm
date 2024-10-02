@@ -13,4 +13,6 @@ pub enum FmEvents {
     FileCopied,
     /// Event from the terminal itself (restart, resize, key, mouse etc.)
     Event(Event),
+    /// Empty events, used to check if a new preview should be attached
+    Empty,
 }
