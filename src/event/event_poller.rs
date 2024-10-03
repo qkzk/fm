@@ -18,7 +18,7 @@ impl EventReader {
         Self { term, fm_receiver }
     }
 
-    /// Returns the events as they're received. Wait indefinitely for a new one.
+    /// Returns the events as they're received. Loops until an event is received.
     /// We should spend most of the application life here, doing nothing :)
     ///
     /// It's an interface for internal and extenal events (through terminal)
@@ -29,7 +29,7 @@ impl EventReader {
                 return event;
             }
             if let Ok(event) = self.term.peek_event(Duration::from_millis(100)) {
-                return FmEvents::Event(event);
+                return FmEvents::Term(event);
             }
         }
     }

@@ -117,7 +117,6 @@ impl FM {
         let Ok(mut status) = self.status.lock() else {
             bail!("Error locking status");
         };
-        status.attach_preview()?;
         self.event_dispatcher.dispatch(&mut status, event)?;
         status.refresh_shortcuts();
         Ok(())

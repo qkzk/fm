@@ -45,7 +45,7 @@ impl Refresher {
                 counter = 0;
                 FmEvents::Refresh
             } else {
-                FmEvents::Empty
+                FmEvents::CheckPreview
             };
             if fm_sender.send(event).is_err() {
                 break;

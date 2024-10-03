@@ -270,7 +270,7 @@ impl Status {
     }
 
     /// Execute a click at `row`, `col`. Action depends on which window was clicked.
-    pub fn click(&mut self, row: u16, col: u16, binds: &Bindings) -> Result<()> {
+    pub fn click(&mut self, binds: &Bindings, row: u16, col: u16) -> Result<()> {
         let window = self.set_focus_from_pos(row, col)?;
         self.click_action_from_window(&window, row, col, binds)?;
         Ok(())
@@ -526,19 +526,26 @@ impl Status {
         Ok(())
     }
 
-    pub fn attach_preview(&mut self) -> Result<()> {
+    /// Check if the previewer has sent a preview.
+    ///
+    /// If the previewer has sent a preview, it's attached to the correct tab.
+    /// Returns an error if the previewer disconnected.
+    /// Does nothing otherwise.
+    pub fn check_preview(&mut self) -> Result<()> {
         match self.preview_receiver.try_recv() {
-            Ok((preview, index)) => {
-                self.tabs[index].preview = preview;
-                self.tabs[index]
-                    .window
-                    .reset(self.tabs[index].preview.len());
-                log_info!("attached a preview !");
-            }
+            Ok((preview, index)) => self.attach_preview(preview, index),
             Err(TryRecvError::Disconnected) => bail!("Previewer Disconnected"),
             Err(TryRecvError::Empty) => (),
         }
         Ok(())
+    }
+
+    fn attach_preview(&mut self, preview: Preview, index: usize) {
+        self.tabs[index].preview = preview;
+        self.tabs[index]
+            .window
+            .reset(self.tabs[index].preview.len());
+        log_info!("attached a preview !");
     }
 
     fn get_correct_fileinfo_for_preview(&mut self) -> Result<FileInfo> {

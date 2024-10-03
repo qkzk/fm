@@ -167,7 +167,8 @@ impl EventAction {
 
     /// Toggle the display of hidden files.
     pub fn toggle_hidden(status: &mut Status) -> Result<()> {
-        if !status.focus.is_file() {
+        if !status.focus.is_file() || matches!(status.current_tab().display_mode, Display::Preview)
+        {
             return Ok(());
         }
         status.current_tab_mut().toggle_hidden()
@@ -915,10 +916,23 @@ impl EventAction {
         }
     }
 
-    pub fn left_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
-        EventAction::click(status, row, col, binds)
+    /// Click a file at `row`, `col`. Gives the focus to the window container.
+    pub fn click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
+        status.click(binds, row, col)
     }
 
+    /// Left click select the focus. This is an alias to [`crate::event::EventAction::click`]
+    pub fn left_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
+        Self::click(status, binds, row, col)
+    }
+
+    /// Right click gives focus to the window and open the context menu
+    pub fn right_click(status: &mut Status, binds: &Bindings, row: u16, col: u16) -> Result<()> {
+        Self::click(status, binds, row, col)?;
+        Self::context(status)
+    }
+
+    /// Wheel up moves the display up
     pub fn wheel_up(status: &mut Status, row: u16, col: u16, nb_of_scrolls: u16) -> Result<()> {
         status.set_focus_from_pos(row, col)?;
         for _ in 0..nb_of_scrolls {
@@ -927,6 +941,7 @@ impl EventAction {
         Ok(())
     }
 
+    /// Wheel down moves the display down
     pub fn wheel_down(status: &mut Status, row: u16, col: u16, nb_of_scrolls: u16) -> Result<()> {
         status.set_focus_from_pos(row, col)?;
         for _ in 0..nb_of_scrolls {
@@ -935,11 +950,11 @@ impl EventAction {
         Ok(())
     }
 
-    /// A right click opens a file or a directory.
+    /// A double click opens a file or execute a menu item
     pub fn double_click(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
-        if EventAction::click(status, row, col, binds).is_ok() {
+        if Self::click(status, binds, row, col).is_ok() {
             if status.focus.is_file() {
-                EventAction::enter_file(status)?;
+                Self::enter_file(status)?;
             } else {
                 LeaveMode::leave_edit_mode(status, binds)?;
             }
@@ -1362,11 +1377,6 @@ impl EventAction {
         status.cloud_open()
     }
 
-    /// Click a file at `row`, `col`.
-    pub fn click(status: &mut Status, row: u16, col: u16, binds: &Bindings) -> Result<()> {
-        status.click(row, col, binds)
-    }
-
     /// Select the left or right tab depending on `col`
     pub fn select_pane(status: &mut Status, col: u16) -> Result<()> {
         status.select_tab_from_col(col)
@@ -1493,5 +1503,9 @@ impl EventAction {
     pub fn display_copy_progress(status: &mut Status, content: InMemoryTerm) -> Result<()> {
         status.internal_settings.store_copy_progress(content);
         Ok(())
+    }
+
+    pub fn check_preview(status: &mut Status) -> Result<()> {
+        status.check_preview()
     }
 }

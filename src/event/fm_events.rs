@@ -12,7 +12,7 @@ pub enum FmEvents {
     /// The first file in file queue has been copied
     FileCopied,
     /// Event from the terminal itself (restart, resize, key, mouse etc.)
-    Event(Event),
+    Term(Event),
     /// Empty events, used to check if a new preview should be attached
-    Empty,
+    CheckPreview,
 }
