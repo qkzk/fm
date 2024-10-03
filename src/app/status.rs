@@ -898,9 +898,10 @@ impl Status {
     }
 
     pub fn complete_search(&mut self, c: char) -> Result<()> {
+        self.menu.input.insert(c);
         self.update_search()?;
         LeaveMode::search(self, false)?;
-        self.complete(c)
+        self.menu.input_complete(&mut self.tabs[self.index])
     }
 
     fn update_search(&mut self) -> Result<()> {
@@ -910,7 +911,7 @@ impl Status {
         Ok(())
     }
 
-    pub fn complete(&mut self, c: char) -> Result<()> {
+    pub fn complete_non_search(&mut self, c: char) -> Result<()> {
         self.menu.input.insert(c);
         self.menu.input_complete(&mut self.tabs[self.index])
     }

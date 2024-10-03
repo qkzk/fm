@@ -1190,6 +1190,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] BUG: :Preview does nothing. Can't fix it easily
 - [ ] revisit cloud configuration make it permanent
 - [x] double clic on menu items
+- [x] FIX: search completion is made before the char is inserted in input string. Should be done afterward.
 - [x] non bloking previews, "simple" way.
   - [x] struct with a thread and 2 mpsc: one to ask for previews, one to send them back. The first is also used to break the loop.
   - [x] refresher send more events, also asking for previews to be checked
@@ -1203,7 +1204,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] common text editor shortcut. Ctrl+left/right ? conflict with focus move... same as ctrl+hjkl to move focus.
       Needs a lot of key remap
 - [ ] directory preview should just be a "directory" ?
-- [ ] BUG: searching a regex (try [1-9] in source dir) doesn't update the completion. The search works
+- [ ] BUG: previewer is called even in single pane
 
 ## TODO
 

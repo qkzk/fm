@@ -96,7 +96,7 @@ impl EventDispatcher {
             Edit::InputSimple(InputSimple::Filter) => status.input_filter(c),
             Edit::InputSimple(_) => status.menu.input_insert(c),
             Edit::InputCompleted(InputCompleted::Search) => status.complete_search(c),
-            Edit::InputCompleted(_) => status.complete(c),
+            Edit::InputCompleted(_) => status.complete_non_search(c),
             Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
             Edit::Navigate(navigate) => self.navigate_char(navigate, status, c),
             _ if matches!(tab.display_mode, Display::Preview) => tab.reset_display_mode_and_view(),
