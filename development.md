@@ -1161,6 +1161,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - cd command (Alt+g) includes children of a path (detected as soon as you type a /)
 - double clic on a menu item to execute it. Same as a clic then press enter.
 - Fixed a bug where search completion would be made before the char is inserted, displaying wrong results
+- Fixed a bug where preview were built for second pane even if it wasn't visible, wasting ressources
 
 #### Changelog
 
@@ -1192,6 +1193,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] revisit cloud configuration make it permanent
 - [x] double clic on menu items
 - [x] FIX: search completion is made before the char is inserted in input string. Should be done afterward.
+- [x] FIX: previewer is called even when preview can't be seen
 - [x] non bloking previews, "simple" way.
   - [x] struct with a thread and 2 mpsc: one to ask for previews, one to send them back. The first is also used to break the loop.
   - [x] refresher send more events, also asking for previews to be checked
@@ -1205,7 +1207,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] common text editor shortcut. Ctrl+left/right ? conflict with focus move... same as ctrl+hjkl to move focus.
       Needs a lot of key remap
 - [ ] directory preview should just be a "directory" ?
-- [ ] BUG: previewer is called even in single pane
 
 ## TODO
 
