@@ -1203,6 +1203,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] common text editor shortcut. Ctrl+left/right ? conflict with focus move... same as ctrl+hjkl to move focus.
       Needs a lot of key remap
 - [ ] directory preview should just be a "directory" ?
+- [ ] BUG: searching a regex (try [1-9] in source dir) doesn't update the completion. The search works
 
 ## TODO
 
