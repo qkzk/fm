@@ -2,7 +2,6 @@ use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Result;
 use tuikit::term::Term;
 
 use crate::event::FmEvents;
@@ -21,13 +20,16 @@ impl EventReader {
 
     /// Returns the events as they're received. Wait indefinitely for a new one.
     /// We should spend most of the application life here, doing nothing :)
-    pub fn poll_event(&self) -> Result<FmEvents> {
+    ///
+    /// It's an interface for internal and extenal events (through terminal)
+    /// casting them into an [`crate::event::FmEvents`].
+    pub fn poll_event(&self) -> FmEvents {
         loop {
             if let Ok(event) = self.fm_receiver.try_recv() {
-                return Ok(event);
+                return event;
             }
             if let Ok(event) = self.term.peek_event(Duration::from_millis(100)) {
-                return Ok(FmEvents::Event(event));
+                return FmEvents::Event(event);
             }
         }
     }

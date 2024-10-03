@@ -1196,6 +1196,10 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] check if a preview should be asked in app every event received
   - [ ] tests, perf, memory usage...
   - [ ] remove comments & useless logs in status & previewer
+- [ ] refactor app:
+  - [x] simplify update loop
+  - [x] simplify build
+  - [x] simplify early exit
 - [ ] common text editor shortcut. Ctrl+left/right ? conflict with focus move... same as ctrl+hjkl to move focus.
       Needs a lot of key remap
 - [ ] directory preview should just be a "directory" ?

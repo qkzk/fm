@@ -1,8 +1,7 @@
 use std::path::PathBuf;
-use std::sync::mpsc::{self, TryRecvError};
+use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
 
 use anyhow::Result;
 
@@ -20,8 +19,6 @@ pub struct Previewer {
 /// - one to ask a preview to be built, sent from [`crate::app::Status`] itself, it's received here in a separated thread and built outisde of status thread.
 /// - one to send the [`crate::modes::Preview`] out of the thread to status. It's the responsability of the application to force status to attach the preview.
 impl Previewer {
-    const TEN_MILLIS: u64 = 10;
-
     /// Starts the previewer loop in a thread and create a new instance with a [`std::sync::mpsc::Sender`].
     ///
     /// The previewer will wait for [`std::sync::mpsc::Receiver`] messages and react accordingly :
@@ -34,14 +31,9 @@ impl Previewer {
     pub fn new(tx_preview: mpsc::Sender<(Preview, usize)>) -> Self {
         let (tx, rx) = mpsc::channel::<Option<(PathBuf, Arc<Users>, usize)>>();
         thread::spawn(move || -> Result<()> {
-            loop {
-                match rx.try_recv() {
-                    Ok(None) | Err(TryRecvError::Disconnected) => {
-                        crate::log_info!("terminating previewer");
-                        break;
-                    }
-                    Err(TryRecvError::Empty) => {}
-                    Ok(Some((path, users, index))) => {
+            while let Some(request) = rx.iter().next() {
+                match request {
+                    Some((path, users, index)) => {
                         crate::log_info!(
                             "Previewer: asked a preview for {p}, index {index}",
                             p = path.display()
@@ -51,8 +43,8 @@ impl Previewer {
                             tx_preview.send((preview, index)).unwrap();
                         };
                     }
+                    None => break,
                 }
-                std::thread::sleep(Duration::from_millis(Self::TEN_MILLIS));
             }
             Ok(())
         });

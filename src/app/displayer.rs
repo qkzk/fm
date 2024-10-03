@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 
 use crate::app::Status;
 use crate::io::Display;
@@ -37,7 +37,7 @@ impl Displayer {
                         display.display_all(&status)?;
                         drop(status);
                     }
-                    Err(error) => return Err(anyhow!("Error locking status: {error}")),
+                    Err(error) => bail!("Error locking status: {error}"),
                 }
                 std::thread::sleep(Duration::from_millis(Self::THIRTY_PER_SECONDS_IN_MILLIS));
             }

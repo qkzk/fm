@@ -1,11 +1,9 @@
 use std::sync::RwLock;
 
 use anyhow::Result;
-use clap::Parser;
 use log4rs;
 
 use crate::common::{extract_lines, tilde, ACTION_LOG_PATH, LOG_CONFIG_PATH};
-use crate::io::Args;
 
 /// Holds the last action which is displayed to the user
 static LAST_LOG_LINE: RwLock<String> = RwLock::new(String::new());
@@ -25,13 +23,10 @@ static LAST_LOG_INFO: RwLock<String> = RwLock::new(String::new());
 /// - a normal one used directly with the macros like `log::info!(...)`, used for debugging
 /// - a special one used with `log::info!(target: "special", ...)` to be displayed in the application
 pub fn set_loggers() -> Result<()> {
-    let args = Args::parse();
-    if args.log {
-        log4rs::init_file(tilde(LOG_CONFIG_PATH).as_ref(), Default::default())?;
-        // clear_useless_env_home()?;
+    log4rs::init_file(tilde(LOG_CONFIG_PATH).as_ref(), Default::default())?;
+    // clear_useless_env_home()?;
 
-        log::info!("fm is starting with logs enabled");
-    }
+    log::info!("fm is starting with logs enabled");
     Ok(())
 }
 

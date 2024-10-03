@@ -129,12 +129,12 @@ impl Status {
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
     pub fn new(
-        height: usize,
         term: Arc<Term>,
         opener: Opener,
         binds: &Bindings,
         fm_sender: Arc<Sender<FmEvents>>,
     ) -> Result<Self> {
+        let height = term.term_size()?.1;
         let skimer = None;
         let index = 0;
 
