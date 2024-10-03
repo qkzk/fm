@@ -1160,6 +1160,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   `! %t nvim %s` will open the selected file with neovim in a new terminal.
 - cd command (Alt+g) includes children of a path (detected as soon as you type a /)
 - double clic on a menu item to execute it. Same as a clic then press enter.
+- Fixed a bug where search completion would be made before the char is inserted, displaying wrong results
 
 #### Changelog
 
