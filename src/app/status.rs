@@ -1,14 +1,18 @@
 use std::fs;
-use std::sync::mpsc::{self, Sender, TryRecvError};
-use std::sync::Arc;
+use std::sync::{
+    mpsc::{self, Sender, TryRecvError},
+    Arc,
+};
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
 use opendal::EntryMode;
 use skim::SkimItem;
 use sysinfo::{Disk, Disks};
-use tuikit::prelude::{from_keyname, Event};
-use tuikit::term::Term;
+use tuikit::{
+    prelude::{from_keyname, Event, Key},
+    term::Term,
+};
 
 use crate::app::{ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab};
 use crate::common::{
@@ -825,7 +829,7 @@ impl Status {
 
     fn _skim_output_to_tab(&mut self) -> Result<()> {
         let Some(skimer) = &self.skimer else {
-            return Ok(());
+            bail!("Skim isn't initialised");
         };
         let skim = skimer.search_filename(&self.current_tab().directory_str());
         let paths: Vec<std::path::PathBuf> = skim
@@ -850,7 +854,7 @@ impl Status {
 
     fn _skim_line_output_to_tab(&mut self) -> Result<()> {
         let Some(skimer) = &self.skimer else {
-            return Ok(());
+            bail!("Skim isn't initialised");
         };
         let skim = skimer.search_line_in_file(&self.current_tab().directory_str());
         let paths = parse_line_output(&skim);
@@ -867,31 +871,21 @@ impl Status {
     /// If the result can't be parsed, nothing is done.
     pub fn skim_find_keybinding_and_run(&mut self, help: String) {
         self.skim_init();
-        if let Ok(key) = self._skim_find_keybinding(help) {
-            let _ = self.internal_settings.term.send_event(Event::Key(key));
-        };
+        let _ = self._skim_find_keybinding_and_run(help);
         self.drop_skim();
     }
 
-    fn _skim_find_keybinding(&mut self, help: String) -> Result<tuikit::prelude::Key> {
+    fn _skim_find_keybinding_and_run(&mut self, help: String) -> Result<()> {
+        let key = self._skim_find_keybinding(help)?;
+        self.internal_settings.term.send_event(Event::Key(key))?;
+        Ok(())
+    }
+
+    fn _skim_find_keybinding(&mut self, help: String) -> Result<Key> {
         let Some(skimer) = &mut self.skimer else {
             bail!("Skim isn't initialised");
         };
-        let skim = skimer.search_in_text(&help);
-        let Some(output) = skim.first() else {
-            bail!("Skim hasn't sent anything");
-        };
-        let line = output.output().into_owned();
-        let Some(keybind) = line.split(':').next() else {
-            bail!("No keybind found");
-        };
-        let Some(keyname) = parse_keyname(keybind) else {
-            bail!("No keyname found for {keybind}");
-        };
-        let Some(key) = from_keyname(&keyname) else {
-            bail!("{keyname} isn't a valid Key name.");
-        };
-        Ok(key)
+        find_keybind_from_skim(skimer.search_in_text(&help))
     }
 
     fn _update_tab_from_skim_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {
@@ -1630,6 +1624,7 @@ impl Status {
     }
 }
 
+#[must_use]
 fn parse_keyname(keyname: &str) -> Option<String> {
     let mut split = keyname.split('(');
     let mutator = split.next()?;
@@ -1653,4 +1648,21 @@ fn parse_keyname(keyname: &str) -> Option<String> {
     } else {
         Some(format!("{mutator}-{param}"))
     }
+}
+
+fn find_keybind_from_skim(skim: Vec<Arc<dyn SkimItem>>) -> Result<Key> {
+    let Some(output) = skim.first() else {
+        bail!("Skim hasn't sent anything");
+    };
+    let line = output.output().into_owned();
+    let Some(keybind) = line.split(':').next() else {
+        bail!("No keybind found");
+    };
+    let Some(keyname) = parse_keyname(keybind) else {
+        bail!("No keyname found for {keybind}");
+    };
+    let Some(key) = from_keyname(&keyname) else {
+        bail!("{keyname} isn't a valid Key name.");
+    };
+    Ok(key)
 }

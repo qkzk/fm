@@ -117,4 +117,11 @@ impl InternalSettings {
     pub fn unset_copy_progress(&mut self) {
         self.in_mem_progress = None;
     }
+
+    /// Set the must quit flag to true.
+    /// The next update call will exit the application.
+    /// It doesn't exit the application itself.
+    pub fn quit(&mut self) {
+        self.must_quit = true
+    }
 }

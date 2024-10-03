@@ -29,7 +29,7 @@ impl EventAction {
     /// If a menu is opened, closes it.
     pub fn quit(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {
-            status.internal_settings.must_quit = true;
+            status.internal_settings.quit();
         } else {
             status.reset_edit_mode()?;
         }
