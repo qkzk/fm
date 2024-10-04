@@ -1194,6 +1194,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] double clic on menu items
 - [x] FIX: search completion is made before the char is inserted in input string. Should be done afterward.
 - [x] FIX: previewer is called even when preview can't be seen
+- [x] FIX: Refresher is sending its quit message trought a closed channel
 - [x] non bloking previews, "simple" way.
   - [x] struct with a thread and 2 mpsc: one to ask for previews, one to send them back. The first is also used to break the loop.
   - [x] refresher send more events, also asking for previews to be checked
@@ -1204,8 +1205,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] simplify update loop
   - [x] simplify build
   - [x] simplify early exit
-- [ ] common text editor shortcut. Ctrl+left/right ? conflict with focus move... same as ctrl+hjkl to move focus.
-      Needs a lot of key remap
 - [ ] directory preview should just be a "directory" ?
 
 ## TODO

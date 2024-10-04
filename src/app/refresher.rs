@@ -57,10 +57,7 @@ impl Refresher {
     /// Send a quit message to the receiver, signaling it to quit.
     /// Join the refreshing thread which should be terminated.
     pub fn quit(self) {
-        match self.tx.send(()) {
-            Ok(_) => (),
-            Err(e) => log_info!("Refresher::quit error {e:?}"),
-        };
+        let _ = self.tx.send(());
         let _ = self.handle.join();
     }
 }
