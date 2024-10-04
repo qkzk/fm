@@ -1189,7 +1189,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] Fix after ! command, empty preview is displayed
   - [x] documentation, help
 
-- [ ] BUG: :Preview does nothing. Can't fix it easily
+- [x] Fix: :Preview does nothing. Had to create a new kind of event
 - [ ] revisit cloud configuration make it permanent
 - [x] double clic on menu items
 - [x] FIX: search completion is made before the char is inserted in input string. Should be done afterward.

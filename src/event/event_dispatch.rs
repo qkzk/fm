@@ -47,6 +47,7 @@ impl EventDispatcher {
             FmEvents::Refresh => EventAction::refresh_if_needed(status),
             FmEvents::FileCopied => EventAction::file_copied(status),
             FmEvents::CheckPreview => EventAction::check_preview(status),
+            FmEvents::Action(action) => action.matcher(status, &self.binds),
             _ => Ok(()),
         }
     }

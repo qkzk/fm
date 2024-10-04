@@ -6,7 +6,7 @@ use anyhow::{bail, Context, Result};
 use crate::app::Status;
 use crate::common::{path_to_string, rename, string_to_path};
 use crate::config::Bindings;
-use crate::event::{ActionMap, EventAction};
+use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::modes::{
     BlockDeviceAction, CLApplications, Content, Display, Edit, InputCompleted, InputSimple, Leave,
     MarkAction, Navigate, NodeCreation, PasswordUsage, PickerCaller, Search, SortKind,
@@ -70,7 +70,7 @@ impl LeaveMode {
             }
             Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status, true),
             Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
-            Edit::InputCompleted(InputCompleted::Action) => LeaveMode::action(status, binds),
+            Edit::InputCompleted(InputCompleted::Action) => LeaveMode::action(status),
             // To avoid mistakes, the default answer is No. We do nothing here.
             Edit::NeedConfirmation(_) => Ok(()),
         }?;
@@ -368,19 +368,19 @@ impl LeaveMode {
         command.matcher(status, binds)
     }
 
-    /// Execute the selected command.
+    /// Execute the selected action.
     /// Some commands does nothing as they require to be executed from a specific
     /// context.
-    fn action(status: &mut Status, binds: &Bindings) -> Result<()> {
-        let command_str = status.menu.completion.current_proposition();
-        let Ok(command) = ActionMap::from_str(command_str) else {
+    fn action(status: &mut Status) -> Result<()> {
+        let action_str = status.menu.completion.current_proposition();
+        let Ok(action) = ActionMap::from_str(action_str) else {
             return Ok(());
         };
-        log_info!("Command {command}");
 
         status.reset_edit_mode()?;
         status.focus = status.focus.to_parent();
-        command.matcher(status, binds)
+        status.fm_sender.send(FmEvents::Action(action))?;
+        Ok(())
     }
 
     /// Apply a filter to the displayed files.
