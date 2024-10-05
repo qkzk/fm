@@ -180,18 +180,16 @@ impl Preview {
     }
 }
 
-pub struct PreviewBuilder<'a> {
+pub struct PreviewBuilder {
     path: PathBuf,
-    users: &'a Users,
 }
 
-impl<'a> PreviewBuilder<'a> {
+impl PreviewBuilder {
     const CONTENT_INSPECTOR_MIN_SIZE: usize = 1024;
 
-    pub fn new(path: &Path, users: &'a Users) -> Self {
+    pub fn new(path: &Path) -> Self {
         Self {
             path: path.to_owned(),
-            users,
         }
     }
 
@@ -225,22 +223,19 @@ impl<'a> PreviewBuilder<'a> {
     /// It explores recursivelly the directory and creates a tree.
     /// The recursive exploration is limited to depth 2.
     fn directory(&self) -> Result<Preview> {
+        let users = Users::default();
         Ok(Preview::Tree(Tree::new(
             std::sync::Arc::from(self.path.as_path()),
             4,
             SortKind::tree_default(),
-            self.users,
+            &users,
             false,
             &FilterKind::All,
         )))
     }
 
     fn valid_symlink(&self) -> Result<Preview> {
-        Self::new(
-            &std::fs::read_link(&self.path).unwrap_or_default(),
-            self.users,
-        )
-        .build()
+        Self::new(&std::fs::read_link(&self.path).unwrap_or_default()).build()
     }
 
     fn normal_file(&self) -> Result<Preview> {

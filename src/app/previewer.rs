@@ -1,14 +1,13 @@
 use std::path::PathBuf;
 use std::sync::mpsc;
-use std::sync::Arc;
 use std::thread;
 
 use anyhow::Result;
 
-use crate::modes::{Preview, PreviewBuilder, Users};
+use crate::modes::{Preview, PreviewBuilder};
 
 enum PreviewRequest {
-    Request((PathBuf, Arc<Users>, usize)),
+    Request((PathBuf, usize)),
     Quit,
 }
 
@@ -38,8 +37,8 @@ impl Previewer {
         thread::spawn(move || {
             while let Some(request) = rx.iter().next() {
                 match request {
-                    PreviewRequest::Request((path, users, index)) => {
-                        if let Ok(preview) = PreviewBuilder::new(&path, &users).build() {
+                    PreviewRequest::Request((path, index)) => {
+                        if let Ok(preview) = PreviewBuilder::new(&path).build() {
                             tx_preview.send((preview, index)).unwrap();
                         };
                     }
@@ -62,9 +61,8 @@ impl Previewer {
     /// Sends an "ask preview" to the previewer loop. A preview will be built, which won't block the application.
     /// Once the preview is built, it's send back to status, which should be asked to attach the preview.
     /// The preview won't be attached automatically, it's the responsability of the application to do it.
-    pub fn build(&self, path: PathBuf, users: Arc<Users>, index: usize) -> Result<()> {
-        self.tx
-            .send(PreviewRequest::Request((path, users, index)))?;
+    pub fn build(&self, path: PathBuf, index: usize) -> Result<()> {
+        self.tx.send(PreviewRequest::Request((path, index)))?;
         Ok(())
     }
 }

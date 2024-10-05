@@ -1205,6 +1205,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] simplify update loop
   - [x] simplify build
   - [x] simplify early exit
+- [ ] users. Use Arc in status. Avoid multiple instance of same object, clone the arc. Requires a lot of change
+- [x] don't pass users to preview, build them if needed in tree
 - [ ] directory preview should just be a "directory" ?
 
 ## TODO

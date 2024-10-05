@@ -1,18 +1,37 @@
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Users {
     users: HashMap<u32, String>,
     groups: HashMap<u32, String>,
 }
 
-impl Users {
+impl Default for Users {
     /// Creates both hashmaps of uid:user and gid:group read from `/etc/passwd` and `/etc/groups`.
-    pub fn new() -> Self {
-        let mut users = Self::default();
-        users.update_users();
-        users.update_groups();
+    fn default() -> Self {
+        let mut users = Self {
+            users: HashMap::new(),
+            groups: HashMap::new(),
+        };
+        users.update();
         users
+    }
+}
+
+impl Users {
+    pub fn only_users() -> Self {
+        let mut users = Self {
+            users: HashMap::new(),
+            groups: HashMap::new(),
+        };
+        users.update_users();
+        users
+    }
+
+    /// Refresh the users from `/etc/passwd` and `/etc/groups`
+    pub fn update(&mut self) {
+        self.update_users();
+        self.update_groups();
     }
 
     fn update_users(&mut self) {

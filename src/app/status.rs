@@ -154,15 +154,15 @@ impl Status {
         let mut internal_settings = InternalSettings::new(opener, term, disks);
         let mount_points = internal_settings.mount_points();
         let menu = Menu::new(start_dir, &mount_points, binds, fm_sender.clone())?;
+        let focus = Focus::default();
 
-        let users_left = Users::new();
+        let users_left = Users::default();
         let users_right = users_left.clone();
 
         let tabs = [
             Tab::new(&args, height, users_left)?,
             Tab::new(&args, height, users_right)?,
         ];
-        let focus = Focus::default();
         let (previewer_sender, preview_receiver) = mpsc::channel();
         let previewer = Previewer::new(previewer_sender);
         Ok(Self {
@@ -474,9 +474,8 @@ impl Status {
 
     /// Refresh the users for every tab
     pub fn refresh_users(&mut self) -> Result<()> {
-        let users = Users::new();
-        self.tabs[0].users = users.clone();
-        self.tabs[1].users = users;
+        self.tabs[0].users.update();
+        self.tabs[1].users.update();
         Ok(())
     }
 
@@ -527,14 +526,7 @@ impl Status {
         let Ok(fileinfo) = self.get_correct_fileinfo_for_preview() else {
             return Ok(());
         };
-        let left_tab = &self.tabs[0];
-        let users = &left_tab.users;
-        self.previewer
-            .build(fileinfo.path.to_path_buf(), Arc::from(users.clone()), 1)?;
-        // self.tabs[1].preview = PreviewBuilder::new(&fileinfo.path, users)
-        //     .build()
-        //     .unwrap_or_default();
-        // self.tabs[1].window.reset(self.tabs[1].preview.len());
+        self.previewer.build(fileinfo.path.to_path_buf(), 1)?;
         Ok(())
     }
 
