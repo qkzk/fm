@@ -1191,6 +1191,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 - [x] Fix: :Preview does nothing. Had to create a new kind of event
 - [ ] revisit cloud configuration make it permanent
+  - [ ] something is wrong, IDK what
 - [x] double clic on menu items
 - [x] FIX: search completion is made before the char is inserted in input string. Should be done afterward.
 - [x] FIX: previewer is called even when preview can't be seen
@@ -1200,7 +1201,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] refresher send more events, also asking for previews to be checked
   - [x] check if a preview should be asked in app every event received
   - [ ] tests, perf, memory usage...
-  - [ ] remove comments & useless logs in status & previewer
 - [ ] refactor app:
   - [x] simplify update loop
   - [x] simplify build
