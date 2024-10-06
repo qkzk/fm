@@ -1211,6 +1211,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - read only requires a ref: should be okay
   - update is done in status, should be okay
 - [x] don't pass users to preview, build them if needed in tree
+- [ ] tree: make a separate builder for nodes treelines
 - [ ] directory preview should just be a "directory" ?
 
 ## TODO

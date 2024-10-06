@@ -89,9 +89,9 @@ impl Node {
         self.index
     }
 
-    /// Creates a new fileinfo from the node.
-    pub fn fileinfo(&self, users: &Users) -> Result<FileInfo> {
-        FileInfo::new(&self.path, users)
+    /// Path of this node
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 
     #[inline]
@@ -183,7 +183,7 @@ impl Tree {
         filter_kind: &FilterKind,
     ) -> Self {
         let nodes = Self::make_nodes(
-            root_path.clone(),
+            &root_path,
             depth,
             sort_kind,
             users,
@@ -203,17 +203,31 @@ impl Tree {
 
     #[inline]
     fn make_nodes(
-        root_path: Arc<Path>,
+        root_path: &Arc<Path>,
         depth: usize,
         sort_kind: SortKind,
         users: &Users,
         show_hidden: bool,
         filter_kind: &FilterKind,
     ) -> HashMap<Arc<Path>, Node> {
-        // keep track of the depth
+        let (mut nodes, last_path) =
+            Self::dfs(root_path, depth, sort_kind, users, show_hidden, filter_kind);
+        Self::set_prev_for_root(&mut nodes, root_path, &last_path);
+        nodes
+    }
+
+    #[inline]
+    fn dfs(
+        root_path: &Arc<Path>,
+        depth: usize,
+        sort_kind: SortKind,
+        users: &Users,
+        show_hidden: bool,
+        filter_kind: &FilterKind,
+    ) -> (HashMap<Arc<Path>, Node>, Arc<Path>) {
         let root_depth = root_path.depth();
         let mut stack = vec![root_path.to_owned()];
-        let mut nodes: HashMap<Arc<Path>, Node> = HashMap::new();
+        let mut nodes = HashMap::new();
         let mut last_path = root_path.to_owned();
         let mut index = 0;
 
@@ -222,9 +236,8 @@ impl Tree {
             if current_depth >= depth + root_depth {
                 continue;
             }
-            let children_will_be_added = depth + root_depth > 1 + current_depth;
             let children =
-                if children_will_be_added && current_path.is_dir() && !current_path.is_symlink() {
+                if Self::node_may_have_children(depth, root_depth, current_depth, &current_path) {
                     Self::create_children(
                         &mut stack,
                         &current_path,
@@ -242,9 +255,17 @@ impl Tree {
             nodes.insert(current_path, current_node);
             index += 1;
         }
-        Self::set_prev_for_root(&mut nodes, &root_path, &last_path);
-        // Self::set_next_for_last(&mut nodes, &root_path, &last_path);
-        nodes
+        (nodes, last_path)
+    }
+
+    fn node_may_have_children(
+        depth: usize,
+        root_depth: usize,
+        current_depth: usize,
+        current_path: &Path,
+    ) -> bool {
+        let children_will_be_added = depth + root_depth > 1 + current_depth;
+        children_will_be_added && current_path.is_dir() && !current_path.is_symlink()
     }
 
     #[inline]
@@ -355,11 +376,11 @@ impl Tree {
     /// this node in `select_prev` `select_next`.
     /// It will construct all parent path from `/` to `node.path` except for the last one.
     fn node_has_parent_folded(&self, node: &Node) -> bool {
-        let path = &node.path;
+        let node_path = node.path();
         let mut current_path = std::path::PathBuf::from("/");
-        for part in path.components() {
+        for part in node_path.components() {
             current_path = current_path.join(part.as_os_str());
-            if current_path == <Arc<std::path::Path> as Borrow<Path>>::borrow(path) {
+            if current_path == node_path {
                 continue;
             }
             if let Some(current_node) = self.nodes.get(current_path.as_path()) {
