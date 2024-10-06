@@ -475,7 +475,7 @@ impl Status {
     /// Refresh the users for every tab
     pub fn refresh_users(&mut self) -> Result<()> {
         self.tabs[0].users.update();
-        self.tabs[1].users.update();
+        self.tabs[1].users = self.tabs[0].users.clone();
         Ok(())
     }
 
