@@ -15,7 +15,7 @@ use crate::log_info;
 use crate::modes::{
     parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, Edit,
     FileInfo, HLContent, InputSimple, LineDisplay, MoreInfos, Navigate, NeedConfirmation, Preview,
-    SecondLine, Selectable, Text, TextKind, Trash, Tree, TreeLineBuilder, Ueber, Window,
+    SecondLine, Selectable, TLine, Text, TextKind, Trash, Tree, Ueber, Window,
 };
 
 trait ClearLine {
@@ -411,7 +411,7 @@ impl<'a> TreeDisplay<'a> {
     fn tree_line(
         status: &Status,
         canvas: &mut dyn Canvas,
-        line_builder: &TreeLineBuilder,
+        line_builder: &TLine,
         position_param: TreeLinePosition,
         with_medatadata: bool,
     ) -> Result<()> {
@@ -438,7 +438,7 @@ impl<'a> TreeDisplay<'a> {
         with_medatadata: bool,
         row: usize,
         col: usize,
-        line_builder: &TreeLineBuilder,
+        line_builder: &TLine,
         attr: Attr,
     ) -> Result<usize> {
         if with_medatadata {

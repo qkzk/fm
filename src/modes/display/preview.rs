@@ -24,8 +24,8 @@ use crate::common::{
 use crate::config::MONOKAI_THEME;
 use crate::io::execute_and_capture_output_without_check;
 use crate::modes::{
-    extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind,
-    SortKind, Tree, TreeLineBuilder, TreeLines, Ueber, UeberBuilder, Users,
+    extract_extension, list_files_tar, list_files_zip, ContentWindow, FileKind, FilterKind, TLine,
+    Tree, TreeBuilder, TreeLines, Ueber, UeberBuilder, Users,
 };
 
 /// Different kind of extension for grouped by previewers.
@@ -224,14 +224,13 @@ impl PreviewBuilder {
     /// The recursive exploration is limited to depth 2.
     fn directory(&self) -> Result<Preview> {
         let users = Users::default();
-        Ok(Preview::Tree(Tree::new(
-            std::sync::Arc::from(self.path.as_path()),
-            4,
-            SortKind::tree_default(),
-            &users,
-            false,
-            &FilterKind::All,
-        )))
+        Ok(Preview::Tree(
+            TreeBuilder::new(std::sync::Arc::from(self.path.as_path()), &users)
+                .with_max_depth(4)
+                .with_hidden(false)
+                .with_filter_kind(&FilterKind::All)
+                .build(),
+        ))
     }
 
     fn valid_symlink(&self) -> Result<Preview> {
@@ -847,4 +846,4 @@ pub type VecSyntaxedString = Vec<SyntaxedString>;
 impl_window!(HLContent, VecSyntaxedString);
 impl_window!(Text, String);
 impl_window!(BinaryContent, Line);
-impl_window!(TreeLines, TreeLineBuilder);
+impl_window!(TreeLines, TLine);

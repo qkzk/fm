@@ -15,7 +15,7 @@ use crate::io::Args;
 use crate::log_info;
 use crate::modes::{
     Content, ContentWindow, Directory, Display, Edit, FileInfo, FileKind, FilterKind, Go, History,
-    Preview, PreviewBuilder, Search, Selectable, SortKind, To, Tree, Users,
+    Preview, PreviewBuilder, Search, Selectable, SortKind, To, Tree, TreeBuilder, Users,
 };
 
 pub struct TabSettings {
@@ -261,14 +261,11 @@ impl Tab {
         self.settings.sort_kind = sort_kind;
         let path = self.directory.path.clone();
         let users = &self.users;
-        self.tree = Tree::new(
-            path.clone(),
-            5,
-            sort_kind,
-            users,
-            self.settings.show_hidden,
-            &self.settings.filter,
-        );
+        self.tree = TreeBuilder::new(path.clone(), users)
+            .with_hidden(self.settings.show_hidden)
+            .with_filter_kind(&self.settings.filter)
+            .with_sort_kind(sort_kind)
+            .build();
     }
 
     fn make_tree_for_parent(&mut self) -> Result<()> {

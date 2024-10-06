@@ -1196,6 +1196,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] FIX: search completion is made before the char is inserted in input string. Should be done afterward.
 - [x] FIX: previewer is called even when preview can't be seen
 - [x] FIX: Refresher is sending its quit message trought a closed channel
+- [x] tree: separate builder for nodes and for treelines
 - [x] non bloking previews, "simple" way.
   - [x] struct with a thread and 2 mpsc: one to ask for previews, one to send them back. The first is also used to break the loop.
   - [x] refresher send more events, also asking for previews to be checked
@@ -1211,7 +1212,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - read only requires a ref: should be okay
   - update is done in status, should be okay
 - [x] don't pass users to preview, build them if needed in tree
-- [ ] tree: make a separate builder for nodes treelines
 - [ ] directory preview should just be a "directory" ?
 
 ## TODO
