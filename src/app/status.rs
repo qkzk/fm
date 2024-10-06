@@ -28,10 +28,10 @@ use crate::io::{
 };
 use crate::modes::{
     copy_move, extract_extension, parse_line_output, regex_matcher, BlockDeviceAction, Content,
-    ContentWindow, CopyMove, Display, Edit, FileInfo, FileKind, FilterKind, InputSimple, IsoDevice,
-    LeaveMode, Menu, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind,
-    PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable,
-    ShellCommandParser, Skimer, Users,
+    ContentWindow, CopyMove, Display, Edit, FileInfo, FileKind, FilterKind, InputCompleted,
+    InputSimple, IsoDevice, LeaveMode, Menu, MountCommands, MountRepr, Navigate, NeedConfirmation,
+    PasswordKind, PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search,
+    Selectable, ShellCommandParser, Skimer, Users,
 };
 use crate::{log_info, log_line};
 
@@ -432,6 +432,19 @@ impl Status {
     pub fn leave_preview(&mut self) -> Result<()> {
         self.current_tab_mut().set_display_mode(Display::Directory);
         self.current_tab_mut().refresh_and_reselect_file()
+    }
+
+    pub fn cd_origin_path(&mut self) -> Result<()> {
+        if matches!(
+            self.current_tab().edit_mode,
+            Edit::InputCompleted(InputCompleted::Cd)
+        ) {
+            let Some(origin_path) = &self.menu.origin_pathes[self.index] else {
+                bail!("origin path should be set");
+            };
+            self.tabs[self.index].cd_to_file(origin_path)?;
+        }
+        Ok(())
     }
 
     /// Reset the edit mode to "Nothing" (closing any menu) and returns

@@ -1208,11 +1208,16 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] simplify early exit
 - [x] don't pass users to preview, build them if needed in tree
 - [ ] directory preview should just be a "directory" ?
+- [ ] WIP: move as you type in Alt+g, esc go back to previous
+  - [ ] hold origin in menus (would tab be a better place ?)
+  - [x] cd there as you type
+  - [x] reset when pressing Esc
+  - [ ] BUG: preview doesn't update every time
+  - [ ] BUG: weird glitches like /etc**//**bla in completion (idk how ?)
 
 ## TODO
 
 - [ ] google drive should be a display ?
-- [ ] status, tab, event exec refactor. What should go where ? status is too big and should be splitted
 - [ ] replace tuikit by ratatui + crossterm
 - [ ] Focus & mouseover. Mousemove require raw terminal mode.. Requires to rewrite every event (Mousepress, mouse release etc.)
       Another motivation to switch to ratatui + crossterm.
@@ -1220,7 +1225,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] floating windows ?
 - [ ] rclone
 - [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
-- [ ] move as you type in Alt+g
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving

@@ -441,7 +441,10 @@ impl Tab {
 
     pub fn cd_to_file(&mut self, path: &path::Path) -> Result<()> {
         crate::log_info!("cd_to_file: {path}", path = path.display());
-        let parent = path.parent().context("no parent")?;
+        let parent = match path.parent() {
+            Some(parent) => parent,
+            None => std::path::Path::new("/"),
+        };
         self.cd(parent)?;
         self.go_to_file(path);
         Ok(())

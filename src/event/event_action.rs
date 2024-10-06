@@ -54,11 +54,16 @@ impl EventAction {
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(status: &mut Status) -> Result<()> {
-        if !matches!(status.current_tab().edit_mode, Edit::Nothing) {
-            status.leave_edit_mode()?;
-        } else if matches!(status.current_tab().display_mode, Display::Preview) {
-            status.leave_preview()?
-        }
+        match status.current_tab().edit_mode {
+            Edit::Nothing if matches!(status.current_tab().display_mode, Display::Preview) => {
+                status.leave_preview()
+            }
+            Edit::InputCompleted(InputCompleted::Cd) => {
+                status.cd_origin_path()?;
+                status.leave_edit_mode()
+            }
+            _ => status.leave_edit_mode(),
+        }?;
         status.menu.input.reset();
         status.menu.completion.reset();
         Ok(())
@@ -564,6 +569,9 @@ impl EventAction {
             status.reset_edit_mode()?;
         } else {
             status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Cd))?;
+
+            status.menu.origin_pathes[status.index] =
+                Some(status.tabs[status.index].current_path().to_owned());
             status.menu.completion.reset();
         }
         Ok(())

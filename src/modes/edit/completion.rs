@@ -4,6 +4,7 @@ use std::fs::{self, ReadDir};
 use anyhow::Result;
 use strum::IntoEnumIterator;
 
+use crate::app::Tab;
 use crate::common::{is_in_path, tilde, ZOXIDE};
 use crate::event::ActionMap;
 use crate::io::{execute_and_capture_output_with_path, DrawMenu};
@@ -100,7 +101,8 @@ impl Completion {
 
     /// Cd completion.
     /// Looks for the valid path completing what the user typed.
-    pub fn cd(&mut self, input_string: &str, current_path: &str) -> Result<()> {
+    pub fn cd(&mut self, tab: &mut Tab, input_string: &str) -> Result<()> {
+        let current_path = &tab.directory.path.as_os_str().to_string_lossy();
         self.cd_update_from_input(input_string, current_path);
         let (parent, last_name) = split_input_string(input_string);
         if !last_name.is_empty() {
