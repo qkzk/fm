@@ -170,10 +170,13 @@ impl Tab {
     /// Fileinfo of the selected element.
     pub fn current_file(&self) -> Result<FileInfo> {
         match self.display_mode {
-            Display::Tree => {
-                let node = self.tree.selected_node().context("no selected node")?;
-                node.fileinfo(&self.users)
-            }
+            Display::Tree => FileInfo::new(
+                self.tree
+                    .selected_node()
+                    .context("no selected node")?
+                    .path(),
+                &self.users,
+            ),
             _ => Ok(self
                 .directory
                 .selected()
@@ -370,18 +373,13 @@ impl Tab {
         self.refresh_view()
     }
 
-    pub fn reset_my_files(&mut self) -> Result<()> {
-        self.directory.reset_files(&self.settings, &self.users)
-    }
-
     pub fn set_filter(&mut self, filter: FilterKind) -> Result<()> {
         self.settings.set_filter(filter);
-        self.reset_my_files()?;
+        self.directory.reset_files(&self.settings, &self.users)?;
         if let Display::Tree = self.display_mode {
             self.make_tree(None);
         }
-        let len = self.directory.content.len();
-        self.window.reset(len);
+        self.window.reset(self.directory.content.len());
         Ok(())
     }
 
