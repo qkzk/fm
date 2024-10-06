@@ -8,7 +8,6 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 
 use crate::app::TabSettings;
-use crate::common::filename_from_path;
 use crate::io::git;
 use crate::modes::{is_not_hidden, FileInfo, FileKind, FilterKind, SortKind, Users};
 use crate::{impl_content, impl_selectable, log_info};
@@ -67,11 +66,7 @@ impl Directory {
         users: &Users,
     ) -> Result<Vec<FileInfo>> {
         let mut files: Vec<FileInfo> = Self::create_dot_dotdot(path, users)?;
-
-        let fileinfo = FileInfo::from_path_with_name(path, filename_from_path(path)?, users)?;
-        if let Some(true_files) =
-            files_collection(&fileinfo.path, users, show_hidden, filter_kind, false)
-        {
+        if let Some(true_files) = files_collection(path, users, show_hidden, filter_kind, false) {
             files.extend(true_files);
         }
         Ok(files)
@@ -220,8 +215,7 @@ pub fn files_collection(
             read_dir
                 .filter_map(|direntry| direntry.ok())
                 .filter(|direntry| show_hidden || is_not_hidden(direntry).unwrap_or(true))
-                .map(|direntry| FileInfo::from_direntry(&direntry, users))
-                .filter_map(|fileinfo| fileinfo.ok())
+                .filter_map(|direntry| FileInfo::from_direntry(&direntry, users).ok())
                 .filter(|fileinfo| filter_kind.filter_by(fileinfo, keep_dir))
                 .collect(),
         ),
