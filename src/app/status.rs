@@ -907,6 +907,22 @@ impl Status {
         self.skimer = None;
     }
 
+    /// Replace the current input by the next result from history
+    pub fn input_history_next(&mut self) -> Result<()> {
+        if self.focus.is_file() {
+            return Ok(());
+        }
+        self.menu.input_history_next(&mut self.tabs[self.index])
+    }
+
+    /// Replace the current input by the previous result from history
+    pub fn input_history_prev(&mut self) -> Result<()> {
+        if self.focus.is_file() {
+            return Ok(());
+        }
+        self.menu.input_history_prev(&mut self.tabs[self.index])
+    }
+
     pub fn complete_search(&mut self, c: char) -> Result<()> {
         self.menu.input.insert(c);
         self.update_search()?;

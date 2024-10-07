@@ -818,22 +818,26 @@ impl EventAction {
         status.update_second_pane_for_preview()
     }
 
+    /// Special move to the next "thing".
+    /// if we're in tree mode, focusing a file, it's the next sibling (= node of the same level sharing parent)
+    /// if we're inputing something, it's the next history result
     pub fn next_thing(status: &mut Status) -> Result<()> {
-        if matches!(status.tabs[status.index].display_mode, Display::Tree) && status.focus.is_file()
-        {
+        if matches!(status.current_tab().display_mode, Display::Tree) && status.focus.is_file() {
             status.current_tab_mut().tree_next_sibling();
         } else {
-            Self::input_history_prev(status)?;
+            status.input_history_prev()?;
         }
         Ok(())
     }
 
+    /// Special move to the previous "thing".
+    /// if we're in tree mode, focusing a file, it's the previous sibling (= node of the same level sharing parent)
+    /// if we're inputing something, it's the previous history result
     pub fn previous_thing(status: &mut Status) -> Result<()> {
-        if matches!(status.tabs[status.index].display_mode, Display::Tree) && status.focus.is_file()
-        {
+        if matches!(status.current_tab().display_mode, Display::Tree) && status.focus.is_file() {
             status.current_tab_mut().tree_prev_sibling();
         } else {
-            Self::input_history_next(status)?;
+            status.input_history_next()?;
         }
         Ok(())
     }
@@ -1461,32 +1465,6 @@ impl EventAction {
             Focus::LeftMenu => status.focus = Focus::LeftFile,
             Focus::RightMenu => status.focus = Focus::RightFile,
         }
-        Ok(())
-    }
-
-    pub fn input_history_next(status: &mut Status) -> Result<()> {
-        if status.focus.is_file() {
-            return Ok(());
-        }
-        status.menu.input_history.next();
-        let Some(hist) = status.menu.input_history.current() else {
-            return Ok(());
-        };
-        status.menu.input.replace(hist);
-        status.menu.input_complete(&mut status.tabs[status.index])?;
-        Ok(())
-    }
-
-    pub fn input_history_prev(status: &mut Status) -> Result<()> {
-        if status.focus.is_file() {
-            return Ok(());
-        }
-        status.menu.input_history.prev();
-        let Some(hist) = status.menu.input_history.current() else {
-            return Ok(());
-        };
-        status.menu.input.replace(hist);
-        status.menu.input_complete(&mut status.tabs[status.index])?;
         Ok(())
     }
 

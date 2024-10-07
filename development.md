@@ -1223,6 +1223,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
         multiple //// are allowed in pathes, kernel collapses them into a single separator.
         [See StackOverflow](https://stackoverflow.com/questions/16840916/what-is-path-how-is-it-different-from)
   - [x] can't use history. Every cd is recorded, so when need to remember where we started...
+- [x] refactor input history calls
 - [ ] directory preview should just be a "directory" ?
 
 ## TODO
