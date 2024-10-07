@@ -1162,6 +1162,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - double clic on a menu item to execute it. Same as a clic then press enter.
 - Fixed a bug where search completion would be made before the char is inserted, displaying wrong results
 - Fixed a bug where preview were built for second pane even if it wasn't visible, wasting ressources
+- Move as you type. In Cd menu (Alt+g), the display and preview is updated as you type.
+  Pressing Esc (leave mode) go back to where you started from.
+  You need to validate with enter.
 
 #### Changelog
 
@@ -1207,8 +1210,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] simplify build
   - [x] simplify early exit
 - [x] don't pass users to preview, build them if needed in tree
-- [ ] directory preview should just be a "directory" ?
-- [ ] WIP: move as you type in Alt+g, esc go back to previous
+- [x] Move as you type in Alt+g, esc go back to previous
   - [x] hold origin in tab
   - [x] cd there as you type
   - [x] reset when pressing Esc
@@ -1217,11 +1219,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
     - [x] request a preview
     - [x] preview is updated when input is a directory
     - [x] preview is updated when input is an existing file
-  - [ ] use history, not origin path ?
-  - [ ] BUG: weird glitches like /etc**//**bla in completion (idk how ?)
-        prevent multiple /////// in input ?
-        don't display ///////// in window ?
-        don't complete with ///////// ?
+  - [x] NOT A BUG, a kernel feature:
+        multiple //// are allowed in pathes, kernel collapses them into a single separator.
+        [See StackOverflow](https://stackoverflow.com/questions/16840916/what-is-path-how-is-it-different-from)
+  - [x] can't use history. Every cd is recorded, so when need to remember where we started...
+- [ ] directory preview should just be a "directory" ?
 
 ## TODO
 
