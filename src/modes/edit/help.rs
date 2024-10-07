@@ -11,7 +11,7 @@ const CUSTOM_HELP: &str = "
 %f: the flagged files,
 %e: the extension of the file,
 %n: the filename only,
-%p: the full path of the current directory.
+%p: the full path of the current directory,
 %t: the currently set terminal & its flags.
 ";
 
