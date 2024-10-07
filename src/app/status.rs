@@ -439,10 +439,7 @@ impl Status {
             self.current_tab().edit_mode,
             Edit::InputCompleted(InputCompleted::Cd)
         ) {
-            let Some(origin_path) = &self.menu.origin_pathes[self.index] else {
-                bail!("origin path should be set");
-            };
-            self.tabs[self.index].cd_to_file(origin_path)?;
+            self.tabs[self.index].cd_origin_path()?;
         }
         Ok(())
     }
@@ -926,7 +923,18 @@ impl Status {
 
     pub fn complete_non_search(&mut self, c: char) -> Result<()> {
         self.menu.input.insert(c);
+        self.complete_cd_move()?;
         self.menu.input_complete(&mut self.tabs[self.index])
+    }
+
+    pub fn complete_cd_move(&mut self) -> Result<()> {
+        if let Edit::InputCompleted(InputCompleted::Cd) = self.current_tab().edit_mode {
+            let input = self.menu.input.string();
+            if self.tabs[self.index].try_cd_to_file(input)? {
+                self.update_second_pane_for_preview()?;
+            }
+        }
+        Ok(())
     }
 
     /// Update the flagged files depending of the input regex.

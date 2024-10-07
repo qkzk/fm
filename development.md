@@ -1209,11 +1209,19 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] don't pass users to preview, build them if needed in tree
 - [ ] directory preview should just be a "directory" ?
 - [ ] WIP: move as you type in Alt+g, esc go back to previous
-  - [ ] hold origin in menus (would tab be a better place ?)
+  - [x] hold origin in tab
   - [x] cd there as you type
   - [x] reset when pressing Esc
-  - [ ] BUG: preview doesn't update every time
+  - [x] Fix: preview doesn't update every time
+    - [x] cd should be called from status or parent not menu
+    - [x] request a preview
+    - [x] preview is updated when input is a directory
+    - [x] preview is updated when input is an existing file
+  - [ ] use history, not origin path ?
   - [ ] BUG: weird glitches like /etc**//**bla in completion (idk how ?)
+        prevent multiple /////// in input ?
+        don't display ///////// in window ?
+        don't complete with ///////// ?
 
 ## TODO
 

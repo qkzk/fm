@@ -570,8 +570,7 @@ impl EventAction {
         } else {
             status.set_edit_mode(status.index, Edit::InputCompleted(InputCompleted::Cd))?;
 
-            status.menu.origin_pathes[status.index] =
-                Some(status.tabs[status.index].current_path().to_owned());
+            status.tabs[status.index].save_origin_path();
             status.menu.completion.reset();
         }
         Ok(())
@@ -1143,7 +1142,8 @@ impl EventAction {
         if status.focus.is_file() {
             status.next()
         } else if let Edit::InputCompleted(_) = status.current_tab_mut().edit_mode {
-            status.menu.completion_tab()
+            status.menu.completion_tab();
+            status.complete_cd_move()?;
         }
         Ok(())
     }

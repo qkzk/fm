@@ -101,7 +101,7 @@ impl Completion {
 
     /// Cd completion.
     /// Looks for the valid path completing what the user typed.
-    pub fn cd(&mut self, tab: &mut Tab, input_string: &str) -> Result<()> {
+    pub fn cd(&mut self, tab: &Tab, input_string: &str) -> Result<()> {
         let current_path = &tab.directory.path.as_os_str().to_string_lossy();
         self.cd_update_from_input(input_string, current_path);
         let (parent, last_name) = split_input_string(input_string);

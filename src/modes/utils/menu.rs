@@ -63,7 +63,6 @@ pub struct Menu {
     pub sudo_command: Option<String>,
     /// History - here for compatibility reasons only
     pub history: History,
-    pub origin_pathes: [Option<std::path::PathBuf>; 2],
 }
 
 impl Menu {
@@ -95,7 +94,6 @@ impl Menu {
             trash: Trash::new(binds)?,
             tui_applications: TuiApplications::new(TUIS_PATH),
             window: ContentWindow::new(0, 80),
-            origin_pathes: [None, None],
         })
     }
 
@@ -103,7 +101,6 @@ impl Menu {
         self.input.reset();
         self.completion.reset();
         self.bulk.reset();
-        self.origin_pathes = [None, None];
     }
 
     /// Fill the input string with the currently selected completion.
@@ -116,8 +113,7 @@ impl Menu {
     fn fill_completion(&mut self, tab: &mut Tab) -> Result<()> {
         match tab.edit_mode {
             Edit::InputCompleted(InputCompleted::Cd) => {
-                self.completion.cd(tab, &self.input.string())?;
-                self.cd(tab)
+                self.completion.cd(tab, &self.input.string())
             }
             Edit::InputCompleted(InputCompleted::Exec) => {
                 self.completion.exec(&self.input.string())
@@ -136,15 +132,6 @@ impl Menu {
             }
             _ => Ok(()),
         }
-    }
-
-    fn cd(&mut self, tab: &mut Tab) -> Result<()> {
-        let is = self.input.string();
-        let p = std::path::Path::new(&is);
-        if p.exists() {
-            tab.cd_to_file(p)?;
-        }
-        Ok(())
     }
 
     pub fn find_encrypted_drive_mount_point(&self) -> Option<std::path::PathBuf> {

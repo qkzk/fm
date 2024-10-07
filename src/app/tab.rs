@@ -94,6 +94,7 @@ pub struct Tab {
     pub history: History,
     /// Users & groups
     pub users: Users,
+    pub origin_path: Option<std::path::PathBuf>,
 }
 
 impl Tab {
@@ -126,6 +127,7 @@ impl Tab {
         let search = Search::empty();
         let index = directory.select_file(path);
         let tree = Tree::default();
+        let origin_path = None;
 
         window.scroll_to(index);
         Ok(Self {
@@ -140,6 +142,7 @@ impl Tab {
             users,
             tree,
             settings,
+            origin_path,
         })
     }
 
@@ -450,6 +453,16 @@ impl Tab {
         Ok(())
     }
 
+    pub fn try_cd_to_file(&mut self, path_str: String) -> Result<bool> {
+        let path = path::Path::new(&path_str);
+        if path.exists() {
+            self.cd_to_file(path)?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
     /// Set the pathcontent to a new path.
     /// Reset the window.
     /// Add the last path to the history of visited paths.
@@ -755,5 +768,16 @@ impl Tab {
             .enumerate()
             .skip(self.window.top)
             .take(min(len, self.window.bottom))
+    }
+
+    pub fn cd_origin_path(&mut self) -> Result<()> {
+        if let Some(op) = &self.origin_path {
+            self.cd_to_file(&op.to_owned())?;
+        }
+        Ok(())
+    }
+
+    pub fn save_origin_path(&mut self) {
+        self.origin_path = Some(self.current_path().to_owned());
     }
 }
