@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use crate::app::{Status, Tab};
-use crate::modes::{Display, Go, To, ToPath, Tree};
+use crate::modes::{Display, FileInfo, Go, To, ToPath, Tree};
 
 #[derive(Clone)]
 pub struct Search {
@@ -19,7 +19,7 @@ impl std::fmt::Display for Search {
                 f,
                 "Searched: {regex} - {pos} / {len}",
                 regex = self.regex,
-                pos = self.index + if self.paths.is_empty() { 0 } else { 1 },
+                pos = self.index + 1 - self.paths.is_empty() as usize,
                 len = self.paths.len()
             )
         }
@@ -77,32 +77,38 @@ impl Search {
     /// from a starting position `next_index`.
     /// We search forward from that position and start again from top if nothing is found.
     /// We move the selection to the first matching file.
+    #[inline]
     fn directory(&mut self, tab: &mut Tab) {
         let current_index = tab.directory.index;
         let mut next_index = current_index;
         let mut found = false;
         for (index, file) in tab.directory.enumerate().skip(current_index) {
-            if self.regex.is_match(&file.filename) {
-                if !found {
-                    next_index = index;
-                    self.index = self.paths.len();
-                    found = true;
-                }
-                self.paths.push(file.path.to_path_buf());
-            }
+            (next_index, found) = self.set_found(index, file, found, next_index);
         }
         for (index, file) in tab.directory.enumerate().take(current_index) {
-            if self.regex.is_match(&file.filename) {
-                if !found {
-                    next_index = index;
-                    self.index = self.paths.len();
-                    found = true;
-                }
-                self.paths.push(file.path.to_path_buf());
-            }
+            (next_index, found) = self.set_found(index, file, found, next_index);
         }
 
         tab.go_to_index(next_index);
+    }
+
+    #[inline]
+    fn set_found(
+        &mut self,
+        index: usize,
+        file: &FileInfo,
+        mut found: bool,
+        mut next_index: usize,
+    ) -> (usize, bool) {
+        if self.regex.is_match(&file.filename) {
+            if !found {
+                next_index = index;
+                self.index = self.paths.len();
+                found = true;
+            }
+            self.paths.push(file.path.to_path_buf());
+        }
+        (next_index, found)
     }
 
     pub fn directory_search_next(
@@ -142,8 +148,8 @@ impl Search {
     }
 
     pub fn tree(&mut self, tree: &mut Tree) {
-        if let Some(path) = self.tree_find_next_path(tree).to_owned() {
-            tree.go(To::Path(&path));
+        if let Some(path) = &self.tree_find_next_path(tree) {
+            tree.go(To::Path(path));
         }
     }
 
@@ -155,18 +161,7 @@ impl Search {
         }
         let mut found_path = None;
         let mut found = false;
-        for line in tree
-            .displayable()
-            .lines()
-            .iter()
-            .skip(tree.displayable().index() + 1)
-            .chain(
-                tree.displayable()
-                    .lines()
-                    .iter()
-                    .take(tree.displayable().index()),
-            )
-        {
+        for line in tree.iter_from_index_to_index() {
             let Some(filename) = line.path.file_name() else {
                 continue;
             };
@@ -186,13 +181,9 @@ impl Search {
     pub fn complete(&self, content: &[impl ToPath]) -> Vec<String> {
         content
             .iter()
-            .map(|elt| elt.to_path())
-            .filter(|p| {
-                self.regex
-                    .is_match(p.file_name().unwrap_or_default().to_string_lossy().as_ref())
-            })
-            .filter_map(|p| p.file_name())
+            .filter_map(|e| e.to_path().file_name())
             .map(|s| s.to_string_lossy().to_string())
+            .filter(|p| self.regex.is_match(p))
             .collect()
     }
 }

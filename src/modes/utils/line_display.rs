@@ -72,7 +72,7 @@ impl LineDisplay for InputSimple {
                     status.menu.input.password(),
                 ]
             }
-            Self::Password(_, _) => {
+            Self::Password(..) => {
                 vec![PasswordKind::SUDO.to_string(), status.menu.input.password()]
             }
             _ => {

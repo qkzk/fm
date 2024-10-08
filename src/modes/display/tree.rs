@@ -1,9 +1,9 @@
 use std::borrow::Borrow;
 use std::cmp::min;
 use std::collections::HashMap;
-use std::iter::{Enumerate, Skip, Take};
+use std::iter::{Chain, Enumerate, Skip, Take};
 use std::path::Path;
-use std::slice;
+use std::slice::Iter;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -931,7 +931,7 @@ impl Tree {
     pub fn lines_enum_skip_take(
         &self,
         window: &ContentWindow,
-    ) -> Take<Skip<Enumerate<slice::Iter<TLine>>>> {
+    ) -> Take<Skip<Enumerate<Iter<TLine>>>> {
         let lines = self.displayable().lines();
         let length = lines.len();
         lines
@@ -939,5 +939,16 @@ impl Tree {
             .enumerate()
             .skip(window.top)
             .take(min(length, window.bottom + 1))
+    }
+
+    /// Iterate over line from current index to bottom then from top to current inde.
+    ///
+    /// Useful when going to next match in search results
+    pub fn iter_from_index_to_index(&self) -> Chain<Skip<Iter<TLine>>, Take<Iter<TLine>>> {
+        let displayable = self.displayable();
+        let index = displayable.index();
+        let lines = displayable.lines();
+
+        lines.iter().skip(index + 1).chain(lines.iter().take(index))
     }
 }

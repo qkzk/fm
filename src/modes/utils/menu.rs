@@ -1,9 +1,7 @@
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use anyhow::bail;
-use anyhow::Context;
-use anyhow::Result;
+use anyhow::{bail, Result};
 use tuikit::prelude::Canvas;
 
 use crate::app::Tab;
