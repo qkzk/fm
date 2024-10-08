@@ -7,7 +7,7 @@ use anyhow::Result;
 use tuikit::prelude::Canvas;
 
 use crate::app::Tab;
-use crate::common::{index_from_a, CLI_PATH, INPUT_HISTORY_PATH, MARKS_FILEPATH, TUIS_PATH};
+use crate::common::{index_from_a, CLI_PATH, INPUT_HISTORY_PATH, TUIS_PATH};
 use crate::config::Bindings;
 use crate::event::FmEvents;
 use crate::io::DrawMenu;
@@ -85,7 +85,7 @@ impl Menu {
             input: Input::default(),
             input_history: InputHistory::load(INPUT_HISTORY_PATH)?,
             iso_device: None,
-            marks: Marks::new(MARKS_FILEPATH),
+            marks: Marks::default(),
             password_holder: PasswordHolder::default(),
             picker: Picker::default(),
             removable_devices: RemovableDevices::default(),
@@ -93,7 +93,7 @@ impl Menu {
             sudo_command: None,
             trash: Trash::new(binds)?,
             tui_applications: TuiApplications::new(TUIS_PATH),
-            window: ContentWindow::new(0, 80),
+            window: ContentWindow::default(),
         })
     }
 
@@ -101,6 +101,7 @@ impl Menu {
         self.input.reset();
         self.completion.reset();
         self.bulk.reset();
+        self.sudo_command = None;
     }
 
     /// Fill the input string with the currently selected completion.
@@ -173,34 +174,6 @@ impl Menu {
 
     pub fn trash_delete_permanently(&mut self) -> Result<()> {
         self.trash.delete_permanently()
-    }
-
-    /// Move the selected flagged file to the trash.
-    pub fn trash_single_flagged(&mut self) -> Result<()> {
-        let filepath = self
-            .flagged
-            .selected()
-            .context("no flagged file")?
-            .to_owned();
-        self.flagged.remove_selected();
-        self.trash.trash(&filepath)?;
-        Ok(())
-    }
-
-    /// Delete the selected flagged file.
-    pub fn delete_single_flagged(&mut self) -> Result<()> {
-        let filepath = self
-            .flagged
-            .selected()
-            .context("no flagged file")?
-            .to_owned();
-        self.flagged.remove_selected();
-        if filepath.is_dir() {
-            std::fs::remove_dir_all(filepath)?;
-        } else {
-            std::fs::remove_file(filepath)?;
-        }
-        Ok(())
     }
 
     pub fn delete_flagged_files(&mut self) -> Result<()> {

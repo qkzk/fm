@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::common::{read_lines, tilde};
+use crate::common::{read_lines, tilde, MARKS_FILEPATH};
 use crate::io::DrawMenu;
 use crate::{impl_content, impl_selectable, log_info, log_line};
 
@@ -17,6 +17,12 @@ pub struct Marks {
     /// The currently selected shortcut
     pub index: usize,
     used_chars: BTreeSet<char>,
+}
+
+impl Default for Marks {
+    fn default() -> Self {
+        Self::new(MARKS_FILEPATH)
+    }
 }
 
 impl Marks {

@@ -1165,6 +1165,12 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Move as you type. In Cd menu (Alt+g), the display and preview is updated as you type.
   Pressing Esc (leave mode) go back to where you started from.
   You need to validate with enter.
+- A lot of refactoring:
+  - flagged files,
+  - input history,
+  - application start, main loop & quit,
+  - display
+  - menus
 
 #### Changelog
 
@@ -1239,8 +1245,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving
-- [ ] refactor & unify all shell commands
-- [ ] config loading : https://www.reddit.com/r/rust/comments/17v65j8/implement_configuration_files_without_reading_the/
 - [ ] document filepicking (from my config etc.).
 - [ ] avoid multiple refreshs if we edit files ourself
 - [ ] remote control

@@ -17,6 +17,12 @@ pub struct ContentWindow {
     pub height: usize,
 }
 
+impl Default for ContentWindow {
+    fn default() -> Self {
+        Self::new(0, 80)
+    }
+}
+
 impl ContentWindow {
     /// The padding around the last displayed filename
     const WINDOW_PADDING: usize = 4;
