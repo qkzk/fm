@@ -327,6 +327,13 @@ impl Status {
         };
     }
 
+    /// Sync right tab from left tab path or vice versa.
+    pub fn sync_tabs(&mut self, right_to_left: bool) -> Result<()> {
+        let from = right_to_left as usize;
+        let to = 1 - from;
+        self.tabs[to].cd(&self.tabs[from].current_file()?.path)
+    }
+
     pub fn second_window_height(&self) -> Result<usize> {
         let (_, height) = self.term_size()?;
         Ok(height / 2 + (height % 2))

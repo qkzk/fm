@@ -119,6 +119,7 @@ impl Bindings {
             (Key::Ctrl('q'), ActionMap::ResetMode),
             (Key::Ctrl('r'), ActionMap::RefreshView),
             (Key::Ctrl('z'), ActionMap::TreeFoldAll),
+            (Key::ShiftRight, ActionMap::SyncLTR),
             (Key::ShiftDown, ActionMap::NextThing),
             (Key::ShiftLeft, ActionMap::DeleteLine),
             (Key::ShiftUp, ActionMap::PreviousThing),

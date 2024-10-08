@@ -1165,6 +1165,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - Move as you type. In Cd menu (Alt+g), the display and preview is updated as you type.
   Pressing Esc (leave mode) go back to where you started from.
   You need to validate with enter.
+- Sync left tab from right path shift+left. shift+right go the other way.
 - A lot of refactoring:
   - flagged files,
   - input history,
@@ -1230,6 +1231,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
         [See StackOverflow](https://stackoverflow.com/questions/16840916/what-is-path-how-is-it-different-from)
   - [x] can't use history. Every cd is recorded, so when need to remember where we started...
 - [x] refactor input history calls
+- [x] sync left to right or right left with shift+arrow
 - [ ] directory preview should just be a "directory" ?
 
 ## TODO

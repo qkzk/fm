@@ -1008,7 +1008,7 @@ impl EventAction {
 
     pub fn delete_line(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {
-            return Ok(());
+            status.sync_tabs(true)?;
         }
         match status.current_tab_mut().edit_mode {
             Edit::InputSimple(_) => {
@@ -1464,6 +1464,13 @@ impl EventAction {
             Focus::LeftFile | Focus::RightFile => (),
             Focus::LeftMenu => status.focus = Focus::LeftFile,
             Focus::RightMenu => status.focus = Focus::RightFile,
+        }
+        Ok(())
+    }
+
+    pub fn sync_ltr(status: &mut Status) -> Result<()> {
+        if status.focus.is_file() {
+            status.sync_tabs(false)?;
         }
         Ok(())
     }
