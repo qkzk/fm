@@ -1,9 +1,7 @@
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use std::fs::read_dir;
-use std::iter::{Chain, Enumerate, Skip, Take};
 use std::path::Path;
-use std::slice::Iter;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -11,7 +9,7 @@ use anyhow::{Context, Result};
 use crate::app::TabSettings;
 use crate::io::git;
 use crate::modes::{is_not_hidden, FileInfo, FileKind, FilterKind, SortKind, Users};
-use crate::{impl_content, impl_selectable, log_info};
+use crate::{impl_content, impl_index_to_index, impl_selectable, log_info};
 
 /// Holds the information about file in the current directory.
 /// We know about the current path, the files themselves, the selected index,
@@ -190,27 +188,7 @@ impl Directory {
     }
 }
 
-/// Iterate over line from current index to bottom then from top to current index.
-///
-/// Useful when going to next match in search results
-pub trait FromIndexToIndex<T> {
-    /// Iterate over line from current index to bottom then from top to current index.
-    ///
-    /// Useful when going to next match in search results
-    fn iter_from_index_to_index(&self) -> Chain<Skip<Iter<T>>, Take<Iter<T>>>;
-}
-
-impl FromIndexToIndex<FileInfo> for Directory {
-    /// Iterate over line from current index to bottom then from top to current index.
-    ///
-    /// Useful when going to next match in search results
-    fn iter_from_index_to_index(&self) -> Chain<Skip<Iter<FileInfo>>, Take<Iter<FileInfo>>> {
-        let index = self.index;
-        let elems = self.content();
-        elems.iter().skip(index + 1).chain(elems.iter().take(index))
-    }
-}
-
+impl_index_to_index!(FileInfo, Directory);
 impl_selectable!(Directory);
 impl_content!(FileInfo, Directory);
 

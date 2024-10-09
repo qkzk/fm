@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::str::FromStr;
 
 use anyhow::{bail, Context, Result};
@@ -9,7 +8,7 @@ use crate::config::Bindings;
 use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::modes::{
     BlockDeviceAction, CLApplications, Content, Display, Edit, InputCompleted, InputSimple, Leave,
-    MarkAction, Navigate, NodeCreation, PasswordUsage, PickerCaller, Search, SortKind,
+    MarkAction, Navigate, NodeCreation, PasswordUsage, PickerCaller, SortKind,
 };
 use crate::{log_info, log_line};
 
@@ -99,11 +98,10 @@ impl LeaveMode {
 
     /// Jump to the current mark.
     fn marks_jump(status: &mut Status) -> Result<()> {
-        let marks = status.menu.marks.clone();
-        let tab = status.current_tab_mut();
-        if let Some((_, path)) = marks.selected() {
-            tab.cd(path)?;
-            tab.window.reset(tab.directory.content.len());
+        if let Some((_, path)) = &status.menu.marks.selected() {
+            let len = status.current_tab().directory.content.len();
+            status.tabs[status.index].cd(path)?;
+            status.current_tab_mut().window.reset(len);
             status.menu.input.reset();
         }
         status.update_second_pane_for_preview()
@@ -113,12 +111,11 @@ impl LeaveMode {
     /// Doesn't change its char.
     /// If it doesn't fail, a new pair will be set with (oldchar, new path).
     fn marks_update(status: &mut Status) -> Result<()> {
-        let marks = status.menu.marks.clone();
-        if let Some((ch, _)) = marks.selected() {
+        if let Some((ch, _)) = status.menu.marks.selected() {
             let len = status.current_tab().directory.content.len();
-            let p = status.tabs[status.index].directory.path.borrow();
-            status.menu.marks.new_mark(*ch, p)?;
-            log_line!("Saved mark {ch} -> {p}", p = p.display());
+            let new_path = &status.tabs[status.index].directory.path;
+            log_line!("Saved mark {ch} -> {p}", p = new_path.display());
+            status.menu.marks.new_mark(*ch, new_path)?;
             status.current_tab_mut().window.reset(len);
             status.menu.input.reset();
         }
@@ -206,9 +203,9 @@ impl LeaveMode {
     fn new_file(status: &mut Status) -> Result<()> {
         match NodeCreation::Newfile.create(status) {
             Ok(path) => {
-                status.menu.flagged.push(path.clone());
+                status.current_tab_mut().go_to_file(&path);
+                status.menu.flagged.push(path);
                 status.refresh_tabs()?;
-                status.current_tab_mut().go_to_file(path);
             }
             Err(error) => log_info!("Error creating file. Error: {error}",),
         }
@@ -222,9 +219,9 @@ impl LeaveMode {
     fn new_dir(status: &mut Status) -> Result<()> {
         match NodeCreation::Newdir.create(status) {
             Ok(path) => {
-                status.menu.flagged.push(path.clone());
                 status.refresh_tabs()?;
-                status.current_tab_mut().go_to_file(path);
+                status.current_tab_mut().go_to_file(&path);
+                status.menu.flagged.push(path);
             }
             Err(error) => log_info!("Error creating directory. Error: {error}",),
         }
@@ -253,21 +250,7 @@ impl LeaveMode {
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
     pub fn search(status: &mut Status, should_reset_input: bool) -> Result<()> {
-        let searched = &status.menu.input.string();
-        if searched.is_empty() {
-            status.current_tab_mut().search = Search::empty();
-            return Ok(());
-        }
-        let Ok(mut search) = Search::new(searched) else {
-            status.current_tab_mut().search = Search::empty();
-            return Ok(());
-        };
-        if should_reset_input {
-            status.menu.input.reset();
-        }
-        search.execute_search(status)?;
-        status.current_tab_mut().search = search;
-        Ok(())
+        status.search(should_reset_input)
     }
 
     /// Move to the folder typed by the user.
@@ -295,9 +278,8 @@ impl LeaveMode {
             .menu
             .shortcut
             .selected()
-            .context("exec shortcut: empty shortcuts")?
-            .clone();
-        status.current_tab_mut().cd(&path)?;
+            .context("exec shortcut: empty shortcuts")?;
+        status.tabs[status.index].cd(path)?;
         status.current_tab_mut().refresh_view()?;
         status.update_second_pane_for_preview()
     }
@@ -386,12 +368,8 @@ impl LeaveMode {
     /// Apply a filter to the displayed files.
     /// See `crate::filter` for more details.
     fn filter(status: &mut Status) -> Result<()> {
-        status.set_filter()?;
+        status.filter()?;
         status.menu.input.reset();
-        let mut search = status.tabs[status.index].search.clone();
-        search.reset_paths();
-        search.execute_search(status)?;
-        status.tabs[status.index].search = search;
         Ok(())
     }
 

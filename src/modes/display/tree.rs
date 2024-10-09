@@ -1,20 +1,17 @@
 use std::borrow::Borrow;
 use std::cmp::min;
 use std::collections::HashMap;
-use std::iter::{Chain, Enumerate, Skip, Take};
 use std::path::{Path, PathBuf};
-use std::slice::Iter;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use tuikit::attr::{Attr, Effect};
 
 use crate::common::{filename_from_path, has_last_modification_happened_less_than};
+use crate::impl_index_to_index;
 use crate::modes::{
     files_collection, ContentWindow, FileInfo, FilterKind, Flagged, SortKind, ToPath, Users,
 };
-
-use super::FromIndexToIndex;
 
 /// An element of a tree.
 /// It's a file/directory, some optional children.
@@ -499,16 +496,7 @@ impl TreeLines {
     }
 }
 
-impl FromIndexToIndex<TLine> for TreeLines {
-    /// Iterate over line from current index to bottom then from top to current index.
-    ///
-    /// Useful when going to next match in search results
-    fn iter_from_index_to_index(&self) -> Chain<Skip<Iter<TLine>>, Take<Iter<TLine>>> {
-        let index = self.index;
-        let elems = self.content();
-        elems.iter().skip(index + 1).chain(elems.iter().take(index))
-    }
-}
+impl_index_to_index!(TLine, TreeLines);
 
 /// Holds a few references used to display a tree line
 /// Only the metadata info is hold.
@@ -933,11 +921,11 @@ impl Tree {
     }
 }
 
-impl FromIndexToIndex<TLine> for Tree {
+impl IndexToIndex<TLine> for Tree {
     /// Iterate over line from current index to bottom then from top to current index.
     ///
     /// Useful when going to next match in search results
-    fn iter_from_index_to_index(&self) -> Chain<Skip<Iter<TLine>>, Take<Iter<TLine>>> {
-        self.displayable().iter_from_index_to_index()
+    fn index_to_index(&self) -> Chain<Skip<Iter<TLine>>, Take<Iter<TLine>>> {
+        self.displayable().index_to_index()
     }
 }

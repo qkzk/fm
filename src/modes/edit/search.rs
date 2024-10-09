@@ -1,12 +1,14 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 
-use crate::app::{Status, Tab};
-use crate::modes::{Display, FileInfo, FromIndexToIndex, Go, To, ToPath, Tree};
+use crate::app::Tab;
+use crate::modes::{Display, FileInfo, Go, IndexToIndex, To, ToPath, Tree};
 
 #[derive(Clone)]
 pub struct Search {
     pub regex: regex::Regex,
-    pub paths: Vec<std::path::PathBuf>,
+    pub paths: Vec<PathBuf>,
     pub index: usize,
 }
 
@@ -52,7 +54,7 @@ impl Search {
         self.index = 0;
     }
 
-    pub fn select_next(&mut self) -> Option<std::path::PathBuf> {
+    pub fn select_next(&mut self) -> Option<PathBuf> {
         if !self.paths.is_empty() && !self.regex.to_string().is_empty() {
             self.index = (self.index + 1) % self.paths.len();
             return Some(self.paths[self.index].to_owned());
@@ -60,17 +62,17 @@ impl Search {
         None
     }
 
-    pub fn execute_search(&mut self, status: &mut Status) -> Result<()> {
-        match status.current_tab().display_mode {
+    pub fn execute_search(&mut self, tab: &mut Tab) -> Result<()> {
+        match tab.display_mode {
             Display::Tree => {
-                self.tree(&mut status.current_tab_mut().tree);
+                self.tree(&mut tab.tree);
             }
             Display::Directory => {
-                self.directory(status.current_tab_mut());
+                self.directory(tab);
             }
             _ => (),
         };
-        status.update_second_pane_for_preview()
+        Ok(())
     }
 
     /// Search in current directory for an file whose name contains `searched_name`,
@@ -114,29 +116,27 @@ impl Search {
     pub fn directory_search_next(
         &self,
         tab: &Tab,
-    ) -> (
-        Vec<std::path::PathBuf>,
-        Option<usize>,
-        Option<std::path::PathBuf>,
-    ) {
+    ) -> (Vec<PathBuf>, Option<usize>, Option<PathBuf>) {
         let mut paths = vec![];
-        let mut found = false;
-        let mut index = None;
-        let mut found_path = None;
-        for file in tab.directory.iter_from_index_to_index() {
+        let mut next_index = None;
+        let mut next_path = None;
+
+        for file in tab.directory.index_to_index() {
             if self.regex.is_match(&file.filename) {
-                if !found {
-                    index = Some(self.paths.len());
-                    found = true;
-                    found_path = Some(file.path.to_path_buf());
+                if next_index.is_none() {
+                    (next_index, next_path) = self.found_first_match(file)
                 }
                 paths.push(file.path.to_path_buf());
             }
         }
-        (paths, index, found_path)
+        (paths, next_index, next_path)
     }
 
-    pub fn set_index_paths(&mut self, index: usize, paths: Vec<std::path::PathBuf>) {
+    fn found_first_match(&self, file: &FileInfo) -> (Option<usize>, Option<PathBuf>) {
+        (Some(self.paths.len()), Some(file.path.to_path_buf()))
+    }
+
+    pub fn set_index_paths(&mut self, index: usize, paths: Vec<PathBuf>) {
         self.paths = paths;
         self.index = index;
     }
@@ -147,28 +147,27 @@ impl Search {
         }
     }
 
-    fn tree_find_next_path(&mut self, tree: &mut Tree) -> Option<std::path::PathBuf> {
+    fn tree_find_next_path(&mut self, tree: &mut Tree) -> Option<PathBuf> {
         if let Some(path) = self.select_next() {
             return Some(path);
         } else {
             self.reset_paths()
         }
-        let mut found_path = None;
-        let mut found = false;
-        for line in tree.iter_from_index_to_index() {
+        let mut next_path = None;
+        for line in tree.index_to_index() {
             let Some(filename) = line.path.file_name() else {
                 continue;
             };
             if self.regex.is_match(&filename.to_string_lossy()) {
-                self.paths.push(line.path.to_path_buf());
-                if !found {
+                let match_path = line.path.to_path_buf();
+                if next_path.is_none() {
                     self.index = self.paths.len();
-                    found_path = Some(line.path.to_path_buf());
-                    found = true;
+                    next_path = Some(match_path.clone());
                 }
+                self.paths.push(match_path);
             }
         }
-        found_path
+        next_path
     }
 
     #[inline]

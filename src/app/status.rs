@@ -1528,17 +1528,50 @@ impl Status {
         }
     }
 
+    /// Executes a search in current folder, selecting the first file matching
+    /// the current completion proposition.
+    /// ie. If you typed `"jpg"` before, it will move to the first file
+    /// whose filename contains `"jpg"`.
+    /// The current order of files is used.
+    pub fn search(&mut self, should_reset_input: bool) -> Result<()> {
+        let searched = &self.menu.input.string();
+        if searched.is_empty() {
+            self.current_tab_mut().search = Search::empty();
+            return Ok(());
+        }
+        let Ok(mut search) = Search::new(searched) else {
+            self.current_tab_mut().search = Search::empty();
+            return Ok(());
+        };
+        if should_reset_input {
+            self.menu.input.reset();
+        }
+        search.execute_search(self.current_tab_mut())?;
+        self.current_tab_mut().search = search;
+        self.update_second_pane_for_preview()
+    }
+
     /// Set a new filter.
     /// Doesn't reset the input.
-    pub fn set_filter(&mut self) -> Result<()> {
+    pub fn filter(&mut self) -> Result<()> {
         let filter = FilterKind::from_input(&self.menu.input.string());
-        self.current_tab_mut().set_filter(filter)
+        self.current_tab_mut().set_filter(filter)?;
+        self.search_again()
+    }
+
+    pub fn search_again(&mut self) -> Result<()> {
+        let mut search = self.current_tab().search.clone();
+        search.reset_paths();
+        search.execute_search(self.current_tab_mut())?;
+        self.update_second_pane_for_preview()?;
+        self.current_tab_mut().search = search;
+        Ok(())
     }
 
     /// input the typed char and update the filterkind.
     pub fn input_filter(&mut self, c: char) -> Result<()> {
         self.menu.input_insert(c)?;
-        self.set_filter()
+        self.filter()
     }
 
     /// Load the selected cloud configuration file from the config folder and open navigation the menu.

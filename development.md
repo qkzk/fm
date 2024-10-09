@@ -1233,6 +1233,11 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] refactor input history calls
 - [x] sync left to right or right left with shift+arrow
 - [x] removed unused struct
+- [ ] search refactor
+  - [x] common trait to impl iter from index to index in tree & directory.
+  - [x] macro like impl_selectable
+  - [x] move search execution to status
+  - [ ] WIP code duplication status.search & status.search_again
 - [ ] directory preview should just be a "directory" ?
 
 ## TODO

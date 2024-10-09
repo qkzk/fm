@@ -11,5 +11,5 @@ pub use line_display::LineDisplay;
 pub use menu::Menu;
 pub use mount_help::{MountCommands, MountParameters, MountRepr};
 pub use second_line::SecondLine;
-pub use selectable_content::{Content, Selectable, ToPath};
+pub use selectable_content::{Content, IndexToIndex, Selectable, ToPath};
 pub use shell_parser::ShellCommandParser;

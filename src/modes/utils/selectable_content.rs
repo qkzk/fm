@@ -1,3 +1,5 @@
+use std::iter::{Chain, Skip, Take};
+use std::slice::Iter;
 use tuikit::attr::Attr;
 pub trait Selectable {
     /// True iff the content is empty
@@ -30,6 +32,16 @@ pub trait Content<T>: Selectable {
 
 pub trait ToPath {
     fn to_path(&self) -> &std::path::Path;
+}
+
+/// Iterate over line from current index to bottom then from top to current index.
+///
+/// Useful when going to next match in search results
+pub trait IndexToIndex<T> {
+    /// Iterate over line from current index to bottom then from top to current index.
+    ///
+    /// Useful when going to next match in search results
+    fn index_to_index(&self) -> Chain<Skip<Iter<T>>, Take<Iter<T>>>;
 }
 /// Implement the `SelectableContent` for struct `$struc` with content type `$content_type`.
 /// This trait allows to navigate through a vector of element `content_type`.
@@ -89,6 +101,28 @@ macro_rules! impl_selectable {
 
             fn selected_is_last(&self) -> bool {
                 return self.index() + 1 == self.len();
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_index_to_index {
+    ($content_type:ident, $struct:ident) => {
+        use std::iter::{Chain, Enumerate, Skip, Take};
+        use std::slice::Iter;
+        use $crate::modes::IndexToIndex;
+
+        impl IndexToIndex<$content_type> for $struct {
+            /// Iterate over line from current index to bottom then from top to current index.
+            ///
+            /// Useful when going to next match in search results
+            fn index_to_index(
+                &self,
+            ) -> Chain<Skip<Iter<$content_type>>, Take<Iter<$content_type>>> {
+                let index = self.index;
+                let elems = self.content();
+                elems.iter().skip(index + 1).chain(elems.iter().take(index))
             }
         }
     };
