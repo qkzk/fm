@@ -1237,7 +1237,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] common trait to impl iter from index to index in tree & directory.
   - [x] macro like impl_selectable
   - [x] move search execution to status
-  - [ ] WIP code duplication status.search & status.search_again
+  - [x] refactor status.search & status.search_again
 - [ ] directory preview should just be a "directory" ?
 
 ## TODO

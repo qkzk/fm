@@ -1539,13 +1539,23 @@ impl Status {
             self.current_tab_mut().search = Search::empty();
             return Ok(());
         }
-        let Ok(mut search) = Search::new(searched) else {
+        let Ok(search) = Search::new(searched) else {
             self.current_tab_mut().search = Search::empty();
             return Ok(());
         };
         if should_reset_input {
             self.menu.input.reset();
         }
+        self.search_and_update(search)
+    }
+
+    pub fn search_again(&mut self) -> Result<()> {
+        let mut search = self.current_tab().search.clone();
+        search.reset_paths();
+        self.search_and_update(search)
+    }
+
+    fn search_and_update(&mut self, mut search: Search) -> Result<()> {
         search.execute_search(self.current_tab_mut())?;
         self.current_tab_mut().search = search;
         self.update_second_pane_for_preview()
@@ -1557,15 +1567,6 @@ impl Status {
         let filter = FilterKind::from_input(&self.menu.input.string());
         self.current_tab_mut().set_filter(filter)?;
         self.search_again()
-    }
-
-    pub fn search_again(&mut self) -> Result<()> {
-        let mut search = self.current_tab().search.clone();
-        search.reset_paths();
-        search.execute_search(self.current_tab_mut())?;
-        self.update_second_pane_for_preview()?;
-        self.current_tab_mut().search = search;
-        Ok(())
     }
 
     /// input the typed char and update the filterkind.
