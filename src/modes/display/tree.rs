@@ -14,6 +14,8 @@ use crate::modes::{
     files_collection, ContentWindow, FileInfo, FilterKind, Flagged, SortKind, ToPath, Users,
 };
 
+use super::FromIndexToIndex;
+
 /// An element of a tree.
 /// It's a file/directory, some optional children.
 /// A Node knows if it's folded or selected.
@@ -497,6 +499,17 @@ impl TreeLines {
     }
 }
 
+impl FromIndexToIndex<TLine> for TreeLines {
+    /// Iterate over line from current index to bottom then from top to current index.
+    ///
+    /// Useful when going to next match in search results
+    fn iter_from_index_to_index(&self) -> Chain<Skip<Iter<TLine>>, Take<Iter<TLine>>> {
+        let index = self.index;
+        let elems = self.content();
+        elems.iter().skip(index + 1).chain(elems.iter().take(index))
+    }
+}
+
 /// Holds a few references used to display a tree line
 /// Only the metadata info is hold.
 #[derive(Clone, Debug)]
@@ -918,15 +931,13 @@ impl Tree {
             .skip(window.top)
             .take(min(length, window.bottom + 1))
     }
+}
 
-    /// Iterate over line from current index to bottom then from top to current inde.
+impl FromIndexToIndex<TLine> for Tree {
+    /// Iterate over line from current index to bottom then from top to current index.
     ///
     /// Useful when going to next match in search results
-    pub fn iter_from_index_to_index(&self) -> Chain<Skip<Iter<TLine>>, Take<Iter<TLine>>> {
-        let displayable = self.displayable();
-        let index = displayable.index();
-        let lines = displayable.lines();
-
-        lines.iter().skip(index + 1).chain(lines.iter().take(index))
+    fn iter_from_index_to_index(&self) -> Chain<Skip<Iter<TLine>>, Take<Iter<TLine>>> {
+        self.displayable().iter_from_index_to_index()
     }
 }

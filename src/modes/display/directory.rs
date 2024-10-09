@@ -1,8 +1,9 @@
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use std::fs::read_dir;
-use std::iter::Enumerate;
+use std::iter::{Chain, Enumerate, Skip, Take};
 use std::path::Path;
+use std::slice::Iter;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -186,6 +187,27 @@ impl Directory {
             return false;
         };
         selected.path.as_ref() == parent
+    }
+}
+
+/// Iterate over line from current index to bottom then from top to current index.
+///
+/// Useful when going to next match in search results
+pub trait FromIndexToIndex<T> {
+    /// Iterate over line from current index to bottom then from top to current index.
+    ///
+    /// Useful when going to next match in search results
+    fn iter_from_index_to_index(&self) -> Chain<Skip<Iter<T>>, Take<Iter<T>>>;
+}
+
+impl FromIndexToIndex<FileInfo> for Directory {
+    /// Iterate over line from current index to bottom then from top to current index.
+    ///
+    /// Useful when going to next match in search results
+    fn iter_from_index_to_index(&self) -> Chain<Skip<Iter<FileInfo>>, Take<Iter<FileInfo>>> {
+        let index = self.index;
+        let elems = self.content();
+        elems.iter().skip(index + 1).chain(elems.iter().take(index))
     }
 }
 

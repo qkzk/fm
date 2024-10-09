@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use crate::app::{Status, Tab};
-use crate::modes::{Display, FileInfo, Go, To, ToPath, Tree};
+use crate::modes::{Display, FileInfo, FromIndexToIndex, Go, To, ToPath, Tree};
 
 #[derive(Clone)]
 pub struct Search {
@@ -119,17 +119,11 @@ impl Search {
         Option<usize>,
         Option<std::path::PathBuf>,
     ) {
-        let current_index = tab.directory.index;
         let mut paths = vec![];
         let mut found = false;
         let mut index = None;
         let mut found_path = None;
-        for file in tab
-            .directory
-            .iter()
-            .skip(current_index)
-            .chain(tab.directory.iter().take(current_index))
-        {
+        for file in tab.directory.iter_from_index_to_index() {
             if self.regex.is_match(&file.filename) {
                 if !found {
                     index = Some(self.paths.len());

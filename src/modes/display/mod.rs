@@ -8,7 +8,7 @@ mod uber;
 mod users;
 
 pub use content_window::ContentWindow;
-pub use directory::{files_collection, human_size, Directory};
+pub use directory::{files_collection, human_size, Directory, FromIndexToIndex};
 pub use fileinfo::{
     convert_octal_mode, extract_datetime, extract_extension, is_not_hidden, FileInfo, FileKind,
 };
