@@ -2,12 +2,12 @@ use std::borrow::Borrow;
 use std::cmp::min;
 use std::collections::HashMap;
 use std::iter::{Chain, Enumerate, Skip, Take};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::slice::Iter;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use tuikit::attr::Attr;
+use tuikit::attr::{Attr, Effect};
 
 use crate::common::{filename_from_path, has_last_modification_happened_less_than};
 use crate::modes::{
@@ -476,9 +476,7 @@ impl TreeLines {
     }
 
     fn find_by_path(&self, path: &Path) -> Option<usize> {
-        self.content
-            .iter()
-            .position(|tlm| <Arc<std::path::Path> as Borrow<Path>>::borrow(&tlm.path) == path)
+        self.content.iter().position(|tlm| tlm.path() == path)
     }
 
     fn unselect(&mut self) {
@@ -516,7 +514,7 @@ impl TLine {
         let mut attr = fileinfo.attr();
         // required for some edge cases when opening the tree while "." is the selected file
         if node.selected() {
-            attr.effect |= tuikit::attr::Effect::REVERSE;
+            attr.effect |= Effect::REVERSE;
         }
         let prefix = Arc::from(prefix);
         let path = Arc::from(path);
@@ -559,13 +557,13 @@ impl TLine {
     /// Change the current effect to Empty, displaying
     /// the file as not selected
     pub fn unselect(&mut self) {
-        self.attr.effect = tuikit::attr::Effect::empty();
+        self.attr.effect = Effect::empty();
     }
 
     /// Change the current effect to `REVERSE`, displaying
     /// the file as selected.
     pub fn select(&mut self) {
-        self.attr.effect = tuikit::attr::Effect::REVERSE;
+        self.attr.effect |= Effect::REVERSE;
     }
 }
 
@@ -658,7 +656,7 @@ impl Tree {
     /// It will construct all parent path from `/` to `node.path` except for the last one.
     fn node_has_parent_folded(&self, node: &Node) -> bool {
         let node_path = node.path();
-        let mut current_path = std::path::PathBuf::from("/");
+        let mut current_path = PathBuf::from("/");
         for part in node_path.components() {
             current_path = current_path.join(part.as_os_str());
             if current_path == node_path {
@@ -700,7 +698,6 @@ impl Tree {
     fn select_prev(&mut self) {
         let previous_path = self.find_prev_path();
         self.select_path(&previous_path);
-        drop(previous_path);
     }
 
     fn find_prev_path(&self) -> Arc<Path> {
@@ -825,28 +822,27 @@ impl Tree {
         }
         self.remake_displayable(users);
     }
-
-    fn children_of_selected(&self) -> Vec<Arc<Path>> {
-        self.nodes
-            .keys()
-            .filter(|p| p.starts_with(&self.selected) && p != &&self.selected)
-            .map(|p| p.to_owned())
-            .collect()
+    fn children_of_selected(&self) -> Option<&Vec<Arc<Path>>> {
+        self.nodes.get(&self.selected)?.children.as_ref()
     }
 
     fn make_children_reachable(&mut self) {
-        for path in self.children_of_selected().iter() {
-            if let Some(child_node) = self.nodes.get_mut(path) {
-                child_node.reachable = true;
-            };
-        }
+        self.set_children_reachable(true)
     }
 
     fn make_children_unreachable(&mut self) {
-        for path in self.children_of_selected().iter() {
-            if let Some(child_node) = self.nodes.get_mut(path) {
-                child_node.reachable = false;
+        self.set_children_reachable(false)
+    }
+
+    fn set_children_reachable(&mut self, reachable: bool) {
+        let Some(children) = self.children_of_selected() else {
+            return;
+        };
+        for child_path in children.to_owned().iter() {
+            let Some(child_node) = self.nodes.get_mut(child_path) else {
+                continue;
             };
+            child_node.reachable = reachable;
         }
     }
 
@@ -900,7 +896,7 @@ impl Tree {
         self.displayable_lines.selected_is_last()
     }
 
-    pub fn path_from_index(&self, index: usize) -> Result<std::path::PathBuf> {
+    pub fn path_from_index(&self, index: usize) -> Result<PathBuf> {
         let displayable = self.displayable();
         Ok(displayable
             .lines()
