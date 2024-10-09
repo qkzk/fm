@@ -1232,6 +1232,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] can't use history. Every cd is recorded, so when need to remember where we started...
 - [x] refactor input history calls
 - [x] sync left to right or right left with shift+arrow
+- [x] removed unused struct
 - [ ] directory preview should just be a "directory" ?
 
 ## TODO

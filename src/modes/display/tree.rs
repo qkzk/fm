@@ -14,24 +14,6 @@ use crate::modes::{
     files_collection, ContentWindow, FileInfo, FilterKind, Flagged, SortKind, ToPath, Users,
 };
 
-/// Holds a string, its display attributes and the associated pathbuf.
-#[derive(Clone, Debug)]
-pub struct ColoredString {
-    /// A text to be printed. In most case, it should be a filename.
-    pub text: String,
-    /// A [`tuikit::attr::Attr`] used to enhance the text.
-    pub attr: Attr,
-    /// The complete path of this string.
-    pub path: Arc<Path>,
-}
-
-impl ColoredString {
-    /// Creates a new colored string.
-    pub fn new(text: String, attr: Attr, path: Arc<Path>) -> Self {
-        Self { text, attr, path }
-    }
-}
-
 /// An element of a tree.
 /// It's a file/directory, some optional children.
 /// A Node knows if it's folded or selected.

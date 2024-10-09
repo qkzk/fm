@@ -16,6 +16,6 @@ pub use preview::{
     BinaryContent, ExtensionKind, HLContent, Preview, PreviewBuilder, Text, TextKind, Window,
 };
 pub use skim::{parse_line_output, print_ansi_str, Skimer};
-pub use tree::{ColoredString, Go, Node, TLine, To, Tree, TreeBuilder, TreeLines};
+pub use tree::{Go, Node, TLine, To, Tree, TreeBuilder, TreeLines};
 pub use uber::{Ueber, UeberBuilder};
 pub use users::Users;
