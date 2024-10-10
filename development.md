@@ -1238,6 +1238,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] macro like impl_selectable
   - [x] move search execution to status
   - [x] refactor status.search & status.search_again
+- [x] leavemode small refactor
 - [ ] directory preview should just be a "directory" ?
 
 ## TODO

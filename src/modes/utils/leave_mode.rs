@@ -7,8 +7,8 @@ use crate::common::{path_to_string, rename, string_to_path};
 use crate::config::Bindings;
 use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::modes::{
-    BlockDeviceAction, CLApplications, Content, Display, Edit, InputCompleted, InputSimple, Leave,
-    MarkAction, Navigate, NodeCreation, PasswordUsage, PickerCaller, SortKind,
+    BlockDeviceAction, CLApplications, Content, Edit, InputCompleted, InputSimple, Leave,
+    MarkAction, Navigate, NodeCreation, PasswordUsage, PickerCaller,
 };
 use crate::{log_info, log_line};
 
@@ -140,9 +140,7 @@ impl LeaveMode {
     }
 
     fn cloud_newdir(status: &mut Status) -> Result<()> {
-        let dirname = status.menu.input.string();
-        status.menu.input.reset();
-        status.cloud_create_newdir(dirname)?;
+        status.cloud_create_newdir(status.menu.input.string())?;
         status.reset_edit_mode()?;
         status.cloud_open()
     }
@@ -273,7 +271,6 @@ impl LeaveMode {
     /// Move to the selected shortcut.
     /// It may fail if the user has no permission to visit the path.
     fn shortcut(status: &mut Status) -> Result<()> {
-        status.menu.input.reset();
         let path = status
             .menu
             .shortcut
@@ -285,10 +282,7 @@ impl LeaveMode {
     }
 
     fn sort(status: &mut Status) -> Result<()> {
-        status.current_tab_mut().settings.sort_kind = match status.current_tab().display_mode {
-            Display::Tree => SortKind::tree_default(),
-            _ => SortKind::default(),
-        };
+        status.current_tab_mut().set_sortkind_per_mode();
         status.update_second_pane_for_preview()?;
         status.focus = status.focus.to_parent();
         Ok(())
@@ -297,12 +291,7 @@ impl LeaveMode {
     /// Move back to a previously visited path.
     /// It may fail if the user has no permission to visit the path
     fn history(status: &mut Status) -> Result<()> {
-        let Some(file) = status.tabs[status.index].history.selected() else {
-            return Ok(());
-        };
-        let file = file.to_owned();
-        status.tabs[status.index].cd_to_file(&file)?;
-        status.tabs[status.index].history.drop_queue();
+        status.current_tab_mut().history_cd_to_last()?;
         status.update_second_pane_for_preview()
     }
 
@@ -321,26 +310,7 @@ impl LeaveMode {
     /// Files which are above the CWD are filtered out since they can't be added to an archive.
     /// Archive creation depends on CWD so we ensure it's set to the selected tab.
     fn compress(status: &mut Status) -> Result<()> {
-        let here = &status.current_tab().directory.path;
-        std::env::set_current_dir(here)?;
-        let files_with_relative_paths: Vec<std::path::PathBuf> = status
-            .flagged_or_selected()
-            .iter()
-            .filter_map(|abs_path| pathdiff::diff_paths(abs_path, here))
-            .filter(|f| !f.starts_with(".."))
-            .collect();
-        if files_with_relative_paths.is_empty() {
-            return Ok(());
-        }
-        match status
-            .menu
-            .compression
-            .compress(files_with_relative_paths, here)
-        {
-            Ok(()) => (),
-            Err(error) => log_info!("Error compressing files. Error: {error}"),
-        }
-        Ok(())
+        status.compress()
     }
 
     /// Open a menu with most common actions

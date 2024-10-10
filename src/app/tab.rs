@@ -442,6 +442,13 @@ impl Tab {
         self.tree.go(To::Path(&selected_path));
     }
 
+    pub fn set_sortkind_per_mode(&mut self) {
+        self.settings.sort_kind = match self.display_mode {
+            Display::Tree => SortKind::tree_default(),
+            _ => SortKind::default(),
+        };
+    }
+
     pub fn cd_to_file(&mut self, path: &path::Path) -> Result<()> {
         crate::log_info!("cd_to_file: {path}", path = path.display());
         let parent = match path.parent() {
@@ -550,6 +557,18 @@ impl Tab {
             self.make_tree(None);
         }
         self.tree.go(To::Path(jump_target));
+        Ok(())
+    }
+
+    /// Move back to a previously visited path.
+    /// It may fail if the user has no permission to visit the path
+    pub fn history_cd_to_last(&mut self) -> Result<()> {
+        let Some(file) = self.history.selected() else {
+            return Ok(());
+        };
+        let file = file.to_owned();
+        self.cd_to_file(&file)?;
+        self.history.drop_queue();
         Ok(())
     }
 

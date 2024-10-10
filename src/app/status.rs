@@ -636,7 +636,7 @@ impl Status {
     }
 
     /// Returns the pathes of flagged file or the selected file if nothing is flagged
-    pub fn flagged_or_selected(&self) -> Vec<std::path::PathBuf> {
+    fn flagged_or_selected(&self) -> Vec<std::path::PathBuf> {
         if self.menu.flagged.is_empty() {
             let Ok(file) = self.current_tab().current_file() else {
                 return vec![];
@@ -645,6 +645,14 @@ impl Status {
         } else {
             self.menu.flagged.content().to_owned()
         }
+    }
+
+    fn flagged_or_selected_relative_to(&self, here: &std::path::Path) -> Vec<std::path::PathBuf> {
+        self.flagged_or_selected()
+            .iter()
+            .filter_map(|abs_path| pathdiff::diff_paths(abs_path, here))
+            .filter(|f| !f.starts_with(".."))
+            .collect()
     }
 
     /// Returns a vector of path of files which are both flagged and in current
@@ -1506,6 +1514,28 @@ impl Status {
         self.set_edit_mode(self.index, Edit::Navigate(Navigate::Flagged))
     }
 
+    /// Compress the flagged files into an archive.
+    /// Compression method is chosen by the user.
+    /// The archive is created in the current directory and is named "archive.tar.??" or "archive.zip".
+    /// Files which are above the CWD are filtered out since they can't be added to an archive.
+    /// Archive creation depends on CWD so we ensure it's set to the selected tab.
+    pub fn compress(&mut self) -> Result<()> {
+        let here = &self.current_tab().directory.path;
+        std::env::set_current_dir(here)?;
+        let files_with_relative_paths = self.flagged_or_selected_relative_to(here);
+        if files_with_relative_paths.is_empty() {
+            return Ok(());
+        }
+        match self
+            .menu
+            .compression
+            .compress(files_with_relative_paths, here)
+        {
+            Ok(()) => (),
+            Err(error) => log_info!("Error compressing files. Error: {error}"),
+        }
+        Ok(())
+    }
     pub fn sort(&mut self, c: char) -> Result<()> {
         self.current_tab_mut().sort(c)?;
         self.menu.reset();
