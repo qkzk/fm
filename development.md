@@ -1188,7 +1188,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
         use 2 windows ?
   - [ ] moving left shouldn't move right
 - [x] DrawMenu used to display most of navigable elements.
-- [ ] refactor display.
+- [x] refactor display.
   - [x] renamed most methods
   - [x] separated by mode
   - [x] common interface using `draw` method from tuikit
