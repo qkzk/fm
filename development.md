@@ -1239,6 +1239,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] move search execution to status
   - [x] refactor status.search & status.search_again
 - [x] leavemode small refactor
+- [x] Use custom command for ncdu & lazygit shouldn't be actions by themselves
 - [ ] directory preview should just be a "directory" ?
 
 ## TODO
