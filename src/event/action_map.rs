@@ -14,7 +14,6 @@ use crate::modes::LeaveMode;
 pub enum ActionMap {
     Action,
     Back,
-    BackTab,
     Backspace,
     Bulk,
     Cd,
@@ -114,7 +113,6 @@ impl ActionMap {
         match self {
             Self::Action => EventAction::action(status),
             Self::Back => EventAction::back(status),
-            Self::BackTab => EventAction::backtab(status),
             Self::Backspace => EventAction::backspace(status),
             Self::Bulk => EventAction::bulk(status),
             Self::Cd => EventAction::cd(status),
@@ -213,7 +211,6 @@ impl ActionMap {
         match self {
             Self::Action => "ACTION",
             Self::Back => "move back to previous dir",
-            Self::BackTab => "cycle tab",
             Self::Backspace => "delete previous char",
             Self::Bulk => "BULK",
             Self::Cd => "CD",

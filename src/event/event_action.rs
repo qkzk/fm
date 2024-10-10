@@ -1152,14 +1152,6 @@ impl EventAction {
         Ok(())
     }
 
-    /// Change tab
-    pub fn backtab(status: &mut Status) -> Result<()> {
-        if status.focus.is_file() {
-            status.prev()
-        };
-        Ok(())
-    }
-
     /// Start a fuzzy find with skim.
     pub fn fuzzyfind(status: &mut Status) -> Result<()> {
         status.skim_output_to_tab();

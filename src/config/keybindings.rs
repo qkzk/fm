@@ -41,7 +41,7 @@ impl Bindings {
             (Key::PageUp, ActionMap::PageUp),
             (Key::Enter, ActionMap::Enter),
             (Key::Tab, ActionMap::Tab),
-            (Key::BackTab, ActionMap::BackTab),
+            (Key::BackTab, ActionMap::Tab),
             (Key::Char(' '), ActionMap::ToggleFlag),
             (Key::Char('/'), ActionMap::Search),
             (Key::Char('*'), ActionMap::FlagAll),
