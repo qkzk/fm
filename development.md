@@ -1212,7 +1212,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] refresher send more events, also asking for previews to be checked
   - [x] check if a preview should be asked in app every event received
   - [ ] tests, perf, memory usage...
-- [ ] refactor app:
+- [x] refactor app:
   - [x] simplify update loop
   - [x] simplify build
   - [x] simplify early exit
