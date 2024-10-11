@@ -28,8 +28,8 @@ use crate::io::{
 };
 use crate::modes::{
     copy_move, extract_extension, parse_line_output, regex_matcher, BlockDeviceAction, Content,
-    ContentWindow, CopyMove, Display, Edit, FileInfo, FileKind, FilterKind, InputCompleted,
-    InputSimple, IsoDevice, LeaveMode, Menu, MountCommands, MountRepr, Navigate, NeedConfirmation,
+    ContentWindow, CopyMove, Display, FileInfo, FileKind, FilterKind, InputCompleted, InputSimple,
+    IsoDevice, Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation,
     PasswordKind, PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search,
     Selectable, ShellCommandParser, Skimer, Users,
 };
@@ -113,7 +113,7 @@ pub struct Status {
     skimer: Option<Skimer>,
 
     /// Navigable menu
-    pub menu: Menu,
+    pub menu: MenuHolder,
     /// Display settings
     pub display_settings: Session,
     /// Internal settings
@@ -153,7 +153,7 @@ impl Status {
         let display_settings = Session::new(term.term_size()?.0);
         let mut internal_settings = InternalSettings::new(opener, term, disks);
         let mount_points = internal_settings.mount_points();
-        let menu = Menu::new(start_dir, &mount_points, binds, fm_sender.clone())?;
+        let menu = MenuHolder::new(start_dir, &mount_points, binds, fm_sender.clone())?;
         let focus = Focus::default();
 
         let users_left = Users::default();
@@ -207,12 +207,12 @@ impl Status {
 
     pub fn set_focus_from_mode(&mut self) {
         if self.index == 0 {
-            if self.tabs[0].edit_mode.is_nothing() {
+            if self.tabs[0].menu_mode.is_nothing() {
                 self.focus = Focus::LeftFile;
             } else {
                 self.focus = Focus::LeftMenu;
             }
-        } else if self.tabs[1].edit_mode.is_nothing() {
+        } else if self.tabs[1].menu_mode.is_nothing() {
             self.focus = Focus::RightFile;
         } else {
             self.focus = Focus::RightMenu;
@@ -249,7 +249,7 @@ impl Status {
     }
 
     fn window_from_row(&self, row: u16, height: usize) -> Window {
-        let win_height = if self.current_tab().edit_mode.is_nothing() {
+        let win_height = if self.current_tab().menu_mode.is_nothing() {
             height
         } else {
             height / 2
@@ -345,12 +345,12 @@ impl Status {
         let offset = row as usize - second_window_height;
         if offset >= 4 {
             let index = offset - 4 + self.menu.window.top;
-            match self.current_tab().edit_mode {
-                Edit::Navigate(navigate) => match navigate {
+            match self.current_tab().menu_mode {
+                Menu::Navigate(navigate) => match navigate {
                     Navigate::History => self.current_tab_mut().history.set_index(index),
                     navigate => self.menu.set_index(index, navigate),
                 },
-                Edit::InputCompleted(_) => self.menu.completion.set_index(index),
+                Menu::InputCompleted(_) => self.menu.completion.set_index(index),
                 _ => (),
             }
             self.menu.window.scroll_to(index);
@@ -414,15 +414,15 @@ impl Status {
 
     /// Leave an edit mode and refresh the menu.
     /// It should only be called when edit mode isn't nothing.
-    pub fn leave_edit_mode(&mut self) -> Result<()> {
-        match self.current_tab().edit_mode {
-            Edit::InputSimple(InputSimple::Filter) => {
+    pub fn leave_menu_mode(&mut self) -> Result<()> {
+        match self.current_tab().menu_mode {
+            Menu::InputSimple(InputSimple::Filter) => {
                 self.current_tab_mut().settings.reset_filter()
             }
-            Edit::InputCompleted(InputCompleted::Cd) => self.current_tab_mut().cd_origin_path()?,
+            Menu::InputCompleted(InputCompleted::Cd) => self.current_tab_mut().cd_origin_path()?,
             _ => (),
         }
-        if self.reset_edit_mode()? {
+        if self.reset_menu_mode()? {
             self.current_tab_mut().refresh_view()?;
         } else {
             self.current_tab_mut().refresh_params();
@@ -444,18 +444,18 @@ impl Status {
 
     /// Reset the edit mode to "Nothing" (closing any menu) and returns
     /// true if the display should be refreshed.
-    pub fn reset_edit_mode(&mut self) -> Result<bool> {
+    pub fn reset_menu_mode(&mut self) -> Result<bool> {
         self.menu.reset();
         let must_refresh = matches!(self.current_tab().display_mode, Display::Preview);
-        self.set_edit_mode(self.index, Edit::Nothing)?;
+        self.set_edit_mode(self.index, Menu::Nothing)?;
         self.set_height_of_unfocused_menu()?;
         Ok(must_refresh)
     }
 
     fn set_height_of_unfocused_menu(&mut self) -> Result<()> {
         let unfocused_tab = &self.tabs[1 - self.index];
-        match unfocused_tab.edit_mode {
-            Edit::Nothing => (),
+        match unfocused_tab.menu_mode {
+            Menu::Nothing => (),
             unfocused_mode => {
                 let len = self.menu.len(unfocused_mode);
                 let height = self.second_window_height()?;
@@ -530,7 +530,7 @@ impl Status {
     /// Doesn't check if it has do.
     fn set_second_pane_for_preview(&mut self) -> Result<()> {
         self.tabs[1].set_display_mode(Display::Preview);
-        self.tabs[1].edit_mode = Edit::Nothing;
+        self.tabs[1].menu_mode = Menu::Nothing;
         let Ok(fileinfo) = self.get_correct_fileinfo_for_preview() else {
             return Ok(());
         };
@@ -564,15 +564,15 @@ impl Status {
         let left_tab = &self.tabs[0];
         let users = &left_tab.users;
         match self.focus {
-            Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::Marks(_))) => {
+            Focus::LeftMenu if matches!(left_tab.menu_mode, Menu::Navigate(Navigate::Marks(_))) => {
                 let (_, mark_path) = &self.menu.marks.content()[self.menu.marks.index()];
                 FileInfo::new(mark_path, users)
             }
-            Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::Shortcut)) => {
+            Focus::LeftMenu if matches!(left_tab.menu_mode, Menu::Navigate(Navigate::Shortcut)) => {
                 let shortcut_path = &self.menu.shortcut.content()[self.menu.shortcut.index()];
                 FileInfo::new(shortcut_path, users)
             }
-            Focus::LeftMenu if matches!(left_tab.edit_mode, Edit::Navigate(Navigate::History)) => {
+            Focus::LeftMenu if matches!(left_tab.menu_mode, Menu::Navigate(Navigate::History)) => {
                 let history_path = &left_tab.history.content()[left_tab.history.index()];
                 FileInfo::new(history_path, users)
             }
@@ -581,12 +581,12 @@ impl Status {
     }
 
     /// Set an edit mode for the tab at `index`. Refresh the view.
-    pub fn set_edit_mode(&mut self, index: usize, edit_mode: Edit) -> Result<()> {
+    pub fn set_edit_mode(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
         if index > 1 {
             return Ok(());
         }
         self.set_height_for_edit_mode(index, edit_mode)?;
-        self.tabs[index].edit_mode = edit_mode;
+        self.tabs[index].menu_mode = edit_mode;
         let len = self.menu.len(edit_mode);
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
@@ -595,7 +595,7 @@ impl Status {
         self.refresh_status()
     }
 
-    pub fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Edit) -> Result<()> {
+    pub fn set_height_for_edit_mode(&mut self, index: usize, edit_mode: Menu) -> Result<()> {
         let height = self.internal_settings.term.term_size()?.1;
         let prim_window_height = if edit_mode.is_nothing() {
             height
@@ -676,7 +676,7 @@ impl Status {
     /// Reverse every flag in _current_ directory. Flagged files in other
     /// directory aren't affected.
     pub fn reverse_flags(&mut self) {
-        if matches!(self.current_tab().display_mode, Display::Directory) {
+        if self.current_tab().display_mode.is_preview() {
             self.tabs[self.index]
                 .directory
                 .content
@@ -708,8 +708,8 @@ impl Status {
             Display::Preview => (),
         }
         if matches!(
-            self.current_tab().edit_mode,
-            Edit::Navigate(Navigate::Flagged)
+            self.current_tab().menu_mode,
+            Menu::Navigate(Navigate::Flagged)
         ) {
             self.menu.window.set_len(self.menu.flagged.len());
         }
@@ -932,7 +932,7 @@ impl Status {
     pub fn complete_search(&mut self, c: char) -> Result<()> {
         self.menu.input.insert(c);
         self.update_search()?;
-        LeaveMode::search(self, false)?;
+        self.search()?;
         self.menu.input_complete(&mut self.tabs[self.index])
     }
 
@@ -950,7 +950,7 @@ impl Status {
     }
 
     pub fn complete_cd_move(&mut self) -> Result<()> {
-        if let Edit::InputCompleted(InputCompleted::Cd) = self.current_tab().edit_mode {
+        if let Menu::InputCompleted(InputCompleted::Cd) = self.current_tab().menu_mode {
             let input = self.menu.input.string();
             if self.tabs[self.index].try_cd_to_file(input)? {
                 self.update_second_pane_for_preview()?;
@@ -1202,7 +1202,7 @@ impl Status {
         let mut args = ShellCommandParser::new(&shell_command).compute(self)?;
         log_info!("command {shell_command} args: {args:?}");
         if args_is_empty(&args) {
-            self.set_edit_mode(self.index, Edit::Nothing)?;
+            self.set_edit_mode(self.index, Menu::Nothing)?;
             return Ok(true);
         }
         if let Some(files) = files {
@@ -1245,7 +1245,7 @@ impl Status {
         log_info!("event ask password");
         self.set_edit_mode(
             self.index,
-            Edit::InputSimple(InputSimple::Password(encrypted_action, password_dest)),
+            Menu::InputSimple(InputSimple::Password(encrypted_action, password_dest)),
         )
     }
 
@@ -1263,7 +1263,7 @@ impl Status {
         } else {
             self.menu.password_holder.set_sudo(password)
         };
-        self.reset_edit_mode()?;
+        self.reset_menu_mode()?;
         self.dispatch_password(action, dest)
     }
 
@@ -1272,7 +1272,7 @@ impl Status {
         let path = self.current_tab_mut().directory.path.clone();
         self.menu.marks.new_mark(c, &path)?;
         self.current_tab_mut().refresh_view()?;
-        self.reset_edit_mode()?;
+        self.reset_menu_mode()?;
         self.refresh_status()
     }
 
@@ -1283,14 +1283,14 @@ impl Status {
             self.current_tab_mut().cd(&path)?;
         }
         self.current_tab_mut().refresh_view()?;
-        self.reset_edit_mode()?;
+        self.reset_menu_mode()?;
         self.refresh_status()
     }
 
     /// Recursively delete all flagged files.
     pub fn confirm_delete_files(&mut self) -> Result<()> {
         self.menu.delete_flagged_files()?;
-        self.reset_edit_mode()?;
+        self.reset_menu_mode()?;
         self.clear_flags_and_reset_view()?;
         self.refresh_status()
     }
@@ -1298,7 +1298,7 @@ impl Status {
     /// Empty the trash folder permanently.
     pub fn confirm_trash_empty(&mut self) -> Result<()> {
         self.menu.trash.empty_trash()?;
-        self.reset_edit_mode()?;
+        self.reset_menu_mode()?;
         self.clear_flags_and_reset_view()?;
         Ok(())
     }
@@ -1319,7 +1319,7 @@ impl Status {
         self.menu.bulk.get_new_names()?;
         self.set_edit_mode(
             self.index,
-            Edit::NeedConfirmation(NeedConfirmation::BulkAction),
+            Menu::NeedConfirmation(NeedConfirmation::BulkAction),
         )?;
         Ok(())
     }
@@ -1332,13 +1332,13 @@ impl Status {
         } else {
             self.menu.flagged.clear();
         };
-        self.reset_edit_mode()?;
+        self.reset_menu_mode()?;
         self.reset_tabs_view()?;
         Ok(())
     }
 
     fn run_sudo_command(&mut self) -> Result<()> {
-        self.set_edit_mode(self.index, Edit::Nothing)?;
+        self.set_edit_mode(self.index, Menu::Nothing)?;
         reset_sudo_faillock()?;
         let Some(sudo_command) = self.menu.sudo_command.to_owned() else {
             return self.menu.clear_sudo_attributes();
@@ -1394,7 +1394,7 @@ impl Status {
         if output.is_empty() {
             return;
         }
-        let _ = self.reset_edit_mode();
+        let _ = self.reset_menu_mode();
         self.current_tab_mut().set_display_mode(Display::Preview);
         let preview = PreviewBuilder::cli_info(&output, command);
         self.current_tab_mut().window.reset(preview.len());
@@ -1416,7 +1416,7 @@ impl Status {
                 }
             }
         }
-        self.reset_edit_mode()?;
+        self.reset_menu_mode()?;
         self.current_tab_mut().refresh_view()?;
 
         Ok(())
@@ -1440,13 +1440,12 @@ impl Status {
 
     /// Execute an action when the header line was clicked.
     pub fn header_action(&mut self, col: u16, binds: &Bindings) -> Result<()> {
-        let is_right = !self.focus.is_left();
-        match self.current_tab().display_mode {
-            Display::Preview => Ok(()),
-            _ => Header::new(self, self.current_tab())?
-                .action(col as usize, is_right)
-                .matcher(self, binds),
+        if self.current_tab().display_mode.is_preview() {
+            return Ok(());
         }
+        Header::new(self, self.current_tab())?
+            .action(col as usize, !self.focus.is_left())
+            .matcher(self, binds)
     }
 
     /// Execute an action when the footer line was clicked.
@@ -1486,7 +1485,7 @@ impl Status {
         if self.menu.flagged.is_empty() {
             self.toggle_flag_for_selected();
         }
-        self.set_edit_mode(self.index, Edit::InputSimple(InputSimple::Chmod))
+        self.set_edit_mode(self.index, Menu::InputSimple(InputSimple::Chmod))
     }
 
     /// Execute a custom event on the selected file
@@ -1502,7 +1501,7 @@ impl Status {
     }
 
     pub fn fuzzy_flags(&mut self) -> Result<()> {
-        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Flagged))
+        self.set_edit_mode(self.index, Menu::Navigate(Navigate::Flagged))
     }
 
     /// Compress the flagged files into an archive.
@@ -1530,9 +1529,9 @@ impl Status {
     pub fn sort(&mut self, c: char) -> Result<()> {
         self.current_tab_mut().sort(c)?;
         self.menu.reset();
-        self.set_height_for_edit_mode(self.index, Edit::Nothing)?;
-        self.tabs[self.index].edit_mode = Edit::Nothing;
-        let len = self.menu.len(Edit::Nothing);
+        self.set_height_for_edit_mode(self.index, Menu::Nothing)?;
+        self.tabs[self.index].menu_mode = Menu::Nothing;
+        let len = self.menu.len(Menu::Nothing);
         let height = self.second_window_height()?;
         self.menu.window = ContentWindow::new(len, height);
         self.focus = self.focus.to_parent();
@@ -1554,32 +1553,31 @@ impl Status {
     /// ie. If you typed `"jpg"` before, it will move to the first file
     /// whose filename contains `"jpg"`.
     /// The current order of files is used.
-    pub fn search(&mut self, should_reset_input: bool) -> Result<()> {
-        let searched = &self.menu.input.string();
-        if searched.is_empty() {
-            self.current_tab_mut().search = Search::empty();
-            return Ok(());
-        }
-        let Ok(search) = Search::new(searched) else {
+    fn search(&mut self) -> Result<()> {
+        let Some(search) = self.build_search_from_input() else {
             self.current_tab_mut().search = Search::empty();
             return Ok(());
         };
-        if should_reset_input {
-            self.menu.input.reset();
-        }
         self.search_and_update(search)
     }
 
-    pub fn search_again(&mut self) -> Result<()> {
-        let mut search = self.current_tab().search.clone();
-        search.reset_paths();
-        self.search_and_update(search)
+    fn build_search_from_input(&self) -> Option<Search> {
+        let searched = &self.menu.input.string();
+        if searched.is_empty() {
+            return None;
+        }
+        Search::new(searched).ok()
     }
 
     fn search_and_update(&mut self, mut search: Search) -> Result<()> {
         search.execute_search(self.current_tab_mut())?;
         self.current_tab_mut().search = search;
         self.update_second_pane_for_preview()
+    }
+
+    fn search_again(&mut self) -> Result<()> {
+        let search = self.current_tab().search.clone_with_regex();
+        self.search_and_update(search)
     }
 
     /// Set a new filter.
@@ -1607,7 +1605,7 @@ impl Status {
             return Ok(());
         };
         self.menu.cloud = cloud;
-        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
+        self.set_edit_mode(self.index, Menu::Navigate(Navigate::Cloud))
     }
 
     /// Open the cloud menu.
@@ -1615,7 +1613,7 @@ impl Status {
     /// if a cloud has been selected, it will open it.
     pub fn cloud_open(&mut self) -> Result<()> {
         if self.menu.cloud.is_set() {
-            self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))
+            self.set_edit_mode(self.index, Menu::Navigate(Navigate::Cloud))
         } else {
             self.cloud_picker()
         }
@@ -1628,7 +1626,7 @@ impl Status {
             Some("Pick a cloud provider".to_owned()),
             content,
         );
-        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Picker))
+        self.set_edit_mode(self.index, Menu::Navigate(Navigate::Picker))
     }
 
     /// Disconnect from the current cloud and open the picker
@@ -1642,14 +1640,14 @@ impl Status {
     pub fn cloud_enter_delete_mode(&mut self) -> Result<()> {
         self.set_edit_mode(
             self.index,
-            Edit::NeedConfirmation(NeedConfirmation::DeleteCloud),
+            Menu::NeedConfirmation(NeedConfirmation::DeleteCloud),
         )
     }
 
     /// Delete the selected file once a confirmation has been received from the user.
     pub fn cloud_confirm_delete(&mut self) -> Result<()> {
         self.menu.cloud.delete()?;
-        self.set_edit_mode(self.index, Edit::Navigate(Navigate::Cloud))?;
+        self.set_edit_mode(self.index, Menu::Navigate(Navigate::Cloud))?;
         self.menu.cloud.refresh_current()?;
         self.menu.window.scroll_to(self.menu.cloud.index);
         Ok(())
@@ -1662,7 +1660,7 @@ impl Status {
 
     /// Ask the user to enter a name for the new directory.
     pub fn cloud_enter_newdir_mode(&mut self) -> Result<()> {
-        self.set_edit_mode(self.index, Edit::InputSimple(InputSimple::CloudNewdir))?;
+        self.set_edit_mode(self.index, Menu::InputSimple(InputSimple::CloudNewdir))?;
         self.refresh_view()
     }
 

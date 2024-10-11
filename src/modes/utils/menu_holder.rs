@@ -13,12 +13,12 @@ use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
 use crate::log_line;
 use crate::modes::{
     Bulk, CLApplications, CliApplications, Completion, Compresser, Content, ContentWindow,
-    ContextMenu, CryptoDeviceOpener, Display, Edit, Flagged, History, Input, InputCompleted,
-    IsoDevice, Marks, MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices,
+    ContextMenu, CryptoDeviceOpener, Display, Flagged, History, Input, InputCompleted, IsoDevice,
+    Marks, Menu, MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices,
     Selectable, Shortcut, Trash, TuiApplications,
 };
 
-pub struct Menu {
+pub struct MenuHolder {
     /// Window for scrollable menus
     pub window: ContentWindow,
     /// Bulk rename
@@ -63,7 +63,7 @@ pub struct Menu {
     pub history: History,
 }
 
-impl Menu {
+impl MenuHolder {
     pub fn new(
         start_dir: &std::path::Path,
         mount_points: &[&std::path::Path],
@@ -110,14 +110,14 @@ impl Menu {
     }
 
     fn fill_completion(&mut self, tab: &mut Tab) -> Result<()> {
-        match tab.edit_mode {
-            Edit::InputCompleted(InputCompleted::Cd) => {
+        match tab.menu_mode {
+            Menu::InputCompleted(InputCompleted::Cd) => {
                 self.completion.cd(tab, &self.input.string())
             }
-            Edit::InputCompleted(InputCompleted::Exec) => {
+            Menu::InputCompleted(InputCompleted::Exec) => {
                 self.completion.exec(&self.input.string())
             }
-            Edit::InputCompleted(InputCompleted::Search) => {
+            Menu::InputCompleted(InputCompleted::Search) => {
                 let files = match tab.display_mode {
                     Display::Preview => vec![],
                     Display::Tree => tab.search.complete(tab.tree.displayable().content()),
@@ -126,7 +126,7 @@ impl Menu {
                 self.completion.search(files);
                 Ok(())
             }
-            Edit::InputCompleted(InputCompleted::Action) => {
+            Menu::InputCompleted(InputCompleted::Action) => {
                 self.completion.command(&self.input.string())
             }
             _ => Ok(()),
@@ -244,18 +244,18 @@ impl Menu {
         self.input.replace(self.completion.current_proposition())
     }
 
-    pub fn len(&self, edit_mode: Edit) -> usize {
+    pub fn len(&self, edit_mode: Menu) -> usize {
         match edit_mode {
-            Edit::Navigate(navigate) => self.apply_method(navigate, |variant| variant.len()),
-            Edit::InputCompleted(_) => self.completion.len(),
+            Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.len()),
+            Menu::InputCompleted(_) => self.completion.len(),
             _ => 0,
         }
     }
 
-    pub fn index(&self, edit_mode: Edit) -> usize {
+    pub fn index(&self, edit_mode: Menu) -> usize {
         match edit_mode {
-            Edit::Navigate(navigate) => self.apply_method(navigate, |variant| variant.index()),
-            Edit::InputCompleted(_) => self.completion.index,
+            Menu::Navigate(navigate) => self.apply_method(navigate, |variant| variant.index()),
+            Menu::InputCompleted(_) => self.completion.index,
             _ => 0,
         }
     }
@@ -275,28 +275,28 @@ impl Menu {
     pub fn completion_prev(&mut self, input_completed: InputCompleted) {
         self.completion.prev();
         self.window
-            .scroll_to(self.index(Edit::InputCompleted(input_completed)));
+            .scroll_to(self.index(Menu::InputCompleted(input_completed)));
     }
 
     pub fn completion_next(&mut self, input_completed: InputCompleted) {
         self.completion.next();
         self.window
-            .scroll_to(self.index(Edit::InputCompleted(input_completed)));
+            .scroll_to(self.index(Menu::InputCompleted(input_completed)));
     }
 
     pub fn next(&mut self, navigate: Navigate) {
         self.apply_method_mut(navigate, |variant| variant.next());
-        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
+        self.window.scroll_to(self.index(Menu::Navigate(navigate)));
     }
 
     pub fn prev(&mut self, navigate: Navigate) {
         self.apply_method_mut(navigate, |variant| variant.prev());
-        self.window.scroll_to(self.index(Edit::Navigate(navigate)));
+        self.window.scroll_to(self.index(Menu::Navigate(navigate)));
     }
 
     pub fn set_index(&mut self, index: usize, navigate: Navigate) {
         self.apply_method_mut(navigate, |variant| variant.set_index(index));
-        self.window.scroll_to(self.index(Edit::Navigate(navigate)))
+        self.window.scroll_to(self.index(Menu::Navigate(navigate)))
     }
 
     fn apply_method_mut<F, T>(&mut self, navigate: Navigate, func: F) -> T

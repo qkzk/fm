@@ -1,6 +1,6 @@
 use crate::app::Status;
 use crate::modes::{
-    Edit, InputCompleted, InputSimple, MarkAction, Navigate, NeedConfirmation, PasswordKind,
+    InputCompleted, InputSimple, MarkAction, Menu, Navigate, NeedConfirmation, PasswordKind,
     PasswordUsage,
 };
 
@@ -9,7 +9,7 @@ pub trait LineDisplay {
     fn line_display(&self, status: &Status) -> Vec<String>;
 }
 
-impl LineDisplay for Edit {
+impl LineDisplay for Menu {
     fn line_display(&self, status: &Status) -> Vec<String> {
         match self {
             Self::Navigate(mode) => mode.line_display(status),
@@ -37,7 +37,7 @@ impl LineDisplay for Navigate {
                 vec!["Save mark...".to_owned()]
             }
             _ => {
-                vec![Edit::Navigate(*self).to_string()]
+                vec![Menu::Navigate(*self).to_string()]
             }
         }
     }
@@ -46,7 +46,7 @@ impl LineDisplay for Navigate {
 impl LineDisplay for InputCompleted {
     fn line_display(&self, status: &Status) -> Vec<String> {
         let tab = status.current_tab();
-        let mut completion_strings = vec![tab.edit_mode.to_string(), status.menu.input.string()];
+        let mut completion_strings = vec![tab.menu_mode.to_string(), status.menu.input.string()];
         if let Some(completion) = status
             .menu
             .completion
@@ -77,7 +77,7 @@ impl LineDisplay for InputSimple {
             }
             _ => {
                 vec![
-                    Edit::InputSimple(*self).to_string(),
+                    Menu::InputSimple(*self).to_string(),
                     status.menu.input.string(),
                 ]
             }

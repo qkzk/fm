@@ -1,11 +1,11 @@
-use crate::modes::{Edit, InputCompleted, InputSimple, MarkAction, Navigate, NeedConfirmation};
+use crate::modes::{InputCompleted, InputSimple, MarkAction, Menu, Navigate, NeedConfirmation};
 
 pub trait SecondLine {
     /// Line describing the mode and its custom keybinds
     fn second_line(&self) -> &'static str;
 }
 
-impl SecondLine for Edit {
+impl SecondLine for Menu {
     fn second_line(&self) -> &'static str {
         match self {
             Self::Navigate(navigate) => navigate.second_line(),

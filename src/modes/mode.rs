@@ -283,10 +283,10 @@ impl Navigate {
     }
 }
 
-/// Different "edit" mode in which the application can be.
-/// It dictates the reaction to event and what to display in the bottom window.
+/// Different "menu" mode in which the application can be.
+/// It dictates the reaction to event and is displayed in the bottom window.
 #[derive(Clone, Copy)]
-pub enum Edit {
+pub enum Menu {
     /// Do something that may be completed
     /// Completion may come from :
     /// - executable in $PATH,
@@ -308,7 +308,7 @@ pub enum Edit {
     Nothing,
 }
 
-impl fmt::Display for Edit {
+impl fmt::Display for Menu {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Self::InputCompleted(input_completed) => input_completed.fmt(f),
@@ -320,7 +320,7 @@ impl fmt::Display for Edit {
     }
 }
 
-impl Edit {
+impl Menu {
     /// Constant offset for the cursor.
     /// In any mode, we display the mode used and then the cursor if needed.
     pub fn cursor_offset(&self) -> usize {
@@ -360,7 +360,7 @@ impl Edit {
     }
 }
 
-impl Leave for Edit {
+impl Leave for Menu {
     fn must_refresh(&self) -> bool {
         match self {
             Self::InputCompleted(input_completed) => input_completed.must_refresh(),
@@ -392,7 +392,7 @@ pub trait Leave {
     fn must_reset_mode(&self) -> bool;
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq)]
 pub enum Display {
     #[default]
     /// Display the files like `ls -lh` does
@@ -401,4 +401,18 @@ pub enum Display {
     Tree,
     /// Preview a file or directory
     Preview,
+}
+
+impl Display {
+    fn is(&self, other: Self) -> bool {
+        self == &other
+    }
+
+    pub fn is_tree(&self) -> bool {
+        self.is(Self::Tree)
+    }
+
+    pub fn is_preview(&self) -> bool {
+        self.is(Self::Preview)
+    }
 }

@@ -8,7 +8,7 @@ use anyhow::{anyhow, bail, Context, Result};
 
 use crate::common::{read_lines, tilde};
 use crate::io::Args;
-use crate::modes::{Edit, InputCompleted, InputSimple};
+use crate::modes::{InputCompleted, InputSimple, Menu};
 
 pub struct InputHistory {
     file_path: std::path::PathBuf,
@@ -48,7 +48,7 @@ impl InputHistory {
         Ok(())
     }
 
-    pub fn filter_by_mode(&mut self, edit_mode: Edit) {
+    pub fn filter_by_mode(&mut self, edit_mode: Menu) {
         let Some(kind) = HistoryKind::from_mode(edit_mode) else {
             return;
         };
@@ -82,7 +82,7 @@ impl InputHistory {
     }
 
     /// If logs are disabled, nothing is saved on disk, only during current session
-    pub fn update(&mut self, mode: Edit, input_string: &str) -> Result<()> {
+    pub fn update(&mut self, mode: Menu, input_string: &str) -> Result<()> {
         let Some(elem) = HistoryElement::from_mode_input_string(mode, input_string) else {
             return Ok(());
         };
@@ -123,11 +123,11 @@ impl HistoryKind {
         })
     }
 
-    fn from_mode(edit_mode: Edit) -> Option<Self> {
+    fn from_mode(edit_mode: Menu) -> Option<Self> {
         match edit_mode {
-            Edit::InputSimple(InputSimple::Password(_, _) | InputSimple::CloudNewdir) => None,
-            Edit::InputSimple(input_simple) => Some(Self::InputSimple(input_simple)),
-            Edit::InputCompleted(input_completed) => Some(Self::InputCompleted(input_completed)),
+            Menu::InputSimple(InputSimple::Password(_, _) | InputSimple::CloudNewdir) => None,
+            Menu::InputSimple(input_simple) => Some(Self::InputSimple(input_simple)),
+            Menu::InputCompleted(input_completed) => Some(Self::InputCompleted(input_completed)),
             _ => None,
         }
     }
@@ -161,7 +161,7 @@ impl HistoryElement {
         Ok((kind.to_owned(), content.to_owned()))
     }
 
-    pub fn from_mode_input_string(mode: Edit, input_string: &str) -> Option<Self> {
+    pub fn from_mode_input_string(mode: Menu, input_string: &str) -> Option<Self> {
         let kind = HistoryKind::from_mode(mode)?;
         Some(Self {
             kind,

@@ -5,7 +5,6 @@ use anyhow::Result;
 use crate::app::Tab;
 use crate::modes::{Display, FileInfo, Go, IndexToIndex, To, ToPath, Tree};
 
-#[derive(Clone)]
 pub struct Search {
     pub regex: regex::Regex,
     pub paths: Vec<PathBuf>,
@@ -43,6 +42,14 @@ impl Search {
             paths: vec![],
             index: 0,
         })
+    }
+
+    pub fn clone_with_regex(&self) -> Self {
+        Self {
+            regex: self.regex.clone(),
+            paths: vec![],
+            index: 0,
+        }
     }
 
     pub fn is_empty(&self) -> bool {

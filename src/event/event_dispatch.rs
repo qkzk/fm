@@ -4,7 +4,7 @@ use tuikit::prelude::{Event, Key, MouseButton};
 use crate::app::Status;
 use crate::config::Bindings;
 use crate::event::{EventAction, FmEvents};
-use crate::modes::{Display, Edit, InputCompleted, InputSimple, LeaveMode, MarkAction, Navigate};
+use crate::modes::{Display, InputCompleted, InputSimple, LeaveMenu, MarkAction, Menu, Navigate};
 
 trait IsMouse {
     fn is_mouse_event(&self) -> bool;
@@ -91,17 +91,17 @@ impl EventDispatcher {
 
     fn menu_key_matcher(&self, status: &mut Status, c: char) -> Result<()> {
         let tab = status.current_tab_mut();
-        match tab.edit_mode {
-            Edit::InputSimple(InputSimple::Sort) => status.sort(c),
-            Edit::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
-            Edit::InputSimple(InputSimple::Filter) => status.input_filter(c),
-            Edit::InputSimple(_) => status.menu.input_insert(c),
-            Edit::InputCompleted(InputCompleted::Search) => status.complete_search(c),
-            Edit::InputCompleted(_) => status.complete_non_search(c),
-            Edit::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
-            Edit::Navigate(navigate) => self.navigate_char(navigate, status, c),
+        match tab.menu_mode {
+            Menu::InputSimple(InputSimple::Sort) => status.sort(c),
+            Menu::InputSimple(InputSimple::RegexMatch) => status.input_regex(c),
+            Menu::InputSimple(InputSimple::Filter) => status.input_filter(c),
+            Menu::InputSimple(_) => status.menu.input_insert(c),
+            Menu::InputCompleted(InputCompleted::Search) => status.complete_search(c),
+            Menu::InputCompleted(_) => status.complete_non_search(c),
+            Menu::NeedConfirmation(confirmed_action) => status.confirm(c, confirmed_action),
+            Menu::Navigate(navigate) => self.navigate_char(navigate, status, c),
             _ if matches!(tab.display_mode, Display::Preview) => tab.reset_display_mode_and_view(),
-            Edit::Nothing => unreachable!("Focus can't be in menu if menu is Nothing"),
+            Menu::Nothing => unreachable!("Focus can't be in menu if menu is Nothing"),
         }
     }
 
@@ -121,11 +121,11 @@ impl EventDispatcher {
             Navigate::Marks(MarkAction::New) => status.marks_new(c),
 
             Navigate::Shortcut if status.menu.shortcut_from_char(c) => {
-                LeaveMode::leave_edit_mode(status, &self.binds)
+                LeaveMenu::leave_edit_mode(status, &self.binds)
             }
 
             Navigate::Context if status.menu.context_from_char(c) => {
-                LeaveMode::leave_edit_mode(status, &self.binds)
+                LeaveMenu::leave_edit_mode(status, &self.binds)
             }
 
             Navigate::Cloud if c == 'l' => status.cloud_disconnect(),
@@ -142,7 +142,7 @@ impl EventDispatcher {
             Navigate::Flagged if c == 'j' => status.jump_flagged(),
 
             _ => {
-                status.reset_edit_mode()?;
+                status.reset_menu_mode()?;
                 status.current_tab_mut().reset_display_mode_and_view()
             }
         }

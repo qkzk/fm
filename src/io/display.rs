@@ -13,9 +13,9 @@ use crate::config::{ColorG, Gradient, MENU_ATTRS};
 use crate::io::{read_last_log_line, DrawMenu};
 use crate::log_info;
 use crate::modes::{
-    parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, Edit,
-    FileInfo, HLContent, InputSimple, LineDisplay, MoreInfos, Navigate, NeedConfirmation, Preview,
-    SecondLine, Selectable, TLine, Text, TextKind, Trash, Tree, Ueber, Window,
+    parse_input_mode, BinaryContent, Content, ContentWindow, Display as DisplayMode, FileInfo,
+    HLContent, InputSimple, LineDisplay, Menu as MenuMode, MoreInfos, Navigate, NeedConfirmation,
+    Preview, SecondLine, Selectable, TLine, Text, TextKind, Trash, Tree, Ueber, Window,
 };
 
 trait ClearLine {
@@ -699,7 +699,7 @@ impl Draw for FilesSecondLine {
 
 impl FilesSecondLine {
     fn new(status: &Status, tab: &Tab) -> Self {
-        if matches!(tab.display_mode, DisplayMode::Preview) || status.display_settings.metadata() {
+        if tab.display_mode.is_preview() || status.display_settings.metadata() {
             return Self::default();
         };
         if let Ok(file) = tab.current_file() {
@@ -794,7 +794,7 @@ struct Menu<'a> {
 
 impl<'a> Draw for Menu<'a> {
     fn draw(&self, canvas: &mut dyn Canvas) -> DrawResult<()> {
-        let mode = self.tab.edit_mode;
+        let mode = self.tab.menu_mode;
         self.cursor(canvas)?;
         MenuFirstLine::new(self.status).draw(canvas)?;
         self.menu_line(canvas)?;
@@ -819,17 +819,17 @@ impl<'a> Menu<'a> {
     ///
     /// may fail if we can't display on the terminal.
     fn cursor(&self, canvas: &mut dyn Canvas) -> Result<()> {
-        let offset = self.tab.edit_mode.cursor_offset();
+        let offset = self.tab.menu_mode.cursor_offset();
         let index = self.status.menu.input.index();
         canvas.set_cursor(0, offset + index)?;
-        canvas.show_cursor(self.tab.edit_mode.show_cursor())?;
+        canvas.show_cursor(self.tab.menu_mode.show_cursor())?;
         Ok(())
     }
 
     fn menu_line(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let menu = MENU_ATTRS.get().expect("Menu colors should be set").second;
-        match self.tab.edit_mode {
-            Edit::InputSimple(InputSimple::Chmod) => {
+        match self.tab.menu_mode {
+            MenuMode::InputSimple(InputSimple::Chmod) => {
                 let first = MENU_ATTRS.get().expect("Menu colors should be set").first;
                 self.menu_line_chmod(canvas, first, menu)?
             }
@@ -848,17 +848,17 @@ impl<'a> Menu<'a> {
         Ok(col)
     }
 
-    fn content_per_mode(&self, canvas: &mut dyn Canvas, mode: Edit) -> Result<()> {
+    fn content_per_mode(&self, canvas: &mut dyn Canvas, mode: MenuMode) -> Result<()> {
         match mode {
-            Edit::Navigate(mode) => self.navigate(mode, canvas),
-            Edit::NeedConfirmation(mode) => self.confirm(mode, canvas),
-            Edit::InputCompleted(_) => self.completion(canvas),
-            Edit::InputSimple(mode) => Self::static_lines(mode.lines(), canvas),
+            MenuMode::Navigate(mode) => self.navigate(mode, canvas),
+            MenuMode::NeedConfirmation(mode) => self.confirm(mode, canvas),
+            MenuMode::InputCompleted(_) => self.completion(canvas),
+            MenuMode::InputSimple(mode) => Self::static_lines(mode.lines(), canvas),
             _ => Ok(()),
         }
     }
 
-    fn binds_per_mode(&self, canvas: &mut dyn Canvas, mode: Edit) -> Result<()> {
+    fn binds_per_mode(&self, canvas: &mut dyn Canvas, mode: MenuMode) -> Result<()> {
         let height = canvas.height()?;
         canvas.clear_line(height - 1)?;
         canvas.print_with_attr(
@@ -1140,7 +1140,7 @@ impl Draw for MenuFirstLine {
 impl MenuFirstLine {
     fn new(status: &Status) -> Self {
         Self {
-            content: status.current_tab().edit_mode.line_display(status),
+            content: status.current_tab().menu_mode.line_display(status),
         }
     }
 }

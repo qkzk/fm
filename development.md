@@ -1241,11 +1241,14 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] refactor status.search & status.search_again
   - [x] use reference to files, avoiding a clone
   - [ ] BUG: tree search doesn't find first match
+    - [ ] while typing its ok
 - [x] leavemode small refactor
 - [x] Use custom command for ncdu & lazygit shouldn't be actions by themselves
 - [x] removed backtab action
-- [ ] directory preview should just be a "directory" ?
 - [x] FIX: leaving a menu while in tree resets the index.
+- [x] Massive renaming and moving.
+- [x] Simplify display mode comparison with a few methods. Should make the code more readable
+- [ ] directory preview should just be a "directory" ?
 
 ## TODO
 

@@ -7,76 +7,76 @@ use crate::common::{path_to_string, rename, string_to_path};
 use crate::config::Bindings;
 use crate::event::{ActionMap, EventAction, FmEvents};
 use crate::modes::{
-    BlockDeviceAction, CLApplications, Content, Edit, InputCompleted, InputSimple, Leave,
-    MarkAction, Navigate, NodeCreation, PasswordUsage, PickerCaller,
+    BlockDeviceAction, CLApplications, Content, InputCompleted, InputSimple, Leave, MarkAction,
+    Menu, Navigate, NodeCreation, PasswordUsage, PickerCaller,
 };
 use crate::{log_info, log_line};
 
 /// Methods called when executing something with Enter key.
-pub struct LeaveMode;
+pub struct LeaveMenu;
 
-impl LeaveMode {
+impl LeaveMenu {
     pub fn leave_edit_mode(status: &mut Status, binds: &Bindings) -> Result<()> {
         status
             .menu
             .input_history
-            .update(status.current_tab().edit_mode, &status.menu.input.string())?;
-        let must_refresh = status.current_tab().edit_mode.must_refresh();
-        let must_reset_mode = status.current_tab().edit_mode.must_reset_mode();
+            .update(status.current_tab().menu_mode, &status.menu.input.string())?;
+        let must_refresh = status.current_tab().menu_mode.must_refresh();
+        let must_reset_mode = status.current_tab().menu_mode.must_reset_mode();
 
-        match status.current_tab().edit_mode {
-            Edit::Nothing => Ok(()),
-            Edit::InputSimple(InputSimple::Rename) => LeaveMode::rename(status),
-            Edit::InputSimple(InputSimple::Newfile) => LeaveMode::new_file(status),
-            Edit::InputSimple(InputSimple::Newdir) => LeaveMode::new_dir(status),
-            Edit::InputSimple(InputSimple::Chmod) => LeaveMode::chmod(status),
-            Edit::InputSimple(InputSimple::RegexMatch) => LeaveMode::regex(status),
-            Edit::InputSimple(InputSimple::SetNvimAddr) => LeaveMode::set_nvim_addr(status),
-            Edit::InputSimple(InputSimple::Shell) => LeaveMode::shell(status),
-            Edit::InputSimple(InputSimple::Sort) => LeaveMode::sort(status),
-            Edit::InputSimple(InputSimple::Filter) => LeaveMode::filter(status),
-            Edit::InputSimple(InputSimple::Password(action, usage)) => {
-                LeaveMode::password(status, action, usage)
+        match status.current_tab().menu_mode {
+            Menu::Nothing => Ok(()),
+            Menu::InputSimple(InputSimple::Rename) => LeaveMenu::rename(status),
+            Menu::InputSimple(InputSimple::Newfile) => LeaveMenu::new_file(status),
+            Menu::InputSimple(InputSimple::Newdir) => LeaveMenu::new_dir(status),
+            Menu::InputSimple(InputSimple::Chmod) => LeaveMenu::chmod(status),
+            Menu::InputSimple(InputSimple::RegexMatch) => LeaveMenu::regex(status),
+            Menu::InputSimple(InputSimple::SetNvimAddr) => LeaveMenu::set_nvim_addr(status),
+            Menu::InputSimple(InputSimple::Shell) => LeaveMenu::shell(status),
+            Menu::InputSimple(InputSimple::Sort) => LeaveMenu::sort(status),
+            Menu::InputSimple(InputSimple::Filter) => LeaveMenu::filter(status),
+            Menu::InputSimple(InputSimple::Password(action, usage)) => {
+                LeaveMenu::password(status, action, usage)
             }
-            Edit::InputSimple(InputSimple::CloudNewdir) => {
-                LeaveMode::cloud_newdir(status)?;
+            Menu::InputSimple(InputSimple::CloudNewdir) => {
+                LeaveMenu::cloud_newdir(status)?;
                 return Ok(());
             }
-            Edit::InputSimple(InputSimple::Remote) => LeaveMode::remote(status),
-            Edit::Navigate(Navigate::History) => LeaveMode::history(status),
-            Edit::Navigate(Navigate::Shortcut) => LeaveMode::shortcut(status),
-            Edit::Navigate(Navigate::Trash) => LeaveMode::trash(status),
-            Edit::Navigate(Navigate::TuiApplication) => LeaveMode::shellmenu(status),
-            Edit::Navigate(Navigate::CliApplication) => LeaveMode::cli_info(status),
-            Edit::Navigate(Navigate::Cloud) => {
-                LeaveMode::cloud_enter(status)?;
+            Menu::InputSimple(InputSimple::Remote) => LeaveMenu::remote(status),
+            Menu::Navigate(Navigate::History) => LeaveMenu::history(status),
+            Menu::Navigate(Navigate::Shortcut) => LeaveMenu::shortcut(status),
+            Menu::Navigate(Navigate::Trash) => LeaveMenu::trash(status),
+            Menu::Navigate(Navigate::TuiApplication) => LeaveMenu::shellmenu(status),
+            Menu::Navigate(Navigate::CliApplication) => LeaveMenu::cli_info(status),
+            Menu::Navigate(Navigate::Cloud) => {
+                LeaveMenu::cloud_enter(status)?;
                 return Ok(());
             }
-            Edit::Navigate(Navigate::EncryptedDrive) => LeaveMode::go_to_mount(status),
-            Edit::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMode::marks_update(status),
-            Edit::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMode::marks_jump(status),
-            Edit::Navigate(Navigate::Compress) => LeaveMode::compress(status),
-            Edit::Navigate(Navigate::Context) => LeaveMode::context(status, binds),
-            Edit::Navigate(Navigate::RemovableDevices) => LeaveMode::go_to_mount(status),
-            Edit::Navigate(Navigate::Picker) => {
-                LeaveMode::picker(status)?;
+            Menu::Navigate(Navigate::EncryptedDrive) => LeaveMenu::go_to_mount(status),
+            Menu::Navigate(Navigate::Marks(MarkAction::New)) => LeaveMenu::marks_update(status),
+            Menu::Navigate(Navigate::Marks(MarkAction::Jump)) => LeaveMenu::marks_jump(status),
+            Menu::Navigate(Navigate::Compress) => LeaveMenu::compress(status),
+            Menu::Navigate(Navigate::Context) => LeaveMenu::context(status, binds),
+            Menu::Navigate(Navigate::RemovableDevices) => LeaveMenu::go_to_mount(status),
+            Menu::Navigate(Navigate::Picker) => {
+                LeaveMenu::picker(status)?;
                 return Ok(());
             }
-            Edit::Navigate(Navigate::Flagged) => LeaveMode::flagged(status),
-            Edit::InputCompleted(InputCompleted::Exec) => {
-                LeaveMode::exec(status)?;
+            Menu::Navigate(Navigate::Flagged) => LeaveMenu::flagged(status),
+            Menu::InputCompleted(InputCompleted::Exec) => {
+                LeaveMenu::exec(status)?;
                 return Ok(());
             }
-            Edit::InputCompleted(InputCompleted::Search) => LeaveMode::search(status, true),
-            Edit::InputCompleted(InputCompleted::Cd) => LeaveMode::cd(status),
-            Edit::InputCompleted(InputCompleted::Action) => LeaveMode::action(status),
+            Menu::InputCompleted(InputCompleted::Search) => Ok(()),
+            Menu::InputCompleted(InputCompleted::Cd) => LeaveMenu::cd(status),
+            Menu::InputCompleted(InputCompleted::Action) => LeaveMenu::action(status),
             // To avoid mistakes, the default answer is No. We do nothing here.
-            Edit::NeedConfirmation(_) => Ok(()),
+            Menu::NeedConfirmation(_) => Ok(()),
         }?;
 
         status.menu.input.reset();
         if must_reset_mode {
-            status.reset_edit_mode()?;
+            status.reset_menu_mode()?;
         }
         if must_refresh {
             status.refresh_status()?;
@@ -91,7 +91,7 @@ impl LeaveMode {
             return Ok(());
         }
         let _ = status.menu.trash.restore();
-        status.reset_edit_mode()?;
+        status.reset_menu_mode()?;
         status.current_tab_mut().refresh_view()?;
         status.update_second_pane_for_preview()
     }
@@ -141,7 +141,7 @@ impl LeaveMode {
 
     fn cloud_newdir(status: &mut Status) -> Result<()> {
         status.cloud_create_newdir(status.menu.input.string())?;
-        status.reset_edit_mode()?;
+        status.reset_menu_mode()?;
         status.cloud_open()
     }
 
@@ -156,7 +156,7 @@ impl LeaveMode {
 
     fn set_nvim_addr(status: &mut Status) -> Result<()> {
         status.internal_settings.nvim_server = status.menu.input.string();
-        status.reset_edit_mode()?;
+        status.reset_menu_mode()?;
         Ok(())
     }
 
@@ -242,15 +242,6 @@ impl LeaveMode {
         Ok(())
     }
 
-    /// Executes a search in current folder, selecting the first file matching
-    /// the current completion proposition.
-    /// ie. If you typed `"jpg"` before, it will move to the first file
-    /// whose filename contains `"jpg"`.
-    /// The current order of files is used.
-    pub fn search(status: &mut Status, should_reset_input: bool) -> Result<()> {
-        status.search(should_reset_input)
-    }
-
     /// Move to the folder typed by the user.
     /// The first completion proposition is used, `~` expansion is done.
     /// If no result were found, no cd is done and we go back to normal mode
@@ -329,7 +320,7 @@ impl LeaveMode {
             return Ok(());
         };
 
-        status.reset_edit_mode()?;
+        status.reset_menu_mode()?;
         status.focus = status.focus.to_parent();
         status.fm_sender.send(FmEvents::Action(action))?;
         Ok(())
@@ -355,9 +346,9 @@ impl LeaveMode {
 
     /// Go to the _mounted_ device. Does nothing if the device isn't mounted.
     fn go_to_mount(status: &mut Status) -> Result<()> {
-        match status.current_tab().edit_mode {
-            Edit::Navigate(Navigate::EncryptedDrive) => status.go_to_encrypted_drive(),
-            Edit::Navigate(Navigate::RemovableDevices) => status.go_to_removable(),
+        match status.current_tab().menu_mode {
+            Menu::Navigate(Navigate::EncryptedDrive) => status.go_to_encrypted_drive(),
+            Menu::Navigate(Navigate::RemovableDevices) => status.go_to_removable(),
             _ => Ok(()),
         }
     }

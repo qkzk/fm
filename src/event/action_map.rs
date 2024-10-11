@@ -4,7 +4,6 @@ use strum_macros::{Display, EnumIter, EnumString};
 use crate::app::Status;
 use crate::config::Bindings;
 use crate::event::EventAction;
-use crate::modes::LeaveMode;
 
 /// Different kind of action which can be mapped to a key.
 /// All those actions are mapped to a key and this enum
@@ -195,7 +194,7 @@ impl ActionMap {
             Self::TrashEmpty => EventAction::trash_empty(status),
             Self::TrashMoveFile => EventAction::trash_move_file(status),
             Self::TrashOpen => EventAction::trash_open(status),
-            Self::TrashRestoreFile => LeaveMode::trash(status),
+            Self::TrashRestoreFile => EventAction::trash_restore(status),
             Self::Tree => EventAction::tree(status),
             Self::TreeFold => EventAction::tree_fold(status),
             Self::TreeFoldAll => EventAction::tree_fold_all(status),

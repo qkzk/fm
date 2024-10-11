@@ -305,7 +305,7 @@ mod inner {
         fn string_first_row_position(tab: &Tab) -> Result<String> {
             let len: usize;
             let index: usize;
-            if matches!(tab.display_mode, Display::Tree) {
+            if tab.display_mode.is_tree() {
                 index = tab.tree.selected_node().context("no node")?.index() + 1;
                 len = tab.tree.len();
             } else {
