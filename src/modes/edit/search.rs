@@ -46,7 +46,7 @@ impl Search {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.regex.to_string().is_empty()
+        self.regex.as_str().is_empty()
     }
 
     pub fn reset_paths(&mut self) {
@@ -85,12 +85,15 @@ impl Search {
         let mut next_index = current_index;
         let mut found = false;
         for (index, file) in tab.directory.enumerate().skip(current_index) {
-            (next_index, found) = self.set_found(index, file, found, next_index);
+            if self.regex.is_match(&file.filename) {
+                (next_index, found) = self.set_found(index, file, next_index, found);
+            }
         }
         for (index, file) in tab.directory.enumerate().take(current_index) {
-            (next_index, found) = self.set_found(index, file, found, next_index);
+            if self.regex.is_match(&file.filename) {
+                (next_index, found) = self.set_found(index, file, next_index, found);
+            }
         }
-
         tab.go_to_index(next_index);
     }
 
@@ -99,29 +102,39 @@ impl Search {
         &mut self,
         index: usize,
         file: &FileInfo,
-        mut found: bool,
         mut next_index: usize,
+        mut found: bool,
     ) -> (usize, bool) {
-        if self.regex.is_match(&file.filename) {
-            if !found {
-                next_index = index;
-                self.index = self.paths.len();
-                found = true;
-            }
-            self.paths.push(file.path.to_path_buf());
+        if !found {
+            next_index = index;
+            self.index = self.paths.len();
+            found = true;
         }
+        self.paths.push(file.path.to_path_buf());
+
         (next_index, found)
     }
 
-    pub fn directory_search_next(
+    pub fn directory_search_next<'a>(
+        &mut self,
+        files: impl Iterator<Item = &'a FileInfo>,
+    ) -> Option<PathBuf> {
+        let (paths, Some(next_index), Some(next_path)) = self.directory_update_search(files) else {
+            return None;
+        };
+        self.set_index_paths(next_index, paths);
+        Some(next_path)
+    }
+
+    fn directory_update_search<'a>(
         &self,
-        tab: &Tab,
+        files: impl std::iter::Iterator<Item = &'a FileInfo>,
     ) -> (Vec<PathBuf>, Option<usize>, Option<PathBuf>) {
         let mut paths = vec![];
         let mut next_index = None;
         let mut next_path = None;
 
-        for file in tab.directory.index_to_index() {
+        for file in files {
             if self.regex.is_match(&file.filename) {
                 if next_index.is_none() {
                     (next_index, next_path) = self.found_first_match(file)
@@ -137,8 +150,8 @@ impl Search {
     }
 
     pub fn set_index_paths(&mut self, index: usize, paths: Vec<PathBuf>) {
-        self.paths = paths;
         self.index = index;
+        self.paths = paths;
     }
 
     pub fn tree(&mut self, tree: &mut Tree) {

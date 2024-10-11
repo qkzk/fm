@@ -15,7 +15,8 @@ use crate::io::Args;
 use crate::log_info;
 use crate::modes::{
     Content, ContentWindow, Directory, Display, Edit, FileInfo, FileKind, FilterKind, Go, History,
-    Preview, PreviewBuilder, Search, Selectable, SortKind, To, Tree, TreeBuilder, Users,
+    IndexToIndex, Preview, PreviewBuilder, Search, Selectable, SortKind, To, Tree, TreeBuilder,
+    Users,
 };
 
 pub struct TabSettings {
@@ -775,8 +776,10 @@ impl Tab {
     pub fn directory_search_next(&mut self) {
         if let Some(path) = self.search.select_next() {
             self.go_to_file(path)
-        } else if let (paths, Some(index), Some(path)) = self.search.directory_search_next(self) {
-            self.search.set_index_paths(index, paths);
+        } else if let Some(path) = self
+            .search
+            .directory_search_next(self.directory.index_to_index())
+        {
             self.go_to_file(path);
         }
     }
