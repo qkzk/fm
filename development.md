@@ -1238,10 +1238,13 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] macro like impl_selectable
   - [x] move search execution to status
   - [x] refactor status.search & status.search_again
+  - [x] use reference to files, avoiding a clone
+  - [ ] BUG: tree search doesn't find first match
 - [x] leavemode small refactor
 - [x] Use custom command for ncdu & lazygit shouldn't be actions by themselves
 - [x] removed backtab action
 - [ ] directory preview should just be a "directory" ?
+- [ ] BUG: tree, search smth, next next next, escape. index move to 0 but window doesn't follow. Pressing escape again moves back
 
 ## TODO
 

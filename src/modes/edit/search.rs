@@ -163,9 +163,11 @@ impl Search {
     fn tree_find_next_path(&mut self, tree: &mut Tree) -> Option<PathBuf> {
         if let Some(path) = self.select_next() {
             return Some(path);
-        } else {
-            self.reset_paths()
         }
+        self.tree_search_again(tree)
+    }
+
+    fn tree_search_again(&mut self, tree: &mut Tree) -> Option<PathBuf> {
         let mut next_path = None;
         for line in tree.index_to_index() {
             let Some(filename) = line.path.file_name() else {
