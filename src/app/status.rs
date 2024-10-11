@@ -415,11 +415,12 @@ impl Status {
     /// Leave an edit mode and refresh the menu.
     /// It should only be called when edit mode isn't nothing.
     pub fn leave_edit_mode(&mut self) -> Result<()> {
-        if matches!(
-            self.current_tab().edit_mode,
-            Edit::InputSimple(InputSimple::Filter)
-        ) {
-            self.current_tab_mut().settings.reset_filter()
+        match self.current_tab().edit_mode {
+            Edit::InputSimple(InputSimple::Filter) => {
+                self.current_tab_mut().settings.reset_filter()
+            }
+            Edit::InputCompleted(InputCompleted::Cd) => self.current_tab_mut().cd_origin_path()?,
+            _ => (),
         }
         if self.reset_edit_mode()? {
             self.current_tab_mut().refresh_view()?;
@@ -439,16 +440,6 @@ impl Status {
     pub fn leave_preview(&mut self) -> Result<()> {
         self.current_tab_mut().set_display_mode(Display::Directory);
         self.current_tab_mut().refresh_and_reselect_file()
-    }
-
-    pub fn cd_origin_path(&mut self) -> Result<()> {
-        if matches!(
-            self.current_tab().edit_mode,
-            Edit::InputCompleted(InputCompleted::Cd)
-        ) {
-            self.tabs[self.index].cd_origin_path()?;
-        }
-        Ok(())
     }
 
     /// Reset the edit mode to "Nothing" (closing any menu) and returns

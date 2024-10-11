@@ -218,10 +218,16 @@ impl Tab {
     pub fn refresh_params(&mut self) {
         self.preview = PreviewBuilder::empty();
         if matches!(self.display_mode, Display::Tree) {
-            self.make_tree(None);
+            self.remake_same_tree()
         } else {
             self.tree = Tree::default()
         };
+    }
+
+    fn remake_same_tree(&mut self) {
+        let current_path = self.tree.selected_path().to_owned();
+        self.make_tree(None);
+        self.tree.go(To::Path(&current_path))
     }
 
     /// Refresh the current view.

@@ -1172,6 +1172,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - application start, main loop & quit,
   - display
   - menus
+- Fixed a bug where leaving a menu while a tree is displayed resets the index.
 
 #### Changelog
 
@@ -1244,7 +1245,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Use custom command for ncdu & lazygit shouldn't be actions by themselves
 - [x] removed backtab action
 - [ ] directory preview should just be a "directory" ?
-- [ ] BUG: tree, search smth, next next next, escape. index move to 0 but window doesn't follow. Pressing escape again moves back
+- [x] FIX: leaving a menu while in tree resets the index.
 
 ## TODO
 

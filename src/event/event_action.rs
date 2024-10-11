@@ -54,16 +54,13 @@ impl EventAction {
     /// Leave current mode to normal mode.
     /// Reset the inputs and completion, reset the window, exit the preview.
     pub fn reset_mode(status: &mut Status) -> Result<()> {
-        match status.current_tab().edit_mode {
-            Edit::Nothing if matches!(status.current_tab().display_mode, Display::Preview) => {
-                status.leave_preview()
-            }
-            Edit::InputCompleted(InputCompleted::Cd) => {
-                status.cd_origin_path()?;
-                status.leave_edit_mode()
-            }
-            _ => status.leave_edit_mode(),
-        }?;
+        if status.focus.is_file() && matches!(status.current_tab().display_mode, Display::Preview) {
+            status.leave_preview()?;
+        }
+        if matches!(status.current_tab().edit_mode, Edit::Nothing) {
+            return Ok(());
+        };
+        status.leave_edit_mode()?;
         status.menu.input.reset();
         status.menu.completion.reset();
         Ok(())
