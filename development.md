@@ -1240,8 +1240,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] move search execution to status
   - [x] refactor status.search & status.search_again
   - [x] use reference to files, avoiding a clone
-  - [ ] BUG: tree search doesn't find first match
-    - [ ] while typing its ok
+  - [x] FIX: tree search doesn't find first match
   - [x] FIX: search doesn't update if tab
 - [x] leavemode small refactor
 - [x] Use custom command for ncdu & lazygit shouldn't be actions by themselves
