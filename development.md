@@ -1253,6 +1253,8 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
+- [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
+- [ ] common trait to validate a data : input string, config, args...
 - [ ] google drive should be a display ?
 - [ ] replace tuikit by ratatui + crossterm
 - [ ] Focus & mouseover. Mousemove require raw terminal mode.. Requires to rewrite every event (Mousepress, mouse release etc.)
@@ -1260,7 +1262,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
 - [ ] floating windows ?
 - [ ] rclone
-- [ ] FIX: leaving flagged file should reset the window correctly. Can't reproduce...
 - [ ] use the new mpsc event parser to read commands from stdin or RPC
 - [ ] [opener file kind](./src/io/opener.rs): move associations to a config file
 - [ ] open a shell while hiding fm, restore after leaving
