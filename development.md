@@ -1242,6 +1242,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] use reference to files, avoiding a clone
   - [x] FIX: tree search doesn't find first match
   - [x] FIX: search doesn't update if tab
+- [x] Refactor completion
 - [x] leavemode small refactor
 - [x] Use custom command for ncdu & lazygit shouldn't be actions by themselves
 - [x] removed backtab action

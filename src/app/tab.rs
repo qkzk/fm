@@ -779,6 +779,14 @@ impl Tab {
         Ok(())
     }
 
+    pub fn completion_search_files(&mut self) -> Vec<String> {
+        match self.display_mode {
+            Display::Directory => self.search.matches_from(self.directory.content()),
+            Display::Tree => self.search.matches_from(self.tree.displayable().content()),
+            Display::Preview => vec![],
+        }
+    }
+
     pub fn directory_search_next(&mut self) {
         if let Some(path) = self.search.select_next() {
             self.go_to_file(path)

@@ -1,4 +1,5 @@
 use anyhow::Result;
+use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 
 use crate::app::Status;
@@ -313,5 +314,12 @@ impl ActionMap {
             Self::TreeUnFoldAll => "Unfold every node",
             Self::TuiMenu => "TUI APPS",
         }
+    }
+
+    pub fn actions_matching(key: String) -> Vec<String> {
+        Self::iter()
+            .filter(|action| action.to_string().to_lowercase().contains(&key))
+            .map(|action| action.to_string())
+            .collect()
     }
 }

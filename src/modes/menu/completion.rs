@@ -1,10 +1,6 @@
 use std::fmt;
 use std::fs::{self, ReadDir};
 
-use anyhow::Result;
-use strum::IntoEnumIterator;
-
-use crate::app::Tab;
 use crate::common::{is_in_path, tilde, ZOXIDE};
 use crate::event::ActionMap;
 use crate::io::{execute_and_capture_output_with_path, DrawMenu};
@@ -101,8 +97,7 @@ impl Completion {
 
     /// Cd completion.
     /// Looks for the valid path completing what the user typed.
-    pub fn cd(&mut self, tab: &Tab, input_string: &str) -> Result<()> {
-        let current_path = &tab.directory.path.as_os_str().to_string_lossy();
+    pub fn cd(&mut self, current_path: &str, input_string: &str) {
         self.cd_update_from_input(input_string, current_path);
         let (parent, last_name) = split_input_string(input_string);
         if !last_name.is_empty() {
@@ -110,7 +105,6 @@ impl Completion {
             self.extend_relative_paths(current_path, &last_name);
         }
         self.extend_with_children(input_string);
-        Ok(())
     }
 
     fn cd_update_from_input(&mut self, input_string: &str, current_path: &str) {
@@ -204,41 +198,30 @@ impl Completion {
     }
 
     /// Looks for programs in $PATH completing the one typed by the user.
-    pub fn exec(&mut self, input_string: &str) -> Result<()> {
+    pub fn exec(&mut self, input_string: &str) {
         let mut proposals: Vec<String> = vec![];
         if let Some(paths) = std::env::var_os("PATH") {
             for path in std::env::split_paths(&paths).filter(|path| path.exists()) {
-                proposals.extend(Self::find_completion_in_path(path, input_string)?);
+                proposals.extend(Self::find_completion_in_path(path, input_string));
             }
         }
         self.update(proposals);
-        Ok(())
     }
 
     /// Looks for fm actions completing the one typed by the user.
-    pub fn command(&mut self, input_string: &str) -> Result<()> {
-        let proposals = ActionMap::iter()
-            .filter(|command| {
-                command
-                    .to_string()
-                    .to_lowercase()
-                    .contains(&input_string.to_lowercase())
-            })
-            .map(|command| command.to_string())
-            .collect();
-        self.update(proposals);
-        Ok(())
+    pub fn action(&mut self, input_string: &str) {
+        self.update(ActionMap::actions_matching(input_string.to_lowercase()));
     }
 
-    fn find_completion_in_path(
-        path: std::path::PathBuf,
-        input_string: &str,
-    ) -> Result<Vec<String>> {
-        Ok(fs::read_dir(path)?
+    fn find_completion_in_path(path: std::path::PathBuf, input_string: &str) -> Vec<String> {
+        let Ok(entries) = fs::read_dir(path) else {
+            return vec![];
+        };
+        entries
             .filter_map(|e| e.ok())
             .filter(|e| file_match_input(e, input_string))
             .map(|e| e.path().to_string_lossy().into_owned())
-            .collect())
+            .collect()
     }
 
     /// Looks for file within current folder completing what the user typed.

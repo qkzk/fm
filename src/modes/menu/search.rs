@@ -193,7 +193,7 @@ impl Search {
     }
 
     #[inline]
-    pub fn complete(&self, content: &[impl ToPath]) -> Vec<String> {
+    pub fn matches_from(&self, content: &[impl ToPath]) -> Vec<String> {
         content
             .iter()
             .filter_map(|e| e.to_path().file_name())

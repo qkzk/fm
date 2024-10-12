@@ -104,32 +104,27 @@ impl MenuHolder {
 
     /// Fill the input string with the currently selected completion.
     pub fn input_complete(&mut self, tab: &mut Tab) -> Result<()> {
-        self.fill_completion(tab)?;
+        self.fill_completion(tab);
         self.window.reset(self.completion.len());
         Ok(())
     }
 
-    fn fill_completion(&mut self, tab: &mut Tab) -> Result<()> {
+    fn fill_completion(&mut self, tab: &mut Tab) {
         match tab.menu_mode {
-            Menu::InputCompleted(InputCompleted::Cd) => {
-                self.completion.cd(tab, &self.input.string())
-            }
+            Menu::InputCompleted(InputCompleted::Cd) => self.completion.cd(
+                tab.current_path().as_os_str().to_string_lossy().as_ref(),
+                &self.input.string(),
+            ),
             Menu::InputCompleted(InputCompleted::Exec) => {
                 self.completion.exec(&self.input.string())
             }
             Menu::InputCompleted(InputCompleted::Search) => {
-                let files = match tab.display_mode {
-                    Display::Preview => vec![],
-                    Display::Tree => tab.search.complete(tab.tree.displayable().content()),
-                    Display::Directory => tab.search.complete(tab.directory.content()),
-                };
-                self.completion.search(files);
-                Ok(())
+                self.completion.search(tab.completion_search_files());
             }
             Menu::InputCompleted(InputCompleted::Action) => {
-                self.completion.command(&self.input.string())
+                self.completion.action(&self.input.string())
             }
-            _ => Ok(()),
+            _ => (),
         }
     }
 
