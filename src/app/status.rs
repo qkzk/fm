@@ -929,6 +929,16 @@ impl Status {
         self.menu.input_history_prev(&mut self.tabs[self.index])
     }
 
+    pub fn complete_tab(&mut self, input_completed: InputCompleted) -> Result<()> {
+        self.menu.completion_tab();
+        self.complete_cd_move()?;
+        if matches!(input_completed, InputCompleted::Search) {
+            self.update_search()?;
+            self.search()?;
+        }
+        Ok(())
+    }
+
     pub fn complete_search(&mut self, c: char) -> Result<()> {
         self.menu.input.insert(c);
         self.update_search()?;

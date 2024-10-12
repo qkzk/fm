@@ -1141,9 +1141,8 @@ impl EventAction {
     pub fn tab(status: &mut Status) -> Result<()> {
         if status.focus.is_file() {
             status.next()
-        } else if let Menu::InputCompleted(_) = status.current_tab_mut().menu_mode {
-            status.menu.completion_tab();
-            status.complete_cd_move()?;
+        } else if let Menu::InputCompleted(input_completed) = status.current_tab_mut().menu_mode {
+            status.complete_tab(input_completed)?;
         }
         Ok(())
     }
