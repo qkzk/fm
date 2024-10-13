@@ -1182,12 +1182,9 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] Fix: removing flagged files can crash.
   - [x] removed window from flagged
   - [x] Fix: Too much flags + scroll = crash
-- [ ] menus refactor
+- [x] menus refactor
   - [x] Fix: closing left menu shouldn't clear right
   - [x] refactor menu.remote_mount into a separate module with parser & executer
-  - [ ] open 2 menus at once and navigate separately
-        use 2 windows ?
-  - [ ] moving left shouldn't move right
 - [x] DrawMenu used to display most of navigable elements.
 - [x] refactor display.
   - [x] renamed most methods
@@ -1212,6 +1209,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] struct with a thread and 2 mpsc: one to ask for previews, one to send them back. The first is also used to break the loop.
   - [x] refresher send more events, also asking for previews to be checked
   - [x] check if a preview should be asked in app every event received
+  - [x] don't display obsoletes previews
   - [ ] tests, perf, memory usage...
 - [x] refactor app:
   - [x] simplify update loop
@@ -1254,6 +1252,7 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 ## TODO
 
 - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
+  - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] google drive should be a display ?
 - [ ] replace tuikit by ratatui + crossterm

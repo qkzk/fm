@@ -30,16 +30,14 @@ impl Previewer {
     /// - if the message is a request, it will create the associate preview and send it back to the application.
     ///   The application should then ask the status to attach the preview. It's complicated but I couldn't find a simpler way to check
     ///   for the preview.
-    ///
-    /// The loops sleeps 10 miliseconds between each poll, which may be quite CPU intensive.
-    pub fn new(tx_preview: mpsc::Sender<(Preview, usize)>) -> Self {
+    pub fn new(tx_preview: mpsc::Sender<(PathBuf, Preview, usize)>) -> Self {
         let (tx, rx) = mpsc::channel::<PreviewRequest>();
         thread::spawn(move || {
             while let Some(request) = rx.iter().next() {
                 match request {
                     PreviewRequest::Request((path, index)) => {
                         if let Ok(preview) = PreviewBuilder::new(&path).build() {
-                            tx_preview.send((preview, index)).unwrap();
+                            tx_preview.send((path, preview, index)).unwrap();
                         };
                     }
                     PreviewRequest::Quit => break,

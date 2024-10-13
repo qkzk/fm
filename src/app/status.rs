@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
     Arc,
@@ -123,7 +124,7 @@ pub struct Status {
     /// Sender of events
     pub fm_sender: Arc<Sender<FmEvents>>,
     /// Receiver of previews, used to build & display previews without bloking
-    preview_receiver: mpsc::Receiver<(Preview, usize)>,
+    preview_receiver: mpsc::Receiver<(PathBuf, Preview, usize)>,
     /// Non bloking preview builder
     pub previewer: Previewer,
 }
@@ -235,9 +236,8 @@ impl Status {
 
     /// Select the left or right tab depending on where the user clicked.
     pub fn select_tab_from_col(&mut self, col: u16) -> Result<()> {
-        let (width, _) = self.term_size()?;
         if self.display_settings.dual() {
-            if (col as usize) < width / 2 {
+            if (col as usize) < self.term_width()? / 2 {
                 self.select_left();
             } else {
                 self.select_right();
@@ -398,6 +398,10 @@ impl Status {
         self.internal_settings.term_size()
     }
 
+    fn term_width(&self) -> Result<usize> {
+        Ok(self.term_size()?.0)
+    }
+
     /// Refresh the current view, reloading the files. Move the selection to top.
     pub fn refresh_view(&mut self) -> Result<()> {
         self.refresh_status()?;
@@ -523,7 +527,7 @@ impl Status {
     }
 
     fn can_display_dualpane_preview(&self) -> Result<bool> {
-        Ok(Session::display_wide_enough(self.term_size()?.0))
+        Ok(Session::display_wide_enough(self.term_width()?))
     }
 
     /// Force preview the selected file of the first pane in the second pane.
@@ -545,19 +549,39 @@ impl Status {
     /// Does nothing otherwise.
     pub fn check_preview(&mut self) -> Result<()> {
         match self.preview_receiver.try_recv() {
-            Ok((preview, index)) => self.attach_preview(preview, index),
+            Ok((path, preview, index)) => self.attach_preview(path, preview, index)?,
             Err(TryRecvError::Disconnected) => bail!("Previewer Disconnected"),
             Err(TryRecvError::Empty) => (),
         }
         Ok(())
     }
 
-    fn attach_preview(&mut self, preview: Preview, index: usize) {
+    /// Attach a preview to the correct tab.
+    /// Nothing is done if the preview doesn't match the file.
+    /// It may happen if the user navigates quickly with "heavy" previews (movies, large pdf, office documents etc.).
+    fn attach_preview(&mut self, path: PathBuf, preview: Preview, index: usize) -> Result<()> {
+        let compared_index = self.pick_correct_tab_from(index)?;
+        if self.preview_has_wrong_path(compared_index, path.as_path())? {
+            return Ok(());
+        }
         self.tabs[index].preview = preview;
         self.tabs[index]
             .window
             .reset(self.tabs[index].preview.len());
         log_info!("attached a preview !");
+        Ok(())
+    }
+
+    fn pick_correct_tab_from(&self, index: usize) -> Result<usize> {
+        if index == 1 && self.can_display_dualpane_preview()? && self.display_settings.preview() {
+            Ok(0)
+        } else {
+            Ok(index)
+        }
+    }
+
+    fn preview_has_wrong_path(&self, compared_index: usize, path: &Path) -> Result<bool> {
+        Ok(self.tabs[compared_index].current_file()?.path.as_ref() != path)
     }
 
     fn get_correct_fileinfo_for_preview(&mut self) -> Result<FileInfo> {
@@ -627,7 +651,7 @@ impl Status {
     }
 
     /// Returns the pathes of flagged file or the selected file if nothing is flagged
-    fn flagged_or_selected(&self) -> Vec<std::path::PathBuf> {
+    fn flagged_or_selected(&self) -> Vec<PathBuf> {
         if self.menu.flagged.is_empty() {
             let Ok(file) = self.current_tab().current_file() else {
                 return vec![];
@@ -638,7 +662,7 @@ impl Status {
         }
     }
 
-    fn flagged_or_selected_relative_to(&self, here: &std::path::Path) -> Vec<std::path::PathBuf> {
+    fn flagged_or_selected_relative_to(&self, here: &Path) -> Vec<PathBuf> {
         self.flagged_or_selected()
             .iter()
             .filter_map(|abs_path| pathdiff::diff_paths(abs_path, here))
@@ -652,7 +676,7 @@ impl Status {
     /// directory before calling Bulkrename.
     /// It may be confusing since the same filename can be used in
     /// different places.
-    pub fn flagged_in_current_dir(&self) -> Vec<std::path::PathBuf> {
+    pub fn flagged_in_current_dir(&self) -> Vec<PathBuf> {
         self.menu.flagged.in_dir(&self.current_tab().directory.path)
     }
 
@@ -741,12 +765,7 @@ impl Status {
         }
     }
 
-    fn is_simple_move(
-        &self,
-        cut_or_copy: &CopyMove,
-        sources: &[std::path::PathBuf],
-        dest: &std::path::Path,
-    ) -> bool {
+    fn is_simple_move(&self, cut_or_copy: &CopyMove, sources: &[PathBuf], dest: &Path) -> bool {
         if matches!(cut_or_copy, CopyMove::Copy) {
             return false;
         }
@@ -763,11 +782,7 @@ impl Status {
         s.mount_point() == d.mount_point()
     }
 
-    fn simple_move(
-        &mut self,
-        sources: &[std::path::PathBuf],
-        dest: &std::path::Path,
-    ) -> Result<()> {
+    fn simple_move(&mut self, sources: &[PathBuf], dest: &Path) -> Result<()> {
         let source = &sources[0];
         let filename = filename_from_path(source)?;
         let dest = dest.to_path_buf().join(filename);
@@ -790,8 +805,8 @@ impl Status {
     fn complex_move(
         &mut self,
         cut_or_copy: CopyMove,
-        sources: Vec<std::path::PathBuf>,
-        dest: &std::path::PathBuf,
+        sources: Vec<PathBuf>,
+        dest: &PathBuf,
     ) -> Result<()> {
         let mut must_act_now = true;
         if matches!(cut_or_copy, CopyMove::Copy) {
@@ -848,9 +863,9 @@ impl Status {
             bail!("Skim isn't initialised");
         };
         let skim = skimer.search_filename(&self.current_tab().directory_str());
-        let paths: Vec<std::path::PathBuf> = skim
+        let paths: Vec<PathBuf> = skim
             .iter()
-            .map(|s| std::path::PathBuf::from(s.output().to_string()))
+            .map(|s| PathBuf::from(s.output().to_string()))
             .collect();
         self.menu.flagged.update(paths);
         let Some(output) = skim.first() else {
@@ -1003,7 +1018,7 @@ impl Status {
         Ok(())
     }
 
-    pub fn open_single_file(&mut self, path: &std::path::Path) {
+    pub fn open_single_file(&mut self, path: &Path) {
         match self.internal_settings.opener.kind(path) {
             Some(Kind::Internal(Internal::NotSupported)) => {
                 let _ = self.mount_iso_drive();
@@ -1020,7 +1035,7 @@ impl Status {
         }
     }
 
-    fn should_this_file_be_opened_in_neovim(&self, path: &std::path::Path) -> bool {
+    fn should_this_file_be_opened_in_neovim(&self, path: &Path) -> bool {
         self.internal_settings.inside_neovim
             && matches!(Extension::matcher(extract_extension(path)), Extension::Text)
     }

@@ -13,9 +13,9 @@ use crate::io::{drop_sudo_privileges, InputHistory, OpendalContainer};
 use crate::log_line;
 use crate::modes::{
     Bulk, CLApplications, CliApplications, Completion, Compresser, Content, ContentWindow,
-    ContextMenu, CryptoDeviceOpener, Display, Flagged, History, Input, InputCompleted, IsoDevice,
-    Marks, Menu, MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices,
-    Selectable, Shortcut, Trash, TuiApplications,
+    ContextMenu, CryptoDeviceOpener, Flagged, History, Input, InputCompleted, IsoDevice, Marks,
+    Menu, MountCommands, Navigate, PasswordHolder, Picker, Remote, RemovableDevices, Selectable,
+    Shortcut, Trash, TuiApplications,
 };
 
 pub struct MenuHolder {
