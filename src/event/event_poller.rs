@@ -1,20 +1,24 @@
+use std::io::Stdout;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tuikit::term::Term;
+use ratatui::{backend::CrosstermBackend, Terminal};
 
 use crate::event::FmEvents;
 
 /// Simple struct to read the events.
 pub struct EventReader {
-    pub term: Arc<Term>,
+    pub term: Arc<Terminal<CrosstermBackend<Stdout>>>,
     pub fm_receiver: Receiver<FmEvents>,
 }
 
 impl EventReader {
     /// Creates a new instance with an Arc to a terminal.
-    pub fn new(term: Arc<Term>, fm_receiver: Receiver<FmEvents>) -> Self {
+    pub fn new(
+        term: Arc<Terminal<CrosstermBackend<Stdout>>>,
+        fm_receiver: Receiver<FmEvents>,
+    ) -> Self {
         Self { term, fm_receiver }
     }
 

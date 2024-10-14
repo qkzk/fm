@@ -1,10 +1,12 @@
+use std::io::Stdout;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use indicatif::InMemoryTerm;
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
 use sysinfo::Disks;
-use tuikit::term::Term;
 
 use crate::common::{is_in_path, NVIM, SS};
 use crate::io::{execute_and_output, Args, Opener};
@@ -20,7 +22,7 @@ pub struct InternalSettings {
     /// The opener used by the application.
     pub opener: Opener,
     /// terminal
-    pub term: Arc<Term>,
+    pub term: Arc<Terminal<CrosstermBackend<Stdout>>>,
     /// Info about the running machine. Only used to detect disks
     /// and their mount points.
     pub disks: Disks,
@@ -33,7 +35,11 @@ pub struct InternalSettings {
 }
 
 impl InternalSettings {
-    pub fn new(opener: Opener, term: Arc<Term>, disks: Disks) -> Self {
+    pub fn new(
+        opener: Opener,
+        term: Arc<Terminal<CrosstermBackend<Stdout>>>,
+        disks: Disks,
+    ) -> Self {
         let args = Args::parse();
         let force_clear = false;
         let must_quit = false;

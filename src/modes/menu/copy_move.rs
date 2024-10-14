@@ -132,13 +132,13 @@ pub fn copy_move<P>(
     copy_or_move: CopyMove,
     sources: Vec<PathBuf>,
     dest: P,
-    term: Arc<Term>,
+    width: usize,
     fm_sender: Arc<Sender<FmEvents>>,
 ) -> Result<InMemoryTerm>
 where
     P: AsRef<std::path::Path>,
 {
-    let (in_mem, progress_bar, options) = copy_or_move.setup_progress_bar(term.term_size()?)?;
+    let (in_mem, progress_bar, options) = copy_or_move.setup_progress_bar(width)?;
     let handle_progress = move |process_info: fs_extra::TransitProcess| {
         handle_progress_display(&progress_bar, process_info)
     };

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tuikit::prelude::{Event, Key, MouseButton};
+use crossterm::event::{Event, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 
 use crate::app::Status;
 use crate::config::Bindings;
@@ -10,12 +10,12 @@ trait IsMouse {
     fn is_mouse_event(&self) -> bool;
 }
 
-impl IsMouse for Key {
+impl IsMouse for Event {
     #[rustfmt::skip]
     fn is_mouse_event(&self) -> bool {
         matches!(
             self,
-            Key::WheelUp(_, _, _) | Key::WheelDown(_, _, _) | Key::SingleClick(_, _, _) | Key::DoubleClick(_, _, _)
+            Event::Mouse(_)
         )
     }
 }
@@ -40,7 +40,7 @@ impl EventDispatcher {
     pub fn dispatch(&self, status: &mut Status, ev: FmEvents) -> Result<()> {
         match ev {
             FmEvents::Term(Event::Key(key)) => self.match_key_event(status, key),
-            FmEvents::Term(Event::Resize { width, height }) => {
+            FmEvents::Term(Event::Resize(width, height)) => {
                 EventAction::resize(status, width, height)
             }
             FmEvents::BulkExecute => EventAction::bulk_confirm(status),
@@ -52,37 +52,38 @@ impl EventDispatcher {
         }
     }
 
-    fn match_key_event(&self, status: &mut Status, key: Key) -> Result<()> {
+    fn match_key_event(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
         match key {
             key if key.is_mouse_event() => self.mouse_event(status, key)?,
-            Key::Char(c) if !status.focus.is_file() => self.menu_key_matcher(status, c)?,
+            KeyEvent::Char(c) if !status.focus.is_file() => self.menu_key_matcher(status, c)?,
             key => self.file_key_matcher(status, key)?,
         };
         Ok(())
     }
 
-    fn mouse_event(&self, status: &mut Status, mouse_event: Key) -> Result<()> {
-        match mouse_event {
-            Key::WheelUp(row, col, nb_of_scrolls) => {
+    fn mouse_event(&self, status: &mut Status, mouse_event: MouseEvent) -> Result<()> {
+        match mouse_event.kind {
+            MouseEventKind::WheelUp(row, col, nb_of_scrolls) => {
                 EventAction::wheel_up(status, row, col, nb_of_scrolls)
             }
-            Key::WheelDown(row, col, nb_of_scrolls) => {
+            MouseEventKind::WheelDown(row, col, nb_of_scrolls) => {
                 EventAction::wheel_down(status, row, col, nb_of_scrolls)
             }
-            Key::SingleClick(MouseButton::Left, row, col) => {
-                EventAction::left_click(status, &self.binds, row, col)
+            MouseEventKind::Up(MouseButton::Left) => {
+                EventAction::left_click(status, &self.binds, mouse_event.row, mouse_event.col)
             }
-            Key::DoubleClick(MouseButton::Left, row, col) => {
-                EventAction::double_click(status, row, col, &self.binds)
-            }
-            Key::SingleClick(MouseButton::Right, row, col) => {
-                EventAction::right_click(status, &self.binds, row, col)
+            // TODO! doubleclick
+            // MouseEventKind::Up(MouseButton::Left, row, col) => {
+            //     EventAction::double_click(status, row, col, &self.binds)
+            // }
+            MouseEventKind::Up(MouseButton::Right) => {
+                EventAction::right_click(status, &self.binds, mouse_event.row, mouse_event.col)
             }
             _ => unreachable!("{mouse_event:?} should be a mouse event"),
         }
     }
 
-    fn file_key_matcher(&self, status: &mut Status, key: Key) -> Result<()> {
+    fn file_key_matcher(&self, status: &mut Status, key: KeyEvent) -> Result<()> {
         let Some(action) = self.binds.get(&key) else {
             return Ok(());
         };

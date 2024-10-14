@@ -1,4 +1,5 @@
-use std::fs;
+// use std::fs;
+use std::io::Stdout;
 use std::path::{Path, PathBuf};
 use std::sync::{
     mpsc::{self, Sender, TryRecvError},
@@ -8,12 +9,14 @@ use std::sync::{
 use anyhow::{bail, Context, Result};
 use clap::Parser;
 use opendal::EntryMode;
-use skim::SkimItem;
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
+// use skim::SkimItem;
 use sysinfo::{Disk, Disks};
-use tuikit::{
-    prelude::{from_keyname, Event, Key},
-    term::Term,
-};
+// use tuikit::{
+//     prelude::{from_keyname, Event, Key},
+//     term::Term,
+// };
 
 use crate::app::{ClickableLine, Footer, Header, InternalSettings, Previewer, Session, Tab};
 use crate::common::{
@@ -28,11 +31,11 @@ use crate::io::{
     Args, Extension, Internal, Kind, Opener, MIN_WIDTH_FOR_DUAL_PANE,
 };
 use crate::modes::{
-    copy_move, extract_extension, parse_line_output, regex_matcher, BlockDeviceAction, Content,
-    ContentWindow, CopyMove, Display, FileInfo, FileKind, FilterKind, InputCompleted, InputSimple,
-    IsoDevice, Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation,
-    PasswordKind, PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search,
-    Selectable, ShellCommandParser, Skimer, Users,
+    copy_move, extract_extension, regex_matcher, BlockDeviceAction, Content, ContentWindow,
+    CopyMove, Display, FileInfo, FileKind, FilterKind, InputCompleted, InputSimple, IsoDevice,
+    Menu, MenuHolder, MountCommands, MountRepr, Navigate, NeedConfirmation, PasswordKind,
+    PasswordUsage, Permissions, PickerCaller, Preview, PreviewBuilder, Search, Selectable,
+    ShellCommandParser, Users,
 };
 use crate::{log_info, log_line};
 
@@ -111,8 +114,7 @@ pub struct Status {
     /// Index of the current selected tab
     pub index: usize,
 
-    skimer: Option<Skimer>,
-
+    // skimer: Option<Skimer>,
     /// Navigable menu
     pub menu: MenuHolder,
     /// Display settings
@@ -134,13 +136,13 @@ impl Status {
     /// It requires most of the information (arguments, configuration, height
     /// of the terminal, the formated help string).
     pub fn new(
-        term: Arc<Term>,
+        term: Arc<Terminal<CrosstermBackend<Stdout>>>,
         opener: Opener,
         binds: &Bindings,
         fm_sender: Arc<Sender<FmEvents>>,
     ) -> Result<Self> {
         let height = term.term_size()?.1;
-        let skimer = None;
+        // let skimer = None;
         let index = 0;
 
         let args = Args::parse();
@@ -169,7 +171,7 @@ impl Status {
         Ok(Self {
             tabs,
             index,
-            skimer,
+            // skimer,
             menu,
             display_settings,
             internal_settings,
@@ -825,7 +827,8 @@ impl Status {
                 cut_or_copy,
                 sources,
                 dest,
-                Arc::clone(&self.internal_settings.term),
+                &self.internal_settings.term.size()?.width as usize,
+                // Arc::clone(&self.internal_settings.term),
                 Arc::clone(&self.fm_sender),
             )?;
             self.internal_settings.store_copy_progress(in_mem);
@@ -839,94 +842,94 @@ impl Status {
             crate::modes::CopyMove::Copy,
             sources,
             dest,
-            self.internal_settings.term.clone(),
+            self.internal_settings.term.size()?.width as usize,
             std::sync::Arc::clone(&self.fm_sender),
         )?;
         self.internal_settings.store_copy_progress(in_mem);
         Ok(())
     }
 
-    fn skim_init(&mut self) {
-        self.skimer = Skimer::new(Arc::clone(&self.internal_settings.term)).ok();
-    }
-
-    /// Replace the tab content with the first result of skim.
-    /// It calls skim, reads its output, then update the tab content.
-    pub fn skim_output_to_tab(&mut self) {
-        self.skim_init();
-        let _ = self._skim_output_to_tab();
-        self.drop_skim();
-    }
-
-    fn _skim_output_to_tab(&mut self) -> Result<()> {
-        let Some(skimer) = &self.skimer else {
-            bail!("Skim isn't initialised");
-        };
-        let skim = skimer.search_filename(&self.current_tab().directory_str());
-        let paths: Vec<PathBuf> = skim
-            .iter()
-            .map(|s| PathBuf::from(s.output().to_string()))
-            .collect();
-        self.menu.flagged.update(paths);
-        let Some(output) = skim.first() else {
-            return Ok(());
-        };
-        self._update_tab_from_skim_output(output)
-    }
-
-    /// Replace the tab content with the first result of skim.
-    /// It calls skim, reads its output, then update the tab content.
-    /// The output is splited at `:` since we only care about the path, not the line number.
-    pub fn skim_line_output_to_tab(&mut self) {
-        self.skim_init();
-        let _ = self._skim_line_output_to_tab();
-        self.drop_skim();
-    }
-
-    fn _skim_line_output_to_tab(&mut self) -> Result<()> {
-        let Some(skimer) = &self.skimer else {
-            bail!("Skim isn't initialised");
-        };
-        let skim = skimer.search_line_in_file(&self.current_tab().directory_str());
-        let paths = parse_line_output(&skim);
-
-        if !paths.is_empty() {
-            self.current_tab_mut().cd_to_file(&paths[0])?;
-            self.menu.flagged.update(paths);
-        }
-        Ok(())
-    }
-
-    /// Run a command directly from help.
-    /// Search a command in skim, if it's a keybinding, run it directly.
-    /// If the result can't be parsed, nothing is done.
-    pub fn skim_find_keybinding_and_run(&mut self, help: String) {
-        self.skim_init();
-        let _ = self._skim_find_keybinding_and_run(help);
-        self.drop_skim();
-    }
-
-    fn _skim_find_keybinding_and_run(&mut self, help: String) -> Result<()> {
-        let key = self._skim_find_keybinding(help)?;
-        self.internal_settings.term.send_event(Event::Key(key))?;
-        Ok(())
-    }
-
-    fn _skim_find_keybinding(&mut self, help: String) -> Result<Key> {
-        let Some(skimer) = &mut self.skimer else {
-            bail!("Skim isn't initialised");
-        };
-        find_keybind_from_skim(skimer.search_in_text(&help))
-    }
-
-    fn _update_tab_from_skim_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {
-        let path = fs::canonicalize(skim_output.output().to_string())?;
-        self.current_tab_mut().cd_to_file(&path)
-    }
-
-    fn drop_skim(&mut self) {
-        self.skimer = None;
-    }
+    // fn skim_init(&mut self) {
+    //     self.skimer = Skimer::new(Arc::clone(&self.internal_settings.term)).ok();
+    // }
+    //
+    // /// Replace the tab content with the first result of skim.
+    // /// It calls skim, reads its output, then update the tab content.
+    // pub fn skim_output_to_tab(&mut self) {
+    //     self.skim_init();
+    //     let _ = self._skim_output_to_tab();
+    //     self.drop_skim();
+    // }
+    //
+    // fn _skim_output_to_tab(&mut self) -> Result<()> {
+    //     let Some(skimer) = &self.skimer else {
+    //         bail!("Skim isn't initialised");
+    //     };
+    //     let skim = skimer.search_filename(&self.current_tab().directory_str());
+    //     let paths: Vec<PathBuf> = skim
+    //         .iter()
+    //         .map(|s| PathBuf::from(s.output().to_string()))
+    //         .collect();
+    //     self.menu.flagged.update(paths);
+    //     let Some(output) = skim.first() else {
+    //         return Ok(());
+    //     };
+    //     self._update_tab_from_skim_output(output)
+    // }
+    //
+    // /// Replace the tab content with the first result of skim.
+    // /// It calls skim, reads its output, then update the tab content.
+    // /// The output is splited at `:` since we only care about the path, not the line number.
+    // pub fn skim_line_output_to_tab(&mut self) {
+    //     self.skim_init();
+    //     let _ = self._skim_line_output_to_tab();
+    //     self.drop_skim();
+    // }
+    //
+    // fn _skim_line_output_to_tab(&mut self) -> Result<()> {
+    //     let Some(skimer) = &self.skimer else {
+    //         bail!("Skim isn't initialised");
+    //     };
+    //     let skim = skimer.search_line_in_file(&self.current_tab().directory_str());
+    //     let paths = parse_line_output(&skim);
+    //
+    //     if !paths.is_empty() {
+    //         self.current_tab_mut().cd_to_file(&paths[0])?;
+    //         self.menu.flagged.update(paths);
+    //     }
+    //     Ok(())
+    // }
+    //
+    // /// Run a command directly from help.
+    // /// Search a command in skim, if it's a keybinding, run it directly.
+    // /// If the result can't be parsed, nothing is done.
+    // pub fn skim_find_keybinding_and_run(&mut self, help: String) {
+    //     self.skim_init();
+    //     let _ = self._skim_find_keybinding_and_run(help);
+    //     self.drop_skim();
+    // }
+    //
+    // fn _skim_find_keybinding_and_run(&mut self, help: String) -> Result<()> {
+    //     let key = self._skim_find_keybinding(help)?;
+    //     self.internal_settings.term.send_event(Event::Key(key))?;
+    //     Ok(())
+    // }
+    //
+    // fn _skim_find_keybinding(&mut self, help: String) -> Result<Key> {
+    //     let Some(skimer) = &mut self.skimer else {
+    //         bail!("Skim isn't initialised");
+    //     };
+    //     find_keybind_from_skim(skimer.search_in_text(&help))
+    // }
+    //
+    // fn _update_tab_from_skim_output(&mut self, skim_output: &Arc<dyn SkimItem>) -> Result<()> {
+    //     let path = fs::canonicalize(skim_output.output().to_string())?;
+    //     self.current_tab_mut().cd_to_file(&path)
+    // }
+    //
+    // fn drop_skim(&mut self) {
+    //     self.skimer = None;
+    // }
 
     /// Replace the current input by the next result from history
     pub fn input_history_next(&mut self) -> Result<()> {
@@ -1773,19 +1776,19 @@ fn parse_keyname(keyname: &str) -> Option<String> {
     }
 }
 
-fn find_keybind_from_skim(skim: Vec<Arc<dyn SkimItem>>) -> Result<Key> {
-    let Some(output) = skim.first() else {
-        bail!("Skim hasn't sent anything");
-    };
-    let line = output.output().into_owned();
-    let Some(keybind) = line.split(':').next() else {
-        bail!("No keybind found");
-    };
-    let Some(keyname) = parse_keyname(keybind) else {
-        bail!("No keyname found for {keybind}");
-    };
-    let Some(key) = from_keyname(&keyname) else {
-        bail!("{keyname} isn't a valid Key name.");
-    };
-    Ok(key)
-}
+// fn find_keybind_from_skim(skim: Vec<Arc<dyn SkimItem>>) -> Result<Key> {
+//     let Some(output) = skim.first() else {
+//         bail!("Skim hasn't sent anything");
+//     };
+//     let line = output.output().into_owned();
+//     let Some(keybind) = line.split(':').next() else {
+//         bail!("No keybind found");
+//     };
+//     let Some(keyname) = parse_keyname(keybind) else {
+//         bail!("No keyname found for {keybind}");
+//     };
+//     let Some(key) = from_keyname(&keyname) else {
+//         bail!("{keyname} isn't a valid Key name.");
+//     };
+//     Ok(key)
+// }

@@ -2,6 +2,9 @@ use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use ratatui::layout::Rect;
+use ratatui::widgets::Paragraph;
+
 use crate::common::{
     current_uid, path_to_config_folder, tilde, HARDCODED_SHORTCUTS, TRASH_FOLDER_FILES,
 };
@@ -172,37 +175,34 @@ where
 impl_selectable!(Shortcut);
 impl_content!(PathBuf, Shortcut);
 use crate::config::{ColorG, Gradient, MENU_ATTRS};
-use crate::io::color_to_attr;
+use crate::io::color_to_style;
 use crate::io::CowStr;
 use std::cmp::min;
 
 impl DrawMenu<PathBuf> for Shortcut {
-    fn draw_menu(
-        &self,
-        canvas: &mut dyn tuikit::prelude::Canvas,
-        window: &ContentWindow,
-    ) -> anyhow::Result<()>
+    fn draw_menu(&self, rect: &Rect, window: &ContentWindow) -> anyhow::Result<Paragraph>
     where
         Self: Content<PathBuf>,
     {
-        let content = self.content();
-        for (letter, (row, path, attr)) in
-            std::iter::zip(('a'..='z').cycle(), colored_skip_take!(content, window))
-        {
-            let attr = self.attr(row, &attr);
-            canvas.print_with_attr(
-                row + 1 - window.top + ContentWindow::WINDOW_MARGIN_TOP,
-                2,
-                &format!("{letter} "),
-                attr,
-            )?;
-            canvas.print_with_attr(
-                row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top,
-                4,
-                &path.cow_str(),
-                self.attr(row, &attr),
-            )?;
-        }
-        Ok(())
+        todo!()
+        // let content = self.content();
+        // for (letter, (row, path, attr)) in
+        //     std::iter::zip(('a'..='z').cycle(), colored_skip_take!(content, window))
+        // {
+        //     let attr = self.style(row, &attr);
+        //     canvas.print_with_attr(
+        //         row + 1 - window.top + ContentWindow::WINDOW_MARGIN_TOP,
+        //         2,
+        //         &format!("{letter} "),
+        //         attr,
+        //     )?;
+        //     canvas.print_with_attr(
+        //         row + ContentWindow::WINDOW_MARGIN_TOP + 1 - window.top,
+        //         4,
+        //         &path.cow_str(),
+        //         self.style(row, &attr),
+        //     )?;
+        // }
+        // Ok(())
     }
 }

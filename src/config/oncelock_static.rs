@@ -3,12 +3,13 @@ use std::sync::OnceLock;
 
 use anyhow::anyhow;
 use anyhow::Result;
+use ratatui::style::Color;
 use syntect::highlighting::Theme;
-use tuikit::attr::Color;
 
 use crate::common::tilde;
 use crate::config::{
-    read_normal_file_colorer, FileAttr, Gradient, MenuAttrs, NormalFileColorer, MAX_GRADIENT_NORMAL,
+    read_normal_file_colorer, FileStyle, Gradient, MenuStyle, NormalFileColorer,
+    MAX_GRADIENT_NORMAL,
 };
 
 /// Starting folder of the application. Read from arguments if any `-P ~/Downloads` else it uses the current folder: `.`.
@@ -20,10 +21,10 @@ pub static START_FOLDER: OnceLock<PathBuf> = OnceLock::new();
 /// are greens or blues.
 ///
 /// Colors are setup on start and never change afterwards.
-pub static FILE_ATTRS: OnceLock<FileAttr> = OnceLock::new();
+pub static FILE_ATTRS: OnceLock<FileStyle> = OnceLock::new();
 
 /// Menu color struct
-pub static MENU_ATTRS: OnceLock<MenuAttrs> = OnceLock::new();
+pub static MENU_ATTRS: OnceLock<MenuStyle> = OnceLock::new();
 
 /// Defines a palette which will color the "normal" files based on their extension.
 /// We try to read a yaml value and pick one of 3 palettes :
@@ -46,14 +47,14 @@ fn set_start_folder(start_folder: &str) -> Result<()> {
 
 fn set_file_attrs() -> Result<()> {
     FILE_ATTRS
-        .set(FileAttr::from_config())
+        .set(FileStyle::from_config())
         .map_err(|_| anyhow!("File colors shouldn't be set"))?;
     Ok(())
 }
 
 fn set_menu_attrs() -> Result<()> {
     MENU_ATTRS
-        .set(MenuAttrs::default().update())
+        .set(MenuStyle::default().update())
         .map_err(|_| anyhow!("Menu colors shouldn't be set"))?;
     Ok(())
 }

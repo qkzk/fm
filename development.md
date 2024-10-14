@@ -1150,8 +1150,6 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
   - [x] only one "colors" map in yaml file
   - [x] migration of config file : detailed in release
 
-## Current dev
-
 ### Version 0.1.30
 
 #### Summary
@@ -1249,14 +1247,31 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 - [x] Simplify display mode comparison with a few methods. Should make the code more readable
 - [ ] directory preview should just be a "directory" ?
 
+## Current dev
+
+### Version 0.1.31
+
+- [ ] replace tuikit by ratatui + crossterm
+  - [ ] [step by step migration](https://chatgpt.com/c/670cf276-9540-800f-94c8-eaa4ae1e05ea)
+  - [ ] NOT DISPLAY
+    - [x] app, status, events, menus, colors, style, key...
+    - [ ] doubleclick
+  - [ ] DISPLAY
+    - [ ] create windows
+    - [ ] draw trait of canvas ???
+    - [ ] display splits etc.
+    - [ ] drawmenu trait returns something which must be displayed
+    - [ ] shortcut drawmenu
+    - [ ] preview::syntaxedstring::print method
+    - [ ] preview::binary::printhex & printascii
+  - [ ] skim
+    - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
+      - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
+
 ## TODO
 
 ### Next version
 
-- [ ] replace tuikit by ratatui + crossterm
-  - [ ] [step by step migration](https://chatgpt.com/c/670cf276-9540-800f-94c8-eaa4ae1e05ea)
-  - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
-    - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] google drive should be a display ?
 - [ ] previews: find a way to stop

@@ -1,4 +1,4 @@
-use tuikit::event::Event;
+use crossterm::event::Event;
 
 use crate::event::ActionMap;
 

@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use tuikit::attr::Color;
+use ratatui::style::Color;
 
 use crate::config::{ColorG, MAX_GRADIENT_NORMAL};
 

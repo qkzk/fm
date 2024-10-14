@@ -1,6 +1,9 @@
 use std::iter::{Chain, Skip, Take};
 use std::slice::Iter;
+
+use ratatui::style::Style;
 use tuikit::attr::Attr;
+
 pub trait Selectable {
     /// True iff the content is empty
     fn is_empty(&self) -> bool;
@@ -26,8 +29,8 @@ pub trait Content<T>: Selectable {
     fn content(&self) -> &Vec<T>;
     /// add an element to the content
     fn push(&mut self, t: T);
-    /// [`tuikit::prelude::Attr`] used to display an element
-    fn attr(&self, index: usize, attr: &Attr) -> Attr;
+    /// [`ratatui::style::Style`] used to display an element
+    fn style(&self, index: usize, attr: &Style) -> Style;
 }
 
 pub trait ToPath {
@@ -135,7 +138,7 @@ macro_rules! impl_index_to_index {
 #[macro_export]
 macro_rules! impl_content {
     ($content_type:ident, $struct:ident) => {
-        use tuikit::attr::{Attr, Effect};
+        use ratatui::style::{Modifier, Style};
         use $crate::modes::Content;
 
         /// Implement a selectable content for this struct.
@@ -157,12 +160,12 @@ macro_rules! impl_content {
             }
 
             /// Reverse the received effect if the index match the selected index.
-            fn attr(&self, index: usize, attr: &Attr) -> Attr {
-                let mut attr = *attr;
+            fn style(&self, index: usize, style: &Style) -> Style {
+                let mut style = *style;
                 if index == self.index() {
-                    attr.effect |= Effect::REVERSE;
+                    style.add_modifier |= Modifier::REVERSED;
                 }
-                attr
+                style
             }
 
             /// Push a new element at the end of content

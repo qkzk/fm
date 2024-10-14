@@ -9,12 +9,12 @@ use std::slice::Iter;
 
 use anyhow::{Context, Result};
 use content_inspector::{inspect, ContentType};
+use ratatui::style::{Color, Modifier, Style};
 use syntect::{
     easy::HighlightLines,
-    highlighting::{FontStyle, Style, Theme, ThemeSet},
+    highlighting::{FontStyle, Style as SyntectStyle, Theme, ThemeSet},
     parsing::{SyntaxReference, SyntaxSet},
 };
-use tuikit::attr::{Attr, Color, Effect};
 
 use crate::common::{
     clear_tmp_files, filename_from_path, is_in_path, path_to_string, BSDTAR, FFMPEG, FONTIMAGE,
@@ -640,50 +640,56 @@ impl HLContent {
 pub struct SyntaxedString {
     col: usize,
     content: String,
-    attr: Attr,
+    style: Style,
 }
 
 impl SyntaxedString {
     /// Parse a content and style into a `SyntaxedString`
     /// Only the foreground color is read, we don't the background nor
     /// the style (bold, italic, underline) defined in Syntect.
-    fn from_syntect(col: usize, content: &str, style: Style) -> Self {
+    fn from_syntect(col: usize, content: &str, style: SyntectStyle) -> Self {
         let content = content.to_owned();
         let fg = style.foreground;
-        let attr = Attr {
-            fg: Color::Rgb(fg.r, fg.g, fg.b),
-            bg: Color::default(),
-            effect: Self::fontstyle_to_effect(&style.font_style),
+        let style = Style {
+            fg: Some(Color::Rgb(fg.r, fg.g, fg.b)),
+            bg: None,
+            add_modifier: Self::font_style_to_effect(&style.font_style),
+            sub_modifier: Modifier::empty(),
         };
-        Self { col, content, attr }
+        Self {
+            col,
+            content,
+            style,
+        }
     }
 
-    fn fontstyle_to_effect(font_style: &FontStyle) -> Effect {
-        let mut effect = Effect::empty();
+    fn fontstyle_to_effect(font_style: &FontStyle) -> Modifier {
+        let mut modifier: u16 = Modifier::empty();
 
         // If the FontStyle has the bold bit set, add bold to the Effect
         if font_style.contains(FontStyle::BOLD) {
-            effect |= Effect::BOLD;
+            modifier |= Modifier::BOLD;
         }
 
-        // If the FontStyle has the underline bit set, add underline to the Effect
+        // If the FontStyle has the underline bit set, add underline to the Modifier
         if font_style.contains(FontStyle::UNDERLINE) {
-            effect |= Effect::UNDERLINE;
+            modifier |= Modifier::UNDERLINED;
         }
 
-        effect
+        modifier
     }
 
-    /// Prints itself on a tuikit canvas.
-    pub fn print(
-        &self,
-        canvas: &mut dyn tuikit::canvas::Canvas,
-        row: usize,
-        offset: usize,
-    ) -> Result<()> {
-        canvas.print_with_attr(row, self.col + offset + 2, &self.content, self.attr)?;
-        Ok(())
-    }
+    // TODO! make it work
+    // /// Prints itself on a tuikit canvas.
+    // pub fn print(
+    //     &self,
+    //     canvas: &mut dyn tuikit::canvas::Canvas,
+    //     row: usize,
+    //     offset: usize,
+    // ) -> Result<()> {
+    //     canvas.print_with_attr(row, self.col + offset + 2, &self.content, self.attr)?;
+    //     Ok(())
+    // }
 }
 
 /// Holds a preview of a binary content.
@@ -787,26 +793,28 @@ impl Line {
         self.line.iter().map(Self::byte_to_char).collect()
     }
 
-    /// Print line of pair of bytes in hexadecimal, 16 bytes long.
-    /// It uses BigEndian notation, regardless of platform usage.
-    /// It tries to imitates the output of hexdump.
-    pub fn print_bytes(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
-        let _ = canvas.print(row, offset + 2, &self.format_hex());
-    }
+    // TODO!
+    // /// Print line of pair of bytes in hexadecimal, 16 bytes long.
+    // /// It uses BigEndian notation, regardless of platform usage.
+    // /// It tries to imitates the output of hexdump.
+    // pub fn print_bytes(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
+    //     let _ = canvas.print(row, offset + 2, &self.format_hex());
+    // }
 
-    /// Print a line as an ASCII string
-    /// Non ASCII printable bytes are replaced by dots.
-    pub fn print_ascii(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
-        let _ = canvas.print_with_attr(
-            row,
-            offset + 2,
-            &self.format_as_ascii(),
-            Attr {
-                fg: Color::LIGHT_YELLOW,
-                ..Default::default()
-            },
-        );
-    }
+    // TODO!
+    // /// Print a line as an ASCII string
+    // /// Non ASCII printable bytes are replaced by dots.
+    // pub fn print_ascii(&self, canvas: &mut dyn tuikit::canvas::Canvas, row: usize, offset: usize) {
+    //     let _ = canvas.print_with_attr(
+    //         row,
+    //         offset + 2,
+    //         &self.format_as_ascii(),
+    //         Attr {
+    //             fg: Color::LIGHT_YELLOW,
+    //             ..Default::default()
+    //         },
+    //     );
+    // }
 }
 
 /// Common trait for many preview methods which are just a bunch of lines with

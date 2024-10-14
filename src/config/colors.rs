@@ -1,4 +1,4 @@
-use tuikit::attr::Color;
+use ratatui::style::Color;
 
 use crate::config::{ARRAY_GRADIENT, COLORER};
 
@@ -116,7 +116,7 @@ impl ColorG {
 /// Other formats are unknown.
 /// Unreadable colors are replaced by `Color::default()` which is white.
 #[rustfmt::skip]
-pub fn str_to_tuikit<S>(color: S) -> Color
+pub fn str_to_ratatui<S>(color: S) -> Color
 where
     S: AsRef<str>,
 {

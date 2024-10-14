@@ -1,6 +1,7 @@
 use std::sync::{Arc, MutexGuard};
 
 use anyhow::{Context, Result};
+use ratatui::style::{Modifier, Style};
 use tuikit::{
     attr::{Attr, Color},
     prelude::*,
@@ -337,7 +338,7 @@ impl<'a> DirectoryDisplay<'a> {
         if row > height {
             return Ok(());
         }
-        let mut attr = file.attr();
+        let mut attr = file.style();
         if index == self.tab.directory.index {
             attr.effect |= Effect::REVERSE;
         }
@@ -421,7 +422,7 @@ impl<'a> TreeDisplay<'a> {
             return Ok(());
         }
 
-        let mut attr = line_builder.attr;
+        let mut attr = line_builder.style;
         let path = line_builder.path();
         Files::print_flagged_symbol(status, canvas, row, path, &mut attr)?;
 
@@ -712,7 +713,7 @@ impl FilesSecondLine {
     fn second_line_detailed(file: &FileInfo) -> Self {
         let owner_size = file.owner.len();
         let group_size = file.group.len();
-        let mut attr = file.attr();
+        let mut attr = file.style();
         attr.effect ^= Effect::REVERSE;
 
         Self {
@@ -980,7 +981,7 @@ impl<'a> Menu<'a> {
         for (letter, (row, desc, attr)) in
             std::iter::zip(('a'..='z').cycle(), enumerated_colored_iter!(content))
         {
-            let attr = selectable.attr(row, &attr);
+            let attr = selectable.style(row, &attr);
             canvas.print_with_attr(
                 row + 1 + ContentWindow::WINDOW_MARGIN_TOP,
                 2,
@@ -1020,7 +1021,7 @@ impl<'a> Menu<'a> {
     fn flagged_selected(&self, canvas: &mut dyn Canvas) -> Result<()> {
         if let Some(selected) = self.status.menu.flagged.selected() {
             let fileinfo = FileInfo::new(selected, &self.tab.users)?;
-            canvas.print_with_attr(2, 2, &fileinfo.format(6, 6)?, fileinfo.attr())?;
+            canvas.print_with_attr(2, 2, &fileinfo.format(6, 6)?, fileinfo.style())?;
         };
         Ok(())
     }
@@ -1108,7 +1109,7 @@ impl<'a> Menu<'a> {
     fn confirm_non_empty_trash(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let content = self.status.menu.trash.content();
         for (row, trashinfo, attr) in enumerated_colored_iter!(content) {
-            let attr = self.status.menu.trash.attr(row, &attr);
+            let attr = self.status.menu.trash.style(row, &attr);
             Self::content_line(canvas, row + 4, &trashinfo.to_string(), attr)?;
         }
         Ok(())
@@ -1306,11 +1307,12 @@ fn format_line_nr_hex(line_nr: usize, width: usize) -> String {
 }
 
 #[inline]
-pub const fn color_to_attr(color: Color) -> Attr {
-    Attr {
-        fg: color,
-        bg: Color::Default,
-        effect: Effect::empty(),
+pub const fn color_to_style(color: Color) -> Style {
+    Style {
+        fg: Some(color),
+        bg: None,
+        add_modifier: Modifier::empty(),
+        sub_modifier: Modifier::empty(),
     }
 }
 
