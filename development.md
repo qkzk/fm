@@ -1251,11 +1251,18 @@ New view: Tree ! Toggle with 't', fold with 'z'. Navigate normally.
 
 ## TODO
 
-- [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
-  - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
+### Next version
+
+- [ ] replace tuikit by ratatui + crossterm
+  - [ ] [step by step migration](https://chatgpt.com/c/670cf276-9540-800f-94c8-eaa4ae1e05ea)
+  - [ ] [nucleo](https://github.com/helix-editor/nucleo) as a skim replacement
+    - [ ] [nucleo-picker](https://github.com/autobib/nucleo-picker) uses crossterm
 - [ ] common trait to validate a data : input string, config, args...
 - [ ] google drive should be a display ?
-- [ ] replace tuikit by ratatui + crossterm
+- [ ] previews: find a way to stop
+
+### Other ideas
+
 - [ ] Focus & mouseover. Mousemove require raw terminal mode.. Requires to rewrite every event (Mousepress, mouse release etc.)
       Another motivation to switch to ratatui + crossterm.
 - [ ] ideas from broot : https://dystroy.org/broot/#apply-commands-on-several-files
