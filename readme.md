@@ -1,12 +1,12 @@
 # FM: a file manager inspired by dired and ranger, written in rust
 
 [![fm-tui on crates.io][cratesio-image]][cratesio]
-[![fm-tui on docs.rs](https://img.shields.io/docsrs/fm-tui/0.1.29)][docrs]
+[![fm-tui on docs.rs](https://img.shields.io/docsrs/fm-tui/0.1.30)][docrs]
 
 [cratesio-image]: https://img.shields.io/crates/v/fm-tui.svg
 [cratesio]: https://crates.io/crates/fm-tui
-[docsrs-badge]: https://img.shields.io/docsrs/fm-tui/0.1.29
-[docrs]: https://docs.rs/fm-tui/0.1.29
+[docsrs-badge]: https://img.shields.io/docsrs/fm-tui/0.1.30
+[docrs]: https://docs.rs/fm-tui/0.1.30
 
 ```
 FM : a file manager inspired by ranger and dired
